@@ -2,7 +2,8 @@ import { act } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
-import type { DiceRollResult } from '../../src/app/tools/DiceTool';
+import { EventEmitter } from 'events';
+import { DiceTool, type DiceRollResult } from '../../src/app/tools/DiceTool';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -88,6 +89,20 @@ describe('player window dice rolls', () => {
     roll(undefined, true);
     act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
     act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    expect(toastText(doc)).toBeUndefined();
+  });
+
+  it('shows nothing of a roll the dice tool made secret', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    act(() => { new DiceTool(new EventEmitter()).rollDice('1d20', undefined, { secret: true }); });
+    expect(toastText(doc)).toBeUndefined();
+  });
+
+  it('shows nothing of a secret roll while sharing is off', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
+    act(() => { new DiceTool(new EventEmitter()).rollDice('1d20', undefined, { secret: true }); });
     expect(toastText(doc)).toBeUndefined();
   });
 
