@@ -60,4 +60,12 @@ describe('rolling from the dice tray', () => {
     throwOneDie();
     expect(rolls[0] && 'secret' in rolls[0]).toBe(false);
   });
+
+  it('still stamps the roll secret while Show dice rolls is off, so the GM log shows the GM\'s intent', () => {
+    const { diceTool, settings, rolls } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
+    act(() => diceTool.setSecretRoll(true));
+    throwOneDie();
+    expect(rolls[0]?.secret).toBe(true);
+  });
 });
