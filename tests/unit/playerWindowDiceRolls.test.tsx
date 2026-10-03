@@ -82,6 +82,15 @@ describe('player window dice rolls', () => {
     expect(doc.querySelectorAll('.atlas-dice-toast')).toHaveLength(1);
   });
 
+  it('does not reveal an earlier secret roll when sharing is switched off and on', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    roll(undefined, true);
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    expect(toastText(doc)).toBeUndefined();
+  });
+
   it('does not name a token that is hidden on the map', () => {
     const { settings, store, doc } = setup();
     act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
