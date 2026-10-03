@@ -74,6 +74,14 @@ describe('player window dice rolls', () => {
     expect(toastText(doc)).toContain('17');
   });
 
+  it('shows only the normal roll when a secret roll came first', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    roll(undefined, true);
+    roll();
+    expect(doc.querySelectorAll('.atlas-dice-toast')).toHaveLength(1);
+  });
+
   it('does not name a token that is hidden on the map', () => {
     const { settings, store, doc } = setup();
     act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
