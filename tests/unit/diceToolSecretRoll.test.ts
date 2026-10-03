@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { describe, expect, it } from 'vitest';
-import { DiceTool } from '../../src/app/tools/DiceTool';
+import { DiceTool, type DiceRollResult } from '../../src/app/tools/DiceTool';
 
 describe('DiceTool secret rolls', () => {
   it('marks a roll made with the secret option', () => {
@@ -13,6 +13,18 @@ describe('DiceTool secret rolls', () => {
     const diceTool = new DiceTool(new EventEmitter());
     const result = diceTool.rollDice('1d20');
     expect('secret' in result).toBe(false);
+  });
+
+  it('dispatches the secret flag with the atlas-dice-rolled event', () => {
+    const diceTool = new DiceTool(new EventEmitter());
+    let detail: DiceRollResult | undefined;
+    const listener = (event: Event): void => {
+      detail = (event as CustomEvent<DiceRollResult>).detail;
+    };
+    document.addEventListener('atlas-dice-rolled', listener);
+    diceTool.rollDice('1d20', undefined, { secret: true });
+    document.removeEventListener('atlas-dice-rolled', listener);
+    expect(detail?.secret).toBe(true);
   });
 
   it('leaves the secret key off a roll made with the option set to false', () => {
