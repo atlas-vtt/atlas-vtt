@@ -117,6 +117,17 @@ describe('player window dice rolls', () => {
     expect(portrait?.querySelector<HTMLElement>('.atlas-token-ring')?.style.getPropertyValue('--atlas-token-ring-color')).toBe('#aa0000');
   });
 
+  it('throws no 3D dice for a secret roll', () => {
+    const { settings, doc } = setup();
+    act(() => {
+      settings.setDiceDisplay('full');
+      settings.setLocalPlayerViewSettings({ showDiceRolls: true });
+    });
+
+    roll(undefined, true);
+    expect(doc.querySelector('.atlas-dice-roll')).toBeNull();
+  });
+
   it('throws 3D dice without naming a hidden token', () => {
     const { settings, doc } = setup();
     act(() => {
