@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronDown, RotateCw } from 'lucide-react';
+import { ChevronDown, EyeOff, RotateCw } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import type { DiceRollResult } from '../../../tools/DiceTool';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
@@ -81,6 +81,14 @@ export function DiceRollEntry({ result, isNew, onRepeat }: DiceRollEntryProps): 
         )}
         {source?.abilityName && (
           <span className="dice-log-entry__ability-name">{source.abilityName}</span>
+        )}
+
+        {/* Players never saw this roll. */}
+        {result.secret && (
+          <span className="dice-log-entry__secret">
+            <EyeOff className="dice-log-entry__secret-icon" aria-hidden="true" />
+            <span>Secret</span>
+          </span>
         )}
 
         {/* Summary: formula = total */}
