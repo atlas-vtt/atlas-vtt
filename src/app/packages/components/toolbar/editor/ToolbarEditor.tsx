@@ -12,6 +12,7 @@ import { ToolbarDragGhost, ToolbarFlightGhost } from './ToolbarDragGhost'
 import { useToolbarEditState, useToolbarEditStore } from './toolbarEditStore'
 import { useTrayVariants } from './editorMotion'
 import { doneButtonOf, groupHandles, handleOf, mainToolbarOf } from './toolbarEditDom'
+import { ToolbarEditTooltip } from './ToolbarEditTooltip'
 import { ToolbarTray } from './ToolbarTray'
 
 interface ToolbarEditorProps {
@@ -110,9 +111,10 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
   return (
     <>
       <div ref={rootRef} className="atlas-toolbar-editor" style={style} inert={!present}>
-        {/* The tray rises out of the bar as the editor opens and sinks back as it closes. */}
+        {/* The tray, and the card above it, rise out of the bar as the editor opens and sink back as it closes. */}
         <motion.div className="atlas-toolbar-editor__tray-row" variants={trayVariants} initial="hidden" animate="visible" exit="exit">
           <ToolbarTray edit={shown} items={items} motion={layoutMotion} />
+          <ToolbarEditTooltip active={present && edit !== null} />
         </motion.div>
       </div>
       <div className="atlas-toolbar-ghost-layer">

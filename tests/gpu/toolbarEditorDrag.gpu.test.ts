@@ -31,6 +31,24 @@ async function glide(from: { x: number; y: number }, to: { x: number; y: number 
   }
 }
 
+/** The bar's controls that started closing while `during` ran, in the order they did. */
+async function closingDuring(during: () => Promise<void>): Promise<string[]> {
+  const bar = query('.atlas-main-toolbar');
+  const closing = new Set<string>();
+  const note = (element: Element): void => {
+    const item = element as HTMLElement;
+    if (item.parentElement === bar && item.dataset.toolbarItem && item.dataset.collapsing !== undefined) closing.add(item.dataset.toolbarItem);
+  };
+  const observer = new MutationObserver(records => records.forEach(record => note(record.target as Element)));
+  observer.observe(bar, { subtree: true, attributes: true, attributeFilter: ['data-collapsing'] });
+  try {
+    await during();
+  } finally {
+    observer.disconnect();
+  }
+  return [...closing];
+}
+
 /** Moves along the bar's middle from `fromX` to the right until `done` holds; returns where it stopped. */
 async function sweepUntil(fromX: number, y: number, done: () => boolean): Promise<{ x: number; y: number }> {
   const right = rectOf(query('.atlas-main-toolbar')).left + rectOf(query('.atlas-main-toolbar')).width + 40;
@@ -177,12 +195,12 @@ describe('dragging in the toolbar editor', () => {
     const pickup = centreOf(handle('draw', 'tray'));
     await mouse.down(pickup.x, pickup.y);
     const bar = rectOf(query('.atlas-main-toolbar'));
-    await glide(pickup, { x: bar.left + 30, y: bar.top + bar.height / 2 });
-    const closing = new Set<string>();
-    await eachFrame(SETTLE_FRAMES / 2, () => {
-      document.querySelectorAll<HTMLElement>('.atlas-main-toolbar > [data-toolbar-item][data-collapsing]').forEach(item => closing.add(item.dataset.toolbarItem ?? ''));
+    // Watched from the first step on: on a busy machine a control may close before the glide ends.
+    const closing = await closingDuring(async () => {
+      await glide(pickup, { x: bar.left + 30, y: bar.top + bar.height / 2 });
+      await eachFrame(SETTLE_FRAMES / 2, () => undefined);
     });
-    expect([...closing]).toEqual(['text']);
+    expect(closing).toEqual(['text']);
     expect(barIds()).toEqual(['move', 'fog', 'palette']);
     expect(openWell()).toBeDefined();
 

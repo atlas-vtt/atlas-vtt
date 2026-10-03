@@ -1,3 +1,5 @@
+import { namesHotkey } from '../../../../keyboard/mapHotkeys'
+
 /**
  * What the toolbar editor's live region says. Positions count the bar's
  * controls in order, those in "More tools" included and hidden ones not.
@@ -22,8 +24,7 @@ export function movedMessage(label: string, from: number, to: number): string {
 
 /** `hotkey` as `formatHotkey` writes it; an unassigned key is left out. */
 export function hiddenMessage(label: string, hotkey: string): string {
-  const unbound = hotkey === '' || hotkey === 'Unassigned'
-  return unbound ? `${label} hidden.` : `${label} hidden. ${hotkey} still selects it.`
+  return namesHotkey(hotkey) ? `${label} hidden. ${hotkey} still selects it.` : `${label} hidden.`
 }
 
 export function shownMessage(label: string, position: number, count: number): string {

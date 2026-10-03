@@ -79,6 +79,17 @@ export const REDUCED_FADE_IN = fade(150)
 /** With reduced motion a refusal tints the control instead of shaking it. */
 export const REFUSAL_TINT_MS = MOTION_SLOW_MS
 
+/** The card over a tool: hover this long before it opens; within the skip window after one closes, the next opens at once. */
+export const CARD_OPEN_DELAY_MS = 500
+export const CARD_SKIP_MS = 400
+/** The card gliding from one tool to the next. */
+export const CARD_GLIDE = spring(0.18)
+/** The card rising into place as it opens, and shrinking a little as it fades out. */
+export const CARD_ENTER = fade(150)
+export const CARD_ENTER_FROM = { y: 4, scale: 0.97 } as const
+export const CARD_EXIT = fade(MOTION_FAST_MS)
+export const CARD_EXIT_SCALE = 0.98
+
 /** The tray waits a moment, so the palette that started edit mode is mostly gone before it rises. */
 const TRAY_ENTER_DELAY = 0.08
 

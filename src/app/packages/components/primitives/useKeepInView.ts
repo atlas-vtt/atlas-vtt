@@ -14,7 +14,7 @@ export interface KeepInView {
  * The view a popover must stay inside: Obsidian clips a leaf's content
  * (`contain: strict` on `.workspace-leaf`), so the closest leaf, else the window.
  */
-function viewFrame(element: HTMLElement): ViewFrame {
+export function viewFrame(element: HTMLElement): ViewFrame {
   const leaf = element.closest('.workspace-leaf')
   if (leaf) return leaf.getBoundingClientRect()
   const win = element.win

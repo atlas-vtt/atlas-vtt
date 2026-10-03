@@ -1,18 +1,8 @@
-import React from 'react';
-import { EventEmitter } from 'events';
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MotionGlobalConfig } from 'framer-motion';
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { canRunMapHotkeys, matchesMapHotkey } from '../../src/app/keyboard/mapHotkeys';
-import { MainToolbar } from '../../src/app/packages/components/MainToolbar';
-import { ToolbarSpaceContext } from '../../src/app/packages/components/toolbar/toolbarSpace';
-import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
-import { ContextMenuProvider } from '../../src/app/react/root/ContextMenuContext';
-import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
-import { SettingsService } from '../../src/app/services/SettingsService';
-import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
-import type { StoredToolbarLayout } from '../../src/app/toolbar/toolbarLayout';
-import { createInMemoryApp } from '../mocks/inMemoryVault';
+import type { ViewAtlasStore } from '../../src/app/storeFactory';
+import { handle, renderToolbar, setUpToolbarTestDom, startEditing } from './toolbarEditorHarness';
 
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: {} }));
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTabInPlayerWindow: vi.fn() }));
@@ -26,69 +16,6 @@ vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () 
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/LocalPlayerViewSettingsPanel', () => ({ LocalPlayerViewSettingsPanel: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/AssetManager', () => ({ default: () => null }));
-
-interface Harness {
-  store: ViewAtlasStore;
-  settings: SettingsService;
-  bus: EventEmitter;
-  workspaceOn: ReturnType<typeof vi.fn>;
-  container: HTMLElement;
-}
-
-interface HarnessOptions {
-  player?: boolean;
-  stored?: StoredToolbarLayout;
-  /** Room the bottom row gives the bar; null lays nothing out, so nothing overflows. */
-  space?: number | null;
-}
-
-// jsdom lays nothing out: every control of the bar is 40px wide where the bar has room to measure.
-const CONTROL_WIDTH = 40;
-let offsetWidth: PropertyDescriptor | undefined;
-
-function renderToolbar({ player = false, stored = {}, space = null }: HarnessOptions = {}): Harness {
-  const { app } = createInMemoryApp({ files: {} });
-  const settings = new SettingsService(app);
-  // The palette's first-run tutorial would cover it and take its keys.
-  settings.completeTutorial('palette');
-  settings.setToolbarLayout(stored);
-  const store = createViewAtlasStore(app, `toolbar-editor-${Math.random()}`);
-  store.getState().setPersistenceEnabled(false);
-  const bus = new EventEmitter();
-  const view = {
-    viewId: 'view-1',
-    getViewType: () => (player ? 'atlas-vtt-player' : 'atlas-vtt'),
-    serviceManager: { getEventBus: () => bus, getToolController: () => null, getNotePreviewUIManager: () => null },
-    setFogBrushSize: vi.fn(),
-    clearAllFog: vi.fn(),
-    openSceneBrowser: vi.fn(),
-  };
-  const ui = { app, view, pixiApp: null, renderer: { getTokenRenderer: () => ({ visibleTokenIds: () => [] }) } } as unknown as AtlasUIContextValue;
-  const { container } = render(
-    <AtlasUIContext.Provider value={ui}>
-      <ViewStoreProvider store={store}>
-        <ContextMenuProvider>
-          <ToolbarSpaceContext.Provider value={space}>
-            <MainToolbar viewId="view-1" />
-          </ToolbarSpaceContext.Provider>
-        </ContextMenuProvider>
-      </ViewStoreProvider>
-    </AtlasUIContext.Provider>,
-  );
-  return { store, settings, bus, workspaceOn: app.workspace.on as ReturnType<typeof vi.fn>, container };
-}
-
-function startEditing({ store }: Harness): void {
-  act(() => store.getState().setToolbarEditing(true));
-}
-
-/** The handle of a control on the bar, or in the tray. */
-const handle = (container: HTMLElement, id: string, where: 'bar' | 'tray' = 'bar'): HTMLElement => {
-  const scope = where === 'bar' ? '.atlas-main-toolbar' : '.atlas-toolbar-tray';
-  const element = container.querySelector<HTMLElement>(`${scope} .atlas-toolbar-handle[data-control="${id}"]`);
-  if (!element) throw new Error(`No ${where} handle for ${id}`);
-  return element;
-};
 
 // Every control keeps a slot in the tray; those of tools on the bar are hidden.
 const trayIds = (container: HTMLElement): string[] =>
@@ -110,31 +37,7 @@ function listenLikeTheMap(store: ViewAtlasStore): () => void {
   return () => window.removeEventListener('keydown', onKeyDown);
 }
 
-beforeAll(() => { MotionGlobalConfig.skipAnimations = true; });
-afterAll(() => { MotionGlobalConfig.skipAnimations = false; });
-
-beforeEach(() => {
-  vi.stubGlobal('ResizeObserver', class {
-    observe(): void {}
-    unobserve(): void {}
-    disconnect(): void {}
-  });
-  Object.defineProperty(Element.prototype, 'scrollIntoView', { configurable: true, value: vi.fn() });
-  offsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
-  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
-    configurable: true,
-    get(this: HTMLElement) {
-      return this.matches('[data-toolbar-item], .atlas-toolbar-overflow, .atlas-toolbar-end') ? CONTROL_WIDTH : 0;
-    },
-  });
-});
-
-afterEach(() => {
-  cleanup();
-  vi.unstubAllGlobals();
-  Reflect.deleteProperty(Element.prototype, 'scrollIntoView');
-  if (offsetWidth) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', offsetWidth);
-});
+setUpToolbarTestDom();
 
 describe('entering the toolbar editor', () => {
   it('is offered in the GM\'s palette and starts edit mode, closing the palette', () => {
