@@ -393,6 +393,19 @@
     align-items: center;
   }
 
+  // A dot in the button's corner, for a state worth seeing at a glance. It never takes the pointer.
+  .atlas-tool-button__badge {
+    position: absolute;
+    top: $spacing-xs;
+    right: $spacing-xs;
+    width: $spacing-m;
+    height: $spacing-m;
+    border-radius: 50%;
+    background-color: var(--interactive-accent);
+    box-shadow: 0 0 0 $border-width-s var(--background-primary);
+    pointer-events: none;
+  }
+
   .atlas-tool-button-chevron svg {
     width: $icon-xs;
     height: $icon-xs;
