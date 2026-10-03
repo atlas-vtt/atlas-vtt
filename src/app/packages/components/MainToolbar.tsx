@@ -211,7 +211,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
           )}
         </div>
       ),
-      menuEntry: { icon: Dices, label: "Roll Dice", shortcut: hotkeyLabel('diceTray'), isActive: isDiceTrayOpen, onSelect: toggleDiceTray },
+      menuEntry: { icon: Dices, label: secretRollOn ? "Roll Dice (secret)" : "Roll Dice", shortcut: hotkeyLabel('diceTray'), isActive: isDiceTrayOpen, onSelect: toggleDiceTray },
     },
     ...(dm ? [
       buttonItem('loot', { icon: CoinIcon, label: "Loot Roller", shortcut: hotkeyLabel('lootRoller'), isActive: lootRollerOpen, onClick: () => setLootRollerOpen(!lootRollerOpen) }, false),

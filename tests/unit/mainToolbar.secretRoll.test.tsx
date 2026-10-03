@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, within } from '@testing-library/react';
+import { ToolbarSpaceContext } from '../../src/app/packages/components/toolbar/toolbarSpace';
 import { EventEmitter } from 'events';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { DiceTool } from '../../src/app/tools/DiceTool';
@@ -146,7 +147,37 @@ vi.mock('../../src/app/react/components/dice/DiceDropdownMenu', () => ({
 
 import { MainToolbar } from '../../src/app/packages/components/MainToolbar';
 
+// jsdom lays nothing out: every toolbar control and the overflow button measure 40px.
+const CONTROL_WIDTH = 40;
+/** Room for the overflow button and one control, so Roll Dice moves into the menu. */
+const NARROW = 90;
+
+function renderNarrow(): void {
+  render(
+    <ToolbarSpaceContext.Provider value={NARROW}>
+      <MainToolbar viewId="view-1" />
+    </ToolbarSpaceContext.Provider>
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'More tools' }));
+}
+
 describe('MainToolbar secret roll badge', () => {
+  let offsetWidth: PropertyDescriptor | undefined;
+
+  beforeEach(() => {
+    offsetWidth = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetWidth');
+    Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+      configurable: true,
+      get(this: HTMLElement) {
+        return this.matches('[data-toolbar-item], .atlas-toolbar-overflow, .atlas-toolbar-end') ? CONTROL_WIDTH : 0;
+      },
+    });
+  });
+
+  afterEach(() => {
+    if (offsetWidth) Object.defineProperty(HTMLElement.prototype, 'offsetWidth', offsetWidth);
+  });
+
   beforeEach(() => {
     capturedShortcuts = {};
     ({ app: vaultApp } = createInMemoryApp({ files: {} }));
@@ -172,5 +203,18 @@ describe('MainToolbar secret roll badge', () => {
     act(() => diceTool.setSecretRoll(true));
     render(<MainToolbar viewId="view-1" />);
     expect(screen.getByRole('button', { name: 'Roll Dice' })).not.toBeNull();
+  });
+
+  it('says in the More tools menu that the secret roll is on', () => {
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    act(() => diceTool.setSecretRoll(true));
+    renderNarrow();
+    expect(screen.getByText('Roll Dice (secret)')).not.toBeNull();
+  });
+
+  it('keeps the More tools entry plain while the secret roll is off', () => {
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    renderNarrow();
+    expect(within(screen.getByRole('menu')).getByText('Roll Dice')).not.toBeNull();
   });
 });
