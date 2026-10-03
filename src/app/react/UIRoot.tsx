@@ -220,7 +220,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           )}
 
           {/* Dice Roll Log - left side panel */}
-          <PanelBoundary name="the dice log"><DiceRollLog isOpen={isDiceLogOpen} onClose={() => setDiceLogOpen(false)} /></PanelBoundary>
+          <PanelBoundary name="the dice log"><DiceRollLog isOpen={isDiceLogOpen} onClose={() => setDiceLogOpen(false)} hideSecret={isPlayerView} /></PanelBoundary>
 
           {/* Initiative Tracker - only for DM view */}
           {!isPlayerView && <PanelBoundary name="the initiative tracker"><InitiativeTracker /></PanelBoundary>}

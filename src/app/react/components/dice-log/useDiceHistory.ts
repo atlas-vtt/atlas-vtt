@@ -3,6 +3,11 @@ import type { DiceRollResult } from '../../../tools/DiceTool';
 
 const MAX_HISTORY = 20;
 
+export interface DiceHistoryOptions {
+  /** Leaves secret rolls out of the list and the store: for a log that players can open. */
+  hideSecret?: boolean;
+}
+
 /**
  * Subscribes to dice roll events and provides a reactive history array.
  * Seeds from the store's persisted `diceLog` on mount, syncs new rolls
@@ -15,26 +20,32 @@ export function useDiceHistory(
     addDiceLogEntry: (entry: DiceRollResult) => void;
     clearDiceLog: () => void;
   },
+  options: DiceHistoryOptions = {},
 ): {
   history: DiceRollResult[];
   clearHistory: () => void;
   repeatRoll: (formula: string, source?: DiceRollResult['source']) => void;
 } {
-  const [history, setHistory] = useState<DiceRollResult[]>(() =>
-    storeActions?.diceLog ?? [],
+  const { hideSecret = false } = options;
+  const visible = useCallback(
+    (log: DiceRollResult[]): DiceRollResult[] => (hideSecret ? log.filter((roll) => !roll.secret) : log),
+    [hideSecret],
   );
+
+  const [history, setHistory] = useState<DiceRollResult[]>(() => visible(storeActions?.diceLog ?? []));
 
   // Re-seed when store's diceLog changes (e.g. map switch / hydration)
   useEffect(() => {
     if (storeActions?.diceLog) {
-      setHistory(storeActions.diceLog);
+      setHistory(visible(storeActions.diceLog));
     }
-  }, [storeActions?.diceLog]);
+  }, [storeActions?.diceLog, visible]);
 
   // Listen for new rolls (DOM CustomEvent — same channel as toast system)
   useEffect(() => {
     const handleRoll = (e: Event): void => {
       const result = (e as CustomEvent<DiceRollResult>).detail;
+      if (hideSecret && result.secret) return;
       setHistory(prev => {
         const next = [result, ...prev];
         return next.length > MAX_HISTORY ? next.slice(0, MAX_HISTORY) : next;
@@ -53,7 +64,7 @@ export function useDiceHistory(
       document.removeEventListener('atlas-dice-rolled', handleRoll);
       document.removeEventListener('atlas-dice-history-cleared', handleClear);
     };
-  }, [storeActions]);
+  }, [storeActions, hideSecret]);
 
   const clearHistory = useCallback((): void => {
     setHistory([]);
