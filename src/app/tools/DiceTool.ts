@@ -13,6 +13,8 @@ export interface DiceRollResult {
   total: number;
   /** Decided by the collection's critical rule when rolled; missing on rolls logged before rules existed. */
   crit?: DiceCrit;
+  /** Set only on a roll the GM made secret in the dice tray; the player window never shows it. */
+  secret?: true;
   player?: string;
   source?: {
     type: 'toolbar' | 'statblock';
@@ -23,6 +25,10 @@ export interface DiceRollResult {
     tokenImagePath?: string;
     abilityName?: string;
   };
+}
+
+export interface DiceRollOptions {
+  secret?: boolean;
 }
 
 export interface DiceToolState {
@@ -53,12 +59,19 @@ export class DiceTool {
     this.eventBus.emit('dice-tray-toggled', this.state.isTrayOpen);
   }
 
-  public rollDice(formula: string, source?: DiceRollResult['source']): DiceRollResult {
+  public rollDice(
+    formula: string,
+    source?: DiceRollResult['source'],
+    options?: DiceRollOptions
+  ): DiceRollResult {
     const result = this.parseAndRoll(formula);
     if (source) {
       result.source = source;
     }
-    
+    if (options?.secret) {
+      result.secret = true;
+    }
+
     // Add to history
     this.state.rollHistory.unshift(result);
     
