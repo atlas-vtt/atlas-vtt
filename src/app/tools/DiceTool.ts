@@ -67,6 +67,14 @@ export class DiceTool {
     this.eventBus.emit('dice-secret-roll-changed', on);
   }
 
+  /** Calls `listener` whenever the secret roll switch changes; returns the way to stop. */
+  public onSecretRollChange(listener: (on: boolean) => void): () => void {
+    this.eventBus.on('dice-secret-roll-changed', listener);
+    return (): void => {
+      this.eventBus.off('dice-secret-roll-changed', listener);
+    };
+  }
+
   public rollDice(
     formula: string,
     source?: DiceRollResult['source'],

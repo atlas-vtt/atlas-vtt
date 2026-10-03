@@ -5,6 +5,8 @@ import { DiceTool } from '../../../tools/DiceTool';
 import { DiceTray } from './DiceTray';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { diceFontClass, useDiceLook } from '../../hooks/useDiceLook';
+import { useSecretRoll } from '../../hooks/useSecretRoll';
+import { useShowDiceRolls } from '../../hooks/useShowDiceRolls';
 
 export interface DiceDropdownMenuProps {
   diceTool: DiceTool;
@@ -17,6 +19,8 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
   const trayRef = useRef<HTMLDivElement>(null);
   const { app } = useAtlasUI();
   const look = useDiceLook(app ?? undefined);
+  const secretRoll = useSecretRoll(diceTool);
+  const showDiceRolls = useShowDiceRolls(app ?? undefined);
   const keepInView = useKeepInView(trayRef, isOpen, 'top');
 
   // ── Click-outside ────────────────────────────
@@ -57,6 +61,9 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
             diceTool.rollDice(formula);
             onToggle();
           }}
+          secretRoll={secretRoll}
+          onSecretRollChange={(on) => diceTool.setSecretRoll(on)}
+          secretRollAvailable={showDiceRolls}
         />
       </div>
     </div>
