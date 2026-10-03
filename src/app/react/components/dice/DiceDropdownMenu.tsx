@@ -58,7 +58,7 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
       <div className="atlas-dice-panel">
         <DiceTray
           onRoll={(formula) => {
-            diceTool.rollDice(formula);
+            diceTool.rollDice(formula, undefined, { secret: diceTool.state.secretRoll });
             onToggle();
           }}
           secretRoll={secretRoll}
