@@ -102,4 +102,32 @@ describe('rolling from the dice tray', () => {
     openTray();
     expect(document.querySelector('.atlas-dice-tray__modifier-value')?.textContent).toBe('0');
   });
+
+  it('enables the switch while Show dice rolls is on', () => {
+    const { settings } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    expect(screen.getByRole('switch', { name: 'Secret roll' }).getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('disables the switch when Show dice rolls is turned off while it is on', () => {
+    const { diceTool, settings } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    act(() => diceTool.setSecretRoll(true));
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
+    expect(screen.getByRole('switch', { name: 'Secret roll' }).getAttribute('aria-disabled')).toBe('true');
+  });
+
+  it('turns the secret roll on in the tool when the switch is clicked', () => {
+    const { diceTool, settings } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Secret roll' }));
+    expect(diceTool.state.secretRoll).toBe(true);
+  });
+
+  it('shows the switch on in the tray when it is clicked', () => {
+    const { settings } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Secret roll' }));
+    expect(screen.getByRole('switch', { name: 'Secret roll' }).getAttribute('aria-checked')).toBe('true');
+  });
 });
