@@ -62,6 +62,10 @@ export class DiceTool {
     this.eventBus.emit('dice-tray-toggled', this.state.isTrayOpen);
   }
 
+  public setSecretRoll(on: boolean): void {
+    this.state.secretRoll = on;
+  }
+
   public rollDice(
     formula: string,
     source?: DiceRollResult['source'],
