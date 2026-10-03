@@ -1,10 +1,34 @@
-import React, { useLayoutEffect, useRef } from 'react'
-import { animate, motion, useMotionValue, useTransform } from 'framer-motion'
+import React, { createRef, useLayoutEffect, useMemo, useState, type RefObject } from 'react'
+import { motion, useMotionValue, useTransform, type MotionValue } from 'framer-motion'
 import type { ResponsiveToolbarItem } from '../toolbarTypes'
-import { FLIGHT, FLIGHT_SCALE, REDUCED_FADE_OUT } from './editorMotion'
+import type { ToolbarEditStore, ToolbarGhostTicket } from './toolbarEditStore'
 import { ToolbarFace } from './ToolbarFace'
-import { drawnBox, flightEnd, laidOutBox, lerpBox, type GhostBox } from './toolbarGhostGeometry'
+import { useDragGhost } from './useDragGhost'
+import { useFlightGhost } from './useFlightGhost'
 import type { ToolbarFlight } from './useToolbarFlight'
+
+/** What moves a ghost: its box in the bottom row's coordinates, its look and its lift. */
+export interface GhostValues {
+  x: MotionValue<number>
+  y: MotionValue<number>
+  width: MotionValue<number>
+  height: MotionValue<number>
+  scale: MotionValue<number>
+  opacity: MotionValue<number>
+  /** 0: the bar's face, 1: the tray's; between, the two crossfade. */
+  trayLook: MotionValue<number>
+  /** The deeper shadow of a lifted ghost, 0 to 1. */
+  shadow: MotionValue<number>
+}
+
+/** The parts of a ghost its driver measures. */
+export interface GhostElements {
+  ghost: RefObject<HTMLDivElement | null>
+  barFace: RefObject<HTMLDivElement | null>
+  trayFace: RefObject<HTMLDivElement | null>
+}
+
+type GhostItem = Pick<ResponsiveToolbarItem, 'kind' | 'menuEntry'>
 
 /** Where a face's first button (the tool's icon) is centred, from the face's left edge. */
 function iconCentre(face: HTMLElement | null): number {
@@ -12,103 +36,85 @@ function iconCentre(face: HTMLElement | null): number {
   return icon ? icon.offsetLeft + icon.offsetWidth / 2 : 0
 }
 
-interface ToolbarDragGhostProps {
-  flight: ToolbarFlight
-  item: Pick<ResponsiveToolbarItem, 'kind' | 'menuEntry'>
-  onLanded: (serial: number) => void
+function useGhostElements(): GhostElements {
+  const [elements] = useState<GhostElements>(() => ({ ghost: createRef(), barFace: createRef(), trayFace: createRef() }))
+  return elements
 }
 
 /**
- * The copy of a tool that moves between the bar and the tray while the real
- * control waits, invisible, at its new place. A flight is driven by its
- * progress: each frame the ghost stands that far between where the tool took
- * off and where its new slot is laid out at that moment, so it lands exactly
- * on a slot that is still opening and on a bar that is still recentring. It
- * changes its real size between the bar's face and the tray's, crossfading
- * the two with their icons kept on one spot, and swells a little and casts a
- * deeper shadow on the way. With reduced motion it fades out where the tool was.
+ * A copy of a tool moving between the bar and the tray while the real
+ * control waits, invisible, at its new place. It changes its real size
+ * between the bar's face and the tray's, crossfading the two with their icons
+ * kept on one spot (a tool group's chevron is clipped away as it shrinks).
  */
-export function ToolbarDragGhost({ flight, item, onLanded }: ToolbarDragGhostProps): React.ReactElement {
-  const ghostRef = useRef<HTMLDivElement>(null)
-  const barFaceRef = useRef<HTMLDivElement>(null)
-  const trayFaceRef = useRef<HTMLDivElement>(null)
+function GhostView({ values, item, elements }: { values: GhostValues; item: GhostItem; elements: GhostElements }): React.ReactElement {
+  const { x, y, width, height, scale, opacity, trayLook, shadow } = values
+  const barLook = useTransform(trayLook, (look: number) => 1 - look)
+  const barFaceX = useMotionValue(0)
+  const trayFaceX = useMotionValue(0)
+
+  useLayoutEffect(() => {
+    // Both faces start at the ghost's left edge; sliding them keeps the two icons on one spot.
+    const offset = iconCentre(elements.barFace.current) - iconCentre(elements.trayFace.current)
+    const align = (look: number): void => {
+      barFaceX.set(-offset * look)
+      trayFaceX.set(offset * (1 - look))
+    }
+    align(trayLook.get())
+    return trayLook.on('change', align)
+  }, [trayLook, elements, barFaceX, trayFaceX])
+
+  return (
+    <motion.div ref={elements.ghost} className="atlas-toolbar-ghost" aria-hidden="true" inert style={{ x, y, width, height, scale, opacity }}>
+      <motion.div className="atlas-toolbar-ghost__shadow" style={{ opacity: shadow }} />
+      <div className="atlas-toolbar-ghost__faces">
+        <ToolbarFace ref={elements.barFace} item={item} look="bar" style={{ opacity: barLook, x: barFaceX }} />
+        <ToolbarFace ref={elements.trayFace} item={item} look="tray" style={{ opacity: trayLook, x: trayFaceX }} />
+      </div>
+    </motion.div>
+  )
+}
+
+/** A ghost's values; its box may be given (a drag's, which the drag reads to place a drop). */
+function useGhostValues(box: Pick<GhostValues, 'x' | 'y' | 'width' | 'height'> | null): GhostValues {
   const x = useMotionValue(0)
   const y = useMotionValue(0)
   const width = useMotionValue(0)
   const height = useMotionValue(0)
   const scale = useMotionValue(1)
   const opacity = useMotionValue(1)
-  const progress = useMotionValue(0)
-  const toTray = flight.from === 'bar'
-  // How far the ghost has turned into the tray's look.
-  const trayLook = useTransform(progress, (p: number) => (toTray ? p : 1 - p))
-  const barLook = useTransform(trayLook, (look: number) => 1 - look)
-  const shadow = useTransform(progress, (p: number) => Math.sin(Math.PI * p))
-  const barFaceX = useMotionValue(0)
-  const trayFaceX = useMotionValue(0)
-
-  useLayoutEffect(() => {
-    // The ghost layer's parent is the bottom toolbar row.
-    const row = ghostRef.current?.parentElement?.parentElement
-    const takeOff = row ? flightEnd(row, flight.id, flight.from) : null
-    if (!row || !takeOff) {
-      onLanded(flight.serial)
-      return undefined
-    }
-    const place = (box: GhostBox): void => {
-      x.set(box.x)
-      y.set(box.y)
-      width.set(box.width)
-      height.set(box.height)
-    }
-    const start = drawnBox(row, takeOff)
-    place(start)
-    // Both faces start at the ghost's left edge; sliding them keeps the two icons on one spot.
-    const iconOffset = iconCentre(barFaceRef.current) - iconCentre(trayFaceRef.current)
-    const stopAligning = trayLook.on('change', (look) => {
-      barFaceX.set(-iconOffset * look)
-      trayFaceX.set(iconOffset * (1 - look))
-    })
-    barFaceX.set(-iconOffset * trayLook.get())
-    trayFaceX.set(iconOffset * (1 - trayLook.get()))
-
-    let live = true
-    const land = (): void => {
-      if (live) onLanded(flight.serial)
-    }
-    if (!flight.travel) {
-      const fade = animate(opacity, 0, REDUCED_FADE_OUT)
-      void fade.then(land)
-      return () => {
-        live = false
-        fade.stop()
-        stopAligning()
-      }
-    }
-
-    const stopFollowing = progress.on('change', (p) => {
-      const target = flightEnd(row, flight.id, toTray ? 'tray' : 'bar')
-      place(target ? lerpBox(start, laidOutBox(row, target), p) : start)
-    })
-    const travel = animate(progress, 1, FLIGHT)
-    const swell = animate(scale, FLIGHT_SCALE.keyframes, FLIGHT_SCALE.transition)
-    void travel.then(land)
-    return () => {
-      live = false
-      travel.stop()
-      swell.stop()
-      stopFollowing()
-      stopAligning()
-    }
-  }, [flight, toTray, onLanded, x, y, width, height, scale, opacity, progress, trayLook, barFaceX, trayFaceX])
-
-  return (
-    <motion.div ref={ghostRef} className="atlas-toolbar-ghost" aria-hidden="true" inert style={{ x, y, width, height, scale, opacity }}>
-      <motion.div className="atlas-toolbar-ghost__shadow" style={{ opacity: shadow }} />
-      <div className="atlas-toolbar-ghost__faces">
-        <ToolbarFace ref={barFaceRef} item={item} look="bar" style={{ opacity: barLook, x: barFaceX }} />
-        <ToolbarFace ref={trayFaceRef} item={item} look="tray" style={{ opacity: trayLook, x: trayFaceX }} />
-      </div>
-    </motion.div>
+  const trayLook = useMotionValue(0)
+  const shadow = useMotionValue(0)
+  return useMemo(
+    () => ({ ...(box ?? { x, y, width, height }), scale, opacity, trayLook, shadow }),
+    [box, x, y, width, height, scale, opacity, trayLook, shadow],
   )
+}
+
+interface ToolbarFlightGhostProps {
+  flight: ToolbarFlight
+  item: GhostItem
+  onLanded: (serial: number) => void
+}
+
+/** The ghost of a Hide or Show flight (`useFlightGhost`). */
+export function ToolbarFlightGhost({ flight, item, onLanded }: ToolbarFlightGhostProps): React.ReactElement {
+  const values = useGhostValues(null)
+  const elements = useGhostElements()
+  useFlightGhost(flight, values, elements, onLanded)
+  return <GhostView values={values} item={item} elements={elements} />
+}
+
+interface ToolbarDragGhostProps {
+  ticket: ToolbarGhostTicket
+  item: GhostItem
+  store: ToolbarEditStore
+}
+
+/** The ghost of a pointer drag (`useDragGhost`): it follows the pointer, then settles or goes back. */
+export function ToolbarDragGhost({ ticket, item, store }: ToolbarDragGhostProps): React.ReactElement {
+  const values = useGhostValues(store.ghost)
+  const elements = useGhostElements()
+  useDragGhost(ticket, store, values, elements)
+  return <GhostView values={values} item={item} elements={elements} />
 }

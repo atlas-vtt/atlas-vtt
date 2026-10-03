@@ -8,7 +8,8 @@ import { observeResize } from '../../../../utils/observeResize'
 import type { ResponsiveToolbarItem } from '../toolbarTypes'
 import type { ToolbarMotion } from '../useLayoutMotion'
 import { useToolbarEdit, type ToolbarEditApi } from './toolbarEditContext'
-import { ToolbarDragGhost } from './ToolbarDragGhost'
+import { ToolbarDragGhost, ToolbarFlightGhost } from './ToolbarDragGhost'
+import { useToolbarEditState, useToolbarEditStore } from './toolbarEditStore'
 import { useTrayVariants } from './editorMotion'
 import { doneButtonOf, groupHandles, handleOf, mainToolbarOf } from './toolbarEditDom'
 import { ToolbarTray } from './ToolbarTray'
@@ -28,7 +29,7 @@ interface ToolbarEditorProps {
  * control used, another tab coming to the front, the scene unloading). It
  * sits over the bar's cell of the bottom row without taking one, so the bar's
  * width and corners are those of any other moment; the layer that holds a
- * flying tool spans the whole row. While the tray sinks away after edit mode
+ * flying or dragged tool spans the whole row. While the tray sinks away after edit mode
  * ends, it shows what it last showed and takes no input.
  */
 export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntry }: ToolbarEditorProps): React.ReactElement | null {
@@ -41,6 +42,8 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
   const { close: closeContextMenu } = useContextMenu()
   const rootRef = useRef<HTMLDivElement>(null)
   const [barHeight, setBarHeight] = useState<number | null>(null)
+  const editStore = useToolbarEditStore()
+  const dragGhost = useToolbarEditState(state => state.ghost)
   const finish = edit?.finish
 
   useLayoutEffect(() => {
@@ -103,6 +106,7 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
   const style = barHeight === null ? undefined : { '--atlas-toolbar-bar-height': `${barHeight}px` } as React.CSSProperties
   const flight = edit?.flight ?? null
   const flying = flight ? items.find(item => item.id === flight.id) : undefined
+  const dragged = dragGhost ? items.find(item => item.id === dragGhost.id) : undefined
   return (
     <>
       <div ref={rootRef} className="atlas-toolbar-editor" style={style} inert={!present}>
@@ -112,7 +116,8 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
         </motion.div>
       </div>
       <div className="atlas-toolbar-ghost-layer">
-        {flight && flying && <ToolbarDragGhost key={flight.serial} flight={flight} item={flying} onLanded={shown.landFlight} />}
+        {flight && flying && <ToolbarFlightGhost key={`flight-${flight.serial}`} flight={flight} item={flying} onLanded={shown.landFlight} />}
+        {dragGhost && dragged && <ToolbarDragGhost key={`drag-${dragGhost.serial}`} ticket={dragGhost} item={dragged} store={editStore} />}
       </div>
     </>
   )

@@ -2,6 +2,7 @@ import type React from 'react'
 import type { ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
 import { useToolbarEdit, type ToolbarEditApi, type ToolbarFocusTarget, type ToolbarHandleGroup } from './toolbarEditContext'
 import { editorRowOf, groupHandles, nearestHandle } from './toolbarEditDom'
+import { useToolbarEditStore } from './toolbarEditStore'
 import type { ToolbarMove } from './toolbarMoves'
 import { useToolbarEditMenu } from './useToolbarEditMenu'
 
@@ -84,11 +85,18 @@ function runKey(event: React.KeyboardEvent, { edit, id, group, handle, row, open
  * between bar and tray), Alt with them moves a bar tool, Delete hides it,
  * Enter or Space shows a tray tool, Shift+F10 or the ContextMenu key opens the
  * menu. Keys it uses are kept from the map's shortcuts and from the browser.
+ * While a tool is dragged with the pointer they do nothing (Escape cancels
+ * the drag before it gets here).
  */
 export function useToolbarKeyboard(id: ToolbarControlId, group: ToolbarHandleGroup): (event: React.KeyboardEvent<HTMLElement>) => void {
   const edit = useToolbarEdit()
   const openEditMenu = useToolbarEditMenu()
+  const editStore = useToolbarEditStore()
   return (event) => {
+    if (editStore.state.getState().drag) {
+      stopMapShortcuts(event)
+      return
+    }
     const handle = event.currentTarget
     const row = editorRowOf(handle)
     const openMenu = (then: ToolbarFocusTarget): void => {

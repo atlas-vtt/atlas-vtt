@@ -37,3 +37,8 @@ export function refusedMessage(): string {
 export function resetMessage(undone: boolean): string {
   return undone ? 'Reset undone.' : 'Toolbar reset.'
 }
+
+/** A drag let go outside the bar and the tray, or broken off; `position` is null for a tool from the tray. */
+export function cancelledMessage(label: string, position: number | null): string {
+  return position === null ? `Move cancelled. ${label} is back in hidden tools.` : `Move cancelled. ${label} is back at position ${position}.`
+}

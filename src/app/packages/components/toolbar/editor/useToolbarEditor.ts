@@ -12,10 +12,17 @@ import type { ToolbarAnnouncement } from './ToolbarLiveRegion'
 import { editorRowOf, paletteButtonOf } from './toolbarEditDom'
 import { toolbarEditMenu } from './toolbarEditMenus'
 import { movedToolbarLayout, type ToolbarMove } from './toolbarMoves'
+import type { ResponsiveToolbarItem } from '../toolbarTypes'
+import type { ToolbarEditStore } from './toolbarEditStore'
+import { useToolbarDrag } from './useToolbarDrag'
 import { useToolbarFlight } from './useToolbarFlight'
 
 interface ToolbarEditorOptions {
   access: ToolbarLayoutAccess
+  /** This toolbar's drag state. */
+  store: ToolbarEditStore
+  /** Every control this view offers, in layout order. */
+  items: readonly ResponsiveToolbarItem[]
   /** The controls this view offers, its gates applied. */
   available: ReadonlySet<ToolbarControlId>
   hotkeyLabel: (id: MapHotkeyId) => string
@@ -47,7 +54,7 @@ function controlsOf(layout: ToolbarLayout, available: ReadonlySet<ToolbarControl
  * Changes apply to the latest stored layout, so a change another view made
  * meanwhile is kept.
  */
-export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop }: ToolbarEditorOptions): ToolbarEditor {
+export function useToolbarEditor({ access, store, items, available, hotkeyLabel, editing, stop }: ToolbarEditorOptions): ToolbarEditor {
   const { layout, stored, commit } = access
   const [announcement, setAnnouncement] = useState<ToolbarAnnouncement>({ text: '', serial: 0 })
   const [resetFrom, setResetFrom] = useState<StoredToolbarLayout | null>(null)
@@ -127,6 +134,11 @@ export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop
     announce(movedMessage(label(id), moved.from, moved.to))
   }
 
+  const drag = useToolbarDrag({
+    store, items, layout, available, editing, announce, hotkeyLabel,
+    change: (cause, update) => change(cause, update, undefined),
+  })
+
   const api: ToolbarEditApi = {
     barIds,
     trayIds,
@@ -162,6 +174,8 @@ export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop
     },
     flight: flights.flight,
     landFlight: flights.land,
+    press: drag.press,
+    allowContextMenu: drag.allowContextMenu,
   }
 
   return { api, announcement, motion }

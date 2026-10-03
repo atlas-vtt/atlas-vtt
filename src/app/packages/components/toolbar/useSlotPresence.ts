@@ -64,6 +64,13 @@ export function useSlotPresence(
       width.set("auto")
       margin.set("0px")
       opacity.set(1)
+      if (moved.current && slot && content) {
+        // Motion draws these in its next frame, after it has measured the bar for a glide; a slot
+        // stopped midway (a drop where it was closing) must stand at its full size before that.
+        slot.style.width = width.get()
+        slot.style.marginInlineEnd = margin.get()
+        content.style.opacity = String(opacity.get())
+      }
       if (moved.current) onSettle?.()
       moved.current = false
       return undefined

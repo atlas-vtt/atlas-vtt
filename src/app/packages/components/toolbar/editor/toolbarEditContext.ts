@@ -3,6 +3,7 @@ import type { ContextMenuEntry } from '../../../../react/root/ContextMenuContext
 import type { ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
 import type { ToolbarEditPlace } from './toolbarEditMenus'
 import type { ToolbarMove } from './toolbarMoves'
+import type { ToolbarDragControls } from './useToolbarDrag'
 import type { ToolbarFlight } from './useToolbarFlight'
 
 /** A group of handles that share one Tab stop (roving tabindex). */
@@ -12,7 +13,7 @@ export type ToolbarHandleGroup = 'bar' | 'tray'
 export type ToolbarFocusTarget = { group: ToolbarHandleGroup; id: string } | 'done'
 
 /** What the toolbar editor's parts do while edit mode is on in this view. */
-export interface ToolbarEditApi {
+export interface ToolbarEditApi extends ToolbarDragControls {
   /** The bar's controls in order: shown and in "More tools", not hidden. Positions count these. */
   barIds: readonly ToolbarControlId[]
   /** The hidden controls this view offers, in their remembered order. */

@@ -73,6 +73,7 @@
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
   @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
+  @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
   @import '../src/app/packages/components/primitives/toggle.scss';
   @import '../src/app/packages/components/primitives/input-modal.scss';
   @import '../src/app/packages/components/primitives/select.scss';
@@ -303,8 +304,10 @@
     display: flex;
     align-items: center;
 
-    // Shows the menu as open; it has to outrank the `!important` that makes every toolbar button transparent
-    .atlas-tool-button button.btn[aria-expanded="true"] {
+    // Shows the menu as open, or as where a dragged tool would land (the toolbar editor); it has to
+    // outrank the `!important` that makes every toolbar button transparent
+    .atlas-tool-button button.btn[aria-expanded="true"],
+    &[data-drop-target] .atlas-tool-button button.btn {
       background: var(--background-modifier-hover) !important;
     }
   }
@@ -711,7 +714,6 @@
 // Player view specific styles - properly scoped
 .atlas-vtt-view.atlas-player-view {
   // Hide all UI elements that shouldn't be visible to players
-  .atlas-main-toolbar,
   .atlas-context-menu,
   .atlas-dropdown-menu,
   .atlas-note-preview,

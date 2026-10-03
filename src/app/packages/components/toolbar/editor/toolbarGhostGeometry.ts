@@ -35,15 +35,23 @@ export function drawnBox(row: Element, slot: HTMLElement): GhostBox {
 
 /**
  * Where a slot's face is laid out: as drawn, less the glide the slot's own
- * transform still adds, so a flight lands where the slot comes to rest. The
- * face keeps its full size while its slot opens around it.
+ * transform still adds and at its own size, unscaled ("More tools" grows
+ * while it is a drop target), so a ghost lands where the face comes to rest.
+ * The face keeps its full size while its slot opens around it.
  */
 export function laidOutBox(row: Element, slot: HTMLElement): GhostBox {
-  const box = drawnBox(row, slot)
+  const face = faceOf(slot)
+  const drawn = drawnBox(row, slot)
   const transform = slot.win.getComputedStyle(slot).transform
-  if (!transform || transform === 'none') return box
-  const glide = new DOMMatrixReadOnly(transform)
-  return { ...box, x: box.x - glide.e, y: box.y - glide.f }
+  const glide = transform && transform !== 'none' ? new DOMMatrixReadOnly(transform) : null
+  const width = face.offsetWidth
+  const height = face.offsetHeight
+  return {
+    x: drawn.x + (drawn.width - width) / 2 - (glide?.e ?? 0),
+    y: drawn.y + (drawn.height - height) / 2 - (glide?.f ?? 0),
+    width,
+    height,
+  }
 }
 
 /** The element a flight leaves from or lands on in `place`: the tool's slot, or "More tools" where the bar has no room for it. */
@@ -51,4 +59,19 @@ export function flightEnd(row: Element, id: string, place: 'bar' | 'tray'): HTML
   const slot = place === 'bar' ? barSlotOf(row, id) : traySlotOf(row, id)
   if (slot && !slot.hidden) return slot
   return place === 'bar' ? overflowButtonOf(row) : null
+}
+
+/**
+ * Where a drag's ghost starts: over the control's face as it is drawn, at
+ * the face's own size and the scale its press left it at, which the ghost
+ * starts from rather than assuming.
+ */
+export function pickupBox(row: Element, slot: HTMLElement): { box: GhostBox; scale: number } {
+  const face = faceOf(slot)
+  const drawn = drawnBox(row, slot)
+  const width = face.offsetWidth
+  const height = face.offsetHeight
+  const transform = slot.win.getComputedStyle(face).transform
+  const scale = transform && transform !== 'none' ? new DOMMatrixReadOnly(transform).a : 1
+  return { box: { x: drawn.x + (drawn.width - width) / 2, y: drawn.y + (drawn.height - height) / 2, width, height }, scale }
 }

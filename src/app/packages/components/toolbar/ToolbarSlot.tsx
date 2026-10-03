@@ -1,5 +1,6 @@
 import React, { useLayoutEffect, useRef } from "react"
 import { motion, type Transition } from "framer-motion"
+import type { SlotDrag } from "./editor/useBarDragView"
 import type { SlotChange } from "./useLayoutMotion"
 import { useSlotPresence } from "./useSlotPresence"
 import type { ResponsiveToolbarItem } from "./toolbarTypes"
@@ -12,8 +13,8 @@ interface ToolbarSlotProps {
   /** The layout's revision (see `useLayoutMotion`): only a new one lets the slot glide to a new place. */
   revision: number
   layoutTransition: Transition
-  /** Its content waits, invisible, for a tool flying here to land. */
-  settling: boolean
+  /** Its part in a drag of the toolbar editor; `settling` also while a tool flies here. */
+  drag: SlotDrag
   /** While the toolbar editor is open: the content is inert and the handle takes its place for pointer and keys. */
   inert: boolean
   handle: React.ReactNode
@@ -40,13 +41,14 @@ function useGlideDependency(laidOut: boolean, revision: number): number {
  * One control of the main toolbar. It glides to a new place only when the
  * layout changes (`layout="position"`, never a size morph), opens and closes
  * its width as it comes and goes (`useSlotPresence`), and stays mounted while
- * hidden or in "More tools", so the tool keeps its options.
+ * hidden or in "More tools", so the tool keeps its options. A control a drop
+ * puts in place never glides there: the ghost carries it.
  */
-export function ToolbarSlot({ item, shown, change, revision, layoutTransition, settling, inert, handle, onSettle }: ToolbarSlotProps): React.ReactElement {
+export function ToolbarSlot({ item, shown, change, revision, layoutTransition, drag, inert, handle, onSettle }: ToolbarSlotProps): React.ReactElement {
   const slotRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
   const presence = useSlotPresence(slotRef, contentRef, shown, change, onSettle)
-  const dependency = useGlideDependency(presence.open, revision)
+  const dependency = useGlideDependency(presence.open && !drag.instant, revision)
 
   return (
     <motion.div
@@ -55,7 +57,10 @@ export function ToolbarSlot({ item, shown, change, revision, layoutTransition, s
       data-toolbar-item={item.id}
       hidden={!presence.open}
       {...presence.attributes}
-      {...(settling && { "data-settling": "" })}
+      {...(drag.settling && { "data-settling": "" })}
+      {...(drag.lifted && { "data-lifted": "" })}
+      {...(drag.pressed && { "data-pressed": "" })}
+      {...(drag.revealing && { "data-revealing": "" })}
       layout="position"
       layoutDependency={dependency}
       transition={layoutTransition}

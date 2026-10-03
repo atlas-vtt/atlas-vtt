@@ -7,15 +7,13 @@
 
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
+@use 'toolbar-editor-shared' as *;
 
 $tray-inset: $spacing-xs;
 $tray-control: $button-height-m;
 // The tray is shorter than its radius allows, so it renders as a capsule: its end controls run
 // concentric with the capsule's ends, which caps their radius at half their height.
 $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.5);
-// A control's corners: those at either end of its bar follow the bar's (see .atlas-vtt-toolbar).
-$control-corners: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
-  var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});
 
 // Over the bar's cell of the bottom row without taking a cell of its own (an absolutely
 // positioned grid child), so the row's measured space and the bar's corners stay as they are.
@@ -166,8 +164,10 @@ $control-corners: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-en
   background: var(--background-modifier-border);
 }
 
-// Keeps the place to drop a tool open while none is hidden; the inline padding insets the text.
+// Keeps the place to drop a tool open while none is hidden; the inline padding insets the text. It
+// comes back with a fade once a drag that took its place is over (`atlas-toolbar-fade-in`, _toolbar-drag.scss).
 .atlas-toolbar-tray__hint {
+  animation: atlas-toolbar-fade-in 150ms $transition-ease-out;
   display: flex;
   align-items: center;
   justify-content: center;

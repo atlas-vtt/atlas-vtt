@@ -26,7 +26,7 @@ export function mainToolbarOf(row: Element): HTMLElement | null {
   return childWithClass(row, 'atlas-main-toolbar')
 }
 
-function trayOf(row: Element): HTMLElement | null {
+export function trayOf(row: Element): HTMLElement | null {
   return childWithClass(row, 'atlas-toolbar-editor')?.querySelector<HTMLElement>('.atlas-toolbar-tray') ?? null
 }
 

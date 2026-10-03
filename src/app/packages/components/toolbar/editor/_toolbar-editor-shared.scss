@@ -1,0 +1,6 @@
+@use '../../../../../../styles/tokens' as *;
+
+// A control's corners in the main toolbar and the editor's tray: those at either end of its bar
+// follow the bar's (see .atlas-vtt-toolbar).
+$control-corners: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-end-radius, #{$radius-l})
+  var(--atlas-bar-end-radius, #{$radius-l}) var(--atlas-bar-start-radius, #{$radius-l});

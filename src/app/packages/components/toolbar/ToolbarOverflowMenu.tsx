@@ -15,6 +15,8 @@ interface ToolbarOverflowMenuProps {
   editing?: boolean
   /** Opens the editor's menu for a control, at a point in client coordinates. */
   onEditEntry?: (id: string, at: { x: number; y: number }) => void
+  /** A tool dragged in the editor would land here: the bar has no room for it. */
+  dropTarget?: boolean
 }
 
 /** Where a menu for a row opens from the keyboard or a click: its bottom-left corner. */
@@ -41,7 +43,7 @@ function nextMenuIndex(key: string, current: number, count: number): number | nu
  * its first item; arrow keys move through it and Escape returns to the button.
  * While the toolbar editor is open, a row opens the editor's menu instead.
  */
-export function ToolbarOverflowMenu({ items, editing = false, onEditEntry }: ToolbarOverflowMenuProps): React.ReactElement {
+export function ToolbarOverflowMenu({ items, editing = false, onEditEntry, dropTarget = false }: ToolbarOverflowMenuProps): React.ReactElement {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -117,7 +119,7 @@ export function ToolbarOverflowMenu({ items, editing = false, onEditEntry }: Too
   }
 
   return (
-    <div ref={rootRef} className="atlas-toolbar-overflow">
+    <div ref={rootRef} className="atlas-toolbar-overflow" {...(dropTarget && { "data-drop-target": "true" })}>
       <ToolButton icon={Ellipsis} label={MENU_LABEL} isActive={false} menuExpanded={open} onClick={toggle} />
       {open && (
         <div

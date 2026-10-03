@@ -19,7 +19,8 @@ interface ToolbarItemHandleProps {
 /**
  * What the pointer and the keyboard reach of a tool while the toolbar editor
  * is open: a button laid under the tool's inert content, named after the
- * catalog. Right-click opens the editor's menu; a plain click does nothing.
+ * catalog. A press may become a drag; right-click opens the editor's menu
+ * (never during a drag); a plain click does nothing.
  */
 export function ToolbarItemHandle({ id, group, tabIndex }: ToolbarItemHandleProps): React.ReactElement {
   const edit = useToolbarEdit()
@@ -39,8 +40,10 @@ export function ToolbarItemHandle({ id, group, tabIndex }: ToolbarItemHandleProp
       aria-describedby={descriptionId}
       onKeyDown={onKeyDown}
       onFocus={() => edit?.setCurrent(group, id)}
+      onPointerDown={(event) => edit?.press(event, id, group)}
       onContextMenu={(event) => {
         event.preventDefault()
+        if (edit?.allowContextMenu() === false) return
         openMenu(id, group, { x: event.clientX, y: event.clientY })
       }}
     >
