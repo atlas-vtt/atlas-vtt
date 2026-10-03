@@ -1,17 +1,22 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { motion, useIsPresent } from 'framer-motion'
 import { canRunMapHotkeys } from '../../../../keyboard/mapHotkeys'
 import { useContextMenu } from '../../../../react/root/ContextMenuContext'
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext'
 import { findAtlasLeafByViewId } from '../../../../utils/atlasLeafLookup'
 import { observeResize } from '../../../../utils/observeResize'
 import type { ResponsiveToolbarItem } from '../toolbarTypes'
-import { useToolbarEdit } from './toolbarEditContext'
+import type { ToolbarMotion } from '../useLayoutMotion'
+import { useToolbarEdit, type ToolbarEditApi } from './toolbarEditContext'
+import { ToolbarDragGhost } from './ToolbarDragGhost'
+import { useTrayVariants } from './editorMotion'
 import { doneButtonOf, groupHandles, handleOf, mainToolbarOf } from './toolbarEditDom'
 import { ToolbarTray } from './ToolbarTray'
 
 interface ToolbarEditorProps {
-  /** The hidden controls this view offers, in their remembered order. */
-  trayItems: readonly ResponsiveToolbarItem[]
+  /** Every control this view offers, in layout order: the tray shows the hidden ones, a flight any. */
+  items: readonly ResponsiveToolbarItem[]
+  motion: ToolbarMotion
   viewId?: string | undefined
   /** The palette action was chosen with the keyboard: focus starts on the bar's first tool. */
   focusOnEntry: boolean
@@ -22,10 +27,16 @@ interface ToolbarEditorProps {
  * bar, and the ways out other than Done and the panels that end it (Escape no
  * control used, another tab coming to the front, the scene unloading). It
  * sits over the bar's cell of the bottom row without taking one, so the bar's
- * width and corners are those of any other moment.
+ * width and corners are those of any other moment; the layer that holds a
+ * flying tool spans the whole row. While the tray sinks away after edit mode
+ * ends, it shows what it last showed and takes no input.
  */
-export function ToolbarEditor({ trayItems, viewId, focusOnEntry }: ToolbarEditorProps): React.ReactElement | null {
+export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntry }: ToolbarEditorProps): React.ReactElement | null {
   const edit = useToolbarEdit()
+  const lastEdit = useRef<ToolbarEditApi | null>(edit)
+  if (edit) lastEdit.current = edit
+  const present = useIsPresent()
+  const trayVariants = useTrayVariants()
   const { app, view } = useAtlasUI()
   const { close: closeContextMenu } = useContextMenu()
   const rootRef = useRef<HTMLDivElement>(null)
@@ -87,13 +98,22 @@ export function ToolbarEditor({ trayItems, viewId, focusOnEntry }: ToolbarEditor
   // The editor's menus close with it.
   useEffect(() => closeContextMenu, [closeContextMenu])
 
-  if (!edit) return null
+  const shown = edit ?? lastEdit.current
+  if (!shown) return null
   const style = barHeight === null ? undefined : { '--atlas-toolbar-bar-height': `${barHeight}px` } as React.CSSProperties
+  const flight = edit?.flight ?? null
+  const flying = flight ? items.find(item => item.id === flight.id) : undefined
   return (
-    <div ref={rootRef} className="atlas-toolbar-editor" style={style}>
-      <div className="atlas-toolbar-editor__tray-row">
-        <ToolbarTray edit={edit} items={trayItems} />
+    <>
+      <div ref={rootRef} className="atlas-toolbar-editor" style={style} inert={!present}>
+        {/* The tray rises out of the bar as the editor opens and sinks back as it closes. */}
+        <motion.div className="atlas-toolbar-editor__tray-row" variants={trayVariants} initial="hidden" animate="visible" exit="exit">
+          <ToolbarTray edit={shown} items={items} motion={layoutMotion} />
+        </motion.div>
       </div>
-    </div>
+      <div className="atlas-toolbar-ghost-layer">
+        {flight && flying && <ToolbarDragGhost key={flight.serial} flight={flight} item={flying} onLanded={shown.landFlight} />}
+      </div>
+    </>
   )
 }

@@ -242,9 +242,10 @@
     // The end controls sit $spacing-s inside the border, so their outer corners
     // run concentric with the bar's. Tool buttons, tool groups and the toggle
     // read these; the corners between controls keep their own radius. Controls
-    // in the overflow menu are hidden, so the ends are the first and last shown.
-    > :nth-child(1 of :not([hidden])) { --atlas-bar-start-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
-    > :nth-last-child(1 of :not([hidden])) { --atlas-bar-end-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
+    // in the overflow menu are hidden, so the ends are the first and last shown;
+    // a control on its way out of the main toolbar no longer holds an end.
+    > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
+    > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
 
     // Menus opened from an end control are not part of the bar's outline.
     .atlas-dropdown-content {
@@ -289,6 +290,11 @@
     &[hidden] {
       display: none;
     }
+  }
+
+  // Keeps its own width while its slot opens or closes around it.
+  .atlas-toolbar-item__content {
+    flex-shrink: 0;
   }
 
   // "More tools": the menu opens above the button, flush with its right edge.
@@ -348,8 +354,9 @@
   // Buttons in the toolbar's menus that keep their own look: the dice tray's Roll and Clear,
   // the options of a segmented control, which is filled where it is chosen, and the editor tray's Done.
   $own-look: '.atlas-dice-tray *, .atlas-segmented__option, .atlas-toolbar-tray__done';
-  // The bars whose buttons these rules shape: the toolbars, and the toolbar editor's tray.
-  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray)';
+  // The bars whose buttons these rules shape: the toolbars, the toolbar editor's tray, and the
+  // ghost of a tool moving between them.
+  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost)';
 
   /* Make all buttons in toolbar transparent by default, except those with their own look. */
   #{$toolbars} button.btn:not(#{$own-look}),

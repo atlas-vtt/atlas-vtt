@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import type { MapHotkeyId } from '../../../../keyboard/mapHotkeys'
 import { isHideableToolbarControl, toolbarControl, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
 import { isDefaultToolbarLayout, withControlHidden, withControlShown, type StoredToolbarLayout, type ToolbarLayout } from '../../../../toolbar/toolbarLayout'
+import { useLayoutMotion, type ToolbarChangeCause, type ToolbarMotion } from '../useLayoutMotion'
 import type { ToolbarLayoutAccess } from '../useToolbarLayout'
 import {
   enteredMessage, finishedMessage, hiddenMessage, movedMessage, positionMessage, refusedMessage, resetMessage, shownMessage,
@@ -11,6 +12,7 @@ import type { ToolbarAnnouncement } from './ToolbarLiveRegion'
 import { editorRowOf, paletteButtonOf } from './toolbarEditDom'
 import { toolbarEditMenu } from './toolbarEditMenus'
 import { movedToolbarLayout, type ToolbarMove } from './toolbarMoves'
+import { useToolbarFlight } from './useToolbarFlight'
 
 interface ToolbarEditorOptions {
   access: ToolbarLayoutAccess
@@ -25,6 +27,8 @@ interface ToolbarEditorOptions {
 export interface ToolbarEditor {
   api: ToolbarEditApi
   announcement: ToolbarAnnouncement
+  /** The stored layout's changes, also those made elsewhere, which the bar and the tray animate by. */
+  motion: ToolbarMotion
 }
 
 type CurrentHandles = Readonly<Record<ToolbarHandleGroup, string | null>>
@@ -38,9 +42,10 @@ function controlsOf(layout: ToolbarLayout, available: ReadonlySet<ToolbarControl
 
 /**
  * The toolbar editor's state and actions for MainToolbar: hide, show, move,
- * reset and its undo, the end of edit mode, and what the live region says
- * about each. Changes apply to the latest stored layout, so a change another
- * view made meanwhile is kept.
+ * reset and its undo, the end of edit mode, what the live region says about
+ * each, and the flight that carries a hidden or shown tool to its new place.
+ * Changes apply to the latest stored layout, so a change another view made
+ * meanwhile is kept.
  */
 export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop }: ToolbarEditorOptions): ToolbarEditor {
   const { layout, stored, commit } = access
@@ -50,6 +55,9 @@ export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop
   const focusRequest = useRef<ToolbarFocusTarget | null>(null)
   const focusAfterExit = useRef<HTMLElement | null>(null)
   const wasEditing = useRef(editing)
+  const { motion, expect } = useLayoutMotion(layout)
+  const flights = useToolbarFlight()
+  const cancelFlight = flights.cancel
 
   const announce = useCallback((text: string): void => {
     setAnnouncement(previous => ({ text, serial: previous.serial + 1 }))
@@ -62,8 +70,9 @@ export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop
     if (!editing) {
       setResetFrom(null)
       setCurrent(NO_CURRENT_HANDLES)
+      cancelFlight()
     }
-  }, [editing, announce])
+  }, [editing, announce, cancelFlight])
 
   // Once the tools are no longer inert, focus can return to the Command palette button.
   useLayoutEffect(() => {
@@ -82,9 +91,10 @@ export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop
   const trayIds = controlsOf(layout, available, true)
   const label = (id: ToolbarControlId): string => toolbarControl(id).label
 
-  const change = (update: (latest: ToolbarLayout) => ToolbarLayout, then: ToolbarFocusTarget | undefined): void => {
+  const change = (cause: ToolbarChangeCause, update: (latest: ToolbarLayout) => ToolbarLayout, then: ToolbarFocusTarget | undefined): void => {
     focusRequest.current = then ?? null
     setResetFrom(null)
+    expect(cause)
     commit(update)
   }
 
@@ -94,14 +104,16 @@ export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop
       return
     }
     if (layout.hidden.has(id)) return
-    change(latest => withControlHidden(latest, id), then)
+    change('hide', latest => withControlHidden(latest, id), then)
+    flights.launch(id, 'bar')
     announce(hiddenMessage(label(id), hotkeyLabel(toolbarControl(id).hotkey)))
   }
 
   const show = (id: ToolbarControlId, then?: ToolbarFocusTarget): void => {
     if (!layout.hidden.has(id)) return
     const bar = controlsOf(withControlShown(layout, id), available, false)
-    change(latest => withControlShown(latest, id), then)
+    change('show', latest => withControlShown(latest, id), then)
+    flights.launch(id, 'tray')
     announce(shownMessage(label(id), bar.indexOf(id) + 1, bar.length))
   }
 
@@ -111,7 +123,7 @@ export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop
       announce(positionMessage(label(id), barIds.indexOf(id) + 1, barIds.length))
       return
     }
-    change(latest => movedToolbarLayout(latest, controlsOf(latest, available, false), id, step)?.layout ?? latest, then)
+    change('move', latest => movedToolbarLayout(latest, controlsOf(latest, available, false), id, step)?.layout ?? latest, then)
     announce(movedMessage(label(id), moved.from, moved.to))
   }
 
@@ -127,12 +139,16 @@ export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop
     reset: () => {
       if (isDefaultToolbarLayout(layout)) return
       setResetFrom(stored)
+      cancelFlight()
+      expect('reset')
       access.reset()
       announce(resetMessage(false))
     },
     canUndoReset: resetFrom !== null && isDefaultToolbarLayout(layout),
     undoReset: () => {
       if (!resetFrom) return
+      cancelFlight()
+      expect('reset')
       access.restore(resetFrom)
       setResetFrom(null)
       announce(resetMessage(true))
@@ -144,7 +160,9 @@ export function useToolbarEditor({ access, available, hotkeyLabel, editing, stop
       focusRequest.current = null
       return target
     },
+    flight: flights.flight,
+    landFlight: flights.land,
   }
 
-  return { api, announcement }
+  return { api, announcement, motion }
 }

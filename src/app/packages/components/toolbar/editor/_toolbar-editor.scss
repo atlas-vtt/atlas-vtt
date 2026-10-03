@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════════════════════
 // The toolbar editor: the tray above the main toolbar, the handles laid under
-// its tools while editing, and the live region that says what changed
+// its tools while editing, slots opening and closing, the ghost of a tool in
+// flight, and the live region that says what changed
 // ═══════════════════════════════════════════════════════════════════════════
 // Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
 
@@ -18,9 +19,10 @@ $control-corners: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-en
 
 // Over the bar's cell of the bottom row without taking a cell of its own (an absolutely
 // positioned grid child), so the row's measured space and the bar's corners stay as they are.
+// All four lines are named: an absolutely positioned child's `auto` line is the row's own edge.
 .atlas-toolbar-editor {
   position: absolute;
-  grid-area: 1 / 2;
+  grid-area: 1 / 2 / 2 / 3;
   left: 0;
   right: 0;
   bottom: 0;
@@ -30,8 +32,10 @@ $control-corners: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-en
 }
 
 // Hangs $spacing-s above the bar, centred on it; a tray wider than the bar overflows both sides alike.
+// As tall as the tray, so it rises and grows out of the bar's middle.
 .atlas-toolbar-editor__tray-row {
   position: absolute;
+  transform-origin: 50% 100%;
   left: 0;
   right: 0;
   bottom: calc(100% + #{$spacing-s});
@@ -39,7 +43,9 @@ $control-corners: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-en
   justify-content: center;
 }
 
+// Positioned, so its slots measure their place from it.
 .atlas-toolbar-tray {
+  position: relative;
   display: flex;
   flex-shrink: 0;
   align-items: center;
@@ -50,33 +56,107 @@ $control-corners: var(--atlas-bar-start-radius, #{$radius-l}) var(--atlas-bar-en
   @include atlas-panel-radius($radius-2xl);
   @include atlas-keep-in-view;
 
-  > :nth-child(1 of :not([hidden])) { --atlas-bar-start-radius: #{$tray-end-radius}; }
-  > :nth-last-child(1 of :not([hidden])) { --atlas-bar-end-radius: #{$tray-end-radius}; }
+  // A slot on its way out no longer holds an end.
+  > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{$tray-end-radius}; }
+  > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{$tray-end-radius}; }
+}
 
+// The tray's buttons, and the tray face of a tool in flight.
+.atlas-toolbar-tray,
+.atlas-toolbar-face--tray {
   .atlas-tool-button > span > .btn--icon {
     width: $tray-control;
     height: $tray-control;
     border-radius: $control-corners;
     @include atlas-corner-shape;
   }
-
-  .atlas-toolbar-tray__done {
-    height: $tray-control;
-    padding: 0 $spacing-m;
-    border-radius: $control-corners;
-    @include atlas-corner-shape;
-  }
 }
 
+.atlas-toolbar-tray .atlas-toolbar-tray__done {
+  height: $tray-control;
+  padding: 0 $spacing-m;
+  border-radius: $control-corners;
+  @include atlas-corner-shape;
+}
+
+// Every control keeps a slot here; those of tools on the bar are hidden.
 .atlas-toolbar-tray__item {
   position: relative;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
+
+  &[hidden] {
+    display: none;
+  }
 }
 
 .atlas-toolbar-face {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
+}
+
+// A slot of the bar or the tray opening or closing: its real width moves while its content keeps
+// its own, clipped. One that is closing takes no pointer; one a flight lands on waits invisible.
+:is(.atlas-toolbar-item, .atlas-toolbar-tray__item) {
+  &[data-animating] {
+    overflow: hidden;
+  }
+
+  &[data-collapsing] {
+    pointer-events: none;
+  }
+
+  &[data-settling] > :is(.atlas-toolbar-item__content, .atlas-toolbar-face) {
+    visibility: hidden;
+  }
+}
+
+// Spans the whole bottom row (no grid placement), so a ghost keeps its place while the bar's
+// column grows or shrinks under it.
+.atlas-toolbar-ghost-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+
+// A copy of a tool moving between the bar and the tray. Its stroke is a ring of shadow, so the
+// box stays exactly the size of the face it copies; the deeper shadow of the lift fades in on its own layer.
+.atlas-toolbar-ghost {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: $radius-l;
+  background: var(--background-primary);
+  box-shadow: 0 0 0 $border-width-m color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent), $shadow-elevated;
+  will-change: transform;
+  @include atlas-corner-shape;
+}
+
+.atlas-toolbar-ghost__shadow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow: var(--shadow-l);
+}
+
+// Both faces start at the left edge, where a tool's icon is in either look, so the icon stays put
+// while the box grows or shrinks between them and a tool group's chevron is clipped away.
+.atlas-toolbar-ghost__faces {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+
+  > .atlas-toolbar-face {
+    position: absolute;
+    left: 0;
+    top: 50%;
+    translate: 0 -50%;
+  }
 }
 
 .atlas-toolbar-tray__divider {

@@ -3,6 +3,7 @@ import type { ContextMenuEntry } from '../../../../react/root/ContextMenuContext
 import type { ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
 import type { ToolbarEditPlace } from './toolbarEditMenus'
 import type { ToolbarMove } from './toolbarMoves'
+import type { ToolbarFlight } from './useToolbarFlight'
 
 /** A group of handles that share one Tab stop (roving tabindex). */
 export type ToolbarHandleGroup = 'bar' | 'tray'
@@ -35,6 +36,9 @@ export interface ToolbarEditApi {
   menuEntries: (id: ToolbarControlId, place: ToolbarEditPlace, then?: ToolbarFocusTarget) => ContextMenuEntry[]
   /** The focus target of the last change, once; the editor moves focus there after drawing it. */
   takeFocusRequest: () => ToolbarFocusTarget | null
+  /** The tool flying to its new place after the last Hide or Show, if it is still in the air. */
+  flight: ToolbarFlight | null
+  landFlight: (serial: number) => void
 }
 
 export const ToolbarEditContext = createContext<ToolbarEditApi | null>(null)

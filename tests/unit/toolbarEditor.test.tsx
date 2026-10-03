@@ -90,8 +90,9 @@ const handle = (container: HTMLElement, id: string, where: 'bar' | 'tray' = 'bar
   return element;
 };
 
+// Every control keeps a slot in the tray; those of tools on the bar are hidden.
 const trayIds = (container: HTMLElement): string[] =>
-  Array.from(container.querySelectorAll<HTMLElement>('[data-tray-item]')).map(item => item.dataset.trayItem ?? '');
+  Array.from(container.querySelectorAll<HTMLElement>('[data-tray-item]:not([hidden])')).map(item => item.dataset.trayItem ?? '');
 
 const liveRegion = (container: HTMLElement): string => container.querySelector('[role="status"]')?.textContent ?? '';
 
@@ -217,14 +218,16 @@ describe('the tray', () => {
     expect(screen.getByRole('button', { name: 'Reset toolbar' })).toBeTruthy();
   });
 
-  it('ends edit mode with Done and returns focus to the Command palette button', () => {
+  it('ends edit mode with Done and returns focus to the Command palette button', async () => {
     const harness = renderToolbar();
     startEditing(harness);
     fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     expect(harness.store.getState().isToolbarEditing).toBe(false);
-    expect(harness.container.querySelector('.atlas-toolbar-tray')).toBeNull();
     expect(document.activeElement).toBe(paletteButton(harness.container));
     expect(liveRegion(harness.container)).toBe('Done editing the toolbar.');
+    // The tray sinks away, taking no input meanwhile.
+    expect(harness.container.querySelector('.atlas-toolbar-editor')?.hasAttribute('inert')).toBe(true);
+    await waitFor(() => expect(harness.container.querySelector('.atlas-toolbar-tray')).toBeNull());
   });
 
   it('leaves Hidden tools out of the bar where the view does not offer them', () => {
@@ -405,11 +408,11 @@ describe('leaving edit mode', () => {
     expect(harness.store.getState().isToolbarEditing).toBe(false);
   });
 
-  it('ends when the palette opens', () => {
+  it('ends when the palette opens', async () => {
     const harness = renderToolbar();
     startEditing(harness);
     act(() => harness.store.getState().setCommandPaletteOpen(true));
     expect(harness.store.getState().isToolbarEditing).toBe(false);
-    expect(harness.container.querySelector('.atlas-toolbar-tray')).toBeNull();
+    await waitFor(() => expect(harness.container.querySelector('.atlas-toolbar-tray')).toBeNull());
   });
 });

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo, forwardRef } from "react"
 import { useAtlasStore, useViewStoreHook } from "src/app/react/ViewStoreContext"
-import { AnimatePresence } from "framer-motion"
+import { AnimatePresence, MotionConfig } from "framer-motion"
 import { Eye, EyeOff } from "lucide-react"
 
 import { TooltipProvider } from "./primitives/tooltip"
@@ -155,33 +155,36 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   return (
     <TooltipProvider delayDuration={300}>
       <ToolbarEditContext.Provider value={editing ? editor.api : null}>
-        <ResponsiveToolbar
-          ref={ref || toolbarRef}
-          items={items}
-          editing={editing}
-          {...(dm && { hiddenIds })}
-          // The GM view switch keeps the bar's last place, after "More tools".
-          end={dm && (
-            <Toggle
-              value={isGMView}
-              onChange={toggleGMView}
-              iconOn={Eye}
-              iconOff={EyeOff}
-              tooltipOn={`GM View (${hotkeyLabel('gmView')})`}
-              tooltipOff={`Session View (${hotkeyLabel('gmView')})`}
-            />
-          )}
-        />
-        <AnimatePresence>
-          {editing && (
-            <ToolbarEditor
-              key="toolbar-editor"
-              trayItems={items.filter((item) => hiddenIds.has(item.id))}
-              viewId={viewId}
-              focusOnEntry={editingByKeyboard}
-            />
-          )}
-        </AnimatePresence>
+        <MotionConfig reducedMotion="user">
+          <ResponsiveToolbar
+            ref={ref || toolbarRef}
+            items={items}
+            editing={editing}
+            {...(dm && { hiddenIds, motion: editor.motion })}
+            // The GM view switch keeps the bar's last place, after "More tools".
+            end={dm && (
+              <Toggle
+                value={isGMView}
+                onChange={toggleGMView}
+                iconOn={Eye}
+                iconOff={EyeOff}
+                tooltipOn={`GM View (${hotkeyLabel('gmView')})`}
+                tooltipOff={`Session View (${hotkeyLabel('gmView')})`}
+              />
+            )}
+          />
+          <AnimatePresence>
+            {editing && (
+              <ToolbarEditor
+                key="toolbar-editor"
+                items={items}
+                motion={editor.motion}
+                viewId={viewId}
+                focusOnEntry={editingByKeyboard}
+              />
+            )}
+          </AnimatePresence>
+        </MotionConfig>
       </ToolbarEditContext.Provider>
       {/* Always mounted, so the message that edit mode ended is still read once the tray is gone. */}
       {dm && <ToolbarLiveRegion announcement={editor.announcement} />}

@@ -8,7 +8,7 @@ import type { ToolbarHandleGroup } from './toolbarEditContext'
  */
 
 // Not `instanceof`: an element of a popout window is none of this window's classes.
-function isHtmlElement(element: Element | undefined): element is HTMLElement {
+export function isHtmlElement(element: Element | undefined): element is HTMLElement {
   return element !== undefined && 'dataset' in element
 }
 
@@ -26,14 +26,40 @@ export function mainToolbarOf(row: Element): HTMLElement | null {
   return childWithClass(row, 'atlas-main-toolbar')
 }
 
-/** A group's handles in order. Only controls shown in the bar count: those in "More tools" or hidden take no focus. */
+function trayOf(row: Element): HTMLElement | null {
+  return childWithClass(row, 'atlas-toolbar-editor')?.querySelector<HTMLElement>('.atlas-toolbar-tray') ?? null
+}
+
+/** A slot that is shown and not on its way out. */
+function isSettledSlot(item: Element, className: string): item is HTMLElement {
+  return isHtmlElement(item) && item.classList.contains(className) && !item.hidden && item.dataset.collapsing === undefined
+}
+
+/**
+ * A group's handles in order. Only tools shown in their group count: those in
+ * "More tools", hidden or closing take no focus.
+ */
 export function groupHandles(row: Element, group: ToolbarHandleGroup): HTMLElement[] {
-  if (group === 'tray') {
-    return Array.from(childWithClass(row, 'atlas-toolbar-editor')?.querySelectorAll<HTMLElement>('.atlas-toolbar-tray .atlas-toolbar-handle') ?? [])
-  }
-  const items = Array.from(mainToolbarOf(row)?.children ?? [])
-    .filter((item): item is HTMLElement => isHtmlElement(item) && item.classList.contains('atlas-toolbar-item') && !item.hidden)
+  const [parent, className] = group === 'tray' ? [trayOf(row), 'atlas-toolbar-tray__item'] : [mainToolbarOf(row), 'atlas-toolbar-item']
+  const items = Array.from(parent?.children ?? []).filter(item => isSettledSlot(item, className))
   return items.flatMap(item => childWithClass(item, 'atlas-toolbar-handle') ?? [])
+}
+
+/** A control's slot in the bar, laid out or not. */
+export function barSlotOf(row: Element, id: string): HTMLElement | null {
+  const slot = Array.from(mainToolbarOf(row)?.children ?? []).find(item => isHtmlElement(item) && item.dataset.toolbarItem === id)
+  return isHtmlElement(slot) ? slot : null
+}
+
+/** A control's slot in the tray, laid out or not. */
+export function traySlotOf(row: Element, id: string): HTMLElement | null {
+  const slot = Array.from(trayOf(row)?.children ?? []).find(item => isHtmlElement(item) && item.dataset.trayItem === id)
+  return isHtmlElement(slot) ? slot : null
+}
+
+/** The "More tools" button, where it shows. */
+export function overflowButtonOf(row: Element): HTMLElement | null {
+  return childWithClass(mainToolbarOf(row), 'atlas-toolbar-overflow')
 }
 
 export function handleOf(row: Element, group: ToolbarHandleGroup, id: string): HTMLElement | null {
@@ -45,7 +71,7 @@ export function paletteButtonOf(row: Element): HTMLElement | null {
 }
 
 export function doneButtonOf(row: Element): HTMLElement | null {
-  return childWithClass(row, 'atlas-toolbar-editor')?.querySelector<HTMLElement>('.atlas-toolbar-tray__done') ?? null
+  return trayOf(row)?.querySelector<HTMLElement>('.atlas-toolbar-tray__done') ?? null
 }
 
 /** The handle among `candidates` nearest to `from` along the bar (Up and Down between bar and tray). */

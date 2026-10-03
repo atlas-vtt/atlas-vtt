@@ -16,7 +16,8 @@ export interface ToolGroupControls {
 }
 
 interface ToolGroupProps {
-  face: ToolFace
+  /** What the tool button shows; the click's tool is `onSelect`'s business. */
+  face: Pick<ToolFace, "icon" | "label" | "isActive">
   shortcut: string
   menuLabel: string
   menuOpen: boolean

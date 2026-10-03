@@ -2,6 +2,7 @@ import React, { forwardRef, useCallback, useContext, useEffect, useId, useLayout
 import { cn } from "src/utils/cn"
 import { observeResize } from "../../../utils/observeResize"
 import { isToolbarControlId } from "../../../toolbar/toolbarCatalog"
+import { CARRY, GAP } from "./editor/editorMotion"
 import { useToolbarEdit } from "./editor/toolbarEditContext"
 import { ToolbarEditOverflowMenu } from "./editor/ToolbarEditOverflowMenu"
 import { ToolbarItemHandle } from "./editor/ToolbarItemHandle"
@@ -10,7 +11,10 @@ import { overflowingToolbarItems } from "./toolbarFit"
 import { measureBar, sameGeometry, type BarGeometry } from "./toolbarGeometry"
 import { ToolbarOverflowMenu } from "./ToolbarOverflowMenu"
 import { ToolbarSpaceContext } from "./toolbarSpace"
+import { ToolbarSlot } from "./ToolbarSlot"
 import { useControlPlacements } from "./useControlPlacements"
+import { RESTING_MOTION, slotChange, type ToolbarMotion } from "./useLayoutMotion"
+import { useChangedSinceCommit } from "./useSlotPresence"
 import type { ResponsiveToolbarItem } from "./toolbarTypes"
 
 interface ResponsiveToolbarProps {
@@ -25,6 +29,8 @@ interface ResponsiveToolbarProps {
   editing?: boolean
   /** A control that always stays at the very end of the bar, after the overflow button. */
   end?: React.ReactNode
+  /** The stored layout's changes: slots glide, open and close only for these and while a tool flies. */
+  motion?: ToolbarMotion
 }
 
 const NO_CONTROLS: ReadonlySet<string> = new Set()
@@ -38,9 +44,11 @@ const NO_CONTROLS: ReadonlySet<string> = new Set()
  * user hid shows only while it visits the bar (see `nextVisitArmed`), at its
  * place in the order and pinned. Every control stays mounted while it is in
  * the menu or hidden, so tool options keep their state and the bar can
- * measure it again once it returns.
+ * measure it again once it returns. When the stored layout changes, controls
+ * glide to their new places and open or close their width (`ToolbarSlot`); a
+ * window resize and a visit change the bar at once.
  */
-export const ResponsiveToolbar = forwardRef<HTMLDivElement, ResponsiveToolbarProps>(({ items, hiddenIds, editing = false, end }, forwardedRef) => {
+export const ResponsiveToolbar = forwardRef<HTMLDivElement, ResponsiveToolbarProps>(({ items, hiddenIds, editing = false, end, motion = RESTING_MOTION }, forwardedRef) => {
   const space = useContext(ToolbarSpaceContext)
   const barRef = useRef<HTMLDivElement | null>(null)
   const [geometry, setGeometry] = useState<BarGeometry | null>(null)
@@ -81,6 +89,10 @@ export const ResponsiveToolbar = forwardRef<HTMLDivElement, ResponsiveToolbarPro
   const overflowItems = shown.filter((item) => overflowing.has(item.id))
   const inBar = shown.filter((item) => !overflowing.has(item.id)).map((item) => item.id)
   const tabStop = edit?.current.bar && inBar.includes(edit.current.bar) ? edit.current.bar : inBar[0]
+  // Controls come and go with a change of the layout, and overflow follows a flight; a window resize is instant.
+  const flight = edit?.flight ?? null
+  const animateChanges = useChangedSinceCommit(motion.revision) || flight !== null
+  const layoutTransition = motion.cause === "move" ? CARRY : GAP
 
   return (
     <div
@@ -89,18 +101,20 @@ export const ResponsiveToolbar = forwardRef<HTMLDivElement, ResponsiveToolbarPro
       {...(withHandles && { role: "toolbar", "aria-labelledby": labelId, onKeyDown: stopMapShortcuts })}
     >
       {items.map((item) => (
-        <div
+        <ToolbarSlot
           key={item.id}
-          className="atlas-toolbar-item"
-          data-toolbar-item={item.id}
-          hidden={placements.get(item.id) === "hidden" || overflowing.has(item.id)}
-        >
-          {withHandles && isToolbarControlId(item.id) && (
+          item={item}
+          shown={placements.get(item.id) !== "hidden" && !overflowing.has(item.id)}
+          change={slotChange(motion, item.id, animateChanges)}
+          revision={motion.revision}
+          layoutTransition={layoutTransition}
+          settling={flight?.travel === true && flight.id === item.id}
+          inert={withHandles}
+          handle={withHandles && isToolbarControlId(item.id) && (
             <ToolbarItemHandle id={item.id} group="bar" tabIndex={item.id === tabStop ? 0 : -1} />
           )}
-          {/* Always this wrapper, so a control is never remounted when edit mode starts or ends. */}
-          <div className="atlas-toolbar-item__content" inert={withHandles}>{item.element}</div>
-        </div>
+          onSettle={measure}
+        />
       ))}
       {overflowItems.length > 0 && (withHandles ? <ToolbarEditOverflowMenu items={overflowItems} /> : <ToolbarOverflowMenu items={overflowItems} />)}
       {end && <div className="atlas-toolbar-end">{end}</div>}
