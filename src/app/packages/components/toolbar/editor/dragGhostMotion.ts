@@ -5,6 +5,7 @@ import {
 import type { GhostValues } from './ToolbarDragGhost'
 import type { ToolbarPlace } from './toolbarEditStore'
 import type { GhostBox } from './toolbarGhostGeometry'
+import { shakeOffset } from './toolbarRefusal'
 
 interface Size {
   width: number
@@ -25,6 +26,8 @@ export class DragGhostMotion {
   private readonly running = new Set<AnimationPlaybackControlsWithThen>()
   private stopFollowing: (() => void) | null = null
   private lifted = true
+  /** Once stopped, nothing moves the ghost's values again: the next drag's ghost shares them. */
+  private stopped = false
 
   constructor(
     private readonly values: GhostValues,
@@ -42,6 +45,10 @@ export class DragGhostMotion {
    * finished promise for a new one, which `Promise.all` would wait on forever.
    */
   private run(animation: AnimationPlaybackControlsWithThen): Promise<void> {
+    if (this.stopped) {
+      animation.stop()
+      return Promise.resolve()
+    }
     this.running.add(animation)
     return animation.then(() => {
       this.running.delete(animation)
@@ -99,11 +106,12 @@ export class DragGhostMotion {
   /** The damped shake of a refusal (the locked door's), where the ghost was let go. */
   async shake(): Promise<void> {
     this.stopFollowing?.()
+    if (this.stopped) return
     const { x } = this.values
     const from = x.get()
     const progress = motionValue(0)
     const stop = progress.on('change', (p) => {
-      x.set(from + Math.sin(p * 2 * Math.PI * SHAKE.cycles) * (1 - p) * SHAKE.amplitudePx)
+      x.set(from + shakeOffset(p))
     })
     await this.run(animate(progress, 1, { duration: SHAKE.durationMs / 1000, ease: 'linear' }))
     stop()
@@ -116,12 +124,14 @@ export class DragGhostMotion {
    */
   async settle(target: () => GhostBox | null, look: ToolbarPlace, transition: EditorSpring): Promise<void> {
     this.stopFollowing?.()
+    if (this.stopped) return
     const { x, y, width, height, scale, shadow, opacity, trayLook } = this.values
     const first = target()
     if (!first) return
     const dx = motionValue(x.get() - first.x)
     const dy = motionValue(y.get() - first.y)
     const place = (): void => {
+      if (this.stopped) return
       const box = target() ?? first
       x.set(box.x + dx.get())
       y.set(box.y + dy.get())
@@ -147,6 +157,7 @@ export class DragGhostMotion {
   }
 
   stop(): void {
+    this.stopped = true
     this.stopFollowing?.()
     for (const animation of Array.from(this.running)) animation.stop()
     this.running.clear()

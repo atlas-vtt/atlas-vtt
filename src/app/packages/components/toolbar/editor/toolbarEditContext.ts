@@ -9,8 +9,11 @@ import type { ToolbarFlight } from './useToolbarFlight'
 /** A group of handles that share one Tab stop (roving tabindex). */
 export type ToolbarHandleGroup = 'bar' | 'tray'
 
-/** Where focus goes once a change is drawn: a control's handle, or the tray's Done button. */
-export type ToolbarFocusTarget = { group: ToolbarHandleGroup; id: string } | 'done'
+/**
+ * Where focus goes once a change is drawn: a control's handle, the tray's
+ * Done button, or "More tools" (Done once nothing is left in it).
+ */
+export type ToolbarFocusTarget = { group: ToolbarHandleGroup; id: string } | 'done' | 'overflow'
 
 /** What the toolbar editor's parts do while edit mode is on in this view. */
 export interface ToolbarEditApi extends ToolbarDragControls {

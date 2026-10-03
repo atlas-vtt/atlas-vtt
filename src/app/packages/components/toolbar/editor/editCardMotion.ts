@@ -1,7 +1,7 @@
 import { animate, type MotionValue } from 'framer-motion'
 import { viewFrame } from '../../primitives/useKeepInView'
 import {
-  CARD_ENTER, CARD_ENTER_FROM, CARD_EXIT, CARD_EXIT_SCALE, CARD_GLIDE, motionModeOf,
+  CARD_ENTER, CARD_ENTER_FROM, CARD_EXIT, CARD_EXIT_SCALE, CARD_GLIDE, FADE, motionModeOf,
 } from './editorMotion'
 
 /** The card stays this far inside its view, and needs this much room above the tray to show its screenshot. */
@@ -40,7 +40,7 @@ export function cardFits(card: HTMLElement, parent: Element): boolean {
   return parent.getBoundingClientRect().top - viewFrame(card).top >= card.offsetHeight + CARD_VIEW_MARGIN
 }
 
-/** Places the card over `anchor` and shows it. Reduced motion only fades it in and never glides. */
+/** Places the card over `anchor` and shows it. Reduced motion only fades it in, quicker, and never glides. */
 export function appearCard(motion: EditCardMotion, card: HTMLElement, parent: Element, anchor: Element, entrance: CardEntrance): void {
   const place = cardPlace(card, parent, anchor)
   const mode = motionModeOf(card)
@@ -59,7 +59,7 @@ export function appearCard(motion: EditCardMotion, card: HTMLElement, parent: El
   motion.opacity.jump(0)
   animate(motion.y, 0, CARD_ENTER)
   animate(motion.scale, 1, CARD_ENTER)
-  animate(motion.opacity, 1, CARD_ENTER)
+  animate(motion.opacity, 1, moves ? CARD_ENTER : FADE)
 }
 
 /**

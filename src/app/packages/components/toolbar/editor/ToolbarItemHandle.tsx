@@ -1,12 +1,12 @@
 import React, { useId } from 'react'
-import { toolbarControl, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import { isHideableToolbarControl, toolbarControl, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
 import { useToolbarEdit, type ToolbarHandleGroup } from './toolbarEditContext'
 import { useToolbarEditMenu } from './useToolbarEditMenu'
 import { useToolbarKeyboard } from './useToolbarKeyboard'
 
-const KEY_HINTS: Record<ToolbarHandleGroup, string> = {
-  bar: 'Alt with the arrow keys moves it, Delete hides it.',
-  tray: 'Enter puts it back on the toolbar.',
+function keyHint(id: ToolbarControlId, group: ToolbarHandleGroup): string {
+  if (group === 'tray') return 'Enter puts it back on the toolbar.'
+  return isHideableToolbarControl(id) ? 'Alt with the arrow keys moves it, Delete hides it.' : 'Alt with the arrow keys moves it.'
 }
 
 interface ToolbarItemHandleProps {
@@ -48,7 +48,7 @@ export function ToolbarItemHandle({ id, group, tabIndex }: ToolbarItemHandleProp
       }}
     >
       <span id={labelId} hidden>{control.label}</span>
-      <span id={descriptionId} hidden>{`${control.description} ${KEY_HINTS[group]}`}</span>
+      <span id={descriptionId} hidden>{`${control.description} ${keyHint(id, group)}`}</span>
     </button>
   )
 }

@@ -11,7 +11,7 @@ import { useToolbarEdit, type ToolbarEditApi } from './toolbarEditContext'
 import { ToolbarDragGhost, ToolbarFlightGhost } from './ToolbarDragGhost'
 import { useToolbarEditState, useToolbarEditStore } from './toolbarEditStore'
 import { useTrayVariants } from './editorMotion'
-import { doneButtonOf, groupHandles, handleOf, mainToolbarOf } from './toolbarEditDom'
+import { doneButtonOf, focusTargetOf, groupHandles, mainToolbarOf } from './toolbarEditDom'
 import { ToolbarEditTooltip } from './ToolbarEditTooltip'
 import { ToolbarTray } from './ToolbarTray'
 
@@ -66,8 +66,7 @@ export function ToolbarEditor({ items, motion: layoutMotion, viewId, focusOnEntr
     const target = edit?.takeFocusRequest()
     const row = rootRef.current?.parentElement
     if (!target || !row) return
-    const handle = target === 'done' ? null : handleOf(row, target.group, target.id)
-    const element = handle ?? doneButtonOf(row)
+    const element = focusTargetOf(row, target) ?? doneButtonOf(row)
     element?.focus()
   })
 

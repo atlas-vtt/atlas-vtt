@@ -1,4 +1,4 @@
-import type { ToolbarHandleGroup } from './toolbarEditContext'
+import type { ToolbarFocusTarget, ToolbarHandleGroup } from './toolbarEditContext'
 
 /**
  * Where the editor's parts find each other in the document: the bar and the
@@ -51,6 +51,11 @@ export function barSlotOf(row: Element, id: string): HTMLElement | null {
   return isHtmlElement(slot) ? slot : null
 }
 
+/** What a bar slot shows of its control (the handle lies under it while editing). */
+export function slotContentOf(slot: Element): HTMLElement | null {
+  return childWithClass(slot, 'atlas-toolbar-item__content')
+}
+
 /** A control's slot in the tray, laid out or not. */
 export function traySlotOf(row: Element, id: string): HTMLElement | null {
   const slot = Array.from(trayOf(row)?.children ?? []).find(item => isHtmlElement(item) && item.dataset.trayItem === id)
@@ -72,6 +77,13 @@ export function paletteButtonOf(row: Element): HTMLElement | null {
 
 export function doneButtonOf(row: Element): HTMLElement | null {
   return trayOf(row)?.querySelector<HTMLElement>('.atlas-toolbar-tray__done') ?? null
+}
+
+/** The element a focus target names, where it shows. */
+export function focusTargetOf(row: Element, target: ToolbarFocusTarget): HTMLElement | null {
+  if (target === 'done') return doneButtonOf(row)
+  if (target === 'overflow') return overflowButtonOf(row)?.querySelector<HTMLElement>('button') ?? null
+  return handleOf(row, target.group, target.id)
 }
 
 /** The handle among `candidates` nearest to `from` along the bar (Up and Down between bar and tray). */

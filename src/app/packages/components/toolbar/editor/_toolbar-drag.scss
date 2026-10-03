@@ -19,14 +19,22 @@
 }
 
 // A dragged tool's own slot: empty while its ghost is in the air, and the well while it holds
-// the tool's place (its handle stays, so keyboard focus does too).
+// the tool's place (its handle stays, so keyboard focus does too). The well's fill fades in as
+// the tool lifts off.
 :is(.atlas-toolbar-item, .atlas-toolbar-tray__item)[data-lifted] {
-  border-radius: $control-corners;
-  background: var(--background-modifier-hover);
-  @include atlas-corner-shape;
-
   > :is(.atlas-toolbar-item__content, .atlas-toolbar-face) {
     visibility: hidden;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: $control-corners;
+    background: var(--background-modifier-hover);
+    pointer-events: none;
+    animation: atlas-toolbar-fade-in $transition-fast $transition-ease-out;
+    @include atlas-corner-shape;
   }
 }
 
@@ -65,14 +73,28 @@
   }
 }
 
-// A refusal with reduced motion: the ghost takes the error colour for a moment instead of shaking.
+// A refusal with reduced motion: the ghost, or the Command palette that Delete cannot hide, takes
+// the error colour for a moment instead of shaking.
 .atlas-toolbar-ghost[data-refused] {
   box-shadow: 0 0 0 $border-width-m var(--text-error), $shadow-elevated;
 }
 
+.atlas-toolbar-item[data-refused] > .atlas-toolbar-handle + .atlas-toolbar-item__content::after {
+  @include toolbar-control-ring(var(--text-error));
+}
+
+// Reduced motion keeps the cues that are not movement: "More tools" still takes its fill.
 @media (prefers-reduced-motion: reduce) {
   :is(.atlas-toolbar-item, .atlas-toolbar-tray__item)[data-pressed] > :is(.atlas-toolbar-item__content, .atlas-toolbar-face) {
     transform: none;
+  }
+
+  .atlas-main-toolbar .atlas-toolbar-overflow {
+    transition: none;
+
+    &[data-drop-target] {
+      transform: none;
+    }
   }
 }
 

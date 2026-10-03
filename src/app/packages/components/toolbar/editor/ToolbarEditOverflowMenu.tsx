@@ -10,7 +10,12 @@ interface ToolbarEditOverflowMenuProps {
   dropTarget: boolean
 }
 
-/** "More tools" while the toolbar editor is open: its rows open the editor's menu instead of running the control. */
+/**
+ * "More tools" while the toolbar editor is open: its rows open the editor's
+ * menu instead of running the control. Focus goes back to the "More tools"
+ * button once that menu closes or its change is drawn (Done once nothing is
+ * left in it), since the row it came from is gone by then.
+ */
 export function ToolbarEditOverflowMenu({ items, dropTarget }: ToolbarEditOverflowMenuProps): React.ReactElement {
   const openMenu = useToolbarEditMenu()
   return (
@@ -18,8 +23,8 @@ export function ToolbarEditOverflowMenu({ items, dropTarget }: ToolbarEditOverfl
       items={items}
       editing
       dropTarget={dropTarget}
-      onEditEntry={(id, at) => {
-        if (isToolbarControlId(id)) openMenu(id, 'overflow', at)
+      onEditEntry={(id, at, trigger) => {
+        if (isToolbarControlId(id)) openMenu(id, 'overflow', at, { then: 'overflow', back: trigger })
       }}
     />
   )

@@ -2,6 +2,7 @@ import type React from 'react'
 import { useCallback, useContext, useEffect, useLayoutEffect, useRef } from 'react'
 import type { MapHotkeyId } from '../../../../keyboard/mapHotkeys'
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext'
+import { useViewStoreHook } from '../../../../react/ViewStoreContext'
 import { isHideableToolbarControl, toolbarControl, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
 import { withControlAfter, withControlHidden, type ToolbarLayout } from '../../../../toolbar/toolbarLayout'
 import { ToolbarSpaceContext } from '../toolbarSpace'
@@ -60,6 +61,7 @@ function barPositions(layout: ToolbarLayout, available: ReadonlySet<ToolbarContr
 export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls {
   const { store, editing, available } = options
   const { view } = useAtlasUI()
+  const viewStore = useViewStoreHook()
   const space = useContext(ToolbarSpaceContext)
   const latest = useRef(options)
   const session = useRef<ToolbarPointerSession | null>(null)
@@ -70,11 +72,12 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
     latest.current = options
   })
 
+  // The asset manager suspends previews too: one it opened during the drag (its hotkey) keeps them suspended.
   const previews = useCallback((suspended: boolean): void => {
     const manager = view?.serviceManager?.getNotePreviewUIManager?.()
     if (suspended) manager?.suspendPreviews()
-    else manager?.resumePreviews()
-  }, [view])
+    else if (!viewStore.getState().isAssetManagerOpen) manager?.resumePreviews()
+  }, [view, viewStore])
 
   const settleBack = useCallback((refused: boolean): void => {
     const { drag } = store.state.getState()
@@ -108,8 +111,11 @@ export function useToolbarDrag(options: ToolbarDragOptions): ToolbarDragControls
     const refused = zone === 'tray' && !isHideableToolbarControl(drag.id)
     const bar = mainToolbarOf(current.row)
     // Entering the bar, the well opens where the pointer is; the bar reads its thresholds again once it has.
+    // A tool from the bar that comes back from outside both zones (or from a refusal) still holds its slot
+    // there, so the bar does not grow.
     if (zone === 'bar' && drag.zone !== 'bar' && bar && drag.barWidth !== null) {
-      frozenBar = settledBar(bar, drag.id, drag.barWidth, true)
+      const originHolds = drag.from === 'bar' && (drag.zone === null || drag.refused)
+      frozenBar = settledBar(bar, drag.id, drag.barWidth, !originHolds)
       store.state.setState({ frozenBar })
     }
     let after = drag.after

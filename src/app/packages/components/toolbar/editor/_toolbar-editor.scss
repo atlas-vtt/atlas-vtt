@@ -219,14 +219,7 @@ $tray-end-radius: atlas-panel-inset-radius-value($tray-inset, $tray-control * 0.
 
 // The content lies above the handle, so the handle's focus ring is drawn on top of the content.
 .atlas-toolbar-handle:focus-visible + :is(.atlas-toolbar-item__content, .atlas-toolbar-face)::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: $control-corners;
-  outline: 2px solid var(--interactive-accent);
-  outline-offset: -2px;
-  pointer-events: none;
-  @include atlas-corner-shape;
+  @include toolbar-control-ring(var(--interactive-accent));
 }
 
 .atlas-toolbar-live-region {

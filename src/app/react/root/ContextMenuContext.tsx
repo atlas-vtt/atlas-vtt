@@ -10,8 +10,17 @@ export type { ContextMenuEntry } from '../components/context-menu/AtlasContextMe
 
 // ── Context + hook ──────────────────────────────────────────────────────────
 
+export interface ContextMenuOptions {
+  /**
+   * Where focus goes when the menu closes and nothing else took it (a menu
+   * opened from the keyboard, closed with Escape): the menu's own trigger is
+   * a point and cannot hold focus.
+   */
+  returnFocus?: HTMLElement | null;
+}
+
 interface ContextMenuController {
-  open: (entries: ContextMenuEntry[], position: { x: number; y: number }) => void;
+  open: (entries: ContextMenuEntry[], position: { x: number; y: number }, options?: ContextMenuOptions) => void;
   close: () => void;
 }
 
@@ -47,6 +56,15 @@ export function closeContextMenuGlobal(): void {
 interface MenuState {
   entries: ContextMenuEntry[];
   position: { x: number; y: number };
+  returnFocus: HTMLElement | null;
+}
+
+/** Focuses `element` where the menu left focus nowhere (on the body): a choice that moved focus keeps it there. */
+function returnFocusTo(element: HTMLElement | null, event: Event): void {
+  if (!element) return;
+  event.preventDefault();
+  const active = element.ownerDocument.activeElement;
+  if (element.isConnected && (!active || active === element.ownerDocument.body)) element.focus();
 }
 
 export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -57,8 +75,8 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const close = useCallback((): void => setMenuState(null), []);
 
-  const open = useCallback((entries: ContextMenuEntry[], position: { x: number; y: number }): void => {
-    setMenuState({ entries, position });
+  const open = useCallback((entries: ContextMenuEntry[], position: { x: number; y: number }, options?: ContextMenuOptions): void => {
+    setMenuState({ entries, position, returnFocus: options?.returnFocus ?? null });
   }, []);
 
   useEffect(() => {
@@ -104,6 +122,7 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 avoidCollisions
                 collisionPadding={8}
                 onContextMenu={(e) => e.preventDefault()}
+                onCloseAutoFocus={(e) => returnFocusTo(menuState.returnFocus, e)}
               >
                 {renderEntries(menuState.entries, close)}
               </DropdownMenu.Content>

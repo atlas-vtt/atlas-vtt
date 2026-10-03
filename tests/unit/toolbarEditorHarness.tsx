@@ -32,12 +32,14 @@ export interface ToolbarHarnessOptions {
   stored?: StoredToolbarLayout;
   /** Room the bottom row gives the bar; null lays nothing out, so nothing overflows. */
   space?: number | null;
+  /** The view's note previews, which a drag suspends. */
+  notePreviews?: { suspendPreviews: () => void; resumePreviews: () => void };
 }
 
 // jsdom lays nothing out: every control of the bar is 40px wide where the bar has room to measure.
 const CONTROL_WIDTH = 40;
 
-export function renderToolbar({ player = false, stored = {}, space = null }: ToolbarHarnessOptions = {}): ToolbarHarness {
+export function renderToolbar({ player = false, stored = {}, space = null, notePreviews }: ToolbarHarnessOptions = {}): ToolbarHarness {
   const { app } = createInMemoryApp({ files: {} });
   const settings = new SettingsService(app);
   // The palette's first-run tutorial would cover it and take its keys.
@@ -49,7 +51,7 @@ export function renderToolbar({ player = false, stored = {}, space = null }: Too
   const view = {
     viewId: 'view-1',
     getViewType: () => (player ? 'atlas-vtt-player' : 'atlas-vtt'),
-    serviceManager: { getEventBus: () => bus, getToolController: () => null, getNotePreviewUIManager: () => null, getRendererService: () => null },
+    serviceManager: { getEventBus: () => bus, getToolController: () => null, getNotePreviewUIManager: () => notePreviews ?? null, getRendererService: () => null },
     setFogBrushSize: vi.fn(),
     clearAllFog: vi.fn(),
     openSceneBrowser: vi.fn(),

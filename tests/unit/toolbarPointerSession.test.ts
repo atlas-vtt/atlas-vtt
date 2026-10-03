@@ -132,6 +132,24 @@ describe('a press on a toolbar editor handle', () => {
     }
   });
 
+  it('captures the pointer on the bar only once the press is a drag, and keeps a context menu from opening during one', () => {
+    const capture = vi.fn<(pointerId: number) => void>();
+    Object.assign(bar, { setPointerCapture: capture, hasPointerCapture: () => false, releasePointerCapture: vi.fn() });
+    session(pointer('pointerdown', 0, 0), handlers());
+    window.dispatchEvent(pointer('pointermove', 2, 0));
+    expect(capture).not.toHaveBeenCalled();
+    // Before the threshold the menu a press opens (Ctrl+click on macOS, a long press) is the handle's to take.
+    const early = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    bar.dispatchEvent(early);
+    expect(early.defaultPrevented).toBe(false);
+
+    window.dispatchEvent(pointer('pointermove', 10, 0));
+    expect(capture).toHaveBeenCalledWith(1);
+    const during = new MouseEvent('contextmenu', { bubbles: true, cancelable: true });
+    bar.dispatchEvent(during);
+    expect(during.defaultPrevented).toBe(true);
+  });
+
   it('lets a context menu end the press before the threshold (Ctrl+click on macOS), never during a drag', () => {
     const on = handlers();
     const press = session(pointer('pointerdown', 0, 0), on);

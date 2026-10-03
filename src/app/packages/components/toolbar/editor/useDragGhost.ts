@@ -119,6 +119,8 @@ export function useDragGhost(ticket: ToolbarGhostTicket, store: ToolbarEditStore
         return
       }
       if (settle.refused) await driver.shake()
+      // A new press landed the ghost during the shake: its values belong to the next drag now.
+      if (!live) return
       await driver.settle(target, settle.to, settle.kind === 'drop' ? SETTLE : RETURN)
     }
     void run().then(land)

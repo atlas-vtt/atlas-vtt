@@ -13,8 +13,8 @@ interface ToolbarOverflowMenuProps {
   items: readonly ResponsiveToolbarItem[]
   /** The toolbar editor is open: choosing or right-clicking a row asks `onEditEntry` instead of running the control. */
   editing?: boolean
-  /** Opens the editor's menu for a control, at a point in client coordinates. */
-  onEditEntry?: (id: string, at: { x: number; y: number }) => void
+  /** Opens the editor's menu for a control, at a point in client coordinates; `trigger` is the "More tools" button. */
+  onEditEntry?: (id: string, at: { x: number; y: number }, trigger: HTMLButtonElement | null) => void
   /** A tool dragged in the editor would land here: the bar has no room for it. */
   dropTarget?: boolean
 }
@@ -108,7 +108,7 @@ export function ToolbarOverflowMenu({ items, editing = false, onEditEntry, dropT
     const item = items[index]
     if (!item || !onEditEntry) return
     close(false)
-    onEditEntry(item.id, at)
+    onEditEntry(item.id, at, trigger())
   }
 
   const onMenuContextMenu = (event: React.MouseEvent<HTMLDivElement>): void => {

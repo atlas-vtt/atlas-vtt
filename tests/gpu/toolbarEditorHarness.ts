@@ -178,12 +178,15 @@ export async function mountToolbar(stored: StoredToolbarLayout = {}): Promise<To
   };
 }
 
+/** Keys held with a mouse event, as the browser's input protocol counts them. */
+export const CTRL_KEY = 2;
+
 /**
  * The real mouse, through the browser: points are in this frame's client coordinates, which the
  * test runner shows scaled inside its own page, where the input lands.
  */
 export const mouse = {
-  async send(type: 'mouseMoved' | 'mousePressed' | 'mouseReleased', x: number, y: number, pressed: boolean): Promise<void> {
+  async send(type: 'mouseMoved' | 'mousePressed' | 'mouseReleased', x: number, y: number, pressed: boolean, modifiers = 0): Promise<void> {
     const host = window.frameElement?.getBoundingClientRect() ?? { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
     await cdp().send('Input.dispatchMouseEvent', {
       type,
@@ -192,6 +195,7 @@ export const mouse = {
       button: type === 'mouseMoved' && !pressed ? 'none' : 'left',
       buttons: pressed ? 1 : 0,
       clickCount: type === 'mouseMoved' ? 0 : 1,
+      modifiers,
     });
   },
   down: (x: number, y: number): Promise<void> => mouse.send('mousePressed', x, y, true),

@@ -2,7 +2,6 @@ import { MotionGlobalConfig, useReducedMotion, type Variants } from 'framer-moti
 import {
   EASE_OUT_CONTROL_POINTS as EASE_OUT,
   MOTION_FAST_MS,
-  MOTION_NORMAL_MS,
   MOTION_SLOW_MS,
   PANEL_ENTER_FROM,
   PANEL_ENTER_MS,
@@ -13,7 +12,9 @@ import {
 
 // The toolbar editor's motion. Springs are given by how long they look (Motion's
 // `visualDuration`) and how far they overshoot; only transform and opacity move,
-// besides the real width of slots and the ghost's real size.
+// besides the real width of slots and the ghost's real size. Cues drawn by CSS
+// alone (the press, "More tools" as the landing place, the tray refusing the
+// Command palette, the hint coming back) keep their values in the editor's SCSS.
 
 /** Fits both a value animation (`animate`) and a component's `transition`. */
 export interface EditorSpring {
@@ -39,8 +40,6 @@ function fade(ms: number): EditorFade {
 export const LIFT = spring(0.2)
 /** Slots opening and closing, and neighbours gliding aside. */
 export const GAP = spring(0.25)
-/** "More tools" lighting up as the place a dragged tool would land. */
-export const TARGET = spring(0.15)
 /** A dropped ghost settling onto its control, and its lift fading. */
 export const SETTLE = spring(0.3, 0.1)
 export const SETTLE_LIFT = spring(0.3)
@@ -52,7 +51,6 @@ export const FLIGHT = spring(0.35)
 export const CARRY = spring(0.15)
 
 export const LIFT_SCALE = 1.05
-export const TARGET_SCALE = 1.06
 /** A dragged ghost outside both the bar and the tray. */
 export const OUTSIDE_OPACITY = 0.85
 /** A flying ghost swells a little on its way and is back to its size as it lands. */
@@ -63,11 +61,6 @@ export const FLIGHT_SCALE: { keyframes: number[]; transition: EditorFade } = {
 
 /** A slot's content, a well and a ghost's faces fading in or out. */
 export const FADE = fade(MOTION_FAST_MS)
-/** The tray's hint coming back once a drag is over. */
-export const HINT_FADE_IN = fade(150)
-/** The tray dimming while the Command palette is dragged over it, which it refuses. */
-export const REFUSED_TRAY_OPACITY = 0.5
-export const REFUSED_TRAY = fade(MOTION_NORMAL_MS)
 /** Controls that a reset brings back or sends away follow each other by this much. */
 export const STAGGER_MS = 30
 /** A refusal shakes the control: `sin(p · 2π · cycles) · (1 − p) · amplitude`, the locked door's motion. */

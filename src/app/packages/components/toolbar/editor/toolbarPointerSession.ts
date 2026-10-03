@@ -24,10 +24,12 @@ export function dragThreshold(pointerType: string): number {
 const GRABBING = 'atlas-toolbar-grabbing'
 
 /**
- * One press on a toolbar editor handle, from pointerdown until it ends. The
- * pointer is captured on the bar, which stays in the document for the whole
- * session while React moves the controls inside it (moving a captured node
- * would release the capture). Moves and the release are taken on the window
+ * One press on a toolbar editor handle, from pointerdown until it ends. Once
+ * the press becomes a drag the pointer is captured on the bar, which stays in
+ * the document while React moves the controls inside it (moving a captured
+ * node would release the capture). Before that nothing is captured, so the
+ * context menu a press may open (Ctrl+click on macOS, a long press) goes to
+ * the handle, not to the bar. Moves and the release are taken on the window
  * in the capture phase and go no further, so the map underneath never sees
  * the drag. Only the pressing pointer counts.
  */
@@ -42,15 +44,11 @@ export class ToolbarPointerSession {
     this.origin = { x: press.clientX, y: press.clientY }
     this.pointerId = press.pointerId
     this.threshold = dragThreshold(press.pointerType)
-    try {
-      bar.setPointerCapture(press.pointerId)
-    } catch {
-      // A pointer that is gone already (or no capture at all): the window's listeners still see it.
-    }
     bar.win.addEventListener('pointermove', this.onMove, true)
     bar.win.addEventListener('pointerup', this.onUp, true)
     bar.win.addEventListener('pointercancel', this.onCancel, true)
     bar.win.addEventListener('blur', this.onBlur)
+    bar.win.addEventListener('contextmenu', this.onContextMenu, true)
     bar.addEventListener('lostpointercapture', this.onLost)
     bar.doc.addEventListener('keydown', this.onKeyDown, true)
   }
@@ -87,6 +85,11 @@ export class ToolbarPointerSession {
     if (!this.dragging) {
       if (Math.hypot(point.x - this.origin.x, point.y - this.origin.y) < this.threshold) return
       this.dragging = true
+      try {
+        this.bar.setPointerCapture(this.pointerId)
+      } catch {
+        // A pointer that is gone already (or no capture at all): the window's listeners still see it.
+      }
       this.bar.doc.body.addClass(GRABBING)
       this.handlers.pickUp(point)
     }
@@ -111,6 +114,13 @@ export class ToolbarPointerSession {
 
   private readonly onBlur = (): void => {
     this.finish()
+  }
+
+  /** During a drag the bar holds the pointer, so a context menu would open there: it never does. */
+  private readonly onContextMenu = (event: MouseEvent): void => {
+    if (!this.dragging || this.ended) return
+    event.preventDefault()
+    event.stopPropagation()
   }
 
   private readonly onKeyDown = (event: KeyboardEvent): void => {
@@ -139,6 +149,7 @@ export class ToolbarPointerSession {
     bar.win.removeEventListener('pointerup', this.onUp, true)
     bar.win.removeEventListener('pointercancel', this.onCancel, true)
     bar.win.removeEventListener('blur', this.onBlur)
+    bar.win.removeEventListener('contextmenu', this.onContextMenu, true)
     bar.removeEventListener('lostpointercapture', this.onLost)
     bar.doc.removeEventListener('keydown', this.onKeyDown, true)
     bar.doc.body.removeClass(GRABBING)

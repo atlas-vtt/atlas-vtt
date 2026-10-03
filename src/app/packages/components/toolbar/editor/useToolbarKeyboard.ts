@@ -1,22 +1,27 @@
 import type React from 'react'
-import type { ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
+import { isHideableToolbarControl, type ToolbarControlId } from '../../../../toolbar/toolbarCatalog'
 import { useToolbarEdit, type ToolbarEditApi, type ToolbarFocusTarget, type ToolbarHandleGroup } from './toolbarEditContext'
 import { editorRowOf, groupHandles, nearestHandle } from './toolbarEditDom'
 import { useToolbarEditStore } from './toolbarEditStore'
 import type { ToolbarMove } from './toolbarMoves'
+import { refuseVisibly } from './toolbarRefusal'
 import { useToolbarEditMenu } from './useToolbarEditMenu'
 
-/** Keys the map's shortcuts also use (Tab: DM screen, Space: palette, Enter: dice log). */
-const NATIVE_KEYS = new Set(['Tab', ' ', 'Enter'])
+/**
+ * Keys the map's shortcuts also use: Tab (DM screen), Space (palette) and
+ * Enter (dice log) keep their native work on the editor's controls (focus,
+ * clicks); Delete and Backspace would delete the map's selection.
+ */
+const MAP_KEYS = new Set(['Tab', ' ', 'Enter', 'Delete', 'Backspace'])
+
+/** Keys a handle consumes that have no native work on it; while a tool is dragged they do nothing. */
+const HANDLE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Delete', 'Backspace', 'ContextMenu'])
 
 const ALT_MOVES: Partial<Record<string, ToolbarMove>> = { ArrowLeft: 'left', ArrowRight: 'right', Home: 'start', End: 'end' }
 
-/**
- * For every control of the editor: Tab, Space and Enter keep their native
- * work (focus, clicks) but never reach the map's shortcuts.
- */
+/** For every control of the editor: keys the map's shortcuts also use keep their native work but never reach the map. */
 export function stopMapShortcuts(event: React.KeyboardEvent): void {
-  if (NATIVE_KEYS.has(event.key)) event.stopPropagation()
+  if (MAP_KEYS.has(event.key)) event.stopPropagation()
 }
 
 interface KeyContext {
@@ -68,7 +73,9 @@ function runKey(event: React.KeyboardEvent, { edit, id, group, handle, row, open
     case 'ContextMenu': openMenu(afterLeaving); return true
     case 'Delete':
     case 'Backspace':
-      if (group !== 'bar') return false
+      // A tray tool is hidden already.
+      if (group !== 'bar') return true
+      if (!isHideableToolbarControl(id) && handle.parentElement) refuseVisibly(handle.parentElement)
       edit.hide(id, afterLeaving)
       return true
     case 'Enter':
@@ -85,8 +92,8 @@ function runKey(event: React.KeyboardEvent, { edit, id, group, handle, row, open
  * between bar and tray), Alt with them moves a bar tool, Delete hides it,
  * Enter or Space shows a tray tool, Shift+F10 or the ContextMenu key opens the
  * menu. Keys it uses are kept from the map's shortcuts and from the browser.
- * While a tool is dragged with the pointer they do nothing (Escape cancels
- * the drag before it gets here).
+ * While a tool is dragged with the pointer they do nothing and are still kept
+ * from both (Escape cancels the drag before it gets here).
  */
 export function useToolbarKeyboard(id: ToolbarControlId, group: ToolbarHandleGroup): (event: React.KeyboardEvent<HTMLElement>) => void {
   const edit = useToolbarEdit()
@@ -94,14 +101,19 @@ export function useToolbarKeyboard(id: ToolbarControlId, group: ToolbarHandleGro
   const editStore = useToolbarEditStore()
   return (event) => {
     if (editStore.state.getState().drag) {
-      stopMapShortcuts(event)
+      if (HANDLE_KEYS.has(event.key)) {
+        event.preventDefault()
+        event.stopPropagation()
+      } else {
+        stopMapShortcuts(event)
+      }
       return
     }
     const handle = event.currentTarget
     const row = editorRowOf(handle)
     const openMenu = (then: ToolbarFocusTarget): void => {
       const rect = handle.getBoundingClientRect()
-      openEditMenu(id, group, { x: rect.left, y: rect.bottom }, then)
+      openEditMenu(id, group, { x: rect.left, y: rect.bottom }, { then, back: handle })
     }
     if (edit && row && runKey(event, { edit, id, group, handle, row, openMenu })) {
       event.preventDefault()
