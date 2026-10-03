@@ -8,4 +8,16 @@ describe('DiceTool secret rolls', () => {
     const result = diceTool.rollDice('1d20', undefined, { secret: true });
     expect(result.secret).toBe(true);
   });
+
+  it('leaves the secret key off a roll made without the option', () => {
+    const diceTool = new DiceTool(new EventEmitter());
+    const result = diceTool.rollDice('1d20');
+    expect('secret' in result).toBe(false);
+  });
+
+  it('leaves the secret key off a roll made with the option set to false', () => {
+    const diceTool = new DiceTool(new EventEmitter());
+    const result = diceTool.rollDice('1d20', undefined, { secret: false });
+    expect('secret' in result).toBe(false);
+  });
 });
