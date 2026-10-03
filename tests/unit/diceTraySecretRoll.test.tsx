@@ -53,4 +53,22 @@ describe('the dice tray secret roll switch', () => {
     renderTray({ secretRollAvailable: false });
     expect(screen.getByRole('switch', { name: 'Secret roll' }).getAttribute('aria-disabled')).toBe('true');
   });
+
+  it('explains through aria-describedby why the switch is disabled', () => {
+    renderTray({ secretRollAvailable: false });
+    const reasonId = screen.getByRole('switch', { name: 'Secret roll' }).getAttribute('aria-describedby') ?? '';
+    expect(document.getElementById(reasonId)?.textContent).toBe('Turn on Show dice rolls in Local Player View to use this');
+  });
+
+  it('does not ask to change the secret roll when the disabled switch is clicked', () => {
+    const onSecretRollChange = vi.fn();
+    renderTray({ secretRollAvailable: false, onSecretRollChange });
+    fireEvent.click(screen.getByRole('switch', { name: 'Secret roll' }));
+    expect(onSecretRollChange).not.toHaveBeenCalled();
+  });
+
+  it('gives the enabled switch no reason to describe', () => {
+    renderTray();
+    expect(screen.getByRole('switch', { name: 'Secret roll' }).getAttribute('aria-describedby')).toBeNull();
+  });
 });
