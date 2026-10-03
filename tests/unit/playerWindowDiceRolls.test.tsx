@@ -67,6 +67,13 @@ describe('player window dice rolls', () => {
     expect(toastText(doc)).toBeUndefined();
   });
 
+  it('still shows a roll that is not secret while the DM shares rolls', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    roll();
+    expect(toastText(doc)).toContain('17');
+  });
+
   it('does not name a token that is hidden on the map', () => {
     const { settings, store, doc } = setup();
     act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
