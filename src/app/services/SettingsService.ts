@@ -10,6 +10,7 @@ import {
 } from '../tools/laserPointerSettings';
 import { isDiceDisplay, type DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
+import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import {
   DEFAULT_DICE_LOOK,
   isDiceColour,
@@ -54,6 +55,8 @@ export interface AtlasSettings {
   systemPresets: unknown[];
   /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
+  /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
+  toolbar: StoredToolbarLayout;
   localPlayerView: {
     // UI element visibility toggles
     showToolbar: boolean;
@@ -83,6 +86,7 @@ const DEFAULT_SETTINGS: AtlasSettings = {
   diceFont: DEFAULT_DICE_LOOK.font,
   systemPresets: [],
   experimental: {},
+  toolbar: {},
   localPlayerView: {
     // UI element visibility defaults
     showToolbar: false, // Hide toolbar by default in player view
@@ -199,6 +203,7 @@ export class SettingsService {
     this.settings = this.deepMerge(DEFAULT_SETTINGS, stored);
     this.settings.hotkeys = readHotkeyOverrides(stored.hotkeys);
     if (!this.isRecord(stored.experimental)) this.settings.experimental = {};
+    this.settings.toolbar = readToolbarLayout(stored.toolbar);
     // Rewrite files from versions that saved every binding, so they keep only the user's.
     if (JSON.stringify(stored.hotkeys ?? {}) !== JSON.stringify(this.settings.hotkeys)) this.scheduleSave();
   }
@@ -341,6 +346,19 @@ export class SettingsService {
   setExperimental(id: ExperimentalFeatureId, on: boolean): void {
     if (this.isExperimentalOn(id) === on) return;
     this.settings.experimental = { ...this.settings.experimental, [id]: on };
+    this.commit();
+  }
+
+  /** The stored toolbar layout; resolve it with `resolveToolbarLayout`. */
+  getToolbarLayout(): StoredToolbarLayout {
+    return this.settings.toolbar;
+  }
+
+  /** Stores a layout already in stored form (see `storedToolbarLayout`); an unchanged layout writes nothing. */
+  setToolbarLayout(next: StoredToolbarLayout): void {
+    const read = readToolbarLayout(next);
+    if (JSON.stringify(read) === JSON.stringify(this.settings.toolbar)) return;
+    this.settings.toolbar = read;
     this.commit();
   }
 
