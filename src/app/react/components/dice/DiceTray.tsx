@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { Button } from '../../../packages/components/primitives/button';
+import { DropdownToggleRow } from '../../../packages/components/primitives/DropdownToggleRow';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { DieFace } from './DieFace';
 import {
@@ -9,9 +10,16 @@ import {
   addDie, clampModifier, removeDie, trayDiceCount, trayFormula, type TrayPool,
 } from './diceTrayPool';
 
+const SECRET_ROLL_UNAVAILABLE = 'Turn on Show dice rolls in Local Player View to use this';
+
 interface DiceTrayProps {
   /** The finished formula goes up to whoever rolls it. */
   onRoll: (formula: string) => void;
+  /** Whether the tray's rolls are secret: the player window shows and plays nothing of them. */
+  secretRoll: boolean;
+  onSecretRollChange: (on: boolean) => void;
+  /** False while "Show dice rolls" is off: the switch has no effect then and is shown disabled. */
+  secretRollAvailable: boolean;
 }
 
 /**
@@ -21,7 +29,7 @@ interface DiceTrayProps {
  * control on a touchpad. Mixed dice are thrown together, `2d6 + 1d20 + 3`, as
  * three kinds held in one hand.
  */
-export function DiceTray({ onRoll }: DiceTrayProps): React.ReactElement {
+export function DiceTray({ onRoll, secretRoll, onSecretRollChange, secretRollAvailable }: DiceTrayProps): React.ReactElement {
   const [pool, setPool] = useState<TrayPool>({});
   const [modifier, setModifier] = useState(0);
 
@@ -107,6 +115,14 @@ export function DiceTray({ onRoll }: DiceTrayProps): React.ReactElement {
       <p className={cn('atlas-dice-tray__formula', formula === '' && 'atlas-dice-tray__formula--empty')} role="status" aria-live="polite">
         {formula === '' ? 'The tray is empty.' : formula}
       </p>
+
+      <DropdownToggleRow
+        label="Secret roll"
+        value={secretRoll}
+        onChange={() => onSecretRollChange(!secretRoll)}
+        disabled={!secretRollAvailable}
+        {...(secretRollAvailable ? {} : { description: SECRET_ROLL_UNAVAILABLE })}
+      />
 
       <div className="atlas-dice-tray__actions">
         <Button size="sm" className="atlas-dice-tray__roll" onClick={throwDice} disabled={formula === ''}>

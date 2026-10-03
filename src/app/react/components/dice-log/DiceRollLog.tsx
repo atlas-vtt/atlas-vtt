@@ -11,9 +11,11 @@ import type { DiceTool } from '../../../tools/DiceTool';
 interface DiceRollLogProps {
   isOpen: boolean;
   onClose: () => void;
+  /** Leaves secret rolls out: for a player view, which must not show what the GM kept from players. */
+  hideSecret: boolean;
 }
 
-export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactElement | null {
+export function DiceRollLog({ isOpen, onClose, hideSecret }: DiceRollLogProps): React.ReactElement | null {
   const { view } = useAtlasUI();
   const panelRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -37,7 +39,7 @@ export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactE
     }
   }, [view]);
 
-  const { history, clearHistory, repeatRoll } = useDiceHistory(getDiceTool, storeActions);
+  const { history, clearHistory, repeatRoll } = useDiceHistory(getDiceTool, storeActions, { hideSecret });
 
   const handleClose = useCallback((): void => {
     setIsPinned(false);

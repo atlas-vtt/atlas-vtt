@@ -2,7 +2,8 @@ import { act } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
-import type { DiceRollResult } from '../../src/app/tools/DiceTool';
+import { EventEmitter } from 'events';
+import { DiceTool, type DiceRollResult } from '../../src/app/tools/DiceTool';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -35,10 +36,11 @@ function setup(): { settings: SettingsService; store: StoreApi<ViewAtlasState>; 
   return { settings, store, doc };
 }
 
-function roll(source?: DiceRollResult['source']): void {
+function roll(source?: DiceRollResult['source'], secret?: true): void {
   const result: DiceRollResult = {
     id: 'roll', timestamp: 0, formula: '1d20+4', rolls: [{ die: 'd20', value: 13, max: 20 }], modifiers: 4, total: 17,
     ...(source ? { source } : {}),
+    ...(secret ? { secret } : {}),
   };
   act(() => { document.dispatchEvent(new CustomEvent('atlas-dice-rolled', { detail: result })); });
 }
@@ -56,6 +58,51 @@ describe('player window dice rolls', () => {
     expect(toastText(doc)).toContain('17');
 
     act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
+    expect(toastText(doc)).toBeUndefined();
+  });
+
+  it('shows no toast for a secret roll while the DM shares rolls', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    roll(undefined, true);
+    expect(toastText(doc)).toBeUndefined();
+  });
+
+  it('still shows a roll that is not secret while the DM shares rolls', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    roll();
+    expect(toastText(doc)).toContain('17');
+  });
+
+  it('shows only the normal roll when a secret roll came first', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    roll(undefined, true);
+    roll();
+    expect(doc.querySelectorAll('.atlas-dice-toast')).toHaveLength(1);
+  });
+
+  it('does not reveal an earlier secret roll when sharing is switched off and on', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    roll(undefined, true);
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    expect(toastText(doc)).toBeUndefined();
+  });
+
+  it('shows nothing of a roll the dice tool made secret', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    act(() => { new DiceTool(new EventEmitter()).rollDice('1d20', undefined, { secret: true }); });
+    expect(toastText(doc)).toBeUndefined();
+  });
+
+  it('shows nothing of a secret roll while sharing is off', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
+    act(() => { new DiceTool(new EventEmitter()).rollDice('1d20', undefined, { secret: true }); });
     expect(toastText(doc)).toBeUndefined();
   });
 
@@ -83,6 +130,17 @@ describe('player window dice rolls', () => {
     const portrait = doc.querySelector('.atlas-token-portrait');
     expect(portrait?.querySelector('img')?.getAttribute('src')).toContain('tokens/wolf.webp');
     expect(portrait?.querySelector<HTMLElement>('.atlas-token-ring')?.style.getPropertyValue('--atlas-token-ring-color')).toBe('#aa0000');
+  });
+
+  it('throws no 3D dice for a secret roll', () => {
+    const { settings, doc } = setup();
+    act(() => {
+      settings.setDiceDisplay('full');
+      settings.setLocalPlayerViewSettings({ showDiceRolls: true });
+    });
+
+    roll(undefined, true);
+    expect(doc.querySelector('.atlas-dice-roll')).toBeNull();
   });
 
   it('throws 3D dice without naming a hidden token', () => {

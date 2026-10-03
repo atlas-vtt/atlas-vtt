@@ -13,6 +13,8 @@ export interface DiceRollResult {
   total: number;
   /** Decided by the collection's critical rule when rolled; missing on rolls logged before rules existed. */
   crit?: DiceCrit;
+  /** Set only on a roll the GM made secret in the dice tray; the player window never shows it. */
+  secret?: true;
   player?: string;
   source?: {
     type: 'toolbar' | 'statblock';
@@ -25,11 +27,17 @@ export interface DiceRollResult {
   };
 }
 
+export interface DiceRollOptions {
+  secret?: boolean;
+}
+
 export interface DiceToolState {
   isTrayOpen: boolean;
   rollHistory: DiceRollResult[];
   activeFormula: string;
   quickDice: string[]; // Quick access dice buttons
+  /** Tray rolls are secret while this is on. Per view, never saved, and kept when the tray closes. */
+  secretRoll: boolean;
 }
 
 export class DiceTool {
@@ -44,7 +52,8 @@ export class DiceTool {
       isTrayOpen: false,
       rollHistory: [],
       activeFormula: '',
-      quickDice: ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']
+      quickDice: ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'],
+      secretRoll: false
     };
   }
 
@@ -53,12 +62,32 @@ export class DiceTool {
     this.eventBus.emit('dice-tray-toggled', this.state.isTrayOpen);
   }
 
-  public rollDice(formula: string, source?: DiceRollResult['source']): DiceRollResult {
+  public setSecretRoll(on: boolean): void {
+    this.state.secretRoll = on;
+    this.eventBus.emit('dice-secret-roll-changed', on);
+  }
+
+  /** Calls `listener` whenever the secret roll switch changes; returns the way to stop. */
+  public onSecretRollChange(listener: (on: boolean) => void): () => void {
+    this.eventBus.on('dice-secret-roll-changed', listener);
+    return (): void => {
+      this.eventBus.off('dice-secret-roll-changed', listener);
+    };
+  }
+
+  public rollDice(
+    formula: string,
+    source?: DiceRollResult['source'],
+    options?: DiceRollOptions
+  ): DiceRollResult {
     const result = this.parseAndRoll(formula);
     if (source) {
       result.source = source;
     }
-    
+    if (options?.secret) {
+      result.secret = true;
+    }
+
     // Add to history
     this.state.rollHistory.unshift(result);
     

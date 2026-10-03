@@ -19,6 +19,8 @@ import { useDiceToasts } from './useDiceToasts';
 interface DiceRollDisplayProps {
   /** Element the rolls render into, e.g. in the player window. Defaults to where the component is mounted. */
   container?: HTMLElement;
+  /** Rolls this answers true for are not shown at all; asked before `prepare`. */
+  skip?: (result: DiceRollResult) => boolean;
   /** Adapts each roll before it is shown, e.g. to leave out who rolled it. */
   prepare?: (result: DiceRollResult) => DiceRollResult;
   /** Throws without sound, where another window already plays it. */
@@ -29,7 +31,7 @@ interface DiceRollDisplayProps {
  * Every dice roll, at the top centre of the map: thrown as 3D dice, or as a
  * result card when 3D dice are off or the roll holds dice no real body shows.
  */
-export function DiceRollDisplay({ container, prepare, muted = false }: DiceRollDisplayProps): React.ReactElement | null {
+export function DiceRollDisplay({ container, skip, prepare, muted = false }: DiceRollDisplayProps): React.ReactElement | null {
   const { app, view } = useAtlasUI();
   const display = useDiceDisplay(app ?? undefined);
   const look = useDiceLook(app ?? undefined);
@@ -41,6 +43,7 @@ export function DiceRollDisplay({ container, prepare, muted = false }: DiceRollD
   useEffect(() => {
     const handler = (e: Event): void => {
       const raw = (e as CustomEvent<DiceRollResult>).detail;
+      if (skip?.(raw)) return;
       const result = prepare ? prepare(raw) : raw;
       const scene = diceSceneToShow(result, display);
       // Without WebGL a stage stays blank (white on some systems), so the roll shows as a card
@@ -53,7 +56,7 @@ export function DiceRollDisplay({ container, prepare, muted = false }: DiceRollD
     };
     document.addEventListener('atlas-dice-rolled', handler);
     return (): void => document.removeEventListener('atlas-dice-rolled', handler);
-  }, [addToast, prepare, display, muted, stageDoc]);
+  }, [addToast, skip, prepare, display, muted, stageDoc]);
 
   // Dice stages are built while nothing rolls, so that the first roll does not wait for one.
   useEffect(() => {

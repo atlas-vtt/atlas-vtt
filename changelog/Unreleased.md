@@ -1,3 +1,7 @@
+## New
+
+- Secret rolls. Switch on Secret roll in the dice tray and the rolls you make there stay off the player window, with no dice and no sound. The switch stays on until you turn it off, needs Show dice rolls to be on, and shows as a dot on the Roll Dice button. The dice log marks secret rolls
+
 ## Improved
 
 - Number every cell of a square grid, the same way hex grids already could. A new Letters and numbers format (A1, B1, …) is available on square and hex grids alike

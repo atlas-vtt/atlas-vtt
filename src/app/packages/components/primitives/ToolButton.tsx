@@ -13,6 +13,8 @@ interface ToolButtonProps {
   onClick: () => void
   className?: string
   disabled?: boolean
+  /** A state worth seeing at a glance (secret roll on): a dot on the button, said to screen readers. */
+  status?: string
   /** Set for a button that opens a menu: whether that menu is open. */
   menuExpanded?: boolean
   // Dropdown support
@@ -32,6 +34,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
   onClick,
   className,
   disabled = false,
+  status,
   menuExpanded,
   // dropdown props
   showChevron = false,
@@ -60,6 +63,7 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
             >
               <Icon />
               <span className="sr-only">{label}</span>
+              {status && <span className="sr-only">, {status}</span>}
             </Button>
           </span>
         </TooltipTrigger>
@@ -73,6 +77,8 @@ export const ToolButton: React.FC<ToolButtonProps> = ({
           </div>
         </TooltipContent>
       </Tooltip>
+
+      {status && <span className="atlas-tool-button__badge" aria-hidden="true" />}
 
       {showChevron && (
         <Button

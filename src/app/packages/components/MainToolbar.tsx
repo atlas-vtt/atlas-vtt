@@ -22,6 +22,7 @@ import { DrawToolGroup } from "./toolbar/DrawToolGroup"
 import { TextToolGroup } from "./toolbar/TextToolGroup"
 import { MeasureToolGroup } from "./toolbar/MeasureToolGroup"
 import { LightingToolGroup } from "./toolbar/LightingToolGroup"
+import { useSecretRollEffective } from "src/app/react/hooks/useSecretRollEffective"
 import { useToolbarHotkeys } from "./toolbar/useToolbarHotkeys"
 import {
   drawToolFace, fogToolFace, measureToolFace, moveToolFace, textToolFace, lightingToolFace,
@@ -38,6 +39,9 @@ type ToolMenu = 'move' | 'fog' | 'draw' | 'text' | 'measure' | 'wall'
  * tools a GM reaches for during play outrank setup and reference tools, which
  * also have hotkeys.
  */
+/** Said on the Roll Dice button while tray rolls are hidden from players. */
+const SECRET_ROLL_STATUS = "Secret roll on"
+
 const PRIORITY = {
   move: 100,
   measure: 90,
@@ -61,7 +65,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const activeTool = useAtlasStore(state => state.activeTool)
   const setActiveTool = useAtlasStore(state => state.setActiveTool)
   const store = useViewStoreHook()
-  const { view } = useAtlasUI()
+  const { app, view } = useAtlasUI()
   const isGMView = useAtlasStore(state => state.isGMView)
   const setGMView = useAtlasStore(state => state.setGMView)
   const hotkeyLabel = useHotkeyLabels()
@@ -70,6 +74,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const isActualPlayerView = view?.getViewType?.() === 'atlas-vtt-player'
 
   const diceTool = useMemo(() => view?.serviceManager?.getToolController?.()?.getDiceTool?.() ?? null, [view]);
+  const secretRollOn = useSecretRollEffective(diceTool, app ?? undefined);
 
   // Per-view UI visibility — driven by the store, not local state
   const isCommandPaletteOpen = useAtlasStore(s => s.isCommandPaletteOpen)
@@ -193,13 +198,20 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
       pinned: isDiceTrayOpen,
       element: (
         <div ref={diceButtonRef} className="relative flex items-center">
-          <ToolButton icon={Dices} label="Roll Dice" shortcut={hotkeyLabel('diceTray')} isActive={isDiceTrayOpen} onClick={toggleDiceTray} />
+          <ToolButton
+            icon={Dices}
+            label="Roll Dice"
+            shortcut={hotkeyLabel('diceTray')}
+            isActive={isDiceTrayOpen}
+            onClick={toggleDiceTray}
+            {...(secretRollOn && { status: SECRET_ROLL_STATUS })}
+          />
           {diceTool && (
             <DiceDropdownMenu diceTool={diceTool} isOpen={isDiceTrayOpen} onToggle={toggleDiceTray} triggerRef={diceButtonRef} />
           )}
         </div>
       ),
-      menuEntry: { icon: Dices, label: "Roll Dice", shortcut: hotkeyLabel('diceTray'), isActive: isDiceTrayOpen, onSelect: toggleDiceTray },
+      menuEntry: { icon: Dices, label: secretRollOn ? "Roll Dice (secret)" : "Roll Dice", shortcut: hotkeyLabel('diceTray'), isActive: isDiceTrayOpen, onSelect: toggleDiceTray },
     },
     ...(dm ? [
       buttonItem('loot', { icon: CoinIcon, label: "Loot Roller", shortcut: hotkeyLabel('lootRoller'), isActive: lootRollerOpen, onClick: () => setLootRollerOpen(!lootRollerOpen) }, false),
