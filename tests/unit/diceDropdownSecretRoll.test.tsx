@@ -19,6 +19,7 @@ interface Tray {
   settings: SettingsService;
   rolls: DiceRollResult[];
   onToggle: ReturnType<typeof vi.fn>;
+  closeTray: () => void;
   openTray: () => void;
 }
 
@@ -39,7 +40,11 @@ function setup(): Tray {
     </AtlasUIContext.Provider>
   );
   const { rerender } = render(tree(true));
-  return { diceTool, settings, rolls, onToggle, openTray: () => rerender(tree(true)) };
+  return {
+    diceTool, settings, rolls, onToggle,
+    closeTray: () => rerender(tree(false)),
+    openTray: () => rerender(tree(true)),
+  };
 }
 
 function throwOneDie(): void {
@@ -67,5 +72,34 @@ describe('rolling from the dice tray', () => {
     act(() => diceTool.setSecretRoll(true));
     throwOneDie();
     expect(rolls[0]?.secret).toBe(true);
+  });
+
+  it('keeps the switch on when the tray closes after a throw and opens again', () => {
+    const { diceTool, closeTray, openTray } = setup();
+    act(() => diceTool.setSecretRoll(true));
+    throwOneDie();
+    closeTray();
+    openTray();
+    expect(screen.getByRole('switch', { name: 'Secret roll' }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('opens empty again after a throw with the switch on', () => {
+    const { diceTool, closeTray, openTray } = setup();
+    act(() => diceTool.setSecretRoll(true));
+    fireEvent.click(screen.getByRole('button', { name: 'Increase modifier' }));
+    throwOneDie();
+    closeTray();
+    openTray();
+    expect(screen.getByRole('status').textContent).toBe('The tray is empty.');
+  });
+
+  it('opens with the modifier back at zero after a throw with the switch on', () => {
+    const { diceTool, closeTray, openTray } = setup();
+    act(() => diceTool.setSecretRoll(true));
+    fireEvent.click(screen.getByRole('button', { name: 'Increase modifier' }));
+    throwOneDie();
+    closeTray();
+    openTray();
+    expect(document.querySelector('.atlas-dice-tray__modifier-value')?.textContent).toBe('0');
   });
 });
