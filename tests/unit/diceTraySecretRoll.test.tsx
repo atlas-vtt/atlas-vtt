@@ -71,4 +71,14 @@ describe('the dice tray secret roll switch', () => {
     renderTray();
     expect(screen.getByRole('switch', { name: 'Secret roll' }).getAttribute('aria-describedby')).toBeNull();
   });
+
+  it('puts no title attribute on the tray while the switch is enabled', () => {
+    renderTray();
+    expect(document.querySelector('[title]')).toBeNull();
+  });
+
+  it('puts no title attribute on the tray while the switch is disabled', () => {
+    renderTray({ secretRollAvailable: false });
+    expect(document.querySelector('[title]')).toBeNull();
+  });
 });
