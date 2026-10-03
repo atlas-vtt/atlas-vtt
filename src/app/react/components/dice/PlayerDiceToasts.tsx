@@ -13,7 +13,8 @@ interface PlayerDiceToastsProps {
 }
 
 /**
- * The DM's dice rolls as players see them in the player window. A roll made
+ * The DM's dice rolls as players see them in the player window. A secret roll is
+ * not shown at all. A roll made
  * for a token hidden on the map keeps its ability and result but not the
  * token's name or portrait, so it does not give the token away. Every other
  * token's portrait is read from the presented scene, like in the DM's window:
@@ -21,6 +22,8 @@ interface PlayerDiceToastsProps {
  */
 export function PlayerDiceToasts({ app, store, container }: PlayerDiceToastsProps): React.ReactElement {
   const context = useMemo((): AtlasUIContextValue => ({ app, view: null, pixiApp: null, renderer: null }), [app]);
+
+  const isSecret = useCallback((result: DiceRollResult): boolean => result.secret === true, []);
 
   const forPlayers = useCallback((result: DiceRollResult): DiceRollResult => {
     const source = result.source;
@@ -34,7 +37,7 @@ export function PlayerDiceToasts({ app, store, container }: PlayerDiceToastsProp
     <AtlasUIContext.Provider value={context}>
       <ReadableViewStoreProvider store={store}>
         {/* The DM's window plays the sound; a second one here would echo it. */}
-        <DiceRollDisplay container={container} prepare={forPlayers} muted />
+        <DiceRollDisplay container={container} skip={isSecret} prepare={forPlayers} muted />
       </ReadableViewStoreProvider>
     </AtlasUIContext.Provider>
   );

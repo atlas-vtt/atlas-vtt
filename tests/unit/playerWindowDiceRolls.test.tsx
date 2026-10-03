@@ -35,10 +35,11 @@ function setup(): { settings: SettingsService; store: StoreApi<ViewAtlasState>; 
   return { settings, store, doc };
 }
 
-function roll(source?: DiceRollResult['source']): void {
+function roll(source?: DiceRollResult['source'], secret?: true): void {
   const result: DiceRollResult = {
     id: 'roll', timestamp: 0, formula: '1d20+4', rolls: [{ die: 'd20', value: 13, max: 20 }], modifiers: 4, total: 17,
     ...(source ? { source } : {}),
+    ...(secret ? { secret } : {}),
   };
   act(() => { document.dispatchEvent(new CustomEvent('atlas-dice-rolled', { detail: result })); });
 }
@@ -56,6 +57,13 @@ describe('player window dice rolls', () => {
     expect(toastText(doc)).toContain('17');
 
     act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
+    expect(toastText(doc)).toBeUndefined();
+  });
+
+  it('shows no toast for a secret roll while the DM shares rolls', () => {
+    const { settings, doc } = setup();
+    act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: true }));
+    roll(undefined, true);
     expect(toastText(doc)).toBeUndefined();
   });
 
