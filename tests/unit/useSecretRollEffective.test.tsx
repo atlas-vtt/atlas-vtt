@@ -36,4 +36,10 @@ describe('useSecretRollEffective', () => {
     act(() => settings.setLocalPlayerViewSettings({ showDiceRolls: false }));
     expect(effective()).toBe(false);
   });
+
+  it('is off in a view that has no dice tool', () => {
+    const { app } = createInMemoryApp({ files: {} });
+    const { result } = renderHook(() => useSecretRollEffective(null, app));
+    expect(result.current).toBe(false);
+  });
 });
