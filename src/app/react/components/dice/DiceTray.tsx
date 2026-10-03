@@ -10,6 +10,8 @@ import {
   addDie, clampModifier, removeDie, trayDiceCount, trayFormula, type TrayPool,
 } from './diceTrayPool';
 
+const SECRET_ROLL_UNAVAILABLE = 'Turn on Show dice rolls in Local Player View to use this';
+
 interface DiceTrayProps {
   /** The finished formula goes up to whoever rolls it. */
   onRoll: (formula: string) => void;
@@ -27,7 +29,7 @@ interface DiceTrayProps {
  * control on a touchpad. Mixed dice are thrown together, `2d6 + 1d20 + 3`, as
  * three kinds held in one hand.
  */
-export function DiceTray({ onRoll, secretRoll, onSecretRollChange }: DiceTrayProps): React.ReactElement {
+export function DiceTray({ onRoll, secretRoll, onSecretRollChange, secretRollAvailable }: DiceTrayProps): React.ReactElement {
   const [pool, setPool] = useState<TrayPool>({});
   const [modifier, setModifier] = useState(0);
 
@@ -114,7 +116,13 @@ export function DiceTray({ onRoll, secretRoll, onSecretRollChange }: DiceTrayPro
         {formula === '' ? 'The tray is empty.' : formula}
       </p>
 
-      <DropdownToggleRow label="Secret roll" value={secretRoll} onChange={() => onSecretRollChange(!secretRoll)} />
+      <DropdownToggleRow
+        label="Secret roll"
+        value={secretRoll}
+        onChange={() => onSecretRollChange(!secretRoll)}
+        disabled={!secretRollAvailable}
+        {...(secretRollAvailable ? {} : { description: SECRET_ROLL_UNAVAILABLE })}
+      />
 
       <div className="atlas-dice-tray__actions">
         <Button size="sm" className="atlas-dice-tray__roll" onClick={throwDice} disabled={formula === ''}>

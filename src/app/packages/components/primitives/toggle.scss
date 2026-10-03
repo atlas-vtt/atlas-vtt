@@ -13,6 +13,12 @@
   @include atlas-focus-ring;
 }
 
+// Unavailable: dimmed in place, so the row keeps its shape and nothing moves under the pointer.
+.atlas-toggle--disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
 .atlas-toggle__switch {
   height: 2.5rem;
   width: 3.75rem;

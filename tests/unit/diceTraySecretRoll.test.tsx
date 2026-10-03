@@ -48,4 +48,9 @@ describe('the dice tray secret roll switch', () => {
     fireEvent.click(screen.getByRole('switch', { name: 'Secret roll' }));
     expect(onSecretRollChange).toHaveBeenCalledWith(false);
   });
+
+  it('keeps the switch in the tray but disabled while Show dice rolls is off', () => {
+    renderTray({ secretRollAvailable: false });
+    expect(screen.getByRole('switch', { name: 'Secret roll' }).getAttribute('aria-disabled')).toBe('true');
+  });
 });

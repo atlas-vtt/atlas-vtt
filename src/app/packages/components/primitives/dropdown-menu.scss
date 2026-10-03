@@ -158,6 +158,10 @@
   }
 }
 
+.atlas-dropdown-toggle-row__description {
+  @include atlas-visually-hidden;
+}
+
 .atlas-dropdown-toggle-row__label {
   flex: 1;
   min-width: 0;
