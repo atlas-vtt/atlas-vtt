@@ -64,6 +64,7 @@ export class DiceTool {
 
   public setSecretRoll(on: boolean): void {
     this.state.secretRoll = on;
+    this.eventBus.emit('dice-secret-roll-changed', on);
   }
 
   public rollDice(

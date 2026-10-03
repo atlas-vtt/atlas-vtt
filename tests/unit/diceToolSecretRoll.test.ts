@@ -38,6 +38,14 @@ describe('DiceTool secret rolls', () => {
     expect(diceTool.state.secretRoll).toBe(true);
   });
 
+  it('announces a change of the secret roll on its event bus', () => {
+    const eventBus = new EventEmitter();
+    const changes: boolean[] = [];
+    eventBus.on('dice-secret-roll-changed', (on: boolean) => changes.push(on));
+    new DiceTool(eventBus).setSecretRoll(true);
+    expect(changes).toEqual([true]);
+  });
+
   it('leaves the secret key off a roll made with the option set to false', () => {
     const diceTool = new DiceTool(new EventEmitter());
     const result = diceTool.rollDice('1d20', undefined, { secret: false });
