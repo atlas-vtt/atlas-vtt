@@ -1,6 +1,11 @@
+import { act, render } from '@testing-library/react';
+import React from 'react';
 import { describe, expect, it, vi } from 'vitest';
+import { DiceRollDisplay } from '../../src/app/react/components/dice/DiceRollDisplay';
+import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { DiceToastObserver } from '../../src/app/services/DiceToastObserver';
 import type { SoundEffectService } from '../../src/app/services/SoundEffectService';
+import { createInMemoryApp } from '../mocks/inMemoryVault';
 import type { DiceRollResult } from '../../src/app/tools/DiceTool';
 
 function secretRoll(): DiceRollResult {
@@ -20,5 +25,17 @@ describe('the GM hears and sees secret rolls', () => {
     document.dispatchEvent(new CustomEvent('atlas-dice-rolled', { detail: secretRoll() }));
     observer.destroy();
     expect(playDiceResult).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows a secret roll in the GM display', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
+    const { app } = createInMemoryApp({ files: {} });
+    const { container } = render(
+      <AtlasUIContext.Provider value={{ app, view: null, pixiApp: null, renderer: null }}>
+        <DiceRollDisplay />
+      </AtlasUIContext.Provider>
+    );
+    act(() => { document.dispatchEvent(new CustomEvent('atlas-dice-rolled', { detail: secretRoll() })); });
+    expect(container.querySelector('.atlas-dice-rolls')).not.toBeNull();
   });
 });
