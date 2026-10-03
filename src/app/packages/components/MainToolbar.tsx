@@ -1,5 +1,6 @@
-import React, { useState, useCallback, useRef, useMemo, forwardRef } from "react"
+import React, { useState, useCallback, useEffect, useRef, useMemo, forwardRef } from "react"
 import { useAtlasStore, useViewStoreHook } from "src/app/react/ViewStoreContext"
+import { AnimatePresence } from "framer-motion"
 import { Eye, EyeOff } from "lucide-react"
 
 import { TooltipProvider } from "./primitives/tooltip"
@@ -17,6 +18,10 @@ import { ResponsiveToolbar } from "./toolbar/ResponsiveToolbar"
 import { useToolbarHotkeys } from "./toolbar/useToolbarHotkeys"
 import { useToolbarLayout } from "./toolbar/useToolbarLayout"
 import { TOOLBAR_CONTROL_ITEMS } from "./toolbar/toolbarControls"
+import { ToolbarEditContext } from "./toolbar/editor/toolbarEditContext"
+import { ToolbarEditor } from "./toolbar/editor/ToolbarEditor"
+import { ToolbarLiveRegion } from "./toolbar/editor/ToolbarLiveRegion"
+import { useToolbarEditor } from "./toolbar/editor/useToolbarEditor"
 import type { Tool } from "./toolbar/toolFaces"
 import type { ToolbarContext, ToolMenu } from "./toolbar/toolbarContext"
 import type { ResponsiveToolbarItem } from "./toolbar/toolbarTypes"
@@ -36,7 +41,8 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const experimentalOn: Record<ExperimentalFeatureId, boolean> = {
     dynamicLighting: useExperimentalFeature('dynamicLighting'),
   }
-  const { layout } = useToolbarLayout()
+  const layoutAccess = useToolbarLayout()
+  const { layout } = layoutAccess
 
   const isActualPlayerView = view?.getViewType?.() === 'atlas-vtt-player'
 
@@ -51,6 +57,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const setDiceTrayOpen = useAtlasStore(s => s.setDiceTrayOpen)
   const lootRollerOpen = useAtlasStore(s => s.lootRoller.open)
   const setLootRollerOpen = useAtlasStore(s => s.setLootRollerOpen)
+  const isToolbarEditing = useAtlasStore(s => s.isToolbarEditing)
 
   const [openMenu, setOpenMenu] = useState<ToolMenu | null>(null)
   const closeMenus = useCallback((): void => setOpenMenu(null), [])
@@ -105,6 +112,20 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   })
 
   const dm = !isActualPlayerView
+  const editing = dm && isToolbarEditing
+  // Whether the palette action that started edit mode was chosen with the keyboard.
+  const [editingByKeyboard, setEditingByKeyboard] = useState(false)
+
+  const startEditing = useCallback((byKeyboard: boolean): void => {
+    setEditingByKeyboard(byKeyboard)
+    store.getState().setToolbarEditing(true)
+  }, [store])
+  const stopEditing = useCallback((): void => store.getState().setToolbarEditing(false), [store])
+
+  // Tool menus hang where the editor's tray goes.
+  useEffect(() => {
+    if (editing) closeMenus()
+  }, [editing, closeMenus])
 
   const ctx: ToolbarContext = {
     activeTool,
@@ -128,29 +149,47 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const available = availableToolbarControls(!dm, (feature) => experimentalOn[feature])
   const order = (dm ? layout.order : DEFAULT_TOOLBAR_ORDER).filter((id) => available.has(id))
   const items: ResponsiveToolbarItem[] = order.map((id) => ({ id, ...TOOLBAR_CONTROL_ITEMS[id](ctx) }))
+  const editor = useToolbarEditor({ access: layoutAccess, available, hotkeyLabel, editing, stop: stopEditing })
+  const hiddenIds: ReadonlySet<string> = layout.hidden
 
   return (
     <TooltipProvider delayDuration={300}>
-      <ResponsiveToolbar
-        ref={ref || toolbarRef}
-        items={items}
-        {...(dm && { hiddenIds: layout.hidden })}
-        // The GM view switch keeps the bar's last place, after "More tools".
-        end={dm && (
-          <Toggle
-            value={isGMView}
-            onChange={toggleGMView}
-            iconOn={Eye}
-            iconOff={EyeOff}
-            tooltipOn={`GM View (${hotkeyLabel('gmView')})`}
-            tooltipOff={`Session View (${hotkeyLabel('gmView')})`}
-          />
-        )}
-      />
+      <ToolbarEditContext.Provider value={editing ? editor.api : null}>
+        <ResponsiveToolbar
+          ref={ref || toolbarRef}
+          items={items}
+          editing={editing}
+          {...(dm && { hiddenIds })}
+          // The GM view switch keeps the bar's last place, after "More tools".
+          end={dm && (
+            <Toggle
+              value={isGMView}
+              onChange={toggleGMView}
+              iconOn={Eye}
+              iconOff={EyeOff}
+              tooltipOn={`GM View (${hotkeyLabel('gmView')})`}
+              tooltipOff={`Session View (${hotkeyLabel('gmView')})`}
+            />
+          )}
+        />
+        <AnimatePresence>
+          {editing && (
+            <ToolbarEditor
+              key="toolbar-editor"
+              trayItems={items.filter((item) => hiddenIds.has(item.id))}
+              viewId={viewId}
+              focusOnEntry={editingByKeyboard}
+            />
+          )}
+        </AnimatePresence>
+      </ToolbarEditContext.Provider>
+      {/* Always mounted, so the message that edit mode ended is still read once the tray is gone. */}
+      {dm && <ToolbarLiveRegion announcement={editor.announcement} />}
       <CommandPalette
         isOpen={isCommandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         toolbarRef={toolbarRef}
+        {...(dm && { onCustomizeToolbar: startEditing })}
       />
       <AssetManager
         isOpen={isAssetManagerOpen}

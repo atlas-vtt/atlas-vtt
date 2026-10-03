@@ -802,6 +802,8 @@ export class PixiRendererOrchestrator { // Renamed class
           e.preventDefault();
           return;
         }
+        // The toolbar editor ends on this Escape (its own listener); the selection stays.
+        if (this.store.getState().isToolbarEditing) return;
         // Clear token selection
         const selectedIds = this.store.getState().selectedIds;
         if (selectedIds.length > 0) {

@@ -1,0 +1,99 @@
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { canRunMapHotkeys } from '../../../../keyboard/mapHotkeys'
+import { useContextMenu } from '../../../../react/root/ContextMenuContext'
+import { useAtlasUI } from '../../../../react/root/AtlasUIContext'
+import { findAtlasLeafByViewId } from '../../../../utils/atlasLeafLookup'
+import { observeResize } from '../../../../utils/observeResize'
+import type { ResponsiveToolbarItem } from '../toolbarTypes'
+import { useToolbarEdit } from './toolbarEditContext'
+import { doneButtonOf, groupHandles, handleOf, mainToolbarOf } from './toolbarEditDom'
+import { ToolbarTray } from './ToolbarTray'
+
+interface ToolbarEditorProps {
+  /** The hidden controls this view offers, in their remembered order. */
+  trayItems: readonly ResponsiveToolbarItem[]
+  viewId?: string | undefined
+  /** The palette action was chosen with the keyboard: focus starts on the bar's first tool. */
+  focusOnEntry: boolean
+}
+
+/**
+ * Edit mode's own parts, mounted while it lasts: the tray hanging above the
+ * bar, and the ways out other than Done and the panels that end it (Escape no
+ * control used, another tab coming to the front, the scene unloading). It
+ * sits over the bar's cell of the bottom row without taking one, so the bar's
+ * width and corners are those of any other moment.
+ */
+export function ToolbarEditor({ trayItems, viewId, focusOnEntry }: ToolbarEditorProps): React.ReactElement | null {
+  const edit = useToolbarEdit()
+  const { app, view } = useAtlasUI()
+  const { close: closeContextMenu } = useContextMenu()
+  const rootRef = useRef<HTMLDivElement>(null)
+  const [barHeight, setBarHeight] = useState<number | null>(null)
+  const finish = edit?.finish
+
+  useLayoutEffect(() => {
+    const row = rootRef.current?.parentElement
+    const bar = row ? mainToolbarOf(row) : null
+    if (!bar) return undefined
+    const measure = (): void => setBarHeight(bar.offsetHeight)
+    measure()
+    return observeResize([bar], measure)
+  }, [])
+
+  useLayoutEffect(() => {
+    const row = rootRef.current?.parentElement
+    if (focusOnEntry && row) groupHandles(row, 'bar')[0]?.focus()
+  }, [focusOnEntry])
+
+  // After a change is drawn, focus goes where the change asked; Done where that is gone.
+  useLayoutEffect(() => {
+    const target = edit?.takeFocusRequest()
+    const row = rootRef.current?.parentElement
+    if (!target || !row) return
+    const handle = target === 'done' ? null : handleOf(row, target.group, target.id)
+    const element = handle ?? doneButtonOf(row)
+    element?.focus()
+  })
+
+  // Escape that no control used (an open menu, a canvas gesture) ends edit mode, asked as the map's shortcuts ask.
+  useEffect(() => {
+    const root = rootRef.current
+    if (!root || !finish) return undefined
+    const doc = root.doc
+    const onKeyDown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape' || !canRunMapHotkeys(event, viewId)) return
+      event.preventDefault()
+      finish(doc.activeElement)
+    }
+    doc.addEventListener('keydown', onKeyDown)
+    return () => doc.removeEventListener('keydown', onKeyDown)
+  }, [finish, viewId])
+
+  useEffect(() => {
+    if (!finish) return undefined
+    const leafChange = app.workspace.on('active-leaf-change', (leaf) => {
+      if (viewId && leaf !== findAtlasLeafByViewId(app.workspace, viewId)) finish()
+    })
+    const bus = view?.serviceManager?.getEventBus?.()
+    const unloading = (): void => finish()
+    bus?.on('map-unloading', unloading)
+    return () => {
+      app.workspace.offref(leafChange)
+      bus?.off('map-unloading', unloading)
+    }
+  }, [app, view, viewId, finish])
+
+  // The editor's menus close with it.
+  useEffect(() => closeContextMenu, [closeContextMenu])
+
+  if (!edit) return null
+  const style = barHeight === null ? undefined : { '--atlas-toolbar-bar-height': `${barHeight}px` } as React.CSSProperties
+  return (
+    <div ref={rootRef} className="atlas-toolbar-editor" style={style}>
+      <div className="atlas-toolbar-editor__tray-row">
+        <ToolbarTray edit={edit} items={trayItems} />
+      </div>
+    </div>
+  )
+}

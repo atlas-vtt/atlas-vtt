@@ -10,11 +10,18 @@
 
 /// Elevated card surface — opaque background, visible stroke, drop shadow.
 /// Use for modals, popovers, hover previews, and floating panels.
-@mixin atlas-elevated-surface {
-  background: var(--background-primary);
-  border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
-  border-radius: $radius-xl;
-  box-shadow: $shadow-elevated;
+/// @param {String} $variant - `editing` marks a surface being arranged (the
+///   toolbar while its editor is open) with an accent stroke. Include it in the
+///   state's own rule, on top of the plain surface: it sets the stroke alone.
+@mixin atlas-elevated-surface($variant: plain) {
+  @if $variant == editing {
+    border-color: color-mix(in oklch, var(--interactive-accent) 50%, transparent);
+  } @else {
+    background: var(--background-primary);
+    border: $border-width-m solid color-mix(in oklch, var(--mono-100) $border-opacity-default, transparent);
+    border-radius: $radius-xl;
+    box-shadow: $shadow-elevated;
+  }
 }
 
 /// Marks a token with a linked statblock: a small round badge on its art,

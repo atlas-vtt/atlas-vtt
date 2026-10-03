@@ -51,6 +51,9 @@ interface MenuState {
 
 export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [menuState, setMenuState] = useState<MenuState | null>(null);
+  // The body of the document the provider renders in: a map in a popout opens its menus there.
+  const [body, setBody] = useState<HTMLElement | null>(null);
+  const anchor = useCallback((node: HTMLSpanElement | null): void => setBody(node?.ownerDocument.body ?? null), []);
 
   const close = useCallback((): void => setMenuState(null), []);
 
@@ -71,7 +74,8 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
   return (
     <ContextMenuCtx.Provider value={{ open, close }}>
       {children}
-      {createPortal(
+      <span ref={anchor} hidden />
+      {body && createPortal(
         <DropdownMenu.Root
           open={!!menuState}
           onOpenChange={(isOpen) => { if (!isOpen) close(); }}
@@ -91,7 +95,7 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
           </DropdownMenu.Trigger>
 
           {menuState && (
-            <DropdownMenu.Portal>
+            <DropdownMenu.Portal container={body}>
               <DropdownMenu.Content
                 className="atlas-ctx-menu"
                 side="bottom"
@@ -106,7 +110,7 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
             </DropdownMenu.Portal>
           )}
         </DropdownMenu.Root>,
-        document.body,
+        body,
       )}
     </ContextMenuCtx.Provider>
   );

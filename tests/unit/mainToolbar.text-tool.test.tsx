@@ -46,6 +46,8 @@ const storeState = {
   assetManagerInitialTab: 'assets',
   isDiceTrayOpen: false,
   setDiceTrayOpen,
+  isToolbarEditing: false,
+  setToolbarEditing: vi.fn(),
   initiativeTrackerOpen: false,
   lootRoller: { open: false },
   setLootRollerOpen: vi.fn(),

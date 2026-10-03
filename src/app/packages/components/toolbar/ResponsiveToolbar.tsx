@@ -1,5 +1,11 @@
-import React, { forwardRef, useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from "react"
+import React, { forwardRef, useCallback, useContext, useEffect, useId, useLayoutEffect, useRef, useState } from "react"
+import { cn } from "src/utils/cn"
 import { observeResize } from "../../../utils/observeResize"
+import { isToolbarControlId } from "../../../toolbar/toolbarCatalog"
+import { useToolbarEdit } from "./editor/toolbarEditContext"
+import { ToolbarEditOverflowMenu } from "./editor/ToolbarEditOverflowMenu"
+import { ToolbarItemHandle } from "./editor/ToolbarItemHandle"
+import { stopMapShortcuts } from "./editor/useToolbarKeyboard"
 import { overflowingToolbarItems } from "./toolbarFit"
 import { measureBar, sameGeometry, type BarGeometry } from "./toolbarGeometry"
 import { ToolbarOverflowMenu } from "./ToolbarOverflowMenu"
@@ -11,7 +17,11 @@ interface ResponsiveToolbarProps {
   items: readonly ResponsiveToolbarItem[]
   /** Controls the user hid: never in the bar or in "More tools", except while visiting. */
   hiddenIds?: ReadonlySet<string>
-  /** The toolbar editor is open: the bar shows exactly the stored layout, so hidden controls do not visit. */
+  /**
+   * The toolbar editor is open: the bar shows exactly the stored layout, so
+   * hidden controls do not visit, and with the editor's context each control
+   * is inert under a handle the editor works through.
+   */
   editing?: boolean
   /** A control that always stays at the very end of the bar, after the overflow button. */
   end?: React.ReactNode
@@ -35,6 +45,9 @@ export const ResponsiveToolbar = forwardRef<HTMLDivElement, ResponsiveToolbarPro
   const barRef = useRef<HTMLDivElement | null>(null)
   const [geometry, setGeometry] = useState<BarGeometry | null>(null)
   const placements = useControlPlacements(items, hiddenIds, editing)
+  const edit = useToolbarEdit()
+  const withHandles = editing && edit !== null
+  const labelId = useId()
 
   const setBar = useCallback((element: HTMLDivElement | null): void => {
     barRef.current = element
@@ -66,9 +79,15 @@ export const ResponsiveToolbar = forwardRef<HTMLDivElement, ResponsiveToolbarPro
     { available: space, chrome: geometry.chrome, gap: geometry.gap, overflowButtonWidth: geometry.overflowButtonWidth },
   )
   const overflowItems = shown.filter((item) => overflowing.has(item.id))
+  const inBar = shown.filter((item) => !overflowing.has(item.id)).map((item) => item.id)
+  const tabStop = edit?.current.bar && inBar.includes(edit.current.bar) ? edit.current.bar : inBar[0]
 
   return (
-    <div ref={setBar} className="atlas-vtt-toolbar">
+    <div
+      ref={setBar}
+      className={cn("atlas-vtt-toolbar atlas-main-toolbar", withHandles && "is-editing")}
+      {...(withHandles && { role: "toolbar", "aria-labelledby": labelId, onKeyDown: stopMapShortcuts })}
+    >
       {items.map((item) => (
         <div
           key={item.id}
@@ -76,11 +95,16 @@ export const ResponsiveToolbar = forwardRef<HTMLDivElement, ResponsiveToolbarPro
           data-toolbar-item={item.id}
           hidden={placements.get(item.id) === "hidden" || overflowing.has(item.id)}
         >
-          {item.element}
+          {withHandles && isToolbarControlId(item.id) && (
+            <ToolbarItemHandle id={item.id} group="bar" tabIndex={item.id === tabStop ? 0 : -1} />
+          )}
+          {/* Always this wrapper, so a control is never remounted when edit mode starts or ends. */}
+          <div className="atlas-toolbar-item__content" inert={withHandles}>{item.element}</div>
         </div>
       ))}
-      {overflowItems.length > 0 && <ToolbarOverflowMenu items={overflowItems} />}
+      {overflowItems.length > 0 && (withHandles ? <ToolbarEditOverflowMenu items={overflowItems} /> : <ToolbarOverflowMenu items={overflowItems} />)}
       {end && <div className="atlas-toolbar-end">{end}</div>}
+      {withHandles && <span id={labelId} hidden>Toolbar</span>}
     </div>
   )
 })

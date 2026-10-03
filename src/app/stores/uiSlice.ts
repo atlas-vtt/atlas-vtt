@@ -30,6 +30,8 @@ export interface UISlice {
   heldTokens: HeldTokens;
   /** What the lighting tool's explored-memory mode does with a stroke: the one place the menu and the tool read it from. */
   exploredBrush: ExploredBrushOptions;
+  /** The toolbar editor is open in this view: tray, hide and show, inert tools. Never saved. */
+  isToolbarEditing: boolean;
 
   // Actions
   setGridSettingsOpen: (open: boolean) => void;
@@ -47,6 +49,8 @@ export interface UISlice {
   setSceneLightingPanelOpen: (open: boolean) => void;
   setHeldTokens: (held: HeldTokens) => void;
   setExploredBrush: (changes: Partial<ExploredBrushOptions>) => void;
+  /** Starting the toolbar editor closes the dice tray, which hangs where the tray goes. */
+  setToolbarEditing: (on: boolean) => void;
 }
 
 /** Default state — all panels closed */
@@ -65,6 +69,7 @@ export function createInitialUIState(): Pick<
   | 'isSceneLightingPanelOpen'
   | 'heldTokens'
   | 'exploredBrush'
+  | 'isToolbarEditing'
 > {
   return {
     isGridSettingsOpen: false,
@@ -80,6 +85,7 @@ export function createInitialUIState(): Pick<
     isSceneLightingPanelOpen: false,
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
+    isToolbarEditing: false,
   };
 }
 
@@ -103,22 +109,31 @@ export function createUIActions(
   | 'setSceneLightingPanelOpen'
   | 'setHeldTokens'
   | 'setExploredBrush'
+  | 'setToolbarEditing'
 > {
   return {
     setGridSettingsOpen: (open) => set((draft) => { draft.isGridSettingsOpen = open; }),
     setDMScreenOpen: (open) => set((draft) => { draft.isDMScreenOpen = open; }),
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
     setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
+    // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.
     openAssetManager: (tab) => set((draft) => {
       draft.isAssetManagerOpen = true;
       draft.assetManagerInitialTab = tab;
+      draft.isToolbarEditing = false;
     }),
     closeAssetManager: () => set((draft) => {
       draft.isAssetManagerOpen = false;
       draft.assetManagerInitialTab = undefined;
     }),
-    setCommandPaletteOpen: (open) => set((draft) => { draft.isCommandPaletteOpen = open; }),
-    setDiceTrayOpen: (open) => set((draft) => { draft.isDiceTrayOpen = open; }),
+    setCommandPaletteOpen: (open) => set((draft) => {
+      draft.isCommandPaletteOpen = open;
+      if (open) draft.isToolbarEditing = false;
+    }),
+    setDiceTrayOpen: (open) => set((draft) => {
+      draft.isDiceTrayOpen = open;
+      if (open) draft.isToolbarEditing = false;
+    }),
     openLightPopover: (lightId) => set((draft) => {
       draft.lightPopover = lightId;
       draft.lightZonePopover = null;
@@ -132,5 +147,9 @@ export function createUIActions(
     setSceneLightingPanelOpen: (open) => set((draft) => { draft.isSceneLightingPanelOpen = open; }),
     setHeldTokens: (held) => set((draft) => { draft.heldTokens = held; }),
     setExploredBrush: (changes) => set((draft) => { draft.exploredBrush = { ...draft.exploredBrush, ...changes }; }),
+    setToolbarEditing: (on) => set((draft) => {
+      draft.isToolbarEditing = on;
+      if (on) draft.isDiceTrayOpen = false;
+    }),
   };
 }
