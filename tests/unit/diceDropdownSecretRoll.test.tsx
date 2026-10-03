@@ -54,4 +54,10 @@ describe('rolling from the dice tray', () => {
     throwOneDie();
     expect(rolls[0]?.secret).toBe(true);
   });
+
+  it('leaves a roll without the secret flag while the switch is off', () => {
+    const { rolls } = setup();
+    throwOneDie();
+    expect(rolls[0] && 'secret' in rolls[0]).toBe(false);
+  });
 });
