@@ -27,6 +27,11 @@ describe('DiceTool secret rolls', () => {
     expect(detail?.secret).toBe(true);
   });
 
+  it('starts with the secret roll switched off', () => {
+    const diceTool = new DiceTool(new EventEmitter());
+    expect(diceTool.state.secretRoll).toBe(false);
+  });
+
   it('leaves the secret key off a roll made with the option set to false', () => {
     const diceTool = new DiceTool(new EventEmitter());
     const result = diceTool.rollDice('1d20', undefined, { secret: false });

@@ -36,6 +36,8 @@ export interface DiceToolState {
   rollHistory: DiceRollResult[];
   activeFormula: string;
   quickDice: string[]; // Quick access dice buttons
+  /** Tray rolls are secret while this is on. Per view, never saved, and kept when the tray closes. */
+  secretRoll: boolean;
 }
 
 export class DiceTool {
@@ -50,7 +52,8 @@ export class DiceTool {
       isTrayOpen: false,
       rollHistory: [],
       activeFormula: '',
-      quickDice: ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']
+      quickDice: ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100'],
+      secretRoll: false
     };
   }
 
