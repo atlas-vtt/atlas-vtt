@@ -1,4 +1,5 @@
 import type React from "react"
+import type { ToolbarItemBody } from "./toolbarItems"
 
 /** How a control that moved into the toolbar's overflow menu shows there. */
 export interface ToolbarMenuEntry {
@@ -11,15 +12,4 @@ export interface ToolbarMenuEntry {
 }
 
 /** One control of the main toolbar. */
-export interface ResponsiveToolbarItem {
-  id: string
-  /** Controls with a lower priority move into the overflow menu first. */
-  priority: number
-  /**
-   * Keeps the control in the bar: the tool in use, and any control whose menu or
-   * panel is open, since those hang from the control's button.
-   */
-  pinned: boolean
-  element: React.ReactNode
-  menuEntry: ToolbarMenuEntry
-}
+export type ResponsiveToolbarItem = ToolbarItemBody & { id: string }

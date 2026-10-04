@@ -72,6 +72,9 @@
   @import '../src/app/packages/components/primitives/context-menu.scss';
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
+  @import '../src/app/packages/components/toolbar/editor/toolbar-editor';
+  @import '../src/app/packages/components/toolbar/editor/toolbar-drag';
+  @import '../src/app/packages/components/toolbar/editor/toolbar-card';
   @import '../src/app/packages/components/primitives/toggle.scss';
   @import '../src/app/packages/components/primitives/input-modal.scss';
   @import '../src/app/packages/components/primitives/select.scss';
@@ -241,9 +244,10 @@
     // The end controls sit $spacing-s inside the border, so their outer corners
     // run concentric with the bar's. Tool buttons, tool groups and the toggle
     // read these; the corners between controls keep their own radius. Controls
-    // in the overflow menu are hidden, so the ends are the first and last shown.
-    > :nth-child(1 of :not([hidden])) { --atlas-bar-start-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
-    > :nth-last-child(1 of :not([hidden])) { --atlas-bar-end-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
+    // in the overflow menu are hidden, so the ends are the first and last shown;
+    // a control on its way out of the main toolbar no longer holds an end.
+    > :nth-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-start-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
+    > :nth-last-child(1 of :not([hidden], [data-collapsing])) { --atlas-bar-end-radius: #{atlas-panel-inset-radius-value($spacing-s)}; }
 
     // Menus opened from an end control are not part of the bar's outline.
     .atlas-dropdown-content {
@@ -262,10 +266,26 @@
     }
   }
 
+  // The main toolbar alone: the undo/redo bar shares `.atlas-vtt-toolbar`. The toolbar editor's
+  // handles lie inside its items, and while the editor is open its stroke takes the accent.
+  .atlas-main-toolbar {
+    position: relative;
+    transition: border-color $transition-normal $transition-ease;
+
+    &.is-editing {
+      @include atlas-elevated-surface(editing);
+    }
+
+    > .atlas-toolbar-item {
+      position: relative;
+    }
+  }
+
   // One control of the main toolbar; hidden while it is in the overflow menu.
   // The end control (GM view switch) never is.
   .atlas-toolbar-item,
-  .atlas-toolbar-end {
+  .atlas-toolbar-end,
+  .atlas-toolbar-item__content {
     display: flex;
     align-items: center;
 
@@ -274,14 +294,21 @@
     }
   }
 
+  // Keeps its own width while its slot opens or closes around it.
+  .atlas-toolbar-item__content {
+    flex-shrink: 0;
+  }
+
   // "More tools": the menu opens above the button, flush with its right edge.
   .atlas-toolbar-overflow {
     position: relative;
     display: flex;
     align-items: center;
 
-    // Shows the menu as open; it has to outrank the `!important` that makes every toolbar button transparent
-    .atlas-tool-button button.btn[aria-expanded="true"] {
+    // Shows the menu as open, or as where a dragged tool would land (the toolbar editor); it has to
+    // outrank the `!important` that makes every toolbar button transparent
+    .atlas-tool-button button.btn[aria-expanded="true"],
+    &[data-drop-target] .atlas-tool-button button.btn {
       background: var(--background-modifier-hover) !important;
     }
   }
@@ -329,12 +356,15 @@
   }
 
   // Buttons in the toolbar's menus that keep their own look: the dice tray's Roll and Clear,
-  // and the options of a segmented control, which is filled where it is chosen.
-  $own-look: '.atlas-dice-tray *, .atlas-segmented__option';
+  // the options of a segmented control, which is filled where it is chosen, and the editor tray's Done.
+  $own-look: '.atlas-dice-tray *, .atlas-segmented__option, .atlas-toolbar-tray__done';
+  // The bars whose buttons these rules shape: the toolbars, the toolbar editor's tray, and the
+  // ghost of a tool moving between them.
+  $toolbars: ':is(.atlas-vtt-toolbar, .atlas-toolbar-tray, .atlas-toolbar-ghost)';
 
   /* Make all buttons in toolbar transparent by default, except those with their own look. */
-  .atlas-vtt-toolbar button.btn:not(#{$own-look}),
-  .atlas-vtt-toolbar button.btn--toolbar {
+  #{$toolbars} button.btn:not(#{$own-look}),
+  #{$toolbars} button.btn--toolbar {
     background: transparent !important;
     border: none !important;
     outline: none !important;
@@ -350,27 +380,27 @@
 
   // Pointer focus stays quiet; keyboard focus gets the shared ring. The quiet rule leaves
   // :focus-visible alone: as `:focus:not(…)` it outranked the ring's rule below.
-  .atlas-vtt-toolbar button.btn:focus:not(:focus-visible):not(#{$own-look}),
-  .atlas-vtt-toolbar button.btn--toolbar:focus:not(:focus-visible) {
+  #{$toolbars} button.btn:focus:not(:focus-visible):not(#{$own-look}),
+  #{$toolbars} button.btn--toolbar:focus:not(:focus-visible) {
     outline: none !important;
     box-shadow: none !important;
   }
 
   // A segmented option keeps the button's own ring, as in a dialog (`:where`: no added weight).
-  .atlas-vtt-toolbar button.btn:focus-visible:where(:not(.atlas-segmented__option)),
-  .atlas-vtt-toolbar button.btn--toolbar:focus-visible {
+  #{$toolbars} button.btn:focus-visible:where(:not(.atlas-segmented__option)),
+  #{$toolbars} button.btn--toolbar:focus-visible {
     outline: 2px solid var(--interactive-accent) !important;
     outline-offset: -2px;
   }
 
-  .atlas-vtt-toolbar button.btn:hover:not(#{$own-look}),
-  .atlas-vtt-toolbar button.btn--toolbar:hover {
+  #{$toolbars} button.btn:hover:not(#{$own-look}),
+  #{$toolbars} button.btn--toolbar:hover {
     background: var(--background-modifier-hover) !important;
     color: var(--text-normal) !important;
   }
 
   // .btn.is-active outranks the tool group's transparent reset below
-  .atlas-vtt-toolbar button.btn.is-active {
+  #{$toolbars} button.btn.is-active {
     background: var(--interactive-accent) !important;
     color: var(--text-on-accent) !important;
 
@@ -381,7 +411,7 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .atlas-vtt-toolbar button.btn:active {
+    #{$toolbars} button.btn:active {
       transform: none;
     }
   }
@@ -685,7 +715,6 @@
 // Player view specific styles - properly scoped
 .atlas-vtt-view.atlas-player-view {
   // Hide all UI elements that shouldn't be visible to players
-  .atlas-main-toolbar,
   .atlas-context-menu,
   .atlas-dropdown-menu,
   .atlas-note-preview,

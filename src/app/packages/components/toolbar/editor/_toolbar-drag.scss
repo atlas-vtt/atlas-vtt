@@ -1,0 +1,114 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Dragging in the toolbar editor: the press, the dragged tool's empty slot and
+// the well where it would land, "More tools" as the landing place, the tray
+// refusing the Command palette, and the cursor while a tool is dragged
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use 'toolbar-editor-shared' as *;
+
+// Pressed before a drag: the content gives a little under the pointer.
+:is(.atlas-toolbar-item, .atlas-toolbar-tray__item) > :is(.atlas-toolbar-item__content, .atlas-toolbar-face) {
+  transition: transform $transition-press $transition-ease-out;
+}
+
+:is(.atlas-toolbar-item, .atlas-toolbar-tray__item)[data-pressed] > :is(.atlas-toolbar-item__content, .atlas-toolbar-face) {
+  transform: scale(0.96);
+}
+
+// A dragged tool's own slot: empty while its ghost is in the air, and the well while it holds
+// the tool's place (its handle stays, so keyboard focus does too). The well's fill fades in as
+// the tool lifts off.
+:is(.atlas-toolbar-item, .atlas-toolbar-tray__item)[data-lifted] {
+  > :is(.atlas-toolbar-item__content, .atlas-toolbar-face) {
+    visibility: hidden;
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: $control-corners;
+    background: var(--background-modifier-hover);
+    pointer-events: none;
+    animation: atlas-toolbar-fade-in $transition-fast $transition-ease-out;
+    @include atlas-corner-shape;
+  }
+}
+
+// The gap that opens in the bar where a dragged tool would land; its width moves, its height is a control's.
+.atlas-toolbar-spacer {
+  flex-shrink: 0;
+  height: $button-height-l;
+  overflow: hidden;
+  border-radius: $control-corners;
+  background: var(--background-modifier-hover);
+  pointer-events: none;
+  @include atlas-corner-shape;
+}
+
+// With reduced motion a dropped tool fades in where it landed instead of the ghost settling there.
+:is(.atlas-toolbar-item, .atlas-toolbar-tray__item)[data-revealing] > :is(.atlas-toolbar-item__content, .atlas-toolbar-face) {
+  animation: atlas-toolbar-fade-in $transition-fast $transition-ease-out;
+}
+
+// "More tools" grows a little where a dragged tool would land because the bar has no room for it;
+// it takes the hover fill with its open look (main.scss).
+.atlas-main-toolbar .atlas-toolbar-overflow {
+  transition: transform 150ms $transition-ease-out;
+
+  &[data-drop-target] {
+    transform: scale(1.06);
+  }
+}
+
+// The tray refuses the Command palette: it dims while the palette is dragged.
+.atlas-toolbar-tray {
+  transition: opacity $transition-normal $transition-ease-out;
+
+  &[data-refusing] {
+    opacity: 0.5;
+  }
+}
+
+// A refusal with reduced motion: the ghost, or the Command palette that Delete cannot hide, takes
+// the error colour for a moment instead of shaking.
+.atlas-toolbar-ghost[data-refused] {
+  box-shadow: 0 0 0 $border-width-m var(--text-error), $shadow-elevated;
+}
+
+.atlas-toolbar-item[data-refused] > .atlas-toolbar-handle + .atlas-toolbar-item__content::after {
+  @include toolbar-control-ring(var(--text-error));
+}
+
+// Reduced motion keeps the cues that are not movement: "More tools" still takes its fill.
+@media (prefers-reduced-motion: reduce) {
+  :is(.atlas-toolbar-item, .atlas-toolbar-tray__item)[data-pressed] > :is(.atlas-toolbar-item__content, .atlas-toolbar-face) {
+    transform: none;
+  }
+
+  .atlas-main-toolbar .atlas-toolbar-overflow {
+    transition: none;
+
+    &[data-drop-target] {
+      transform: none;
+    }
+  }
+}
+
+@keyframes atlas-toolbar-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+// Grabbing everywhere while a tool is dragged, and no text selected on the way.
+@at-root body.atlas-toolbar-grabbing {
+  cursor: grabbing;
+  user-select: none;
+
+  :is(.atlas-main-toolbar, .atlas-toolbar-tray, .atlas-toolbar-handle) {
+    cursor: grabbing;
+  }
+}

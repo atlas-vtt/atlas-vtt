@@ -11,6 +11,18 @@ const MENU_LABEL = "More tools"
 interface ToolbarOverflowMenuProps {
   /** The controls that did not fit into the bar, in bar order. */
   items: readonly ResponsiveToolbarItem[]
+  /** The toolbar editor is open: choosing or right-clicking a row asks `onEditEntry` instead of running the control. */
+  editing?: boolean
+  /** Opens the editor's menu for a control, at a point in client coordinates; `trigger` is the "More tools" button. */
+  onEditEntry?: (id: string, at: { x: number; y: number }, trigger: HTMLButtonElement | null) => void
+  /** A tool dragged in the editor would land here: the bar has no room for it. */
+  dropTarget?: boolean
+}
+
+/** Where a menu for a row opens from the keyboard or a click: its bottom-left corner. */
+function rowCorner(row: Element | undefined): { x: number; y: number } {
+  const rect = row?.getBoundingClientRect()
+  return { x: rect?.left ?? 0, y: rect?.bottom ?? 0 }
 }
 
 /** Index of the menu item an arrow key moves to, or null for other keys. */
@@ -29,8 +41,9 @@ function nextMenuIndex(key: string, current: number, count: number): number | nu
  * the bar. Choosing a tool here makes it the active tool, which brings it back
  * into the bar with its options. Opened from the keyboard, the menu focuses
  * its first item; arrow keys move through it and Escape returns to the button.
+ * While the toolbar editor is open, a row opens the editor's menu instead.
  */
-export function ToolbarOverflowMenu({ items }: ToolbarOverflowMenuProps): React.ReactElement {
+export function ToolbarOverflowMenu({ items, editing = false, onEditEntry, dropTarget = false }: ToolbarOverflowMenuProps): React.ReactElement {
   const [open, setOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -53,16 +66,18 @@ export function ToolbarOverflowMenu({ items }: ToolbarOverflowMenuProps): React.
     const onPointerDown = (event: PointerEvent): void => {
       if (!root.contains(event.target as Node)) setOpen(false)
     }
+    // Before anyone listening in the bubble phase (the toolbar editor, the map), which then leave this Escape alone.
     const onKeyDown = (event: KeyboardEvent): void => {
       if (event.key !== "Escape") return
+      event.preventDefault()
       setOpen(false)
       if (openedFromKeyboard.current) trigger()?.focus()
     }
     doc.addEventListener("pointerdown", onPointerDown, true)
-    doc.addEventListener("keydown", onKeyDown)
+    doc.addEventListener("keydown", onKeyDown, true)
     return () => {
       doc.removeEventListener("pointerdown", onPointerDown, true)
-      doc.removeEventListener("keydown", onKeyDown)
+      doc.removeEventListener("keydown", onKeyDown, true)
     }
   }, [open])
 
@@ -89,8 +104,22 @@ export function ToolbarOverflowMenu({ items }: ToolbarOverflowMenuProps): React.
     buttons[next]?.focus()
   }
 
+  const editEntry = (index: number, at: { x: number; y: number }): void => {
+    const item = items[index]
+    if (!item || !onEditEntry) return
+    close(false)
+    onEditEntry(item.id, at, trigger())
+  }
+
+  const onMenuContextMenu = (event: React.MouseEvent<HTMLDivElement>): void => {
+    if (!editing) return
+    event.preventDefault()
+    const row = (event.target as Element).closest('[role="menuitem"]')
+    editEntry(menuItems().findIndex((button) => button === row), { x: event.clientX, y: event.clientY })
+  }
+
   return (
-    <div ref={rootRef} className="atlas-toolbar-overflow">
+    <div ref={rootRef} className="atlas-toolbar-overflow" {...(dropTarget && { "data-drop-target": "true" })}>
       <ToolButton icon={Ellipsis} label={MENU_LABEL} isActive={false} menuExpanded={open} onClick={toggle} />
       {open && (
         <div
@@ -103,9 +132,10 @@ export function ToolbarOverflowMenu({ items }: ToolbarOverflowMenuProps): React.
           )}
           style={keepInView.style}
           onKeyDown={onMenuKeyDown}
+          onContextMenu={onMenuContextMenu}
         >
           <div className="atlas-dropdown-section">
-            {items.map(({ id, menuEntry }) => (
+            {items.map(({ id, menuEntry }, index) => (
               <DropdownMenuItem
                 key={id}
                 role="menuitem"
@@ -114,6 +144,10 @@ export function ToolbarOverflowMenu({ items }: ToolbarOverflowMenuProps): React.
                 {...(menuEntry.shortcut !== undefined && { shortcut: menuEntry.shortcut })}
                 isActive={menuEntry.isActive}
                 onClick={() => {
+                  if (editing) {
+                    editEntry(index, rowCorner(menuItems()[index]))
+                    return
+                  }
                   close(openedFromKeyboard.current)
                   menuEntry.onSelect()
                 }}

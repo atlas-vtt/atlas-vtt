@@ -10,8 +10,17 @@ export type { ContextMenuEntry } from '../components/context-menu/AtlasContextMe
 
 // ── Context + hook ──────────────────────────────────────────────────────────
 
+export interface ContextMenuOptions {
+  /**
+   * Where focus goes when the menu closes and nothing else took it (a menu
+   * opened from the keyboard, closed with Escape): the menu's own trigger is
+   * a point and cannot hold focus.
+   */
+  returnFocus?: HTMLElement | null;
+}
+
 interface ContextMenuController {
-  open: (entries: ContextMenuEntry[], position: { x: number; y: number }) => void;
+  open: (entries: ContextMenuEntry[], position: { x: number; y: number }, options?: ContextMenuOptions) => void;
   close: () => void;
 }
 
@@ -47,15 +56,27 @@ export function closeContextMenuGlobal(): void {
 interface MenuState {
   entries: ContextMenuEntry[];
   position: { x: number; y: number };
+  returnFocus: HTMLElement | null;
+}
+
+/** Focuses `element` where the menu left focus nowhere (on the body): a choice that moved focus keeps it there. */
+function returnFocusTo(element: HTMLElement | null, event: Event): void {
+  if (!element) return;
+  event.preventDefault();
+  const active = element.ownerDocument.activeElement;
+  if (element.isConnected && (!active || active === element.ownerDocument.body)) element.focus();
 }
 
 export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [menuState, setMenuState] = useState<MenuState | null>(null);
+  // The body of the document the provider renders in: a map in a popout opens its menus there.
+  const [body, setBody] = useState<HTMLElement | null>(null);
+  const anchor = useCallback((node: HTMLSpanElement | null): void => setBody(node?.ownerDocument.body ?? null), []);
 
   const close = useCallback((): void => setMenuState(null), []);
 
-  const open = useCallback((entries: ContextMenuEntry[], position: { x: number; y: number }): void => {
-    setMenuState({ entries, position });
+  const open = useCallback((entries: ContextMenuEntry[], position: { x: number; y: number }, options?: ContextMenuOptions): void => {
+    setMenuState({ entries, position, returnFocus: options?.returnFocus ?? null });
   }, []);
 
   useEffect(() => {
@@ -71,7 +92,8 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
   return (
     <ContextMenuCtx.Provider value={{ open, close }}>
       {children}
-      {createPortal(
+      <span ref={anchor} hidden />
+      {body && createPortal(
         <DropdownMenu.Root
           open={!!menuState}
           onOpenChange={(isOpen) => { if (!isOpen) close(); }}
@@ -91,7 +113,7 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
           </DropdownMenu.Trigger>
 
           {menuState && (
-            <DropdownMenu.Portal>
+            <DropdownMenu.Portal container={body}>
               <DropdownMenu.Content
                 className="atlas-ctx-menu"
                 side="bottom"
@@ -100,13 +122,14 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 avoidCollisions
                 collisionPadding={8}
                 onContextMenu={(e) => e.preventDefault()}
+                onCloseAutoFocus={(e) => returnFocusTo(menuState.returnFocus, e)}
               >
                 {renderEntries(menuState.entries, close)}
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           )}
         </DropdownMenu.Root>,
-        document.body,
+        body,
       )}
     </ContextMenuCtx.Provider>
   );

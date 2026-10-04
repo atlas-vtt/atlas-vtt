@@ -1,0 +1,72 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The toolbar editor's card: what the tool under the pointer or keyboard
+// focus does, with a screenshot of it at work
+// ═══════════════════════════════════════════════════════════════════════════
+// Imported inside the `.atlas-vtt-plugin` scope of styles/main.scss.
+
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+$card-content-width: 280px;
+
+// Hangs $spacing-s above the tray's row, for bar and tray tools alike, so it never covers a place
+// to drop a tool; useEditTooltip moves it sideways over its tool. Above the tray, under the ghost.
+.atlas-toolbar-card {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + #{$spacing-s});
+  z-index: 2;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+  width: calc(#{$card-content-width} + 2 * #{$spacing-s} + 2 * #{$border-width-m});
+  padding: $spacing-s;
+  pointer-events: none;
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+
+  &[hidden] {
+    display: none;
+  }
+}
+
+// 16:10, stored at twice its size; its corners that face the card's run concentric with them.
+.atlas-toolbar-card__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  background: var(--background-secondary);
+  border-radius: $radius-l;
+  @include atlas-panel-inset-radius($spacing-s, top-left, top-right);
+}
+
+// The heading and its sentence read as one block of text.
+.atlas-toolbar-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.atlas-toolbar-card__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $spacing-s;
+}
+
+.atlas-toolbar-card__label {
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-toolbar-card__description {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  line-height: 1.4;
+  @include atlas-line-clamp(2);
+}

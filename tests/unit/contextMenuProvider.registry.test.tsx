@@ -24,3 +24,13 @@ it('still opens the global context menu after a later-mounted provider unmounts'
   openContextMenuGlobal([{ type: 'item', label: 'Rename', onClick: vi.fn() }], { x: 10, y: 10 });
   await waitFor(() => expect(screen.getByRole('menuitem', { name: 'Rename' })).toBeTruthy());
 });
+
+it('opens its menus in the document it renders in, as a map in a popout does', async () => {
+  const popout = document.implementation.createHTMLDocument('popout');
+  const host = popout.body.appendChild(popout.createElement('div'));
+  render(<ContextMenuProvider><div>Popout map</div></ContextMenuProvider>, { container: host });
+
+  openContextMenuGlobal([{ type: 'item', label: 'Hide', onClick: vi.fn() }], { x: 10, y: 10 });
+  await waitFor(() => expect(popout.body.querySelector('.atlas-ctx-menu')).not.toBeNull());
+  expect(document.body.querySelector('.atlas-ctx-menu')).toBeNull();
+});

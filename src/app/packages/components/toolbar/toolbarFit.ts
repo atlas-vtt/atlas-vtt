@@ -3,8 +3,6 @@ export interface ToolbarFitItem {
   id: string;
   /** Border-box width in px; undefined until the item has rendered once. */
   width: number | undefined;
-  /** Items with a lower priority move into the overflow menu first. */
-  priority: number;
   /** Pinned items (the tool in use, an open panel's trigger) never overflow. */
   pinned: boolean;
 }
@@ -25,10 +23,11 @@ const NOTHING_HIDDEN: ReadonlySet<string> = new Set();
 
 /**
  * Picks the items that do not fit and go into the overflow menu. Items leave
- * strictly by priority (lowest first, later items first among equals), so the
- * bar never swaps a wide important tool for a narrow minor one. The items that
- * stay keep their order. Pinned items and items not measured yet always stay;
- * when they alone are too wide, the bar overflows rather than hiding them.
+ * from the right: the bar keeps a run of items from the left and stops at the
+ * first that does not fit, so it never keeps a narrower item further right
+ * over a wider one. The items that stay keep their order. Pinned items and
+ * items not measured yet always stay, wherever they are; when they alone are
+ * too wide, the bar overflows rather than hiding them.
  */
 export function overflowingToolbarItems(items: readonly ToolbarFitItem[], layout: ToolbarFitLayout): ReadonlySet<string> {
   const { available, chrome, gap, overflowButtonWidth } = layout;
@@ -47,12 +46,8 @@ export function overflowingToolbarItems(items: readonly ToolbarFitItem[], layout
     }
   }
 
-  const candidates = items
-    .map((item, index) => ({ item, index }))
-    .filter(({ item }) => !kept.has(item.id))
-    .sort((a, b) => b.item.priority - a.item.priority || a.index - b.index);
-
-  for (const { item } of candidates) {
+  for (const item of items) {
+    if (kept.has(item.id)) continue;
     const cost = (item.width ?? 0) + gap;
     if (used + cost > available) break;
     kept.add(item.id);

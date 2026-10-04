@@ -84,8 +84,13 @@ export function matchesHotkey(event: KeyboardEvent, binding: string, allowRepeat
 export function matchesMapHotkey(event: KeyboardEvent, id: MapHotkeyId, settings?: SettingsService): boolean {
   return matchesHotkey(event, (settings?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS)[id]);
 }
+const UNASSIGNED_HOTKEY = 'Unassigned';
 export function formatHotkey(binding: string): string {
-  return binding ? binding.replace(/Mod\+/g, 'Ctrl/Cmd + ').replace(/Shift\+/g, 'Shift + ').replace(/Alt\+/g, 'Alt + ').replace(/(^| \+ )([a-z])$/, (_, prefix: string, key: string) => prefix + key.toUpperCase()) : 'Unassigned';
+  return binding ? binding.replace(/Mod\+/g, 'Ctrl/Cmd + ').replace(/Shift\+/g, 'Shift + ').replace(/Alt\+/g, 'Alt + ').replace(/(^| \+ )([a-z])$/, (_, prefix: string, key: string) => prefix + key.toUpperCase()) : UNASSIGNED_HOTKEY;
+}
+/** Whether a label `formatHotkey` wrote names a key, rather than saying none is assigned. */
+export function namesHotkey(label: string): boolean {
+  return label !== '' && label !== UNASSIGNED_HOTKEY;
 }
 export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean {
   if (handledByAnotherControl(event) || event.isComposing || !isActiveAtlasLeaf(viewId)) return false;
