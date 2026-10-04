@@ -494,7 +494,7 @@ export class UIManager implements ITokenUIManager {
       ui.resourceDefsProvider = () => this.resourceDefsProvider();
       ui.update(token, sprite.tokenSize || 70, settings);
       ui.getContainer().position.copyFrom(sprite.position);
-      ui.getContainer().renderable = sprite.visible && !token.isHidden && isSeen(tokenId);
+      ui.getContainer().renderable = sprite.visible && !token.isHidden && isSeen(tokenId) && !state.objectMask.ghost[tokenId];
     }
     const dmControls: Container[] = [
       ...(this.tokenControlsUI ? [this.tokenControlsUI.getContainer()] : []),

@@ -5,6 +5,7 @@ import type { ViewAtlasStore } from '../../storeFactory';
 import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { watchClick } from '../utils/clickRelease';
 import { dispatchPinAction } from '../utils/pinActions';
+import { addonObjectMenuEntries } from '../../addons/addonHost';
 import type { HexLinkRenderer } from './HexLinkRenderer';
 
 /** What the viewport-level pointer dispatch calls for linked hexes. */
@@ -78,6 +79,7 @@ export class HexLinkInteraction implements HexLinkPointerHandlers {
       [
         { type: 'item', label: 'Open Note', icon: 'file-text', onClick: () => dispatchPinAction('open', pin) },
         { type: 'item', label: 'Change Note', icon: 'edit', onClick: () => dispatchPinAction('edit', pin) },
+        ...addonObjectMenuEntries(this.options.store, 'pin', pin.id),
         {
           type: 'item',
           label: 'Unlink Hex',

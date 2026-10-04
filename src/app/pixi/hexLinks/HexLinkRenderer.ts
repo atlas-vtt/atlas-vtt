@@ -94,7 +94,9 @@ export class HexLinkRenderer {
   hitTest(worldX: number, worldY: number): string | null {
     const layout = this.layout();
     if (!layout || this.isHidden()) return null;
-    return hexLinkAt(this.state.objects.pins, layout, { x: worldX, y: worldY })?.id ?? null;
+    const pin = hexLinkAt(this.state.objects.pins, layout, { x: worldX, y: worldY });
+    // A hex whose note an add-on hides stays inert
+    return pin && !this.state.objectMask.hidden[pin.id] ? pin.id : null;
   }
 
   setHovered(pinId: string | null): void {

@@ -8,6 +8,7 @@ import { formatDistance, resolveMeasurementSettings, type MeasurementSettings } 
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { isHandled } from './utils/handledEvents';
+import { addonKeepMeasurement } from '../addons/drawingAddons';
 import { createMeasureLabelText, drawMeasureCircle, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, measureLabelFontSize } from './utils/measureDrawing';
 
 interface PersistentMeasurement {
@@ -227,8 +228,8 @@ export class MeasureRenderer {
     
     // Handle persistence
     if (this.persistMeasurements) {
-      // Create persistent copies of the current measurement
-      this.createPersistentMeasurement();
+      // An add-on may keep it as a map object (area templates); otherwise keep a copy here
+      if (!this.keptByAddon()) this.createPersistentMeasurement();
       // Clear the active measurement graphics
       this.clearMeasurement();
     } else {
@@ -322,6 +323,11 @@ export class MeasureRenderer {
     this.rightClickDownPos = null;
   }
   
+  private keptByAddon(): boolean {
+    if (!this.startPoint || !this.endPoint) return false;
+    return addonKeepMeasurement({ shape: this.measureShape, start: this.startPoint, end: this.endPoint }, this.store);
+  }
+
   private createPersistentMeasurement(): void {
     if (!this.startPoint || !this.endPoint || !this.measureText.text) return;
     

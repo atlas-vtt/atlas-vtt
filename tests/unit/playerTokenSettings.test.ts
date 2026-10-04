@@ -18,7 +18,7 @@ vi.mock('../../src/app/pixi/TokenUIRenderer', async () => {
 it('renders separate player token overlays using the player settings and restores the DM layers', () => {
   const viewport = new Container();
   const token = { id: 'hero', kind: 'character', name: 'Hero', resources: { hp: { current: 10, max: 10 } } };
-  const store = createStore(() => ({ grid: { size: 70 }, objects: { tokens: { hero: token } } }));
+  const store = createStore(() => ({ grid: { size: 70 }, objects: { tokens: { hero: token } }, objectMask: { hidden: {}, ghost: {} } }));
   const manager = new UIManager(viewport as any, store as any, 'test', true);
   const sprite = new Container(); sprite.position.set(100, 200);
   manager.setTokenSpriteProvider(() => sprite);

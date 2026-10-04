@@ -1,0 +1,210 @@
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+
+// World time: date bar, dialogs and the timeline panel.
+
+.atlas-vtt-plugin {
+  .atlas-world-date-bar {
+    max-width: 100%;
+    pointer-events: auto;
+  }
+
+  // The bar on the top, left or right edge of the map (the bottom one sits above the toolbar)
+  .atlas-world-date-dock {
+    position: absolute;
+    display: flex;
+    pointer-events: none;
+    z-index: $z-dropdown;
+  }
+
+  .atlas-world-date-dock--top {
+    top: calc(#{$spacing-s} * 2 + 40px);
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - #{$spacing-l} * 2);
+  }
+
+  .atlas-world-date-dock--left,
+  .atlas-world-date-dock--right {
+    top: 50%;
+    transform: translateY(-50%);
+    max-height: calc(100% - 160px);
+  }
+
+  .atlas-world-date-dock--left {
+    left: $spacing-l;
+  }
+
+  .atlas-world-date-dock--right {
+    right: $spacing-l;
+  }
+
+  .atlas-world-date-bar--vertical {
+    flex-direction: column;
+    max-height: 100%;
+
+    .atlas-world-date-bar__label {
+      min-width: 0;
+      max-width: 9em;
+      white-space: normal;
+      text-align: center;
+    }
+
+    .atlas-world-date-bar__input {
+      width: 7em;
+    }
+
+    // Earliest date at the top, latest at the bottom
+    .atlas-world-date-bar__slider {
+      writing-mode: vertical-lr;
+      width: auto;
+      height: clamp(120px, 30vh, 360px);
+    }
+  }
+
+  .atlas-world-date-bar__label {
+    min-width: 9em;
+    padding: 0 $spacing-s;
+    font-size: $font-ui-small;
+    font-weight: $font-weight-medium;
+    color: var(--text-normal);
+    white-space: nowrap;
+    @include atlas-truncate;
+
+    &.is-default {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+  }
+
+  .atlas-world-date-bar__unit {
+    height: var(--input-height);
+    font-size: $font-ui-smaller;
+  }
+
+  .atlas-world-date-bar__slider {
+    width: clamp(120px, 24vw, 360px);
+    min-width: 0;
+  }
+
+  .atlas-world-date-bar__input {
+    @include atlas-text-input;
+    width: 9em;
+
+    &.is-invalid {
+      border-color: var(--text-error);
+    }
+  }
+
+  &.atlas-world-modal {
+    .atlas-world-variant {
+      padding: $spacing-s;
+      margin-bottom: $spacing-s;
+      @include atlas-inset-surface;
+    }
+
+    .atlas-world-date-invalid .setting-item-description {
+      color: var(--text-error);
+    }
+  }
+}
+
+// The timeline is an ordinary Obsidian side pane.
+.atlas-world-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+  padding: $spacing-s;
+
+  .atlas-world-timeline__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: $spacing-s;
+
+    input[type='search'] {
+      flex: 1 1 100%;
+    }
+
+    select {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+
+  .atlas-world-timeline__status {
+    font-size: $font-ui-smaller;
+    color: var(--text-muted);
+  }
+
+  .atlas-world-timeline__list {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+  }
+
+  .atlas-world-timeline__era {
+    padding: $spacing-xs $spacing-s;
+    border-radius: $radius-s;
+    background: var(--background-modifier-hover);
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .atlas-world-timeline__group {
+    margin-top: $spacing-s;
+    font-size: $font-ui-small;
+    font-weight: $font-weight-semibold;
+    color: var(--text-normal);
+  }
+
+  .atlas-world-timeline__era {
+    cursor: pointer;
+  }
+
+  .atlas-world-timeline__event {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: $spacing-s;
+    padding: $spacing-xs;
+    border-radius: $radius-s;
+    cursor: pointer;
+
+    &:hover {
+      background: var(--background-modifier-hover);
+    }
+
+    &.is-current {
+      box-shadow: inset 2px 0 0 var(--interactive-accent);
+    }
+  }
+
+  .atlas-world-timeline__date {
+    font-size: $font-ui-smaller;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  .atlas-world-timeline__title {
+    min-width: 0;
+    font-size: $font-ui-small;
+    @include atlas-truncate;
+  }
+
+  .atlas-world-timeline__importance-5 .atlas-world-timeline__title,
+  .atlas-world-timeline__importance-4 .atlas-world-timeline__title {
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-world-timeline__goto {
+    opacity: 0.6;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+}

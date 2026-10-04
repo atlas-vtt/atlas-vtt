@@ -304,7 +304,9 @@ export class SelectionManager {
       }
     }
     
-    this.store.getState().setSelection(selectedIds);
+    // Objects an add-on hides cannot be selected
+    const masked = this.store.getState().objectMask.hidden;
+    this.store.getState().setSelection(selectedIds.filter((id) => !masked[id]));
     if (this.marqueeGraphics && !this.marqueeGraphics.destroyed) {
       this.marqueeGraphics.clear();
     }

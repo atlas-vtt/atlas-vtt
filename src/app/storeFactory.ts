@@ -24,6 +24,9 @@ import { createInitiativeActions } from './stores/initiativeSlice';
 import { createInitialUIState, createUIActions, type UISlice } from './stores/uiSlice';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
+import { createAddonActions, createInitialAddonState, type AddonSlice } from './stores/addonSlice';
+import { addonActions, addonInitialState, addonPersistedState, addonRestoredState } from './addons/addonHost';
+import type { AddonViewState } from './addons/AtlasAddon';
 import { isRecord } from './services/assetMetadataGuards';
 import { createHistoryOptions } from './stores/history';
 import { withoutCollectionWidgets } from './utils/collectionWidgets';
@@ -42,7 +45,7 @@ import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
 
 // Individual store state interface (same as AtlasState but isolated)
-export interface ViewAtlasState {
+export interface ViewAtlasState extends AddonViewState {
   // --- Non-persisted fields ---
   // Current map file path (for persistence)
   mapPath: string | null;
@@ -284,6 +287,7 @@ export interface ViewAtlasState {
     tokenRingSize: number;
   };
   setTokenSettings: (settings: ViewAtlasState['tokenSettings']) => void;
+
   
   // --- Initiative Tracker ---
   initiative: InitiativeState;
@@ -320,6 +324,13 @@ export interface ViewAtlasState {
   setLootRollerOpen: LootRollerSlice['setLootRollerOpen'];
   updateLootRoller: LootRollerSlice['updateLootRoller'];
   showLootRoll: LootRollerSlice['showLootRoll'];
+
+  // Core state for add-ons (derived, never saved); add-ons add their own state through AddonStateRegistry
+  objectMask: AddonSlice['objectMask'];
+  objectMaskSources: AddonSlice['objectMaskSources'];
+  setObjectMask: AddonSlice['setObjectMask'];
+  addonRevision: AddonSlice['addonRevision'];
+  bumpAddonRevision: AddonSlice['bumpAddonRevision'];
 
   // --- Per-view UI visibility (from uiSlice.ts, NOT persisted) ---
   isGridSettingsOpen: UISlice['isGridSettingsOpen'];
@@ -1388,6 +1399,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.lighting = { ...DEFAULT_SCENE_LIGHTING };
             draft.exploredMask = null;
             draft.exploredEdits = 0;
+            Object.assign(draft, createInitialAddonState(), addonInitialState());
 
             // Note: We don't clear background here - it will be set by the new map
             // Note: We don't clear mapPath - it must be preserved for storage adapter
@@ -1494,6 +1506,11 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           lootRoller: createInitialLootRollerState(),
           ...createLootRollerActions(set),
 
+          // --- Add-ons (src/addons/*): object mask plus each add-on's own state ---
+          ...createInitialAddonState(),
+          ...createAddonActions(set),
+          ...({ ...addonInitialState(), ...addonActions(set, get) } as unknown as AddonViewState),
+
           // --- Per-view UI visibility (from uiSlice.ts) ---
           ...createInitialUIState(),
           ...createUIActions(set),
@@ -1543,6 +1560,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               lootRoller: state.lootRoller, // Loot roller window, filters and history
               lighting: state.lighting,
               exploredMask: state.exploredMask,
+              ...addonPersistedState(state), // Add-on fields saved in the scene
             };
           },
           
@@ -1557,6 +1575,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               exploredMask: readExploredMask(saved.exploredMask),
               // Counted per session: a file never brings one.
               exploredEdits: current.exploredEdits,
+              ...addonRestoredState(saved),
             };
           },
 

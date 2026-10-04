@@ -23,6 +23,7 @@ export const SETTINGS_PANEL_IDS = [
   'local-player-view-settings',
   'dice-settings',
   'experimental-features',
+  'addon-settings',
 ] as const;
 
 export type SettingsPanelId = (typeof SETTINGS_PANEL_IDS)[number];

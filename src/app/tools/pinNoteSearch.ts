@@ -2,6 +2,9 @@ import { App, TFile, setIcon } from 'obsidian';
 import { mayLinkFromScene } from '../services/sceneLinks';
 import { baseName, parentPath } from '../utils/pathUtils';
 import { STANDING_LIST } from '../keyboard/tooltipEscape';
+import { runInBackground } from '../utils/backgroundTask';
+import { addonPinSearchEntries } from '../addons/pinAddons';
+import type { PinSearchEntry } from '../addons/hooks/pinHooks';
 
 const RESULT_LIMIT = 30;
 
@@ -193,11 +196,17 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
   const renderFiles = (query: string): void => {
     const needle = query.toLowerCase();
     const matching = files.filter((f) => f.basename.toLowerCase().includes(needle));
-    if (matching.length === 0) {
-      results.createDiv({ cls: 'pin-empty-state', text: 'No notes found' });
-      return;
-    }
     matching.slice(0, RESULT_LIMIT).forEach((file) => addFileEntry(file));
+    addonPinSearchEntries({ app, query, files, mapPath: options.mapPath }).forEach(addAddonEntry);
+    if (entries.length === 0) results.createDiv({ cls: 'pin-empty-state', text: 'No notes found' });
+  };
+
+  /** An entry an add-on offers, e.g. creating a note; it resolves to the note to link. */
+  const addAddonEntry = (entry: PinSearchEntry): void => {
+    const item = addEntry(() => runInBackground(entry.pick().then(options.onPick), entry.label));
+    if (entry.cls) item.addClass(entry.cls);
+    setIcon(item.createDiv({ cls: 'pin-result-icon' }), entry.icon);
+    item.createSpan({ cls: 'pin-result-name', text: entry.label });
   };
 
   function render(): void {

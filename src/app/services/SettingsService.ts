@@ -378,6 +378,16 @@ export class SettingsService {
     this.commit();
   }
 
+  /** An add-on's own settings, stored unchecked under `key`; the add-on validates them. */
+  getAddonSettings(key: string): unknown {
+    return (this.settings as unknown as Record<string, unknown>)[key];
+  }
+
+  setAddonSettings(key: string, value: unknown): void {
+    (this.settings as unknown as Record<string, unknown>)[key] = value;
+    this.commit();
+  }
+
   // Local Player View settings
   /**
    * The player-window switches for HP and the secondary bar that older versions

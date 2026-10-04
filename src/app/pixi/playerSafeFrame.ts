@@ -5,6 +5,7 @@ import type { Perception } from '../vision/perception';
 export interface HideableLayer {
   visible: boolean;
   alpha?: number | undefined;
+  scale?: { x: number; set(x: number, y: number): void } | undefined;
 }
 
 /**
@@ -24,6 +25,8 @@ export interface LayerVisibility {
   layer: HideableLayer;
   visible: boolean;
   alpha?: number;
+  /** A uniform scale for the player frame, e.g. a pin sized for the player camera's zoom. */
+  scale?: number;
 }
 
 /**
@@ -111,21 +114,24 @@ function applyCamera({ target, camera }: PlayerFrameCamera): () => void {
  * function that restores the DM's, and whether anything differs from the DM's frame.
  */
 function applyPlayerFrame(layers: readonly LayerVisibility[], camera?: PlayerFrameCamera): { differs: boolean; restore: () => void } {
-  const changed = layers.filter(({ layer, visible, alpha }) =>
-    layer.visible !== visible || (alpha !== undefined && layer.alpha !== alpha))
-    .map(entry => ({ ...entry, previous: entry.layer.visible, previousAlpha: entry.layer.alpha }));
-  for (const { layer, visible, alpha } of changed) {
+  const changed = layers.filter(({ layer, visible, alpha, scale }) =>
+    layer.visible !== visible || (alpha !== undefined && layer.alpha !== alpha)
+    || (scale !== undefined && layer.scale !== undefined && layer.scale.x !== scale))
+    .map(entry => ({ ...entry, previous: entry.layer.visible, previousAlpha: entry.layer.alpha, previousScale: entry.layer.scale?.x }));
+  for (const { layer, visible, alpha, scale } of changed) {
     layer.visible = visible;
     if (alpha !== undefined) layer.alpha = alpha;
+    if (scale !== undefined) layer.scale?.set(scale, scale);
   }
   const restoreCamera = camera ? applyCamera(camera) : null;
   return {
     differs: changed.length > 0 || !!camera,
     restore: (): void => {
       restoreCamera?.();
-      for (const { layer, previous, alpha, previousAlpha } of changed) {
+      for (const { layer, previous, alpha, previousAlpha, scale, previousScale } of changed) {
         layer.visible = previous;
         if (alpha !== undefined) layer.alpha = previousAlpha;
+        if (scale !== undefined && previousScale !== undefined) layer.scale?.set(previousScale, previousScale);
       }
     },
   };

@@ -2,6 +2,8 @@ import { Plugin } from 'obsidian';
 // Tailwind first, so the custom SCSS can override it.
 import './styles/index.css';
 import './styles/main.scss';
+// Add-ons (src/addons/*) next: they load before the rest of Atlas, and their styles follow core's.
+import './src/app/addons/addonRegistry';
 import { AtlasView, ATLAS_VIEW_TYPE } from './src/app/atlas-view';
 import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE } from './src/app/local-player-view';
 import { PlayerView, PLAYER_VIEW_TYPE } from './src/app/player-view';
@@ -43,6 +45,7 @@ import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
+import { addonSettingsSections, loadAddons, unloadAddons } from './src/app/addons/addonHost';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -81,6 +84,8 @@ export default class AtlasVTTPlugin extends Plugin {
     // Views first, so workspace restore can resolve persisted Atlas tabs
     // before the slower startup path finishes.
     this.registerAtlasViews();
+    // Add-ons (src/addons/*) register their views with Atlas's, so a restored pane finds them
+    loadAddons(this, this.settingsService);
 
     await storageReady;
     await this.settingsService.initialize();
@@ -99,6 +104,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
+      ...addonSettingsSections(this.app, this.settingsService),
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
       changelogSettingsSection(this.settingsService, changelogService, this.manifest.version),
@@ -137,6 +143,7 @@ export default class AtlasVTTPlugin extends Plugin {
   }
 
   onunload(): void {
+    unloadAddons();
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
     this.widgetSyncService?.destroy();
