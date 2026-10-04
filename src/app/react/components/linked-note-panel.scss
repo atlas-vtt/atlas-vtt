@@ -17,7 +17,7 @@
   font-size: $font-ui-small;
   -webkit-font-smoothing: antialiased;
 
-  @media (max-width: $breakpoint-m) {
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
     width: 100%;
     min-width: 0;
   }

@@ -17,3 +17,4 @@
 - The selection outline around a token follows it when the token is resized, from the resize handles or the size menu. Before, it kept the old size until the token was selected again
 - Reloading Atlas no longer leaves the previous 3D dice in graphics memory
 - Loading a scene with explored areas no longer keeps a copy of them in graphics memory
+- The DM screen fits the map when Obsidian's sidebars are open or the map shares the window with other panes: it no longer runs off the edges, and its statblocks and note stack once the map is narrow
