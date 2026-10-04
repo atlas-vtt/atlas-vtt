@@ -63,7 +63,6 @@ export const ALIGNMENT_GRID_COLOR = 0x00ff00;
 export class GridSystem {
   /** Holds the grid lines and, on a numbered grid, the cell numbers. */
   private gridSprite: Container | null = null;
-  private gridMask: Graphics | null = null;
   private cellNumberLabels: CellNumberLabels | null = null;
   private readonly onViewportZoomed = (): void => {
     this.cellNumberLabels?.setView(this.numberView());
@@ -219,14 +218,15 @@ export class GridSystem {
       grid.addChild(this.cellNumberLabels.container);
     }
 
-    // Clip the grid to the map bounds
+    // Clip the grid to the map bounds. The mask is the grid's own child so it is hidden with it:
+    // a visible mask whose grid is hidden is left out of PIXI's batch yet still updated in place on
+    // every zoom, writing its corners over whatever took its slot (the map folded towards a pin).
     const maskGraphics = new Graphics();
     maskGraphics.rect(0, 0, bgSprite.width, bgSprite.height);
     maskGraphics.fill(0xffffff);
-    maskGraphics.position.set(bgX, bgY);
+    maskGraphics.position.set(bgX - bounds.minX, bgY - bounds.minY);
+    grid.addChild(maskGraphics);
     grid.mask = maskGraphics;
-    this.gridMask = maskGraphics;
-    this.viewport.addChild(maskGraphics);
 
     // Keep geometry ready for player capture even when the DM hides the grid.
     grid.visible = this.options.enabled !== false;
@@ -270,14 +270,6 @@ export class GridSystem {
   /** Clean up grid-only resources */
   private destroyGridResources(): void {
     this.cellNumberLabels = null;
-    if (this.gridMask) {
-      if (this.gridMask.parent) {
-        this.gridMask.parent.removeChild(this.gridMask);
-      }
-      this.gridMask.destroy();
-      this.gridMask = null;
-    }
-
     if (!this.gridSprite) return;
 
     this.gridSprite.visible = false;
