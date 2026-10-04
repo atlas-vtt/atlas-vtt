@@ -231,6 +231,22 @@
     grid-column: 3;
   }
 
+  // Add-on bars (src/addons/*) sit centred above the main toolbar, out of the row's grid so the toolbar
+  // keeps its place and width whether or not the bar shows.
+  .atlas-bottom-toolbar-row__above {
+    position: absolute;
+    left: 50%;
+    bottom: calc(100% + #{$spacing-s});
+    transform: translateX(-50%);
+    max-width: 100%;
+    display: flex;
+    pointer-events: none;
+
+    &:empty {
+      display: none;
+    }
+  }
+
   // Main toolbar and undo/redo bar - uses elevated surface pattern
   .atlas-vtt-toolbar {
     display: flex;

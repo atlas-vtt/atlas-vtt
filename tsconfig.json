@@ -36,5 +36,9 @@
     "*.cjs",
     "vite/**/*.mts",
     "scripts/**/*.js"
+  ],
+  // Add-on tests are checked like tests/unit: by vitest, with the shared test mocks
+  "exclude": [
+    "src/addons/*/__tests__/**"
   ]
 }

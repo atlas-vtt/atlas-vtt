@@ -10,6 +10,8 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 vi.mock('../../src/app/pixi/utils/pinIconTexture', () => ({
   createPinIconTexture: vi.fn(() => new Texture()),
 }));
+// Plain Atlas: add-ons that change how pins show bring their own tests
+vi.mock('../../src/app/addons/addonRegistry', () => ({ installedAddons: () => [] }));
 
 type ViewStore = ReturnType<typeof createViewAtlasStore>;
 
@@ -57,11 +59,13 @@ describe('PinRenderer events', () => {
 
   it('hides pins from hit-testing while the DM previews the player perspective', () => {
     const { renderer, store } = setup();
-    store.getState().addNotePin(10, 20, 'note.md');
+    const pinId = store.getState().addNotePin(10, 20, 'note.md');
 
     store.getState().setGMView(false);
 
-    expect(renderer.getPinContainer().visible).toBe(false);
+    const pinOf = (id: string): boolean | undefined =>
+      renderer.getPinContainer().children.find((child) => child.label === `pin-${id}`)?.visible;
+    expect(pinOf(pinId)).toBe(false);
     expect(renderer.hitTestPins(10, 20)).toBeNull();
   });
 

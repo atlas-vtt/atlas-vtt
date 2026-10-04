@@ -1,5 +1,6 @@
 import type { DrawingStroke } from '../types';
 import type { Point } from './drawingEraseUtils';
+import { addonDrawingShape } from '../addons/drawingAddons';
 
 export interface DrawingBounds {
   x: number;
@@ -24,6 +25,9 @@ function distanceSqToSegment(p: Point, a: Point, b: Point): number {
  * `tolerance` widens both so thin lines stay grabbable.
  */
 export function hitTestDrawing(stroke: DrawingStroke, point: Point, tolerance: number): boolean {
+  const addonShape = addonDrawingShape(stroke.type);
+  if (addonShape) return addonShape.hitTest(stroke, point, tolerance);
+
   const first = stroke.points[0];
   if (!first) return false;
   const reach = stroke.width / 2 + tolerance;
@@ -31,15 +35,21 @@ export function hitTestDrawing(stroke: DrawingStroke, point: Point, tolerance: n
   if (stroke.type === 'icon') {
     return Math.abs(point.x - first.x) <= reach && Math.abs(point.y - first.y) <= reach;
   }
+  return isNearPolyline(stroke.points, point, reach, false);
+}
 
+/** Whether `point` lies within `reach` of the polyline; `closed` adds the edge back to the first point. */
+export function isNearPolyline(points: readonly Point[], point: Point, reach: number, closed: boolean): boolean {
+  const first = points[0];
+  if (!first) return false;
   const reachSq = reach * reach;
-  if (stroke.points.length === 1) return distanceSqToSegment(point, first, first) <= reachSq;
+  if (points.length === 1) return distanceSqToSegment(point, first, first) <= reachSq;
 
   // ponytail: linear scan over every segment; add a bounds pre-check if maps get ink-heavy
-  for (let i = 1; i < stroke.points.length; i++) {
-    if (distanceSqToSegment(point, stroke.points[i - 1]!, stroke.points[i]!) <= reachSq) return true;
+  for (let i = 1; i < points.length; i++) {
+    if (distanceSqToSegment(point, points[i - 1]!, points[i]!) <= reachSq) return true;
   }
-  return false;
+  return closed && distanceSqToSegment(point, points[points.length - 1]!, first) <= reachSq;
 }
 
 /** World-space bounding box of an annotation, including its line width / icon footprint. */

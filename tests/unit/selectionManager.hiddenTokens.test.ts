@@ -31,6 +31,7 @@ function setup(selectionMode: 'box' | 'lasso' = 'box'): Harness {
     activeTool: 'select',
     selectionMode,
     objects: { tokens: { goblin: { id: 'goblin' }, lurker: { id: 'lurker' } }, drawings: {} },
+    objectMask: { hidden: {}, ghost: {} },
     setSelection(ids: string[]) { store.setState({ selectedIds: ids }); },
   })));
   const manager = new SelectionManager(viewport as never, () => sprites, () => ({}), store as never, new EventEmitter());

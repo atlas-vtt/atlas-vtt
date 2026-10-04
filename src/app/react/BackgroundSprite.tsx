@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Texture, Sprite } from 'pixi.js';
 import { useAtlasUI } from './root/AtlasUIContext';
 import { useViewStoreHook } from './ViewStoreContext';
@@ -41,13 +41,19 @@ function toGridOptions(grid: GridState): GridOptions {
 
 interface BackgroundSpriteProps {
   imagePath: string;
+  /**
+   * The scene the image belongs to. The camera is centred on a new scene's map,
+   * but not when an add-on swaps the image within the same scene (a map variant).
+   */
+  sceneKey?: string | null;
 }
 
-export const BackgroundSprite: React.FC<BackgroundSpriteProps> = ({ imagePath }) => {
+export const BackgroundSprite: React.FC<BackgroundSpriteProps> = ({ imagePath, sceneKey = null }) => {
   const { app, renderer } = useAtlasUI();
   const store = useViewStoreHook();
   const [texture, setTexture] = useState<Texture | null>(null);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const centeredSceneRef = useRef<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (!imagePath) return;
@@ -137,8 +143,11 @@ export const BackgroundSprite: React.FC<BackgroundSpriteProps> = ({ imagePath })
     // Explicitly sort children after adding the background
     viewport.sortChildren(); 
     
-    // Center the map in the viewport
-    viewport.moveCenter(size.width / 2, size.height / 2);
+    // Center the map in the viewport (once per scene: a swapped image keeps the camera)
+    if (centeredSceneRef.current !== sceneKey || sceneKey === null) {
+      viewport.moveCenter(size.width / 2, size.height / 2);
+      centeredSceneRef.current = sceneKey;
+    }
     
     // Set world size to match the map dimensions
     viewport.worldWidth = Math.max(size.width, 10000);

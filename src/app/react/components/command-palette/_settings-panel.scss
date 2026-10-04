@@ -235,3 +235,15 @@
     transform: none;
   }
 }
+
+// ── Add-on settings ─────────────────────────────────────────────────────────
+// Obsidian's own setting rows, as add-ons describe them for the settings tab.
+
+.atlas-command-palette-addon-settings {
+  @include atlas-flex-col(0);
+  padding: $spacing-l;
+
+  .setting-item-heading:not(:first-child) {
+    margin-top: $spacing-l;
+  }
+}

@@ -243,6 +243,22 @@ export function stringifyYaml(value: unknown): string {
   return stringifyYamlImpl(value);
 }
 
+export abstract class AbstractInputSuggest<T> {
+  limit = 100;
+  constructor(public app: unknown, protected textInputEl: HTMLInputElement | HTMLDivElement) {}
+  setValue(value: string): void {
+    if (this.textInputEl instanceof HTMLInputElement) this.textInputEl.value = value;
+    else this.textInputEl.textContent = value;
+  }
+  getValue(): string {
+    return this.textInputEl instanceof HTMLInputElement ? this.textInputEl.value : this.textInputEl.textContent ?? '';
+  }
+  close(): void {}
+  protected abstract getSuggestions(query: string): T[] | Promise<T[]>;
+  abstract renderSuggestion(value: T, el: HTMLElement): void;
+  abstract selectSuggestion(value: T, evt: MouseEvent | KeyboardEvent): void;
+}
+
 export class Modal {
   app: unknown;
   contentEl: HTMLElement;

@@ -44,6 +44,8 @@ import { mapMeasurementSettings } from './services/mapMeasurementSettings';
 import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
 import { destroyTree } from './pixi/utils/destroyTree';
 import { requestRender } from './pixi/RenderScheduler';
+import { ghostLayers } from './pixi/objectMaskDisplay';
+import { AddonRenderers } from './addons/addonHost';
 
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
@@ -70,6 +72,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private soundRegistry?: SoundRegistry;
   private bufferCache?: AudioBufferCache;
   private spatialAudioEngine?: SpatialAudioEngine;
+  /** Canvas parts of the installed add-ons (src/addons/*). */
+  private addonRenderers?: AddonRenderers;
 
   private layerMap: Container | null = null;
   private layerGrid: Container | null = null;
@@ -449,7 +453,9 @@ export class PixiRendererOrchestrator { // Renamed class
     if (this.gridSystem && !isPlayerView) {
       this.textTool = new TextTool(viewport, this.store, this.gridSystem, this.eventBus);
     }
-    
+
+    // Add-ons last, so their first object mask reaches every renderer
+    this.addonRenderers = new AddonRenderers({ app: this.obsApp, viewport, store: this.store, isPlayerView });
   }
 
   public initGrid(options: GridOptions, bgSprite: Sprite): void {
@@ -729,7 +735,18 @@ export class PixiRendererOrchestrator { // Renamed class
   public withPlayerSafeFrame(capture: () => void, settings: AtlasSettings['localPlayerView'], camera?: PlayerCameraState, renderFollows = false): void {
     const app = this.pixiAppManager.getApp();
     if (!app?.renderer) return;
-    const layers = this.markerLayers();
+    const viewport = this.pixiAppManager.getViewport();
+    const playerZoom = camera?.scale ?? viewport?.scale.x ?? 1;
+    // Pins as players see them at their zoom (an add-on may show some); hex links are the GM's
+    const layers: LayerVisibility[] = [...(this.pinRenderer?.getPlayerViewLayers(playerZoom) ?? [])];
+    if (this.hexLinkRenderer) layers.push({ layer: this.hexLinkRenderer.container, visible: false });
+    // Ghosted objects are a GM aid; add-ons hide their own GM-only layers
+    if (this.drawingRenderer || this.textRenderer) {
+      const objectMask = this.store.getState().objectMask;
+      if (this.drawingRenderer) layers.push(...ghostLayers(objectMask, this.drawingRenderer.getNodes()));
+      if (this.textRenderer) layers.push(...ghostLayers(objectMask, this.textRenderer.getTextContainers()));
+    }
+    layers.push(...(this.addonRenderers?.playerViewLayers() ?? []));
     const grid = this.gridSystem?.getGridSprite();
     if (grid) layers.push({ layer: grid, visible: settings.showGrid });
     // The lighting's part is the list session view holds on this canvas (`SessionLighting`).
@@ -738,7 +755,6 @@ export class PixiRendererOrchestrator { // Renamed class
     layers.push(...(this.fogRenderer?.getPlayerViewLayers() ?? []));
     layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
     for (const overlay of this.dmScreenOverlays) layers.push({ layer: overlay, visible: false });
-    const viewport = this.pixiAppManager.getViewport();
     const playerCamera = camera && viewport ? { target: viewport, camera } : undefined;
     const captureFrame = renderFollows ? captureBeforeRender : captureWithLayerVisibility;
     captureFrame(layers, () => app.renderer.render(app.stage), capture, playerCamera);
@@ -1030,6 +1046,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.drawingRenderer?.destroy(); // Destroy DrawingRenderer
     this.drawingInteraction?.destroy();
     this.textRenderer?.destroy(); // Destroy TextRenderer
+    this.addonRenderers?.destroy();
     this.textTool?.destroy(); // Destroy TextTool
     this.lightingFeature?.destroy();
     this.audioRenderer?.destroy();

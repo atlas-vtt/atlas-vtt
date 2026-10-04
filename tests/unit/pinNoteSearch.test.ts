@@ -2,6 +2,9 @@ import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
 import { App, TFile } from 'obsidian';
 import { createPinNoteSearch } from '../../src/app/tools/pinNoteSearch';
 
+// Plain Atlas: add-ons that extend the search bring their own tests
+vi.mock('../../src/app/addons/addonRegistry', () => ({ installedAddons: () => [] }));
+
 let container: HTMLElement;
 
 interface SetupOptions {

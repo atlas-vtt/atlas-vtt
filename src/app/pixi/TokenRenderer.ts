@@ -47,6 +47,8 @@ import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
 import type { LightPointerHandlers } from './lighting/LightInteraction';
 import { runInBackground } from '../utils/backgroundTask';
 import { isModHeld } from '../keyboard/modKey';
+import { objectMaskStateOf } from '../addons/objectMask';
+import { GHOST_ALPHA, ghostLayers } from './objectMaskDisplay';
 
 /** What the lighting controller answers about a right-click on a door's badge. */
 export interface DoorMenuHandlers {
@@ -315,9 +317,14 @@ export class TokenRenderer {
         this.refreshTokenVisibility();
       }
     });
+    // An add-on changed which tokens show
+    const objectMaskUnsubscribe = this.store.subscribe((state, previous) => {
+      if (state.objectMask !== previous.objectMask) this.refreshTokenVisibility();
+    });
     const origUnsubGM = this._unsubscribeFromStore;
     this._unsubscribeFromStore = () => {
       gmViewUnsubscribe();
+      objectMaskUnsubscribe();
       origUnsubGM?.();
     };
 
@@ -720,8 +727,11 @@ export class TokenRenderer {
     perception = this.playerSight.perception(),
   ): void {
     const isHidden = token.isHidden ?? false;
+    // An add-on may hide a token, or ghost it (a GM-only faint copy)
+    const maskState = objectMaskStateOf(this.store.getState().objectMask, token.id);
+    const maskHidden = maskState === 'hidden' || (maskState === 'ghost' && this.isInPlayerMode());
 
-    if (this.hidesToken(token, perception)) {
+    if (this.hidesToken(token, perception) || maskHidden) {
       tokenGroup.visible = false;
       tokenGroup.alpha = 1.0;
       this.uiManager.setTokenUIVisibility(token.id, false);
@@ -731,7 +741,7 @@ export class TokenRenderer {
 
     tokenGroup.visible = true;
     this.uiManager.setTokenUIVisibility(token.id, true);
-    tokenGroup.alpha = isHidden ? HIDDEN_TOKEN_ALPHA : 1.0;
+    tokenGroup.alpha = (isHidden ? HIDDEN_TOKEN_ALPHA : 1.0) * (maskState === 'ghost' ? GHOST_ALPHA : 1);
 
     this.hiddenTokenIcon.update(tokenGroup, isHidden);
 
@@ -1461,7 +1471,7 @@ export class TokenRenderer {
   /** Player overlays prepared for the next mirrored frame; `perception` leaves out what the players do not see and outlines what they only sense. */
   public getPlayerViewLayers(settings: AtlasSettings['localPlayerView'], perception?: TokenPerception): LayerVisibility[] {
     const isSeen = seenTokens(perception);
-    return [...this.playerSight.frameLayers(perception), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.dragRuler.getPlayerViewLayers(isSeen)];
+    return [...this.playerSight.frameLayers(perception), ...ghostLayers(this.store.getState().objectMask, this.tokenSprites), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.dragRuler.getPlayerViewLayers(isSeen)];
   }
 
   /** How far a selected token's resources reach beyond its bottom, right and top edges, in world units. */
