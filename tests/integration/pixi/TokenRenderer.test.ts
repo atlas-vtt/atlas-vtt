@@ -18,6 +18,7 @@ import { MeasureRenderer } from '../../../src/app/pixi/MeasureRenderer';
 import { PinRenderer } from '../../../src/app/pixi/PinRenderer';
 import { FogOfWarRenderer } from '../../../src/app/pixi/fog/FogOfWarRenderer';
 import { TextTool } from '../../../src/app/tools/TextTool';
+import { TokenStatblockLinkService } from '../../../src/app/services/TokenStatblockLinkService';
 import { AssetService } from '../../../src/app/services/AssetService';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
 import { computeTokenPixelSize } from '../../../src/app/pixi/token-renderer/tokenSizing';
@@ -167,6 +168,41 @@ describe('TokenRenderer Integration Tests', () => {
     destroyRenderer();
     viewport.destroy();
     restoreGraphics();
+  });
+
+  it('loads tokens already present when the renderer is constructed', async () => {
+    destroyRenderer();
+    const existing = { ...token({ id: 'existing' }), kind: 'character' as const, name: 'Existing' };
+    store.getState().addToken(existing);
+    tokenRenderer = createRenderer();
+    isRendererDestroyed = false;
+    await waitForTokens('existing');
+    expect(tokenSprite('existing').texture.label).toBe(GOBLIN_IMAGE);
+  });
+
+  it('applies statblock links to matching tokens and stops listening when destroyed', async () => {
+    const file = await obsidianApp.vault.create('Goblin.md', '---\nname: Goblin\nhp: 12\n---\n');
+    const cache = vi.spyOn(obsidianApp.metadataCache, 'getFileCache').mockImplementation(
+      (candidate) => candidate.path === file.path ? { frontmatter: { name: 'Goblin', hp: 12, difficulty: 14 } } : null,
+    );
+    const links = TokenStatblockLinkService.getInstance(obsidianApp);
+    const lookup = vi.spyOn(links, 'getStatblockLinkedToToken').mockResolvedValue(null);
+    const linked = { ...token({ id: 'linked' }), kind: 'character' as const, name: 'Old', overriddenMax: ['hp'] };
+    store.getState().addToken(linked);
+    const other = { ...token({ id: 'other', imagePath: ORC_IMAGE }), kind: 'character' as const, name: 'Other' };
+    store.getState().addToken(other);
+    await waitForTokens('linked', 'other');
+    const listenerCount = links.listenerCount('link-changed');
+    links.emit('link-changed', { type: 'linked', tokenImagePath: GOBLIN_IMAGE, statblockPath: file.path });
+    expect(store.getState().objects.tokens.linked).toMatchObject({ statblockPath: file.path, name: 'Goblin', difficulty: '14' });
+    expect(store.getState().objects.tokens.linked?.overriddenMax).toBeUndefined();
+    expect(store.getState().objects.tokens.other).toMatchObject({ name: 'Other' });
+    destroyRenderer();
+    expect(links.listenerCount('link-changed')).toBe(listenerCount - 1);
+    links.emit('link-changed', { type: 'unlinked', tokenImagePath: GOBLIN_IMAGE, statblockPath: null });
+    expect(store.getState().objects.tokens.linked).toMatchObject({ statblockPath: file.path, name: 'Goblin' });
+    lookup.mockRestore();
+    cache.mockRestore();
   });
 
   describe('Token Creation/Destruction', () => {

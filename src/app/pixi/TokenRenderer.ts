@@ -1,7 +1,6 @@
+import { StatblockTokenSync } from '../plugin/StatblockTokenSync';
 import { mapResources } from '../resources/collectionResources';
 import type { ResourceDefinition, ResourceDefsProvider } from '../resources/resourceTypes';
-import { fillMissingResources, syncedResources } from '../resources/statblockResourceSync';
-import { runUntracked } from '../stores/history';
 import { fitTokenArtwork, syncTokenArtwork } from './token-renderer/tokenArtwork';
 import type { AtlasSettings } from '../services/SettingsService';
 import { HIDDEN_TOKEN_ALPHA, gmTokenLayers, type HideableLayer, type LayerVisibility } from './playerSafeFrame';
@@ -9,18 +8,16 @@ import type { TokenPerception } from './lighting/playerLightingLayers';
 import { PlayerSightTokens, seenTokens } from './token-renderer/PlayerSightTokens';
 import { Sprite, Container, Graphics, Application, FederatedPointerEvent } from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import { App as ObsidianApp, TFile, parseYaml } from 'obsidian';
+import { App as ObsidianApp } from 'obsidian';
 import type { TokenEntity } from "../types";
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import type { GridSystem } from "../grid/GridSystem";
 import { getDrawingBounds } from "./drawingGeometry";
 import type { ViewAtlasStore } from '../storeFactory';
-import type { TokenUpdates } from '../types/viewState';
 import { EventEmitter } from 'events';
-import { StatblockDialogService } from '../services/StatblockDialogService';
 import { AssetService } from '../services/AssetService';
 import { AssetValidationService } from '../services/AssetValidationService';
-import { TokenStatblockLinkService, type LinkChangeEvent } from '../services/TokenStatblockLinkService';
+import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService';
 import { SpriteFactory } from './token-renderer/SpriteFactory';
 import { computeTokenPixelSize } from './token-renderer/tokenSizing';
 import { TextureCache } from './token-renderer/TextureCache';
@@ -38,7 +35,6 @@ import { requestRender } from './RenderScheduler';
 import { normalizeImagePath } from '../utils/pathUtils';
 import { prefersReducedMotion } from '../utils/motion';
 import { destroyTree } from './utils/destroyTree';
-import { buildStatblockLinkUpdates, readStatblockVitals, STATBLOCK_UNLINK_UPDATES } from './token-renderer/statblockFrontmatter';
 import type { TokenGroupContainer } from './token-renderer/types';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import { setCanvasCursor } from './utils/canvasCursor';
@@ -68,12 +64,11 @@ export class TokenRenderer {
   private selectionOverlayUpdater: () => void;
   private store: ViewAtlasStore;
   private eventBus: EventEmitter;
-  private statblockDialogService: StatblockDialogService;
   private assetService: AssetService;
   /** The resources of the map's collection; set once the asset service is wired. */
   private resourceDefsProvider: ResourceDefsProvider = () => [];
   private assetValidationService?: AssetValidationService;
-  private tokenStatblockLinkService: TokenStatblockLinkService;
+  private statblockSync: StatblockTokenSync;
   private spriteFactory: SpriteFactory;
   private textureCache: TextureCache;
   private readonly hiddenTokenIcon = new HiddenTokenIcon();
@@ -165,13 +160,12 @@ export class TokenRenderer {
     this.store = store;
     this.eventBus = eventBus;
     this.viewId = viewId || `tokenrenderer-${Date.now()}-${Math.random()}`;
-    this.statblockDialogService = new StatblockDialogService(obsApp);
     this.assetService = AssetService.getInstance(obsApp);
     // Tokens drawn before the index is loaded read their collection's rules as unknown
     this.assetService.initialize().then(() => this.refreshCollectionRules(), (err: unknown) => {
       console.error('[TokenRenderer] Failed to initialize AssetService:', err);
     });
-    this.tokenStatblockLinkService = TokenStatblockLinkService.getInstance(obsApp);
+    const tokenStatblockLinkService = TokenStatblockLinkService.getInstance(obsApp);
 
     // Check if this is a player view to disable interactions
     const isPlayerView = this.store.getState().isPlayerView || false;
@@ -239,6 +233,7 @@ export class TokenRenderer {
     this.resourceDefsProvider = (): readonly ResourceDefinition[] => mapResources(this.assetService, this.store.getState().mapPath);
     this.interactionController.resourceDefsProvider = this.resourceDefsProvider;
     this.uiManager.resourceDefsProvider = this.resourceDefsProvider;
+    this.statblockSync = new StatblockTokenSync(obsApp, store, tokenStatblockLinkService, this.resourceDefsProvider);
 
     // Initialize sync service
     this.syncService = new SyncService(this.store, this.gridSystem, this.eventBus);
@@ -458,103 +453,6 @@ export class TokenRenderer {
     // Tokens show the new content of an edited image file, e.g. a re-cropped token
     const handleFileModified = this.obsApp.vault.on('modify', (file) => { void this.refreshArt(file.path); });
 
-    // Listen to statblock metadata changes
-    const handleMetadataChange = this.obsApp.metadataCache.on('changed', async (file: TFile) => {
-      // Check if this is a statblock file being edited
-      const cache = this.obsApp.metadataCache.getFileCache(file);
-      const metadata = cache;
-      if (!metadata?.frontmatter) return;
-      
-      // Check if it's a character/statblock file (has HP or is marked as a character)
-      const isCharacter = metadata.frontmatter.hp !== undefined ||
-                         metadata.frontmatter.statblock !== undefined ||
-                         metadata.frontmatter.isCharacter === true ||
-                         metadata.frontmatter.type === 'character';
-      
-      if (isCharacter) {
-        const statblockPath = file.path;
-
-        // Read through the link service so this listener and the writer agree
-        // on which frontmatter key holds the statblock's image.
-        const newTokenImage = this.tokenStatblockLinkService.readStatblockImage(file);
-        if (newTokenImage) {
-          // Get the current token linked to this statblock
-          const currentTokenImage = await this.tokenStatblockLinkService.getTokenLinkedToStatblock(statblockPath);
-          
-          // If the token-image has changed, update the link
-          if (!currentTokenImage || !this.tokenStatblockLinkService.arePathsEquivalent(currentTokenImage, newTokenImage)) {
-            // Use the centralized service to link the new token to the statblock
-            // This will automatically handle unlinking the old token and updating all instances
-            await this.tokenStatblockLinkService.linkTokenToStatblock(
-              newTokenImage,
-              statblockPath,
-              { 
-                showConfirmation: false, // No confirmation needed for metadata-driven updates
-                updateStatblockAvatar: false // We're responding to a statblock change, don't update it again
-              }
-            );
-          }
-        } else {
-          // If token-image was removed, check if we need to unlink
-          const currentTokenImage = await this.tokenStatblockLinkService.getTokenLinkedToStatblock(statblockPath);
-          if (currentTokenImage) {
-            // Unlink the token from this statblock
-            await this.tokenStatblockLinkService.unlinkToken(
-              currentTokenImage,
-              { updateStatblockAvatar: false } // We're responding to a statblock change, don't update it again
-            );
-          }
-        }
-        
-        // Update tokens on the current map that are linked to this statblock with new data
-        const vitals = readStatblockVitals(metadata.frontmatter);
-        const tokens = this.store.getState().objects.tokens;
-        for (const [tokenId, token] of Object.entries(tokens)) {
-          if (token.kind !== 'character' || token.statblockPath !== statblockPath) continue;
-
-          // Refresh statblock-derived data but keep live values such as the current HP
-          const updates: TokenUpdates = { name: vitals.name || token.name };
-
-          const resources = syncedResources(token, metadata.frontmatter, this.resourceDefsProvider());
-          if (JSON.stringify(resources) !== JSON.stringify(token.resources ?? {})) {
-            updates.resources = resources;
-          }
-
-          if (vitals.difficulty !== undefined) {
-            updates.difficulty = vitals.difficulty;
-          }
-
-          if (newTokenImage && token.imagePath !== newTokenImage) {
-            updates.imagePath = newTokenImage;
-          }
-
-          this.store.getState().updateToken(tokenId, updates);
-        }
-      }
-    });
-    
-    // Listen for token-statblock link changes from the centralized service
-    const handleLinkChange = (event: LinkChangeEvent): void => {
-      // Find tokens on the current map that use the affected image
-      const tokens = this.store.getState().objects.tokens;
-      const affectedTokenIds = Object.keys(tokens).filter(
-        (tokenId) => tokens[tokenId]?.imagePath === event.tokenImagePath
-      );
-
-      if (event.type === 'linked' && event.statblockPath) {
-        // Token was linked to a statblock - update all instances with statblock data
-        void this.updateTokensWithStatblockData(affectedTokenIds, event.statblockPath);
-      } else if (event.type === 'unlinked') {
-        // Token was unlinked from statblock - clear ALL statblock-derived data
-        for (const tokenId of affectedTokenIds) {
-          this.store.getState().updateToken(tokenId, STATBLOCK_UNLINK_UPDATES);
-        }
-      }
-    };
-    
-    // Subscribe to link changes
-    this.tokenStatblockLinkService.on('link-changed', handleLinkChange);
-    
     // Store cleanup function
     const originalUnsubscribe = this._unsubscribeFromViewport;
     this._unsubscribeFromViewport = () => {
@@ -564,13 +462,9 @@ export class TokenRenderer {
       // Clean up map load listeners
       this.eventBus.off('map-loaded', handleMapLoaded);
       // Clean up metadata change listener
-      this.obsApp.metadataCache.offref(handleMetadataChange);
+      this.statblockSync.destroy();
       this.obsApp.vault.offref(handleFileModified);
       this.obsApp.workspace.offref(handleCollectionSettingsChange);
-      // Clean up link change listener
-      if (this.tokenStatblockLinkService && typeof this.tokenStatblockLinkService.off === 'function') {
-        this.tokenStatblockLinkService.off('link-changed', handleLinkChange);
-      }
     };
   }
   
@@ -969,32 +863,8 @@ export class TokenRenderer {
         let heldArt: string | null = null;
         let tokenGroup: TokenGroupContainer | null = null;
         try {
-          let character: TokenEntity = token;
+          const character = await this.statblockSync.prepareToken(token);
 
-          // A character whose image is linked to a statblock but that has no path set yet
-          // starts out with the statblock's data
-          if (token.imagePath) {
-            const linkedStatblockPath = await this.tokenStatblockLinkService.getStatblockLinkedToToken(token.imagePath);
-            if (linkedStatblockPath && token.kind === 'character' && !token.statblockPath) {
-              character = { ...token, statblockPath: linkedStatblockPath };
-
-              try {
-                const statblockFile = this.obsApp.vault.getAbstractFileByPath(linkedStatblockPath);
-                const frontmatter = statblockFile instanceof TFile
-                  ? this.obsApp.metadataCache.getFileCache(statblockFile)?.frontmatter
-                  : undefined;
-                if (frontmatter) {
-                  character = { ...character, ...buildStatblockLinkUpdates(frontmatter, token.name, this.resourceDefsProvider(), token.resources) };
-                }
-              } catch (error) {
-                console.error(`[TokenRenderer] Failed to load statblock data for token ${token.id}:`, error);
-              }
-            }
-          }
-          
-          // Enhance character with statblock name if needed
-          character = await this.enhanceCharacterWithStatblockName(character);
-          
           // Load texture; the group holds it from here on
           heldArt = character.imagePath ?? '';
           const texture = await this.textureCache.acquire(heldArt);
@@ -1166,49 +1036,6 @@ export class TokenRenderer {
     return false;
   }
 
-  /**
-   * Enhance character object with statblock name for nameplate display
-   */
-  private async enhanceCharacterWithStatblockName(character: TokenEntity): Promise<TokenEntity> {
-    // A custom name wins over the statblock name; without a statblock there is nothing to load
-    if (character.kind !== 'character' || character.name || !character.statblockPath) {
-      return character;
-    }
-
-    const statblockPath = character.statblockPath;
-
-    try {
-      const file = this.obsApp.vault.getAbstractFileByPath(statblockPath);
-      if (!(file instanceof TFile)) {
-        console.warn(`[TokenRenderer] Statblock file not found: ${statblockPath}`);
-        return character;
-      }
-      
-      const content = await this.obsApp.vault.read(file);
-      const match = content.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
-      
-      if (!match) {
-        console.warn(`[TokenRenderer] Invalid statblock format in file: ${statblockPath}`);
-        return character;
-      }
-      
-      const statblockData: unknown = parseYaml(match[1]!);
-      if (!statblockData || typeof statblockData !== 'object') {
-        console.warn(`[TokenRenderer] Failed to parse YAML in statblock: ${statblockPath}`);
-        return character;
-      }
-
-      const name = 'name' in statblockData ? statblockData.name : undefined;
-      return {
-        ...character,
-        statblockName: typeof name === 'string' && name ? name : null
-      };
-    } catch (error) {
-      console.error(`[TokenRenderer] Error loading statblock at ${statblockPath}:`, error);
-      return character;
-    }
-  }
-
   /** Detaches a token group's pointer handlers, destroys it with all of its children and drops its hold on its art. */
   private destroyTokenGroup(id: string, tokenGroup: TokenGroupContainer): void {
     this.interactionController.removeInteractionHandlers(id, tokenGroup);
@@ -1342,47 +1169,8 @@ export class TokenRenderer {
     this.fillMissingResources();
   }
 
-  /** Linked tokens start the collection's resources they do not hold yet, e.g. one defined after they were placed. */
   private fillMissingResources(): void {
-    if (this.store.getState().isPlayerView) return;
-    runInBackground(fillMissingResources(
-      {
-        tokens: () => this.store.getState().objects.tokens,
-        // Not an edit of the game master's: it must not become an undo step.
-        apply: (entries) => runUntracked(this.store, () => this.store.getState().updateTokens(entries)),
-      },
-      this.resourceDefsProvider(),
-      (path) => this.tokenStatblockLinkService.readStatblockRecord(path),
-    ), 'Starting missing token resources');
-  }
-
-  /**
-   * Updates multiple tokens with data from a statblock
-   */
-  private async updateTokensWithStatblockData(tokenIds: string[], statblockPath: string): Promise<void> {
-    try {
-      const statblockFile = this.obsApp.vault.getAbstractFileByPath(statblockPath);
-      if (!(statblockFile instanceof TFile)) return;
-      
-      const metadata = this.obsApp.metadataCache.getFileCache(statblockFile);
-      const frontmatter = metadata?.frontmatter;
-      if (!frontmatter) return;
-      
-      for (const tokenId of tokenIds) {
-        const token = this.store.getState().objects.tokens[tokenId];
-        if (!token) continue;
-
-        const currentName = token.kind === 'character' ? token.name : undefined;
-        this.store.getState().updateToken(tokenId, {
-          statblockPath,
-          // Maxima set by hand belonged to the previous statblock.
-          overriddenMax: undefined,
-          ...buildStatblockLinkUpdates(frontmatter, currentName, this.resourceDefsProvider(), token.resources)
-        });
-      }
-    } catch (error) {
-      console.error('[TokenRenderer] Failed to update tokens with statblock data:', error);
-    }
+    this.statblockSync.fillMissingResources();
   }
 
   /**

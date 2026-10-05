@@ -1,5 +1,7 @@
 ## Improved
 
+- Simplified token statblock updates and added checks for linked notes.
+
 - Simplified laser pointer updates and added checks for cleanup.
 
 - Added checks to keep data types and rendering helpers independent of plugin services.
