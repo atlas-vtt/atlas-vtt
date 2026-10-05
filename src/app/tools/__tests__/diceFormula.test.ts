@@ -1,7 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { EventEmitter } from 'events';
-import { hasDiceTerm, rollFormula } from '../diceFormula';
+import { rollTestFormula as rollFormula } from './rollTestFormula';
+import { parseFormula } from '../parseFormula';
 import { DiceTool } from '../DiceTool';
+import { DEFAULT_DICE_RULES } from '../../gameSystems/diceRules';
+const inputs = { random: Math.random, rollId: (): string => 'test-roll', roller: (): string => 'Player', onFormulaError: (): void => {} };
 
 /** Rolls every die at its highest face. */
 const highest = (): number => 0.999;
@@ -28,26 +31,21 @@ describe('rollFormula', () => {
 
   it('rolls nothing for text without dice', () => {
     expect(rollFormula('+3').rolls).toEqual([]);
-    expect(rollFormula('d1+2').total).toBe(2);
-  });
-
-  it('tells dice from bare bonuses', () => {
-    expect(hasDiceTerm('+3')).toBe(false);
-    expect(hasDiceTerm('2d6')).toBe(true);
+    expect(parseFormula('d1+2')).toEqual({ ok: false, code: 'faces' });
   });
 });
 
 describe('DiceTool bare bonuses', () => {
   it('adds a bare bonus to the collection default roll and records its crit', () => {
-    const tool = new DiceTool(new EventEmitter(), () => ({ defaultRoll: '2d12', crit: 'doubles' }));
-    const result = tool.rollDice('+3');
+    const tool = new DiceTool(new EventEmitter(), () => ({ defaultRoll: '2d12', crit: 'doubles' }), inputs);
+    const result = tool.rollDice('+3')!;
     expect(result.formula).toBe('2d12+3');
     expect(result.rolls.map((r) => r.die)).toEqual(['d12', 'd12']);
     expect(result.crit === 'high').toBe(result.rolls[0]!.value === result.rolls[1]!.value);
   });
 
   it('reads a bare number as a bonus', () => {
-    expect(new DiceTool(new EventEmitter()).rollDice('4').formula).toBe('1d20+4');
-    expect(new DiceTool(new EventEmitter()).rollDice('-1').formula).toBe('1d20-1');
+    expect(new DiceTool(new EventEmitter(), () => DEFAULT_DICE_RULES, inputs).rollDice('4')?.formula).toBe('1d20+4');
+    expect(new DiceTool(new EventEmitter(), () => DEFAULT_DICE_RULES, inputs).rollDice('-1')?.formula).toBe('1d20-1');
   });
 });
