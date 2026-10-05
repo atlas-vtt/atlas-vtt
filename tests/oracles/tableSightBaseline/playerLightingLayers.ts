@@ -1,15 +1,15 @@
-import { tableSightSource } from '../../vision/tokenSightPolicy';
-import type { TokenEntity } from '../../types';
-import type { WallSegment } from '../../types/wallTypes';
-import { doorsInSight } from '../../vision/doorSight';
-import { wallList } from '../../vision/wallList';
-import { movedWhileHeld } from '../../lighting/sightOnDrop';
-import { lightLevelAt } from '../../vision/lightLevels';
-import { perceive, targetOf, withinReach, type Perception, type PerceptionOptions } from '../../vision/perception';
-import type { AmbientLight, LightReach, Sight } from '../../vision/sight';
-import { tokenEffects } from '../../vision/sightRules';
-import type { HideableLayer, LayerVisibility } from '../playerSafeFrame';
-import type { SceneLightingView } from './sceneLightingView';
+// Frozen from 3c23746a6f54b67b442646ea8ff912c914c2447a src/app/pixi/lighting/playerLightingLayers.ts. Only import paths are adapted.
+import type { TokenEntity } from '../../../src/app/types';
+import type { WallSegment } from '../../../src/app/types/wallTypes';
+import { doorsInSight } from '../../../src/app/vision/doorSight';
+import { wallList } from '../../../src/app/vision/wallList';
+import { movedWhileHeld } from '../../../src/app/lighting/sightOnDrop';
+import { lightLevelAt } from '../../../src/app/vision/lightLevels';
+import { perceive, targetOf, withinReach, type Perception, type PerceptionOptions } from './perception';
+import type { AmbientLight, LightReach, Sight } from './sight';
+import { tokenEffects } from '../../../src/app/vision/sightRules';
+import type { HideableLayer, LayerVisibility } from '../../../src/app/pixi/playerSafeFrame';
+import type { SceneLightingView } from '../../../src/app/pixi/lighting/sceneLightingView';
 
 /** Things only the GM may see. A type, not an interface, so `Object.values` knows its layers. */
 export type GmOverlays = {
@@ -56,7 +56,7 @@ export type TokenPerception = (tokenId: string) => Perception;
 
 /**
  * How the vision tokens perceive each token, by its centre, the light there and its conditions.
- * A nonhidden token with vision is always shown, whatever its conditions and the light: the players'
+ * A token with vision is always shown, whatever its conditions and the light: the players'
  * window is one shared screen, and they are the party. `tokens` is the record the positions are
  * read from, so a caller may pass tokens at other places than the store's.
  *
@@ -80,8 +80,7 @@ export function tokenPerception(
   const known = memo?.of(sight, ambient, lights, options) ?? new WeakMap<TokenEntity, Perception>();
   const perceived = (token: TokenEntity): Perception => {
     const at = { x: token.x, y: token.y };
-    if (token.isHidden) return 'unseen';
-    if (tableSightSource(token)) return !movedWhileHeld(token, held) || withinReach(at, sight) ? 'seen' : 'unseen';
+    if (token.vision?.enabled) return !movedWhileHeld(token, held) || withinReach(at, sight) ? 'seen' : 'unseen';
     return perceive(at, sight, () => lightLevelAt(at, ambient, lights), targetOf(tokenEffects(token, conditions)));
   };
   return (tokenId) => {

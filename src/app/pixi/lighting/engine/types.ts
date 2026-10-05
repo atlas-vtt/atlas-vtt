@@ -56,6 +56,10 @@ export interface EngineScene extends Pick<SceneLighting, 'ambientColor' | 'explo
   walls: readonly WallSegment[];
   lights: readonly EngineLight[];
   sight: Sight;
+  /** Different sight for the local player frame; absent when both pictures share it. */
+  playerSight?: Sight;
+  /** The player frame's footprints where they differ from the GM's. */
+  playerSpots?: readonly SeenSpot[];
   /** Tokens seen where no sense shows the map: each is shown within its footprint (`seenSpots`). */
   spots?: readonly SeenSpot[];
   /** Footprint radius of a vision token, for the soft edges of its sight. */

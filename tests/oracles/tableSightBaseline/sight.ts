@@ -1,18 +1,18 @@
-import type { TokenEntity } from '../types';
-import type { LightZone, SceneLighting } from '../types/lightingTypes';
-import type { SenseDefinition } from '../types/senseTypes';
-import type { Point } from '../types/visionTypes';
-import type { WallSegment } from '../types/wallTypes';
-import { tableSightSource } from './tokenSightPolicy';
-import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
-import { gameUnitsToWorld, type UnitScale } from '../lighting/lightingUnits';
-import { tokenVisionOn } from '../lighting/sceneLightingOptions';
-import { ambientLevel } from './lightLevels';
-import { GENERIC_SIGHT_RULES, tokenEffects, type SightRules } from './sightRules';
-import { resolveSenses, tokenSenses } from './tokenSenses';
-import { computeVisibility, type MapBounds, type Polygon } from './visibility';
-import { visionCone, type VisionCone } from './visionCone';
-import { computeTokenPixelSize } from '../pixi/token-renderer/tokenSizing';
+// Frozen from 3c23746a6f54b67b442646ea8ff912c914c2447a src/app/vision/sight.ts. Only import paths are adapted.
+import type { TokenEntity } from '../../../src/app/types';
+import type { LightZone, SceneLighting } from '../../../src/app/types/lightingTypes';
+import type { SenseDefinition } from '../../../src/app/types/senseTypes';
+import type { Point } from '../../../src/app/types/visionTypes';
+import type { WallSegment } from '../../../src/app/types/wallTypes';
+import { NORMAL_SIGHT } from '../../../src/app/gameSystems/senses/generic';
+import { gameUnitsToWorld, type UnitScale } from '../../../src/app/lighting/lightingUnits';
+import { tokenVisionOn } from '../../../src/app/lighting/sceneLightingOptions';
+import { ambientLevel } from '../../../src/app/vision/lightLevels';
+import { GENERIC_SIGHT_RULES, tokenEffects, type SightRules } from '../../../src/app/vision/sightRules';
+import { resolveSenses, tokenSenses } from '../../../src/app/vision/tokenSenses';
+import { computeVisibility, type MapBounds, type Polygon } from '../../../src/app/vision/visibility';
+import { visionCone, type VisionCone } from '../../../src/app/vision/visionCone';
+import { computeTokenPixelSize } from '../../../src/app/pixi/token-renderer/tokenSizing';
 
 /**
  * The scene's light without its sources: at or above `litThreshold` (unset: 0.25) ambient light,
@@ -82,9 +82,6 @@ export interface Sight {
   regions: SightRegion[];
 }
 
-/** No source contributes a visible region. */
-export const NO_SIGHT: Sight = { all: false, regions: [] };
-
 /** Sight of a viewer without a vision token: line of sight hides nothing. */
 export const SEES_ALL: Sight = { all: true, regions: [] };
 
@@ -109,8 +106,7 @@ export interface LightReach {
 export type LightReachKind = Pick<LightReach, 'darkness' | 'priority' | 'cone'>;
 
 /**
- * Eligible tokens with vision on, with ranges converted to world pixels. The local player
- * picture excludes hidden tokens; GM tooling explicitly supplies its own eligibility rule. A blinded token keeps
+ * Every token with vision on, with its ranges converted to world pixels. A blinded token keeps
  * only its senses that work while blinded; a sense that lets the eyes see invisible things is
  * not a sense of its own. A token whose way of perceiving is not known yet (`TokenSight.pending`)
  * is a source that perceives nothing: it must not see, or record as explored, what its statblock
@@ -121,12 +117,11 @@ export function sightSources(
   scale: UnitScale,
   bounds: MapBounds,
   rules: SightRules = GENERIC_SIGHT_RULES,
-  eligible: (token: TokenEntity) => boolean = tableSightSource,
 ): SightSource[] {
   const unlimited = Math.hypot(bounds.width, bounds.height);
   const sources: SightSource[] = [];
   for (const token of Object.values(tokens)) {
-    if (!token.vision?.enabled || !eligible(token)) continue;
+    if (!token.vision?.enabled) continue;
     const origin = { x: token.x, y: token.y };
     const how = rules.visionOf?.(token) ?? { senses: tokenSenses(token.vision, rules.definitions), ...(token.vision.range !== undefined && { sightRange: token.vision.range }) };
     if (how.pending) {
@@ -233,6 +228,7 @@ export function sceneSight(
 
 export function computeSight(sources: readonly SightSource[], walls: readonly WallSegment[], cache: SightCache = new SightCache()): Sight {
   if (sources.length === 0) return SEES_ALL;
+  cache.retain(new Set(sources.map((source) => source.tokenId)));
   return { all: false, regions: sources.flatMap((source) => cache.get(source, walls)) };
 }
 

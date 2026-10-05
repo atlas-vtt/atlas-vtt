@@ -4,6 +4,7 @@ import { formatReach, type MeasurementSettings } from '../../grid/measurementFor
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import type { ViewAtlasStore } from '../../storeFactory';
 import type { Point } from '../../types/visionTypes';
+import { gmSightSource } from '../../vision/tokenSightPolicy';
 import { sightSources } from '../../vision/sight';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
@@ -95,7 +96,7 @@ export class SenseRangeRings {
     const scale = unitScaleOf(settings, state.grid);
     const unlimited = Math.hypot(map.width, map.height);
     const distance = (radius: number): string => formatReach(radius / scale.cellSize, settings);
-    return tokens.flatMap((token) => sightSources({ [token.id]: token }, scale, map, rules()).map((source) => senseRings(source, unlimited, distance)));
+    return tokens.flatMap((token) => sightSources({ [token.id]: token }, scale, map, rules(), gmSightSource).map((source) => senseRings(source, unlimited, distance)));
   }
 
   /**

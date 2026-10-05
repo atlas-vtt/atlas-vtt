@@ -1,3 +1,5 @@
+import { gmSightSource } from '../../vision/tokenSightPolicy';
+import { tableSight } from '../../vision/tableSight';
 import { Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
@@ -114,7 +116,9 @@ export class CanvasLightingFallback implements SceneLightingView {
     const dark = activeLights(state.objects.lights, tokens, state.lighting.ambient).filter((light) => light.emission.darkness).map((light) => engineLight(light, scale));
     // The same list while there is no darkness, so whoever compares it finds it unchanged.
     this.reaches = dark.length > 0 ? this.darknessReaches.sync(dark, walls) : NO_REACHES;
-    const sight = sceneSight(state.lighting, sourcesInDarkness(sightSources(tokens, scale, bounds, rules), FULL_DAYLIGHT, this.reaches), walls, this.cache);
+    const sources = sourcesInDarkness(sightSources(tokens, scale, bounds, rules, gmSightSource), FULL_DAYLIGHT, this.reaches);
+    this.cache.retain(new Set(sources.map(source => source.tokenId)));
+    const sight = tableSight(sceneSight(state.lighting, sources, walls, this.cache), tokens);
     // The same regions are the same sight: what was worked out from it (who is seen) stays good.
     if (!sameSight(sight, this.sight)) this.sight = sight;
     const spots = seenSpots(this.sight, FULL_DAYLIGHT, this.reaches, state.objects.tokens, scale.cellSize, walls, { conditions: rules?.conditions ?? [], held });

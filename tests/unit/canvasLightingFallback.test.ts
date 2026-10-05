@@ -36,6 +36,21 @@ function setup(tokens: Record<string, TokenEntity>, lighting: Partial<SceneLight
 const hero: TokenEntity = { id: 'hero', kind: 'token', imagePath: 'h.png', x: 100, y: 100, vision: { enabled: true, range: 10 } };
 
 describe('CanvasLightingFallback', () => {
+  it('keeps an all-hidden vision scene closed and restores the no-vision and vision-off fallbacks', () => {
+    const { fallback, store, viewport } = setup({ hero: { ...hero, isHidden: true } });
+    try {
+      expect(fallback.currentSight()).toEqual({ all: false, regions: [] });
+      store.getState().setSceneLighting({ tokenVision: false });
+      expect(fallback.currentSight().all).toBe(true);
+      store.getState().setSceneLighting({ tokenVision: true });
+      expect(fallback.currentSight().all).toBe(false);
+      store.getState().updateToken('hero', { isHidden: false });
+      expect(fallback.currentSight().regions.map(region => region.tokenId)).toEqual(['hero']);
+      store.setState(state => ({ objects: { ...state.objects, tokens: {} } }));
+      expect(fallback.currentSight().all).toBe(true);
+    } finally { fallback.destroy(); viewport.destroy(); }
+  });
+
   it('works sight out by the senses and conditions of the map\'s collection', () => {
     const seer: TokenEntity = { ...hero, vision: { enabled: true, senses: [{ id: 'pathfinder2e-darkvision' }, { id: 'blindsight', range: 10 }] }, conditions: ['blind'] };
     const generic = setup({ seer }).fallback.currentSight();

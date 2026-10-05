@@ -1,19 +1,19 @@
-import { tableSightSource } from './tokenSightPolicy';
-import { perceivedLevel, showsMap } from '../gameSystems/senseRules';
-import { movedWhileHeld } from '../lighting/sightOnDrop';
-import type { HeldTokens } from '../types/viewUIState';
-import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
-import type { TokenEntity } from '../types';
-import type { ConditionDefinition, ConditionEffect } from '../types/collectionSettingsTypes';
-import type { LightLevel } from '../types/senseTypes';
-import type { Point } from '../types/visionTypes';
-import type { WallSegment } from '../types/wallTypes';
-import { computeTokenPixelSize } from '../pixi/token-renderer/tokenSizing';
-import { lightLevelAt } from './lightLevels';
+// Frozen from 3c23746a6f54b67b442646ea8ff912c914c2447a src/app/vision/perception.ts. Only import paths are adapted.
+import { perceivedLevel, showsMap } from '../../../src/app/gameSystems/senseRules';
+import { movedWhileHeld } from '../../../src/app/lighting/sightOnDrop';
+import type { HeldTokens } from '../../../src/app/types/viewUIState';
+import { NORMAL_SIGHT } from '../../../src/app/gameSystems/senses/generic';
+import type { TokenEntity } from '../../../src/app/types';
+import type { ConditionDefinition, ConditionEffect } from '../../../src/app/types/collectionSettingsTypes';
+import type { LightLevel } from '../../../src/app/types/senseTypes';
+import type { Point } from '../../../src/app/types/visionTypes';
+import type { WallSegment } from '../../../src/app/types/wallTypes';
+import { computeTokenPixelSize } from '../../../src/app/pixi/token-renderer/tokenSizing';
+import { lightLevelAt } from '../../../src/app/vision/lightLevels';
 import type { AmbientLight, LightReach, Sight, SightRegion } from './sight';
-import { tokenEffects } from './sightRules';
-import { computeVisibility, pointInPolygon, type Polygon } from './visibility';
-import { coneContains } from './visionCone';
+import { tokenEffects } from '../../../src/app/vision/sightRules';
+import { computeVisibility, pointInPolygon, type Polygon } from '../../../src/app/vision/visibility';
+import { coneContains } from '../../../src/app/vision/visionCone';
 
 /**
  * How the vision tokens perceive something: `seen` by a precise sense, `sensed` only by
@@ -148,7 +148,7 @@ export function seenSpots(
   const seesCreatures = sight.regions.some(({ sense }) => sense.precise && !showsMap(sense));
   const spots: SeenSpot[] = [];
   for (const token of Object.values(tokens)) {
-    const party = tableSightSource(token);
+    const party = !!token.vision?.enabled;
     if (token.isHidden || (!party && !seesCreatures)) continue;
     const at = { x: token.x, y: token.y };
     const level = lightLevelAt(at, ambient, lights);
