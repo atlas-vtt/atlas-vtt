@@ -1,3 +1,4 @@
+import type { FogCoverage } from '../fog/fogCoverage';
 import { StatblockTokenSync } from '../plugin/StatblockTokenSync';
 import { TokenCollectionSync } from '../plugin/TokenCollectionSync';
 import type { ResourceDefsProvider } from '../resources/resourceTypes';
@@ -126,7 +127,7 @@ export class TokenRenderer {
   /** The tokens as the players' sight shows them: which are left out, and the outlines of sensed ones. */
   private readonly playerSight = new PlayerSightTokens({ tokens: () => this.store.getState().objects.tokens, sprites: () => this.tokenSprites, held: () => this.heldTokenIds });
   private lightHandlers?: LightPointerHandlers;
-  /** Tokens the pointer holds or drags; they stay on the canvas until released, whatever the players see. */
+  /** Tokens held by the pointer; lighting alone does not hide them until release. */
   private heldTokenIds: ReadonlySet<string> = new Set();
   private lastHoveredPinId: string | null = null;
 
@@ -192,9 +193,10 @@ export class TokenRenderer {
     
     // Set up interaction controller callbacks
     this.interactionController.setTokenSpriteProvider((tokenId: string) => this.tokenSprites[tokenId] || null);
-    this.interactionController.setUIPositionUpdater((tokenId: string, x: number, y: number) => 
-      this.uiManager.syncUIPosition(tokenId, x, y)
-    );
+    this.interactionController.setUIPositionUpdater((tokenId: string, x: number, y: number) => {
+      this.uiManager.syncUIPosition(tokenId, x, y);
+      this.refreshDisplayedToken(tokenId);
+    });
     this.interactionController.setControlsPositionUpdater((x: number, y: number, tokenSize: number) =>
       this.uiManager.updateControlsPosition(x, y, tokenSize)
     );
@@ -237,9 +239,10 @@ export class TokenRenderer {
     
     // Set up sync service callbacks
     this.syncService.setTokenSpriteProvider((tokenId: string) => this.tokenSprites[tokenId] || null);
-    this.syncService.setUIPositionUpdater((tokenId: string, x: number, y: number) => 
-      this.uiManager.syncUIPosition(tokenId, x, y)
-    );
+    this.syncService.setUIPositionUpdater((tokenId: string, x: number, y: number) => {
+      this.uiManager.syncUIPosition(tokenId, x, y);
+      this.refreshDisplayedToken(tokenId);
+    });
     this.syncService.setControlsPositionUpdater((x: number, y: number, tokenSize: number) =>
       this.uiManager.updateControlsPosition(x, y, tokenSize)
     );
@@ -267,6 +270,7 @@ export class TokenRenderer {
       this.gridSystem,
       this.store,
       this.collectionSync.measurement,
+      (id) => this.tokenSprites[id]?.visible ?? false,
     );
     this.interactionController.setDragRuler(this.dragRuler);
 
@@ -295,18 +299,16 @@ export class TokenRenderer {
     // Listen for player mode changes (local player view toggle)
     const handlePlayerModeChange = (isPlayerMode: boolean) => {
       this.isLocalPlayerMode = isPlayerMode;
-      this.refreshTokenVisibility();
+      this.refreshPlayerSight();
     };
     
     this.eventBus.on('player-mode-changed', handlePlayerModeChange);
 
-    // Listen for GM view toggle to update hidden token visibility
-    let prevGMView = this.store.getState().isGMView;
-    const gmViewUnsubscribe = this.store.subscribe((state) => {
-      if (state.isGMView !== prevGMView) {
-        prevGMView = state.isGMView;
-        this.refreshTokenVisibility();
-      }
+    // Fog and perspective changes affect presentation even when no token or light changed.
+    const gmViewUnsubscribe = this.store.subscribe((state, previous) => {
+      if (state.isGMView !== previous.isGMView || state.isPlayerView !== previous.isPlayerView ||
+          state.objects.fog !== previous.objects.fog || state.mapPath !== previous.mapPath ||
+          state.isMapLoading !== previous.isMapLoading) this.refreshPlayerSight();
     });
     const origUnsubGM = this._unsubscribeFromStore;
     this._unsubscribeFromStore = () => {
@@ -631,25 +633,25 @@ export class TokenRenderer {
     this.downedTokenOverlay.update(tokenGroup, downed, animate);
   }
 
-  /**
-   * Re-applies visibility to every rendered token. Needed when the perspective
-   * changes (GM view / player mode): the tokens themselves are unchanged, so an
-   * incremental sync would skip them and hidden tokens would stay on screen.
-   */
-  private refreshTokenVisibility(): void {
-    const tokens = this.store.getState().objects.tokens;
-    const perception = this.playerSight.perception();
-    for (const [id, tokenGroup] of Object.entries(this.tokenSprites)) {
-      const token = tokens[id];
-      if (token && tokenGroup) {
-        this.applyTokenVisibilityPolicy(token, tokenGroup, undefined, perception);
-      }
-    }
+  /** How the players perceive each token while this canvas shows their view of a lit scene (`PlayerSightTokens.setProvider`). */
+  public setPlayerSightProvider(provider: () => TokenPerception | undefined, active?: () => boolean): void {
+    this.playerSight.setProvider(provider, active);
   }
 
-  /** How the players perceive each token while this canvas shows their view of a lit scene (`PlayerSightTokens.setProvider`). */
-  public setPlayerSightProvider(provider: () => TokenPerception | undefined): void {
-    this.playerSight.setProvider(provider);
+  /** Shares the committed coverage with the fog renderer, independently of lighting. */
+  public setFogCoverageProvider(provider: () => FogCoverage | null): void {
+    this.playerSight.setFogProvider(provider, () => this.isInPlayerMode());
+    this.refreshPlayerSight();
+  }
+
+  /** Movement can lead the store; apply fog before the displayed position is rendered. */
+  private refreshDisplayedToken(tokenId: string): void {
+    const token = this.store.getState().objects.tokens[tokenId];
+    const sprite = this.tokenSprites[tokenId];
+    const perception = this.playerSight.perception();
+    if (!token || !sprite || !perception) return;
+    this.applyTokenVisibilityPolicy(token, sprite, token, perception);
+    this.playerSight.syncOutline(tokenId, perception);
   }
 
   /** The tokens the canvas shows: those a selection may take. */
@@ -667,6 +669,7 @@ export class TokenRenderer {
       this.applyTokenVisibilityPolicy(token, tokenGroup, token, perception);
     }
     this.playerSight.syncOutlines(perception);
+    this.dragRuler.refreshVisibility();
   }
 
   /** The layer of the sensed tokens' outlines, for the list of what the players' view shows. */
@@ -1236,6 +1239,7 @@ export class TokenRenderer {
 
   /** Player overlays prepared for the next mirrored frame; `perception` leaves out what the players do not see and outlines what they only sense. */
   public getPlayerViewLayers(settings: AtlasSettings['localPlayerView'], perception?: TokenPerception): LayerVisibility[] {
+    perception = this.playerSight.framePerception(perception);
     const isSeen = seenTokens(perception);
     return [...this.playerSight.frameLayers(perception), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.dragRuler.getPlayerViewLayers(isSeen)];
   }

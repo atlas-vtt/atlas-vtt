@@ -26,6 +26,8 @@
 
 ## Important changes
 
+- Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.
+
 - Hidden tokens no longer add sight or explore new areas in the player window. Areas already explored stay remembered.
 
 - Removed an unused legacy map view. Old tabs using it no longer reopen. The current player window is unchanged.

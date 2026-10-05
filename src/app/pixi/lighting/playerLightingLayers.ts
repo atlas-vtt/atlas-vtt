@@ -1,7 +1,8 @@
 import { tableSightSource } from '../../vision/tokenSightPolicy';
 import type { TokenEntity } from '../../types';
 import type { WallSegment } from '../../types/wallTypes';
-import { doorsInSight } from '../../vision/doorSight';
+import type { FogCoverage } from '../../fog/fogCoverage';
+import { doorMiddle, doorsInSight } from '../../vision/doorSight';
 import { wallList } from '../../vision/wallList';
 import { movedWhileHeld } from '../../lighting/sightOnDrop';
 import { lightLevelAt } from '../../vision/lightLevels';
@@ -129,11 +130,17 @@ export function playerTokenSight(
 
 const NO_DOORS: ReadonlySet<string> = new Set();
 
-/** The doors the players see by a scene's lighting (`doorsInSight`): those whose badges their view shows. None while the scene is unlit. */
+/** Ordinary doors in current sight with an uncovered midpoint. None while unlit or fog is invalid. */
 export function playerDoorSight(
   lighting: Pick<SceneLightingView, 'isEnabled' | 'currentSight' | 'ambientLight' | 'lightReaches'>,
   walls: Record<string, WallSegment>,
+  fog?: FogCoverage | null,
 ): ReadonlySet<string> {
-  if (!lighting.isEnabled()) return NO_DOORS;
-  return doorsInSight(wallList(walls), lighting.currentSight(), lighting.ambientLight(), lighting.lightReaches());
+  if (!lighting.isEnabled() || fog === null) return NO_DOORS;
+  const list = wallList(walls);
+  const seen = doorsInSight(list, lighting.currentSight(), lighting.ambientLight(), lighting.lightReaches());
+  if (fog) for (const wall of list) {
+    if (seen.has(wall.id) && fog.covers(doorMiddle(wall))) seen.delete(wall.id);
+  }
+  return seen;
 }

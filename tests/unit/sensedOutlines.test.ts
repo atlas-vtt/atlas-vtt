@@ -62,6 +62,47 @@ describe('SensedOutlines', () => {
     expect(drawn()).toHaveLength(0);
   });
 
+  it('updates one outline without changing or redrawing another', () => {
+    outlines.sync([{ id: 'a', x: 0, y: 0, size: 62 }, { id: 'b', x: 10, y: 20, size: 62 }]);
+    const [a, b] = drawn();
+    const instructions = b!.context.instructions;
+    outlines.syncOne('a', { id: 'a', x: 50, y: 60, size: 62 });
+    expect(drawn()).toEqual([a, b]);
+    expect([a!.x, a!.y]).toEqual([50, 60]);
+    expect([b!.x, b!.y]).toEqual([10, 20]);
+    expect(b!.context.instructions).toBe(instructions);
+    expect(outlines.shown()).toEqual(['a', 'b']);
+  });
+
+  it('removes only the requested outline, including a held one', () => {
+    outlines.sync([{ id: 'a', x: 0, y: 0, size: 62, held: true }, { id: 'b', x: 10, y: 20, size: 62 }]);
+    const a = outlines.heldView.children[0]!;
+    const b = drawn()[0]!;
+    outlines.syncOne('missing', null);
+    outlines.syncOne('a', null);
+    expect(a.destroyed).toBe(true);
+    expect(outlines.heldView.children).toHaveLength(0);
+    expect(outlines.shown()).toEqual(['b']);
+    expect(drawn()).toEqual([b]);
+    expect(b.destroyed).toBe(false);
+  });
+
+  it('adds, resizes and reparents a single outline while preserving the others', () => {
+    outlines.syncOne('a', { id: 'a', x: 0, y: 0, size: 62 });
+    const a = drawn()[0]!;
+    outlines.syncOne('b', { id: 'b', x: 10, y: 20, size: 62 });
+    const b = drawn()[1]!;
+    outlines.syncOne('a', { id: 'a', x: 30, y: 40, size: 124, held: true });
+    expect(outlines.heldView.children).toEqual([a]);
+    expect(drawn()).toEqual([b]);
+    expect(a.getLocalBounds().width).toBeGreaterThan(122);
+    expect([a.x, a.y]).toEqual([30, 40]);
+    outlines.syncOne('a', { id: 'a', x: 30, y: 40, size: 124 });
+    expect(a.parent).toBe(outlines.view);
+    expect(outlines.heldView.children).toHaveLength(0);
+    expect(outlines.shown()).toEqual(['a', 'b']);
+  });
+
   it('keeps the outline of a token the pointer holds apart, for the players\' frame alone', () => {
     outlines.sync([{ id: 'a', x: 0, y: 0, size: 62 }, { id: 'b', x: 10, y: 10, size: 62, held: true }]);
     expect(outlines.heldView.visible).toBe(false);

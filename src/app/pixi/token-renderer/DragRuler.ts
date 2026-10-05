@@ -26,6 +26,7 @@ export class DragRuler {
     private readonly gridSystem: GridSystem,
     private readonly store: Pick<StoreApi<ViewAtlasState>, 'getState'>,
     private readonly settingsProvider: () => MeasurementSettings,
+    private readonly tokenVisible: (tokenId: string) => boolean = () => true,
   ) {}
 
   /** Starts measuring a drag of `tokenId`, which started at `origin`. */
@@ -60,6 +61,14 @@ export class DragRuler {
     return shown ? [] : this.view.layers.map(layer => ({ layer, visible: false }));
   }
 
+  /** A held token can enter fog without ending its measured drag. */
+  refreshVisibility(): void {
+    const landing = this.landing;
+    if (!this.tokenId || !landing) return;
+    const visible = this.tokenVisible(this.tokenId) && this.waypoints.some((point) => !samePoint(point, landing));
+    for (const layer of this.view.layers) layer.visible = visible;
+  }
+
   destroy(): void {
     this.end();
     this.view.destroy();
@@ -88,6 +97,7 @@ export class DragRuler {
     const settings = this.settingsProvider();
     const distance = formatDistance(pathLengthInCells(grid, points, settings.diagonalRule), settings);
     this.view.draw(points, distance);
+    this.refreshVisibility();
   }
 
   private snap(point: Point): Point {

@@ -1,6 +1,6 @@
 /** Draws cached committed coverage and a separate temporary stroke on Canvas 2D. */
 import type { FogBounds, FogOperation } from '../../types/fogTypes';
-import { fogCoverage, type FogCoverage } from '../../fog/fogCoverage';
+import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import { validateFogOperation } from '../../fog/fogOperationShape';
 import { drawFogCoverage } from './drawFogCoverage';
 import { FOG_COLOR, renderOperation } from './fogRenderUtils';
@@ -10,12 +10,12 @@ export class FogCanvasCompositor {
   private ctx: CanvasRenderingContext2D;
   private bounds: FogBounds;
   private scale: number;
-  private coverage: FogCoverage | undefined;
-  private operations: Readonly<Record<string, FogOperation>> | undefined;
-  private observed = new WeakSet<object>();
-  private invalidCommitted = false;
-
-  constructor(bounds: FogBounds, scale = 0.5) {
+  constructor(
+    bounds: FogBounds,
+    scale = 0.5,
+    private readonly coverageCache = new FogCoverageCache(),
+    private readonly mapKey: () => string | null = () => null,
+  ) {
     this.bounds = bounds;
     this.scale = scale;
     this.canvas = createEl('canvas');
@@ -31,25 +31,14 @@ export class FogCanvasCompositor {
 
   /** Returns false after covering the canvas when geometry or drawing fails. */
   composite(ops: Readonly<Record<string, FogOperation>>, preview?: FogOperation): boolean {
-    if (ops !== this.operations) {
-      const previous = this.observed.has(ops) ? undefined : this.coverage;
-      this.operations = ops;
-      this.observed.add(ops);
-      try {
-        this.coverage = fogCoverage(ops, previous);
-        this.invalidCommitted = false;
-      } catch {
-        this.coverage = undefined;
-        this.invalidCommitted = true;
-      }
-    }
-    if (this.invalidCommitted) return this.coverCanvas();
+    const coverage = this.coverageCache.get(ops, this.mapKey());
+    if (!coverage) return this.coverCanvas();
     try {
       this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
       this.ctx.globalCompositeOperation = 'source-over';
       this.ctx.globalAlpha = 1;
       this.ctx.fillStyle = FOG_COLOR;
-      drawFogCoverage(this.ctx, this.coverage?.shape ?? [], this.bounds, this.scale);
+      drawFogCoverage(this.ctx, coverage.shape, this.bounds, this.scale);
       if (preview) {
         validateFogOperation(preview);
         renderOperation(this.ctx, preview, this.bounds, this.scale, preview.offsetX ?? 0, preview.offsetY ?? 0);
@@ -62,10 +51,12 @@ export class FogCanvasCompositor {
 
   /** Map changes discard undo/redo observations as well as the current geometry. */
   reset(): void {
-    this.coverage = undefined;
-    this.operations = undefined;
-    this.observed = new WeakSet<object>();
-    this.invalidCommitted = false;
+    this.coverageCache.reset();
+    this.clearCanvas();
+  }
+
+  /** Clear old pixels without discarding geometry another consumer already read. */
+  clearCanvas(): void {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
   }
 

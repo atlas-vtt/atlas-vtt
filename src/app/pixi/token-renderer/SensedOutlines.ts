@@ -47,27 +47,34 @@ export class SensedOutlines {
   /** Shows exactly `tokens`: new ones are drawn, the others moved, resized or removed. */
   sync(tokens: readonly SensedToken[]): void {
     const wanted = new Set(tokens.map((token) => token.id));
-    for (const [id, outline] of this.outlines) {
-      if (wanted.has(id)) continue;
-      destroyTree(outline.graphics);
+    for (const id of this.outlines.keys()) {
+      if (!wanted.has(id)) this.syncOne(id, null);
+    }
+    for (const token of tokens) this.syncOne(token.id, token);
+  }
+
+  /** Updates or removes one moved token without visiting the other outlines. */
+  syncOne(id: string, token: SensedToken | null): void {
+    let outline = this.outlines.get(id);
+    if (!token) {
+      if (outline) destroyTree(outline.graphics);
       this.outlines.delete(id);
+      return;
     }
-    for (const { id, x, y, size, held = false } of tokens) {
-      let outline = this.outlines.get(id);
-      if (!outline) {
-        outline = { graphics: new Graphics(), size: 0, held: !held };
-        this.outlines.set(id, outline);
-      }
-      if (outline.held !== held) {
-        (held ? this.heldView : this.view).addChild(outline.graphics);
-        outline.held = held;
-      }
-      if (outline.size !== size) {
-        drawOutline(outline.graphics, size);
-        outline.size = size;
-      }
-      if (outline.graphics.x !== x || outline.graphics.y !== y) outline.graphics.position.set(x, y);
+    const { x, y, size, held = false } = token;
+    if (!outline) {
+      outline = { graphics: new Graphics(), size: 0, held: !held };
+      this.outlines.set(id, outline);
     }
+    if (outline.held !== held) {
+      (held ? this.heldView : this.view).addChild(outline.graphics);
+      outline.held = held;
+    }
+    if (outline.size !== size) {
+      drawOutline(outline.graphics, size);
+      outline.size = size;
+    }
+    if (outline.graphics.x !== x || outline.graphics.y !== y) outline.graphics.position.set(x, y);
   }
 
   /** The ids of the tokens outlined now. */

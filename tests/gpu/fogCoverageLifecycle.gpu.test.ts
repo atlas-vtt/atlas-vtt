@@ -2,10 +2,60 @@ import { describe, expect, it, vi } from 'vitest';
 import { fogRect, fogScenes } from '../helpers/fogCoverageScene';
 import { migrateMapFile } from '../../src/app/services/MapPersistence';
 import { FogOperationCanvas } from '../../src/app/pixi/fog/FogOperationCanvas';
+import { fogCoverage, type FogCoverage } from '../../src/app/fog/fogCoverage';
+
+vi.mock('../../src/app/fog/fogCoverage', { spy: true });
 
 const { scene } = fogScenes();
 
 describe('fog renderer lifecycle', () => {
+  it('keeps new-map coverage read by an earlier store subscriber across A to B to A', async () => {
+    let read: (() => FogCoverage | null) | undefined;
+    const early: Array<FogCoverage | null> = [];
+    const s = await scene({ paint: fogRect() }, store => store.subscribe((state, previous) => {
+      if (state.mapPath !== previous.mapPath && read) early.push(read());
+    }));
+    read = (): FogCoverage | null => s.fog.getCommittedCoverage();
+    const initial = read();
+    vi.mocked(fogCoverage).mockClear();
+    // The same record can be restored in another map; map identity still resets history.
+    s.store.setState({ mapPath: 'maps/b.atlasmap' });
+    expect(early[0]).not.toBe(initial);
+    expect(read()).toBe(early[0]);
+    expect(s.read(32, 32)).toBe(0);
+    expect(fogCoverage).toHaveBeenCalledTimes(1);
+    s.store.setState({ mapPath: 'maps/a.atlasmap' });
+    expect(early[1]).not.toBe(early[0]);
+    expect(read()).toBe(early[1]);
+    expect(s.read(32, 32)).toBe(0);
+    expect(fogCoverage).toHaveBeenCalledTimes(2);
+  });
+
+  it('shares committed coverage with readers and keeps live erase previews separate', async () => {
+    const s = await scene({ paint: fogRect() });
+    const committed = s.fog.getCommittedCoverage();
+    vi.mocked(fogCoverage).mockClear();
+    expect(committed?.covers({ x: 48, y: 32 })).toBe(true);
+    s.store.getState().setActiveTool('eraser');
+    s.events.emit('fog-brush-size-changed', 16);
+    s.pointer('pointerdown', 32, 32);
+    s.pointer('pointermove', 64, 32);
+    expect(s.read(48, 32)).toBe(255);
+    expect(s.fog.getCommittedCoverage()).toBe(committed);
+    expect(committed?.covers({ x: 48, y: 32 })).toBe(true);
+    expect(fogCoverage).not.toHaveBeenCalled();
+  });
+
+  it('exposes invalid committed coverage explicitly and recovers with valid saved geometry', async () => {
+    const s = await scene({ paint: fogRect() });
+    s.setFog({ paint: { ...fogRect(), timestamp: Number.NaN } });
+    expect(s.fog.getCommittedCoverage()).toBeNull();
+    expect(s.read(100, 100)).toBe(0);
+    s.setFog({});
+    expect(s.fog.getCommittedCoverage()?.shape).toEqual([]);
+    expect(s.read(100, 100)).toBe(255);
+  });
+
   it('shows preloaded fog and preserves GM opacity across player captures', async () => {
     const s = await scene({ paint: fogRect() });
     expect(s.read(32, 32)).toBe(0);

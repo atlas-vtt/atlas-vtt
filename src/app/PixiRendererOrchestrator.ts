@@ -386,6 +386,7 @@ export class PixiRendererOrchestrator { // Renamed class
         bounds: () => this.getMapRect(),
         albedo: () => (this.backgroundSprite && !this.backgroundSprite.destroyed ? this.backgroundSprite.texture : null),
         grid: () => this.gridSystem ?? null,
+        fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
       });
     }
 
@@ -842,6 +843,7 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!this.tokenRenderer) return;
 
     if (this.fogRenderer) {
+      this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getCommittedCoverage());
       this.tokenRenderer.setFogHitTestProvider(
         (x, y) => this.fogRenderer!.hitTestFog(x, y)
       );

@@ -9,6 +9,8 @@ import type { EventEmitter } from 'events';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { FogBounds, FogOperation } from '../../types/fogTypes';
 import { validateFogOperation } from '../../fog/fogOperationShape';
+import { FogCoverageCache } from '../../fog/FogCoverageCache';
+import type { FogCoverage } from '../../fog/fogCoverage';
 import { FogCanvasCompositor } from './FogCanvasCompositor';
 import { FogCursorPreview } from './FogCursorPreview';
 import { FogOperationCanvas } from './FogOperationCanvas';
@@ -51,6 +53,7 @@ export class FogOfWarRenderer {
   private fogSprites: Map<string, FogSpriteEntry> = new Map();
 
   // Committed coverage and temporary drawing preview
+  private readonly coverageCache = new FogCoverageCache();
   private compositor: FogCanvasCompositor;
   private cursorPreview: FogCursorPreview;
 
@@ -90,7 +93,7 @@ export class FogOfWarRenderer {
 
     // ── Coverage compositor + texture ────────────────────────────────
     const bounds = this.calculateFogBounds();
-    this.compositor = new FogCanvasCompositor(bounds);
+    this.compositor = new FogCanvasCompositor(bounds, 0.5, this.coverageCache, () => this.store.getState().mapPath);
 
     this.previewTexture = PIXI.Texture.from(this.compositor.getCanvas());
     this.previewSprite = new PIXI.Sprite(this.previewTexture);
@@ -171,6 +174,12 @@ export class FogOfWarRenderer {
 
   getContainer(): PIXI.Container {
     return this.container;
+  }
+
+  /** The committed shape drawn by the compositor; null means invalid geometry. */
+  getCommittedCoverage(): FogCoverage | null {
+    const state = this.store.getState();
+    return this.coverageCache.get(state.objects?.fog ?? EMPTY_FOG, state.mapPath);
   }
 
   /** Local player captures share the DM renderer but must not share its fog preview opacity. */
@@ -377,14 +386,14 @@ export class FogOfWarRenderer {
     let prevGMView = this.store.getState().isGMView;
 
     this.unsubscribe = this.store.subscribe((state) => {
-      // Clear map-owned caches before any callback can draw the next map.
+      // Clear old pixels; coverage lookups synchronize their own map identity.
       const mapChanged = state.mapPath !== prevMapPath;
       if (mapChanged) {
         prevMapPath = state.mapPath;
         this.container.visible = false;
         this.resetDrawingState();
         this.clearAllFogSprites();
-        this.compositor.reset();
+        this.compositor.clearCanvas();
         this.explicitMapBounds = null;
       }
 

@@ -25,6 +25,9 @@ import { computeTokenPixelSize } from '../../../src/app/pixi/token-renderer/toke
 import { getHistoryStore } from '../../../src/app/stores/history';
 import type { GridSystem } from '../../../src/app/grid/GridSystem';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
+import { DEFAULT_SETTINGS } from '../../../src/app/services/atlasSettings';
+import { fogCoverage } from '../../../src/app/fog/fogCoverage';
+import { fogRectangle } from '../../helpers/fogOperations';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
@@ -382,6 +385,142 @@ describe('TokenRenderer Integration Tests', () => {
         expect(ringAfter).not.toBe(ringBefore);
       });
       expect(ringBefore?.destroyed).toBe(true);
+    });
+  });
+
+  describe('committed fog visibility', () => {
+    const paint = fogRectangle({ x: 150, y: 0, width: 100, height: 400 });
+    const wireFog = (): void => tokenRenderer.setFogCoverageProvider(() => fogCoverage(store.getState().objects.fog));
+    const setFog = (covered = true): void => store.setState((state) => ({
+      objects: { ...state.objects, fog: covered ? { paint } : {} },
+    }));
+
+    it('filters unlit session tokens and hits, refreshes on fog alone, and preserves GM view', async () => {
+      wireFog();
+      store.getState().addToken(token({ id: 'covered', x: 200 }));
+      await waitForTokens('covered');
+      setFog();
+      expect(tokenGroup('covered').visible).toBe(true);
+      store.getState().setGMView(false);
+      expect(tokenGroup('covered').visible).toBe(false);
+      expect(tokenRenderer.hitTestTokens(200, 100)).toBeNull();
+      expect(tokenRenderer.visibleTokenIds()).toEqual([]);
+      setFog(false);
+      expect(tokenGroup('covered').visible).toBe(true);
+      setFog();
+      expect(tokenGroup('covered').visible).toBe(false);
+      store.getState().setGMView(true);
+      expect(tokenGroup('covered').visible).toBe(true);
+    });
+
+    it('filters a player frame without lighting, including nameplates, while preserving the GM canvas', async () => {
+      wireFog();
+      setFog();
+      const named = { ...token({ id: 'covered', x: 200, kind: 'character', showNameplate: true }), name: 'Goblin' };
+      store.getState().addToken(named);
+      await waitForTokens('covered');
+      const layers = tokenRenderer.getPlayerViewLayers({ ...DEFAULT_SETTINGS.localPlayerView, showTokenNameplates: true });
+      expect(layers).toContainEqual({ layer: tokenGroup('covered'), visible: false });
+      expect(layers.some(({ layer, visible }) => layer !== tokenGroup('covered') && visible === false)).toBe(true);
+      expect(tokenGroup('covered').visible).toBe(true);
+    });
+
+    it('retains fog when lighting is removed and applies it during an existing unlit peek', async () => {
+      wireFog();
+      setFog();
+      store.getState().addToken(token({ id: 'covered', x: 200 }));
+      await waitForTokens('covered');
+      let peeking = true;
+      tokenRenderer.setPlayerSightProvider(() => undefined, () => peeking);
+      tokenRenderer.refreshPlayerSight();
+      expect(tokenGroup('covered').visible).toBe(false);
+      peeking = false;
+      tokenRenderer.refreshPlayerSight();
+      expect(tokenGroup('covered').visible).toBe(true);
+      store.getState().setGMView(false);
+      tokenRenderer.clearLighting();
+      expect(tokenGroup('covered').visible).toBe(false);
+    });
+
+    it('hides a held token at its displayed centre before the store catches up, and completes the drag', async () => {
+      wireFog();
+      setFog();
+      store.getState().setGMView(false);
+      store.getState().addToken(token({ id: 'moving', x: 105, y: 105 }));
+      await waitForTokens('moving');
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointermove', pointerEvent(120, 105));
+      viewport.emit('pointermove', pointerEvent(180, 105));
+      expect(tokenGroup('moving').x).toBe(180);
+      expect(store.getState().objects.tokens['moving']?.x).not.toBe(180);
+      expect(tokenGroup('moving').visible).toBe(false);
+      const rulerLayers = tokenRenderer.getPlayerViewLayers(DEFAULT_SETTINGS.localPlayerView).slice(-2);
+      expect(rulerLayers).toHaveLength(2);
+      expect(rulerLayers.every(({ layer, visible }) => !visible && !layer.visible)).toBe(true);
+      viewport.emit('pointermove', pointerEvent(320, 105));
+      expect(tokenGroup('moving').visible).toBe(true);
+      viewport.emit('pointerup', pointerEvent(320, 105));
+      expect(store.getState().objects.tokens['moving']?.x).toBe(tokenGroup('moving').x);
+      expect(store.getState().objects.tokens['moving']?.x).toBeGreaterThan(250);
+    });
+
+    it.each(['release', 'cancel'])('finishes a covered drag on %s as one undo step', async (ending) => {
+      wireFog();
+      setFog();
+      store.getState().setGMView(false);
+      store.getState().addToken(token({ id: 'moving', x: 105, y: 105 }));
+      await waitForTokens('moving');
+      const history = getHistoryStore(store)!;
+      const before = history.getState().pastStates.length;
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointermove', pointerEvent(180, 105));
+      expect(tokenGroup('moving').visible).toBe(false);
+      if (ending === 'cancel') viewport.options.events.domElement.dispatchEvent(new Event('pointercancel'));
+      else viewport.emit('pointerup', pointerEvent(180, 105));
+      expect(store.getState().isDragging).toBe(false);
+      expect(store.getState().objects.tokens.moving?.x).toBe(175);
+      expect(history.getState().pastStates).toHaveLength(before + 1);
+      expect(tokenGroup('moving').visible).toBe(false);
+      history.getState().undo();
+      await vi.waitFor(() => expect(tokenGroup('moving').x).toBe(105));
+      expect(tokenGroup('moving').visible).toBe(true);
+    });
+
+    it('updates only the moving token outline during animation', async () => {
+      wireFog();
+      setFog();
+      const perceive = vi.fn((_id: string) => 'sensed' as const);
+      tokenRenderer.setPlayerSightProvider(() => perceive);
+      store.getState().addToken(token({ id: 'moving', x: 100 }));
+      store.getState().addToken(token({ id: 'stationary', x: 350 }));
+      await waitForTokens('moving', 'stationary');
+      tokenRenderer.refreshPlayerSight();
+      perceive.mockClear();
+      eventBus.emit('animate-token-to-position', { tokenId: 'moving', targetX: 120, targetY: 100 });
+      ticker.advance(10);
+      expect(perceive).toHaveBeenCalled();
+      expect(perceive.mock.calls.every(([id]) => id === 'moving')).toBe(true);
+    });
+
+    it('uses the displayed centre during path animation and keeps the animation running', async () => {
+      wireFog();
+      setFog();
+      store.getState().setGMView(false);
+      store.getState().addToken(token({ id: 'moving' }));
+      await waitForTokens('moving');
+      eventBus.emit('animate-token-path', {
+        tokenId: 'moving', finalX: 300, finalY: 100,
+        path: [{ x: 150, y: 100, timestamp: 0 }, { x: 250, y: 100, timestamp: 500 }], duration: 1000,
+      });
+      ticker.advance(200);
+      expect(tokenGroup('moving').x).toBeGreaterThan(150);
+      expect(tokenGroup('moving').x).toBeLessThan(250);
+      expect(store.getState().objects.tokens['moving']?.x).toBe(100);
+      expect(tokenGroup('moving').visible).toBe(false);
+      ticker.advance(600);
+      expect(tokenGroup('moving').x).toBe(300);
+      expect(tokenGroup('moving').visible).toBe(true);
+      expect(ticker.size).toBe(0);
     });
   });
 

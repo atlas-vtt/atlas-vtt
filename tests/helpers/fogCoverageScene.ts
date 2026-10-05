@@ -26,7 +26,9 @@ interface FogScene {
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number): void;
 }
 
-export function fogScenes(): { scene: (ops?: Record<string, FogOperation>) => Promise<FogScene> } {
+type BeforeRenderer = (store: ViewAtlasStore) => () => void;
+
+export function fogScenes(): { scene: (ops?: Record<string, FogOperation>, beforeRenderer?: BeforeRenderer) => Promise<FogScene> } {
   const cleanups: Array<() => void> = [];
   beforeEach(() => vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }));
   afterEach(() => {
@@ -35,7 +37,7 @@ export function fogScenes(): { scene: (ops?: Record<string, FogOperation>) => Pr
     vi.useRealTimers();
   });
 
-  async function createScene(ops: Record<string, FogOperation> = {}): Promise<FogScene> {
+  async function createScene(ops: Record<string, FogOperation> = {}, beforeRenderer?: BeforeRenderer): Promise<FogScene> {
     const renderer = await createTestRenderer(128);
     const watch = watchGl(renderer.gl);
     const app = new Application();
@@ -51,6 +53,7 @@ export function fogScenes(): { scene: (ops?: Record<string, FogOperation>) => Pr
     store.setState(state => ({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true,
       objects: { ...state.objects, fog: ops } }));
     store.temporal.getState().clear();
+    const unsubscribe = beforeRenderer?.(store);
     const events = new EventEmitter();
     const fog = new FogOfWarRenderer(viewport, app, events, store);
     viewport.addChild(fog.getContainer());
@@ -60,6 +63,7 @@ export function fogScenes(): { scene: (ops?: Record<string, FogOperation>) => Pr
       return renderer.extract.pixels({ target }).pixels;
     };
     cleanups.push(() => {
+      unsubscribe?.();
       fog.destroy();
       target.destroy(true);
       app.ticker.destroy();
