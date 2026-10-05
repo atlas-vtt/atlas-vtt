@@ -365,13 +365,11 @@ export class DrawingRenderer {
       if (!fragments) continue;
 
       state.deleteDrawing(stroke.id);
+      const { id, kind, timestamp, points: originalPoints, ...properties } = stroke;
       for (const points of fragments) {
         state.addDrawing({
-          type: stroke.type,
+          ...properties,
           points,
-          color: stroke.color,
-          width: stroke.width,
-          opacity: stroke.opacity,
         });
       }
     }

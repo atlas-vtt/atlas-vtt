@@ -4,6 +4,8 @@
 
 ## Fixed
 
+- Erasing part of a drawing now keeps all saved properties on the remaining pieces.
+
 - Closing the command palette cancels its pending focus attempts, so it cannot take focus back afterwards.
 
 - Dice rolls, sounds and history stay in the map view that made them. The player window follows the presented view, and clearing a log leaves other views alone.
