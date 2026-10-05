@@ -8,22 +8,21 @@
 import type { Application, Ticker } from 'pixi.js';
 import type { ITokenSyncService, TokenGroupContainer } from './types';
 import type { TokenEntity } from '../../types';
-import type { ViewAtlasState } from '../../storeFactory';
-import type { StoreApi } from 'zustand';
-import type { GridSystem } from '../../grid/GridSystem';
+import type { SceneSource } from '../../host/sceneSource';
+import type { TokenSyncState } from './tokenSyncState';
 import { EventEmitter } from 'events';
 
 
 export class SyncService implements ITokenSyncService {
-  private store: StoreApi<ViewAtlasState>;
-  private gridSystem: GridSystem;
+  private source: SceneSource<TokenSyncState>;
+  private moveToken: (tokenId: string, x: number, y: number) => void;
   private eventBus: EventEmitter;
   private pixiApp: Application | null = null;
   
   // Sync state
   private animatingTokens: Set<string> = new Set();
   private pendingTokenSync: { newTokens: Record<string, TokenEntity>; prevTokens: Record<string, TokenEntity> } | null = null;
-  private unsubscribeFromStore?: () => void;
+  private unsubscribeFromSource?: () => void;
   
   // Callbacks for external systems
   private onTokensChanged?: (tokens: Record<string, TokenEntity>, prevTokens: Record<string, TokenEntity>) => void;
@@ -37,21 +36,19 @@ export class SyncService implements ITokenSyncService {
   private animateTokenPathHandler: ((data: { tokenId: string; finalX: number; finalY: number; path?: Array<{ x: number; y: number; timestamp: number }>; duration: number }) => void) | null = null;
 
   constructor(
-    store: StoreApi<ViewAtlasState>,
-    gridSystem: GridSystem,
+    source: SceneSource<TokenSyncState>,
+    moveToken: (tokenId: string, x: number, y: number) => void,
     eventBus: EventEmitter
   ) {
-    this.store = store;
-    this.gridSystem = gridSystem;
+    this.source = source;
+    this.moveToken = moveToken;
     this.eventBus = eventBus;
   }
 
   initialize(): void {
-    // Subscribe to store changes using plain subscribe pattern
-    // (avoids potential issues with subscribeWithSelector + immer + temporal middleware chain)
-    this.unsubscribeFromStore = this.store.subscribe((state: ViewAtlasState, prevState: ViewAtlasState) => {
-      const newTokens = state.objects.tokens;
-      const prevTokens = prevState.objects.tokens;
+    this.unsubscribeFromSource = this.source.subscribe((state, prevState) => {
+      const newTokens = state.tokens;
+      const prevTokens = prevState.tokens;
       
       if (newTokens !== prevTokens) {
         const isMapLoading = state.isMapLoading;
@@ -65,7 +62,7 @@ export class SyncService implements ITokenSyncService {
     });
     
     // Fire immediately with current tokens (replaces subscribeWithSelector's fireImmediately option)
-    const currentTokens = this.store.getState().objects.tokens;
+    const currentTokens = this.source.get().tokens;
     if (Object.keys(currentTokens).length > 0) {
       this.onTokensChanged?.(currentTokens, {});
     }
@@ -111,7 +108,7 @@ export class SyncService implements ITokenSyncService {
       this.onTokensChanged?.(this.pendingTokenSync.newTokens, this.pendingTokenSync.prevTokens);
       this.pendingTokenSync = null;
     } else {
-      const tokens = this.store.getState().objects.tokens;
+      const tokens = this.source.get().tokens;
       this.onTokensChanged?.(tokens, {});
     }
   }
@@ -134,7 +131,7 @@ export class SyncService implements ITokenSyncService {
     }
 
     // Get current token state from store to check if animation is still needed
-    const currentToken = this.store.getState().objects.tokens[tokenId];
+    const currentToken = this.source.get().tokens[tokenId];
     if (currentToken) {
       // If the store already has the target position, skip animation and snap directly
       if (!transient && Math.abs(currentToken.x - targetX) < 0.1 && Math.abs(currentToken.y - targetY) < 0.1) {
@@ -184,7 +181,7 @@ export class SyncService implements ITokenSyncService {
       
       // Only check for store conflicts after animation has had time to establish
       if (!transient && elapsed > 16) {
-        const currentStoreToken = this.store.getState().objects.tokens[tokenId];
+        const currentStoreToken = this.source.get().tokens[tokenId];
         if (currentStoreToken) {
           const storeDistance = Math.abs(currentStoreToken.x - targetX) + Math.abs(currentStoreToken.y - targetY);
           if (storeDistance > 0.1) {
@@ -217,7 +214,7 @@ export class SyncService implements ITokenSyncService {
       this.updateUIPosition?.(tokenId, currentX, currentY);
       
       // Update controls position if this is the selected token
-      const selectedIds = this.store.getState().selectedIds;
+      const selectedIds = this.source.get().selectedIds;
       if (selectedIds.length === 1 && selectedIds[0] === tokenId) {
         const tokenSize = tokenSprite.children[0]?.width || 70;
         this.updateControlsPosition?.(currentX, currentY, tokenSize);
@@ -234,8 +231,7 @@ export class SyncService implements ITokenSyncService {
         
         if (!transient) {
           // Update store with final position.
-          const currentState = this.store.getState();
-          currentState.moveToken(tokenId, targetX, targetY);
+          this.moveToken(tokenId, targetX, targetY);
         }
         
         // Remove from animating set
@@ -322,7 +318,7 @@ export class SyncService implements ITokenSyncService {
       this.updateUIPosition?.(tokenId, position.x, position.y);
       
       // Update controls position if this is the selected token
-      const selectedIds = this.store.getState().selectedIds;
+      const selectedIds = this.source.get().selectedIds;
       if (selectedIds.length === 1 && selectedIds[0] === tokenId) {
         const tokenSize = tokenSprite.children[0]?.width || 70;
         this.updateControlsPosition?.(position.x, position.y, tokenSize);
@@ -338,8 +334,7 @@ export class SyncService implements ITokenSyncService {
         this.updateUIPosition?.(tokenId, finalX, finalY);
         
         // Update store with final position
-        const currentState = this.store.getState();
-        currentState.moveToken(tokenId, finalX, finalY);
+        this.moveToken(tokenId, finalX, finalY);
         
         // Remove from animating set
         this.animatingTokens.delete(tokenId);
@@ -463,8 +458,8 @@ export class SyncService implements ITokenSyncService {
   }
 
   destroyAll(): void {
-    // Unsubscribe from store
-    this.unsubscribeFromStore?.();
+    // Unsubscribe from state changes
+    this.unsubscribeFromSource?.();
     
     if (this.animateTokenToPositionHandler) {
       this.eventBus.off('animate-token-to-position', this.animateTokenToPositionHandler);

@@ -25,6 +25,7 @@ import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler } from './token-renderer/DragRuler';
 import { DragRulerView } from './token-renderer/DragRulerView';
 import { SyncService } from './token-renderer/SyncService';
+import { createSceneSource } from '../plugin/host/sceneSource';
 import { updateInstanceBadge } from './token-renderer/InstanceBadge';
 import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
 import { DownedTokenOverlay } from './token-renderer/DownedTokenOverlay';
@@ -224,7 +225,15 @@ export class TokenRenderer {
     this.statblockSync = new StatblockTokenSync(obsApp, store, tokenStatblockLinkService, this.resourceDefsProvider);
 
     // Initialize sync service
-    this.syncService = new SyncService(this.store, this.gridSystem, this.eventBus);
+    this.syncService = new SyncService(
+      createSceneSource(this.store, state => ({
+        tokens: state.objects.tokens,
+        isMapLoading: state.isMapLoading,
+        selectedIds: state.selectedIds,
+      })),
+      (tokenId, x, y) => this.store.getState().moveToken(tokenId, x, y),
+      this.eventBus,
+    );
     
     // Set up sync service callbacks
     this.syncService.setTokenSpriteProvider((tokenId: string) => this.tokenSprites[tokenId] || null);
