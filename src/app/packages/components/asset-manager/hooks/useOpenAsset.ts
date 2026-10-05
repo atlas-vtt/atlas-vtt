@@ -15,7 +15,8 @@ export interface OpenAssetDeps {
 
 export type OpenAsset = (asset: AnyAsset, spawnCount: number) => Promise<void>;
 
-async function openScene(deps: OpenAssetDeps, assetId: string): Promise<void> {
+/** Opens a scene in the current tab and closes the asset manager. */
+export async function openScene(deps: OpenAssetDeps, assetId: string): Promise<void> {
   const serviceAsset = await deps.assetService?.getAssetById(assetId);
   if (serviceAsset?.type !== 'scene' || !serviceAsset.data?.mapPath) return;
   const file = deps.app.vault.getAbstractFileByPath(serviceAsset.data.mapPath);
