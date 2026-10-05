@@ -1,9 +1,11 @@
+import type { App } from 'obsidian';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import {
   attachDiceRolling,
+  rollStatblockDice,
   linkDiceIn,
   splitDiceSegments,
   toRollFormula,
@@ -190,5 +192,23 @@ describe('hit dice', () => {
 
     expect(rolls.map((roll) => roll.formula)).toEqual(['2d6']);
     dispose();
+  });
+});
+
+
+describe('statblock roll owner', () => {
+  it('uses the named view and never falls back after that view closes', () => {
+    const first = { rollDice: vi.fn() };
+    const second = { rollDice: vi.fn() };
+    const leaves = [first, second].map((tool, index) => ({
+      view: { viewId: `view-${index}`, serviceManager: { getToolController: () => ({ getDiceTool: () => tool }) } },
+    }));
+    const app = { workspace: { getLeavesOfType: () => leaves } } as unknown as App;
+    rollStatblockDice(app, 'd20', { viewId: 'view-1', tokenName: 'Wolf' });
+    expect(first.rollDice).not.toHaveBeenCalled();
+    expect(second.rollDice).toHaveBeenCalledWith('d20', { type: 'statblock', tokenName: 'Wolf' });
+    leaves.pop();
+    expect(rollStatblockDice(app, 'd20', { viewId: 'view-1' })).toBeNull();
+    expect(first.rollDice).not.toHaveBeenCalled();
   });
 });

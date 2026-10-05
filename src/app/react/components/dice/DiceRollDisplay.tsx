@@ -1,3 +1,4 @@
+import type { EventEmitter } from 'events';
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtlasUI } from '../../root/AtlasUIContext';
@@ -17,6 +18,8 @@ import { DICE_TOAST_KNOT_PATHS, DICE_TOAST_KNOT_SYMBOL_ID } from './diceToastOrn
 import { useDiceToasts } from './useDiceToasts';
 
 interface DiceRollDisplayProps {
+  /** Explicit source for a display outside its owning Atlas view. */
+  eventBus?: EventEmitter;
   /** Element the rolls render into, e.g. in the player window. Defaults to where the component is mounted. */
   container?: HTMLElement;
   /** Adapts each roll before it is shown, e.g. to leave out who rolled it. */
@@ -29,8 +32,9 @@ interface DiceRollDisplayProps {
  * Every dice roll, at the top centre of the map: thrown as 3D dice, or as a
  * result card when 3D dice are off or the roll holds dice no real body shows.
  */
-export function DiceRollDisplay({ container, prepare, muted = false }: DiceRollDisplayProps): React.ReactElement | null {
+export function DiceRollDisplay({ container, prepare, muted = false, eventBus: suppliedBus }: DiceRollDisplayProps): React.ReactElement | null {
   const { app, view } = useAtlasUI();
+  const eventBus = suppliedBus ?? view?.serviceManager?.getEventBus();
   const display = useDiceDisplay(app ?? undefined);
   const look = useDiceLook(app ?? undefined);
   const { toasts, addToast, dismissToast, dismissAllToasts } = useDiceToasts();
@@ -39,8 +43,7 @@ export function DiceRollDisplay({ container, prepare, muted = false }: DiceRollD
   const stageDoc = container?.ownerDocument ?? view?.containerEl.doc ?? document;
 
   useEffect(() => {
-    const handler = (e: Event): void => {
-      const raw = (e as CustomEvent<DiceRollResult>).detail;
+    const handler = (raw: DiceRollResult): void => {
       const result = prepare ? prepare(raw) : raw;
       const scene = diceSceneToShow(result, display);
       // Without WebGL a stage stays blank (white on some systems), so the roll shows as a card
@@ -51,9 +54,9 @@ export function DiceRollDisplay({ container, prepare, muted = false }: DiceRollD
       if (!muted) warmDiceSounds();
       setRolls((prev) => pushRoll(prev, { result, scene, style: throwStyle(display) }));
     };
-    document.addEventListener('atlas-dice-rolled', handler);
-    return (): void => document.removeEventListener('atlas-dice-rolled', handler);
-  }, [addToast, prepare, display, muted, stageDoc]);
+    eventBus?.on('dice-rolled', handler);
+    return (): void => { eventBus?.off('dice-rolled', handler); };
+  }, [addToast, prepare, display, muted, stageDoc, eventBus]);
 
   // Dice stages are built while nothing rolls, so that the first roll does not wait for one.
   useEffect(() => {

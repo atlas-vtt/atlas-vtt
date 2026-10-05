@@ -5,8 +5,9 @@ import { DEFAULT_DICE_RULES } from '../../gameSystems/diceRules';
 
 function setup(defaultRoll = '1d20') {
   const inputs = { random: vi.fn(() => 0.5), rollId: vi.fn(() => 'caller-roll'), roller: vi.fn(() => 'Mira'), onFormulaError: vi.fn() };
-  const tool = new DiceTool(new EventEmitter(), () => ({ ...DEFAULT_DICE_RULES, defaultRoll }), inputs);
-  return { tool, inputs };
+  const bus = new EventEmitter();
+  const tool = new DiceTool(bus, () => ({ ...DEFAULT_DICE_RULES, defaultRoll }), inputs);
+  return { tool, inputs, bus };
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -22,7 +23,8 @@ describe('DiceTool roll inputs', () => {
   });
 
   it.each(['d20 garbage', '101d6', 'd1001', `+3${' '.repeat(63)}`, 'd20\n'])('rejects %j before randomness, history or events', (formula) => {
-    const { tool, inputs } = setup();
+    const { tool, inputs, bus } = setup();
+    const emit = vi.spyOn(bus, 'emit');
     const dispatch = vi.spyOn(document, 'dispatchEvent');
     expect(tool.rollDice(formula)).toBeNull();
     expect(inputs.onFormulaError).toHaveBeenCalledOnce();
@@ -31,6 +33,7 @@ describe('DiceTool roll inputs', () => {
     expect(inputs.roller).not.toHaveBeenCalled();
     expect(tool.getState().rollHistory).toEqual([]);
     expect(dispatch).not.toHaveBeenCalled();
+    expect(emit).not.toHaveBeenCalled();
   });
 
   it('validates the completed default roll before rolling', () => {

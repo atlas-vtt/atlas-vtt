@@ -327,7 +327,9 @@ export class NotePreviewUIManager {
           pin.notePath, 
           pin,
           this, 
-          { x: screenX, y: screenY }
+          { x: screenX, y: screenY },
+          undefined,
+          this.viewId,
         );
         
         if (statblockPreview.element) {

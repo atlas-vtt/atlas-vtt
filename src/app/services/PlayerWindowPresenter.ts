@@ -172,6 +172,7 @@ async function waitForRenderedFrameSource(view: AtlasView): Promise<PlayerFrameS
   return {
     canvas,
     store: view.atlasStore,
+    diceEvents: view.serviceManager.getEventBus(),
     withPlayerSafeFrame: (capture, settings, camera) => renderer.withPlayerSafeFrame(capture, settings, camera),
     ...(rendersOnChange(app) ? {
       beforeRender: {

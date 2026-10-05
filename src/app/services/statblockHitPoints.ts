@@ -11,9 +11,11 @@ import type { TokenVitals } from './statblockVitalsSync';
 type PlacedToken = TokenVitals & { id: string };
 
 /** The game master's map view that holds every one of these tokens. */
-function storeHoldingTokens(app: App, ids: readonly string[]): ViewAtlasStore | null {
+function storeHoldingTokens(app: App, ids: readonly string[], viewId?: string): ViewAtlasStore | null {
   for (const leaf of app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE)) {
-    const store = (leaf.view as unknown as { getStore?: () => ViewAtlasStore }).getStore?.();
+    const view = leaf.view as unknown as { viewId?: string; getStore?: () => ViewAtlasStore };
+    if (viewId && view.viewId !== viewId) continue;
+    const store = view.getStore?.();
     const state = store?.getState();
     if (store && state && !state.isPlayerView && ids.every((id) => state.objects.tokens[id])) return store;
   }
@@ -33,20 +35,22 @@ export function rollHitPoints(
   statblockPath: string,
   tokens: readonly TokenVitals[],
   abilityName?: string,
+  viewId?: string,
 ): void {
   const placed = tokens.filter((token): token is PlacedToken => Boolean(token.id));
-  const store = placed.length ? storeHoldingTokens(app, placed.map((token) => token.id)) : null;
+  const store = placed.length ? storeHoldingTokens(app, placed.map((token) => token.id), viewId) : null;
   // The resource the collection fills from the statblock's hit points, whatever it is called.
   const key = store && mapResources(AssetService.getInstance(app), store.getState().mapPath)
     .find((definition) => isHitPointsKey(definition.field))?.key;
   if (!store || !key) {
-    rollStatblockDice(app, formula, { statblockPath, abilityName });
+    rollStatblockDice(app, formula, { statblockPath, abilityName, viewId });
     return;
   }
 
   const entries: Array<{ id: string; changes: TokenUpdates }> = [];
   for (const token of placed) {
     const roll = rollStatblockDice(app, formula, {
+      viewId,
       tokenId: token.id,
       statblockPath,
       tokenName: token.name,

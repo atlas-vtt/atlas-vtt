@@ -1,3 +1,4 @@
+import { EventEmitter } from 'events';
 import type { App } from 'obsidian';
 import type { LocalPlayerView } from '../../src/app/local-player-view';
 import { describe, expect, test, vi, beforeEach } from 'vitest';
@@ -72,11 +73,12 @@ function createFakeView(app?: Application): FakeView {
   const atlasStore = createStore<SceneState>(() => ({ isMapLoading: false, mapLoaded: true, mapPath: null }));
   const canvas = document.createElement('canvas');
   const withPlayerSafeFrame = vi.fn((capture: () => void) => capture());
+  const diceEvents = new EventEmitter();
   const renderer = { getAppInstance: () => (app ? Object.assign(app, { canvas }) : { canvas }), withPlayerSafeFrame };
   const view = {
     tabMetaStore,
     atlasStore,
-    serviceManager: { getRendererService: () => ({ getRenderer: () => renderer, getViewport: () => undefined }) },
+    serviceManager: { getEventBus: () => diceEvents, getRendererService: () => ({ getRenderer: () => renderer, getViewport: () => undefined }) },
     switchToTab: vi.fn(async (tabId: string) => {
       tabMetaStore.getState().setActiveTab(tabId);
     }),
@@ -122,6 +124,7 @@ describe('PlayerWindowPresenter', () => {
 
     // Frames are captured through the renderer so DM-only layers stay out of the player view.
     const source: PlayerFrameSource = serviceMock.openPlayerWindow.mock.calls[0][0];
+    expect(source.diceEvents).toBe(view.serviceManager.getEventBus());
     const capture = vi.fn();
     const settings = new SettingsService({} as any).getLocalPlayerViewSettings();
     source.withPlayerSafeFrame(capture, settings);

@@ -75,7 +75,7 @@ export class DiceTool {
       this.state.rollHistory = this.state.rollHistory.slice(0, 50);
     }
     
-    document.dispatchEvent(new CustomEvent('atlas-dice-rolled', { detail: result }));
+    this.eventBus.emit('dice-rolled', result);
 
     return result;
   }
@@ -114,7 +114,6 @@ export class DiceTool {
   public clearHistory(): void {
     this.state.rollHistory = [];
     this.eventBus.emit('dice-history-cleared');
-    document.dispatchEvent(new CustomEvent('atlas-dice-history-cleared'));
   }
 
   public setActiveFormula(formula: string): void {

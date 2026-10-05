@@ -1,3 +1,4 @@
+import type { EventEmitter } from 'events';
 import { useState, useEffect, useCallback } from 'react';
 import type { DiceRollResult } from '../../../tools/DiceTool';
 
@@ -9,12 +10,13 @@ const MAX_HISTORY = 20;
  * back to the store for persistence across map close/reopen.
  */
 export function useDiceHistory(
-  getDiceTool: () => { rollDice: (formula: string, source?: DiceRollResult['source']) => DiceRollResult | null } | null,
+  getDiceTool: () => { rollDice: (formula: string, source?: DiceRollResult['source']) => DiceRollResult | null; clearHistory: () => void } | null,
   storeActions?: {
     diceLog: DiceRollResult[];
     addDiceLogEntry: (entry: DiceRollResult) => void;
     clearDiceLog: () => void;
   },
+  eventBus?: EventEmitter,
 ): {
   history: DiceRollResult[];
   clearHistory: () => void;
@@ -31,10 +33,9 @@ export function useDiceHistory(
     }
   }, [storeActions?.diceLog]);
 
-  // Listen for new rolls (DOM CustomEvent — same channel as toast system)
+  // Listen only to the view that owns this history.
   useEffect(() => {
-    const handleRoll = (e: Event): void => {
-      const result = (e as CustomEvent<DiceRollResult>).detail;
+    const handleRoll = (result: DiceRollResult): void => {
       setHistory(prev => {
         const next = [result, ...prev];
         return next.length > MAX_HISTORY ? next.slice(0, MAX_HISTORY) : next;
@@ -45,21 +46,20 @@ export function useDiceHistory(
 
     const handleClear = (): void => {
       setHistory([]);
+      storeActions?.clearDiceLog();
     };
 
-    document.addEventListener('atlas-dice-rolled', handleRoll);
-    document.addEventListener('atlas-dice-history-cleared', handleClear);
+    eventBus?.on('dice-rolled', handleRoll);
+    eventBus?.on('dice-history-cleared', handleClear);
     return () => {
-      document.removeEventListener('atlas-dice-rolled', handleRoll);
-      document.removeEventListener('atlas-dice-history-cleared', handleClear);
+      eventBus?.off('dice-rolled', handleRoll);
+      eventBus?.off('dice-history-cleared', handleClear);
     };
-  }, [storeActions]);
+  }, [storeActions, eventBus]);
 
   const clearHistory = useCallback((): void => {
-    setHistory([]);
-    storeActions?.clearDiceLog();
-    document.dispatchEvent(new CustomEvent('atlas-dice-history-cleared'));
-  }, [storeActions]);
+    getDiceTool()?.clearHistory();
+  }, [getDiceTool]);
 
   const repeatRoll = useCallback((formula: string, source?: DiceRollResult['source']): void => {
     const diceTool = getDiceTool();

@@ -38,7 +38,7 @@ export function DiceRollLog({ isOpen, onClose }: DiceRollLogProps): React.ReactE
     }
   }, [view]);
 
-  const { history, clearHistory, repeatRoll } = useDiceHistory(getDiceTool, storeActions);
+  const { history, clearHistory, repeatRoll } = useDiceHistory(getDiceTool, storeActions, view?.serviceManager?.getEventBus());
 
   const handleClose = useCallback((): void => {
     setIsPinned(false);

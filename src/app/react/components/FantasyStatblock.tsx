@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { TFile, type App } from 'obsidian';
 import {
   findCreatureForNotePath,
@@ -21,8 +21,11 @@ import { isEditableNote, writeStatblockValue } from '../../services/statblockEdi
 import { useBestiaryRevision } from '../hooks/useBestiaryRevision';
 import { StatblockSkeleton } from './statblock/StatblockSkeleton';
 import { t } from '../../i18n';
+import { AtlasUIContext } from '../root/AtlasUIContext';
 
 interface FantasyStatblockProps {
+  /** Owning map when this block renders in a separate React root. */
+  viewId?: string | undefined;
   /** Vault path of the note backing the Fantasy Statblocks creature */
   notePath: string;
   /** The note's text when it is not in the vault, e.g. inside a collection being imported; `notePath` then names it. */
@@ -53,7 +56,10 @@ export function FantasyStatblock({
   editable = false,
   className,
   tokenActions,
+  viewId: suppliedViewId,
 }: FantasyStatblockProps): React.JSX.Element {
+  const context = useContext(AtlasUIContext);
+  const viewId = suppliedViewId ?? context?.view?.viewId;
   const ref = useRef<HTMLDivElement>(null);
   const tokensRef = useRef<TokenVitals[]>(tokens);
   tokensRef.current = tokens;
@@ -185,15 +191,16 @@ export function FantasyStatblock({
       () => {
         const [token] = tokensRef.current;
         return {
+          viewId,
           tokenId: token?.id,
           statblockPath: notePath,
           tokenName: token?.name ?? (monster.name),
           tokenImagePath: token?.imagePath,
         };
       },
-      (formula, abilityName) => rollHitPoints(app, formula, notePath, tokensRef.current, abilityName),
+      (formula, abilityName) => rollHitPoints(app, formula, notePath, tokensRef.current, abilityName, viewId),
     );
-  }, [app, monster, notePath]);
+  }, [app, monster, notePath, viewId]);
 
   // Mirror the tokens' resources into any vitals track the layout renders.
   useEffect(() => {

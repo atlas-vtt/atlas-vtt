@@ -1,3 +1,4 @@
+import type { EventEmitter } from 'events';
 import type { StoreApi } from 'zustand';
 import type { PlayerCameraState } from '../local-player-view';
 import type { ViewAtlasState } from '../storeFactory';
@@ -40,6 +41,8 @@ export interface BeforeRenderCapture {
 export interface PlayerFrameSource {
   canvas: HTMLCanvasElement;
   store?: StoreApi<ViewAtlasState>;
+  /** Dice events from the view that owns this canvas. */
+  diceEvents?: EventEmitter;
   getCamera?(): PlayerCameraState | undefined;
   /** Renders the player frame for `capture`, then the DM's frame again. */
   withPlayerSafeFrame: PlayerSafeFrame;

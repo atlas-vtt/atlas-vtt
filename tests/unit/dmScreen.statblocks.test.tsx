@@ -12,7 +12,10 @@ vi.mock('../../src/app/resources/useMapResources', async () => {
   const definitions = [(await import('../../src/app/resources/resourceDefinitions')).HP_RESOURCE];
   return { useMapResources: () => definitions };
 });
-vi.mock('../../src/app/react/root/AtlasUIContext', () => ({ useAtlasUI: () => ({ app, view }) }));
+vi.mock('../../src/app/react/root/AtlasUIContext', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../src/app/react/root/AtlasUIContext')>(),
+  useAtlasUI: () => ({ app, view }),
+}));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (value: typeof state) => unknown) => selector(state),
 }));

@@ -1,3 +1,4 @@
+import type { EventEmitter } from 'events';
 import React, { useCallback, useMemo } from 'react';
 import type { App } from 'obsidian';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../root/AtlasUIContext';
@@ -7,6 +8,7 @@ import { DiceRollDisplay } from './DiceRollDisplay';
 
 interface PlayerDiceToastsProps {
   app: App;
+  eventBus: EventEmitter;
   /** Store of the presented scene: which tokens players cannot see, and how the others look on the map. */
   store: ReadableViewStore;
   container: HTMLElement;
@@ -19,7 +21,7 @@ interface PlayerDiceToastsProps {
  * token's portrait is read from the presented scene, like in the DM's window:
  * its artwork and ring on the map, not the picture of its statblock.
  */
-export function PlayerDiceToasts({ app, store, container }: PlayerDiceToastsProps): React.ReactElement {
+export function PlayerDiceToasts({ app, store, container, eventBus }: PlayerDiceToastsProps): React.ReactElement {
   const context = useMemo((): AtlasUIContextValue => ({ app, view: null, pixiApp: null, renderer: null }), [app]);
 
   const forPlayers = useCallback((result: DiceRollResult): DiceRollResult => {
@@ -34,7 +36,7 @@ export function PlayerDiceToasts({ app, store, container }: PlayerDiceToastsProp
     <AtlasUIContext.Provider value={context}>
       <ReadableViewStoreProvider store={store}>
         {/* The DM's window plays the sound; a second one here would echo it. */}
-        <DiceRollDisplay container={container} prepare={forPlayers} muted />
+        <DiceRollDisplay eventBus={eventBus} container={container} prepare={forPlayers} muted />
       </ReadableViewStoreProvider>
     </AtlasUIContext.Provider>
   );
