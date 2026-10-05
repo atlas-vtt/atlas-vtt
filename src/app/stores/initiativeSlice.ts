@@ -95,7 +95,9 @@ function updateEntryOrders(entries: InitiativeEntry[]): void {
  */
 export function createInitiativeActions(
   set: ImmerSet,
-  viewId: string
+  viewId: string,
+  get: () => InitiativeStoreState,
+  random: () => number,
 ): Omit<InitiativeSlice, 'initiative' | 'initiativeTrackerOpen'> {
   return {
     setInitiativeTrackerOpen: (open) => set((draft) => {
@@ -149,25 +151,31 @@ export function createInitiativeActions(
       }
     }),
 
-    rollAllInitiative: (roll = DEFAULT_ROLL) => set((draft) => {
-      draft.initiative.entries.forEach(entry => {
-        entry.initiative = rollInitiativeDice(roll) + entry.initiativeModifier;
+    rollAllInitiative: (roll = DEFAULT_ROLL) => {
+      const totals = new Map(get().initiative.entries.map(entry => [
+        entry.id, rollInitiativeDice(roll, random) + entry.initiativeModifier,
+      ]));
+      set((draft) => {
+        for (const entry of draft.initiative.entries) {
+          const total = totals.get(entry.id);
+          if (total !== undefined) entry.initiative = total;
+        }
+        if (draft.initiative.config.autoSort) {
+          draft.initiative.entries.sort((a, b) => b.initiative - a.initiative);
+          updateEntryOrders(draft.initiative.entries);
+        }
       });
+    },
 
-      // Sort by initiative if autoSort is enabled
-      if (draft.initiative.config.autoSort) {
-        draft.initiative.entries.sort((a, b) => b.initiative - a.initiative);
-        updateEntryOrders(draft.initiative.entries);
-      }
-
-    }),
-
-    rollEntryInitiative: (id, roll = DEFAULT_ROLL) => set((draft) => {
-      const entry = draft.initiative.entries.find(e => e.id === id);
-      if (entry) {
-        entry.initiative = rollInitiativeDice(roll) + entry.initiativeModifier;
-      }
-    }),
+    rollEntryInitiative: (id, roll = DEFAULT_ROLL) => {
+      const entry = get().initiative.entries.find(e => e.id === id);
+      if (!entry) return;
+      const total = rollInitiativeDice(roll, random) + entry.initiativeModifier;
+      set((draft) => {
+        const current = draft.initiative.entries.find(e => e.id === id);
+        if (current) current.initiative = total;
+      });
+    },
 
     nextTurn: () => set((draft) => {
       if (draft.initiative.sides) return nextSideTurn(draft.initiative);
