@@ -26,6 +26,7 @@ import { tokenSizeSubmenu } from '../../../../react/components/context-menu/toke
 import type { TransferMode } from '../../../../services/assetTransfer/transferPlan';
 import type { CreateScenePrefill } from '../hooks/useAssetCrud';
 import { scenePrefillFromMap } from '../utils/sceneCreation';
+import { openScene } from '../hooks/useOpenAsset';
 
 export interface AssetContextMenuDeps {
   app: ObsidianApp;
@@ -76,6 +77,16 @@ export function buildAssetContextMenuEntries(
       label: 'Create Scene',
       icon: 'clapperboard',
       onClick: () => deps.openCreateScene(scenePrefillFromMap(asset)),
+    });
+  }
+
+  // ── Open Scene (single scene) ─────────────────────────────────
+  if (asset.type === 'scenes' && selectedAssets.length === 1) {
+    entries.push({
+      type: 'item',
+      label: 'Open Scene',
+      icon: 'play',
+      onClick: () => runInBackground(openScene(deps, asset.id), `Opening scene ${asset.id}`, 'Could not open the scene'),
     });
   }
 
