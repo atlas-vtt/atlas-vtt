@@ -4,7 +4,7 @@
     {
       "version": "0.6.1-beta.0",
       "title": "Coming in 0.6.1",
-      "markdown": "## Improved\n\n- Dice rolls now reject invalid formulas with a clear message and enforce limits of 64 characters, 10 terms, 100 dice and 1,000 faces per die. Exploding dice keep their existing limit.\n\n## Fixed\n\n- Closing the command palette cancels its pending focus attempts, so it cannot take focus back afterwards.\n\n- Dice rolls, sounds and history stay in the map view that made them. The player window follows the presented view, and clearing a log leaves other views alone."
+      "markdown": "## Improved\n\n- Dice rolls now reject invalid formulas with a clear message and enforce limits of 64 characters, 10 terms, 100 dice and 1,000 faces per die. Exploding dice keep their existing limit.\n\n## Fixed\n\n- Closing the command palette cancels its pending focus attempts, so it cannot take focus back afterwards.\n\n- Dice rolls, sounds and history stay in the map view that made them. The player window follows the presented view, and clearing a log leaves other views alone.\n\n## Important changes\n\n- Removed an unused legacy map view. Old tabs using it no longer reopen. The current player window is unchanged."
     },
     {
       "version": "0.6.0",
