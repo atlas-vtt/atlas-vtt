@@ -1,6 +1,6 @@
 import { StatblockTokenSync } from '../plugin/StatblockTokenSync';
-import { mapResources } from '../resources/collectionResources';
-import type { ResourceDefinition, ResourceDefsProvider } from '../resources/resourceTypes';
+import { TokenCollectionSync } from '../plugin/TokenCollectionSync';
+import type { ResourceDefsProvider } from '../resources/resourceTypes';
 import { fitTokenArtwork, syncTokenArtwork } from './token-renderer/tokenArtwork';
 import type { AtlasSettings } from '../services/SettingsService';
 import { HIDDEN_TOKEN_ALPHA, gmTokenLayers, type HideableLayer, type LayerVisibility } from './playerSafeFrame';
@@ -15,7 +15,6 @@ import type { GridSystem } from "../grid/GridSystem";
 import { getDrawingBounds } from "./drawingGeometry";
 import type { ViewAtlasStore } from '../storeFactory';
 import { EventEmitter } from 'events';
-import { AssetService } from '../services/AssetService';
 import { AssetValidationService } from '../services/AssetValidationService';
 import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService';
 import { SpriteFactory } from './token-renderer/SpriteFactory';
@@ -25,7 +24,6 @@ import { UIManager } from './token-renderer/UIManager';
 import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler } from './token-renderer/DragRuler';
 import { DragRulerView } from './token-renderer/DragRulerView';
-import { mapMeasurementSettings } from '../services/mapMeasurementSettings';
 import { SyncService } from './token-renderer/SyncService';
 import { updateInstanceBadge } from './token-renderer/InstanceBadge';
 import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
@@ -36,7 +34,6 @@ import { normalizeImagePath } from '../utils/pathUtils';
 import { prefersReducedMotion } from '../utils/motion';
 import { destroyTree } from './utils/destroyTree';
 import type { TokenGroupContainer } from './token-renderer/types';
-import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import { setCanvasCursor } from './utils/canvasCursor';
 import { markHandled, resetHandled } from './utils/handledEvents';
 import { watchClick } from './utils/clickRelease';
@@ -64,7 +61,7 @@ export class TokenRenderer {
   private selectionOverlayUpdater: () => void;
   private store: ViewAtlasStore;
   private eventBus: EventEmitter;
-  private assetService: AssetService;
+  private collectionSync: TokenCollectionSync;
   /** The resources of the map's collection; set once the asset service is wired. */
   private resourceDefsProvider: ResourceDefsProvider = () => [];
   private assetValidationService?: AssetValidationService;
@@ -160,11 +157,6 @@ export class TokenRenderer {
     this.store = store;
     this.eventBus = eventBus;
     this.viewId = viewId || `tokenrenderer-${Date.now()}-${Math.random()}`;
-    this.assetService = AssetService.getInstance(obsApp);
-    // Tokens drawn before the index is loaded read their collection's rules as unknown
-    this.assetService.initialize().then(() => this.refreshCollectionRules(), (err: unknown) => {
-      console.error('[TokenRenderer] Failed to initialize AssetService:', err);
-    });
     const tokenStatblockLinkService = TokenStatblockLinkService.getInstance(obsApp);
 
     // Check if this is a player view to disable interactions
@@ -220,17 +212,13 @@ export class TokenRenderer {
       }
     });
     
-    // Wire condition definitions provider (shared by InteractionController + UIManager/TokenUIRenderers)
-    const conditionDefsProvider = (): ConditionDefinition[] => {
-      const mapPath = this.store.getState().mapPath;
-      if (!mapPath) return [];
-      const collectionId = this.assetService.getCollectionForMap(mapPath);
-      if (!collectionId) return [];
-      return this.assetService.getCollectionSettings(collectionId).conditions;
-    };
-    this.interactionController.conditionDefsProvider = conditionDefsProvider;
-    this.uiManager.conditionDefsProvider = conditionDefsProvider;
-    this.resourceDefsProvider = (): readonly ResourceDefinition[] => mapResources(this.assetService, this.store.getState().mapPath);
+    this.collectionSync = new TokenCollectionSync(obsApp, store.getState, {
+      refreshRules: () => this.refreshCollectionRules(),
+      refreshArt: (path) => this.refreshArt(path),
+    });
+    this.interactionController.conditionDefsProvider = this.collectionSync.conditions;
+    this.uiManager.conditionDefsProvider = this.collectionSync.conditions;
+    this.resourceDefsProvider = this.collectionSync.resources;
     this.interactionController.resourceDefsProvider = this.resourceDefsProvider;
     this.uiManager.resourceDefsProvider = this.resourceDefsProvider;
     this.statblockSync = new StatblockTokenSync(obsApp, store, tokenStatblockLinkService, this.resourceDefsProvider);
@@ -269,7 +257,7 @@ export class TokenRenderer {
       new DragRulerView(this.viewport, this.tokenContainer),
       this.gridSystem,
       this.store,
-      () => mapMeasurementSettings(this.assetService, this.store.getState()),
+      this.collectionSync.measurement,
     );
     this.interactionController.setDragRuler(this.dragRuler);
 
@@ -444,15 +432,6 @@ export class TokenRenderer {
 
     window.addEventListener('atlas-tokens-resize-update', this._handleResizeUpdate);
     
-    // Condition badges follow edits to the map's collection conditions
-    const handleCollectionSettingsChange = this.obsApp.workspace.on('atlas-vtt:collection-settings-changed', (collectionId) => {
-      const mapPath = this.store.getState().mapPath;
-      if (mapPath && this.assetService.getCollectionForMap(mapPath) === collectionId) this.refreshCollectionRules();
-    });
-
-    // Tokens show the new content of an edited image file, e.g. a re-cropped token
-    const handleFileModified = this.obsApp.vault.on('modify', (file) => { void this.refreshArt(file.path); });
-
     // Store cleanup function
     const originalUnsubscribe = this._unsubscribeFromViewport;
     this._unsubscribeFromViewport = () => {
@@ -463,8 +442,7 @@ export class TokenRenderer {
       this.eventBus.off('map-loaded', handleMapLoaded);
       // Clean up metadata change listener
       this.statblockSync.destroy();
-      this.obsApp.vault.offref(handleFileModified);
-      this.obsApp.workspace.offref(handleCollectionSettingsChange);
+      this.collectionSync.destroy();
     };
   }
   

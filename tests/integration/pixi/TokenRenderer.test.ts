@@ -97,6 +97,7 @@ describe('TokenRenderer Integration Tests', () => {
   let selectionOverlayUpdater: ReturnType<typeof vi.fn>;
   let obsidianApp: ReturnType<typeof createInMemoryApp>['app'];
   let restoreGraphics: () => void;
+  let emitVault: ReturnType<typeof createInMemoryApp>['emit'];
   let viewportPointerDownListeners: number;
   let isRendererDestroyed: boolean;
   let canvas: HTMLCanvasElement;
@@ -141,7 +142,9 @@ describe('TokenRenderer Integration Tests', () => {
     restoreGraphics = stubJsdomGraphics();
     (AssetService as unknown as { instance: AssetService | null }).instance = null;
 
-    obsidianApp = createInMemoryApp({ files: { [GOBLIN_IMAGE]: 'goblin-bytes', [ORC_IMAGE]: 'orc-bytes' } }).app;
+    const vault = createInMemoryApp({ files: { [GOBLIN_IMAGE]: 'goblin-bytes', [ORC_IMAGE]: 'orc-bytes' } });
+    obsidianApp = vault.app;
+    emitVault = vault.emit;
     // The viewport only needs the event system's DOM element to bind wheel/pointer listeners.
     const events = { domElement: document.createElement('canvas') } as unknown as EventSystem;
     viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events });
@@ -168,6 +171,26 @@ describe('TokenRenderer Integration Tests', () => {
     destroyRenderer();
     viewport.destroy();
     restoreGraphics();
+  });
+
+  it('reloads only changed token art and removes the vault listener on destroy', async () => {
+    store.getState().addToken(token({ id: 'goblin' }));
+    store.getState().addToken(token({ id: 'orc', imagePath: ORC_IMAGE }));
+    await waitForTokens('goblin', 'orc');
+    const previous = tokenSprite('goblin').texture;
+    const untouched = tokenSprite('orc').texture;
+    const file = obsidianApp.vault.getFileByPath(GOBLIN_IMAGE);
+    expect(file).not.toBeNull();
+    emitVault('modify', file);
+    await vi.waitFor(() => expect(tokenSprite('goblin').texture).not.toBe(previous));
+    expect(previous.destroyed).toBe(true);
+    expect(tokenSprite('orc').texture).toBe(untouched);
+    destroyRenderer();
+    const reads = vi.spyOn(obsidianApp.vault, 'readBinary').mockClear();
+    emitVault('modify', file);
+    await Promise.resolve();
+    expect(reads).not.toHaveBeenCalled();
+    reads.mockRestore();
   });
 
   it('loads tokens already present when the renderer is constructed', async () => {

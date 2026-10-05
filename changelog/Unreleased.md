@@ -1,5 +1,7 @@
 ## Improved
 
+- Simplified how token artwork and collection rules update.
+
 - Simplified token statblock updates and added checks for linked notes.
 
 - Simplified laser pointer updates and added checks for cleanup.
