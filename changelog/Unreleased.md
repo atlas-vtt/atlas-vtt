@@ -1,5 +1,7 @@
 ## Improved
 
+- Fog paint and erase strokes now use consistent shapes.
+
 - Simplified how token artwork and collection rules update.
 
 - Simplified token statblock updates and added checks for linked notes.
@@ -13,6 +15,8 @@
 - Dice rolls now reject invalid formulas with a clear message and enforce limits of 64 characters, 10 terms, 100 dice and 1,000 faces per die. Exploding dice keep their existing limit.
 
 ## Fixed
+
+- Fog now updates correctly when returning to a map or canceling a drawing.
 
 - Erasing part of a drawing now keeps all saved properties on the remaining pieces.
 

@@ -6,6 +6,8 @@ export const BOUNDARIES = {
       "src/app/types/**/*.tsx",
       "src/app/lighting/**/*.ts",
       "src/app/lighting/**/*.tsx",
+      "src/app/fog/**/*.ts",
+      "src/app/fog/**/*.tsx",
       "src/app/vision/**/*.ts",
       "src/app/vision/**/*.tsx",
       "src/app/gameSystems/**/*.ts",
@@ -67,6 +69,7 @@ export const BOUNDARIES = {
       "shared"
     ],
     "packages": [
+      "clipper2-ts",
       "pixi.js",
       "pixi-filters",
       "pixi-viewport",

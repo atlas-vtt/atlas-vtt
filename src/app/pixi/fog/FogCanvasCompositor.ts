@@ -1,19 +1,19 @@
-/**
- * Composites FogOperation[] onto an HTML Canvas 2D surface.
- *
- * Each operation is painted in timestamp order. Brush strokes interpolate
- * circles along the point path; lasso fills render a closed polygon; rectangle
- * fills use fillRect.  Erasing is achieved via `destination-out` composite
- * mode (Canvas 2D, not PIXI — avoids PixiJS v8 erase-blend bug #11377).
- */
+/** Draws cached committed coverage and a separate temporary stroke on Canvas 2D. */
 import type { FogBounds, FogOperation } from '../../types/fogTypes';
-import { renderOperation } from './fogRenderUtils';
+import { fogCoverage, type FogCoverage } from '../../fog/fogCoverage';
+import { validateFogOperation } from '../../fog/fogOperationShape';
+import { drawFogCoverage } from './drawFogCoverage';
+import { FOG_COLOR, renderOperation } from './fogRenderUtils';
 
 export class FogCanvasCompositor {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private bounds: FogBounds;
   private scale: number;
+  private coverage: FogCoverage | undefined;
+  private operations: Readonly<Record<string, FogOperation>> | undefined;
+  private observed = new WeakSet<object>();
+  private invalidCommitted = false;
 
   constructor(bounds: FogBounds, scale = 0.5) {
     this.bounds = bounds;
@@ -29,18 +29,53 @@ export class FogCanvasCompositor {
 
   // ── Public API ──────────────────────────────────────────────────────
 
-  /** Full re-render from a set of operations (e.g. after undo/redo or map load). */
-  compositeAll(ops: FogOperation[]): void {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    const sorted = [...ops].sort((a, b) => a.timestamp - b.timestamp);
-    for (const op of sorted) {
-      renderOperation(this.ctx, op, this.bounds, this.scale, op.offsetX ?? 0, op.offsetY ?? 0);
+  /** Returns false after covering the canvas when geometry or drawing fails. */
+  composite(ops: Readonly<Record<string, FogOperation>>, preview?: FogOperation): boolean {
+    if (ops !== this.operations) {
+      const previous = this.observed.has(ops) ? undefined : this.coverage;
+      this.operations = ops;
+      this.observed.add(ops);
+      try {
+        this.coverage = fogCoverage(ops, previous);
+        this.invalidCommitted = false;
+      } catch {
+        this.coverage = undefined;
+        this.invalidCommitted = true;
+      }
+    }
+    if (this.invalidCommitted) return this.coverCanvas();
+    try {
+      this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      this.ctx.globalCompositeOperation = 'source-over';
+      this.ctx.globalAlpha = 1;
+      this.ctx.fillStyle = FOG_COLOR;
+      drawFogCoverage(this.ctx, this.coverage?.shape ?? [], this.bounds, this.scale);
+      if (preview) {
+        validateFogOperation(preview);
+        renderOperation(this.ctx, preview, this.bounds, this.scale, preview.offsetX ?? 0, preview.offsetY ?? 0);
+      }
+      return true;
+    } catch {
+      return this.coverCanvas();
     }
   }
 
-  /** Append a single operation (for live drawing preview). */
-  compositeIncremental(op: FogOperation): void {
-    renderOperation(this.ctx, op, this.bounds, this.scale, op.offsetX ?? 0, op.offsetY ?? 0);
+  /** Map changes discard undo/redo observations as well as the current geometry. */
+  reset(): void {
+    this.coverage = undefined;
+    this.operations = undefined;
+    this.observed = new WeakSet<object>();
+    this.invalidCommitted = false;
+    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+  }
+
+  private coverCanvas(): false {
+    // Reset every Canvas state, including a save/clip left behind by a failed draw.
+    const width = this.canvas.width;
+    this.canvas.width = width;
+    this.ctx.fillStyle = FOG_COLOR;
+    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    return false;
   }
 
   /** Recreate canvas when map/bounds change. */
@@ -60,6 +95,7 @@ export class FogCanvasCompositor {
   }
 
   destroy(): void {
+    this.reset();
     this.canvas.width = 1;
     this.canvas.height = 1;
   }

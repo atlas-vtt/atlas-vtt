@@ -29,7 +29,7 @@ export default defineConfig({
         extends: true,
         // Found only while a test runs, a dependency reloads that test: the Obsidian mock imports
         // `yaml`, the app manager's test `pixi-viewport`, the dice morph test React's DOM.
-        optimizeDeps: { include: ['yaml', 'pixi-viewport', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime'] },
+        optimizeDeps: { include: ['yaml', 'pixi-viewport', 'eventemitter3', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime'] },
         test: {
           name: 'gpu',
           setupFiles: ['./tests/setup/domHost.ts'],
