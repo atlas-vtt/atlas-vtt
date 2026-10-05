@@ -1,9 +1,9 @@
 import { t } from '../../../i18n';
 import type React from "react"
 import { Circle, Cloud, Eraser, Flashlight, Hand, Lightbulb, Pencil, Ruler, Stamp, Triangle, Type } from "lucide-react"
-import type { AtlasState } from "../../../atlasStore"
+import type { ViewAtlasState } from "../../../storeFactory"
 
-export type Tool = AtlasState["activeTool"]
+export type Tool = ViewAtlasState["activeTool"]
 
 /**
  * What a tool family's toolbar button shows and selects: the family member in
