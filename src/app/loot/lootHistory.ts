@@ -1,4 +1,4 @@
-import { isFiniteNumber, isRecord, isStringArray } from '../services/assetMetadataGuards';
+import { isFiniteNumber, isRecord, isStringArray } from '../utils/guards';
 import type { LootDraw, LootProperty } from './lootRoller';
 
 /** One press of the Roll button: the items it drew, when and on which map. */

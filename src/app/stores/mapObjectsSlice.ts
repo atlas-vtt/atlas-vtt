@@ -3,7 +3,7 @@
  * so each paste, duplicate or cut is exactly one undo step and one map save.
  */
 
-import type { GridState } from '../services/MapPersistence';
+import type { GridState } from '../types/gridTypes';
 import { isPinLabelKind, nextPinLabel } from '../tools/pinLabels';
 import { collectMapObjects, countMapObjects, type CopyableCollections, type MapObjectContent } from '../clipboard/mapObjectContent';
 import { duplicateStep, placeMapObjects } from '../clipboard/mapObjectPlacement';

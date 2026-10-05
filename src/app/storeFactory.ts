@@ -1,3 +1,4 @@
+import type { ViewState, TokenInput, TokenUpdates } from './types/viewState';
 import type { ResourceDefinition } from './resources/resourceTypes';
 import { defeatedResources, restedResources } from './resources/resourceValues';
 import { create } from "zustand";
@@ -11,27 +12,28 @@ import type AtlasVTTPlugin from '../../main';
 import type { TokenEntity, Character, NotePin, TextElement, DrawingStroke } from './types';
 import type { FogOperation, FogOperationInput } from './types/fogTypes';
 import type { WallSegment, WallInput } from './types/wallTypes';
-import { DEFAULT_SCENE_LIGHTING, type LightChanges, type LightInput, type LightSource, type LightZone, type LightZoneChanges, type LightZoneInput, type SceneLighting, type SceneLightingChanges, type SceneLightingOption } from './types/lightingTypes';
+import { DEFAULT_SCENE_LIGHTING, type LightChanges, type LightInput, type LightZoneChanges, type LightZoneInput, type SceneLightingChanges, type SceneLightingOption } from './types/lightingTypes';
 import type { AudioSource, AudioInput } from './types/audioTypes';
 import type { AnyWidget, WidgetSettings } from './types/widgetTypes';
-import type { InitiativeState, InitiativeEntry, InitiativeConfig } from './types/initiativeTypes';
+import type { InitiativeEntry, InitiativeConfig } from './types/initiativeTypes';
 import { createDefaultInitiativeState } from './types/initiativeTypes';
 import type { InitiativeRules } from './types/initiativeRulesTypes';
-import { CameraState, GridState, createAtlasStorage, ATLAS_SCHEMA, ATLAS_VERSION } from './services/MapPersistence';
+import { createAtlasStorage, ATLAS_SCHEMA, ATLAS_VERSION } from './services/MapPersistence';
+import type { CameraState, GridState } from './types/gridTypes';
 import type { AtlasPersistStorage } from './services/MapPersistence';
 import { normalizeImagePath } from './utils/pathUtils';
 import { createInitiativeActions } from './stores/initiativeSlice';
 import { createInitialUIState, createUIActions, type UISlice } from './stores/uiSlice';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
-import { isRecord } from './services/assetMetadataGuards';
+import { isRecord } from './utils/guards';
 import { createHistoryOptions } from './stores/history';
 import { withoutCollectionWidgets } from './utils/collectionWidgets';
 import { withWidgetOff } from './utils/widgetActivation';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
 import { computeNextInstanceNumber } from './stores/tokenInstanceNumbers';
 import { raiseTokens } from './stores/tokenStacking';
-import type { DiceRollResult } from './tools/DiceTool';
+import type { DiceRollResult } from './types/diceTypes';
 import { isAtlasToolAvailable } from './tools/toolAvailability';
 import { readExploredMask } from './lighting/exploredMaskCodec';
 import { clampLitThreshold, readSceneLighting } from './lighting/sceneLightingOptions';
@@ -42,61 +44,16 @@ import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
 
 // Individual store state interface (same as AtlasState but isolated)
-export interface ViewAtlasState {
-  // --- Non-persisted fields ---
-  // Current map file path (for persistence)
-  mapPath: string | null;
+export interface ViewAtlasState extends ViewState {
   setMapPath: (path: string | null) => void;
-  
-  // Per-store persistence control
-  persistenceEnabled: boolean;
   setPersistenceEnabled: (enabled: boolean) => void;
-  
-  /**
-   * Whether the store holds the scene at `mapPath` as it was loaded. It does not while
-   * a scene loads or after loading failed, and is then never saved to the scene's file.
-   */
-  mapLoaded: boolean;
   setMapLoaded: (loaded: boolean) => void;
-
-  // Loading state
-  isMapLoading: boolean;
-  mapLoadingProgress?: number;
-  mapLoadingMessage?: string;
   setMapLoading: (loading: boolean, progress?: number, message?: string) => void;
-
-  // --- Persisted fields ---
-  // Schema identifier and version for migrations
-  schema: 'atlas-vtt';
-  version: number;
-  
-  // Map background image path
-  background: string | null;
   setBackground: (bg: string | null) => void;
-  
-  // Grid configuration
-  grid: GridState | null;
   setGrid: (grid: GridState) => void;
   setGridUnits: (units: { unitType: 'feet' | 'yards' | 'meters' | 'units'; unitDistance: number }) => void;
   setGridVisible: (visible: boolean) => void;
   setSnapToGrid: (snap: boolean) => void;
-  
-  // Object collections by type
-  objects: {
-    tokens: Record<string, TokenEntity>;
-    fog: Record<string, FogOperation>;
-    pins: Record<string, NotePin>;
-    texts: Record<string, TextElement>;
-    drawings: Record<string, DrawingStroke>;
-    walls: Record<string, WallSegment>;
-    lights: Record<string, LightSource>;
-    audios: Record<string, AudioSource>;
-    /** Areas with ambient light of their own, in the order they were drawn; absent until the first is. Read with `lightZoneList`. */
-    lightZones?: Record<string, LightZone>;
-  };
-  
-  // Camera state
-  camera: CameraState;
   setCamera: (partial: Partial<CameraState>) => void;
 
   // Token actions
@@ -172,21 +129,9 @@ export interface ViewAtlasState {
   duplicateFogOperations: (ids: string[]) => void;
   setFogOperations: (fog: Record<string, FogOperation>) => void;
   clearFog: () => void;
-
-  /** Dynamic lighting of the scene; saved with the map, never undo-tracked. */
-  lighting: SceneLighting;
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
-  /** What the players' tokens have explored, as a PNG data URL; saved with the map, never undo-tracked. */
-  exploredMask: string | null;
   setExploredMask: (dataUrl: string | null) => void;
-  /**
-   * How many edits by hand led to the explored memory as it is, counted since the scene loaded.
-   * The memory itself is no store state, so this count stands for it in the undo history: a
-   * memory edit is the step that raises it, and undo and redo reach it in the order the GM
-   * worked (`ExploredMemory` puts the memory back when it changes). Never saved.
-   */
-  exploredEdits: number;
   setExploredEdits: (count: number) => void;
 
   // Wall actions
@@ -205,9 +150,6 @@ export interface ViewAtlasState {
   addLightZone: (data: LightZoneInput) => string;
   updateLightZone: (id: string, changes: LightZoneChanges) => void;
   deleteLightZone: (id: string) => void;
-
-  // Audio dirty flag (non-persisted)
-  _audioDirty: boolean;
   markAudioDirty: () => void;
   consumeAudioDirty: () => boolean;
 
@@ -215,13 +157,8 @@ export interface ViewAtlasState {
   addAudio: (data: AudioInput) => string;
   updateAudio: (id: string, changes: Partial<AudioSource>) => void;
   deleteAudio: (id: string) => void;
-
-  // Tool and selection state
-  activeTool: 'move' | 'select' | 'fog' | 'text' | 'measure' | 'measure-circle' | 'measure-cone' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'draw-pen' | 'draw-eraser' | 'draw-icon' | 'draw-line' | 'draw-rectangle' | 'draw-circle' | 'wall' | 'audio';
   setActiveTool: (tool: ViewAtlasState['activeTool']) => void;
-  selectionMode: 'box' | 'lasso';
   setSelectionMode: (mode: ViewAtlasState['selectionMode']) => void;
-  selectedIds: string[];
   setSelection: (ids: string[]) => void;
   clearSelection: () => void;
   moveTokensBulk: (ids: string[], dx: number, dy: number) => void;
@@ -234,14 +171,7 @@ export interface ViewAtlasState {
   deleteTokens: (ids: string[]) => void;
   /** Deletes every selected token, drawing, text and pin in one undo step. */
   deleteSelected: () => void;
-  
-  // Drag state
-  isDragging: boolean;
   setIsDragging: (dragging: boolean) => void;
-  
-  // Widget settings
-  widgetSettings: WidgetSettings;
-  widgetValues: Record<string, number>; // Widget values separate from definitions
   setWidgetSettings: (settings: WidgetSettings) => void;
   updateWidget: (widgetId: string, updates: Partial<AnyWidget>) => void;
   addWidget: (widget: AnyWidget) => void;
@@ -250,16 +180,7 @@ export interface ViewAtlasState {
   setWidgetOn: (widgetId: string, on: boolean) => void;
   reorderWidgets: (widgetIds: string[]) => void;
   setWidgetValue: (widgetId: string, value: number) => void;
-  
-  // Player view state
-  isPlayerView: boolean;
-
-  // GM view toggle (semi-transparent fog vs fully opaque)
-  isGMView: boolean;
   setGMView: (on: boolean) => void;
-
-  // DM screen state
-  dmNotePath: string | null;
   setDMNotePath: (path: string | null) => void;
 
   // Copy, paste and duplicate (from mapObjectsSlice.ts)
@@ -270,24 +191,8 @@ export interface ViewAtlasState {
   // Map state management
   deleteMapObject: (type: 'token' | 'fog' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => void;
   clearMapState: () => void;
-  
-  // Collection management
-  currentCollectionId?: string;
   plugin?: Plugin;
-  
-  // Token settings
-  tokenSettings: {
-    showNameplates: boolean;
-    /** Keys of the collection's resources this map does not show to the GM; see `resources/sceneVisibility.ts`. */
-    hiddenResources: string[];
-    showInstanceBadges: boolean;
-    tokenRingSize: number;
-  };
   setTokenSettings: (settings: ViewAtlasState['tokenSettings']) => void;
-  
-  // --- Initiative Tracker ---
-  initiative: InitiativeState;
-  initiativeTrackerOpen: boolean;
   setInitiativeTrackerOpen: (open: boolean) => void;
   addToInitiative: (entry: Omit<InitiativeEntry, 'id' | 'order' | 'isActive'>) => string;
   removeFromInitiative: (id: string) => void;
@@ -304,9 +209,6 @@ export interface ViewAtlasState {
   setInitiativeSitsOut: (id: string, sitsOut: boolean) => void;
   resetInitiative: () => void;
   setInitiativeConfig: (config: Partial<InitiativeConfig>) => void;
-
-  // Dice roll log (persisted per map, capped at 20 entries)
-  diceLog: DiceRollResult[];
   addDiceLogEntry: (entry: DiceRollResult) => void;
   clearDiceLog: () => void;
 
@@ -320,29 +222,13 @@ export interface ViewAtlasState {
   setLootRollerOpen: LootRollerSlice['setLootRollerOpen'];
   updateLootRoller: LootRollerSlice['updateLootRoller'];
   showLootRoll: LootRollerSlice['showLootRoll'];
-
-  // --- Per-view UI visibility (from uiSlice.ts, NOT persisted) ---
-  isGridSettingsOpen: UISlice['isGridSettingsOpen'];
-  isDMScreenOpen: UISlice['isDMScreenOpen'];
-  isGridAlignmentOpen: UISlice['isGridAlignmentOpen'];
-  isDiceLogOpen: UISlice['isDiceLogOpen'];
-  isAssetManagerOpen: UISlice['isAssetManagerOpen'];
-  assetManagerInitialTab?: UISlice['assetManagerInitialTab'];
-  isCommandPaletteOpen: UISlice['isCommandPaletteOpen'];
-  isDiceTrayOpen: UISlice['isDiceTrayOpen'];
-  lightPopover: UISlice['lightPopover'];
   openLightPopover: UISlice['openLightPopover'];
   closeLightPopover: UISlice['closeLightPopover'];
-  lightZonePopover: UISlice['lightZonePopover'];
   openLightZonePopover: UISlice['openLightZonePopover'];
   closeLightZonePopover: UISlice['closeLightZonePopover'];
-  isSceneLightingPanelOpen: UISlice['isSceneLightingPanelOpen'];
   setSceneLightingPanelOpen: UISlice['setSceneLightingPanelOpen'];
-  heldTokens: UISlice['heldTokens'];
   setHeldTokens: UISlice['setHeldTokens'];
-  exploredBrush: UISlice['exploredBrush'];
   setExploredBrush: UISlice['setExploredBrush'];
-  isToolbarEditing: UISlice['isToolbarEditing'];
   setToolbarEditing: UISlice['setToolbarEditing'];
   setGridSettingsOpen: UISlice['setGridSettingsOpen'];
   setDMScreenOpen: UISlice['setDMScreenOpen'];
@@ -355,9 +241,6 @@ export interface ViewAtlasState {
 
   // Note: Undo/Redo functionality is added by temporal middleware
 }
-
-/** Data for a new token; the store assigns the id (unless given), kind default and instance number. */
-export type TokenInput = Omit<TokenEntity, 'id' | 'kind'> & { kind?: 'token' | 'character'; id?: string };
 
 /** The subset of view state that is written to the map file. */
 export type PersistedViewState = Partial<ViewAtlasState>;
@@ -425,12 +308,6 @@ const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapP
   pinnedNotePreviews: {},
   lootRoller: createInitialLootRollerState(),
 });
-
-/**
- * Fields an update may set on a token. `Character` is a superset of `Token`, so its
- * fields cover both kinds; an explicit `undefined` clears a field (statblock unlinking).
- */
-export type TokenUpdates = { [K in Exclude<keyof Character, 'id' | 'kind'>]?: Character[K] | undefined };
 
 /**
  * A view store as seen after its middleware stack: selector-aware `subscribe`,

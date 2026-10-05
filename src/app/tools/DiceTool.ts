@@ -1,29 +1,9 @@
+import type { DiceRollResult } from '../types/diceTypes';
 import { EventEmitter } from 'events';
 import type { DiceRules } from '../types/diceRulesTypes';
-import { getDiceCrit, type DiceCrit } from './diceCrit';
-import { rollFormula, type RolledDie } from './diceFormula';
+import { getDiceCrit } from './diceCrit';
+import { rollFormula } from './diceFormula';
 import { parseFormula, type FormulaError } from './parseFormula';
-
-export interface DiceRollResult {
-  id: string;
-  timestamp: number;
-  formula: string;
-  rolls: RolledDie[];
-  modifiers: number;
-  total: number;
-  /** Decided by the collection's critical rule when rolled; missing on rolls logged before rules existed. */
-  crit?: DiceCrit;
-  player?: string;
-  source?: {
-    type: 'toolbar' | 'statblock';
-    /** Let the roll follow its token's or statblock's current artwork. */
-    tokenId?: string;
-    statblockPath?: string;
-    tokenName?: string;
-    tokenImagePath?: string;
-    abilityName?: string;
-  };
-}
 
 export interface DiceToolState {
   isTrayOpen: boolean;

@@ -5,7 +5,7 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore } from '../../src/app/stores/history';
 import { getDataFilePath } from '../../src/app/utils/dataFileMigration';
 import { copySelection, cutSelection, duplicateSelection, pasteClipboard } from '../../src/app/clipboard/mapClipboardActions';
-import type { GridState } from '../../src/app/services/MapPersistence';
+import type { GridState } from '../../src/app/types/gridTypes';
 import type { TokenEntity } from '../../src/app/types';
 
 const SQUARE: GridState = { enabled: true, type: 'square', size: 50, offsetX: 0, offsetY: 0, opacity: 1 };

@@ -2,7 +2,7 @@ import type { EventEmitter } from 'events';
 import type { SoundEffectService } from './SoundEffectService';
 import type { SettingsService } from './SettingsService';
 import { diceSceneToShow } from '../dice3d/rollPresentation';
-import type { DiceRollResult } from '../tools/DiceTool';
+import type { DiceRollResult } from '../types/diceTypes';
 
 /**
  * Plays the result sound for every roll shown as a result card, driven by the

@@ -4,7 +4,7 @@
  */
 
 import { LIGHT_KINDS } from '../lighting/lightPresets';
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import type { LightPresetDefinition, LightPresetUnit } from '../types/lightPresetTypes';
 import type { LightAnimation } from '../types/lightingTypes';
 import type { SystemPreset } from '../types/systemPresetTypes';

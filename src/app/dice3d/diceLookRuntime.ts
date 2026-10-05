@@ -1,3 +1,4 @@
+import { getDomHost } from '../host/dom';
 /**
  * Puts a dice look into effect and shows what each colour looks like. The look
  * is global: every die in every window is painted with it.
@@ -14,8 +15,8 @@ import { borrowStage, returnStage } from './stagePool';
 
 /** Obsidian's accent colour in this document, as channels; null when the theme reports none. */
 export function readAccent(doc: Document): Rgb | null {
-  const value = doc.win.getComputedStyle(doc.body).getPropertyValue('--interactive-accent').trim();
-  const ctx = createEl('canvas').getContext('2d');
+  const value = getDomHost().ownerWindow(doc).getComputedStyle(doc.body).getPropertyValue('--interactive-accent').trim();
+  const ctx = getDomHost().createCanvas().getContext('2d');
   if (!value || !ctx) return null;
   // The canvas normalises any CSS colour (hsl(), names, …) to #rrggbb.
   ctx.fillStyle = '#000000';
@@ -26,7 +27,7 @@ export function readAccent(doc: Document): Rgb | null {
 let applying = 0;
 
 /** Paints every die with `look` once its artwork is ready; a later call wins over one still loading. */
-export async function applyDiceLook(look: DiceLook, doc: Document = activeDocument): Promise<void> {
+export async function applyDiceLook(look: DiceLook, doc: Document = getDomHost().activeDocument()): Promise<void> {
   const serial = ++applying;
   await loadDiceArtwork(look.font);
   if (serial !== applying) return;
@@ -42,7 +43,7 @@ const PREVIEW_PX = 144;
  * pooled stage renders all three; the look is swapped and restored within one
  * task, so no panel ever draws a frame in the wrong colour.
  */
-export async function renderDicePreviews(font: DiceFont, doc: Document = activeDocument): Promise<Partial<Record<DiceColour, string>>> {
+export async function renderDicePreviews(font: DiceFont, doc: Document = getDomHost().activeDocument()): Promise<Partial<Record<DiceColour, string>>> {
   await loadDiceArtwork(font);
   const accent = readAccent(doc);
   const previews: Partial<Record<DiceColour, string>> = {};

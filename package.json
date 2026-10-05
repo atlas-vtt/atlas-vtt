@@ -23,7 +23,8 @@
     "version:check": "node scripts/release-channel.js",
     "lint": "eslint . --max-warnings 0 --suppressions-location eslint.suppressions.json",
     "lint:scan": "node scripts/lint-scan.js",
-    "preflight": "node scripts/preflight.js"
+    "preflight": "node scripts/preflight.js",
+    "check:boundaries": "node scripts/check-boundaries.mjs && tsc -p tsconfig.shared.json"
   },
   "keywords": [
     "obsidian",

@@ -3,7 +3,7 @@ import React, { useCallback, useMemo } from 'react';
 import type { App } from 'obsidian';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../root/AtlasUIContext';
 import { ReadableViewStoreProvider, type ReadableViewStore } from '../../ViewStoreContext';
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 import { DiceRollDisplay } from './DiceRollDisplay';
 
 interface PlayerDiceToastsProps {

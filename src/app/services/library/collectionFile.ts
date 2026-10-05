@@ -1,5 +1,5 @@
 import type { AssetMetadata, CollectionMetadata } from '../AssetService';
-import { isRecord } from '../assetMetadataGuards';
+import { isRecord } from '../../utils/guards';
 
 /** The format of `collection.json` and `library.json` this version writes; a higher one comes from a newer Atlas and is never rewritten. */
 export const LIBRARY_FILE_FORMAT = 1;

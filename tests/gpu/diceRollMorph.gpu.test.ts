@@ -5,7 +5,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { throwStyle } from '../../src/app/dice3d/diceDisplay';
 import { sceneFromRolls } from '../../src/app/dice3d/diceScene';
-import type { DiceRollResult } from '../../src/app/tools/DiceTool';
+import type { DiceRollResult } from '../../src/app/types/diceTypes';
 import { DiceRollStack } from '../../src/app/react/components/dice3d/DiceRollStack';
 import type { StackedRoll } from '../../src/app/react/components/dice3d/rollStackState';
 

@@ -1,5 +1,20 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import obsidianmd from "eslint-plugin-obsidianmd";
+import { builtinModules } from "node:module";
+import { BOUNDARIES, PLUGIN_ONLY_SPECIFIER } from "./scripts/boundaries.mjs";
+
+// Keep the directory rules and add the restrictions for shared helpers.
+const restrictedGlobals = new Map();
+for (const config of obsidianmd.configs.recommended) {
+  const rule = config.rules?.["no-restricted-globals"];
+  if (Array.isArray(rule)) for (const entry of rule.slice(1)) {
+    restrictedGlobals.set(typeof entry === "string" ? entry : entry.name, entry);
+  }
+}
+for (const name of ["fetch", "XMLHttpRequest", "WebSocket", "localStorage", "indexedDB"]) {
+  restrictedGlobals.set(name, { name, message: "Shared helpers must receive data from their caller." });
+}
+const nodeNames = builtinModules.map(name => name.replace(/^node:/, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 
 // Obsidian's community directory scores the plugin with `recommended`, so every
 // finding of those rules is a public scorecard row. Additions below only make
@@ -63,6 +78,22 @@ export default defineConfig([
       // that set does not use makes ESLint exit 2, which the review reports
       // as a fatal error. Only npm run lint passes --suppressions-location.
       noInlineConfig: true,
+    },
+  },
+  {
+    files: BOUNDARIES.shared.include,
+    ignores: BOUNDARIES.shared.exclude,
+    rules: {
+      "no-restricted-imports": ["error", {
+        patterns: [{
+          regex: `^(obsidian|electron)(/|$)|^(@codemirror|@lezer)/|^node:|^(?:${nodeNames.join("|")})(/|$)|^(src/|@/)|${PLUGIN_ONLY_SPECIFIER.source}`,
+          message: "Shared helpers must not import plugin services or host APIs.",
+        }],
+      }],
+      "no-restricted-globals": ["error", {
+        globals: [...restrictedGlobals.values()],
+        checkGlobalObject: true,
+      }],
     },
   },
 ]);

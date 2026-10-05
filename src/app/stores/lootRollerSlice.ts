@@ -1,4 +1,4 @@
-import { isFiniteNumber, isRecord, isStringArray } from '../services/assetMetadataGuards';
+import { isFiniteNumber, isRecord, isStringArray } from '../utils/guards';
 import { readLootRoll, type LootRoll } from '../loot/lootHistory';
 import { isRarityTone, type RarityTone } from '../loot/lootRarity';
 import type { PanelArea, PanelPosition } from '../react/hooks/useDraggablePosition';

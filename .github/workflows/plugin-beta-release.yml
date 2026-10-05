@@ -96,6 +96,10 @@ jobs:
         if: steps.existing.outputs.skip != 'true'
         run: npx vitest run --project unit
 
+      - name: Check code dependencies
+        if: steps.existing.outputs.skip != 'true'
+        run: npm run check:boundaries
+
       - name: Build plugin
         if: steps.existing.outputs.skip != 'true'
         run: npm run build:ci

@@ -1,18 +1,19 @@
-import type { StoreApi } from 'zustand';
 import { shallow } from 'zustand/vanilla/shallow';
-import type { ViewAtlasState } from '../storeFactory';
+import type { ViewState } from '../types/viewState';
+import type { HeldTokens } from '../types/viewUIState';
 import type { TokenEntity } from '../types';
 import type { Point } from '../types/visionTypes';
 import { sightOnDropOn } from './sceneLightingOptions';
 
-/** The tokens the pointer holds, each with the place it had when it was taken. */
-export type HeldTokens = Readonly<Record<string, Point>>;
+interface HeldTokenSource {
+  getState(): Pick<ViewState, 'objects' | 'heldTokens'> & { setHeldTokens: (held: HeldTokens) => void };
+}
 
 /**
  * Notes the tokens the pointer holds (pressed or dragged), or none once it lets go. A token
  * held before keeps the place it was taken from; a new one is noted where it stands now.
  */
-export function holdTokens(store: Pick<StoreApi<ViewAtlasState>, 'getState'>, tokenIds: readonly string[]): void {
+export function holdTokens(store: HeldTokenSource, tokenIds: readonly string[]): void {
   const { heldTokens, objects, setHeldTokens } = store.getState();
   const before = Object.keys(heldTokens);
   if (before.length === tokenIds.length && tokenIds.every((id) => heldTokens[id])) return;
@@ -25,13 +26,13 @@ export function holdTokens(store: Pick<StoreApi<ViewAtlasState>, 'getState'>, to
   setHeldTokens(held);
 }
 
-type SceneTokens = Pick<ViewAtlasState, 'objects' | 'lighting' | 'heldTokens'>;
+type SceneTokens = Pick<ViewState, 'objects' | 'lighting' | 'heldTokens'>;
 type Tokens = Record<string, TokenEntity>;
 
 const NONE: HeldTokens = {};
 
 /** The held tokens whose sight and light wait for the drop: all of them, or none with the scene's sight on drop off. */
-export function heldForSight({ lighting, heldTokens }: Pick<ViewAtlasState, 'lighting' | 'heldTokens'>): HeldTokens {
+export function heldForSight({ lighting, heldTokens }: Pick<ViewState, 'lighting' | 'heldTokens'>): HeldTokens {
   return sightOnDropOn(lighting) ? heldTokens : NONE;
 }
 

@@ -7,7 +7,7 @@ import type { GridOptions } from '../grid/GridSystem';
 import { parseGridColor } from '../grid/gridContrastColor';
 import { cellNumberStyleOfGrid } from '../grid/cellNumbering';
 import { backgroundTextureCache } from '../pixi/backgroundTextureCache';
-import type { GridState } from '../services/MapPersistence';
+import type { GridState } from '../types/gridTypes';
 
 const FALLBACK_GRID_OPTIONS: GridOptions = {
   type: 'square',

@@ -2,7 +2,8 @@ import { newSceneTokenSettings } from '../resources/sceneVisibility';
 import { DEFAULT_TOKEN_SETTINGS } from '../storeFactory';
 import type { CollectionSettings, GridUnitType } from '../types/collectionSettingsTypes';
 import type { SceneLighting } from '../types/lightingTypes';
-import { ATLAS_SCHEMA, ATLAS_VERSION, type GridState, type MapFile } from './MapPersistence';
+import { ATLAS_SCHEMA, ATLAS_VERSION, type MapFile } from './MapPersistence';
+import type { GridState } from '../types/gridTypes';
 
 type SceneObjects = MapFile['objects'];
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react"
 import { Button } from "./button"
 import { ChevronDown } from "lucide-react"
-import { cn } from "src/utils/cn"
+import { cn } from "../../../../utils/cn"
 import { useKeepInView } from "./useKeepInView"
 
 // Extend HTMLAttributes for the root div element to allow standard HTML props like onClick, className etc.

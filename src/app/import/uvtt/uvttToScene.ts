@@ -4,7 +4,7 @@ import { toGameUnits } from '../../grid/statedDistance';
 import { withEmissionValue } from '../../lighting/lightEmissionForm';
 import { maxLightRange } from '../../lighting/lightRanges';
 import { unitScaleOf } from '../../lighting/lightingUnits';
-import type { GridState } from '../../services/MapPersistence';
+import type { GridState } from '../../types/gridTypes';
 import type { LightEmission, LightSource, SceneLighting } from '../../types/lightingTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import { clipSegment, isWithin, placeableRect } from './uvttClip';

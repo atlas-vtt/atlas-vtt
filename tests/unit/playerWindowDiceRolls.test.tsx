@@ -3,7 +3,7 @@ import { act } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
-import type { DiceRollResult } from '../../src/app/tools/DiceTool';
+import type { DiceRollResult } from '../../src/app/types/diceTypes';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';

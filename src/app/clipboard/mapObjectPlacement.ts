@@ -1,4 +1,4 @@
-import type { GridState } from '../services/MapPersistence';
+import type { GridState } from '../types/gridTypes';
 import { cellToWorld, formationGridFromOptions, worldToCell, type FormationGrid } from '../encounters/encounterFormation';
 import { snapTokenCenter } from '../grid/gridPlacement';
 import {

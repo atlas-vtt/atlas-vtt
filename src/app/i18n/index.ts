@@ -1,4 +1,3 @@
-import { getLanguage } from 'obsidian';
 import { en } from './locales/en';
 import { ru } from './locales/ru';
 import type { Message, MessageKey, MessageValues, Translation } from './types';
@@ -23,16 +22,12 @@ export function resolveLocale(language: string): string {
   return base in TRANSLATIONS ? base : DEFAULT_LOCALE;
 }
 
-/** Sets the language of every later `t` call; Atlas uses Obsidian's, see below. */
+/** Sets the language of every later `t` call. The plugin selects it during bootstrap. */
 export function setLocale(language: string): void {
   locale = resolveLocale(language);
   translation = TRANSLATIONS[locale] ?? en;
   pluralRules = new Intl.PluralRules(locale);
 }
-
-// Set on load, so texts built at module level are translated too. Obsidian restarts
-// when its language changes, so nothing has to re-render on a switch.
-setLocale(getLanguage());
 
 /** The active language code, for `Intl` formatters that should match Atlas' texts. */
 export function getLocale(): string {

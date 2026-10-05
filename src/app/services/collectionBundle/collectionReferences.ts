@@ -3,7 +3,7 @@ import type { Asset, AssetService, GroupTokenRef, SceneAsset } from '../AssetSer
 import { isPersistedMapEnvelope, type PersistedMapEnvelope } from '../MapPersistence';
 import { SceneSnapshotService } from '../../snapshots/SceneSnapshotService';
 import { snapshotFolderOf } from '../../snapshots/sceneSnapshotFolders';
-import { isRecord } from '../assetMetadataGuards';
+import { isRecord } from '../../utils/guards';
 import { localImage, statblockImageField } from '../statblockImportCandidates';
 import { linkedFilePath } from '../sceneLinks';
 import { readLootBaseItems } from '../../loot/lootBaseItems';

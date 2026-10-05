@@ -1,6 +1,6 @@
 import type { EventEmitter } from 'events';
 import { useState, useEffect, useCallback } from 'react';
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 
 const MAX_HISTORY = 20;
 

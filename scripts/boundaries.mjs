@@ -1,0 +1,93 @@
+/** Source membership for the dependency checks. Unlisted files belong to the plugin. */
+export const BOUNDARIES = {
+  shared: {
+    "include": [
+      "src/app/types/**/*.ts",
+      "src/app/types/**/*.tsx",
+      "src/app/lighting/**/*.ts",
+      "src/app/lighting/**/*.tsx",
+      "src/app/vision/**/*.ts",
+      "src/app/vision/**/*.tsx",
+      "src/app/gameSystems/**/*.ts",
+      "src/app/gameSystems/**/*.tsx",
+      "src/app/grid/**/*.ts",
+      "src/app/grid/**/*.tsx",
+      "src/app/pixi/lighting/engine/**/*.ts",
+      "src/app/pixi/lighting/engine/**/*.tsx",
+      "src/app/pixi/laser/**/*.ts",
+      "src/app/pixi/laser/**/*.tsx",
+      "src/app/pixi/utils/**/*.ts",
+      "src/app/pixi/utils/**/*.tsx",
+      "src/app/dice3d/**/*.ts",
+      "src/app/dice3d/**/*.tsx",
+      "src/app/packages/components/primitives/**/*.ts",
+      "src/app/packages/components/primitives/**/*.tsx",
+      "src/app/host/**/*.ts",
+      "src/app/host/**/*.tsx",
+      "src/app/i18n/**/*.ts",
+      "src/app/i18n/**/*.tsx",
+      "src/app/types.ts",
+      "src/app/featureFlags.ts",
+      "src/app/audio/dataUrl.ts",
+      "src/app/keyboard/tooltipEscape.ts",
+      "src/app/pixi/gridDetection/grayImage.ts",
+      "src/app/pixi/lighting/lightFlicker.ts",
+      "src/app/pixi/lighting/wallEdits.ts",
+      "src/app/pixi/token-renderer/tokenSizing.ts",
+      "src/app/resources/resourceDefinitions.ts",
+      "src/app/resources/resourceFileFormat.ts",
+      "src/app/resources/resourceSlots.ts",
+      "src/app/resources/resourceTypes.ts",
+      "src/app/resources/sceneVisibility.ts",
+      "src/app/tools/diceCrit.ts",
+      "src/app/tools/diceExplosion.ts",
+      "src/app/tools/diceFormula.ts",
+      "src/app/tools/pinLabels.ts",
+      "src/app/tools/shapeStroke.ts",
+      "src/app/utils/clockWidget.ts",
+      "src/app/utils/errors.ts",
+      "src/app/utils/hexColor.ts",
+      "src/app/utils/motion.ts",
+      "src/app/utils/numberInput.ts",
+      "src/app/utils/observeResize.ts",
+      "src/utils/cn.ts",
+      "src/app/tools/parseFormula.ts",
+      "src/app/utils/guards.ts"
+    ],
+    "exclude": [
+      "src/app/grid/GridController.ts",
+      "src/app/pixi/utils/tokenHighlight.ts",
+      "**/*.test.*",
+      "**/*.spec.*",
+      "**/__tests__/**"
+    ],
+    "mayImport": [
+      "shared"
+    ],
+    "packages": [
+      "pixi.js",
+      "pixi-filters",
+      "pixi-viewport",
+      "react",
+      "react-dom",
+      "framer-motion",
+      "three",
+      "lucide-react",
+      "@radix-ui/*",
+      "clsx",
+      "tailwind-merge",
+      "zustand",
+      "immer"
+    ]
+  }
+};
+
+export const ASSET_ROOTS = ["src/app/assets/", "src/app/sounds/", "styles/"];
+export const TYPE_PROJECTS = {
+  "tsconfig.shared.json": {
+    include: ["src/assets.d.ts", ...BOUNDARIES.shared.include],
+    exclude: BOUNDARIES.shared.exclude,
+  },
+};
+
+export const PLUGIN_ONLY_SPECIFIER = /(^|\/)(services|plugin)(\/|$)|(^|\/)settings\/|(^|\/)(storeFactory|atlas-view|atlasStorageInit|atlasStore|local-player-view|player-view|dashboard-view|PixiRendererOrchestrator|MapLoader|MapController|main)(\.[cm]?[jt]sx?)?$/;

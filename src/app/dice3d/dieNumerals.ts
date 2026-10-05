@@ -1,3 +1,4 @@
+import { getDomHost } from '../host/dom';
 /**
  * The numerals on the faces. Each font is a sheet of 22 cells, 6 across: the
  * numbers 1 to 20, then 6 and 9 with their underline. The medieval sheet is a
@@ -86,8 +87,8 @@ export function loadNumerals(font: DiceFont): Promise<void> {
 
 /** Sets the numbers in Oxanium, each as tall as the pencil numerals fill their cells. */
 async function setScifiSheet(): Promise<HTMLCanvasElement> {
-  await activeDocument.fonts.load(scifiFont(SCIFI_PROBE_PX));
-  const canvas = createEl('canvas');
+  await getDomHost().activeDocument().fonts.load(scifiFont(SCIFI_PROBE_PX));
+  const canvas = getDomHost().createCanvas();
   canvas.width = SHEET_COLS * SHEET_CELL;
   canvas.height = SHEET_ROWS * SHEET_CELL;
   const ctx = canvas.getContext('2d');
@@ -126,7 +127,7 @@ export function numeralsReady(font: DiceFont): boolean {
 
 /** The ink bounds of every numeral in a sheet; null where the canvas cannot be read. */
 function measureInk(sheet: HTMLImageElement | HTMLCanvasElement): InkBox[] | null {
-  const canvas = createEl('canvas');
+  const canvas = getDomHost().createCanvas();
   canvas.width = sheet.width;
   canvas.height = sheet.height;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
@@ -185,7 +186,7 @@ function scaleFor(font: DiceFont, sides: DieSides, mark: NumeralMark, ink: InkBo
 function numeralSource(sheet: NumeralSheet, cell: number, ink: string | null): { image: CanvasImageSource; sx: number; sy: number } {
   const { left: sx, top: sy } = cellOrigin(cell);
   if (ink === null) return { image: sheet.image, sx, sy };
-  scratch ??= createEl('canvas', { attr: { width: SHEET_CELL, height: SHEET_CELL } });
+  scratch ??= getDomHost().createCanvas(undefined, { width: SHEET_CELL, height: SHEET_CELL });
   const ctx = scratch.getContext('2d');
   if (!ctx) return { image: sheet.image, sx, sy };
   ctx.globalCompositeOperation = 'source-over';

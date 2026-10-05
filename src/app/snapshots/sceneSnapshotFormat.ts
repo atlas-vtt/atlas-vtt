@@ -1,5 +1,5 @@
 import { isPersistedMapEnvelope, type PersistedMapEnvelope } from '../services/MapPersistence';
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 
 /** Bumped when the layout of a snapshot file changes. */
 export const SNAPSHOT_FORMAT = 1;

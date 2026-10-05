@@ -1,6 +1,6 @@
 import type { DiceScene } from '../../../dice3d/diceScene';
 import { diceSum } from '../../../tools/diceLabels';
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 
 /**
  * What was rolled, e.g. "Scimitar"; a roll without an action is just a roll.

@@ -1,3 +1,4 @@
+import { getDomHost } from '../host/dom';
 import { DiceGpu } from './DiceGpu';
 import { DiceRenderer, stagePixelRatio } from './DiceRenderer';
 import { DIE_BODIES } from './diceScene';
@@ -68,7 +69,7 @@ function gpuOf(doc: Document, dice: DocumentDice): DiceGpu | null {
   if (dice.gpu !== undefined) return dice.gpu;
   // Adopted before the context is created, so the canvas and its context
   // belong to the document the stages are shown in.
-  const canvas = doc.adoptNode(createEl('canvas'));
+  const canvas = getDomHost().createCanvas(doc);
   canvas.addEventListener('webglcontextlost', (): void => {
     dice.lost = true;
   });
@@ -96,7 +97,9 @@ export function canShowDice(doc: Document): boolean {
 
 function buildStage(doc: Document, dice: DocumentDice): StageLease {
   const gpu = gpuOf(doc, dice);
-  const canvas = doc.adoptNode(createEl('canvas', { cls: 'atlas-dice-stage__canvas', attr: { 'aria-hidden': 'true' } }));
+  const canvas = getDomHost().createCanvas(doc);
+  canvas.className = 'atlas-dice-stage__canvas';
+  canvas.setAttribute('aria-hidden', 'true');
   return { canvas, renderer: gpu ? new DiceRenderer(gpu, canvas) : null };
 }
 

@@ -1,3 +1,4 @@
+import { getDomHost } from '../../host/dom';
 /**
  * Single-channel float images used by grid auto-detection.
  */
@@ -22,7 +23,7 @@ export function grayFromCanvasSource(
   const width = Math.max(1, Math.round(sourceWidth * scale));
   const height = Math.max(1, Math.round(sourceHeight * scale));
 
-  const canvas = createEl('canvas');
+  const canvas = getDomHost().createCanvas();
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });

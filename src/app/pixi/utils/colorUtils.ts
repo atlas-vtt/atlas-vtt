@@ -1,3 +1,4 @@
+import { getDomHost } from '../../host/dom';
 export function hslToRgb(h: number, s: number, l: number): [number, number, number] {
   h = h % 360;
   s /= 100;
@@ -51,7 +52,7 @@ export function cssColorToHexNumber(color: string): number {
 
 export function resolveCssColor(cssColor: string): string {
   if (typeof window === 'undefined') return '#00ffff'; // Fallback for non-browser env
-  const probe = document.body.createDiv({ cls: 'atlas-color-probe' });
+  const probe = getDomHost().createDiv(document.body, 'atlas-color-probe');
   probe.style.color = cssColor;
   const resolved = getComputedStyle(probe).color;
   probe.remove();

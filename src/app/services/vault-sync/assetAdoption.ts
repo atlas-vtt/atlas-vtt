@@ -1,6 +1,7 @@
 import type { Asset, AssetMetadata, BaseAsset, MapAsset, SceneAsset } from '../AssetService';
 import { collectionFolderPath, collectionIdOfPath } from '../assetPaths';
-import { isRecord, parseGroupTokenRefs } from '../assetMetadataGuards';
+import { parseGroupTokenRefs } from '../assetMetadataGuards';
+import { isRecord } from '../../utils/guards';
 import { prettifyIdentifier } from '../collectionRecords';
 import { recoveredId, stemOf } from './recoveredIds';
 import { isReservedCollectionPath } from './reservedPaths';

@@ -1,5 +1,5 @@
 import type { NotePin } from '../types';
-import type { GridState } from '../services/MapPersistence';
+import type { GridState } from '../types/gridTypes';
 import { axialToPixel, createHexLayout, isHexGridType, pixelToAxial } from './hexGeometry';
 import type { AxialCoord, HexLayout, Point } from './hexGeometry';
 

@@ -4,7 +4,7 @@
  * switched off, then the collection's filters on fields of its own.
  */
 
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
 import type { CreatureFilterDefinition, CreatureFilterKind } from '../types/creatureFilterTypes';
 import { CATALOG_CREATURE_FILTERS } from './creatureFieldCatalog';

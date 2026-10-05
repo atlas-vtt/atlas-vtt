@@ -1,5 +1,5 @@
 import { DEFAULT_SCENE_LIGHTING, type DarkSightLook, type SceneLighting } from '../types/lightingTypes';
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import { isHexColor } from '../utils/hexColor';
 
 /** Ambient light from which everything in sight counts as lit, when the scene sets none. */

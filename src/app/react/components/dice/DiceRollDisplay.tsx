@@ -9,7 +9,7 @@ import { throwStyle } from '../../../dice3d/diceDisplay';
 import { diceSceneToShow } from '../../../dice3d/rollPresentation';
 import { warmDiceSounds } from '../../../dice3d/audio/diceSamples';
 import { canShowDice, warmStages } from '../../../dice3d/stagePool';
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 import { DiceRollStack } from '../dice3d/DiceRollStack';
 import { closeAllRolls, closeRoll, dismissRoll, pushRoll, type StackedRoll } from '../dice3d/rollStackState';
 import { canRunMapHotkeys } from '../../../keyboard/mapHotkeys';

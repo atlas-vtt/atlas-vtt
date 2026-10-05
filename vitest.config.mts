@@ -21,7 +21,7 @@ export default defineConfig({
           name: 'unit',
           environment: 'jsdom',
           globals: true,
-          setupFiles: ['./tests/setup/obsidianDom.ts'],
+          setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
           exclude: ['**/node_modules/**', '**/*.gpu.test.ts'],
         },
       },
@@ -32,6 +32,7 @@ export default defineConfig({
         optimizeDeps: { include: ['yaml', 'pixi-viewport', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime'] },
         test: {
           name: 'gpu',
+          setupFiles: ['./tests/setup/domHost.ts'],
           include: ['src/**/*.gpu.test.ts', 'tests/**/*.gpu.test.ts'],
           testTimeout: 600_000,
           browser: {

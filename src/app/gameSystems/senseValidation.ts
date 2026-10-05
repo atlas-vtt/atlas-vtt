@@ -4,7 +4,7 @@
  */
 
 import type { DarkSeeing, SenseDefinition, SenseLook, SenseRange, SenseRole, SenseSight, TokenSense } from '../types/senseTypes';
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import { positiveNumber } from '../utils/numberInput';
 import type { SystemPreset } from '../types/systemPresetTypes';
 import { collectionSenses, findSense } from './senseRules';

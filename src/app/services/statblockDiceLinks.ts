@@ -13,7 +13,7 @@
  */
 
 import type { App } from 'obsidian';
-import type { DiceRollResult } from '../tools/DiceTool';
+import type { DiceRollResult } from '../types/diceTypes';
 import { ATLAS_VIEW_TYPE } from '../atlas-view';
 import { t } from '../i18n';
 

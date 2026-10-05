@@ -1,6 +1,6 @@
 import type { Asset, CollectionMetadata } from '../AssetService';
 import { isLibraryOwnFile } from '../library/libraryPaths';
-import { isRecord } from '../assetMetadataGuards';
+import { isRecord } from '../../utils/guards';
 import { LEGACY_SNAPSHOTS_DIR } from '../../snapshots/snapshotPaths';
 import { STATBLOCK_IMAGE_KEYS, type StatblockImageKey } from '../statblockImageKeys';
 import { t } from '../../i18n';

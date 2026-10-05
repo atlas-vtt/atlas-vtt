@@ -1,7 +1,8 @@
 import { Container, Graphics, Texture, Sprite } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import type { Character } from '../types';
-import type { TokenUpdates, ViewAtlasState } from '../storeFactory';
+import type { ViewAtlasState } from '../storeFactory';
+import type { TokenUpdates } from '../types/viewState';
 import type { StoreApi } from 'zustand';
 import { colors, barDimensions } from '../styles/designTokens';
 import { toError } from '../utils/errors';

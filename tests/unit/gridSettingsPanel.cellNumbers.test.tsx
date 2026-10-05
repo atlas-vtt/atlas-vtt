@@ -3,7 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { create } from 'zustand';
 import { GridSettingsPanel } from '../../src/app/react/components/command-palette/GridSettingsPanel';
-import type { GridState } from '../../src/app/services/MapPersistence';
+import type { GridState } from '../../src/app/types/gridTypes';
 import type { AtlasView } from '../../src/app/atlas-view';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 

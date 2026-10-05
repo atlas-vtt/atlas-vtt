@@ -1,3 +1,4 @@
+import './src/app/plugin/host/initializeHost';
 import { Plugin } from 'obsidian';
 // Tailwind first, so the custom SCSS can override it.
 import './styles/index.css';

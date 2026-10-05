@@ -1,5 +1,6 @@
 import { perceivedLevel, showsMap } from '../gameSystems/senseRules';
-import { movedWhileHeld, type HeldTokens } from '../lighting/sightOnDrop';
+import { movedWhileHeld } from '../lighting/sightOnDrop';
+import type { HeldTokens } from '../types/viewUIState';
 import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
 import type { TokenEntity } from '../types';
 import type { ConditionDefinition, ConditionEffect } from '../types/collectionSettingsTypes';

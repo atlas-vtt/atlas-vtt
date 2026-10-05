@@ -69,6 +69,9 @@ jobs:
       - name: Test
         run: npx vitest run --project unit
 
+      - name: Check code dependencies
+        run: npm run check:boundaries
+
       - name: Build plugin
         run: npm run build:ci
 
