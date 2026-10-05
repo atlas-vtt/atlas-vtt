@@ -1,7 +1,7 @@
 import '../setup/obsidianDom';
 import type { EventEmitter } from 'events';
 import { Container, EventEmitter as PixiEmitter, RenderTexture, Sprite, Texture, type Application, type WebGLRenderer } from 'pixi.js';
-import type { Viewport } from 'pixi-viewport';
+import { Viewport } from 'pixi-viewport';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { ExploredBrush } from '../../src/app/pixi/lighting/ExploredBrush';
@@ -54,7 +54,8 @@ describe('the explored memory\'s overlay on the GM\'s canvas', () => {
     const store = createViewAtlasStore(createInMemoryApp().app, `memory-overlay-${Math.random()}`);
     store.setState({ persistenceEnabled: false, mapPath: 'maps/overlay.atlasmap' });
     store.getState().setSceneLighting({ enabled: true, ambient: 1 });
-    const viewport = new Container({ sortableChildren: true });
+    const viewport = new Viewport({ screenWidth: SIZE, screenHeight: SIZE, worldWidth: SIZE, worldHeight: SIZE, events: renderer.events, noTicker: true });
+    viewport.sortableChildren = true;
     const floor = new Sprite(Texture.WHITE);
     floor.setSize(SIZE, SIZE);
     floor.tint = 0x808080;
@@ -64,7 +65,7 @@ describe('the explored memory\'s overlay on the GM\'s canvas', () => {
     const edits: { lighting?: LightingRenderer } = {};
     const announced: boolean[] = [];
     const brush = new ExploredBrush({
-      viewport: viewport as unknown as Viewport,
+      viewport,
       canvas: renderer.canvas,
       store,
       eventBus: eventBus as unknown as EventEmitter,
@@ -78,7 +79,7 @@ describe('the explored memory\'s overlay on the GM\'s canvas', () => {
       announce: (undone) => announced.push(undone),
     });
     const lighting = new LightingRenderer({
-      viewport: viewport as unknown as Viewport,
+      viewport,
       app: { renderer, ticker: { add: vi.fn(), remove: vi.fn() } } as unknown as Application,
       store,
       measurement: () => ({ unitDistance: 5 }) as unknown as MeasurementSettings,

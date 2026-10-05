@@ -2,6 +2,11 @@
   "version": "0.6.1-beta.0",
   "releases": [
     {
+      "version": "0.6.1-beta.0",
+      "title": "Coming in 0.6.1",
+      "markdown": "## Fixed\n\n- Closing the command palette cancels its pending focus attempts, so it cannot take focus back afterwards."
+    },
+    {
       "version": "0.6.0",
       "date": "2026-10-05",
       "title": "Customizable toolbar, links to scenes in notes, Russian and library sync",
