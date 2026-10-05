@@ -1,6 +1,6 @@
 {
   "name": "atlas-vtt",
-  "version": "0.5.1-beta.0",
+  "version": "0.6.0",
   "main": "dist/main.js",
   "scripts": {
     "dev": "cross-env COPY_ON_CHANGE=true vite build --watch",
