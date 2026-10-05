@@ -49,7 +49,7 @@ export interface DiceRollSource {
 export type HitPointsRollHandler = (formula: string, abilityName: string | undefined) => void;
 
 interface DiceToolLike {
-  rollDice(formula: string, source?: DiceRollResult['source']): DiceRollResult;
+  rollDice(formula: string, source?: DiceRollResult['source']): DiceRollResult | null;
 }
 
 /**

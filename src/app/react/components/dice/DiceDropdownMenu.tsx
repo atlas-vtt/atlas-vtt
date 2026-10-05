@@ -54,8 +54,9 @@ export function DiceDropdownMenu({ diceTool, isOpen, onToggle, triggerRef }: Dic
       <div className="atlas-dice-panel">
         <DiceTray
           onRoll={(formula) => {
-            diceTool.rollDice(formula);
+            if (!diceTool.rollDice(formula)) return false;
             onToggle();
+            return true;
           }}
         />
       </div>

@@ -9,7 +9,7 @@ const MAX_HISTORY = 20;
  * back to the store for persistence across map close/reopen.
  */
 export function useDiceHistory(
-  getDiceTool: () => { rollDice: (formula: string, source?: DiceRollResult['source']) => DiceRollResult } | null,
+  getDiceTool: () => { rollDice: (formula: string, source?: DiceRollResult['source']) => DiceRollResult | null } | null,
   storeActions?: {
     diceLog: DiceRollResult[];
     addDiceLogEntry: (entry: DiceRollResult) => void;
