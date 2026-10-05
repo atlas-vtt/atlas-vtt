@@ -14,7 +14,7 @@ export function initiativeEntryForToken(token: TokenEntity): NewInitiativeEntry 
     initiative: 0,
     initiativeModifier: 0,
     imagePath: token.imagePath,
-    isNPC: !character?.playerLinked,
+    isNPC: true,
     ...(character?.statblockPath ? { statblockPath: character.statblockPath } : {}),
   };
 }
