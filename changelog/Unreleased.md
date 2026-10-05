@@ -1,5 +1,7 @@
 ## Improved
 
+- Simplified laser pointer updates and added checks for cleanup.
+
 - Added checks to keep data types and rendering helpers independent of plugin services.
 
 - Widget shortcuts are consistently marked as GM controls.

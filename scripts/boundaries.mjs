@@ -52,6 +52,8 @@ export const BOUNDARIES = {
       "src/app/utils/observeResize.ts",
       "src/utils/cn.ts",
       "src/app/tools/parseFormula.ts",
+      "src/app/pixi/LaserPointerRenderer.ts",
+      "src/app/tools/laserPointerSettings.ts",
       "src/app/utils/guards.ts"
     ],
     "exclude": [
