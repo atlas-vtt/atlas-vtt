@@ -14,6 +14,8 @@
 
 - Dice rolls now reject invalid formulas with a clear message and enforce limits of 64 characters, 10 terms, 100 dice and 1,000 faces per die. Exploding dice keep their existing limit.
 
+- Senses are now available in Russian: the sense editors in Edit Token and the collection settings' Vision tab, and the conditions' effect on sight.
+
 ## Fixed
 
 - Fog now updates correctly when returning to a map or canceling a drawing.

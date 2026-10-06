@@ -1,5 +1,6 @@
 import React, { useId, useState } from 'react';
 import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { t } from '../../../i18n';
 import { isBuiltInSense, newSense, senseProblem, senseSummary } from '../../../gameSystems/senseEditing';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
@@ -31,10 +32,8 @@ export function SenseDefinitionList({ senses, unit, onChange, onDelete }: SenseD
 
   return (
     <section className="atlas-csm-senses">
-      <h4 id={headingId} className="atlas-csm-senses__title">Senses of this game system</h4>
-      <p className="atlas-csm-hint">
-        Tokens of this collection can have these senses. Add your own for a homebrew system.
-      </p>
+      <h4 id={headingId} className="atlas-csm-senses__title">{t('senses.list.title')}</h4>
+      <p className="atlas-csm-hint">{t('senses.list.hint')}</p>
       <ul className="atlas-csm-sense-list" role="list" aria-labelledby={headingId}>
         {senses.map((sense) => {
           if (isBuiltInSense(sense)) {
@@ -45,23 +44,23 @@ export function SenseDefinitionList({ senses, unit, onChange, onDelete }: SenseD
               </li>
             );
           }
-          const name = sense.name.trim() || 'new sense';
+          const name = sense.name.trim();
           const isOpen = sense.id === openId;
           // Its open fields say what is wrong; closed, the row says it, since Save stays off meanwhile.
           const problem = isOpen ? null : senseProblem(sense, senses);
           return (
             <li key={sense.id} className="atlas-csm-sense atlas-csm-sense--own">
-              <span className="atlas-csm-sense__name">{sense.name.trim() || 'New sense'}</span>
+              <span className="atlas-csm-sense__name">{name || t('senses.list.newSense')}</span>
               {problem
                 ? <span className="atlas-csm-sense__text atlas-csm-sense__text--problem">{problem}</span>
                 : <span className="atlas-csm-sense__text">{senseSummary(sense)}</span>}
               <span className="atlas-csm-sense__actions">
-                <LabelTooltip label={`Edit ${name}`}>
+                <LabelTooltip label={name ? t('senses.list.edit', { name }) : t('senses.list.editNew')}>
                   <Button variant="ghost" size="icon" className="atlas-csm-sense__edit" aria-expanded={isOpen} onClick={() => setOpenId(isOpen ? null : sense.id)}>
                     <Pencil />
                   </Button>
                 </LabelTooltip>
-                <LabelTooltip label={`Delete ${name}`}>
+                <LabelTooltip label={name ? t('senses.list.delete', { name }) : t('senses.list.deleteNew')}>
                   <Button variant="ghost" size="icon" className="atlas-csm-condition-delete" onClick={() => { onChange(senses.filter((other) => other.id !== sense.id)); onDelete(sense); }}>
                     <Trash2 />
                   </Button>
@@ -81,7 +80,7 @@ export function SenseDefinitionList({ senses, unit, onChange, onDelete }: SenseD
       </ul>
       <Button variant="ghost" className="atlas-csm-add-btn" onClick={add}>
         <Plus />
-        Add a sense of your own
+        {t('senses.list.addOwn')}
       </Button>
     </section>
   );

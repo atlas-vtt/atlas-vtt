@@ -42,6 +42,7 @@ import { widgets } from './widgets';
 import { sbImport } from './sbImport';
 import { filters } from './filters';
 import { search } from './search';
+import { senses } from './senses';
 import { sort } from './sort';
 import { toolbar } from './toolbar';
 import { hotkey } from './hotkey';
@@ -126,6 +127,7 @@ export const en = {
   ...sbImport,
   ...filters,
   ...search,
+  ...senses,
   ...sort,
   ...toolbar,
   ...hotkey,

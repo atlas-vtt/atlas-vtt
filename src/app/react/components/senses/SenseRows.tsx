@@ -1,5 +1,6 @@
 import React, { useId } from 'react';
 import { X } from 'lucide-react';
+import { t } from '../../../i18n';
 import { senseKind, takesRange } from '../../../gameSystems/senseEditing';
 import type { SenseRow } from '../../../lighting/tokenLighting';
 import { Button } from '../../../packages/components/primitives/button';
@@ -8,16 +9,16 @@ import type { SenseDefinition, TokenSense } from '../../../types/senseTypes';
 import { numberText, positiveNumber } from '../../../utils/numberInput';
 
 /** What a list calls a sense its collection does not define, e.g. one of another game system. */
-const UNKNOWN_SENSE = 'Unknown sense';
+const UNKNOWN_SENSE = t('senses.unknown');
 
 function StatblockTag(): React.ReactElement {
-  return <span className="atlas-sense-row__tag">from statblock</span>;
+  return <span className="atlas-sense-row__tag">{t('senses.fromStatblock')}</span>;
 }
 
 /** What the empty range field of a sense says: its default distance, that it has no limit, or that it needs one. */
 function rangePlaceholder(definition: SenseDefinition | undefined): string {
-  if (definition?.range === 'required') return definition.defaultRange === undefined ? 'Range' : numberText(definition.defaultRange);
-  return 'Unlimited';
+  if (definition?.range === 'required') return definition.defaultRange === undefined ? t('senses.rangePlaceholder') : numberText(definition.defaultRange);
+  return t('vision.unlimited');
 }
 
 interface SenseRowFieldsProps {
@@ -46,7 +47,7 @@ export function SenseRowFields({ row, definition, unit, fromStatblock, inputRef,
       </span>
       {hasRange && (
         <span className="atlas-sense-row__range">
-          <span id={rangeLabel} hidden>{name} range</span>
+          <span id={rangeLabel} hidden>{t('senses.rangeOf', { name })}</span>
           <input
             ref={inputRef}
             type="number"
@@ -59,7 +60,7 @@ export function SenseRowFields({ row, definition, unit, fromStatblock, inputRef,
           {unit && <span className="atlas-sense-row__unit">{unit}</span>}
         </span>
       )}
-      <LabelTooltip label={`Remove ${name}`}>
+      <LabelTooltip label={t('senses.remove', { name })}>
         <Button variant="ghost" size="icon" className="atlas-sense-row__remove" onClick={onRemove}>
           <X />
         </Button>
@@ -72,7 +73,7 @@ export function SenseRowFields({ row, definition, unit, fromStatblock, inputRef,
 function reachText(sense: TokenSense, definition: SenseDefinition | undefined, unit: string): string {
   const range = positiveNumber(sense.range) ?? (definition?.range === 'required' ? definition.defaultRange : undefined);
   if (range !== undefined) return `${numberText(range)} ${unit}`.trim();
-  return definition && senseKind(definition) === 'sense' && definition.range === 'optional' ? 'Unlimited' : '';
+  return definition && senseKind(definition) === 'sense' && definition.range === 'optional' ? t('vision.unlimited') : '';
 }
 
 interface InheritedSenseRowProps {

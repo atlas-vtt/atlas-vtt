@@ -3,6 +3,7 @@
  * and what it does in plain words.
  */
 
+import { t, type MessageKey } from '../i18n';
 import type { SenseDefinition, SenseLook } from '../types/senseTypes';
 import { BUILT_IN_SYSTEM_PRESETS } from './builtInPresets';
 import { sameSenses } from './senseRules';
@@ -61,8 +62,8 @@ export function isBuiltInSense(sense: SenseDefinition): boolean {
 /** What is wrong with the name of `sense` among `all` the collection's senses, or null. */
 export function senseNameProblem(sense: SenseDefinition, all: readonly SenseDefinition[]): string | null {
   const name = sense.name.trim().toLowerCase();
-  if (!name) return 'Give the sense a name.';
-  return all.some((other) => other.id !== sense.id && other.name.trim().toLowerCase() === name) ? 'Another sense has this name.' : null;
+  if (!name) return t('senses.problem.nameMissing');
+  return all.some((other) => other.id !== sense.id && other.name.trim().toLowerCase() === name) ? t('senses.problem.nameTaken') : null;
 }
 
 /** Why `sense` cannot be saved among `all` the collection's senses, or null when it can. */
@@ -71,7 +72,7 @@ export function senseProblem(sense: SenseDefinition, all: readonly SenseDefiniti
   if (nameProblem) return nameProblem;
   const { bright, dim, dark, magicalDark } = sense.sees;
   const perceivesNothing = senseKind(sense) === 'sense' && [bright, dim, dark, magicalDark].every((seeing) => seeing === 'none');
-  return perceivesNothing ? 'Choose a light the sense works in.' : null;
+  return perceivesNothing ? t('senses.problem.noLight') : null;
 }
 
 /** Whether every sense of the collection's own can be saved; the ones Atlas ships always can. */
@@ -79,30 +80,46 @@ export function sensesAreValid(senses: readonly SenseDefinition[]): boolean {
   return senses.every((sense) => isBuiltInSense(sense) || senseProblem(sense, senses) === null);
 }
 
-const LOOK_WORDS: Record<SenseLook, string> = {
-  colour: '',
-  monochrome: ', in grey',
-  'black-and-white': ', in black and white',
-  heat: ', as heat tones',
+/** How a sense that sees in the dark draws it, where that is not in colour. */
+const LOOK_WORDS: Record<SenseLook, MessageKey | null> = {
+  colour: null,
+  monochrome: 'senses.describe.grey',
+  'black-and-white': 'senses.describe.blackWhite',
+  heat: 'senses.describe.heat',
 };
 
-/** What the sense does, in one line of plain words, from its fields. */
+/** What a sense that shows the map sees, as the start of its line. */
+function seeingWords({ dim, dark }: SenseDefinition['sees']): MessageKey {
+  if (dim === 'as-bright') {
+    if (dark === 'as-dim') return 'senses.describe.dimBrightDarkDim';
+    return dark === 'as-bright' ? 'senses.describe.dimBrightDarkBright' : 'senses.describe.dimBright';
+  }
+  if (dark === 'as-dim') return 'senses.describe.darkDim';
+  return dark === 'as-bright' ? 'senses.describe.darkBright' : 'senses.describe.lit';
+}
+
+/**
+ * What the sense does, in one line of plain words, from its fields: what it perceives, then
+ * how as a list of remarks, then what else holds, each a text of its own.
+ */
 export function describeSense(sense: SenseDefinition): string {
-  if (senseKind(sense) === 'see-invisible') return 'Lets the token\'s sight see invisible creatures.';
+  if (senseKind(sense) === 'see-invisible') return t('senses.describe.modifier');
   const creaturesOnly = sense.reveals === 'creatures';
-  const levels = [
-    ...(sense.sees.dim === 'as-bright' ? ['in dim light as bright light'] : []),
-    ...(sense.sees.dark === 'as-dim' ? ['in darkness as dim light'] : []),
-    ...(sense.sees.dark === 'as-bright' ? ['in darkness as bright light'] : []),
+  const ranged = sense.range !== 'unlimited';
+  const look = !creaturesOnly && sense.sees.dark !== 'none' ? LOOK_WORDS[sense.look] : null;
+  const remarks: (MessageKey | null)[] = [
+    creaturesOnly ? (ranged ? 'senses.describe.creaturesInRange' : 'senses.describe.creatures') : seeingWords(sense.sees),
+    look,
+    !creaturesOnly && ranged ? 'senses.describe.inRange' : null,
+    sense.lineOfSight ? null : 'senses.describe.throughWalls',
+    sense.seesInvisible ? (creaturesOnly ? 'senses.describe.invisibleOnes' : 'senses.describe.invisibleCreatures') : null,
   ];
-  const what = creaturesOnly ? 'Senses creatures' : `Sees ${levels.length > 0 ? levels.join(' and ') : 'what is lit'}`;
-  const look = !creaturesOnly && sense.sees.dark !== 'none' ? LOOK_WORDS[sense.look] : '';
-  const range = sense.range === 'unlimited' ? '' : `${creaturesOnly ? '' : ','} within its range`;
-  const walls = sense.lineOfSight ? '' : ', through walls';
-  const invisible = sense.seesInvisible ? `, invisible ${creaturesOnly ? 'ones' : 'creatures'} too` : '';
-  const blinded = sense.worksWhileBlinded ? ' Works while blinded.' : '';
-  const outlines = sense.precise ? '' : ' They show as outlines.';
-  return `${what}${look}${range}${walls}${invisible}.${blinded}${outlines}`;
+  const sentences = [
+    `${remarks.filter((key) => key !== null).map((key) => t(key)).join(', ')}.`,
+    ...(sense.worksWhileBlinded ? [t('senses.describe.whileBlinded')] : []),
+    ...(sense.precise ? [] : [t('senses.describe.outlines')]),
+  ];
+  return sentences.join(' ');
 }
 
 /** The line a list shows under the sense's name: its own description, else what its fields say. */
