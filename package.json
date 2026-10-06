@@ -76,6 +76,7 @@
     "esbuild": "0.25.2",
     "eslint": "^9.39.5",
     "eslint-plugin-obsidianmd": "^0.4.2",
+    "fast-check": "4.10.2",
     "jsdom": "^26.1.0",
     "obsidian": "^1.13.1",
     "playwright": "^1.63.0",
