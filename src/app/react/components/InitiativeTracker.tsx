@@ -21,6 +21,7 @@ import { initiativeCardMenu } from './initiativeCardMenu';
 import { EndCombatIcon } from './EndCombatIcon';
 import { StatblockHoverPreview, useStatblockHoverPreview } from './StatblockHoverPreview';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
+import { t } from '../../i18n';
 import './initiative-tracker.scss';
 
 /**
@@ -183,7 +184,7 @@ export const InitiativeTracker: React.FC = () => {
       <div className="atlas-initiative-tracker__controls">
         {/* Nothing is rolled where the sides take turns */}
         {!bySides && (
-          <LabelTooltip label="Roll initiative">
+          <LabelTooltip label={t('initiative.rollAll')}>
             <button
               className="clickable-icon atlas-initiative-tracker__btn"
               onClick={() => rollAllInitiative(rules.roll)}
@@ -195,7 +196,7 @@ export const InitiativeTracker: React.FC = () => {
         )}
 
         {!initiative.isActive ? (
-          <LabelTooltip label="Start combat">
+          <LabelTooltip label={t('initiative.startCombat')}>
             <button
               className="clickable-icon atlas-initiative-tracker__btn"
               onClick={() => startCombat(rules)}
@@ -205,7 +206,7 @@ export const InitiativeTracker: React.FC = () => {
             </button>
           </LabelTooltip>
         ) : (
-          <LabelTooltip label="End combat">
+          <LabelTooltip label={t('initiative.endCombat')}>
             <button
               className="clickable-icon atlas-initiative-tracker__btn atlas-initiative-tracker__btn--end"
               onClick={endCombat}
@@ -215,7 +216,7 @@ export const InitiativeTracker: React.FC = () => {
           </LabelTooltip>
         )}
 
-        <LabelTooltip label="Clear initiative">
+        <LabelTooltip label={t('initiative.clear')}>
           <button
             className="clickable-icon atlas-initiative-tracker__btn"
             onClick={resetInitiative}
@@ -229,7 +230,7 @@ export const InitiativeTracker: React.FC = () => {
       {/* Content - Cards for each combatant */}
       <div ref={contentRef} className="atlas-initiative-tracker__content">
         {sortedEntries.length === 0 && (
-          <p className="atlas-initiative-tracker__empty">Right-click a token to add it</p>
+          <p className="atlas-initiative-tracker__empty">{t('initiative.empty')}</p>
         )}
         {sortedEntries.length > 0 && (bySides
           ? sidesInOrder(firstSide).map((side) => (
@@ -280,7 +281,7 @@ export const InitiativeTracker: React.FC = () => {
           <ChevronUp />
         </button>
         <span className="atlas-initiative-tracker__round">
-          {initiative.isActive ? `R${initiative.round}` : '—'}
+          {initiative.isActive ? t('initiative.roundShort', { round: initiative.round }) : '—'}
         </span>
         <button
           ref={nextBtnRef}

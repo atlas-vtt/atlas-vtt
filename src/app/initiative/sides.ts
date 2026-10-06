@@ -1,10 +1,14 @@
+import { t } from '../i18n';
 import { INITIATIVE_SIDES } from '../gameSystems/initiativeRules';
 import type { TokenEntity } from '../types';
 import type { InitiativeRules, InitiativeSide } from '../types/initiativeRulesTypes';
 import type { InitiativeState } from '../types/initiativeTypes';
 
 /** What the tracker and the players' list call a side. */
-export const SIDE_LABELS: Record<InitiativeSide, string> = { players: 'Players', opponents: 'Opponents' };
+export const SIDE_LABELS: Record<InitiativeSide, string> = {
+  players: t('initiative.side.players'),
+  opponents: t('initiative.side.opponents'),
+};
 
 export function otherSide(side: InitiativeSide): InitiativeSide {
   return side === 'players' ? 'opponents' : 'players';

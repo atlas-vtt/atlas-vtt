@@ -3,6 +3,7 @@
  */
 
 import React from 'react';
+import { t } from '../../../i18n';
 import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
 import { isValidDefaultRoll } from '../../../gameSystems/diceRules';
 import { SIDE_LABELS } from '../../../initiative/sides';
@@ -14,13 +15,13 @@ interface InitiativeFieldsProps {
 }
 
 const MODE_OPTIONS: Record<InitiativeMode, string> = {
-  'turn-order': 'Turn order',
-  sides: 'Sides',
+  'turn-order': t('initiative.rules.turnOrder'),
+  sides: t('initiative.rules.sides'),
 };
 
 const MODE_DESCRIPTIONS: Record<InitiativeMode, string> = {
-  'turn-order': 'Every combatant has a number, rolled or typed, and they act from the highest down.',
-  sides: 'The players and their opponents take turns as two sides, in any order within a side. Nothing is rolled.',
+  'turn-order': t('initiative.rules.turnOrderHint'),
+  sides: t('initiative.rules.sidesHint'),
 };
 
 export function InitiativeFields({ initiative, onChange }: InitiativeFieldsProps): React.ReactElement {
@@ -29,7 +30,7 @@ export function InitiativeFields({ initiative, onChange }: InitiativeFieldsProps
   return (
     <>
       <div className="atlas-csm-field">
-        <label className="atlas-csm-label">Initiative</label>
+        <label className="atlas-csm-label">{t('initiative.rules.title')}</label>
         <ObsidianMenuDropdown
           className="atlas-setting-dropdown atlas-csm-dropdown"
           value={initiative.mode}
@@ -37,13 +38,13 @@ export function InitiativeFields({ initiative, onChange }: InitiativeFieldsProps
           onChange={(value) => onChange({ ...initiative, mode: value as InitiativeMode })}
         />
         <p className="atlas-csm-hint">
-          {MODE_DESCRIPTIONS[initiative.mode]} It applies to every scene of the collection; a fight that is running keeps the way it was started.
+          {MODE_DESCRIPTIONS[initiative.mode]} {t('initiative.rules.appliesHint')}
         </p>
       </div>
 
       {initiative.mode === 'turn-order' ? (
         <div className="atlas-csm-field">
-          <label className="atlas-csm-label" htmlFor="atlas-csm-initiative-roll">Initiative Roll</label>
+          <label className="atlas-csm-label" htmlFor="atlas-csm-initiative-roll">{t('initiative.rules.roll')}</label>
           <input
             id="atlas-csm-initiative-roll"
             type="text"
@@ -56,13 +57,13 @@ export function InitiativeFields({ initiative, onChange }: InitiativeFieldsProps
           />
           {!rollValid && (
             <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
-              Enter one group of dice, such as 1d20 or 1d10.
+              {t('initiative.rules.rollError')}
             </p>
           )}
         </div>
       ) : (
         <div className="atlas-csm-field">
-          <label className="atlas-csm-label">Acts First</label>
+          <label className="atlas-csm-label">{t('initiative.rules.actsFirst')}</label>
           <ObsidianMenuDropdown
             className="atlas-setting-dropdown atlas-csm-dropdown"
             value={initiative.firstSide}
@@ -70,7 +71,7 @@ export function InitiativeFields({ initiative, onChange }: InitiativeFieldsProps
             onChange={(value) => onChange({ ...initiative, firstSide: value as InitiativeSide })}
           />
           <p className="atlas-csm-hint">
-            A token with vision switched on is on the players' side; move any other from its card in the tracker.
+            {t('initiative.rules.sidesOfTokens')}
           </p>
         </div>
       )}
