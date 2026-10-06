@@ -1,5 +1,6 @@
 import type { Translation } from '../../types';
 import { align } from './align';
+import { atlasLinks } from './atlasLinks';
 import { am } from './am';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
@@ -44,6 +45,7 @@ import { filters } from './filters';
 import { search } from './search';
 import { sort } from './sort';
 import { toolbar } from './toolbar';
+import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
@@ -82,6 +84,7 @@ import { vision } from './vision';
 
 export const ru: Translation = {
   ...align,
+  ...atlasLinks,
   ...am,
   ...bundle,
   ...cleanup,
@@ -126,6 +129,7 @@ export const ru: Translation = {
   ...search,
   ...sort,
   ...toolbar,
+  ...toolbarEdit,
   ...hotkey,
   ...pin,
   ...laser,

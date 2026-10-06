@@ -2,6 +2,7 @@ import React, { useId, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { RotateCcw, Undo2 } from 'lucide-react'
 import { cn } from 'src/utils/cn'
+import { t } from '../../../../i18n'
 import { isHideableToolbarControl, isToolbarControlId, UNDO_BAR_ID, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 import { Button } from '../../primitives/button'
 import { ToolButton } from '../../primitives/ToolButton'
@@ -113,17 +114,17 @@ export function ToolbarTray({ edit, items, motion: layoutMotion }: ToolbarTrayPr
       aria-labelledby={labelId}
       onKeyDown={stopMapShortcuts}
     >
-      <span id={labelId} hidden>Hidden tools</span>
+      <span id={labelId} hidden>{t('toolbarEdit.hiddenTools')}</span>
       {slot(UNDO_BAR_ID, UNDO_BAR_FACE)}
       {items.map(item => isToolbarControlId(item.id) && slot(item.id, item))}
       {anyOpen
         ? <div className="atlas-toolbar-tray__divider" />
-        : <span className="atlas-toolbar-tray__hint">Drag a tool here to hide it</span>}
+        : <span className="atlas-toolbar-tray__hint">{t('toolbarEdit.dragHere')}</span>}
       {edit.canUndoReset
-        ? <ToolButton icon={Undo2} label="Undo reset" isActive={false} onClick={edit.undoReset} />
-        : <ToolButton icon={RotateCcw} label="Reset toolbar" isActive={false} disabled={!edit.canReset} onClick={edit.reset} />}
+        ? <ToolButton icon={Undo2} label={t('toolbarEdit.undoReset')} isActive={false} onClick={edit.undoReset} />
+        : <ToolButton icon={RotateCcw} label={t('toolbarEdit.resetToolbar')} isActive={false} disabled={!edit.canReset} onClick={edit.reset} />}
       <Button variant="default" className="atlas-toolbar-tray__done" onClick={(event) => edit.finish(event.currentTarget)}>
-        Done
+        {t('common.done')}
       </Button>
     </div>
   )

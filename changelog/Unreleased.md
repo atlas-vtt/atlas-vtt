@@ -14,6 +14,8 @@
 
 - Dice rolls now reject invalid formulas with a clear message and enforce limits of 64 characters, 10 terms, 100 dice and 1,000 faces per die. Exploding dice keep their existing limit.
 
+- The toolbar editor, links to scenes and encounters in notes, and the dice formula messages are now available in Russian.
+
 ## Fixed
 
 - Fog now updates correctly when returning to a map or canceling a drawing.

@@ -70,6 +70,7 @@ describe('the editor announcements', () => {
   it('says which key still selects a hidden tool, unless none is bound', () => {
     expect(hiddenMessage('Fog of war', 'F')).toBe('Fog of war hidden. F still selects it.');
     expect(hiddenMessage('Fog of war', 'Unassigned')).toBe('Fog of war hidden.');
+    expect(hiddenMessage('Undo and redo', 'Ctrl+Z', 'undoes')).toBe('Undo and redo hidden. Ctrl+Z still undoes.');
   });
 
   it('names positions on the bar', () => {

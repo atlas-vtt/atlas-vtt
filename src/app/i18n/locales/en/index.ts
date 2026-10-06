@@ -44,6 +44,7 @@ import { filters } from './filters';
 import { search } from './search';
 import { sort } from './sort';
 import { toolbar } from './toolbar';
+import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
@@ -128,6 +129,7 @@ export const en = {
   ...search,
   ...sort,
   ...toolbar,
+  ...toolbarEdit,
   ...hotkey,
   ...pin,
   ...laser,

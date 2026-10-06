@@ -1,14 +1,15 @@
 import React, { useId } from 'react'
 import { isHideableToolbarControl, isToolbarControlId, toolbarUnit, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
+import { t } from '../../../../i18n'
 import { useToolbarEdit, type ToolbarHandleGroup } from './toolbarEditContext'
 import { useToolbarEditMenu } from './useToolbarEditMenu'
 import { useToolbarKeyboard } from './useToolbarKeyboard'
 
 function keyHint(id: ToolbarUnitId, group: ToolbarHandleGroup): string {
-  if (group === 'tray') return 'Enter puts it back on the toolbar.'
+  if (group === 'tray') return t('toolbarEdit.hint.tray')
   // The undo/redo bar keeps its own place.
-  if (!isToolbarControlId(id)) return 'Delete hides it.'
-  return isHideableToolbarControl(id) ? 'Alt with the arrow keys moves it, Delete hides it.' : 'Alt with the arrow keys moves it.'
+  if (!isToolbarControlId(id)) return t('toolbarEdit.hint.undoBar')
+  return isHideableToolbarControl(id) ? t('toolbarEdit.hint.movable') : t('toolbarEdit.hint.fixed')
 }
 
 interface ToolbarItemHandleProps {

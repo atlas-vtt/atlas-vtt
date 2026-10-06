@@ -32,6 +32,7 @@ export const toolbar = {
   'toolbar.rollDice': 'Roll Dice',
   'toolbar.size': 'Size',
   'toolbar.textOptions': 'Text Options',
+  'toolbar.optionsOf': '{label} Options',
   'toolbar.textTool': 'Text Tool',
   'toolbar.moveSelect': 'Move/Select',
   'toolbar.drawTool': 'Draw Tool',
