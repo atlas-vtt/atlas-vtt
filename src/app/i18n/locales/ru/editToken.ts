@@ -8,5 +8,6 @@ export const editToken: Translation = {
   'editToken.namePlaceholder': 'Название токена',
   'editToken.showNameplate': 'Показывать имя',
   'editToken.resources': 'Ресурсы',
+  'editToken.token': 'Токен',
   'editToken.resetStatblock': 'Сбросить к значению статблока',
 };

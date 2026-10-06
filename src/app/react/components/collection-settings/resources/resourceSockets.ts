@@ -1,3 +1,4 @@
+import { t } from '../../../../i18n';
 import { RESOURCE_COLORS } from '../../../../resources/resourceColors';
 import { draftResourceKey, isDraftResourceKey } from '../../../../resources/resourceDefinitions';
 import { slottedResources } from '../../../../resources/resourceSlots';
@@ -13,8 +14,10 @@ export interface SocketPlace {
   /** Where its fan of buttons grows from, and to which side. */
   fanX: number;
   fanSide: 'right' | 'left';
-  /** What the socket is, for its name and the card. */
+  /** What the socket is, for its name. */
   where: string;
+  /** What the socket is and when it shows, as the card's heading. */
+  heading: string;
 }
 
 const BAR = { width: 150, height: 20 } as const;
@@ -23,14 +26,18 @@ const WHEEL_SIZE = 44;
 const FAN_RADIUS = 66;
 const FAN_SPREAD_DEG = 34;
 
+const BAR_TEXT = { where: t('resource.socket.bar'), heading: t('resource.socket.barHeading') };
+const RIGHT_TEXT = { where: t('resource.socket.wheelRight'), heading: t('resource.socket.wheelRightHeading') };
+const LEFT_TEXT = { where: t('resource.socket.wheelLeft'), heading: t('resource.socket.wheelLeftHeading') };
+
 /** The six sockets, in slot order: two bars below the token, two wheels on its right, two on its left; the upper one first. */
 export const SOCKETS: readonly SocketPlace[] = [
-  { slot: 0, shape: 'bar', x: 0, y: 92, fanX: BAR.width / 2, fanSide: 'right', where: 'bar below the token' },
-  { slot: 1, shape: 'bar', x: 0, y: 118, fanX: BAR.width / 2, fanSide: 'right', where: 'bar below the token' },
-  { slot: 2, shape: 'wheel', x: 92, y: -30, fanX: 92, fanSide: 'right', where: 'wheel on the right' },
-  { slot: 3, shape: 'wheel', x: 92, y: 20, fanX: 92, fanSide: 'right', where: 'wheel on the right' },
-  { slot: 4, shape: 'wheel', x: -92, y: -30, fanX: -92, fanSide: 'left', where: 'wheel on the left' },
-  { slot: 5, shape: 'wheel', x: -92, y: 20, fanX: -92, fanSide: 'left', where: 'wheel on the left' },
+  { slot: 0, shape: 'bar', x: 0, y: 92, fanX: BAR.width / 2, fanSide: 'right', ...BAR_TEXT },
+  { slot: 1, shape: 'bar', x: 0, y: 118, fanX: BAR.width / 2, fanSide: 'right', ...BAR_TEXT },
+  { slot: 2, shape: 'wheel', x: 92, y: -30, fanX: 92, fanSide: 'right', ...RIGHT_TEXT },
+  { slot: 3, shape: 'wheel', x: 92, y: 20, fanX: 92, fanSide: 'right', ...RIGHT_TEXT },
+  { slot: 4, shape: 'wheel', x: -92, y: -30, fanX: -92, fanSide: 'left', ...LEFT_TEXT },
+  { slot: 5, shape: 'wheel', x: -92, y: 20, fanX: -92, fanSide: 'left', ...LEFT_TEXT },
 ];
 
 export const SOCKET_SIZE = { bar: BAR, wheel: { width: WHEEL_SIZE, height: WHEEL_SIZE } } as const;

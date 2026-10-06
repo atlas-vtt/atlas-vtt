@@ -5,6 +5,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { cn } from '../../../../utils/cn';
+import { t } from '../../../i18n';
 import fighterArt from '../../../assets/starter-tokens/fighter.webp?inline';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
 import { EASE_OUT_CONTROL_POINTS } from '../../../utils/motion';
@@ -108,21 +109,17 @@ export function ResourcesTab({ resources, onChange, fieldSuggestions }: Resource
   return (
     <MotionConfig reducedMotion="user">
       <div className="atlas-csm-resources" onKeyDown={onKeyDown}>
-        <p className="atlas-csm-hint">
-          Click a socket to put a resource there, and drag it to another socket to move it. Each
-          resource reads its number from a field of the token&apos;s statblock; tokens whose statblock
-          lacks that field don&apos;t show it.
-        </p>
+        <p className="atlas-csm-hint">{t('resource.tab.hint')}</p>
 
         <div className={cn('atlas-csm-token-stage', selected !== null && 'atlas-focused', lifted !== null && 'atlas-dragging')}
           role="presentation" onClick={(event) => { if (event.target === event.currentTarget) close(); }}>
-          <div className="atlas-csm-token-rig" role="group" aria-label="Resource sockets">
+          <div className="atlas-csm-token-rig" role="group" aria-label={t('resource.tab.sockets')}>
             {/* A token as the map draws it: the fighter of the starter tokens in Atlas' ring */}
             <span className="atlas-csm-token-art" aria-hidden="true"><TokenPortrait src={fighterArt} alt="" /></span>
-            <span className="atlas-csm-token-nameplate" aria-hidden="true">Name</span>
-            <span className="atlas-csm-token-caption atlas-csm-token-caption--bars" aria-hidden="true">Always shown</span>
-            <span className="atlas-csm-token-caption atlas-csm-token-caption--right" aria-hidden="true">On hover</span>
-            <span className="atlas-csm-token-caption atlas-csm-token-caption--left" aria-hidden="true">On hover</span>
+            <span className="atlas-csm-token-nameplate" aria-hidden="true">{t('resource.tab.nameplate')}</span>
+            <span className="atlas-csm-token-caption atlas-csm-token-caption--bars" aria-hidden="true">{t('resource.tab.alwaysShown')}</span>
+            <span className="atlas-csm-token-caption atlas-csm-token-caption--right" aria-hidden="true">{t('resource.tab.onHover')}</span>
+            <span className="atlas-csm-token-caption atlas-csm-token-caption--left" aria-hidden="true">{t('resource.tab.onHover')}</span>
             {SOCKETS.map((socket) => (
               <ResourceSocket
                 key={socket.slot}
@@ -143,7 +140,7 @@ export function ResourcesTab({ resources, onChange, fieldSuggestions }: Resource
         </div>
 
         <div className="atlas-csm-resource-dock">
-          <div className={cn('atlas-csm-resource-dock__idle', current && 'atlas-hidden')}>Click a socket to set what it tracks</div>
+          <div className={cn('atlas-csm-resource-dock__idle', current && 'atlas-hidden')}>{t('resource.tab.idle')}</div>
           <AnimatePresence>
             {place && current && (
               <motion.div key="card" className="atlas-csm-resource-dock__card" {...CARD_MOTION}>

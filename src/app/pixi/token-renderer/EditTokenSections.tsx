@@ -55,7 +55,7 @@ interface TokenIdentitySectionProps {
 export function TokenIdentitySection({ name, onNameChange, showNameplate, onShowNameplateChange, nameRef }: TokenIdentitySectionProps): React.ReactElement {
   const nameId = useId();
   return (
-    <EditTokenSection title="Token">
+    <EditTokenSection title={t('editToken.token')}>
       <div className="atlas-edit-token__field">
         <label className="atlas-edit-token__label" htmlFor={nameId}>{t('editToken.name')}</label>
         <input
@@ -96,7 +96,7 @@ export function TokenResourcesSection({ definitions, values, onChange, defaults 
         {definitions.map(({ key, name, direction }) => (
           <NumberOverrideField
             key={key}
-            label={direction === 'static' ? name : `Max ${name}`}
+            label={direction === 'static' ? name : t('resource.maxShort', { name })}
             value={values[key] ?? ''}
             onChange={(value) => onChange(key, value)}
             placeholder={defaultPlaceholder(defaults[key]?.max)}

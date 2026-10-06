@@ -78,5 +78,5 @@ const FIRST_BARS: readonly string[] = ['hp', 'stress'];
 /** The Reset entry of a token's menu: worded as it always was where the collection has no resource beyond those two bars. */
 export function resetLabel(definitions: readonly ResourceDefinition[]): string {
   const onlyFirstBars = definitions.every(({ key }) => FIRST_BARS.includes(key));
-  return onlyFirstBars ? t('token.reset') : 'Reset (Restore Resources, Clear Status)';
+  return onlyFirstBars ? t('token.reset') : t('resource.resetAll');
 }

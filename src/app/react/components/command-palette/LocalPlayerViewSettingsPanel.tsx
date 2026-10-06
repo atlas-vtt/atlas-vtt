@@ -71,7 +71,7 @@ function PlayerBarToggles({ app }: { app: App }): React.ReactElement | null {
       {slottedResources(resources).filter(({ slot }) => shapeOf(slot) === 'bar').map(({ definition: resource }) => (
         <SettingToggleRow
           key={resource.key}
-          label={`Show ${resource.name} bars`}
+          label={t('resource.showBars', { name: resource.name })}
           value={resource.visibleToPlayers}
           onToggle={() => toggle(resource.key)}
         />

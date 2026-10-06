@@ -49,7 +49,7 @@ export function TokenSettingsPanel({ view }: TokenSettingsPanelProps): React.Rea
         {slottedResources(definitions).map(({ definition, slot }) => (
           <SettingToggleRow
             key={definition.key}
-            label={`Show ${definition.name} ${shapeOf(slot) === 'bar' ? 'bars' : 'wheels'}`}
+            label={t(shapeOf(slot) === 'bar' ? 'resource.showBars' : 'resource.showWheels', { name: definition.name })}
             value={!hidden.includes(definition.key)}
             onToggle={() => change({ hiddenResources: toggleHidden(store?.getState().tokenSettings?.hiddenResources, definition.key) })}
           />

@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, useIsPresent } from 'framer-motion';
 import { ArrowDown, ArrowUp, Eye, EyeOff, Hash, Skull, Trash2 } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
+import { t } from '../../../../i18n';
 import { EASE_OUT_CONTROL_POINTS } from '../../../../utils/motion';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import type { ResourceDefinition, ResourceDirection } from '../../../../resources/resourceTypes';
@@ -30,9 +31,9 @@ interface FanButton {
 
 /** How a resource counts, in the order the button steps through them. */
 const DIRECTIONS: ReadonlyArray<{ direction: ResourceDirection; label: string; icon: React.ReactNode }> = [
-  { direction: 'drains', label: 'Drains: starts full and counts down', icon: <ArrowDown /> },
-  { direction: 'fills', label: 'Fills: starts empty and counts up', icon: <ArrowUp /> },
-  { direction: 'static', label: 'Static: a fixed value, like an armour class', icon: <Hash /> },
+  { direction: 'drains', label: t('resource.fan.drains'), icon: <ArrowDown /> },
+  { direction: 'fills', label: t('resource.fan.fills'), icon: <ArrowUp /> },
+  { direction: 'static', label: t('resource.fan.static'), icon: <Hash /> },
 ];
 
 /**
@@ -55,16 +56,16 @@ export function ResourceFan({ place, resource, onChange, onRemove }: ResourceFan
       onClick: () => onChange(next === 'static' ? { direction: next, defeatedWhenSpent: false } : { direction: next }),
     },
     {
-      label: fixed ? 'A static value never defeats the token' : defeats ? 'Defeats the token when spent' : 'Does not defeat the token',
+      label: fixed ? t('resource.fan.staticNeverDefeats') : defeats ? t('resource.fan.defeats') : t('resource.fan.doesNotDefeat'),
       icon: <Skull />, pressed: defeats, disabled: fixed,
       onClick: () => onChange({ defeatedWhenSpent: !defeats }),
     },
     {
-      label: resource.visibleToPlayers ? 'Players see it' : 'Hidden from players',
+      label: resource.visibleToPlayers ? t('resource.fan.playersSee') : t('resource.fan.hiddenFromPlayers'),
       icon: resource.visibleToPlayers ? <Eye /> : <EyeOff />, pressed: resource.visibleToPlayers,
       onClick: () => onChange({ visibleToPlayers: !resource.visibleToPlayers }),
     },
-    { label: 'Remove', icon: <Trash2 />, danger: true, onClick: onRemove },
+    { label: t('common.remove'), icon: <Trash2 />, danger: true, onClick: onRemove },
   ];
   const offsets = fanOffsets(buttons.length, place.fanSide);
   const motionOf = (index: number): React.ComponentProps<typeof motion.div> => ({
