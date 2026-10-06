@@ -81,6 +81,7 @@ function gridMeasurement(grid: GridState | null | undefined): Omit<MeasurementSe
 }
 
 const UNIT_SUFFIX: Record<GridUnitType, string> = { feet: 'ft', yards: 'yd', meters: 'm', units: 'u', custom: '' };
+const tenths = (value: number): number => Math.round(value * 10) / 10;
 
 /** Unit shown next to a distance input, e.g. "ft"; none for generic units. Maps without a unit use feet. */
 export function unitLabelFor(unitType: GridUnitType | undefined): string {
@@ -88,10 +89,13 @@ export function unitLabelFor(unitType: GridUnitType | undefined): string {
   return UNIT_SUFFIX[unitType ?? 'feet'];
 }
 
-/** Label for a distance of `cells` grid cells, e.g. "30ft" or a range band name. */
+/** 
+ *  Label for a distance of `cells` grid cells, e.g. "30ft" or a range band name,
+ *  with one decimal where the distance has one, since 7.5 m is not 8 m.
+ */
 export function formatDistance(cells: number, settings: MeasurementSettings): string {
   if (settings.mode === 'abstract') return rangeBandName(cells, settings.rangeBands);
-  return `${Math.round(cells * settings.unitDistance)}${UNIT_SUFFIX[settings.unitType]}`;
+  return `${tenths(cells * settings.unitDistance)}${UNIT_SUFFIX[settings.unitType]}`;
 }
 
 /**
@@ -99,7 +103,6 @@ export function formatDistance(cells: number, settings: MeasurementSettings): st
  * with one decimal where the distance has one, since 7.5 m is not 8 m.
  */
 export function formatReach(cells: number, settings: MeasurementSettings): string {
-  const tenths = (value: number): number => Math.round(value * 10) / 10;
   if (settings.mode === 'abstract') return settings.rangeBands.length > 0 ? rangeBandName(cells, settings.rangeBands) : `${tenths(cells)} sq`;
   return `${tenths(cells * settings.unitDistance)}${UNIT_SUFFIX[settings.unitType]}`;
 }
