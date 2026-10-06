@@ -11,12 +11,12 @@
  * otherwise piled up panels, each with its own frame loop and WebGL context.
  */
 
-import type { DiceRollResult } from '../../../types/diceTypes';
 import type { DiceScene } from '../../../dice3d/diceScene';
 import type { ThrowStyle } from '../../../dice3d/diceDisplay';
+import type { PreparedDiceRoll } from '../dice/diceSourcePresentation';
 
-export interface StackedRoll {
-  result: DiceRollResult;
+/** A roll on screen, with who it names as it was decided when it arrived. */
+export interface StackedRoll extends PreparedDiceRoll {
   scene: DiceScene;
   /** Speed and wall hits of the throw; fixed when the roll arrives. */
   style: ThrowStyle;

@@ -1,4 +1,5 @@
 import type { DiceRollResult } from '../types/diceTypes';
+import type { DiceRollOrigin } from '../types/diceRollOrigin';
 import { EventEmitter } from 'events';
 import type { DiceRules } from '../types/diceRulesTypes';
 import { getDiceCrit } from './diceCrit';
@@ -40,7 +41,11 @@ export class DiceTool {
     this.eventBus.emit('dice-tray-toggled', this.state.isTrayOpen);
   }
 
-  public rollDice(formula: string, source?: DiceRollResult['source']): DiceRollResult | null {
+  /**
+   * Rolls `formula` for `source`. `origin` says which token of which scene the roll was
+   * made for; it goes out with the `dice-rolled` event and is kept nowhere.
+   */
+  public rollDice(formula: string, source?: DiceRollResult['source'], origin?: DiceRollOrigin): DiceRollResult | null {
     const result = this.parseAndRoll(formula);
     if (!result) return null;
     if (source) {
@@ -55,7 +60,7 @@ export class DiceTool {
       this.state.rollHistory = this.state.rollHistory.slice(0, 50);
     }
     
-    this.eventBus.emit('dice-rolled', result);
+    this.eventBus.emit('dice-rolled', result, origin);
 
     return result;
   }

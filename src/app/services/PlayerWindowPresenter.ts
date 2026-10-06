@@ -169,10 +169,15 @@ async function waitForRenderedFrameSource(view: AtlasView): Promise<PlayerFrameS
   const app = renderer?.getAppInstance();
   const canvas = app?.canvas;
   if (!renderer || !app || !canvas?.instanceOf(HTMLCanvasElement)) return null;
+  // The scene rendered now: rolls are named by what its players' frame shows, never by a later scene
+  const mapPath = view.atlasStore.getState().mapPath;
   return {
     canvas,
     store: view.atlasStore,
     diceEvents: view.serviceManager.getEventBus(),
+    ...(mapPath ? {
+      rollSources: { viewId: view.viewId, mapPath, shownTokens: (tokenIds) => renderer.playerRollTokens(mapPath, tokenIds) },
+    } : {}),
     withPlayerSafeFrame: (capture, settings, camera) => renderer.withPlayerSafeFrame(capture, settings, camera),
     ...(rendersOnChange(app) ? {
       beforeRender: {

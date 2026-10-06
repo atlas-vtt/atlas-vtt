@@ -1,10 +1,9 @@
 import { useCallback, useState } from 'react';
-import type { DiceRollResult } from '../../../types/diceTypes';
 import type { ToastPhase } from './DiceToast';
+import type { PreparedDiceRoll } from './diceSourcePresentation';
 
-export interface ToastEntry {
+export interface ToastEntry extends PreparedDiceRoll {
   id: string;
-  result: DiceRollResult;
   phase: ToastPhase;
 }
 
@@ -15,7 +14,7 @@ const EXIT_DURATION = 300;
 /** Result cards: each enters, stays a while and leaves, or leaves early on click. */
 export function useDiceToasts(): {
   toasts: ToastEntry[];
-  addToast: (result: DiceRollResult) => void;
+  addToast: (roll: PreparedDiceRoll) => void;
   dismissToast: (id: string) => void;
   dismissAllToasts: () => void;
 } {
@@ -29,9 +28,9 @@ export function useDiceToasts(): {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const addToast = useCallback((result: DiceRollResult): void => {
+  const addToast = useCallback((roll: PreparedDiceRoll): void => {
     const id = `toast_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-    setToasts((prev) => [...prev, { id, result, phase: 'entering' }]);
+    setToasts((prev) => [...prev, { ...roll, id, phase: 'entering' }]);
     window.setTimeout(() => setPhase(id, 'visible'), ENTER_DURATION);
     window.setTimeout(() => setPhase(id, 'exiting'), AUTO_DISMISS);
     window.setTimeout(() => remove(id), AUTO_DISMISS + EXIT_DURATION);

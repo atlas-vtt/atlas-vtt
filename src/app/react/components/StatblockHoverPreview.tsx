@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { TFile, App } from 'obsidian';
 import FantasyStatblock from './FantasyStatblock';
 import type { TokenVitals } from '../../services/statblockVitalsSync';
+import type { TokenRollContext } from '../../types/diceRollOrigin';
 import { isModKey } from '../../keyboard/modKey';
 import { previewEdgeGaps, type PreviewEdgeGaps } from './statblock/previewEdgeGap';
 import './statblock-hover-preview.scss';
@@ -14,6 +15,8 @@ export interface StatblockHoverPreviewProps {
   app?: App | null | undefined;
   /** Token whose resources the statblock should mirror */
   vitals?: TokenVitals | null;
+  /** The view, scene and token the preview was opened for, taken when it opened. */
+  originContext?: TokenRollContext | undefined;
   /** Whether the preview is visible */
   isVisible: boolean;
   /** Whether the preview is in closing animation state */
@@ -117,6 +120,7 @@ export function StatblockHoverPreview({
   notePath,
   app,
   vitals,
+  originContext,
   isVisible,
   isClosing,
   position,
@@ -181,7 +185,7 @@ export function StatblockHoverPreview({
   return createPortal(
     <div ref={containerRef} className={className} style={positionStyles}>
       {app && (
-        <FantasyStatblock notePath={notePath} app={app} tokens={vitals ? [vitals] : []} />
+        <FantasyStatblock notePath={notePath} app={app} tokens={vitals ? [vitals] : []} originContext={originContext} />
       )}
     </div>,
     document.body

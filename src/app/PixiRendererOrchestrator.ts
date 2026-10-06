@@ -46,6 +46,8 @@ import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
 import { destroyTree } from './pixi/utils/destroyTree';
 import { requestRender } from './pixi/RenderScheduler';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
+import { shownRollTokens } from './pixi/playerRollTokens';
+import type { ShownRollToken } from './services/playerRollSource';
 import { t } from './i18n';
 
 export class PixiRendererOrchestrator { // Renamed class
@@ -724,6 +726,17 @@ export class PixiRendererOrchestrator { // Renamed class
     const playerCamera = camera && viewport ? { target: viewport, camera } : undefined;
     const captureFrame = renderFollows ? captureBeforeRender : captureWithLayerVisibility;
     captureFrame(layers, () => app.renderer.render(app.stage), capture, playerCamera);
+  }
+
+  /**
+   * The tokens a players' frame of `mapPath` shows now, among `tokenIds` (all without), by
+   * the perception `withPlayerSafeFrame` composes: for rolls to name. Nothing once the view
+   * holds another scene, or none loaded.
+   */
+  public playerRollTokens(mapPath: string, tokenIds?: readonly string[]): ReadonlyMap<string, ShownRollToken> {
+    const tokens = this.tokenRenderer;
+    if (!tokens) return new Map();
+    return shownRollTokens(this.store.getState(), mapPath, tokens.getTokenSprites(), () => tokens.playerFramePerception(this.lighting?.playerSight()), tokenIds);
   }
 
   /** The GM's markers on the map: neither the players nor a picture of the scene show them. */

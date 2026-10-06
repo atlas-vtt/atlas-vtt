@@ -25,6 +25,7 @@ export function DiceRollStack({ rolls, muted, onClose, onDone }: DiceRollStackPr
         <DiceRollPanel
           key={roll.result.id}
           result={roll.result}
+          presentation={roll.sourcePresentation}
           scene={roll.scene}
           style={roll.style}
           compact={i !== large}

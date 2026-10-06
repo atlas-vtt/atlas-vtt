@@ -1237,9 +1237,17 @@ export class TokenRenderer {
     }
   }
 
+  /**
+   * How a players' frame perceives each token: `lighting` (the scene's lighting) with
+   * committed fog, whatever the canvas itself shows. Reads only.
+   */
+  public playerFramePerception(lighting?: TokenPerception): TokenPerception | undefined {
+    return this.playerSight.framePerception(lighting);
+  }
+
   /** Player overlays prepared for the next mirrored frame; `perception` leaves out what the players do not see and outlines what they only sense. */
   public getPlayerViewLayers(settings: AtlasSettings['localPlayerView'], perception?: TokenPerception): LayerVisibility[] {
-    perception = this.playerSight.framePerception(perception);
+    perception = this.playerFramePerception(perception);
     const isSeen = seenTokens(perception);
     return [...this.playerSight.frameLayers(perception), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.dragRuler.getPlayerViewLayers(isSeen)];
   }

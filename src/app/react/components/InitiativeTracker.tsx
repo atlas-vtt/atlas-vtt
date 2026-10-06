@@ -19,7 +19,9 @@ import { EditInitiativePopup } from './EditInitiativePopup';
 import { InitiativeCard } from './InitiativeCard';
 import { initiativeCardMenu } from './initiativeCardMenu';
 import { EndCombatIcon } from './EndCombatIcon';
-import { StatblockHoverPreview, useStatblockHoverPreview } from './StatblockHoverPreview';
+import { useStatblockHoverPreview } from './StatblockHoverPreview';
+import { InitiativeStatblockPreview, type PreviewedEntry } from './InitiativeStatblockPreview';
+import { captureRollContext } from '../../tools/diceRollOrigins';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import './initiative-tracker.scss';
 
@@ -30,12 +32,15 @@ import './initiative-tracker.scss';
  * The collection's initiative rules decide whether they act in turn order or by sides.
  */
 export const InitiativeTracker: React.FC = () => {
-  const { app } = useAtlasUI();
+  const { app, view } = useAtlasUI();
 
   // Store state
   const isOpen = useAtlasStore((s) => s.initiativeTrackerOpen);
   const initiative = useAtlasStore((s) => s.initiative);
   const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
+  const mapPath = useAtlasStore((s) => s.mapPath);
+  const mapLoaded = useAtlasStore((s) => s.mapLoaded);
+  const isMapLoading = useAtlasStore((s) => s.isMapLoading);
   const rules = useMapInitiativeRules();
   const bySides = listedBySides(initiative, rules);
   const firstSide = initiative.sides?.first ?? rules.firstSide;
@@ -83,7 +88,7 @@ export const InitiativeTracker: React.FC = () => {
   const nextBtnRef = useRef<HTMLButtonElement>(null);
 
   // Use shared statblock hover preview hook
-  const [previewState, previewActions] = useStatblockHoverPreview<InitiativeEntry>({ app });
+  const [previewState, previewActions] = useStatblockHoverPreview<PreviewedEntry>({ app });
 
   // Listen for hotkey events to provide visual feedback
   useEffect(() => {
@@ -152,10 +157,11 @@ export const InitiativeTracker: React.FC = () => {
         return;
       }
 
-      // Use the shared preview hook
-      previewActions.showPreview(entry, entry.statblockPath, cardElement);
+      // The scene this list was drawn from goes with the preview, whatever loads while it stays open
+      const originContext = captureRollContext(view?.viewId, { mapPath, mapLoaded, isMapLoading, objects: { tokens } }, [entry.tokenId]);
+      previewActions.showPreview({ entry, originContext }, entry.statblockPath, cardElement);
     },
-    [previewActions]
+    [previewActions, view, mapPath, mapLoaded, isMapLoading, tokens]
   );
 
   // Don't render if closed
@@ -168,7 +174,7 @@ export const InitiativeTracker: React.FC = () => {
       entry={entry}
       index={index}
       bySides={bySides}
-      isHoveredForPreview={previewState.hoveredEntry?.id === entry.id}
+      isHoveredForPreview={previewState.hoveredEntry?.entry.id === entry.id}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
@@ -246,28 +252,7 @@ export const InitiativeTracker: React.FC = () => {
           : sortedEntries.map(card))}
       </div>
 
-      {/* Statblock Preview - using shared component */}
-      {/* Key forces remount on entry change to trigger animation */}
-      <StatblockHoverPreview
-        key={previewState.hoveredEntry?.id || 'none'}
-        notePath={previewState.notePath}
-        app={app}
-        vitals={
-          previewState.hoveredEntry && {
-            ...previewState.hoveredEntry,
-            // Rolls from the preview act on the token, not on the initiative entry.
-            id: previewState.hoveredEntry.tokenId,
-            resources: tokens[previewState.hoveredEntry.tokenId]?.resources,
-            ringColor: tokens[previewState.hoveredEntry.tokenId]?.ringColor,
-            showRing: tokens[previewState.hoveredEntry.tokenId]?.showRing,
-          }
-        }
-        isVisible={previewState.isVisible}
-        isClosing={previewState.isClosing}
-        position={previewState.position}
-        anchorRect={previewState.anchorRect}
-        preferredSide="left"
-      />
+      <InitiativeStatblockPreview app={app} state={previewState} tokens={tokens} />
 
       {/* Turn navigation — always visible, disabled when combat inactive */}
       <div className="atlas-initiative-tracker__turn-controls">

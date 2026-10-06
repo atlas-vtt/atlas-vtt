@@ -13,6 +13,7 @@ import { AMMO, HP } from '../mocks/resourceFixtures';
 interface Roll {
   formula: string;
   source: Record<string, unknown>;
+  origin?: unknown;
 }
 
 /** An open map view with a dice tool that returns `totals` in order, and a store holding `tokenIds`. */
@@ -21,8 +22,8 @@ function mapView(totals: number[], tokenIds: string[], isPlayerView = false) {
   const updateTokens = vi.fn();
   const view = {
     serviceManager: { getToolController: () => ({ getDiceTool: () => ({
-      rollDice: (formula: string, source: Record<string, unknown>) => {
-        rolls.push({ formula, source });
+      rollDice: (formula: string, source: Record<string, unknown>, origin?: unknown) => {
+        rolls.push({ formula, source, origin });
         return { formula, total: totals[rolls.length - 1] ?? 0 };
       },
     }) }) },
@@ -68,6 +69,18 @@ describe('rollHitPoints', () => {
     expect(second.updateTokens).toHaveBeenCalledWith([
       { id: 'a', changes: { resources: { hp: { current: 9, max: 9 } }, overriddenMax: ['hp'] } },
     ]);
+  });
+
+  it('passes each token the origin of the statblock it was opened for, never one from the map it finds', () => {
+    const { view, rolls } = mapView([9, 4], ['a', 'b']);
+    const app = appWith({ ...view, viewId: 'view-1' });
+    const context = { viewId: 'view-1', mapPath: 'maps/opened.atlasmap', tokenIds: ['a'] };
+    rollHitPoints(app, '2d6', 'Goblin.md', [{ id: 'a' }, { id: 'b' }], 'Hit Points', 'view-1', context);
+    expect(rolls.map((roll) => roll.origin)).toEqual([{ viewId: 'view-1', mapPath: 'maps/opened.atlasmap', tokenId: 'a' }, undefined]);
+
+    // The map that holds the tokens does not make an origin up
+    rollHitPoints(app, '2d6', 'Goblin.md', [{ id: 'a' }], 'Hit Points', 'view-1');
+    expect(rolls[2]?.origin).toBeUndefined();
   });
 
   it('never rolls a creature below 1 hit point', () => {

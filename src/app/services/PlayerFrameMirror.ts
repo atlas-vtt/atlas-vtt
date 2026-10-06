@@ -3,6 +3,7 @@ import type { StoreApi } from 'zustand';
 import type { PlayerCameraState } from '../local-player-view';
 import type { ViewAtlasState } from '../storeFactory';
 import type { AtlasSettings } from './SettingsService';
+import type { PlayerRollSources } from './playerRollSource';
 
 type PlayerViewSettings = AtlasSettings['localPlayerView'];
 
@@ -43,6 +44,8 @@ export interface PlayerFrameSource {
   store?: StoreApi<ViewAtlasState>;
   /** Dice events from the view that owns this canvas. */
   diceEvents?: EventEmitter;
+  /** Which tokens the scene this canvas shows lets players see, for rolls to name. Without it rolls name nobody. */
+  rollSources?: PlayerRollSources;
   getCamera?(): PlayerCameraState | undefined;
   /** Renders the player frame for `capture`, then the DM's frame again. */
   withPlayerSafeFrame: PlayerSafeFrame;

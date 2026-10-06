@@ -364,7 +364,8 @@ export class PlayerWindowService {
   /** Bind the overlays to the view store that now holds the presented scene. */
   private presentScene(): void {
     const store = this.streamSource?.store ?? this.store;
-    this.sceneOverlays.forEach((overlay) => overlay.present(store, this.streamSource?.diceEvents));
+    const source = this.streamSource;
+    this.sceneOverlays.forEach((overlay) => overlay.present(store, source?.diceEvents, source?.rollSources));
   }
 
   private destroySceneOverlays(): void {

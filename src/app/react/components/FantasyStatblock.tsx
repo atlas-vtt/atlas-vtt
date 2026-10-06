@@ -22,6 +22,7 @@ import { useBestiaryRevision } from '../hooks/useBestiaryRevision';
 import { StatblockSkeleton } from './statblock/StatblockSkeleton';
 import { t } from '../../i18n';
 import { AtlasUIContext } from '../root/AtlasUIContext';
+import type { TokenRollContext } from '../../types/diceRollOrigin';
 
 interface FantasyStatblockProps {
   /** Owning map when this block renders in a separate React root. */
@@ -34,6 +35,8 @@ interface FantasyStatblockProps {
   app: App;
   /** Tokens whose resources drive the statblock's vitals — one block per token */
   tokens?: TokenVitals[];
+  /** The view, scene and tokens the statblock was opened for, taken with `tokens`; rolls for them name it. */
+  originContext?: TokenRollContext | undefined;
   /** Allows values to be edited in place, writing back to the note's frontmatter */
   editable?: boolean;
   className?: string;
@@ -57,12 +60,14 @@ export function FantasyStatblock({
   className,
   tokenActions,
   viewId: suppliedViewId,
+  originContext,
 }: FantasyStatblockProps): React.JSX.Element {
   const context = useContext(AtlasUIContext);
   const viewId = suppliedViewId ?? context?.view?.viewId;
   const ref = useRef<HTMLDivElement>(null);
-  const tokensRef = useRef<TokenVitals[]>(tokens);
-  tokensRef.current = tokens;
+  // The tokens and the scene they were taken from stay together for the click that reads them.
+  const rollsRef = useRef({ tokens, originContext });
+  rollsRef.current = { tokens, originContext };
 
   const key = useMemo(() => vitalsKey(tokens), [tokens]);
 
@@ -189,23 +194,27 @@ export function FantasyStatblock({
       el,
       app,
       () => {
-        const [token] = tokensRef.current;
+        const { tokens: [token], originContext: opened } = rollsRef.current;
         return {
           viewId,
+          originContext: opened,
           tokenId: token?.id,
           statblockPath: notePath,
           tokenName: token?.name ?? (monster.name),
           tokenImagePath: token?.imagePath,
         };
       },
-      (formula, abilityName) => rollHitPoints(app, formula, notePath, tokensRef.current, abilityName, viewId),
+      (formula, abilityName) => {
+        const { tokens: rolled, originContext: opened } = rollsRef.current;
+        rollHitPoints(app, formula, notePath, rolled, abilityName, viewId, opened);
+      },
     );
   }, [app, monster, notePath, viewId]);
 
   // Mirror the tokens' resources into any vitals track the layout renders.
   useEffect(() => {
     if (ref.current && !tokenActions) {
-      syncStatblockVitals(ref.current, tokensRef.current);
+      syncStatblockVitals(ref.current, rollsRef.current.tokens);
     }
   }, [key, monster, tokenActions]);
 

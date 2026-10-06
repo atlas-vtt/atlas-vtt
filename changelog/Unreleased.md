@@ -31,3 +31,5 @@
 - Hidden tokens no longer add sight or explore new areas in the player window. Areas already explored stay remembered.
 
 - Removed an unused legacy map view. Old tabs using it no longer reopen. The current player window is unchanged.
+
+- In the player window, a dice roll shows its token's portrait and ability only when players can see that token in the shown scene, and its name only when token nameplates are shown to players.

@@ -6,6 +6,7 @@ import { chainDepth, layoutDice, restingFrame, type DiceScene } from '../../../d
 import type { ThrowStyle } from '../../../dice3d/diceDisplay';
 import { ratchet, reveal } from '../../../dice3d/audio/diceSounds';
 import type { DiceRollResult } from '../../../types/diceTypes';
+import type { RollSourcePresentation } from '../dice/diceSourcePresentation';
 import { DiceStage, type DiceStageHandle } from './DiceStage';
 import { DiceRollHeader } from './DiceRollHeader';
 import { DiceRollEngraving } from './DiceRollEngraving';
@@ -15,6 +16,8 @@ import { useElementHeight } from './useElementHeight';
 
 interface DiceRollPanelProps {
   result: DiceRollResult;
+  /** Who the roll names; unset looks it up as the GM's window does. */
+  presentation?: RollSourcePresentation | null | undefined;
   scene: DiceScene;
   /** A newer roll took the large place: carry on as a row. */
   compact: boolean;
@@ -71,7 +74,7 @@ function lingerMs(landed: boolean, compact: boolean, throws: number): number {
  * own, shows the number and leaves. A click on the panel skips the flight, or
  * closes it once the dice lie.
  */
-export function DiceRollPanel({ result, scene, compact: compactNow, leaving, muted, style, onClose, onDone }: DiceRollPanelProps): React.ReactElement {
+export function DiceRollPanel({ result, presentation, scene, compact: compactNow, leaving, muted, style, onClose, onDone }: DiceRollPanelProps): React.ReactElement {
   // A panel leaves at the size it had: a row displaced by a newer roll would
   // otherwise open up to full size while disappearing.
   const [leavingSize, setLeavingSize] = useState<boolean | null>(null);
@@ -199,13 +202,13 @@ export function DiceRollPanel({ result, scene, compact: compactNow, leaving, mut
           <div ref={contentRef} className="atlas-dice-roll__content">
             {compact ? (
               <div className="atlas-dice-roll__row">
-                <DiceRollHeader result={result} label={label} />
+                <DiceRollHeader result={result} presentation={presentation} label={label} />
                 <span className="atlas-dice-roll__total atlas-dice-roll__total--row">{shown ?? result.formula}</span>
               </div>
             ) : (
               <>
                 <div className="atlas-dice-roll__header">
-                  <DiceRollHeader result={result} label={label} />
+                  <DiceRollHeader result={result} presentation={presentation} label={label} />
                 </div>
                 {/* Holds the height where the dice come to rest; they roll over the whole panel. */}
                 <div className="atlas-dice-roll__floor" />

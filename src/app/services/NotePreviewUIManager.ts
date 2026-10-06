@@ -13,6 +13,8 @@ import { findAtlasLeafByViewId } from '../utils/atlasLeafLookup';
 import { readPinnedNotePreviews } from '../stores/pinnedNotePreviewSlice';
 import { isModHeld } from '../keyboard/modKey';
 import type { ViewAtlasStore } from '../storeFactory';
+import type { TokenRollContext } from '../types/diceRollOrigin';
+import { captureRollContext } from '../tools/diceRollOrigins';
 
 /**
  * A hovered token presented to the preview system like a pin on its linked
@@ -64,12 +66,16 @@ export class NotePreviewUIManager {
   private activePreviews: Map<string, IPreviewWindow> = new Map();
   private isModifierKeyDown = false;
   private lastHoveredPinId: string | null = null;
-  /** Element under the pointer, kept until it leaves; replayed on each CMD/Ctrl press. */
+  /**
+   * Element under the pointer, kept until it leaves; replayed on each CMD/Ctrl press. A
+   * hovered token keeps the scene it was hovered in, which rolls from its statblock name.
+   */
   private currentHover: {
     pin: PreviewAnchor;
     screenX: number;
     screenY: number;
     sourceLeaf: WorkspaceLeaf | null;
+    originContext: TokenRollContext | undefined;
   } | null = null;
   private boundHideAllUnpinnedPreviewsOnBlur!: () => void;
   private boundHandleKeyDown!: (e: KeyboardEvent) => void;
@@ -108,7 +114,12 @@ export class NotePreviewUIManager {
       
       // Hover events only fire when the hovered element changes, so remember
       // the hover: every later modifier press replays it.
-      this.currentHover = { pin: data.pin, screenX: data.screenX, screenY: data.screenY, sourceLeaf: data.sourceLeaf ?? null };
+      this.currentHover = {
+        pin: data.pin, screenX: data.screenX, screenY: data.screenY, sourceLeaf: data.sourceLeaf ?? null,
+        originContext: 'type' in data.pin && data.pin.type === 'token'
+          ? captureRollContext(this.viewId, this.store.getState(), [data.pin.id])
+          : undefined,
+      };
       if (modifierKeyDown) {
         this.showPreviewFor(this.currentHover);
       }
@@ -241,7 +252,7 @@ export class NotePreviewUIManager {
 
   private showPreviewFor(hover: NonNullable<typeof this.currentHover>): void {
     runInBackground(
-      this.showOrCreatePreview(hover.pin, hover.screenX, hover.screenY, hover.sourceLeaf),
+      this.showOrCreatePreview(hover.pin, hover.screenX, hover.screenY, hover.sourceLeaf, hover.originContext),
       'Showing note preview',
     );
   }
@@ -281,6 +292,8 @@ export class NotePreviewUIManager {
     screenX: number,
     screenY: number,
     sourceLeaf?: WorkspaceLeaf | null,
+    /** The scene a hovered token was hovered in; a statblock opened for it rolls for that scene. */
+    originContext?: TokenRollContext,
   ): Promise<void> {
 
     // First, check if we already have a preview for this exact pin
@@ -330,6 +343,7 @@ export class NotePreviewUIManager {
           { x: screenX, y: screenY },
           undefined,
           this.viewId,
+          originContext,
         );
         
         if (statblockPreview.element) {
