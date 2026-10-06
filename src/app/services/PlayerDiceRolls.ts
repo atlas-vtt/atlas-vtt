@@ -1,3 +1,4 @@
+import type { EventEmitter } from 'events';
 import { createElement } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import type { App } from 'obsidian';
@@ -15,6 +16,8 @@ export class PlayerDiceRolls implements PlayerOverlay {
   private host: HTMLElement | undefined;
   private root: Root | undefined;
   private store: StoreApi<ViewAtlasState> | undefined;
+  private diceEvents: EventEmitter | undefined;
+  private sourceKey = 0;
   private isShown: boolean;
   private readonly unsubscribeSettings: () => void;
 
@@ -34,7 +37,9 @@ export class PlayerDiceRolls implements PlayerOverlay {
     this.render();
   }
 
-  present(store: StoreApi<ViewAtlasState>): void {
+  present(store: StoreApi<ViewAtlasState>, diceEvents?: EventEmitter): void {
+    if (this.diceEvents !== diceEvents) this.sourceKey++;
+    this.diceEvents = diceEvents;
     this.store = store;
     this.render();
   }
@@ -42,15 +47,24 @@ export class PlayerDiceRolls implements PlayerOverlay {
   /** Rolls keep showing while the DM browses other scene tabs. */
   hold(): void {}
 
+  releaseSource(): void {
+    this.store = undefined;
+    this.diceEvents = undefined;
+    this.sourceKey++;
+    this.render();
+  }
+
   destroy(): void {
+    this.store = undefined;
+    this.diceEvents = undefined;
     this.unsubscribeSettings();
     this.unmount();
   }
 
   private render(): void {
     if (!this.root || !this.host) return;
-    const { app, store, host } = this;
-    this.root.render(this.isShown && store ? createElement(PlayerDiceToasts, { app, store, container: host }) : null);
+    const { app, store, host, diceEvents } = this;
+    this.root.render(this.isShown && store && diceEvents ? createElement(PlayerDiceToasts, { app, store, container: host, eventBus: diceEvents, key: this.sourceKey }) : null);
   }
 
   private unmount(): void {

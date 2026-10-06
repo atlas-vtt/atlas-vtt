@@ -7,7 +7,7 @@ vi.mock('../../src/app/pixi/gridDetection/detectGrid', () => ({ detectGridFromSp
 
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { autoDetectGridOnFirstLoad } from '../../src/app/services/gridAutoDetect';
-import type { GridState } from '../../src/app/services/MapPersistence';
+import type { GridState } from '../../src/app/types/gridTypes';
 
 const SETTLED_GRID: GridState = { enabled: true, visible: true, type: 'square', size: 70, offsetX: 0, offsetY: 0, color: '#00FFFF', opacity: 0.5 };
 const NEW_GRID: GridState = { ...SETTLED_GRID, autoDetect: true };

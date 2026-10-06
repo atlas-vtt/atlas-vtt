@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import { AssetService } from '../../src/app/services/AssetService';
 import { mapLightPresets } from '../../src/app/services/mapCollectionRules';
-import type { GridState } from '../../src/app/services/MapPersistence';
+import type { GridState } from '../../src/app/types/gridTypes';
 import { gameUnitsToWorld, unitScaleOf } from '../../src/app/lighting/lightingUnits';
 import { resolveMeasurementSettings } from '../../src/app/grid/measurementFormat';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';

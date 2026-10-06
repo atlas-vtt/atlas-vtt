@@ -1,4 +1,4 @@
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import {
   DEFAULT_TOOLBAR_ORDER, isHideableToolbarControl, isToolbarControlId, isToolbarUnitId, UNDO_BAR_ID, type ToolbarControlId, type ToolbarUnitId,
 } from './toolbarCatalog';

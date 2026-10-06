@@ -1,5 +1,7 @@
+import { tableSightSource } from './tokenSightPolicy';
 import { perceivedLevel, showsMap } from '../gameSystems/senseRules';
-import { movedWhileHeld, type HeldTokens } from '../lighting/sightOnDrop';
+import { movedWhileHeld } from '../lighting/sightOnDrop';
+import type { HeldTokens } from '../types/viewUIState';
 import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
 import type { TokenEntity } from '../types';
 import type { ConditionDefinition, ConditionEffect } from '../types/collectionSettingsTypes';
@@ -146,7 +148,7 @@ export function seenSpots(
   const seesCreatures = sight.regions.some(({ sense }) => sense.precise && !showsMap(sense));
   const spots: SeenSpot[] = [];
   for (const token of Object.values(tokens)) {
-    const party = !!token.vision?.enabled;
+    const party = tableSightSource(token);
     if (token.isHidden || (!party && !seesCreatures)) continue;
     const at = { x: token.x, y: token.y };
     const level = lightLevelAt(at, ambient, lights);

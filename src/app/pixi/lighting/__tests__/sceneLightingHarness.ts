@@ -2,6 +2,8 @@ import type { App } from 'obsidian';
 import { Container, Graphics, RenderTexture, type Application, type WebGLRenderer } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { vi } from 'vitest';
+import type { FogOperation } from '../../../types/fogTypes';
+import type { ExploredMemoryWatcher } from '../sceneLightingView';
 import type { MeasurementSettings } from '../../../grid/measurementFormat';
 import type { ViewAtlasState, ViewAtlasStore } from '../../../storeFactory';
 import type { MapBounds } from '../../../vision/visibility';
@@ -23,6 +25,7 @@ export interface SceneOptions {
   exploredMask?: string | null;
   /** Told when the view worked out new sight, as `LightingController` is. */
   onSightChange?: () => void;
+  exploredWatcher?: ExploredMemoryWatcher;
 }
 
 /** `createSceneLighting` over a real renderer, with the store, storage and ticker a map view gives it. */
@@ -39,6 +42,8 @@ export interface Scene {
   moveToken: (x: number, y: number) => void;
   /** A change to the scene's lighting that leaves sight as it is, e.g. `{ ambientColor }`. */
   setLighting: (changes: Partial<ViewAtlasState['lighting']>) => void;
+  /** A fog-only update, preserving every lighting and source record. */
+  setFog: (fog: Record<string, FogOperation>) => void;
   /** The store writes and lighting calls of `MapService.loadMap`, in its order. */
   loadMap: (path: string, saved: SavedScene, bounds: MapBounds) => void;
   /** `loadMap` up to the rehydrated scene: the store holds it, and the loading screen is still up. */
@@ -58,7 +63,7 @@ export function litScene(tokenX: number, tokenY: number): SavedScene {
   } as unknown as SavedScene;
 }
 
-export async function createScene({ enabled, noted = null, exploredMask = null, onSightChange }: SceneOptions): Promise<Scene> {
+export async function createScene({ enabled, noted = null, exploredMask = null, onSightChange, exploredWatcher }: SceneOptions): Promise<Scene> {
   const renderer = await createTestRenderer(SIZE);
   const viewport = new Container();
   const target = RenderTexture.create({ width: SIZE, height: SIZE });
@@ -113,6 +118,7 @@ export async function createScene({ enabled, noted = null, exploredMask = null, 
     bounds: () => bounds,
     albedo: () => null,
     ...(onSightChange && { onSightChange }),
+    ...(exploredWatcher && { exploredWatcher }),
   });
   return {
     renderer,
@@ -124,6 +130,7 @@ export async function createScene({ enabled, noted = null, exploredMask = null, 
     switchLighting: (on) => write({ lighting: { ...state.lighting, enabled: on } }),
     moveToken: (x, y) => write({ objects: { ...state.objects, tokens: { t: visionToken(x, y, 5) } } }),
     setLighting: (changes) => write({ lighting: { ...state.lighting, ...changes } }),
+    setFog: (fog) => write({ objects: { ...state.objects, fog } }),
     loadMap: (path, saved, mapBounds) => {
       startLoad(path, saved, mapBounds);
       finishLoad();

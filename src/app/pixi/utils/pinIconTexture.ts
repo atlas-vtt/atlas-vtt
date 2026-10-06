@@ -1,3 +1,4 @@
+import { getDomHost } from '../../host/dom';
 import { CanvasSource, Texture } from 'pixi.js';
 import { PIN_ICON_PATHS, type PinIconId } from '../../types/pinIcons';
 
@@ -16,7 +17,7 @@ export function createPinIconTexture(id: PinIconId): Texture | null {
 
 /** The white raster of a glyph path drawn on the icons' 512×512 canvas, `size` pixels wide, with mipmaps. */
 export function createGlyphTexture(path: string, size: number = PIN_ICON_TEXTURE_SIZE): Texture | null {
-  const canvas = createEl('canvas');
+  const canvas = getDomHost().createCanvas();
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');

@@ -76,6 +76,7 @@ export class LightingRenderer implements SceneLightingView {
   /** What the scene is built from, and when it is built anew (`SceneModelBuilder`). */
   private readonly model = new SceneModelBuilder();
   private readonly spots = new SceneSpots();
+  private readonly gmSpots = new SceneSpots();
   private reaches: LightReach[] = [];
   private sight: Sight = SEES_ALL;
   /** The zones of the scene as the rules read them, and the ambient light made of them and the scene's lighting. */
@@ -213,18 +214,20 @@ export class LightingRenderer implements SceneLightingView {
     const { model, rebuilt } = this.model.update(state, bounds, this.deps.measurement, this.deps.rules);
     const base = rebuilt || !this.lastScene ? (this.lastScene = this.takeModel(model, state, bounds)) : this.lastScene;
     const spots = this.spots.update(model, state, this.deps.measurement, this.deps.rules);
-    this.engine.update({ ...base, spots, ...sceneLook(lighting) });
+    const gmSight = model.gmSight ?? model.sight;
+    const gmSpots = gmSight === model.sight ? spots : this.gmSpots.update(model, state, this.deps.measurement, this.deps.rules, gmSight);
+    this.engine.update({ ...base, spots: gmSpots, ...(gmSight !== model.sight && { playerSight: model.sight, playerSpots: spots }), ...sceneLook(lighting) });
     requestRender(this.deps.app);
   }
 
   /** A model built anew: its sight and reaches are the view's, and what the tokens now see is recorded. */
-  private takeModel({ walls, lights, reaches, sight, explored, zones, ambient }: SceneModel, state: ViewAtlasState, bounds: MapBounds): SceneWithoutLook {
+  private takeModel({ walls, lights, reaches, sight, gmSight = sight, explored, zones, ambient }: SceneModel, state: ViewAtlasState, bounds: MapBounds): SceneWithoutLook {
     this.reaches = reaches;
     this.sight = sight;
     this.zones = ambient.zones ?? [];
     this.sightChanged = true;
     if (explored) this.memory.record(explored);
-    return { bounds, albedo: this.deps.albedo(), walls, lights, sight, sightRadius: (state.grid?.size ?? DEFAULT_CELL_SIZE) * 0.5, zones };
+    return { bounds, albedo: this.deps.albedo(), walls, lights, sight: gmSight, sightRadius: (state.grid?.size ?? DEFAULT_CELL_SIZE) * 0.5, zones };
   }
 
   /**

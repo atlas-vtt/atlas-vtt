@@ -1,30 +1,9 @@
+import type { DiceRollResult } from '../types/diceTypes';
 import { EventEmitter } from 'events';
-import { DEFAULT_DICE_RULES } from '../gameSystems/diceRules';
 import type { DiceRules } from '../types/diceRulesTypes';
-import { getDiceCrit, type DiceCrit } from './diceCrit';
-import { hasDiceTerm, rollFormula, type RolledDie } from './diceFormula';
-import { t } from '../i18n';
-
-export interface DiceRollResult {
-  id: string;
-  timestamp: number;
-  formula: string;
-  rolls: RolledDie[];
-  modifiers: number;
-  total: number;
-  /** Decided by the collection's critical rule when rolled; missing on rolls logged before rules existed. */
-  crit?: DiceCrit;
-  player?: string;
-  source?: {
-    type: 'toolbar' | 'statblock';
-    /** Let the roll follow its token's or statblock's current artwork. */
-    tokenId?: string;
-    statblockPath?: string;
-    tokenName?: string;
-    tokenImagePath?: string;
-    abilityName?: string;
-  };
-}
+import { getDiceCrit } from './diceCrit';
+import { rollFormula } from './diceFormula';
+import { parseFormula, type FormulaError } from './parseFormula';
 
 export interface DiceToolState {
   isTrayOpen: boolean;
@@ -33,12 +12,19 @@ export interface DiceToolState {
   quickDice: string[]; // Quick access dice buttons
 }
 
+export interface DiceRollInputs {
+  random: () => number;
+  rollId: () => string;
+  roller: () => string;
+  onFormulaError: (error: FormulaError) => void;
+}
+
 export class DiceTool {
   public state: DiceToolState;
   private eventBus: EventEmitter;
   private readonly getDiceRules: () => DiceRules;
 
-  constructor(eventBus: EventEmitter, getDiceRules: () => DiceRules = () => DEFAULT_DICE_RULES) {
+  constructor(eventBus: EventEmitter, getDiceRules: () => DiceRules, private readonly inputs: DiceRollInputs) {
     this.eventBus = eventBus;
     this.getDiceRules = getDiceRules;
     this.state = {
@@ -54,8 +40,9 @@ export class DiceTool {
     this.eventBus.emit('dice-tray-toggled', this.state.isTrayOpen);
   }
 
-  public rollDice(formula: string, source?: DiceRollResult['source']): DiceRollResult {
+  public rollDice(formula: string, source?: DiceRollResult['source']): DiceRollResult | null {
     const result = this.parseAndRoll(formula);
+    if (!result) return null;
     if (source) {
       result.source = source;
     }
@@ -68,33 +55,45 @@ export class DiceTool {
       this.state.rollHistory = this.state.rollHistory.slice(0, 50);
     }
     
-    document.dispatchEvent(new CustomEvent('atlas-dice-rolled', { detail: result }));
+    this.eventBus.emit('dice-rolled', result);
 
     return result;
   }
 
   /** Rolls the formula; one without dice (`+3`) is added to the collection's default roll. */
-  private parseAndRoll(formula: string): DiceRollResult {
+  private parseAndRoll(formula: string): DiceRollResult | null {
     const rules = this.getDiceRules();
-    const complete = hasDiceTerm(formula) ? formula : withDefaultRoll(formula, rules.defaultRoll);
-    const { rolls, modifiers, total } = rollFormula(complete, Math.random, rules);
+    // An empty quick roll keeps the existing default-roll shortcut. Validate raw
+    // input first so completing a bonus cannot strip illegal text or evade caps.
+    const input = parseFormula(formula === '' ? rules.defaultRoll : formula);
+    if (!input.ok) {
+      this.inputs.onFormulaError(input);
+      return null;
+    }
+    const complete = input.terms.some(term => term.kind === 'dice') && formula !== ''
+      ? formula : withDefaultRoll(formula, rules.defaultRoll);
+    const parsed = parseFormula(complete);
+    if (!parsed.ok) {
+      this.inputs.onFormulaError(parsed);
+      return null;
+    }
+    const { rolls, modifiers, total } = rollFormula(parsed, this.inputs.random, rules);
 
     return {
-      id: `roll_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`,
+      id: this.inputs.rollId(),
       timestamp: Date.now(),
       formula: complete,
       rolls,
       modifiers,
       total,
       crit: getDiceCrit(rolls, rules),
-      player: t('dice.player') // TODO: Get actual player name from session
+      player: this.inputs.roller()
     };
   }
 
   public clearHistory(): void {
     this.state.rollHistory = [];
     this.eventBus.emit('dice-history-cleared');
-    document.dispatchEvent(new CustomEvent('atlas-dice-history-cleared'));
   }
 
   public setActiveFormula(formula: string): void {

@@ -1,3 +1,4 @@
+import { getDomHost } from '../host/dom';
 /** Web Animations and canvas counterparts of the motion tokens in styles/_tokens.scss. */
 
 /** `$transition-ease-out` as control points, for Motion's `ease` and `cubicBezier`. */
@@ -31,7 +32,7 @@ export const BACKDROP_ENTER_MS = 200;
 
 /** Whether the window `node` lives in (main or popout) asks for reduced motion. */
 export function prefersReducedMotion(node: Node): boolean {
-  return node.win.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  return getDomHost().ownerWindow(node).matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 /**

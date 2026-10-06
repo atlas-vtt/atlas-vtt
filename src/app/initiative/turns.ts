@@ -38,7 +38,7 @@ export function previousSideTurn(initiative: InitiativeState): void {
 }
 
 /** The total of a dice group such as `1d20` or `2d6`; a d20 when `roll` is none. */
-export function rollInitiativeDice(roll: string, random: () => number = Math.random): number {
+export function rollInitiativeDice(roll: string, random: () => number): number {
   const { count, sides } = parseDefaultRoll(roll) ?? { count: 1, sides: 20 };
   let total = 0;
   for (let die = 0; die < count; die++) total += Math.floor(random() * sides) + 1;

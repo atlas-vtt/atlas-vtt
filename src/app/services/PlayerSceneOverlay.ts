@@ -1,3 +1,4 @@
+import type { EventEmitter } from 'events';
 import type { StoreApi } from 'zustand';
 import { shallow } from 'zustand/vanilla/shallow';
 import type { ViewAtlasState } from '../storeFactory';
@@ -10,7 +11,9 @@ export interface PlayerOverlay {
   /** Draw into `parent`, the popout's content. */
   mount(parent: HTMLElement): void;
   /** Bind to the store of the presented scene. */
-  present(store: StoreApi<ViewAtlasState>): void;
+  present(store: StoreApi<ViewAtlasState>, diceEvents?: EventEmitter): void;
+  /** Drop live subscriptions when the presented view closes. */
+  releaseSource?(): void;
   /** Keep the presented scene while the DM browses other scene tabs. */
   hold(): void;
   /** Draw again: something outside the store and the player settings changed what players see. */

@@ -1,5 +1,7 @@
 import { Sprite, Texture } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { fogCoverage, type FogCoverage } from '../../../fog/fogCoverage';
+import { fogRectangle } from '../../../../../tests/helpers/fogOperations';
 import type { WallSegment } from '../../../types/wallTypes';
 import { copiedPixel } from '../engine/__tests__/gpuTestUtils';
 import { captureWithLayerVisibility } from '../../playerSafeFrame';
@@ -41,16 +43,23 @@ const BLACK = [0, 0, 0];
 describe('door badges in the players\' frame', () => {
   let scene: Scene;
   let doors: DoorIcons;
+  let coverage: FogCoverage | null;
+  let explored: Texture | null;
 
   beforeEach(async () => {
+    coverage = fogCoverage({});
+    explored = null;
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     vi.stubGlobal('createEl', (tag: string): HTMLElement => document.createElement(tag));
-    scene = await createScene({ enabled: true, onSightChange: () => doors?.refreshPlayers() });
+    scene = await createScene({
+      enabled: true, onSightChange: () => doors?.refreshPlayers(),
+      exploredWatcher: { setTexture: (texture) => { explored = texture; }, memoryTravelled: () => undefined },
+    });
     const { renderer, viewport, host, store } = scene;
     const map = new Sprite(Texture.WHITE);
     map.setSize(SIZE, SIZE);
     viewport.addChildAt(map, 0);
-    doors = new DoorIcons(store, renderer.canvas as HTMLCanvasElement, () => playerDoorSight(host, store.getState().objects.walls));
+    doors = new DoorIcons(store, renderer.canvas as HTMLCanvasElement, () => playerDoorSight(host, store.getState().objects.walls, coverage));
     viewport.addChild(doors.view, doors.playerView);
     scene.loadMap('maps/hall.atlasmap', HALL, { width: SIZE, height: SIZE });
     scene.tick();
@@ -110,6 +119,64 @@ describe('door badges in the players\' frame', () => {
     expect(gm(SEEN)).toEqual(DOOR_BLUE);
     expect(gm(UNSEEN)).toEqual(DOOR_BLUE);
     expect(gm(SECRET)).toEqual(SECRET_ORANGE);
+  });
+
+  it('removes a fogged badge and its player hit target while keeping the GM badge unchanged', () => {
+    const before = gmFrame();
+    const paint = fogRectangle({ x: 95, y: 123, width: 10, height: 10 });
+    coverage = fogCoverage({ paint });
+    doors.refreshPlayers();
+    expect(playerFrame()(SEEN)).not.toEqual(DOOR_BLUE);
+    const after = gmFrame();
+    for (const at of [SEEN, UNSEEN, SECRET]) expect(after(at)).toEqual(before(at));
+    doors.view.visible = false;
+    doors.playerView.visible = true;
+    expect(doors.hitTest(...SEEN)).toBeNull();
+    const erase = fogRectangle({ id: 'erase', timestamp: 2, isErasing: true, x: 98, y: 126, width: 4, height: 4 });
+    coverage = fogCoverage({ paint, erase });
+    doors.refreshPlayers();
+    expect(doors.hitTest(...SEEN)).toBe('seen');
+    expect(playerFrame()(SEEN)).toEqual(DOOR_BLUE);
+  });
+
+  it('keeps source sight and every explored-memory byte across fog-only paint and erase', () => {
+    scene.tick();
+    scene.renderStage();
+    const { host, store, renderer } = scene;
+    const sight = host.currentSight();
+    expect(new Set(sight.regions.map((region) => region.tokenId))).toEqual(new Set(['t']));
+    const sources = store.getState().objects.tokens;
+    const reaches = host.lightReaches();
+    const ambient = host.ambientLight();
+    const memoryBytes = (): Uint8ClampedArray => {
+      if (!explored) throw new Error('Expected the real explored-memory texture');
+      return renderer.extract.pixels({ target: explored }).pixels;
+    };
+    const before = memoryBytes();
+    expect(before.some((value, index) => index % 4 === 0 && value > 0)).toBe(true);
+    const paint = fogRectangle({ x: 0, y: 0, width: 160, height: SIZE });
+    const erase = fogRectangle({ id: 'erase', timestamp: 2, isErasing: true, x: 0, y: 0, width: 160, height: SIZE });
+    for (const fog of [{ paint }, { paint, erase }]) {
+      coverage = fogCoverage(fog);
+      scene.setFog(fog);
+      scene.tick();
+      scene.renderStage();
+      expect(store.getState().objects.tokens).toBe(sources);
+      expect(host.currentSight()).toBe(sight);
+      expect(host.lightReaches()).toBe(reaches);
+      expect(host.ambientLight()).toBe(ambient);
+      expect(memoryBytes()).toEqual(before);
+    }
+  });
+
+  it('removes player badges when committed coverage is invalid and recovers when valid', () => {
+    coverage = null;
+    doors.refreshPlayers();
+    expect(playerFrame()(SEEN)).not.toEqual(DOOR_BLUE);
+    expect(gmFrame()(SEEN)).toEqual(DOOR_BLUE);
+    coverage = fogCoverage({});
+    doors.refreshPlayers();
+    expect(playerFrame()(SEEN)).toEqual(DOOR_BLUE);
   });
 
   it('shows the door a token comes to see while it is dragged, and drops the one it leaves behind', () => {

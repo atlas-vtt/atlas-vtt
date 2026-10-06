@@ -1,10 +1,13 @@
+import { gmSightSource } from '../../vision/tokenSightPolicy';
+import { tableSight } from '../../vision/tableSight';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { sleeps } from '../../lighting/lightActivity';
 import { lightZoneList, withZones } from '../../lighting/lightZones';
 import { worldTexel } from '../../lighting/lightingConstants';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { sealedWalls } from '../../lighting/sealWalls';
-import { SightTokens, heldForSight, type HeldTokens } from '../../lighting/sightOnDrop';
+import { SightTokens, heldForSight } from '../../lighting/sightOnDrop';
+import type { HeldTokens } from '../../types/viewUIState';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { TokenEntity } from '../../types';
 import type { SceneLighting } from '../../types/lightingTypes';
@@ -28,6 +31,8 @@ export interface SceneModel {
   lights: EngineLight[];
   reaches: LightReach[];
   sight: Sight;
+  /** The GM keeps its existing shading from hidden vision tokens. */
+  gmSight?: Sight;
   /** What the tokens see now, for explored memory to record; null when nothing is recorded. */
   explored: ExploredShapes | null;
   /** The scene's ambient zones as the engine draws them; the same list while the zones stay. */
@@ -99,10 +104,13 @@ export class SceneModelBuilder {
     const dark = shining.some((light) => light.darkness);
     const lights = shining.flatMap((light, i) => (out[i] ? [] : [dark ? { ...light, area: everyReach[i]!.polygon } : light]));
     const reaches = everyReach.filter((_, i) => !out[i]);
-    const sight = sceneSight(state.lighting, sourcesInDarkness(sightSources(tokens, scale, bounds, rules), ambient, reaches), walls, this.sightCache);
+    const sources = sourcesInDarkness(sightSources(tokens, scale, bounds, rules, gmSightSource), ambient, reaches);
+    this.sightCache.retain(new Set(sources.map(source => source.tokenId)));
+    const gmSight = sceneSight(state.lighting, sources, walls, this.sightCache);
+    const sight = tableSight(gmSight, tokens);
     // Half a cell: the width of a zone's soft edge past its outline.
     const zones = zoneList.map(({ polygon, ambient: level, ambientColor }) => ({ polygon, ambient: level, ...(ambientColor && { ambientColor }), soft: scale.cellSize / 2 }));
-    return { walls, lights, reaches, sight, explored: exploredShapes(sight, ambient, reaches), zones: zones.length > 0 ? zones : NO_ZONES, ambient };
+    return { walls, lights, reaches, sight, gmSight, explored: exploredShapes(sight, ambient, reaches), zones: zones.length > 0 ? zones : NO_ZONES, ambient };
   }
 }
 
@@ -119,6 +127,7 @@ function awakeLightsChanged(lights: ViewAtlasState['objects']['lights'], before:
 }
 
 interface SpotInputs {
+  sight: Sight;
   model: SceneModel;
   tokens: Record<string, TokenEntity>;
   held: HeldTokens;
@@ -138,13 +147,13 @@ export class SceneSpots {
   private inputs: SpotInputs | null = null;
   private spots: SeenSpot[] = [];
 
-  update(model: SceneModel, state: SceneState, measurement: () => MeasurementSettings, sightRules?: () => SightRules): SeenSpot[] {
-    const inputs: SpotInputs = { model, tokens: state.objects.tokens, held: heldForSight(state), lighting: state.lighting, grid: state.grid, rules: sightRules?.() };
+  update(model: SceneModel, state: SceneState, measurement: () => MeasurementSettings, sightRules?: () => SightRules, sight: Sight = model.sight): SeenSpot[] {
+    const inputs: SpotInputs = { sight, model, tokens: state.objects.tokens, held: heldForSight(state), lighting: state.lighting, grid: state.grid, rules: sightRules?.() };
     const last = this.inputs;
     this.inputs = inputs;
     if (last && (Object.keys(inputs) as (keyof SpotInputs)[]).every((key) => last[key] === inputs[key])) return this.spots;
     const { cellSize } = unitScaleOf(measurement(), state.grid);
-    const spots = seenSpots(model.sight, withZones(state.lighting, model.ambient.zones ?? []), model.reaches, inputs.tokens, cellSize, model.walls, { conditions: inputs.rules?.conditions ?? [], held: inputs.held });
+    const spots = seenSpots(sight, withZones(state.lighting, model.ambient.zones ?? []), model.reaches, inputs.tokens, cellSize, model.walls, { conditions: inputs.rules?.conditions ?? [], held: inputs.held });
     // The footprints are cut by the walls: with other walls they are other footprints at the same places.
     if (last?.model.walls !== model.walls || !sameSpots(spots, this.spots)) this.spots = spots;
     return this.spots;

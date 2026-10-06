@@ -662,8 +662,7 @@
 }
 
 // Hide Obsidian's native view header (forward/back nav) in Atlas views
-.workspace-leaf-content[data-type="atlas-vtt"],
-.workspace-leaf-content[data-type="atlas-vtt-player"] {
+.workspace-leaf-content[data-type="atlas-vtt"] {
   .view-header {
     display: none !important;
   }
@@ -687,15 +686,8 @@
   overflow: auto;
 }
 
-// Fallback for a player view whose leaf reported no size on open
-.workspace-leaf-content.atlas-player-view--fill {
-  width: 100%;
-  height: 100%;
-}
-
 // Atlas VTT view styles - scoped to our plugin views only
 .workspace-leaf-content[data-type="atlas-vtt"] .atlas-vtt-view,
-.workspace-leaf-content[data-type="atlas-vtt-player"] .atlas-vtt-view,
 .workspace-leaf-content[data-type="atlas-vtt-dashboard"] .atlas-vtt-view {
   // Ensure the view maintains proper dimensions
   min-width: 100%;
@@ -712,35 +704,6 @@
 
 // Note: Status bar visibility is now handled programmatically in main.ts
 // This ensures proper show/hide behavior when switching between views
-
-// Player view specific styles - properly scoped
-.atlas-vtt-view.atlas-player-view {
-  // Hide all UI elements that shouldn't be visible to players
-  .atlas-context-menu,
-  .atlas-dropdown-menu,
-  .atlas-note-preview,
-  .atlas-asset-manager {
-    display: none !important;
-  }
-  
-  // Hide any pin containers within the plugin
-  .atlas-vtt-plugin .pins {
-    display: none !important;
-  }
-  
-  // Hide selection overlays and tools
-  .selection-overlay,
-  .fog-tool,
-  .measure-tool,
-  .eraser-tool {
-    display: none !important;
-  }
-  
-  // Ensure widget bar is visible in player view
-  .atlas-widget-bar {
-    display: block !important;
-  }
-}
 
 // Header autocomplete suggestion styles - global for editor suggest
 .suggestion-item.atlas-header-suggestion {

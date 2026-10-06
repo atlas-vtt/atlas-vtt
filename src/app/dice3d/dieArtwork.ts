@@ -1,3 +1,4 @@
+import { getDomHost } from '../host/dom';
 /**
  * The faces of the dice: cut from card stock and lettered in pencil.
  *
@@ -57,7 +58,7 @@ export function drawAtlas(
   paint: (ctx: CanvasRenderingContext2D, cell: { x: number; y: number; value: number | null }) => void,
 ): HTMLCanvasElement {
   const { cols, rows } = atlasLayout(sides);
-  const canvas = createEl('canvas');
+  const canvas = getDomHost().createCanvas();
   canvas.width = cols * CELL;
   canvas.height = rows * CELL;
   const ctx = canvas.getContext('2d');

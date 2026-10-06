@@ -1,7 +1,7 @@
 import React from "react"
 import { Button } from "./button"
 import { Tooltip, TooltipTrigger, TooltipContent } from "./tooltip"
-import { cn } from "src/utils/cn"
+import { cn } from "../../../../utils/cn"
 import { ChevronDown } from "lucide-react"
 
 interface ToolButtonProps {

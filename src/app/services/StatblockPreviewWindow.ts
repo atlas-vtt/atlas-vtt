@@ -30,6 +30,7 @@ export class StatblockPreviewWindow {
     initialPos?: { x: number; y: number },
     /** The note's text when it is not in the vault, e.g. inside a collection being imported. */
     noteContent?: string,
+    viewId?: string,
   ) {
     this.notePath = notePath;
     this.originatingPin = 'type' in originatingToken ? originatingToken : null;
@@ -50,6 +51,7 @@ export class StatblockPreviewWindow {
       React.createElement(FantasyStatblock, {
         notePath,
         noteContent,
+        viewId,
         app: this.app,
         tokens: vitals,
       }),

@@ -11,7 +11,7 @@
  * otherwise piled up panels, each with its own frame loop and WebGL context.
  */
 
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 import type { DiceScene } from '../../../dice3d/diceScene';
 import type { ThrowStyle } from '../../../dice3d/diceDisplay';
 

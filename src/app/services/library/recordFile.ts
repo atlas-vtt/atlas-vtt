@@ -1,6 +1,6 @@
 import type { Asset, MapAsset } from '../AssetService';
 import { collectionIdOfPath } from '../assetPaths';
-import { isRecord, isStringArray } from '../assetMetadataGuards';
+import { isRecord, isStringArray } from '../../utils/guards';
 
 /** The key under which a record file keeps the asset record, beside the payload older versions read. */
 export const RECORD_KEY = 'atlasRecord';

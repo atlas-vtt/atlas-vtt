@@ -13,7 +13,7 @@
  */
 
 import type { App } from 'obsidian';
-import type { DiceRollResult } from '../tools/DiceTool';
+import type { DiceRollResult } from '../types/diceTypes';
 import { ATLAS_VIEW_TYPE } from '../atlas-view';
 import { t } from '../i18n';
 
@@ -38,6 +38,8 @@ const HIT_POINTS_SELECTOR = '[data-hit-points]';
 const SKIPPED_TAGS = new Set(['SCRIPT', 'STYLE', 'INPUT', 'TEXTAREA', 'BUTTON']);
 
 export interface DiceRollSource {
+  /** The view that owns this statblock; used for routing, never saved on the roll. */
+  viewId?: string | undefined;
   tokenId?: string | undefined;
   statblockPath?: string | undefined;
   tokenName?: string | undefined;
@@ -49,18 +51,20 @@ export interface DiceRollSource {
 export type HitPointsRollHandler = (formula: string, abilityName: string | undefined) => void;
 
 interface DiceToolLike {
-  rollDice(formula: string, source?: DiceRollResult['source']): DiceRollResult;
+  rollDice(formula: string, source?: DiceRollResult['source']): DiceRollResult | null;
 }
 
 /**
  * Resolves Atlas' dice tool from the open map view. Returns null when no map is
  * open, in which case dice are left as plain text.
  */
-function resolveDiceTool(app: App): DiceToolLike | null {
+function resolveDiceTool(app: App, viewId?: string): DiceToolLike | null {
   for (const leaf of app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE)) {
     const view = leaf.view as unknown as {
+      viewId?: string;
       serviceManager?: { getToolController?: () => { getDiceTool?: () => DiceToolLike } };
     };
+    if (viewId && view?.viewId !== viewId) continue;
     const diceTool = view?.serviceManager?.getToolController?.()?.getDiceTool?.();
     if (diceTool) return diceTool;
   }
@@ -72,7 +76,7 @@ function resolveDiceTool(app: App): DiceToolLike | null {
  * Returns null when no map is open.
  */
 export function rollStatblockDice(app: App, formula: string, source: DiceRollSource): DiceRollResult | null {
-  const diceTool = resolveDiceTool(app);
+  const diceTool = resolveDiceTool(app, source.viewId);
   if (!diceTool) return null;
 
   const rollSource: NonNullable<DiceRollResult['source']> = { type: 'statblock' };

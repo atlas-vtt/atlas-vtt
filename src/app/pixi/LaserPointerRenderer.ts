@@ -1,6 +1,7 @@
 import { Application, Container, FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { ViewAtlasState, ViewAtlasStore } from '../storeFactory';
+import type { SceneSource } from '../host/sceneSource';
+import type { ViewState } from '../types/viewState';
 import { LASER_FADE_TIME, type LaserPointerSettings } from '../tools/laserPointerSettings';
 import { setCanvasCursor } from './utils/canvasCursor';
 import { destroyTree } from './utils/destroyTree';
@@ -28,13 +29,12 @@ const MIN_POINT_SPACING_PER_WIDTH = 0.15;
 /**
  * Renders the laser pointer: a glowing beam that follows the pointer and narrows as it
  * fades, drawn by `LaserBeam`.
- * Self-manages activation via store subscription on `activeTool`.
+ * Follows the active tool through a read-only source.
  * Handles viewport input directly (left-click when active, middle-click always).
  */
 export class LaserPointerRenderer {
   private viewport: Viewport;
   private pixiApp: Application;
-  private store: ViewAtlasStore;
   private canvasEl: HTMLCanvasElement;
 
   private container: Container;
@@ -54,7 +54,7 @@ export class LaserPointerRenderer {
   private lastPointerScreen: { x: number; y: number } | null = null;
 
   private tickerCallback: (() => void) | null = null;
-  private unsubscribeFromStore?: () => void;
+  private unsubscribeFromSource?: () => void;
   private onCanvasLeave: () => void;
 
   // Bound viewport handlers (stored for cleanup)
@@ -67,13 +67,12 @@ export class LaserPointerRenderer {
   constructor(
     viewport: Viewport,
     pixiApp: Application,
-    store: ViewAtlasStore,
+    activeTool: SceneSource<ViewState['activeTool']>,
     canvasEl: HTMLCanvasElement,
     readSettings: () => LaserPointerSettings,
   ) {
     this.viewport = viewport;
     this.pixiApp = pixiApp;
-    this.store = store;
     this.canvasEl = canvasEl;
 
     this.container = new Container();
@@ -84,26 +83,9 @@ export class LaserPointerRenderer {
     this.beam = usesCanvasRenderer(pixiApp.renderer) ? new CanvasLaserBeam() : new LaserBeam();
     this.container.addChild(this.beam.view);
 
-    // Store subscription for tool activation (follows MeasureRenderer pattern)
-    this.unsubscribeFromStore = this.store.subscribe(
-      (state: ViewAtlasState) => state.activeTool,
-      (tool: string) => {
-        const wasActive = this.isToolActive;
-        this.isToolActive = tool === 'laser-pointer';
-
-        if (this.isToolActive && !wasActive) {
-          setCanvasCursor(this.canvasEl, 'none');
-          this.redraw();
-        } else if (!this.isToolActive && wasActive) {
-          setCanvasCursor(this.canvasEl, 'auto');
-          this.isPointing = false;
-          this.redraw();
-        }
-      },
-      { fireImmediately: true },
-    );
-
     this.readSettings = readSettings;
+    this.unsubscribeFromSource = activeTool.subscribe(tool => this.setActiveTool(tool));
+    this.setActiveTool(activeTool.get());
 
     // Bind viewport handlers (always attached, guarded internally)
     this.onPointerDown = this.handlePointerDown.bind(this);
@@ -125,6 +107,19 @@ export class LaserPointerRenderer {
       this.redraw();
     };
     this.canvasEl.addEventListener('mouseleave', this.onCanvasLeave);
+  }
+
+  private setActiveTool(tool: ViewState['activeTool']): void {
+    const wasActive = this.isToolActive;
+    this.isToolActive = tool === 'laser-pointer';
+    if (this.isToolActive && !wasActive) {
+      setCanvasCursor(this.canvasEl, 'none');
+      this.redraw();
+    } else if (!this.isToolActive && wasActive) {
+      setCanvasCursor(this.canvasEl, 'auto');
+      this.isPointing = false;
+      this.redraw();
+    }
   }
 
   public getContainer(): Container {
@@ -307,7 +302,7 @@ export class LaserPointerRenderer {
 
   public destroy(): void {
     this.stopTicker();
-    this.unsubscribeFromStore?.();
+    this.unsubscribeFromSource?.();
 
     this.viewport.off('pointerdown', this.onPointerDown);
     this.viewport.off('pointermove', this.onPointerMove);

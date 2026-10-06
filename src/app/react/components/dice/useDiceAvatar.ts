@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { TFile } from 'obsidian';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useOptionalAtlasStore } from '../../ViewStoreContext';
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 import { AssetService } from '../../../services/AssetService';
 import { TokenStatblockLinkService } from '../../../services/TokenStatblockLinkService';
 

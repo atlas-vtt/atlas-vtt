@@ -3,6 +3,7 @@ import type { LightZone, SceneLighting } from '../types/lightingTypes';
 import type { SenseDefinition } from '../types/senseTypes';
 import type { Point } from '../types/visionTypes';
 import type { WallSegment } from '../types/wallTypes';
+import { tableSightSource } from './tokenSightPolicy';
 import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
 import { gameUnitsToWorld, type UnitScale } from '../lighting/lightingUnits';
 import { tokenVisionOn } from '../lighting/sceneLightingOptions';
@@ -81,6 +82,9 @@ export interface Sight {
   regions: SightRegion[];
 }
 
+/** No source contributes a visible region. */
+export const NO_SIGHT: Sight = { all: false, regions: [] };
+
 /** Sight of a viewer without a vision token: line of sight hides nothing. */
 export const SEES_ALL: Sight = { all: true, regions: [] };
 
@@ -105,7 +109,8 @@ export interface LightReach {
 export type LightReachKind = Pick<LightReach, 'darkness' | 'priority' | 'cone'>;
 
 /**
- * Every token with vision on, with its ranges converted to world pixels. A blinded token keeps
+ * Eligible tokens with vision on, with ranges converted to world pixels. The local player
+ * picture excludes hidden tokens; GM tooling explicitly supplies its own eligibility rule. A blinded token keeps
  * only its senses that work while blinded; a sense that lets the eyes see invisible things is
  * not a sense of its own. A token whose way of perceiving is not known yet (`TokenSight.pending`)
  * is a source that perceives nothing: it must not see, or record as explored, what its statblock
@@ -116,11 +121,12 @@ export function sightSources(
   scale: UnitScale,
   bounds: MapBounds,
   rules: SightRules = GENERIC_SIGHT_RULES,
+  eligible: (token: TokenEntity) => boolean = tableSightSource,
 ): SightSource[] {
   const unlimited = Math.hypot(bounds.width, bounds.height);
   const sources: SightSource[] = [];
   for (const token of Object.values(tokens)) {
-    if (!token.vision?.enabled) continue;
+    if (!token.vision?.enabled || !eligible(token)) continue;
     const origin = { x: token.x, y: token.y };
     const how = rules.visionOf?.(token) ?? { senses: tokenSenses(token.vision, rules.definitions), ...(token.vision.range !== undefined && { sightRange: token.vision.range }) };
     if (how.pending) {
@@ -227,7 +233,6 @@ export function sceneSight(
 
 export function computeSight(sources: readonly SightSource[], walls: readonly WallSegment[], cache: SightCache = new SightCache()): Sight {
   if (sources.length === 0) return SEES_ALL;
-  cache.retain(new Set(sources.map((source) => source.tokenId)));
   return { all: false, regions: sources.flatMap((source) => cache.get(source, walls)) };
 }
 

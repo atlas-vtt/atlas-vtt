@@ -1,5 +1,5 @@
 import { LIMITED_WALLS } from '../featureFlags';
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import type { LightEmission, LightSource } from '../types/lightingTypes';
 import type { WallSegment } from '../types/wallTypes';
 import { isHexColor } from '../utils/hexColor';

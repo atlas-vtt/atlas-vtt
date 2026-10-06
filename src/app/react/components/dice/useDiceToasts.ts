@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 import type { ToastPhase } from './DiceToast';
 
 export interface ToastEntry {

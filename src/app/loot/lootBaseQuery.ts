@@ -1,4 +1,4 @@
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 
 /**
  * Atlas reads a base's items through its own Bases view type: no public API

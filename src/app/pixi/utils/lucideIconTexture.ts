@@ -1,3 +1,4 @@
+import { getDomHost } from '../../host/dom';
 import { Texture } from 'pixi.js';
 import { toError } from '../../utils/errors';
 
@@ -13,7 +14,7 @@ export async function createLucideIconTexture(
   color: string,
   size: number
 ): Promise<Texture> {
-  const canvas = createEl('canvas');
+  const canvas = getDomHost().createCanvas();
   canvas.width = size;
   canvas.height = size;
   const ctx = canvas.getContext('2d');

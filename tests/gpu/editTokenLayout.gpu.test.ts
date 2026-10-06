@@ -9,6 +9,7 @@ import { openEditTokenModal } from '../../src/app/pixi/token-renderer/EditTokenM
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { Character } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { withDynamicLighting } from '../mocks/experimentalFeatures';
 import { HP, STR } from '../mocks/resourceFixtures';
 
 /**
@@ -37,6 +38,7 @@ const headings = (): HTMLElement[] => [...modal().querySelectorAll<HTMLElement>(
 async function open(token: Character, width: number, height: number): Promise<void> {
   await page.viewport(width, height);
   const { app } = createInMemoryApp({ files: {} });
+  withDynamicLighting(app);
   const store = createViewAtlasStore(app, `edit-token-layout-${Math.random()}`);
   store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
   act(() => openEditTokenModal(token, store, app, [HP, STR]));

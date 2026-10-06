@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
-import { hotkeyFromEvent, formatHotkey, matchesHotkey, canRunMapHotkeys, canShareHotkey, MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
+import { hotkeyFromEvent, formatHotkey, matchesHotkey, canRunMapHotkeys, canShareHotkey, availableHotkeys, MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
 import { handledByAnotherControl, noteTooltipDismissal } from '../../src/app/keyboard/tooltipEscape';
 import { App } from 'obsidian';
 import { memoryPluginData } from '../mocks/pluginData';
@@ -13,6 +13,15 @@ function service() {
 afterEach(() => { document.body.innerHTML = ''; vi.useRealTimers(); });
 
 describe('map hotkeys', () => {
+  it.each([
+    ['widget1', '1'], ['widget2', '2'], ['widget3', '3'], ['widget4', '4'], ['widget5', '5'],
+    ['increase', '+'], ['increaseAlt', '='], ['decrease', '-'],
+    ['timerPlayPause', 'Space'], ['timerReset', 'r'],
+  ] as const)('offers %s only to the GM, with its existing default key', (id, defaultKey) => {
+    expect(availableHotkeys(false).find(action => action.id === id)).toMatchObject({ id, defaultKey });
+    expect(availableHotkeys(true).some(action => action.id === id)).toBe(false);
+  });
+
   it('formats letter bindings without changing named keys', () => {
     expect(formatHotkey('Enter')).toBe('Enter');
     expect(formatHotkey('Space')).toBe('Space');

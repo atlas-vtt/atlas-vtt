@@ -4,7 +4,7 @@
  * a collection, the map's own grid units.
  */
 
-import type { GridState } from '../services/MapPersistence';
+import type { GridState } from '../types/gridTypes';
 import type {
   CollectionGridDefaults,
   DiagonalRule,

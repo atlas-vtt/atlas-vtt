@@ -1,10 +1,9 @@
 import { Plugin, WorkspaceLeaf } from 'obsidian';
 import { ATLAS_VIEW_TYPE } from '../atlas-view';
-import { PLAYER_VIEW_TYPE } from '../player-view';
 import { DASHBOARD_VIEW_TYPE } from '../dashboard-view';
 
 const HIDE_STATUS_BAR_CLASS = 'atlas-hide-status-bar';
-const FULL_BLEED_VIEW_TYPES = [ATLAS_VIEW_TYPE, PLAYER_VIEW_TYPE, DASHBOARD_VIEW_TYPE];
+const FULL_BLEED_VIEW_TYPES = [ATLAS_VIEW_TYPE, DASHBOARD_VIEW_TYPE];
 
 /**
  * Hides Obsidian's status bar while an Atlas view is active, since it would

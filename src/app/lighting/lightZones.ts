@@ -1,6 +1,6 @@
 import type { LightZone, SceneLighting } from '../types/lightingTypes';
 import type { Point } from '../types/visionTypes';
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import { isHexColor } from '../utils/hexColor';
 import type { AmbientLight, AmbientZone } from '../vision/sight';
 import { pointInPolygon } from '../vision/visibility';

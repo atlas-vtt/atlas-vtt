@@ -1,5 +1,5 @@
 import type { StatblockItem, StatblockLayout, StatblockMonster } from '../react/components/statblock/statblockTypes';
-import { isRecord } from '../services/assetMetadataGuards';
+import { isRecord } from '../utils/guards';
 import { isHitPointsKey, normalizedKey, parseResourceValue } from './resourceFields';
 import type { ResourceDefinition, ResourceHolder, ResourceValue } from './resourceTypes';
 import { visibleResources } from './visibleResources';

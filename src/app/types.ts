@@ -83,10 +83,6 @@ export interface Character extends BaseToken {
   statblockPath?: string; // Path to linked statblock note
   /** Name read from the linked statblock; the nameplate falls back to it when `name` is empty. */
   statblockName?: string | null;
-  // Player-linked token properties
-  playerLinked?: boolean; // Whether this token is linked to a player character
-  playerId?: string; // The player ID who owns this character
-  playerCharacterId?: string; // The character ID in the player's character sheet
 }
 
 /**

@@ -1,3 +1,4 @@
+import { getDomHost } from '../host/dom';
 /**
  * Calls `onResize` whenever one of `targets` changes size. Uses the
  * ResizeObserver of the targets' own window, so it also works for elements in
@@ -7,7 +8,7 @@ export function observeResize(targets: readonly Element[], onResize: () => void)
   const first = targets[0];
   if (!first) return () => undefined;
   // Obsidian's typings give `win` the plain Window type, which omits the constructors.
-  const Observer = (first.win as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
+  const Observer = (getDomHost().ownerWindow(first) as Window & { ResizeObserver?: typeof ResizeObserver }).ResizeObserver;
   if (typeof Observer !== 'function') return () => undefined;
 
   const observer = new Observer(onResize);

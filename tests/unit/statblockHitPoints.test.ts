@@ -57,6 +57,19 @@ describe('rollHitPoints', () => {
     ]);
   });
 
+  it('rolls and updates only the named view when both contain the same token', () => {
+    const first = mapView([2], ['a']);
+    const second = mapView([9], ['a']);
+    const app = appWith({ ...first.view, viewId: 'first' }, { ...second.view, viewId: 'second' });
+    rollHitPoints(app, '2d6', 'Goblin.md', [{ id: 'a' }], 'Hit Points', 'second');
+    expect(first.rolls).toEqual([]);
+    expect(first.updateTokens).not.toHaveBeenCalled();
+    expect(second.rolls).toHaveLength(1);
+    expect(second.updateTokens).toHaveBeenCalledWith([
+      { id: 'a', changes: { resources: { hp: { current: 9, max: 9 } }, overriddenMax: ['hp'] } },
+    ]);
+  });
+
   it('never rolls a creature below 1 hit point', () => {
     const { view, updateTokens } = mapView([-1], ['a']);
     rollHitPoints(appWith(view), '1d4-3', 'Rat.md', [{ id: 'a' }]);

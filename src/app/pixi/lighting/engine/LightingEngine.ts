@@ -1,16 +1,14 @@
 import { Container, Graphics, Matrix, Texture, type Renderer } from 'pixi.js';
 import { exploredMemoryOn } from '../../../lighting/sceneLightingOptions';
 import type { UnlitGrid } from '../../../grid/gridLightingMark';
-import type { Sight } from '../../../vision/sight';
 import { destroyTree } from '../../utils/destroyTree';
 import { BackBufferHold } from './backBuffer';
 import { createCompositeFilter, type CompositeFilter, type LightingMode } from './compositeFilter';
 import { contextLost, glOf } from './gpu';
 import { LightingWorld } from './LightingWorld';
-import type { PierceShape } from './DarknessMap';
-import { ambientLift, darkLooks, pierceShapes } from './senseDrawing';
+import { ambientLift, darkLooks } from './senseDrawing';
 import { describeShaderFailures, failedEngineShaders } from './shaderCheck';
-import { SightMeshes } from './SightMeshes';
+import { SceneSightLayers } from './SceneSightLayers';
 import type { BoundFields } from './WallFields';
 import type { EngineScene, SceneFrame } from './types';
 
@@ -28,7 +26,7 @@ import type { EngineScene, SceneFrame } from './types';
 export class LightingEngine {
   readonly layer = new Container({ label: 'lighting' });
   private readonly boundsRect = new Graphics();
-  private readonly sightMeshes = new SightMeshes();
+  private readonly sightLayers = new SceneSightLayers();
   private world: LightingWorld | null = null;
   private composite: CompositeFilter | null = null;
   private boundFields: BoundFields | null = null;
@@ -37,10 +35,6 @@ export class LightingEngine {
   private view = { screenToWorld: new Matrix(), zoom: 1 };
   /** An off-screen render holds the composite on its own view (`renderFrame`). */
   private viewHeld = false;
-  private sight: Sight | null = null;
-  private spots: EngineScene['spots'];
-  /** What is perceived inside magical darkness, kept while sight and footprints stay. */
-  private pierce: readonly PierceShape[] = [];
   private scene: EngineScene | null = null;
   private grid: UnlitGrid | null = null;
   private enabled = false;
@@ -63,7 +57,7 @@ export class LightingEngine {
   constructor(private readonly renderer: Renderer) {
     this.backBuffer = new BackBufferHold(renderer);
     this.layer.eventMode = 'none';
-    this.layer.addChild(this.boundsRect, this.sightMeshes.view);
+    this.layer.addChild(this.boundsRect, this.sightLayers.view);
     renderer.runners.contextChange.add(this.contextListener);
   }
 
@@ -97,10 +91,9 @@ export class LightingEngine {
     }
     const world = this.world!;
     const composite = this.composite!;
-    const newSight = scene.sight !== this.sight;
-    const newSpots = scene.spots !== this.spots;
-    if (newSight || newSpots) this.pierce = pierceShapes(scene.sight, scene.sight.all ? [] : scene.spots);
-    world.update(scene.walls, scene.lights, scene.albedo, this.pierce);
+    this.sightLayers.update(scene);
+    const frame = this.sightLayers.select(this.viewHeld ? 'gm' : this.mode)!;
+    world.update(scene.walls, scene.lights, scene.albedo, frame.pierce);
     if (world.fields.bound() !== this.boundFields) {
       this.boundFields = world.fields.bound();
       composite.setWorld(world);
@@ -109,16 +102,8 @@ export class LightingEngine {
     composite.setMaps(world.darknessMap(), world.zoneMap());
     // The composite has let go of a darkness map and a zone map the scene no longer needs.
     world.trim();
-    if (newSight) {
-      this.sight = scene.sight;
-      this.sightMeshes.draw(scene.sight, scene.sightRadius);
-      composite.setAllSeen(scene.sight.all);
-    }
-    if (newSpots) {
-      this.spots = scene.spots;
-      this.sightMeshes.drawSpots(scene.sight.all ? [] : scene.spots ?? []);
-    }
-    composite.setDarkLooks(darkLooks(scene.sight, !!scene.spots?.length, scene));
+    composite.setAllSeen(frame.sight.all);
+    composite.setDarkLooks(darkLooks(frame.sight, !!frame.spots?.length, scene));
     composite.setAmbient(scene.ambient, scene.ambientColor, ambientLift(scene));
     composite.setMemoryShown(exploredMemoryOn(scene));
     composite.setMemoryColours(scene.exploredColor, scene.unexploredColor);
@@ -175,7 +160,19 @@ export class LightingEngine {
 
   setMode(mode: LightingMode): void {
     this.mode = mode;
-    if (!this.viewHeld) this.composite?.setMode(mode);
+    if (!this.viewHeld) this.attempt(() => this.applySightMode(mode));
+  }
+
+  /** The picture and its magical-darkness cutouts always use the same frame's sight. */
+  private applySightMode(mode: LightingMode): void {
+    const { scene, world, composite } = this;
+    const frame = this.sightLayers.select(mode);
+    if (!scene || !world || !composite || !frame) return;
+    world.update(scene.walls, scene.lights, scene.albedo, frame.pierce);
+    composite.setMaps(world.darknessMap(), world.zoneMap());
+    composite.setAllSeen(frame.sight.all);
+    composite.setDarkLooks(darkLooks(frame.sight, !!frame.spots?.length, scene));
+    composite.setMode(mode);
   }
 
   setView(screenToWorld: Matrix, zoom: number): void {
@@ -195,14 +192,14 @@ export class LightingEngine {
     // Off or stopped, the engine has no composite: the render is as it is without lighting.
     if (!this.composite) return render();
     this.viewHeld = true;
-    this.composite.setMode('gm');
+    this.attempt(() => this.applySightMode('gm'));
     // Without a camera a frame pixel is 1 / resolution world pixels, counted from (x, y).
-    this.composite.setView(new Matrix(1, 0, 0, 1, frame.x, frame.y), frame.resolution);
+    this.composite?.setView(new Matrix(1, 0, 0, 1, frame.x, frame.y), frame.resolution);
     try {
       return render();
     } finally {
       this.viewHeld = false;
-      this.composite?.setMode(this.mode);
+      this.attempt(() => this.applySightMode(this.mode));
       this.composite?.setView(this.view.screenToWorld, this.view.zoom);
     }
   }
@@ -216,7 +213,7 @@ export class LightingEngine {
   destroy(): void {
     this.renderer.runners.contextChange.remove(this.contextListener);
     this.dropWorld();
-    this.sightMeshes.destroy();
+    this.sightLayers.destroy();
     destroyTree(this.layer);
     this.backBuffer.release();
   }
@@ -288,7 +285,7 @@ export class LightingEngine {
     this.world?.destroy();
     this.world = null;
     this.scene = null;
-    this.sight = null;
+    this.sightLayers.clear();
   }
 
   /** The composite moves to the new world before the old one's textures are destroyed. */
@@ -310,6 +307,6 @@ export class LightingEngine {
     const { width, height } = world.bounds;
     // PIXI takes the filter area from the children's bounds: keep the whole map covered.
     this.boundsRect.clear().rect(0, 0, width, height).fill({ color: 0, alpha: 0 });
-    this.sight = null;
+    this.sightLayers.clear();
   }
 }

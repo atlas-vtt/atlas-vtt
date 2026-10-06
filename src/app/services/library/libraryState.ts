@@ -1,4 +1,4 @@
-import { isRecord } from '../assetMetadataGuards';
+import { isRecord } from '../../utils/guards';
 
 /** What this device last knew of one library file, so unchanged files are neither read nor written again. */
 export interface FileStamp {

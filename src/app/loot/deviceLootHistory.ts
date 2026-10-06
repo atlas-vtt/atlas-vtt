@@ -1,4 +1,4 @@
-import { isRecord, isStringArray } from '../services/assetMetadataGuards';
+import { isRecord, isStringArray } from '../utils/guards';
 import { LOOT_HISTORY_LIMIT, readLootHistory, type LootRoll } from './lootHistory';
 
 /** Layout of a loot history file; unchanged since rolls were kept in one file per collection. */

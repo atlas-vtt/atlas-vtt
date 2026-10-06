@@ -6,6 +6,8 @@
  */
 import type { FogBounds, FogOperation, FogBrushStroke, FogLassoFill, FogRectangleFill } from '../../types/fogTypes';
 
+import { Q_SCALE } from '../../types/shapeTypes';
+
 export const FOG_COLOR = 'rgba(0, 0, 0, 1)';
 
 /** Render a brush stroke as interpolated filled circles. */
@@ -18,7 +20,7 @@ export function renderBrush(
   offsetY: number
 ): void {
   const { points, brushRadius } = op;
-  if (points.length === 0) return;
+  if (points.length === 0 || Math.round(brushRadius * Q_SCALE) === 0) return;
 
   const r = brushRadius * scale;
   ctx.beginPath();
@@ -109,22 +111,23 @@ export function renderOperation(
   offsetY: number
 ): void {
   ctx.save();
-  ctx.globalCompositeOperation = op.isErasing ? 'destination-out' : 'source-over';
-  ctx.fillStyle = FOG_COLOR;
-
-  switch (op.type) {
-    case 'brush':
-      renderBrush(ctx, op, bounds, scale, offsetX, offsetY);
-      break;
-    case 'lasso':
-      renderLasso(ctx, op, bounds, scale, offsetX, offsetY);
-      break;
-    case 'rectangle':
-      renderRectangle(ctx, op, bounds, scale, offsetX, offsetY);
-      break;
+  try {
+    ctx.globalCompositeOperation = op.isErasing ? 'destination-out' : 'source-over';
+    ctx.fillStyle = FOG_COLOR;
+    switch (op.type) {
+      case 'brush':
+        renderBrush(ctx, op, bounds, scale, offsetX, offsetY);
+        break;
+      case 'lasso':
+        renderLasso(ctx, op, bounds, scale, offsetX, offsetY);
+        break;
+      case 'rectangle':
+        renderRectangle(ctx, op, bounds, scale, offsetX, offsetY);
+        break;
+    }
+  } finally {
+    ctx.restore();
   }
-
-  ctx.restore();
 }
 
 /** Calculate the world-space bounding box of a single operation. */

@@ -1,4 +1,4 @@
-import { isRecord } from '../assetMetadataGuards';
+import { isRecord } from '../../utils/guards';
 import { isRecordFileCandidate } from '../library/libraryPaths';
 import { RECORD_KEY } from '../library/recordFile';
 import { toBuffer } from './bundleContent';

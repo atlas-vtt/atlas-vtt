@@ -87,7 +87,7 @@ export class DoorIcons {
     }
     this.unsubscribe = store.subscribe((state, previous) => {
       if (state.objects.walls !== previous.objects.walls || state.grid !== previous.grid) this.draw(state);
-      else if (state.lighting !== previous.lighting) this.refreshPlayers();
+      else if (state.lighting !== previous.lighting || state.objects.fog !== previous.objects.fog || state.mapPath !== previous.mapPath) this.refreshPlayers();
     });
     this.draw(store.getState());
   }

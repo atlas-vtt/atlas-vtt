@@ -1,4 +1,4 @@
-import { isFiniteNumber, isRecord } from '../../services/assetMetadataGuards';
+import { isFiniteNumber, isRecord } from '../../utils/guards';
 import { UvttFormatError, isAbsent, own, readColor, readFlag, readList, readNumber, readPoint, readRecord, refuse } from './uvttFields';
 import { readImage } from './uvttImage';
 import { UVTT_LIMITS, type UvttLight, type UvttMap, type UvttParseResult, type UvttPoint, type UvttPortal } from './uvttTypes';

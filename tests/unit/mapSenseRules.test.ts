@@ -11,7 +11,7 @@ import { resolveMeasurementSettings } from '../../src/app/grid/measurementFormat
 import { gameUnitsToWorld, unitScaleOf } from '../../src/app/lighting/lightingUnits';
 import * as validation from '../../src/app/gameSystems/presetValidation';
 import { memoryPresets } from '../mocks/memoryPresets';
-import type { GridState } from '../../src/app/services/MapPersistence';
+import type { GridState } from '../../src/app/types/gridTypes';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 
 const app = {} as App;

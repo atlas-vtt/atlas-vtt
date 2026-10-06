@@ -22,7 +22,7 @@ interface FogToolHarness {
   cursorPreview: { shown: boolean; erasing: boolean | null };
   rebuildFogSprites: ReturnType<typeof vi.fn>;
   renderPreviewFromStore: ReturnType<typeof vi.fn>;
-  compositor: { compositeAll: ReturnType<typeof vi.fn> };
+  compositor: { composite: ReturnType<typeof vi.fn> };
 }
 
 const at = (x: number, y: number): FederatedPointerEvent => ({ button: 0, global: { x, y } }) as unknown as FederatedPointerEvent;
@@ -36,7 +36,7 @@ function fogTool(activeTool: 'fog' | 'eraser', mode: StrokeMode): { tool: FogToo
     store: { getState: () => state, subscribe: (listener: (state: FogState) => void) => (listeners.push(listener), () => undefined) },
     viewport: { toWorld: (point: { x: number; y: number }) => point },
     stroke: Object.assign(new ShapeStroke(), { mode }),
-    compositor: { compositeAll: vi.fn() },
+    compositor: { composite: vi.fn() },
     updatePreviewTexture: vi.fn(),
     cursorPreview: {
       shown: true,
@@ -57,6 +57,12 @@ function fogTool(activeTool: 'fog' | 'eraser', mode: StrokeMode): { tool: FogToo
 }
 
 describe('the fog tool\'s stroke', () => {
+  it('does not redraw fog for a pointer release without a stroke', () => {
+    const { tool } = fogTool('fog', 'brush');
+    tool.onPointerUp();
+    expect(tool.rebuildFogSprites).not.toHaveBeenCalled();
+  });
+
   it('commits fog with the fog tool and an erase with the eraser, as wide as the brush', () => {
     for (const [activeTool, isErasing] of [['fog', false], ['eraser', true]] as const) {
       const { tool, state } = fogTool(activeTool, 'brush');
@@ -93,14 +99,14 @@ describe('the fog tool\'s stroke', () => {
     const { tool, state } = fogTool('fog', 'brush');
     tool.onPointerDown(at(100, 100));
     tool.onPointerMove(at(160, 100));
-    expect(tool.compositor.compositeAll).toHaveBeenCalledTimes(2);
+    expect(tool.compositor.composite).toHaveBeenCalledTimes(2);
     expect(tool.renderPreviewFromStore).not.toHaveBeenCalled();
 
     tool.setFogMode('lasso');
     expect(tool.stroke.active).toBe(false);
     expect(tool.stroke.mode).toBe('lasso');
     // The fog as the store holds it, without the stroke that was painted on it.
-    expect(tool.renderPreviewFromStore).toHaveBeenCalledTimes(1);
+    expect(tool.rebuildFogSprites).toHaveBeenCalledTimes(1);
     tool.onPointerUp();
     expect(state.addFogOperation).not.toHaveBeenCalled();
   });

@@ -1,6 +1,6 @@
 import type { ContextMenuEntry } from '../root/ContextMenuContext';
 import { SIDE_LABELS, otherSide, sideOf } from '../../initiative/sides';
-import type { TokenUpdates } from '../../storeFactory';
+import type { TokenUpdates } from '../../types/viewState';
 import type { TokenEntity } from '../../types';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { t } from '../../i18n';

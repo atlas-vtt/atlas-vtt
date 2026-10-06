@@ -2,7 +2,7 @@ import type { Sprite } from 'pixi.js';
 import type { StoreApi } from 'zustand';
 import { detectGridFromSprite } from '../pixi/gridDetection/detectGrid';
 import type { AlignmentResult } from '../pixi/gridAlignmentMath';
-import type { GridState } from './MapPersistence';
+import type { GridState } from '../types/gridTypes';
 import type { ViewAtlasState } from '../storeFactory';
 
 /**

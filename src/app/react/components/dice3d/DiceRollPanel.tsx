@@ -5,7 +5,7 @@ import { CloseButton } from '../../../packages/components/primitives/CloseButton
 import { chainDepth, layoutDice, restingFrame, type DiceScene } from '../../../dice3d/diceScene';
 import type { ThrowStyle } from '../../../dice3d/diceDisplay';
 import { ratchet, reveal } from '../../../dice3d/audio/diceSounds';
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 import { DiceStage, type DiceStageHandle } from './DiceStage';
 import { DiceRollHeader } from './DiceRollHeader';
 import { DiceRollEngraving } from './DiceRollEngraving';

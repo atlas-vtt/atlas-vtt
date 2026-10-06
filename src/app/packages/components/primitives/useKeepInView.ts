@@ -1,3 +1,4 @@
+import { getDomHost } from '../../../host/dom';
 import type React from 'react'
 import { useLayoutEffect, useRef, useState } from 'react'
 import { observeResize } from '../../../utils/observeResize'
@@ -17,7 +18,7 @@ export interface KeepInView {
 export function viewFrame(element: HTMLElement): ViewFrame {
   const leaf = element.closest('.workspace-leaf')
   if (leaf) return leaf.getBoundingClientRect()
-  const win = element.win
+  const win = getDomHost().ownerWindow(element)
   return { left: 0, top: 0, right: win.innerWidth, bottom: win.innerHeight }
 }
 
@@ -61,7 +62,7 @@ export function useKeepInView(
     }
 
     update()
-    const win = element.win
+    const win = getDomHost().ownerWindow(element)
     win.addEventListener('resize', update)
     // Sections that appear while the popover is open (a mode's options) change its height.
     const stopObserving = observeResize([element], update)

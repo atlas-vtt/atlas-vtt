@@ -1,3 +1,4 @@
+import { createSceneSource } from './plugin/host/sceneSource';
 import { canRunMapHotkeys, matchesMapHotkey } from './keyboard/mapHotkeys';
 import { SettingsService, type AtlasSettings } from './services/SettingsService';
 import { DEFAULT_LASER_POINTER_SETTINGS } from './tools/laserPointerSettings';
@@ -385,6 +386,7 @@ export class PixiRendererOrchestrator { // Renamed class
         bounds: () => this.getMapRect(),
         albedo: () => (this.backgroundSprite && !this.backgroundSprite.destroyed ? this.backgroundSprite.texture : null),
         grid: () => this.gridSystem ?? null,
+        fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
       });
     }
 
@@ -410,9 +412,9 @@ export class PixiRendererOrchestrator { // Renamed class
       this.wireMeasureRendererProvider();
     }
     
-    // Initialize LaserPointerRenderer (self-manages activation via store subscription)
+    // The laser reads only the active tool.
     this.laserPointerRenderer = new LaserPointerRenderer(
-      viewport, this.app, this.store,
+      viewport, this.app, createSceneSource(this.store, state => state.activeTool),
       this.pixiAppManager.getCanvasElement(),
       // Looked up on every draw: a plugin reload replaces the settings service.
       () => SettingsService.forApp(this.obsApp)?.getLaserPointerSettings() ?? DEFAULT_LASER_POINTER_SETTINGS,
@@ -841,6 +843,7 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!this.tokenRenderer) return;
 
     if (this.fogRenderer) {
+      this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getCommittedCoverage());
       this.tokenRenderer.setFogHitTestProvider(
         (x, y) => this.fogRenderer!.hitTestFog(x, y)
       );

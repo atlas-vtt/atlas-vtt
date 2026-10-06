@@ -4,7 +4,7 @@ import { ATLAS_VTT_DIR, collectionFolderPath } from '../assetPaths';
 import type { CollectionMetadata } from '../AssetService';
 import { mapStrings } from '../../utils/mapStrings';
 import { trashVaultItem } from '../../utils/trashVaultItem';
-import { isRecord } from '../assetMetadataGuards';
+import { isRecord } from '../../utils/guards';
 import { installFilePath } from '../library/libraryPaths';
 
 /** Hidden and device-local: import backups and the index cache, which no sync tool should carry. */

@@ -11,7 +11,7 @@ import {
 
 interface DiceTrayProps {
   /** The finished formula goes up to whoever rolls it. */
-  onRoll: (formula: string) => void;
+  onRoll: (formula: string) => boolean | void;
 }
 
 /**
@@ -38,7 +38,7 @@ export function DiceTray({ onRoll }: DiceTrayProps): React.ReactElement {
   // left standing is the mistake nobody sees, carried into the next roll.
   const throwDice = (): void => {
     if (formula === '') return;
-    onRoll(formula);
+    if (onRoll(formula) === false) return;
     clear();
   };
 

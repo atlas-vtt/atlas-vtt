@@ -1,6 +1,6 @@
 import React from 'react';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
-import type { DiceRollResult } from '../../../tools/DiceTool';
+import type { DiceRollResult } from '../../../types/diceTypes';
 import { useDiceAvatar } from '../dice/useDiceAvatar';
 
 interface DiceRollHeaderProps {

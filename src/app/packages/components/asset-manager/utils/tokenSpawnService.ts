@@ -13,7 +13,7 @@ import {
   type FormationSlot,
 } from '../../../../encounters/encounterFormation';
 import type { AtlasView } from '../../../../atlas-view';
-import type { TokenInput } from '../../../../storeFactory';
+import type { TokenInput } from '../../../../types/viewState';
 import { loadAtlasView } from '../../../../plugin/atlasLeaves';
 import { tokenFromFile } from '../../../../resources/resourceFileFormat';
 import { t } from '../../../../i18n';

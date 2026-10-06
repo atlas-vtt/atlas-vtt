@@ -1,6 +1,6 @@
 import React, { FC } from "react"
 import { Check, X } from "lucide-react"
-import { cn } from "src/utils/cn"
+import { cn } from "../../../../utils/cn"
 import { Tooltip, TooltipTrigger, TooltipContent } from "./tooltip"
 
 type ToggleIcon = React.ComponentType<React.SVGProps<SVGSVGElement>>
