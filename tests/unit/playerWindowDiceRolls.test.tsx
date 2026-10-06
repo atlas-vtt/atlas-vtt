@@ -208,10 +208,12 @@ describe('who a roll names in the player window', () => {
 
 describe('which scene names the rolls in the player window', () => {
   it('names a token the presented scene shows, live, and nobody once it does not', () => {
-    const { doc, bus, perception } = setupPlayerDice();
+    const { doc, bus, perception, shownTokens } = setupPlayerDice();
     emitRoll(bus, WOLF_BITE, originOf(MAP_A));
     expect(lastCard(doc)?.textContent).toContain('Wolf');
     expect(lastCard(doc)?.textContent).toContain('Bite');
+    // A live roll asks about its own token only
+    expect(shownTokens.mock.calls).toEqual([[['wolf']]]);
 
     perception.current = (id) => (id === 'wolf' ? 'sensed' : 'seen');
     emitRoll(bus, WOLF_BITE, originOf(MAP_A));
@@ -266,6 +268,7 @@ describe('which scene names the rolls in the player window', () => {
     act(() => store.setState(sceneState(MAP_C, SCENE_B_TOKENS)));
     act(() => service.holdCurrentFrame());
     expect(shownTokens).toHaveBeenCalledTimes(1);
+    expect(shownTokens).toHaveBeenCalledWith(undefined);
 
     emitRoll(bus, WOLF_BITE, originOf(MAP_A));
     expect(lastCard(doc)?.textContent).toContain('Wolf');

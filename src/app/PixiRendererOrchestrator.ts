@@ -735,7 +735,7 @@ export class PixiRendererOrchestrator { // Renamed class
    */
   public playerRollTokens(mapPath: string, tokenIds?: readonly string[]): ReadonlyMap<string, ShownRollToken> {
     const tokens = this.tokenRenderer;
-    if (!tokens) return new Map();
+    if (!tokens || this._isDestroyed) return new Map();
     return shownRollTokens(this.store.getState(), mapPath, tokens.getTokenSprites(), () => tokens.playerFramePerception(this.lighting?.playerSight()), tokenIds);
   }
 
