@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { t } from '../../../i18n';
 import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
 import {
   MAX_EXPLODING_FACES,
@@ -25,12 +26,12 @@ interface ExplodingDiceFieldsProps {
 }
 
 const SCOPE_OPTIONS: Record<ExplodeChoice, string> = {
-  off: 'Off',
-  default: 'Default dice',
-  all: 'All dice',
+  off: t('diceSettings.explode.off'),
+  default: t('diceSettings.explode.default'),
+  all: t('diceSettings.explode.all'),
 };
 
-const OFF_HINT = 'No die rolls again. A single roll can still explode: write ! after its dice, such as 2d6! (once) or 2d6!i (again and again).';
+const OFF_HINT = t('diceSettings.explode.offHint');
 
 /** The die the settings speak of where the default roll is not valid yet. */
 const FALLBACK_SIDES = 20;
@@ -97,10 +98,12 @@ function FaceCountField({ id, label, count, faces, sides, onChange }: FaceCountF
         }}
       />
       {valid ? (
-        <p className="atlas-csm-hint">On a d{sides}: {faces || 'none'}.</p>
+        <p className="atlas-csm-hint">
+          {faces ? t('diceSettings.explode.onDie', { sides: String(sides), faces }) : t('diceSettings.explode.onDieNone', { sides: String(sides) })}
+        </p>
       ) : (
         <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
-          Enter a whole number from 1 to {MAX_EXPLODING_FACES}.
+          {t('diceSettings.explode.faceCountError', { max: MAX_EXPLODING_FACES })}
         </p>
       )}
     </div>
@@ -128,7 +131,7 @@ export function ExplodingDiceFields({ dice, onChange }: ExplodingDiceFieldsProps
     <>
       <div className="atlas-csm-field">
         <div className="atlas-csm-label-row">
-          <label className="atlas-csm-label">Exploding Dice</label>
+          <label className="atlas-csm-label">{t('diceSettings.explode')}</label>
           <DefaultDiceInfo defaultRoll={dice.defaultRoll} />
         </div>
         <ObsidianMenuDropdown
@@ -144,23 +147,23 @@ export function ExplodingDiceFields({ dice, onChange }: ExplodingDiceFieldsProps
       {rule && (
         <>
           <SwitchRow
-            label="New dice explode too"
-            hint="A die rolled for an explosion can explode in turn, up to ten times."
+            label={t('diceSettings.explode.repeats')}
+            hint={t('diceSettings.explode.repeatsHint')}
             checked={rule.repeats}
             onChange={(repeats) => update({ repeats })}
           />
           <SwitchRow
-            label="Lowest face rolls again and subtracts"
-            hint={`A d${sides} that shows ${lowFaceNames(sides, lowFaces, highFaces) || '1'} is rolled again and the new die is taken off the roll.`}
+            label={t('diceSettings.explode.subtracts')}
+            hint={t('diceSettings.explode.subtractsHint', { sides: String(sides), faces: lowFaceNames(sides, lowFaces, highFaces) || '1' })}
             checked={subtracts}
             onChange={(on) => update({ lowFaces: on ? 1 : 0 })}
           />
 
           <details className="atlas-csm-details" open={facesShown} onToggle={(e) => setFacesShown(e.currentTarget.open)}>
-            <summary>Explode on more than one face</summary>
+            <summary>{t('diceSettings.explode.moreFaces')}</summary>
             <FaceCountField
               id="atlas-csm-explode-high"
-              label="Highest faces that explode"
+              label={t('diceSettings.explode.highFaces')}
               count={rule.highFaces}
               faces={highFaceNames(sides, highFaces)}
               sides={sides}
@@ -169,7 +172,7 @@ export function ExplodingDiceFields({ dice, onChange }: ExplodingDiceFieldsProps
             {subtracts && (
               <FaceCountField
                 id="atlas-csm-explode-low"
-                label="Lowest faces that subtract"
+                label={t('diceSettings.explode.lowFaces')}
                 count={rule.lowFaces}
                 faces={lowFaceNames(sides, lowFaces, highFaces)}
                 sides={sides}

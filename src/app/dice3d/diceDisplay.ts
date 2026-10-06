@@ -1,16 +1,18 @@
+import { t } from '../i18n';
+
 /** How rolls are shown: as a result card, or thrown as dice at normal or double speed. */
 export type DiceDisplay = 'card' | 'fast' | 'full';
 
 export const DICE_DISPLAY_OPTIONS: readonly { value: DiceDisplay; label: string }[] = [
-  { value: 'card', label: 'Result card' },
-  { value: 'fast', label: 'Fast dice' },
-  { value: 'full', label: 'Dice' },
+  { value: 'card', label: t('diceSettings.display.card') },
+  { value: 'fast', label: t('diceSettings.display.fast') },
+  { value: 'full', label: t('diceSettings.display.full') },
 ];
 
 export const DICE_DISPLAY_HINTS: Record<DiceDisplay, string> = {
-  card: 'Every roll shows its result on a card, without dice.',
-  fast: 'Dice are thrown at double speed and bounce off the walls at most three times. The result stays on screen as long as with normal dice.',
-  full: 'Dice are thrown, bounce off the panel and land on the result.',
+  card: t('diceSettings.display.cardHint'),
+  fast: t('diceSettings.display.fastHint'),
+  full: t('diceSettings.display.fullHint'),
 };
 
 export function isDiceDisplay(value: unknown): value is DiceDisplay {

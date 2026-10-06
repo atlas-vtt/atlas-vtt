@@ -83,7 +83,7 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'token-settings': { title: t('palette.panel.tokens'), icon: <Users /> },
   'widget-settings': { title: t('palette.panel.widgets'), icon: <Palette /> },
   'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
-  'dice-settings': { title: 'Dice Settings', icon: <Dices /> },
+  'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
 };
 
@@ -384,7 +384,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     {
       id: "dice-settings",
       icon: <Dices />,
-      label: "Dice settings",
+      label: t('diceSettings.command'),
       keywords: ["roll", "3d", "speed", "fast", "result card", "toast"],
       section: "settings",
       hasSubmenu: true,
@@ -392,7 +392,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         {
           id: "dice-all-settings",
           icon: null,
-          label: "Roll display",
+          label: t('diceSettings.display'),
           section: "dice",
           hasSubmenu: false,
         },

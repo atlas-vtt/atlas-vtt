@@ -68,7 +68,7 @@ interface TabDef {
 
 const TABS: TabDef[] = [
   { id: 'system', label: t('csm.tab.system'), icon: <Dices size={16} /> },
-  { id: 'dice', label: 'Dice', icon: <Dice5 size={16} /> },
+  { id: 'dice', label: t('diceSettings.dice'), icon: <Dice5 size={16} /> },
   { id: 'grid', label: t('csm.tab.grid'), icon: <Grid3X3 size={16} /> },
   { id: 'vision', label: t('csm.tab.vision'), icon: <Eye size={16} /> },
   { id: 'widgets', label: t('csm.tab.widgets'), icon: <LayoutGrid size={16} /> },

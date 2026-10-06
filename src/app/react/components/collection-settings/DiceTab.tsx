@@ -4,6 +4,7 @@
 
 import React from 'react';
 import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
+import { t } from '../../../i18n';
 import { isValidDefaultRoll } from '../../../gameSystems/diceRules';
 import { DefaultDiceInfo } from './DefaultDiceInfo';
 import { ExplodingDiceFields } from './ExplodingDiceFields';
@@ -15,19 +16,19 @@ interface DiceTabProps {
 }
 
 const CRIT_OPTIONS: Record<CritRule, string> = {
-  natural: 'Natural',
-  'roll-under': 'Roll-under',
-  doubles: 'Doubles',
-  'high-total': 'High total',
-  none: 'None',
+  natural: t('diceSettings.crit.natural'),
+  'roll-under': t('diceSettings.crit.rollUnder'),
+  doubles: t('diceSettings.crit.doubles'),
+  'high-total': t('diceSettings.crit.highTotal'),
+  none: t('diceSettings.crit.none'),
 };
 
 const CRIT_DESCRIPTIONS: Record<CritRule, string> = {
-  natural: 'The highest face is a critical success, a 1 a critical failure (natural 20 and natural 1).',
-  'roll-under': 'A 1 is a critical success, the highest face a critical failure (percentile systems).',
-  doubles: 'Default dice that all show the same number are a critical success (duality dice).',
-  'high-total': 'Default dice that add up to their highest total or one below it are a critical success (19 or 20 on 2d10 in Draw Steel).',
-  none: 'Rolls are never critical.',
+  natural: t('diceSettings.crit.naturalHint'),
+  'roll-under': t('diceSettings.crit.rollUnderHint'),
+  doubles: t('diceSettings.crit.doublesHint'),
+  'high-total': t('diceSettings.crit.highTotalHint'),
+  none: t('diceSettings.crit.noneHint'),
 };
 
 export function DiceTab({ dice, onChange }: DiceTabProps): React.ReactElement {
@@ -35,14 +36,11 @@ export function DiceTab({ dice, onChange }: DiceTabProps): React.ReactElement {
 
   return (
     <>
-      <p className="atlas-csm-hint">
-        A bonus without dice in a statblock, such as +3, is added to the default roll.
-        Only the default dice of a roll can be critical.
-      </p>
+      <p className="atlas-csm-hint">{t('diceSettings.tabHint')}</p>
 
       <div className="atlas-csm-field">
         <div className="atlas-csm-label-row">
-          <label className="atlas-csm-label" htmlFor="atlas-csm-default-roll">Default Roll</label>
+          <label className="atlas-csm-label" htmlFor="atlas-csm-default-roll">{t('diceSettings.defaultRoll')}</label>
           <DefaultDiceInfo defaultRoll={dice.defaultRoll} />
         </div>
         <input
@@ -57,13 +55,13 @@ export function DiceTab({ dice, onChange }: DiceTabProps): React.ReactElement {
         />
         {!rollValid && (
           <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
-            Enter one group of dice, such as 1d20 or 2d12.
+            {t('diceSettings.defaultRollError')}
           </p>
         )}
       </div>
 
       <div className="atlas-csm-field">
-        <label className="atlas-csm-label">Critical Rule</label>
+        <label className="atlas-csm-label">{t('diceSettings.critRule')}</label>
         <ObsidianMenuDropdown
           className="atlas-setting-dropdown atlas-csm-dropdown"
           value={dice.crit}

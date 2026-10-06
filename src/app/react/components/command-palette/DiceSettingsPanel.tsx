@@ -6,6 +6,7 @@ import { useDiceLook } from '../../hooks/useDiceLook';
 import { useDicePreviews } from '../../hooks/useDicePreviews';
 import { DICE_DISPLAY_HINTS, DICE_DISPLAY_OPTIONS } from '../../../dice3d/diceDisplay';
 import { DICE_FONT_OPTIONS } from '../../../dice3d/diceLook';
+import { t } from '../../../i18n';
 import { SettingsService } from '../../../services/SettingsService';
 import { DiceColourStrip } from './DiceColourStrip';
 import { SettingRow } from './SettingRows';
@@ -21,10 +22,10 @@ export function DiceSettingsPanel(): React.ReactElement {
   return (
     <div className="atlas-command-palette-panel">
       <div className="atlas-command-palette-panel-column">
-        <h3 className="atlas-command-palette-panel-heading">Rolls</h3>
-        <SettingRow label="Roll display" hint={DICE_DISPLAY_HINTS[display]}>
+        <h3 className="atlas-command-palette-panel-heading">{t('diceSettings.rolls')}</h3>
+        <SettingRow label={t('diceSettings.display')} hint={DICE_DISPLAY_HINTS[display]}>
           <SegmentedControl
-            ariaLabel="Roll display"
+            ariaLabel={t('diceSettings.display')}
             value={display}
             options={DICE_DISPLAY_OPTIONS}
             onChange={(value) => settings?.setDiceDisplay(value)}
@@ -33,11 +34,11 @@ export function DiceSettingsPanel(): React.ReactElement {
       </div>
 
       <div className="atlas-command-palette-panel-column">
-        <h3 className="atlas-command-palette-panel-heading">Dice</h3>
+        <h3 className="atlas-command-palette-panel-heading">{t('diceSettings.dice')}</h3>
         <DiceColourStrip value={look.colour} previews={previews} onChange={(colour) => settings?.setDiceLook({ colour })} />
-        <SettingRow label="Numbers" hint="Medieval for high fantasy, sci-fi for futuristic games.">
+        <SettingRow label={t('diceSettings.numbers')} hint={t('diceSettings.numbersHint')}>
           <SegmentedControl
-            ariaLabel="Dice numbers"
+            ariaLabel={t('diceSettings.diceNumbers')}
             value={look.font}
             options={DICE_FONT_OPTIONS}
             onChange={(font) => settings?.setDiceLook({ font })}

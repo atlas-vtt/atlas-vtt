@@ -6,6 +6,7 @@
 import React from 'react';
 import { Info } from 'lucide-react';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { t } from '../../../i18n';
 import { DEFAULT_DICE_RULES, isValidDefaultRoll } from '../../../gameSystems/diceRules';
 
 interface DefaultDiceInfoProps {
@@ -16,7 +17,7 @@ interface DefaultDiceInfoProps {
 /** What default dice are, said with the roll they belong to. */
 export function defaultDiceExplanation(defaultRoll: string): string {
   const roll = isValidDefaultRoll(defaultRoll) ? defaultRoll.trim() : DEFAULT_DICE_RULES.defaultRoll;
-  return `The default dice are the dice of the default roll, ${roll}. Atlas rolls them when a statblock gives only a bonus without dice: +3 rolls ${roll}+3, −3 rolls ${roll}−3.`;
+  return t('diceSettings.defaultDice', { roll });
 }
 
 export function DefaultDiceInfo({ defaultRoll }: DefaultDiceInfoProps): React.ReactElement {

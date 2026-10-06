@@ -16,6 +16,8 @@ import { creator } from './creator';
 import { csm } from './csm';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
+import { diceRoll } from './diceRoll';
+import { diceSettings } from './diceSettings';
 import { exportDialog } from './exportDialog';
 import { grid } from './grid';
 import { gridModal } from './gridModal';
@@ -98,6 +100,8 @@ export const ru: Translation = {
   ...csm,
   ...dashboard,
   ...dice,
+  ...diceRoll,
+  ...diceSettings,
   ...exportDialog,
   ...grid,
   ...gridModal,

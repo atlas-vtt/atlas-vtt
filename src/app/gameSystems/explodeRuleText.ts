@@ -4,6 +4,7 @@
  * rolls again". So the settings say what the rule does to a die they know.
  */
 
+import { t } from '../i18n';
 import { explodingFaces } from '../tools/diceExplosion';
 import type { ExplodeRule } from '../types/diceRulesTypes';
 
@@ -11,7 +12,8 @@ import type { ExplodeRule } from '../types/diceRulesTypes';
 function faceRun(first: number, last: number): string {
   if (last < first) return '';
   if (last === first) return String(last);
-  return last === first + 1 ? `${first} or ${last}` : `${first} to ${last}`;
+  const run = { first: String(first), last: String(last) };
+  return last === first + 1 ? t('diceSettings.faces.pair', run) : t('diceSettings.faces.run', run);
 }
 
 /** The faces of a die of `sides` that explode when its `highFaces` highest do. */
@@ -33,25 +35,25 @@ function otherDie(sides: number): number {
 /** What the rule does, said with a die of `sides`: the die of the collection's default roll. */
 export function describeExplodeRule(rule: ExplodeRule, sides: number): string {
   const { highFaces, lowFaces } = rule;
-  const again = 'is rolled again and the new die is';
   const sentences: string[] = [];
 
   if (rule.dice === 'default') {
-    sentences.push(`A default die (d${sides}) that shows ${highFaceNames(sides, highFaces)} ${again} added.`);
+    sentences.push(t('diceSettings.rule.defaultHigh', { sides: String(sides), faces: highFaceNames(sides, highFaces) }));
     const low = lowFaceNames(sides, lowFaces, highFaces);
-    if (low) sentences.push(`One that shows ${low} ${again} subtracted.`);
+    if (low) sentences.push(t('diceSettings.rule.low', { faces: low }));
   } else {
     const other = otherDie(sides);
-    const faces = highFaces === 1 ? 'its highest face' : `one of its ${highFaces} highest faces`;
-    sentences.push(
-      `Every die that shows ${faces} ${again} added: a d${sides} on ${highFaceNames(sides, highFaces)}, a d${other} on ${highFaceNames(other, highFaces)}.`,
-    );
-    if (lowFaces > 0) {
-      const lowest = lowFaces === 1 ? 'its lowest face' : `one of its ${lowFaces} lowest faces`;
-      sentences.push(`One that shows ${lowest} ${again} subtracted.`);
-    }
+    const dice = {
+      sides: String(sides), faces: highFaceNames(sides, highFaces),
+      other: String(other), otherFaces: highFaceNames(other, highFaces),
+    };
+    sentences.push(highFaces === 1
+      ? t('diceSettings.rule.allHighest', dice)
+      : t('diceSettings.rule.allHighFaces', { ...dice, number: String(highFaces) }));
+    if (lowFaces === 1) sentences.push(t('diceSettings.rule.lowest'));
+    else if (lowFaces > 0) sentences.push(t('diceSettings.rule.lowFaces', { number: String(lowFaces) }));
   }
 
-  sentences.push(rule.repeats ? 'The new die can explode too.' : 'The new die does not explode.');
+  sentences.push(t(rule.repeats ? 'diceSettings.rule.repeats' : 'diceSettings.rule.once'));
   return sentences.join(' ');
 }

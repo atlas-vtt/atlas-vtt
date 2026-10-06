@@ -1,4 +1,5 @@
 import type { DiceScene } from '../../../dice3d/diceScene';
+import { t } from '../../../i18n';
 import { diceSum } from '../../../tools/diceLabels';
 import type { DiceRollResult } from '../../../types/diceTypes';
 
@@ -7,7 +8,7 @@ import type { DiceRollResult } from '../../../types/diceTypes';
  * Never who rolled it: the creature's portrait beside the label says that.
  */
 export function rollLabel(result: DiceRollResult): string {
-  return result.source?.abilityName || 'Roll';
+  return result.source?.abilityName || t('diceRoll.label');
 }
 
 /** ` + 3` or ` − 3`; nothing without a modifier. */
@@ -28,11 +29,11 @@ export function rollBreakdown(result: DiceRollResult, scene: DiceScene): string 
   const diceTotal = result.total - result.modifiers;
 
   if (scene.plan[0]?.role === 'tens') {
-    return `Tens ${(scene.faces[0]! % 10) * 10}, units ${scene.faces[1]! % 10}${suffix}`;
+    return t('diceRoll.tensUnits', { tens: (scene.faces[0]! % 10) * 10, units: scene.faces[1]! % 10 }) + suffix;
   }
-  if (values.length > 6) return `${values.length} dice, ${diceTotal}${suffix}`;
+  if (values.length > 6) return t('diceRoll.manyDice', { number: values.length, total: String(diceTotal) }) + suffix;
   if (scene.plan.some((die) => die.fold !== undefined)) {
-    return `${scene.faces.join(' + ')} on the d${scene.plan[0]!.sides} counts ${values.join(' + ')}${suffix}`;
+    return t('diceRoll.folded', { faces: scene.faces.join(' + '), sides: scene.plan[0]!.sides, values: values.join(' + ') }) + suffix;
   }
   return values.length > 1 || suffix !== '' ? `${diceSum(result.rolls)}${suffix}` : null;
 }
