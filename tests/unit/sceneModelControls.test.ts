@@ -80,6 +80,9 @@ function plainColour(hex: string): [number, number, number] {
   return [linear((value >> 16) & 0xff), linear((value >> 8) & 0xff), linear(value & 0xff)];
 }
 
+/** For a control that requires no difference at all: the comparison then walks every sequence, which takes seconds on a busy machine. */
+const WHOLE_RUN_TIMEOUT = 60_000;
+
 describe('the scene model comparison notices what a broken scene model would change', () => {
   it('fails when an update that built nothing returns a copy of the model', async () => {
     const found = await firstWith('identity of the model', (inner) => (...args) => {
@@ -106,7 +109,7 @@ describe('the scene model comparison notices what a broken scene model would cha
     expect(await firstWith('rebuilt', reset)).not.toBeNull();
     // A reset builds anew from what the builder still holds: the sight it worked out and the reaches it traced.
     expect(await firstWith('sweeps', reset)).toBeNull();
-  });
+  }, WHOLE_RUN_TIMEOUT);
 
   it.each(['rebuilt', 'sweeps'])('fails on %s when every update is given a new builder', async (output) => {
     expect(await firstWith(output, (inner, current) => (...args) => current.builder().update(...args))).not.toBeNull();
@@ -156,7 +159,7 @@ describe('the scene model comparison notices what a broken scene model would cha
     expect(await firstIn('identity of each reach polygon')).not.toBeNull();
     expect(await firstIn('sweeps')).not.toBeNull();
     expect(await firstIn((mismatch) => mismatch.output.startsWith('model ') || mismatch.output === 'rebuilt')).toBeNull();
-  });
+  }, WHOLE_RUN_TIMEOUT);
 
   it('fails when the builder is not told which tokens the pointer holds', async () => {
     const found = await firstWith('rebuilt', (inner) => (state, ...rest) => inner.update({ ...state, heldTokens: {} }, ...rest), await showing('a drag that builds nothing'));
