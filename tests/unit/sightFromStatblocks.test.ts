@@ -5,7 +5,7 @@ import * as parsing from '../../src/app/creatures/parseSenses';
 import { tokenSensesResolver, type SenseRules, type TokenSensesResolver } from '../../src/app/creatures/tokenSensesResolver';
 import { BUILT_IN_SENSES } from '../../src/app/gameSystems/senses';
 import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';
-import { SceneModelBuilder, type SceneModel } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneModelBuilder, type SceneModel } from '../../src/app/vision/sceneModel';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import type { SightRules } from '../../src/app/vision/sightRules';

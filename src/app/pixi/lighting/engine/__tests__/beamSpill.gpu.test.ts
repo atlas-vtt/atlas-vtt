@@ -3,7 +3,7 @@ import { BEAM_SLIDER } from '../../../../lighting/lightBeam';
 import { LIGHT_LEVELS } from '../../../../lighting/lightingConstants';
 import { lightLevelAt } from '../../../../vision/lightLevels';
 import { lightReach } from '../../../../vision/sight';
-import { engineLight } from '../../lightSources';
+import { engineLight } from '../../../../vision/lightSources';
 import { LightingWorld } from '../LightingWorld';
 import type { EngineLight } from '../types';
 import type { LightEmission } from '../../../../types/lightingTypes';

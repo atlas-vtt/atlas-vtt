@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createViewAtlasStore, type ViewAtlasState, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { InteractionController } from '../../src/app/pixi/token-renderer/InteractionController';
 import { tokenPerception } from '../../src/app/vision/tokenPerception';
-import { SceneModelBuilder } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneModelBuilder } from '../../src/app/vision/sceneModel';
 import { heldForSight, holdTokens } from '../../src/app/lighting/sightOnDrop';
 import { getHistoryStore } from '../../src/app/stores/history';
 import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';

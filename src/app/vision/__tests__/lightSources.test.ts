@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { activeLights, engineLight } from '../lightSources';
-import { LIGHT_PRESETS } from '../../../lighting/lightPresets';
-import type { LightSource } from '../../../types/lightingTypes';
-import type { TokenEntity } from '../../../types';
+import { LIGHT_PRESETS } from '../../lighting/lightPresets';
+import type { LightSource } from '../../types/lightingTypes';
+import type { TokenEntity } from '../../types';
 
 const torch = LIGHT_PRESETS.torch.emission;
 const scale = { unitDistance: 5, cellSize: 70 };

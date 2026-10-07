@@ -20,9 +20,9 @@ import { destroyTree } from '../utils/destroyTree';
 import type { SceneFrame } from './engine/types';
 import { LIGHTING_Z_INDEX } from './LightingRenderer';
 import { PlayerView } from './PlayerView';
-import { LightReaches } from './lightReaches';
+import { LightReaches } from '../../vision/lightReaches';
 import { sourcesInDarkness } from '../../vision/magicalDarkness';
-import { activeLights, engineLight } from './lightSources';
+import { activeLights, engineLight } from '../../vision/lightSources';
 import type { SceneLightingView } from './sceneLightingView';
 
 /** Full ambient light: everything in sight counts as lit. */

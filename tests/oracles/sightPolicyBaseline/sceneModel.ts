@@ -22,8 +22,8 @@ import { SightCache, sceneSight, sightOptionsChanged, sightSources, type Ambient
 import type { MapBounds } from '../../../src/app/vision/visibility';
 import { wallList } from '../../../src/app/vision/wallList';
 import type { EngineLight, EngineZone } from '../../../src/app/pixi/lighting/engine/types';
-import { LightReaches } from '../../../src/app/pixi/lighting/lightReaches';
-import { activeLights, engineLight } from '../../../src/app/pixi/lighting/lightSources';
+import { LightReaches } from '../../../src/app/vision/lightReaches';
+import { activeLights, engineLight } from '../../../src/app/vision/lightSources';
 
 /** What a scene's lighting works out on the CPU, in world pixels: the engine draws it and the rules read it. */
 export interface SceneModel {

@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { LIMITED_WALLS } from '../../../../featureFlags';
 import type { MeasurementSettings } from '../../../../grid/measurementFormat';
 import type { WallSegment } from '../../../../types/wallTypes';
-import { SceneModelBuilder } from '../../sceneModel';
+import { SceneModelBuilder } from '../../../../vision/sceneModel';
 import { LightingEngine } from '../LightingEngine';
 import { createTestRenderer, renderThroughEngine } from './gpuTestUtils';
 import { watchGl } from './strictGl';

@@ -9,7 +9,7 @@ import type { UnitScale } from '../../../../lighting/lightingUnits';
 import { srgbToLinear } from '../../../../lighting/srgb';
 import type { LightEmission } from '../../../../types/lightingTypes';
 import { SEES_ALL, computeSight, type Sight } from '../../../../vision/sight';
-import { engineLight } from '../../lightSources';
+import { engineLight } from '../../../../vision/lightSources';
 import { LightingEngine } from '../LightingEngine';
 import { createTestRenderer, renderThroughEngine } from './gpuTestUtils';
 import { darkvision } from '../../../../vision/__tests__/senseSources';

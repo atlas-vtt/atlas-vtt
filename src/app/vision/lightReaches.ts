@@ -1,7 +1,7 @@
-import type { WallSegment } from '../../types/wallTypes';
-import { kindOf, lightReach, type LightReach } from '../../vision/sight';
-import { sameCone } from '../../vision/visionCone';
-import type { EngineLight } from './engine/types';
+import type { WallSegment } from '../types/wallTypes';
+import { kindOf, lightReach, type LightReach } from './sight';
+import { sameCone } from './visionCone';
+import type { EngineLight } from '../pixi/lighting/engine/types';
 
 interface Entry {
   x: number;

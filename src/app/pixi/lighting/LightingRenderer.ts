@@ -18,7 +18,7 @@ import type { EngineScene, SceneFrame } from './engine/types';
 import { ExploredMemory } from './ExploredMemory';
 import type { LightingAttempt } from './lightingAttempts';
 import { PlayerView } from './PlayerView';
-import { SceneModelBuilder, SceneSpots, type SceneModel } from './sceneModel';
+import { SceneModelBuilder, SceneSpots, type SceneModel } from '../../vision/sceneModel';
 import type { ExploredMemoryWatcher, SceneLightingView } from './sceneLightingView';
 
 /** Above tokens, below their nameplates and bars (100): the GM keeps readable labels in the dark. */

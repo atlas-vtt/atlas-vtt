@@ -1,16 +1,16 @@
-import { lightList, readEmission } from '../../lighting/lightingObjects';
+import { lightList, readEmission } from '../lighting/lightingObjects';
 import { Color } from 'pixi.js';
-import type { TokenEntity } from '../../types';
-import type { LightEmission, LightSource } from '../../types/lightingTypes';
-import { isLightOn } from '../../lighting/lightActivity';
-import { beamOf } from '../../lighting/lightBeam';
-import { gameUnitsToWorld, type UnitScale } from '../../lighting/lightingUnits';
-import { MIN_SOFTNESS, TINT_TO_WHITE, softEdge } from '../../lighting/lightingConstants';
-import { srgbToLinear } from '../../lighting/srgb';
-import { kindOf } from '../../vision/sight';
-import { ambientAt } from '../../vision/lightLevels';
-import type { AmbientLight } from '../../vision/sight';
-import type { EngineLight } from './engine/types';
+import type { TokenEntity } from '../types';
+import type { LightEmission, LightSource } from '../types/lightingTypes';
+import { isLightOn } from '../lighting/lightActivity';
+import { beamOf } from '../lighting/lightBeam';
+import { gameUnitsToWorld, type UnitScale } from '../lighting/lightingUnits';
+import { MIN_SOFTNESS, TINT_TO_WHITE, softEdge } from '../lighting/lightingConstants';
+import { srgbToLinear } from '../lighting/srgb';
+import { kindOf } from './sight';
+import { ambientAt } from './lightLevels';
+import type { AmbientLight } from './sight';
+import type { EngineLight } from '../pixi/lighting/engine/types';
 
 /** A light that shines right now: placed on the map or carried by a token. */
 export interface ActiveLight {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LIMITED_WALLS } from '../../featureFlags';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
-import { SceneModelBuilder } from '../../pixi/lighting/sceneModel';
+import { SceneModelBuilder } from '../../vision/sceneModel';
 import { hasKindLook } from '../../pixi/vision/wallKindLook';
 import type { WallSegment } from '../../types/wallTypes';
 import { wallList } from '../../vision/wallList';

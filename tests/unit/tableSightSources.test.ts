@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { sightMarks } from '../../src/app/pixi/lighting/sightMarks';
 import { resolveMeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { unitScaleOf } from '../../src/app/lighting/lightingUnits';
-import { SceneModelBuilder, SceneSpots } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneModelBuilder, SceneSpots } from '../../src/app/vision/sceneModel';
 import { tokenPerception } from '../../src/app/vision/tokenPerception';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';

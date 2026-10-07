@@ -22,9 +22,9 @@ import { destroyTree } from '../../../src/app/pixi/utils/destroyTree';
 import type { SceneFrame } from '../../../src/app/pixi/lighting/engine/types';
 import { LIGHTING_Z_INDEX } from '../../../src/app/pixi/lighting/LightingRenderer';
 import { PlayerView } from '../../../src/app/pixi/lighting/PlayerView';
-import { LightReaches } from '../../../src/app/pixi/lighting/lightReaches';
+import { LightReaches } from '../../../src/app/vision/lightReaches';
 import { sourcesInDarkness } from '../../../src/app/vision/magicalDarkness';
-import { activeLights, engineLight } from '../../../src/app/pixi/lighting/lightSources';
+import { activeLights, engineLight } from '../../../src/app/vision/lightSources';
 import type { SceneLightingView } from '../../../src/app/pixi/lighting/sceneLightingView';
 
 /** Full ambient light: everything in sight counts as lit. */

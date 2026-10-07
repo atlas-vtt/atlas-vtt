@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LightReaches } from '../lightReaches';
-import type { EngineLight } from '../engine/types';
-import type { WallSegment } from '../../../types/wallTypes';
+import type { EngineLight } from '../../pixi/lighting/engine/types';
+import type { WallSegment } from '../../types/wallTypes';
 
 function light(key: string, x: number, dim = 100, bright = dim / 2): EngineLight {
   return { key, x, y: 0, bright, dim, flame: 10, color: [1, 1, 1], intensity: 1, animation: 'none' };

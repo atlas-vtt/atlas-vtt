@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { resolveMeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { withZones } from '../../src/app/lighting/lightZones';
 import { unitScaleOf } from '../../src/app/lighting/lightingUnits';
-import { SceneSpots, type SceneModel } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneSpots, type SceneModel } from '../../src/app/vision/sceneModel';
 import { createViewAtlasStore, type ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import { seenSpots } from '../../src/app/vision/perception';

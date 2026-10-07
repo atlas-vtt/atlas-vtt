@@ -1,5 +1,5 @@
 import type { UnitScale } from '../../src/app/lighting/lightingUnits';
-import { SceneModelBuilder, SceneSpots } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneModelBuilder, SceneSpots } from '../../src/app/vision/sceneModel';
 import type { TokenEntity } from '../../src/app/types';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import { seenSpots, type PerceptionOptions, type SeenSpot } from '../../src/app/vision/perception';

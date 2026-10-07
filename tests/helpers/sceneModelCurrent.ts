@@ -1,11 +1,10 @@
-import { activeLights, engineLight } from '../../src/app/pixi/lighting/lightSources';
-import { SceneModelBuilder, SceneSpots } from '../../src/app/pixi/lighting/sceneModel';
+import { activeLights, engineLight } from '../../src/app/vision/lightSources';
+import { SceneModelBuilder, SceneSpots } from '../../src/app/vision/sceneModel';
 import { GM_SIGHT_POLICY } from '../../src/app/vision/tokenSightPolicy';
 
 /** Where the modules under test live, for a control that swaps one. The tests that use them lie as deep as this file. */
-export const SCENE_MODEL = '../../src/app/pixi/lighting/sceneModel';
-export const LIGHT_SOURCES = '../../src/app/pixi/lighting/lightSources';
-export const LIGHT_REACHES = '../../src/app/pixi/lighting/lightReaches';
+export const LIGHT_SOURCES = '../../src/app/vision/lightSources';
+export const LIGHT_REACHES = '../../src/app/vision/lightReaches';
 
 export type Picture = 'players' | 'GM';
 

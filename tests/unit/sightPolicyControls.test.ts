@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type * as PerceptionModule from '../../src/app/vision/perception';
-import type * as SceneModelModule from '../../src/app/pixi/lighting/sceneModel';
+import type * as SceneModelModule from '../../src/app/vision/sceneModel';
 import type * as SelectModule from '../../src/app/vision/selectSight';
 import type * as SightModule from '../../src/app/vision/sight';
 import type * as TokenPerceptionModule from '../../src/app/vision/tokenPerception';
@@ -20,7 +20,7 @@ const SELECT = '../../src/app/vision/selectSight';
 const SIGHT = '../../src/app/vision/sight';
 const FOOTPRINTS = '../../src/app/vision/perception';
 const PERCEPTION = '../../src/app/vision/tokenPerception';
-const SCENE = '../../src/app/pixi/lighting/sceneModel';
+const SCENE = '../../src/app/vision/sceneModel';
 const MOCKED = [POLICY, SELECT, SIGHT, FOOTPRINTS, PERCEPTION, SCENE];
 
 afterEach(() => {

@@ -1,26 +1,26 @@
-import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY, type SightPolicy } from '../../vision/tokenSightPolicy';
-import { selectSight } from '../../vision/selectSight';
-import type { MeasurementSettings } from '../../grid/measurementFormat';
-import { sleeps } from '../../lighting/lightActivity';
-import { lightZoneList, withZones } from '../../lighting/lightZones';
-import { worldTexel } from '../../lighting/lightingConstants';
-import { unitScaleOf } from '../../lighting/lightingUnits';
-import { sealedWalls } from '../../lighting/sealWalls';
-import { SightTokens, heldForSight } from '../../lighting/sightOnDrop';
-import type { HeldTokens } from '../../types/viewUIState';
-import type { ViewAtlasState } from '../../storeFactory';
-import type { TokenEntity } from '../../types';
-import type { SceneLighting } from '../../types/lightingTypes';
-import type { WallSegment } from '../../types/wallTypes';
-import { exploredShapes, type ExploredShapes } from '../../vision/exploredShapes';
-import { quenched, sourcesInDarkness } from '../../vision/magicalDarkness';
-import { seenSpots, type SeenSpot } from '../../vision/perception';
-import type { SightRules } from '../../vision/sightRules';
-import { ambientAt } from '../../vision/lightLevels';
-import { SightCache, sceneSight, sightOptionsChanged, sightSources, type AmbientLight, type LightReach, type Sight } from '../../vision/sight';
-import type { MapBounds } from '../../vision/visibility';
-import { wallList } from '../../vision/wallList';
-import type { EngineLight, EngineZone } from './engine/types';
+import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY, type SightPolicy } from './tokenSightPolicy';
+import { selectSight } from './selectSight';
+import type { MeasurementSettings } from '../grid/measurementFormat';
+import { sleeps } from '../lighting/lightActivity';
+import { lightZoneList, withZones } from '../lighting/lightZones';
+import { worldTexel } from '../lighting/lightingConstants';
+import { unitScaleOf } from '../lighting/lightingUnits';
+import { sealedWalls } from '../lighting/sealWalls';
+import { SightTokens, heldForSight } from '../lighting/sightOnDrop';
+import type { HeldTokens } from '../types/viewUIState';
+import type { ViewState } from '../types/viewState';
+import type { TokenEntity } from '../types';
+import type { SceneLighting } from '../types/lightingTypes';
+import type { WallSegment } from '../types/wallTypes';
+import { exploredShapes, type ExploredShapes } from './exploredShapes';
+import { quenched, sourcesInDarkness } from './magicalDarkness';
+import { seenSpots, type SeenSpot } from './perception';
+import type { SightRules } from './sightRules';
+import { ambientAt } from './lightLevels';
+import { SightCache, sceneSight, sightOptionsChanged, sightSources, type AmbientLight, type LightReach, type Sight } from './sight';
+import type { MapBounds } from './visibility';
+import { wallList } from './wallList';
+import type { EngineLight, EngineZone } from '../pixi/lighting/engine/types';
 import { LightReaches } from './lightReaches';
 import { activeLights, engineLight } from './lightSources';
 
@@ -42,14 +42,20 @@ export interface SceneModel {
   ambient: AmbientLight;
 }
 
-type SceneState = Pick<ViewAtlasState, 'objects' | 'lighting' | 'grid' | 'heldTokens'>;
+/** What a scene's lighting is worked out from: the records sight and light read, the scene's lighting, the grid and the tokens the pointer holds. */
+export interface SceneState {
+  objects: Pick<ViewState['objects'], 'tokens' | 'walls' | 'lights' | 'lightZones'>;
+  lighting: ViewState['lighting'];
+  grid: ViewState['grid'];
+  heldTokens: ViewState['heldTokens'];
+}
 
 interface Built {
-  walls: ViewAtlasState['objects']['walls'];
-  lights: ViewAtlasState['objects']['lights'];
-  zones: ViewAtlasState['objects']['lightZones'];
+  walls: ViewState['objects']['walls'];
+  lights: ViewState['objects']['lights'];
+  zones: ViewState['objects']['lightZones'];
   tokens: Record<string, TokenEntity>;
-  grid: ViewAtlasState['grid'];
+  grid: ViewState['grid'];
   lighting: SceneLighting;
   rules: SightRules | undefined;
   model: SceneModel;
@@ -118,7 +124,7 @@ export class SceneModelBuilder {
 const NO_ZONES: readonly EngineZone[] = [];
 
 /** Whether a light that follows the ambient light wakes or falls asleep between two ambient lights. */
-function awakeLightsChanged(lights: ViewAtlasState['objects']['lights'], before: AmbientLight, after: AmbientLight): boolean {
+function awakeLightsChanged(lights: ViewState['objects']['lights'], before: AmbientLight, after: AmbientLight): boolean {
   if (before.ambient === after.ambient) return false;
   for (const id in lights) {
     const light = lights[id]!;
@@ -133,7 +139,7 @@ interface SpotInputs {
   tokens: Record<string, TokenEntity>;
   held: HeldTokens;
   lighting: SceneLighting;
-  grid: ViewAtlasState['grid'];
+  grid: ViewState['grid'];
   rules: SightRules | undefined;
 }
 

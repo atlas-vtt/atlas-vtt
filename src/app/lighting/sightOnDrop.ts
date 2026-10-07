@@ -26,7 +26,7 @@ export function holdTokens(store: HeldTokenSource, tokenIds: readonly string[]):
   setHeldTokens(held);
 }
 
-type SceneTokens = Pick<ViewState, 'objects' | 'lighting' | 'heldTokens'>;
+type SceneTokens = { objects: Pick<ViewState['objects'], 'tokens'> } & Pick<ViewState, 'lighting' | 'heldTokens'>;
 type Tokens = Record<string, TokenEntity>;
 
 const NONE: HeldTokens = {};

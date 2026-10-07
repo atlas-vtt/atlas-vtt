@@ -8,7 +8,7 @@ import type { SeenSpot } from '../../../../vision/perception';
 import type { SenseSource, Sight } from '../../../../vision/sight';
 import { sightWedges } from '../../../../vision/sightWedges';
 import { blocksFrom, type MapBounds } from '../../../../vision/visibility';
-import { SceneSpots, type SceneModel } from '../../sceneModel';
+import { SceneSpots, type SceneModel } from '../../../../vision/sceneModel';
 import type { LightingEngine } from '../LightingEngine';
 import { readRgba } from './gpuTestUtils';
 import { distToOutline, insidePolygon, type FuzzRoom, type P } from './fuzzRooms';

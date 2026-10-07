@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveMeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { BUILT_IN_SENSES } from '../../src/app/gameSystems/senses';
-import { SceneModelBuilder, SceneSpots } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneModelBuilder, SceneSpots } from '../../src/app/vision/sceneModel';
 import { tokenPerception } from '../../src/app/vision/tokenPerception';
 import { pierceShapes } from '../../src/app/pixi/lighting/engine/senseDrawing';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
