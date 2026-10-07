@@ -24,6 +24,13 @@ export interface SceneLightingView {
    */
   renderForFrame<T>(frame: SceneFrame, render: () => T): T;
   currentSight(): Sight;
+  /**
+   * Whether `currentSight` is the sight of the scene the store holds: true while the scene is
+   * unlit (sight hides nothing then), and once the view has worked out the sight of a lit one.
+   * From a scene switch until the view has built the scene that arrives, it still holds the sight
+   * of the scene before.
+   */
+  sightIsCurrent(): boolean;
   lightReaches(): LightReach[];
   /** The ambient light the CPU checks tokens against. */
   ambientLight(): AmbientLight;

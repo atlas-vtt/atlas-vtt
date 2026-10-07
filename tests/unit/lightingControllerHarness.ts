@@ -25,6 +25,7 @@ const lightingView = vi.hoisted(() => (deps: SceneLightingDeps): SceneLightingVi
   modeLayer: { visible: false },
   isEnabled: () => deps.store.getState().lighting.enabled,
   currentSight: () => SEES_ALL,
+  sightIsCurrent: () => true,
   lightReaches: () => [],
   ambientLight: () => ({ ambient: 1 }),
   refreshBounds: vi.fn(),

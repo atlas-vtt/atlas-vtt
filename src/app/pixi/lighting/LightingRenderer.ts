@@ -83,7 +83,7 @@ export class LightingRenderer implements SceneLightingView {
   /** The zones of the scene as the rules read them, and the ambient light made of them and the scene's lighting. */
   private zones: readonly AmbientZone[] = [];
   private ambient: { lighting: SceneLighting; zones: readonly AmbientZone[]; light: AmbientLight } | null = null;
-  /** The last scene without its look (`SceneLook`), reused while only the look changes. */
+  /** The last scene without its look (`SceneLook`), reused while only the look changes; none from lighting off or the map leaving until the next build. */
   private lastScene: SceneWithoutLook | null = null;
   private attemptState: AttemptState = 'none';
   private stopped = false;
@@ -124,6 +124,7 @@ export class LightingRenderer implements SceneLightingView {
   }
 
   currentSight(): Sight { return this.sight; }
+  sightIsCurrent(): boolean { return !this.isEnabled() || this.lastScene !== null; }
   lightReaches(): LightReach[] { return this.reaches; }
   /** The scene's lighting as the rules read it: with its zones when it has any, the same object while both stay. */
   ambientLight(): AmbientLight {
@@ -159,6 +160,7 @@ export class LightingRenderer implements SceneLightingView {
   beforeMapUnload(): void {
     this.run(() => this.memory.beforeMapUnload());
     this.model.reset();
+    this.lastScene = null;
     this.endAttempt();
   }
 
@@ -202,6 +204,7 @@ export class LightingRenderer implements SceneLightingView {
       // Nothing is drawn while off; the next update after switching on rebuilds everything.
       this.engine.setEnabled(false);
       this.model.reset();
+      this.lastScene = null;
       this.endAttempt();
       return;
     }

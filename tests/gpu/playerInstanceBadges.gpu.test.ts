@@ -1,3 +1,4 @@
+import { Container } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import { RenderScheduler, hasPendingChanges, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
 import { captureBeforeRender } from '../../src/app/pixi/playerSafeFrame';
@@ -5,6 +6,7 @@ import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
 import { fogRectangle } from '../helpers/fogOperations';
 import { differingIn, differingPixels, playerViewScenes, samePixels, type PlayerViewScene } from '../helpers/playerViewScene';
 import type { Perception } from '../../src/app/vision/perception';
+import type { TokenEntity } from '../../src/app/types';
 
 const { scene } = playerViewScenes();
 /** Three look-alikes in a row (no art: one group), each with its badge at the top right. */
@@ -127,6 +129,25 @@ describe('session view, the peek and pictures of the scene', () => {
     expect(samePixels(s.canvas(), gm)).toBe(true);
     expect(samePixels(s.frame(), await showing([[A, 1], [C, 2]]))).toBe(true);
     expect(samePixels(s.canvas(), gm)).toBe(true);
+  });
+});
+
+describe('a scene loaded in session view', () => {
+  it('is numbered by its own sight in the window and on the canvas, not by the sight kept from the scene before', async () => {
+    const s = await build([A, B, C]);
+    s.store.getState().setGMView(false);
+    s.tokens.refreshPlayerSight();
+    // Until the load ends the lighting answers with the sight of the scene before, which saw all three places.
+    s.store.getState().setMapLoading(true);
+    const loaded = (spot: Spot, instanceNumber: number): TokenEntity => ({ kind: 'token', imagePath: '', size: 1, ...spot, instanceNumber }) as TokenEntity;
+    s.store.setState((state) => ({ mapPath: 'maps/b.atlasmap', objects: { ...state.objects, tokens: { A: loaded(A, 1), B: loaded(B, 2), C: loaded(C, 3) } } }));
+    s.events.emit('map-loaded');
+    await expect.poll(() => ['A', 'B', 'C'].every((id) => s.tokens.getTokenSprites()[id] instanceof Container)).toBe(true);
+    await s.settle();
+    // The load ends: the loaded scene's sight leaves B in the dark.
+    s.lighting.perception = perceiving({ B: 'unseen' });
+    s.store.getState().setMapLoading(false);
+    expectPlayersSee(s, await showing([[A, 1], [C, 2]]));
   });
 });
 

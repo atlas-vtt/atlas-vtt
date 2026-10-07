@@ -46,10 +46,15 @@ export interface Scene {
   setFog: (fog: Record<string, FogOperation>) => void;
   /** The store writes and lighting calls of `MapService.loadMap`, in its order. */
   loadMap: (path: string, saved: SavedScene, bounds: MapBounds) => void;
-  /** `loadMap` up to the rehydrated scene: the store holds it, and the loading screen is still up. */
-  startLoad: (path: string, saved: SavedScene, bounds: MapBounds) => void;
+  /**
+   * `loadMap` up to the rehydrated scene: the store holds it, and the loading screen is still up. A load
+   * that follows one which failed starts without the map unloading (`unloads` false), as no map was loaded.
+   */
+  startLoad: (path: string, saved: SavedScene, bounds: MapBounds, unloads?: boolean) => void;
   /** The loading screen goes: the last write of a load. */
   finishLoad: () => void;
+  /** Subscribes `listener` to the store ahead of the lighting, as a token renderer made before the lighting is. */
+  listenFirst: (listener: (state: ViewAtlasState) => void) => void;
   tick: () => void;
   renderStage: () => void;
   dispose: () => void;
@@ -92,8 +97,8 @@ export async function createScene({ enabled, noted = null, exploredMask = null, 
     getState: () => state,
     subscribe: (listener: (state: ViewAtlasState, previous: ViewAtlasState) => void) => (listeners.add(listener), () => listeners.delete(listener)),
   } as unknown as ViewAtlasStore;
-  const startLoad = (path: string, saved: SavedScene, mapBounds: MapBounds): void => {
-    host.beforeMapUnload(); // 'map-unloading'
+  const startLoad = (path: string, saved: SavedScene, mapBounds: MapBounds, unloads = true): void => {
+    if (unloads) host.beforeMapUnload(); // 'map-unloading'
     write({ isMapLoading: true }); // setMapLoading(true, 0)
     write({ mapPath: path }); // setMapPath
     write({ lighting: { enabled: false, ambient: 0.1 }, exploredMask: null, exploredEdits: 0, objects: { ...state.objects, walls: {}, lights: {}, tokens: {} } }); // clearMapState
@@ -137,6 +142,12 @@ export async function createScene({ enabled, noted = null, exploredMask = null, 
     },
     startLoad,
     finishLoad,
+    listenFirst: (listener) => {
+      const later = [...listeners];
+      listeners.clear();
+      listeners.add(listener);
+      for (const other of later) listeners.add(other);
+    },
     tick: () => [...ticks].forEach((tick) => tick()),
     renderStage: () => renderer.render({ container: viewport, target, clear: true }),
     dispose: () => {

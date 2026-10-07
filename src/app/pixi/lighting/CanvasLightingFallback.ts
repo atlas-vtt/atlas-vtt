@@ -56,6 +56,8 @@ export class CanvasLightingFallback implements SceneLightingView {
   private readonly cache = new SightCache();
   private readonly sightTokens = new SightTokens();
   private sight: Sight = SEES_ALL;
+  /** `sight` was worked out from the scene the store holds: not while lighting is off or the map has no bounds. */
+  private sightBuilt = false;
   private readonly darknessReaches = new LightReaches();
   /** The darkness sources of the scene; the fallback has no other light. */
   private reaches: LightReach[] = NO_REACHES;
@@ -77,6 +79,7 @@ export class CanvasLightingFallback implements SceneLightingView {
 
   isEnabled(): boolean { return this.deps.store.getState().lighting.enabled; }
   currentSight(): Sight { return this.sight; }
+  sightIsCurrent(): boolean { return !this.isEnabled() || this.sightBuilt; }
   lightReaches(): LightReach[] { return this.reaches; }
   ambientLight(): AmbientLight { return FULL_DAYLIGHT; }
   refreshBounds(): void {
@@ -107,6 +110,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     if (inputs.every((input, i) => input === this.inputs[i]) && inputs.length === this.inputs.length) return;
     this.inputs = inputs;
     if (!state.lighting.enabled || !bounds) {
+      this.sightBuilt = false;
       this.darkness.clear();
       return;
     }
@@ -121,6 +125,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     const sight = selectSight(sceneSight(state.lighting, sources, walls, this.cache), tokens, PLAYER_SIGHT_POLICY);
     // The same regions are the same sight: what was worked out from it (who is seen) stays good.
     if (!sameSight(sight, this.sight)) this.sight = sight;
+    this.sightBuilt = true;
     const spots = seenSpots(this.sight, FULL_DAYLIGHT, this.reaches, state.objects.tokens, scale.cellSize, walls, { conditions: rules?.conditions ?? [], held, policy: PLAYER_SIGHT_POLICY });
     this.drawDarkness(bounds, spots);
     this.deps.onSightChange?.();

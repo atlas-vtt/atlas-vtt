@@ -6,7 +6,7 @@ import { fitTokenArtwork, syncTokenArtwork } from './token-renderer/tokenArtwork
 import type { AtlasSettings } from '../services/SettingsService';
 import { HIDDEN_TOKEN_ALPHA, gmTokenLayers, type HideableLayer, type LayerVisibility } from './playerSafeFrame';
 import type { TokenPerception } from '../vision/tokenPerception';
-import { PlayerSightTokens, seenByPlayers, seenTokens } from './token-renderer/PlayerSightTokens';
+import { NOTHING_SEEN, PlayerSightTokens, seenByPlayers, seenTokens } from './token-renderer/PlayerSightTokens';
 import { PlayersViewWatch } from './token-renderer/PlayersViewWatch';
 import { PlayerInstanceBadges } from './token-renderer/PlayerInstanceBadges';
 import type { TokenSeen } from '../vision/measureOrigin';
@@ -269,8 +269,7 @@ export class TokenRenderer {
     this.tokenContainer.zIndex = 0;
     this.viewport.addChild(this.tokenContainer);
     this.viewport.addChild(this.playerSight.outlineLayer);
-    // The canvas shows the players' badges while it sees as their frame does, so both number alike, and the GM's otherwise.
-    this.playersView.listen(() => this.playerBadges.syncCanvas(this.playerSight.sharesFrameSight() ? this.playersSeeOnCanvas() : null));
+    this.playersView.listen(() => this.playerSight.whenSettled(() => this.syncCanvasBadges()));
 
     this.dragRuler = new DragRuler(
       new DragRulerView(this.viewport, this.tokenContainer),
@@ -644,8 +643,8 @@ export class TokenRenderer {
   }
 
   /** How the players perceive each token while this canvas shows their view of a lit scene (`PlayerSightTokens.setProvider`). */
-  public setPlayerSightProvider(provider: () => TokenPerception | undefined, active?: () => boolean): void {
-    this.playerSight.setProvider(provider, active);
+  public setPlayerSightProvider(provider: () => TokenPerception | undefined, active?: () => boolean, current?: () => boolean): void {
+    this.playerSight.setProvider(provider, active, current);
   }
 
   /** Shares the committed coverage with the fog renderer, independently of lighting. */
@@ -682,6 +681,17 @@ export class TokenRenderer {
     this.playerSight.syncOutlines(perception);
     this.dragRuler.refreshVisibility();
     this.notifyPlayersView();
+  }
+
+  /**
+   * The canvas shows the players' badges while it sees as their frame does, so both number alike, and the GM's
+   * otherwise. A load keeps what it shows: the store holds the scene only in part, and the lighting the sight of
+   * the scene before. While the lighting has no sight for the scene, it shows none.
+   */
+  private syncCanvasBadges(): void {
+    const seen = this.playerSight.sharesFrameSight() ? this.playersSeeOnCanvas() : null;
+    if (!seen) this.playerBadges.syncCanvas(null);
+    else if (!this.store.getState().isMapLoading) this.playerBadges.syncCanvas(this.playerSight.sightIsCurrent() ? seen : NOTHING_SEEN);
   }
 
   /** Tells whoever follows the players' view (`onPlayersViewChange`) which tokens they see now. */
@@ -1278,11 +1288,14 @@ export class TokenRenderer {
     return this.playersView.listen(listener);
   }
 
-  /** Player overlays prepared for the next mirrored frame; `perception` leaves out what the players do not see, outlines what they only sense and numbers the instance badges among what they see. */
+  /**
+   * Player overlays prepared for the next mirrored frame; `perception` leaves out what the players do not see, outlines
+   * what they only sense and numbers the instance badges among what they see, none while the lighting has no sight for the scene.
+   */
   public getPlayerViewLayers(settings: AtlasSettings['localPlayerView'], perception?: TokenPerception): LayerVisibility[] {
     perception = this.playerFramePerception(perception);
     const isSeen = seenTokens(perception);
-    this.playerBadges.pass(seenByPlayers(this.store.getState().objects.tokens, perception));
+    this.playerBadges.pass(this.playerSight.sightIsCurrent() ? seenByPlayers(this.store.getState().objects.tokens, perception) : NOTHING_SEEN);
     return [...this.playerSight.frameLayers(perception), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.playerBadges.layers(), ...this.dragRuler.getPlayerViewLayers(isSeen)];
   }
 

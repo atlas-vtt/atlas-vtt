@@ -1482,6 +1482,125 @@ describe('TokenRenderer Integration Tests', () => {
       expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
     });
 
+    it('numbers a loaded scene by its own sight, not by the sight the lighting keeps from the scene before while it loads', async () => {
+      await goblins({ id: 'A' }, { id: 'B' }, { id: 'C' });
+      store.getState().setGMView(false);
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'gm 3']);
+      // Another scene loads in this view. Until the load ends the lighting answers with the sight of the
+      // scene before, which saw all three places.
+      store.getState().setMapLoading(true);
+      store.setState((state) => ({ mapPath: 'maps/other.atlasmap', objects: { ...state.objects, tokens: {
+        A: saved('A', 105, 1),
+        B: saved('B', 245, 2),
+        C: saved('C', 385, 3),
+      } } }));
+      eventBus.emit('map-loaded');
+      await waitForTokens('A', 'B', 'C');
+      // The load ends: the loaded scene's sight leaves B in the dark.
+      perception = (id) => (id === 'B' ? 'unseen' : 'seen');
+      store.getState().setMapLoading(false);
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
+    });
+
+    it('keeps the players\' badges on the canvas when a load starts, for the still frame that covers the switch', async () => {
+      await goblins({ id: 'A' }, { id: 'B', isHidden: true }, { id: 'C' });
+      store.getState().setGMView(false);
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
+      store.getState().setMapLoading(true);
+      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
+    });
+
+    let stopLighting: (() => void) | null = null;
+    afterEach(() => {
+      stopLighting?.();
+      stopLighting = null;
+    });
+
+    /**
+     * A lighting that keeps sight of its own, as the view's lighting does: worked out by a store listener that
+     * comes after the token renderer's (dynamic lighting switched on in an open view), from the party's token P,
+     * which sees every token within 150 px. A load keeps the sight of the scene before until it ends; while
+     * `blocked` (a lost graphics context) nothing is built. New sight is reported as `onSightChange` reports it.
+     */
+    const keptSight = (): { blocked: boolean; rebuild: () => void } => {
+      let eye: number | null = null;
+      let built = false;
+      const lighting = {
+        blocked: false,
+        rebuild: (): void => {
+          const state = store.getState();
+          if (state.isMapLoading) {
+            built = false;
+            return;
+          }
+          const party = state.objects.tokens.P?.x ?? null;
+          if (lighting.blocked || (built && party === eye)) return;
+          eye = party;
+          built = true;
+          tokenRenderer.refreshPlayerSight();
+        },
+      };
+      lighting.rebuild();
+      stopLighting = store.subscribe(() => lighting.rebuild());
+      perception = (id) => {
+        const x = store.getState().objects.tokens[id]?.x;
+        return x !== undefined && eye !== null && Math.abs(x - eye) <= 150 ? 'seen' : 'unseen';
+      };
+      const active = (): boolean => !store.getState().isGMView;
+      tokenRenderer.setPlayerSightProvider(() => (active() ? perception : undefined), active, () => built);
+      return lighting;
+    };
+    /** The party P with goblins A, B and C, which P sees from x 245; on the loaded scene P stands at C and leaves B in the dark. */
+    const partyScene = async (): Promise<void> => {
+      await goblins({ id: 'P', imagePath: ORC_IMAGE, x: 245 }, { id: 'A', x: 315 }, { id: 'B', x: 105 }, { id: 'C', x: 385 });
+    };
+    /** Another scene loads into this view, as `MapService` loads it: the party moved to C. */
+    const loadPartyScene = async (): Promise<void> => {
+      store.getState().setMapLoading(true);
+      store.setState((state) => ({ mapPath: 'maps/other.atlasmap', objects: { ...state.objects, tokens: {
+        P: { ...saved('P', 385, 1), imagePath: ORC_IMAGE },
+        A: saved('A', 315, 1),
+        B: saved('B', 105, 2),
+        C: saved('C', 385, 3),
+      } } }));
+      eventBus.emit('map-loaded');
+      await waitForTokens('P', 'A', 'B', 'C');
+      store.getState().setMapLoading(false);
+    };
+
+    it('numbers a loaded scene by its sight once the lighting has built it, also where the lighting hears of the load\'s end last', async () => {
+      await partyScene();
+      keptSight();
+      store.getState().setGMView(false);
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'gm 3']);
+      await loadPartyScene();
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
+    });
+
+    it('shows the players no badges while the lighting has no sight for the loaded scene, and numbers from the first it has', async () => {
+      await partyScene();
+      const lighting = keptSight();
+      store.getState().setGMView(false);
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'gm 3']);
+      lighting.blocked = true;
+      await loadPartyScene();
+      await expectLooks(['A', 'B', 'C'], ['none', 'none', 'none']);
+      // The context is back: the lighting builds the loaded scene.
+      lighting.blocked = false;
+      lighting.rebuild();
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
+    });
+
+    it('numbers by the lighting\'s sight once it has taken in a drop that moves the party and a look-alike together', async () => {
+      await goblins({ id: 'P', imagePath: ORC_IMAGE, x: 105 }, { id: 'A', x: 175 }, { id: 'B', x: 35 }, { id: 'C', x: 525 });
+      keptSight();
+      store.getState().setGMView(false);
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'none']);
+      // One drop takes the party away from B and brings C along; the token renderer hears of it before the lighting.
+      store.getState().dropTokens([{ id: 'P', x: 245, y: 105 }, { id: 'C', x: 210, y: 105 }]);
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
+    });
+
     it('numbers anew when the same map loads again with other tokens', async () => {
       await goblins({ id: 'A' }, { id: 'B' });
       store.getState().setGMView(false);

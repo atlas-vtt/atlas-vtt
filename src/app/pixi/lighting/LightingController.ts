@@ -148,7 +148,7 @@ export class LightingController {
   /** Routes the pointer from the token renderer's dispatch: lights and door badges with any tool, walls with the lighting tool. */
   wire(tokens: TokenRenderer): void {
     this.tokens = tokens;
-    tokens.setPlayerSightProvider(() => (this.session.active ? this.playerSight() : undefined), () => this.session.active);
+    tokens.setPlayerSightProvider(() => (this.session.active ? this.playerSight() : undefined), () => this.session.active, () => this.renderer.sightIsCurrent());
     wireLightingPointer(tokens, {
       lights: this.lights, editor: this.editor, modes: this.modes, doors: this.doors,
       wallMenu: (x, y, screenX, screenY) => showWallMenu(this.menuContext(), x, y, screenX, screenY),
