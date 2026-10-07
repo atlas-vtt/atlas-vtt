@@ -2,14 +2,11 @@ import { ItemView, type WorkspaceLeaf, type ViewStateResult } from 'obsidian';
 import { PlayerWindowService } from './services/PlayerWindowService';
 import { restorePlayerWindow } from './services/PlayerWindowPresenter';
 import { t } from './i18n';
+import type { PlayerCameraState } from './types/playerCamera';
+
+export type { PlayerCameraState } from './types/playerCamera';
 
 export const LOCAL_PLAYER_VIEW_TYPE = 'atlas-vtt-local-player';
-
-export interface PlayerCameraState {
-  centerX: number;
-  centerY: number;
-  scale: number;
-}
 
 function isPlayerCamera(value: unknown): value is PlayerCameraState {
   if (typeof value !== 'object' || value === null) return false;

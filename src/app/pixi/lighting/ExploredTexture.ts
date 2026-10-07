@@ -1,4 +1,5 @@
 import { Container, RenderTexture, Sprite, Texture, type Renderer } from 'pixi.js';
+import { getDomHost } from '../../host/dom';
 import type { ExploredShapes } from '../../vision/exploredShapes';
 import type { MapBounds } from '../../vision/visibility';
 import { destroyTree } from '../utils/destroyTree';
@@ -14,9 +15,7 @@ const MAX_TEXELS = 2048;
  * (none up to a half, all from three quarters).
  */
 function sharpened(image: HTMLImageElement, width: number, height: number): HTMLCanvasElement {
-  const canvas = createEl('canvas');
-  canvas.width = width;
-  canvas.height = height;
+  const canvas = getDomHost().createCanvas(undefined, { width, height });
   const context = canvas.getContext('2d');
   if (!context) return canvas;
   context.drawImage(image, 0, 0, width, height);
@@ -79,7 +78,8 @@ export class ExploredTexture {
    * at full size.
    */
   async decode(dataUrl: string): Promise<Texture> {
-    const image = createEl('img', { attr: { src: dataUrl } });
+    const image = new Image();
+    image.src = dataUrl;
     await image.decode();
     const { width, height } = this.texture;
     return Texture.from(image.naturalWidth < width || image.naturalHeight < height ? sharpened(image, width, height) : image);
@@ -116,9 +116,7 @@ export class ExploredTexture {
       image.data[i + 2] = 255;
       image.data[i + 3] = pixels[i]!;
     }
-    const canvas = createEl('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    const canvas = getDomHost().createCanvas(undefined, { width, height });
     canvas.getContext('2d')?.putImageData(image, 0, 0);
     return canvas;
   }

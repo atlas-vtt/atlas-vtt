@@ -1,10 +1,11 @@
 import { Matrix, type Application, type Container, type Texture } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
+import type { StoreApi } from 'zustand/vanilla';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { ExploredEdit } from '../../lighting/exploredEdits';
 import { sceneLook, type SceneLook } from '../../lighting/sceneLightingOptions';
 import type { SceneLighting } from '../../types/lightingTypes';
+import type { ViewState } from '../../types/viewState';
 import { SEES_ALL, type AmbientLight, type AmbientZone, type LightReach, type Sight } from '../../vision/sight';
 import { GM_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
 import type { SightRules } from '../../vision/sightRules';
@@ -15,10 +16,10 @@ import { requestRender } from '../RenderScheduler';
 import { awaitGpu, contextLost } from './engine/gpu';
 import { LightingEngine } from './engine/LightingEngine';
 import type { EngineScene, SceneFrame } from './engine/types';
-import { ExploredMemory } from './ExploredMemory';
+import { ExploredMemory, type ExploredMemoryState } from './ExploredMemory';
 import type { LightingAttempt } from './lightingAttempts';
 import { PlayerView } from './PlayerView';
-import { SceneModelBuilder, SceneSpots, type SceneModel } from '../../vision/sceneModel';
+import { SceneModelBuilder, SceneSpots, type SceneModel, type SceneState } from '../../vision/sceneModel';
 import type { ExploredMemoryWatcher, SceneLightingView } from './sceneLightingView';
 
 /** Above tokens, below their nameplates and bars (100): the GM keeps readable labels in the dark. */
@@ -28,10 +29,15 @@ const DEFAULT_CELL_SIZE = 70;
 /** Why the engine does not light a view: it stopped on this device, or its last attempt never drew a frame. */
 export type LightingUnavailable = 'failed' | 'unfinished';
 
+/** What the lighting reads of its view's state: the scene it lights, the load flag and the explored memory's part. */
+export type LightingState = SceneState & ExploredMemoryState & Pick<ViewState, 'exploredMask'>;
+
+export type LightingStore = Pick<StoreApi<LightingState>, 'getState' | 'subscribe'>;
+
 export interface LightingRendererDeps {
   viewport: Viewport;
   app: Application;
-  store: ViewAtlasStore;
+  store: LightingStore;
   measurement: () => MeasurementSettings;
   /** Size of the map image in world pixels, or null before it loaded. */
   bounds: () => MapBounds | null;
@@ -199,7 +205,7 @@ export class LightingRenderer implements SceneLightingView {
     this.deps.onUnavailable?.(reason);
   }
 
-  private update(state: ViewAtlasState): void {
+  private update(state: LightingState): void {
     const { lighting } = state;
     // A load rewrites the store in steps (the next map's path, a cleared scene, the saved one):
     // lighting is off for its duration, and the update that ends it builds the scene whole.
@@ -230,7 +236,7 @@ export class LightingRenderer implements SceneLightingView {
   }
 
   /** A model built anew: its sight and reaches are the view's, and what the tokens now see is recorded. */
-  private takeModel({ walls, lights, reaches, sight, gmSight = sight, explored, zones, ambient }: SceneModel, state: ViewAtlasState, bounds: MapBounds): SceneWithoutLook {
+  private takeModel({ walls, lights, reaches, sight, gmSight = sight, explored, zones, ambient }: SceneModel, state: LightingState, bounds: MapBounds): SceneWithoutLook {
     this.reaches = reaches;
     this.sight = sight;
     this.zones = ambient.zones ?? [];

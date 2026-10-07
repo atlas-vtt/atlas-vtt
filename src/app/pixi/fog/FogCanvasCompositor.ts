@@ -1,4 +1,5 @@
 /** Draws cached committed coverage and a separate temporary stroke on Canvas 2D. */
+import { getDomHost } from '../../host/dom';
 import type { FogBounds, FogOperation } from '../../types/fogTypes';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import { validateFogOperation } from '../../fog/fogOperationShape';
@@ -18,9 +19,10 @@ export class FogCanvasCompositor {
   ) {
     this.bounds = bounds;
     this.scale = scale;
-    this.canvas = createEl('canvas');
-    this.canvas.width = Math.max(1, Math.round(bounds.width * scale));
-    this.canvas.height = Math.max(1, Math.round(bounds.height * scale));
+    this.canvas = getDomHost().createCanvas(undefined, {
+      width: Math.max(1, Math.round(bounds.width * scale)),
+      height: Math.max(1, Math.round(bounds.height * scale)),
+    });
 
     const ctx = this.canvas.getContext('2d', { willReadFrequently: false, alpha: true });
     if (!ctx) throw new Error('Failed to get 2D context for fog compositor');

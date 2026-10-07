@@ -1,4 +1,4 @@
-import type { PlayerCameraState } from '../local-player-view';
+import type { PlayerCameraState } from '../types/playerCamera';
 import type { Perception } from '../vision/perception';
 
 /** Anything whose `visible` flag decides whether it is part of the next render. */

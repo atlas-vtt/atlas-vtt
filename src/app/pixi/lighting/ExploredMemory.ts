@@ -1,7 +1,9 @@
 import type { Renderer, Texture } from 'pixi.js';
+import type { StoreApi } from 'zustand/vanilla';
 import { editPolygons, type ExploredEdit } from '../../lighting/exploredEdits';
-import type { ViewAtlasStore } from '../../storeFactory';
+import type { HistorySnapshot } from '../../stores/history';
 import { forgetExploredEdits } from '../../stores/exploredEditHistory';
+import type { ViewState } from '../../types/viewState';
 import type { ExploredShapes } from '../../vision/exploredShapes';
 import type { MapBounds } from '../../vision/visibility';
 import { saveExploredMask } from './exploredMaskSaving';
@@ -11,9 +13,17 @@ import { ExploredTexture } from './ExploredTexture';
 
 const EXPLORED_SAVE_DELAY = 2000;
 
+/** What the memory reads of its view's state and the two actions it calls; the tracked records let it trim the undo history (`forgetExploredEdits`). */
+export type ExploredMemoryState = HistorySnapshot & Pick<ViewState, 'mapPath' | 'isMapLoading' | 'exploredEdits'> & {
+  setExploredMask(dataUrl: string | null): void;
+  setExploredEdits(count: number): void;
+};
+
+export type ExploredMemoryStore = Pick<StoreApi<ExploredMemoryState>, 'getState' | 'subscribe'>;
+
 export interface ExploredMemoryDeps {
   renderer: Renderer;
-  store: ViewAtlasStore;
+  store: ExploredMemoryStore;
   /** Whoever draws the memory takes each new texture before the old one is destroyed; null once there is none. */
   onTexture: (texture: Texture | null) => void;
   /** Undo (`undone`) or redo put an edit by hand back into the memory. */
