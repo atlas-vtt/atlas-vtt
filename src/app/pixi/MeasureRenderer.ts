@@ -1,18 +1,40 @@
 import { FederatedPointerEvent, Graphics, Text } from "pixi.js";
 import { Viewport } from "pixi-viewport";
-import { EventEmitter } from 'events';
+import type { StoreApi } from 'zustand/vanilla';
 import { getObsidianAccentColor, cssColorToHexNumber } from "./utils/colorUtils";
 import type { GridSystem } from "../grid/GridSystem";
 import { pathLengthInCells } from '../grid/gridDistance';
 import { formatDistance, resolveMeasurementSettings, type MeasurementSettings } from '../grid/measurementFormat';
-import type { ViewAtlasState } from '../storeFactory';
-import type { StoreApi } from 'zustand';
+import type { SceneSource } from '../host/sceneSource';
+import type { ViewState } from '../types/viewState';
 import { isHandled } from './utils/handledEvents';
-import { createMeasureLabelText, drawMeasureCircle, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, measureLabelFontSize } from './utils/measureDrawing';
+import { createMeasureLabelText, drawMeasureLabel, drawMeasurement, measureLabelFontSize, type MeasureRecord, type MeasureShape } from './utils/measureDrawing';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { MeasurePartsVisibility, type MeasurePlayersView } from './measurePartsVisibility';
 import type { LayerVisibility } from './playerSafeFrame';
 import type { TokenSeen } from '../vision/measureOrigin';
+
+/** What the measure tool reads of its view's state: the active tool, and the grid's snapping and measurement defaults. */
+export type MeasureStore = Pick<StoreApi<Pick<ViewState, 'activeTool' | 'grid'>>, 'getState' | 'subscribe'>;
+
+/** The grid a measurement snaps to and is measured on. */
+export type MeasureGrid = Pick<GridSystem, 'getOptions' | 'snapToCellCenter'>;
+
+/** Where the measure tool's options arrive: the shape picked and whether measurements stay on the map. */
+export interface MeasureToolEvents {
+  on(event: 'measure-shape-changed', listener: (shape: MeasureShape) => void): unknown;
+  on(event: 'measure-persistence-changed', listener: (persist: boolean) => void): unknown;
+  off(event: 'measure-shape-changed', listener: (shape: MeasureShape) => void): unknown;
+  off(event: 'measure-persistence-changed', listener: (persist: boolean) => void): unknown;
+}
+
+/** The measurements on the map: the one being drawn (or showing after its release) and those kept there. */
+export interface Measurements {
+  readonly live: MeasureRecord | null;
+  readonly kept: readonly MeasureRecord[];
+}
+
+const NO_MEASUREMENTS: Measurements = Object.freeze({ live: null, kept: Object.freeze([]) });
 
 interface PersistentMeasurement {
   graphics: Graphics;
@@ -22,9 +44,9 @@ interface PersistentMeasurement {
 
 export class MeasureRenderer {
   private viewport: Viewport;
-  private eventBus: EventEmitter;
-  private store: StoreApi<ViewAtlasState>;
-  private gridSystem: GridSystem;
+  private eventBus: MeasureToolEvents;
+  private store: MeasureStore;
+  private gridSystem: MeasureGrid;
   
   private measureGraphics: Graphics;
   private measureText: Text;
@@ -36,11 +58,20 @@ export class MeasureRenderer {
   private readonly parts: MeasurePartsVisibility;
 
   private isDrawing: boolean = false;
-  private startPoint: { x: number; y: number } | null = null;
-  private endPoint: { x: number; y: number } | null = null;
-  private measureShape: 'line' | 'cone' | 'circle' | 'sphere' = 'line';
+  private measureShape: MeasureShape = 'line';
   private persistMeasurements: boolean = false;
   private persistentMeasurements: PersistentMeasurement[] = [];
+  private current: Measurements = NO_MEASUREMENTS;
+  private readonly listeners = new Set<(next: Measurements, previous: Measurements) => void>();
+
+  /** The measurements as data, read-only: the live one and the kept ones, in the order they were kept. */
+  public readonly measurements: SceneSource<Measurements> = {
+    get: () => this.current,
+    subscribe: (listener) => {
+      this.listeners.add(listener);
+      return () => { this.listeners.delete(listener); };
+    },
+  };
   
   private pointerDownHandler: (e: FederatedPointerEvent) => void;
   private pointerMoveHandler: (e: FederatedPointerEvent) => void;
@@ -49,14 +80,14 @@ export class MeasureRenderer {
   
   private _unsubscribeFromToolChanges?: () => void;
   private _viewportScaleHandler?: () => void;
-  private _measureShapeChangedHandler?: (shape: 'line' | 'cone' | 'circle' | 'sphere') => void;
+  private _measureShapeChangedHandler?: (shape: MeasureShape) => void;
   private _measurePersistenceChangedHandler?: (persist: boolean) => void;
 
   constructor(
     viewport: Viewport,
-    eventBus: EventEmitter,
-    store: StoreApi<ViewAtlasState>,
-    gridSystem: GridSystem
+    eventBus: MeasureToolEvents,
+    store: MeasureStore,
+    gridSystem: MeasureGrid
   ) {
     this.viewport = viewport;
     this.eventBus = eventBus;
@@ -90,7 +121,7 @@ export class MeasureRenderer {
     this.pointerUpHandler = this.handlePointerUp.bind(this);
     
     // Subscribe to tool changes
-    this._unsubscribeFromToolChanges = this.store.subscribe((state: ViewAtlasState) => {
+    this._unsubscribeFromToolChanges = this.store.subscribe((state) => {
       const tool = state.activeTool;
       if (tool === 'measure' || tool === 'measure-circle' || tool === 'measure-cone') {
         this.enableMeasureTool();
@@ -114,7 +145,7 @@ export class MeasureRenderer {
     }
     
     // Listen for measure shape changes
-    this._measureShapeChangedHandler = (shape: 'line' | 'cone' | 'circle' | 'sphere') => {
+    this._measureShapeChangedHandler = (shape: MeasureShape) => {
       this.measureShape = shape;
       // Clear any existing measurement when shape changes
       this.clearMeasurement();
@@ -149,7 +180,7 @@ export class MeasureRenderer {
     this.measureText.style.fontSize = measureLabelFontSize(this.viewport.scale.x);
     
     // Redraw pill if text is visible
-    if (this.startPoint && this.endPoint) {
+    if (this.current.live) {
       this.updatePillAndText();
     }
   }
@@ -187,11 +218,9 @@ export class MeasureRenderer {
       
       const point = this.measurePoint(e);
       this.parts.start([this.viewport.toWorld(e.global), point]);
-      this.startPoint = point;
-      this.endPoint = point;
       this.isDrawing = true;
       
-      this.updateMeasurement();
+      this.updateMeasurement(point, point);
     }
   }
   
@@ -209,8 +238,8 @@ export class MeasureRenderer {
     
     e.stopPropagation();
     
-    this.endPoint = this.measurePoint(e);
-    this.updateMeasurement();
+    const live = this.current.live;
+    if (live) this.updateMeasurement(live.start, this.measurePoint(e));
   }
 
   /** Pointer position in world space, snapped to the cell centre while the grid's snap setting is on. */
@@ -253,60 +282,27 @@ export class MeasureRenderer {
     }
   }
   
-  private updateMeasurement(): void {
-    if (!this.startPoint || !this.endPoint) return;
-    
+  private updateMeasurement(start: { x: number; y: number }, end: { x: number; y: number }): void {
+    const live = { shape: this.measureShape, start, end };
+    this.setMeasurements({ ...this.current, live });
     this.measureGraphics.clear();
-    
-    // Get accent color from Obsidian theme
-    const accent = getObsidianAccentColor();
-    const accentHex = cssColorToHexNumber(accent);
-    
-    // Calculate distance for radius
-    const dx = this.endPoint.x - this.startPoint.x;
-    const dy = this.endPoint.y - this.startPoint.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    switch (this.measureShape) {
-      case 'line':
-        this.drawLine(accentHex);
-        break;
-      case 'circle':
-      case 'sphere':
-        this.drawCircle(accentHex, distance);
-        break;
-      case 'cone':
-        this.drawCone(accentHex, distance, dx, dy);
-        break;
-    }
-    
-    drawMeasurePoint(this.measureGraphics, accentHex, this.startPoint);
-
-    this.measureText.text = this.measurementLabel(this.startPoint, this.endPoint);
+    drawMeasurement(this.measureGraphics, cssColorToHexNumber(getObsidianAccentColor()), live, this.measurementSettings().coneAngle);
+    this.measureText.text = this.measurementLabel(start, end);
     this.parts.drawn();
-    
-    // Update pill and text for current zoom level
     this.updatePillAndText();
   }
   
-  private drawLine(color: number): void {
-    if (!this.startPoint || !this.endPoint) return;
-    this.drawLineOnGraphics(this.measureGraphics, color, this.startPoint, this.endPoint);
-  }
-  
-  private drawCircle(color: number, radius: number): void {
-    if (!this.startPoint) return;
-    drawMeasureCircle(this.measureGraphics, color, this.startPoint, radius);
-  }
-  
-  private drawCone(color: number, distance: number, dx: number, dy: number): void {
-    if (!this.startPoint) return;
-    this.drawConeOnGraphics(this.measureGraphics, color, distance, dx, dy, this.startPoint);
-  }
-  
   private updatePillAndText(): void {
-    if (!this.startPoint || !this.endPoint || !this.measureText.text) return;
-    drawMeasureLabel(this.measurePill, this.measureText, this.labelAnchor(this.startPoint, this.endPoint), this.viewport.scale.x);
+    const live = this.current.live;
+    if (!live || !this.measureText.text) return;
+    drawMeasureLabel(this.measurePill, this.measureText, this.labelAnchor(live.start, live.end), this.viewport.scale.x);
+  }
+
+  /** Records the measurements on the map and tells whoever follows them. */
+  private setMeasurements(next: Measurements): void {
+    const previous = this.current;
+    this.current = next;
+    for (const listener of [...this.listeners]) listener(next, previous);
   }
 
   /** Midpoint of the measurement, lifted a constant screen distance above the line. */
@@ -327,49 +323,24 @@ export class MeasureRenderer {
     this.measureGraphics.clear();
     this.measurePill.clear();
     this.parts.cleared();
-    this.startPoint = null;
-    this.endPoint = null;
     this.rightClickDownPos = null;
+    if (this.current.live) this.setMeasurements({ ...this.current, live: null });
   }
   
   private createPersistentMeasurement(): void {
-    if (!this.startPoint || !this.endPoint || !this.measureText.text) return;
+    if (!this.current.live || !this.measureText.text) return;
+    const record: MeasureRecord = { shape: this.measureShape, start: this.current.live.start, end: this.current.live.end };
     
-    // Create new graphics objects for the persistent measurement
     const persistGraphics = new Graphics();
     const persistPill = new Graphics();
     const persistText = new Text({ 
       text: this.measureText.text, 
       style: this.measureText.style.clone() 
     });
-    
-    // Copy the current measurement graphics
-    persistGraphics.clear();
-    const accent = getObsidianAccentColor();
-    const accentHex = cssColorToHexNumber(accent);
-    
-    // Redraw the measurement shape
-    const dx = this.endPoint.x - this.startPoint.x;
-    const dy = this.endPoint.y - this.startPoint.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    
-    switch (this.measureShape) {
-      case 'line':
-        this.drawLineOnGraphics(persistGraphics, accentHex, this.startPoint, this.endPoint);
-        break;
-      case 'circle':
-      case 'sphere':
-        drawMeasureCircle(persistGraphics, accentHex, this.startPoint, distance);
-        break;
-      case 'cone':
-        this.drawConeOnGraphics(persistGraphics, accentHex, distance, dx, dy, this.startPoint);
-        break;
-    }
-    
-    drawMeasurePoint(persistGraphics, accentHex, this.startPoint);
+    drawMeasurement(persistGraphics, cssColorToHexNumber(getObsidianAccentColor()), record, this.measurementSettings().coneAngle);
 
     persistText.anchor.set(0.5);
-    drawMeasureLabel(persistPill, persistText, this.labelAnchor(this.startPoint, this.endPoint), this.viewport.scale.x);
+    drawMeasureLabel(persistPill, persistText, this.labelAnchor(record.start, record.end), this.viewport.scale.x);
     const measurement = { graphics: persistGraphics, pill: persistPill, text: persistText };
     this.parts.keep(measurement);
     
@@ -378,64 +349,8 @@ export class MeasureRenderer {
       this.viewport.addChild(part);
     }
     
-    // Store the persistent measurement
     this.persistentMeasurements.push(measurement);
-  }
-  
-  private drawLineOnGraphics(graphics: Graphics, color: number, start: { x: number; y: number }, end: { x: number; y: number }): void {
-    drawMeasurePath(graphics, color, [start, end]);
-    drawMeasurePoint(graphics, color, end);
-  }
-  
-  private drawConeOnGraphics(graphics: Graphics, color: number, distance: number, dx: number, dy: number, start: { x: number; y: number }): void {
-    // The collection's game system sets how wide the cone opens
-    const halfAngle = this.measurementSettings().coneAngle * Math.PI / 360;
-    
-    // Calculate the angle of the line
-    const baseAngle = Math.atan2(dy, dx);
-    
-    // Calculate the two edge points of the cone
-    const leftAngle = baseAngle - halfAngle;
-    const rightAngle = baseAngle + halfAngle;
-    
-    const leftX = start.x + distance * Math.cos(leftAngle);
-    const leftY = start.y + distance * Math.sin(leftAngle);
-    const rightX = start.x + distance * Math.cos(rightAngle);
-    const rightY = start.y + distance * Math.sin(rightAngle);
-    
-    // Draw the cone shape
-    graphics.moveTo(start.x, start.y);
-    graphics.lineTo(leftX, leftY);
-    graphics.arc(
-      start.x, 
-      start.y, 
-      distance, 
-      leftAngle, 
-      rightAngle, 
-      false
-    );
-    graphics.lineTo(start.x, start.y);
-    graphics.fill({ color: color, alpha: 0.1 });
-    
-    // Draw the outline
-    graphics.moveTo(start.x, start.y);
-    graphics.lineTo(leftX, leftY);
-    graphics.stroke({ width: 3, color: color, alpha: 0.8 });
-    
-    graphics.moveTo(start.x, start.y);
-    graphics.lineTo(rightX, rightY);
-    graphics.stroke({ width: 3, color: color, alpha: 0.8 });
-    
-    // Draw the arc
-    graphics.arc(
-      start.x, 
-      start.y, 
-      distance, 
-      leftAngle, 
-      rightAngle, 
-      false
-    );
-    graphics.stroke({ width: 3, color: color, alpha: 0.8 });
+    this.setMeasurements({ ...this.current, kept: [...this.current.kept, record] });
   }
   
   private clearAllPersistentMeasurements(): void {
@@ -457,9 +372,9 @@ export class MeasureRenderer {
       measurement.text.destroy();
     }
     
-    // Clear the array
     this.persistentMeasurements = [];
     this.parts.forgetKept();
+    if (this.current.kept.length > 0) this.setMeasurements({ ...this.current, kept: [] });
   }
 
   /** What the players' picture shows of the measurements: one that started on a token they do not see is left out. */
@@ -501,5 +416,6 @@ export class MeasureRenderer {
     this.measureGraphics.destroy();
     this.measurePill.destroy();
     this.measureText.destroy();
+    this.listeners.clear();
   }
 }

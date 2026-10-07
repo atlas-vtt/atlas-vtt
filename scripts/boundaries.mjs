@@ -84,7 +84,10 @@ export const BOUNDARIES = {
       "src/app/react/components/dice/diceSourcePresentation.ts",
       "src/app/react/components/dice/diceToastOrnament.ts",
       "src/app/packages/components/shared/TokenPortrait.tsx",
-      "src/app/tools/diceLabels.ts"
+      "src/app/tools/diceLabels.ts",
+      "src/app/pixi/MeasureRenderer.ts",
+      "src/app/pixi/measurePartsVisibility.ts",
+      "src/app/pixi/mapLayerOrder.ts"
     ],
     "exclude": [
       "src/app/grid/GridController.ts",
