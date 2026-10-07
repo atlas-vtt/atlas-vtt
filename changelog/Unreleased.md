@@ -26,6 +26,8 @@
 
 - Dice rolls, sounds and history stay in the map view that made them. The player window follows the presented view, and clearing a log leaves other views alone.
 
+- Undo and redo now change only what that edit changed. Changes Atlas made by itself since, such as following a renamed file, stay.
+
 ## Important changes
 
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.
