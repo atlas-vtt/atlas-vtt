@@ -96,7 +96,7 @@ function writes(gm: boolean): fc.Arbitrary<Command>[] {
       write(model, real, gm, run, withRec(model.state, 'tokens', { id: newId(), entries: model.state.objects.tokens.entries }));
     })),
     fc.constant(command(`untracked field${by}`, () => true, (model, real) => {
-      write(model, real, gm, apply(real, (draft) => { draft.elsewhere += 1; }), model.state);
+      write(model, real, gm, apply(real, (draft) => { draft.notTracked += 1; }), model.state);
     })),
   ];
 }

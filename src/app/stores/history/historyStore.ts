@@ -59,7 +59,7 @@ type Stacks = Pick<HistoryState, 'pastStates' | 'futureStates'>;
 /**
  * One store's undo history. A step is the tracked state before and after a write of the GM
  * (or an outermost transaction); undo and redo move the store towards a step's other side,
- * so what Atlas itself wrote since to anything else stays.
+ * so what Atlas itself wrote since to anything the step did not change stays.
  *
  * While the GM's work is under way (an open transaction, or a write whose listeners are still
  * running), what it writes belongs to the steps next to the present. `mark` is where those

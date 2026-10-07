@@ -13,7 +13,7 @@ export interface RealState {
   widgetValues: Record<string, number>;
   exploredEdits: number;
   /** A field the history does not track. */
-  elsewhere: number;
+  notTracked: number;
   apply: (recipe: (draft: Draft<RealState>) => void) => void;
 }
 
@@ -24,7 +24,7 @@ export interface Real { store: StoreApi<RealState>; history: () => HistoryState;
 
 export function createReal(): Real {
   const store = create<RealState>()(withHistory(immer<RealState>((set) => ({
-    objects: { tokens: {} }, grid: null, background: null, widgetValues: {}, exploredEdits: 0, elsewhere: 0, apply: (recipe) => set(recipe),
+    objects: { tokens: {} }, grid: null, background: null, widgetValues: {}, exploredEdits: 0, notTracked: 0, apply: (recipe) => set(recipe),
   }))));
   const history = getHistoryStore(store)!;
   return { store, history: () => history.getState(), own: [] };

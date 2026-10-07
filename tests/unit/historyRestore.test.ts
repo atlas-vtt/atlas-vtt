@@ -32,7 +32,7 @@ describe('putting back what a step changed', () => {
     expect(objectsOf(result).tokens).toBe(current.objects && objectsOf(current).tokens);
   });
 
-  it('keeps a light zone others added beside the first one', () => {
+  it('keeps a light zone added since beside the first one', () => {
     const z = { v: 1 }; const y = { v: 2 };
     const before = slice({ tokens: {} });
     const after = slice({ tokens: {}, lightZones: { z } });
@@ -48,7 +48,7 @@ describe('putting back what a step changed', () => {
     expect(keys(towards({ b, a, c }, after, before, 1) as object)).toEqual(['a', 'b', 'c']);
   });
 
-  it('keeps entities others added since, and their values', () => {
+  it('keeps entities added since, and their values', () => {
     const a = { v: 1 }; const a2 = { v: 2 }; const x = { v: 9 };
     const result = towards({ a: a2, x }, { a: a2 }, { a }, 1) as Entities;
     expect(result).toEqual({ a, x });
