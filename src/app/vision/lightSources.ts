@@ -1,5 +1,4 @@
 import { lightList, readEmission } from '../lighting/lightingObjects';
-import { Color } from 'pixi.js';
 import type { TokenEntity } from '../types';
 import type { LightEmission, LightSource } from '../types/lightingTypes';
 import { isLightOn } from '../lighting/lightActivity';
@@ -73,8 +72,10 @@ export function engineLight(light: ActiveLight, scale: UnitScale): EngineLight {
   };
 }
 
+/** `#rrggbb`, as `readEmission` hands every light's colour, mixed towards white and linearised. */
 function tintedLinear(hex: string): [number, number, number] {
-  const c = new Color(hex);
-  const linear = (v: number): number => srgbToLinear(1 + (v - 1) * TINT_TO_WHITE);
-  return [linear(c.red), linear(c.green), linear(c.blue)];
+  const value = Number.parseInt(hex.slice(1), 16);
+  // PIXI's Color kept each channel in single precision; rounding the same way keeps every light's colour to the last bit.
+  const linear = (channel: number): number => srgbToLinear(1 + (Math.fround(channel / 255) - 1) * TINT_TO_WHITE);
+  return [linear((value >> 16) & 0xff), linear((value >> 8) & 0xff), linear(value & 0xff)];
 }
