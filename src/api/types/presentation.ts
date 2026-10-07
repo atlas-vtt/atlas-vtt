@@ -24,8 +24,16 @@ export interface PresentationTarget {
   id: string;
   /** Names the audience in the eye's tooltip, e.g. "the second screen". */
   label: string;
-  /** While any target is active, the scene tab's eye presents without opening the player window, its tooltip names the target, and a presented scene's eye stops presenting. */
+  /** While any target is active, the scene tab's eye presents without opening the player window, its tooltip names the target, a presented scene's eye stops presenting, and right-click offers "Open player window". */
   isActive(): boolean;
+  /**
+   * Capability `scene-tabs`: a short mark after a tab's eye ("2 players"), or null for none. At most 24 characters,
+   * plain text (trimmed; longer is cut with "…"). A tab with a mark draws its eye as shown, and the mark joins the eye's
+   * accessible name; what clicking the eye does is unchanged. Asked only while the target is active (the first active
+   * target's non-null mark wins), on render and after `ui.invalidate()`. A throw or a value that is not a string or null
+   * shows no mark and is logged once.
+   */
+  tabBadge?(tab: { viewId: ViewId; tabId: string }): string | null;
 }
 
 export interface PresentationApi {
@@ -42,8 +50,8 @@ export interface PresentationApi {
   /** Hears every change of the presented scene; each callback runs guarded, and the listener is dropped when this extension unloads. */
   subscribe(listener: PresentationListener): Disposer;
   /**
-   * Adds an audience besides the player window. Its `id`, `label` and `isActive` are read once; `isActive`
-   * is then called on `target` itself, guarded. Adding the same object again changes nothing; another target with an `id`
+   * Adds an audience besides the player window. Its `id`, `label`, `isActive` and `tabBadge` are read once; `isActive`
+   * and `tabBadge` are then called on `target` itself, guarded. Adding the same object again changes nothing; another target with an `id`
    * this extension already added, or a malformed one, throws. Removed by the returned disposer or when this extension unloads.
    */
   addTarget(target: PresentationTarget): Disposer;

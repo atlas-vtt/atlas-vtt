@@ -49,6 +49,7 @@ import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
+import { useExtensionCommands } from './command-palette/useExtensionCommands';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
 import { t } from '../../i18n';
@@ -107,6 +108,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const setInitiativeTrackerOpen = useAtlasStore(state => state.setInitiativeTrackerOpen);
   const setDiceLogOpen = useAtlasStore(state => state.setDiceLogOpen);
   const setLootRollerOpen = useAtlasStore(state => state.setLootRollerOpen);
+  const extensionCommands = useExtensionCommands(isOpen ? view?.viewId : undefined, store, onClose);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [focusedOptionIndex, setFocusedOptionIndex] = useState<number>(-1);
@@ -415,6 +417,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         },
       ],
     },
+    ...extensionCommands.options,
     ...(onCustomizeToolbar ? [customizeToolbarCommand(() => onCustomizeToolbar(choosingByKeyboard.current), onClose)] : []),
   ];
 
@@ -749,6 +752,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     { id: 'tools', title: t('palette.tab.tools') },
     { id: 'mode', title: t('palette.tab.mode') },
     { id: 'settings', title: t('palette.tab.settings') },
+    ...extensionCommands.sections,
   ].map((section) => ({
     ...section,
     options: filteredOptions.filter((option) => option.section === section.id),

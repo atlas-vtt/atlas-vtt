@@ -46,6 +46,15 @@ interface Entry {
   unsubscribe: () => void;
   loadedPath: string | null;
   closeHooks: Set<() => void>;
+  /** The tabs as `tabs-changed` last described them (`tabsKey`); a change queues one event per microtask. */
+  tabsKey: string;
+  tabsQueued: boolean;
+}
+
+/** What `tabs-changed` reports: the tabs by id, path, name and order, and the active tab; not their loaded or dirty marks. */
+function tabsKey(view: TrackedMapView): string {
+  const { tabs, activeTabId } = view.tabMetaStore.getState();
+  return JSON.stringify([activeTabId, tabs.map((tab) => [tab.id, tab.filePath, tab.displayName])]);
 }
 
 /** Follows the open map views for the API: which there are, and when one loads a map or closes. */
@@ -110,8 +119,23 @@ export class ViewTracker {
     }
   }
 
+  /** One `tabs-changed` per view per microtask, once its tabs differ from the last described; never for a closed view. */
+  private queueTabsChanged(entry: Entry): void {
+    if (entry.tabsQueued) return;
+    entry.tabsQueued = true;
+    queueMicrotask(() => {
+      entry.tabsQueued = false;
+      const { view } = entry;
+      if (view.isClosed || this.entries.get(view.viewId) !== entry) return;
+      const key = tabsKey(view);
+      if (key === entry.tabsKey) return;
+      entry.tabsKey = key;
+      this.events.emit('tabs-changed', viewInfo(view));
+    });
+  }
+
   private track(view: TrackedMapView): void {
-    const entry: Entry = { view, unsubscribe: () => undefined, loadedPath: null, closeHooks: new Set() };
+    const entry: Entry = { view, unsubscribe: () => undefined, loadedPath: null, closeHooks: new Set(), tabsKey: tabsKey(view), tabsQueued: false };
     const check = (): void => {
       const state = view.atlasStore.getState();
       const path = isLoaded(state) ? state.mapPath : null;
@@ -119,7 +143,9 @@ export class ViewTracker {
       entry.loadedPath = path;
       if (changed) this.events.emit('map-loaded', viewInfo(view));
     };
-    entry.unsubscribe = view.atlasStore.subscribe(check);
+    const stopScene = view.atlasStore.subscribe(check);
+    const stopTabs = view.tabMetaStore.subscribe(() => this.queueTabsChanged(entry));
+    entry.unsubscribe = (): void => { stopScene(); stopTabs(); };
     this.entries.set(view.viewId, entry);
     let closed = false;
     view.register(() => {

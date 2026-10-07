@@ -12,4 +12,5 @@ export const present = {
   'present.playersSee': 'Players see {name}',
   'present.playersSeeOnceLoaded': 'Players see {name} once it loads',
   'present.stopped': 'Players no longer see a scene',
+  'present.openPlayerWindow': 'Open player window',
 } as const satisfies Record<string, Message>;

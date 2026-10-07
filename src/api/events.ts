@@ -3,7 +3,7 @@ import type { AtlasEvents } from './types/api';
 type Listener = (...args: never[]) => void;
 
 /** Every event an extension can hear (`AtlasExtension.on`); the compiler checks the list against `AtlasEvents`. */
-export const API_EVENTS = ['unload', 'map-loaded', 'map-closed', 'rules-changed', 'settings-changed'] as const satisfies ReadonlyArray<keyof AtlasEvents>;
+export const API_EVENTS = ['unload', 'map-loaded', 'map-closed', 'rules-changed', 'settings-changed', 'tabs-changed'] as const satisfies ReadonlyArray<keyof AtlasEvents>;
 /** Compiles only while every event of `AtlasEvents` is in `API_EVENTS`. */
 export const EVERY_EVENT_LISTED: [Exclude<keyof AtlasEvents, (typeof API_EVENTS)[number]>] extends [never] ? true : never = true;
 

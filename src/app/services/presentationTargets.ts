@@ -4,9 +4,16 @@ export interface PresentationTargetEntry {
   id: string;
   label: string;
   isActive(): boolean;
+  /** A short mark after a tab's eye, or null for none (`PresentationTarget.tabBadge`). */
+  tabBadge?(tab: { viewId: string; tabId: string }): string | null;
 }
 
-/** Audiences besides the player window, kept like the extension API's other registrations (`SlotRegistry`). */
+/** The longest badge an eye shows; a longer one is cut with an ellipsis. */
+const TAB_BADGE_MAX = 24;
+/** Targets whose `tabBadge` failed already: the failure is logged once, not on every render. */
+const failedBadges = new WeakSet<PresentationTargetEntry>();
+
+/** Audiences besides the player window, one slot of the extension API like the rest of `extensions/slots.ts`. */
 export const presentationTargetSlot = new SlotRegistry<PresentationTargetEntry>();
 
 /**
@@ -36,11 +43,50 @@ export function presentationTargetsRegistered(): boolean {
   return presentationTargetSlot.list().length > 0;
 }
 
-/** For React (useSyncExternalStore): targets were added, removed, or asked to be re-read. */
+/** For React (useSyncExternalStore) and `ui.invalidate()`: targets were added, removed, or asked to be re-read. */
 export function subscribePresentationTargets(listener: () => void): () => void {
   return presentationTargetSlot.subscribe(listener);
 }
 
 export function invalidatePresentationTargets(): void {
   presentationTargetSlot.invalidate();
+}
+
+function badgeFailed(owner: string, target: PresentationTargetEntry, problem: unknown): null {
+  if (!failedBadges.has(target)) {
+    failedBadges.add(target);
+    console.error(`[Atlas API] ${owner}: presentation target "${target.id}" tabBadge failed:`, problem);
+  }
+  return null;
+}
+
+/** One target's badge for a tab: plain text, trimmed, at most `TAB_BADGE_MAX` characters; null for none, a throw or a non-string. */
+function badgeOf(owner: string, target: PresentationTargetEntry, viewId: string, tabId: string): string | null {
+  let value: unknown;
+  try {
+    value = target.tabBadge?.(Object.freeze({ viewId, tabId }));
+  } catch (error) {
+    return badgeFailed(owner, target, error);
+  }
+  if (value === null || value === undefined) return null;
+  if (typeof value !== 'string') return badgeFailed(owner, target, new TypeError(`expected a string or null, got ${typeof value}`));
+  // Characters, not UTF-16 units, so a cut never splits an emoji.
+  const text = [...value.replace(/\p{Cc}/gu, ' ').trim()];
+  if (text.length === 0) return null;
+  return text.length > TAB_BADGE_MAX ? `${text.slice(0, TAB_BADGE_MAX - 1).join('').trimEnd()}…` : text.join('');
+}
+
+/** The mark after a tab's eye: the first active target's non-null badge; null when no active target gives one. */
+export function tabBadgeFor(viewId: string, tabId: string): string | null {
+  for (const { owner, item } of presentationTargetSlot.list()) {
+    if (!item.tabBadge || !safely(owner, 'presentation target', () => item.isActive(), false)) continue;
+    const badge = badgeOf(owner, item, viewId, tabId);
+    if (badge !== null) return badge;
+  }
+  return null;
+}
+
+/** For React (useSyncExternalStore): changes whenever targets are added, removed or asked to be re-read, so badges are read again. */
+export function presentationTargetsVersion(): number {
+  return presentationTargetSlot.version();
 }

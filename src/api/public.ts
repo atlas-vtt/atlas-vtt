@@ -10,3 +10,4 @@ export type * from './types/lighting';
 export type * from './types/tokens';
 export type * from './types/rules';
 export type * from './types/settings';
+export type * from './types/ui';

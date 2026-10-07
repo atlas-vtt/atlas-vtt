@@ -38,6 +38,8 @@ import { tokenSizeSubmenu } from '../../react/components/context-menu/tokenSizeM
 import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
+import { tokenMenuEntries } from '../../extensions/menuEntries';
+import { viewContextOf } from '../../extensions/viewContext';
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { t } from '../../i18n';
 
@@ -65,6 +67,8 @@ export class InteractionController implements ITokenInteractionController {
   private eventBus: EventEmitter;
   private obsApp: App;
   public isPlayerView: boolean;
+  /** The view this controller belongs to, for the token menu's extension entries (wired by TokenRenderer). */
+  public viewId = '';
   
   // Condition definitions provider — wired by PixiRendererOrchestrator
   public conditionDefsProvider: (() => ConditionDefinition[]) | null = null;
@@ -422,6 +426,7 @@ export class InteractionController implements ITokenInteractionController {
     this.onSelectionUpdate?.();
   };
 
+
   private cleanupDragListeners(): void {
     // Remove all drag-related event listeners from viewport
     this.viewport.off('pointermove', this.onPointerMove, this);
@@ -591,6 +596,9 @@ export class InteractionController implements ITokenInteractionController {
         hideTargets.map((id) => ({ id, changes: { isHidden: !isHidden } })),
       ),
     });
+
+    // What other plugins added to a token's menu (GM views only)
+    if (!this.isPlayerView) entries.push(...tokenMenuEntries(viewContextOf({ viewId: this.viewId }, this.store), token));
 
     // Vision and carried light, for the selection the token belongs to
     if (!this.isPlayerView && dynamicLightingOn(this.obsApp)) {

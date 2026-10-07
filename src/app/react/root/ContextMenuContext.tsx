@@ -1,13 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { renderEntries, type ContextMenuEntry } from '../components/context-menu/AtlasContextMenu';
+import { LiveEntries, type ContextMenuEntries } from '../components/context-menu/AtlasContextMenu';
 import { useAtlasStore } from '../ViewStoreContext';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
 
 // Re-export the entry type so consumers only import from this file
-export type { ContextMenuEntry } from '../components/context-menu/AtlasContextMenu';
+export type { ContextMenuEntries, ContextMenuEntry } from '../components/context-menu/AtlasContextMenu';
 
 // ── Context + hook ──────────────────────────────────────────────────────────
 
@@ -18,10 +18,15 @@ export interface ContextMenuOptions {
    * a point and cannot hold focus.
    */
   returnFocus?: HTMLElement | null;
+  /**
+   * With entries given as a function: says when to read them again while the menu is open, so its own rows (not only a
+   * submenu's) stay current; returns the unsubscribe. A rebuild that leaves nothing closes the menu.
+   */
+  subscribe?: (onChange: () => void) => () => void;
 }
 
 interface ContextMenuController {
-  open: (entries: ContextMenuEntry[], position: { x: number; y: number }, options?: ContextMenuOptions) => void;
+  open: (entries: ContextMenuEntries, position: { x: number; y: number }, options?: ContextMenuOptions) => void;
   close: () => void;
 }
 
@@ -42,10 +47,11 @@ export const useContextMenu = (): ContextMenuController => {
 const controllers: ContextMenuController[] = [];
 
 export function openContextMenuGlobal(
-  entries: ContextMenuEntry[],
+  entries: ContextMenuEntries,
   position: { x: number; y: number },
+  options?: ContextMenuOptions,
 ): void {
-  controllers[controllers.length - 1]?.open(entries, position);
+  controllers[controllers.length - 1]?.open(entries, position, options);
 }
 
 export function closeContextMenuGlobal(): void {
@@ -55,9 +61,10 @@ export function closeContextMenuGlobal(): void {
 // ── Provider ────────────────────────────────────────────────────────────────
 
 interface MenuState {
-  entries: ContextMenuEntry[];
+  entries: ContextMenuEntries;
   position: { x: number; y: number };
   returnFocus: HTMLElement | null;
+  subscribe: ((onChange: () => void) => () => void) | undefined;
 }
 
 /** Focuses `element` where the menu left focus nowhere (on the body): a choice that moved focus keeps it there. */
@@ -76,8 +83,8 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const close = useCallback((): void => setMenuState(null), []);
 
-  const open = useCallback((entries: ContextMenuEntry[], position: { x: number; y: number }, options?: ContextMenuOptions): void => {
-    setMenuState({ entries, position, returnFocus: options?.returnFocus ?? null });
+  const open = useCallback((entries: ContextMenuEntries, position: { x: number; y: number }, options?: ContextMenuOptions): void => {
+    setMenuState({ entries, position, returnFocus: options?.returnFocus ?? null, subscribe: options?.subscribe });
   }, []);
 
   useEffect(() => {
@@ -125,7 +132,7 @@ export const ContextMenuProvider: React.FC<{ children: React.ReactNode }> = ({ c
                 onContextMenu={(e) => e.preventDefault()}
                 onCloseAutoFocus={(e) => returnFocusTo(menuState.returnFocus, e)}
               >
-                {renderEntries(menuState.entries, close)}
+                <LiveEntries entries={menuState.entries} subscribe={menuState.subscribe} onClose={close} closeWhenEmpty={typeof menuState.entries === 'function'} />
               </DropdownMenu.Content>
             </DropdownMenu.Portal>
           )}

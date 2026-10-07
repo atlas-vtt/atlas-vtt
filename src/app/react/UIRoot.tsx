@@ -21,7 +21,7 @@ import { LootRoller } from './components/loot/LootRollerPanel';
 import { MapLoadingOverlay } from './components/MapLoadingOverlay';
 import { SceneTabBar } from './components/SceneTabBar';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
-import { presentTab as presentTabFor } from './tabPresenting';
+import { openSceneTabMenu, presentTab as presentTabFor } from './tabPresenting';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
 import { HotkeyHelp } from '../keyboard/HotkeyHelp';
@@ -35,6 +35,7 @@ import { useMapNavigationHotkeys } from './useMapNavigationHotkeys';
 import { useExperimentalFeature } from './hooks/useExperimentalFeature';
 import type { AtlasView } from '../atlas-view';
 import { runInBackground } from '../utils/backgroundTask';
+import { ExtensionPanels } from '../extensions/ExtensionPanels';
 
 interface UIRootProps {
   app: App;
@@ -70,10 +71,12 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const switchTab = (tabId: string): void => {
     if (view) runInBackground(view.switchToTab(tabId), 'Switching scene tab');
   };
-  // While a presentation target is active the eye presents to it only.
+  // While a presentation target is active the eye presents to it only; its menu opens the player window.
   const presentTab = (tabId: string): void => {
     if (view) presentTabFor(app, view, tabId);
   };
+  const presentTabMenu = (tabId: string, position: { x: number; y: number }, returnFocus?: HTMLElement): boolean =>
+    view ? openSceneTabMenu(app, view, tabId, position, returnFocus ?? null) : false;
 
   // Context value with all required objects
   const contextValue: AtlasUIContextValue = useMemo(
@@ -168,6 +171,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                   onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
                   onAddTab={() => view?.openSceneBrowser()}
                   onPresentTab={presentTab}
+                  onPresentTabMenu={presentTabMenu}
                   onShowAllTabs={() => setSceneSwitcherOpen(true)}
                 />
               </PanelBoundary>
@@ -230,6 +234,9 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {!isPlayerView && <PanelBoundary name="the loot roller"><LootRoller /></PanelBoundary>}
           {!isPlayerView && lightingOn && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /></PanelBoundary>}
           {!isPlayerView && lightingOn && <PanelBoundary name="the scene lighting"><SceneLightingPanelHost /></PanelBoundary>}
+
+          {/* Floating panels other plugins added - GM view only */}
+          {!isPlayerView && <PanelBoundary name="the extension panels"><ExtensionPanels /></PanelBoundary>}
 
           {/* Player Character Sheet - REMOVED: Players should only edit via their character sheet file */}
           

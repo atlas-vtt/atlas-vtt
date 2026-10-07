@@ -19,6 +19,8 @@ interface DraggablePositionOptions {
   onDragEnd?: (position: PanelPosition) => void;
   /** Least distance kept between the panel and the edges of its area. */
   margin?: number;
+  /** Read when a drag starts: where the panel is now, for a panel that sits in flow until it is first moved. */
+  measureStart?: (panel: HTMLElement) => PanelPosition | null;
 }
 
 export interface DraggablePosition {
@@ -58,12 +60,14 @@ function place(panel: HTMLElement, position: PanelPosition): void {
  * drag ends and when the window resizes. While dragging, the panel moves
  * without re-rendering; the position is committed once the drag ends.
  */
-export function useDraggablePosition(initial: InitialPanelPosition, { onDragEnd, margin = 8 }: DraggablePositionOptions = {}): DraggablePosition {
+export function useDraggablePosition(initial: InitialPanelPosition, { onDragEnd, margin = 8, measureStart }: DraggablePositionOptions = {}): DraggablePosition {
   const [position, setPositionState] = useState<PanelPosition>(() => (typeof initial === 'function' ? { x: 0, y: 0 } : initial));
   const [isDragging, setIsDragging] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const positionRef = useRef(position);
   const initialRef = useRef(initial);
+  const measureStartRef = useRef(measureStart);
+  measureStartRef.current = measureStart;
   const notifyDragEnd = useStableCallback((settled: PanelPosition): void => onDragEnd?.(settled));
 
   const setPosition = useCallback((next: PanelPosition): void => {
@@ -98,6 +102,8 @@ export function useDraggablePosition(initial: InitialPanelPosition, { onDragEnd,
     if (!panel || event.button !== 0) return;
     if (event.target instanceof Element && event.target.closest('button, input, select, textarea')) return;
     event.preventDefault();
+    const measured = measureStartRef.current?.(panel);
+    if (measured) setPosition(measured);
 
     const win = panel.win;
     const start = { x: event.clientX, y: event.clientY, panel: positionRef.current };

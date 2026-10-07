@@ -10,6 +10,7 @@ import { rulesApi } from './rules';
 import { settingsApi } from './settings';
 import { storageApi } from './storage';
 import { tokensApi } from './tokens';
+import { uiApi } from './ui';
 import { viewsApi } from './views';
 import type { AtlasEvents, AtlasExtension } from './types/api';
 import type { AtlasCapability, Disposer } from './types/common';
@@ -32,9 +33,10 @@ export function buildExtension(scope: ExtensionScope, services: ApiServices): At
     if (!acceptsListener(`on('${event}')`, listener)) return () => undefined;
     return scope.disposers.add(scope.events.on(event, listener));
   }
-  return Object.freeze({ id: scope.id, on, views: viewsApi(services.views, scope.disposers),
-    presentation: presentationApi(services.views, scope.disposers, scope.id), dice: diceApi(services.app, scope.disposers, services.views),
+  return Object.freeze({ id: scope.id, on, views: viewsApi(services.views, scope.disposers, scope.capabilities.has('scene-tabs')),
+    presentation: presentationApi(services.views, scope.disposers, scope.id, scope.capabilities.has('scene-tabs')), dice: diceApi(services.app, scope.disposers, services.views),
     lasers: lasersApi(services.views, scope.disposers), lighting: lightingApi(services.views, services.sightFrames, scope.disposers),
     tokens: tokensApi(services.views), rules: rulesApi(services.app),
-    settings: settingsApi(services.settings), storage: storageApi(services.app, scope.id) });
+    settings: settingsApi(services.settings), storage: storageApi(services.app, scope.id),
+    ui: uiApi(scope, services.views) });
 }

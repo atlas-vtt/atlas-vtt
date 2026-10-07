@@ -1,6 +1,6 @@
-import React, { useEffect, useReducer, useRef } from 'react';
+import React, { useEffect, useReducer } from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
-import { setIcon } from 'obsidian';
+import { ObsidianIcon } from '../ObsidianIcon';
 import { runInBackground } from '../../../utils/backgroundTask';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import './atlas-context-menu.scss';
@@ -30,10 +30,16 @@ export type ContextMenuEntry =
     label: string;
     icon?: string;
     /** A function is read again whenever `subscribe` reports a change, so an open submenu stays current. */
-    children: ContextMenuEntry[] | (() => ContextMenuEntry[]);
+    children: ContextMenuEntries;
     subscribe?: (onChange: () => void) => () => void;
   }
-  | { type: 'custom'; render: () => React.ReactNode };
+  | { type: 'custom'; render: () => React.ReactNode }
+  /** A heading row over the entries that follow: plain text, not focusable and never chosen. */
+  | { type: 'label'; text: string }
+  | { type: 'separator' };
+
+/** A menu's entries: a function is read again whenever the menu's `subscribe` reports a change, so an open menu stays current. */
+export type ContextMenuEntries = ContextMenuEntry[] | (() => ContextMenuEntry[]);
 
 export interface MenuStepper {
   value: string;
@@ -57,27 +63,31 @@ function runEntryAction(entry: ContextMenuItemEntry): void {
 
 // ── Icon helper ─────────────────────────────────────────────────────────────
 
-function ObsidianIcon({ name }: { name: string }): React.ReactElement {
-  const ref = useRef<HTMLSpanElement>(null);
+function CtxIcon({ name }: { name: string }): React.ReactElement {
+  return <ObsidianIcon name={name} className="atlas-ctx-icon" />;
+}
 
-  useEffect(() => {
-    if (ref.current) {
-      while (ref.current.firstChild) {
-        ref.current.removeChild(ref.current.firstChild);
-      }
-      setIcon(ref.current, name);
-    }
-  }, [name]);
+interface LiveEntriesProps {
+  entries: ContextMenuEntries;
+  subscribe?: ((onChange: () => void) => () => void) | undefined;
+  onClose: () => void;
+  /** Closes the menu once a rebuild leaves nothing to show (the root menu; an empty submenu just shows nothing). */
+  closeWhenEmpty?: boolean;
+}
 
-  return <span ref={ref} className="atlas-ctx-icon" />;
+/** A menu's entries, rebuilt whenever `subscribe` reports that they changed. Rows keep their keys (by index), so focus survives a rebuild of the same shape. */
+export function LiveEntries({ entries, subscribe, onClose, closeWhenEmpty = false }: LiveEntriesProps): React.ReactElement {
+  const [, refresh] = useReducer((version: number) => version + 1, 0);
+  useEffect(() => subscribe?.(refresh), [subscribe]);
+  const list = typeof entries === 'function' ? entries() : entries;
+  const empty = list.length === 0;
+  useEffect(() => { if (closeWhenEmpty && empty) onClose(); }, [closeWhenEmpty, empty, onClose]);
+  return <>{renderEntries(list, onClose)}</>;
 }
 
 /** A submenu's entries, rebuilt whenever the submenu reports that they changed. */
 function SubmenuEntries({ entry, onClose }: { entry: ContextMenuSubmenuEntry; onClose: () => void }): React.ReactElement {
-  const [, refresh] = useReducer((version: number) => version + 1, 0);
-  useEffect(() => entry.subscribe?.(refresh), [entry]);
-  const children = typeof entry.children === 'function' ? entry.children() : entry.children;
-  return <>{renderEntries(children, onClose)}</>;
+  return <LiveEntries entries={entry.children} subscribe={entry.subscribe} onClose={onClose} />;
 }
 
 /** Runs a stepper action from a click inside a menu item without choosing the item. */
@@ -94,13 +104,13 @@ function Stepper({ stepper }: { stepper: MenuStepper }): React.ReactElement {
     <span className="atlas-ctx-stepper">
       <LabelTooltip label={t('menu.lower', { label: stepper.label })}>
         <button type="button" tabIndex={-1} className="atlas-ctx-stepper__button" disabled={!stepper.canDecrement} onClick={stepperClick(stepper.onDecrement)}>
-          <ObsidianIcon name="minus" />
+          <CtxIcon name="minus" />
         </button>
       </LabelTooltip>
       <span className="atlas-ctx-stepper__value">{stepper.value}</span>
       <LabelTooltip label={t('menu.raise', { label: stepper.label })}>
         <button type="button" tabIndex={-1} className="atlas-ctx-stepper__button" onClick={stepperClick(stepper.onIncrement)}>
-          <ObsidianIcon name="plus" />
+          <CtxIcon name="plus" />
         </button>
       </LabelTooltip>
     </span>
@@ -132,7 +142,7 @@ function ItemContent({ entry }: { entry: ContextMenuItemEntry }): React.ReactEle
           {entry.stepper && <Stepper stepper={entry.stepper} />}
           {entry.checked !== undefined && (
             <DropdownMenu.ItemIndicator forceMount className="atlas-ctx-item__check">
-              <ObsidianIcon name="check" />
+              <CtxIcon name="check" />
             </DropdownMenu.ItemIndicator>
           )}
         </span>
@@ -149,6 +159,16 @@ export function renderEntries(
 ): React.ReactNode[] {
   return entries.map((entry, idx) => {
     switch (entry.type) {
+      case 'label':
+        return (
+          <DropdownMenu.Label key={`label-${idx}`} className="atlas-ctx-label">
+            <span role="presentation">{entry.text}</span>
+          </DropdownMenu.Label>
+        );
+
+      case 'separator':
+        return <DropdownMenu.Separator key={`separator-${idx}`} className="atlas-ctx-separator" />;
+
       case 'custom':
         return (
           <div key={`custom-${idx}`} className="atlas-ctx-custom" role="none">
@@ -163,11 +183,11 @@ export function renderEntries(
               className={`atlas-ctx-item atlas-ctx-submenu-trigger`}
             >
               <span className="atlas-ctx-item__leading">
-                {entry.icon ? <ObsidianIcon name={entry.icon} /> : <span className="atlas-ctx-icon-spacer" />}
+                {entry.icon ? <CtxIcon name={entry.icon} /> : <span className="atlas-ctx-icon-spacer" />}
                 <span className="atlas-ctx-item__label">{entry.label}</span>
               </span>
               <span className="atlas-ctx-item__trailing">
-                <ObsidianIcon name="chevron-right" />
+                <CtxIcon name="chevron-right" />
               </span>
             </DropdownMenu.SubTrigger>
             <DropdownMenu.Portal>

@@ -5,6 +5,8 @@ import React, { useState, useEffect } from 'react';
 import { AssetService } from './services/AssetService';
 import { GlobalAssetManagerService } from './services/GlobalAssetManagerService';
 import { Button } from './packages/components/primitives/button';
+import { ActionCard } from './react/components/ActionCard';
+import { ExtensionDashboardTiles } from './extensions/ExtensionDashboardTiles';
 import {
   Map,
   Plus,
@@ -47,7 +49,7 @@ function resolveSceneThumbnail(app: App, mapPath: string): string | null {
   return thumbFile instanceof TFile ? app.vault.getResourcePath(thumbFile) : null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({
+export const Dashboard: React.FC<DashboardProps> = ({
   app,
   onOpenScene,
   onCreateMap,
@@ -186,16 +188,10 @@ const Dashboard: React.FC<DashboardProps> = ({
 
               <div className="action-grid">
                 {actionTiles.map(({ key, icon: Icon, title, desc, onClick }) => (
-                  <Button key={key} variant="ghost" className="action-card" onClick={onClick}>
-                    <span className="action-icon">
-                      <Icon size={18} />
-                    </span>
-                    <span className="action-text">
-                      <span className="action-title">{title}</span>
-                      <span className="action-desc">{desc}</span>
-                    </span>
-                  </Button>
+                  <ActionCard key={key} icon={<Icon size={18} />} title={title} description={desc} onClick={onClick} />
                 ))}
+                {/* Tiles other plugins added follow Atlas's own */}
+                <ExtensionDashboardTiles />
               </div>
             </div>
 

@@ -218,3 +218,21 @@ $ctx-inset: $spacing-xs;
     background: color-mix(in oklch, var(--color-red) 25%, transparent);
   }
 }
+
+// ── Heading row and separator (an extension's section in the scene tab menu) ──
+
+.atlas-ctx-label {
+  padding: $spacing-xs $spacing-s 0;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  font-weight: $font-weight-semibold;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atlas-ctx-separator {
+  height: $border-width-s;
+  margin: $spacing-xs 0;
+  background-color: var(--background-modifier-border);
+}

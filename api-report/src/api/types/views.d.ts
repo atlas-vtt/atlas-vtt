@@ -31,6 +31,12 @@ export interface SceneSnapshot {
     readonly mapPath: string | null;
     readonly loaded: boolean;
     /**
+     * Capability `scene-tabs`: the tab whose scene this is, set once `loaded`; null while loading.
+     * Null too while the view's `activeTabId` already names the next tab but the store still holds the previous one's
+     * scene, so a snapshot whose `tabId` names a tab always holds that tab's scene. A snapshot with no tab is no tab's.
+     */
+    readonly tabId?: string | null;
+    /**
      * The loaded background's size in world pixels; 0 × 0 without one.
      * Read when the snapshot is taken: the background may finish drawing after `loaded`; take a fresh snapshot when you need the size.
      */
@@ -62,10 +68,18 @@ export interface ViewsApi {
     active(): ViewInfo | null;
     /** The scene in the view's store now; null for a view that is not open. */
     snapshot(viewId: ViewId): SceneSnapshot | null;
-    /** Called after each store change that replaced one of the snapshot's fields (by reference). */
+    /** Called after each store change that replaced one of the snapshot's fields (by reference); also when `tabId` changes. */
     subscribe(viewId: ViewId, listener: (snapshot: SceneSnapshot) => void): Disposer;
     /** The view's visible world area now, frozen; null for a view that is not open, has no viewport yet or has no size. */
     camera(viewId: ViewId): ViewCamera | null;
     /** Called after every viewport frame (pixi-viewport `frame-end`), so gestures, moves and resizes alike. */
     watchCamera(viewId: ViewId, listener: (camera: ViewCamera) => void): Disposer;
+    /**
+     * Capability `scene-tabs`: makes a tab of a GM map view active without presenting it.
+     * Answers true once that tab's map is loaded. Answers false for a closed or unknown view,
+     * an unknown tab, or when another switch overtook this one; also when the view closes before the tab has loaded, or
+     * the switch and load take longer than 60 s. Never throws for these.
+     * The presented scene holds while the view shows another tab, as on any switch, and resumes when the GM returns to it.
+     */
+    showTab?(viewId: ViewId, tabId: string): Promise<boolean>;
 }

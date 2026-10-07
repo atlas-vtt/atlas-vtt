@@ -187,6 +187,11 @@
   @media (max-width: $breakpoint-xs) {
     grid-template-columns: 1fr;
   }
+
+  // An odd tile out takes the whole row instead of leaving half of it empty.
+  > .action-card:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
 }
 
 .action-card.btn {

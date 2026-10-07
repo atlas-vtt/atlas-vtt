@@ -12,6 +12,7 @@ import AssetManager from "./asset-manager/AssetManager"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { Toggle } from "./primitives/Toggle"
 import { isAtlasToolAvailable } from "../../tools/toolAvailability"
+import { useExtensionToolbarItems, withExtensionToolbarItems } from "../../extensions/extensionToolbarItems"
 import { useExperimentalFeature } from "../../react/hooks/useExperimentalFeature"
 import type { ExperimentalFeatureId } from "../../experimental/experimentalFeatures"
 import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER } from "../../toolbar/toolbarCatalog"
@@ -161,6 +162,10 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const order = (dm ? layout.order : DEFAULT_TOOLBAR_ORDER).filter((id) => available.has(id))
   const items: ResponsiveToolbarItem[] = order.map((id) => ({ id, ...TOOLBAR_CONTROL_ITEMS[id](ctx) }))
   const editor = useToolbarEditor({ access: layoutAccess, store: editStore, items, available, hotkeyLabel, editing, stop: stopEditing })
+  // Items other plugins registered sit after the dice and leave for "More tools" like Atlas's own. The editor
+  // arranges Atlas's controls only, so while it is open the bar shows those alone.
+  const extensionItems = useExtensionToolbarItems(viewId ?? view?.viewId, store, isActualPlayerView)
+  const barItems = editing ? items : withExtensionToolbarItems(items, extensionItems)
   const hiddenIds: ReadonlySet<string> = layout.hidden
   const publishedEdit = editing ? editor.api : null
 
@@ -177,7 +182,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
           <MotionConfig reducedMotion="user">
             <ResponsiveToolbar
               ref={ref || toolbarRef}
-              items={items}
+              items={barItems}
               editing={editing}
               {...(dm && { hiddenIds, motion: editor.motion })}
               // The GM view switch keeps the bar's last place, after "More tools".

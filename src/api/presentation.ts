@@ -11,7 +11,8 @@ function info(scene: InternalScene, held: boolean): PresentedSceneInfo {
   return Object.freeze({ presentationId: scene.presentationId, viewId: scene.view.viewId, tabId: scene.tabId, mapPath: tab?.filePath ?? '', held });
 }
 
-export function presentationApi(tracker: ViewTracker, disposers: DisposerSet, owner: string): PresentationApi {
+/** `withTabs`: a target's `tabBadge` (`scene-tabs`) is read. */
+export function presentationApi(tracker: ViewTracker, disposers: DisposerSet, owner: string, withTabs = false): PresentationApi {
   /** Atlas's entry for each target object added, so adding the same object again changes nothing. */
   const kept = new WeakMap<object, PresentationTargetEntry>();
   return Object.freeze({
@@ -50,14 +51,18 @@ export function presentationApi(tracker: ViewTracker, disposers: DisposerSet, ow
       const known = target && typeof target === 'object' ? kept.get(target) : undefined;
       if (known) return disposers.add(addPresentationTarget(known, owner));
       // Each field read once into Atlas's own entry, so the tab bar never reads the extension's object (a throwing getter).
-      const { id, label, isActive } = (target ?? {}) as Partial<PresentationTarget>;
+      const { id, label, isActive, tabBadge } = (target ?? {}) as Partial<PresentationTarget>;
       if (typeof id !== 'string' || id === '' || typeof label !== 'string' || typeof isActive !== 'function') {
         throw new Error('[Atlas API] presentation.addTarget: the target must be { id: non-empty string, label: string, isActive(): boolean }.');
+      }
+      if (withTabs && tabBadge !== undefined && typeof tabBadge !== 'function') {
+        throw new Error('[Atlas API] presentation.addTarget: "tabBadge" must be a function when given.');
       }
       if (presentationTargetSlot.list().some((entry) => entry.owner === owner && entry.item.id === id)) {
         throw new Error(`[Atlas API] presentation.addTarget: "${id}" is already added by this extension.`);
       }
-      const entry: PresentationTargetEntry = Object.freeze({ id, label, isActive: (): boolean => isActive.call(target) });
+      const badge = withTabs && tabBadge ? { tabBadge: (tab: { viewId: ViewId; tabId: string }): string | null => tabBadge.call(target, tab) } : {};
+      const entry: PresentationTargetEntry = Object.freeze({ id, label, isActive: (): boolean => isActive.call(target), ...badge });
       kept.set(target, entry);
       return disposers.add(addPresentationTarget(entry, owner));
     },

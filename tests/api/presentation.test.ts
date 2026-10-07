@@ -10,7 +10,7 @@ import { AtlasView } from '../../src/app/atlas-view';
 import { DisposerSet } from '../../src/api/disposers';
 import { presentationApi } from '../../src/api/presentation';
 import { PresentedScene, presentedScene } from '../../src/app/services/PresentedScene';
-import { activePresentationTarget, addPresentationTarget } from '../../src/app/services/presentationTargets';
+import { activePresentationTarget, addPresentationTarget, tabBadgeFor } from '../../src/app/services/presentationTargets';
 import { playerWindowStore } from '../../src/app/stores/playerWindowStore';
 import { fakeView, loadMap as load, trackerWith, type FakeView } from './apiFakes';
 
@@ -184,6 +184,43 @@ describe('presentation', () => {
     target.active = false;
     expect(activePresentationTarget()).toBeNull();
     stop();
+    disposers.disposeAll();
+  });
+
+  it('C-badge-1: tabBadge is read once and called on the target; a throw or a badge too long is handled, a non-function refused', () => {
+    const { presentation, disposers } = setupWith(fakeView('v1'));
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    let reads = 0;
+    const target = {
+      id: 'room', label: 'The room', isActive: (): boolean => true, players: 2, fail: false,
+      get tabBadge(): (tab: { viewId: string; tabId: string }) => string | null {
+        reads++;
+        return function (this: { players: number; fail: boolean }, tab) {
+          if (this.fail) throw new Error('boom');
+          return tab.tabId === 'long' ? `${this.players} players on the far side of the map` : `${this.players} players`;
+        };
+      },
+    };
+    presentation.addTarget(target);
+    expect(reads).toBe(1);
+    expect(tabBadgeFor('v1', 't1')).toBe('2 players');
+    expect(tabBadgeFor('v1', 'long')).toBe('2 players on the far si…');
+    target.fail = true;
+    expect(tabBadgeFor('v1', 't1')).toBeNull();
+    expect(tabBadgeFor('v1', 't1')).toBeNull();
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(() => presentation.addTarget({ id: 'bad', label: 'Bad', isActive: () => true, tabBadge: 'two' } as never)).toThrow('[Atlas API] presentation.addTarget: "tabBadge" must be a function when given.');
+    disposers.disposeAll();
+    expect(tabBadgeFor('v1', 't1')).toBeNull();
+    error.mockRestore();
+  });
+
+  it('reads no tabBadge without the scene-tabs capability', () => {
+    const view = fakeView('v1');
+    const disposers = new DisposerSet();
+    const presentation = presentationApi(trackerWith([view]).tracker, disposers, 'ext');
+    presentation.addTarget({ id: 'room', label: 'The room', isActive: () => true, tabBadge: () => '2 players' });
+    expect(tabBadgeFor('v1', 't1')).toBeNull();
     disposers.disposeAll();
   });
 });

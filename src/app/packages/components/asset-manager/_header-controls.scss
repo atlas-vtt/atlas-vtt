@@ -59,6 +59,17 @@
     @include atlas-truncate;
   }
 
+  // An extension's tab shows its icon where Atlas's tabs show a count.
+  .atlas-tab-icon {
+    display: inline-flex;
+    flex-shrink: 0;
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
   .atlas-tab-count {
     color: var(--text-faint);
     font-size: $font-ui-smaller;

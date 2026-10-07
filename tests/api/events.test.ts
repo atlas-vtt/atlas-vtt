@@ -34,4 +34,14 @@ describe('ApiEvents', () => {
     events.emit('unload');
     expect(after).toHaveBeenCalledTimes(1);
   });
+
+  it('C-tabs-1: lists tabs-changed, so an extension can hear it', () => {
+    expect(API_EVENTS).toContain('tabs-changed');
+    const events = new ApiEvents();
+    const listener = vi.fn();
+    events.on('tabs-changed', listener);
+    const view = { viewId: 'v1', kind: 'map', activeTabId: null, tabs: [], mapPath: null, loaded: false } as const;
+    events.emit('tabs-changed', view);
+    expect(listener).toHaveBeenCalledWith(view);
+  });
 });

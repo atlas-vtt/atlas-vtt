@@ -22,7 +22,7 @@
   transition: box-shadow $transition-normal $transition-ease;
 
   &.is-dragging {
-    box-shadow: $shadow-elevated, 0 18px 48px rgba(0, 0, 0, 0.28);
+    box-shadow: $shadow-dragging;
     user-select: none;
   }
 }

@@ -4,6 +4,11 @@ import { App, FileView, Notice } from 'obsidian';
 import { getActiveWorkspaceLeaf } from '../../utils/embeddedLeafFocus';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../root/ContextMenuContext';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
+import { providedMenuEntries } from '../../extensions/menuEntries';
+import { viewMenuSlot } from '../../extensions/slots';
+import { viewContextOf } from '../../extensions/viewContext';
+import { useAtlasUI } from '../root/AtlasUIContext';
+import { useViewStoreHook } from '../ViewStoreContext';
 import { t } from '../../i18n';
 
 interface ViewActionsMenuProps {
@@ -13,6 +18,8 @@ interface ViewActionsMenuProps {
 
 export const ViewActionsMenu: React.FC<ViewActionsMenuProps> = ({ app, filePath }) => {
   const [isVisible, setIsVisible] = useState(false);
+  const { view } = useAtlasUI();
+  const store = useViewStoreHook();
 
   useEffect(() => {
     // mount tracking (no-op)
@@ -36,6 +43,8 @@ export const ViewActionsMenu: React.FC<ViewActionsMenuProps> = ({ app, filePath 
       { type: 'item', label: t('view.splitRight'), icon: 'separator-vertical', onClick: () => app.workspace.createLeafBySplit(activeLeaf, 'vertical') },
       { type: 'item', label: t('view.splitDown'), icon: 'separator-horizontal', onClick: () => app.workspace.createLeafBySplit(activeLeaf, 'horizontal') },
       { type: 'item', label: t('view.newWindow'), icon: 'maximize', onClick: () => app.workspace.moveLeafToPopout(activeLeaf) },
+      // What other plugins added, read now so the menu is current
+      ...(view ? providedMenuEntries(viewMenuSlot, 'view menu items', viewContextOf(view, store)) : []),
     ];
 
     if (filePath) {

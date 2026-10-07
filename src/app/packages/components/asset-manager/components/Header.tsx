@@ -13,7 +13,7 @@ import { HeaderSearch } from './HeaderSearch';
 import type { FilterSearch } from '../hooks/useFilterSearch';
 import { useHeaderCompaction } from '../hooks/useHeaderCompaction';
 import { SortControls } from './SortControls';
-import { TabSwitcher } from './TabSwitcher';
+import { TabSwitcher, type TabSwitcherProps } from './TabSwitcher';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
 import { t } from '../../../../i18n';
 
@@ -26,6 +26,8 @@ export interface HeaderProps {
   activeTab: Tab;
   onTabChange: (tab: Tab) => void;
   assetCounts: Record<Tab, number> | null;
+  /** Tabs extensions added (`ui.addAssetTab`). */
+  extensionTabs?: TabSwitcherProps['extensionTabs'];
   onCreateTokens?: () => void;
   onCreateMap?: () => void;
   onCreateCollection?: () => void;
@@ -55,6 +57,7 @@ export function Header({
   activeTab,
   onTabChange,
   assetCounts,
+  extensionTabs,
   onCreateTokens,
   onCreateMap,
   onCreateCollection,
@@ -127,7 +130,7 @@ export function Header({
         </div>
 
         <div className="atlas-am-toolbar-center">
-          <TabSwitcher activeTab={activeTab} onTabChange={onTabChange} assetCounts={assetCounts} />
+          <TabSwitcher activeTab={activeTab} onTabChange={onTabChange} assetCounts={assetCounts} {...(extensionTabs ? { extensionTabs } : {})} />
         </div>
 
         <div className="atlas-am-toolbar-right">

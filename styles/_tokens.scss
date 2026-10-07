@@ -34,6 +34,9 @@ $shadow-md: var(--shadow-s);
 // Elevated shadow for modals and floating panels (Obsidian's modal shadow)
 $shadow-elevated: var(--shadow-l);
 
+// A floating panel lifted while it is dragged or resized
+$shadow-dragging: $shadow-elevated, 0 18px 48px rgba(0, 0, 0, 0.28);
+
 // ── Typography ───────────────────────────────────────────────────────────────
 // Obsidian's fixed UI type ramp. Use these instead of rem/px font sizes so the
 // plugin scales with the user's interface font settings.

@@ -11,4 +11,4 @@ export interface Point {
 
 export type AtlasCapability =
   | 'views' | 'presentation' | 'rules' | 'lighting' | 'tokens' | 'dice'
-  | 'lasers' | 'settings' | 'storage';
+  | 'lasers' | 'ui' | 'settings' | 'storage' | 'scene-tabs' | 'asset-tabs';

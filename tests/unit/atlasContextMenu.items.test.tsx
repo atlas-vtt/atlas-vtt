@@ -89,4 +89,22 @@ describe('context menu items', () => {
     React.act(() => listener?.());
     expect(screen.getByRole('menuitem', { name: 'After' })).toBeTruthy();
   });
+
+  it('draws a label row and a separator that are never focused or chosen', () => {
+    const onClose = vi.fn();
+    renderMenu([
+      { type: 'label', text: 'Present to' },
+      { type: 'item', label: 'Anna', onClick: vi.fn() },
+      { type: 'separator' },
+      { type: 'item', label: 'Ben', onClick: vi.fn() },
+    ], onClose);
+    const label = screen.getByText('Present to');
+    expect(label.getAttribute('role')).toBe('presentation');
+    expect(label.closest('.atlas-ctx-label')!.getAttribute('aria-hidden')).toBeNull();
+    expect(label.closest('.atlas-ctx-label')!.hasAttribute('tabindex')).toBe(false);
+    expect(screen.getByRole('separator')).toBeTruthy();
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Anna', 'Ben']);
+    fireEvent.click(label);
+    expect(onClose).not.toHaveBeenCalled();
+  });
 });

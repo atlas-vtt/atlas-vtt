@@ -244,6 +244,7 @@ History lives in `src/app/stores/history.ts` and `src/app/stores/history/` (Atla
 ## Extension API
 - **One entry point** (`src/api/`, documented in `docs/extension-api.md`): `plugin.api`, published by `ExtensionApiPublisher` once the asset index settles. `api.connect(plugin)` scopes everything to the plugin's manifest id; every registration goes into that extension's `DisposerSet` and is removed when either plugin unloads. The view tracker and the watches behind the API's events start on the first `connect()`: without an extension, Atlas does no work for the API.
 - **The contract is the report** (`api-report/`, a tsc declaration tree from `src/api/public.ts`, `npm run api:report`). It includes some of Atlas's own record types (tokens, widgets, walls, lights, initiative), so changing such a record changes the report. CI fails a stale report only for a change that touches `src/api/`, the report or a file it includes (`scripts/api-report-check.js`); then regenerate it and bump `API_VERSION` (`src/api/version.ts`) when it changed.
+- **Slots render nothing without registrations** (`src/app/extensions/`): toolbar, palette, dashboard, menus, panels, asset manager tabs, the scene tab eye's menu section. Each host reads an extension's items once and runs its callbacks in `safely`, so a throw or a malformed item never breaks Atlas's own UI.
 - **The presented scene** (`presentation`): what the player window and an extension's presentation targets show. Atlas's own presenting is unchanged until an extension registers a target.
 
 ## Experimental features

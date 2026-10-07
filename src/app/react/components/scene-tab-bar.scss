@@ -139,10 +139,23 @@ $tab-fade: 24px;
       color: var(--text-normal);
     }
 
-    &--active {
+    &--active,
+    &--shown {
       visibility: visible;
       color: var(--text-accent);
     }
+  }
+
+  // A presentation target's mark after the eye ("2 players")
+  &__badge {
+    flex-shrink: 1;
+    min-width: 0;
+    max-width: 24ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-muted);
+    font-size: var(--font-ui-smaller);
   }
 
   &:hover .atlas-scene-tab__action,

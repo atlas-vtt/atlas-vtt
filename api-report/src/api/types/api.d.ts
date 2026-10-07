@@ -7,6 +7,7 @@ import type { PresentationApi } from './presentation';
 import type { RulesApi } from './rules';
 import type { AtlasSettingKey, SettingsApi, StorageApi } from './settings';
 import type { TokensApi } from './tokens';
+import type { UiApi } from './ui';
 import type { ViewInfo, ViewsApi } from './views';
 /** What `connect` needs of the calling plugin: its id, and where to register its own teardown. */
 export type ConnectingPlugin = Pick<Plugin, 'manifest' | 'register'>;
@@ -33,6 +34,11 @@ export interface AtlasEvents {
     'rules-changed': (collectionId: string | null) => void;
     /** A setting's value changed; read it again with `settings.get`. */
     'settings-changed': (key: AtlasSettingKey) => void;
+    /**
+     * Capability `scene-tabs`: a GM map view's tabs (added, closed, moved, renamed) or its active tab changed. Fires once per
+     * view per microtask with the view as it is then. `map-loaded` and `map-closed` are unchanged.
+     */
+    'tabs-changed': (view: ViewInfo) => void;
 }
 export interface AtlasExtension {
     /** The calling plugin's manifest id. */
@@ -46,6 +52,7 @@ export interface AtlasExtension {
     readonly rules: RulesApi;
     readonly settings: SettingsApi;
     readonly storage: StorageApi;
+    readonly ui: UiApi;
     /**
      * Hears an Atlas event. The listener runs guarded (a throw is logged and the other listeners still run) and is dropped
      * when this extension or Atlas unloads. A listener that is not a function, or an event Atlas does not have, registers

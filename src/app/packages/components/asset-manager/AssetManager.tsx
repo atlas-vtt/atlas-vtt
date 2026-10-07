@@ -25,6 +25,9 @@ import { useHeldWhile } from './hooks/useHeldWhile';
 import { useLoadingReveal } from '../primitives/useLoadingReveal';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 import { useRememberedPlace } from './hooks/useRememberedPlace';
+import { useExtensionTabs } from '../../../extensions/useExtensionTabs';
+import { assetTabSlot } from '../../../extensions/slots';
+import { ExtensionAssetPane } from './components/ExtensionAssetPane';
 import { sortAssets } from './utils/assetSort';
 import { filterFolders, type AssetFilter } from './utils/assetFilter';
 import { useCreatureFilters } from './hooks/useCreatureFilters';
@@ -61,11 +64,17 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
   const visibleIds = useRef<VisibleIds>({ assets: [], folders: [] });
   const sel = useSelectionHandlers(visibleIds, data.folders, activeTab, isOpen);
 
+  const extensionTabs = useExtensionTabs(assetTabSlot, isOpen);
   const changeTab = useCallback((tab: Tab): void => {
+    extensionTabs.show(null);
     if (tab === activeTab) return;
     setActiveTab(tab);
     sel.resetForTab();
-  }, [activeTab, sel.resetForTab]);
+  }, [activeTab, sel.resetForTab, extensionTabs.show]);
+  const showExtensionTab = (key: string): void => {
+    sel.resetForTab();
+    extensionTabs.show(key);
+  };
 
   const memory = useRememberedPlace({
     isOpen, initialTab, data, sel,
@@ -232,6 +241,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   activeTab={activeTab}
                   onTabChange={changeTab}
                   assetCounts={data.assetCounts}
+                  extensionTabs={{ tabs: extensionTabs.tabs, active: extensionTabs.active, onSelect: showExtensionTab }}
                   onCreateTokens={() => crud.setIsTokenCreatorOpen(true)}
                   onCreateMap={crud.handleCreateMap}
                   onCreateCollection={crud.handleCreateCollection}
@@ -246,6 +256,9 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onDragOver={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; } }}
                   onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
                 >
+                  {extensionTabs.active ? (
+                    <ExtensionAssetPane entry={extensionTabs.active} collectionId={selectedCollection} />
+                  ) : (<>
                   <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />
                   <Breadcrumb
                     activeTab={shown.tab}
@@ -292,6 +305,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                       />
                     </AssetTagMenuContext.Provider>
                   </div>
+                  </>)}
                 </div>
               </div>
             </motion.div>
