@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { areTemporalSnapshotsEqual } from '../../src/app/stores/temporalEquality';
+import { sameTrackedSlice as areTemporalSnapshotsEqual } from '../../src/app/stores/history/trackedSlice';
 
 describe('areTemporalSnapshotsEqual', () => {
   it('returns true when tracked references are unchanged', () => {
