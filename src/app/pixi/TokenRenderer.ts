@@ -43,6 +43,7 @@ import { setCanvasCursor } from './utils/canvasCursor';
 import { markHandled, resetHandled } from './utils/handledEvents';
 import { watchClick } from './utils/clickRelease';
 import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
+import { SCENE_LAYER_Z } from './sceneLayerOrder';
 import type { LightPointerHandlers } from './lighting/LightInteraction';
 import { runInBackground } from '../utils/backgroundTask';
 import { isModHeld } from '../keyboard/modKey';
@@ -266,7 +267,7 @@ export class TokenRenderer {
     this.tokenContainer.sortableChildren = true;
     this.tokenContainer.eventMode = 'passive';
     this.tokenContainer.interactiveChildren = true;
-    this.tokenContainer.zIndex = 0;
+    this.tokenContainer.zIndex = SCENE_LAYER_Z.tokens;
     this.viewport.addChild(this.tokenContainer);
     this.viewport.addChild(this.playerSight.outlineLayer);
     this.playersView.listen(() => this.playerSight.whenSettled(() => this.syncCanvasBadges()));

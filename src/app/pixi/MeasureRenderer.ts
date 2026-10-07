@@ -8,7 +8,8 @@ import { formatDistance, resolveMeasurementSettings, type MeasurementSettings } 
 import type { SceneSource } from '../host/sceneSource';
 import type { ViewState } from '../types/viewState';
 import { isHandled } from './utils/handledEvents';
-import { createMeasureLabelText, drawMeasureLabel, drawMeasurement, measureLabelFontSize, type MeasureRecord, type MeasureShape } from './utils/measureDrawing';
+import { createMeasureLabelText, drawMeasureLabel, drawMeasurement, type MeasureRecord, type MeasureShape } from './utils/measureDrawing';
+import { measureLabelAnchor, measureLabelFontSize } from './utils/measureGeometry';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { MeasurePartsVisibility, type MeasurePlayersView } from './measurePartsVisibility';
 import type { LayerVisibility } from './playerSafeFrame';
@@ -307,7 +308,7 @@ export class MeasureRenderer {
 
   /** Midpoint of the measurement, lifted a constant screen distance above the line. */
   private labelAnchor(start: { x: number; y: number }, end: { x: number; y: number }): { x: number; y: number } {
-    return { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - 30 / this.viewport.scale.x };
+    return measureLabelAnchor(start, end, this.viewport.scale.x);
   }
 
   private measurementSettings(): MeasurementSettings {

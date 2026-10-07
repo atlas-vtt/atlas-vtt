@@ -2,7 +2,8 @@ import { Container } from 'pixi.js';
 import { MOTION_NORMAL_MS } from '../../utils/motion';
 import { destroyTree } from '../utils/destroyTree';
 import { ValueTransition } from '../utils/ValueTransition';
-import { CONDITION_BADGE_RADIUS, createConditionBadge, type ConditionBadgeSpec } from './ConditionBadge';
+import { createConditionBadge, type ConditionBadgeSpec } from './ConditionBadge';
+import { badgePositions, CONDITION_BADGE, fitBadges } from './conditionBadgeLayout';
 
 /** A condition active on a token, resolved from its collection's definitions. */
 export interface ActiveCondition extends ConditionBadgeSpec {
@@ -10,16 +11,6 @@ export interface ActiveCondition extends ConditionBadgeSpec {
   name: string;
 }
 
-/** The badges fan out around the token's upper left, clear of the instance number at the upper right. */
-const ARC_CENTRE = -0.75 * Math.PI;
-/** The quarter between the rotate handle at the top and the resize handle on the left. */
-const ARC_SPAN = Math.PI / 2;
-/** Badge diameter including its bezel, in UI units. */
-const BADGE_DIAMETER = (CONDITION_BADGE_RADIUS + 1) * 2;
-/** Distance between the centres of neighbouring badges, in UI units. */
-const BADGE_PITCH = BADGE_DIAMETER + 1.5;
-const MAX_SLOTS = 6;
-const OVERFLOW_COLOR = 0x3a3a42;
 /** A new badge grows from this share of its size while it fades in. */
 const ENTRANCE_SCALE = 0.5;
 
@@ -75,19 +66,11 @@ export class ConditionBadgeRing {
     destroyTree(this.container);
   }
 
-  /** How many badges fit between the handles; on medium tokens that is three. */
+  /** As many badges as fit between the handles; on medium tokens that is three. */
   private fitToArc(conditions: ActiveCondition[]): ConditionBadgeSpecWithId[] {
-    const step = this.stepAngle();
-    const badgeAngle = step * (BADGE_DIAMETER / BADGE_PITCH);
-    const slots = Math.max(1, Math.min(MAX_SLOTS, Math.floor((ARC_SPAN - badgeAngle) / step) + 1));
-    if (conditions.length <= slots) return conditions;
-    const visible = conditions.slice(0, slots - 1);
-    const hidden = conditions.length - visible.length;
-    return [...visible, { id: 'overflow', color: OVERFLOW_COLOR, glyph: { kind: 'text', text: `+${hidden}` } }];
-  }
-
-  private stepAngle(): number {
-    return this.ringRadius > 0 ? (BADGE_PITCH * this.scale) / this.ringRadius : ARC_SPAN;
+    const { shown, overflow } = fitBadges(conditions, this.ringRadius, this.scale);
+    if (overflow === 0) return shown;
+    return [...shown, { id: 'overflow', color: CONDITION_BADGE.overflowColor, glyph: { kind: 'text', text: `+${overflow}` } }];
   }
 
   private addBadge(spec: ConditionBadgeSpec, animate: boolean): Container {
@@ -103,12 +86,11 @@ export class ConditionBadgeRing {
 
   /** First condition nearest the top, the rest following down the token's left. */
   private layout(): void {
-    const step = this.stepAngle();
-    const middle = (this.badges.length - 1) / 2;
+    const positions = badgePositions(this.badges.length, this.ringRadius, this.scale);
     const progress = this.entrance.value;
     this.badges.forEach(({ view }, index) => {
-      const angle = ARC_CENTRE + (middle - index) * step;
-      view.position.set(Math.cos(angle) * this.ringRadius, Math.sin(angle) * this.ringRadius);
+      const position = positions[index];
+      if (position) view.position.set(position.x, position.y);
       const isEntering = this.entering.has(view);
       view.alpha = isEntering ? progress : 1;
       view.scale.set(this.scale * (isEntering ? ENTRANCE_SCALE + (1 - ENTRANCE_SCALE) * progress : 1));

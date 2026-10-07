@@ -4,57 +4,25 @@ import type { RenderLayer } from 'pixi.js';
 import { drawSquareGrid } from './squareGridDrawer';
 import { drawHexGrid } from './hexGridDrawer';
 import { gridMarkerArmLength } from './gridLineStyle';
-import type { GridBounds, GridLineType } from './gridLineStyle';
+import type { GridBounds } from './gridLineStyle';
 import { GridLines } from './gridLines';
-import { createHexLayout, hexCellExtent, isHexGridType, nearestHexCenter } from './hexGeometry';
+import type { GridOptions, GridType } from './gridTypes';
+import { createHexLayout, hexCellExtent, isHexGridType } from './hexGeometry';
+import { cellCenterAt } from './gridDistance';
 import type { HexLayout } from './hexGeometry';
 import { contrastColorForSprite } from './gridContrastColor';
 import { snapTokenCenter } from './gridPlacement';
-import { numberCells, type CellLattice, type CellNumberStyle } from './cellNumbering';
+import { numberCells, type CellLattice } from './cellNumbering';
 import { hexLattice } from './hexLattice';
 import { squareLattice } from './squareLattice';
 import { CellNumberLabels, type CellNumberView } from './cellNumberLabels';
 import { destroyTree } from '../pixi/utils/destroyTree';
 import { applyGridMark, createMarkBacking, type GridMarkColor, type UnlitGrid } from './gridLightingMark';
 
-export type GridType = 'square' | 'hex-horizontal' | 'hex-vertical';
+export type { GridOptions, GridType };
 
 // Tracks grid containers without modifying their types
 const gridSpriteIds = new WeakMap<Container, number>();
-
-export interface GridOptions {
-  /** Type of grid. `hex-horizontal` is flat-top, `hex-vertical` is pointy-top. */
-  type?: GridType;
-  /**
-   * Size of grid cells in pixels.
-   * For square grids this is the side length. For hex grids it is the
-   * flat-to-flat distance (width of a pointy-top hex, height of a flat-top hex),
-   * matching the convention used by Foundry VTT and Owlbear Rodeo.
-   */
-  size: number;
-  /** X offset for the grid origin */
-  offsetX?: number;
-  /** Y offset for the grid origin */
-  offsetY?: number;
-  /** Color of grid lines in hex format. Unset picks black or white from the map's brightness. */
-  color?: number | undefined;
-  /** Alpha transparency of grid lines (0–1) */
-  alpha?: number;
-  /** Line width for grid lines */
-  lineWidth?: number;
-  /** Line style (solid, dashed, dotted) */
-  lineType?: GridLineType;
-  /** Whether the grid is visible */
-  enabled?: boolean;
-  /** Scale factor for the grid (visual scale, distinct from mapScale) */
-  scale?: number;
-  /** Map scale for grid alignment mode - DEPRECATED or re-evaluate usage */
-  mapScale?: number;
-  /** Whether in alignment mode (for visual feedback) */
-  isAligning?: boolean;
-  /** Numbers every cell of the grid in this style; unset shows no numbers. */
-  cellNumbers?: CellNumberStyle | undefined;
-}
 
 /** Colour of every grid preview while the grid is being aligned. */
 export const ALIGNMENT_GRID_COLOR = 0x00ff00;
@@ -437,18 +405,7 @@ export class GridSystem implements UnlitGrid {
 
   /** Snap to the centre of the containing grid cell */
   public snapToCellCenter(x: number, y: number): { x: number; y: number } {
-    const hexLayout = this.getHexLayout();
-    if (hexLayout) {
-      return nearestHexCenter(hexLayout, { x, y });
-    }
-
-    const { size, offsetX = 0, offsetY = 0 } = this.options;
-    const col = Math.floor((x - offsetX) / size);
-    const row = Math.floor((y - offsetY) / size);
-    return {
-      x: col * size + offsetX + size / 2,
-      y: row * size + offsetY + size / 2,
-    };
+    return cellCenterAt(this.options, { x, y });
   }
 
   /** Snap a token's centre: a cell centre, or where cells meet for an even footprint (`tokenCenterShift`) */

@@ -1,39 +1,6 @@
 import { AlphaFilter, Buffer, BufferUsage, Container, Geometry, Mesh, Rectangle, type Shader } from 'pixi.js';
-import { createLaserBeamBuffers, smoothBeam, writeLaserBeam, type BeamPoint } from './laserBeamGeometry';
+import { beamSmoothingSpacing, createLaserBeamBuffers, smoothBeam, writeLaserBeam, type BeamPoint, type BeamWidth } from './laserBeamGeometry';
 import { createLaserBeamShader, type LaserBeamShader } from './laserBeamShader';
-
-/** Longest straight step of the smoothed beam, in screen pixels. */
-const SMOOTHING_SPACING = 3;
-/**
- * Wide beams take longer steps: every capsule is a square as wide as the glow, so fine
- * steps would shade the same pixels many times over, and the curve stays round anyway.
- */
-const SMOOTHING_SPACING_PER_WIDTH = 0.25;
-
-/** Radius of the beam's solid body per unit of the size setting, in screen pixels. */
-const BODY_PER_SIZE = 0.35;
-/** The glow around the body grows with the size only up to GLOW_MAX, so wide beams stay crisp instead of hazy. */
-const GLOW_PER_SIZE = 1.15;
-const GLOW_MAX = 40;
-
-export interface BeamWidth {
-  /** Half the beam's width including its glow, in world units. */
-  halfWidth: number;
-  /** Share of that half width the solid body takes. */
-  bodyShare: number;
-}
-
-/** Longest straight step of the smoothed beam in world units, so the curve stays round at any zoom. */
-export function beamSmoothingSpacing(halfWidth: number, zoom: number): number {
-  return Math.max(SMOOTHING_SPACING / zoom, halfWidth * SMOOTHING_SPACING_PER_WIDTH);
-}
-
-/** How wide the beam is for the size setting, which is in screen pixels at any zoom. */
-export function beamWidth(size: number, zoom: number): BeamWidth {
-  const body = size * BODY_PER_SIZE;
-  const radius = body + Math.min(GLOW_MAX, size * GLOW_PER_SIZE);
-  return { halfWidth: radius / zoom, bodyShare: body / radius };
-}
 
 /** Draws the laser beam; `LaserBeam` on the GPU, `CanvasLaserBeam` without one. */
 export interface LaserBeamView {

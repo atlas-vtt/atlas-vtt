@@ -2,29 +2,19 @@ import { Application, Container, FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { SceneSource } from '../host/sceneSource';
 import type { ViewState } from '../types/viewState';
-import { LASER_FADE_TIME, type LaserPointerSettings } from '../tools/laserPointerSettings';
+import type { LaserPointerSettings } from '../tools/laserPointerSettings';
 import { setCanvasCursor } from './utils/canvasCursor';
 import { destroyTree } from './utils/destroyTree';
-import { MAX_TRAIL_SAMPLES, type BeamPoint } from './laser/laserBeamGeometry';
-import { LaserBeam, beamWidth, type LaserBeamView } from './laser/LaserBeam';
+import { beamWidth, laserPointSpacing, type BeamPoint } from './laser/laserBeamGeometry';
+import { LaserBeam, type LaserBeamView } from './laser/LaserBeam';
+import { LaserTrail } from './laser/laserTrail';
 import { CanvasLaserBeam } from './laser/CanvasLaserBeam';
 import { usesCanvasRenderer } from './utils/rendererType';
-
-interface TrailPoint {
-  x: number;
-  y: number;
-  timestamp: number;
-}
 
 interface WorldPoint {
   x: number;
   y: number;
 }
-
-/** Closest two trail points may be, in screen pixels; closer samples are mostly hand jitter. */
-const MIN_POINT_SPACING = 3;
-/** Wide beams keep points further apart: detail finer than the beam is invisible and costly. */
-const MIN_POINT_SPACING_PER_WIDTH = 0.15;
 
 /**
  * Renders the laser pointer: a glowing beam that follows the pointer and narrows as it
@@ -40,7 +30,7 @@ export class LaserPointerRenderer {
   private container: Container;
   private beam: LaserBeamView;
 
-  private trailPoints: TrailPoint[] = [];
+  private readonly trail = new LaserTrail();
   /** Where the pointer is on the map, or null while it is off the canvas. */
   private pointer: WorldPoint | null = null;
   private isToolActive: boolean = false;
@@ -232,19 +222,10 @@ export class LaserPointerRenderer {
   // ── Trail management ────────────────────────────────────────────────
 
   private addTrailPoint(x: number, y: number): void {
-    // Enforce a minimum on-screen gap to avoid dense, jittery clusters at slow speeds
-    const last = this.trailPoints[this.trailPoints.length - 1];
-    if (last) {
-      const zoom = this.viewport.scale.x || 1;
-      const { halfWidth } = beamWidth(this.readSettings().size, zoom);
-      const minGap = Math.max(MIN_POINT_SPACING / zoom, halfWidth * MIN_POINT_SPACING_PER_WIDTH);
-      if (Math.hypot(x - last.x, y - last.y) < minGap) return;
-    }
-
-    this.trailPoints.push({ x, y, timestamp: Date.now() });
-    if (this.trailPoints.length > MAX_TRAIL_SAMPLES) {
-      this.trailPoints.splice(0, this.trailPoints.length - MAX_TRAIL_SAMPLES);
-    }
+    // Enforce a minimum gap to avoid dense, jittery clusters at slow speeds
+    const last = this.trail.last();
+    if (last && Math.hypot(x - last.x, y - last.y) < laserPointSpacing(this.readSettings().size, this.viewport.scale.x || 1)) return;
+    this.trail.add(x, y, Date.now());
   }
 
   // ── Ticker-driven rendering ─────────────────────────────────────────
@@ -265,14 +246,14 @@ export class LaserPointerRenderer {
 
   private tick(): void {
     const now = Date.now();
-    const hadTrail = this.trailPoints.length > 0;
-    this.trailPoints = this.trailPoints.filter((point) => now - point.timestamp < LASER_FADE_TIME);
+    const hadTrail = this.trail.length > 0;
+    this.trail.prune(now);
 
     if (hadTrail || this.needsRedraw) {
       this.needsRedraw = false;
       this.drawBeam(now);
     }
-    if (this.trailPoints.length === 0 && !this.needsRedraw) {
+    if (this.trail.length === 0 && !this.needsRedraw) {
       this.stopTicker();
     }
   }
@@ -286,11 +267,7 @@ export class LaserPointerRenderer {
     const width = beamWidth(size, zoom);
     const pointer = this.isToolActive || this.isQuickMode || this.isPointing ? this.pointer : null;
 
-    const trail: BeamPoint[] = this.trailPoints.map((point) => ({
-      x: point.x,
-      y: point.y,
-      life: 1 - (now - point.timestamp) / LASER_FADE_TIME,
-    }));
+    const trail: BeamPoint[] = this.trail.beamPoints(now);
     // While drawing, the beam runs up to the pointer, which stays at full strength.
     if (this.isPointing && pointer) trail.push({ ...pointer, life: 1 });
     const dot = pointer && !this.isPointing ? { ...pointer, life: 1 } : null;
@@ -311,7 +288,7 @@ export class LaserPointerRenderer {
     this.viewport.off('moved', this.onViewportMoved);
     this.canvasEl.removeEventListener('mouseleave', this.onCanvasLeave);
 
-    this.trailPoints = [];
+    this.trail.clear();
     destroyTree(this.container);
     this.beam.destroy();
   }

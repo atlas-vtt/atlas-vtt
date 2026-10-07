@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Container, Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { DragRulerView } from '../../src/app/pixi/token-renderer/DragRulerView';
-import { pathMidpoint } from '../../src/app/pixi/utils/measureDrawing';
+import { pathMidpoint } from '../../src/app/pixi/utils/measureGeometry';
 
 function makeScene(): { viewport: Container; background: Graphics; tokens: Container; view: DragRulerView } {
   const viewport = new Container();

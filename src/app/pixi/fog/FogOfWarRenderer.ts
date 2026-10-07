@@ -19,6 +19,7 @@ import { hitTestFogOp, findConnectedFogOps } from './fogHitTest';
 import { extractConnectedComponentRects } from './fogComponentDelete';
 import { canInteractWithFog, resolveFogPreviewAlpha } from './fogVisibilityPolicy';
 import type { LayerVisibility } from '../playerSafeFrame';
+import { SCENE_LAYER_Z } from '../sceneLayerOrder';
 import { destroyTree } from '../utils/destroyTree';
 import { requestRender } from '../RenderScheduler';
 import { isHandled } from '../utils/handledEvents';
@@ -88,7 +89,7 @@ export class FogOfWarRenderer {
     this.container.label = 'fogLayer';
     this.container.eventMode = 'none';
     this.container.sortableChildren = true;
-    this.container.zIndex = 1000;
+    this.container.zIndex = SCENE_LAYER_Z.fog;
     this.container.interactiveChildren = false;
 
     // ── Coverage compositor + texture ────────────────────────────────

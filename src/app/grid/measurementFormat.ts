@@ -29,6 +29,9 @@ export interface MeasurementSettings {
   coneAngle: number;
 }
 
+/** What a distance label reads: every measurement setting but the cone's opening. */
+export type DistanceSettings = Omit<MeasurementSettings, 'coneAngle'>;
+
 /** Cone of a collection that never set one: a quarter circle. */
 export const DEFAULT_CONE_ANGLE = 90;
 
@@ -89,7 +92,7 @@ export function unitLabelFor(unitType: GridUnitType | undefined): string {
 }
 
 /** Label for a distance of `cells` grid cells, e.g. "30ft" or a range band name. */
-export function formatDistance(cells: number, settings: MeasurementSettings): string {
+export function formatDistance(cells: number, settings: DistanceSettings): string {
   if (settings.mode === 'abstract') return rangeBandName(cells, settings.rangeBands);
   return `${Math.round(cells * settings.unitDistance)}${UNIT_SUFFIX[settings.unitType]}`;
 }
@@ -98,7 +101,7 @@ export function formatDistance(cells: number, settings: MeasurementSettings): st
  * Label for a distance that is set rather than measured (a sense's range): as `formatDistance`,
  * with one decimal where the distance has one, since 7.5 m is not 8 m.
  */
-export function formatReach(cells: number, settings: MeasurementSettings): string {
+export function formatReach(cells: number, settings: DistanceSettings): string {
   const tenths = (value: number): number => Math.round(value * 10) / 10;
   if (settings.mode === 'abstract') return settings.rangeBands.length > 0 ? rangeBandName(cells, settings.rangeBands) : `${tenths(cells)} sq`;
   return `${tenths(cells * settings.unitDistance)}${UNIT_SUFFIX[settings.unitType]}`;

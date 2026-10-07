@@ -5,7 +5,7 @@ import { SettingsService } from '../../src/app/services/SettingsService';
 import { LaserPointerRenderer } from '../../src/app/pixi/LaserPointerRenderer';
 import type { SceneSource } from '../../src/app/host/sceneSource';
 import type { ViewState } from '../../src/app/types/viewState';
-import { beamWidth, type BeamWidth } from '../../src/app/pixi/laser/LaserBeam';
+import { beamWidth, type BeamWidth } from '../../src/app/pixi/laser/laserBeamGeometry';
 import { COLOR_VISIONS, colorDifference, seenAs } from '../fixtures/colorVision';
 import { App } from 'obsidian';
 import { memoryPluginData } from '../mocks/pluginData';

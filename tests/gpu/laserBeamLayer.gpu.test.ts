@@ -1,6 +1,7 @@
 import { Application, Container, Graphics, Rectangle } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
-import { LaserBeam, beamWidth } from '../../src/app/pixi/laser/LaserBeam';
+import { LaserBeam } from '../../src/app/pixi/laser/LaserBeam';
+import { beamWidth } from '../../src/app/pixi/laser/laserBeamGeometry';
 import { copiedPixel } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 
 const SIZE = 256;

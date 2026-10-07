@@ -5,11 +5,9 @@ import { useAtlasUI } from './root/AtlasUIContext';
 import { useViewStoreHook } from './ViewStoreContext';
 import { toError } from '../utils/errors';
 import type { GridOptions } from '../grid/GridSystem';
-import { parseGridColor } from '../grid/gridContrastColor';
-import { cellNumberStyleOfGrid } from '../grid/cellNumbering';
+import { toGridOptions } from '../grid/gridStateOptions';
 import { backgroundTextureCache } from '../pixi/backgroundTextureCache';
 import { loadVaultTexture } from '../pixi/vaultImageTexture';
-import type { GridState } from '../types/gridTypes';
 
 const FALLBACK_GRID_OPTIONS: GridOptions = {
   type: 'square',
@@ -22,24 +20,6 @@ const FALLBACK_GRID_OPTIONS: GridOptions = {
   lineWidth: 1,
   enabled: true,
 };
-
-/** The store keeps the grid colour as a CSS hex string and its alpha as `opacity`; the GridSystem wants a number and `alpha`. */
-function toGridOptions(grid: GridState): GridOptions {
-  return {
-    size: grid.size,
-    offsetX: grid.offsetX,
-    offsetY: grid.offsetY,
-    color: parseGridColor(grid.color),
-    alpha: grid.opacity,
-    enabled: grid.enabled,
-    ...(grid.type !== undefined ? { type: grid.type } : {}),
-    ...(grid.lineType !== undefined ? { lineType: grid.lineType } : {}),
-    ...(grid.lineWidth !== undefined ? { lineWidth: grid.lineWidth } : {}),
-    ...(grid.scale !== undefined ? { scale: grid.scale } : {}),
-    ...(grid.mapScale !== undefined ? { mapScale: grid.mapScale } : {}),
-    cellNumbers: cellNumberStyleOfGrid(grid),
-  };
-}
 
 interface BackgroundSpriteProps {
   imagePath: string;

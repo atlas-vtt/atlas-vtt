@@ -91,6 +91,7 @@ export const BOUNDARIES = {
       "src/app/pixi/drawingLayer.ts",
       "src/app/pixi/mapIcons.ts",
       "src/app/pixi/textElementView.ts",
+      "src/app/pixi/textBoxLayout.ts",
       "src/app/pixi/lighting/DoorIcons.ts",
       "src/app/pixi/token-renderer/SensedOutlines.ts"
     ],

@@ -37,6 +37,54 @@ const MAX_CAPSULES = MAX_BEAM_POINTS;
 /** The hovering pointer's dot is a little wider than the beam, so it reads as the laser's spot. */
 export const DOT_SCALE = 1.25;
 
+/** Longest straight step of the smoothed beam, in screen pixels. */
+const SMOOTHING_SPACING = 3;
+/**
+ * Wide beams take longer steps: every capsule is a square as wide as the glow, so fine
+ * steps would shade the same pixels many times over, and the curve stays round anyway.
+ */
+const SMOOTHING_SPACING_PER_WIDTH = 0.25;
+
+/** Radius of the beam's solid body per unit of the size setting, in screen pixels. */
+const BODY_PER_SIZE = 0.35;
+/** The glow around the body grows with the size only up to GLOW_MAX, so wide beams stay crisp instead of hazy. */
+const GLOW_PER_SIZE = 1.15;
+const GLOW_MAX = 40;
+
+/** Closest two trail points may be, in screen pixels; closer samples are mostly hand jitter. */
+const MIN_POINT_SPACING = 3;
+/** Wide beams keep points further apart: detail finer than the beam is invisible and costly. */
+const MIN_POINT_SPACING_PER_WIDTH = 0.15;
+
+/** The hot filament's share of the body, as in the shader, for beams drawn as strokes. */
+export const FILAMENT_SHARE = 0.25;
+export const FILAMENT_COLOR = 0xffffff;
+
+export interface BeamWidth {
+  /** Half the beam's width including its glow, in world units. */
+  halfWidth: number;
+  /** Share of that half width the solid body takes. */
+  bodyShare: number;
+}
+
+/** Longest straight step of the smoothed beam in world units, so the curve stays round at any zoom. */
+export function beamSmoothingSpacing(halfWidth: number, zoom: number): number {
+  return Math.max(SMOOTHING_SPACING / zoom, halfWidth * SMOOTHING_SPACING_PER_WIDTH);
+}
+
+/** How wide the beam is for the size setting, which is in screen pixels at any zoom. */
+export function beamWidth(size: number, zoom: number): BeamWidth {
+  const body = size * BODY_PER_SIZE;
+  const radius = body + Math.min(GLOW_MAX, size * GLOW_PER_SIZE);
+  return { halfWidth: radius / zoom, bodyShare: body / radius };
+}
+
+/** The closest two trail points may be, in world units, for a laser of `size` at `zoom`. */
+export function laserPointSpacing(size: number, zoom: number): number {
+  const { halfWidth } = beamWidth(size, zoom);
+  return Math.max(MIN_POINT_SPACING / zoom, halfWidth * MIN_POINT_SPACING_PER_WIDTH);
+}
+
 /** The beam's half width at `point`, narrowing as the point ages. */
 export function beamRadius(point: BeamPoint, halfWidth: number): number {
   return halfWidth * Math.sqrt(Math.max(0, point.life));

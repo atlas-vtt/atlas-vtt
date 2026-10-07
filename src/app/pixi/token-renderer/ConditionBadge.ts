@@ -2,6 +2,7 @@ import { Container, FillGradient, Graphics, Sprite } from 'pixi.js';
 import { darkenColor, lightenColor } from '../../styles/designTokens';
 import { isLightBadgeColor, type ConditionGlyph } from '../../utils/conditionGlyph';
 import { getConditionGlyphTexture } from './conditionGlyphTexture';
+import { CONDITION_BADGE } from './conditionBadgeLayout';
 
 export interface ConditionBadgeSpec {
   /** Badge colour as 0xRRGGBB. */
@@ -12,17 +13,17 @@ export interface ConditionBadgeSpec {
 }
 
 /** Radius of a badge on the token's ring, in UI units (a medium token is 62 wide). */
-export const CONDITION_BADGE_RADIUS = 6;
+export const CONDITION_BADGE_RADIUS = CONDITION_BADGE.radius;
 /** Dark rim that separates the badge from any token art or map behind it. */
-const BEZEL_WIDTH = 1;
-const BEZEL_COLOR = 0x111114;
+const BEZEL_WIDTH = CONDITION_BADGE.bezelWidth;
+const BEZEL_COLOR = CONDITION_BADGE.bezelColor;
 /** Glyph edge length as a share of the badge's diameter. */
 const GLYPH_SHARE = 0.62;
 const DARK_GLYPH_COLOR = 0x16161a;
 /** Value pip radius as a share of the badge radius, and where its centre sits. */
-const PIP_SHARE = 0.6;
-const PIP_OFFSET = 0.72;
-const PIP_COLOR = 0x1c1c22;
+const PIP_SHARE = CONDITION_BADGE.pipShare;
+const PIP_OFFSET = CONDITION_BADGE.pipOffset;
+const PIP_COLOR = CONDITION_BADGE.pipColor;
 
 /** Badge gradients depend only on the colour, so badges of one condition share one. */
 const badgeGradients = new Map<number, FillGradient>();

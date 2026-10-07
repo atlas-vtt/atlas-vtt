@@ -8,8 +8,8 @@
  */
 
 import type { DiagonalRule } from '../types/collectionSettingsTypes';
-import type { GridOptions } from './GridSystem';
-import { axialDistance, createHexLayout, isHexGridType, pixelToAxial, type Point } from './hexGeometry';
+import type { GridOptions } from './gridTypes';
+import { axialDistance, createHexLayout, isHexGridType, nearestHexCenter, pixelToAxial, type Point } from './hexGeometry';
 
 export type GridGeometry = Pick<GridOptions, 'type' | 'size' | 'offsetX' | 'offsetY'>;
 
@@ -57,4 +57,15 @@ export function pathLengthInCells(grid: GridGeometry, points: readonly Point[], 
     case 'equidistant':
       return straight + diagonal;
   }
+}
+
+/** The centre of the cell holding `point`: the nearest hex centre, or the square's centre. */
+export function cellCenterAt(grid: GridGeometry, point: Point): Point {
+  const offsetX = grid.offsetX ?? 0;
+  const offsetY = grid.offsetY ?? 0;
+  if (isHexGridType(grid.type)) return nearestHexCenter(createHexLayout(grid.type, grid.size, offsetX, offsetY), point);
+  return {
+    x: Math.floor((point.x - offsetX) / grid.size) * grid.size + offsetX + grid.size / 2,
+    y: Math.floor((point.y - offsetY) / grid.size) * grid.size + offsetY + grid.size / 2,
+  };
 }

@@ -7,19 +7,18 @@
 
 import type { StoreApi } from 'zustand';
 import type { GridSystem } from '../../grid/GridSystem';
-import { pathLengthInCells, type GridGeometry } from '../../grid/gridDistance';
+import { type GridGeometry } from '../../grid/gridDistance';
 import { tokenCenterShift } from '../../grid/gridPlacement';
 import type { Point } from '../../grid/hexGeometry';
-import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
+import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { LayerVisibility } from '../playerSafeFrame';
+import { DragRulerPath, dragRulerLabel, WAYPOINT_KEY } from './dragRulerPath';
 import type { DragRulerView } from './DragRulerView';
 
 export class DragRuler {
   private tokenId: string | null = null;
-  /** The snapped start followed by every waypoint. */
-  private waypoints: Point[] = [];
-  private landing: Point | null = null;
+  private readonly path = new DragRulerPath((point) => this.snap(point));
   private keyWindow: Window | null = null;
 
   constructor(
@@ -34,7 +33,7 @@ export class DragRuler {
   begin(tokenId: string, origin: Point): void {
     this.end();
     this.tokenId = tokenId;
-    this.waypoints = [this.snap(origin)];
+    this.path.begin(origin);
     this.keyWindow = activeWindow;
     this.keyWindow.addEventListener('keydown', this.onKeyDown, true);
   }
@@ -42,7 +41,7 @@ export class DragRuler {
   /** Moves the ruler's end to the cell a token at `position` would snap to. */
   update(position: Point): void {
     if (!this.tokenId) return;
-    this.landing = this.snap(position);
+    this.path.update(position);
     this.redraw();
   }
 
@@ -50,8 +49,7 @@ export class DragRuler {
     this.keyWindow?.removeEventListener('keydown', this.onKeyDown, true);
     this.keyWindow = null;
     this.tokenId = null;
-    this.waypoints = [];
-    this.landing = null;
+    this.path.end();
     this.view.clear();
   }
 
@@ -64,9 +62,9 @@ export class DragRuler {
 
   /** A held token can enter fog without ending its measured drag. */
   refreshVisibility(): void {
-    const landing = this.landing;
-    if (!this.tokenId || !landing) return;
-    const visible = this.tokenVisible(this.tokenId) && this.waypoints.some((point) => !samePoint(point, landing));
+    if (!this.tokenId) return;
+    // Nothing to show while the path has no length (`DragRulerPath.points`).
+    const visible = this.path.points() !== null && this.tokenVisible(this.tokenId);
     for (const layer of this.view.layers) layer.visible = visible;
   }
 
@@ -77,27 +75,21 @@ export class DragRuler {
 
   /** Captures Space before the map hotkeys, which would open the command palette mid-drag. */
   private readonly onKeyDown = (event: KeyboardEvent): void => {
-    if (event.key !== ' ') return;
+    if (event.key !== WAYPOINT_KEY) return;
     event.preventDefault();
     event.stopPropagation();
-    const last = this.waypoints[this.waypoints.length - 1];
-    if (event.repeat || !this.landing || (last && samePoint(last, this.landing))) return;
-    this.waypoints.push(this.landing);
-    this.redraw();
+    if (!event.repeat && this.path.addWaypoint()) this.redraw();
   };
 
   private redraw(): void {
-    const landing = this.landing;
-    if (!landing) return;
-    const points = [...this.waypoints, landing];
-    if (points.every(point => samePoint(point, landing))) {
+    const points = this.path.points();
+    if (!points) {
       this.view.clear();
       return;
     }
     const grid = this.gridSystem.getOptions();
     const settings = this.settingsProvider();
-    const cells = pathLengthInCells(grid, this.cellPath(points, grid), settings.diagonalRule);
-    this.view.draw(points, formatDistance(cells, settings));
+    this.view.draw(points, dragRulerLabel(grid, this.cellPath(points, grid), settings));
     this.refreshVisibility();
   }
 
@@ -125,8 +117,4 @@ export class DragRuler {
     const size = this.tokenId ? this.store.getState().objects.tokens[this.tokenId]?.size : undefined;
     return size || 1;
   }
-}
-
-function samePoint(a: Point, b: Point): boolean {
-  return Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5;
 }

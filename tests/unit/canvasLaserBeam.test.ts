@@ -1,7 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Graphics } from 'pixi.js';
 import { CanvasLaserBeam } from '../../src/app/pixi/laser/CanvasLaserBeam';
-import { beamWidth, type LaserBeamFrame } from '../../src/app/pixi/laser/LaserBeam';
+import type { LaserBeamFrame } from '../../src/app/pixi/laser/LaserBeam';
+import { beamWidth } from '../../src/app/pixi/laser/laserBeamGeometry';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
 function frame(changes: Partial<LaserBeamFrame>): LaserBeamFrame {

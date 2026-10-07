@@ -48,6 +48,7 @@ import { mapMeasurementSettings } from './services/mapMeasurementSettings';
 import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
 import { destroyTree } from './pixi/utils/destroyTree';
 import { requestRender } from './pixi/RenderScheduler';
+import { SCENE_LAYER_Z } from './pixi/sceneLayerOrder';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
 import { shownRollTokens } from './pixi/playerRollTokens';
 import type { ShownRollToken } from './services/playerRollSource';
@@ -380,7 +381,7 @@ export class PixiRendererOrchestrator { // Renamed class
     viewport.addChild(fogContainer);
     
     // Set the fog container to a high z-index to ensure it's on top when visible
-    fogContainer.zIndex = 1000;
+    fogContainer.zIndex = SCENE_LAYER_Z.fog;
 
     if (!isPlayerView) {
       this.lightingFeature = new LightingFeature({
@@ -436,7 +437,7 @@ export class PixiRendererOrchestrator { // Renamed class
     const drawingContainer = this.drawingRenderer.getContainer();
     viewport.addChild(drawingContainer);
     // Above tokens/text, below fog so hidden areas stay hidden
-    drawingContainer.zIndex = 900;
+    drawingContainer.zIndex = SCENE_LAYER_Z.drawings;
     
     // Initialize TextRenderer if GridSystem is ready
     if (this.gridSystem) {

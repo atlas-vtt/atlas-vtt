@@ -10,7 +10,8 @@ import type { Point } from '../../grid/hexGeometry';
 import type { HideableLayer } from '../playerSafeFrame';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
-import { createMeasureLabelText, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, measureLabelFontSize, pathMidpoint } from '../utils/measureDrawing';
+import { createMeasureLabelText, drawMeasureLabel, drawMeasurePath, drawMeasurePoint } from '../utils/measureDrawing';
+import { measureLabelFontSize, pathMidpoint } from '../utils/measureGeometry';
 
 /** Above token UI (100) and text (500), below drawings, vision and fog. */
 const LABEL_Z_INDEX = 800;

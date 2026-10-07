@@ -1,10 +1,6 @@
 import { Graphics } from 'pixi.js';
-import { beamRadius, DOT_SCALE, smoothBeam, type BeamPoint } from './laserBeamGeometry';
-import { beamSmoothingSpacing, type LaserBeamFrame, type LaserBeamView } from './LaserBeam';
-
-/** The hot filament's share of the body, as in the shader. */
-const FILAMENT_SHARE = 0.25;
-const FILAMENT_COLOR = 0xffffff;
+import { beamRadius, beamSmoothingSpacing, DOT_SCALE, FILAMENT_COLOR, FILAMENT_SHARE, smoothBeam, type BeamPoint } from './laserBeamGeometry';
+import type { LaserBeamFrame, LaserBeamView } from './LaserBeam';
 
 /**
  * The laser beam for PIXI's Canvas renderer, which has no meshes or shaders: the body and

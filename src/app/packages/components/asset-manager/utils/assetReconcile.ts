@@ -1,19 +1,5 @@
 import type { AnyAsset } from '../types';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-/** Whether two values of an asset are the same data: primitives, arrays and plain objects, compared in depth. */
-function sameValue(a: unknown, b: unknown): boolean {
-  if (Object.is(a, b)) return true;
-  if (Array.isArray(a) || Array.isArray(b)) {
-    return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((item, index) => sameValue(item, b[index]));
-  }
-  if (!isRecord(a) || !isRecord(b)) return false;
-  const keys = Object.keys(a);
-  return keys.length === Object.keys(b).length && keys.every((key) => key in b && sameValue(a[key], b[key]));
-}
+import { sameValue } from '../../../../utils/sameValue';
 
 /**
  * `next`, with every asset that did not change taken from `previous`. A reload

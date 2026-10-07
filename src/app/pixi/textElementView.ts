@@ -1,5 +1,6 @@
 import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import type { TextElement } from '../types';
+import { textBackground, textFontStyle, textFontWeight, textRotation, textScale } from './textBoxLayout';
 
 /** The label of a text's background drawing within its view. */
 export const TEXT_BACKGROUND_LABEL = 'textBackground';
@@ -12,26 +13,18 @@ function styleOf(element: TextElement): TextStyle {
     fontSize: element.fontSize,
     fill: element.color,
     align: element.align || 'center',
-    fontWeight: element.bold ? 'bold' : 'normal',
-    fontStyle: element.italic ? 'italic' : 'normal',
+    fontWeight: textFontWeight(element),
+    fontStyle: textFontStyle(element),
   });
 }
 
 function drawBackground(background: Graphics, text: Text, element: TextElement): void {
   background.clear();
-  if (!element.backgroundColor) return;
-
-  const padding = element.padding || 8;
-  const bounds = text.getLocalBounds();
-  if (element.borderRadius) {
-    background.roundRect(bounds.x - padding, bounds.y - padding, bounds.width + padding * 2, bounds.height + padding * 2, element.borderRadius);
-  } else {
-    background.rect(bounds.x - padding, bounds.y - padding, bounds.width + padding * 2, bounds.height + padding * 2);
-  }
-  background.fill({
-    color: parseInt(element.backgroundColor.replace('#', ''), 16),
-    alpha: element.opacity || 1,
-  });
+  const box = textBackground(element, text.getLocalBounds());
+  if (!box) return;
+  if (box.radius) background.roundRect(box.x, box.y, box.width, box.height, box.radius);
+  else background.rect(box.x, box.y, box.width, box.height);
+  background.fill({ color: parseInt(box.color.replace('#', ''), 16), alpha: box.alpha });
 }
 
 /** A text on the map as it is drawn: its background and its characters, centred on its place, turned and scaled. */
@@ -48,8 +41,8 @@ export function createTextElementView(element: TextElement): Container {
   container.addChild(text);
 
   drawBackground(background, text, element);
-  if (element.rotation) container.rotation = (element.rotation * Math.PI) / 180;
-  if (element.scale) container.scale.set(element.scale);
+  container.rotation = textRotation(element.rotation);
+  container.scale.set(textScale(element.scale));
   return container;
 }
 
@@ -66,6 +59,6 @@ export function updateTextElementView(container: Container, element: TextElement
   const background = container.getChildByLabel(TEXT_BACKGROUND_LABEL) as Graphics | null;
   if (background && text) drawBackground(background, text, element);
 
-  container.rotation = element.rotation ? (element.rotation * Math.PI) / 180 : 0;
-  container.scale.set(element.scale || 1);
+  container.rotation = textRotation(element.rotation);
+  container.scale.set(textScale(element.scale));
 }

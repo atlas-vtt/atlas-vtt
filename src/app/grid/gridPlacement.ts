@@ -1,4 +1,4 @@
-import type { GridType } from './GridSystem';
+import type { GridType } from './gridTypes';
 import {
   axialToPixel,
   createHexLayout,
