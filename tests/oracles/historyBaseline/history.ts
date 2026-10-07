@@ -1,4 +1,4 @@
-// Frozen from e8b9b280c326ef15d62b4b55651727ac56a449ad src/app/stores/history.ts. Only import paths are adapted.
+// Frozen from e8b9b280c326ef15d62b4b55651727ac56a449ad src/app/stores/history.ts. Only import paths and two comments are adapted.
 import type { StoreApi } from 'zustand';
 import type { TemporalState, ZundoOptions } from './zundo/types';
 import { areTemporalSnapshotsEqual, type TemporalSnapshotLike } from './temporalEquality';
@@ -36,7 +36,7 @@ export interface HistoryState extends TemporalState<HistorySnapshot> {
   abandonTransaction: () => void;
   /** Run `fn` inside a transaction. */
   transaction: <T>(fn: () => T) => T;
-  /** Run `fn` without recording anything (hydration, remote sync, derived state). */
+  /** Run `fn` without recording anything (hydration, derived state). */
   untracked: <T>(fn: () => T) => T;
 }
 
@@ -115,8 +115,8 @@ export function createHistoryOptions<S extends HistorySnapshot>(
         if (transactionDepth === 0) transactionStart = null;
       };
 
-      // A transaction left open when the history is cleared (a map switch) must not
-      // swallow the next scene's edits or later record the previous scene as a step.
+      // A transaction left open when the history is cleared (a map switch) must neither
+      // swallow the next scene's edits nor record the previous scene as a step when it ends.
       const clear = (): void => {
         discardTransaction();
         base.clear();

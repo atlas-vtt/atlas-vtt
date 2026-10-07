@@ -26,7 +26,7 @@ export function withoutExploredEdits({ pastStates, futureStates }: Timeline, cou
 /**
  * The past without the steps that only edited the memory, compared as undo meets them from the
  * store's state `present`: a step goes when what undo would write is that state but for the
- * count, and its later side passes to the step before it, so the steps kept still meet.
+ * count, and its after side passes to the step before it, so the steps kept still meet.
  */
 function pastWithoutEdits(steps: readonly HistoryStep[], present: HistorySnapshot): HistoryStep[] {
   const kept: HistoryStep[] = [];

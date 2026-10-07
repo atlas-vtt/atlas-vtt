@@ -95,8 +95,8 @@ const sameState = (a: ModelState, b: ModelState): boolean => a.objects.id === b.
 /** The history's rules, step by step, as the model keeps them. */
 export class HistoryModel {
   state = initialModel();
-  past: ModelStep[] = [];
-  future: ModelStep[] = [];
+  undoSteps: ModelStep[] = [];
+  redoSteps: ModelStep[] = [];
   tracking = true;
   depth = 0;
   private start: ModelState | null = null;
@@ -110,17 +110,17 @@ export class HistoryModel {
 
   private fold(target: ModelState): void {
     if (!this.mark || sameState(this.mark, target)) return;
-    const last = this.past[this.past.length - 1];
-    const next = this.future[this.future.length - 1];
-    if (last) this.past[this.past.length - 1] = { before: last.before, after: restoreModel(last.after, this.mark, target) };
-    if (next) this.future[this.future.length - 1] = { before: restoreModel(next.before, this.mark, target), after: next.after };
+    const last = this.undoSteps[this.undoSteps.length - 1];
+    const next = this.redoSteps[this.redoSteps.length - 1];
+    if (last) this.undoSteps[this.undoSteps.length - 1] = { before: last.before, after: restoreModel(last.after, this.mark, target) };
+    if (next) this.redoSteps[this.redoSteps.length - 1] = { before: restoreModel(next.before, this.mark, target), after: next.after };
     this.mark = target;
   }
 
   private push(step: ModelStep): void {
     this.fold(step.before);
-    this.past = [...this.past, step].slice(-HISTORY_LIMIT);
-    this.future = [];
+    this.undoSteps = [...this.undoSteps, step].slice(-HISTORY_LIMIT);
+    this.redoSteps = [];
     if (this.mark) this.mark = step.after;
   }
 
@@ -162,25 +162,25 @@ export class HistoryModel {
   /** Whether the next undo or redo starts from its step's own side: nothing else wrote since. */
   startsFromStep(direction: 'undo' | 'redo'): boolean {
     this.fold(this.state);
-    const step = (direction === 'undo' ? this.past : this.future).at(-1);
+    const step = (direction === 'undo' ? this.undoSteps : this.redoSteps).at(-1);
     return !!step && sameState(this.state, direction === 'undo' ? step.after : step.before);
   }
 
   /** Undo or redo; returns the step as it was applied, after any fold. */
   travel(direction: 'undo' | 'redo'): ModelStep | null {
-    const source = direction === 'undo' ? this.past : this.future;
+    const source = direction === 'undo' ? this.undoSteps : this.redoSteps;
     if (source.length === 0) return null;
     this.fold(this.state);
-    const step = (direction === 'undo' ? this.past : this.future).pop()!;
+    const step = (direction === 'undo' ? this.undoSteps : this.redoSteps).pop()!;
     this.state = direction === 'undo' ? restoreModel(this.state, step.after, step.before) : restoreModel(this.state, step.before, step.after);
-    (direction === 'undo' ? this.future : this.past).push(step);
+    (direction === 'undo' ? this.redoSteps : this.undoSteps).push(step);
     if (this.mark) this.mark = this.state;
     return step;
   }
 
   clear(): void {
-    this.past = [];
-    this.future = [];
+    this.undoSteps = [];
+    this.redoSteps = [];
     this.depth = 0;
     this.start = this.mark = null;
   }

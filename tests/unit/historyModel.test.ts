@@ -46,7 +46,7 @@ function write(model: HistoryModel, real: Real, gm: boolean, name: CollectionNam
 function verify(model: HistoryModel, real: Real): void {
   for (const name of ['tokens', 'zones'] as const) expect(realEntries(real, name)).toEqual(entriesOf(model.state, name));
   expect(real.store.getState().grid).toBe(model.state.grid);
-  expect([real.history().pastStates.length, real.history().futureStates.length]).toEqual([model.past.length, model.future.length]);
+  expect([real.history().pastStates.length, real.history().futureStates.length]).toEqual([model.undoSteps.length, model.redoSteps.length]);
 }
 
 /** Keys whose presence or value the step changed, in one collection. */

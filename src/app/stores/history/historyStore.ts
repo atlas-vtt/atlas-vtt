@@ -215,8 +215,8 @@ export function createHistory(tracked: TrackedStore): History {
     closeTransaction();
   }
 
-  // A transaction left open when the history is cleared (a map switch) must not
-  // swallow the next scene's edits or later record the previous scene as a step.
+  // A transaction left open when the history is cleared (a map switch) must neither
+  // swallow the next scene's edits nor record the previous scene as a step when it ends.
   function clear(): void {
     depth = 0;
     start = null;
