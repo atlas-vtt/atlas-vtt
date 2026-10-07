@@ -1,9 +1,10 @@
 /**
  * A stand-in for `src/app/atlas-view` in tests (`vi.mock`): a map view with a real
- * store, tab meta, an event bus and a fake viewport, and no PIXI.
+ * store, tab meta, a laser hub, an event bus and a fake viewport, and no PIXI.
  * Obsidian's `register` callbacks run when the view closes, as they do when a view unloads.
  */
 import { EventEmitter } from 'events';
+import { LaserHub } from '../../src/app/pixi/laser/LaserHub';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { createTabMetaStore, type TabMetaStore } from '../../src/app/stores/tabMetaStore';
 
@@ -42,13 +43,15 @@ export class FakeViewport {
   }
 }
 
-/** The renderer's part these tests use: the background sprite and the grid. */
+/** The renderer's part these tests use: the background sprite, the grid and the lasers. */
 export class FakeRenderer {
+  readonly laserHub = new LaserHub();
   background: { width: number; height: number; destroyed: boolean } | null = null;
   grid: unknown = null;
   constructor(private readonly viewport: FakeViewport) {}
   getBackgroundSprite(): { width: number; height: number; destroyed: boolean } | null { return this.background; }
   getViewportInstance(): FakeViewport { return this.viewport; }
+  getLaserHub(): LaserHub { return this.laserHub; }
   setBackgroundSprite(sprite: { width: number; height: number; destroyed: boolean }): void { this.background = sprite; }
   initGrid(): void { this.grid = {}; }
   getGridSystem(): unknown { return this.grid; }

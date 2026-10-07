@@ -16,7 +16,7 @@ An extension requires its major version and checks `api.has(capability)` before 
 
 | API version | Capabilities | `AtlasExtension` | Events |
 |---|---|---|---|
-| 1.0.0 | `views`, `rules`, `settings`, `storage`, `presentation`, `dice` | `id`, `on`, `views`, `rules`, `settings`, `storage`, `presentation`, `dice` | `unload`, `map-loaded`, `map-closed`, `rules-changed`, `settings-changed` |
+| 1.0.0 | `views`, `rules`, `settings`, `storage`, `presentation`, `dice`, `lasers` | `id`, `on`, `views`, `rules`, `settings`, `storage`, `presentation`, `dice`, `lasers` | `unload`, `map-loaded`, `map-closed`, `rules-changed`, `settings-changed` |
 
 The report in `api-report/` (entry `api-report/src/api/public.d.ts`) is the source of truth for what the running version contains.
 
@@ -55,7 +55,7 @@ The reference further down says what each group is for; this section collects th
 - **Errors.** A malformed call throws (an async call rejects) with `[Atlas API] <namespace>.<method>: <what is wrong>`, in English whatever Atlas's language.
 - **Optional members.** These members are typed optional, so call them as `extension.dice.throw?.(...)`: `dice.throw`. A member added to a namespace in a later API version is typed optional too. Whole namespaces are gated by `has()`.
 - **Unknown views.** A call naming a view that is not open never throws: it answers `null`, `false` or a pending result, or gives a disposer that does nothing.
-- **Spelling.** Names the API itself gives are spelled `colour`, as Atlas's own dice settings are (`settings.get('diceLook').colour`). A field that carries the colour of one of Atlas's records keeps that record's spelling, `color`: a die's tag (`color`, `colorName`) and `settings.get('laserPointer').color`.
+- **Spelling.** Names the API itself gives are spelled `colour`, as Atlas's own dice settings are (`settings.get('diceLook').colour`). A field that carries the colour of one of Atlas's records keeps that record's spelling, `color`: a die's tag (`color`, `colorName`), a laser's `color` and `settings.get('laserPointer').color`.
 
 ## Reference by group
 
@@ -68,6 +68,7 @@ The report (`api-report/`, entry `src/api/public.d.ts`) has every member with it
 - **`presentation`.** `current()` gives the presented scene (also while held), `present(viewId, tabId?)` presents a tab and `stop()` stops; `subscribe` hears `presented`, `held` and `cleared`, each with a `presentationId` that names one presentation. `addTarget` adds an audience besides the player window, which changes what the scene tab's eye does while it is active.
   - **Stock presenting until a target is registered.** Until an extension registers a target with `addTarget` (active or not), Atlas presents exactly as it does without the API: the player window, "Send current map to player view", and the eye, marked while the open window shows its tab. Then the presented scene is the player window's: `current()` is the tab the open window shows (null once the window closes), `present` goes through the player window as that command does (opening it when it is closed), and `stop()` lets the window keep its last frame and drops the marker, as closing the presented map does. Once a target is registered, Atlas keeps a presented scene of its own: the eye's marker stays until Stop presenting (whether or not the window is open), an open player window follows a scene presented from anywhere, and the Present to players and Stop presenting commands exist. Removing the last target goes back to stock presenting.
 - **`dice`.** `roll` rolls by a map's collection rules (optionally for someone, `rolledBy`); `onRolled` hears every roll Atlas logs; `publish` adds a roll made elsewhere to the log, toasts and sounds, thrown in 3D unless `{ throw: false }`; `throw` throws a decided roll with Atlas's 3D dice in one view and logs nothing. A roll result is plain data with at most 1,000 dice, an `id` of at most 128 characters, a `formula` of at most 256, a `rolledBy` of at most 64 (also for `roll`) and a die name of at most 16; each die may carry a tag (`color`, `colorName`) that Atlas shows and saves with it.
+- **`lasers`.** `onLocal(viewId)` hears each point of the GM's laser and its lift (also when the pointer leaves the map or Obsidian loses focus mid-stroke; a pointer that comes back with the button still held starts a new stroke, so treat every point after a lift as a stroke's first); `show(viewId, laser)` draws someone else's laser, fading like Atlas's own. A laser not heard from for a second is let go.
 
 ## Semver rules
 

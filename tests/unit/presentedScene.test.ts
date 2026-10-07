@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createStore } from 'zustand/vanilla';
 import { createTabMetaStore } from '../../src/app/stores/tabMetaStore';
+import { LaserHub } from '../../src/app/pixi/laser/LaserHub';
 import { PresentedScene, type PresentedView } from '../../src/app/services/PresentedScene';
 
 /** What the presented scene reads of a view's store: whether, and which, map it holds. */
@@ -209,5 +210,17 @@ describe('PresentedScene', () => {
     expect(events.length).toBeGreaterThan(1);
     expect(error).toHaveBeenCalled();
     error.mockRestore();
+  });
+
+  it("gives the presented view's laser hub, or null without a renderer", () => {
+    const hub = new LaserHub();
+    const withHub = fakeView({ getBackgroundSprite: () => null, getLaserHub: () => hub });
+    const without = fakeView();
+    const scene = new PresentedScene();
+    const lasers: Array<LaserHub | null> = [];
+    scene.subscribe({ presented: (info) => lasers.push(info.laser()) });
+    scene.present(withHub.view, withHub.tavern);
+    scene.present(without.view, without.tavern);
+    expect(lasers).toEqual([hub, null]);
   });
 });

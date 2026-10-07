@@ -9,6 +9,7 @@ import { beamWidth, laserPointSpacing, type BeamPoint } from './laser/laserBeamG
 import { LaserBeam, type LaserBeamView } from './laser/LaserBeam';
 import { LaserTrail } from './laser/laserTrail';
 import { CanvasLaserBeam } from './laser/CanvasLaserBeam';
+import type { LaserHub } from './laser/LaserHub';
 import { usesCanvasRenderer } from './utils/rendererType';
 
 interface WorldPoint {
@@ -40,6 +41,7 @@ export class LaserPointerRenderer {
   private needsRedraw: boolean = false;
   /** The GM's colour and size, read on every draw so a change in the toolbar applies at once. */
   private readSettings: () => LaserPointerSettings;
+  private readonly hub: LaserHub | null;
   /** Last pointer position in screen (canvas) space, used to re-project the cursor when the viewport moves. */
   private lastPointerScreen: { x: number; y: number } | null = null;
 
@@ -63,6 +65,8 @@ export class LaserPointerRenderer {
     activeTool: SceneSource<ViewState['activeTool']>,
     canvasEl: HTMLCanvasElement,
     readSettings: () => LaserPointerSettings,
+    // The view's lasers, which extensions hear: each point of the GM's laser, and its lift.
+    hub: LaserHub | null = null,
   ) {
     this.viewport = viewport;
     this.pixiApp = pixiApp;
@@ -77,6 +81,7 @@ export class LaserPointerRenderer {
     this.container.addChild(this.beam.view);
 
     this.readSettings = readSettings;
+    this.hub = hub;
     this.unsubscribeFromSource = activeTool.subscribe(tool => this.setActiveTool(tool));
     this.setActiveTool(activeTool.get());
 
@@ -97,6 +102,8 @@ export class LaserPointerRenderer {
     this.onCanvasLeave = (): void => {
       this.lastPointerScreen = null;
       this.pointer = null;
+      // Nobody who follows the laser may see it held where nobody points any more.
+      if (this.isPointing) this.liftLaser();
       this.redraw();
     };
     this.canvasEl.addEventListener('mouseleave', this.onCanvasLeave);
@@ -114,6 +121,7 @@ export class LaserPointerRenderer {
     } else if (!this.isToolActive && wasActive) {
       setCanvasCursor(this.canvasEl, 'auto');
       this.isPointing = false;
+      this.liftLaser();
       this.redraw();
     }
   }
@@ -210,6 +218,7 @@ export class LaserPointerRenderer {
 
     if (button === 0 && this.isToolActive && this.isPointing) {
       this.isPointing = false;
+      this.liftLaser();
       this.redraw();
       e.stopPropagation();
     }
@@ -219,6 +228,7 @@ export class LaserPointerRenderer {
   private handleWindowBlur(): void {
     if (!this.isPointing) return;
     this.isPointing = false;
+    this.liftLaser();
     this.redraw();
   }
 
@@ -229,6 +239,7 @@ export class LaserPointerRenderer {
     }
     if (this.isPointing) {
       this.isPointing = false;
+      this.liftLaser();
       this.redraw();
     }
   }
@@ -236,10 +247,16 @@ export class LaserPointerRenderer {
   private endQuickMode(): void {
     this.isQuickMode = false;
     this.isPointing = false;
+    this.liftLaser();
     if (!this.isToolActive) {
       setCanvasCursor(this.canvasEl, 'auto');
     }
     this.redraw();
+  }
+
+  /** The GM let the laser go: whoever follows it sees it fade. */
+  private liftLaser(): void {
+    this.hub?.emitLocal({ kind: 'lift' });
   }
 
   // ── Trail management ────────────────────────────────────────────────
@@ -249,6 +266,7 @@ export class LaserPointerRenderer {
     const last = this.trail.last();
     if (last && Math.hypot(x - last.x, y - last.y) < laserPointSpacing(this.readSettings().size, this.viewport.scale.x || 1)) return;
     this.trail.add(x, y, Date.now());
+    this.hub?.emitLocal({ kind: 'point', x, y });
   }
 
   // ── Ticker-driven rendering ─────────────────────────────────────────

@@ -5,5 +5,6 @@ export type * from './types/records';
 export type * from './types/views';
 export type * from './types/presentation';
 export type * from './types/dice';
+export type * from './types/lasers';
 export type * from './types/rules';
 export type * from './types/settings';

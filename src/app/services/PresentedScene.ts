@@ -1,4 +1,5 @@
 import type { StoreApi } from 'zustand';
+import type { LaserHub } from '../pixi/laser/LaserHub';
 import type { ViewAtlasState } from '../storeFactory';
 import type { TabMetaStore } from '../stores/tabMetaStore';
 import { loadedMapSize, type MapSize } from './viewMapSize';
@@ -22,6 +23,7 @@ export interface PresentedView {
   readonly renderer?: {
     getBackgroundSprite(): BackgroundSprite | null;
     getViewportInstance?(): CameraViewport | null;
+    getLaserHub?(): LaserHub;
   } | null;
 }
 
@@ -38,6 +40,8 @@ export interface PresentedSceneInfo {
   camera(): ViewCamera | null;
   /** Calls `listener` after every frame of the view's viewport; returns the unsubscribe. */
   watchCamera(listener: () => void): () => void;
+  /** The view's lasers: the GM's own as drawn, and where other people's are shown; null without a renderer. */
+  laser(): LaserHub | null;
 }
 
 export interface PresentedSceneListener {
@@ -118,6 +122,7 @@ export class PresentedScene {
       mapSize: () => loadedMapSize(view),
       camera: () => viewCamera(view),
       watchCamera: (listener) => watchViewCamera(view, listener),
+      laser: () => view.renderer?.getLaserHub?.() ?? null,
     };
     this.scene = scene;
     // A store that does not hold the tab's loaded map (a load that failed, or one still running) is held too, so the resume releases the frame once the map is there.

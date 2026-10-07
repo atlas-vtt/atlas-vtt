@@ -6,4 +6,4 @@ export interface Point {
     x: number;
     y: number;
 }
-export type AtlasCapability = 'views' | 'presentation' | 'rules' | 'dice' | 'settings' | 'storage';
+export type AtlasCapability = 'views' | 'presentation' | 'rules' | 'dice' | 'lasers' | 'settings' | 'storage';
