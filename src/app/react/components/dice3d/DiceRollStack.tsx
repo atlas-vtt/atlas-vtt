@@ -1,6 +1,7 @@
 import React from 'react';
 import { DiceRollPanel } from './DiceRollPanel';
 import { largeRollIndex, type StackedRoll } from './rollStackState';
+import type { UseDiceAvatar } from '../dice/diceSourcePresentation';
 
 interface DiceRollStackProps {
   /** Oldest first, the reading order of the stack. */
@@ -8,6 +9,8 @@ interface DiceRollStackProps {
   muted: boolean;
   onClose: (id: string) => void;
   onDone: (id: string) => void;
+  /** Finds each roller's portrait. */
+  useAvatar: UseDiceAvatar;
 }
 
 /**
@@ -16,7 +19,7 @@ interface DiceRollStackProps {
  * removal to each panel's timer, since presence never removed panels while
  * rolls kept coming faster than a fade.
  */
-export function DiceRollStack({ rolls, muted, onClose, onDone }: DiceRollStackProps): React.ReactElement {
+export function DiceRollStack({ rolls, muted, onClose, onDone, useAvatar }: DiceRollStackProps): React.ReactElement {
   const large = largeRollIndex(rolls);
   return (
     <>
@@ -33,6 +36,7 @@ export function DiceRollStack({ rolls, muted, onClose, onDone }: DiceRollStackPr
           muted={muted}
           onClose={() => onClose(roll.result.id)}
           onDone={() => onDone(roll.result.id)}
+          useAvatar={useAvatar}
         />
       ))}
     </>

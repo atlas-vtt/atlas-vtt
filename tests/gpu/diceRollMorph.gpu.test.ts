@@ -68,7 +68,7 @@ describe('the roll stack rearranging', () => {
   let root: Root;
 
   const show = (rolls: StackedRoll[]): void => flushSync(() => root.render(
-    React.createElement(DiceRollStack, { rolls, muted: true, onClose: () => undefined, onDone: () => undefined }),
+    React.createElement(DiceRollStack, { rolls, muted: true, onClose: () => undefined, onDone: () => undefined, useAvatar: () => null }),
   ));
 
   beforeEach(() => {

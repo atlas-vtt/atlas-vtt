@@ -9,6 +9,7 @@ import { layoutDice, type DiceScene, type RestingFrame } from '../../../dice3d/d
 import { loadDiceArtwork } from '../../../dice3d/dieArtwork';
 import { stagePixelRatio, type DiceRenderer, type StageDie } from '../../../dice3d/DiceRenderer';
 import { borrowStage, returnStage } from '../../../dice3d/stagePool';
+import { getDomHost } from '../../../host/dom';
 import { bank, burst, rattle, rollEnd, rollStart } from '../../../dice3d/audio/diceSounds';
 import type { DiceCrit } from '../../../tools/diceCrit';
 import type { ThrowStyle } from '../../../dice3d/diceDisplay';
@@ -96,7 +97,7 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
   useEffect(() => {
     const holder = holderRef.current;
     if (!holder) return;
-    const lease = borrowStage(holder.doc);
+    const lease = borrowStage(holder.ownerDocument);
     holder.appendChild(lease.canvas);
     rendererRef.current = lease.renderer;
     return (): void => {
@@ -163,7 +164,8 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
   }, [muted, speed]);
 
   const start = useCallback((): void => {
-    const win = holderRef.current?.win;
+    const holder = holderRef.current;
+    const win = holder ? getDomHost().ownerWindow(holder) : undefined;
     if (!win || frameRef.current !== null) return;
     lastRef.current = 0;
     const tick = (now: number): void => {
@@ -203,7 +205,7 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
   useEffect(() => {
     const holder = holderRef.current;
     if (!holder) return;
-    const win = holder.win;
+    const win = getDomHost().ownerWindow(holder);
 
     const measure = (): void => {
       // The holder's size: the canvas is at least as large and is clipped to
@@ -278,7 +280,8 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
   }, [scene, reduced, muted, speed, maxWallHits, seed, start, paint]);
 
   useEffect(() => (): void => {
-    const win = holderRef.current?.win;
+    const holder = holderRef.current;
+    const win = holder ? getDomHost().ownerWindow(holder) : undefined;
     if (frameRef.current !== null) win?.cancelAnimationFrame(frameRef.current);
     frameRef.current = null;
     // A panel closing mid-throw silences the wheel at once.

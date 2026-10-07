@@ -13,6 +13,15 @@ export interface RollSourcePresentation {
   readonly avatar: DiceAvatar | null;
 }
 
+/**
+ * The hook that finds a roller's portrait, handed to the roll views by whoever renders them:
+ * a presented roll shows its own portrait, or none; otherwise the lookup decides.
+ */
+export type UseDiceAvatar = (
+  source: DiceRollResult['source'],
+  presentation?: RollSourcePresentation | null,
+) => DiceAvatar | null;
+
 /** A roll ready to show, with who it names. */
 export interface PreparedDiceRoll {
   result: DiceRollResult;

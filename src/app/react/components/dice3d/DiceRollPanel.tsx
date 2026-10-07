@@ -6,7 +6,7 @@ import { chainDepth, layoutDice, restingFrame, type DiceScene } from '../../../d
 import type { ThrowStyle } from '../../../dice3d/diceDisplay';
 import { ratchet, reveal } from '../../../dice3d/audio/diceSounds';
 import type { DiceRollResult } from '../../../types/diceTypes';
-import type { RollSourcePresentation } from '../dice/diceSourcePresentation';
+import type { RollSourcePresentation, UseDiceAvatar } from '../dice/diceSourcePresentation';
 import { DiceStage, type DiceStageHandle } from './DiceStage';
 import { DiceRollHeader } from './DiceRollHeader';
 import { DiceRollEngraving } from './DiceRollEngraving';
@@ -29,6 +29,8 @@ interface DiceRollPanelProps {
   style: ThrowStyle;
   onClose: () => void;
   onDone: () => void;
+  /** Finds the roller's portrait for the header. */
+  useAvatar: UseDiceAvatar;
 }
 
 /** How long the total stays before the panel leaves on its own. */
@@ -74,7 +76,7 @@ function lingerMs(landed: boolean, compact: boolean, throws: number): number {
  * own, shows the number and leaves. A click on the panel skips the flight, or
  * closes it once the dice lie.
  */
-export function DiceRollPanel({ result, presentation, scene, compact: compactNow, leaving, muted, style, onClose, onDone }: DiceRollPanelProps): React.ReactElement {
+export function DiceRollPanel({ result, presentation, scene, compact: compactNow, leaving, muted, style, onClose, onDone, useAvatar }: DiceRollPanelProps): React.ReactElement {
   // A panel leaves at the size it had: a row displaced by a newer roll would
   // otherwise open up to full size while disappearing.
   const [leavingSize, setLeavingSize] = useState<boolean | null>(null);
@@ -202,13 +204,13 @@ export function DiceRollPanel({ result, presentation, scene, compact: compactNow
           <div ref={contentRef} className="atlas-dice-roll__content">
             {compact ? (
               <div className="atlas-dice-roll__row">
-                <DiceRollHeader result={result} presentation={presentation} label={label} />
+                <DiceRollHeader result={result} presentation={presentation} label={label} useAvatar={useAvatar} />
                 <span className="atlas-dice-roll__total atlas-dice-roll__total--row">{shown ?? result.formula}</span>
               </div>
             ) : (
               <>
                 <div className="atlas-dice-roll__header">
-                  <DiceRollHeader result={result} presentation={presentation} label={label} />
+                  <DiceRollHeader result={result} presentation={presentation} label={label} useAvatar={useAvatar} />
                 </div>
                 {/* Holds the height where the dice come to rest; they roll over the whole panel. */}
                 <div className="atlas-dice-roll__floor" />

@@ -90,7 +90,14 @@
     "src/app/pixi/fog/drawFogCoverage.ts",
     "src/app/pixi/fog/fogRenderUtils.ts",
     "src/app/pixi/playerSafeFrame.ts",
-    "src/app/pixi/RenderScheduler.ts"
+    "src/app/pixi/RenderScheduler.ts",
+    "src/app/react/components/dice3d/**/*.ts",
+    "src/app/react/components/dice3d/**/*.tsx",
+    "src/app/react/components/dice/DiceToast.tsx",
+    "src/app/react/components/dice/diceSourcePresentation.ts",
+    "src/app/react/components/dice/diceToastOrnament.ts",
+    "src/app/packages/components/shared/TokenPortrait.tsx",
+    "src/app/tools/diceLabels.ts"
   ],
   "exclude": [
     "src/app/grid/GridController.ts",

@@ -18,6 +18,7 @@ import { canRunMapHotkeys } from '../../../keyboard/mapHotkeys';
 import { DiceToast } from './DiceToast';
 import { DICE_TOAST_KNOT_PATHS, DICE_TOAST_KNOT_SYMBOL_ID } from './diceToastOrnament';
 import { useDiceToasts } from './useDiceToasts';
+import { useDiceAvatar } from './useDiceAvatar';
 
 interface DiceRollDisplayProps {
   /** Explicit source for a display outside its owning Atlas view. */
@@ -104,9 +105,9 @@ export function DiceRollDisplay({ container, prepare, muted = false, eventBus: s
           </defs>
         </svg>
       )}
-      <DiceRollStack rolls={rolls} muted={muted} onClose={close} onDone={dismiss} />
+      <DiceRollStack rolls={rolls} muted={muted} onClose={close} onDone={dismiss} useAvatar={useDiceAvatar} />
       {toasts.map((toast) => (
-        <DiceToast key={toast.id} result={toast.result} presentation={toast.sourcePresentation} phase={toast.phase} onDismiss={() => dismissToast(toast.id)} />
+        <DiceToast key={toast.id} result={toast.result} presentation={toast.sourcePresentation} phase={toast.phase} onDismiss={() => dismissToast(toast.id)} useAvatar={useDiceAvatar} />
       ))}
     </div>
   );

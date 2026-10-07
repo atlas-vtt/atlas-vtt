@@ -5,6 +5,7 @@ import type { App } from 'obsidian';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { DiceToast } from '../../src/app/react/components/dice/DiceToast';
 import { DiceRollHeader } from '../../src/app/react/components/dice3d/DiceRollHeader';
+import { useDiceAvatar } from '../../src/app/react/components/dice/useDiceAvatar';
 import type { RollSourcePresentation } from '../../src/app/react/components/dice/diceSourcePresentation';
 import type { DiceRollResult } from '../../src/app/types/diceTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -23,8 +24,8 @@ function inView(app: App, element: React.ReactElement): HTMLElement {
 }
 
 const shown = (presentation: RollSourcePresentation | null | undefined, app: App): HTMLElement[] => [
-  inView(app, <DiceToast result={result} presentation={presentation} phase="visible" onDismiss={() => undefined} />),
-  inView(app, <DiceRollHeader result={result} presentation={presentation} label="Bite" />),
+  inView(app, <DiceToast result={result} presentation={presentation} phase="visible" onDismiss={() => undefined} useAvatar={useDiceAvatar} />),
+  inView(app, <DiceRollHeader result={result} presentation={presentation} label="Bite" useAvatar={useDiceAvatar} />),
 ];
 
 describe('who a shown roll names', () => {

@@ -3,8 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
-import { useDiceAvatar } from './useDiceAvatar';
-import type { RollSourcePresentation } from './diceSourcePresentation';
+import type { RollSourcePresentation, UseDiceAvatar } from './diceSourcePresentation';
 import { DICE_TOAST_KNOT_SYMBOL_ID } from './diceToastOrnament';
 import { dieLabel } from '../../../tools/diceLabels';
 import { t } from '../../../i18n';
@@ -19,14 +18,16 @@ interface DiceToastProps {
   presentation?: RollSourcePresentation | null | undefined;
   phase: ToastPhase;
   onDismiss: () => void;
+  /** Finds the portrait; called once per render. */
+  useAvatar: UseDiceAvatar;
 }
 
-export function DiceToast({ result, presentation, phase, onDismiss }: DiceToastProps): React.ReactElement {
+export function DiceToast({ result, presentation, phase, onDismiss, useAvatar }: DiceToastProps): React.ReactElement {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const crit = result.crit;
   const source = result.source;
-  const avatar = useDiceAvatar(source, presentation);
+  const avatar = useAvatar(source, presentation);
   const presented = presentation !== undefined;
   // A presented roll shows exactly its name, or none: no placeholder, initial or alt text stands in.
   const sourceTokenName = presented ? presentation?.name ?? '' : source?.tokenName ?? t('dice.unknown');
