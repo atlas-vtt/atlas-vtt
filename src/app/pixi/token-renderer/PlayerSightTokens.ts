@@ -1,5 +1,6 @@
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { TokenEntity } from '../../types';
+import type { TokenSeen } from '../../vision/measureOrigin';
 import type { TokenPerception } from '../lighting/playerLightingLayers';
 import { hiddenTokenLayers, type HideableLayer, type LayerVisibility } from '../playerSafeFrame';
 import { SensedOutlines, type SensedToken } from './SensedOutlines';
@@ -50,8 +51,13 @@ export class PlayerSightTokens {
     this.playerView = playerView;
   }
 
+  /** Whether the canvas shows the players' view: session view, or the peek of a lit scene. */
+  showsPlayers(): boolean {
+    return !!this.active?.() || !!this.playerView?.();
+  }
+
   private fogActive(perception?: TokenPerception): boolean {
-    return !!perception || !!this.active?.() || !!this.playerView?.();
+    return !!perception || this.showsPlayers();
   }
 
   private covered(tokenId: string, coverage: FogCoverage | null): boolean {
@@ -129,3 +135,18 @@ export class PlayerSightTokens {
 export function seenTokens(perception: TokenPerception | undefined): ((tokenId: string) => boolean) | undefined {
   return perception && ((tokenId) => perception(tokenId) === 'seen');
 }
+
+/**
+ * Whether the players see a token, for what shows only with it: it exists, is not hidden, and
+ * `perception` (their sight with committed fog) sees it, or answers nothing (an unlit scene without
+ * fog). A token they only sense, do not see or that fog covers is not seen.
+ */
+export function seenByPlayers(tokens: Readonly<Record<string, { isHidden?: boolean }>>, perception: TokenPerception | undefined): TokenSeen {
+  return (tokenId) => {
+    const token = tokens[tokenId];
+    return !!token && !token.isHidden && (perception?.(tokenId) ?? 'seen') === 'seen';
+  };
+}
+
+/** Sees no token: what a players' frame answers while it cannot tell. */
+export const NOTHING_SEEN: TokenSeen = () => false;

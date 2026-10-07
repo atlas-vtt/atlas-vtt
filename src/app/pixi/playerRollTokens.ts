@@ -1,6 +1,7 @@
 import type { TokenEntity } from '../types';
 import type { ShownRollToken } from '../services/playerRollSource';
 import type { TokenPerception } from './lighting/playerLightingLayers';
+import { seenByPlayers } from './token-renderer/PlayerSightTokens';
 import { tokenDisplayName } from './token-renderer/tokenDisplayName';
 
 /** What of a view's store tells which scene it holds, and the tokens in it. */
@@ -28,11 +29,11 @@ export function shownRollTokens(
 ): ReadonlyMap<string, ShownRollToken> {
   if (scene.mapPath !== mapPath || !scene.mapLoaded || scene.isMapLoading) return NONE;
   const tokens = scene.objects.tokens;
-  const perceives = perception();
+  const seen = seenByPlayers(tokens, perception());
   const shown = new Map<string, ShownRollToken>();
   for (const id of tokenIds ?? Object.keys(tokens)) {
     const token = tokens[id];
-    if (!token || token.isHidden || !sprites[id] || (perceives?.(id) ?? 'seen') !== 'seen') continue;
+    if (!token || !sprites[id] || !seen(id)) continue;
     shown.set(id, Object.freeze({
       name: tokenDisplayName(token),
       imagePath: token.imagePath || undefined,

@@ -10,6 +10,9 @@ import type { StoreApi } from 'zustand';
 import { isHandled } from './utils/handledEvents';
 import { createMeasureLabelText, drawMeasureCircle, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, measureLabelFontSize } from './utils/measureDrawing';
 import { MAP_LAYER_Z } from './mapLayerOrder';
+import { MeasurePartsVisibility, type MeasurePlayersView } from './measurePartsVisibility';
+import type { LayerVisibility } from './playerSafeFrame';
+import type { TokenSeen } from '../vision/measureOrigin';
 
 interface PersistentMeasurement {
   graphics: Graphics;
@@ -28,6 +31,9 @@ export class MeasureRenderer {
   private measurePill: Graphics; // Background pill for text
   /** Measurement settings of the current map, from its collection when it has one. */
   public measurementSettingsProvider: (() => MeasurementSettings) | null = null;
+  /** How the players see the tokens a measurement starts on; without it, the players' picture shows every measurement. */
+  public playersView: MeasurePlayersView | null = null;
+  private readonly parts: MeasurePartsVisibility;
 
   private isDrawing: boolean = false;
   private startPoint: { x: number; y: number } | null = null;
@@ -73,6 +79,7 @@ export class MeasureRenderer {
     this.measureText = createMeasureLabelText();
     this.measureText.zIndex = MAP_LAYER_Z.measure;
     this.viewport.addChild(this.measureText);
+    this.parts = new MeasurePartsVisibility({ graphics: this.measureGraphics, pill: this.measurePill, text: this.measureText }, () => this.playersView);
     
     // Setup viewport scale listener
     this.setupViewportScaleListener();
@@ -137,7 +144,7 @@ export class MeasureRenderer {
   }
   
   private updateTextScale(): void {
-    if (!this.measureText.visible) return;
+    if (!this.parts.labelDrawn) return;
     
     this.measureText.style.fontSize = measureLabelFontSize(this.viewport.scale.x);
     
@@ -179,6 +186,7 @@ export class MeasureRenderer {
       e.stopPropagation();
       
       const point = this.measurePoint(e);
+      this.parts.start([this.viewport.toWorld(e.global), point]);
       this.startPoint = point;
       this.endPoint = point;
       this.isDrawing = true;
@@ -275,8 +283,7 @@ export class MeasureRenderer {
     drawMeasurePoint(this.measureGraphics, accentHex, this.startPoint);
 
     this.measureText.text = this.measurementLabel(this.startPoint, this.endPoint);
-    this.measureText.visible = true;
-    this.measurePill.visible = true;
+    this.parts.drawn();
     
     // Update pill and text for current zoom level
     this.updatePillAndText();
@@ -319,8 +326,7 @@ export class MeasureRenderer {
   private clearMeasurement(): void {
     this.measureGraphics.clear();
     this.measurePill.clear();
-    this.measureText.visible = false;
-    this.measurePill.visible = false;
+    this.parts.cleared();
     this.startPoint = null;
     this.endPoint = null;
     this.rightClickDownPos = null;
@@ -364,7 +370,8 @@ export class MeasureRenderer {
 
     persistText.anchor.set(0.5);
     drawMeasureLabel(persistPill, persistText, this.labelAnchor(this.startPoint, this.endPoint), this.viewport.scale.x);
-    persistText.visible = true;
+    const measurement = { graphics: persistGraphics, pill: persistPill, text: persistText };
+    this.parts.keep(measurement);
     
     for (const part of [persistGraphics, persistPill, persistText]) {
       part.zIndex = MAP_LAYER_Z.measure;
@@ -372,11 +379,7 @@ export class MeasureRenderer {
     }
     
     // Store the persistent measurement
-    this.persistentMeasurements.push({
-      graphics: persistGraphics,
-      pill: persistPill,
-      text: persistText
-    });
+    this.persistentMeasurements.push(measurement);
   }
   
   private drawLineOnGraphics(graphics: Graphics, color: number, start: { x: number; y: number }, end: { x: number; y: number }): void {
@@ -456,6 +459,22 @@ export class MeasureRenderer {
     
     // Clear the array
     this.persistentMeasurements = [];
+    this.parts.forgetKept();
+  }
+
+  /** What the players' picture shows of the measurements: one that started on a token they do not see is left out. */
+  public getPlayerViewLayers(seen: TokenSeen): LayerVisibility[] {
+    return this.parts.playerViewLayers(seen);
+  }
+
+  /** The measurements as the GM view shows them, whatever the canvas shows: for a picture of the scene. */
+  public getGmViewLayers(): LayerVisibility[] {
+    return this.parts.gmViewLayers();
+  }
+
+  /** The players' sight changed, or whether the canvas shows it: measurements show or hide by it. */
+  public refreshVisibility(): void {
+    this.parts.refresh();
   }
   
   public destroy(): void {
