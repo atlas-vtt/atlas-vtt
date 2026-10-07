@@ -30,7 +30,7 @@ export interface ReferencePlan {
   call: VisibilityCall;
   blocking: WallSegment[];
   spans: Span[];
-  /** The walls in reach seen edge-on: the origin lies within 1e-5 of the far end's distance of the wall's line. */
+  /** The walls in reach seen edge-on: the origin lies within 1e-5 of the far end's distance of the wall's line, and not on it to the last bit. */
   edgeOn: number[];
   /** The sweep's angles as distinct sorted values, how often each occurs, and whether it is cast. */
   values: number[];
@@ -96,11 +96,16 @@ function classify(plan: ReferencePlan, left: number, right: number, wraps: boole
   return touched ? 'edge-on' : 'pass';
 }
 
-/** Whether the origin lies within 1e-5 of the far end's distance of the wall's line. */
+/**
+ * Whether the origin lies within 1e-5 of the far end's distance of the wall's line, but not on it
+ * to the last bit: the sweep's distance to a wall is `cross` over something, so where `cross` is
+ * exactly zero the wall stops no ray and rounds nothing.
+ */
 function edgeOnFrom(origin: Point, w: WallSegment): boolean {
   const ex = w.p2.x - w.p1.x, ey = w.p2.y - w.p1.y;
-  const h = Math.abs(ex * (origin.y - w.p1.y) - ey * (origin.x - w.p1.x)) / Math.hypot(ex, ey);
-  return h < 1e-5 * Math.max(Math.hypot(w.p1.x - origin.x, w.p1.y - origin.y), Math.hypot(w.p2.x - origin.x, w.p2.y - origin.y));
+  const cross = (w.p1.x - origin.x) * ey - (w.p1.y - origin.y) * ex;
+  if (cross === 0) return false;
+  return Math.abs(cross) / Math.hypot(ex, ey) < 1e-5 * Math.max(Math.hypot(w.p1.x - origin.x, w.p1.y - origin.y), Math.hypot(w.p2.x - origin.x, w.p2.y - origin.y));
 }
 
 /** The reference plan of a call without a cone, or null when a limited wall is in reach (that sweep is never culled). */

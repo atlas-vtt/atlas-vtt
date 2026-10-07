@@ -33,6 +33,9 @@ vi.mock('../../src/app/vision/gridRays', async (importOriginal) => {
  */
 const CAST_BOUND = { rooms: Math.ceil(1.25 * 697), pillars: Math.ceil(1.25 * 1956) };
 
+/** The most rays cast from the places on wall lines the test below looks from (926), with a quarter to spare. */
+const ON_LINE_CAST_BOUND = Math.ceil(1.25 * 926);
+
 /**
  * Durations measured on the machine the bounds were set on (Apple M4 Pro, this suite's Node), in
  * ms; CI asserts ten times them, never a budget. The hostile piles: their polygons from every
@@ -73,6 +76,24 @@ describe('sight on maps with many walls', { timeout: 600_000 }, () => {
       counts.rays = 0;
       computeVisibility(origin, radius, map.walls, undefined, 'sight');
       expect(counts.rays, `rays cast from (${origin.x}, ${origin.y})`).toBeLessThanOrEqual(CAST_BOUND[name]);
+      expect(counts.tests, `walls tested from (${origin.x}, ${origin.y}), against ${oracle}`).toBeLessThanOrEqual(oracle / 10);
+    }
+  });
+
+  // On a map drawn on a grid, a place on a wall's line has the walls of a whole row or column in line with it.
+  it('casts few rays and tests few walls from the wall ends, walls and wall lines of a map drawn on a grid', () => {
+    const map = budgetScene('doorways');
+    const radius = Math.hypot(map.size, map.size);
+    const picks = [3, 400, 901, 1777, 2500, 3333, 4100, 4444].map((i) => map.walls[i]!);
+    const origins = picks.flatMap((w) => [{ ...w.p1 }, { x: (w.p1.x + w.p2.x) / 2, y: (w.p1.y + w.p2.y) / 2 }, { x: w.p1.x + (w.p1.x - w.p2.x) * 0.31, y: w.p1.y + (w.p1.y - w.p2.y) * 0.31 }]);
+    for (const origin of origins) {
+      counts.oracle = 0;
+      full.computeVisibility(origin, radius, map.walls, undefined, 'sight');
+      const oracle = counts.oracle;
+      counts.tests = 0;
+      counts.rays = 0;
+      computeVisibility(origin, radius, map.walls, undefined, 'sight');
+      expect(counts.rays, `rays cast from (${origin.x}, ${origin.y})`).toBeLessThanOrEqual(ON_LINE_CAST_BOUND);
       expect(counts.tests, `walls tested from (${origin.x}, ${origin.y}), against ${oracle}`).toBeLessThanOrEqual(oracle / 10);
     }
   });

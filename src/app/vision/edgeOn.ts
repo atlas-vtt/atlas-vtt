@@ -12,11 +12,19 @@ import { rayHit } from './visionGeometry';
  */
 const EDGE_ON = 1e-5;
 
-/** Whether `wall` is seen edge-on from `origin`: its line passes within `EDGE_ON` of its far end's distance. */
+/**
+ * Whether `wall` is seen edge-on from `origin`: its line passes within `EDGE_ON` of its far end's
+ * distance, but not through the origin to the last bit. `cross` is what the sweep divides to get
+ * a ray's distance to the wall (`rayHit`), whatever the ray: where it is exactly zero, every
+ * distance is zero and the wall stops no ray at all, so there is no rounding to be wary of. Such
+ * are a wall that ends at the origin and, on a map drawn on a grid, every wall of the row and
+ * column a place on a grid line lies in.
+ */
 export function seenEdgeOn(wall: WallSegment, origin: Point): boolean {
   const { p1, p2 } = wall;
   const ex = p2.x - p1.x, ey = p2.y - p1.y;
-  const cross = ex * (origin.y - p1.y) - ey * (origin.x - p1.x);
+  const cross = (p1.x - origin.x) * ey - (p1.y - origin.y) * ex;
+  if (cross === 0) return false;
   const far = Math.max((p1.x - origin.x) ** 2 + (p1.y - origin.y) ** 2, (p2.x - origin.x) ** 2 + (p2.y - origin.y) ** 2);
   return cross * cross < EDGE_ON * EDGE_ON * far * (ex * ex + ey * ey);
 }

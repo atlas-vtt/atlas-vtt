@@ -134,6 +134,23 @@ export function gridMapTrial(seed: number, origins = 3): VisibilityTrial {
   return { family: 'grid maps', seed, walls: map.walls, calls };
 }
 
+/** A grid map seen from its own walls: from wall ends, from the middle of walls and from places on their lines beyond an end. */
+export function wallLinesTrial(seed: number): VisibilityTrial {
+  const { walls } = gridMapTrial(seed, 0);
+  const rand = rng(seed * 69069);
+  const calls = Array.from({ length: 9 }, (_, i): VisibilityCall => {
+    const w = walls[Math.floor(rand() * walls.length)]!, f = [0, 0.5, -0.31][i % 3]!;
+    const origin = { x: w.p1.x + (w.p2.x - w.p1.x) * f, y: w.p1.y + (w.p2.y - w.p1.y) * f };
+    return i % 2 ? { origin, radius: 300 + rand() * 1500, channel: 'light' } : { origin, radius: Math.hypot(BIG, BIG), channel: 'sight' };
+  });
+  return { family: 'wall lines', seed, walls, calls };
+}
+
+/** How many walls of a trial lie in line with the origin of one of its calls to the last bit: the sweep's distance to them is zero for every ray. */
+export function wallsInLine({ walls, calls }: VisibilityTrial): number {
+  return calls.reduce((sum, { origin }) => sum + walls.filter((w) => (w.p1.x - origin.x) * (w.p2.y - w.p1.y) - (w.p1.y - origin.y) * (w.p2.x - w.p1.x) === 0).length, 0);
+}
+
 /** Square rooms with doorways and a diagonal wall across each. */
 function diagonalRooms(rand: Rand, cells: number, size: number): Drawn {
   const map = doorways(rand, cells, size, false);

@@ -71,6 +71,12 @@ describe('the culled sweep with a rule left out fails the equivalence checks', {
     expect(failing(visibility, Array.from({ length: 300 }, (_, i) => cellSidesTrial(i + 1)))).toBeGreaterThanOrEqual(8);
   });
 
+  it('when no wall counts as seen edge-on', async () => {
+    const visibility = await sweepWith<typeof import('../../src/app/vision/edgeOn')>('../../src/app/vision/edgeOn', () => ({ seenEdgeOn: () => false }));
+    expect(failing(visibility, [corridorsTrial(26)])).toBe(1);
+    expect(failing(visibility, Array.from({ length: 300 }, (_, i) => cellSidesTrial(i + 1)))).toBeGreaterThanOrEqual(8);
+  });
+
   it('when a ray at the radius counts as a hit on the wall beside it', async () => {
     const visibility = await sweepWith<StraightRuns>(STRAIGHT, () => ({ oneWallGap: (query, l, r) => (l.wall >= 0 || r.wall >= 0) && (l.wall < 0 || r.wall < 0 || query.grid.walls[l.wall] === query.grid.walls[r.wall]) }));
     expect(failing(visibility, seeds.map(shortReachTrial))).toBeGreaterThanOrEqual(2);
