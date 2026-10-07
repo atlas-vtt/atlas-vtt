@@ -1,6 +1,6 @@
 import type { TokenEntity } from '../types';
 import type { ShownRollToken } from '../services/playerRollSource';
-import type { TokenPerception } from './lighting/playerLightingLayers';
+import type { TokenPerception } from '../vision/tokenPerception';
 import { seenByPlayers } from './token-renderer/PlayerSightTokens';
 import { tokenDisplayName } from './token-renderer/tokenDisplayName';
 

@@ -27,7 +27,7 @@ import { FogOfWarRenderer } from "./pixi/fog/FogOfWarRenderer";
 import { MeasureRenderer } from "./pixi/MeasureRenderer"; // Import MeasureRenderer
 import { measurePlayersView } from './pixi/measurePlayersView';
 import { NOTHING_SEEN } from './pixi/token-renderer/PlayerSightTokens';
-import type { TokenPerception } from './pixi/lighting/playerLightingLayers';
+import type { TokenPerception } from './vision/tokenPerception';
 import { LaserPointerRenderer } from "./pixi/LaserPointerRenderer"; // Import LaserPointerRenderer
 import { DrawingRenderer } from "./pixi/DrawingRenderer"; // Import DrawingRenderer
 import { DrawingInteraction } from "./pixi/DrawingInteraction";

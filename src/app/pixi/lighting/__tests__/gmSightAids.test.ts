@@ -5,7 +5,7 @@ import type { ConditionDefinition } from '../../../types/collectionSettingsTypes
 import type { WallSegment } from '../../../types/wallTypes';
 import { computeSight, sightSources, type SightSource } from '../../../vision/sight';
 import { senseSource, darkvision, tremorsense } from '../../../vision/__tests__/senseSources';
-import { tokenPerception } from '../playerLightingLayers';
+import { tokenPerception } from '../../../vision/tokenPerception';
 import { senseRings } from '../senseRings';
 import { sightMarks } from '../sightMarks';
 

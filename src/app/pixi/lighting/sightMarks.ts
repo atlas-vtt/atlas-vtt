@@ -1,6 +1,6 @@
 import type { TokenEntity } from '../../types';
 import { computeTokenPixelSize } from '../token-renderer/tokenSizing';
-import type { TokenPerception } from './playerLightingLayers';
+import type { TokenPerception } from '../../vision/tokenPerception';
 
 /** A token the players do not see now, for the GM's mark on it. */
 export interface SightMark {

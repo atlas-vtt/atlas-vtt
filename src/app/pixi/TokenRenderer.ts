@@ -5,7 +5,7 @@ import type { ResourceDefsProvider } from '../resources/resourceTypes';
 import { fitTokenArtwork, syncTokenArtwork } from './token-renderer/tokenArtwork';
 import type { AtlasSettings } from '../services/SettingsService';
 import { HIDDEN_TOKEN_ALPHA, gmTokenLayers, type HideableLayer, type LayerVisibility } from './playerSafeFrame';
-import type { TokenPerception } from './lighting/playerLightingLayers';
+import type { TokenPerception } from '../vision/tokenPerception';
 import { PlayerSightTokens, seenByPlayers, seenTokens } from './token-renderer/PlayerSightTokens';
 import { PlayersViewWatch } from './token-renderer/PlayersViewWatch';
 import type { TokenSeen } from '../vision/measureOrigin';

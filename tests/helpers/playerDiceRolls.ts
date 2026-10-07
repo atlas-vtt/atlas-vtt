@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { App } from 'obsidian';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
-import type { TokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 import { shownRollTokens } from '../../src/app/pixi/playerRollTokens';
 import type { PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import type { PlayerRollSources } from '../../src/app/services/playerRollSource';

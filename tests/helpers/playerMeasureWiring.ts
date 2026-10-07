@@ -3,7 +3,7 @@ import type { GridSystem } from '../../src/app/grid/GridSystem';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import type { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import type { MeasureRenderer } from '../../src/app/pixi/MeasureRenderer';
-import type { TokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';
 import type { AtlasSettings } from '../../src/app/services/SettingsService';

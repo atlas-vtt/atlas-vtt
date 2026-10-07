@@ -1,7 +1,7 @@
 import type { FogCoverage } from '../../fog/fogCoverage';
 import type { TokenEntity } from '../../types';
 import type { TokenSeen } from '../../vision/measureOrigin';
-import type { TokenPerception } from '../lighting/playerLightingLayers';
+import type { TokenPerception } from '../../vision/tokenPerception';
 import { hiddenTokenLayers, type HideableLayer, type LayerVisibility } from '../playerSafeFrame';
 import { SensedOutlines, type SensedToken } from './SensedOutlines';
 import type { TokenGroupContainer } from './types';

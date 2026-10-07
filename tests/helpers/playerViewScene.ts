@@ -18,7 +18,7 @@ import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__
 import { watchGl } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';
 import { destroyTree } from '../../src/app/pixi/utils/destroyTree';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
-import type { TokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 import type { TokenEntity } from '../../src/app/types';
 import type { FogOperation } from '../../src/app/types/fogTypes';
 

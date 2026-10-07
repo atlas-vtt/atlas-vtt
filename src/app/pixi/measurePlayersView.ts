@@ -2,7 +2,7 @@ import type { StoreApi } from 'zustand';
 import type { GridSystem } from '../grid/GridSystem';
 import type { ViewAtlasState } from '../storeFactory';
 import { tokenFootprints } from '../vision/measureOrigin';
-import type { TokenPerception } from './lighting/playerLightingLayers';
+import type { TokenPerception } from '../vision/tokenPerception';
 import type { MeasurePlayersView } from './measurePartsVisibility';
 import type { TokenRenderer } from './TokenRenderer';
 import { NOTHING_SEEN } from './token-renderer/PlayerSightTokens';

@@ -8,7 +8,7 @@ import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
 import { restingTokenUIScale } from '../token-renderer/tokenSizing';
 import { destroyTree } from '../utils/destroyTree';
-import type { TokenPerception } from './playerLightingLayers';
+import type { TokenPerception } from '../../vision/tokenPerception';
 import { PlayerSightMarks } from './PlayerSightMarks';
 import { SenseRangeRings } from './SenseRangeRings';
 import { sightMarks } from './sightMarks';

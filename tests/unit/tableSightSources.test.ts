@@ -3,7 +3,7 @@ import { sightMarks } from '../../src/app/pixi/lighting/sightMarks';
 import { resolveMeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { unitScaleOf } from '../../src/app/lighting/lightingUnits';
 import { SceneModelBuilder, SceneSpots } from '../../src/app/pixi/lighting/sceneModel';
-import { tokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import { tokenPerception } from '../../src/app/vision/tokenPerception';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import { computeSight, SEES_ALL, SightCache, sightSources } from '../../src/app/vision/sight';

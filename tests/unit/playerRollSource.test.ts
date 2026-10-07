@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { fogCoverage, type FogCoverage } from '../../src/app/fog/fogCoverage';
 import { PlayerSightTokens } from '../../src/app/pixi/token-renderer/PlayerSightTokens';
 import type { TokenGroupContainer } from '../../src/app/pixi/token-renderer/types';
-import type { TokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 import { shownRollTokens, type RollSceneState } from '../../src/app/pixi/playerRollTokens';
 import { rollForPlayers, type ShownRollToken } from '../../src/app/services/playerRollSource';
 import type { DiceRollOrigin } from '../../src/app/types/diceRollOrigin';
