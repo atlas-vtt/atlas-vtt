@@ -9,6 +9,7 @@ import { distSqToSegment, raySegmentIntersect } from '../../src/app/vision/visio
 import { wallsInReach } from '../../src/app/vision/visibility';
 import { rng } from '../../src/app/pixi/lighting/engine/__tests__/fuzzRooms';
 import { chainWalls, wall } from '../helpers/visibilityScenes';
+import { cellSidesTrial, stopsBeforeTheWallInFront } from '../helpers/visibilityCellSides';
 
 /** The nearest stop of the full sweep's ray at `angle`, by brute force, and every wall that stops it there. */
 function bruteStop(walls: readonly WallSegment[], origin: Point, radius: number, angle: number, limit: number, channel?: WallChannel): { t: number; walls: WallSegment[] } {
@@ -83,6 +84,21 @@ describe('the wall grid', () => {
     const grid = Array.from({ length: 12 }, (_, i) => [wall({ x: i * 70, y: 0 }, { x: i * 70, y: 770 }), wall({ x: 0, y: i * 70 }, { x: 770, y: i * 70 })]).flat();
     checked += checkScene(grid, [{ x: 35, y: 35 }, { x: 140, y: 210 }, { x: 0, y: 0 }, { x: -70, y: 350 }], rand);
     expect(checked).toBeGreaterThan(2000);
+  });
+
+  it('stops a ray on a wall seen almost edge-on where the full sweep does, also before the cells that list the wall', () => {
+    let short = 0;
+    for (let seed = 1; seed <= 300; seed++) {
+      const trial = cellSidesTrial(seed);
+      const { origin, radius } = trial.calls[0]!;
+      const query = rayQuery(buildWallGrid(trial.walls), origin, radius, 'sight');
+      const angle = Math.atan2(trial.edgeOn.p1.y - origin.y, trial.edgeOn.p1.x - origin.x);
+      const expected = bruteStop(trial.walls, origin, radius, angle, radius, 'sight');
+      expect(Object.is(firstHit(query, angle, radius).t, expected.t), `seed ${seed}`).toBe(true);
+      for (const limit of [expected.t, expected.t * (1 + 1e-12), radius]) expect(anyHitBefore(query, angle, limit), `seed ${seed}`).toBe(expected.t < limit);
+      if (stopsBeforeTheWallInFront(trial)) short++;
+    }
+    expect(short).toBeGreaterThanOrEqual(9);
   });
 
   it('keeps its cells few on piles of walls and on long diagonal walls', () => {

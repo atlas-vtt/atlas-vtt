@@ -6,6 +6,7 @@ import { referencePlan, type ReferencePlan } from '../helpers/visibilityReferenc
 import { chainsTrial, conesTrial, corridorsTrial, limitedTrial, roomsTrial, shortReachTrial, wallKindsTrial, type VisibilityTrial } from '../helpers/visibilityScenes';
 import { TIE_KINDS, tiesTrial } from '../helpers/visibilityTies';
 import { checkLimitedTrial, checkTrial, floor, sweepTimeout, TALLIED_TRIALS, trialSeeds } from '../helpers/visibilityTrials';
+import { cellSidesTrial, stopsBeforeTheWallInFront } from '../helpers/visibilityCellSides';
 
 const FILE = 'tests/unit/visibilityCulling.test.ts';
 
@@ -110,6 +111,18 @@ describe('the culled sweep keeps every corner the full sweep draws', { timeout: 
     floor(tally, 'runs with ties', 25);
     floor(tally, 'cast again (edge-on)', 80);
     for (const kind of TIE_KINDS) floor(tally, kind, kind === 'beside the row' || kind === 'on the row' ? 0.25 : 0.5);
+  });
+
+  it('where a wall seen almost edge-on begins just past the side of a grid cell', () => {
+    const tally = new Tally();
+    for (const seed of trialSeeds('cell sides', 300)) {
+      const trial = cellSidesTrial(seed);
+      if (stopsBeforeTheWallInFront(trial)) tally.add('stops on the edge-on wall before the wall in front');
+      tally.add('trials');
+      checkTrial(trial, FILE);
+    }
+    console.info(`cell sides: ${tally.line()}`);
+    floor(tally, 'stops on the edge-on wall before the wall in front', 0.03);
   });
 
   it('with limited walls in reach, which keep the full sweep', () => {

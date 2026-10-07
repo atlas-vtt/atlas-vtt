@@ -6,6 +6,7 @@ import { firstDifference } from '../helpers/visibilityCompare';
 import { chainsTrial, conesTrial, corridorsTrial, roomsTrial, shortReachTrial, wall, wallKindsTrial, type VisibilityTrial } from '../helpers/visibilityScenes';
 import { gridMapTrial } from '../helpers/visibilityMaps';
 import { rowSeam, tiesTrial } from '../helpers/visibilityTies';
+import { cellSidesTrial } from '../helpers/visibilityCellSides';
 import { firstHitInFirstCell, gridsByIdentity, looseOutlineIndex } from '../helpers/brokenSweeps';
 import { anyHitBefore } from '../../src/app/vision/gridRays';
 
@@ -63,6 +64,11 @@ describe('the culled sweep with a rule left out fails the equivalence checks', {
   it('when runs are rebuilt where a wall is seen edge-on', async () => {
     const visibility = await sweepWith<StraightRuns>(STRAIGHT, () => ({ clearOfEdgeOn: () => true }));
     expect(failing(visibility, [corridorsTrial(26)])).toBe(1);
+  });
+
+  it('when a ray tests a wall seen edge-on only in the cells that list it', async () => {
+    const visibility = await sweepWith<typeof import('../../src/app/vision/edgeOn')>('../../src/app/vision/edgeOn', () => ({ stopOnEdgeOn: () => undefined }));
+    expect(failing(visibility, Array.from({ length: 300 }, (_, i) => cellSidesTrial(i + 1)))).toBeGreaterThanOrEqual(8);
   });
 
   it('when a ray at the radius counts as a hit on the wall beside it', async () => {

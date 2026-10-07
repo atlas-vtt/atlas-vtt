@@ -1,5 +1,8 @@
 import type { Point } from '../types/visionTypes';
 import type { WallSegment } from '../types/wallTypes';
+import { covers } from './angularSpans';
+import type { RayQuery, RayStop } from './gridRays';
+import { rayHit } from './visionGeometry';
 
 /**
  * A wall whose line passes nearer the origin than this share of its far end's distance is seen
@@ -16,4 +19,22 @@ export function seenEdgeOn(wall: WallSegment, origin: Point): boolean {
   const cross = ex * (origin.y - p1.y) - ey * (origin.x - p1.x);
   const far = Math.max((p1.x - origin.x) ** 2 + (p1.y - origin.y) ** 2, (p2.x - origin.x) ** 2 + (p2.y - origin.y) ** 2);
   return cross * cross < EDGE_ON * EDGE_ON * far * (ex * ex + ey * ey);
+}
+
+/**
+ * Moves `stop` to the nearest hit before it of the ray at `angle` (direction `dx`, `dy`) on a wall
+ * seen edge-on, as the full sweep tests such a wall. The distance the sweep works out along one
+ * may lie well before the wall stands, in a cell that does not list it and that a walk another
+ * wall stops never leaves, so these walls are tested for the ray itself, whatever the cells hold.
+ */
+export function stopOnEdgeOn(query: RayQuery, angle: number, dx: number, dy: number, stop: RayStop): void {
+  const { scratch, walls } = query.grid;
+  for (const i of query.edgeOn) {
+    if (!covers(scratch.from[i]!, scratch.to[i]!, scratch.wraps[i] === 1, angle)) continue;
+    const t = rayHit(query.origin, dx, dy, walls[i]!.p1, walls[i]!.p2);
+    if (t < stop.t) {
+      stop.t = t;
+      stop.wall = i;
+    }
+  }
 }

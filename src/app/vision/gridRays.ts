@@ -3,7 +3,7 @@ import type { WallChannel, WallSegment } from '../types/wallTypes';
 import { covers, spanBetween } from './angularSpans';
 import { angleTo, distSqToSegment, rayHit } from './visionGeometry';
 import { blocksFrom, blocksInReach } from './wallReach';
-import { seenEdgeOn } from './edgeOn';
+import { seenEdgeOn, stopOnEdgeOn } from './edgeOn';
 import { forCellRows, type WallGrid } from './wallGrid';
 
 /** A walk stops once its nearest hit lies this much (relatively) before the cell's far side: in doubt, one more cell. */
@@ -86,15 +86,26 @@ export function endAngleOf(query: RayQuery, slot: number): number {
 const found: RayStop = { t: 0, wall: -1 };
 
 /**
- * Walks the cells along the ray at `angle` from the origin, nearest first, testing each wall in
- * reach whose span covers the angle with the full sweep's arithmetic. Leaves the nearest hit
- * before `limit` in `found`; with `any`, stops at the first.
+ * Leaves in `found` the nearest hit before `limit` of the ray at `angle` from the origin, as the
+ * full sweep works it out; with `any`, the first hit found. The walls the cells along the ray
+ * list, and the walls seen edge-on, which a ray may stop on outside their cells (`stopOnEdgeOn`).
  */
 function walk(query: RayQuery, angle: number, limit: number, any: boolean, dx: number, dy: number): void {
-  const { grid, origin } = query;
-  const { scratch, walls, minX, minY, cell, cols, rows, starts, items } = grid;
   found.t = limit;
   found.wall = -1;
+  walkCells(query, angle, any, dx, dy);
+  if (query.edgeOn.length > 0 && !(any && found.wall >= 0)) stopOnEdgeOn(query, angle, dx, dy, found);
+}
+
+/**
+ * Walks the cells along the ray at `angle` from the origin, nearest first, testing each wall in
+ * reach whose span covers the angle with the full sweep's arithmetic. Moves `found` to the
+ * nearest hit before it; with `any`, stops at the first.
+ */
+function walkCells(query: RayQuery, angle: number, any: boolean, dx: number, dy: number): void {
+  const { grid, origin } = query;
+  const { scratch, walls, minX, minY, cell, cols, rows, starts, items } = grid;
+  const limit = found.t;
   let enter = 0, leave = Infinity;
   const maxX = minX + cols * cell, maxY = minY + rows * cell;
   if (dx !== 0) {
