@@ -2,6 +2,7 @@ import type { AssetMetadata } from '../AssetService';
 import type { PathMove } from '../renamedPaths';
 import type { FileReading } from './libraryReader';
 import type { FileStamp, LibraryState } from './libraryState';
+import type { KeptSceneIndexData } from '../sceneIndexData';
 
 export interface LibraryMergeResult {
   changed: boolean;
@@ -24,6 +25,12 @@ export interface MergeContext {
   hasCollectionFile: (collectionId: string) => boolean;
   /** Whether a file that looks like a copy has stood long enough to be one (`COPY_SETTLE_MS`); notes when it is first seen. */
   settledCopy: (path: string) => boolean;
+  /**
+   * Index-only data of scenes that left the index because their file went, by id, kept for the session: a scene
+   * whose file moves (another device moved it to another collection) may vanish in one read and come back from its
+   * new path in the next, and takes that data back then. Never filled from a file.
+   */
+  droppedIndexData?: Map<string, KeptSceneIndexData>;
   result: LibraryMergeResult;
 }
 

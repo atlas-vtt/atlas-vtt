@@ -152,6 +152,27 @@ export interface AssetTabSpec {
   mount(container: HTMLElement, ctx: AssetTabContext): Disposer;
 }
 
+/** Capability `collections`: what a collection settings tab is told: the collection whose settings are open. */
+export interface CollectionSettingsTabContext {
+  collectionId: string;
+}
+
+/** Capability `collections`: a tab of an extension's own in a collection's settings dialog. */
+export interface CollectionSettingsTabSpec {
+  /** Unique among this extension's collection settings tabs. */
+  id: string;
+  /** The tab's name, as given. */
+  title: string;
+  /** Lucide name, shown before the title; default `puzzle`. */
+  icon?: string;
+  /**
+   * Runs when the tab is shown; the returned disposer runs when another tab is chosen, the dialog closes or the tab is
+   * removed. What it changes is the extension's to save, at once (`collections.setData`): the dialog's Save button saves
+   * Atlas's own settings only. Keys pressed inside the container (all but Escape) stay with it. A throw is logged.
+   */
+  mount(container: HTMLElement, ctx: CollectionSettingsTabContext): Disposer;
+}
+
 /**
  * Every `add*` reads the fields it needs once and keeps its own frozen copy; methods are called on the object given, so
  * a class instance works. It throws, naming the call and the field, for a malformed item or an id this extension already
@@ -181,6 +202,11 @@ export interface UiApi {
    * the asset grid. `id`, `title` and `icon` must be non-empty and `mount` a function.
    */
   addAssetTab?(tab: AssetTabSpec): Disposer;
+  /**
+   * Capability `collections`: a tab in a collection's settings dialog, after Atlas's own. `id` and `title` must be
+   * non-empty, `icon` non-empty when given, and `mount` a function.
+   */
+  addCollectionSettingsTab?(tab: CollectionSettingsTabSpec): Disposer;
   /** Re-reads `isVisible`, `isActive`, `badge`, palette commands, menu providers and scene tab menu sections now. */
   invalidate(): void;
 }

@@ -97,6 +97,26 @@ describe('renaming a map file in the vault', () => {
   });
 });
 
+describe('renaming an image Atlas wrote for an extension', () => {
+  it("follows it in the scene's index-only list, so replaceMap never trashes a file that later took the old path", async () => {
+    const { app, assets, scene, read } = await setup();
+    await assets.updateSceneIndexData(scene.id, { createdBy: 'ext', createdImages: [`${scenes}/bg.webp`, `${scenes}/token.png`] });
+
+    await new FileReferenceService(app).handleFileRenamed(`${scenes}/bg.webp`, `${scenes}/Cave bg.webp`);
+
+    expect((await read()).data).toMatchObject({ createdBy: 'ext', createdImages: [`${scenes}/Cave bg.webp`, `${scenes}/token.png`] });
+  });
+
+  it('keeps the list when the map is renamed in the same move', async () => {
+    const { app, assets, scene, read } = await setup();
+    await assets.updateSceneIndexData(scene.id, { createdBy: 'ext', createdImages: [`${scenes}/bg.webp`] });
+
+    await new FileReferenceService(app).handleFileRenamed(`${scenes}/Old Keep.atlasmap`, `${scenes}/New Keep.atlasmap`);
+
+    expect((await read()).data).toMatchObject({ mapPath: `${scenes}/New Keep.atlasmap`, createdBy: 'ext', createdImages: [`${scenes}/bg.webp`] });
+  });
+});
+
 describe('rewriteMapReferences', () => {
   it('retargets token art, token statblocks and pin targets, leaving other paths alone', () => {
     const objects = {

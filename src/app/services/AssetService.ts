@@ -18,8 +18,12 @@ import { assetFilePath, groupTokenRefs } from './vault-sync/assetFiles';
 import { reconcileIndex, type VaultReconciliation } from './vault-sync/reconcileIndex';
 import { listVault, readVault } from './vault-sync/vaultListing';
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
+import type { Json } from '../types/json';
 import { isLegacyTokenRecord, type LegacyAssetMetadata } from './assetMetadataGuards';
 import { isRecord } from '../utils/guards';
+import { CollectionChangeWatcher, SceneChangeWatcher } from './sceneChanges';
+import { collectionIndexDataOf, forgetCollectionIndexData, patchCollectionIndexData, type CollectionIndexData } from './collectionIndexData';
+import { keepingExtensionData, withoutSceneExtensions, type SceneIndexData } from './sceneIndexData';
 import { groupLegacyTags, hasAssetTag, tagGroupOf, tagKey, type TagGroup } from './tagGroups';
 import { t } from '../i18n';
 import { trashVaultItem } from '../utils/trashVaultItem';
@@ -92,6 +96,12 @@ export type EncounterDifficulty = 'easy' | 'medium' | 'hard' | 'deadly';
 export interface SceneAssetData {
   /** Vault path of the scene's .atlasmap file. */
   mapPath?: string;
+  /** What extensions keep on the scene, by extension id (`ScenesApi.setData`). Copies, exports and installs drop it. */
+  extensions?: Record<string, Json>;
+  /** The id of the extension that added the scene (`ScenesApi.addToCollection`), which alone may replace its map. Index only, like `extensions`. */
+  createdBy?: string;
+  /** The images Atlas wrote for that extension's scene (`addToCollection`, `replaceMap`): the only files `replaceMap` may remove. Index only. */
+  createdImages?: string[];
 }
 
 export interface EncounterAssetData {
@@ -206,6 +216,8 @@ export interface AssetMetadata {
   defaultCollectionId?: string;
   /** The starter tokens were added once; deleted ones stay deleted on every device. */
   starterTokensAdded?: boolean;
+  /** What collections keep in the index alone, by collection id (`collectionIndexData.ts`); never in a library file. */
+  collectionIndexData?: Record<string, CollectionIndexData>;
 }
 
 /** What an import writes into the asset index, in one save. */
@@ -249,6 +261,8 @@ export class AssetService {
   private initialization: Promise<void> | null = null;
   /** Held by work that must not interleave with re-reading or checking the index, such as an import. */
   private readonly indexLock = new SerialLock();
+  private readonly sceneChanges = new SceneChangeWatcher(() => this.metadata?.assets ?? null);
+  private readonly collectionChanges = new CollectionChangeWatcher(() => this.metadata ?? null);
   /** Metadata writes, in the order they were requested. */
   private readonly writes = new SerialLock();
   private saveCount = 0;
@@ -400,6 +414,30 @@ export class AssetService {
       await this.migrateCollectionFields();
       return stored.kind !== 'current';
     });
+    if (this.metadata) {
+      this.sceneChanges.check(this.metadata.assets);
+      this.collectionChanges.check(this.metadata);
+    }
+  }
+
+  /** Calls `listener` after scene records were added, removed, renamed, moved to another collection or pointed at another map. Returns the unsubscribe. */
+  onScenesChanged(listener: () => void): () => void {
+    return this.sceneChanges.onChange(listener);
+  }
+
+  /** Hears collections added, removed or renamed, and changes of the data extensions keep on one. */
+  onCollectionsChanged(listener: () => void): () => void {
+    return this.collectionChanges.onChange(listener);
+  }
+
+  /**
+   * Whether the index holds any data extensions keep (on a scene or a collection), or a scene an extension added.
+   * Only then can a record file carry some, so only then does an export read each record file to keep it out.
+   */
+  holdsExtensionData(): boolean {
+    if (!this.metadata) return true;
+    if (Object.keys(this.metadata.collectionIndexData ?? {}).length > 0) return true;
+    return Object.values(this.metadata.assets).some((asset) => withoutSceneExtensions(asset) !== asset);
   }
 
   /** The cached index without the library bookkeeping stored beside it, which the library sync takes. */
@@ -541,6 +579,8 @@ export class AssetService {
    */
   private saveMetadata(): Promise<void> {
     if (!this.metadata) return Promise.resolve();
+    this.sceneChanges.check(this.metadata.assets);
+    this.collectionChanges.check(this.metadata);
     const persistFiles = this.automaticDepth === 0;
     this.saveCount++;
     return this.writes.run(async () => {
@@ -951,6 +991,7 @@ export class AssetService {
 
     // Remove from metadata
     delete this.metadata.collections[collectionId];
+    forgetCollectionIndexData(this.metadata, collectionId);
     await this.saveMetadata();
   }
 
@@ -1069,6 +1110,39 @@ export class AssetService {
 
     // The save writes the record file along with every other record that changed.
     await this.saveMetadata();
+  }
+
+  /**
+   * Changes only what a scene keeps in the index alone (`sceneIndexData.ts`): each key `patch` names is set, or
+   * removed when it is `undefined`; the rest of the record is the one the index holds now, read and written in one
+   * step. No edit of the scene, so its `modifiedAt` stays and its record file, which never holds these, is not rewritten.
+   */
+  async updateSceneIndexData(id: string, patch: { [K in keyof SceneIndexData]?: SceneIndexData[K] | undefined }): Promise<void> {
+    await this.ensureLoaded();
+    const asset = this.metadata!.assets[id];
+    if (asset?.type !== 'scene') return;
+    const data: Record<string, unknown> = { ...asset.data };
+    for (const [key, value] of Object.entries(patch)) {
+      if (value === undefined) Reflect.deleteProperty(data, key);
+      else data[key] = value;
+    }
+    this.metadata!.assets[id] = { ...asset, data: data as SceneAssetData };
+    await this.saveMetadata();
+  }
+
+  /** What collection `id` keeps in the index alone (`collectionIndexData.ts`); null when it has none or does not exist. */
+  async getCollectionIndexData(id: string): Promise<CollectionIndexData | null> {
+    await this.ensureLoaded();
+    return collectionIndexDataOf(this.metadata!, id);
+  }
+
+  /** Changes it; no edit of the collection, whose record and file stay as they were. False when there is no such collection. */
+  async updateCollectionIndexData(id: string, patch: { [K in keyof CollectionIndexData]?: CollectionIndexData[K] | undefined }): Promise<boolean> {
+    await this.ensureLoaded();
+    if (!Object.hasOwn(this.metadata!.collections, id)) return false;
+    patchCollectionIndexData(this.metadata!, id, patch);
+    await this.saveMetadata();
+    return true;
   }
 
   /**
@@ -1339,7 +1413,7 @@ export class AssetService {
     const current = this.metadata!;
     const assets = { ...current.assets };
     for (const id of remove) delete assets[id];
-    for (const asset of upsert) assets[asset.id] = { ...asset, collection: collectionId };
+    for (const asset of upsert) assets[asset.id] = { ...keepingExtensionData(asset, current.assets[asset.id]), collection: collectionId };
     const collectionAssets = Object.values(assets).filter((asset) => asset.collection === collectionId);
     const recorded: CollectionMetadata = {
       ...collection,

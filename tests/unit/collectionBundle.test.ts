@@ -3,6 +3,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
+import { bundleNoteKeys } from '../../src/app/extensions/bundleNoteKeys';
 import { AssetService } from '../../src/app/services/AssetService';
 import { transferAssets } from '../../src/app/services/assetTransfer/assetTransfer';
 import { groupContents } from '../../src/app/services/collectionBundle/bundleContents';
@@ -232,6 +233,38 @@ describe('exporting', () => {
     expect(JSON.parse(fan.vault.files.get(MAP_PATH)!).state.objects.pins.p1.notePath).toBe(`${notes}/Cave.md#Door`);
   });
 
+  it("strips a registered note property from the bundle, installs without it and leaves the sender's note alone", async () => {
+    const stop = bundleNoteKeys.add('test', ['ext-share']);
+    try {
+      const creator = await creatorVault();
+      const lore = '---\next-share: [Ana]\nstatus: draft\n---\n# Door\nLocked.';
+      const goblin = '---\nstatblock: true\next-share: public\nimage: "[[goblin.png]]"\n---\nA goblin.';
+      await pinNote(creator, 'Lore/Cave.md#Door', lore);
+      creator.vault.files.set(NOTE_PATH, goblin);
+      const blob = await exportFrom(creator);
+      const { default: JSZip } = await import('jszip');
+      const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+      const manifest = await manifestOf(blob) as PackedManifest & { files: Array<{ vaultPath: string; sha256: string }> };
+      const packed = async (path: string): Promise<string> => zip.file(`files/${path}`)!.async('string');
+      expect(await packed('Lore/Cave.md')).toBe('---\nstatus: draft\n---\n# Door\nLocked.');
+      expect(await packed(NOTE_PATH)).toBe('---\nstatblock: true\nimage: "[[goblin.png]]"\n---\nA goblin.');
+      // The checksum is of the bytes in the zip, so a later install sees them as the sender's release
+      for (const path of ['Lore/Cave.md', NOTE_PATH]) {
+        const digest = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await zip.file(`files/${path}`)!.async('arraybuffer')))).map((byte) => byte.toString(16).padStart(2, '0')).join('');
+        expect(manifest.files.find((file) => file.vaultPath === path)?.sha256).toBe(digest);
+      }
+      expect(creator.vault.files.get('Lore/Cave.md')).toBe(lore);
+      expect(creator.vault.files.get(NOTE_PATH)).toBe(goblin);
+
+      const fan = await emptyVault();
+      await importInto(fan, blob);
+      expect(fan.vault.files.get('atlas-vtt/collections/source/notes/Lore/Cave.md')).toBe('---\nstatus: draft\n---\n# Door\nLocked.');
+      expect([...fan.vault.files.values()].some((text) => text.includes('ext-share'))).toBe(false);
+    } finally {
+      stop();
+    }
+  });
+
   it('packs the chosen cover, keeps it with the collection and installs it with the collection', async () => {
     const creator = await creatorVault();
     const [scene] = await creator.assets.getAssets('source', 'scene');
@@ -438,6 +471,30 @@ describe('updating', () => {
     expect(result).toMatchObject({ written: 1, backupCount: 1 });
     expect(JSON.parse(fan.vault.files.get(MAP_PATH)!).state.objects.tokens.t1.hp).toBe(7);
     expect(fan.vault.files.get(`${result.backupFolder}/${MAP_PATH}`)).toBe('PLAYED');
+  });
+
+  it("keeps the data an extension holds on the user's scene when an update replaces the scene", async () => {
+    const { creator, fan } = await installedV1();
+    const [local] = await fan.assets.getAssets('source', 'scene');
+    await fan.assets.updateAsset(local!.id, { data: { ...local!.data, extensions: { 'some-extension': { item: 'shared' } } } });
+    const [scene] = await creator.assets.getAssets('source', 'scene');
+    await creator.assets.updateAsset(scene!.id, { name: 'Deep Cave' });
+
+    const { review, apply } = await reviewImport(fan, await exportFrom(creator, { kind: 'release', version: 2 }));
+    expect(review).toMatchObject({ relation: 'newer', conflicts: [] });
+    await apply();
+
+    expect(await fan.assets.getAssetById(local!.id)).toMatchObject({ name: 'Deep Cave', data: { mapPath: MAP_PATH, extensions: { 'some-extension': { item: 'shared' } } } });
+  });
+
+  it("does not take an installed scene for edited when an extension keeps data on it, and keeps that data out of its record file", async () => {
+    const { creator, fan } = await installedV1();
+    const [local] = await fan.assets.getAssets('source', 'scene');
+    await fan.assets.updateAsset(local!.id, { data: { ...local!.data, extensions: { 'some-extension': { item: 'shared' } } } });
+    const recordFile = [...fan.vault.files.entries()].find(([path]) => path.endsWith(`${local!.id}.json`));
+    expect(recordFile?.[1]).not.toContain('some-extension');
+    const { review } = await reviewImport(fan, await exportFrom(creator, { kind: 'release', version: 1 }));
+    expect(review).toMatchObject({ relation: 'same', upToDate: true, canRestore: false, counts: { kept: 0 } });
   });
 
   it('applies a newer release: new, changed and removed assets, with backups of what it replaced', async () => {
@@ -1148,6 +1205,24 @@ describe('refreshing the index during an import', () => {
     const filesAfter = [...fan.vault.files].filter(([path]) => !path.includes('/backups/'));
     expect(new Map(filesAfter)).toEqual(filesBefore);
     expect(await reloadedTokenNames(fan)).toEqual(['Goblin']);
+  });
+});
+
+describe('extension data on scenes', () => {
+  const data = { mapPath: MAP_PATH, extensions: { 'some-extension': { item: 'i'.repeat(22), notes: ['Secret/Plan.md'] } } };
+
+  it('stays out of an exported bundle', async () => {
+    const creator = await creatorVault();
+    const [scene] = await creator.assets.getAssets('source', 'scene');
+    await creator.assets.updateAsset(scene!.id, { data } as never);
+    const blob = await exportFrom(creator);
+    const { default: JSZip } = await import('jszip');
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    const everything = await Promise.all(Object.values(zip.files).filter((entry) => !entry.dir && /\.json$/.test(entry.name)).map((entry) => entry.async('string')));
+    expect(everything.join('\n')).not.toContain('Secret/Plan.md');
+    expect(everything.join('\n')).not.toContain('"extensions"');
+    // the creator keeps what the extension stored
+    expect((await creator.assets.getAssetById(scene!.id))?.data).toEqual(data);
   });
 });
 

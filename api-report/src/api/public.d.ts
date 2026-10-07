@@ -11,3 +11,5 @@ export type * from './types/tokens';
 export type * from './types/rules';
 export type * from './types/settings';
 export type * from './types/ui';
+export type * from './types/scenes';
+export type * from './types/collections';

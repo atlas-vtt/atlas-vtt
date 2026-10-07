@@ -1,6 +1,7 @@
 import type { Asset, MapAsset } from '../AssetService';
 import { collectionIdOfPath } from '../assetPaths';
 import { isRecord, isStringArray } from '../../utils/guards';
+import { withoutSceneExtensions } from '../sceneIndexData';
 
 /** The key under which a record file keeps the asset record, beside the payload older versions read. */
 export const RECORD_KEY = 'atlasRecord';
@@ -71,10 +72,15 @@ export function isPayloadUnread(asset: Asset): boolean {
   return PAYLOAD_TYPES.has(asset.type) && !isRecord('data' in asset ? asset.data : undefined);
 }
 
-/** The content of an asset's record file: its payload as older versions read it, and the whole record beside it. */
+/**
+ * The content of an asset's record file: its payload as older versions read it, and the whole record beside it.
+ * A scene's extension data stays in the index alone (`withoutSceneExtensions`): a file that held it would change with
+ * every save an extension makes, and sync it, and make an installed scene look edited to the update check.
+ */
 export function serializeRecord(asset: Asset): string {
-  const payload = payloadOf(asset);
-  return JSON.stringify({ ...payload, [RECORD_KEY]: envelopeOf(asset, payload) }, null, 2);
+  const record = withoutSceneExtensions(asset);
+  const payload = payloadOf(record);
+  return JSON.stringify({ ...payload, [RECORD_KEY]: envelopeOf(record, payload) }, null, 2);
 }
 
 /** A record file as read: the record when it carries one, and the payload around it. */

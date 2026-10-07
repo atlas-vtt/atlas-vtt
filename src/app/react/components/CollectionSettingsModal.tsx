@@ -33,6 +33,9 @@ import { discoverResourceFields } from '../../resources/resourceFields';
 import { LootTab } from './collection-settings/LootTab';
 import { SystemTab } from './collection-settings/SystemTab';
 import { DiceTab } from './collection-settings/DiceTab';
+import { ExtensionSettingsPane, ExtensionSettingsTabButtons } from './collection-settings/ExtensionSettingsTabs';
+import { useExtensionTabs } from '../../extensions/useExtensionTabs';
+import { collectionSettingsTabSlot } from '../../extensions/slots';
 import { collectionDiceRules, isValidDiceRules } from '../../gameSystems/diceRules';
 import { collectionInitiativeRules, isValidInitiativeRules } from '../../gameSystems/initiativeRules';
 import { collectionLightPresets } from '../../gameSystems/lightPresetRules';
@@ -99,6 +102,9 @@ export function CollectionSettingsModal({
   const windowVariants = useDialogWindowVariants();
 
   const [activeTab, setActiveTab] = useState<CollectionSettingsTab>(initialTab);
+  const extensionTabs = useExtensionTabs(collectionSettingsTabSlot, isOpen);
+  /** Atlas's tab shown; none while an extension's is. */
+  const shownTab = extensionTabs.active ? null : activeTab;
   const [collectionName, setCollectionName] = useState('');
   const [releaseLine, setReleaseLine] = useState('');
 
@@ -206,18 +212,20 @@ export function CollectionSettingsModal({
               <Button
                 key={tab.id}
                 variant="ghost"
-                className={`atlas-collection-settings-tab ${activeTab === tab.id ? 'atlas-active' : ''}`}
-                onClick={() => setActiveTab(tab.id)}
+                className={`atlas-collection-settings-tab ${shownTab === tab.id ? 'atlas-active' : ''}`}
+                onClick={() => { extensionTabs.show(null); setActiveTab(tab.id); }}
               >
                 {tab.icon}
                 {tab.label}
               </Button>
             ))}
+            <ExtensionSettingsTabButtons tabs={extensionTabs} />
           </nav>
 
           {/* Tab content */}
           <SettingsContent>
-            {activeTab === 'system' && systemPresets.service && (
+            {extensionTabs.active && <ExtensionSettingsPane entry={extensionTabs.active} collectionId={collectionId} />}
+            {shownTab === 'system' && systemPresets.service && (
               <SystemTab
                 service={systemPresets.service}
                 presets={systemPresets.presets}
@@ -238,17 +246,17 @@ export function CollectionSettingsModal({
                 onDeletePreset={handleDeletePreset}
               />
             )}
-            {activeTab === 'dice' && (
+            {shownTab === 'dice' && (
               <DiceTab dice={dice} onChange={draft.setDice} />
             )}
-            {activeTab === 'grid' && (
+            {shownTab === 'grid' && (
               <GridMeasurementTab
                 gridDefaults={gridDefaults}
                 coneAngle={collectionConeAngle(gridDefaults, draft.systemPresetId)}
                 onChange={draft.setGridDefaults}
               />
             )}
-            {activeTab === 'vision' && lightingOn && (
+            {shownTab === 'vision' && lightingOn && (
               <VisionTab
                 gridDefaults={gridDefaults}
                 vision={draft.defaultTokenVision}
@@ -257,7 +265,7 @@ export function CollectionSettingsModal({
                 onSensesChange={(next) => draft.setSenses(editedSenses(next, systemSenses))}
               />
             )}
-            {activeTab === 'widgets' && (
+            {shownTab === 'widgets' && (
               <DefaultWidgetsTab
                 defaultWidgets={draft.defaultWidgets}
                 onChange={draft.setDefaultWidgets}
@@ -266,20 +274,20 @@ export function CollectionSettingsModal({
                 onInitiativeChange={(next) => draft.setInitiative(isSameAsTyped(next, systemInitiative) ? undefined : next)}
               />
             )}
-            {activeTab === 'conditions' && (
+            {shownTab === 'conditions' && (
               <ConditionsTab
                 conditions={conditions}
                 onChange={draft.setConditions}
               />
             )}
-            {activeTab === 'resources' && (
+            {shownTab === 'resources' && (
               <ResourcesTab
                 resources={draft.resources}
                 onChange={draft.setResources}
                 fieldSuggestions={discoverResourceFields(collectionCreatures.creatures.map((creature) => creature.fields))}
               />
             )}
-            {activeTab === 'creatureFilters' && (
+            {shownTab === 'creatureFilters' && (
               <CreatureFiltersTab
                 hidden={draft.hiddenCreatureFilters}
                 onHiddenChange={draft.setHiddenCreatureFilters}
@@ -289,7 +297,7 @@ export function CollectionSettingsModal({
                 pending={collectionCreatures.pending}
               />
             )}
-            {activeTab === 'loot' && app && (
+            {shownTab === 'loot' && app && (
               <LootTab
                 app={app}
                 lootBases={draft.lootBases}

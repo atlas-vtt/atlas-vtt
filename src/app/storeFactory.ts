@@ -245,7 +245,7 @@ export interface ViewAtlasState extends ViewState {
 export type PersistedViewState = Partial<ViewAtlasState>;
 
 // Simple default widget settings
-const createDefaultWidgets = (): WidgetSettings => ({
+export const createDefaultWidgets = (): WidgetSettings => ({
   widgets: {},
   globalVisible: true,
   position: 'top',

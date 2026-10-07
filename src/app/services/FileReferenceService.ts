@@ -106,17 +106,27 @@ export class FileReferenceService {
   // Scenes and thumbnails of a renamed map
   // ---------------------------------------------------------------------------
 
-  /** Scene records follow their map; a scene named after its file takes the new file name. */
+  /**
+   * Scene records follow their map; a scene named after its file takes the new file name. The images Atlas wrote for
+   * an extension's scene (`createdImages`, index only) follow theirs, so `scenes.replaceMap` never removes a file that
+   * has since taken a listed path.
+   */
   private async updateScenes(moved: MovedPath): Promise<void> {
     const assetService = AssetService.getInstance(this.app);
     for (const scene of await assetService.getAssets(undefined, 'scene')) {
       const mapPath = scene.data?.mapPath;
       const target = moved(mapPath);
-      if (!mapPath || !target?.endsWith('.atlasmap')) continue;
-      await assetService.updateAsset(scene.id, {
-        data: { ...scene.data, mapPath: target },
-        ...(scene.name === basename(mapPath) ? { name: basename(target) } : {}),
-      });
+      if (mapPath && target?.endsWith('.atlasmap')) {
+        await assetService.updateAsset(scene.id, {
+          data: { ...scene.data, mapPath: target },
+          ...(scene.name === basename(mapPath) ? { name: basename(target) } : {}),
+        });
+      }
+      const created = scene.data?.createdImages;
+      // Patched onto the record as the index holds it now, after the map's own update.
+      if (created?.some((path) => moved(path) !== null)) {
+        await assetService.updateSceneIndexData(scene.id, { createdImages: created.map((path) => moved(path) ?? path) });
+      }
     }
   }
 

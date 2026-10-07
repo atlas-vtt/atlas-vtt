@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { bundleNoteKeys } from '../../src/app/extensions/bundleNoteKeys';
 import { rewriteContent } from '../../src/app/services/collectionBundle/bundleContent';
 import type { BundleFile } from '../../src/app/services/collectionBundle/bundleFormat';
 
@@ -70,5 +71,38 @@ describe('loot bases', () => {
   it('leaves tags, property values and folders whose files went elsewhere byte for byte', () => {
     const raw = encode('- file.hasTag("Items")\n- type == "Items"\n- file.inFolder("Art")\n- file.inFolder("Other")');
     expect(rewriteContent(base, raw, moves)).toBe(raw);
+  });
+});
+
+describe('notes with a byte order mark', () => {
+  const note: BundleFile = { vaultPath: 'B/n.md', role: 'linked-note' } as BundleFile;
+  const bytes = (buffer: ArrayBuffer): number[] => [...new Uint8Array(buffer)];
+  let stop: () => void = () => undefined;
+
+  beforeAll(() => { stop = bundleNoteKeys.add('test', ['ext-share']); });
+  afterAll(() => stop());
+
+  it('keep the mark when a registered property is stripped, and read back the same text', () => {
+    const out = rewriteContent(note, encode('\uFEFF---\r\next-share: public\r\ntitle: x\r\n---\r\nBody'), new Map());
+    expect(bytes(out).slice(0, 3)).toEqual([0xef, 0xbb, 0xbf]);
+    expect(bytes(out).slice(3, 6)).not.toEqual([0xef, 0xbb, 0xbf]);
+    expect(decode(out)).toBe('---\r\ntitle: x\r\n---\r\nBody');
+  });
+
+  it('are not given one when the note had none', () => {
+    const out = rewriteContent(note, encode('---\next-share: public\n---\n'), new Map());
+    expect(bytes(out).slice(0, 3)).toEqual([...new TextEncoder().encode('---')]);
+  });
+
+  it('stay byte for byte when there is nothing to strip', () => {
+    const raw = encode('\uFEFF---\ntitle: x\n---\n');
+    expect(rewriteContent(note, raw, new Map())).toBe(raw);
+  });
+
+  it('are not added to JSON, whose decoder drops them', () => {
+    const json: BundleFile = { vaultPath: 'B/a.json', role: 'asset-file' } as BundleFile;
+    const out = rewriteContent(json, encode('\uFEFF{"path":"B/g.png"}'), new Map([['B/g.png', 'C/g.png']]));
+    expect(decode(out)).toContain('C/g.png');
+    expect(bytes(out)[0]).toBe('{'.charCodeAt(0));
   });
 });

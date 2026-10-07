@@ -30,10 +30,16 @@ export const INVALID_NAME_CHARACTERS = /[\\/:*?"<>|#^[\]]/;
  * collection's folder carries its name, so the name must be a valid folder name.
  */
 export function collectionNameProblem(name: string): string | null {
+  const key = collectionNameProblemKey(name);
+  return key ? t(key) : null;
+}
+
+/** The text key of why `name` cannot name a collection, or null; for messages that stay English (errors for extension authors). */
+export function collectionNameProblemKey(name: string): 'names.enter' | 'names.invalidCollection' | 'names.collectionDot' | null {
   const trimmed = name.trim();
-  if (!trimmed) return t('names.enter');
-  if (INVALID_NAME_CHARACTERS.test(trimmed)) return t('names.invalidCollection');
-  if (trimmed.startsWith('.')) return t('names.collectionDot');
+  if (!trimmed) return 'names.enter';
+  if (INVALID_NAME_CHARACTERS.test(trimmed)) return 'names.invalidCollection';
+  if (trimmed.startsWith('.')) return 'names.collectionDot';
   return null;
 }
 

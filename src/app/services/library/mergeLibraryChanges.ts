@@ -6,6 +6,7 @@ import { assetKey, copyKey, duplicateKey, idOfKey, type FileStamp, type LibraryS
 import { copyId, placedRecord, resolveHolders } from './recordHolders';
 import { mergeCollectionFiles, mergeLibraryFacts } from './mergeCollections';
 import { sameJson, stamp, type LibraryMergeResult, type MergeContext } from './mergeShared';
+import { sceneIndexDataOf, withIndexOnlySceneData, withoutSceneExtensions } from '../sceneIndexData';
 
 export type { LibraryMergeResult } from './mergeShared';
 
@@ -30,7 +31,7 @@ export function mergeLibraryChanges(
   state: LibraryState,
   changes: LibraryChanges,
   migrated: boolean,
-  vault: Pick<MergeContext, 'hasCollectionFile' | 'settledCopy'>,
+  vault: Pick<MergeContext, 'hasCollectionFile' | 'settledCopy' | 'droppedIndexData'>,
 ): LibraryMergeResult {
   const result: LibraryMergeResult = { changed: false, duplicates: [], changedCollections: [], folderMoves: [], retryAt: null };
   const context: MergeContext = { metadata, state, migrated, ...vault, result };
@@ -68,7 +69,8 @@ function mergeRecords(context: MergeContext, readings: readonly RecordReading[])
       stamp(state, reading, copyKey(copied));
       // Written as a record of its own already, its old file is what the copy left behind; the writer clears it.
       if (hasOwnFile(state, copied)) continue;
-      upsert(context, { ...placedRecord(reading), id: copied }, upserted);
+      // A copy is the GM's: it carries no extension's data.
+      upsert(context, withoutSceneExtensions({ ...placedRecord(reading), id: copied }), upserted);
     }
   }
   return upserted;
@@ -90,7 +92,10 @@ function takeIn(context: MergeContext, record: Asset, reading: RecordReading, up
     upserted.add(record.id);
     return;
   }
-  upsert(context, record, upserted);
+  // A scene whose file moved may have left the index in an earlier read: its data comes back with it.
+  const kept = sceneIndexDataOf(indexed) ?? context.droppedIndexData?.get(record.id) ?? null;
+  context.droppedIndexData?.delete(record.id);
+  upsert(context, withIndexOnlySceneData(record, kept), upserted);
   if (formerCopy && formerCopy !== record.id && !hasOwnFile(state, formerCopy) && metadata.assets[formerCopy]) {
     delete metadata.assets[formerCopy];
     delete state.derived[assetKey(formerCopy)];
@@ -128,8 +133,12 @@ function mergePayloads(context: MergeContext, readings: readonly PayloadReading[
     if (!asset) continue;
     stamp(state, reading, assetKey(asset.id));
     if (!migrated && !isPayloadUnread(asset)) continue;
-    if (sameJson('data' in asset ? asset.data : undefined, reading.payload)) continue;
-    const updated: Record<string, unknown> = { ...asset, data: reading.payload };
+    // The file's payload, with this device's index-only data in place of any the file carries.
+    const data = asset.type === 'scene'
+      ? (withIndexOnlySceneData({ ...asset, data: reading.payload }, sceneIndexDataOf(asset)) as typeof asset).data
+      : reading.payload;
+    if (sameJson('data' in asset ? asset.data : undefined, data)) continue;
+    const updated: Record<string, unknown> = { ...asset, data };
     for (const key of MIRRORED_FIELDS[asset.type] ?? []) {
       if (key in reading.payload) updated[key] = reading.payload[key];
     }
@@ -150,6 +159,8 @@ function dropRecordsWhoseFileWent(context: MergeContext, removed: ReadonlyArray<
     if (!migrated || !id || !asset || upserted.has(id)) continue;
     if (own && recordFilePath(asset) !== path) continue;
     if (copied && hasOwnFile(state, copied)) continue;
+    const kept = own ? sceneIndexDataOf(asset) : null;
+    if (kept) context.droppedIndexData?.set(id, kept);
     delete metadata.assets[id];
     delete state.derived[assetKey(id)];
     result.changed = true;

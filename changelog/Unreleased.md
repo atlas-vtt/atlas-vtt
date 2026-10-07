@@ -1,6 +1,6 @@
 ## New
 
-- Other Obsidian plugins can extend Atlas through a versioned extension API (`app.plugins.plugins['atlas-vtt'].api`, announced by the `atlas-vtt:api-ready` event). They can read map views and collection rules; present scenes; roll, publish and throw dice; draw lasers; ask what players see of a lit scene; move tokens; add toolbar buttons, command palette sections, dashboard tiles, menu entries, movable panels and tabs in the asset manager. Atlas removes everything a plugin added when either plugin unloads. See docs/extension-api.md
+- Other Obsidian plugins can extend Atlas through a versioned extension API (`app.plugins.plugins['atlas-vtt'].api`, announced by the `atlas-vtt:api-ready` event). They can read map views, scenes and collection rules; present scenes; roll, publish and throw dice; draw lasers; ask what players see of a lit scene; move tokens; add toolbar buttons, command palette sections, dashboard tiles, menu entries, movable panels and tabs in the asset manager and collection settings; and keep their own data on scenes and collections. Atlas removes everything a plugin added when either plugin unloads. See docs/extension-api.md
 
 ## Improved
 
@@ -50,6 +50,8 @@
 
 - Renaming a map while its explored areas wait to be saved saves them into the renamed map.
 
+- A statblock note rewritten on export keeps its byte order mark.
+
 - Selecting, hovering, switching tools and other changes to nothing a map saves no longer rewrite the map file.
 
 - A widget, condition or game system preset whose icon name is not one of Atlas's icons but a built-in word such as `constructor` shows the default icon, or the condition's initial, instead of an empty badge.
@@ -77,6 +79,8 @@
 - Distance per Square in a collection's settings takes a decimal typed with a comma or a point, so 1,5 and 1.5 both give one and a half, and it takes distances below 1. Typing the decimal sign your system does not use gave 15.
 
 ## Important changes
+
+- Data that other plugins keep on scenes and collections never travels in collection exports, copies or installs, and stays on the device that saved it; library sync does not carry it. While a vault holds such data, exporting a collection reads each asset's record file to make sure.
 
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.
 

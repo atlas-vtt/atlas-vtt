@@ -1,13 +1,13 @@
 import { closePanel, closePanelEverywhere, isPanelOpen, openPanel } from '../../app/extensions/panelState';
 import type { SlotRegistry } from '../../app/extensions/SlotRegistry';
 import {
-  assetTabSlot, dashboardSlot, invalidateSlots, paletteSlot, panelSlot, sceneTabMenuSlot, tokenMenuSlot, toolbarSlot, viewMenuSlot,
+  assetTabSlot, collectionSettingsTabSlot, dashboardSlot, invalidateSlots, paletteSlot, panelSlot, sceneTabMenuSlot, tokenMenuSlot, toolbarSlot, viewMenuSlot,
 } from '../../app/extensions/slots';
 import type { ExtensionScope } from '../extension';
 import type { ViewTracker } from '../viewTracker';
 import type { Disposer, ViewId } from '../types/common';
 import type {
-  AssetTabSpec, DashboardTile, MenuItem, PaletteSection, PanelHandle, PanelSpec, SceneTabMenuSection, TokenMenuContext, ToolbarItem, UiApi, ViewContext,
+  AssetTabSpec, CollectionSettingsTabSpec, DashboardTile, MenuItem, PaletteSection, PanelHandle, PanelSpec, SceneTabMenuSection, TokenMenuContext, ToolbarItem, UiApi, ViewContext,
 } from '../types/ui';
 
 /** The longest heading a scene tab menu section shows; a longer one is cut. */
@@ -142,6 +142,13 @@ export function uiApi(scope: ExtensionScope, views: ViewTracker): UiApi {
         const tab = kept<AssetTabSpec>(given, checked('ui.addAssetTab', given, { id: 'text', title: 'text', icon: 'text', mount: 'function' }));
         assertNew('ui.addAssetTab', assetTabSlot, scope.id, tab.id);
         return register(assetTabSlot, tab);
+      },
+    } : {}),
+    ...(scope.capabilities.has('collections') ? {
+      addCollectionSettingsTab: (given: CollectionSettingsTabSpec): Disposer => {
+        const tab = kept<CollectionSettingsTabSpec>(given, checked('ui.addCollectionSettingsTab', given, { id: 'text', title: 'text', mount: 'function' }, { icon: 'text' }));
+        assertNew('ui.addCollectionSettingsTab', collectionSettingsTabSlot, scope.id, tab.id);
+        return register(collectionSettingsTabSlot, tab);
       },
     } : {}),
     invalidate: (): void => invalidateSlots(),

@@ -1,6 +1,6 @@
 import { invalidatePresentationTargets } from '../services/presentationTargets';
 import type {
-  AssetTabSpec, DashboardTile, MenuItem, PaletteSection, PanelSpec, SceneTabMenuSection, TokenMenuContext, ToolbarItem, ViewContext,
+  AssetTabSpec, CollectionSettingsTabSpec, DashboardTile, MenuItem, PaletteSection, PanelSpec, SceneTabMenuSection, TokenMenuContext, ToolbarItem, ViewContext,
 } from '../../api/types/ui';
 import { SlotRegistry } from './SlotRegistry';
 
@@ -13,9 +13,10 @@ export const tokenMenuSlot = new SlotRegistry<(ctx: TokenMenuContext) => MenuIte
 export const panelSlot = new SlotRegistry<PanelSpec>();
 export const sceneTabMenuSlot = new SlotRegistry<SceneTabMenuSection>();
 export const assetTabSlot = new SlotRegistry<AssetTabSpec>();
+export const collectionSettingsTabSlot = new SlotRegistry<CollectionSettingsTabSpec>();
 
 /** Asks every reader to read the callbacks of every slot, and the presentation targets, again. */
 export function invalidateSlots(): void {
-  for (const slot of [toolbarSlot, paletteSlot, dashboardSlot, viewMenuSlot, tokenMenuSlot, panelSlot, sceneTabMenuSlot, assetTabSlot]) slot.invalidate();
+  for (const slot of [toolbarSlot, paletteSlot, dashboardSlot, viewMenuSlot, tokenMenuSlot, panelSlot, sceneTabMenuSlot, assetTabSlot, collectionSettingsTabSlot]) slot.invalidate();
   invalidatePresentationTargets();
 }

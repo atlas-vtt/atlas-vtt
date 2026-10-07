@@ -1,3 +1,5 @@
+import { bundleNoteKeys } from '../../extensions/bundleNoteKeys';
+import { isNote, withoutJsonExtensions, withoutNoteKeys } from './bundleExtensionData';
 import type { BundleFile, BundleFileRole } from './bundleFormat';
 import { movedFolders, remapPaths, type PathMap } from './pathRemap';
 
@@ -24,7 +26,7 @@ function indentationOf(text: string): string | undefined {
 function rewriteJson(text: string, rewrites: PathMap): string {
   try {
     const parsed: unknown = JSON.parse(text);
-    const remapped = remapPaths(parsed, rewrites);
+    const remapped = remapPaths(withoutJsonExtensions(parsed), rewrites);
     if (JSON.stringify(remapped) === JSON.stringify(parsed)) return text;
     return JSON.stringify(remapped, null, indentationOf(text)) + (text.endsWith('\n') ? '\n' : '');
   } catch {
@@ -85,16 +87,35 @@ export function rewriteText(file: BundleFile, text: string, rewrites: PathMap): 
  * the folders of their items. Returns `raw` itself when nothing changes, so
  * unchanged files keep their exact bytes.
  */
-export function rewriteContent(file: BundleFile, raw: ArrayBuffer, rewrites: PathMap): ArrayBuffer {
-  if (!mayRewrite(file, rewrites)) return raw;
+export function rewriteContent(file: BundleFile, raw: ArrayBuffer, rewrites: PathMap, recordsMayHoldExtensionData = true): ArrayBuffer {
+  if (!mayRewrite(file, rewrites, recordsMayHoldExtensionData)) return raw;
   const text = decoder.decode(raw);
-  const rewritten = rewriteText(file, text, rewrites);
-  return rewritten === text ? raw : toBuffer(rewritten);
+  // Only here, never in `rewriteText`: moving a scene to another collection rewrites the user's own notes in place.
+  const rewritten = rewriteText(file, withoutNoteKeys(file, text, bundleNoteKeys.keys()), rewrites);
+  if (rewritten === text) return raw;
+  // The shared decoder drops a byte order mark (JSON path rewrites rely on that), so a note gets its own back.
+  return toBuffer(isNote(file) && startsWithByteOrderMark(raw) ? BYTE_ORDER_MARK + rewritten : rewritten);
+}
+
+const BYTE_ORDER_MARK = '﻿';
+
+/** Whether `raw` starts with the UTF-8 byte order mark (EF BB BF). */
+function startsWithByteOrderMark(raw: ArrayBuffer): boolean {
+  const head = new Uint8Array(raw, 0, Math.min(3, raw.byteLength));
+  return head.length === 3 && head[0] === 0xef && head[1] === 0xbb && head[2] === 0xbf;
 }
 
 /** Whether the file is text that refers to other files or records: JSON, a statblock note that shows artwork, or a loot base. */
 export const refersToFiles = (file: BundleFile): boolean =>
   JSON_ROLES.has(file.role) || file.role === 'loot-base' || (file.role === 'statblock-note' && file.statblockImage !== undefined);
 
-/** Whether `rewriteContent` may change the file's bytes, so they must be read to know the result. */
-export const mayRewrite = (file: BundleFile, rewrites: PathMap): boolean => rewrites.size > 0 && refersToFiles(file);
+/**
+ * Whether `rewriteContent` may change the file's bytes, so they must be read to know the result. Record files
+ * may carry extension data, which never travels, and notes may carry a property an extension keeps out. An export
+ * from a vault whose index holds no extension data (`AssetService.holdsExtensionData`) passes
+ * `recordsMayHoldExtensionData` false, so it reads record files only where paths move, as before; an install, whose
+ * bundle comes from elsewhere, always reads them.
+ */
+export const mayRewrite = (file: BundleFile, rewrites: PathMap, recordsMayHoldExtensionData = true): boolean =>
+  (refersToFiles(file) && (rewrites.size > 0 || (recordsMayHoldExtensionData && file.role === 'asset-file')))
+  || (isNote(file) && bundleNoteKeys.keys().size > 0);

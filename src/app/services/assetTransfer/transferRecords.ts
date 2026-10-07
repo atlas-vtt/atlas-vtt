@@ -2,6 +2,7 @@ import type { Asset, TagMetadata } from '../AssetService';
 import { remapPaths } from '../collectionBundle/pathRemap';
 import { hasAssetTag, tagGroupOf, tagKey, type TagGroup } from '../tagGroups';
 import { baseName } from '../../utils/pathUtils';
+import { withoutSceneExtensions } from '../sceneIndexData';
 import type { TransferPlan } from './transferPlan';
 
 export interface RecordContext {
@@ -51,6 +52,8 @@ export function transferredRecord(asset: Asset, { targetCollectionId, newIds, pl
     const from = asset.data?.mapPath;
     const to = record.data?.mapPath;
     if (from && to && from !== to && asset.name === sceneName(from)) record.name = sceneName(to);
+    // A copy is another map: extension data stays with the original.
+    if (newId) return withoutSceneExtensions(record);
   }
   return record;
 }

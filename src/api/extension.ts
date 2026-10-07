@@ -6,7 +6,10 @@ import type { ApiServices } from './services';
 import { lasersApi } from './lasers';
 import { lightingApi } from './lighting';
 import { presentationApi } from './presentation';
+import { bundlesApi } from './bundles';
+import { collectionsApi } from './collections';
 import { rulesApi } from './rules';
+import { scenesApi } from './scenes';
 import { settingsApi } from './settings';
 import { storageApi } from './storage';
 import { tokensApi } from './tokens';
@@ -38,5 +41,6 @@ export function buildExtension(scope: ExtensionScope, services: ApiServices): At
     lasers: lasersApi(services.views, scope.disposers), lighting: lightingApi(services.views, services.sightFrames, scope.disposers),
     tokens: tokensApi(services.views), rules: rulesApi(services.app),
     settings: settingsApi(services.settings), storage: storageApi(services.app, scope.id),
-    ui: uiApi(scope, services.views) });
+    ui: uiApi(scope, services.views), scenes: scenesApi(services.app, scope, services.views), bundles: bundlesApi(scope),
+    ...(scope.capabilities.has('collections') ? { collections: collectionsApi(services.app, scope) } : {}) });
 }

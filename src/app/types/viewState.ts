@@ -8,6 +8,7 @@ import type { InitiativeState } from './initiativeTypes';
 import type { DiceRollResult } from './diceTypes';
 import type { CameraState, GridState } from './gridTypes';
 import type { ViewUIState } from './viewUIState';
+import type { TokenSettings } from './tokenSettingsTypes';
 
 /** Data read from a map view, independent of the store and persistence services. */
 export interface ViewState extends ViewUIState {
@@ -98,13 +99,7 @@ export interface ViewState extends ViewUIState {
   currentCollectionId?: string;
 
   // Token settings
-  tokenSettings: {
-    showNameplates: boolean;
-    /** Keys of the collection's resources this map does not show to the GM; see `resources/sceneVisibility.ts`. */
-    hiddenResources: string[];
-    showInstanceBadges: boolean;
-    tokenRingSize: number;
-  };
+  tokenSettings: TokenSettings;
 
   // --- Initiative Tracker ---
   initiative: InitiativeState;

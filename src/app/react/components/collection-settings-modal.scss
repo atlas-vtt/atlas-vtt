@@ -91,6 +91,12 @@
     color: var(--text-normal);
     box-shadow: $shadow-sm;
   }
+
+  // An extension's tab (`ui.addCollectionSettingsTab`): Obsidian's icon in a span, sized as Atlas's.
+  .atlas-collection-settings-tab__icon {
+    display: inline-flex;
+    flex-shrink: 0;
+  }
 }
 
 // `.atlas-vtt-plugin .btn` gives every button wide side padding, a fixed height and

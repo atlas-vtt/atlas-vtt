@@ -3,6 +3,7 @@ import { collectionFolderPath } from './assetPaths';
 import { uniqueCollectionName } from './collectionNaming';
 import { mapStrings } from '../utils/mapStrings';
 import { hashText } from '../utils/hashing';
+import { forgetCollectionIndexData, moveCollectionIndexData } from './collectionIndexData';
 
 /** The folder of the collection a new vault starts with. */
 export const INITIAL_COLLECTION_ID = 'Default';
@@ -76,6 +77,7 @@ export function moveCollectionRecord(metadata: AssetMetadata, oldId: string, new
   const wasDefault = defaultCollectionIdOf(metadata) === oldId;
   delete metadata.collections[oldId];
   metadata.collections[newId] = { ...collection, id: newId, name: newId, modifiedAt: now };
+  moveCollectionIndexData(metadata, oldId, newId);
   if (wasDefault) metadata.defaultCollectionId = newId;
 
   const oldPrefix = `${collectionFolderPath(oldId)}/`;
@@ -99,6 +101,7 @@ export function forgetCollection(metadata: AssetMetadata, id: string, now = Date
     if (asset.collection === id) delete metadata.assets[assetId];
   }
   delete metadata.collections[id];
+  forgetCollectionIndexData(metadata, id);
   if (!wasDefault) return;
   delete metadata.defaultCollectionId;
   if (Object.keys(metadata.collections).length === 0) metadata.collections[INITIAL_COLLECTION_ID] = derivedCollectionRecord(INITIAL_COLLECTION_ID);

@@ -38,6 +38,8 @@ export interface AtlasSettings {
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
   diceFont: DiceFont;
+  /** Note properties extensions keep out of exports and installs, by extension id (`bundles.stripNoteProperties`); kept while the extension is not loaded. */
+  extensionNoteKeys: Record<string, string[]>;
   /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
   /** The statblock beside its note: whether its first-visit hint was dismissed. */
@@ -72,6 +74,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   diceDisplay: 'full',
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
+  extensionNoteKeys: {},
   experimental: {},
   statblockPane: { hintDismissed: false },
   toolbar: {},

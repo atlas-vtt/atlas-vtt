@@ -4,6 +4,7 @@ import type { Asset, AssetService, CollectionMetadata } from '../AssetService';
 import { BUNDLE_MANIFEST, PRESET_ROLE, bundleFormatFor, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
 import { flushPresetEdits, packedPresetRecord, withSystemPresetFile } from './bundlePresetFiles';
 import { rewriteContent } from './bundleContent';
+import { withoutSceneExtensions } from './bundleExtensionData';
 import { selectContent } from './bundleContents';
 import { withLootBases } from './bundleSettings';
 import { reportFileStep, type BundleProgressListener } from './bundleProgress';
@@ -176,6 +177,7 @@ export async function exportCollectionBundle(
   const files: BundleFile[] = [];
   const presets: Record<string, InstalledPreset> = {};
   if (selected.files.some((file) => file.role === PRESET_ROLE)) await flushPresetEdits(app);
+  const recordsMayHoldExtensionData = assets.holdsExtensionData();
   for (const [index, file] of selected.files.entries()) {
     reportFileStep(onProgress, 'bundle.step.adding', index, selected.files.length, 0, 0.6);
     const content = await readVaultBinary(app, file.vaultPath);
@@ -184,7 +186,7 @@ export async function exportCollectionBundle(
     const preset = file.role === PRESET_ROLE ? await packedPresetRecord(content) : null;
     if (file.role === PRESET_ROLE && !preset) continue;
     if (preset) presets[preset.localId] = preset;
-    const data = rewriteContent(file, comparedBytes(file.vaultPath, content), origin.names);
+    const data = rewriteContent(file, comparedBytes(file.vaultPath, content), origin.names, recordsMayHoldExtensionData);
     const bundlePath = named(file.vaultPath);
     files.push({
       ...file,
@@ -206,7 +208,7 @@ export async function exportCollectionBundle(
     exportedAt,
     collection,
     release: { kind: choice.kind === 'share' ? 'share' : 'release', ...(notes ? { notes } : {}) },
-    assets: selected.assets.map((asset) => remapPaths(asset, origin.names)),
+    assets: selected.assets.map((asset) => remapPaths(withoutSceneExtensions(asset), origin.names)),
     files,
   };
   zip.file(BUNDLE_MANIFEST, JSON.stringify(manifest, null, 2));

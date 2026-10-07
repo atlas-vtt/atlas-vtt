@@ -1,4 +1,5 @@
 import type AtlasVTTPlugin from '../../main';
+import { bundleNoteKeys } from '../app/extensions/bundleNoteKeys';
 import { syncPresentingCommands } from '../app/plugin/presentingCommands';
 import { AssetService } from '../app/services/AssetService';
 import { AtlasApiHost } from './AtlasApiHost';
@@ -22,10 +23,13 @@ export class ExtensionApiPublisher {
   constructor(private readonly plugin: AtlasVTTPlugin) {}
 
   async start(): Promise<void> {
+    // Note properties extensions asked to keep out of exports stay stripped whether or not those extensions load.
+    const settings = this.plugin.settingsService;
+    bundleNoteKeys.attach({ read: () => settings.getSetting('extensionNoteKeys'), write: (keys) => settings.setSetting('extensionNoteKeys', keys) });
     try {
       await AssetService.getInstance(this.plugin.app).initialize();
     } catch (error) {
-      // Publish anyway: a failed index must not disable every extension.
+      // Publish anyway: a failed index must not disable every extension; scene functions will reject.
       console.error('[Atlas API] The asset index failed to load; publishing the API without it:', error);
     }
     if (this.stopped) return;
@@ -53,8 +57,11 @@ export class ExtensionApiPublisher {
    */
   private watch(host: AtlasApiHost, views: ViewTracker, sightFrames: SightFramesByView): void {
     if (this.stopped) return;
+    const assets = AssetService.getInstance(this.plugin.app);
     this.stopWatches.push(host.apiEvents.on('map-closed', (viewId) => sightFrames.close(viewId)));
     views.start();
+    this.stopWatches.push(assets.onScenesChanged(() => host.apiEvents.emit('scenes-changed')));
+    this.stopWatches.push(assets.onCollectionsChanged(() => host.apiEvents.emit('collections-changed')));
     this.stopWatches.push(watchRules(this.plugin.app, host.apiEvents, true), watchSettings(this.plugin.settingsService, host.apiEvents));
     // Present to players and Stop presenting come with the first presentation target an extension registers.
     this.stopWatches.push(syncPresentingCommands(this.plugin));
@@ -62,6 +69,7 @@ export class ExtensionApiPublisher {
 
   stop(): void {
     this.stopped = true;
+    bundleNoteKeys.detach();
     for (const stopWatch of this.stopWatches.splice(0)) stopWatch();
     this.host?.dispose();
     this.host = null;

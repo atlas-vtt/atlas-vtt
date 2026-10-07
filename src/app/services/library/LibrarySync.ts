@@ -11,6 +11,7 @@ import { collectionFilePath, LEGACY_INDEX_FILE, recordFilePath } from './library
 import { trashVaultItem } from '../../utils/trashVaultItem';
 import { RECORD_FORMAT, serializeRecord } from './recordFile';
 import { isRecoveredId } from '../vault-sync/recoveredIds';
+import type { KeptSceneIndexData } from '../sceneIndexData';
 
 /** Local-storage key recording that this device keeps its library in vault files. Per device on purpose: every device migrates its own index. */
 const MIGRATED_KEY = 'atlas-vtt:library-files';
@@ -29,6 +30,8 @@ export class LibrarySync {
   private filesWritten = false;
   /** When this device first saw each file that looks like a copy and is not taken in yet. */
   private readonly copySince = new Map<string, number>();
+  /** Index-only data of scenes whose file went, by id, until the scene comes back from another file (`MergeContext.droppedIndexData`). */
+  private readonly droppedIndexData = new Map<string, KeptSceneIndexData>();
 
   constructor(private readonly app: App) {
     this.writer = new LibraryWriter(app, () => this.state);
@@ -69,6 +72,7 @@ export class LibrarySync {
     const result = mergeLibraryChanges(metadata, this.state, changes, this.migrated, {
       hasCollectionFile: (id) => this.app.vault.getFileByPath(collectionFilePath(id)) !== null,
       settledCopy,
+      droppedIndexData: this.droppedIndexData,
     });
     result.retryAt = retryAt;
     for (const path of this.copySince.keys()) if (this.state.files[path] || !this.app.vault.getFileByPath(path)) this.copySince.delete(path);

@@ -1,6 +1,6 @@
 /**
  * Atlas #324 (undo only what an edit changed) and the API's writes: a `tokens.move` is exactly one undo step that takes
- * back the moves and the layer raise and nothing Atlas wrote since.
+ * back the moves and the layer raise and nothing Atlas wrote since; an extension's scene data never enters a view's history.
  */
 import { describe, expect, it } from 'vitest';
 import { tokensApi } from '../../src/api/tokens';
@@ -8,6 +8,7 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore, runUntracked } from '../../src/app/stores/history';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { fakeView, loadMap, makeToken, trackerWith } from './apiFakes';
+import { withScene } from './scenesFixture';
 
 function movable() {
   const view = fakeView('v1');
@@ -56,5 +57,19 @@ describe('the API under edit-diff undo (#324)', () => {
     history.getState().undo();
     expect(tokenState(view, 'a')).toMatchObject({ x: 35, y: 35 });
     expect(tokenState(view, 'c').imagePath).toBe('tokens/renamed.png');
+  });
+
+  it("an extension's scene data never enters the history of a view holding that scene", async () => {
+    const view = fakeView('v1');
+    const { tracker } = trackerWith([view]);
+    const { scenes, sceneId, mapPath } = await withScene(tracker);
+    view.atlasStore.setState({ mapPath, mapLoaded: true, isMapLoading: false });
+    const history = getHistoryStore(view.atlasStore)!;
+    const before = history.getState().pastStates.length;
+    const objects = view.atlasStore.getState().objects;
+    await scenes.setData(sceneId, { item: 'abc' });
+    await scenes.setData(sceneId, null);
+    expect(history.getState().pastStates.length).toBe(before);
+    expect(view.atlasStore.getState().objects).toBe(objects);
   });
 });
