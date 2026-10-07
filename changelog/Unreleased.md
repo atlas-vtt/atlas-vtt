@@ -16,6 +16,8 @@
 
 - Simplified the hashing behind bundles, library files, thumbnails and dice throws, with checks that keep their results unchanged.
 
+- Simplified how the GM view and the player view decide which tokens see and which are always shown.
+
 ## Fixed
 
 - Fog now updates correctly when returning to a map or canceling a drawing.
