@@ -43,3 +43,5 @@
 - In the player window, a dice roll shows its token's portrait and ability only when players can see that token in the shown scene, and its name only when token nameplates are shown to players.
 
 - A measurement that starts on a token players can't see is no longer shown in the player view or session view. A measurement also leaves the player view while the token it started on is out of sight.
+
+- Instance badges in the player view and session view count and number only the tokens players can see, so their numbers can differ from those in the GM view. A token whose look-alikes are hidden or under fog shows no badge.

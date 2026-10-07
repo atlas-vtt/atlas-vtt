@@ -3,6 +3,7 @@ import { fogRectangle } from '../helpers/fogOperations';
 import { playerFrameLayers } from '../helpers/playerMeasureWiring';
 import { CELL, playerViewScenes, type PlayerViewScene } from '../helpers/playerViewScene';
 import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
+import type { PlayerInstanceBadges } from '../../src/app/pixi/token-renderer/PlayerInstanceBadges';
 
 const STRICT = import.meta.env.VITE_PERF_STRICT === '1';
 const WARMUPS = 20;
@@ -34,15 +35,29 @@ function hardware(): string {
   return `${navigator.userAgent}; ${debug && gl ? String(gl.getParameter(debug.UNMASKED_RENDERER_WEBGL)) : 'unknown GPU'}; ${navigator.hardwareConcurrency} threads`;
 }
 
+/** Small art of its own for each of ten kinds of look-alikes. */
+function arts(): string[] {
+  return Array.from({ length: 10 }, (_, index) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 4;
+    const context = canvas.getContext('2d')!;
+    context.fillStyle = `hsl(${index * 36}, 70%, 50%)`;
+    context.fillRect(0, 0, 4, 4);
+    return canvas.toDataURL('image/png');
+  });
+}
+
 /**
- * 200 tokens of one art on a 20 × 10 grid of cells: the last row hidden, 20 under fog (columns 15 to
- * 19 of rows 0 to 3), and 20 kept rulers, from seen, hidden and fogged tokens.
+ * 200 tokens on a 20 × 10 grid of cells, the first 100 of one art and ten each of ten others: the last
+ * row hidden, 20 under fog (columns 15 to 19 of rows 0 to 3), and 20 kept rulers, from seen, hidden and
+ * fogged tokens.
  */
 const { scene } = playerViewScenes();
 async function crowd(): Promise<PlayerViewScene> {
   const s = await scene();
+  const art = arts();
   const tokens = Array.from({ length: 200 }, (_, k) => ({
-    id: `t${k}`, x: centre(k % COLUMNS), y: centre(Math.floor(k / COLUMNS)), isHidden: k >= 180,
+    id: `t${k}`, x: centre(k % COLUMNS), y: centre(Math.floor(k / COLUMNS)), isHidden: k >= 180, imagePath: k < 100 ? '' : art[k % 10]!,
   }));
   await s.add(...tokens);
   s.setFog({
@@ -59,11 +74,23 @@ async function crowd(): Promise<PlayerViewScene> {
 }
 
 describe('what the players\' frame of the measurements costs', () => {
-  it('per capture, the work the measurements add', async (ctx) => {
+  it('per capture, the work the badges and measurements add', async (ctx) => {
     const s = await crowd();
     const lighting = s.lighting.perception;
-    const added = time(() => s.measure.getPlayerViewLayers(s.tokens.playersSeeInFrame(lighting)), 100);
-    const figures = { hardware: hardware(), addedMs: added };
+    const badges = (s.tokens as unknown as { playerBadges: PlayerInstanceBadges }).playerBadges;
+    const added = time(() => {
+      const seen = s.tokens.playersSeeInFrame(lighting);
+      badges.pass(seen);
+      badges.layers();
+      s.measure.getPlayerViewLayers(seen);
+    }, 100);
+    const badgesOnly = time(() => {
+      badges.pass(s.tokens.playersSeeInFrame(lighting));
+      badges.layers();
+    }, 100);
+    // The players number fewer look-alikes than the GM: the badges' pass has work to do.
+    expect(badges.layers().length).toBeGreaterThan(0);
+    const figures = { hardware: hardware(), addedMs: added, badgesMs: badgesOnly };
     await ctx.annotate(JSON.stringify(figures), 'performance');
     console.info(`player view capture, added work: ${JSON.stringify(figures)}`);
     if (STRICT) expect(added.p95).toBeLessThanOrEqual(0.1);

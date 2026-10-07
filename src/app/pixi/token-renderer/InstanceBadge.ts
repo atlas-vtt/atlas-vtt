@@ -2,10 +2,7 @@ import { Container, Graphics, Text, TextStyle } from 'pixi.js';
 import { getTokenRingCenterRadius } from './tokenRingMetrics';
 import type { TokenGroupContainer } from './types';
 import { destroyTree } from '../utils/destroyTree';
-
-const BADGE_NAME = 'instanceBadge';
-const BG_NAME = 'badgeBg';
-const TEXT_NAME = 'badgeText';
+import { BADGE_DISC_LABEL, BADGE_TEXT_LABEL, INSTANCE_BADGE_LABEL } from './instanceBadgeParts';
 
 /**
  * Create or update the instance badge on a token container.
@@ -30,17 +27,17 @@ export function updateInstanceBadge(
   const posX = ringRadius * Math.cos(angle);
   const posY = ringRadius * Math.sin(angle);
 
-  let badge = tokenGroup.getChildByLabel(BADGE_NAME);
+  let badge = tokenGroup.getChildByLabel(INSTANCE_BADGE_LABEL);
 
   if (!badge) {
     badge = new Container();
-    badge.label = BADGE_NAME;
+    badge.label = INSTANCE_BADGE_LABEL;
     badge.zIndex = 50;
     badge.eventMode = 'none';
     badge.interactive = false;
 
     const bg = new Graphics();
-    bg.label = BG_NAME;
+    bg.label = BADGE_DISC_LABEL;
     bg.eventMode = 'none';
     badge.addChild(bg);
 
@@ -54,7 +51,7 @@ export function updateInstanceBadge(
       }),
       resolution: 8,
     });
-    text.label = TEXT_NAME;
+    text.label = BADGE_TEXT_LABEL;
     text.anchor.set(0.5, 0.5);
     text.position.set(0, 0);
     badge.addChild(text);
@@ -66,7 +63,7 @@ export function updateInstanceBadge(
   badge.position.set(posX, posY);
 
   // Update background — fully opaque
-  const bg = badge.getChildByLabel(BG_NAME) as Graphics;
+  const bg = badge.getChildByLabel(BADGE_DISC_LABEL) as Graphics;
   bg.clear();
   bg.circle(0, 0, badgeRadius);
   bg.fill({ color: 0x000000 });
@@ -74,7 +71,7 @@ export function updateInstanceBadge(
   bg.stroke({ color: 0x555555, width: 1.5 });
 
   // Update text — ensure centered
-  const text = badge.getChildByLabel(TEXT_NAME) as Text;
+  const text = badge.getChildByLabel(BADGE_TEXT_LABEL) as Text;
   text.text = String(instanceNumber);
   text.style.fontSize = fontSize;
   text.position.set(0, 0);
@@ -86,7 +83,7 @@ export function updateInstanceBadge(
  * Remove the instance badge from a token container entirely.
  */
 export function removeInstanceBadge(tokenGroup: Container): void {
-  const badge = tokenGroup.getChildByLabel(BADGE_NAME);
+  const badge = tokenGroup.getChildByLabel(INSTANCE_BADGE_LABEL);
   if (badge) {
     tokenGroup.removeChild(badge);
     destroyTree(badge);

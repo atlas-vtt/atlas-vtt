@@ -59,3 +59,12 @@ it('kept rulers after a session-view round trip', async () => {
   s.store.getState().setGMView(true);
   await gmPicture(s, 'kept-rulers-round-trip');
 });
+
+it('three twins, the middle one hidden, after a session-view round trip', async () => {
+  const s = await scene();
+  await s.add({ id: 'a', x: 60, y: 60 }, { id: 'b', x: 140, y: 60, isHidden: true }, { id: 'c', x: 220, y: 60 });
+  s.store.getState().setGMView(false);
+  await s.settle();
+  s.store.getState().setGMView(true);
+  await gmPicture(s, 'three-twins-middle-hidden');
+});
