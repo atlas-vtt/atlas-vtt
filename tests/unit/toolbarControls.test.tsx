@@ -36,7 +36,7 @@ function context(overrides: Partial<ToolbarContext> = {}): ToolbarContext {
 const item = (id: ToolbarControlId, ctx: ToolbarContext): ToolbarItemBody => TOOLBAR_CONTROL_ITEMS[id](ctx);
 const placement = ({ pinned, active }: ToolbarItemBody): { pinned: boolean; active: boolean } => ({ pinned, active });
 
-const GROUPS: readonly ToolMenu[] = ['move', 'fog', 'draw', 'text', 'measure', 'wall'];
+const GROUPS: readonly ToolMenu[] = ['move', 'fog', 'draw', 'text', 'measure', 'wall', 'viewport'];
 
 describe('toolbar control items', () => {
   it('builds an item for every control of the catalog', () => {

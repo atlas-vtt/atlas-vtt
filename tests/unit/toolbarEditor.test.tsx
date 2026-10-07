@@ -91,18 +91,26 @@ describe('the tray', () => {
   it('holds the hidden tools in their remembered order, then Reset and Done', () => {
     const harness = renderToolbar({ stored: { order: ['loot', 'move', 'fog'], hidden: ['fog', 'loot'] } });
     startEditing(harness);
-    expect(trayIds(harness.container)).toEqual(['loot', 'fog']);
+    // The TV viewport starts in the tray too, in its place of the default order.
+    expect(trayIds(harness.container)).toEqual(['loot', 'fog', 'viewport']);
     const tray = harness.container.querySelector<HTMLElement>('.atlas-toolbar-tray')!;
     expect(within(tray).getByRole('button', { name: 'Reset toolbar' })).toBeTruthy();
     expect(within(tray).getByRole('button', { name: 'Done' })).toBeTruthy();
     expect(within(tray).queryByText('Drag a tool here to hide it')).toBeNull();
   });
 
-  it('shows a hint while no tool is hidden, and Reset disabled on the default layout', () => {
-    const harness = renderToolbar();
+  it('shows a hint while no tool is hidden', () => {
+    const harness = renderToolbar({ stored: { shown: ['viewport'] } });
     startEditing(harness);
     const tray = harness.container.querySelector<HTMLElement>('.atlas-toolbar-tray')!;
     expect(within(tray).getByText('Drag a tool here to hide it')).toBeTruthy();
+  });
+
+  it('starts with only the TV viewport in the tray, and Reset disabled on that default layout', () => {
+    const harness = renderToolbar();
+    startEditing(harness);
+    const tray = harness.container.querySelector<HTMLElement>('.atlas-toolbar-tray')!;
+    expect(trayIds(harness.container)).toEqual(['viewport']);
     expect(within(tray).getByRole('button', { name: 'Reset toolbar' }).getAttribute('aria-disabled')).toBe('true');
   });
 
@@ -111,12 +119,12 @@ describe('the tray', () => {
     startEditing(harness);
     fireEvent.click(screen.getByRole('button', { name: 'Reset toolbar' }));
     expect(harness.settings.getToolbarLayout()).toEqual({});
-    expect(trayIds(harness.container)).toEqual([]);
+    expect(trayIds(harness.container)).toEqual(['viewport']);
     expect(liveRegion(harness.container)).toBe('Toolbar reset.');
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo reset' }));
     expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['fog'] });
-    expect(trayIds(harness.container)).toEqual(['fog']);
+    expect(trayIds(harness.container)).toEqual(['fog', 'viewport']);
     expect(liveRegion(harness.container)).toBe('Reset undone.');
     expect(screen.getByRole('button', { name: 'Reset toolbar' })).toBeTruthy();
   });
@@ -136,7 +144,7 @@ describe('the tray', () => {
   it('leaves Hidden tools out of the bar where the view does not offer them', () => {
     const harness = renderToolbar({ stored: { hidden: ['wall', 'fog'] } });
     startEditing(harness);
-    expect(trayIds(harness.container)).toEqual(['fog']);
+    expect(trayIds(harness.container)).toEqual(['fog', 'viewport']);
   });
 });
 
@@ -155,7 +163,7 @@ describe('the editor menu', () => {
     fireEvent.contextMenu(handle(harness.container, 'fog'), { clientX: 10, clientY: 10 });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
     expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['fog'] });
-    expect(trayIds(harness.container)).toEqual(['fog']);
+    expect(trayIds(harness.container)).toEqual(['fog', 'viewport']);
     expect(harness.container.querySelector('[data-toolbar-item="fog"]')?.hasAttribute('hidden')).toBe(true);
     expect(liveRegion(harness.container)).toBe('Fog of war hidden. F still selects it.');
 
@@ -214,14 +222,14 @@ describe('the keyboard path', () => {
   });
 
   it('shows a tray tool with Enter and jumps between bar and tray with Up and Down', () => {
-    const harness = renderToolbar({ stored: { hidden: ['fog'] } });
+    const harness = renderToolbar({ stored: { hidden: ['fog'], shown: ['viewport'] } });
     startEditing(harness);
     const move = handle(harness.container, 'move');
     act(() => move.focus());
     fireEvent.keyDown(move, { key: 'ArrowUp' });
     expect(document.activeElement).toBe(handle(harness.container, 'fog', 'tray'));
     fireEvent.keyDown(handle(harness.container, 'fog', 'tray'), { key: 'Enter' });
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.getToolbarLayout()).toEqual({ shown: ['viewport'] });
     // The tray is empty now, so focus follows the tool onto the bar.
     expect(document.activeElement).toBe(handle(harness.container, 'fog'));
   });

@@ -1,5 +1,5 @@
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
-import { AMBIENT_AUDIO_ENABLED } from '../featureFlags';
+import { AMBIENT_AUDIO_ENABLED, TV_VIEWPORT_ENABLED } from '../featureFlags';
 import { isActiveAtlasLeaf } from '../utils/activeLeafGuard';
 import { handledByAnotherControl } from './tooltipEscape';
 import type { SettingsService } from '../services/SettingsService';
@@ -25,6 +25,7 @@ export const MAP_HOTKEYS = [
   { id: 'pin', label: t('hotkey.pin'), group: t('hotkey.group.tools'), defaultKey: 'p', dmOnly: true },
   { id: 'wall', label: t('hotkey.wall'), group: t('hotkey.group.tools'), defaultKey: 'w', dmOnly: true, experimental: 'dynamicLighting' },
   { id: 'audio', label: t('hotkey.audio'), group: t('hotkey.group.tools'), defaultKey: 's', dmOnly: true, enabled: AMBIENT_AUDIO_ENABLED },
+  { id: 'viewport', label: t('hotkey.viewport'), group: t('hotkey.group.tools'), defaultKey: '', dmOnly: true, enabled: TV_VIEWPORT_ENABLED },
   { id: 'selectAll', label: t('hotkey.selectAll'), group: t('hotkey.group.editing'), defaultKey: 'Mod+a', dmOnly: true },
   { id: 'copy', label: t('hotkey.copy'), group: t('hotkey.group.editing'), defaultKey: 'Mod+c', dmOnly: true, yieldsToTextSelection: true },
   { id: 'cut', label: t('hotkey.cut'), group: t('hotkey.group.editing'), defaultKey: 'Mod+x', dmOnly: true, yieldsToTextSelection: true },

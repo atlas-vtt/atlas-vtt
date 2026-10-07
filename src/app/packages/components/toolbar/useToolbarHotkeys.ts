@@ -38,6 +38,7 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
     move: () => selectTool(cycleTool(MOVE_TOOLS, activeTool())),
     fog: dmOnly(() => selectTool(cycleTool(FOG_TOOLS, activeTool()))),
     text: dmOnly(() => selectTool("text")),
+    viewport: dmOnly(() => selectTool("viewport")),
     measure: () => {
       const current = activeTool()
       const next = cycleTool(MEASURE_TOOLS, current)

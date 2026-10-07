@@ -136,10 +136,10 @@ describe('Lighting in the editor', () => {
     const harness = renderToolbar({ stored: { hidden: ['wall'] } });
     act(() => harness.settings.setExperimental('dynamicLighting', true));
     startEditing(harness);
-    expect(trayIds(harness.container)).toEqual(['wall']);
+    expect(trayIds(harness.container)).toEqual(['wall', 'viewport']);
 
     act(() => harness.settings.setExperimental('dynamicLighting', false));
-    expect(trayIds(harness.container)).toEqual([]);
+    expect(trayIds(harness.container)).toEqual(['viewport']);
     expect(harness.container.querySelector('.atlas-main-toolbar [data-toolbar-item="wall"]')).toBeNull();
     expect(harness.store.getState().isToolbarEditing).toBe(true);
   });

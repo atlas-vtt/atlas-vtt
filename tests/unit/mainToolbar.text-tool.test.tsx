@@ -5,6 +5,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { StoredToolbarLayout } from '../../src/app/toolbar/toolbarLayout';
 import { DEFAULT_LASER_POINTER_SETTINGS, type LaserPointerSettings } from '../../src/app/tools/laserPointerSettings';
+import { DEFAULT_SETTINGS } from '../../src/app/services/atlasSettings';
+import type { TVCalibrationSettings } from '../../src/app/types/viewportTypes';
 
 const setActiveTool = vi.fn();
 const setSelectionMode = vi.fn();
@@ -26,11 +28,12 @@ let settings: {
   isExperimentalOn: () => boolean;
   getToolbarLayout: () => StoredToolbarLayout;
   getLaserPointerSettings: () => LaserPointerSettings;
+  getTVCalibration: () => TVCalibrationSettings;
 } | undefined;
 let viewType = 'atlas-vtt';
 
 function settingsWithLayout(layout: StoredToolbarLayout): typeof settings {
-  return { isExperimentalOn: () => dynamicLighting, getToolbarLayout: () => layout, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS };
+  return { isExperimentalOn: () => dynamicLighting, getToolbarLayout: () => layout, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS, getTVCalibration: () => DEFAULT_SETTINGS.tvCalibration };
 }
 
 const storeState = {
@@ -52,7 +55,7 @@ const storeState = {
   lootRoller: { open: false },
   setLootRollerOpen: vi.fn(),
   setInitiativeTrackerOpen,
-  objects: { tokens: {} },
+  objects: { tokens: {}, viewports: {} },
   lighting: { enabled: false, ambient: 0.1 },
   setSceneLighting: vi.fn(),
   setSelection,
@@ -184,6 +187,14 @@ describe('MainToolbar text tool', () => {
     expect(setActiveTool).toHaveBeenCalledWith('text');
   });
 
+  it('activates the TV viewport tool from its shortcut', () => {
+    render(<MainToolbar viewId="view-1" />);
+
+    capturedShortcuts.viewport(new KeyboardEvent('keydown', { key: 'u' }));
+
+    expect(setActiveTool).toHaveBeenCalledWith('viewport');
+  });
+
   it('selects only the tokens the canvas shows with select all', () => {
     visibleTokenIds = ['hero'];
     render(<MainToolbar viewId="view-1" />);
@@ -223,6 +234,7 @@ describe('MainToolbar text tool', () => {
       hidden: ['fog'],
     });
     const { container } = render(<MainToolbar viewId="view-1" />);
+    // A control the stored layout does not know yet follows the control before it in the default order.
     expect(shownControls(container)).toEqual(['palette', 'dice', 'move', 'draw', 'text', 'measure', 'pin', 'loot', 'assets']);
     expect(container.querySelector('[data-toolbar-item="fog"]')?.hasAttribute('hidden')).toBe(true);
   });

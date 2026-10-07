@@ -1,16 +1,18 @@
 import { isRecord } from '../utils/guards';
 import {
-  DEFAULT_TOOLBAR_ORDER, isHideableToolbarControl, isToolbarControlId, isToolbarUnitId, UNDO_BAR_ID, type ToolbarControlId, type ToolbarUnitId,
+  DEFAULT_HIDDEN_CONTROLS, DEFAULT_TOOLBAR_ORDER, isHideableToolbarControl, isToolbarControlId, isToolbarUnitId, UNDO_BAR_ID, type ToolbarControlId, type ToolbarUnitId,
 } from './toolbarCatalog';
 
 /**
  * What `AtlasSettings.toolbar` holds: only what differs from the default. Ids
  * this version does not know (a newer Atlas on another device) are kept. A
  * hidden undo/redo bar is `UNDO_BAR_ID` in `hidden`; it is never in `order`.
+ * `shown` lists the controls that start hidden (`hiddenByDefault`) which the GM has put on the bar.
  */
 export interface StoredToolbarLayout {
   readonly order?: readonly string[];
   readonly hidden?: readonly string[];
+  readonly shown?: readonly string[];
 }
 
 /**
@@ -43,7 +45,8 @@ export function readToolbarLayout(stored: unknown): StoredToolbarLayout {
   if (!isRecord(stored)) return {};
   const order = readIds(stored.order, id => id !== UNDO_BAR_ID);
   const hidden = readIds(stored.hidden, id => !isToolbarUnitId(id) || isHideableToolbarControl(id));
-  return { ...(order.length > 0 && { order }), ...(hidden.length > 0 && { hidden }) };
+  const shown = readIds(stored.shown, () => true);
+  return { ...(order.length > 0 && { order }), ...(hidden.length > 0 && { hidden }), ...(shown.length > 0 && { shown }) };
 }
 
 /**
@@ -64,7 +67,9 @@ export function orderedToolbarIds(defaultIds: readonly string[], custom: readonl
 
 export function resolveToolbarLayout(stored: StoredToolbarLayout): ToolbarLayout {
   const order = orderedToolbarIds(DEFAULT_TOOLBAR_ORDER, stored.order ?? []).filter(isToolbarControlId);
-  const hidden = new Set((stored.hidden ?? []).filter(isToolbarUnitId).filter(isHideableToolbarControl));
+  const shown = new Set(stored.shown ?? []);
+  const hiddenIds = [...(stored.hidden ?? []), ...DEFAULT_HIDDEN_CONTROLS.filter(id => !shown.has(id))];
+  const hidden = new Set(hiddenIds.filter(isToolbarUnitId).filter(isHideableToolbarControl));
   return { order, hidden };
 }
 
@@ -87,10 +92,14 @@ function sameIds(a: readonly string[], b: readonly string[]): boolean {
 export function storedToolbarLayout(previous: StoredToolbarLayout, next: ToolbarLayout): StoredToolbarLayout {
   const order = withUnknownIds(next.order, previous.order ?? []);
   const unknownHidden = (previous.hidden ?? []).filter(id => !isToolbarUnitId(id));
-  const hidden = [...(next.hidden.has(UNDO_BAR_ID) ? [UNDO_BAR_ID] : []), ...next.order.filter(id => next.hidden.has(id)), ...unknownHidden];
+  // A control that starts hidden is only remembered once the GM shows it, as `shown`.
+  const hidden = [...(next.hidden.has(UNDO_BAR_ID) ? [UNDO_BAR_ID] : []), ...next.order.filter(id => next.hidden.has(id) && !DEFAULT_HIDDEN_CONTROLS.includes(id)), ...unknownHidden];
+  const unknownShown = (previous.shown ?? []).filter(id => !isToolbarControlId(id));
+  const shown = [...DEFAULT_HIDDEN_CONTROLS.filter(id => !next.hidden.has(id)), ...unknownShown];
   return {
     ...(!sameIds(order, DEFAULT_TOOLBAR_ORDER) && { order }),
     ...(hidden.length > 0 && { hidden }),
+    ...(shown.length > 0 && { shown }),
   };
 }
 
@@ -121,7 +130,7 @@ export function withControlShown(layout: ToolbarLayout, id: ToolbarUnitId): Tool
 }
 
 export function isDefaultToolbarLayout(layout: ToolbarLayout): boolean {
-  return layout.hidden.size === 0 && sameIds(layout.order, DEFAULT_TOOLBAR_ORDER);
+  return layout.hidden.size === DEFAULT_HIDDEN_CONTROLS.length && DEFAULT_HIDDEN_CONTROLS.every(id => layout.hidden.has(id)) && sameIds(layout.order, DEFAULT_TOOLBAR_ORDER);
 }
 
 /** What a control remembers between renders to decide whether it may visit the bar. */

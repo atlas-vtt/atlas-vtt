@@ -88,7 +88,7 @@ describe('the slot a drop lands in', () => {
     expect(leftNeighbour(shown, 5)).toBe('measure');
     expect(leftNeighbour(shown, 99)).toBe('palette');
     const layout = withControlAfter(resolveToolbarLayout({}), 'assets', leftNeighbour(shown, 5));
-    expect(layout.order).toEqual(['move', 'fog', 'draw', 'text', 'measure', 'assets', 'wall', 'pin', 'audio', 'dice', 'loot', 'palette']);
+    expect(layout.order).toEqual(['move', 'fog', 'draw', 'text', 'measure', 'assets', 'wall', 'pin', 'audio', 'viewport', 'dice', 'loot', 'palette']);
     expect(layout.order.length).toBe(DEFAULT_TOOLBAR_ORDER.length);
   });
 });

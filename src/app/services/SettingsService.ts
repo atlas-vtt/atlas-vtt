@@ -7,6 +7,7 @@ import { isDiceDisplay, type DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, isDiceColour, isDiceFont, type DiceLook } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
+import type { TVCalibrationSettings } from '../types/viewportTypes';
 import {
   DEFAULT_SETTINGS,
   isRecord,
@@ -311,6 +312,15 @@ export class SettingsService {
 
   setLocalPlayerViewSettings(settings: Partial<AtlasSettings['localPlayerView']>): void {
     this.settings.localPlayerView = { ...this.settings.localPlayerView, ...settings };
+    this.commit();
+  }
+
+  getTVCalibration(): TVCalibrationSettings {
+    return { ...this.settings.tvCalibration };
+  }
+
+  setTVCalibration(settings: Partial<TVCalibrationSettings>): void {
+    this.settings.tvCalibration = { ...this.settings.tvCalibration, ...settings };
     this.commit();
   }
 

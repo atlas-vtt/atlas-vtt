@@ -21,3 +21,6 @@ export const AMBIENT_AUDIO_ENABLED = false;
  * the wall menu does not offer the switch. Do not switch it on before the open points are closed.
  */
 export const LIMITED_WALLS = false;
+
+/** TV viewport tool: DM-placed viewport rectangle the player window camera can follow. */
+export const TV_VIEWPORT_ENABLED = true;

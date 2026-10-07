@@ -11,6 +11,7 @@ export const palette = {
   'palette.footer.select': 'to select',
   'palette.footer.switchTabs': 'to switch tabs',
   'palette.freezePlayerCamera': 'Freeze Player Camera',
+  'palette.followTvViewport': 'Follow TV Viewport',
   'palette.gridAppearance': 'Grid appearance',
   'palette.gridSettings': 'Grid settings',
   'palette.localPlayerViewSettings': 'Local player view settings',

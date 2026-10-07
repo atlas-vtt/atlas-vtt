@@ -157,6 +157,7 @@ export type ToolMode =
   | 'draw-line'
   | 'draw-rectangle'
   | 'draw-circle'
-  | 'audio';
+  | 'audio'
+  | 'viewport';
 
  

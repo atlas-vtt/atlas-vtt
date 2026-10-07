@@ -8,6 +8,8 @@ export interface PlayerWindowState {
    * players are shown is the presented scene (`presentedScene.ts`), which needs no window.
    */
   shownTabId: string | null;
+  /** True when the player camera is locked onto the scene's active TV viewport rect. */
+  isFollowingViewport: boolean;
 }
 
 export type PlayerWindowStore = StoreApi<PlayerWindowState>;
@@ -16,6 +18,7 @@ const INITIAL_STATE: PlayerWindowState = {
   isOpen: false,
   isFrozen: false,
   shownTabId: null,
+  isFollowingViewport: false,
 };
 
 /**
