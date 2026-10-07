@@ -19,6 +19,11 @@ export class ExploredSaveScheduler {
     this.timer = window.setTimeout(() => this.run(), this.delay);
   }
 
+  /** The map was renamed: a save scheduled for it is made under its new path. */
+  retarget(from: string | null, to: string | null): void {
+    if (this.timer !== null && this.scheduledFor === from) this.scheduledFor = to;
+  }
+
   flush(): void {
     if (this.timer !== null) this.run();
   }

@@ -2,6 +2,8 @@ import { axialToPixel, hexCircumradius, hexOriginCenter } from './hexGeometry';
 import type { AxialCoord, HexLayout } from './hexGeometry';
 import { EDGE_MARGIN, EPSILON } from './cellNumbering';
 import type { CellLattice, MapRect, PlacedCell } from './cellNumbering';
+import { hexLayoutNearZero } from './gridOrigin';
+import { MAX_GRID_OFFSET } from './gridLimits';
 
 export function axialKey(coord: AxialCoord): string {
   return `${coord.q},${coord.r}`;
@@ -22,7 +24,9 @@ export function hexLattice(layout: HexLayout): CellLattice {
  * columns on flat-top grids and its rows on pointy-top grids; each line counts
  * from its first hex on the map, which follows the half-cell stagger.
  */
-function hexesOnMap(layout: HexLayout, map: MapRect): PlacedCell[] {
+function hexesOnMap(given: HexLayout, map: MapRect): PlacedCell[] {
+  // An origin far from the map never lets the steps below advance; its keys only matter for an origin Atlas accepts.
+  const layout = Math.abs(given.originX) > MAX_GRID_OFFSET || Math.abs(given.originY) > MAX_GRID_OFFSET ? hexLayoutNearZero(given) : given;
   const isPointy = layout.orientation === 'pointy';
   const size = layout.size;
   const lineSpacing = 1.5 * hexCircumradius(size);

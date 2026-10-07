@@ -18,7 +18,7 @@ import {
 } from '../types/collectionSettingsTypes';
 import type { DiceRules } from '../types/diceRulesTypes';
 import { BUILT_IN_ID_PREFIX, type SystemPreset } from '../types/systemPresetTypes';
-import { WIDGET_ICON_PATHS, resolveWidgetIcon, type WidgetIcon } from '../types/widgetIcons';
+import { isWidgetIcon, resolveWidgetIcon } from '../types/widgetIcons';
 import type { AnyWidget } from '../types/widgetTypes';
 import { isValidClockSegments } from '../utils/clockWidget';
 import { CRIT_RULES, isValidDefaultRoll, parseExplodeRule } from './diceRules';
@@ -72,7 +72,7 @@ function parseGridDefaults(raw: unknown): CollectionGridDefaults | null {
 function parseCondition(raw: unknown): ConditionDefinition | null {
   if (!isRecord(raw) || !isNonEmptyString(raw.id) || typeof raw.name !== 'string') return null;
   if (!isHexColor(raw.color)) return null;
-  const icon = typeof raw.icon === 'string' && raw.icon in WIDGET_ICON_PATHS ? (raw.icon as WidgetIcon) : undefined;
+  const icon = isWidgetIcon(raw.icon) ? raw.icon : undefined;
   return {
     id: raw.id,
     name: raw.name,

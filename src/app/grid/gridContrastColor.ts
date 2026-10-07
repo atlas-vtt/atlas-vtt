@@ -17,10 +17,21 @@ export function contrastColorForGray(image: GrayImage): number {
   return sum / image.data.length > BRIGHT_MAP_THRESHOLD ? BLACK : WHITE;
 }
 
-/** The automatic grid colour for a map, or null while its texture is not readable yet. */
+/**
+ * The automatic grid colour for a map, or null while its texture is not readable yet. Only images, canvases and
+ * bitmaps can be drawn to sample them: a placeholder such as PIXI's `Texture.WHITE` holds a byte array, and a closed
+ * `ImageBitmap` throws. Those read as not readable (null), so the grid takes its default colour and samples again once
+ * the real image is there.
+ */
 export function contrastColorForSprite(sprite: Sprite): number | null {
-  const image = grayFromSprite(sprite, SAMPLE_SIDE);
-  return image ? contrastColorForGray(image) : null;
+  const resource: unknown = sprite.destroyed ? null : sprite.texture?.source?.resource;
+  if (ArrayBuffer.isView(resource) || resource instanceof ArrayBuffer) return null;
+  try {
+    const image = grayFromSprite(sprite, SAMPLE_SIDE);
+    return image ? contrastColorForGray(image) : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The store keeps the grid colour as a hex string, the GridSystem as a number; unset stays unset (automatic). */

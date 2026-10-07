@@ -46,6 +46,9 @@ export class LaserPointerRenderer {
   private tickerCallback: (() => void) | null = null;
   private unsubscribeFromSource?: () => void;
   private onCanvasLeave: () => void;
+  private onWindowBlur: () => void;
+  /** The window the canvas lives in, which differs from the main one in a popout. */
+  private blurWindow: Window;
 
   // Bound viewport handlers (stored for cleanup)
   private onPointerDown: (e: FederatedPointerEvent) => void;
@@ -97,6 +100,9 @@ export class LaserPointerRenderer {
       this.redraw();
     };
     this.canvasEl.addEventListener('mouseleave', this.onCanvasLeave);
+    this.onWindowBlur = this.handleWindowBlur.bind(this);
+    this.blurWindow = this.canvasEl.ownerDocument.defaultView ?? window;
+    this.blurWindow.addEventListener('blur', this.onWindowBlur);
   }
 
   private setActiveTool(tool: ViewState['activeTool']): void {
@@ -131,7 +137,17 @@ export class LaserPointerRenderer {
     return { x: world.x, y: world.y };
   }
 
+  /** The canvas can move into another window (a popout): the blur that lets the laser go is heard there. */
+  private followBlurWindow(): void {
+    const win = this.canvasEl.ownerDocument.defaultView ?? window;
+    if (win === this.blurWindow) return;
+    this.blurWindow.removeEventListener('blur', this.onWindowBlur);
+    this.blurWindow = win;
+    win.addEventListener('blur', this.onWindowBlur);
+  }
+
   private handlePointerDown(e: FederatedPointerEvent): void {
+    this.followBlurWindow();
     const button: number = e.button;
     // Middle-click → quick mode regardless of active tool; left-click when the laser tool is active
     const quick = button === 1;
@@ -197,6 +213,13 @@ export class LaserPointerRenderer {
       this.redraw();
       e.stopPropagation();
     }
+  }
+
+  /** The window lost focus mid-stroke: no pointer-up will come, so the laser is let go. */
+  private handleWindowBlur(): void {
+    if (!this.isPointing) return;
+    this.isPointing = false;
+    this.redraw();
   }
 
   private handlePointerUpOutside(): void {
@@ -287,6 +310,7 @@ export class LaserPointerRenderer {
     this.viewport.off('pointerupoutside', this.onPointerUpOutside);
     this.viewport.off('moved', this.onViewportMoved);
     this.canvasEl.removeEventListener('mouseleave', this.onCanvasLeave);
+    this.blurWindow.removeEventListener('blur', this.onWindowBlur);
 
     this.trail.clear();
     destroyTree(this.container);

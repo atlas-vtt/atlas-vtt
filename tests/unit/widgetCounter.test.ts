@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { resolveWidgetIcon, DEFAULT_WIDGET_ICON } from '../../src/app/types/widgetIcons';
+import { isWidgetIcon, resolveWidgetIcon, DEFAULT_WIDGET_ICON } from '../../src/app/types/widgetIcons';
+import { conditionGlyph } from '../../src/app/utils/conditionGlyph';
 import { clampCounterValue, readCounterValue } from '../../src/app/utils/counterWidget';
 import type { CounterWidget } from '../../src/app/types/widgetTypes';
 
@@ -14,6 +15,15 @@ describe('widget icons', () => {
     expect(resolveWidgetIcon('timer')).toBe('hourglass');
     expect(resolveWidgetIcon('nope')).toBe(DEFAULT_WIDGET_ICON);
     expect(resolveWidgetIcon(undefined)).toBe(DEFAULT_WIDGET_ICON);
+  });
+
+  it('never takes a name from the object prototype for an icon', () => {
+    for (const name of ['constructor', '__proto__', 'toString', 'hasOwnProperty']) {
+      expect(resolveWidgetIcon(name)).toBe(DEFAULT_WIDGET_ICON);
+      expect(isWidgetIcon(name)).toBe(false);
+      expect(conditionGlyph({ name: 'Poisoned', icon: name as never })).toEqual({ kind: 'text', text: 'P' });
+    }
+    expect(isWidgetIcon('skull')).toBe(true);
   });
 });
 

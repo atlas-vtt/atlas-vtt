@@ -1,5 +1,6 @@
 import { EDGE_MARGIN, EPSILON } from './cellNumbering';
 import type { CellLattice, MapRect, PlacedCell } from './cellNumbering';
+import { squareOffset } from './gridOrigin';
 
 function cellKey(col: number, row: number): string {
   return `${col},${row}`;
@@ -10,7 +11,8 @@ export function squareLattice(size: number, offsetX: number, offsetY: number): C
   return {
     size,
     cellsOnMap(map: MapRect): PlacedCell[] {
-      return squaresOnMap(size, offsetX, offsetY, map);
+      // Whole cells away the squares are the same; their keys are this lattice's own.
+      return squaresOnMap(size, squareOffset(offsetX, size), squareOffset(offsetY, size), map);
     },
   };
 }

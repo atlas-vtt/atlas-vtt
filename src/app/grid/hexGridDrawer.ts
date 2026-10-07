@@ -2,6 +2,7 @@ import { drawStyledSegment, drawVertexMarker, gridMarkerArmLength } from './grid
 import type { GridBounds, GridLineType, GridPath } from './gridLineStyle';
 import { hexCircumradius, hexOriginCenter } from './hexGeometry';
 import type { HexLayout, Point } from './hexGeometry';
+import { hexLayoutNearZero } from './gridOrigin';
 
 /**
  * One row (pointy) or column (flat) of hex centers. `along` runs parallel to the
@@ -123,7 +124,8 @@ export function drawHexGrid(
   markerThickness: number = 1,
   markerArm: number = gridMarkerArmLength(layout.size),
 ): void {
-  const lattice = createLattice(bounds, layout);
+  // Whole repeats away the lattice is the same; next to zero, every step stays exact (`gridOrigin.ts`).
+  const lattice = createLattice(bounds, hexLayoutNearZero(layout));
   if (lineType === 'dotted') {
     drawVertexMarkers(graphics, lattice, markerThickness, markerArm);
   } else {

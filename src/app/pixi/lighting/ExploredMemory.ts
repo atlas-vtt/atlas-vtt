@@ -14,7 +14,7 @@ import { ExploredTexture } from './ExploredTexture';
 const EXPLORED_SAVE_DELAY = 2000;
 
 /** What the memory reads of its view's state and the two actions it calls; the tracked records let it trim the undo history (`forgetExploredEdits`). */
-export type ExploredMemoryState = HistorySnapshot & Pick<ViewState, 'mapPath' | 'isMapLoading' | 'exploredEdits'> & {
+export type ExploredMemoryState = HistorySnapshot & Pick<ViewState, 'mapPath' | 'mapLoaded' | 'isMapLoading' | 'exploredEdits'> & {
   setExploredMask(dataUrl: string | null): void;
   setExploredEdits(count: number): void;
 };
@@ -70,7 +70,11 @@ export class ExploredMemory {
     this.steps = new ExploredSteps(deps.renderer);
     this.revision = deps.store.getState().exploredEdits;
     // Undo and redo move the count; an edit of this memory's own has moved `revision` along with it.
-    this.unsubscribe = deps.store.subscribe((state) => this.follow(state.exploredEdits, state.isMapLoading));
+    this.unsubscribe = deps.store.subscribe((state, previous) => {
+      // A rename moves the open map's save target (a switch unloads first, so its map is not loaded by then).
+      if (state.mapPath !== previous.mapPath && previous.mapLoaded && !previous.isMapLoading) this.saver.retarget(previous.mapPath, state.mapPath);
+      this.follow(state.exploredEdits, state.isMapLoading);
+    });
   }
 
   /** Sizes the memory to the map and loads the scene's saved mask unless the texture holds it. */

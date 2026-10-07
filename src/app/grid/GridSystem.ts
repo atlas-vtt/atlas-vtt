@@ -3,6 +3,7 @@ import { Viewport } from 'pixi-viewport';
 import type { RenderLayer } from 'pixi.js';
 import { drawSquareGrid } from './squareGridDrawer';
 import { drawHexGrid } from './hexGridDrawer';
+import { isDrawableGrid } from './gridLimits';
 import { gridMarkerArmLength } from './gridLineStyle';
 import type { GridBounds } from './gridLineStyle';
 import { GridLines } from './gridLines';
@@ -134,6 +135,13 @@ export class GridSystem implements UnlitGrid {
           this.createGrid();
         }
       }, 100);
+      return;
+    }
+
+    if (!isDrawableGrid(size, bgSprite.width, bgSprite.height)) {
+      // A size of 0 or less never finishes drawing, a tiny one takes millions of steps: such a grid is not drawn.
+      console.warn('[GridSystem] Grid size cannot be drawn on this map; no grid is shown', { size, width: bgSprite.width, height: bgSprite.height });
+      this._isCreating = false;
       return;
     }
 

@@ -6,6 +6,8 @@ import type { WallSegment } from '../types/wallTypes';
 import type { LightSource, LightZone } from '../types/lightingTypes';
 import type { WidgetSettings } from '../types/widgetTypes';
 import type { CellNumberFormat } from '../grid/cellNumbering';
+import { MAX_GRID_OFFSET } from '../grid/gridLimits';
+import { offsetsWithin } from '../grid/gridOrigin';
 import type AtlasVTTPlugin from '../../../main';
 import { migrateWidgetsToCollection, needsWidgetMigration } from '../utils/widgetMigration';
 import { lightZonesFromFile } from '../lighting/lightZones';
@@ -349,6 +351,11 @@ function migrateGrid(grid: LegacyGridState): GridState {
   }
   if (migrated.cellNumberOpacity === undefined && hexNumberOpacity !== undefined) {
     migrated = { ...migrated, cellNumberOpacity: hexNumberOpacity };
+  }
+  // An origin that far from the map draws the same grid moved next to zero, and never stalls a drawing loop.
+  if (typeof migrated.offsetX === 'number' && typeof migrated.offsetY === 'number') {
+    const offsets = offsetsWithin(migrated, MAX_GRID_OFFSET);
+    if (offsets.offsetX !== migrated.offsetX || offsets.offsetY !== migrated.offsetY) migrated = { ...migrated, ...offsets };
   }
   return migrated;
 }

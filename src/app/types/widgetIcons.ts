@@ -177,5 +177,10 @@ export function resolveWidgetIcon(icon: string | undefined): WidgetIcon {
   if (icon === 'timer') return 'hourglass';
   if (icon === 'book') return 'spellbook';
   if (icon === 'hand') return 'strength';
-  return icon && icon in WIDGET_ICON_PATHS ? (icon as WidgetIcon) : DEFAULT_WIDGET_ICON;
+  return isWidgetIcon(icon) ? icon : DEFAULT_WIDGET_ICON;
+}
+
+/** Whether `name` names an icon of the set; a name the object prototype has (`constructor`, `__proto__`) is none. */
+export function isWidgetIcon(name: unknown): name is WidgetIcon {
+  return typeof name === 'string' && Object.hasOwn(WIDGET_ICON_PATHS, name);
 }

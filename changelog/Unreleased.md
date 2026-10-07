@@ -32,6 +32,24 @@
 
 - A statblock whose spell list holds an empty item no longer takes the toolbar and the asset manager down when it is shown.
 
+- A grid too fine to draw (a size of 0 or less, or more than 2,000 cells along a side of the map) is no longer drawn, and one whose origin lies extremely far from the map is moved next to it by whole cells, instead of freezing Obsidian.
+
+- The laser pointer is let go when Obsidian loses focus in the middle of a stroke, instead of staying drawn until the next click.
+
+- When a map image is replaced, the old image is released only after its sprite has left the map, so it is never freed while still showing.
+
+- Fog that did not change is no longer redrawn when other fog changes.
+
+- The automatic grid colour no longer fails on a map whose texture is not an image.
+
+- A cone angle edited by hand to a value no cone can open with measures as 90 degrees, in every view alike.
+
+- Renaming a map while its explored areas wait to be saved saves them into the renamed map.
+
+- Selecting, hovering, switching tools and other changes to nothing a map saves no longer rewrite the map file.
+
+- A widget, condition or game system preset whose icon name is not one of Atlas's icons but a built-in word such as `constructor` shows the default icon, or the condition's initial, instead of an empty badge.
+
 - Fog now updates correctly when returning to a map or canceling a drawing.
 
 - Erasing part of a drawing now keeps all saved properties on the remaining pieces.

@@ -1,5 +1,6 @@
 import { drawDashedSegment, drawVertexMarker, gridMarkerArmLength } from './gridLineStyle';
 import type { GridBounds, GridLineType, GridPath } from './gridLineStyle';
+import { squareOffset } from './gridOrigin';
 
 const CROSS_ARMS = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }];
 
@@ -12,12 +13,15 @@ export function drawSquareGrid(
   graphics: GridPath,
   bounds: GridBounds,
   size: number,
-  offsetX: number,
-  offsetY: number,
+  givenOffsetX: number,
+  givenOffsetY: number,
   lineType: GridLineType,
   markerThickness: number = 1,
   markerArm: number = gridMarkerArmLength(size),
 ): void {
+  // Whole cells away the lines are the same; next to zero, every step below stays exact (`gridOrigin.ts`).
+  const offsetX = squareOffset(givenOffsetX, size);
+  const offsetY = squareOffset(givenOffsetY, size);
   const { minX, minY, maxX, maxY } = bounds;
   const localWidth = maxX - minX;
   const localHeight = maxY - minY;

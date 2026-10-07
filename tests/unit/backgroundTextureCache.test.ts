@@ -135,4 +135,15 @@ describe('backgroundTextureCache', () => {
     await expect(cache.acquire('a')).resolves.toBeDefined();
     expect(cache.decode).toHaveBeenCalledTimes(2);
   });
+
+  it('loads an object URL with the texture parser and unloads it as soon as nobody shows it', async () => {
+    const cache = await loadCache();
+    // A vault background in use would keep a released one idle.
+    await cache.acquire('a');
+    await cache.acquire('blob:app://obsidian.md/1');
+    expect(assets.load).toHaveBeenLastCalledWith({ src: 'blob:app://obsidian.md/1', parser: 'texture' });
+    cache.release('blob:app://obsidian.md/1');
+    expect(assets.unload).toHaveBeenCalledWith('blob:app://obsidian.md/1');
+    expect(assets.unload).not.toHaveBeenCalledWith('a');
+  });
 });

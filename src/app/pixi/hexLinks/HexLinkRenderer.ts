@@ -9,6 +9,7 @@ import { hexLayoutOfGrid, hexLinkAt, isShownAsHex, linkedHexOf } from '../../gri
 import { axialKey, hexLattice } from '../../grid/hexLattice';
 import { cellLabelsByKey, numberCells } from '../../grid/cellNumbering';
 import type { MapRect } from '../../grid/cellNumbering';
+import { isDrawableGrid } from '../../grid/gridLimits';
 import { noteLinkTitle } from '../../utils/pathUtils';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
@@ -120,7 +121,7 @@ export class HexLinkRenderer {
   numberOf(hex: AxialCoord): string | undefined {
     const layout = this.layout();
     const map = this.options.getMapRect();
-    if (!layout || !map) return undefined;
+    if (!layout || !map || !isDrawableGrid(layout.size, map.width, map.height)) return undefined;
     const format = this.state.grid?.cellNumbers ?? 'column-row';
     const key = JSON.stringify([layout, map, format]);
     if (this.numbering?.key !== key) {
