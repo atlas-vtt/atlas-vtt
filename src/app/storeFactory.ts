@@ -31,7 +31,7 @@ import { withoutCollectionWidgets } from './utils/collectionWidgets';
 import { withWidgetOff } from './utils/widgetActivation';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
 import { computeNextInstanceNumber } from './stores/tokenInstanceNumbers';
-import { raiseTokens } from './stores/tokenStacking';
+import { placeTokens, raiseTokens, type TokenPlace } from './stores/tokenStacking';
 import type { DiceRollResult } from './types/diceTypes';
 import { isAtlasToolAvailable } from './tools/toolAvailability';
 import { readExploredMask } from './lighting/exploredMaskCodec';
@@ -163,10 +163,10 @@ export interface ViewAtlasState extends ViewState {
   moveTokensBulk: (ids: string[], dx: number, dy: number) => void;
   setTokenPositions: (positions: Array<{id: string, x: number, y: number}>) => void;
   /**
-   * The pointer lets go of the tokens it dragged: they stand at `positions`, on top of every
-   * other token, and are no longer held. One write, so sight works the drop out once.
+   * The pointer lets go of the tokens it dragged: `placeTokens` puts them at `positions`, on top
+   * of every other token, and they are no longer held. One write, so sight works the drop out once.
    */
-  dropTokens: (positions: Array<{id: string, x: number, y: number}>) => void;
+  dropTokens: (positions: readonly TokenPlace[]) => void;
   deleteTokens: (ids: string[]) => void;
   /** Deletes every selected token, drawing, text and pin in one undo step. */
   deleteSelected: () => void;
@@ -768,16 +768,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           }),
 
           dropTokens: (positions) => set((draft) => {
-            for (const { id, x, y } of positions) {
-              const token = draft.objects.tokens[id];
-              if (token) {
-                token.x = x;
-                token.y = y;
-              }
-            }
-            raiseTokens(draft.objects.tokens, positions.map(({ id }) => id));
+            placeTokens(draft, positions);
             if (Object.keys(draft.heldTokens).length > 0) draft.heldTokens = {};
-            draft._audioDirty = true;
           }),
 
           deleteTokens: (ids) => set((draft) => {

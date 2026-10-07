@@ -60,7 +60,8 @@ export const BOUNDARIES = {
       "src/app/utils/hashing.ts",
       "src/app/stores/history.ts",
       "src/app/stores/history/**/*.ts",
-      "src/app/stores/exploredEditHistory.ts"
+      "src/app/stores/exploredEditHistory.ts",
+      "src/app/stores/tokenStacking.ts"
     ],
     "exclude": [
       "src/app/grid/GridController.ts",

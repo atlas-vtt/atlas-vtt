@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { produce } from 'immer';
 import { Texture } from 'pixi.js';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { InteractionController } from '../../src/app/pixi/token-renderer/InteractionController';
 import { SpriteFactory } from '../../src/app/pixi/token-renderer/SpriteFactory';
 import { collectMapObjects } from '../../src/app/clipboard/mapObjectContent';
 import { getHistoryStore } from '../../src/app/stores/history';
-import { raiseTokens } from '../../src/app/stores/tokenStacking';
+import { placeTokens, raiseTokens } from '../../src/app/stores/tokenStacking';
 import type { TokenEntity } from '../../src/app/types';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
@@ -70,6 +71,30 @@ describe('raiseTokens', () => {
   });
 });
 
+describe('placeTokens', () => {
+  const scene = (): { objects: { tokens: Record<string, TokenEntity> }; heldTokens: Record<string, { x: number; y: number }>; _audioDirty: boolean } => ({
+    objects: { tokens: record(token('a', ELSEWHERE), token('b', SQUARE, 3), token('c', ELSEWHERE, 1)) },
+    heldTokens: { a: ELSEWHERE },
+    _audioDirty: false,
+  });
+
+  it('puts each token at its place and the group on top, and flags the move for spatial audio', () => {
+    const placed = produce(scene(), (draft) => placeTokens(draft, [{ id: 'c', ...SQUARE }, { id: 'a', ...SQUARE }, { id: 'drawing_1', x: 0, y: 0 }]));
+    expect(placed.objects.tokens.a).toMatchObject(SQUARE);
+    expect(placed.objects.tokens.c).toMatchObject(SQUARE);
+    expect(stack(placed.objects.tokens)).toEqual(['b', 'a', 'c']);
+    expect(placed._audioDirty).toBe(true);
+  });
+
+  it('changes nothing but the listed tokens and the audio flag', () => {
+    const before = scene();
+    const placed = produce(before, (draft) => placeTokens(draft, [{ id: 'a', ...SQUARE }]));
+    expect(placed.heldTokens).toBe(before.heldTokens);
+    expect(placed.objects.tokens.b).toBe(before.objects.tokens.b);
+    expect(placed.objects.tokens.c).toBe(before.objects.tokens.c);
+  });
+});
+
 describe('tokens put on the map', () => {
   it('places a new token above the tokens that lie there', () => {
     const store = createStore(token('old', SQUARE, 5), token('other', ELSEWHERE, 2));
@@ -119,6 +144,13 @@ describe('dropTokens', () => {
     const before = store.getState().objects.tokens.b;
     store.getState().dropTokens([{ id: 'a', ...SQUARE }]);
     expect(store.getState().objects.tokens.b).toBe(before);
+  });
+
+  it('keeps the held tokens as they are when none is held', () => {
+    const store = createStore(token('a', ELSEWHERE), token('b', SQUARE, 3));
+    const before = store.getState().heldTokens;
+    store.getState().dropTokens([{ id: 'a', ...SQUARE }]);
+    expect(store.getState().heldTokens).toBe(before);
   });
 });
 
