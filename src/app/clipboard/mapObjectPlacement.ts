@@ -76,3 +76,15 @@ export function placeMapObjects(
   while (steps < MAX_CASCADE_STEPS && overlapsAt(offsetAt(steps))) steps++;
   return translateMapObjects(content, offsetAt(steps), placeToken);
 }
+
+/**
+ * Where a token of `tokenSize` dropped at `point` lands, as the GM's drag puts it
+ * (`InteractionController`): where it snaps while snapping is on (the default), a cell's centre or
+ * where cells meet for an even footprint, also on a grid that is switched off, since the drag snaps
+ * to it too. Without grid state nothing snaps. The extension API's `tokens.snapPoint` answers from here.
+ */
+export function snapDroppedToken(grid: GridState | null, point: Point, tokenSize: number): Point {
+  if (!grid || !(grid.snapToGrid ?? true)) return point;
+  const geometry = formationGridFromOptions({ ...grid, enabled: true });
+  return geometry ? snapToken(geometry, point, tokenSize) : point;
+}

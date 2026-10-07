@@ -16,7 +16,7 @@ An extension requires its major version and checks `api.has(capability)` before 
 
 | API version | Capabilities | `AtlasExtension` | Events |
 |---|---|---|---|
-| 1.0.0 | `views`, `rules`, `settings`, `storage`, `presentation`, `dice`, `lasers`, `lighting` | `id`, `on`, `views`, `rules`, `settings`, `storage`, `presentation`, `dice`, `lasers`, `lighting` | `unload`, `map-loaded`, `map-closed`, `rules-changed`, `settings-changed` |
+| 1.0.0 | `views`, `rules`, `settings`, `storage`, `presentation`, `dice`, `lasers`, `lighting`, `tokens` | `id`, `on`, `views`, `rules`, `settings`, `storage`, `presentation`, `dice`, `lasers`, `lighting`, `tokens` | `unload`, `map-loaded`, `map-closed`, `rules-changed`, `settings-changed` |
 
 The report in `api-report/` (entry `api-report/src/api/public.d.ts`) is the source of truth for what the running version contains.
 
@@ -51,9 +51,14 @@ The reference further down says what each group is for; this section collects th
 - **GM-hidden tokens give players no sight.** A token the GM hid neither sees nor explores for the players, so `playerVisibility` shows nothing that only a hidden token's vision would show, and the hidden token itself is `'unseen'`. Which tokens give the players sight and which the player window always shows is decided by one policy, which `playerVisibility` reads too.
 - **What the API does not hand out.** Door badges under fog do not show to players; the API hands out no walls or doors. The player window and session view leave out a measurement that starts on a token players do not see (hidden, out of sight, only sensed, under fog); the API hands out no measurements.
 
+### Tokens
+
+- **Undo.** A `tokens.move` is exactly one undo step, taking back the moves and the layer raise; something Atlas changed by itself since (on another token, say) stays.
+- **Instance badges.** The player window and session view count and number look-alikes (one `imagePath`) only among the tokens they show, so a hidden or fogged look-alike neither counts nor takes a number, and the players' numbers can differ from the GM's. `views.snapshot` gives the GM's `instanceNumber`, which is GM data: if you show players badges, number them among the tokens you send, never by that field.
+
 ## Rules every group follows
 
-- **Frozen data.** What Atlas hands an extension from its own state is frozen, to its depth: store records by reference once Atlas has frozen them, frozen copies otherwise. Changing it throws in strict mode and never reaches Atlas. A list or result object built fresh for one call (`views.list()`) is the extension's own and may be unfrozen.
+- **Frozen data.** What Atlas hands an extension from its own state is frozen, to its depth: store records by reference once Atlas has frozen them, frozen copies otherwise. Changing it throws in strict mode and never reaches Atlas. A list or result object built fresh for one call (`views.list()`, the outer result of `tokens.move`) is the extension's own and may be unfrozen.
 - **Read once, then checked.** Input is read once (every field, every getter) and Atlas checks and keeps what it read, never the extension's object; a later change to that object changes nothing.
 - **Guarded callbacks.** Every listener and callback runs guarded: a throw is logged and Atlas carries on. Each is dropped when its view closes, when the extension unloads, or when Atlas unloads.
 - **Listeners.** A listener that is not a function (or `on` with an event Atlas does not have) registers nothing, gets a disposer that does nothing, and is logged once.
@@ -76,6 +81,7 @@ The report (`api-report/`, entry `src/api/public.d.ts`) has every member with it
 - **`dice`.** `roll` rolls by a map's collection rules (optionally for someone, `rolledBy`); `onRolled` hears every roll Atlas logs; `publish` adds a roll made elsewhere to the log, toasts and sounds, thrown in 3D unless `{ throw: false }`; `throw` throws a decided roll with Atlas's 3D dice in one view and logs nothing. A roll result is plain data with at most 1,000 dice, an `id` of at most 128 characters, a `formula` of at most 256, a `rolledBy` of at most 64 (also for `roll`) and a die name of at most 16; each die may carry a tag (`color`, `colorName`) that Atlas shows and saves with it.
 - **`lasers`.** `onLocal(viewId)` hears each point of the GM's laser and its lift (also when the pointer leaves the map or Obsidian loses focus mid-stroke; a pointer that comes back with the button still held starts a new stroke, so treat every point after a lift as a stroke's first); `show(viewId, laser)` draws someone else's laser, fading like Atlas's own. A laser not heard from for a second is let go.
 - **`lighting`.** `playerVisibility(viewId)` says what the player window shows of a lit scene, token by token and cell by cell, and of an unlit one which tokens fog hides; it fails closed (`pending`) whenever Atlas cannot tell yet, lit or unlit. `watch` hears when that answer may have changed.
+- **`tokens`.** `move(viewId, moves)` moves tokens like a GM drop, as one undo step, and answers why when it moves none; `snapPoint` says where a dropped token lands.
 
 ## Semver rules
 

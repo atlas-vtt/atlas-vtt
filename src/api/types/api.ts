@@ -6,6 +6,7 @@ import type { LightingApi } from './lighting';
 import type { PresentationApi } from './presentation';
 import type { RulesApi } from './rules';
 import type { AtlasSettingKey, SettingsApi, StorageApi } from './settings';
+import type { TokensApi } from './tokens';
 import type { ViewInfo, ViewsApi } from './views';
 
 /** What `connect` needs of the calling plugin: its id, and where to register its own teardown. */
@@ -45,6 +46,7 @@ export interface AtlasExtension {
   readonly dice: DiceApi;
   readonly lasers: LasersApi;
   readonly lighting: LightingApi;
+  readonly tokens: TokensApi;
   readonly rules: RulesApi;
   readonly settings: SettingsApi;
   readonly storage: StorageApi;

@@ -1,5 +1,6 @@
 import type { Graphics } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { snapDroppedToken } from '../../src/app/clipboard/mapObjectPlacement';
 import { cellCenterAt } from '../../src/app/grid/gridDistance';
 import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { axialToPixel, createHexLayout, hexCircumradius } from '../../src/app/grid/hexGeometry';
@@ -112,6 +113,10 @@ describe('cellCenterAt', () => {
     expect(cellCenterAt(square, { x: 123, y: 99 })).toEqual({ x: 110, y: 114 });
     expect(cellCenterAt(square, { x: -40, y: 3 })).toEqual({ x: -30, y: -26 });
     expect(cellCenterAt({ size: 70 }, { x: 700, y: 701 })).toEqual({ x: 735, y: 735 });
+    const snapping = { enabled: true, visible: true, type: 'square' as const, size: 70, offsetX: 5, offsetY: 9, snapToGrid: true };
+    for (const point of [{ x: 123, y: 99 }, { x: -40, y: 3 }, { x: 700, y: 701 }]) {
+      expect(cellCenterAt(snapping, point)).toEqual(snapDroppedToken({ ...snapping, opacity: 1 }, point, 1));
+    }
     for (const type of ['hex-vertical', 'hex-horizontal'] as const) {
       const grid = { size: 70, offsetX: 10, offsetY: 20, type };
       const center = axialToPixel(createHexLayout(type, 70, 10, 20), { q: 3, r: -2 });
@@ -119,6 +124,9 @@ describe('cellCenterAt', () => {
       const snapped = cellCenterAt(grid, near);
       expect(snapped.x).toBeCloseTo(center.x);
       expect(snapped.y).toBeCloseTo(center.y);
+      const dropped = snapDroppedToken({ enabled: true, visible: true, type, size: 70, offsetX: 10, offsetY: 20, opacity: 1, snapToGrid: true }, near, 1);
+      expect(dropped.x).toBeCloseTo(center.x);
+      expect(dropped.y).toBeCloseTo(center.y);
     }
   });
 });
