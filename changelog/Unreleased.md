@@ -18,6 +18,8 @@
 
 - Simplified how the GM view and the player view decide which tokens see and which are always shown.
 
+- Added licence notices for the two dice fonts.
+
 ## Fixed
 
 - Fog now updates correctly when returning to a map or canceling a drawing.

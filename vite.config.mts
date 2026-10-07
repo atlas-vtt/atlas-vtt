@@ -147,9 +147,9 @@ export default defineConfig({
       output: {
         banner: `/*! Atlas VTT — Copyright (C) 2025-2026 Fabian Urbanek
  * SPDX-License-Identifier: AGPL-3.0-only
- * Source code and licence: https://github.com/ByteMirror/atlas-vtt
+ * Source code and licence: https://github.com/atlas-vtt/atlas-vtt
  * Third-party components retain their own licenses:
- * https://github.com/ByteMirror/atlas-vtt/blob/main/THIRD_PARTY_NOTICES.md
+ * https://github.com/atlas-vtt/atlas-vtt/blob/main/THIRD_PARTY_NOTICES.md
  */`,
         dir: 'dist',
         format: 'cjs',

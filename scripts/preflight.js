@@ -1,12 +1,14 @@
 #!/usr/bin/env node
 // Local approximation of the Obsidian community directory review.
-// Errors mirror findings that block a listing; warnings mirror the scorecard.
+// Errors mirror findings that block a listing, plus the build's own font licence checks;
+// warnings mirror the scorecard.
 // Run after a production build: `npm run build:ci && npm run preflight`.
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
 const { parseVersion } = require('./release-channel');
+const { fontNoticeProblems, fontFaceCountProblems, scriptFontProblems } = require('./font-notices');
 
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
@@ -86,6 +88,7 @@ if (!exists('dist/main.js')) {
   };
   for (const [label, pattern] of Object.entries(blocking)) if (pattern.test(bundle)) errors.push(`dist/main.js contains ${label}`);
   for (const [label, pattern] of Object.entries(scorecard)) if (pattern.test(bundle)) warnings.push(`dist/main.js contains ${label}`);
+  for (const problem of scriptFontProblems(bundle)) errors.push(`dist/main.js ${problem}`);
   const hosts = [...new Set((bundle.match(/https?:\/\/[a-z0-9.-]+\.[a-z]{2,}/gi) || []))]
     .filter((host) => !/w3\.org|reactjs\.org|react\.dev|github\.com|mozilla\.org|pixijs\.(com|download|io)|radix-ui\.com|lucide\.dev|fb\.me|feross\.org|howlerjs\.com|goldfirestudios\.com|motion\.dev|example\.com|bit\.ly|stuartk\.com|stuk\.github\.io/.test(host));
   if (hosts.length) warnings.push(`dist/main.js references hosts that must be disclosed in README: ${hosts.join(', ')}`);
@@ -97,6 +100,8 @@ if (exists('dist/styles.css')) {
   const has = (css.match(/:has\(/g) || []).length;
   if (important) warnings.push(`styles.css uses !important ${important} times`);
   if (has) warnings.push(`styles.css uses :has() ${has} times`);
+  // styles.css is the only copy of the fonts users get, so it must carry their notice and hold only the fonts the list names.
+  for (const problem of [...fontNoticeProblems(css), ...fontFaceCountProblems(css)]) errors.push(`styles.css: ${problem}`);
 } else {
   errors.push('dist/styles.css is missing');
 }
