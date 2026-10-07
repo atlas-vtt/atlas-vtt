@@ -6,7 +6,9 @@ import { useDiceDisplay } from '../../hooks/useDiceDisplay';
 import { diceFontClass, useDiceLook } from '../../hooks/useDiceLook';
 import { cn } from '../../../../utils/cn';
 import { throwStyle } from '../../../dice3d/diceDisplay';
-import { diceSceneToShow } from '../../../dice3d/rollPresentation';
+import { loggedRollScene } from '../../../dice3d/rollPresentation';
+import type { DiceScene } from '../../../dice3d/diceScene';
+import { givenRollScene, onGivenThrow } from '../../../dice3d/givenThrows';
 import { warmDiceSounds } from '../../../dice3d/audio/diceSamples';
 import { canShowDice, warmStages } from '../../../dice3d/stagePool';
 import type { DiceRollResult } from '../../../types/diceTypes';
@@ -48,21 +50,34 @@ export function DiceRollDisplay({ container, prepare, muted = false, eventBus: s
   /** Where the dice stages live: a canvas and its context belong to one document. */
   const stageDoc = container?.ownerDocument ?? view?.containerEl.doc ?? document;
 
+  /** Throws `prepared` on `scene`, or shows it as a card without one. */
+  const show = useCallback((prepared: PreparedDiceRoll, scene: DiceScene | null): void => {
+    // Without WebGL a stage stays blank (white on some systems), so the roll shows as a card
+    if (!scene || !canShowDice(stageDoc)) {
+      addToast(prepared);
+      return;
+    }
+    if (!muted) warmDiceSounds();
+    setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display) }));
+  }, [addToast, display, muted, stageDoc]);
+
   useEffect(() => {
     const handler = (raw: DiceRollResult, origin?: DiceRollOrigin): void => {
       const prepared: PreparedDiceRoll = prepare ? prepare(raw, origin) : { result: raw };
-      const scene = diceSceneToShow(prepared.result, display);
-      // Without WebGL a stage stays blank (white on some systems), so the roll shows as a card
-      if (!scene || !canShowDice(stageDoc)) {
-        addToast(prepared);
-        return;
-      }
-      if (!muted) warmDiceSounds();
-      setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display) }));
+      // A roll by someone other than the GM is thrown on their own screen, and a card-only roll was shown elsewhere:
+      // here they show as a card. Asked of the event's own object, which `prepare` may copy.
+      show(prepared, loggedRollScene(raw, display));
     };
     eventBus?.on('dice-rolled', handler);
     return (): void => { eventBus?.off('dice-rolled', handler); };
-  }, [addToast, prepare, display, muted, stageDoc, eventBus]);
+  }, [show, prepare, display, eventBus]);
+
+  // A roll an extension hands this map view to throw (`dice.throw`); the player window takes none.
+  const store = container ? null : view?.atlasStore ?? null;
+  useEffect(() => {
+    if (!store) return;
+    return onGivenThrow(store, (roll) => show({ result: roll }, givenRollScene(roll, display)));
+  }, [store, show, display]);
 
   // Dice stages are built while nothing rolls, so that the first roll does not wait for one.
   useEffect(() => {

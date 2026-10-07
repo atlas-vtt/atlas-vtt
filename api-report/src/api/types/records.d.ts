@@ -10,6 +10,7 @@ export type { SceneLighting } from '../../app/types/lightingTypes';
 export type { AnyWidget, ClockWidget, CounterWidget, TimerWidget, WidgetSettings } from '../../app/types/widgetTypes';
 export type { CollectionGridDefaults, ConditionDefinition } from '../../app/types/collectionSettingsTypes';
 export type { DiceRules } from '../../app/types/diceRulesTypes';
+export type { DiceRollResult, DiceSelection } from '../../app/tools/diceRolling';
 export type { MeasurementSettings } from '../../app/grid/measurementFormat';
 export type { ResourceDefinition, ResourceHolder, ResourceValue } from '../../app/resources/resourceTypes';
 export type { LightLevel } from '../../app/types/senseTypes';

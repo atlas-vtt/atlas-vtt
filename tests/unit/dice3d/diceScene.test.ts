@@ -99,6 +99,16 @@ describe('scene from rolls', () => {
     expect(sceneFromRolls(Array.from({ length: 21 }, () => d6))).toBeNull();
   });
 
+  it('rejects a value off the die, which has no face to land on', () => {
+    expect(sceneFromRolls([{ max: 20, value: 25 }])).toBeNull();
+    expect(sceneFromRolls([{ max: 20, value: 0 }])).toBeNull();
+    expect(sceneFromRolls([{ max: 6, value: 2.5 }])).toBeNull();
+    expect(sceneFromRolls([{ max: 100, value: -3 }])).toBeNull();
+    expect(sceneFromRolls([{ max: 100, value: 42.5 }])).toBeNull();
+    expect(sceneFromRolls([{ max: 6, value: 3 }, { max: 6, value: 7 }])).toBeNull();
+    expect(sceneFromRolls([{ max: 100, value: 100 }])?.faces).toEqual([10, 10]);
+  });
+
   it('rejects a percentile die in company', () => {
     expect(
       sceneFromRolls([

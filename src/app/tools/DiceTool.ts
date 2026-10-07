@@ -5,6 +5,8 @@ import type { DiceRules } from '../types/diceRulesTypes';
 import { getDiceCrit } from './diceCrit';
 import { rollFormula } from './diceFormula';
 import { parseFormula, type FormulaError } from './parseFormula';
+import { DICE_TYPES } from './diceRolling';
+import { announceRoll } from './diceRollFeed';
 
 export interface DiceToolState {
   isTrayOpen: boolean;
@@ -32,7 +34,7 @@ export class DiceTool {
       isTrayOpen: false,
       rollHistory: [],
       activeFormula: '',
-      quickDice: ['d4', 'd6', 'd8', 'd10', 'd12', 'd20', 'd100']
+      quickDice: [...DICE_TYPES],
     };
   }
 
@@ -61,6 +63,8 @@ export class DiceTool {
     }
     
     this.eventBus.emit('dice-rolled', result, origin);
+    // Atlas's own displays hear the roll on this view's bus only; extensions follow every roll Atlas logs (`dice.onRolled`).
+    announceRoll(result);
 
     return result;
   }

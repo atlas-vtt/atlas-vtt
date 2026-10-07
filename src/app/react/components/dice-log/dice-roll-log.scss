@@ -336,3 +336,12 @@ $log-width: 360px;
 .dice-log-entry:hover .dice-log-entry__repeat {
   opacity: 1;
 }
+
+// Tagged dice (a colour and its name) are grouped after their tag.
+.dice-log-entry__tag-group {
+  @include atlas-die-tag-group;
+}
+
+.dice-log-entry__tag {
+  @include atlas-die-tag;
+}

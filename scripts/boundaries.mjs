@@ -81,6 +81,8 @@ export const BOUNDARIES = {
       "src/app/react/components/dice3d/**/*.ts",
       "src/app/react/components/dice3d/**/*.tsx",
       "src/app/react/components/dice/DiceToast.tsx",
+      "src/app/react/components/dice/DiceBadges.tsx",
+      "src/app/tools/diceTags.ts",
       "src/app/react/components/dice/diceSourcePresentation.ts",
       "src/app/react/components/dice/diceToastOrnament.ts",
       "src/app/packages/components/shared/TokenPortrait.tsx",

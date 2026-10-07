@@ -318,3 +318,12 @@ $toast-reveal-delay: 300ms;
     animation-delay: 0ms;
   }
 }
+
+// Tagged dice (a colour and its name) are grouped after their tag.
+.atlas-dice-toast__tag-group {
+  @include atlas-die-tag-group;
+}
+
+.atlas-dice-toast__tag {
+  @include atlas-die-tag;
+}

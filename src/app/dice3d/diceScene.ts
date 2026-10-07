@@ -65,6 +65,11 @@ function isBody(sides: number): sides is DieSides {
   return (DIE_BODIES as number[]).includes(sides);
 }
 
+/** Whether a rolled die shows a face it has: a whole number from 1 to its sides, which are a whole number above 0. */
+export function landsOnAFace(die: Pick<RolledDie, 'max' | 'value'>): boolean {
+  return Number.isInteger(die.max) && die.max >= 1 && Number.isInteger(die.value) && die.value >= 1 && die.value <= die.max;
+}
+
 /**
  * The stage for Atlas' rolled dice, or null when they cannot all be shown as
  * real bodies.
@@ -86,6 +91,8 @@ export function sceneFromRolls(
   const plan: DiePlan[] = [];
   const faces: number[] = [];
   for (const roll of rolls) {
+    // A value off the die (handed in from elsewhere) has no face to land on: the roll shows as a card.
+    if (!landsOnAFace(roll)) return null;
     const follower = roll.exploded === true && plan.length > 0;
     if (roll.negative && !follower) return null;
     const chain = follower ? { follows: plan.length - 1, ...(roll.negative && { subtracts: true as const }) } : {};

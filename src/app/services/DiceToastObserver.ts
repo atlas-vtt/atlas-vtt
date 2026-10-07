@@ -1,7 +1,7 @@
 import type { EventEmitter } from 'events';
 import type { SoundEffectService } from './SoundEffectService';
 import type { SettingsService } from './SettingsService';
-import { diceSceneToShow } from '../dice3d/rollPresentation';
+import { loggedRollScene } from '../dice3d/rollPresentation';
 import type { DiceRollResult } from '../types/diceTypes';
 
 /**
@@ -18,7 +18,8 @@ export class DiceToastObserver {
     }
 
     private handleDiceRolled = (result: DiceRollResult): void => {
-        if (diceSceneToShow(result, this.settings.getDiceDisplay())) return;
+        // A roll by someone else, or one published card-only, is never thrown, so it makes its own card sound whatever the display.
+        if (loggedRollScene(result, this.settings.getDiceDisplay())) return;
         this.soundEffectService.playDiceResult(result.crit ?? null);
     };
 

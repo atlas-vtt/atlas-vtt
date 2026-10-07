@@ -5,8 +5,8 @@ import type { AnyWidget } from '../../src/app/types/widgetTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 const path = 'maps/cave.atlasmap';
-const roll = (id: string): DiceRollResult => ({
-  id, timestamp: 1, formula: '1d20', rolls: [{ die: 'd20', value: 3 } as never], modifiers: 0, total: 3,
+const roll = (id: string, rolledBy?: string): DiceRollResult => ({
+  id, timestamp: 1, formula: '1d20', rolls: [{ die: 'd20', value: 3 } as never], modifiers: 0, total: 3, ...(rolledBy && { rolledBy }),
 });
 
 afterEach(() => { vi.useRealTimers(); });
@@ -31,6 +31,14 @@ describe('map file saves', () => {
     await settle();
     store.getState().setSelection([]);
     await settle();
+    expect(writes()).toBe(0);
+  });
+
+  it('does not rewrite it for a roll by someone else, which stays in memory', async () => {
+    const { store, writes, settle } = await loadedMap();
+    store.getState().addDiceLogEntry(roll('theirs', 'Ana'));
+    await settle();
+    expect(store.getState().diceLog).toHaveLength(1);
     expect(writes()).toBe(0);
   });
 

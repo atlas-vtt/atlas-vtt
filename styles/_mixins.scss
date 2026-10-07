@@ -861,3 +861,29 @@ $modal-corner-inset: calc(#{$border-width-m} + #{$spacing-l});
   white-space: nowrap;
   border: 0;
 }
+
+// A die's tag in a list of dice (dice log, toasts): its dice grouped after the tag, a dot of the
+// die's colour (the colour comes from `--atlas-die-tag-colour`, set only to #rrggbb) and its name.
+@mixin atlas-die-tag-group {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+@mixin atlas-die-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+
+  &-dot {
+    width: 8px;
+    height: 8px;
+    flex-shrink: 0;
+    border-radius: $radius-full;
+    background: var(--atlas-die-tag-colour);
+    box-shadow: 0 0 0 1px var(--background-modifier-border);
+  }
+}

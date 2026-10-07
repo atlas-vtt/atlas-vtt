@@ -40,10 +40,11 @@ function setup(): { settings: SettingsService; store: StoreApi<ViewAtlasState>; 
   return { settings, store, doc, bus, service };
 }
 
-function roll(bus: EventEmitter, source?: DiceRollResult['source']): void {
+function roll(bus: EventEmitter, source?: DiceRollResult['source'], rolledBy?: string): void {
   const result: DiceRollResult = {
     id: 'roll', timestamp: 0, formula: '1d20+4', rolls: [{ die: 'd20', value: 13, max: 20 }], modifiers: 4, total: 17,
     ...(source ? { source } : {}),
+    ...(rolledBy ? { rolledBy } : {}),
   };
   act(() => { bus.emit('dice-rolled', result); });
 }
@@ -140,6 +141,18 @@ describe('player window dice rolls', () => {
     expect(panel?.outerHTML).not.toMatch(/Goblin|Scimitar/);
     expect(panel?.querySelector('img')).toBeNull();
     expect(doc.querySelector('.atlas-dice-toast')).toBeNull();
+  });
+
+  // The same display hangs on the GM's map (UIRoot): someone else sees their roll thrown on their own screen.
+  it("shows someone else's roll as a card, never thrown, while 3D dice are on", () => {
+    const { settings, doc, bus } = setup();
+    act(() => {
+      settings.setDiceDisplay('full');
+      settings.setLocalPlayerViewSettings({ showDiceRolls: true });
+    });
+    roll(bus, undefined, 'Anna');
+    expect(doc.querySelector('.atlas-dice-roll')).toBeNull();
+    expect(toastText(doc)).toContain('17');
   });
 });
 

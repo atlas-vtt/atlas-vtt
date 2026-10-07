@@ -1408,7 +1408,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               tokenSettings: state.tokenSettings, // Token display settings
               initiative: state.initiative, // Initiative tracker state
               initiativeTrackerOpen: state.initiativeTrackerOpen, // Initiative tracker open/closed state
-              diceLog: state.diceLog, // Dice roll history (last 20 per map)
+              diceLog: persistedParts.diceLog(state.diceLog), // Dice roll history (last 20 per map); rolls by others stay in memory
               pinnedNotePreviews: state.pinnedNotePreviews, // Pinned note preview windows
               lootRoller: state.lootRoller, // Loot roller window, filters and history
               lighting: state.lighting,

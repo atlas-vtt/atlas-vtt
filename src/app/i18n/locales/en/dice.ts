@@ -18,6 +18,8 @@ export const dice = {
   'dice.unpin': 'Unpin panel',
   'dice.player': 'Player',
   'dice.rollFormula': 'Roll {formula}',
+  /** A log entry that lists only some of a roll's dice; the total counts them all. */
+  'dice.moreDice': '+{count} more',
   'dice.showRollsToPlayers': 'Show my rolls to players',
   'dice.showRollsToPlayersHint': 'Your rolls appear in the player window too.',
 } as const satisfies Record<string, Message>;
