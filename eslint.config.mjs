@@ -26,6 +26,34 @@ const nodeNames = builtinModules.map(name => name.replace(/^node:/, "").replace(
 // Obsidian's whole-repository scan runs into.
 const SCRIPT_FILES = ["**/*.{ts,cts,mts,tsx,js,cjs,mjs,jsx}"];
 
+// A `title` attribute shows the browser's tooltip. Atlas shows its own
+// (`LabelTooltip`) where one is wanted and names controls with `aria-label`.
+const TITLE_MESSAGE = "`title` shows the browser tooltip. Use `aria-label`, or `LabelTooltip` for a visible tooltip.";
+const NO_NATIVE_TITLE = [
+  { selector: "JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name='title']", message: TITLE_MESSAGE },
+  { selector: "CallExpression[callee.property.name=/^(setAttribute|setAttr)$/][arguments.0.value='title']", message: TITLE_MESSAGE },
+  { selector: "Property[key.name='attr'] > ObjectExpression > Property[key.name='title']", message: TITLE_MESSAGE },
+  { selector: "AssignmentExpression > MemberExpression.left[property.name='title'][object.type!='ThisExpression']:not([object.name=/^(doc|document)$/])", message: TITLE_MESSAGE },
+];
+
+// Sight rules read a token's vision switch only through the sight policies.
+const VISION_FIELD_MESSAGE = "Which tokens give sight or are always seen is decided in vision/tokenSightPolicy.ts.";
+const VISION_FIELD_READS = [
+  { selector: "MemberExpression[property.name='enabled'][object.property.name='vision']", message: VISION_FIELD_MESSAGE },
+  { selector: "MemberExpression[property.name='enabled'][object.name='vision']", message: VISION_FIELD_MESSAGE },
+];
+// The import is flagged rather than the call, so an alias cannot pass; the member selector
+// catches a namespace import, the export selector a re-export.
+const VISION_ON_MESSAGE = "Only sightSources and selectSight ask visionOn; elsewhere ask the picture's SightPolicy (vision/tokenSightPolicy.ts).";
+const VISION_ON_USES = [
+  { selector: "ImportSpecifier[imported.name='visionOn']", message: VISION_ON_MESSAGE },
+  { selector: "ExportSpecifier[local.name='visionOn']", message: VISION_ON_MESSAGE },
+  { selector: "MemberExpression[property.name='visionOn']", message: VISION_ON_MESSAGE },
+];
+// The two files that may ask `visionOn`: no source without vision on, whatever a policy says,
+// and the selection's check of every token.
+const VISION_ON_ASKERS = ["src/app/vision/sight.ts", "src/app/vision/selectSight.ts"];
+
 export default defineConfig([
   globalIgnores(["atlas-website/", "token-ui-examples/", "party/", "logs/", "benchmarks/", "release/", "dist/", "node_modules/", "test-vault/", "networking-test-vault/", "tests/", "scripts/", "docs/", "vite/", "**/*.test.*", "*.js", "*.cjs", "*.mjs", "*.mts", "*.config.ts"]),
   ...obsidianmd.configs.recommended,
@@ -41,26 +69,23 @@ export default defineConfig([
         "ts-nocheck": true,
         "ts-expect-error": true,
       }],
-      // A `title` attribute shows the browser's tooltip. Atlas shows its own
-      // (`LabelTooltip`) where one is wanted and names controls with `aria-label`.
-      "no-restricted-syntax": ["error",
-        {
-          selector: "JSXOpeningElement[name.name=/^[a-z]/] > JSXAttribute[name.name='title']",
-          message: "`title` shows the browser tooltip. Use `aria-label`, or `LabelTooltip` for a visible tooltip.",
-        },
-        {
-          selector: "CallExpression[callee.property.name=/^(setAttribute|setAttr)$/][arguments.0.value='title']",
-          message: "`title` shows the browser tooltip. Use `aria-label`, or `LabelTooltip` for a visible tooltip.",
-        },
-        {
-          selector: "Property[key.name='attr'] > ObjectExpression > Property[key.name='title']",
-          message: "`title` shows the browser tooltip. Use `aria-label`, or `LabelTooltip` for a visible tooltip.",
-        },
-        {
-          selector: "AssignmentExpression > MemberExpression.left[property.name='title'][object.type!='ThisExpression']:not([object.name=/^(doc|document)$/])",
-          message: "`title` shows the browser tooltip. Use `aria-label`, or `LabelTooltip` for a visible tooltip.",
-        },
-      ],
+      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE],
+    },
+  },
+  // Which tokens give sight and which a picture always shows is decided in one place,
+  // `vision/tokenSightPolicy.ts`. A later block replaces the rule's options for the files it
+  // matches, so both blocks repeat the `title` selectors.
+  {
+    files: ["src/app/vision/**/*.{ts,tsx}", "src/app/pixi/lighting/**/*.{ts,tsx}"],
+    ignores: ["src/app/vision/tokenSightPolicy.ts", ...VISION_ON_ASKERS, "**/__tests__/**"],
+    rules: {
+      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...VISION_FIELD_READS, ...VISION_ON_USES],
+    },
+  },
+  {
+    files: VISION_ON_ASKERS,
+    rules: {
+      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...VISION_FIELD_READS],
     },
   },
   {
