@@ -6,7 +6,6 @@ import type { Mutate, StoreApi } from "zustand";
 import { subscribeWithSelector, persist } from "zustand/middleware";
 import type { StorageValue } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import { temporal } from 'zundo';
 import type { App, Plugin } from 'obsidian';
 import type AtlasVTTPlugin from '../../main';
 import type { TokenEntity, Character, NotePin, TextElement, DrawingStroke } from './types';
@@ -27,7 +26,7 @@ import { createInitialUIState, createUIActions, type UISlice } from './stores/ui
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
 import { isRecord } from './utils/guards';
-import { createHistoryOptions } from './stores/history';
+import { withHistory } from './stores/history';
 import { withoutCollectionWidgets } from './utils/collectionWidgets';
 import { withWidgetOff } from './utils/widgetActivation';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
@@ -239,7 +238,7 @@ export interface ViewAtlasState extends ViewState {
   setCommandPaletteOpen: UISlice['setCommandPaletteOpen'];
   setDiceTrayOpen: UISlice['setDiceTrayOpen'];
 
-  // Note: Undo/Redo functionality is added by temporal middleware
+  // Note: Undo/Redo is added by the history middleware (`store.temporal`, stores/history.ts)
 }
 
 /** The subset of view state that is written to the map file. */
@@ -423,8 +422,10 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
     return storage;
   };
   
+  // Undo/redo tracks objects, grid, background, widgetValues and the count of explored-memory
+  // edits only; selection, camera, tool and loading state never enter the history.
   const store = create<ViewAtlasState>()(
-    temporal(
+    withHistory(
       subscribeWithSelector(
         persist(
           immer<ViewAtlasState>((set, get) => ({
@@ -1442,11 +1443,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           }),
         }
       )
-    ),
-    // Undo/redo tracks objects, grid, background, widgetValues and the count of explored-memory
-    // edits only; selection, camera, tool and loading state never enter the history.
-    // storeRef is assigned right after creation, before any history call.
-    createHistoryOptions<ViewAtlasState>(() => storeRef!.getState())
+    )
   )
 );
 

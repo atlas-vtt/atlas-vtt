@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
 import { Texture } from 'pixi.js';
+import { TFile, TFolder } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
 import { MapLoader } from '../../src/app/MapLoader';
 import { FileReferenceService } from '../../src/app/services/FileReferenceService';
@@ -230,8 +231,8 @@ describe('a scene whose file was rewritten while its tab was away', () => {
     vi.useFakeTimers();
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const { app, files } = createInMemoryApp({ files: { [CAVE]: sceneFile(CAVE, ['a', 'b']), [TOWER]: sceneFile(TOWER, ['c']) } });
-    app.vault.getFileByPath = app.vault.getAbstractFileByPath;
-    app.vault.getFolderByPath = app.vault.getAbstractFileByPath;
+    app.vault.getFileByPath = (path) => { const file = app.vault.getAbstractFileByPath(path); return file instanceof TFile ? file : null; };
+    app.vault.getFolderByPath = (path) => { const folder = app.vault.getAbstractFileByPath(path); return folder instanceof TFolder ? folder : null; };
     vi.spyOn(AssetService, 'getInstance').mockReturnValue({
       initialize: async (): Promise<void> => undefined, rewriteAssets: async (): Promise<boolean> => false, getAssets: async (): Promise<[]> => [],
       getCollections: async (): Promise<[]> => [], getCollectionForMap: (): null => null, getCollectionSettings: () => ({ conditions: [] }),

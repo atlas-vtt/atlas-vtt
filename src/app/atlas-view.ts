@@ -458,7 +458,7 @@ export class AtlasView extends FileView {
   private saveTemporalState(tabId: string): void {
     const history = getHistoryStore(this.store);
     if (!history) return;
-    this.temporalCache.set(tabId, withoutExploredEdits(history.getState(), this.store.getState()));
+    this.temporalCache.set(tabId, withoutExploredEdits(history.getState()));
   }
 
   /** Restore a tab's undo/redo history from the temporal cache (if any). */

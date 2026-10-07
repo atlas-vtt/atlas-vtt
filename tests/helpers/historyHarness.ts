@@ -26,22 +26,21 @@ export interface ParityState {
 }
 export type ParityStore = StoreApi<ParityState>;
 
-/** The history, whichever implementation holds it. */
-export interface HistoryHandle {
-  undoSteps(): number;
-  redoSteps(): number;
-  tracking(): boolean;
+/** What both histories offer, whichever implementation holds it. */
+export interface HistoryLike {
+  pastStates: readonly unknown[];
+  futureStates: readonly unknown[];
+  isTracking: boolean;
   undo(): void;
   redo(): void;
   clear(): void;
   pause(): void;
   resume(): void;
-  begin(): void;
-  end(): void;
-  abandon(): void;
-  discard(): void;
-  untracked(fn: () => void): void;
-  forget(): void;
+  beginTransaction(): void;
+  endTransaction(): void;
+  abandonTransaction(): void;
+  discardTransaction(): void;
+  untracked<T>(fn: () => T): T;
 }
 
 export type Implementation = 'oracle' | 'new';
@@ -50,7 +49,9 @@ export type OracleTemporal = typeof oracleTemporal;
 
 export interface ParityRun {
   store: ParityStore;
-  history: HistoryHandle;
+  history: () => HistoryLike;
+  /** The explored memory forgetting its edits, as the matching implementation does it. */
+  forget: () => void;
   /** What persist handed its storage, one entry per `setItem`. */
   payloads: string[];
   /** The stack lengths a listener saw, one entry per notification. */
@@ -101,55 +102,37 @@ const persisted = (state: ParityState): Partial<ParityState> => ({
 });
 
 /** The view store's stack below the history: selector-aware `subscribe`, persist, immer. */
-function inner(payloads: string[]): StateCreator<ParityState> {
+function inner(payloads: string[]): StateCreator<ParityState, [], [['zustand/subscribeWithSelector', never], ['zustand/persist', Partial<ParityState>], ['zustand/immer', never]]> {
   return subscribeWithSelector(persist(immer<ParityState>((set) => ({
     ...initialState(),
     apply: (recipe) => set(recipe),
   })), { name: 'history-parity', storage: storage(payloads), partialize: persisted }));
 }
 
-function handle(history: StoreApi<{
-  pastStates: unknown[]; futureStates: unknown[]; isTracking: boolean;
-  undo: () => void; redo: () => void; clear: () => void; pause: () => void; resume: () => void;
-  beginTransaction: () => void; endTransaction: () => void; abandonTransaction: () => void; discardTransaction: () => void;
-  untracked: <T>(fn: () => T) => T;
-}>, forget: () => void): HistoryHandle {
-  const get = (): ReturnType<typeof history.getState> => history.getState();
-  return {
-    undoSteps: () => get().pastStates.length,
-    redoSteps: () => get().futureStates.length,
-    tracking: () => get().isTracking,
-    undo: () => get().undo(),
-    redo: () => get().redo(),
-    clear: () => get().clear(),
-    pause: () => get().pause(),
-    resume: () => get().resume(),
-    begin: () => get().beginTransaction(),
-    end: () => get().endTransaction(),
-    abandon: () => get().abandonTransaction(),
-    discard: () => get().discardTransaction(),
-    untracked: (fn) => get().untracked(fn),
-    forget,
-  };
-}
+const stacks = (history: HistoryLike): string => `${history.pastStates.length}/${history.futureStates.length}`;
 
 /** A store with the old history (zundo and the former `history.ts`) or the new one. */
 export function createParityRun(implementation: Implementation, temporal: OracleTemporal = oracleTemporal): ParityRun {
   const payloads: string[] = [];
   const observations: string[] = [];
   let store: ParityStore;
-  let history: HistoryHandle;
+  let history: () => HistoryLike;
+  let forget: () => void;
   if (implementation === 'oracle') {
     let ref: ParityStore | null = null;
     store = create<ParityState>()(temporal(inner(payloads), createHistoryOptions<ParityState>(() => ref!.getState())));
     ref = store;
-    history = handle(oracleHistoryStore(store)!, () => oracleForget(store));
+    const temporalStore = oracleHistoryStore(store)!;
+    history = () => temporalStore.getState();
+    forget = () => oracleForget(store);
   } else {
     store = create<ParityState>()(withHistory(inner(payloads)));
-    history = handle(getHistoryStore(store)!, () => forgetExploredEdits(store));
+    const temporalStore = getHistoryStore(store)!;
+    history = () => temporalStore.getState();
+    forget = () => forgetExploredEdits(store);
   }
-  store.subscribe(() => observations.push(`${history.undoSteps()}/${history.redoSteps()}`));
-  return { store, history, payloads, observations, depth: 0, saved: store.getState().objects };
+  store.subscribe(() => observations.push(stacks(history())));
+  return { store, history, forget, payloads, observations, depth: 0, saved: store.getState().objects };
 }
 
 function collectionOf(objects: ParityState['objects'], coll: Collection): Entities | undefined {
@@ -197,19 +180,19 @@ export function applyWrite(run: ParityRun, write: WriteOp): void {
 
 function begin(run: ParityRun): void {
   if (run.depth === 0) run.saved = run.store.getState().objects;
-  run.history.begin();
+  run.history().beginTransaction();
   run.depth += 1;
 }
 function end(run: ParityRun): void {
-  run.history.end();
+  run.history().endTransaction();
   run.depth = Math.max(0, run.depth - 1);
 }
 function abandon(run: ParityRun): void {
-  run.history.abandon();
+  run.history().abandonTransaction();
   run.depth = Math.max(0, run.depth - 1);
 }
 function discard(run: ParityRun): void {
-  run.history.discard();
+  run.history().discardTransaction();
   run.depth = 0;
 }
 
@@ -218,14 +201,14 @@ function listen(run: ParityRun, kind: ListenerKind, write: WriteOp): void {
   const { history, store } = run;
   switch (kind) {
     case 'note': return store.getState().apply((draft) => { draft.note += 1; });
-    case 'untracked': return history.untracked(() => applyWrite(run, write));
+    case 'untracked': return void history().untracked(() => applyWrite(run, write));
     case 'cancel': applyWrite(run, write); return abandon(run);
     case 'cancelDeferred': applyWrite(run, write); queueMicrotask(() => abandon(run)); return;
     case 'discard': applyWrite(run, write); return discard(run);
     case 'end': return end(run);
     case 'transaction': begin(run); applyWrite(run, write); return end(run);
     case 'begin': return begin(run);
-    case 'forget': history.forget(); queueMicrotask(() => history.forget()); return;
+    case 'forget': run.forget(); queueMicrotask(() => run.forget()); return;
   }
 }
 
@@ -234,9 +217,10 @@ function listen(run: ParityRun, kind: ListenerKind, write: WriteOp): void {
  * history is paused, outside a transaction, are compared only while both stacks are empty.
  */
 function outsideDomain(run: ParityRun, op: HistoryOp): boolean {
-  if (run.depth > 0 || (run.history.undoSteps() === 0 && run.history.redoSteps() === 0)) return false;
+  const { pastStates, futureStates, isTracking } = run.history();
+  if (run.depth > 0 || (pastStates.length === 0 && futureStates.length === 0)) return false;
   if (op.op === 'untracked') return true;
-  if (run.history.tracking()) return false;
+  if (isTracking) return false;
   if (op.op === 'notify') return typeof op.trigger !== 'string';
   return isWrite(op) && op.op !== 'note';
 }
@@ -249,17 +233,17 @@ export async function runOp(run: ParityRun, op: HistoryOp): Promise<boolean> {
   if (outsideDomain(run, op)) return false;
   if (isWrite(op)) applyWrite(run, op);
   else switch (op.op) {
-    case 'untracked': run.history.untracked(() => applyWrite(run, op.write)); break;
-    case 'untrackedEnd': run.history.untracked(() => end(run)); break;
+    case 'untracked': run.history().untracked(() => applyWrite(run, op.write)); break;
+    case 'untrackedEnd': run.history().untracked(() => end(run)); break;
     case 'begin': begin(run); break;
     case 'end': end(run); break;
     case 'abandon': abandon(run); break;
     case 'discard': discard(run); break;
-    case 'undo': run.history.undo(); break;
-    case 'redo': run.history.redo(); break;
-    case 'clear': run.history.clear(); run.depth = 0; break;
-    case 'pause': run.history.pause(); break;
-    case 'resume': run.history.resume(); break;
+    case 'undo': run.history().undo(); break;
+    case 'redo': run.history().redo(); break;
+    case 'clear': run.history().clear(); run.depth = 0; break;
+    case 'pause': run.history().pause(); break;
+    case 'resume': run.history().resume(); break;
     case 'notify': notify(run, op); break;
   }
   for (let i = 0; i < 4; i++) await Promise.resolve();
@@ -277,8 +261,8 @@ function notify(run: ParityRun, op: Extract<HistoryOp, { op: 'notify' }>): void 
     stop();
     listen(run, listener, op.write);
   });
-  if (op.trigger === 'undo') history.undo();
-  else if (op.trigger === 'redo') history.redo();
+  if (op.trigger === 'undo') history().undo();
+  else if (op.trigger === 'redo') history().redo();
   else applyWrite(run, op.trigger);
   stop();
 }
@@ -287,7 +271,7 @@ function notify(run: ParityRun, op: Extract<HistoryOp, { op: 'notify' }>): void 
 export function snapshotLine(run: ParityRun, payloadsBefore: number, observationsBefore: number): string {
   return [
     encode(trackedOf(run.store.getState())),
-    `${run.history.undoSteps()}/${run.history.redoSteps()}`,
+    stacks(run.history()),
     run.payloads.slice(payloadsBefore).join(';'),
     run.observations.slice(observationsBefore).join(','),
   ].join('|');

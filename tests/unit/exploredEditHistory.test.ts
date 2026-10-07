@@ -72,7 +72,7 @@ describe('withoutExploredEdits', () => {
   /** The history of `store`, as the states it would step through: past, then the current one in brackets, then redo's. */
   function timeline(store: ViewAtlasStore, { pastStates, futureStates }: Pick<HistoryState, 'pastStates' | 'futureStates'>): string {
     const name = (state: { objects?: unknown; exploredEdits?: unknown }): string => `${Object.keys((state.objects as { walls: object }).walls).length}w${String(state.exploredEdits)}e`;
-    return [...pastStates.map(name), `[${name(store.getState())}]`, ...[...futureStates].reverse().map(name)].join(' ');
+    return [...pastStates.map((step) => name(step.before)), `[${name(store.getState())}]`, ...[...futureStates].reverse().map((step) => name(step.after))].join(' ');
   }
 
   it('leaves out the steps that only edited the memory, in what was done and in what was undone', () => {
@@ -89,7 +89,7 @@ describe('withoutExploredEdits', () => {
     history().undo();
     expect(timeline(store, history())).toBe('0w0e 1w0e 1w1e 1w2e [2w2e] 2w3e 3w3e 3w4e');
 
-    const kept = withoutExploredEdits(history(), store.getState());
+    const kept = withoutExploredEdits(history());
     expect(timeline(store, kept).replace('[2w2e]', '[2w0e]')).toBe('0w0e 1w0e [2w0e] 3w0e');
     // The history itself is untouched.
     expect(history().pastStates).toHaveLength(4);
@@ -101,9 +101,9 @@ describe('withoutExploredEdits', () => {
       addWall(store, 10);
       store.getState().setExploredEdits(1);
     });
-    const kept = withoutExploredEdits(history(), store.getState());
+    const kept = withoutExploredEdits(history());
     expect(kept.pastStates).toHaveLength(1);
-    expect(kept.pastStates[0]).toMatchObject({ exploredEdits: 0 });
+    expect(kept.pastStates[0]!.before).toMatchObject({ exploredEdits: 0 });
   });
 
   it('leaves a history without memory edits as it is', () => {
@@ -111,9 +111,9 @@ describe('withoutExploredEdits', () => {
     addWall(store, 10);
     addWall(store, 20);
     history().undo();
-    const kept = withoutExploredEdits(history(), store.getState());
-    expect(kept.pastStates.map((state) => state.objects)).toEqual(history().pastStates.map((state) => state.objects));
-    expect(kept.futureStates.map((state) => state.objects)).toEqual(history().futureStates.map((state) => state.objects));
+    const kept = withoutExploredEdits(history());
+    expect(kept.pastStates.map((step) => step.before.objects)).toEqual(history().pastStates.map((step) => step.before.objects));
+    expect(kept.futureStates.map((step) => step.after.objects)).toEqual(history().futureStates.map((step) => step.after.objects));
   });
 });
 
@@ -169,7 +169,7 @@ describe('a tab\'s cached history', () => {
 
     const cached = context.temporalCache.get('tab')!;
     expect(cached.pastStates).toHaveLength(2);
-    expect(cached.pastStates.every((state) => state.exploredEdits === 0)).toBe(true);
+    expect(cached.pastStates.every((step) => step.before.exploredEdits === 0 && step.after.exploredEdits === 0)).toBe(true);
     // The scene's own history still holds them, until it is left.
     expect(history().pastStates).toHaveLength(4);
   });
