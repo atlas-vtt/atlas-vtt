@@ -1,7 +1,8 @@
 import { collectionFolderPath } from '../assetPaths';
 import { moveCollectionRecord } from '../collectionRecords';
 import type { CollectionReading, LibraryReading } from './libraryReader';
-import { collectionIdentity, collectionKey, hashText, LIBRARY_KEY } from './libraryState';
+import { collectionIdentity, collectionKey, LIBRARY_KEY } from './libraryState';
+import { hashText } from '../../utils/hashing';
 import { sameJson, stamp, type MergeContext } from './mergeShared';
 
 /** A collection whose folder was copied gets an identity of its own, the same on every device that sees the copy. */

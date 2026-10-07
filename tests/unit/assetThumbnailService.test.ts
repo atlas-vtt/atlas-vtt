@@ -3,6 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AssetService, type MapAsset, type TokenAsset } from '../../src/app/services/AssetService';
 import { THUMBNAIL_DIR, THUMBNAIL_SIZE, AssetThumbnailService, type ThumbnailUpdate } from '../../src/app/services/AssetThumbnailService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { hashStrings } from '../helpers/hashCorpus';
+import { pathDigest as frozenPathDigest, thumbnailPathFor as frozenThumbnailPathFor } from '../oracles/helperBaseline/thumbnailDigest';
 
 const GOBLIN_IMAGE = 'atlas-vtt/assets/goblin.png';
 
@@ -177,5 +179,21 @@ describe('AssetThumbnailService', () => {
     const b = service.thumbnailPathFor('atlas-vtt/collections/default/tokens/caves/orc.png');
     expect(a).not.toBe(b);
     expect(a.startsWith(`${THUMBNAIL_DIR}/orc-`)).toBe(true);
+  });
+
+  it('keeps the names thumbnails were written under', async () => {
+    const { app, assets } = await setup();
+    const service = new AssetThumbnailService(app, assets);
+    expect(service.thumbnailPathFor('atlas-vtt/collections/default/tokens/orc.png')).toBe('atlas-vtt/assets/thumbnails/orc-d7b604c2.webp');
+    expect(service.thumbnailPathFor('atlas-vtt/collections/default/tokens/caves/orc.png')).toBe('atlas-vtt/assets/thumbnails/orc-5aa08603.webp');
+    expect(service.thumbnailPathFor('atlas-vtt/collections/default/tokens/troll.png')).toBe('atlas-vtt/assets/thumbnails/troll-01403577.webp');
+  });
+
+  it('names every thumbnail as before', async () => {
+    const { app, assets } = await setup();
+    const service = new AssetThumbnailService(app, assets);
+    const paths = hashStrings();
+    expect(paths.filter((path) => frozenPathDigest(path).startsWith('0')).length).toBeGreaterThanOrEqual(20);
+    expect(paths.find((path) => service.thumbnailPathFor(path) !== frozenThumbnailPathFor(path))).toBeUndefined();
   });
 });

@@ -2,7 +2,7 @@ import type { AssetMetadata, CollectionMetadata } from './AssetService';
 import { collectionFolderPath } from './assetPaths';
 import { uniqueCollectionName } from './collectionNaming';
 import { mapStrings } from '../utils/mapStrings';
-import { hashText } from './library/libraryState';
+import { hashText } from '../utils/hashing';
 
 /** The folder of the collection a new vault starts with. */
 export const INITIAL_COLLECTION_ID = 'Default';

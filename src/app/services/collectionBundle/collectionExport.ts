@@ -9,7 +9,7 @@ import { withLootBases } from './bundleSettings';
 import { reportFileStep, type BundleProgressListener } from './bundleProgress';
 import { coverCandidates, coverFileFor, currentCover, type CoverCandidate, type CoverChoice, type CurrentCover } from './collectionCover';
 import { CollectionReferenceCollector, type MissingReference } from './collectionReferences';
-import { sha256 } from './hashing';
+import { sha256 } from '../../utils/hashing';
 import { readInstallRecord, type InstalledPreset } from './installRecord';
 import { withLinkedFiles } from './noteLinks';
 import { remapPaths } from './pathRemap';

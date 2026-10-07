@@ -1,4 +1,5 @@
-import { isRecord } from '../../utils/guards';
+// Frozen from 29c9495a src/app/services/library/libraryState.ts. Only import paths are adapted.
+import { isRecord } from '../../../src/app/utils/guards';
 
 /** What this device last knew of one library file, so unchanged files are neither read nor written again. */
 export interface FileStamp {
@@ -56,6 +57,20 @@ export const copyKey = (copyId: string): string => `copy:${copyId}`;
 export function idOfKey(key: string, kind: 'asset' | 'collection' | 'duplicate' | 'copy'): string | null {
   const prefix = `${kind}:`;
   return key.startsWith(prefix) ? key.slice(prefix.length) : null;
+}
+
+/** A 53-bit hash of `text` (cyrb53), enough to tell file contents apart. */
+export function hashText(text: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < text.length; i++) {
+    const code = text.charCodeAt(i);
+    h1 = Math.imul(h1 ^ code, 2654435761);
+    h2 = Math.imul(h2 ^ code, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
 }
 
 const isStamp = (value: unknown): value is FileStamp =>

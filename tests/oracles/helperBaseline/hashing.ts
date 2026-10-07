@@ -1,3 +1,4 @@
+// Frozen from 29c9495a src/app/services/collectionBundle/hashing.ts. Only import paths are adapted.
 /** Hex SHA-256 of `data`, the fingerprint bundles and install records compare content by. */
 export async function sha256(data: ArrayBuffer | Uint8Array): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', data);

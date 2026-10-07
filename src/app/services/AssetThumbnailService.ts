@@ -2,6 +2,7 @@ import { TFile, type App } from 'obsidian';
 import { AssetService, type MapAsset, type TokenAsset } from './AssetService';
 import { ensureFolder } from '../plugin/vaultFolders';
 import { renderThumbnail, type ThumbnailSpec } from '../imageProcessing/imageProcessing';
+import { fnv1a32 } from '../utils/hashing';
 
 export const THUMBNAIL_DIR = 'atlas-vtt/assets/thumbnails';
 /** Longer side of a thumbnail; asset cards are about half this size on a 2x display. */
@@ -36,12 +37,7 @@ function sourceImagePath(asset: ThumbnailAsset): string {
 
 /** Short stable digest so thumbnails of same-named images in different folders do not collide. */
 function pathDigest(path: string): string {
-  let hash = 0x811c9dc5;
-  for (let i = 0; i < path.length; i++) {
-    hash ^= path.charCodeAt(i);
-    hash = Math.imul(hash, 0x01000193) >>> 0;
-  }
-  return hash.toString(16).padStart(8, '0');
+  return fnv1a32(path).toString(16).padStart(8, '0');
 }
 
 /**

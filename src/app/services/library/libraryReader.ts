@@ -5,7 +5,8 @@ import { collectionOfCollectionFile, isLibraryFile, isRecordFileCandidate, LIBRA
 import { parseCollectionFile, parseLibraryFile, type LibraryFacts } from './collectionFile';
 import { parseRecordFile } from './recordFile';
 import { originalOfCopy } from './recordHolders';
-import { hashText, idOfKey, type FileStamp, type LibraryState } from './libraryState';
+import { idOfKey, type FileStamp, type LibraryState } from './libraryState';
+import { hashText } from '../../utils/hashing';
 
 /** How a file was found on disk: what its stamp will say once the change is taken in. */
 export interface FileReading {
