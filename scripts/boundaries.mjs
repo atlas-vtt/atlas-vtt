@@ -57,7 +57,10 @@ export const BOUNDARIES = {
       "src/app/pixi/LaserPointerRenderer.ts",
       "src/app/tools/laserPointerSettings.ts",
       "src/app/utils/guards.ts",
-      "src/app/utils/hashing.ts"
+      "src/app/utils/hashing.ts",
+      "src/app/stores/history.ts",
+      "src/app/stores/history/**/*.ts",
+      "src/app/stores/exploredEditHistory.ts"
     ],
     "exclude": [
       "src/app/grid/GridController.ts",

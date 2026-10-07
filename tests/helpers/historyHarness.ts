@@ -3,7 +3,7 @@ import { create, type StateCreator, type StoreApi } from 'zustand';
 import { persist, subscribeWithSelector, type PersistStorage, type StorageValue } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { Draft } from 'immer';
-import { temporal as oracleTemporal } from 'zundo';
+import { temporal as oracleTemporal } from '../oracles/historyBaseline/zundo';
 import { createHistoryOptions, getHistoryStore as oracleHistoryStore } from '../oracles/historyBaseline/history';
 import { forgetExploredEdits as oracleForget } from '../oracles/historyBaseline/exploredEditHistory';
 import { getHistoryStore, withHistory } from '../../src/app/stores/history';
