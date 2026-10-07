@@ -6,7 +6,7 @@ import type { TokenGroupContainer } from '../../src/app/pixi/token-renderer/type
 import type { TokenEntity } from '../../src/app/types';
 import { fogRectangle } from '../helpers/fogOperations';
 
-const token = (id: string, x: number, changes: Partial<TokenEntity> = {}): TokenEntity => ({ id, kind: 'token', imagePath: '', x, y: 10, ...changes });
+const token = (id: string, x: number, changes: Partial<TokenEntity> = {}): TokenEntity => ({ id, kind: 'token', imagePath: '', x, y: 10, ...changes }) as TokenEntity;
 
 function sightOf(tokens: Record<string, TokenEntity>, fog: () => FogCoverage | null, players = { active: false, playerView: false }): PlayerSightTokens {
   const sprites: Record<string, TokenGroupContainer> = {};

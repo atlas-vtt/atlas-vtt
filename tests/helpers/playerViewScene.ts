@@ -36,7 +36,10 @@ export interface PlayerViewScene {
   /** The scene's lighting as the players see it: `unseen`, `sensed` or `seen` per token; none on an unlit scene. */
   lighting: { perception: TokenPerception | undefined; peeking: boolean };
   setFog(operations: Record<string, FogOperation>): void;
+  /** Adds tokens and waits until they are drawn, with what they load later (a hidden token's icon). */
   add(...tokens: Array<Partial<TokenEntity> & { id: string; x: number; y: number }>): Promise<void>;
+  /** Waits until the canvas stops changing: parts that load on their own have arrived. */
+  settle(): Promise<void>;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number): void;
   /** The measure tool, left active, from (x0, y0) to (x1, y1); released unless `hold`. */
   measureFrom(x0: number, y0: number, x1: number, y1: number, hold?: boolean): void;
@@ -101,7 +104,7 @@ export function playerViewScenes(): { scene: () => Promise<PlayerViewScene> } {
       renderer.destroy();
     });
     const read = (layers: readonly LayerVisibility[]): Uint8ClampedArray => {
-      let result = new Uint8ClampedArray();
+      let result: Uint8ClampedArray = new Uint8ClampedArray();
       captureWithLayerVisibility(layers, () => {}, () => {
         renderer.render({ container: app.stage, target, clear: true });
         result = renderer.extract.pixels({ target }).pixels;
@@ -114,12 +117,22 @@ export function playerViewScenes(): { scene: () => Promise<PlayerViewScene> } {
       event.global.set(x, y);
       viewport.emit(type, event);
     };
-    return {
+    const scene: PlayerViewScene = {
       app, tokens, fog, measure, store, events, lighting, pointer,
       setFog(operations): void { store.setState((state) => ({ objects: { ...state.objects, fog: operations } })); },
       async add(...added): Promise<void> {
         for (const token of added) store.getState().addToken({ kind: 'token', imagePath: '', size: 1, ...token } as TokenEntity);
         await expect.poll(() => added.every(({ id }) => tokens.getTokenSprites()[id] instanceof Container)).toBe(true);
+        await this.settle();
+      },
+      async settle(): Promise<void> {
+        let last = read([]);
+        for (let quiet = 0, wait = 0; quiet < 5 && wait < 100; wait++) {
+          await new Promise((resolve) => setTimeout(resolve, 20));
+          const next = read([]);
+          quiet = samePixels(next, last) ? quiet + 1 : 0;
+          last = next;
+        }
       },
       measureFrom(x0, y0, x1, y1, hold = false): void {
         store.getState().setActiveTool('measure');
@@ -131,7 +144,7 @@ export function playerViewScenes(): { scene: () => Promise<PlayerViewScene> } {
       frameLayers: () => playerFrameLayers({ measure, tokens, fog, settings: DEFAULT_SETTINGS.localPlayerView, lighting: lighting.perception }),
       frame(): Uint8ClampedArray { return read(this.frameLayers()); },
       thumbnail(): Uint8ClampedArray {
-        let result = new Uint8ClampedArray();
+        let result: Uint8ClampedArray = new Uint8ClampedArray();
         captureSceneFrame({ gmViewLayers: gmPictureLayers({ measure, tokens, fog }), markerLayers: [], lighting: undefined }, { x: 0, y: 0, width: SIZE, height: SIZE } as never, () => {
           renderer.render({ container: app.stage, target, clear: true });
           result = renderer.extract.pixels({ target }).pixels;
@@ -143,6 +156,7 @@ export function playerViewScenes(): { scene: () => Promise<PlayerViewScene> } {
         tokens.refreshPlayerSight();
       },
     };
+    return scene;
   }
   return { scene: createScene };
 }

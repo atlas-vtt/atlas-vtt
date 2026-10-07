@@ -1,11 +1,12 @@
 import { EventEmitter } from 'events';
 import { EventBoundary, FederatedPointerEvent, Text, type Container, type EventSystem } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi, type Mock } from 'vitest';
 import { MeasureRenderer } from '../../src/app/pixi/MeasureRenderer';
 import type { GridSystem } from '../../src/app/grid/GridSystem';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { TokenFootprint } from '../../src/app/vision/measureOrigin';
+import type { MeasurePlayersView } from '../../src/app/pixi/measurePartsVisibility';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
@@ -32,7 +33,7 @@ afterEach(() => {
 
 function scene(): Scene {
   const restoreGraphics = stubJsdomGraphics();
-  const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events: { domElement: createEl('canvas') } as EventSystem });
+  const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events: { domElement: createEl('canvas') } as unknown as EventSystem });
   const { app } = createInMemoryApp({ files: {} });
   const store = createViewAtlasStore(app, 'measure-player-view');
   store.getState().setPersistenceEnabled(false);
@@ -67,11 +68,7 @@ function measureFrom(s: Scene, x0: number, y0: number, x1 = x0 + 200, y1 = y0): 
 }
 
 /** Players' view of the tokens: footprints, what they see in their frame and what the canvas shows them. */
-function players(footprints: TokenFootprint[], seen: Set<string>, canvas: { players: boolean }): {
-  footprints: () => TokenFootprint[];
-  seenAtStart: ReturnType<typeof vi.fn>;
-  seenOnCanvas: () => ((id: string) => boolean) | null;
-} {
+function players(footprints: TokenFootprint[], seen: Set<string>, canvas: { players: boolean }): MeasurePlayersView & { seenAtStart: Mock<MeasurePlayersView['seenAtStart']> } {
   return {
     footprints: () => footprints,
     seenAtStart: vi.fn(() => (id: string) => seen.has(id)),

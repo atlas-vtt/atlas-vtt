@@ -15,6 +15,7 @@ async function digest(pixels: Uint8ClampedArray): Promise<string> {
 
 /** The GM's canvas, unchanged by a frame, a session-view round trip and a peek. */
 async function gmPicture(s: PlayerViewScene, name: string): Promise<void> {
+  await s.settle();
   const gm = s.canvas();
   s.frame();
   expect(samePixels(s.canvas(), gm)).toBe(true);
