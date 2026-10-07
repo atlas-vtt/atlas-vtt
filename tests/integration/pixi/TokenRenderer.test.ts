@@ -1410,6 +1410,17 @@ describe('TokenRenderer Integration Tests', () => {
       await expectLooks(['A', 'B', 'C'], ['gm 1', 'gm 2', 'gm 3']);
     });
 
+    it('gives a token added in session view the players\' number as soon as its sprite has loaded', async () => {
+      await goblins({ id: 'A' }, { id: 'B', isHidden: true });
+      store.getState().setGMView(false);
+      await expectLooks(['A', 'B'], ['none', 'none']);
+      // The sync that adds C passes over the badges before C's sprite exists.
+      store.getState().addToken(token({ id: 'C', x: 385, y: 105 }));
+      await waitForTokens('C');
+      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
+      expect(frameLooks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
+    });
+
     it('leaves a token without a badge while its look-alike is only sensed, or under fog', async () => {
       await goblins({ id: 'A' }, { id: 'B' });
       store.getState().setGMView(false);
@@ -1431,6 +1442,19 @@ describe('TokenRenderer Integration Tests', () => {
       await expectLooks(['g1', 'g2', 'o1', 'o2'], ['none', 'players 3', 'gm 1', 'gm 2']);
       store.getState().setGMView(true);
       expect(looks('g1', 'g2', 'o1', 'o2')).toEqual(['none', 'gm 2', 'gm 1', 'gm 2']);
+    });
+
+    it('frames a change the canvas has not drawn yet with the badges it brings, also where the canvas holds one off', async () => {
+      await goblins({ id: 'A' }, { id: 'B', isHidden: true }, { id: 'O', imagePath: ORC_IMAGE });
+      store.getState().setGMView(false);
+      await expectLooks(['A', 'B', 'O'], ['none', 'none', 'none']);
+      // The orc takes the goblin art; the canvas passes over the badges once that art has loaded.
+      store.getState().updateToken('O', { imagePath: GOBLIN_IMAGE });
+      expect(tokenSprite('O').texture.label).toBe(ORC_IMAGE);
+      expect(looks('A')).toEqual(['none']);
+      expect(frameLooks('A', 'O')).toEqual(['gm 1', 'none']);
+      expect(looks('A')).toEqual(['none']);
+      await expectLooks(['A', 'O'], ['gm 1', 'players 2']);
     });
 
     it('numbers anew when the same map loads again with other tokens', async () => {
