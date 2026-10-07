@@ -44,7 +44,7 @@ export class PlayerSightTokens {
    * and nothing otherwise. Tokens they do not see are left out with their nameplates and bars,
    * as in the player frame; those they only sense show as outlines. A provider that keeps sight
    * of its own, worked out by its own store listener (the lighting), says through `current`
-   * whether that sight is the scene's the store holds.
+   * whether that sight is of the scene the store holds.
    */
   setProvider(provider: () => TokenPerception | undefined, active?: () => boolean, current?: () => boolean): void {
     this.provider = provider;

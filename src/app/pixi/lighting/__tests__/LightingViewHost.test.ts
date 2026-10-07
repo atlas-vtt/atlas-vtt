@@ -12,7 +12,7 @@ interface FakeView extends SceneLightingView {
   pictures: number;
   /** What the view does before it renders a frame, such as an engine failing while it prepares it. */
   beforeFrame: () => void;
-  /** Whether its sight is the scene's the store holds. */
+  /** Whether its sight is that of the scene the store holds. */
   current: boolean;
 }
 

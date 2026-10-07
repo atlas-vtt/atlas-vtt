@@ -70,7 +70,7 @@ interface Wired {
   doorClick: (x: number, y: number) => boolean;
   playerSight: () => ((tokenId: string) => string) | undefined;
   playerViewActive?: (() => boolean) | undefined;
-  /** Whether the sight `playerSight` answers by is the scene's the store holds. */
+  /** Whether the sight `playerSight` answers by is that of the scene the store holds. */
   sightIsCurrent?: (() => boolean) | undefined;
   refreshPlayerSight: ReturnType<typeof vi.fn>;
   /** The layer of the sensed tokens' outlines, as the token renderer gives it. */

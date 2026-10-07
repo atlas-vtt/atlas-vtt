@@ -1,4 +1,5 @@
-// Frozen from 8b3ddf049d7ad45e70beac62500d80e8bead30fd src/app/pixi/lighting/CanvasLightingFallback.ts. Only import paths are adapted.
+// Frozen from 8b3ddf049d7ad45e70beac62500d80e8bead30fd src/app/pixi/lighting/CanvasLightingFallback.ts. Only import paths are adapted,
+// and `sightIsCurrent` is added, which the lighting view's interface has gained since.
 import { gmSightSource } from './tokenSightPolicy';
 import { tableSight } from './tableSight';
 import { Graphics } from 'pixi.js';
@@ -78,6 +79,7 @@ export class CanvasLightingFallback implements SceneLightingView {
 
   isEnabled(): boolean { return this.deps.store.getState().lighting.enabled; }
   currentSight(): Sight { return this.sight; }
+  sightIsCurrent(): boolean { return true; }
   lightReaches(): LightReach[] { return this.reaches; }
   ambientLight(): AmbientLight { return FULL_DAYLIGHT; }
   refreshBounds(): void {

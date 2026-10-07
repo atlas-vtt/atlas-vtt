@@ -9,13 +9,18 @@ import type { TokenEntity } from '../../src/app/types';
 import type { SceneLighting } from '../../src/app/types/lightingTypes';
 import { BUILT_IN_SENSES } from '../../src/app/gameSystems/senses';
 import type { SightRules } from '../../src/app/vision/sightRules';
+import type { MapBounds } from '../../src/app/vision/visibility';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
 let restore: (() => void) | undefined;
 afterEach(() => { restore?.(); restore = undefined; });
 
-function setup(tokens: Record<string, TokenEntity>, lighting: Partial<SceneLighting> = {}, onSightChange?: () => void, rules?: SightRules): { fallback: CanvasLightingFallback; viewport: Container; store: ViewAtlasStore } {
+const MAP: MapBounds = { width: 1000, height: 1000 };
+
+function setup(
+  tokens: Record<string, TokenEntity>, lighting: Partial<SceneLighting> = {}, onSightChange?: () => void, rules?: SightRules, bounds: () => MapBounds | null = () => MAP,
+): { fallback: CanvasLightingFallback; viewport: Container; store: ViewAtlasStore } {
   restore = stubJsdomGraphics();
   const { app } = createInMemoryApp();
   const store = createViewAtlasStore(app, `canvas-lighting-${Math.random()}`);
@@ -26,7 +31,7 @@ function setup(tokens: Record<string, TokenEntity>, lighting: Partial<SceneLight
     viewport: viewport as unknown as Viewport,
     store,
     measurement: () => ({ mode: 'grid', unitType: 'feet', unitDistance: 5, diagonalRule: 'chebyshev', rangeBands: [] }) as never,
-    bounds: () => ({ width: 1000, height: 1000 }),
+    bounds,
     ...(onSightChange && { onSightChange }),
     ...(rules && { rules: () => rules }),
   });
@@ -222,6 +227,25 @@ describe('CanvasLightingFallback', () => {
     expect(darkness.visible).toBe(true);
     expect(() => fallback.renderForFrame({ x: 0, y: 0, resolution: 0.5 }, () => { throw new Error('Render failed'); })).toThrow('Render failed');
     expect(darkness.visible).toBe(true);
+  });
+
+  it('says its sight is the scene\'s while the scene is unlit and once it has worked a lit one out, not while a lit scene has no map to build on', () => {
+    let map: MapBounds | null = null;
+    const { fallback, store, viewport } = setup({ hero }, {}, undefined, undefined, () => map);
+    try {
+      expect(fallback.sightIsCurrent()).toBe(false);
+      map = MAP;
+      fallback.refreshBounds();
+      expect(fallback.sightIsCurrent()).toBe(true);
+      expect(fallback.currentSight().regions.map((region) => region.tokenId)).toEqual(['hero']);
+      store.getState().setSceneLighting({ enabled: false });
+      expect(fallback.sightIsCurrent()).toBe(true);
+      // Lit again on a map that is gone: the sight it holds is the one it worked out before.
+      map = null;
+      store.getState().setSceneLighting({ enabled: true });
+      expect(fallback.sightIsCurrent()).toBe(false);
+      expect(fallback.currentSight().regions.map((region) => region.tokenId)).toEqual(['hero']);
+    } finally { fallback.destroy(); viewport.destroy(); }
   });
 
   it('hides nothing while no token has vision', () => {
