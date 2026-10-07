@@ -9,7 +9,7 @@ import { perceive, seenSpots } from '../../src/app/vision/perception';
 import { darknessAt, lightLevelAt } from '../../src/app/vision/lightLevels';
 import { quenched, sourcesInDarkness } from '../../src/app/vision/magicalDarkness';
 import { doorMiddle, doorsInSight } from '../../src/app/vision/doorSight';
-import { tokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import { tokenPerception } from '../../src/app/vision/tokenPerception';
 import { visionCone } from '../../src/app/vision/visionCone';
 import { rng } from '../../src/app/pixi/lighting/engine/__tests__/fuzzRooms';
 import { firstDifference } from '../helpers/visibilityCompare';
