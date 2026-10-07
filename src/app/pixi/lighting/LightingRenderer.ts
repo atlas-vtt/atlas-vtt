@@ -83,7 +83,7 @@ export class LightingRenderer implements SceneLightingView {
   /** The zones of the scene as the rules read them, and the ambient light made of them and the scene's lighting. */
   private zones: readonly AmbientZone[] = [];
   private ambient: { lighting: SceneLighting; zones: readonly AmbientZone[]; light: AmbientLight } | null = null;
-  /** The last scene without its look (`SceneLook`), reused while only the look changes; none from lighting off or the map leaving until the next build. */
+  /** The last scene without its look (`SceneLook`), reused while only the look changes; none from lighting off, the map leaving or a lost context until the next build. */
   private lastScene: SceneWithoutLook | null = null;
   private attemptState: AttemptState = 'none';
   private stopped = false;
@@ -165,15 +165,19 @@ export class LightingRenderer implements SceneLightingView {
   }
 
   /**
-   * Runs lighting work that reaches the GPU. Nothing is drawn while the context is lost; the
-   * first call after its restore rebuilds; an error stops the engine and reports the view
-   * unavailable, once. New sight is reported afterwards, outside the guard: what its listener
-   * does is not the engine's to fail on.
+   * Runs lighting work that reaches the GPU. Nothing is drawn while the context is lost, and the
+   * scene counts as not built from then on, since a change of it may go by; the first call after
+   * its restore rebuilds; an error stops the engine and reports the view unavailable, once. New
+   * sight is reported afterwards, outside the guard: what its listener does is not the engine's
+   * to fail on.
    */
   private run(work: () => void): void {
     if (this.stopped) return;
     try {
-      if (contextLost(this.deps.app.renderer)) return;
+      if (contextLost(this.deps.app.renderer)) {
+        this.lastScene = null;
+        return;
+      }
       if (this.engine.takeRestored()) this.afterContextRestored();
       if (!this.stopped) work();
     } catch (error) {

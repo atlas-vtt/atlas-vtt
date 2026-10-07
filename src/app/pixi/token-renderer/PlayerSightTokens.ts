@@ -74,8 +74,9 @@ export class PlayerSightTokens {
 
   /**
    * Whether the provider's sight is that of the scene the store holds. The lighting keeps the sight
-   * of the scene before from a scene switch until it has built the one that arrives; sight read
-   * from the store when asked always is.
+   * of the scene before from a scene switch until it has built the one that arrives, and the sight
+   * from before a lost graphics context until it has built on the restored one; sight read from the
+   * store when asked always is.
    */
   sightIsCurrent(): boolean {
     return this.current?.() ?? true;

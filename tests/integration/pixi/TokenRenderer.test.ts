@@ -1520,7 +1520,8 @@ describe('TokenRenderer Integration Tests', () => {
      * A lighting that keeps sight of its own, as the view's lighting does: worked out by a store listener that
      * comes after the token renderer's (dynamic lighting switched on in an open view), from the party's token P,
      * which sees every token within 150 px. A load keeps the sight of the scene before until it ends; while
-     * `blocked` (a lost graphics context) nothing is built. New sight is reported as `onSightChange` reports it.
+     * `blocked` (a lost graphics context) nothing is built, and the sight it keeps is no longer the scene's from
+     * the first change it cannot take in. New sight is reported as `onSightChange` reports it.
      */
     const keptSight = (): { blocked: boolean; rebuild: () => void } => {
       let eye: number | null = null;
@@ -1529,12 +1530,12 @@ describe('TokenRenderer Integration Tests', () => {
         blocked: false,
         rebuild: (): void => {
           const state = store.getState();
-          if (state.isMapLoading) {
+          if (state.isMapLoading || lighting.blocked) {
             built = false;
             return;
           }
           const party = state.objects.tokens.P?.x ?? null;
-          if (lighting.blocked || (built && party === eye)) return;
+          if (built && party === eye) return;
           eye = party;
           built = true;
           tokenRenderer.refreshPlayerSight();
@@ -1589,6 +1590,25 @@ describe('TokenRenderer Integration Tests', () => {
       lighting.blocked = false;
       lighting.rebuild();
       await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
+    });
+
+    it('shows the players no badges while a lost graphics context keeps the lighting from the scene\'s changes, and numbers anew once it is back', async () => {
+      await goblins({ id: 'P', imagePath: ORC_IMAGE, x: 105 }, { id: 'A', x: 175 }, { id: 'C', x: 525 });
+      const lighting = keptSight();
+      store.getState().setGMView(false);
+      await expectLooks(['A', 'C'], ['none', 'none']);
+      // The context is lost. The party walks on, a goblin is put where it stood and another is brought along. By
+      // the sight from before the loss B would take 2 and C 3, and C would keep its 3 beside A once B is out of sight.
+      lighting.blocked = true;
+      store.getState().moveToken('P', 245, 105);
+      store.getState().addToken(token({ id: 'B', x: 35, y: 105 }));
+      await waitForTokens('B');
+      store.getState().moveToken('C', 210, 105);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await expectLooks(['A', 'B', 'C'], ['none', 'none', 'none']);
+      lighting.blocked = false;
+      lighting.rebuild();
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'gm 2']);
     });
 
     it('numbers by the lighting\'s sight once it has taken in a drop that moves the party and a look-alike together', async () => {

@@ -138,4 +138,35 @@ describe('whether the lighting view\'s sight is the sight of the scene the store
     view.beforeMapUnload();
     expect(view.sightIsCurrent()).toBe(false);
   });
+
+  it('is not while a lost graphics context keeps it from a change of the scene, until the restored context has built the scene', () => {
+    const { view, eyes, moveHero, tick, sightChanges } = lit();
+    gpu.lost = true;
+    // Nothing was missed yet: the sight is the scene's.
+    expect(view.sightIsCurrent()).toBe(true);
+    moveHero(300);
+    expect({ current: view.sightIsCurrent(), eyes: eyes() }).toEqual({ current: false, eyes: [100] });
+    gpu.lost = false;
+    gpu.restored = true;
+    // The context is back, and the scene not built on it yet.
+    expect(view.sightIsCurrent()).toBe(false);
+    sightChanges.mockClear();
+    tick();
+    expect({ current: view.sightIsCurrent(), eyes: eyes() }).toEqual({ current: true, eyes: [300] });
+    expect(sightChanges).toHaveBeenCalledOnce();
+  });
+
+  it('tells of its sight again after a lost context that the scene did not change under', () => {
+    const { view, eyes, tick, sightChanges } = lit();
+    gpu.lost = true;
+    tick();
+    expect(view.sightIsCurrent()).toBe(false);
+    gpu.lost = false;
+    gpu.restored = true;
+    sightChanges.mockClear();
+    tick();
+    expect({ current: view.sightIsCurrent(), eyes: eyes() }).toEqual({ current: true, eyes: [100] });
+    // Whoever showed nothing by its sight meanwhile shows by it again.
+    expect(sightChanges).toHaveBeenCalledOnce();
+  });
 });

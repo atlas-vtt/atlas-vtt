@@ -76,6 +76,39 @@ describe('whether the lighting\'s sight is the scene\'s the store holds', () => 
     expect(origins()).toEqual([{ x: 150, y: 128 }]);
   });
 
+  it('is not while a lost graphics context keeps it from a change of the scene, until the restored context has built the scene', async () => {
+    const onSightChange = vi.fn();
+    scene = await createScene({ enabled: true, onSightChange });
+    scene.setLighting({ ambient: 1 });
+    expect(scene.host.sightIsCurrent()).toBe(true);
+    await resetContext(scene.renderer, () => {
+      // The party moves while nothing can be built: the sight is still the one from x 100.
+      scene.moveToken(150, 128);
+      expect({ current: scene.host.sightIsCurrent(), origins: origins() }).toEqual({ current: false, origins: [{ x: 100, y: 128 }] });
+    });
+    // The context is back, and the scene not built on it yet.
+    expect(scene.host.sightIsCurrent()).toBe(false);
+    onSightChange.mockClear();
+    scene.tick();
+    expect({ current: scene.host.sightIsCurrent(), origins: origins() }).toEqual({ current: true, origins: [{ x: 150, y: 128 }] });
+    expect(onSightChange).toHaveBeenCalled();
+  });
+
+  it('tells of its sight again after a lost context that the scene did not change under', async () => {
+    const onSightChange = vi.fn();
+    scene = await createScene({ enabled: true, onSightChange });
+    scene.setLighting({ ambient: 1 });
+    await resetContext(scene.renderer, () => {
+      scene.tick();
+      expect(scene.host.sightIsCurrent()).toBe(false);
+    });
+    onSightChange.mockClear();
+    scene.tick();
+    expect({ current: scene.host.sightIsCurrent(), origins: origins() }).toEqual({ current: true, origins: [{ x: 100, y: 128 }] });
+    // Whoever showed nothing by its sight meanwhile shows by it again.
+    expect(onSightChange).toHaveBeenCalled();
+  });
+
   it('is while the scene is unlit, and not while a lit one has no map to build on', async () => {
     scene = await createScene({ enabled: false });
     expect(scene.host.sightIsCurrent()).toBe(true);

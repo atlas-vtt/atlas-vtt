@@ -28,7 +28,8 @@ export interface SceneLightingView {
    * Whether `currentSight` is the sight of the scene the store holds: true while the scene is
    * unlit (sight hides nothing then), and once the view has worked out the sight of a lit one.
    * From a scene switch until the view has built the scene that arrives, it still holds the sight
-   * of the scene before.
+   * of the scene before, and from a lost graphics context until the scene is built on the restored
+   * one, the sight from before the loss.
    */
   sightIsCurrent(): boolean;
   lightReaches(): LightReach[];
