@@ -116,6 +116,16 @@ export function corridorsTrial(seed: number): VisibilityTrial {
   return { family: 'corridors', seed, walls: sealedWalls(walls, 2), calls };
 }
 
+/** `trial` with every place scaled by `scale` about zero and then moved by (`dx`, `dy`), its radii and apexes scaled alike. */
+export function placedTrial(trial: VisibilityTrial, dx: number, dy: number, scale = 1): VisibilityTrial {
+  const at = (p: Point): Point => ({ x: p.x * scale + dx, y: p.y * scale + dy });
+  return {
+    ...trial,
+    walls: trial.walls.map((w) => ({ ...w, p1: at(w.p1), p2: at(w.p2) })),
+    calls: trial.calls.map((call) => ({ ...call, origin: at(call.origin), radius: call.radius * scale, ...(call.cone?.apex && { cone: { ...call.cone, apex: call.cone.apex * scale } }) })),
+  };
+}
+
 /** A point on `w` at `f` of its way from p1 to p2. */
 export function along(w: WallSegment, f: number): Point {
   return { x: w.p1.x + (w.p2.x - w.p1.x) * f, y: w.p1.y + (w.p2.y - w.p1.y) * f };

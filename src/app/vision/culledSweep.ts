@@ -4,7 +4,7 @@ import { endAngleOf, firstHit, rayQuery, type RayQuery } from './gridRays';
 import { endHints, isEndHidden, type EndHints } from './hiddenEnds';
 import { BOUNDARY_RAYS, boundaryAngle, rayPlan, type RayPlan } from './rayPlan';
 import { awayFromSeam, clearOfEdgeOn, oneWallGap, reachOver, tieSet } from './straightRuns';
-import { placeableNumber, wallGridOf } from './wallGrid';
+import { placeableNumber, sweepableRadius, wallGridOf } from './wallGrid';
 
 /** The plan's rays: each value's direction, how far its ray reaches and the wall it stops on (−1 at the radius, or not cast). */
 interface Rays {
@@ -21,10 +21,10 @@ interface Rays {
  * wherever a run of hidden corners does not lie between two rays on one wall, away from the
  * ±π seam and from walls seen edge-on. The corners of hidden ends in such a run are written
  * from that wall. Null where the full sweep must run itself: with a limited wall in reach, or an
- * origin, radius or walls that cannot be placed on a grid (`placeableNumber`).
+ * origin or walls that cannot be placed on a grid (`placeableNumber`), or a radius no walk can end at.
  */
 export function culledSweep(origin: Point, radius: number, walls: readonly WallSegment[], channel?: WallChannel): Point[] | null {
-  if (!placeableNumber(origin.x) || !placeableNumber(origin.y) || !(radius >= 0) || !placeableNumber(radius)) return null;
+  if (!placeableNumber(origin.x) || !placeableNumber(origin.y) || !sweepableRadius(radius)) return null;
   const grid = wallGridOf(walls);
   if (!grid) return null;
   const query = rayQuery(grid, origin, radius, channel);

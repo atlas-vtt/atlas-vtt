@@ -12,8 +12,15 @@ const MAX_SIDE = 512;
 const MAX_LISTED = 8;
 /** How many grids are kept: one per wall array, the arrays used last. */
 const KEPT = 4;
-/** Farthest place from zero (px) a grid works with; walls or sweeps beyond it are left to the full sweep. */
-const MAX_PLACE = 1e15;
+/**
+ * Farthest place from zero (px) a grid works with, over a hundred times the largest map; walls or
+ * sweeps beyond it are left to the full sweep. A grid's answers rest on `GRID_MARGIN`, which must
+ * stay far above the rounding of a ray's hit (some parts in 10¹¹ of its length) and above the
+ * distance between two numbers a place can take: both hold with room to spare this near zero.
+ */
+const MAX_PLACE = 1e6;
+/** Longest radius a sweep through a grid may have: a ray's reach is a wall's or the radius itself, so it only has to be a number a walk can end at. */
+const MAX_RADIUS = 1e15;
 
 /** Memory a sweep reuses from one call to the next on the same walls. */
 export interface GridScratch {
@@ -163,10 +170,16 @@ function unchanged(grid: WallGrid, walls: readonly WallSegment[]): boolean {
 
 /**
  * Whether `value` is a number a grid can place: within `MAX_PLACE` of zero. Every number a grid
- * and its walks work out from such numbers stays finite, so every walk ends.
+ * and its walks work out from such numbers stays finite, so every walk ends, and exact enough for
+ * the cells along a ray to list every wall it may stop on.
  */
 export function placeableNumber(value: number): boolean {
   return Math.abs(value) <= MAX_PLACE;
+}
+
+/** Whether a sweep through a grid may reach `radius` far: no less than zero and no more than `MAX_RADIUS`. */
+export function sweepableRadius(radius: number): boolean {
+  return radius >= 0 && radius <= MAX_RADIUS;
 }
 
 function placeable(walls: readonly WallSegment[]): boolean {
