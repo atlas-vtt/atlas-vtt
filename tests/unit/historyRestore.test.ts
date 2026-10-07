@@ -68,6 +68,17 @@ describe('putting back what a step changed', () => {
     expect(result.b).toBe(b);
   });
 
+  it('keeps an entity whose id is __proto__, as a map file may name one', () => {
+    const odd = { v: 1 }; const b = { v: 2 }; const b2 = { v: 3 }; const c = { v: 4 };
+    const before = Object.fromEntries([['__proto__', odd], ['b', b]]) as Entities;
+    const after = { ...before, b: b2 };
+    const result = towards({ ...after, c }, after, before, 1) as Entities;
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype);
+    expect(keys(result)).toEqual(['__proto__', 'b', 'c']);
+    expect(Object.getOwnPropertyDescriptor(result, '__proto__')?.value).toBe(odd);
+    expect(result.b).toBe(b);
+  });
+
   it('gives back the old objects themselves where nothing else changed since', () => {
     const before = slice({ tokens: { a: { v: 1 } } }, { grid: { size: 70 } });
     const after = slice({ tokens: { a: { v: 2 } } }, { grid: { size: 50 } });

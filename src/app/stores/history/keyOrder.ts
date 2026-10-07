@@ -62,8 +62,7 @@ export class EntryList {
     }
     const keys = Object.keys(same);
     if (keys.length === entries.length && entries.every(([key, value], i) => keys[i] === key && same[key] === value)) return same;
-    const record: Record<string, unknown> = {};
-    for (const [key, value] of entries) record[key] = value;
-    return Object.freeze(record);
+    // `fromEntries` defines every key as the record's own, `__proto__` included.
+    return Object.freeze(Object.fromEntries(entries));
   }
 }
