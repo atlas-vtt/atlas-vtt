@@ -119,6 +119,15 @@ describe('session view, the peek and pictures of the scene', () => {
     s.peek(false);
     expect(samePixels(s.canvas(), gm)).toBe(true);
   });
+
+  it('numbers the window by its own sight in the command palette\'s player mode, which keeps the lighting and the GM\'s badges on the canvas', async () => {
+    const s = await build([A, B, C], (scene) => { scene.lighting.perception = perceiving({ B: 'unseen' }); });
+    const gm = s.canvas();
+    s.events.emit('player-mode-changed', true);
+    expect(samePixels(s.canvas(), gm)).toBe(true);
+    expect(samePixels(s.frame(), await showing([[A, 1], [C, 2]]))).toBe(true);
+    expect(samePixels(s.canvas(), gm)).toBe(true);
+  });
 });
 
 describe('session view while tokens are hidden and revealed', () => {

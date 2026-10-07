@@ -269,8 +269,8 @@ export class TokenRenderer {
     this.tokenContainer.zIndex = 0;
     this.viewport.addChild(this.tokenContainer);
     this.viewport.addChild(this.playerSight.outlineLayer);
-    // The canvas shows the players' badges while it shows their view, and the GM's again after.
-    this.playersView.listen(() => this.playerBadges.syncCanvas(this.playersSeeOnCanvas()));
+    // The canvas shows the players' badges while it sees as their frame does, so both number alike, and the GM's otherwise.
+    this.playersView.listen(() => this.playerBadges.syncCanvas(this.playerSight.sharesFrameSight() ? this.playersSeeOnCanvas() : null));
 
     this.dragRuler = new DragRuler(
       new DragRulerView(this.viewport, this.tokenContainer),
@@ -1267,7 +1267,7 @@ export class TokenRenderer {
     return seenByPlayers(this.store.getState().objects.tokens, this.playerFramePerception(lighting));
   }
 
-  /** The same while the canvas shows the players' view (session view, the peek); null in the GM view. */
+  /** The same by the canvas's own sight while it shows the players' view (session view, the peek, the palette's player mode); null in the GM view. */
   public playersSeeOnCanvas(): TokenSeen | null {
     const shows = this.playerSight.showsPlayers() || this.isInPlayerMode();
     return shows ? seenByPlayers(this.store.getState().objects.tokens, this.playerSight.perception()) : null;

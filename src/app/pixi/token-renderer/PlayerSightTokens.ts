@@ -56,6 +56,15 @@ export class PlayerSightTokens {
     return !!this.active?.() || !!this.playerView?.();
   }
 
+  /**
+   * Whether the canvas, while it shows the players' view, sees the tokens as a players' frame does:
+   * the lighting shows their view on it (session view, the peek), or no lighting is wired. The command
+   * palette's player mode leaves the lighting out on the canvas, which a frame applies.
+   */
+  sharesFrameSight(): boolean {
+    return this.active?.() ?? true;
+  }
+
   private fogActive(perception?: TokenPerception): boolean {
     return !!perception || this.showsPlayers();
   }

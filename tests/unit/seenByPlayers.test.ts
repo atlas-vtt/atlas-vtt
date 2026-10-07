@@ -58,3 +58,18 @@ describe('PlayerSightTokens.showsPlayers', () => {
     expect(sight.showsPlayers()).toBe(true);
   });
 });
+
+describe('PlayerSightTokens.sharesFrameSight', () => {
+  it('holds while the lighting shows the players\' view on the canvas or none is wired, not while the canvas leaves it out', () => {
+    const players = { active: false, playerView: true };
+    const sight = sightOf({}, () => null, players);
+    // The command palette's player mode: the canvas shows the players' view without their lighting.
+    expect(sight.sharesFrameSight()).toBe(false);
+    players.active = true;
+    expect(sight.sharesFrameSight()).toBe(true);
+    players.active = false;
+    // The lighting taken off the map (`clearLighting`).
+    sight.setProvider(() => undefined);
+    expect(sight.sharesFrameSight()).toBe(true);
+  });
+});

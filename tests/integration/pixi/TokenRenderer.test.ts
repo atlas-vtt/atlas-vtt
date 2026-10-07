@@ -1457,6 +1457,31 @@ describe('TokenRenderer Integration Tests', () => {
       await expectLooks(['A', 'O'], ['gm 1', 'players 2']);
     });
 
+    it('numbers the player window by its own sight while the command palette\'s player mode leaves the lighting off the canvas', async () => {
+      await goblins({ id: 'A' }, { id: 'B' }, { id: 'C' });
+      // B stands in the dark: the players' sight leaves it out, but the palette's player mode applies no lighting on the canvas.
+      perception = (id) => (id === 'B' ? 'unseen' : 'seen');
+      eventBus.emit('player-mode-changed', true);
+      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
+      expect(frameLooks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
+      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
+      // Session view brings the players' lighting to the canvas, and with it the window's numbers.
+      store.getState().setGMView(false);
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
+      store.getState().setGMView(true);
+      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
+      expect(frameLooks('A', 'B', 'C')).toEqual(['gm 1', 'none', 'players 2']);
+    });
+
+    it('holds the window\'s numbers on the canvas in the command palette\'s player mode where no lighting is wired', async () => {
+      tokenRenderer.clearLighting();
+      await goblins({ id: 'A' }, { id: 'B', isHidden: true }, { id: 'C' });
+      eventBus.emit('player-mode-changed', true);
+      await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
+      eventBus.emit('player-mode-changed', false);
+      expect(looks('A', 'B', 'C')).toEqual(['gm 1', 'gm 2', 'gm 3']);
+    });
+
     it('numbers anew when the same map loads again with other tokens', async () => {
       await goblins({ id: 'A' }, { id: 'B' });
       store.getState().setGMView(false);
