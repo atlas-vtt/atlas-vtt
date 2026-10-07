@@ -7,6 +7,9 @@ vi.mock('../../src/app/services/AssetService', () => ({
   },
 }));
 
+// The facades load the present path, which loads the view code; none of it runs here.
+vi.mock('../../src/app/services/presentToPlayers', () => ({ presentTabToPlayers: vi.fn(), stopPresenting: vi.fn() }));
+
 vi.mock('../../src/api/atlasViewHooks', () => ({
   ATLAS_VIEW_HOOKS: { viewTypes: ['atlas-vtt'], isMapView: (): boolean => false, activeView: (): null => null },
 }));

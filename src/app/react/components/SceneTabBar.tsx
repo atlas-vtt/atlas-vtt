@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import { ChevronDown, Eye, Plus, X } from 'lucide-react';
+import React, { useState, useSyncExternalStore } from 'react';
+import { ChevronDown, Eye, EyeOff, Plus, X } from 'lucide-react';
 import { useStore } from 'zustand';
 import { cn } from '../../../utils/cn';
 import { useSceneTabStore } from '../hooks/useSceneTabStore';
 import { useTabStripOverflow } from '../hooks/useTabStripOverflow';
+import { usePresentedTabId } from '../hooks/usePresentedTabId';
+import { activePresentationTarget, presentationTargetsRegistered, subscribePresentationTargets } from '../../services/presentationTargets';
+import { stopPresenting } from '../../services/stopPresenting';
 import { playerWindowStore } from '../../stores/playerWindowStore';
 import type { SceneTab } from '../../types/sceneTabTypes';
 import { LabelTooltip, TooltipProvider } from '../../packages/components/primitives/tooltip';
@@ -53,12 +56,25 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
 
   const tabs = useStore(store, (s) => s.tabs);
   const activeTabId = useStore(store, (s) => s.activeTabId);
-  const presentedTabId = useStore(playerWindowStore, (s) => s.presentedTabId);
+  const scenePresentedTabId = usePresentedTabId(store);
+  const windowTabId = useStore(playerWindowStore, (s) => s.presentedTabId);
   const isPlayerWindowOpen = useStore(playerWindowStore, (s) => s.isOpen);
+  // Without a registered target the eye marks what the player window shows, as it always has.
+  const targetsRegistered = useSyncExternalStore(subscribePresentationTargets, presentationTargetsRegistered);
+  const presentedTabId = targetsRegistered ? scenePresentedTabId : isPlayerWindowOpen ? windowTabId : null;
+  const target = useSyncExternalStore(subscribePresentationTargets, activePresentationTarget);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
   const { overflows, hiddenBefore, hiddenAfter } = useTabStripOverflow(strip, activeTabId);
 
   if (tabs.length === 0) return null;
+
+  const presentLabel = (tab: SceneTab, isPresented: boolean): string => {
+    const name = tab.displayName;
+    if (isPresented && target) return t('tabs.stopPresenting', { name });
+    // Only a player window or a target shows the scene; without either the eye offers to open the window.
+    if (isPresented && isPlayerWindowOpen) return t('tabs.shown', { name });
+    return target ? t('tabs.presentTo', { name, target: target.label }) : t('tabs.show', { name });
+  };
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -75,7 +91,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
         >
           {tabs.map((tab: SceneTab) => {
             const isActive = tab.id === activeTabId;
-            const isPresented = isPlayerWindowOpen && tab.id === presentedTabId;
+            const isPresented = tab.id === presentedTabId;
             const stateClass = isActive
               ? 'atlas-scene-tab--active'
               : tab.isLoaded
@@ -105,10 +121,11 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
               >
                 {/* Show and close sit at opposite ends, so one is never clicked for the other */}
                 <TabActionButton
-                  icon={Eye}
-                  label={t(isPresented ? 'tabs.shown' : 'tabs.show', { name: tab.displayName })}
+                  icon={isPresented && target ? EyeOff : Eye}
+                  label={presentLabel(tab, isPresented)}
                   isActive={isPresented}
-                  onClick={() => onPresentTab(tab.id)}
+                  // With a target active, the presented scene's eye hides it again.
+                  onClick={() => (isPresented && target ? stopPresenting() : onPresentTab(tab.id))}
                 />
                 <LabelTooltip side="bottom" label={tab.filePath}>
                   <span className="atlas-scene-tab__name">{tab.displayName}</span>

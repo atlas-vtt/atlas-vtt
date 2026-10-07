@@ -1,5 +1,6 @@
 import type { Plugin } from 'obsidian';
 import type { AtlasCapability, Disposer, ViewId } from './common';
+import type { PresentationApi } from './presentation';
 import type { RulesApi } from './rules';
 import type { AtlasSettingKey, SettingsApi, StorageApi } from './settings';
 import type { ViewInfo, ViewsApi } from './views';
@@ -33,6 +34,7 @@ export interface AtlasExtension {
     /** The calling plugin's manifest id. */
     readonly id: string;
     readonly views: ViewsApi;
+    readonly presentation: PresentationApi;
     readonly rules: RulesApi;
     readonly settings: SettingsApi;
     readonly storage: StorageApi;

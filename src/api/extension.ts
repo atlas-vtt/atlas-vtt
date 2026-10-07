@@ -2,6 +2,7 @@ import type { DisposerSet } from './disposers';
 import { API_EVENTS, type ApiEvents } from './events';
 import { acceptsListener } from './listenerCheck';
 import type { ApiServices } from './services';
+import { presentationApi } from './presentation';
 import { rulesApi } from './rules';
 import { settingsApi } from './settings';
 import { storageApi } from './storage';
@@ -28,6 +29,7 @@ export function buildExtension(scope: ExtensionScope, services: ApiServices): At
     return scope.disposers.add(scope.events.on(event, listener));
   }
   return Object.freeze({ id: scope.id, on, views: viewsApi(services.views, scope.disposers),
+    presentation: presentationApi(services.views, scope.disposers, scope.id),
     rules: rulesApi(services.app),
     settings: settingsApi(services.settings), storage: storageApi(services.app, scope.id) });
 }

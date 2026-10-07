@@ -16,7 +16,7 @@ An extension requires its major version and checks `api.has(capability)` before 
 
 | API version | Capabilities | `AtlasExtension` | Events |
 |---|---|---|---|
-| 1.0.0 | `views`, `rules`, `settings`, `storage` | `id`, `on`, `views`, `rules`, `settings`, `storage` | `unload`, `map-loaded`, `map-closed`, `rules-changed`, `settings-changed` |
+| 1.0.0 | `views`, `rules`, `settings`, `storage`, `presentation` | `id`, `on`, `views`, `rules`, `settings`, `storage`, `presentation` | `unload`, `map-loaded`, `map-closed`, `rules-changed`, `settings-changed` |
 
 The report in `api-report/` (entry `api-report/src/api/public.d.ts`) is the source of truth for what the running version contains.
 
@@ -31,6 +31,10 @@ The reference further down says what each group is for; this section collects th
 - **One kind of view.** `ViewInfo.kind` is `'map'`, Atlas's map views. A later API version may add other kinds of view; an extension that picks, hosts or presents map views filters on `kind === 'map'` from the start.
 - **Distance per cell.** A scene can set its own distance per cell. `GridState.unitDistanceOverride` holds it (unset: the collection's), and `MeasurementSettings.ruleDistance` is the collection's distance per cell that distances written in squares convert with; `unitDistance` is the scene's where it sets one. `rules.forMap` gives the collection's settings.
 - **Grid limits.** Atlas draws no grid at all for a size of 0 or less, or past 2,000 cells along a side, wherever it comes from, and a saved grid whose origin lies farther than 100,000 px away is moved next to the map by whole cells when the map loads, which draws the same grid.
+
+### Presentation
+
+- **`presentationId`.** A presented scene carries a `presentationId`: the same while the scene is held and resumed, new for every presentation and never repeated after Atlas reloads.
 
 ## Rules every group follows
 
@@ -52,6 +56,8 @@ The report (`api-report/`, entry `src/api/public.d.ts`) has every member with it
 - **`rules`.** `forMap(mapPath)` gives the collection's grid defaults, measurement (with the GM's cone angle), dice, initiative, conditions and resources, or Atlas's defaults outside a collection. `rules-changed` names the collection whose rules changed, or `null` once the asset index has loaded.
 - **`settings`.** `get(key)` reads one of the four settings an extension may know (`laserPointer`, `diceLook`, `diceDisplay`, `playerView`); `settings-changed` names a key whose value changed. Read-only.
 - **`storage`.** `folder()` creates and returns `atlas-vtt/.atlas-data/extensions/<extension id>/`, a dot folder Obsidian does not index; the id must be kebab-case.
+- **`presentation`.** `current()` gives the presented scene (also while held), `present(viewId, tabId?)` presents a tab and `stop()` stops; `subscribe` hears `presented`, `held` and `cleared`, each with a `presentationId` that names one presentation. `addTarget` adds an audience besides the player window, which changes what the scene tab's eye does while it is active.
+  - **Stock presenting until a target is registered.** Until an extension registers a target with `addTarget` (active or not), Atlas presents exactly as it does without the API: the player window, "Send current map to player view", and the eye, marked while the open window shows its tab. Then the presented scene is the player window's: `current()` is the tab the open window shows (null once the window closes), `present` goes through the player window as that command does (opening it when it is closed), and `stop()` lets the window keep its last frame and drops the marker, as closing the presented map does. Once a target is registered, Atlas keeps a presented scene of its own: the eye's marker stays until Stop presenting (whether or not the window is open), an open player window follows a scene presented from anywhere, and the Present to players and Stop presenting commands exist. Removing the last target goes back to stock presenting.
 
 ## Semver rules
 

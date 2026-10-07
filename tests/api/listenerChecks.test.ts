@@ -21,6 +21,7 @@ describe('a listener that is not a function', () => {
       ['views.subscribe', () => ext.views.subscribe('v1', 'x' as never)],
       ['views.watchCamera', () => ext.views.watchCamera('v1', 1 as never)],
       ["on('unload')", () => ext.on('unload', 'later' as never)],
+      ['presentation.subscribe', () => ext.presentation.subscribe('x' as never)],
       ['on: "nope"', () => ext.on('nope' as never, () => undefined)],
     ];
     for (const [call, register] of refused) {

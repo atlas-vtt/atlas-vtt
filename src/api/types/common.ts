@@ -10,4 +10,5 @@ export interface Point {
 }
 
 export type AtlasCapability =
-  | 'views' | 'rules' | 'settings' | 'storage';
+  | 'views' | 'presentation' | 'rules'
+  | 'settings' | 'storage';

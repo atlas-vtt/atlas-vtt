@@ -3,6 +3,7 @@ import { createStore } from 'zustand/vanilla';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import type { BeforeRenderCapture, PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
+import { playerWindowStore, resetPlayerWindowStore } from '../../src/app/stores/playerWindowStore';
 
 vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
@@ -153,5 +154,18 @@ describe('player window mirroring', () => {
     nextFrame();
     nextFrame();
     expect(capture).toHaveBeenCalledTimes(3);
+  });
+
+  it('forgets the presented tab when its source is released, so presenting it again re-targets the window', () => {
+    resetPlayerWindowStore();
+    const { service } = mirror();
+    const store = createStore(() => ({})) as any;
+    (service as any).streamSource = { ...(service as any).streamSource, store };
+    playerWindowStore.setState({ presentedTabId: 'scene-a' });
+
+    service.releaseSource(store);
+
+    expect(playerWindowStore.getState().presentedTabId).toBeNull();
+    resetPlayerWindowStore();
   });
 });
