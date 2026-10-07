@@ -46,6 +46,7 @@ export class LightingFeature {
       this.deps.store.getState().setSceneLightingPanelOpen(false);
       this.leaveLightingTool();
     }
+    this.deps.onPlayerSightChange?.();
     requestRender(this.deps.app);
   }
 

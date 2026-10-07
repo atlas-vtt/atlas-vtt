@@ -30,7 +30,7 @@ import { LightRangeRings } from './LightRangeRings';
 import { LightingModes } from './LightingModes';
 import { showExploredTravelNotice, showZonesFullNotice } from './lightingNotices';
 import { closeStalePopovers } from './popoverGuards';
-import { playerDoorSight, playerLightingLayers, playerTokenSight, type GmOverlays } from './playerLightingLayers';
+import { playerDoorSight, playerLightingLayers, playerLightingOf, playerTokenSight, type GmOverlays, type PlayerLighting } from './playerLightingLayers';
 import { PerceptionMemo, type TokenPerception } from '../../vision/tokenPerception';
 import type { SceneLightingView } from './sceneLightingView';
 import { SessionLighting } from './SessionLighting';
@@ -51,6 +51,8 @@ export interface LightingControllerDeps {
   grid?: () => UnlitGrid | null;
   /** How each token perceives; unset, by its own vision and its linked statblock (`tokenSensesResolver`). */
   senses?: TokenSensesResolver;
+  /** What the players see may have changed: sight was worked out anew, or lighting came or went (`playerLighting`). */
+  onPlayerSightChange?: () => void;
   /** Committed fog for the current map; null when its geometry is invalid. */
   fogCoverage?: () => FogCoverage | null;
 }
@@ -185,6 +187,9 @@ export class LightingController {
     return playerTokenSight(this.renderer, state.objects.tokens, { conditions: this.sightRules().conditions, held: heldForSight(state) }, this.perceptions);
   }
 
+  /** What the players' window decides what they see by, for players outside the player window; undefined while the scene is unlit. */
+  playerLighting(): PlayerLighting | undefined { return playerLightingOf(this.renderer, this.playerSight(), this.deps.fogCoverage?.()); }
+
   /** The senses and conditions of the map's collection, and how each token perceives. */
   private sightRules(): SightRules {
     return this.rules.current();
@@ -256,6 +261,7 @@ export class LightingController {
   /** In the players' view, tokens show and hide as the sight they are checked against changes; in the GM's, the sight aids follow. The players' door badges follow in both. */
   private onSightChange(): void {
     if (!this.constructed) return;
+    this.deps.onPlayerSightChange?.();
     this.doors.refreshPlayers();
     if (this.tokens && this.session.active) this.tokens.refreshPlayerSight();
     else this.sightAids.schedule();

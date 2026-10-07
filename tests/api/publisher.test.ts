@@ -16,6 +16,7 @@ vi.mock('../../src/api/atlasViewHooks', () => ({
 
 import type AtlasVTTPlugin from '../../main';
 import { ExtensionApiPublisher } from '../../src/api/ExtensionApiPublisher';
+import { SightFramesByView } from '../../src/api/sightFramesByView';
 import { fakeApp, fakePlugin } from './apiFakes';
 
 function atlas(): { plugin: AtlasVTTPlugin; triggered: ReturnType<typeof fakeApp>['triggered'] } {
@@ -97,5 +98,15 @@ describe('ExtensionApiPublisher', () => {
     plugin.api?.connect(fakePlugin('ext'));
     expect(onChange).toHaveBeenCalledTimes(1);
     publisher.stop();
+  });
+
+  it('disposes the sight frames of every view on stop', async () => {
+    initialize.mockResolvedValue(undefined);
+    const dispose = vi.spyOn(SightFramesByView.prototype, 'dispose');
+    const publisher = new ExtensionApiPublisher(atlas().plugin);
+    await publisher.start();
+    publisher.stop();
+    expect(dispose).toHaveBeenCalledTimes(1);
+    dispose.mockRestore();
   });
 });

@@ -3,7 +3,8 @@ import type { WallSegment } from '../../types/wallTypes';
 import type { FogCoverage } from '../../fog/fogCoverage';
 import { doorMiddle, doorsInSight } from '../../vision/doorSight';
 import { wallList } from '../../vision/wallList';
-import type { PerceptionOptions } from '../../vision/perception';
+import type { PerceptionOptions, SeenSpot } from '../../vision/perception';
+import type { AmbientLight, LightReach, Sight } from '../../vision/sight';
 import { tokenPerception, type PerceptionMemo, type TokenPerception } from '../../vision/tokenPerception';
 import type { HideableLayer, LayerVisibility } from '../playerSafeFrame';
 import type { SceneLightingView } from './sceneLightingView';
@@ -77,4 +78,42 @@ export function playerDoorSight(
     if (seen.has(wall.id) && fog.covers(doorMiddle(wall))) seen.delete(wall.id);
   }
   return seen;
+}
+
+/**
+ * What the players' window decides what they see by, for players outside the player window:
+ * how they perceive each token, and what the lit scene shows them of the map.
+ */
+export interface PlayerLighting {
+  /** False while `sight`, `reaches` and `spots` may still be another scene's (`SceneLightingView.sightReady`). */
+  ready: boolean;
+  perception: TokenPerception;
+  sight: Sight;
+  ambient: AmbientLight;
+  reaches: readonly LightReach[];
+  spots: readonly SeenSpot[];
+  /** The view shows the scene's explored memory where no token sees. */
+  showsExplored: boolean;
+  /** The memory the view shows may hold less than the saved mask (`SceneLightingView.exploredSettling`): the mask would show too much. */
+  exploredSettling: boolean;
+  /**
+   * The scene's committed fog, which the players' frame always hides tokens under (`PlayerSightTokens.framePerception`);
+   * null while its geometry is invalid, which the window covers whole. Unset where the view has no fog.
+   */
+  fog?: FogCoverage | null;
+}
+
+/** The players' lighting of a lit scene, `perception` as `playerTokenSight` gave it, with the scene's `fog`; undefined while the scene is unlit. */
+export function playerLightingOf(
+  lighting: Pick<SceneLightingView, 'sightReady' | 'currentSight' | 'ambientLight' | 'lightReaches' | 'seenSpots' | 'showsExplored' | 'exploredSettling'>,
+  perception: TokenPerception | undefined,
+  fog?: FogCoverage | null,
+): PlayerLighting | undefined {
+  if (!perception) return undefined;
+  return {
+    ready: lighting.sightReady(), perception, sight: lighting.currentSight(), ambient: lighting.ambientLight(),
+    reaches: lighting.lightReaches(), spots: lighting.seenSpots(), showsExplored: lighting.showsExplored(),
+    exploredSettling: lighting.exploredSettling(),
+    ...(fog !== undefined && { fog }),
+  };
 }

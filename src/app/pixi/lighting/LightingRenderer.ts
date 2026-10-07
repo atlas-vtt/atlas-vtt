@@ -3,8 +3,9 @@ import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand/vanilla';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { ExploredEdit } from '../../lighting/exploredEdits';
-import { sceneLook, type SceneLook } from '../../lighting/sceneLightingOptions';
+import { exploredMemoryOn, sceneLook, type SceneLook } from '../../lighting/sceneLightingOptions';
 import type { SceneLighting } from '../../types/lightingTypes';
+import type { SeenSpot } from '../../vision/perception';
 import type { ViewState } from '../../types/viewState';
 import { SEES_ALL, type AmbientLight, type AmbientZone, type LightReach, type Sight } from '../../vision/sight';
 import { GM_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
@@ -86,6 +87,9 @@ export class LightingRenderer implements SceneLightingView {
   private readonly gmSpots = new SceneSpots(GM_SIGHT_POLICY);
   private reaches: LightReach[] = [];
   private sight: Sight = SEES_ALL;
+  private spotsNow: readonly SeenSpot[] = [];
+  /** Sight, reaches and spots belong to the scene the store holds (`sightReady`). */
+  private fresh = false;
   /** The zones of the scene as the rules read them, and the ambient light made of them and the scene's lighting. */
   private zones: readonly AmbientZone[] = [];
   private ambient: { lighting: SceneLighting; zones: readonly AmbientZone[]; light: AmbientLight } | null = null;
@@ -114,6 +118,8 @@ export class LightingRenderer implements SceneLightingView {
       onTravel: (undone) => deps.exploredWatcher?.memoryTravelled(undone),
       onChange: () => requestRender(deps.app),
       guard: (work) => this.run(work),
+      // Inside `run`, which tells whoever waits on the memory.
+      onSettled: () => { this.sightChanged = true; },
     });
     renderer.canvas.addEventListener('webglcontextlost', this.onContextLost);
     this.layer.zIndex = LIGHTING_Z_INDEX;
@@ -132,6 +138,10 @@ export class LightingRenderer implements SceneLightingView {
   currentSight(): Sight { return this.sight; }
   sightIsCurrent(): boolean { return !this.isEnabled() || this.lastScene !== null; }
   lightReaches(): LightReach[] { return this.reaches; }
+  seenSpots(): readonly SeenSpot[] { return this.spotsNow; }
+  showsExplored(): boolean { return exploredMemoryOn(this.deps.store.getState().lighting); }
+  sightReady(): boolean { return this.fresh && !this.stopped && !contextLost(this.deps.app.renderer); }
+  exploredSettling(): boolean { return this.memory.settling(); }
   /** The scene's lighting as the rules read it: with its zones when it has any, the same object while both stay. */
   ambientLight(): AmbientLight {
     const { lighting } = this.deps.store.getState();
@@ -166,6 +176,7 @@ export class LightingRenderer implements SceneLightingView {
   beforeMapUnload(): void {
     this.run(() => this.memory.beforeMapUnload());
     this.model.reset();
+    this.fresh = false;
     this.lastScene = null;
     this.endAttempt();
   }
@@ -180,7 +191,9 @@ export class LightingRenderer implements SceneLightingView {
   private run(work: () => void): void {
     if (this.stopped) return;
     try {
+      // What changes meanwhile is not worked out: until the restore rebuilds, sight is stale.
       if (contextLost(this.deps.app.renderer)) {
+        this.fresh = false;
         this.lastScene = null;
         return;
       }
@@ -216,6 +229,7 @@ export class LightingRenderer implements SceneLightingView {
       this.model.reset();
       this.lastScene = null;
       this.endAttempt();
+      this.fresh = false;
       return;
     }
     if (!this.beginAttempt()) {
@@ -227,7 +241,10 @@ export class LightingRenderer implements SceneLightingView {
 
     const { model, rebuilt } = this.model.update(state, bounds, this.deps.measurement, this.deps.rules);
     const base = rebuilt || !this.lastScene ? (this.lastScene = this.takeModel(model, state, bounds)) : this.lastScene;
-    const spots = this.spots.update(model, state, this.deps.measurement, this.deps.rules);
+    const spots = (this.spotsNow = this.spots.update(model, state, this.deps.measurement, this.deps.rules));
+    // Sight that was not the scene's is again (a restored context may rebuild nothing): who waited on it is told.
+    if (!this.fresh) this.sightChanged = true;
+    this.fresh = true;
     const gmSight = model.gmSight ?? model.sight;
     // Both pictures always show the same tokens (`GM_SIGHT_POLICY`), so the same sight gives the same footprints.
     const gmSpots = gmSight === model.sight ? spots : this.gmSpots.update(model, state, this.deps.measurement, this.deps.rules, gmSight);

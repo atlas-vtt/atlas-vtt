@@ -2,6 +2,7 @@ import type { Plugin } from 'obsidian';
 import type { AtlasCapability, Disposer, ViewId } from './common';
 import type { DiceApi } from './dice';
 import type { LasersApi } from './lasers';
+import type { LightingApi } from './lighting';
 import type { PresentationApi } from './presentation';
 import type { RulesApi } from './rules';
 import type { AtlasSettingKey, SettingsApi, StorageApi } from './settings';
@@ -39,6 +40,7 @@ export interface AtlasExtension {
     readonly presentation: PresentationApi;
     readonly dice: DiceApi;
     readonly lasers: LasersApi;
+    readonly lighting: LightingApi;
     readonly rules: RulesApi;
     readonly settings: SettingsApi;
     readonly storage: StorageApi;

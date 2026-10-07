@@ -4,6 +4,7 @@ import { API_EVENTS, type ApiEvents } from './events';
 import { acceptsListener } from './listenerCheck';
 import type { ApiServices } from './services';
 import { lasersApi } from './lasers';
+import { lightingApi } from './lighting';
 import { presentationApi } from './presentation';
 import { rulesApi } from './rules';
 import { settingsApi } from './settings';
@@ -32,7 +33,7 @@ export function buildExtension(scope: ExtensionScope, services: ApiServices): At
   }
   return Object.freeze({ id: scope.id, on, views: viewsApi(services.views, scope.disposers),
     presentation: presentationApi(services.views, scope.disposers, scope.id), dice: diceApi(services.app, scope.disposers, services.views),
-    lasers: lasersApi(services.views, scope.disposers),
+    lasers: lasersApi(services.views, scope.disposers), lighting: lightingApi(services.views, services.sightFrames, scope.disposers),
     rules: rulesApi(services.app),
     settings: settingsApi(services.settings), storage: storageApi(services.app, scope.id) });
 }

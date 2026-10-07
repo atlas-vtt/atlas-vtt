@@ -8,12 +8,14 @@ import { buildExtension } from './extension';
 import { watchRules } from './rules';
 import { watchSettings } from './settings';
 import type { ApiServices } from './services';
+import { SightFramesByView } from './sightFramesByView';
 import { ViewTracker } from './viewTracker';
 
 /** Publishes `plugin.api` once storage and the asset index have settled (loaded or failed), and takes it down on unload. */
 export class ExtensionApiPublisher {
   private host: AtlasApiHost | null = null;
   private views: ViewTracker | null = null;
+  private sightFrames: SightFramesByView | null = null;
   private stopWatches: Array<() => void> = [];
   private stopped = false;
 
@@ -33,12 +35,14 @@ export class ExtensionApiPublisher {
       app: this.plugin.app,
       capabilities: LANDED_CAPABILITIES,
       build: (scope) => buildExtension(scope, services),
-      onFirstConnect: () => this.watch(host, views),
+      onFirstConnect: () => this.watch(host, views, sightFrames),
     });
     const views = new ViewTracker(this.plugin.app, host.apiEvents, ATLAS_VIEW_HOOKS);
-    services = { app: this.plugin.app, plugin: this.plugin, views, settings: this.plugin.settingsService };
+    const sightFrames = new SightFramesByView();
+    services = { app: this.plugin.app, plugin: this.plugin, views, settings: this.plugin.settingsService, sightFrames };
     this.host = host;
     this.views = views;
+    this.sightFrames = sightFrames;
     this.plugin.api = host.api;
     host.publish();
   }
@@ -47,8 +51,9 @@ export class ExtensionApiPublisher {
    * The view tracker and the watches behind the API's events, started as the first extension connects: until then
    * stock Atlas carries no listener for extensions.
    */
-  private watch(host: AtlasApiHost, views: ViewTracker): void {
+  private watch(host: AtlasApiHost, views: ViewTracker, sightFrames: SightFramesByView): void {
     if (this.stopped) return;
+    this.stopWatches.push(host.apiEvents.on('map-closed', (viewId) => sightFrames.close(viewId)));
     views.start();
     this.stopWatches.push(watchRules(this.plugin.app, host.apiEvents, true), watchSettings(this.plugin.settingsService, host.apiEvents));
     // Present to players and Stop presenting come with the first presentation target an extension registers.
@@ -62,6 +67,8 @@ export class ExtensionApiPublisher {
     this.host = null;
     this.views?.stop();
     this.views = null;
+    this.sightFrames?.dispose();
+    this.sightFrames = null;
     this.plugin.api = undefined;
   }
 }
