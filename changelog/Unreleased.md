@@ -1,5 +1,7 @@
 ## Improved
 
+- Sight and light are worked out much faster on maps with thousands of walls, such as large imported maps.
+
 - Fog paint and erase strokes now use consistent shapes.
 
 - Simplified how token artwork and collection rules update.
