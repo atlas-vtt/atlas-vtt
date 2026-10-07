@@ -97,7 +97,6 @@ export function createHistory(tracked: TrackedStore): History {
     untracked: (fn) => attribution.asSystem(fn),
   }));
   const get = (): HistoryState => store.getState();
-  const setStacks = (stacks: Partial<Stacks>): void => store.setState(stacks);
 
   /** The stacks with what was written since the mark folded into the steps next to the present. */
   function folded(target: HistorySnapshot): Stacks {
@@ -113,17 +112,22 @@ export function createHistory(tracked: TrackedStore): History {
     };
   }
 
+  /** Folds what was written since the mark into the steps next to the present, as the store holds it now. */
+  function foldNow(): void {
+    const stacks = folded(tracked.read());
+    if (stacks.pastStates !== get().pastStates || stacks.futureStates !== get().futureStates) store.setState(stacks);
+  }
+
   /** The GM's work under way is over: what it left in the store belongs to the steps next to the present. */
   function settle(): void {
     if (openWrites > 0 || depth > 0 || !mark) return;
-    const stacks = folded(tracked.read());
-    if (stacks.pastStates !== get().pastStates || stacks.futureStates !== get().futureStates) setStacks(stacks);
+    foldNow();
     mark = null;
   }
 
   function push(step: HistoryStep): void {
     const { pastStates } = folded(step.before);
-    setStacks({ pastStates: [...pastStates, step].slice(-HISTORY_LIMIT), futureStates: [] });
+    store.setState({ pastStates: [...pastStates, step].slice(-HISTORY_LIMIT), futureStates: [] });
     if (mark) mark = step.after;
   }
 
@@ -139,6 +143,7 @@ export function createHistory(tracked: TrackedStore): History {
       write();
       written = true;
     } finally {
+      // The write's listeners have run: what they wrote belongs to this write.
       if (written) decide(before);
       if (ownWork) {
         openWrites -= 1;
@@ -162,10 +167,11 @@ export function createHistory(tracked: TrackedStore): History {
     const current = tracked.read();
     const stacks = folded(current);
     const step = stacks[source][stacks[source].length - 1]!;
-    setStacks({ ...stacks, [source]: stacks[source].slice(0, -1) });
+    store.setState({ ...stacks, [source]: stacks[source].slice(0, -1) });
     const slice = direction === 'undo' ? restore(current, step.after, step.before) : restore(current, step.before, step.after);
     tracked.write(slice);
-    setStacks({ [target]: [...get()[target], step] });
+    // After the write: a step its listeners recorded has cleared the redo stack first.
+    store.setState({ [target]: [...get()[target], step] });
     if (mark) mark = slice;
   }
 
@@ -190,8 +196,7 @@ export function createHistory(tracked: TrackedStore): History {
 
   /** Folds what an outermost transaction left in the store into the steps next to the present. */
   function closeTransaction(): void {
-    const stacks = folded(tracked.read());
-    if (stacks.pastStates !== get().pastStates || stacks.futureStates !== get().futureStates) setStacks(stacks);
+    foldNow();
     settle();
   }
 
@@ -216,7 +221,7 @@ export function createHistory(tracked: TrackedStore): History {
     depth = 0;
     start = null;
     mark = openWrites > 0 ? tracked.read() : null;
-    setStacks({ pastStates: [], futureStates: [] });
+    store.setState({ pastStates: [], futureStates: [] });
   }
 
   return { store, record };
