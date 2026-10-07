@@ -1,6 +1,10 @@
 import type { Setting } from 'obsidian';
 import { DICE_DISPLAY_HINTS, DICE_DISPLAY_OPTIONS, isDiceDisplay } from '../dice3d/diceDisplay';
+import { customLooks, onCustomLooksChange } from '../dice3d/customLooks';
 import { DICE_COLOUR_OPTIONS, DICE_FONT_OPTIONS, isDiceColour, isDiceFont } from '../dice3d/diceLook';
+import { diceLookChoices } from '../dice3d/diceLookChoices';
+import { renderLookPreviews } from '../dice3d/lookPreviews';
+import { t } from '../i18n';
 import type { SettingsService } from '../services/SettingsService';
 import type { AtlasSettingSection } from './settingSections';
 
@@ -28,6 +32,61 @@ function addLookDropdown(
   return unsubscribe;
 }
 
+/** The dice look dropdown: Atlas's own and every registered look, following registrations and the command palette. */
+function renderLookChoice(setting: Setting, settings: SettingsService): () => void {
+  let stops: Array<() => void> = [];
+  // A preview of the look chosen, made as the command palette's are (`renderLookPreviews`); none while only Atlas's exists.
+  const preview = setting.controlEl.createEl('img', { cls: 'atlas-dice-look-preview', attr: { alt: '', draggable: 'false' } });
+  let previews: Record<string, string> = {};
+  let rendering = 0;
+  let lookKey = '';
+  const showPreview = (): void => {
+    const src = customLooks().length > 0 ? previews[settings.getDiceLookId()] : undefined;
+    preview.hidden = !src;
+    if (src) preview.src = src;
+    else preview.removeAttribute('src');
+  };
+  const renderPreviews = (): void => {
+    const serial = ++rendering;
+    lookKey = JSON.stringify(settings.getDiceLook());
+    if (customLooks().length === 0) {
+      showPreview();
+      return;
+    }
+    void renderLookPreviews(setting.controlEl.ownerDocument).then((next) => {
+      if (serial !== rendering) return;
+      previews = next;
+      showPreview();
+    });
+  };
+  setting.addDropdown((dropdown) => {
+    const select = dropdown.selectEl;
+    const fill = (): void => {
+      const stored = settings.getDiceLookId();
+      const choices = diceLookChoices(stored);
+      select.replaceChildren();
+      dropdown.addOptions(Object.fromEntries(choices.map(({ value, label }) => [value, label]))).setValue(stored);
+      const missing = choices.some((choice) => !choice.loaded);
+      setting.setDesc(missing ? t('dice.look.notLoadedHint') : t('dice.look.desc'));
+      showPreview();
+    };
+    fill();
+    renderPreviews();
+    dropdown.onChange((value) => settings.setDiceLookId(value));
+    stops = [
+      settings.onChange(() => {
+        fill();
+        if (JSON.stringify(settings.getDiceLook()) !== lookKey) renderPreviews();
+      }),
+      onCustomLooksChange(() => { fill(); renderPreviews(); }),
+    ];
+  });
+  return () => {
+    rendering++;
+    stops.forEach((stop) => stop());
+  };
+}
+
 /** How dice rolls are shown. */
 export function diceSettingsSection(settings: SettingsService): AtlasSettingSection {
   return {
@@ -53,6 +112,11 @@ export function diceSettingsSection(settings: SettingsService): AtlasSettingSect
         });
         return unsubscribe;
       },
+    }, {
+      name: t('dice.look.name'),
+      desc: t('dice.look.desc'),
+      aliases: ['dice', 'look', 'skin', 'theme', 'faces', 'pack'],
+      render: (setting) => renderLookChoice(setting, settings),
     }, {
       name: 'Dice colour',
       desc: 'Light card, dark with light numbers, or your accent colour. The command palette\'s Dice settings show each one.',

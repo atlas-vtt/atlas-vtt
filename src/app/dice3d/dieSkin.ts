@@ -6,8 +6,10 @@
  */
 
 import { CELL, seededRandom } from './atlasCell';
+import type { LookArt } from './customLookArt';
+import type { CustomDiceLook } from './customLooks';
 import {
-  DARK_INK, DEFAULT_DICE_LOOK, LIGHT_INK, readableInk, type DiceColour, type DiceFont, type DiceLook, type Rgb,
+  DARK_INK, DEFAULT_DICE_LOOK, LIGHT_INK, parseHex, readableInk, type DiceColour, type DiceFont, type DiceLook, type Rgb,
 } from './diceLook';
 
 /** A look with its colours worked out for painting. */
@@ -18,6 +20,12 @@ export interface ResolvedLook {
   body: string | null;
   /** The numeral colour; null keeps the pencil sheet's graphite. */
   ink: string | null;
+  /** The full id of the extension's dice look in effect (`customLooks`); null for Atlas's own. */
+  lookId: string | null;
+  /** That look's face art, painted where it has some; null for Atlas's own look. */
+  art: LookArt | null;
+  /** `face`: the art covers its whole face cell (`DiceLookSpec.fill`); unset paints it where the numeral goes. */
+  fill?: 'face';
 }
 
 /** The card tone while the paper image has not arrived yet. */
@@ -45,13 +53,26 @@ function hex(rgb: Rgb): string {
 
 /** The colours of a look; `accent` is Obsidian's accent colour where the look needs it. */
 export function resolveLook(look: DiceLook, accent: Rgb | null): ResolvedLook {
-  if (look.colour === 'dark') return { ...look, body: DARK_BODY, ink: LIGHT_INK };
+  const own = { lookId: null, art: null };
+  if (look.colour === 'dark') return { ...look, ...own, body: DARK_BODY, ink: LIGHT_INK };
   if (look.colour === 'accent') {
     const colour = accent ?? FALLBACK_ACCENT;
-    return { ...look, body: hex(colour), ink: readableInk(colour) };
+    return { ...look, ...own, body: hex(colour), ink: readableInk(colour) };
   }
   // Light dice keep the pencil drawing's graphite; set numerals need a colour of their own.
-  return { ...look, body: null, ink: look.font === 'medieval' ? null : DARK_INK };
+  return { ...look, ...own, body: null, ink: look.font === 'medieval' ? null : DARK_INK };
+}
+
+/**
+ * An extension's look with its art: its body colour (the card stock without one), and for faces it has no art for,
+ * Atlas's numerals in the user's font and the look's ink, or the ink that reads on its body.
+ */
+export function resolveCustomLook(look: DiceLook, custom: Pick<CustomDiceLook, 'id' | 'body' | 'ink' | 'fill'>, art: LookArt): ResolvedLook {
+  const body = custom.body !== null && parseHex(custom.body) ? custom.body : null;
+  const bodyRgb = body === null ? null : parseHex(body);
+  const fallbackInk = bodyRgb ? readableInk(bodyRgb) : look.font === 'medieval' ? null : DARK_INK;
+  const ink = custom.ink !== null && parseHex(custom.ink) ? custom.ink : fallbackInk;
+  return { colour: look.colour, font: look.font, body, ink, lookId: custom.id, art, ...(custom.fill === 'face' ? { fill: 'face' as const } : {}) };
 }
 
 /**

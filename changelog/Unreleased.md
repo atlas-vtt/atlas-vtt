@@ -1,6 +1,6 @@
 ## New
 
-- Other Obsidian plugins can extend Atlas through a versioned extension API (`app.plugins.plugins['atlas-vtt'].api`, announced by the `atlas-vtt:api-ready` event). They can read map views, scenes and collection rules; present scenes; roll, publish and throw dice; draw lasers; ask what players see of a lit scene; move tokens; add toolbar buttons, command palette sections, dashboard tiles, menu entries, movable panels and tabs in the asset manager and collection settings; and keep their own data on scenes and collections. Atlas removes everything a plugin added when either plugin unloads. See docs/extension-api.md
+- Other Obsidian plugins can extend Atlas through a versioned extension API (`app.plugins.plugins['atlas-vtt'].api`, announced by the `atlas-vtt:api-ready` event). They can read map views, scenes and collection rules; present scenes; roll, publish and throw dice, add dice looks and dice tray colours; draw lasers; ask what players see of a lit scene; move tokens; add toolbar buttons, command palette sections, dashboard tiles, menu entries, movable panels and tabs in the asset manager and collection settings; and keep their own data on scenes and collections. Atlas removes everything a plugin added when either plugin unloads. See docs/extension-api.md
 
 ## Improved
 

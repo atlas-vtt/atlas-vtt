@@ -18,6 +18,18 @@ export const dice = {
   'dice.unpin': 'Unpin panel',
   'dice.player': 'Player',
   'dice.rollFormula': 'Roll {formula}',
+  /** The dice look setting: Atlas's own dice, or a look another plugin added (`dice.registerLook`). */
+  /** The dice tray's colour picker (`dice.registerColours`). */
+  'dice.colour.label': 'Colour of the next dice',
+  'dice.colour.none': 'No colour',
+  /** What the tray holds in one colour, e.g. "Fire: 2d6 + 1d20". */
+  'dice.colour.group': '{name}: {dice}',
+  'dice.look.name': 'Dice look',
+  'dice.look.desc': "Atlas's dice in the colour and numbers below, or a look another plugin added. A look's numbers that it has no art for use the numbers below.",
+  'dice.look.atlas': 'Atlas dice',
+  /** A chosen look whose plugin is not loaded; `{id}` is the look's id. */
+  'dice.look.notLoaded': '{id} (not loaded)',
+  'dice.look.notLoadedHint': "The plugin that adds this look is not loaded, so Atlas's own dice show until it is.",
   /** A log entry that lists only some of a roll's dice; the total counts them all. */
   'dice.moreDice': '+{count} more',
   'dice.showRollsToPlayers': 'Show my rolls to players',

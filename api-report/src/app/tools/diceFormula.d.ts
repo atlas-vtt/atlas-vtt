@@ -19,7 +19,7 @@ export interface RolledDie {
     negative?: true;
     /** The die was rolled because the die before it exploded. */
     exploded?: true;
-    /** The colour the die was thrown in (`#rrggbb`), e.g. one an extension reports; shown with its die, never counted. */
+    /** The colour the die was thrown in (`#rrggbb`), e.g. one an extension reports, or one picked in Atlas's dice tray (`dice.registerColours`); shown with its die, never counted. */
     color?: string;
     /** That colour's name, e.g. "Fire": plain text (no markup) of at most 32 characters, trimmed. A tag that is not well-formed is dropped where a roll enters Atlas, never the roll. */
     colorName?: string;

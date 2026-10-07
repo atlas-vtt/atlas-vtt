@@ -6,9 +6,11 @@
 import * as THREE from 'three';
 
 import { atlasLayout } from './atlasCell';
-import { buildTextures, diceArtworkReady, loadDiceArtwork } from './dieArtwork';
+import { buildTextures, diceArtworkReady, loadDiceArtwork, type DieTextures } from './dieArtwork';
+import { parseHex, readableInk } from './diceLook';
+import { bodySides, type DieBody } from './dieBody';
 import { dieGeometry, type DieSides } from './dieGeometry';
-import { activeLook } from './dieSkin';
+import { activeLook, type ResolvedLook } from './dieSkin';
 import { FACE_CELL_REACH, faceFrame } from './faceFrame';
 import { vAdd, vCross, vDot, vNormalize, vScale, vSub, type Vec3 } from './vectorMath';
 
@@ -21,8 +23,8 @@ export interface DieAssets {
   redraw: () => void;
 }
 
-/** One set of textures and mesh per body; dice of the same kind share it. */
-const assetCache = new Map<DieSides, DieAssets>();
+/** One set of textures and mesh per body (the d100's tens die has its own); dice of the same kind share it. */
+const assetCache = new Map<DieBody, DieAssets>();
 
 type Uv = [number, number];
 
@@ -147,11 +149,11 @@ export function chamferedGeometry(sides: DieSides): THREE.BufferGeometry {
   return geometry;
 }
 
-export function dieAssets(sides: DieSides): DieAssets {
-  const cached = assetCache.get(sides);
+export function dieAssets(body: DieBody): DieAssets {
+  const cached = assetCache.get(body);
   if (cached !== undefined) return cached;
 
-  const textures = buildTextures(sides);
+  const textures = buildTextures(body);
   // **Card has no gloss.** This used to be polished wood with a lacquer coat
   // and gilded, i.e. metallic, numerals: three controls that all did the same
   // thing, reflect. Paper does not reflect. What remains is a dull surface with
@@ -166,11 +168,11 @@ export function dieAssets(sides: DieSides): DieAssets {
   });
 
   const assets: DieAssets = {
-    geometry: chamferedGeometry(sides),
+    geometry: chamferedGeometry(bodySides(body)),
     material,
     redraw: textures.redraw,
   };
-  assetCache.set(sides, assets);
+  assetCache.set(body, assets);
   // Faces painted before their artwork arrived are painted once more when it does.
   // Only then: repainting means drawing every cell again and uploading the atlas anew.
   const font = activeLook().font;
@@ -179,10 +181,79 @@ export function dieAssets(sides: DieSides): DieAssets {
 }
 
 /** Redraws the faces of every cached body, or of one: when the artwork arrives or the look changes. */
-export function refreshDieArtwork(sides?: DieSides): void {
-  if (sides !== undefined) {
-    assetCache.get(sides)?.redraw();
+export function refreshDieArtwork(body?: DieBody): void {
+  if (body !== undefined) {
+    assetCache.get(body)?.redraw();
     return;
   }
   for (const assets of assetCache.values()) assets.redraw();
+  for (const assets of variantCache.values()) assets.redraw();
+}
+
+/** A look a die is painted in other than the active one (a collection's, `dice.useLook`), named by `key`. */
+export interface LookVariant {
+  /** Changes whenever `look` would paint differently. */
+  key: string;
+  look: () => ResolvedLook;
+}
+
+/** How many bodies painted in another look or colour are kept; the one used longest ago goes first. */
+const MAX_VARIANTS = 32;
+
+interface VariantAssets extends DieAssets {
+  textures: DieTextures;
+}
+
+/** Bodies painted in another look or in a die's colour, by look, body and colour; each its own atlas and material. */
+const variantCache = new Map<string, VariantAssets>();
+
+/** `look` with its body in `tint` (`#rrggbb`) and numerals that read on it; a look's art stays as it is. */
+export function tintedLook(look: ResolvedLook, tint: string | null): ResolvedLook {
+  const rgb = tint === null ? null : parseHex(tint);
+  return rgb ? { ...look, body: tint, ink: readableInk(rgb) } : look;
+}
+
+function disposeVariant(assets: VariantAssets): void {
+  assets.material.dispose();
+  assets.textures.map.dispose();
+  assets.textures.bumpMap.dispose();
+}
+
+/**
+ * The body painted in `variant` (null: the active look) and coloured `tint` (null: its own colour). Without either
+ * it is `dieAssets(body)` itself, shared by every die of that kind. Otherwise the body shares its geometry and gets
+ * its own atlas, relief and material, cached per look, body and colour (at most `MAX_VARIANTS`), redrawn with the
+ * shared ones and given back with the stage pools.
+ */
+export function dieVariantAssets(body: DieBody, variant: LookVariant | null, tint: string | null): DieAssets {
+  if (variant === null && tint === null) return dieAssets(body);
+  const key = `${variant?.key ?? ''}|${body}|${tint ?? ''}`;
+  const cached = variantCache.get(key);
+  if (cached) {
+    variantCache.delete(key);
+    variantCache.set(key, cached);
+    return cached;
+  }
+  const lookOf = (): ResolvedLook => tintedLook(variant ? variant.look() : activeLook(), tint);
+  const base = dieAssets(body);
+  const textures = buildTextures(body, lookOf);
+  const material = base.material.clone();
+  material.map = textures.map;
+  material.bumpMap = textures.bumpMap;
+  const assets: VariantAssets = { geometry: base.geometry, material, redraw: textures.redraw, textures };
+  variantCache.set(key, assets);
+  for (const [oldKey, old] of variantCache) {
+    if (variantCache.size <= MAX_VARIANTS) break;
+    variantCache.delete(oldKey);
+    disposeVariant(old);
+  }
+  const font = lookOf().font;
+  if (!diceArtworkReady(font)) void loadDiceArtwork(font).then(() => { if (variantCache.get(key) === assets) assets.redraw(); });
+  return assets;
+}
+
+/** Gives back every body painted in another look or colour: the stage pools are released. */
+export function releaseDieVariants(): void {
+  for (const assets of variantCache.values()) disposeVariant(assets);
+  variantCache.clear();
 }

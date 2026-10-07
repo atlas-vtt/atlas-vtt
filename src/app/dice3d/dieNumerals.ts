@@ -58,9 +58,11 @@ const scales = new Map<string, number>();
 /** One cell of scratch space, for colouring a numeral before it goes onto a face. */
 let scratch: HTMLCanvasElement | null = null;
 
-export function loadImage(url: string): Promise<HTMLImageElement> {
+/** Loads an image; `anonymous` asks for CORS, so a cross-origin image that allows it can be painted into a die's atlas. */
+export function loadImage(url: string, anonymous = false): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
+    if (anonymous) img.crossOrigin = 'anonymous';
     img.onload = (): void => resolve(img);
     img.onerror = (): void => reject(new Error('Dice artwork failed to load'));
     img.src = url;
@@ -212,30 +214,41 @@ export function paintNumeral(
   font: DiceFont,
   ink: string | null,
 ): void {
+  const geometry = dieGeometry(sides);
+  for (const mark of faceMarks(geometry, faceIndexForValue(geometry, value), CELL)) paintNumeralMark(ctx, x, y, sides, mark, font, ink);
+}
+
+/** One numeral of a face (`faceMarks`), in the cell centred on `x`, `y`: a d4 face carries three. */
+export function paintNumeralMark(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  sides: DieSides,
+  mark: NumeralMark,
+  font: DiceFont,
+  ink: string | null,
+): void {
   const sheet = sheets.get(font);
   if (!sheet) return;
-  const geometry = dieGeometry(sides);
   const pxPerSheetPx = numeralSize(sides) / SHEET_FILL / SHEET_CELL;
-  for (const mark of faceMarks(geometry, faceIndexForValue(geometry, value), CELL)) {
-    const cell = numeralCell(sides, mark.value);
-    const box = sheet.ink?.[cell] ?? NOMINAL_INK;
-    const k = pxPerSheetPx * scaleFor(font, sides, mark, box, pxPerSheetPx);
-    const source = numeralSource(sheet, cell, ink);
-    ctx.save();
-    // The cell's y points up, the canvas' down.
-    ctx.translate(x + mark.at[0], y - mark.at[1]);
-    ctx.rotate(Math.atan2(mark.up[0], mark.up[1]));
-    ctx.drawImage(
-      source.image,
-      source.sx,
-      source.sy,
-      SHEET_CELL,
-      SHEET_CELL,
-      -((box.x0 + box.x1) / 2) * k,
-      -((box.y0 + box.y1) / 2) * k,
-      SHEET_CELL * k,
-      SHEET_CELL * k,
-    );
-    ctx.restore();
-  }
+  const cell = numeralCell(sides, mark.value);
+  const box = sheet.ink?.[cell] ?? NOMINAL_INK;
+  const k = pxPerSheetPx * scaleFor(font, sides, mark, box, pxPerSheetPx);
+  const source = numeralSource(sheet, cell, ink);
+  ctx.save();
+  // The cell's y points up, the canvas' down.
+  ctx.translate(x + mark.at[0], y - mark.at[1]);
+  ctx.rotate(Math.atan2(mark.up[0], mark.up[1]));
+  ctx.drawImage(
+    source.image,
+    source.sx,
+    source.sy,
+    SHEET_CELL,
+    SHEET_CELL,
+    -((box.x0 + box.x1) / 2) * k,
+    -((box.y0 + box.y1) / 2) * k,
+    SHEET_CELL * k,
+    SHEET_CELL * k,
+  );
+  ctx.restore();
 }

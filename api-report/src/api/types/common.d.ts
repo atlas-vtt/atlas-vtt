@@ -6,5 +6,5 @@ export interface Point {
     x: number;
     y: number;
 }
-export type AtlasCapability = 'views' | 'presentation' | 'rules' | 'lighting' | 'tokens' | 'dice' | 'lasers' | 'ui' | 'scenes' | 'bundles' | 'settings' | 'storage' | 'scene-tabs' | 'asset-tabs' | 'collections';
+export type AtlasCapability = 'views' | 'presentation' | 'rules' | 'lighting' | 'tokens' | 'dice' | 'lasers' | 'ui' | 'scenes' | 'bundles' | 'settings' | 'storage' | 'dice-looks' | 'scene-tabs' | 'asset-tabs' | 'collections' | 'dice-colours' | 'dice-look-choice';
 export type { Json } from '../../app/types/json';

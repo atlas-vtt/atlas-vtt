@@ -7,6 +7,9 @@ import { STAGE_X, type Rng } from '../../../dice3d/dieTour';
 import { throwRandom } from '../../../dice3d/throwSeed';
 import { layoutDice, type DiceScene, type RestingFrame } from '../../../dice3d/diceScene';
 import { loadDiceArtwork } from '../../../dice3d/dieArtwork';
+import { planBody } from '../../../dice3d/dieBody';
+import { registeredLookHasTensArt } from '../../../dice3d/customLookArt';
+import { lookVariant } from '../../../dice3d/lookVariants';
 import { stagePixelRatio, type DiceRenderer, type StageDie } from '../../../dice3d/DiceRenderer';
 import { borrowStage, returnStage } from '../../../dice3d/stagePool';
 import { getDomHost } from '../../../host/dom';
@@ -115,7 +118,8 @@ export function DiceStage({ scene, crit, onSettled, muted, style, frame, seed, l
       burst: burstOf(scene.plan, i),
     }));
     stepRandoms.current = scene.plan.map((_, i) => throwRandom(seed, 1000 + i));
-    rendererRef.current?.setPlan(scene.plan.map((die) => die.sides));
+    const tensBody = registeredLookHasTensArt();
+    rendererRef.current?.setPlan(scene.plan.map((die) => planBody(die, tensBody)), { tints: scene.plan.map((die) => die.tint), look: lookVariant(scene.lookId) });
   }, [scene, offsets, radius, seed]);
 
   const paint = useCallback((): void => {

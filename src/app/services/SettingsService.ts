@@ -272,6 +272,17 @@ export class SettingsService {
     this.commit();
   }
 
+  /** The full id of the extension dice look chosen (`dice.registerLook`); empty for Atlas's own. Whether it is loaded is the registry's. */
+  getDiceLookId(): string {
+    return typeof this.settings.diceLookId === 'string' ? this.settings.diceLookId : '';
+  }
+
+  setDiceLookId(id: string): void {
+    if (id === this.getDiceLookId()) return;
+    this.settings.diceLookId = id;
+    this.commit();
+  }
+
   // Local Player View settings
   /**
    * The player-window switches for HP and the secondary bar that older versions

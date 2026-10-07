@@ -399,6 +399,7 @@ export class TextComponent extends InputBacked<HTMLInputElement> {}
 export class TextAreaComponent extends InputBacked<HTMLTextAreaElement> {}
 
 export class DropdownComponent extends InputBacked<HTMLSelectElement> {
+  get selectEl(): HTMLSelectElement { return this.inputEl; }
   addOptions(options: Record<string, string>): this {
     for (const [value, display] of Object.entries(options)) {
       const option = this.inputEl.ownerDocument.createElement('option');

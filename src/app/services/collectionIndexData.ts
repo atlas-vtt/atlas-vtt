@@ -4,7 +4,8 @@
  * collection records (`AssetMetadata.collectionIndexData`, by collection id), so the library files,
  * their reading and merging, and the bundles never see it. A rename moves it with the record
  * (`moveCollectionRecord`), a deleted collection takes it along, and a copied folder is a new
- * collection without it. Like extension data on scenes, it stays on the device that wrote it.
+ * collection without it. Like extension data on scenes, it stays on the device that wrote it. The
+ * collection's dice look (`diceLookId`) lives here too: an extension chooses it, by the same rules.
  */
 import type { Json } from '../types/json';
 import type { AssetMetadata } from './AssetService';
@@ -12,6 +13,8 @@ import type { AssetMetadata } from './AssetService';
 export interface CollectionIndexData {
   /** By extension id. */
   extensions?: Record<string, Json>;
+  /** The dice look this collection's maps throw in (`dice.useLook`): a full look id, `''` for Atlas's own; unset follows the GM's. */
+  diceLookId?: string;
 }
 
 /** The index-only data of collection `id`; null when it has none or the collection is gone. */

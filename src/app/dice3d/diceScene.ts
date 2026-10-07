@@ -15,6 +15,7 @@
  */
 
 import type { RolledDie } from '../tools/diceFormula';
+import { isHexColor } from '../utils/hexColor';
 import type { DieSides } from './dieGeometry';
 
 export const DIE_BODIES: DieSides[] = [4, 6, 8, 10, 12, 20];
@@ -43,6 +44,8 @@ export interface DiePlan {
   follows?: number;
   /** The die of an explosion downwards: it subtracts. */
   subtracts?: true;
+  /** The colour the die was rolled in (its tag's `color`, `#rrggbb` in lower case): its body is painted in it. */
+  tint?: string;
 }
 
 /**
@@ -57,6 +60,8 @@ const MIMIC: Record<number, { body: DieSides; fold: number }> = {
 
 export interface DiceScene {
   plan: DiePlan[];
+  /** The dice look of the roll's map (a collection's choice, else the GM's): a full look id, `''` for Atlas's own; unset paints the look in effect. */
+  lookId?: string;
   /** Face each die lands on, in plan order. */
   faces: number[];
 }
@@ -84,7 +89,7 @@ export function landsOnAFace(die: Pick<RolledDie, 'max' | 'value'>): boolean {
  * d6's 6), so the face always reads back as the value everyone sees.
  */
 export function sceneFromRolls(
-  rolls: readonly Pick<RolledDie, 'max' | 'value' | 'negative' | 'exploded'>[],
+  rolls: readonly Pick<RolledDie, 'max' | 'value' | 'negative' | 'exploded' | 'color'>[],
 ): DiceScene | null {
   if (rolls.length === 0) return null;
 
@@ -95,13 +100,14 @@ export function sceneFromRolls(
     if (!landsOnAFace(roll)) return null;
     const follower = roll.exploded === true && plan.length > 0;
     if (roll.negative && !follower) return null;
-    const chain = follower ? { follows: plan.length - 1, ...(roll.negative && { subtracts: true as const }) } : {};
+    const tint = isHexColor(roll.color) ? { tint: roll.color.toLowerCase() } : {};
+    const chain = { ...tint, ...(follower ? { follows: plan.length - 1, ...(roll.negative && { subtracts: true as const }) } : {}) };
 
     if (roll.max === 100) {
       if (rolls.length !== 1) return null;
       const tens = Math.floor((roll.value % 100) / 10);
       const units = roll.value % 10;
-      plan.push({ sides: 10, role: 'tens' }, { sides: 10, role: 'units' });
+      plan.push({ sides: 10, role: 'tens', ...tint }, { sides: 10, role: 'units', ...tint });
       faces.push(tens === 0 ? 10 : tens, units === 0 ? 10 : units);
       continue;
     }

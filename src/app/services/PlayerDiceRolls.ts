@@ -23,6 +23,11 @@ export class PlayerDiceRolls implements PlayerOverlay {
   private host: HTMLElement | undefined;
   private root: Root | undefined;
   private diceEvents: EventEmitter | undefined;
+  /**
+   * The presented scene's map, taken when it is presented: its collection decides the dice look (`dice.useLook`).
+   * Holding keeps it, so the GM browsing other tabs does not change the look players see.
+   */
+  private lookPath: string | null = null;
   private sourceKey = 0;
   private isShown: boolean;
   private readonly scene = new PlayerRollScene();
@@ -45,9 +50,10 @@ export class PlayerDiceRolls implements PlayerOverlay {
   }
 
   /** Rolls shown from another view's events start afresh; those of the same view stay, as they came. */
-  present(_store: StoreApi<ViewAtlasState>, diceEvents?: EventEmitter, rollSources?: PlayerRollSources): void {
+  present(store: StoreApi<ViewAtlasState>, diceEvents?: EventEmitter, rollSources?: PlayerRollSources): void {
     if (this.diceEvents !== diceEvents) this.sourceKey++;
     this.diceEvents = diceEvents;
+    this.lookPath = rollSources?.mapPath ?? store.getState().mapPath ?? null;
     this.scene.present(rollSources);
     this.render();
   }
@@ -59,6 +65,7 @@ export class PlayerDiceRolls implements PlayerOverlay {
 
   releaseSource(): void {
     this.diceEvents = undefined;
+    this.lookPath = null;
     this.scene.release();
     this.sourceKey++;
     this.render();
@@ -66,6 +73,7 @@ export class PlayerDiceRolls implements PlayerOverlay {
 
   destroy(): void {
     this.diceEvents = undefined;
+    this.lookPath = null;
     this.scene.release();
     this.unsubscribeSettings();
     this.unmount();
@@ -80,10 +88,12 @@ export class PlayerDiceRolls implements PlayerOverlay {
       },
     });
 
+  private readonly lookMapPath = (): string | null => this.lookPath;
+
   private render(): void {
     if (!this.root || !this.host) return;
-    const { app, host, diceEvents, prepare } = this;
-    this.root.render(this.isShown && diceEvents ? createElement(PlayerDiceToasts, { app, container: host, eventBus: diceEvents, prepare, key: this.sourceKey }) : null);
+    const { app, host, diceEvents, prepare, lookMapPath } = this;
+    this.root.render(this.isShown && diceEvents ? createElement(PlayerDiceToasts, { app, container: host, eventBus: diceEvents, prepare, lookMapPath, key: this.sourceKey }) : null);
   }
 
   private unmount(): void {

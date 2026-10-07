@@ -279,3 +279,61 @@ $tray-art: 32px;
 .atlas-dice-tray__roll {
   flex: 1;
 }
+
+// ── Colours (`dice.registerColours`) ────────────
+
+// The colour the next dice are added in: "No colour", then a swatch per colour.
+.atlas-dice-tray__colours {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $spacing-xs;
+}
+
+.atlas-dice-tray .atlas-dice-tray__colour {
+  appearance: none;
+  min-width: 24px;
+  height: 24px;
+  padding: 0;
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-full;
+  background: var(--atlas-die-tag-colour, var(--background-secondary));
+  box-shadow: none;
+  cursor: pointer;
+
+  &--none {
+    padding: 0 $spacing-s;
+    font-size: $font-ui-smaller;
+    color: var(--text-muted);
+  }
+
+  &.is-chosen {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 1px;
+  }
+}
+
+// The tray's dice in each colour, under the formula.
+.atlas-dice-tray__tagged {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-dice-tray__tagged-group {
+  @include atlas-die-tag-group;
+  font-size: $font-ui-smaller;
+  color: var(--text-muted);
+}
+
+.atlas-dice-tray__tag-dot {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: $radius-full;
+  background: var(--atlas-die-tag-colour);
+  box-shadow: 0 0 0 1px var(--background-modifier-border);
+}

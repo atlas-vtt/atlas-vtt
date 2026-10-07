@@ -56,3 +56,19 @@ $dice-preview: 72px;
 .atlas-dice-colour-strip__option.atlas-active > .atlas-dice-colour-strip__label {
   color: var(--text-normal);
 }
+
+// The looks: Atlas's dice and those other plugins added, as many as there are.
+.atlas-dice-colour-strip--looks {
+  grid-template-columns: repeat(auto-fill, minmax(#{$dice-preview + 2 * $spacing-s}, 1fr));
+}
+
+.atlas-dice-colour-strip__option--missing > .atlas-dice-colour-strip__label {
+  font-style: italic;
+}
+
+// The chosen look's preview beside the dice look setting (`diceSettingsSection`).
+.atlas-dice-look-preview {
+  width: $dice-preview;
+  height: $dice-preview;
+  flex-shrink: 0;
+}

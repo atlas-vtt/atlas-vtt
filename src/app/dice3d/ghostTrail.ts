@@ -80,9 +80,17 @@ export class GhostTrail {
       for (const ghost of chain) {
         this.scene.remove(ghost);
         const source = ghost.userData.source as THREE.Material;
-        const waiting = this.spare.get(source) ?? [];
+        let waiting = this.spare.get(source);
+        if (!waiting) {
+          waiting = [];
+          this.spare.set(source, waiting);
+          // A die material given back (a body in a die's colour, `dieVariantAssets`) takes its waiting copies along.
+          source.addEventListener('dispose', () => {
+            for (const copy of this.spare.get(source) ?? []) copy.dispose();
+            this.spare.delete(source);
+          });
+        }
         waiting.push(ghost.material as THREE.MeshPhysicalMaterial);
-        this.spare.set(source, waiting);
       }
     }
     this.chains = [];

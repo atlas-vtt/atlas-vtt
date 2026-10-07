@@ -12,6 +12,8 @@ vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
 }));
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (state: { isPlayerView: boolean }) => unknown) => selector({ isPlayerView: context.isPlayerView }),
+  // The tray reads its map for the colours extensions offer (`useDiceColours`); there is none here.
+  useOptionalAtlasStore: (_selector: unknown, fallback: unknown) => fallback,
 }));
 vi.mock('../../src/app/react/hooks/useDicePreviews', () => ({ useDicePreviews: () => ({}) }));
 vi.mock('../../src/app/packages/components/primitives/tooltip', () => ({

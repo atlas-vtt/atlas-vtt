@@ -1136,6 +1136,11 @@ export class AssetService {
     return collectionIndexDataOf(this.metadata!, id);
   }
 
+  /** The same, read now: null too while the index has not loaded. */
+  peekCollectionIndexData(id: string): CollectionIndexData | null {
+    return this.metadata ? collectionIndexDataOf(this.metadata, id) : null;
+  }
+
   /** Changes it; no edit of the collection, whose record and file stay as they were. False when there is no such collection. */
   async updateCollectionIndexData(id: string, patch: { [K in keyof CollectionIndexData]?: CollectionIndexData[K] | undefined }): Promise<boolean> {
     await this.ensureLoaded();

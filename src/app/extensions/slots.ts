@@ -14,9 +14,11 @@ export const panelSlot = new SlotRegistry<PanelSpec>();
 export const sceneTabMenuSlot = new SlotRegistry<SceneTabMenuSection>();
 export const assetTabSlot = new SlotRegistry<AssetTabSpec>();
 export const collectionSettingsTabSlot = new SlotRegistry<CollectionSettingsTabSpec>();
+/** `dice.registerColours`: the colours dice can be rolled in, by collection. */
+export const diceColourSlot = new SlotRegistry<(collectionId: string) => unknown>();
 
 /** Asks every reader to read the callbacks of every slot, and the presentation targets, again. */
 export function invalidateSlots(): void {
-  for (const slot of [toolbarSlot, paletteSlot, dashboardSlot, viewMenuSlot, tokenMenuSlot, panelSlot, sceneTabMenuSlot, assetTabSlot, collectionSettingsTabSlot]) slot.invalidate();
+  for (const slot of [toolbarSlot, paletteSlot, dashboardSlot, viewMenuSlot, tokenMenuSlot, panelSlot, sceneTabMenuSlot, assetTabSlot, collectionSettingsTabSlot, diceColourSlot]) slot.invalidate();
   invalidatePresentationTargets();
 }

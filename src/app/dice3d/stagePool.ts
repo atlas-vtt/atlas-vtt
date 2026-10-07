@@ -1,8 +1,10 @@
 import { getDomHost } from '../host/dom';
 import { DiceGpu } from './DiceGpu';
 import { DiceRenderer, stagePixelRatio } from './DiceRenderer';
-import { DIE_BODIES } from './diceScene';
+import { registeredLookHasTensArt } from './customLookArt';
+import { bodySides, warmBodies } from './dieBody';
 import { loadDiceArtwork } from './dieArtwork';
+import { releaseDieVariants } from './dieMesh';
 import { makeDie } from './dieMotion';
 
 /**
@@ -130,6 +132,7 @@ export function releaseStagePool(doc: Document): void {
 /** Gives back every document's context: Atlas unloads. */
 export function releaseStagePools(): void {
   for (const doc of [...documents.keys()]) releaseStagePool(doc);
+  releaseDieVariants();
 }
 
 /**
@@ -174,8 +177,10 @@ function whenQuiet(doc: Document, run: () => void): void {
 function warmUp(renderer: DiceRenderer, win: Window): void {
   const rem = parseFloat(win.getComputedStyle(win.document.documentElement).fontSize) || 16;
   renderer.setSize(Math.ceil(WARM_REM[0] * rem), Math.ceil(WARM_REM[1] * rem), stagePixelRatio(win));
-  renderer.setPlan(DIE_BODIES);
-  renderer.render(DIE_BODIES.map((sides) => ({ sides, anim: { ...makeDie(Math.random), w: [...WARM_SPIN] } })), 0);
+  // The d100's tens die is warmed only while it has faces of its own (`planBody`).
+  const bodies = warmBodies(registeredLookHasTensArt());
+  renderer.setPlan(bodies);
+  renderer.render(bodies.map((body) => ({ sides: bodySides(body), anim: { ...makeDie(Math.random), w: [...WARM_SPIN] } })), 0);
   renderer.reset();
 }
 

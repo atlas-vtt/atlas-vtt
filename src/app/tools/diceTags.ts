@@ -54,3 +54,33 @@ export function shownTag(die: Pick<RolledDie, 'color' | 'colorName'>): ShownTag 
   if (color === null && name === null) return null;
   return { key: `${color ?? ''}|${name ?? ''}`, color, label: name ?? color! };
 }
+
+/** A well-formed tag a die is rolled in: the shape of `RolledDie`'s `color` and `colorName`. */
+export interface DieTag {
+  color: string;
+  colorName: string;
+}
+
+/** `value` as a tag a die can be rolled in: a `#rrggbb` colour and a plain-text name; else null. */
+export function dieTag(value: unknown): DieTag | null {
+  if (typeof value !== 'object' || value === null) return null;
+  const color = tagColour(Reflect.get(value, 'color'));
+  const colorName = tagName(Reflect.get(value, 'name'));
+  return color !== undefined && colorName !== undefined ? { color, colorName } : null;
+}
+
+/**
+ * `result` with `tags` on its dice: one per die of the formula, in formula order (null leaves that die untagged). A
+ * die rolled for an explosion (`exploded`) is no die of the formula: it takes the tag of the die it exploded from.
+ * Only well-formed tags are kept (`withCleanTags`).
+ */
+export function withDieTags<R extends { rolls: readonly RolledDie[] }>(result: R, tags: ReadonlyArray<DieTag | null>): R {
+  let next = 0;
+  let current: DieTag | null = null;
+  const rolls = result.rolls.map((die) => {
+    if (die.exploded !== true) current = tags[next++] ?? null;
+    if (!current) return die;
+    return { ...die, color: current.color, colorName: current.colorName };
+  });
+  return withCleanTags({ ...result, rolls });
+}

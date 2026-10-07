@@ -4,14 +4,17 @@ import { getDomHost } from '../host/dom';
  * is global: every die in every window is painted with it.
  */
 
+import { lookArt } from './customLookArt';
+import type { CustomDiceLook } from './customLooks';
 import { DICE_COLOUR_OPTIONS, parseHex, type DiceColour, type DiceFont, type DiceLook, type Rgb } from './diceLook';
 import { layoutDice, restingFrame } from './diceScene';
 import { loadDiceArtwork } from './dieArtwork';
 import { dieGeometry, faceIndexForValue, lyingHeight, REST_YAW, restingQuaternion } from './dieGeometry';
 import { refreshDieArtwork } from './dieMesh';
 import { makeDie, restImmediately } from './dieMotion';
-import { activeLook, resolveLook, setActiveLook } from './dieSkin';
+import { activeLook, resolveCustomLook, resolveLook, setActiveLook } from './dieSkin';
 import { borrowStage, returnStage } from './stagePool';
+import { setVariantBase } from './lookVariants';
 
 /** Obsidian's accent colour in this document, as channels; null when the theme reports none. */
 export function readAccent(doc: Document): Rgb | null {
@@ -26,12 +29,17 @@ export function readAccent(doc: Document): Rgb | null {
 
 let applying = 0;
 
-/** Paints every die with `look` once its artwork is ready; a later call wins over one still loading. */
-export async function applyDiceLook(look: DiceLook, doc: Document = getDomHost().activeDocument()): Promise<void> {
+/**
+ * Paints every die with `look`, or with an extension's look `custom` (its numerals where it has no art in `look`'s
+ * font), once all its artwork is ready: the faces are repainted once, and a later call wins over one still loading.
+ */
+export async function applyDiceLook(look: DiceLook, doc: Document = getDomHost().activeDocument(), custom: CustomDiceLook | null = null): Promise<void> {
   const serial = ++applying;
-  await loadDiceArtwork(look.font);
+  const [art] = await Promise.all([custom ? lookArt(custom) : null, loadDiceArtwork(look.font)]);
   if (serial !== applying) return;
-  setActiveLook(resolveLook(look, readAccent(doc)));
+  const accent = readAccent(doc);
+  setVariantBase(look, accent);
+  setActiveLook(custom && art ? resolveCustomLook(look, custom, art) : resolveLook(look, accent));
   refreshDieArtwork();
 }
 
