@@ -59,7 +59,7 @@ type Stacks = Pick<HistoryState, 'pastStates' | 'futureStates'>;
 /**
  * One store's undo history. A step is the tracked state before and after a write of the GM
  * (or an outermost transaction); undo and redo move the store towards a step's other side,
- * so what others wrote since stays.
+ * so what Atlas itself wrote since to anything else stays.
  *
  * While the GM's work is under way (an open transaction, or a write whose listeners are still
  * running), what it writes belongs to the steps next to the present. `mark` is where those
@@ -160,6 +160,12 @@ export function createHistory(tracked: TrackedStore): History {
     push({ before, after });
   }
 
+  /**
+   * Undo or redo. The step goes to the other stack as this travel found and left the store: both
+   * sides hold the same objects wherever the travel wrote nothing, so the step still changes only
+   * its own entities, and what Atlas itself had changed of those since comes back with the next
+   * redo (or undo), as the store held it just before this travel.
+   */
   function travel(direction: 'undo' | 'redo'): void {
     const source = direction === 'undo' ? 'pastStates' : 'futureStates';
     const target = direction === 'undo' ? 'futureStates' : 'pastStates';
@@ -170,8 +176,9 @@ export function createHistory(tracked: TrackedStore): History {
     store.setState({ ...stacks, [source]: stacks[source].slice(0, -1) });
     const slice = direction === 'undo' ? restore(current, step.after, step.before) : restore(current, step.before, step.after);
     tracked.write(slice);
+    const travelled: HistoryStep = direction === 'undo' ? { before: slice, after: current } : { before: current, after: slice };
     // After the write: a step its listeners recorded has cleared the redo stack first.
-    store.setState({ [target]: [...get()[target], step] });
+    store.setState({ [target]: [...get()[target], travelled] });
     if (mark) mark = slice;
   }
 

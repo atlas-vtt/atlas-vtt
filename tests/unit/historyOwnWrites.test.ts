@@ -1,16 +1,8 @@
-import { EventEmitter } from 'events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { waitFor } from '@testing-library/react';
-import { Texture } from 'pixi.js';
-import { TFile, TFolder } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
-import { MapLoader } from '../../src/app/MapLoader';
 import { FileReferenceService } from '../../src/app/services/FileReferenceService';
-import { migrateMapFile, type PersistedMapEnvelope } from '../../src/app/services/MapPersistence';
-import { MapService } from '../../src/app/services/MapService';
-import type { RendererService } from '../../src/app/services/RendererService';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
-import { senseWithRole } from '../../src/app/gameSystems/senseRules';
 import { StatblockTokenSync } from '../../src/app/plugin/StatblockTokenSync';
 import { AssetService } from '../../src/app/services/AssetService';
 import { removeUndefinedConditions } from '../../src/app/services/collectionConditionCleanup';
@@ -18,12 +10,13 @@ import { removeUndefinedSenses } from '../../src/app/services/collectionSenseCle
 import { deleteCollectionWidget } from '../../src/app/services/collectionWidgetDeletion';
 import { WidgetSyncService } from '../../src/app/services/WidgetSyncService';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
-import { getHistoryStore, type HistoryState } from '../../src/app/stores/history';
+import { getHistoryStore } from '../../src/app/stores/history';
 import type { ResourceDefinition } from '../../src/app/resources/resourceTypes';
 import type { CounterWidget } from '../../src/app/types/widgetTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { HP, STRESS } from '../mocks/resourceFixtures';
 import { character, statblockFixture } from '../mocks/statblockTokenSync';
+import { CAVE, collectionScene, darkvision, openStore, rename, tabScene, token, TOWER } from '../helpers/historyScenes';
 
 vi.mock('../../src/app/services/ServiceManager', () => ({ ServiceManager: class {} }));
 vi.mock('../../src/app/MapLoader', () => ({ MapLoader: { load: vi.fn() } }));
@@ -31,28 +24,6 @@ afterEach(() => {
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
-
-const SCENE = 'atlas-vtt/collections/heist/scenes/Vault.atlasmap';
-
-function openStore(app = createInMemoryApp().app, mapPath = SCENE): { store: ViewAtlasStore; history: () => HistoryState } {
-  const store = createViewAtlasStore(app, `own-writes-${Math.random()}`);
-  store.setState({ persistenceEnabled: false, mapPath, mapLoaded: true });
-  const history = getHistoryStore(store)!;
-  return { store, history: () => history.getState() };
-}
-
-/** What a view does when a file the map uses is renamed in the vault. */
-function rename(store: ViewAtlasStore, oldPath: string, newPath: string): void {
-  const view = {
-    store,
-    _serviceManager: { getMapService: () => ({ handleFileRenamed: (): void => undefined }) },
-    tabMetaStore: { getState: () => ({ getTabByFilePath: (): undefined => undefined }) },
-  };
-  Object.setPrototypeOf(view, AtlasView.prototype);
-  (view as unknown as AtlasView).handleFileRenamed(oldPath, newPath, newPath.split('/').pop()!);
-}
-
-const token = (store: ViewAtlasStore, id: string): Record<string, unknown> => store.getState().objects.tokens[id] as unknown as Record<string, unknown>;
 
 describe('a renamed file that the map uses', () => {
   it('keeps the new path of a token\'s art when another token\'s move is undone and redone', () => {
@@ -116,23 +87,10 @@ describe('resources Atlas starts by itself', () => {
 });
 
 describe('a collection cleaned up while its map is open', () => {
-  const dnd5e = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')!;
-  const darkvision = senseWithRole(dnd5e.rules.senses!, 'darkvision').id;
-
-  function cleanupSetup(): { store: ViewAtlasStore; history: () => HistoryState; app: ReturnType<typeof createInMemoryApp>['app']; a: string; b: string } {
-    const { app } = createInMemoryApp({ files: { [SCENE]: JSON.stringify({ version: 4, state: { objects: { tokens: {} } } }) } });
-    const { store, history } = openStore(app);
-    const view = Object.assign(Object.create(AtlasView.prototype) as object, { getStore: () => store, saveMap: async (): Promise<void> => undefined });
-    app.workspace = { getLeavesOfType: () => [{ view }] } as never;
-    vi.spyOn(AssetService, 'getInstance').mockReturnValue({
-      getCollectionSettings: () => ({ conditions: [{ id: 'poisoned', name: 'Poisoned' }], systemPresetId: dnd5e.id }),
-      getCollectionForMap: () => 'heist',
-      updateCollectionSettings: async (): Promise<void> => undefined,
-    } as never);
-    const a = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/a.png', conditions: ['poisoned', 'gone'], vision: { enabled: true, senses: [{ id: darkvision }, { id: 'home-gone' }] } });
-    const b = store.getState().addToken({ x: 0, y: 0, imagePath: 'art/b.png' });
-    store.getState().moveToken(b, 70, 0);
-    return { store, history, app, a, b };
+  function cleanupSetup(): ReturnType<typeof collectionScene> {
+    const scene = collectionScene();
+    scene.store.getState().moveToken(scene.b, 70, 0);
+    return scene;
   }
 
   it('keeps conditions it took away when another token\'s move is undone', async () => {
@@ -215,54 +173,20 @@ describe('widgets kept in step by Atlas', () => {
 });
 
 describe('a scene whose file was rewritten while its tab was away', () => {
-  const CAVE = 'maps/cave.atlasmap';
-  const TOWER = 'maps/tower.atlasmap';
-  const sceneFile = (path: string, tokens: string[]): string => JSON.stringify({
-    version: 4,
-    state: {
-      schema: 'atlas-vtt', version: 4, mapPath: path, background: null,
-      grid: { enabled: true, visible: true, size: 70, offsetX: 0, offsetY: 0, opacity: 0.5 },
-      objects: { tokens: Object.fromEntries(tokens.map((id) => [id, { id, kind: 'token', x: 10, y: 20, imagePath: `tokens/${id}.png` }])), fog: {}, pins: {}, texts: {}, drawings: {}, walls: {}, lights: {} },
-      camera: { x: 0, y: 0, scale: 1 },
-    },
-  });
-
   it('keeps the rewritten path of a token\'s art when the move made before leaving is undone', async () => {
-    vi.useFakeTimers();
-    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
-    const { app, files } = createInMemoryApp({ files: { [CAVE]: sceneFile(CAVE, ['a', 'b']), [TOWER]: sceneFile(TOWER, ['c']) } });
-    app.vault.getFileByPath = (path) => { const file = app.vault.getAbstractFileByPath(path); return file instanceof TFile ? file : null; };
-    app.vault.getFolderByPath = (path) => { const folder = app.vault.getAbstractFileByPath(path); return folder instanceof TFolder ? folder : null; };
-    vi.spyOn(AssetService, 'getInstance').mockReturnValue({
-      initialize: async (): Promise<void> => undefined, rewriteAssets: async (): Promise<boolean> => false, getAssets: async (): Promise<[]> => [],
-      getCollections: async (): Promise<[]> => [], getCollectionForMap: (): null => null, getCollectionSettings: () => ({ conditions: [] }),
-    } as never);
-    vi.mocked(MapLoader.load).mockImplementation(async (_app, path) => ({
-      mapData: migrateMapFile((JSON.parse(files.get(path)!) as PersistedMapEnvelope).state), texture: Texture.WHITE, hasBackground: false, backgroundUrl: null,
-    }));
-    const store = createViewAtlasStore(app, `tab-cache-${Math.random()}`);
-    const eventBus = new EventEmitter();
-    eventBus.on('wait-for-tokens-loaded', (done: () => void) => done());
-    const renderer = { clearBackgroundSprite: vi.fn(), setBackgroundSprite: vi.fn(), getGridSystem: () => null, initGrid: vi.fn(), getViewportInstance: () => null, getBackgroundSprite: () => null };
-    const rendererService = { getRenderer: () => renderer } as unknown as RendererService;
-    const service = new MapService(app, eventBus, store);
-    const view = { store, temporalCache: new Map<string, Pick<HistoryState, 'pastStates' | 'futureStates'>>() };
-    Object.setPrototypeOf(view, AtlasView.prototype);
-    const tabs = view as unknown as { saveTemporalState: (tabId: string) => void; restoreTemporalState: (tabId: string) => void };
+    const scene = tabScene();
+    await scene.load(CAVE);
+    scene.store.getState().moveToken('a', 80, 20);
+    await scene.save();
+    scene.leave();
+    await scene.load(TOWER);
+    await new FileReferenceService(scene.app).handleFilesMoved([{ from: 'tokens/b.png', to: 'art/b.png' }]);
+    expect(scene.files.get(CAVE)).toContain('art/b.png');
+    await scene.load(CAVE);
+    scene.comeBack();
 
-    await service.loadMap(rendererService, CAVE);
-    store.getState().moveToken('a', 80, 20);
-    await vi.advanceTimersByTimeAsync(600);
-    await store.flushStorage();
-    tabs.saveTemporalState('cave');
-    await service.loadMap(rendererService, TOWER);
-    await new FileReferenceService(app).handleFilesMoved([{ from: 'tokens/b.png', to: 'art/b.png' }]);
-    expect(files.get(CAVE)).toContain('art/b.png');
-    await service.loadMap(rendererService, CAVE);
-    tabs.restoreTemporalState('cave');
-
-    getHistoryStore(store)!.getState().undo();
-    expect(token(store, 'a')).toMatchObject({ x: 10 });
-    expect(token(store, 'b')).toMatchObject({ imagePath: 'art/b.png' });
+    getHistoryStore(scene.store)!.getState().undo();
+    expect(token(scene.store, 'a')).toMatchObject({ x: 10 });
+    expect(token(scene.store, 'b')).toMatchObject({ imagePath: 'art/b.png' });
   });
 });

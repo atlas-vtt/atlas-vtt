@@ -1,98 +1,154 @@
 import { HISTORY_LIMIT } from '../../src/app/stores/history';
 
 /**
- * A naive model of the undo history for the property tests: ordered arrays of entries, written
- * from the rules of what undo and redo do, without the implementation's code. Every record has
- * an identity, so the model knows where the store must give back the very same objects.
+ * A naive model of the undo history for the property tests, written from the rules of what a
+ * step is and what undo and redo do, not from the implementation. A step's change is a list of
+ * entity changes (key, value before or absent, value after or absent, place after), worked out
+ * from its two sides whenever it is applied. Records carry an identity, so the model knows
+ * where the store must give back the very same objects.
  */
 
-export type Ref = { readonly v: number };
-export type Entries = readonly (readonly [string, Ref])[];
-export interface Branch { readonly id: number; readonly entries: Entries }
-export interface ModelObjects { readonly id: number; readonly tokens: Branch; readonly zones: Branch | null }
-export interface ModelState { readonly objects: ModelObjects; readonly grid: Ref | null }
+/** An entity: a token or zone (compared by identity) or a widget's number. */
+export type Value = object | number;
+export type Entry = readonly [key: string, value: Value];
+/** A record as the store holds it, with the identity its last write gave it. */
+export interface Rec { readonly id: number; readonly entries: readonly Entry[] }
+export interface ModelObjects { readonly id: number; readonly tokens: Rec; readonly zones: Rec | null }
+/** The tracked state: `objects` (tokens, optional light zones), grid, background, widget values, memory edits. */
+export interface ModelState {
+  readonly objects: ModelObjects;
+  readonly grid: object | null;
+  readonly background: string | null;
+  readonly widgets: Rec;
+  readonly edits: number;
+}
 export interface ModelStep { readonly before: ModelState; readonly after: ModelState }
-export type CollectionName = 'tokens' | 'zones';
+export type CollectionName = 'tokens' | 'zones' | 'widgets';
+
+export const ABSENT = Symbol('absent');
+type Slot = Value | typeof ABSENT;
+/** What a step did to one entity: its value on the side undo or redo starts from, on the side it goes to, and its place there. */
+export interface EntityChange { readonly key: string; readonly from: Slot; readonly to: Slot; readonly index: number }
+export interface ChangeList { readonly changes: readonly EntityChange[]; readonly reordered: boolean }
 
 let identities = 1;
-const nextId = (): number => (identities += 1);
-const EMPTY: Branch = { id: 0, entries: [] };
+export const newId = (): number => (identities += 1);
+const EMPTY: Rec = { id: 0, entries: [] };
 
 const isIndex = (key: string): boolean => /^(0|[1-9]\d*)$/.test(key) && Number(key) < 4294967295;
+export const hasIndexKeys = (entries: readonly Entry[]): boolean => entries.some(([key]) => isIndex(key));
 /** The order an object keeps its keys in: integer-like keys first, ascending, then the others as added. */
-export function engineOrder(entries: Entries): Entries {
+export function engineOrder(entries: readonly Entry[]): Entry[] {
   const indices = entries.filter(([key]) => isIndex(key)).sort((a, b) => Number(a[0]) - Number(b[0]));
   return [...indices, ...entries.filter(([key]) => !isIndex(key))];
 }
 
-const has = (entries: Entries, key: string): boolean => entries.some(([k]) => k === key);
-const valueOf = (entries: Entries, key: string): Ref | undefined => entries.find(([k]) => k === key)?.[1];
-const sameEntries = (a: Entries, b: Entries): boolean => a.length === b.length && a.every(([k, v], i) => b[i]![0] === k && b[i]![1] === v);
+export const slotOf = (entries: readonly Entry[], key: string): Slot => {
+  const entry = entries.find(([k]) => k === key);
+  return entry ? entry[1] : ABSENT;
+};
+const keysOf = (entries: readonly Entry[]): string[] => entries.map(([key]) => key);
+const sameEntries = (a: readonly Entry[], b: readonly Entry[]): boolean => a.length === b.length && a.every(([k, v], i) => b[i]![0] === k && b[i]![1] === v);
 
-export const initialModel = (): ModelState => ({ objects: { id: nextId(), tokens: { id: nextId(), entries: [] }, zones: null }, grid: null });
-
-/** A write the GM or Atlas makes: the collection's entries become `entries` (absent when null). */
-export function written(state: ModelState, name: CollectionName, entries: Entries | null): ModelState {
-  const branch = entries === null ? null : { id: nextId(), entries: engineOrder(entries) };
-  const objects = name === 'tokens' ? { ...state.objects, tokens: branch! } : { ...state.objects, zones: branch };
-  return { ...state, objects: { ...objects, id: nextId() } };
+/**
+ * The entity changes between two sides of a step. When the keys both sides hold follow each
+ * other differently (an entity deleted and added again), every key of either side counts.
+ */
+export function changeList(from: readonly Entry[], to: readonly Entry[]): ChangeList {
+  const inBothFrom = keysOf(from).filter((key) => slotOf(to, key) !== ABSENT);
+  const inBothTo = keysOf(to).filter((key) => slotOf(from, key) !== ABSENT);
+  const reordered = inBothFrom.some((key, i) => inBothTo[i] !== key);
+  const changes: EntityChange[] = [];
+  for (const key of new Set([...keysOf(from), ...keysOf(to)])) {
+    const change: EntityChange = { key, from: slotOf(from, key), to: slotOf(to, key), index: keysOf(to).indexOf(key) };
+    if (reordered || change.from !== change.to) changes.push(change);
+  }
+  return { changes, reordered };
 }
 
-export const entriesOf = (state: ModelState, name: CollectionName): Entries | null => (name === 'tokens' ? state.objects.tokens.entries : state.objects.zones?.entries ?? null);
-
-/** The entries of `current`, moved towards `to` by what changed between `from` and `to`. */
-function towardsEntries(current: Entries, from: Entries, to: Entries): Entries {
-  const kept = from.map(([k]) => k).filter((k) => has(to, k));
-  const keptInTo = to.map(([k]) => k).filter((k) => has(from, k));
-  const reordered = kept.join('\u0000') !== keptInTo.join('\u0000');
-  const keys = [...new Set([...from.map(([k]) => k), ...to.map(([k]) => k)])];
-  const changed = reordered ? keys : keys.filter((k) => has(from, k) !== has(to, k) || valueOf(from, k) !== valueOf(to, k));
+/**
+ * `current` with a step's changes applied: an entity still there takes its new value where it is
+ * (unless the step reordered), one missing is placed at its index (lowest first, clamped), one the
+ * step removes goes, and the rest stay. An entity the step only moved that is gone stays gone.
+ */
+export function applyChanges(current: readonly Entry[], { changes, reordered }: ChangeList): Entry[] {
   let result = [...current];
-  const placed: [number, string, Ref][] = [];
-  const index = (k: string): number => to.findIndex(([key]) => key === k);
-  for (const key of changed) {
-    const target = valueOf(to, key);
-    const value = valueOf(from, key) === target && has(from, key) ? valueOf(current, key) : target;
-    if (!has(to, key)) result = result.filter(([k]) => k !== key);
-    else if (has(current, key) && !reordered) result = result.map(([k, v]) => [k, k === key ? value! : v] as const);
-    else if (has(current, key)) {
-      result = result.filter(([k]) => k !== key);
-      placed.push([index(key), key, value!]);
-    } else if (!(has(from, key) && valueOf(from, key) === target)) placed.push([index(key), key, target!]);
+  const placed: { key: string; index: number; value: Value }[] = [];
+  for (const change of changes) {
+    const now = slotOf(result, change.key);
+    if (change.to === ABSENT) {
+      result = result.filter(([key]) => key !== change.key);
+      continue;
+    }
+    const onlyMoved = change.from === change.to;
+    if (now !== ABSENT && !reordered) {
+      result = result.map(([key, value]) => [key, key === change.key ? change.to as Value : value] as const);
+    } else if (now !== ABSENT) {
+      result = result.filter(([key]) => key !== change.key);
+      placed.push({ key: change.key, index: change.index, value: onlyMoved ? now : change.to });
+    } else if (!onlyMoved) {
+      placed.push({ key: change.key, index: change.index, value: change.to });
+    }
   }
-  for (const [at, key, value] of placed.sort((a, b) => a[0] - b[0])) result.splice(Math.min(at, result.length), 0, [key, value]);
+  for (const { key, index, value } of placed.sort((a, b) => a.index - b.index)) {
+    const at = Math.min(index, result.length);
+    result = [...result.slice(0, at), [key, value] as const, ...result.slice(at)];
+  }
   return engineOrder(result);
 }
 
-function towardsBranch(current: Branch, from: Branch, to: Branch): Branch {
+/** A record moved towards `to` by what changed between `from` and `to`. */
+function towardsRec(current: Rec, from: Rec, to: Rec): Rec {
   if (from.id === to.id) return current;
   if (current.id === from.id) return to;
-  const entries = towardsEntries(current.entries, from.entries, to.entries);
-  return sameEntries(entries, current.entries) ? current : { id: nextId(), entries };
+  const entries = applyChanges(current.entries, changeList(from.entries, to.entries));
+  return sameEntries(entries, current.entries) ? current : { id: newId(), entries };
 }
+
+/** Whether a step changed a collection: its presence, or its record. */
+export const changedRec = (from: Rec | null, to: Rec | null): boolean => (from === null) !== (to === null) || (from ?? EMPTY).id !== (to ?? EMPTY).id;
 
 function towardsObjects(current: ModelObjects, from: ModelObjects, to: ModelObjects): ModelObjects {
   if (from.id === to.id) return current;
   if (current.id === from.id) return to;
-  const tokens = from.tokens.id === to.tokens.id ? current.tokens : towardsBranch(current.tokens, from.tokens, to.tokens);
+  const tokens = towardsRec(current.tokens, from.tokens, to.tokens);
   let zones = current.zones;
-  if ((from.zones?.id ?? null) !== (to.zones?.id ?? null)) {
-    const merged = towardsBranch(current.zones ?? EMPTY, from.zones ?? EMPTY, to.zones ?? EMPTY);
-    // A collection absent on the step's side goes only once nothing others added is left in it.
+  if (changedRec(from.zones, to.zones)) {
+    // An absent collection counts as an empty one; one the step's target lacks goes once nothing added since is left.
+    const merged = towardsRec(current.zones ?? EMPTY, from.zones ?? EMPTY, to.zones ?? EMPTY);
     zones = to.zones === null && (current.zones === null || merged.entries.length === 0) ? null : merged;
   }
   if (tokens === current.tokens && zones === current.zones) return current;
-  return { id: nextId(), tokens, zones };
+  return { id: newId(), tokens, zones };
 }
 
-/** The state moved towards `to` by what changed between `from` and `to`. */
+/** The state moved towards `to` by what changed between `from` and `to`, branch by branch. */
 export function restoreModel(current: ModelState, from: ModelState, to: ModelState): ModelState {
-  return { objects: towardsObjects(current.objects, from.objects, to.objects), grid: from.grid === to.grid ? current.grid : to.grid };
+  const whole = <T>(now: T, a: T, b: T): T => (a === b ? now : b);
+  return {
+    objects: towardsObjects(current.objects, from.objects, to.objects),
+    grid: whole(current.grid, from.grid, to.grid),
+    background: whole(current.background, from.background, to.background),
+    widgets: towardsRec(current.widgets, from.widgets, to.widgets),
+    edits: whole(current.edits, from.edits, to.edits),
+  };
 }
 
-const sameState = (a: ModelState, b: ModelState): boolean => a.objects.id === b.objects.id && a.grid === b.grid;
+export const sameState = (a: ModelState, b: ModelState): boolean =>
+  a.objects.id === b.objects.id && a.grid === b.grid && a.background === b.background && a.widgets.id === b.widgets.id && a.edits === b.edits;
 
-/** The history's rules, step by step, as the model keeps them. */
+export const recOf = (state: ModelState, name: CollectionName): Rec | null =>
+  name === 'tokens' ? state.objects.tokens : name === 'zones' ? state.objects.zones : state.widgets;
+
+export const initialModel = (): ModelState => ({
+  objects: { id: newId(), tokens: { id: newId(), entries: [] }, zones: null },
+  grid: null,
+  background: null,
+  widgets: { id: newId(), entries: [] },
+  edits: 0,
+});
+
+/** The history's rules as the plan states them: recording, transactions with their mark and fold, undo, redo. */
 export class HistoryModel {
   state = initialModel();
   undoSteps: ModelStep[] = [];
@@ -102,18 +158,20 @@ export class HistoryModel {
   private start: ModelState | null = null;
   private mark: ModelState | null = null;
 
+  /** A write of the GM (`gm`) or of Atlas itself. */
   write(next: ModelState, gm: boolean): void {
     const before = this.state;
     this.state = next;
     if (gm && this.tracking && this.depth === 0 && !sameState(before, next)) this.push({ before, after: next });
   }
 
+  /** What was written since the mark goes into the two steps next to the present. */
   private fold(target: ModelState): void {
-    if (!this.mark || sameState(this.mark, target)) return;
-    const last = this.undoSteps[this.undoSteps.length - 1];
-    const next = this.redoSteps[this.redoSteps.length - 1];
-    if (last) this.undoSteps[this.undoSteps.length - 1] = { before: last.before, after: restoreModel(last.after, this.mark, target) };
-    if (next) this.redoSteps[this.redoSteps.length - 1] = { before: restoreModel(next.before, this.mark, target), after: next.after };
+    if (this.mark === null || sameState(this.mark, target)) return;
+    const last = this.undoSteps.at(-1);
+    const next = this.redoSteps.at(-1);
+    if (last) this.undoSteps = [...this.undoSteps.slice(0, -1), { before: last.before, after: restoreModel(last.after, this.mark, target) }];
+    if (next) this.redoSteps = [...this.redoSteps.slice(0, -1), { before: restoreModel(next.before, this.mark, target), after: next.after }];
     this.mark = target;
   }
 
@@ -121,7 +179,6 @@ export class HistoryModel {
     this.fold(step.before);
     this.undoSteps = [...this.undoSteps, step].slice(-HISTORY_LIMIT);
     this.redoSteps = [];
-    if (this.mark) this.mark = step.after;
   }
 
   begin(): void {
@@ -133,49 +190,30 @@ export class HistoryModel {
     if (this.depth === 0) return;
     this.depth -= 1;
     if (this.depth > 0) return;
-    const begun = this.start;
-    this.start = null;
-    if (begun && this.tracking && !sameState(begun, this.state)) this.push({ before: begun, after: this.state });
-    this.close();
+    if (this.start && this.tracking && !sameState(this.start, this.state)) {
+      // The step below is folded towards the new step's start, where the new step begins.
+      this.push({ before: this.start, after: this.state });
+      this.start = this.mark = null;
+    } else {
+      this.close();
+    }
   }
 
   abandon(): void {
     if (this.depth === 0) return;
     this.depth -= 1;
-    if (this.depth > 0) return;
-    this.start = null;
-    this.close();
+    if (this.depth === 0) this.close();
   }
 
   discard(): void {
     if (this.depth === 0) return;
     this.depth = 0;
-    this.start = null;
     this.close();
   }
 
   private close(): void {
     this.fold(this.state);
-    this.mark = null;
-  }
-
-  /** Whether the next undo or redo starts from its step's own side: nothing else wrote since. */
-  startsFromStep(direction: 'undo' | 'redo'): boolean {
-    this.fold(this.state);
-    const step = (direction === 'undo' ? this.undoSteps : this.redoSteps).at(-1);
-    return !!step && sameState(this.state, direction === 'undo' ? step.after : step.before);
-  }
-
-  /** Undo or redo; returns the step as it was applied, after any fold. */
-  travel(direction: 'undo' | 'redo'): ModelStep | null {
-    const source = direction === 'undo' ? this.undoSteps : this.redoSteps;
-    if (source.length === 0) return null;
-    this.fold(this.state);
-    const step = (direction === 'undo' ? this.undoSteps : this.redoSteps).pop()!;
-    this.state = direction === 'undo' ? restoreModel(this.state, step.after, step.before) : restoreModel(this.state, step.before, step.after);
-    (direction === 'undo' ? this.redoSteps : this.undoSteps).push(step);
-    if (this.mark) this.mark = this.state;
-    return step;
+    this.start = this.mark = null;
   }
 
   clear(): void {
@@ -183,5 +221,23 @@ export class HistoryModel {
     this.redoSteps = [];
     this.depth = 0;
     this.start = this.mark = null;
+  }
+
+  /** Undo or redo. Returns the step as it was applied (after any fold), or null with nothing to travel. */
+  travel(direction: 'undo' | 'redo'): ModelStep | null {
+    if ((direction === 'undo' ? this.undoSteps : this.redoSteps).length === 0) return null;
+    const found = this.state;
+    this.fold(found);
+    const source = direction === 'undo' ? this.undoSteps : this.redoSteps;
+    const step = source.at(-1)!;
+    if (direction === 'undo') this.undoSteps = this.undoSteps.slice(0, -1);
+    else this.redoSteps = this.redoSteps.slice(0, -1);
+    const written = direction === 'undo' ? restoreModel(found, step.after, step.before) : restoreModel(found, step.before, step.after);
+    this.state = written;
+    // The step goes to the other stack as this travel found and left the store.
+    if (direction === 'undo') this.redoSteps = [...this.redoSteps, { before: written, after: found }];
+    else this.undoSteps = [...this.undoSteps, { before: found, after: written }];
+    if (this.mark !== null) this.mark = written;
+    return step;
   }
 }

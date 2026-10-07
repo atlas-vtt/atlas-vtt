@@ -37,7 +37,7 @@ function mergeRecord(current: Entries, from: Entries, to: Entries, depth: number
     const inCurrent = isKey(current, key);
     if (depth === COLLECTIONS) {
       const merged = towardsCollection(current[key], from[key], to[key]);
-      // A collection the step created goes only once nothing others added is left in it.
+      // A collection the step created goes only once nothing added since is left in it.
       if (!inTo && (!inCurrent || (isPlainRecord(merged) && Object.keys(merged).length === 0))) {
         entries.remove(key);
         continue;

@@ -11,7 +11,10 @@ export type HistorySnapshot = {
   exploredEdits?: unknown;
 };
 
-/** One undo step: the tracked state before and after one GM write or one outermost transaction. */
+/**
+ * One undo step: the tracked state before and after one GM write or one outermost transaction.
+ * Once undone or redone, the step holds the state that undo or redo found and left.
+ */
 export interface HistoryStep {
   readonly before: HistorySnapshot;
   readonly after: HistorySnapshot;

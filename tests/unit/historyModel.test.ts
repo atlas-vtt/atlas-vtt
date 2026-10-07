@@ -1,124 +1,113 @@
 import { describe, expect, it } from 'vitest';
 import fc from 'fast-check';
-import { create, type StoreApi } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
 import type { Draft } from 'immer';
-import { getHistoryStore, withHistory, type HistoryState, type HistoryStep } from '../../src/app/stores/history';
-import { entriesOf, engineOrder, HistoryModel, written, type CollectionName, type Entries, type ModelStep, type Ref } from '../helpers/historyModel';
+import { ABSENT, engineOrder, HistoryModel, newId, recOf, slotOf, type CollectionName, type ModelState, type Rec, type Value } from '../helpers/historyModel';
+import { createReal, realSlot, trackedRefs, travel, verify, type Real, type RealState, type WholeBranch } from '../helpers/historyModelChecks';
 
-// Undo and redo against a naive model of what a step changed, with writes of Atlas itself between.
+// Undo and redo against a naive model of what each step changed, with writes of Atlas itself
+// (and unrecorded writes while paused) between steps and inside open transactions.
 const RUNS = Number(process.env.VITE_HISTORY_RUNS ?? 150);
 const SEED = process.env.VITE_HISTORY_SEED === undefined ? undefined : Number(process.env.VITE_HISTORY_SEED);
 
-type Record_ = Record<string, Ref>;
-interface RealState {
-  objects: { tokens: Record_; lightZones?: Record_ };
-  grid: Ref | null;
-  background: null;
-  widgetValues: Record<string, number>;
-  exploredEdits: number;
-  apply: (recipe: (draft: Draft<RealState>) => void) => void;
-}
-interface Real { store: StoreApi<RealState>; history: () => HistoryState; system: { name: CollectionName; key: string; ref: Ref }[] }
-
-const createReal = (): Real => {
-  const store = create<RealState>()(withHistory(immer<RealState>((set) => ({
-    objects: { tokens: {} }, grid: null, background: null, widgetValues: {}, exploredEdits: 0, apply: (recipe) => set(recipe),
-  }))));
-  const history = getHistoryStore(store)!;
-  return { store, history: () => history.getState(), system: [] };
+const KEYS = ['a', 'b', 'c', '1', '2', '10'];
+const WIDGET_KEYS = ['fear', 'torches', '3'];
+const BACKGROUNDS = [null, 'maps/a.webp', 'maps/b.webp'];
+let made = 0;
+const earlier = new Map<string, object[]>();
+const fresh = (key: string): object => {
+  const ref = { v: (made += 1) };
+  earlier.set(key, [...(earlier.get(key) ?? []), ref]);
+  return ref;
 };
 
-const KEYS = ['a', 'b', 'c', '1', '2', '10'];
-let made = 0;
-const fresh = (): Ref => ({ v: (made += 1) });
-const collection = (draft: Draft<RealState>, name: CollectionName): Record_ => (name === 'tokens' ? draft.objects.tokens : (draft.objects.lightZones ??= {}));
-const entriesIn = (record: Record_ | undefined): Entries | null => (record ? Object.keys(record).map((key) => [key, record[key]!] as const) : null);
-const realEntries = (real: Real, name: CollectionName): Entries | null => entriesIn(name === 'tokens' ? real.store.getState().objects.tokens : real.store.getState().objects.lightZones);
-
-/** A write by the GM, or by Atlas itself (`untracked`), to the store and the model alike. */
-function write(model: HistoryModel, real: Real, gm: boolean, name: CollectionName, recipe: (draft: Record_) => void, next: Entries | null, after?: (draft: Draft<RealState>) => void): void {
-  const run = (): void => real.store.getState().apply((draft) => { if (next === null) delete draft.objects.lightZones; else recipe(collection(draft, name)); after?.(draft); });
-  if (gm) run(); else real.history().untracked(run);
-  model.write(written(model.state, name, next), gm);
+function withRec(state: ModelState, name: CollectionName, rec: Rec | null): ModelState {
+  if (name === 'widgets') return { ...state, widgets: rec! };
+  const objects = name === 'tokens' ? { ...state.objects, tokens: rec! } : { ...state.objects, zones: rec };
+  return { ...state, objects: { ...objects, id: newId() } };
 }
 
-function verify(model: HistoryModel, real: Real): void {
-  for (const name of ['tokens', 'zones'] as const) expect(realEntries(real, name)).toEqual(entriesOf(model.state, name));
-  expect(real.store.getState().grid).toBe(model.state.grid);
-  expect([real.history().pastStates.length, real.history().futureStates.length]).toEqual([model.undoSteps.length, model.redoSteps.length]);
+/** The model after a write that puts `value` (or removes the key): unchanged when it changes nothing, as with Immer. */
+function withSlot(state: ModelState, name: CollectionName, key: string, value: Value | typeof ABSENT): ModelState {
+  const entries = recOf(state, name)?.entries ?? [];
+  if (slotOf(entries, key) === value) return state;
+  const next = value === ABSENT
+    ? entries.filter(([k]) => k !== key)
+    : slotOf(entries, key) === ABSENT ? [...entries, [key, value] as const] : entries.map(([k, v]) => [k, k === key ? value : v] as const);
+  return withRec(state, name, { id: newId(), entries: engineOrder(next) });
 }
 
-/** Keys whose presence or value the step changed, in one collection. */
-function changedKeys(step: ModelStep, name: CollectionName): Set<string> {
-  const before = new Map(entriesOf(step.before, name) ?? []);
-  const after = new Map(entriesOf(step.after, name) ?? []);
-  return new Set([...before.keys(), ...after.keys()].filter((key) => before.get(key) !== after.get(key) || before.has(key) !== after.has(key)));
+const draftOf = (draft: Draft<RealState>, name: CollectionName): Record<string, unknown> =>
+  name === 'tokens' ? draft.objects.tokens : name === 'zones' ? (draft.objects.lightZones ??= {}) : draft.widgetValues;
+
+/** A write of the GM, or of Atlas itself (`untracked`), to the store and the model alike. */
+function write(model: HistoryModel, real: Real, gm: boolean, run: () => void, next: ModelState, own?: { where: CollectionName | WholeBranch; key: string }): void {
+  if (gm) run();
+  else real.history().untracked(run);
+  model.write(next, gm);
+  if (!gm && own && model.depth === 0) real.own.push({ ...own, value: realSlot(real.store.getState(), own.where, own.key) });
 }
 
-const tracked = (state: RealState): unknown[] => [state.objects, state.grid, state.background, state.widgetValues, state.exploredEdits];
-
-/** Undo or redo, holding the store to the model and to what a step may and may not touch. */
-function travel(model: HistoryModel, real: Real, direction: 'undo' | 'redo'): void {
-  const before = real.store.getState();
-  const stack = direction === 'undo' ? real.history().pastStates : real.history().futureStates;
-  const own: HistoryStep | undefined = stack[stack.length - 1];
-  const step = model.travel(direction);
-  real.history()[direction]();
-  verify(model, real);
-  if (!step || !own) return;
-  const after = real.store.getState();
-  const target = direction === 'undo' ? step.before : step.after;
-  for (const name of ['tokens', 'zones'] as const) {
-    const changed = changedKeys(step, name);
-    const was = new Map(entriesIn(name === 'tokens' ? before.objects.tokens : before.objects.lightZones) ?? []);
-    const now = new Map(realEntries(real, name) ?? []);
-    const wanted = new Map(entriesOf(target, name) ?? []);
-    for (const [key, ref] of was) if (!changed.has(key) && now.has(key)) expect(now.get(key), `P1 ${name}.${key}`).toBe(ref);
-    for (const key of changed) expect(now.get(key), `P2 ${name}.${key}`).toBe(wanted.get(key));
-    for (const system of real.system) {
-      if (system.name === name && was.get(system.key) === system.ref && !changed.has(system.key)) expect(now.get(system.key), `P7 ${name}.${system.key}`).toBe(system.ref);
-    }
-  }
-  // When nothing else wrote since, undo and redo give back the step's other side itself.
-  const [side, other] = direction === 'undo' ? [own.after, own.before] : [own.before, own.after];
-  if (tracked(before).every((value, i) => value === Object.values(side)[i])) {
-    tracked(after).forEach((value, i) => expect(value, 'P4').toBe(Object.values(other)[i]));
-  }
-}
+const apply = (real: Real, recipe: (draft: Draft<RealState>) => void): (() => void) => () => real.store.getState().apply(recipe);
 
 type Command = fc.Command<HistoryModel, Real>;
 const command = (name: string, check: (model: Readonly<HistoryModel>) => boolean, run: (model: HistoryModel, real: Real) => void): Command => ({
   check: (model) => check(model), run: (model, real) => { run(model, real); verify(model, real); }, toString: () => name,
 });
+const present = (model: Readonly<HistoryModel>, name: CollectionName, key: string): boolean => slotOf(recOf(model.state, name)?.entries ?? [], key) !== ABSENT;
+const collections = fc.constantFrom<CollectionName>('tokens', 'zones');
+const anyCollection = fc.constantFrom<CollectionName>('tokens', 'zones', 'widgets');
+const keyIn = (name: CollectionName): string[] => (name === 'widgets' ? WIDGET_KEYS : KEYS);
 
-const writes = (gm: boolean): fc.Arbitrary<Command>[] => [
-  fc.tuple(fc.constantFrom<CollectionName>('tokens', 'zones'), fc.constantFrom(...KEYS)).map(([name, key]) => command(`put ${name}.${key}${gm ? '' : ' by Atlas'}`, () => true, (model, real) => {
-    const ref = fresh();
-    const entries = entriesOf(model.state, name) ?? [];
-    const next = entries.some(([k]) => k === key) ? entries.map(([k, v]) => [k, k === key ? ref : v] as const) : [...entries, [key, ref] as const];
-    write(model, real, gm, name, (draft) => { draft[key] = ref; }, next);
-    if (!gm && model.depth === 0) real.system.push({ name, key, ref });
-  })),
-  fc.tuple(fc.constantFrom<CollectionName>('tokens', 'zones'), fc.constantFrom(...KEYS)).map(([name, key]) => command(`delete ${name}.${key}${gm ? '' : ' by Atlas'}`, (model) => (entriesOf(model.state, name) ?? []).some(([k]) => k === key), (model, real) => {
-    write(model, real, gm, name, (draft) => { delete draft[key]; }, (entriesOf(model.state, name) ?? []).filter(([k]) => k !== key));
-  })),
-  fc.tuple(fc.constantFrom<CollectionName>('tokens', 'zones'), fc.constantFrom('a', 'b', 'c')).map(([name, key]) => command(`move ${name}.${key} last${gm ? '' : ' by Atlas'}`, (model) => {
-    const entries = engineOrder(entriesOf(model.state, name) ?? []);
-    return entries.some(([k]) => k === key) && entries[entries.length - 1]![0] !== key;
-  }, (model, real) => {
-    const entries = entriesOf(model.state, name)!;
-    const ref = entries.find(([k]) => k === key)![1];
-    write(model, real, gm, name, (draft) => { delete draft[key]; draft[key] = ref; }, [...entries.filter(([k]) => k !== key), [key, ref] as const]);
-  })),
-  fc.constant(command(`drop zones${gm ? '' : ' by Atlas'}`, (model) => model.state.objects.zones !== null, (model, real) => write(model, real, gm, 'zones', () => undefined, null))),
-  fc.boolean().map((clear) => command(`grid${gm ? '' : ' by Atlas'}`, (model) => !clear || model.state.grid !== null, (model, real) => {
-    const grid = clear ? null : fresh();
-    const run = (): void => real.store.getState().apply((draft) => { draft.grid = grid; });
-    if (gm) run(); else real.history().untracked(run);
-    model.write({ ...model.state, grid }, gm);
-  })),
-];
+function writes(gm: boolean): fc.Arbitrary<Command>[] {
+  const by = gm ? '' : ' by Atlas';
+  return [
+    fc.tuple(collections, fc.constantFrom(...KEYS), fc.boolean()).map(([name, key, again]) => command(`put ${name}.${key}${again ? ' (an earlier value)' : ''}${by}`, () => true, (model, real) => {
+      const ref = again && earlier.has(key) ? earlier.get(key)![0]! : fresh(key);
+      write(model, real, gm, apply(real, (draft) => { draftOf(draft, name)[key] = ref; }), withSlot(model.state, name, key, ref), { where: name, key });
+    })),
+    fc.tuple(fc.constantFrom(...WIDGET_KEYS), fc.integer({ min: 0, max: 3 })).map(([key, value]) => command(`widget ${key} = ${value}${by}`, () => true, (model, real) => {
+      write(model, real, gm, apply(real, (draft) => { draft.widgetValues[key] = value; }), withSlot(model.state, 'widgets', key, value), { where: 'widgets', key });
+    })),
+    anyCollection.chain((name) => fc.constantFrom(...keyIn(name)).map((key) => command(`delete ${name}.${key}${by}`, (model) => present(model, name, key), (model, real) => {
+      write(model, real, gm, apply(real, (draft) => { delete draftOf(draft, name)[key]; }), withSlot(model.state, name, key, ABSENT), { where: name, key });
+    }))),
+    anyCollection.chain((name) => fc.constantFrom(...keyIn(name)).map((key) => command(`move ${name}.${key} last${by}`, (model) => present(model, name, key), (model, real) => {
+      const entries = recOf(model.state, name)!.entries;
+      const value = slotOf(entries, key) as Value;
+      const next = withRec(model.state, name, { id: newId(), entries: engineOrder([...entries.filter(([k]) => k !== key), [key, value]]) });
+      write(model, real, gm, apply(real, (draft) => { const record = draftOf(draft, name); delete record[key]; record[key] = value; }), next);
+    }))),
+    fc.constant(command(`drop zones${by}`, (model) => model.state.objects.zones !== null, (model, real) => {
+      write(model, real, gm, apply(real, (draft) => { delete draft.objects.lightZones; }), withRec(model.state, 'zones', null));
+    })),
+    fc.boolean().map((clear) => command(`grid${clear ? ' cleared' : ''}${by}`, () => true, (model, real) => {
+      const grid = clear ? null : fresh('grid');
+      const next = model.state.grid === grid ? model.state : { ...model.state, grid };
+      write(model, real, gm, apply(real, (draft) => { draft.grid = grid; }), next, { where: 'grid', key: '' });
+    })),
+    fc.constantFrom(...BACKGROUNDS).map((background) => command(`background ${background}${by}`, () => true, (model, real) => {
+      write(model, real, gm, apply(real, (draft) => { draft.background = background; }), { ...model.state, background }, { where: 'background', key: '' });
+    })),
+    fc.constant(command(`memory edit${by}`, () => true, (model, real) => {
+      write(model, real, gm, apply(real, (draft) => { draft.exploredEdits += 1; }), { ...model.state, edits: model.state.edits + 1 }, { where: 'edits', key: '' });
+    })),
+    fc.constant(command(`tokens copied whole${by}`, () => true, (model, real) => {
+      const run = (): void => { const { objects } = real.store.getState(); real.store.setState({ objects: { ...objects, tokens: { ...objects.tokens } } }); };
+      write(model, real, gm, run, withRec(model.state, 'tokens', { id: newId(), entries: model.state.objects.tokens.entries }));
+    })),
+    fc.constant(command(`untracked field${by}`, () => true, (model, real) => {
+      write(model, real, gm, apply(real, (draft) => { draft.elsewhere += 1; }), model.state);
+    })),
+  ];
+}
+
+/** Undo then redo, or redo then undo, with nothing between: every branch comes back as the very object it was (P5). */
+const roundTrip = (first: 'undo' | 'redo'): Command => command(`${first} and back`, () => true, (model, real) => {
+  const before = trackedRefs(real.store.getState());
+  if (!travel(model, real, first)) return;
+  expect(travel(model, real, first === 'undo' ? 'redo' : 'undo')).toBe(true);
+  trackedRefs(real.store.getState()).forEach((value, i) => expect(value, 'P5').toBe(before[i]));
+});
 
 const commands: fc.Arbitrary<Command>[] = [
   ...writes(true), ...writes(true), ...writes(false),
@@ -126,26 +115,20 @@ const commands: fc.Arbitrary<Command>[] = [
   fc.constant(command('end', () => true, (model, real) => { model.end(); real.history().endTransaction(); })),
   fc.constant(command('abandon', () => true, (model, real) => { model.abandon(); real.history().abandonTransaction(); })),
   fc.constant(command('discard', () => true, (model, real) => { model.discard(); real.history().discardTransaction(); })),
-  fc.constant(command('undo', () => true, (model, real) => travel(model, real, 'undo'))),
-  fc.constant(command('undo', () => true, (model, real) => travel(model, real, 'undo'))),
-  fc.constant(command('redo', () => true, (model, real) => travel(model, real, 'redo'))),
-  fc.constant(command('undo and redo', () => true, (model, real) => {
-    const before = tracked(real.store.getState());
-    // From the step's own side (nothing else wrote since, a transaction's writes included) both come back whole.
-    const whole = model.startsFromStep('undo');
-    travel(model, real, 'undo');
-    travel(model, real, 'redo');
-    if (whole) tracked(real.store.getState()).forEach((value, i) => expect(value, 'P5').toBe(before[i]));
-  })),
+  fc.constant(command('undo', () => true, (model, real) => { travel(model, real, 'undo'); })),
+  fc.constant(command('undo', () => true, (model, real) => { travel(model, real, 'undo'); })),
+  fc.constant(command('redo', () => true, (model, real) => { travel(model, real, 'redo'); })),
+  fc.constant(roundTrip('undo')),
+  fc.constant(roundTrip('redo')),
   fc.constant(command('clear', () => true, (model, real) => { model.clear(); real.history().clear(); })),
   fc.constant(command('pause', () => true, (model, real) => { model.tracking = false; real.history().pause(); })),
   fc.constant(command('resume', () => true, (model, real) => { model.tracking = true; real.history().resume(); })),
 ];
 
 describe('undo and redo against a model of what each step changed', () => {
-  it('hold the store to the model, and take back only what a step changed', () => {
+  it('hold the store to the model, and take back and bring back only what a step changed', () => {
     fc.assert(fc.property(fc.commands(commands, { maxCommands: 120, size: 'max' }), (cmds) => {
       fc.modelRun(() => ({ model: new HistoryModel(), real: createReal() }), cmds);
     }), { numRuns: RUNS, ...(SEED === undefined ? {} : { seed: SEED }) });
-  });
+  }, 600_000);
 });
