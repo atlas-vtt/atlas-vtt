@@ -23,6 +23,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
 
       - name: Setup Node
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -35,6 +36,15 @@ jobs:
 
       - name: Typecheck
         run: npx tsc --noEmit
+
+      # Regenerates the API report (a tsc declaration tree in api-report/). A stale report fails only a change that
+      # touches the API (src/api/, the report, or a source file it includes); any other change just prints the
+      # difference (scripts/api-report-check.js). Then checks the API version moved if the report changed against the
+      # latest Atlas release tag (scripts/api-version-check.js), so it moves once per Atlas release, not once per PR.
+      - name: Extension API report
+        run: npm run api:check
+        env:
+          API_CHANGES_BASE: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || github.event.before }}
 
       # The rule set Obsidian's community directory scores the plugin with.
       # Zero tolerance; accepted exceptions live in eslint.suppressions.json.

@@ -78,3 +78,6 @@ party/
 # GPU test failure artifacts
 **/__screenshots__/
 .vitest-attachments/
+
+# Extension API build outputs
+build/api-dts/

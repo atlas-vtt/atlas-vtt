@@ -205,6 +205,11 @@ export class AtlasView extends FileView {
     };
   }
 
+  /** True once Obsidian has closed the view (until it is opened again). */
+  get isClosed(): boolean {
+    return this.isViewClosing;
+  }
+
   getStore(): ViewAtlasStore {
     return this.store;
   }

@@ -1,3 +1,7 @@
+## New
+
+- Other Obsidian plugins can extend Atlas through a versioned extension API (`app.plugins.plugins['atlas-vtt'].api`, announced by the `atlas-vtt:api-ready` event). They can read map views and collection rules. Atlas removes everything a plugin added when either plugin unloads. See docs/extension-api.md
+
 ## Improved
 
 - Show my rolls to players is now a switch in the dice tray and in Dice settings, the same setting as Show dice rolls in the player view settings.

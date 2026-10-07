@@ -1,0 +1,7 @@
+/**
+ * The names of Atlas's widget and condition icons, written out so the extension API names them without their drawings:
+ * `keyof typeof WIDGET_ICON_PATHS` would put every icon's path data (about 80 KB, `as const`) into the API report.
+ * The drawings (`widgetIcons.ts`) must hold exactly these names, which the compiler checks (`satisfies`), so a new icon
+ * is added in both files; changing a drawing changes nothing here.
+ */
+export type WidgetIcon = 'heart' | 'heartbeat' | 'health-potion' | 'skull' | 'terror' | 'brain' | 'strength' | 'crossed-swords' | 'sword' | 'shield' | 'guard' | 'magic' | 'spellbook' | 'lightning' | 'flame' | 'snowflake' | 'drop' | 'potion' | 'poison' | 'star' | 'clover' | 'crown' | 'prayer' | 'wings' | 'eye' | 'coins' | 'gem' | 'key' | 'hourglass' | 'stopwatch' | 'campfire' | 'torch' | 'rations' | 'footprints' | 'moon' | 'sun' | 'dragon' | 'wolf' | 'ghost' | 'd20' | 'd6' | 'scroll' | 'blindfold' | 'hearing-disabled' | 'grab' | 'knockout' | 'knocked-out-stars' | 'invisible' | 'frozen-body' | 'stoned-skull' | 'foot-trip' | 'imprisoned' | 'sleepy' | 'tired-eye' | 'hidden' | 'cracked-shield' | 'surprised' | 'meditation' | 'spider-web' | 'run' | 'falling' | 'fog' | 'spiral-bloom' | 'puppet' | 'grim-reaper' | 'life-tap' | 'weight' | 'arm-sling' | 'vomiting' | 'snail' | 'brain-freeze' | 'hood' | 'bleeding-wound' | 'broken-bone' | 'bleeding-eye' | 'brain-tentacle' | 'psychic-waves' | 'screaming';
