@@ -5,7 +5,7 @@ import { literalCulling, withoutEdgeOn, withoutTies } from '../helpers/literalCu
 import { referencePlan, type ReferencePlan } from '../helpers/visibilityReference';
 import { chainsTrial, conesTrial, corridorsTrial, limitedTrial, roomsTrial, shortReachTrial, wallKindsTrial, type VisibilityTrial } from '../helpers/visibilityScenes';
 import { TIE_KINDS, tiesTrial } from '../helpers/visibilityTies';
-import { checkLimitedTrial, checkTrial, floor, TALLIED_TRIALS, trialSeeds } from '../helpers/visibilityTrials';
+import { checkLimitedTrial, checkTrial, floor, sweepTimeout, TALLIED_TRIALS, trialSeeds } from '../helpers/visibilityTrials';
 
 const FILE = 'tests/unit/visibilityCulling.test.ts';
 
@@ -21,7 +21,7 @@ function run(family: string, make: (seed: number) => VisibilityTrial, trials: nu
 /** Trials of the families where runs and every reason to cast again must turn up together. */
 const together = new Tally();
 
-describe('the culled sweep keeps every corner the full sweep draws', { timeout: 600_000 }, () => {
+describe('the culled sweep keeps every corner the full sweep draws', { timeout: sweepTimeout(600_000) }, () => {
   it('in rooms with hand-drawn joints, T-junctions, doors and one-way walls', () => {
     const tally = run('rooms', roomsTrial, 20, together);
     floor(tally, 'hidden ends', 7000);

@@ -2,11 +2,11 @@
 import { describe, expect, it } from 'vitest';
 import { Tally } from '../helpers/visibilityCompare';
 import { gridMapTrial } from '../helpers/visibilityMaps';
-import { checkTrial, trialSeeds } from '../helpers/visibilityTrials';
+import { checkTrial, sweepTimeout, trialSeeds } from '../helpers/visibilityTrials';
 
 const FILE = 'tests/unit/visibilityCullingLarge.test.ts';
 
-describe('the culled sweep on large maps', { timeout: 1_200_000 }, () => {
+describe('the culled sweep on large maps', { timeout: sweepTimeout(1_200_000) }, () => {
   it('keeps every corner on grid maps of up to 20,000 walls, square and turned', () => {
     const tally = new Tally();
     for (const seed of trialSeeds('grid maps', 12)) {

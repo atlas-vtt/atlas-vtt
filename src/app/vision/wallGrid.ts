@@ -12,6 +12,8 @@ const MAX_SIDE = 512;
 const MAX_LISTED = 8;
 /** How many grids are kept: one per wall array, the arrays used last. */
 const KEPT = 4;
+/** Farthest place from zero (px) a grid works with; walls or sweeps beyond it are left to the full sweep. */
+const MAX_PLACE = 1e15;
 
 /** Memory a sweep reuses from one call to the next on the same walls. */
 export interface GridScratch {
@@ -159,9 +161,16 @@ function unchanged(grid: WallGrid, walls: readonly WallSegment[]): boolean {
   return true;
 }
 
-/** Whether every end of `walls` is a finite number, which a grid needs to place it. */
+/**
+ * Whether `value` is a number a grid can place: within `MAX_PLACE` of zero. Every number a grid
+ * and its walks work out from such numbers stays finite, so every walk ends.
+ */
+export function placeableNumber(value: number): boolean {
+  return Math.abs(value) <= MAX_PLACE;
+}
+
 function placeable(walls: readonly WallSegment[]): boolean {
-  return walls.every((wall) => Number.isFinite(wall.p1.x) && Number.isFinite(wall.p1.y) && Number.isFinite(wall.p2.x) && Number.isFinite(wall.p2.y));
+  return walls.every((wall) => placeableNumber(wall.p1.x) && placeableNumber(wall.p1.y) && placeableNumber(wall.p2.x) && placeableNumber(wall.p2.y));
 }
 
 const grids: WallGrid[] = [];

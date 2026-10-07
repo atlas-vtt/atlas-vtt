@@ -70,14 +70,13 @@ export function indexOutline(origin: Point, polygon: readonly Point[], bearing =
 export function outlineAt(origin: Point, polygon: readonly Point[], angle: number, index: OutlineIndex | null): Point {
   const dx = Math.cos(angle), dy = Math.sin(angle);
   const n = polygon.length;
+  // The bearing the ray points at, whatever the size of `angle`; none where `angle` is no number or endless.
+  const bearing = Math.atan2(dy, dx);
   let reach = Infinity;
-  if (!index) {
+  if (!index || Number.isNaN(bearing)) {
     for (let i = 0; i < n; i++) reach = Math.min(reach, rayHit(origin, dx, dy, polygon[i]!, polygon[(i + 1) % n]!));
   } else {
-    let turned = angle;
-    while (turned < -Math.PI) turned += TURN;
-    while (turned >= Math.PI) turned -= TURN;
-    const bucket = bucketOf(turned);
+    const bucket = bucketOf(bearing);
     for (let k = index.starts[bucket]!; k < index.starts[bucket + 1]!; k++) {
       const i = index.edges[k]!;
       reach = Math.min(reach, rayHit(origin, dx, dy, polygon[i]!, polygon[(i + 1) % n]!));

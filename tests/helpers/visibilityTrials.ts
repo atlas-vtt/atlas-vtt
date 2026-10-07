@@ -21,6 +21,11 @@ export function trialSeeds(family: string, fallback: number): number[] {
   return [...kept, ...Array.from({ length: count }, (_, i) => i + 1)];
 }
 
+/** A family's time limit: `ms` up to 300 trials, longer in proportion where `VITE_SWEEP_TRIALS` asks for more. */
+export function sweepTimeout(ms: number): number {
+  return ms * Math.max(1, Math.ceil(Number(import.meta.env.VITE_SWEEP_TRIALS ?? 0) / 300));
+}
+
 /** Trials whose rules are counted against the reference, which works by brute force. */
 export const TALLIED_TRIALS = 20;
 
