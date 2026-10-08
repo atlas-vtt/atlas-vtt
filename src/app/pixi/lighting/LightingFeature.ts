@@ -1,4 +1,5 @@
 import { dynamicLightingOn } from '../../experimental/experimentalFeatures';
+import { LIGHTING_QUALITY, type LightingQualitySource } from '../../lighting/lightingQuality';
 import { SettingsService } from '../../services/SettingsService';
 import { requestRender } from '../RenderScheduler';
 import type { TokenRenderer } from '../TokenRenderer';
@@ -38,7 +39,8 @@ export class LightingFeature {
     const on = dynamicLightingOn(this.deps.obsApp);
     if (on === !!this.current) return;
     if (on) {
-      this.current = new LightingController(this.deps);
+      const quality = settingsQuality(SettingsService.forApp(this.deps.obsApp));
+      this.current = new LightingController({ ...this.deps, ...(quality && { quality }) });
       if (this.tokens) this.current.wire(this.tokens);
     } else {
       this.current?.remove();
@@ -60,4 +62,13 @@ export class LightingFeature {
     this.current?.destroy();
     this.current = undefined;
   }
+}
+
+/** The lighting quality chosen in Atlas' settings on this device, followed while the view lives. */
+function settingsQuality(settings: SettingsService | undefined): LightingQualitySource | undefined {
+  if (!settings) return undefined;
+  return {
+    current: () => LIGHTING_QUALITY[settings.getLightingQuality()],
+    onChange: (listener) => settings.onChange(listener),
+  };
 }

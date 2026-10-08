@@ -3,6 +3,7 @@ import type { Viewport } from 'pixi-viewport';
 import type { StoreApi } from 'zustand/vanilla';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { ExploredEdit } from '../../lighting/exploredEdits';
+import { DEFAULT_LIGHTING_QUALITY, type LightingQuality, type LightingQualitySource } from '../../lighting/lightingQuality';
 import { sceneLook, type SceneLook } from '../../lighting/sceneLightingOptions';
 import type { SceneLighting } from '../../types/lightingTypes';
 import type { ViewState } from '../../types/viewState';
@@ -55,6 +56,8 @@ export interface LightingRendererDeps {
   onSightChange?: () => void;
   /** Who shows the GM the explored memory while it is edited. */
   exploredWatcher?: ExploredMemoryWatcher;
+  /** How much the lighting may ask of the graphics device, followed while the view lives; the default quality without one. */
+  quality?: LightingQualitySource;
 }
 
 type SceneWithoutLook = Omit<EngineScene, keyof SceneLook>;
@@ -98,11 +101,14 @@ export class LightingRenderer implements SceneLightingView {
   private readonly onContextLost = (): void => this.memory.holdSaves();
   private readonly playerView = new PlayerView((shown) => this.engine.setMode(shown ? 'player' : 'gm'));
   private readonly unsubscribe: () => void;
+  private readonly unsubscribeQuality: () => void;
+  private quality: LightingQuality;
   private readonly tick = (): void => this.run(() => this.animate());
 
   constructor(private readonly deps: LightingRendererDeps) {
     const { renderer } = deps.app;
-    this.engine = new LightingEngine(renderer);
+    this.quality = deps.quality?.current() ?? DEFAULT_LIGHTING_QUALITY;
+    this.engine = new LightingEngine(renderer, this.quality);
     this.layer = this.engine.layer;
     this.memory = new ExploredMemory({
       renderer,
@@ -121,6 +127,7 @@ export class LightingRenderer implements SceneLightingView {
     deps.viewport.addChild(this.layer);
     this.modeLayer = this.playerView;
     this.unsubscribe = deps.store.subscribe((state) => this.run(() => this.update(state)));
+    this.unsubscribeQuality = deps.quality?.onChange(() => this.followQuality()) ?? ((): void => undefined);
     deps.app.ticker.add(this.tick);
     this.run(() => this.update(deps.store.getState()));
   }
@@ -144,6 +151,15 @@ export class LightingRenderer implements SceneLightingView {
     // Bounce still to build after an edit belongs in the picture; so does a world a restored context took.
     this.run(() => this.engine.flush());
     return this.engine.renderFrame(frame, render);
+  }
+
+  /** The quality changed: the engine redraws at the new one, from the scene it holds. */
+  private followQuality(): void {
+    const quality = this.deps.quality?.current() ?? DEFAULT_LIGHTING_QUALITY;
+    if (quality === this.quality) return;
+    this.quality = quality;
+    this.run(() => this.engine.setQuality(quality));
+    requestRender(this.deps.app);
   }
 
   /** The map image changed size or finished loading. */
@@ -310,6 +326,7 @@ export class LightingRenderer implements SceneLightingView {
   destroy(): void {
     this.stopped = true;
     this.unsubscribe();
+    this.unsubscribeQuality();
     this.deps.app.ticker.remove(this.tick);
     this.deps.app.renderer.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     this.endAttempt();
