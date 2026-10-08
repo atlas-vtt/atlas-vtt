@@ -1,15 +1,12 @@
 import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
 import { selectSight } from '../../vision/selectSight';
-import { Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import type { WallSegment } from '../../types/wallTypes';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { sealedWalls } from '../../lighting/sealWalls';
-import { MAX_LIGHT_REACH, worldTexel } from '../../lighting/lightingConstants';
-import type { Rect } from '../../lighting/segments';
-import { uncoveredAreas, type CoveredPart, type FilledArea } from '../../lighting/uncoveredAreas';
+import { worldTexel } from '../../lighting/lightingConstants';
 import { perceivedLevel, showsMap } from '../../gameSystems/senseRules';
 import { SightTokens, heldForSight } from '../../lighting/sightOnDrop';
 import { SEES_ALL, SightCache, sceneSight, sightSources, type AmbientLight, type LightReach, type Sight, type SightRegion } from '../../vision/sight';
@@ -18,24 +15,15 @@ import { seenSpots, type SeenSpot } from '../../vision/perception';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds, Polygon } from '../../vision/visibility';
 import type { HideableLayer } from '../playerSafeFrame';
-import { destroyTree } from '../utils/destroyTree';
 import type { SceneFrame } from './engine/types';
 import { LIGHTING_Z_INDEX } from './LightingRenderer';
 import { PlayerView } from './PlayerView';
+import { SightMask } from './SightMask';
 import { LightReaches } from '../../vision/lightReaches';
 import { sourcesInDarkness } from '../../vision/magicalDarkness';
 import { activeLights, engineLight } from '../../vision/lightSources';
 import type { SceneLightingView } from './sceneLightingView';
 
-/**
- * World pixels that make up for working the black out in eighths of a pixel. Rounding moves an
- * outline up to a fifth of a pixel: what is shown reached that far into what is not, and
- * outlines that coincide (a magical darkness ending on the wall sight ends on) came up to
- * 0.28 px apart, with a hairline of the map between them. So the black reaches this far into
- * what is shown, and a darkness as far beyond its own outline. The price is a black line of
- * twice the margin along a wall that tokens see from both sides.
- */
-const MARGIN = 0.25;
 /** Full ambient light: everything in sight counts as lit. */
 const FULL_DAYLIGHT: AmbientLight = { ambient: 1 };
 /** The fallback has no lights. One list, so whoever compares it (`PerceptionMemo`) finds it unchanged. */
@@ -51,10 +39,11 @@ export interface CanvasLightingDeps {
   /** What the tokens see, or what sight goes by (tokens, walls, lighting, rules), changed. */
   onSightChange?: () => void;
   /**
-   * Asks for a render of the stage (`requestRender`). The darkness is drawn only while the
+   * Asks for a render of the stage (`requestRender`). The black is composed only while the
    * players' view shows it, so a change of it in the GM's view leaves the stage as it was, and
    * a canvas that renders on change would render nothing: the player window, which captures
-   * its frames in that render, would stay on what the players saw before.
+   * its frames in that render, would stay on what the players saw before. Shown, the black is
+   * new pixels in a texture the stage already holds, which PIXI does not take for a change.
    */
   requestRender?: () => void;
 }
@@ -69,7 +58,8 @@ export interface CanvasLightingDeps {
  */
 export class CanvasLightingFallback implements SceneLightingView {
   readonly modeLayer: HideableLayer;
-  private readonly darkness = new Graphics();
+  /** The black over what the players do not see. */
+  private readonly mask = new SightMask();
   private readonly cache = new SightCache();
   private readonly sightTokens = new SightTokens();
   private sight: Sight = SEES_ALL;
@@ -82,21 +72,21 @@ export class CanvasLightingFallback implements SceneLightingView {
   private inputs: readonly unknown[] = [];
   /** The walls with their bridges, kept while the drawn walls and the map's size stay, so the sight cache knows them. */
   private sealed: { drawn: ViewAtlasState['objects']['walls']; texel: number; walls: readonly WallSegment[] } | null = null;
-  /** What the darkness is drawn from; none while there is none to draw. */
+  /** What the black is composed from; none while there is none to show. */
   private source: DarknessSource | null = null;
-  /** `source` changed since the darkness was drawn. */
+  /** `source` changed since the black was composed. */
   private stale = false;
   private readonly playerView = new PlayerView((shown) => {
     if (shown) this.drawDarkness();
-    this.darkness.visible = shown;
+    this.mask.view.visible = shown;
   });
   private readonly unsubscribe: () => void;
 
   constructor(private readonly deps: CanvasLightingDeps) {
-    this.darkness.zIndex = LIGHTING_Z_INDEX;
-    this.darkness.visible = false;
-    this.darkness.eventMode = 'none';
-    deps.viewport.addChild(this.darkness);
+    this.mask.view.zIndex = LIGHTING_Z_INDEX;
+    this.mask.view.visible = false;
+    this.mask.view.eventMode = 'none';
+    deps.viewport.addChild(this.mask.view);
     this.modeLayer = this.playerView;
     this.unsubscribe = deps.store.subscribe((state) => this.update(state));
     this.update(deps.store.getState());
@@ -117,12 +107,12 @@ export class CanvasLightingFallback implements SceneLightingView {
 
   /** The GM's view is unlit, and so is its thumbnail: only the darkness of a players' view on the canvas is left out. */
   renderForFrame<T>(_frame: SceneFrame, render: () => T): T {
-    const shown = this.darkness.visible;
-    this.darkness.visible = false;
+    const shown = this.mask.view.visible;
+    this.mask.view.visible = false;
     try {
       return render();
     } finally {
-      this.darkness.visible = shown;
+      this.mask.view.visible = shown;
     }
   }
 
@@ -136,7 +126,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     this.inputs = inputs;
     if (!state.lighting.enabled || !bounds) {
       this.sightBuilt = false;
-      this.darkness.clear();
+      this.mask.clear();
       if (this.source) this.deps.requestRender?.();
       this.source = null;
       this.stale = false;
@@ -168,9 +158,9 @@ export class CanvasLightingFallback implements SceneLightingView {
   }
 
   /**
-   * Notes what the darkness is drawn from. It is drawn only while the players' view shows it,
-   * and only when that changed: the black is worked out by clipping, which a store change
-   * that leaves sight alone, or a view that does not show it, must not pay for.
+   * Notes what the black is composed from. It is composed only while the players' view shows
+   * it, and only when that changed: a store change that leaves sight alone, or a view that does
+   * not show the black, must not pay for composing and uploading a canvas.
    */
   private setDarkness(bounds: MapBounds, spots: readonly SeenSpot[]): void {
     const source: DarknessSource = { sight: this.sight, reaches: this.reaches.map((reach) => reach.polygon), footprints: spots.map((spot) => spot.polygon), width: bounds.width, height: bounds.height };
@@ -189,46 +179,22 @@ export class CanvasLightingFallback implements SceneLightingView {
   private drawDarkness(): void {
     if (!this.stale || !this.source) return;
     this.stale = false;
-    const g = this.darkness;
-    g.clear();
-    for (const { outline, holes } of this.hiddenAreas(this.source)) {
-      g.poly(outline).fill({ color: 0x000000 });
-      if (holes.length === 0) continue;
-      // All holes in one cut: PIXI hands a fill's second cut to the fill before it as well.
-      for (const hole of holes) g.poly(hole);
-      g.cut();
-    }
-  }
-
-  /**
-   * What the players do not see, as areas with their holes worked out: sight polygons overlap
-   * and reach the map's edge, and PIXI draws holes right only where each lies inside its shape
-   * and apart from the others (two that overlapped were black on Canvas, where three showed).
-   * The map's black and the darknesses' are one shape: as two fills their outlines, rounded
-   * apart, let a hairline of the map show where a darkness ends on the wall sight ends on.
-   * Canvas fills the areas as they are. WebGL triangulates them, and where an area comes back
-   * with edges that cross (`uncoveredAreas`) it can leave floor in sight black.
-   */
-  private hiddenAreas({ sight, reaches, footprints, width, height }: DarknessSource): FilledArea[] {
-    const map: Polygon = [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }];
-    // The map and, around it, as far as a darkness placed on it can reach: nothing beyond is drawn.
-    const box: Rect = [-MAX_LIGHT_REACH, -MAX_LIGHT_REACH, width + 2 * MAX_LIGHT_REACH, height + 2 * MAX_LIGHT_REACH];
+    const { sight, reaches, footprints, width, height } = this.source;
     const seeing = sight.regions.filter((region) => showsMap(region.sense));
     const polygonsOf = (regions: readonly SightRegion[]): Polygon[] => regions.flatMap((region) => (region.polygon ? [region.polygon] : []));
     const piercing = seeing.filter((region) => perceivedLevel(region.sense, 'magical-dark') !== null);
-    try {
-      const outOfSight: CoveredPart[] = sight.all ? [] : [{ covered: [map], open: [...polygonsOf(seeing), ...footprints] }];
-      const inDarkness: CoveredPart = { covered: reaches, open: [...polygonsOf(piercing), ...footprints], grown: true };
-      return uncoveredAreas([...outOfSight, inDarkness], box, MARGIN);
-    } catch (error) {
-      console.error('[CanvasLightingFallback] Sight could not be drawn, the map stays hidden:', error);
-      return [{ outline: map.flatMap((corner) => [corner.x, corner.y]), holes: [] }];
-    }
+    this.mask.compose({
+      width,
+      height,
+      shown: sight.all ? null : [...polygonsOf(seeing), ...footprints],
+      darkness: reaches,
+      pierced: [...polygonsOf(piercing), ...footprints],
+    });
   }
 
   destroy(): void {
     this.unsubscribe();
-    destroyTree(this.darkness);
+    this.mask.destroy();
   }
 }
 

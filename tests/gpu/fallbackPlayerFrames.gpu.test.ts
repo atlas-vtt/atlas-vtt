@@ -6,12 +6,12 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
-import type { Point } from '../../src/app/types/visionTypes';
 import { showsMap } from '../../src/app/gameSystems/senseRules';
 import { LightingController } from '../../src/app/pixi/lighting/LightingController';
 import { captureBeforeRender } from '../../src/app/pixi/playerSafeFrame';
 import { RenderScheduler, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
+import { pointInPolygon } from '../../src/app/vision/visibility';
 
 vi.mock('events', async () => import('eventemitter3'));
 
@@ -23,20 +23,11 @@ function token(id: string, x: number, y: number, range: number): TokenEntity {
   return { id, kind: 'token', imagePath: '', x, y, size: 1, layer: 0, rotation: 0, isHidden: false, vision: { enabled: true, range } };
 }
 
-function contains(polygon: readonly Point[], x: number, y: number): boolean {
-  let inside = false;
-  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-    const a = polygon[i]!, b = polygon[j]!;
-    if ((a.y > y) !== (b.y > y) && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) inside = !inside;
-  }
-  return inside;
-}
-
 /** What a frame the player window captured shows, against the sight the lighting holds. */
 interface Shown {
-  /** Sampled pixels with no sight polygon within two pixels that are anything but black. */
+  /** Sampled pixels with no sight polygon within three pixels that are anything but black. */
   outsideSight: number;
-  /** Sampled pixels two pixels inside sight that are black. A hairline along a wall seen from both sides is not: it is grey. */
+  /** Sampled pixels that are black with nothing out of sight within three pixels of them. */
   hiddenInSight: number;
   black: number;
 }
@@ -94,16 +85,24 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
     const shown = (frame: Uint8ClampedArray): Shown => {
       const sight = controller.renderer.currentSight();
       const seen = sight.regions.filter((region) => showsMap(region.sense) && region.polygon).map((region) => region.polygon!);
-      const inAny = (x: number, y: number): boolean => sight.all || seen.some((polygon) => contains(polygon, x, y));
+      const inAny = (x: number, y: number): boolean => sight.all || seen.some((polygon) => pointInPolygon({ x, y }, polygon));
+      // A sliver between two sight polygons is out of sight however thin it is: every quarter pixel is asked.
+      const inSightAllAround = (x: number, y: number): boolean => {
+        for (let dy = -3; dy <= 3; dy += 0.25) {
+          for (let dx = -3; dx <= 3; dx += 0.25) if (!inAny(x + dx, y + dy)) return false;
+        }
+        return true;
+      };
       const tally: Shown = { outsideSight: 0, hiddenInSight: 0, black: 0 };
       for (let y = 4; y < SIZE - 4; y += 2) {
         for (let x = 4; x < SIZE - 4; x += 2) {
-          const around = [[0, 0], [-2, -2], [2, -2], [-2, 2], [2, 2], [-2, 0], [2, 0], [0, -2], [0, 2]].map(([dx, dy]) => inAny(x + 0.5 + dx!, y + 0.5 + dy!));
+          // Three pixels around: the black may reach two texels into what is shown, and a texel is a pixel on this map.
+          const around = [[0, 0], [-3, -3], [3, -3], [-3, 3], [3, 3], [-3, 0], [3, 0], [0, -3], [0, 3]].map(([dx, dy]) => inAny(x + 0.5 + dx!, y + 0.5 + dy!));
           const i = (y * SIZE + x) * 4;
           const colour = (frame[i]! << 16) | (frame[i + 1]! << 8) | frame[i + 2]!;
           if (colour === 0) tally.black++;
           if (around.every((inside) => !inside) && colour !== 0) tally.outsideSight++;
-          if (around.every((inside) => inside) && colour === 0) tally.hiddenInSight++;
+          if (around.every((inside) => inside) && colour === 0 && inSightAllAround(x + 0.5, y + 0.5)) tally.hiddenInSight++;
         }
       }
       return tally;

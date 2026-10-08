@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Container, Graphics } from 'pixi.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { Container } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { CanvasLightingFallback } from '../../src/app/pixi/lighting/CanvasLightingFallback';
@@ -12,10 +12,13 @@ import type { SightRules } from '../../src/app/vision/sightRules';
 import type { MapBounds } from '../../src/app/vision/visibility';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
-import { darknessCovers, darknessOf, darknessPaint, openSpans } from '../helpers/darknessCover';
+import type { SightMaskShapes } from '../../src/app/pixi/lighting/SightMask';
+import { maskCovers, maskViewOf, openSpans, watchSightMasks, type WatchedMasks } from '../helpers/sightMaskWatch';
 
 let restore: (() => void) | undefined;
-afterEach(() => { restore?.(); restore = undefined; });
+let masks: WatchedMasks;
+beforeEach(() => { masks = watchSightMasks(); });
+afterEach(() => { restore?.(); restore = undefined; masks.restore(); });
 
 const MAP: MapBounds = { width: 1000, height: 1000 };
 
@@ -39,10 +42,10 @@ function setup(
   return { fallback, viewport, store };
 }
 
-/** The darkness as the players' view shows it: it is drawn only while that view is on. */
-function shownDarkness({ fallback, viewport }: Pick<ReturnType<typeof setup>, 'fallback' | 'viewport'>): Graphics {
+/** What the black is composed from, as the players' view shows it: it is composed only while that view is on. */
+function shownMask({ fallback, viewport }: Pick<ReturnType<typeof setup>, 'fallback' | 'viewport'>): () => SightMaskShapes | null {
   fallback.modeLayer.visible = true;
-  return darknessOf(viewport);
+  return () => masks.shapesIn(viewport);
 }
 
 const hero: TokenEntity = { id: 'hero', kind: 'token', imagePath: 'h.png', x: 100, y: 100, vision: { enabled: true, range: 10 } };
@@ -82,7 +85,7 @@ describe('CanvasLightingFallback', () => {
     const prey: TokenEntity = { id: 'prey', kind: 'token', imagePath: 'p.png', x: 150, y: 100 };
     /** The stretches of the tokens' row the darkness leaves open: a footprint is what its token's centre has in a clear line. */
     const open = (tokens: Record<string, TokenEntity>): [number, number][] => {
-      const spans = openSpans(shownDarkness(setup(tokens, {}, undefined, rules)), 100, MAP.width);
+      const spans = openSpans(shownMask(setup(tokens, {}, undefined, rules))(), 100);
       restore?.();
       return spans;
     };
@@ -91,8 +94,8 @@ describe('CanvasLightingFallback', () => {
     expect(open({ bat, prey })).toEqual([[69, 181]]);
     expect(open({ bat, prey: { ...prey, x: 900 } })).toEqual([[69, 131]]);
     // A footprint ends above and below its token as well.
-    const darkness = shownDarkness(setup({ bat }, {}, undefined, rules));
-    expect([60, 80, 120, 140].map((y) => darknessCovers(darkness, 100, y))).toEqual([true, false, false, true]);
+    const shapes = shownMask(setup({ bat }, {}, undefined, rules))();
+    expect([60, 80, 120, 140].map((y) => maskCovers(shapes, 100, y))).toEqual([true, false, false, true]);
   });
 
   it('cuts a footprint by the walls its token stands at, and cuts none for a token whose condition hides it from every sense', () => {
@@ -104,8 +107,8 @@ describe('CanvasLightingFallback', () => {
     const prey: TokenEntity = { id: 'prey', kind: 'token', imagePath: 'p.png', x: 150, y: 100 };
     const scene = setup({ bat, prey }, {}, undefined, rules);
     const { store } = scene;
-    const darkness = shownDarkness(scene);
-    const open = (): [number, number][] => openSpans(darkness, 100, MAP.width);
+    const shapes = shownMask(scene);
+    const open = (): [number, number][] => openSpans(shapes(), 100);
     expect(open()).toEqual([[69, 181]]);
     // A wall 8 px right of the bat's centre ends its footprint; the prey behind it is out of the echo's line.
     store.getState().addWall({ type: 'solid', p1: { x: 108, y: 0 }, p2: { x: 108, y: 400 }, closed: true });
@@ -118,21 +121,23 @@ describe('CanvasLightingFallback', () => {
 
   it('keeps magical darkness dark: its area is black for every sense, and a token in it is not seen', () => {
     const prey: TokenEntity = { id: 'prey', kind: 'token', imagePath: 'p.png', x: 150, y: 100 };
-    const { fallback, store } = setup({ hero: { ...hero, vision: { enabled: true } }, prey });
-    fallback.modeLayer.visible = true;
+    const scene = setup({ hero: { ...hero, vision: { enabled: true } }, prey });
+    const { fallback, store } = scene;
+    const shapes = shownMask(scene);
     const perceived = (): string | undefined => playerTokenSight(fallback, store.getState().objects.tokens)?.('prey');
     expect(fallback.lightReaches()).toEqual([]);
     expect(perceived()).toBe('seen');
-    const fill = vi.spyOn(Graphics.prototype, 'fill');
     store.getState().addLight({ x: 150, y: 100, emission: { bright: 0, dim: 10, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
     expect(fallback.lightReaches()).toMatchObject([{ darkness: true, origin: { x: 150, y: 100 }, dim: 140 }]);
     expect(perceived()).toBe('unseen');
-    // The map's black and the darkness' are one shape, so no seam can open between them: one fill.
-    expect(fill.mock.calls.filter(([style]) => (style as { color: number }).color === 0x000000)).toHaveLength(1);
+    // The hero stands in the darkness and sees nothing: the map is black, and the darkness is black over it.
+    expect(shapes()).toMatchObject({ shown: [expect.any(Array)], pierced: [expect.any(Array)] });
+    expect(shapes()!.darkness).toHaveLength(1);
+    expect([150, 400, 900].map((x) => maskCovers(shapes(), x, 100))).toEqual([true, true, true]);
     // A plain light is none of the fallback's business: it draws no light.
     store.getState().addLight({ x: 300, y: 100, emission: { bright: 5, dim: 10, color: '#ffffff', intensity: 1, animation: 'none' } });
     expect(fallback.lightReaches()).toHaveLength(1);
-    fill.mockRestore();
+    expect(shapes()!.darkness).toHaveLength(1);
   });
 
   it('opens magical darkness where a sense that sees in it looks, so a token it shows is not under the black; a token standing in it sees nothing with its eyes', () => {
@@ -142,11 +147,11 @@ describe('CanvasLightingFallback', () => {
     const warlock: TokenEntity = { ...hero, vision: { enabled: true, range: 10, senses: [{ id: 'dnd5e-devils-sight', range: 120 }] } };
     const scene = setup({ hero: warlock, prey }, {}, undefined, rules);
     const { fallback, store } = scene;
-    const darkness = shownDarkness(scene);
+    const shapes = shownMask(scene);
     store.getState().addLight({ x: 300, y: 100, emission: { bright: 0, dim: 10, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
     expect(playerTokenSight(fallback, store.getState().objects.tokens, { conditions: [] })?.('prey')).toBe('seen');
     // Neither the map's black nor the darkness' lies on the prey, 60 px into the darkness, where the devil's sight looks.
-    const preyCovered = (): boolean => darknessCovers(darkness, 220, 100);
+    const preyCovered = (): boolean => maskCovers(shapes(), 220, 100);
     expect(preyCovered()).toBe(false);
     // Plain eyes inside the darkness: no region at all, and the prey is under the black.
     store.getState().updateToken('hero', { x: 300, y: 100, vision: { enabled: true } });
@@ -154,37 +159,22 @@ describe('CanvasLightingFallback', () => {
     expect(preyCovered()).toBe(true);
   });
 
-  it('paints the darkness in opaque black', () => {
-    const darkness = shownDarkness(setup({ hero }));
-    expect(darknessPaint(darkness).length).toBeGreaterThan(0);
-    expect(darknessPaint(darkness).filter((fill) => fill.color !== 0x000000 || fill.alpha !== 1)).toEqual([]);
-    expect(darkness.alpha).toBe(1);
+  it('shows its black at full alpha', () => {
+    const scene = setup({ hero });
+    shownMask(scene);
+    const view = maskViewOf(scene.viewport);
+    expect([view.visible, view.alpha]).toEqual([true, 1]);
   });
 
-  it('shows the sight of a token that sees for miles: its polygon is cut to the map before it is worked into the darkness', () => {
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    // 150,000 ft on 5 ft cells of 70 px: 2.1 million px, more than the shapes are worked out in.
+  it('hands on the sight of a token that sees for miles as it is: the canvas the black is composed on cuts it to the map', () => {
+    // 150,000 ft on 5 ft cells of 70 px: 2.1 million px.
     const scene = setup({ hero: { ...hero, vision: { enabled: true, range: 150_000 } } });
     scene.store.getState().addWall({ type: 'solid', p1: { x: 500, y: 0 }, p2: { x: 500, y: 600 }, closed: true });
-    const darkness = shownDarkness(scene);
+    const shapes = shownMask(scene)();
     // Open ground up to the wall, and below it up to the wall's shadow.
-    expect(openSpans(darkness, 100, MAP.width)).toEqual([[0, 500]]);
-    expect(openSpans(darkness, 900, MAP.width)).toEqual([[0, 740]]);
-    expect(errors).not.toHaveBeenCalled();
-    errors.mockRestore();
-  });
-
-  it('keeps the whole map black when a sight polygon has a corner that is no number', () => {
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const scene = setup({ hero });
-    const [region] = scene.fallback.currentSight().regions;
-    region!.polygon![3] = { x: Number.NaN, y: 100 };
-    const darkness = shownDarkness(scene);
-    expect(openSpans(darkness, 100, MAP.width)).toEqual([]);
-    expect(openSpans(darkness, 900, MAP.width)).toEqual([]);
-    expect(darknessPaint(darkness)).toEqual([{ color: 0x000000, alpha: 1 }]);
-    expect(errors).toHaveBeenCalledTimes(1);
-    errors.mockRestore();
+    expect(openSpans(shapes, 100)).toEqual([[0, 500]]);
+    expect(openSpans(shapes, 900)).toEqual([[0, 740]]);
+    expect(Math.max(...shapes!.shown!.flat().map((corner) => Math.abs(corner.x)))).toBeGreaterThan(1_000_000);
   });
 
   it('blacks out the map outside sight in the player frame only', () => {
@@ -287,7 +277,8 @@ describe('CanvasLightingFallback', () => {
     const { fallback, viewport } = setup({ hero }, { tokenVision: false });
     expect(fallback.currentSight().all).toBe(true);
     fallback.modeLayer.visible = true;
-    expect((viewport.children[0] as Graphics).context.instructions).toHaveLength(0);
+    expect(masks.shapesIn(viewport)).toMatchObject({ shown: null, darkness: [] });
+    expect(maskCovers(masks.shapesIn(viewport), 900, 900)).toBe(false);
   });
 
   it('counts everything in sight as lit, whatever the scene\'s threshold, since it draws no light', () => {

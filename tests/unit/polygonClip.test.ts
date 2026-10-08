@@ -1,14 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalForm, signedAreaTwice } from '../../src/app/lighting/canonicalForm';
-import { coveredAreas, inflatePolyline, normalizePolygon, subtractShapes, unionShapes } from '../../src/app/lighting/polygonClip';
+import { inflatePolyline, normalizePolygon, subtractShapes, unionShapes } from '../../src/app/lighting/polygonClip';
 import { shapeContains } from '../../src/app/lighting/shapeContains';
 import { MAX_Q } from '../../src/app/types/shapeTypes';
 import { hasCrossing, qRectangle } from '../helpers/fogShapeAssertions';
-
-/** Twice what the areas fill: the signed areas of their outlines and holes added up. */
-function twice(areas: ReturnType<typeof coveredAreas>): bigint {
-  return areas.reduce((sum, { outline, holes }) => sum + signedAreaTwice(outline) + holes.reduce((inner, hole) => inner + signedAreaTwice(hole), 0n), 0n);
-}
 
 describe('integer polygon operations', () => {
   it('merges painted rectangles and preserves holes and islands after erasing', () => {
@@ -90,43 +85,5 @@ describe('integer polygon operations', () => {
   it('rejects generated coordinates outside the supported range', () => {
     expect(() => inflatePolyline([MAX_Q, 0], 8)).toThrow(RangeError);
     expect(() => unionShapes([[Infinity, 0]], [])).toThrow(RangeError);
-  });
-
-  it('gives each hole to the outline it lies in, and what is filled inside a hole an area of its own', () => {
-    // Four bars that overlap at their ends make a frame; two small squares lie apart in the second outline.
-    const frame = [qRectangle(16, 16, 88, 24), qRectangle(16, 80, 88, 24), qRectangle(16, 16, 24, 88), qRectangle(80, 16, 24, 88)];
-    const areas = coveredAreas([{ covered: [qRectangle(0, 0, 120, 120), qRectangle(200, 0, 48, 48)], open: [...frame, qRectangle(208, 8, 8, 8), qRectangle(224, 24, 8, 8)] }], 0);
-    const summary = areas.map(({ outline, holes }) => ({ outline: signedAreaTwice(outline), holes: holes.map(signedAreaTwice) }));
-    summary.sort((a, b) => Number(a.outline - b.outline));
-    expect(summary).toEqual([
-      { outline: 3200n, holes: [] },
-      { outline: 4608n, holes: [-128n, -128n] },
-      { outline: 28800n, holes: [-15488n] },
-    ]);
-  });
-
-  it('counts an outline the same whichever way round it runs, and one that crosses itself by what it fills', () => {
-    // qRectangle(40, 0, 80, 80) with its corners the other way round.
-    const reversed = [40, 80, 120, 80, 120, 0, 40, 0];
-    expect(twice(coveredAreas([{ covered: [qRectangle(0, 0, 80, 80), reversed], open: [] }], 0))).toBe(2n * 120n * 80n);
-    expect(twice(coveredAreas([{ covered: [qRectangle(0, 0, 200, 80)], open: [qRectangle(0, 0, 80, 80), reversed] }], 0))).toBe(2n * 80n * 80n);
-    // A bow: two triangles that wind opposite ways are both taken out.
-    expect(twice(coveredAreas([{ covered: [qRectangle(0, 0, 80, 80)], open: [[0, 0, 80, 80, 0, 80, 80, 0]] }], 0))).toBe(2n * 6400n - 6400n);
-    expect(coveredAreas([{ covered: [qRectangle(0, 0, 80, 80)], open: [qRectangle(0, 0, 80, 80)] }], 0)).toEqual([]);
-    expect(() => coveredAreas([{ covered: [[NaN, 0, 8, 0, 8, 8]], open: [] }], 0)).toThrow(RangeError);
-  });
-
-  it('unites its parts into one shape, and grows a part marked so by the margin over the seam to its neighbour', () => {
-    const left = { covered: [qRectangle(0, 0, 80, 80)], open: [] };
-    // Two grid steps short of the left part.
-    const right = { covered: [qRectangle(82, 0, 78, 80)], open: [] };
-    expect(coveredAreas([left, right], 4)).toHaveLength(2);
-    const joined = coveredAreas([left, { ...right, grown: true }], 4);
-    expect(joined).toHaveLength(1);
-    // The right part reaches four steps farther on every side, two of them over the left part.
-    expect(twice(joined)).toBe(2n * (80n * 80n + 86n * 88n - 2n * 80n));
-    // What is open shrinks by the margin: a hole of 16 steps is one of 8.
-    expect(twice(coveredAreas([{ covered: [qRectangle(0, 0, 80, 80)], open: [qRectangle(16, 16, 16, 16)] }], 4))).toBe(2n * (80n * 80n - 8n * 8n));
-    expect(() => coveredAreas([left], 0.5)).toThrow(RangeError);
   });
 });
