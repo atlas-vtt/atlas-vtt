@@ -2,6 +2,7 @@ import { afterEach, expect, it, vi } from 'vitest';
 import { Container, Sprite, Texture } from 'pixi.js';
 import { GridSystem } from '../../src/app/grid/GridSystem';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
+import { FRAME, fakePlayerFrames, fakeViewport } from '../mocks/playerFrameSource';
 
 /** Settings an older Atlas saved, with its own grid switch for players: no longer read. */
 const OLD_SETTINGS = { showGrid: true, showTokenNameplates: true } as never;
@@ -20,7 +21,8 @@ function mapWithGrid(enabled: boolean): { grid: GridSystem; renderer: PixiRender
   const grid = new GridSystem({ renderer: { resolution: 1 } } as never, viewport as never, background, { size: 70, enabled, color: 0xff0000 });
   grids.push(grid);
   const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: () => null },
+    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport },
+    playerFrames: fakePlayerFrames(),
     gridSystem: grid,
     tokenRenderer: { getPlayerViewLayers: () => [] },
     dmScreenOverlays: new Set(),
@@ -34,7 +36,7 @@ function playersSee(renderer: PixiRendererOrchestrator, grid: GridSystem, settin
   renderer.withPlayerSafeFrame(() => {
     const sprite = grid.getGridSprite();
     seen = { shown: sprite?.visible === true, sprite };
-  }, settings);
+  }, settings, FRAME);
   return seen;
 }
 

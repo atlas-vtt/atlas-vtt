@@ -32,6 +32,8 @@
 
 ## Fixed
 
+- The player window no longer zooms in, cuts off the map or turns blocky when you open a sidebar, split the pane or keep the map in a small pane. It is now drawn at its own size and sharpness instead of being an enlarged copy of your map pane: it shows everything your view shows, centred on the same spot. Very large player screens are drawn with up to 2560 × 1440 pixels and scaled up smoothly.
+
 - Obsidian no longer turns sluggish for the rest of a session once a right-click menu was opened while Atlas and Fantasy Statblocks are both enabled. Token drags, the ruler, typing in notes and moving files all lagged, most of all with an older Obsidian installer.
 
 - Dragging tokens, measuring and drawing a selection box no longer make Obsidian restyle its window on every mouse move.
@@ -73,6 +75,10 @@
 - The ruler's distance and the distance shown while dragging a token are readable in Obsidian's light theme. They were white on a light grey pill.
 
 ## Important changes
+
+- The player window now shows everything your own map view shows, at its own sharpness, and may show the map around it where its shape differs from your pane. Hide a room from players with fog or lighting, not by scrolling it off your screen.
+
+- When the map pane changes size (a sidebar opens or closes, the window is resized), the map now keeps its centre in place instead of its top-left corner. The player window is centred on the same spot, so it no longer slides when a sidebar opens.
 
 - Atlas no longer reads a statblock code block, the properties of a note it previews from a bundle, or a loot base file that is larger than 32 KB.
 

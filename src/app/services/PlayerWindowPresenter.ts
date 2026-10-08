@@ -7,6 +7,7 @@ import { playerWindowStore } from '../stores/playerWindowStore';
 import type { SceneTab } from '../types/sceneTabTypes';
 import { t } from '../i18n';
 import type { PlayerFrameSource } from './PlayerFrameMirror';
+import { viewportCamera } from './playerFrame';
 import { PlayerWindowService } from './PlayerWindowService';
 import { presentedSceneOf, readPresentedScene, type PresentedScene } from './presentedScene';
 import { rendersOnChange, requestRender, setBeforeRender } from '../pixi/RenderScheduler';
@@ -219,28 +220,29 @@ async function waitForRenderedFrameSource(view: AtlasView): Promise<PlayerFrameS
   // The scene rendered now: rolls are named by what its players' frame shows, never by a later scene
   const mapPath = view.atlasStore.getState().mapPath;
   return {
-    canvas,
     store: view.atlasStore,
     diceEvents: view.serviceManager.getEventBus(),
     ...(mapPath ? {
       rollSources: { viewId: view.viewId, mapPath, shownTokens: (tokenIds) => renderer.playerRollTokens(mapPath, tokenIds) },
     } : {}),
-    withPlayerSafeFrame: (capture, settings, camera) => renderer.withPlayerSafeFrame(capture, settings, camera),
+    withPlayerSafeFrame: (copy, settings, frame) => renderer.withPlayerSafeFrame(copy, settings, frame),
     ...(rendersOnChange(app) ? {
       beforeRender: {
         listen: (listener) => setBeforeRender(app, listener),
         requestRender: () => requestRender(app),
-        withPlayerSafeFrame: (capture, settings, camera) => renderer.withPlayerSafeFrame(capture, settings, camera, true),
+        withPlayerSafeFrame: (copy, settings, frame) => renderer.withPlayerSafeFrame(copy, settings, frame, true),
       },
     } : {}),
     getCamera: () => {
       const viewport = view.serviceManager.getRendererService().getViewport();
-      return viewport ? { centerX: viewport.center.x, centerY: viewport.center.y, scale: viewport.scale.x } : undefined;
+      return viewport ? viewportCamera(viewport) : undefined;
     },
     getScreen: () => {
       const viewport = view.serviceManager.getRendererService().getViewport();
       return viewport ? { width: viewport.screenWidth, height: viewport.screenHeight, resolution: app.renderer.resolution } : undefined;
     },
+    canRender: () => renderer.canRenderPlayerFrame(),
+    release: () => renderer.releasePlayerFrame(),
   };
 }
 

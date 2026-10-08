@@ -1,8 +1,10 @@
 import { Sprite, Texture } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { playerFrameSource } from '../../../../../tests/helpers/playerFrameView';
 import { PlayerFrameMirror, type PlayerFrameSource } from '../../../services/PlayerFrameMirror';
 import type { AtlasSettings } from '../../../services/SettingsService';
-import { captureWithLayerVisibility } from '../../playerSafeFrame';
+import type { PlayerFrame } from '../../../types/playerFrame';
+import type { PlayerFrameTexture } from '../../PlayerFrameTexture';
 import { playerLightingLayers } from '../playerLightingLayers';
 import { SIZE } from './rendererHarness';
 import { createScene, engineLayer, litScene, type SavedScene, type Scene } from './sceneLightingHarness';
@@ -17,6 +19,9 @@ const OUT_OF_SIGHT = [240, 240] as const;
 const WHITE = [255, 255, 255];
 const BLACK = [0, 0, 0];
 const SETTINGS = { showTokenNameplates: true } as AtlasSettings['localPlayerView'];
+/** The players' window has the map's size and shows all of it, a pixel to a world pixel. */
+const WINDOW = { width: SIZE, height: SIZE, resolution: 1 };
+const FRAME: PlayerFrame = { width: SIZE, height: SIZE, resolution: 1, antialias: false, centerX: SIZE / 2, centerY: SIZE / 2, scale: 1 };
 
 /** The engine and line of sight are part of the frame being captured. */
 interface Capture {
@@ -29,6 +34,7 @@ describe('the player window while a lit scene loads', () => {
   let target: HTMLCanvasElement;
   let mirror: PlayerFrameMirror;
   let source: PlayerFrameSource;
+  let frames: PlayerFrameTexture;
   let captures: Capture[];
   let now = 0;
 
@@ -43,22 +49,24 @@ describe('the player window while a lit scene loads', () => {
     captures = [];
     const gmOverlay = { visible: true };
     // As the map view renders a player frame: the players' lighting, without the GM's overlays.
-    source = {
-      canvas: renderer.canvas as HTMLCanvasElement,
+    ({ source, frames } = playerFrameSource({
+      renderer,
+      stage: viewport,
+      viewport,
+      camera: () => ({ centerX: SIZE / 2, centerY: SIZE / 2, scale: 1, width: SIZE, height: SIZE }),
+      screen: () => WINDOW,
       store,
-      withPlayerSafeFrame: (capture) => captureWithLayerVisibility(
-        playerLightingLayers({ enabled: host.isEnabled(), modeLayer: host.modeLayer, gmOverlays: { wallEditor: gmOverlay, lightZones: gmOverlay, exploredMemory: gmOverlay, doorBadges: gmOverlay, lightMarkers: gmOverlay, rangeRings: gmOverlay, sightAids: gmOverlay } }),
-        () => renderer.render({ container: viewport }),
-        () => {
-          const layer = engineLayer(viewport);
-          captures.push({ loading: store.getState().isMapLoading, engineActive: layer?.visible === true && layer.filters?.length === 1 && renderer.backBuffer.useBackBuffer });
-          capture();
-        },
-      ),
-    };
+      layers: () => playerLightingLayers({ enabled: host.isEnabled(), modeLayer: host.modeLayer, gmOverlays: { wallEditor: gmOverlay, lightZones: gmOverlay, exploredMemory: gmOverlay, doorBadges: gmOverlay, lightMarkers: gmOverlay, rangeRings: gmOverlay, sightAids: gmOverlay } }),
+      onRendered: () => {
+        const layer = engineLayer(viewport);
+        // The composite lit the frame in its texture: the layer is on, with its filter
+        captures.push({ loading: store.getState().isMapLoading, engineActive: layer?.visible === true && layer.filters?.length === 1 });
+      },
+    }));
     target = document.createElement('canvas');
     mirror = new PlayerFrameMirror(target, target.getContext('2d', { willReadFrequently: true })!, {
       source: () => source,
+      window: () => WINDOW,
       heldFrame: () => null,
       frozenCamera: () => null,
       settings: () => SETTINGS,
@@ -68,6 +76,7 @@ describe('the player window while a lit scene loads', () => {
 
   afterEach(() => {
     mirror.stop();
+    frames.destroy();
     scene.dispose();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();
@@ -90,11 +99,11 @@ describe('the player window while a lit scene loads', () => {
     scene.startLoad(CRYPT, crypt, { width: SIZE, height: SIZE });
     // What a capture would give away now: the scene is in the store, and nothing lights or hides it yet.
     let halfBuilt: number[] = [];
-    source.withPlayerSafeFrame(() => {
+    source.withPlayerSafeFrame((piece) => {
       const copy = new OffscreenCanvas(SIZE, SIZE).getContext('2d')!;
-      copy.drawImage(source.canvas, 0, 0);
+      copy.drawImage(piece.image, 0, 0);
       halfBuilt = Array.from(copy.getImageData(...OUT_OF_SIGHT, 1, 1).data.slice(0, 3));
-    }, SETTINGS);
+    }, SETTINGS, FRAME);
     expect(halfBuilt).toEqual(WHITE);
     expect(captures.pop()).toEqual({ loading: true, engineActive: false });
 

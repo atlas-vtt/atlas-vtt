@@ -1,4 +1,5 @@
 import type { PlayerCameraState } from '../types/playerCamera';
+import type { PlayerFrame, Size } from '../types/playerFrame';
 import type { Perception } from '../vision/perception';
 
 /** Anything whose `visible` flag decides whether it is part of the next render. */
@@ -74,31 +75,38 @@ export function gmTokenLayers(
   return layers;
 }
 
-/** The part of a viewport a player camera moves: its screen size and world transform. */
+/** The part of a viewport a player camera moves: its world transform. */
 export interface CameraTarget {
-  readonly screenWidth: number;
-  readonly screenHeight: number;
   readonly position: { x: number; y: number; set(x: number, y: number): void };
   readonly scale: { x: number; y: number; set(x: number, y: number): void };
 }
 
-/** A camera players stay on while the DM's own viewport moves freely. */
+/**
+ * The camera of a players' frame: it shows `camera` in the middle of a render of `screen`'s
+ * size, whatever size the DM's own screen has, while the DM's viewport moves freely.
+ */
 export interface PlayerFrameCamera {
   target: CameraTarget;
-  camera: PlayerCameraState;
+  camera: Pick<PlayerCameraState, 'centerX' | 'centerY' | 'scale'>;
+  screen: Size;
+}
+
+/** The camera that renders `frame` on `target`: centred in the frame's own size in points. */
+export function frameCamera(target: CameraTarget, frame: PlayerFrame): PlayerFrameCamera {
+  return { target, camera: frame, screen: { width: frame.width / frame.resolution, height: frame.height / frame.resolution } };
 }
 
 /**
  * Point `target` at `camera` by setting its transform directly, so no viewport
  * events or plugin resets fire. Returns a function that restores the DM camera.
  */
-function applyCamera({ target, camera }: PlayerFrameCamera): () => void {
+function applyCamera({ target, camera, screen }: PlayerFrameCamera): () => void {
   const { x, y } = target.position;
   const { x: scaleX, y: scaleY } = target.scale;
   target.scale.set(camera.scale, camera.scale);
   target.position.set(
-    target.screenWidth / 2 - camera.centerX * camera.scale,
-    target.screenHeight / 2 - camera.centerY * camera.scale,
+    screen.width / 2 - camera.centerX * camera.scale,
+    screen.height / 2 - camera.centerY * camera.scale,
   );
   return (): void => {
     target.scale.set(scaleX, scaleY);
@@ -107,7 +115,7 @@ function applyCamera({ target, camera }: PlayerFrameCamera): () => void {
 }
 
 /**
- * Apply the player frame's visibility, opacity and (optionally) frozen camera. Returns the
+ * Apply the player frame's visibility, opacity and (optionally) its camera. Returns the
  * function that restores the DM's, and whether anything differs from the DM's frame.
  */
 function applyPlayerFrame(layers: readonly LayerVisibility[], camera?: PlayerFrameCamera): { differs: boolean; restore: () => void } {
@@ -132,8 +140,8 @@ function applyPlayerFrame(layers: readonly LayerVisibility[], camera?: PlayerFra
 }
 
 /**
- * Temporarily apply player visibility, opacity and (optionally) a frozen player
- * camera, then restore the DM frame.
+ * Temporarily apply player visibility, opacity and (optionally) a players' camera, then
+ * restore the DM frame.
  */
 export function captureWithLayerVisibility(
   layers: readonly LayerVisibility[],
@@ -156,9 +164,9 @@ export function captureWithLayerVisibility(
 }
 
 /**
- * `captureWithLayerVisibility` for a caller whose own render of the DM frame follows in the
- * same task (`RenderScheduler`'s before-render hook), so restoring costs no render. The
- * player frame is always rendered: the canvas still holds the previous frame.
+ * `captureWithLayerVisibility` for a caller that renders the DM's frame itself afterwards, or
+ * whose own render of it follows in the same task (`RenderScheduler`'s before-render hook), so
+ * restoring costs no render here. The player frame is always rendered: nothing holds it yet.
  */
 export function captureBeforeRender(
   layers: readonly LayerVisibility[],

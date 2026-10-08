@@ -1,11 +1,11 @@
 import '../setup/obsidianDom';
-import { Application, Container, FederatedPointerEvent, RenderTexture, Sprite, Texture, Ticker } from 'pixi.js';
+import { Application, Container, FederatedPointerEvent, RenderTexture, Sprite, Texture, Ticker, type WebGLRenderer } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { EventEmitter } from 'events';
 import { afterEach, expect, vi } from 'vitest';
 
 vi.mock('events', async () => import('eventemitter3'));
-import { GridSystem } from '../../src/app/grid/GridSystem';
+import { GridSystem, type GridOptions } from '../../src/app/grid/GridSystem';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { MeasureRenderer } from '../../src/app/pixi/MeasureRenderer';
@@ -26,8 +26,21 @@ export const SIZE = 256;
 /** Cells of 40 px: a size-1 token is 36 px wide, centred on a cell centre (20, 60, 100, ...). */
 export const CELL = 40;
 
+/** What a scene is made with; a square pane and map of `SIZE` px without a grid by default. */
+export interface PlayerViewSceneOptions {
+  /** The DM's pane. */
+  pane?: { width: number; height: number };
+  /** The side of the map, which the camera is centred on. */
+  map?: number;
+  /** The grid to draw; none by default. */
+  grid?: Partial<GridOptions>;
+}
+
 export interface PlayerViewScene {
   app: Application;
+  renderer: WebGLRenderer;
+  viewport: Viewport;
+  grid: GridSystem;
   tokens: TokenRenderer;
   fog: FogOfWarRenderer;
   measure: MeasureRenderer;
@@ -55,28 +68,30 @@ export interface PlayerViewScene {
   peek(held: boolean): void;
 }
 
-export function playerViewScenes(): { scene: () => Promise<PlayerViewScene> } {
+export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) => Promise<PlayerViewScene> } {
   const cleanups: Array<() => void> = [];
   afterEach(() => { while (cleanups.length) cleanups.pop()!(); });
 
-  async function createScene(): Promise<PlayerViewScene> {
+  async function createScene({ pane = { width: SIZE, height: SIZE }, map = SIZE, grid: gridOptions }: PlayerViewSceneOptions = {}): Promise<PlayerViewScene> {
     const renderer = await createTestRenderer(SIZE);
+    renderer.resize(pane.width, pane.height);
     const watch = watchGl(renderer.gl);
     const app = new Application();
     app.renderer = renderer;
     app.ticker = new Ticker();
-    const viewport = new Viewport({ screenWidth: SIZE, screenHeight: SIZE, worldWidth: SIZE, worldHeight: SIZE, events: renderer.events });
+    const viewport = new Viewport({ screenWidth: pane.width, screenHeight: pane.height, worldWidth: map, worldHeight: map, events: renderer.events });
     app.stage.addChild(viewport);
     const floor = new Sprite(Texture.WHITE);
     floor.tint = 0x202020;
-    floor.setSize(SIZE, SIZE);
+    floor.setSize(map, map);
     viewport.addChild(floor);
+    viewport.moveCenter(map / 2, map / 2);
     const obsidian = createInMemoryApp().app;
     const store = createViewAtlasStore(obsidian, 'player-view-test');
     store.getState().setPersistenceEnabled(false);
     store.setState({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true });
     const events = new EventEmitter();
-    const grid = new GridSystem(app, viewport, floor, { size: CELL, enabled: false, color: 0xffffff });
+    const grid = new GridSystem(app, viewport, floor, { size: CELL, enabled: false, color: 0xffffff, ...gridOptions });
     const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, 'player-view-test');
     tokens.setPixiApp(app);
     const fog = new FogOfWarRenderer(viewport, app, events, store);
@@ -88,7 +103,7 @@ export function playerViewScenes(): { scene: () => Promise<PlayerViewScene> } {
     tokens.setPlayerSightProvider(() => (showsPlayers() ? lighting.perception : undefined), showsPlayers);
     const measure = new MeasureRenderer(viewport, events, store, grid);
     const unwire = wirePlayerMeasurements({ measure, tokens, store, grid, lighting: () => lighting.perception });
-    const target = RenderTexture.create({ width: SIZE, height: SIZE });
+    const target = RenderTexture.create({ width: pane.width, height: pane.height });
     cleanups.push(() => {
       unwire();
       measure.destroy();
@@ -118,7 +133,7 @@ export function playerViewScenes(): { scene: () => Promise<PlayerViewScene> } {
       viewport.emit(type, event);
     };
     const scene: PlayerViewScene = {
-      app, tokens, fog, measure, store, events, lighting, pointer,
+      app, renderer, viewport, grid, tokens, fog, measure, store, events, lighting, pointer,
       setFog(operations): void { store.setState((state) => ({ objects: { ...state.objects, fog: operations } })); },
       async add(...added): Promise<void> {
         for (const token of added) store.getState().addToken({ kind: 'token', imagePath: '', size: 1, ...token } as TokenEntity);

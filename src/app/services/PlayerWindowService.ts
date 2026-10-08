@@ -12,6 +12,8 @@ import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE, type PlayerCameraState } from 
 import { freezeCanvasFrame, type SceneTransition } from '../pixi/sceneTransition';
 import { t } from '../i18n';
 import { PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
+import { framedCamera } from './playerFrame';
+import type { Screen } from '../types/playerFrame';
 import type { PresentedScene } from './presentedScene';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
@@ -24,8 +26,11 @@ function getStyleNodeKey(node: Element): string {
   return node.instanceOf(HTMLLinkElement) ? `link:${node.href}` : `style:${node.textContent ?? ''}`;
 }
 
+/** What stands in for a map view that closed: it renders nothing, and players keep the frame they hold. */
+const CLOSED_SOURCE: PlayerFrameSource = { withPlayerSafeFrame: () => undefined };
+
 /**
- * Mirrors a DM map canvas into a popout window for players.
+ * Shows a DM map view's scene in a popout window for players.
  *
  * The window shows one scene tab at a time, the presented scene (see `presentedScene.ts`).
  * While the DM works on another tab the last frame is held so players never see
@@ -51,16 +56,13 @@ export class PlayerWindowService {
   private settingsUnsubscribe: (() => void) | null = null;
   /** Widget bar, initiative panel and dice rolls, drawn over the presented scene. */
   private sceneOverlays: PlayerOverlay[] = [];
-  private readonly boundHandleWindowResize = (): void => {
-    this.handleWindowResize();
-  };
   private readonly boundHandleBeforeUnload = (): void => {
     this.cleanup(false);
   };
   private isCleaningUp = false;
-  /** Copies the presented canvas into the window; exists while frames are being mirrored. */
+  /** Brings frames of the presented scene into the window; exists while frames are being mirrored. */
   private mirror: PlayerFrameMirror | null = null;
-  /** Identifies the running copy loop; a newer loop ends older ones. */
+  /** Identifies the running frame loop; a newer loop ends older ones. */
   private mirrorLoopId = 0;
 
   constructor(app: App, store: StoreApi<ViewAtlasState>, settingsService: SettingsService) {
@@ -86,8 +88,9 @@ export class PlayerWindowService {
   }
 
   /**
-   * Keep players on `camera`, by default the camera they currently see. Map
-   * changes stay visible; only the DM's panning and zooming no longer reach them.
+   * Keep players on `camera`, by default the camera they currently see, and on the world
+   * rectangle it frames: map changes stay visible; the DM's panning and zooming, and the size
+   * of the DM's pane, no longer reach them.
    */
   public freezeCamera(camera?: PlayerCameraState): void {
     this.setFrozenCamera(camera ?? this.playerView?.getState().camera ?? this.streamSource?.getCamera?.() ?? null);
@@ -123,8 +126,7 @@ export class PlayerWindowService {
     if (!this.streamSource || this.streamSource.store !== store) return;
     this.holdCurrentFrame();
     this.sceneOverlays.forEach((overlay) => overlay.releaseSource?.());
-    const heldFrame = this.heldFrame ?? createEl('canvas');
-    this.streamSource = { canvas: heldFrame, withPlayerSafeFrame: (capture) => capture() };
+    this.streamSource = CLOSED_SOURCE;
     this.followSource();
   }
 
@@ -143,6 +145,7 @@ export class PlayerWindowService {
   public releaseHeldFrame(source: PlayerFrameSource): void {
     if (!this.isWindowOpen()) return;
     this.streamSource = source;
+    this.pinFrozenCamera();
     this.mirror?.markStale();
     this.presentScene();
     this.heldFrame = null;
@@ -194,6 +197,7 @@ export class PlayerWindowService {
     this.playerView = view;
     this.playerWindow = view.contentEl.win;
     this.streamSource = source;
+    this.pinFrozenCamera();
     this.mirror?.markStale();
     playerWindowStore.setState({ shownTabId: scene.tabId });
     view.updateSession({ tabId: scene.tabId, filePath: scene.filePath });
@@ -209,11 +213,24 @@ export class PlayerWindowService {
   }
 
   private setFrozenCamera(camera: PlayerCameraState | null): void {
-    this.frozenCamera = camera ? { ...camera } : null;
+    this.frozenCamera = camera ? framedCamera({ ...camera }, this.streamSource?.getScreen?.()) : null;
     this.mirror?.markStale();
     this.updateFreezeIndicator();
     playerWindowStore.setState({ isFrozen: this.isFrozen() });
-    this.playerView?.updateSession({ frozen: this.isFrozen(), ...(camera ? { camera: { ...camera } } : {}) });
+    this.playerView?.updateSession({ frozen: this.isFrozen(), ...(this.frozenCamera ? { camera: { ...this.frozenCamera } } : {}) });
+  }
+
+  /**
+   * A frozen camera that came without the world rectangle it frames (one an older Atlas saved,
+   * or one frozen before a scene was attached) takes what the DM's screen shows through it now,
+   * and keeps that.
+   */
+  private pinFrozenCamera(): void {
+    if (!this.frozenCamera) return;
+    const pinned = framedCamera(this.frozenCamera, this.streamSource?.getScreen?.());
+    if (pinned === this.frozenCamera) return;
+    this.frozenCamera = pinned;
+    this.playerView?.updateSession({ camera: { ...pinned } });
   }
 
   private updateFreezeIndicator(): void {
@@ -229,7 +246,7 @@ export class PlayerWindowService {
     const targetCanvas = this.playerWindow?.document.getElementById('atlas-player-canvas');
     if (!targetCanvas?.instanceOf(HTMLCanvasElement)) return;
     // A 2D canvas keeps its pixels, so the frame on screen can be copied at any time.
-    // The player canvas is drawn with crisp-edges, so players get the crossfade without the scale settle.
+    // Players get the crossfade without the scale settle, which would resample a frame of the window's own pixels at every step.
     this.mapTransition = freezeCanvasFrame(
       targetCanvas, (context) => context.drawImage(targetCanvas, 0, 0), this.mapTransition, { settle: false },
     );
@@ -360,9 +377,6 @@ export class PlayerWindowService {
       this.startMirroring();
       playerWindowStore.setState({ isOpen: true });
 
-      // Handle window resize
-      this.playerWindow.addEventListener('resize', this.boundHandleWindowResize);
-
       // Cleanup on close
       this.playerWindow.addEventListener('beforeunload', this.boundHandleBeforeUnload);
 
@@ -384,16 +398,7 @@ export class PlayerWindowService {
     this.sceneOverlays = [];
   }
 
-  /**
-   * Handle window resize
-   */
-  private handleWindowResize(): void {
-    // No need to do anything - canvas maintains its aspect ratio with object-fit: contain
-  }
-
-  /**
-   * Starts mirroring the canvas content
-   */
+  /** Starts the loop that brings frames of the presented scene onto the window's canvas, one check per display frame. */
   private startMirroring(): void {
     if (!this.playerWindow || !this.streamSource) return;
 
@@ -410,6 +415,7 @@ export class PlayerWindowService {
     this.mirror?.stop();
     const mirror = new PlayerFrameMirror(targetCanvas, targetCtx, {
       source: () => this.streamSource,
+      window: () => this.windowScreen(targetCanvas),
       heldFrame: () => this.heldFrame,
       frozenCamera: () => this.frozenCamera,
       settings: () => this.settingsService.getLocalPlayerViewSettings(),
@@ -417,27 +423,36 @@ export class PlayerWindowService {
     });
     this.mirror = mirror;
 
-    const copyCanvas = (): void => {
+    const mirrorFrame = (): void => {
       if (loopId !== this.mirrorLoopId) return;
       if (!this.playerWindow || this.playerWindow.closed || !this.streamSource) {
         this.cleanup();
         return;
       }
 
-      this.animationFrame = this.playerWindow.requestAnimationFrame(copyCanvas);
+      this.animationFrame = this.playerWindow.requestAnimationFrame(mirrorFrame);
       mirror.frame();
     };
 
-    // Start the copy loop
-    copyCanvas();
+    mirrorFrame();
+  }
+
+  /**
+   * The player window as the frames are rendered for it: the canvas fills it, so the canvas'
+   * size is the window's, and the pixel ratio is that of the screen the window is on now.
+   */
+  private windowScreen(canvas: HTMLCanvasElement): Screen | null {
+    if (!this.playerWindow || this.playerWindow.closed) return null;
+    return { width: canvas.clientWidth, height: canvas.clientHeight, resolution: this.playerWindow.devicePixelRatio || 1 };
   }
 
   /** Persist the camera players see so a restored window reopens on the same framing. */
   private recordPlayerCamera(camera: PlayerCameraState | undefined): void {
+    if (!camera) return;
     const previous = this.playerView?.getState().camera;
-    if (camera && (camera.centerX !== previous?.centerX || camera.centerY !== previous.centerY || camera.scale !== previous.scale)) {
-      this.playerView?.updateSession({ camera });
-    }
+    const changed = camera.centerX !== previous?.centerX || camera.centerY !== previous.centerY || camera.scale !== previous.scale
+      || camera.width !== previous.width || camera.height !== previous.height;
+    if (changed) this.playerView?.updateSession({ camera });
   }
 
   /**
@@ -464,10 +479,7 @@ export class PlayerWindowService {
     this.mapTransition?.cancel();
     this.mapTransition = null;
 
-    if (this.playerWindow) {
-      this.playerWindow.removeEventListener('resize', this.boundHandleWindowResize);
-      this.playerWindow.removeEventListener('beforeunload', this.boundHandleBeforeUnload);
-    }
+    this.playerWindow?.removeEventListener('beforeunload', this.boundHandleBeforeUnload);
     
     if (closeWindow && this.playerWindow && !this.playerWindow.closed) {
       this.playerWindow.close();

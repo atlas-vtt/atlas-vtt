@@ -5,10 +5,11 @@ import { PlayerWindowService } from '../../src/app/services/PlayerWindowService'
 import { createStore } from 'zustand/vanilla';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
+import { frameSource, sizePlayerWindow } from '../mocks/playerFrameSource';
 
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ restorePlayerWindow: vi.fn() }));
 
-afterEach(() => { PlayerWindowService.getInstance()?.destroy(false); vi.useRealTimers(); });
+afterEach(() => { PlayerWindowService.getInstance()?.destroy(false); vi.useRealTimers(); vi.restoreAllMocks(); });
 
 function createView(): LocalPlayerView {
   const leaf = new WorkspaceLeaf();
@@ -44,7 +45,8 @@ describe('restorable local player view', () => {
     const service = new PlayerWindowService(view.app, createStore(() => ({})) as ReturnType<typeof createStore<ViewAtlasState>>, settings);
     const drawImage = vi.fn();
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ clearRect: vi.fn(), drawImage } as never);
-    service.attachToView(view, { canvas: document.createElement('canvas'), withPlayerSafeFrame: (draw) => draw() }, { tabId: 'tavern', filePath: 'tavern.atlasmap' });
+    sizePlayerWindow();
+    service.attachToView(view, frameSource(), { tabId: 'tavern', filePath: 'tavern.atlasmap' });
     expect(doc.body.contains(chrome)).toBe(true);
     expect(chrome.querySelector('#atlas-player-canvas')).not.toBeNull();
     expect(drawImage).toHaveBeenCalledTimes(1);

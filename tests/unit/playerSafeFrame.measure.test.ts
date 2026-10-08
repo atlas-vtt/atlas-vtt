@@ -4,6 +4,7 @@ import { measurePlayersView } from '../../src/app/pixi/measurePlayersView';
 import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { computeTokenPixelSize } from '../../src/app/pixi/token-renderer/tokenSizing';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { FRAME, fakePlayerFrames, fakeViewport } from '../mocks/playerFrameSource';
 
 const SETTINGS = { showTokenNameplates: true } as never;
 
@@ -22,7 +23,8 @@ function harness(options: { tokens?: boolean; lighting?: boolean } = {}): {
   const playersSeeInFrame = vi.fn(() => seenInFrame);
   const getPlayerViewLayers = vi.fn((seen: (id: string) => boolean): LayerVisibility[] => [{ layer: part, visible: seen('goblin') }]);
   const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
-    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: () => null },
+    pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport },
+    playerFrames: fakePlayerFrames(),
     tokenRenderer: options.tokens === false ? undefined : { getPlayerViewLayers: () => [], getGmViewLayers: () => [], playersSeeInFrame },
     measureRenderer: { getPlayerViewLayers, getGmViewLayers: (): LayerVisibility[] => [{ layer: part, visible: true }] },
     dmScreenOverlays: new Set(),
@@ -35,7 +37,7 @@ describe('withPlayerSafeFrame and the measurements', () => {
   it('asks once per capture which tokens the players see, by the lighting\'s sight, and hides measurements by it', () => {
     const { renderer, part, sight, seenInFrame, playersSeeInFrame, getPlayerViewLayers } = harness({ lighting: true });
     const during: boolean[] = [];
-    renderer.withPlayerSafeFrame(() => during.push(part.visible), SETTINGS);
+    renderer.withPlayerSafeFrame(() => during.push(part.visible), SETTINGS, FRAME);
     expect(playersSeeInFrame).toHaveBeenCalledTimes(1);
     expect(playersSeeInFrame).toHaveBeenCalledWith(sight);
     expect(getPlayerViewLayers).toHaveBeenCalledWith(seenInFrame);
@@ -45,7 +47,7 @@ describe('withPlayerSafeFrame and the measurements', () => {
 
   it('sees no token while there is no token renderer, so no measurement from one shows', () => {
     const { renderer, getPlayerViewLayers } = harness({ tokens: false });
-    renderer.withPlayerSafeFrame(() => undefined, SETTINGS);
+    renderer.withPlayerSafeFrame(() => undefined, SETTINGS, FRAME);
     const seen = getPlayerViewLayers.mock.calls[0]?.[0] as (id: string) => boolean;
     expect(['hero', 'goblin'].map(seen)).toEqual([false, false]);
   });

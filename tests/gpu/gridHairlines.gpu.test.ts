@@ -232,7 +232,7 @@ describe('grid lines thinner than a pixel', () => {
       view.render();
       const camera = { centerX: 600, centerY: 500, scale: 1 };
       const players: Picture[] = [];
-      captureBeforeRender([], () => undefined, () => players.push(view.render()), { target: view.viewport, camera });
+      captureBeforeRender([], () => undefined, () => players.push(view.render()), { target: view.viewport, camera, screen: { width: VIEW, height: VIEW } });
       const gm = view.render();
 
       // The players see the lines at their zoom: two device pixels of full black

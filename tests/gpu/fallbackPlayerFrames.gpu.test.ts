@@ -8,14 +8,16 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import type { TokenEntity } from '../../src/app/types';
 import { showsMap } from '../../src/app/gameSystems/senseRules';
 import { LightingController } from '../../src/app/pixi/lighting/LightingController';
-import { captureBeforeRender } from '../../src/app/pixi/playerSafeFrame';
-import { RenderScheduler, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
+import { RenderScheduler } from '../../src/app/pixi/RenderScheduler';
+import { playerFrameSource, playerWindow, viewOf } from '../helpers/playerFrameView';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { pointInPolygon } from '../../src/app/vision/visibility';
 
 vi.mock('events', async () => import('eventemitter3'));
 
 const SIZE = 256;
+/** The DM's pane: half as wide as the map, which the player window shows whole. */
+const PANE_WIDTH = 128;
 const FLOOR = 0x8899aa;
 const MAP = { width: SIZE, height: SIZE };
 
@@ -46,13 +48,14 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
 
   async function open(lighting: Record<string, unknown>): Promise<{ store: ViewAtlasStore; frames: Uint8ClampedArray[]; displayFrames: (count: number) => void; shown: (frame: Uint8ClampedArray) => Shown }> {
     const app = new Application();
-    await app.init({ width: SIZE, height: SIZE, preference: 'canvas', antialias: false, autoStart: false, backgroundColor: FLOOR });
+    await app.init({ width: PANE_WIDTH, height: SIZE, preference: 'canvas', antialias: false, autoStart: false, backgroundColor: FLOOR });
     expect(app.renderer.name).toBe('canvas');
     const scheduler = new RenderScheduler(app);
-    const viewport = new Viewport({ screenWidth: SIZE, screenHeight: SIZE, worldWidth: SIZE, worldHeight: SIZE, events: app.renderer.events });
+    const viewport = new Viewport({ screenWidth: PANE_WIDTH, screenHeight: SIZE, worldWidth: SIZE, worldHeight: SIZE, events: app.renderer.events });
     viewport.sortableChildren = true;
     viewport.addChild(new Graphics().rect(0, 0, SIZE, SIZE).fill(FLOOR));
     app.stage.addChild(viewport);
+    viewport.moveCenter(SIZE / 2, SIZE / 2);
     const obsApp = createInMemoryApp().app;
     const store = createViewAtlasStore(obsApp, `fallback-frames-${Math.random()}`);
     store.getState().setPersistenceEnabled(false);
@@ -68,19 +71,20 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
       setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
       setDoorClickHandler: ignore, setPlayerSightProvider: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
     } as unknown as TokenRenderer);
+    // As the player window is shown a view that renders on change: a frame of the window's own size, right before the view's renders.
+    const { source, frames: frameTexture } = playerFrameSource({
+      renderer: app.renderer, stage: app.stage, ...viewOf(viewport, app.renderer), layers: () => controller.playerLayers(), app,
+    });
+    const players = playerWindow(source, { width: SIZE, height: SIZE, resolution: 1 }, () => time);
     cleanup.push(() => {
+      players.mirror.stop();
+      frameTexture.destroy();
       controller.destroy();
       scheduler.destroy();
       app.destroy(true, { children: true });
     });
 
     const frames: Uint8ClampedArray[] = [];
-    // As the player window mirrors a canvas that renders on change (`PlayerFrameMirror`, `captureBeforeRender`).
-    setBeforeRender(app, () => captureBeforeRender(controller.playerLayers(), () => app.renderer.render(app.stage), () => {
-      const copy = new OffscreenCanvas(SIZE, SIZE).getContext('2d')!;
-      copy.drawImage(app.canvas, 0, 0);
-      frames.push(copy.getImageData(0, 0, SIZE, SIZE).data);
-    }));
     let time = 1000;
     const shown = (frame: Uint8ClampedArray): Shown => {
       const sight = controller.renderer.currentSight();
@@ -107,7 +111,16 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
       }
       return tally;
     };
-    return { store, frames, displayFrames: (count) => { for (let i = 0; i < count; i++) app.ticker.update(time += 16); }, shown };
+    const displayFrames = (count: number): void => {
+      for (let i = 0; i < count; i++) {
+        time += 16;
+        const mirrored = players.frames.length;
+        players.frame();
+        app.ticker.update(time);
+        if (players.frames.length > mirrored) frames.push(players.pixels());
+      }
+    };
+    return { store, frames, displayFrames, shown };
   }
 
   it('captures a frame with the new sight when token vision is switched on, and nothing outside sight shows in it', async () => {
