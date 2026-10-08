@@ -66,6 +66,8 @@
 
 - Distance per Square in a collection's settings takes a decimal typed with a comma or a point, so 1,5 and 1.5 both give one and a half, and it takes distances below 1. Typing the decimal sign your system does not use gave 15.
 
+- Where Atlas shows line of sight without light and shadow, because it cannot use the graphics card, areas that two tokens see at once are no longer black for the players. Neither is what a sense that sees in magical darkness sees around the darkness. A thin, broken black line can remain along a slanted wall that the party sees from both sides.
+
 - Timers keep correct time while Obsidian is in the background. Before, a hidden window counted a running timer down by about one second a minute.
 
 - The ruler's distance and the distance shown while dragging a token are readable in Obsidian's light theme. They were white on a light grey pill.

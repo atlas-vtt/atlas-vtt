@@ -7,6 +7,7 @@ import type { LightingQualitySource } from '../../lighting/lightingQuality';
 import type { ViewAtlasStore } from '../../storeFactory';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
+import { requestRender } from '../RenderScheduler';
 import { usesCanvasRenderer } from '../utils/rendererType';
 import { CanvasLightingFallback } from './CanvasLightingFallback';
 import { StoredLightingAttempt } from './lightingAttempts';
@@ -48,7 +49,7 @@ export function createSceneLighting({ viewport, app, store, obsApp, measurement,
     store,
     canvasRenderer: usesCanvasRenderer(app.renderer),
     createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store, measurement, bounds, albedo, attempt, onUnavailable, ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }) }),
-    createFallback: () => new CanvasLightingFallback({ viewport, store, measurement, bounds, ...view }),
+    createFallback: () => new CanvasLightingFallback({ viewport, store, measurement, bounds, requestRender: () => requestRender(app), ...view }),
     forgetAttempt: () => attempt.forget(),
     notify: showLightingUnavailableNotice,
     ...sight,
