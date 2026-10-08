@@ -26,6 +26,8 @@
 
 ## Fixed
 
+- The DM screen no longer stays empty or hidden while Fantasy Statblocks is still reading the vault after Obsidian starts. Each statblock shows as soon as its own note is read.
+
 - A statblock whose spell list holds an empty item no longer takes the toolbar and the asset manager down when it is shown.
 
 - Fog now updates correctly when returning to a map or canceling a drawing.

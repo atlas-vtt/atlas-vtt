@@ -1,6 +1,8 @@
 import { TFile, type App } from 'obsidian';
 import {
+  bestiaryCreatureByName,
   getFantasyStatblocksApi,
+  noteBasename,
   resolveCreatureFromFence,
   type FantasyStatblocksApi,
   type FantasyStatblocksCreature,
@@ -27,7 +29,7 @@ export function bestiaryLookup(): BestiaryLookup {
 /** A bestiary creature with its `extends` applied, which only the plugin's name lookup does. */
 function withExtensions(api: FantasyStatblocksApi | null, creature: FantasyStatblocksCreature): FantasyStatblocksCreature {
   if (!api || creature.extends === undefined) return creature;
-  const resolved = api.getCreatureFromBestiary(creature.name);
+  const resolved = bestiaryCreatureByName(api, creature.name);
   return resolved && resolved.path === creature.path ? resolved : creature;
 }
 
@@ -67,8 +69,7 @@ export async function resolveLinkedCreature(
     }
   }
 
-  const basename = notePath.split('/').pop()?.replace(/\.md$/, '') ?? '';
-  return basename && api?.hasCreature(basename) ? api.getCreatureFromBestiary(basename) : null;
+  return api ? bestiaryCreatureByName(api, noteBasename(notePath)) : null;
 }
 
 /**
