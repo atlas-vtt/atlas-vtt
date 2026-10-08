@@ -54,6 +54,88 @@ describe('a creature read from a note\'s frontmatter', () => {
   });
 });
 
+describe('trait entries of a note that are not what a statblock holds', () => {
+  const note = 'Bestiary/Goblin.md';
+  /** A list that counts how often one of its items is read, and gives up where a walk has plainly run away. */
+  let reads = 0;
+  const counted = <T>(list: T[]): T[] => new Proxy(list, {
+    get(target, key, receiver): unknown {
+      if (typeof key === 'string' && /^\d+$/.test(key) && ++reads > 100_000) throw new Error('The walk did not stop.');
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  const actionsOf = async (actions: unknown[]): Promise<Array<{ name: string; desc: string }>> => {
+    current.frontmatter[note] = { statblock: true, name: 'Goblin', actions };
+    reads = 0;
+    const creature = await resolveLinkedCreature(current.app, note);
+    return creature?.actions as Array<{ name: string; desc: string }>;
+  };
+
+  it('reads lists that hold each other many times over once, not once per way to reach them', async () => {
+    // Nine levels of ten lists, each holding the ten lists below it: a billion ways down, ninety lists.
+    let level: unknown[][] = Array.from({ length: 10 }, () => counted(Array<unknown>(10).fill('x')));
+    for (let depth = 1; depth < 9; depth++) {
+      const below = level;
+      level = Array.from({ length: 10 }, () => counted([...below]));
+    }
+
+    const [action] = await actionsOf([counted(['Swarm', ...level])]);
+    expect(action?.name).toBe('Swarm');
+    expect(reads).toBeLessThan(1000);
+  });
+
+  it('stops reading a description at its length limit instead of reading all of it first', async () => {
+    const [action] = await actionsOf([counted(['Monologue', ...Array<string>(5000).fill('word '.repeat(200))])]);
+    expect(action?.desc.length).toBeGreaterThan(1000);
+    expect(action?.desc.length).toBeLessThanOrEqual(10_100);
+    expect(reads).toBeLessThan(100);
+  });
+
+  it('reads no deeper than a few levels, however deep an entry is nested', async () => {
+    let deep: unknown = 'the bottom';
+    for (let depth = 0; depth < 10_000; depth++) deep = [deep];
+
+    await expect(actionsOf([['Abyss', 'Falls.', deep]])).resolves.toEqual([{ name: 'Abyss', desc: 'Falls. ' }]);
+  });
+
+  it('reads a list that holds itself once', async () => {
+    const loop: unknown[] = ['Again and'];
+    loop.push(loop, 'again.');
+    const entry: unknown[] = ['Echo'];
+    entry.push(entry);
+
+    await expect(actionsOf([['Loop', loop], entry]))
+      .resolves.toEqual([{ name: 'Loop', desc: 'Again and  again.' }, { name: 'Echo', desc: '' }]);
+  });
+
+  it('reads many entries that share one wide list within a fixed number of steps', async () => {
+    const wide: unknown[] = [];
+    for (let item = 0; item < 3000; item++) wide.push(wide);
+    const shared = counted(wide);
+
+    const actions = await actionsOf(Array.from({ length: 3000 }, () => counted(['Shared', shared])));
+    expect(actions).toHaveLength(3000);
+    expect(reads).toBeLessThan(50_000);
+  });
+
+  it('lists the keys of a map that many entries share once', async () => {
+    let listings = 0;
+    const wide: Record<string, unknown> = { ['long '.repeat(3000)]: 'first' };
+    for (let key = 0; key < 1000; key++) wide[`key ${key}`] = key;
+    const shared = new Proxy(wide, {
+      ownKeys(target): Array<string | symbol> {
+        listings += 1;
+        return Reflect.ownKeys(target);
+      },
+    });
+
+    const actions = await actionsOf(Array.from({ length: 500 }, () => ['Shared', shared, shared]));
+    expect(actions).toHaveLength(500);
+    expect(actions[0]?.desc.length).toBeLessThanOrEqual(10_100);
+    expect(listings).toBe(1);
+  });
+});
+
 describe('linked creatures while Fantasy Statblocks parses the vault', () => {
   it('reads a note from its own frontmatter, though a creature of its name is in the bestiary', async () => {
     current.frontmatter['Bestiary/Goblin.md'] = { statblock: true, name: 'Goblin', hp: 12 };

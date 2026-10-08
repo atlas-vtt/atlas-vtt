@@ -9,6 +9,7 @@ import {
 } from '../services/FantasyStatblocksService';
 import { hasBestiaryFrontmatter, parseStatblockFence, resolveStatblockNote } from '../services/statblockNoteSource';
 import { workSlices } from '../utils/workSlices';
+import { namedTraitLists } from './frontmatterTraits';
 
 /** The bestiary as one lookup, built once and reused for many notes. */
 export interface BestiaryLookup {
@@ -33,37 +34,11 @@ function withExtensions(api: FantasyStatblocksApi | null, creature: FantasyStatb
   return resolved && resolved.path === creature.path ? resolved : creature;
 }
 
-/** The lists whose entries Fantasy Statblocks' watcher stores as `{ name, desc }`. */
-const TRAIT_LISTS = ['traits', 'actions', 'bonus_actions', 'reactions', 'legendary_actions'];
-
-/** A trait's text as Fantasy Statblocks' watcher writes it: the parts of a list or a map in a row. */
-function traitText(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number') return String(value);
-  if (Array.isArray(value)) return value.map(traitText).join(' ');
-  if (value && typeof value === 'object') return Object.entries(value).flat().map(traitText).join(' ');
-  return '';
-}
-
-/**
- * A trait list whose `[name, description]` entries are the `{ name, desc }` a statblock's blocks read.
- * Its other entries stay as they are: a list of plain words is what the Traits filter reads.
- */
-function withNamedTraits(list: unknown): unknown {
-  if (!Array.isArray(list)) return list;
-  return list.map((entry: unknown) =>
-    (Array.isArray(entry) ? { name: traitText(entry[0]), desc: traitText(entry.slice(1)) } : entry));
-}
-
 /** The creature a note's frontmatter defines, as Fantasy Statblocks' watcher parses it. */
 function frontmatterCreature(app: App, file: TFile): FantasyStatblocksCreature {
   const frontmatter: Record<string, unknown> = app.metadataCache.getFileCache(file)?.frontmatter ?? {};
   const name = typeof frontmatter.name === 'string' && frontmatter.name.trim() ? frontmatter.name : file.basename;
-  const creature: FantasyStatblocksCreature = { ...frontmatter, name, path: file.path };
-  for (const list of TRAIT_LISTS) {
-    if (list in frontmatter) creature[list] = withNamedTraits(frontmatter[list]);
-  }
-  return creature;
+  return { ...frontmatter, ...namedTraitLists(frontmatter), name, path: file.path };
 }
 
 /**
