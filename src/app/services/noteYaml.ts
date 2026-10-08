@@ -11,7 +11,7 @@ import { parseYaml } from 'obsidian';
 
 export const NOTE_YAML_LIMITS = {
   /** Characters of one text. A statblock's fence or frontmatter has a few thousand. */
-  characters: 64 * 1024,
+  characters: 32 * 1024,
   /** Aliases of the anchors of one text. Statblocks use neither. */
   aliases: 16,
 } as const;

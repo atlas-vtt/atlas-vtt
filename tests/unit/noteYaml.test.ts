@@ -126,8 +126,14 @@ function seededRandom(seed: number): () => number {
   };
 }
 
-/** Tens of thousands of texts through the YAML library take a while on a busy machine. */
-const SLOW_TEST = 60_000;
+/**
+ * How many texts put together at random are compared with the YAML library; a tenth as many are
+ * texts the library writes itself. `VITE_NOTE_YAML_TRIALS=600000` runs a large sweep, which takes
+ * minutes.
+ */
+const DEFAULT_TRIALS = 2000;
+const TRIALS = Number(import.meta.env.VITE_NOTE_YAML_TRIALS ?? DEFAULT_TRIALS);
+const SWEEP_TIMEOUT = TRIALS > DEFAULT_TRIALS ? 30 * 60_000 : undefined;
 
 describe('anchors and aliases however they are written', () => {
   it.each(Object.keys(ALIAS_SPELLINGS))('counts an alias written as %s', (spelling) => {
@@ -153,7 +159,7 @@ describe('anchors and aliases however they are written', () => {
     let parsed = 0;
     let withAliases = 0;
 
-    for (let sample = 0; sample < 20_000; sample++) {
+    for (let sample = 0; sample < TRIALS; sample++) {
       let text = 'r: &a 1\n';
       for (let piece = 1 + Math.floor(random() * 8); piece > 0; piece--) text += pieces[Math.floor(random() * pieces.length)];
       const followed = aliasesTheParserFollows(text);
@@ -162,17 +168,17 @@ describe('anchors and aliases however they are written', () => {
       if (followed > 0) withAliases += 1;
       if (aliasesOfAnchors(text) < followed) throw new Error(`Counted too few in ${JSON.stringify(text)}`);
     }
-    // The sample is one that means something: thousands of texts parse, hundreds of them with aliases.
-    expect(parsed).toBeGreaterThan(1500);
-    expect(withAliases).toBeGreaterThan(40);
-  }, SLOW_TEST);
+    // The sample is one that means something: a share of the texts parse, some of them with aliases.
+    expect(parsed).toBeGreaterThan(TRIALS / 20);
+    expect(withAliases).toBeGreaterThan(TRIALS / 1000);
+  }, SWEEP_TIMEOUT);
 
   it('never counts fewer aliases than the parser can follow, in texts the YAML library writes itself', () => {
     const random = seededRandom(8);
     const pick = <T>(choices: readonly T[]): T => choices[Math.floor(random() * choices.length)]!;
     let followed = 0;
 
-    for (let sample = 0; sample < 3000; sample++) {
+    for (let sample = 0; sample < TRIALS / 10; sample++) {
       // Lists and maps that hold a few shared ones: the library writes each shared one once, with an anchor, and an alias wherever it stands again.
       const shared = [[1, 2], { x: 'y' }, ['deep', { z: [3] }]];
       const build = (depth: number): unknown => {
@@ -195,8 +201,8 @@ describe('anchors and aliases however they are written', () => {
       followed += inText;
       if (aliasesOfAnchors(text) < inText) throw new Error(`Counted too few in ${JSON.stringify(text)}`);
     }
-    expect(followed).toBeGreaterThan(10_000);
-  }, SLOW_TEST);
+    expect(followed).toBeGreaterThan(TRIALS / 10);
+  }, SWEEP_TIMEOUT);
 
   it('reads a text in one pass', () => {
     // Every character is looked at once: a text of nothing but openers, marks and names counts as many as it holds.

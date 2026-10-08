@@ -52,13 +52,15 @@ const VISION_ON_USES = [
 ];
 // A note's text reaches the YAML parser only through the helper that checks it first. The import
 // is flagged rather than the call, so an alias cannot pass; the member selector catches a
-// namespace import, the export selector a re-export.
+// namespace import, the export selector a re-export, the pattern selector a destructuring.
 const PARSE_YAML_MESSAGE = "Parse the YAML of notes, bases and bundles with parseNoteYaml (services/noteYaml.ts), which checks the text first.";
 const PARSE_YAML_USES = [
   { selector: "ImportSpecifier[imported.name='parseYaml']", message: PARSE_YAML_MESSAGE },
   { selector: "ExportSpecifier[local.name='parseYaml']", message: PARSE_YAML_MESSAGE },
   { selector: "MemberExpression[property.name='parseYaml']", message: PARSE_YAML_MESSAGE },
+  { selector: "ObjectPattern > Property[key.name='parseYaml']", message: PARSE_YAML_MESSAGE },
   { selector: "ImportDeclaration[source.value='yaml']", message: PARSE_YAML_MESSAGE },
+  { selector: "CallExpression[callee.name='require'][arguments.0.value='yaml']", message: PARSE_YAML_MESSAGE },
 ];
 const NOTE_YAML_PARSER = "src/app/services/noteYaml.ts";
 
