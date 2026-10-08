@@ -44,9 +44,15 @@
 
 - With the player camera frozen, the player view no longer jumps when you switch to another Obsidian tab, and no longer changes size when you open or close a sidebar.
 
+- Map shortcuts no longer stop working until the vault is reopened after two note previews load at the same time, such as on a map with two pinned notes. Obsidian lost track of the active tab then.
+
 - Scenes with a map image no longer fail to open with "Failed to fetch" on older Obsidian installers, or where Obsidian runs on a different Electron than it shipped with.
 
 - When a scene's file or map image cannot be read, the tokens of the scene that was open before no longer stay on the canvas.
+
+- The measure tool and the token drag ruler now measure the same path alike everywhere on the map. On a grid aligned to its map, Pathfinder's second diagonal counted 10 ft in some places and 5 ft in others, and a distance such as 4.5 m was rounded up in some places and down in others. On a hex grid, dragging a Large or Gargantuan token measured a hex too few or too many in some places.
+
+- Distance per Square in a collection's settings takes a decimal typed with a comma or a point, so 1,5 and 1.5 both give one and a half, and it takes distances below 1. Typing the decimal sign your system does not use gave 15.
 
 - Where Atlas shows line of sight without light and shadow, because it cannot use the graphics card, areas that two tokens see at once are no longer black for the players. Neither is what a sense that sees in magical darkness sees around the darkness.
 
