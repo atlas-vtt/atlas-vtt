@@ -1,4 +1,5 @@
 import { PLAIN_BACK_BUFFER_RESOLUTION } from '../pixi/lighting/engine/backBuffer';
+import { framePieces, MAX_FRAME_PIECES } from '../pixi/PlayerFrameTexture';
 import type { PlayerCameraState } from '../types/playerCamera';
 import type { PlayerFrame, Screen, Size, WorldView } from '../types/playerFrame';
 
@@ -10,8 +11,9 @@ import type { PlayerFrame, Screen, Size, WorldView } from '../types/playerFrame'
  */
 export const PLAYER_FRAME_PIXEL_BUDGET = 2560 * 1440;
 
+/** A number a size or a zoom can be: positive, finite, and not so small that dividing by it gives none. */
 function isPositive(value: number): boolean {
-  return Number.isFinite(value) && value > 0;
+  return Number.isFinite(value) && value > 0 && Number.isFinite(1 / value);
 }
 
 /** The whole pixels of a screen's canvas; none for a screen without a size. */
@@ -70,11 +72,29 @@ export function framedCamera(camera: PlayerCameraState, screen: Size | undefined
 }
 
 /**
+ * The largest frame of `size`'s shape that a canvas of `canvas`' pixels brings across in no
+ * more than `MAX_FRAME_PIECES` pieces: `size` itself where it takes no more. Every way to lay
+ * the pieces out, as columns by rows, holds a frame of some scale; the largest of them wins.
+ */
+function withinPieces(size: Size, canvas: Size): Size {
+  if (framePieces(size, canvas) <= MAX_FRAME_PIECES) return size;
+  let scale = 0;
+  for (let columns = 1; columns <= MAX_FRAME_PIECES; columns++) {
+    const rows = Math.floor(MAX_FRAME_PIECES / columns);
+    scale = Math.max(scale, Math.min((columns * canvas.width) / size.width, (rows * canvas.height) / size.height));
+  }
+  return { width: Math.max(1, Math.floor(size.width * scale)), height: Math.max(1, Math.floor(size.height * scale)) };
+}
+
+/**
  * The players' frame for `window`, showing `view`: centred on the view's centre and scaled so
  * that all of the view fits in the window (the rest of the window shows the map around it). It
  * has the window's own pixels, up to the budget; a larger window gets fewer in its own shape,
- * never fewer than `pane`, the canvas the players' picture was a copy of, has. Null where there
- * is nothing to render: a window or a view without a size.
+ * never fewer than `pane`, the canvas the players' picture was a copy of, has. It reaches the
+ * players through that canvas in pieces, so a pane much smaller than the frame gets a smaller
+ * frame, one that takes no more than `MAX_FRAME_PIECES`; this comes before the pane's pixels.
+ * Null where there is nothing to render: a window or a view without a size, or one so small
+ * that the frame's scale would be no number.
  */
 export function playerFrame(window: Screen, view: WorldView, pane?: Screen): PlayerFrame | null {
   const full = pixelsOf(window);
@@ -83,9 +103,11 @@ export function playerFrame(window: Screen, view: WorldView, pane?: Screen): Pla
   const budget = Math.max(PLAYER_FRAME_PIXEL_BUDGET, panePixels ? panePixels.width * panePixels.height : 0);
   const pixels = full.width * full.height;
   const shrink = pixels > budget ? Math.sqrt(budget / pixels) : 1;
-  const width = Math.max(1, Math.round(full.width * shrink));
-  const height = Math.max(1, Math.round(full.height * shrink));
+  const budgeted = { width: Math.max(1, Math.round(full.width * shrink)), height: Math.max(1, Math.round(full.height * shrink)) };
+  const { width, height } = panePixels ? withinPieces(budgeted, panePixels) : budgeted;
   const resolution = width / window.width;
+  const scale = Math.min(window.width / view.width, height / resolution / view.height);
+  if (!isPositive(scale)) return null;
   return {
     width,
     height,
@@ -94,6 +116,6 @@ export function playerFrame(window: Screen, view: WorldView, pane?: Screen): Pla
     antialias: resolution < PLAIN_BACK_BUFFER_RESOLUTION && Math.min(pixels, budget) <= PLAYER_FRAME_PIXEL_BUDGET,
     centerX: view.centerX,
     centerY: view.centerY,
-    scale: Math.min(window.width / view.width, height / resolution / view.height),
+    scale,
   };
 }

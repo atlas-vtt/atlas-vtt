@@ -43,6 +43,7 @@ describe('restorable local player view', () => {
     ['a size that is no number', { width: '800', height: 450 }],
     ['a size JSON cannot hold (infinite, written as null)', { width: null, height: 450 }],
     ['a size that is not finite', { width: Number.POSITIVE_INFINITY, height: 450 }],
+    ['sides too small to divide by', { width: 1e-320, height: 1e-320 }],
   ])('reads a saved camera with %s as one without a rectangle, never as a larger one', async (_name, rectangle) => {
     const view = createView();
     await view.setState({ tabId: 'tavern', filePath: 'maps/tavern.atlasmap', frozen: true, camera: { centerX: 100, centerY: 200, scale: 1.5, ...rectangle } }, {});

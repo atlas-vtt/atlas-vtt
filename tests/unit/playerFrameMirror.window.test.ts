@@ -215,7 +215,7 @@ describe('players frozen on a camera', () => {
     freeze(harness);
     const frozen = frame()!;
 
-    for (const pane of [{ width: 900, height: 800 }, { width: 1500, height: 300 }, { width: 2400, height: 1600 }, { width: 37, height: 911 }]) {
+    for (const pane of [{ width: 900, height: 800 }, { width: 1500, height: 300 }, { width: 2400, height: 1600 }, { width: 500, height: 911 }]) {
       state.pane = { ...pane, resolution: 1 };
       expect(frame()).toEqual(frozen);
     }
@@ -223,6 +223,23 @@ describe('players frozen on a camera', () => {
     expect(frame()).toEqual(frozen);
     state.dm = { centerX: -50, centerY: 7000, scale: 3 };
     expect(frame()).toEqual(frozen);
+  });
+
+  it('keep that rectangle with fewer pixels in a pane too small to bring the frame across in the pieces allowed', () => {
+    const harness = setup();
+    const { frame, state, target } = harness;
+    freeze(harness);
+    const frozen = frame()!;
+    // 1920 × 1080 through a canvas of 37 × 911 would take 104 pieces
+    state.pane = { width: 37, height: 911, resolution: 1 };
+    const small = frame()!;
+    expect(Math.ceil(small.width / 37) * Math.ceil(small.height / 911)).toBeLessThanOrEqual(16);
+    expect([small.width, small.height]).toEqual([592, 333]);
+    expect([target.width, target.height]).toEqual([592, 333]);
+    // The same world rectangle: its pixels are fewer, its points and their scale the same
+    expect(small).toMatchObject({ centerX: frozen.centerX, centerY: frozen.centerY, scale: frozen.scale });
+    expect(small.width / small.resolution).toBeCloseTo(frozen.width / frozen.resolution, 6);
+    expect(shown(small).height).toBeCloseTo(shown(frozen).height, 6);
   });
 
   it('follow the DM again once unfrozen', () => {

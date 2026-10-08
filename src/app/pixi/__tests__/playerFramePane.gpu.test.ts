@@ -1,5 +1,6 @@
 import { Graphics } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { MAX_FRAME_PIECES } from '../PlayerFrameTexture';
 import { firstDifference, playerFrameSource, playerWindow, viewOf, type PlayerWindowHarness } from '../../../../tests/helpers/playerFrameView';
 import { PixiAppManager } from '../PixiAppManager';
 import type { Screen } from '../../types/playerFrame';
@@ -128,6 +129,57 @@ describe('the players\' picture while the DM\'s pane changes', () => {
     expect([view.players.target.width, view.players.target.height]).toEqual([480, 270]);
   });
 
+  it('stays live in no more pieces than allowed when the pane is dragged almost shut: a smaller frame, never hundreds of renders', async () => {
+    const view = await open();
+    view.shown();
+    const { renderer } = view.manager.getApp();
+    const renders = vi.spyOn(renderer, 'render');
+    /** The renders one display frame of the player window took: the scene for players, a piece each, the DM's own. */
+    const rendersOfAFrame = (): number => {
+      renders.mockClear();
+      view.shown();
+      return renders.mock.calls.length;
+    };
+    expect(rendersOfAFrame()).toBe(1 + 4 + 1);
+
+    for (const height of [20, 4, 1]) {
+      await view.resizePane(PANE.width, height);
+      expect(renderer.canvas.height).toBe(height);
+      const count = rendersOfAFrame();
+      expect(count).toBeGreaterThan(2);
+      expect(count).toBeLessThanOrEqual(1 + MAX_FRAME_PIECES + 1);
+      // A frame came, of the window's shape, with fewer pixels; the mark in the middle of the DM's view is in the middle of it
+      const { target } = view.players;
+      expect(target.width).toBeLessThan(480);
+      expect(Math.abs(target.width / target.height - 480 / 270)).toBeLessThan(2 / target.height);
+      const [red, green, blue] = view.players.at(Math.floor(target.width / 2), Math.floor(target.height / 2));
+      expect(red).toBeGreaterThan(Math.max(green!, blue!) + 60);
+    }
+    renders.mockRestore();
+  });
+
+  it('shows players a change made while another tab covers the pane: a frame is rendered though the pane measures nothing', async () => {
+    const view = await open();
+    view.shown();
+    const viewport = view.manager.getViewport()!;
+    const GREEN = [0, 255, 0];
+    const WHITE = [255, 255, 255];
+    await view.cover(true);
+    expect(view.pane.clientWidth).toBe(0);
+    // A mark appears right of the middle of the DM's view while the pane is covered
+    viewport.addChild(new Graphics().rect(1040, 490, 20, 20).fill(0x00ff00));
+    view.shown();
+    expect(view.players.at(Math.round(240 + 50 * 1.35), 135)).toEqual(GREEN);
+    expect(view.players.at(240, 135)).toEqual(RED);
+
+    // And frozen: what happens on the map still reaches players through the camera they are frozen on
+    view.players.state.frozen = view.players.frames.at(-1)!;
+    viewport.addChild(new Graphics().rect(940, 490, 20, 20).fill(0xffffff));
+    view.shown();
+    expect(view.players.at(Math.round(240 - 50 * 1.35), 135)).toEqual(WHITE);
+    expect(view.players.at(Math.round(240 + 50 * 1.35), 135)).toEqual(GREEN);
+  });
+
   it('is the same, pixel for pixel, while another tab covers the pane, and after', async () => {
     const view = await open();
     const before = view.shown().slice();
@@ -153,10 +205,26 @@ describe('the players\' picture while the DM\'s pane changes', () => {
       const frozen = freeze(view);
       expect(view.players.at(240, 135)).toEqual(RED);
 
-      for (const [width, height] of [[384, 200], [357, 211], [160, 200], [320, 100], [289, 240], [97, 65]] as const) {
+      for (const [width, height] of [[384, 200], [357, 211], [160, 200], [320, 100], [289, 240], [140, 90]] as const) {
         await view.resizePane(width, height);
         expectSame(view, frozen);
       }
+    });
+
+    it('keeps the same rectangle with fewer pixels in a pane too small to bring the whole frame across', async () => {
+      const view = await open();
+      freeze(view);
+      const camera = view.players.frames.at(-1);
+      // 480 × 270 from a canvas of 97 × 65 would take 25 pieces
+      await view.resizePane(97, 65);
+      view.shown();
+      const { target } = view.players;
+      expect(Math.ceil(target.width / 97) * Math.ceil(target.height / 65)).toBeLessThanOrEqual(MAX_FRAME_PIECES);
+      expect(target.width).toBeLessThan(480);
+      expect(view.players.frames.at(-1)).toEqual(camera);
+      // The mark in the middle of what they were frozen on is still in the middle, the marks beside the old pane still at the sides
+      expect(view.players.at(Math.floor(target.width / 2), Math.floor(target.height / 2))).toEqual(RED);
+      expect(view.players.at(Math.round((240 + 170 * 1.35) * target.width / 480), Math.floor(target.height / 2))).toEqual(BLUE);
     });
 
     it('is the same, pixel for pixel, while another tab covers the pane (the pane measures nothing)', async () => {

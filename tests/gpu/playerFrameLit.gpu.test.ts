@@ -130,7 +130,7 @@ describe('a lit players\' frame of another size than the DM\'s pane', () => {
     expect(zone).toBeGreaterThan(90);
   });
 
-  it('is the picture on that screen\'s canvas, but for marks sized in points', async (ctx) => {
+  it('is the picture on that screen\'s canvas, but for what is sized by zoom rather than by device pixels', async (ctx) => {
     const narrow = await open(NARROW);
     const wide = await open(WINDOW);
     // Two pixels to a point: the frame is not smoothed, like the canvas of this renderer
@@ -147,7 +147,8 @@ describe('a lit players\' frame of another size than the DM\'s pane', () => {
     const figures = `lit players' frame against a DM canvas of its size: ${differing} of ${canvas.length / 4} pixels differ, by ${largest} at most`;
     await ctx.annotate(figures, 'comparison');
     console.info(figures);
-    // Marks sized in points (the doors' badges, the grid's lines) are drawn for two pixels to a point there: only those may differ
+    // The frame has two pixels to a point where this canvas has one. What the picture sizes by zoom and not by device
+    // pixels differs there, as on a canvas at a pixel ratio of 2: the composite's ramp along wall faces, the grid's lines
     expect(differing / (canvas.length / 4)).toBeLessThan(0.01);
   });
 

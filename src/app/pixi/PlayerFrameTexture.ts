@@ -1,6 +1,21 @@
 import { CanvasRenderer, Container, RenderTexture, Sprite, Texture, TexturePool, uid, WebGLRenderer, type Renderer } from 'pixi.js';
-import type { FramePiece, PlayerFrame } from '../types/playerFrame';
+import type { FramePiece, PlayerFrame, Size } from '../types/playerFrame';
 import { contextLost } from './lighting/engine/gpu';
+
+/**
+ * Most pieces a frame is brought across in. Each piece is a render of its own on the view's
+ * canvas and a `drawImage`, and their number is the frame's area over the canvas': a pane
+ * dragged almost shut would take hundreds for one frame, on every render of the GM's (216 for a
+ * 2560 × 1440 frame from a pane of 1200 × 20, which no longer held 60 frames a second where up
+ * to 45 did). `playerFrame` sizes a frame to stay within it; a frame that would take more is
+ * not brought across at all.
+ */
+export const MAX_FRAME_PIECES = 16;
+
+/** The pieces a frame of `frame`'s pixels is brought across in through a canvas of `canvas`' pixels. */
+export function framePieces(frame: Size, canvas: Size): number {
+  return Math.ceil(frame.width / canvas.width) * Math.ceil(frame.height / canvas.height);
+}
 
 /** What a piece is drawn over: the canvas shows a texel's colour as it is, like a frame rendered on it. */
 const OPAQUE_BLACK: [number, number, number, number] = [0, 0, 0, 1];
@@ -73,8 +88,9 @@ export class PlayerFrameTexture {
       return;
     }
     const { canvas, resolution } = renderer;
-    // A canvas without pixels has no piece to offer
+    // A canvas without pixels has no piece to offer, and one too small for the frame would offer too many
     if (canvas.width < 1 || canvas.height < 1) return;
+    if (framePieces({ width, height }, canvas) > MAX_FRAME_PIECES) return;
     const backBuffer = renderer instanceof WebGLRenderer ? renderer.backBuffer : null;
     const throughBackBuffer = backBuffer?.useBackBuffer ?? false;
     if (backBuffer) backBuffer.useBackBuffer = false;

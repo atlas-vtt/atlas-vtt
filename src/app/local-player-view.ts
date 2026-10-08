@@ -8,8 +8,9 @@ export type { PlayerCameraState } from './types/playerCamera';
 
 export const LOCAL_PLAYER_VIEW_TYPE = 'atlas-vtt-local-player';
 
+/** A number a size or a zoom can be: positive, finite, and not so small that dividing by it gives none. */
 function isPositive(value: unknown): value is number {
-  return typeof value === 'number' && Number.isFinite(value) && value > 0;
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 && Number.isFinite(1 / value);
 }
 
 /**

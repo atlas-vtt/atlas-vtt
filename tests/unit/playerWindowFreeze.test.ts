@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Notice } from 'obsidian';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { LocalPlayerSession, LocalPlayerView, PlayerCameraState } from '../../src/app/local-player-view';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
@@ -11,7 +12,8 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { framePiece, sizePlayerWindow } from '../mocks/playerFrameSource';
 
 vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
-afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.restoreAllMocks(); });
+vi.mock('obsidian', async (importOriginal) => ({ ...(await importOriginal<typeof import('obsidian')>()), Notice: vi.fn() }));
+afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.restoreAllMocks(); vi.mocked(Notice).mockClear(); });
 
 interface Harness {
   service: PlayerWindowService;
@@ -75,6 +77,8 @@ function setup({ attach: attachNow = true } = {}): Harness {
     lastFrame: () => source.withPlayerSafeFrame.mock.lastCall![2],
   };
 }
+
+const NOTHING_TO_FREEZE = 'Players are not shown this scene yet, so there is nothing to freeze';
 
 describe('player camera freeze', () => {
   it('keeps rendering the live scene through the camera players saw when frozen', () => {
@@ -191,9 +195,11 @@ describe('player camera freeze', () => {
       expect(next.withPlayerSafeFrame).not.toHaveBeenCalled();
       // The rectangle of the scene before is not kept for the new one
       expect(session.camera).toBeNull();
-      // And while it loads the view's camera is not the scene's yet: there is nothing to freeze on
-      service.toggleCameraFreeze();
+      // And while it loads the view's camera is not the scene's yet: there is nothing to freeze on, and the DM is told so
+      vi.mocked(Notice).mockClear();
+      expect(service.toggleCameraFreeze()).toBe(false);
       expect(service.isFrozen()).toBe(false);
+      expect(vi.mocked(Notice).mock.calls).toEqual([[NOTHING_TO_FREEZE]]);
 
       next.loaded();
       nextFrame();
@@ -202,8 +208,12 @@ describe('player camera freeze', () => {
       expect(shown(frame)[3]).toBe(300);
 
       // Once players were shown the scene, they are frozen on what they saw of it
+      vi.mocked(Notice).mockClear();
       service.toggleCameraFreeze();
       expect(session.camera).toMatchObject({ centerX: 300, centerY: 200, width: 400, height: 300 });
+      expect(vi.mocked(Notice).mock.calls).toEqual([['Player view camera frozen']]);
+      service.toggleCameraFreeze();
+      expect(vi.mocked(Notice).mock.calls.at(-1)).toEqual(['Player view camera unfrozen']);
     });
 
     it('freezes players on the new scene\'s own view when it is frozen before its first frame comes', () => {
@@ -230,8 +240,10 @@ describe('player camera freeze', () => {
       service.presentCanvas(next, 'scene-b');
       // The DM leaves the presented tab before its first frame: the view now shows another scene, through another camera
       service.holdCurrentFrame();
+      vi.mocked(Notice).mockClear();
       service.toggleCameraFreeze();
       expect(service.isFrozen()).toBe(false);
+      expect(vi.mocked(Notice).mock.calls).toEqual([[NOTHING_TO_FREEZE]]);
 
       // Held on a scene they were shown, players are frozen on what they saw of it
       service.presentCanvas(source, 'scene-a');

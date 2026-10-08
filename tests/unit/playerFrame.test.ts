@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { MAX_FRAME_PIECES } from '../../src/app/pixi/PlayerFrameTexture';
 import { framedCamera, playerFrame, PLAYER_FRAME_PIXEL_BUDGET, viewOf } from '../../src/app/services/playerFrame';
 import type { PlayerFrame, Screen, WorldView } from '../../src/app/types/playerFrame';
 
@@ -163,6 +164,64 @@ describe('the players\' frame for a window', () => {
   });
 });
 
+describe('the pieces a frame is brought across in', () => {
+  /** The pieces of the pane's canvas a frame takes. */
+  function pieces(frame: PlayerFrame, pane: Screen): number {
+    const canvas = { width: Math.round(pane.width * pane.resolution), height: Math.round(pane.height * pane.resolution) };
+    return Math.ceil(frame.width / canvas.width) * Math.ceil(frame.height / canvas.height);
+  }
+
+  it('leaves a frame as it is while it takes no more pieces than allowed', () => {
+    const pane = screen(1200, 800);
+    const frame = playerFrame(screen(2560, 1440), paneView(1200, 800), pane)!;
+    expect([frame.width, frame.height]).toEqual([2560, 1440]);
+    expect(pieces(frame, pane)).toBe(6);
+    // Twelve pieces from a pane of 800 × 600
+    expect(playerFrame(screen(2560, 1440), paneView(800, 600), screen(800, 600))).toMatchObject({ width: 2560, height: 1440 });
+  });
+
+  it.each([
+    ['a pane dragged almost shut', 1200, 20],
+    ['a sliver', 1200, 4],
+    ['a narrow strip', 30, 800],
+    ['a small pane', 300, 200],
+    ['a pane of a few pixels', 3, 2],
+  ])('renders a smaller frame of the window\'s shape for %s, so that it takes no more pieces', (_name, width, height) => {
+    const pane = screen(width, height);
+    const view = paneView(width, height);
+    const frame = playerFrame(screen(2560, 1440), view, pane)!;
+    expect(pieces(frame, pane)).toBeLessThanOrEqual(MAX_FRAME_PIECES);
+    expect(frame.width).toBeLessThan(2560);
+    expect(Math.abs(frame.width / frame.height - 2560 / 1440)).toBeLessThan(2 / Math.min(frame.width, frame.height));
+    // Still all the view, in the same place: only its pixels are fewer
+    expect(contains(frame, view)).toBe(true);
+    expect(frame.resolution).toBeCloseTo(frame.width / 2560, 10);
+  });
+
+  it('uses the pieces it may: the frame is as large as they allow', () => {
+    // 300 × 200: four columns of 300 and four rows of 200 hold a frame of 1200 × 675
+    const frame = playerFrame(screen(2560, 1440), paneView(300, 200), screen(300, 200))!;
+    expect([frame.width, frame.height]).toEqual([1200, 675]);
+  });
+
+  it('never takes more pieces than allowed, for any window and pane', () => {
+    let state = 393;
+    const random = (): number => {
+      state = (Math.imul(state, 1664525) + 1013904223) | 0;
+      return (state >>> 0) / 4294967296;
+    };
+    const pick = (low: number, high: number): number => low * (high / low) ** random();
+    for (let trial = 0; trial < 5000; trial++) {
+      const pane = screen(Math.ceil(pick(1, 3000)), Math.ceil(pick(1, 3000)), [1, 1.25, 1.5, 2][trial % 4]!);
+      const window = screen(Math.ceil(pick(1, 6000)), Math.ceil(pick(1, 6000)), [1, 1.5, 2][trial % 3]!);
+      const frame = playerFrame(window, paneView(pane.width, pane.height), pane)!;
+      expect(pieces(frame, pane)).toBeLessThanOrEqual(MAX_FRAME_PIECES);
+      expect(frame.width).toBeGreaterThanOrEqual(1);
+      expect(frame.height).toBeGreaterThanOrEqual(1);
+    }
+  });
+});
+
 describe('how much of the world a frame can show', () => {
   /** A repeatable sequence of numbers between 0 and 1. */
   function seeded(seed: number): () => number {
@@ -232,6 +291,27 @@ describe('how much of the world a frame can show', () => {
   ])('has no view to show around a centre that is %s', (_name, centre) => {
     expect(viewOf({ centerX: centre, centerY: 20, scale: 1 }, { width: 1200, height: 800 })).toBeNull();
     expect(viewOf({ centerX: 10, centerY: centre, scale: 1, width: 600, height: 400 }, undefined)).toBeNull();
+  });
+
+  it.each([
+    ['sides too small to divide by', { centerX: 0, centerY: 0, width: 1e-320, height: 1e-320 }],
+    ['one side too small to divide by', { centerX: 0, centerY: 0, width: 1e-320, height: 400 }],
+    ['sides so small that the scale is no number', { centerX: 0, centerY: 0, width: 1e-306, height: 1e-306 }],
+  ])('renders nothing for a view with %s: no frame has a scale that is not a positive finite number', (_name, view) => {
+    expect(playerFrame(screen(1920, 1080), view)).toBeNull();
+    expect(playerFrame(screen(8000, 6000, 2), view, screen(1200, 800))).toBeNull();
+  });
+
+  it('has no view to show through a camera whose rectangle or zoom is too small to divide by', () => {
+    expect(viewOf({ centerX: 10, centerY: 20, scale: 2, width: 1e-320, height: 1e-320 }, { width: 1200, height: 800 })).toBeNull();
+    expect(viewOf({ centerX: 10, centerY: 20, scale: 1e-320 }, { width: 1200, height: 800 })).toBeNull();
+  });
+
+  it('gives every frame it renders a scale that is a positive finite number', () => {
+    for (const side of [1e-300, 1e-200, 1e-100, 1e-9, 1, 1e9, 1e100, 1e200, 1e300, Number.MAX_VALUE, Number.MIN_VALUE]) {
+      const frame = playerFrame(screen(1920, 1080), { centerX: 0, centerY: 0, width: side, height: side });
+      if (frame) expect(Number.isFinite(frame.scale) && frame.scale > 0).toBe(true);
+    }
   });
 
   it('takes no rectangle from a camera whose own is no size, and falls back to nothing larger', () => {

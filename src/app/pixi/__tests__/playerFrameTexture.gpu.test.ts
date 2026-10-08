@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, RenderTexture, Sprite, Texture, TexturePool, type Renderer, type WebGLRenderer } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PlayerFrameTexture } from '../PlayerFrameTexture';
+import { MAX_FRAME_PIECES, PlayerFrameTexture } from '../PlayerFrameTexture';
 import { LightingEngine } from '../lighting/engine/LightingEngine';
 import type { EngineScene } from '../lighting/engine/types';
 import { resetContext } from '../lighting/__tests__/rendererHarness';
@@ -327,6 +327,22 @@ describe('a players\' frame of its own size, brought to a 2D canvas through the 
     expect(red).toBe(0);
   });
 
+  it('keeps one texture of whole pixels for a frame whose points and pixels do not divide evenly', async () => {
+    const rig = await setup({ pane: [1200, 400] });
+    // A window of 5120 × 1440 at the budget: 1018 / 0.70703125 * 0.70703125 is 1017.9999999999999
+    const frame = frameOf(3620, 1018, 0.70703125);
+    expect((frame.height / frame.resolution) * frame.resolution).not.toBe(frame.height);
+    const { pixels } = rig.mirrored(frame);
+    const texture = (rig.frames as unknown as { texture: RenderTexture | null }).texture;
+    expect([texture?.source.pixelWidth, texture?.source.pixelHeight]).toEqual([3620, 1018]);
+    // The last row is part of the picture: the map's floor, not nothing
+    const lastRow = (1017 * 3620 + 1800) * 4;
+    expect(pixels[lastRow]! + pixels[lastRow + 1]! + pixels[lastRow + 2]!).toBeGreaterThan(100);
+    // And the next frame of that size is rendered into the same texture, not a new one
+    rig.mirrored(frame);
+    expect((rig.frames as unknown as { texture: RenderTexture | null }).texture).toBe(texture);
+  });
+
   it('hands out nothing of a frame whose context was lost before its pieces were drawn', async () => {
     const rig = await setup();
     const frame = frameOf(300, 200);
@@ -349,6 +365,30 @@ describe('a players\' frame of its own size, brought to a 2D canvas through the 
     rig.frames.copy(() => { later++; });
     expect(later).toBe(0);
     expectSame(rig, frame);
+  });
+
+  it('brings a frame across in no more pieces than allowed, and none of a frame that would take more: a thin pane costs no renders', async () => {
+    // A pane dragged almost shut: 200 × 10
+    const rig = await setup({ pane: [200, 10] });
+    const renders = vi.spyOn(rig.renderer, 'render');
+    /** The pieces handed out for a frame, and the renders its transport took: one per piece. */
+    const transport = (frame: PlayerFrame): { pieces: number; renders: number } => {
+      rig.camera(frame);
+      rig.frames.render(rig.app.stage, frame);
+      renders.mockClear();
+      let pieces = 0;
+      rig.frames.copy(() => { pieces++; });
+      return { pieces, renders: renders.mock.calls.length };
+    };
+    // Sixteen rows of the canvas: allowed
+    expect(transport(frameOf(200, 160))).toEqual({ pieces: MAX_FRAME_PIECES, renders: MAX_FRAME_PIECES });
+    // One row more, and a frame of the player window's size, which would take 102 and 2,592 pieces
+    expect(transport(frameOf(200, 161))).toEqual({ pieces: 0, renders: 0 });
+    expect(transport(frameOf(500, 333))).toEqual({ pieces: 0, renders: 0 });
+    expect(transport(frameOf(2560, 1440))).toEqual({ pieces: 0, renders: 0 });
+    // What was allowed arrived whole
+    renders.mockRestore();
+    expectSame(rig, frameOf(200, 160));
   });
 
   it('hands out nothing from a canvas without pixels', async () => {

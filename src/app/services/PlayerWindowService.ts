@@ -78,14 +78,18 @@ export class PlayerWindowService {
     return PlayerWindowService.instance;
   }
 
-  /** Toggle the DM's camera freeze and return the new frozen state. */
+  /**
+   * Toggle the DM's camera freeze and return the new frozen state. Where players are not shown
+   * the presented scene yet there is nothing to freeze them on, and the DM is told so.
+   */
   public toggleCameraFreeze(): boolean {
     if (this.frozenCamera) {
       this.setFrozenCamera(null);
-    } else {
-      this.freezeCamera();
+      new Notice(t('player.unfrozen'));
+      return false;
     }
-    new Notice(this.isFrozen() ? t('player.frozen') : t('player.unfrozen'));
+    this.freezeCamera();
+    new Notice(this.isFrozen() ? t('player.frozen') : t('player.nothingToFreeze'));
     return this.isFrozen();
   }
 
