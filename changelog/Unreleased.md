@@ -26,6 +26,8 @@
 
 ## Fixed
 
+- Dragging tokens, measuring and drawing a selection box no longer make Obsidian restyle its window on every mouse move.
+
 - The DM screen no longer stays empty or hidden while Fantasy Statblocks is still reading the vault after Obsidian starts. Each statblock shows as soon as its own note is read.
 
 - A statblock note named like a creature Fantasy Statblocks already knows, such as Goblin, now shows its own statblock in the DM screen and in previews, as its tokens already used it. Before, the creature of that name was shown.
