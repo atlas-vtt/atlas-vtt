@@ -14,6 +14,7 @@ vi.mock('../../src/app/initiative/useMapInitiativeRules', () => ({
 }));
 vi.mock('../../src/app/react/ViewStoreContext', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/app/react/ViewStoreContext')>(),
+  useViewStoreHook: () => ({ getState: () => gm.state }),
   useAtlasStore: (selector: (value: unknown) => unknown) => selector(gm.state),
 }));
 // jsdom has no WebGL: the player window shows result cards.

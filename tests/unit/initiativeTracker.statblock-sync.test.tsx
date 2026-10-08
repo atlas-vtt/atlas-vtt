@@ -53,6 +53,7 @@ vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
 }));
 
 vi.mock('../../src/app/react/ViewStoreContext', () => ({
+  useViewStoreHook: () => ({ getState: () => state }),
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
 }));
 

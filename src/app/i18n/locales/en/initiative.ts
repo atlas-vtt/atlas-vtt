@@ -9,4 +9,8 @@ export const initiative = {
   'initiative.toBack': 'Move to Back',
   'initiative.toFront': 'Move to Front',
   'initiative.token': 'Token',
+  'initiative.modifierField': 'Statblock Modifier Field',
+  'initiative.modifierPlaceholder': 'Automatic: modifier, then initiative',
+  'initiative.modifierHint': 'Leave blank to read modifier, then initiative. Enter a field path such as combat.initiative to use another field. Signed whole numbers are added to each roll; missing or invalid values add zero.',
+  'initiative.modifierReadError': 'Could not read the linked statblocks. Initiative was not rolled. Try again after the notes finish loading.',
 } as const satisfies Record<string, Message>;

@@ -12,6 +12,17 @@ const preset = (name: string): (typeof BUILT_IN_SYSTEM_PRESETS)[number] => BUILT
 const SIDES: InitiativeRules = { mode: 'sides', roll: '1d20', firstSide: 'players' };
 
 describe('initiative rules of a collection', () => {
+  it('preserves a custom modifier field through save and parse, and omits an empty field', () => {
+    const own = { ...DEFAULT_INITIATIVE_RULES, modifierField: '  combat.initiative  ' };
+    const saved = savedInitiativeRules(own);
+    expect(saved.modifierField).toBe('combat.initiative');
+    expect(parseInitiativeRules(JSON.parse(JSON.stringify(saved)))).toEqual(saved);
+    expect(savedInitiativeRules({ ...own, modifierField: ' ' })).toEqual(DEFAULT_INITIATIVE_RULES);
+    expect(parseInitiativeRules({ ...own, modifierField: null })).toEqual(DEFAULT_INITIATIVE_RULES);
+    expect(sameInitiativeRules(undefined, own)).toBe(false);
+    expect(sameInitiativeRules(own, saved)).toBe(true);
+    expect(sameInitiativeRules(undefined, { ...DEFAULT_INITIATIVE_RULES, modifierField: '' })).toBe(true);
+  });
   it('is a d20 each, highest first, without a game system', () => {
     expect(collectionInitiativeRules({}, BUILT_IN_SYSTEM_PRESETS)).toEqual(DEFAULT_INITIATIVE_RULES);
     expect(DEFAULT_INITIATIVE_RULES).toMatchObject({ mode: 'turn-order', roll: '1d20' });
@@ -68,6 +79,7 @@ describe('initiative rules and game system presets', () => {
   it('keeps the rules of a user preset, and drops ones that are none', () => {
     const stored = { id: 'mine', name: 'Mine', rules: { gridDefaults: cairnGrid(), conditions: [], initiative: SIDES } };
     expect(parseUserPreset(stored)?.rules.initiative).toEqual(SIDES);
+    expect(parseUserPreset({ ...stored, rules: { ...stored.rules, initiative: { ...SIDES, modifierField: 'initiativeBonus' } } })?.rules.initiative?.modifierField).toBe('initiativeBonus');
     expect(parseUserPreset({ ...stored, rules: { ...stored.rules, initiative: { mode: 'teams' } } })?.rules).not.toHaveProperty('initiative');
   });
 });

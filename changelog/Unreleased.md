@@ -32,6 +32,8 @@
 
 ## Fixed
 
+- Initiative rolls now include modifiers from linked statblocks. In Collection Settings → Default Widgets, set the statblock modifier field, or leave it blank to read `modifier` and then `initiative` automatically.
+
 - Obsidian no longer turns sluggish for the rest of a session once a right-click menu was opened while Atlas and Fantasy Statblocks are both enabled. Token drags, the ruler, typing in notes and moving files all lagged, most of all with an older Obsidian installer.
 
 - Dragging tokens, measuring and drawing a selection box no longer make Obsidian restyle its window on every mouse move.

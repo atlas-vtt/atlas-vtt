@@ -7,6 +7,7 @@ import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
 import { isValidDefaultRoll } from '../../../gameSystems/diceRules';
 import { SIDE_LABELS } from '../../../initiative/sides';
 import type { InitiativeMode, InitiativeRules, InitiativeSide } from '../../../types/initiativeRulesTypes';
+import { t } from '../../../i18n';
 
 interface InitiativeFieldsProps {
   initiative: InitiativeRules;
@@ -42,24 +43,40 @@ export function InitiativeFields({ initiative, onChange }: InitiativeFieldsProps
       </div>
 
       {initiative.mode === 'turn-order' ? (
-        <div className="atlas-csm-field">
-          <label className="atlas-csm-label" htmlFor="atlas-csm-initiative-roll">Initiative Roll</label>
-          <input
-            id="atlas-csm-initiative-roll"
-            type="text"
-            className="atlas-csm-input"
-            placeholder="1d20"
-            spellCheck={false}
-            aria-invalid={!rollValid || undefined}
-            value={initiative.roll}
-            onChange={(e) => onChange({ ...initiative, roll: e.target.value })}
-          />
-          {!rollValid && (
-            <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
-              Enter one group of dice, such as 1d20 or 1d10.
-            </p>
-          )}
-        </div>
+        <>
+          <div className="atlas-csm-field">
+            <label className="atlas-csm-label" htmlFor="atlas-csm-initiative-roll">Initiative Roll</label>
+            <input
+              id="atlas-csm-initiative-roll"
+              type="text"
+              className="atlas-csm-input"
+              placeholder="1d20"
+              spellCheck={false}
+              aria-invalid={!rollValid || undefined}
+              value={initiative.roll}
+              onChange={(e) => onChange({ ...initiative, roll: e.target.value })}
+            />
+            {!rollValid && (
+              <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
+                Enter one group of dice, such as 1d20 or 1d10.
+              </p>
+            )}
+          </div>
+          <div className="atlas-csm-field">
+            <label className="atlas-csm-label" htmlFor="atlas-csm-initiative-modifier">{t('initiative.modifierField')}</label>
+            <input
+              id="atlas-csm-initiative-modifier"
+              type="text"
+              className="atlas-csm-input"
+              placeholder={t('initiative.modifierPlaceholder')}
+              spellCheck={false}
+              value={initiative.modifierField ?? ''}
+              onChange={(e) => onChange({ ...initiative, modifierField: e.target.value })}
+              aria-describedby="atlas-csm-initiative-modifier-hint"
+            />
+            <p id="atlas-csm-initiative-modifier-hint" className="atlas-csm-hint">{t('initiative.modifierHint')}</p>
+          </div>
+        </>
       ) : (
         <div className="atlas-csm-field">
           <label className="atlas-csm-label">Acts First</label>
