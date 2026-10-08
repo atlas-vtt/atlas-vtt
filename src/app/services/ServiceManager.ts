@@ -85,6 +85,9 @@ export class ServiceManager {
 
       // Register this store with widget sync
       this.widgetSyncService.registerStore(this.viewId, store);
+      // A timer runs only while a view shows it
+      const widgetSync = this.widgetSyncService;
+      this.eventBus.on('map-unloading', () => widgetSync.leaveScene(this.viewId));
     }
     
   }
@@ -193,6 +196,11 @@ export class ServiceManager {
   /** Writes the scene's thumbnail now if an edit left it out of date; call before the view shows another scene. */
   public flushSceneThumbnail(): void {
     this.sceneThumbnails.flush();
+  }
+
+  /** Stops the timers only this view shows; call as the view closes, before its last save. */
+  public stopTimersForClose(): void {
+    this.widgetSyncService?.closeView(this.viewId);
   }
 
   /**
