@@ -136,6 +136,22 @@ describe('PlayerWindowPresenter', () => {
     expect(source.beforeRender).toBeUndefined();
   });
 
+  test('tells the mirror the screen of the canvas, which a frozen frame keeps while the pane changes size', async () => {
+    const { view } = createFakeView({ renderer: { resolution: 1.25 } } as unknown as Application);
+    const viewport = { screenWidth: 1200, screenHeight: 800, center: { x: 600, y: 400 }, scale: { x: 1 } };
+    const rendererService = view.serviceManager.getRendererService();
+    view.serviceManager.getRendererService = () => ({ ...rendererService, getViewport: () => viewport });
+    const tavern = view.tabMetaStore.getState().addTab('maps/tavern.md', 'Tavern');
+
+    await presentTabInPlayerWindow({} as any, view, tavern);
+
+    const source: PlayerFrameSource = serviceMock.openPlayerWindow.mock.calls[0][0];
+    expect(source.getScreen?.()).toEqual({ width: 1200, height: 800, resolution: 1.25 });
+    // Read anew for every frame: the pane may have changed size since
+    viewport.screenWidth = 900;
+    expect(source.getScreen?.()).toEqual({ width: 900, height: 800, resolution: 1.25 });
+  });
+
   test('offers captures right before the renders of a canvas that renders on change', async () => {
     const { app, ticker } = fakeApp(fakeGroup());
     const scheduler = new RenderScheduler(app);
