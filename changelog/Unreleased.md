@@ -40,6 +40,8 @@
 
 - With the player camera frozen, the player view no longer jumps when you switch to another Obsidian tab, and no longer changes size when you open or close a sidebar.
 
+- Map shortcuts no longer stop working until the vault is reopened after two note previews load at the same time, such as on a map with two pinned notes. Obsidian lost track of the active tab then.
+
 ## Important changes
 
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.

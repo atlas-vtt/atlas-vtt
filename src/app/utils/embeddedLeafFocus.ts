@@ -1,7 +1,9 @@
 import { View, type Workspace, type WorkspaceLeaf } from 'obsidian';
 
+type SetActiveLeaf = (leaf: WorkspaceLeaf, options?: { focus?: boolean }) => void;
+
 type WorkspaceWithSetActiveLeaf = {
-  setActiveLeaf?: ((leaf: WorkspaceLeaf, options?: { focus?: boolean }) => void) | undefined;
+  setActiveLeaf?: SetActiveLeaf | undefined;
 };
 
 /** The leaf that currently owns workspace focus, whatever its view type. */
@@ -27,15 +29,55 @@ export function isWorkspaceLeafSelected(leaf: WorkspaceLeaf | null | undefined):
   return getWorkspaceLeafElement(leaf)?.classList.contains('mod-active') ?? false;
 }
 
+/** A workspace whose `setActiveLeaf` is switched off: the method to put back, and how many callers still need it off. */
+interface ActiveLeafSuppression {
+  original: SetActiveLeaf;
+  holders: number;
+}
+
+const suppressions = new WeakMap<WorkspaceWithSetActiveLeaf, ActiveLeafSuppression>();
+
+function beginSuppression(workspace: WorkspaceWithSetActiveLeaf): ActiveLeafSuppression | null {
+  const original = workspace.setActiveLeaf?.bind(workspace);
+  if (!original) {
+    return null;
+  }
+
+  const suppression: ActiveLeafSuppression = { original, holders: 0 };
+  suppressions.set(workspace, suppression);
+  workspace.setActiveLeaf = (() => {});
+  return suppression;
+}
+
+/**
+ * Makes `workspace.setActiveLeaf` do nothing until the returned function is called.
+ *
+ * Suppressions overlap (two note previews loading at once) and end in any order, so they
+ * share the one original method, which comes back with the last of them. A suppression that
+ * kept what it found would keep an earlier one's no-op and put that back for good: Obsidian
+ * then never activates a tab again, and no map is ever in the active tab.
+ */
 export function suppressActiveLeaf(workspace: WorkspaceWithSetActiveLeaf): () => void {
-  const originalSetActiveLeaf = workspace.setActiveLeaf?.bind(workspace);
-  if (!originalSetActiveLeaf) {
+  const suppression = suppressions.get(workspace) ?? beginSuppression(workspace);
+  if (!suppression) {
     return () => {};
   }
 
-  workspace.setActiveLeaf = (() => {});
+  suppression.holders += 1;
+  let released = false;
   return () => {
-    workspace.setActiveLeaf = originalSetActiveLeaf;
+    if (released) {
+      return;
+    }
+
+    released = true;
+    suppression.holders -= 1;
+    if (suppression.holders > 0) {
+      return;
+    }
+
+    suppressions.delete(workspace);
+    workspace.setActiveLeaf = suppression.original;
   };
 }
 
