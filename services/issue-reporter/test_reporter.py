@@ -29,6 +29,21 @@ class Reports(unittest.TestCase):
         self.assertIn(REPORT["description"], payload["body"])
         self.assertIn(REPORT["environment"], payload["body"])
 
+    def test_area_this_service_does_not_list_is_filed_as_unknown(self):
+        self.assertEqual(self.reporter.submit(KEY, {**REPORT, "area": "newer-area"}, "1.2.3.4"), RECEIPT)
+        payload = self.create.call_args.args[0]
+        self.assertEqual(payload["labels"], ["needs-triage", "type:crash", "area:unknown"])
+        self.assertIn('Not sure / other (sent as "newer-area")', payload["body"])
+
+    def test_every_area_of_the_shared_list_keeps_its_label(self):
+        import uuid
+        from reporter import CATEGORIES, github_payload
+        for area, text in CATEGORIES["ISSUE_AREAS"].items():
+            payload = github_payload({**REPORT, "area": area}, str(uuid.uuid4()))
+            self.assertIn(f"area:{area}", payload["labels"])
+            self.assertIn(text, payload["body"])
+            self.assertNotIn("sent as", payload["body"])
+
     def test_duplicate_survives_process_restart(self):
         self.reporter.submit(KEY, REPORT, "1.2.3.4")
         restarted = Reporter(self.db, self.create, b"test-only-rate-limit-key")
@@ -42,8 +57,9 @@ class Reports(unittest.TestCase):
         self.assertEqual(error.exception.status, 409)
 
     def test_invalid_categories_and_oversize_are_rejected_before_github(self):
-        for changed in (dict(area="__proto__"), dict(type="invalid"), dict(title=" "),
-                        dict(description="x"*30001), dict(title=1), dict(repo="other/repo")):
+        for changed in (dict(area="__proto__"), dict(area="Maps"), dict(area="a" * 33), dict(area=""),
+                        dict(area=["maps"]), dict(area="maps\narea:other"), dict(type="invalid"),
+                        dict(title=" "), dict(description="x"*30001), dict(title=1), dict(repo="other/repo")):
             with self.assertRaises(ReportError):
                 self.reporter.submit(KEY, {**REPORT, **changed}, "1.2.3.4")
         self.create.assert_not_called()

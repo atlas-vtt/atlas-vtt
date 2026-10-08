@@ -12,6 +12,11 @@ CATEGORY_FILE = Path(__file__).with_name("issueCategories.json")
 if not CATEGORY_FILE.exists():
     CATEGORY_FILE = Path(__file__).parents[2] / "src/app/support/issueCategories.json"
 CATEGORIES = json.loads(CATEGORY_FILE.read_text())
+# A plugin may know an area this service's copy of the categories does not (a newer
+# or older list). Such a report is filed under this area, never refused.
+FALLBACK_AREA = "unknown"
+FALLBACK_AREA_LABEL = CATEGORIES["ISSUE_AREAS"][FALLBACK_AREA]
+CATEGORY_KEY = re.compile(r"[a-z][a-z-]{0,31}")
 LIMITS = dict(title=120, description=30000, steps=10000, environment=10000, errors=10000)
 
 
@@ -26,7 +31,7 @@ def validate(report):
         raise ReportError(400, "Invalid report fields.")
     if not isinstance(report["type"], str) or report["type"] not in CATEGORIES["ISSUE_TYPES"]:
         raise ReportError(400, "Choose a valid issue type.")
-    if not isinstance(report["area"], str) or report["area"] not in CATEGORIES["ISSUE_AREAS"]:
+    if not isinstance(report["area"], str) or not CATEGORY_KEY.fullmatch(report["area"]):
         raise ReportError(400, "Choose a valid affected area.")
     for key, limit in LIMITS.items():
         if not isinstance(report[key], str) or len(report[key]) > limit:
@@ -35,11 +40,20 @@ def validate(report):
         raise ReportError(400, "Add a title and description.")
 
 
+def area_of(report):
+    """The label key and the text of the report's area, as this service knows it."""
+    sent = report["area"]
+    if sent in CATEGORIES["ISSUE_AREAS"]:
+        return sent, CATEGORIES["ISSUE_AREAS"][sent]
+    return FALLBACK_AREA, f'{FALLBACK_AREA_LABEL} (sent as "{sent}")'
+
+
 def github_payload(report, request_id):
     feature = report["type"] == "feature"
+    area, area_text = area_of(report)
     sections = [
         ("What kind of issue is this?", CATEGORIES["ISSUE_TYPES"][report["type"]]),
-        ("Which part of Atlas is affected?", CATEGORIES["ISSUE_AREAS"][report["area"]]),
+        ("Which part of Atlas is affected?", area_text),
         ("What would you like to do?" if feature else "What happened?", report["description"]),
         ("How could it work?" if feature else "Steps to reproduce", report["steps"]),
         ("Environment", report["environment"]),
@@ -54,7 +68,7 @@ def github_payload(report, request_id):
     return {
         "title": report["title"].strip().replace("@", "@\u200b"),
         "body": body,
-        "labels": ["needs-triage", f"type:{report['type']}", f"area:{report['area']}"],
+        "labels": ["needs-triage", f"type:{report['type']}", f"area:{area}"],
     }
 
 
