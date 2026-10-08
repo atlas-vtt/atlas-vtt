@@ -48,7 +48,7 @@
 
 - When a scene's file or map image cannot be read, the tokens of the scene that was open before no longer stay on the canvas.
 
-- Where Atlas shows line of sight without light and shadow, because it cannot use the graphics card, players now see every area their tokens see. Areas that two tokens saw at once were black, and so was what a sense that sees in magical darkness saw around the darkness.
+- Where Atlas shows line of sight without light and shadow, because it cannot use the graphics card, areas that two tokens see at once are no longer black for the players. Neither is what a sense that sees in magical darkness sees around the darkness.
 
 ## Important changes
 

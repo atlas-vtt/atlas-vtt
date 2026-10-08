@@ -19,13 +19,16 @@ interface Fallback {
 }
 
 const PROBES = 20;
-/** Farther than the eighth of a pixel the current version rounds its outlines to. */
-const EDGE = 0.25;
+/**
+ * World pixels around a point in which the previous darkness must be the same for the point to
+ * be compared: the current version's black reaches a quarter pixel into what is shown, a
+ * magical darkness as far beyond its outline, and outlines are rounded to an eighth.
+ */
+const EDGE = 0.5;
 
 /**
  * Where the darkness the previous version meant to draw and the current one's differ: its holes
  * overlapped, which no renderer drew as meant, so the areas are compared, not the drawing.
- * A point is compared where the previous darkness is the same a quarter pixel around it.
  */
 function comparePoints(now: Graphics, before: Graphics, { width, height }: SightScene['bounds']): { compared: number; differ: number } {
   let compared = 0, differ = 0;

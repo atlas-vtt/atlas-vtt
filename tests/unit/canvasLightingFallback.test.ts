@@ -127,8 +127,8 @@ describe('CanvasLightingFallback', () => {
     store.getState().addLight({ x: 150, y: 100, emission: { bright: 0, dim: 10, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
     expect(fallback.lightReaches()).toMatchObject([{ darkness: true, origin: { x: 150, y: 100 }, dim: 140 }]);
     expect(perceived()).toBe('unseen');
-    // The whole map in black, then the darkness in black over the hole of the hero's sight.
-    expect(fill.mock.calls.filter(([style]) => (style as { color: number }).color === 0x000000)).toHaveLength(2);
+    // The map's black and the darkness' are one shape, so no seam can open between them: one fill.
+    expect(fill.mock.calls.filter(([style]) => (style as { color: number }).color === 0x000000)).toHaveLength(1);
     // A plain light is none of the fallback's business: it draws no light.
     store.getState().addLight({ x: 300, y: 100, emission: { bright: 5, dim: 10, color: '#ffffff', intensity: 1, animation: 'none' } });
     expect(fallback.lightReaches()).toHaveLength(1);

@@ -9,7 +9,7 @@ import { unitScaleOf } from '../../lighting/lightingUnits';
 import { sealedWalls } from '../../lighting/sealWalls';
 import { MAX_LIGHT_REACH, worldTexel } from '../../lighting/lightingConstants';
 import type { Rect } from '../../lighting/segments';
-import { uncoveredAreas, type FilledArea } from '../../lighting/uncoveredAreas';
+import { uncoveredAreas, type CoveredPart, type FilledArea } from '../../lighting/uncoveredAreas';
 import { perceivedLevel, showsMap } from '../../gameSystems/senseRules';
 import { SightTokens, heldForSight } from '../../lighting/sightOnDrop';
 import { SEES_ALL, SightCache, sceneSight, sightSources, type AmbientLight, type LightReach, type Sight, type SightRegion } from '../../vision/sight';
@@ -27,6 +27,15 @@ import { sourcesInDarkness } from '../../vision/magicalDarkness';
 import { activeLights, engineLight } from '../../vision/lightSources';
 import type { SceneLightingView } from './sceneLightingView';
 
+/**
+ * World pixels that make up for working the black out in eighths of a pixel. Rounding moves an
+ * outline up to a fifth of a pixel: what is shown reached that far into what is not, and
+ * outlines that coincide (a magical darkness ending on the wall sight ends on) came up to
+ * 0.28 px apart, with a hairline of the map between them. So the black reaches this far into
+ * what is shown, and a darkness as far beyond its own outline. The price is a black line of
+ * twice the margin along a wall that tokens see from both sides.
+ */
+const MARGIN = 0.25;
 /** Full ambient light: everything in sight counts as lit. */
 const FULL_DAYLIGHT: AmbientLight = { ambient: 1 };
 /** The fallback has no lights. One list, so whoever compares it (`PerceptionMemo`) finds it unchanged. */
@@ -41,6 +50,13 @@ export interface CanvasLightingDeps {
   rules?: () => SightRules;
   /** What the tokens see, or what sight goes by (tokens, walls, lighting, rules), changed. */
   onSightChange?: () => void;
+  /**
+   * Asks for a render of the stage (`requestRender`). The darkness is drawn only while the
+   * players' view shows it, so a change of it in the GM's view leaves the stage as it was, and
+   * a canvas that renders on change would render nothing: the player window, which captures
+   * its frames in that render, would stay on what the players saw before.
+   */
+  requestRender?: () => void;
 }
 
 /**
@@ -121,6 +137,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     if (!state.lighting.enabled || !bounds) {
       this.sightBuilt = false;
       this.darkness.clear();
+      if (this.source) this.deps.requestRender?.();
       this.source = null;
       this.stale = false;
       return;
@@ -161,6 +178,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     this.source = source;
     this.stale = true;
     if (this.playerView.visible) this.drawDarkness();
+    this.deps.requestRender?.();
   }
 
   /**
@@ -186,8 +204,10 @@ export class CanvasLightingFallback implements SceneLightingView {
    * What the players do not see, as areas with their holes worked out: sight polygons overlap
    * and reach the map's edge, and PIXI draws holes right only where each lies inside its shape
    * and apart from the others (two that overlapped were black on Canvas, where three showed).
-   * Canvas fills these areas exactly. WebGL triangulates them, and where an area comes back
-   * with edges that cross (`uncoveredAreas`) it can leave floor in sight black, never the reverse.
+   * The map's black and the darknesses' are one shape: as two fills their outlines, rounded
+   * apart, let a hairline of the map show where a darkness ends on the wall sight ends on.
+   * Canvas fills the areas as they are. WebGL triangulates them, and where an area comes back
+   * with edges that cross (`uncoveredAreas`) it can leave floor in sight black.
    */
   private hiddenAreas({ sight, reaches, footprints, width, height }: DarknessSource): FilledArea[] {
     const map: Polygon = [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }];
@@ -195,11 +215,11 @@ export class CanvasLightingFallback implements SceneLightingView {
     const box: Rect = [-MAX_LIGHT_REACH, -MAX_LIGHT_REACH, width + 2 * MAX_LIGHT_REACH, height + 2 * MAX_LIGHT_REACH];
     const seeing = sight.regions.filter((region) => showsMap(region.sense));
     const polygonsOf = (regions: readonly SightRegion[]): Polygon[] => regions.flatMap((region) => (region.polygon ? [region.polygon] : []));
+    const piercing = seeing.filter((region) => perceivedLevel(region.sense, 'magical-dark') !== null);
     try {
-      const outOfSight = sight.all ? [] : uncoveredAreas([map], [...polygonsOf(seeing), ...footprints], box);
-      const piercing = seeing.filter((region) => perceivedLevel(region.sense, 'magical-dark') !== null);
-      const inDarkness = uncoveredAreas(reaches, [...polygonsOf(piercing), ...footprints], box);
-      return [...outOfSight, ...inDarkness];
+      const outOfSight: CoveredPart[] = sight.all ? [] : [{ covered: [map], open: [...polygonsOf(seeing), ...footprints] }];
+      const inDarkness: CoveredPart = { covered: reaches, open: [...polygonsOf(piercing), ...footprints], grown: true };
+      return uncoveredAreas([...outOfSight, inDarkness], box, MARGIN);
     } catch (error) {
       console.error('[CanvasLightingFallback] Sight could not be drawn, the map stays hidden:', error);
       return [{ outline: map.flatMap((corner) => [corner.x, corner.y]), holes: [] }];

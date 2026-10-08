@@ -1,6 +1,6 @@
 import { Q_SCALE, type QPolygon } from '../types/shapeTypes';
 import type { Point } from '../types/visionTypes';
-import { subtractToAreas } from './polygonClip';
+import { coveredAreas } from './polygonClip';
 import { quantizeCoordinate } from './quantizedPoint';
 import type { Rect } from './segments';
 
@@ -58,17 +58,30 @@ function worldRing(ring: QPolygon): number[] {
   return ring.map((coordinate) => coordinate / Q_SCALE);
 }
 
+/** One part of what is covered: the union of `covered` without the union of `open`. */
+export interface CoveredPart {
+  covered: readonly Outline[];
+  open: readonly Outline[];
+  /** `covered` is grown by the margin, so that no seam opens where another part meets it. */
+  grown?: boolean;
+}
+
 /**
- * What is left of `covered` inside `box` once `open` is taken out, each read as the union of
- * its polygons. No hole of an area reaches past its outline or overlaps another, which a
- * drawer that cuts holes one by one cannot be given by polygons that overlap. Outlines are
- * rounded to eighths of a pixel, and where edges run closer than that an outline or hole may
- * cross itself by less than an eighth: a canvas fills such an area as it is, a triangulation may not.
+ * The parts as one shape inside `box`: what each covers once what is open in it is taken out.
+ * No hole of an area reaches past its outline or overlaps another, which a drawer that cuts
+ * holes one by one cannot be given by polygons that overlap.
+ *
+ * Outlines are rounded to eighths of a pixel, and so is every crossing the clipping finds:
+ * together that moved outlines a fifth of a pixel, so that two which coincide came apart and
+ * what is open reached into what is covered. What is open is therefore shrunk by `margin` world
+ * pixels and a `grown` part grown by it (`coveredAreas`): nothing that is covered exactly comes
+ * back open. Where edges run closer than an eighth, an outline or hole may come back crossing
+ * itself by less than that: a canvas fills such an area as it is, a triangulation may lose a
+ * hole of it.
  * Throws a `RangeError` for a corner that is no finite number.
  */
-export function uncoveredAreas(covered: readonly Outline[], open: readonly Outline[], box: Rect): FilledArea[] {
+export function uncoveredAreas(parts: readonly CoveredPart[], box: Rect, margin: number): FilledArea[] {
   const outlines = (polygons: readonly Outline[]): QPolygon[] => polygons.map((polygon) => quantized(polygon, box)).filter((ring) => ring.length >= 6);
-  const coveredRings = outlines(covered);
-  if (coveredRings.length === 0) return [];
-  return subtractToAreas(coveredRings, outlines(open)).map(({ outline, holes }) => ({ outline: worldRing(outline), holes: holes.map(worldRing) }));
+  const rings = parts.map(({ covered, open, grown }) => ({ covered: outlines(covered), open: outlines(open), ...(grown && { grown }) }));
+  return coveredAreas(rings, quantizeCoordinate(margin)).map(({ outline, holes }) => ({ outline: worldRing(outline), holes: holes.map(worldRing) }));
 }

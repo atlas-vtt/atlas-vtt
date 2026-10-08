@@ -27,14 +27,26 @@ describe('when the line-of-sight fallback works its darkness out', () => {
     while (cleanup.length) cleanup.pop()!();
   });
 
-  function open(tokens: Record<string, TokenEntity>, rules?: SightRules): { fallback: CanvasLightingFallback; store: ViewAtlasStore; darkness: Graphics } {
+  interface Opened {
+    fallback: CanvasLightingFallback;
+    store: ViewAtlasStore;
+    darkness: Graphics;
+    /** Every render of the stage the fallback asked for. */
+    renders: ReturnType<typeof vi.fn>;
+    /** The map image comes in another size. */
+    resize: (width: number, height: number) => void;
+  }
+
+  function open(tokens: Record<string, TokenEntity>, rules?: SightRules): Opened {
     cleanup.push(stubJsdomGraphics());
     const store = createViewAtlasStore(createInMemoryApp().app, `fallback-redraw-${Math.random()}`);
     store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens } });
     store.getState().setSceneLighting({ enabled: true });
     const viewport = new Container();
+    let bounds = { width: 1000, height: 1000 };
+    const renders = vi.fn();
     const fallback = new CanvasLightingFallback({
-      viewport: viewport as unknown as Viewport, store, bounds: () => ({ width: 1000, height: 1000 }),
+      viewport: viewport as unknown as Viewport, store, bounds: () => bounds, requestRender: renders,
       measurement: () => ({ mode: 'grid', unitType: 'feet', unitDistance: 5, diagonalRule: 'chebyshev', rangeBands: [] }) as never,
       ...(rules && { rules: () => rules }),
     });
@@ -43,7 +55,12 @@ describe('when the line-of-sight fallback works its darkness out', () => {
       viewport.destroy();
     });
     clipped.mockClear();
-    return { fallback, store, darkness: darknessOf(viewport) };
+    renders.mockClear();
+    const resize = (width: number, height: number): void => {
+      bounds = { width, height };
+      fallback.refreshBounds();
+    };
+    return { fallback, store, darkness: darknessOf(viewport), renders, resize };
   }
 
   it('works nothing out in the GM\'s view, where the darkness is not shown, and catches up once the players\' view shows it', () => {
@@ -104,5 +121,61 @@ describe('when the line-of-sight fallback works its darkness out', () => {
     expect(darkness.context.instructions).toHaveLength(0);
     store.getState().setSceneLighting({ enabled: true });
     expect([100, 400].map((x) => darknessCovers(darkness, x, 100))).toEqual([false, true]);
+  });
+
+  it('asks for a render whenever what it is drawn from changes, shown or not, so that a player window gets its frame', () => {
+    const { fallback, store, renders } = open({ hero, prey });
+    // In the GM's view nothing on the stage changes: the request is all that makes a canvas that renders on change render.
+    store.getState().updateToken('hero', { x: 300 });
+    expect(renders).toHaveBeenCalledTimes(1);
+    store.getState().updateToken('prey', { x: 160 });
+    store.getState().setSelection(['prey']);
+    expect(renders).toHaveBeenCalledTimes(1);
+    store.getState().setSceneLighting({ tokenVision: false });
+    expect(renders).toHaveBeenCalledTimes(2);
+    fallback.modeLayer.visible = true;
+    store.getState().setSceneLighting({ tokenVision: true });
+    expect(renders).toHaveBeenCalledTimes(3);
+    // Lighting off shows the players everything: their frame is due as well.
+    store.getState().setSceneLighting({ enabled: false });
+    expect(renders).toHaveBeenCalledTimes(4);
+    store.getState().updateToken('hero', { x: 320 });
+    expect(renders).toHaveBeenCalledTimes(4);
+  });
+
+  it('draws anew when the map comes in another size, and not when it is asked again at the same size', () => {
+    const { fallback, darkness, renders, resize } = open({ hero, prey });
+    fallback.modeLayer.visible = true;
+    expect([900, 1100].map((x) => darknessCovers(darkness, x, 900))).toEqual([true, false]);
+    clipped.mockClear();
+    renders.mockClear();
+    resize(1000, 1000);
+    expect(clipped).not.toHaveBeenCalled();
+    expect(renders).not.toHaveBeenCalled();
+    // The hero's sight ends 140 px around it either way: only the map's black changes.
+    resize(1200, 1000);
+    expect(clipped).toHaveBeenCalled();
+    expect(renders).toHaveBeenCalledTimes(1);
+    expect([900, 1100, 1300].map((x) => darknessCovers(darkness, x, 900))).toEqual([true, true, false]);
+  });
+
+  it('draws anew when a magical darkness moves or goes, though sight stays the same', () => {
+    const { fallback, store, darkness } = open({ hero, prey });
+    fallback.modeLayer.visible = true;
+    // A darkness 28 px around, inside the hero's 140 px of sight and away from the hero.
+    const shade = store.getState().addLight({ x: 100, y: 190, emission: { bright: 0, dim: 2, color: '#000000', intensity: 1, animation: 'none', darkness: true } });
+    const covered = (): boolean[] => [190, 20].map((y) => darknessCovers(darkness, 100, y));
+    expect(covered()).toEqual([true, false]);
+    const sight = fallback.currentSight();
+    clipped.mockClear();
+    store.getState().updateLight(shade, { y: 10 });
+    expect(fallback.currentSight()).toBe(sight);
+    expect(clipped).toHaveBeenCalled();
+    expect(covered()).toEqual([false, true]);
+    clipped.mockClear();
+    store.getState().deleteLight(shade);
+    expect(fallback.currentSight()).toBe(sight);
+    expect(clipped).toHaveBeenCalled();
+    expect(covered()).toEqual([false, false]);
   });
 });
