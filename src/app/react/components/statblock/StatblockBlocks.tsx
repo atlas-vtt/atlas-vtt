@@ -380,26 +380,33 @@ export function TraitLine({
   );
 }
 
+function isTrait(entry: unknown): entry is Trait {
+  return typeof entry === 'object' && entry !== null;
+}
+
 /** `traits` — a titled list of features, actions, reactions, etc. */
 export function TraitsBlock({ item, monster, app, sourcePath }: BlockProps): React.JSX.Element | null {
   const raw = monster[item.properties?.[0] ?? ''];
-  const traits = Array.isArray(raw) ? (raw as Trait[]) : [];
-  if (!traits.length) return null;
+  const entries: unknown[] = Array.isArray(raw) ? raw : [];
+  if (!entries.length) return null;
 
   return (
     <div className="atlas-sb-traits">
       <SectionHeading item={item} monster={monster} app={app} />
       {item.subheadingText && <div className="atlas-sb-text">{item.subheadingText}</div>}
-      {traits.map((trait, index) => (
-        <TraitLine
-          key={`${trait.name ?? 'trait'}-${index}`}
-          trait={trait}
-          index={index}
-          item={item}
-          monster={monster}
-          app={app}
-          sourcePath={sourcePath}
-        />
+      {entries.map((entry, index) => (
+        // A statblock is the user's own text: an empty list item is null, and a bare word or number is no trait
+        isTrait(entry) ? (
+          <TraitLine
+            key={`${entry.name ?? 'trait'}-${index}`}
+            trait={entry}
+            index={index}
+            item={item}
+            monster={monster}
+            app={app}
+            sourcePath={sourcePath}
+          />
+        ) : null
       ))}
     </div>
   );

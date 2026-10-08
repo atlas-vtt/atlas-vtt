@@ -182,6 +182,16 @@ describe('StatblockRenderer', () => {
     expect(spells).toEqual(['1st level: magic missile']);
   });
 
+  it('skips trait entries that are no trait', () => {
+    // An empty list item in a note's frontmatter is read as null
+    const { container } = renderStatblock(
+      layoutOf({ type: 'traits', id: 't', properties: ['actions'], heading: 'Actions' }),
+      { name: 'Toad', actions: [{ name: 'Bite', desc: 'One target.' }, null, 'leap', 3, { name: 'Tongue', desc: 'Pulls.' }] },
+    );
+    const names = [...container.querySelectorAll('.atlas-sb-trait-name')].map((name) => name.textContent);
+    expect(names).toEqual(['Bite', 'Tongue']);
+  });
+
   it('drops the trailing colon from property labels', () => {
     const { container } = renderStatblock(
       layoutOf({ type: 'property', id: 'p', properties: ['difficulty'], display: 'Difficulty:' }),
