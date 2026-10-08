@@ -170,6 +170,12 @@ export class PlayerWindowService {
     this.followSource();
   }
 
+  /** The player window's view when its leaf is open, attached or not; null when there is none. */
+  public static openPlayerView(app: App): LocalPlayerView | null {
+    const view = app.workspace.getLeavesOfType(LOCAL_PLAYER_VIEW_TYPE)[0]?.view;
+    return view instanceof LocalPlayerView && !view.isClosed ? view : null;
+  }
+
   /**
    * Opens the player window's leaf in a popout (or reuses the one there is) on `scene`; the
    * presenter then attaches it to the view that holds the scene. Null when Obsidian gave no player view.

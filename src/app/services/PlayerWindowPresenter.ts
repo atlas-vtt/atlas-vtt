@@ -51,6 +51,10 @@ export async function presentTab(app: App, view: AtlasView, tabId: string): Prom
   if (service?.isWindowOpen()) {
     service.presentCanvas(source, tabId, tab.filePath);
     watchPresentedTab(view, service);
+  } else {
+    // A window still waiting for its scene (restored, but its scene was not open) takes this one
+    const waiting = PlayerWindowService.openPlayerView(app);
+    if (waiting) await restorePlayerWindow(app, waiting);
   }
   new Notice(t('present.shows', { name: tab.displayName }));
 }

@@ -19,6 +19,7 @@ vi.mock('../../src/app/atlas-view', () => ({
 const serviceMock = vi.hoisted(() => ({
   isWindowOpen: vi.fn(() => false),
   openLeaf: vi.fn(async (): Promise<unknown> => null),
+  openPlayerView: vi.fn((): unknown => null),
   presentCanvas: vi.fn(),
   holdCurrentFrame: vi.fn(),
   releaseHeldFrame: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock('../../src/app/services/PlayerWindowService', async () => {
       return new PlayerWindowService();
     }
     static openLeaf = serviceMock.openLeaf;
+    static openPlayerView = serviceMock.openPlayerView;
     isWindowOpen = serviceMock.isWindowOpen;
     attachToView = serviceMock.attachToView;
     freezeCamera = serviceMock.freezeCamera;
@@ -447,6 +449,20 @@ describe('PlayerWindowPresenter', () => {
 
       expect(presentedSceneOf(app).get()).toEqual({ tabId: tavern, filePath: TAVERN });
       expect(serviceMock.openLeaf).toHaveBeenCalledWith(app, { tabId: tavern, filePath: TAVERN });
+    });
+
+    test('a window waiting for its scene takes the scene presented now', async () => {
+      serviceMock.isWindowOpen.mockReturnValue(false);
+      const { view, canvas } = createFakeView();
+      const cave = view.tabMetaStore.getState().addTab(TAVERN, 'Tavern');
+      app = deviceApp([{ view }]);
+      const waiting = playerLeaf({ tabId: 'tab-closed', filePath: 'maps/closed.md', frozen: false });
+      serviceMock.openPlayerView.mockReturnValueOnce(waiting);
+
+      await presentTab(app, view, cave);
+
+      expect(serviceMock.openLeaf).not.toHaveBeenCalled();
+      expect(serviceMock.attachToView).toHaveBeenCalledWith(waiting, frameSourceFor(canvas), { tabId: cave, filePath: TAVERN });
     });
 
     test('opens no second window while one is open', async () => {
