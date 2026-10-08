@@ -12,6 +12,7 @@ import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE, type PlayerCameraState } from 
 import { freezeCanvasFrame, type SceneTransition } from '../pixi/sceneTransition';
 import { t } from '../i18n';
 import { PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
+import type { PresentedScene } from './presentedScene';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
 const PLAYER_WINDOW_BODY_CLASS = 'atlas-player-window';
@@ -26,7 +27,7 @@ function getStyleNodeKey(node: Element): string {
 /**
  * Mirrors a DM map canvas into a popout window for players.
  *
- * The window shows one scene tab at a time (see `playerWindowStore.presentedTabId`).
+ * The window shows one scene tab at a time, the presented scene (see `presentedScene.ts`).
  * While the DM works on another tab the last frame is held so players never see
  * the DM's navigation; `PlayerWindowPresenter` drives that hold/release cycle.
  * A camera freeze only pins the camera: the scene keeps updating (tokens, fog)
@@ -158,34 +159,44 @@ export class PlayerWindowService {
       new Notice(t('player.notOpen'));
       return;
     }
-    if (playerWindowStore.getState().presentedTabId !== tabId) this.crossfadeToNextMap();
+    if (playerWindowStore.getState().shownTabId !== tabId) this.crossfadeToNextMap();
     this.streamSource = source;
     this.mirror?.markStale();
     this.presentScene();
     this.heldFrame = null;
     this.setFrozenCamera(null);
-    playerWindowStore.setState({ presentedTabId: tabId });
+    playerWindowStore.setState({ shownTabId: tabId });
     this.playerView?.updateSession({ tabId, ...(filePath ? { filePath } : {}), frozen: false });
     this.followSource();
   }
 
-  /** Opens a player window mirroring `source`, which shows the scene tab `tabId`. */
-  public async openPlayerWindow(source: PlayerFrameSource, tabId: string, filePath: string): Promise<void> {
-    const leaf = this.app.workspace.getLeavesOfType(LOCAL_PLAYER_VIEW_TYPE)[0] ?? this.app.workspace.openPopoutLeaf();
-    await leaf.setViewState({ type: LOCAL_PLAYER_VIEW_TYPE, state: { tabId, filePath, frozen: false } });
-    if (leaf.view instanceof LocalPlayerView) this.attachToView(leaf.view, source, tabId);
+  /** The player window's view when its leaf is open, attached or not; null when there is none. */
+  public static openPlayerView(app: App): LocalPlayerView | null {
+    const view = app.workspace.getLeavesOfType(LOCAL_PLAYER_VIEW_TYPE)[0]?.view;
+    return view instanceof LocalPlayerView && !view.isClosed ? view : null;
+  }
+
+  /**
+   * Opens the player window's leaf in a popout (or reuses the one there is) on `scene`; the
+   * presenter then attaches it to the view that holds the scene. Null when Obsidian gave no player view.
+   */
+  public static async openLeaf(app: App, scene: PresentedScene): Promise<LocalPlayerView | null> {
+    const leaf = app.workspace.getLeavesOfType(LOCAL_PLAYER_VIEW_TYPE)[0] ?? app.workspace.openPopoutLeaf();
+    await leaf.setViewState({ type: LOCAL_PLAYER_VIEW_TYPE, state: { tabId: scene.tabId, filePath: scene.filePath, frozen: false } });
+    return leaf.view instanceof LocalPlayerView ? leaf.view : null;
   }
 
   public ownsView(view: LocalPlayerView): boolean {
     return this.playerView === view;
   }
 
-  public attachToView(view: LocalPlayerView, source: PlayerFrameSource, tabId: string): void {
+  public attachToView(view: LocalPlayerView, source: PlayerFrameSource, scene: PresentedScene): void {
     this.playerView = view;
     this.playerWindow = view.contentEl.win;
     this.streamSource = source;
     this.mirror?.markStale();
-    playerWindowStore.setState({ presentedTabId: tabId });
+    playerWindowStore.setState({ shownTabId: scene.tabId });
+    view.updateSession({ tabId: scene.tabId, filePath: scene.filePath });
     // Bind now: the popout may still be loading, and the DM can switch tabs before it has
     this.destroySceneOverlays();
     this.sceneOverlays = [
