@@ -19,7 +19,8 @@ import {
   type TutorialId,
   TUTORIAL_IDS,
 } from './atlasSettings';
-import { loadInputMode, saveInputMode } from './deviceSettings';
+import { loadInputMode, loadLightingQuality, saveInputMode, saveLightingQuality } from './deviceSettings';
+import type { LightingQualityLevel } from '../lighting/lightingQuality';
 
 export { TUTORIAL_IDS } from './atlasSettings';
 export type { AtlasSettings, NavigationInputMode, NavigationSettings, TutorialId } from './atlasSettings';
@@ -30,8 +31,8 @@ export type PluginDataStore = Pick<Plugin, 'loadData' | 'saveData'>;
 type SettingsListener = (settings: AtlasSettings) => void;
 
 /**
- * The GM's Atlas preferences, kept in the plugin's data (`data.json`), except the input mode,
- * which belongs to the device (`deviceSettings.ts`). Without a data store (tests, a view
+ * The GM's Atlas preferences, kept in the plugin's data (`data.json`), except the input mode
+ * and the lighting quality, which belong to the device (`deviceSettings.ts`). Without a data store (tests, a view
  * without the plugin) the settings live in memory only.
  */
 export class SettingsService {
@@ -208,6 +209,18 @@ export class SettingsService {
   setNavigationSettings(settings: Partial<NavigationSettings>): void {
     this.settings.navigation = { ...this.settings.navigation, ...settings };
     saveInputMode(this.app, this.settings.navigation.inputMode);
+    this.notify();
+  }
+
+  /** How much the lighting may ask of this device's graphics; `high` until chosen. */
+  getLightingQuality(): LightingQualityLevel {
+    return loadLightingQuality(this.app) ?? 'high';
+  }
+
+  /** The lighting quality is this device's: it goes to local storage, not into the synced settings. */
+  setLightingQuality(level: LightingQualityLevel): void {
+    if (this.getLightingQuality() === level) return;
+    saveLightingQuality(this.app, level);
     this.notify();
   }
 
