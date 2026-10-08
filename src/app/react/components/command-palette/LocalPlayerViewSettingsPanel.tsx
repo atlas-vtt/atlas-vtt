@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { MonitorUp } from 'lucide-react';
-import { App, Notice } from 'obsidian';
+import type { App } from 'obsidian';
 import { Button } from '../../../packages/components/primitives/button';
 import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore } from '../../ViewStoreContext';
@@ -9,8 +9,7 @@ import { shapeOf } from '../../../resources/visibleResources';
 import { useMapResources } from '../../../resources/useMapResources';
 import { AssetService } from '../../../services/AssetService';
 import { runInBackground } from '../../../utils/backgroundTask';
-import { PlayerWindowService } from '../../../services/PlayerWindowService';
-import { presentActiveTabInPlayerWindow } from '../../../services/PlayerWindowPresenter';
+import { openPlayerWindow } from '../../../services/PlayerWindowPresenter';
 import { SettingsService, type AtlasSettings } from '../../../services/SettingsService';
 import { SettingRow, SettingToggleRow } from './SettingRows';
 import { t } from '../../../i18n';
@@ -37,14 +36,6 @@ const UI_TOGGLES: ReadonlyArray<{ key: LocalPlayerViewToggleKey; label: string }
 const TOKEN_TOGGLES: ReadonlyArray<{ key: LocalPlayerViewToggleKey; label: string }> = [
   { key: 'showTokenNameplates', label: t('tokens.showNameplates') },
 ];
-
-function openPlayerWindow(app: App): void {
-  if (PlayerWindowService.getInstance()?.isWindowOpen()) {
-    new Notice(t('lpv.alreadyOpen'));
-    return;
-  }
-  void presentActiveTabInPlayerWindow(app);
-}
 
 /**
  * One switch per bar of the open scene's collection: whether players see it. Wheels show on
@@ -122,7 +113,7 @@ export function LocalPlayerViewSettingsPanel(): React.ReactElement {
         {TOKEN_TOGGLES.map(renderToggle)}
         <SettingRow label={t('lpv.notePreviews')} hint={t('lpv.notePreviewsHint')}>{null}</SettingRow>
 
-        <Button variant="default" size="sm" className="atlas-command-palette-cta" onClick={() => openPlayerWindow(app)}>
+        <Button variant="default" size="sm" className="atlas-command-palette-cta" onClick={() => void openPlayerWindow(app)}>
           <MonitorUp />
           {t('lpv.openWindow')}
         </Button>

@@ -11,7 +11,7 @@ vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () 
 vi.mock('../../src/app/react/ViewStoreContext', () => ({ useAtlasStore: (selector: (state: { mapPath: string }) => unknown) => selector({ mapPath: 'atlas-vtt/collections/Own/scenes/Cave.atlasmap' }) }));
 vi.mock('../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => ({ getCollectionForMap: () => context.collection, updateCollectionSettings: context.updateCollectionSettings }) } }));
 vi.mock('../../src/app/react/root/AtlasUIContext', () => ({ useAtlasUI: () => ({ app: {}, view: { serviceManager: { getSettingsService: () => context.settings } } }) }));
-vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTabInPlayerWindow: vi.fn() }));
+vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTab: vi.fn(), openPlayerWindow: vi.fn() }));
 afterEach(() => { cleanup(); vi.useRealTimers(); context.resources = []; context.collection = 'Own'; context.updateCollectionSettings.mockClear(); });
 
 it('updates every supported setting and follows settings changed elsewhere', () => {
