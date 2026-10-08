@@ -3,6 +3,7 @@ import { App, TFile, Notice, Modal } from 'obsidian';
 import { EventEmitter } from 'events';
 import { AssetService, type TokenAsset } from './AssetService';
 import { resolveLinkedCreature } from '../creatures/linkedCreature';
+import { isBestiaryResolved } from './FantasyStatblocksService';
 import { mapResources } from '../resources/collectionResources';
 import { tokenFromFile, tokenToFile } from '../resources/resourceFileFormat';
 import type { ResourceDefinition } from '../resources/resourceTypes';
@@ -321,11 +322,12 @@ export class TokenStatblockLinkService extends EventEmitter {
     }
   }
   /**
-   * Updates all spawned tokens on all maps that use the given image.
+   * Updates all spawned tokens on all maps that use the given image. A link whose
+   * statblock is not known whole yet gives them the link alone.
    */
   private async updateAllSpawnedTokens(tokenImagePath: string, statblockPath: string | null): Promise<void> {
     const mapFiles = this.app.vault.getFiles().filter(f => f.extension === 'atlasmap');
-    const statblockData = statblockPath ? await this.extractStatblockData(statblockPath) : null;
+    const statblockData = statblockPath ? await this.extractStatblockData(statblockPath, true) : null;
 
     /** Returns the rewritten map JSON, or null when no token on the map uses the image. */
     const rewriteMap = (content: string, definitions: readonly ResourceDefinition[]): string | null => {
@@ -384,9 +386,11 @@ export class TokenStatblockLinkService extends EventEmitter {
   }
 
   /**
-   * Extracts relevant data from a statblock.
+   * Extracts relevant data from a statblock. While Fantasy Statblocks still parses
+   * the vault, a creature read by name is not there yet and one that extends
+   * another comes without it: with `wholeOnly` such a statblock gives no data.
    */
-  private async extractStatblockData(statblockPath: string): Promise<{
+  private async extractStatblockData(statblockPath: string, wholeOnly = false): Promise<{
     name: string;
     difficulty?: string;
     /** The statblock's fields: the Fantasy Statblocks creature, with the note's frontmatter laid over it. */
@@ -396,8 +400,11 @@ export class TokenStatblockLinkService extends EventEmitter {
     if (!(file instanceof TFile)) return null;
 
     const frontmatter: Record<string, unknown> | undefined = this.app.metadataCache.getFileCache(file)?.frontmatter;
+    // Asked before the read: a parse that ends meanwhile does not make what was read whole.
+    const parsing = !isBestiaryResolved();
     const creature: Record<string, unknown> | null = await resolveLinkedCreature(this.app, statblockPath);
     if (!frontmatter && !creature) return null;
+    if (wholeOnly && parsing && (!creature || creature.extends !== undefined)) return null;
     const record = { ...creature, ...frontmatter };
     const tier = frontmatterLabel(record.tier);
     const difficulty = frontmatterLabel(record.cr) !== undefined ? `CR ${frontmatterLabel(record.cr)}`

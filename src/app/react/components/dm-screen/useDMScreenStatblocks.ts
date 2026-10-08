@@ -3,7 +3,7 @@ import { TFile, type App } from 'obsidian';
 import type { TokenEntity } from '../../../types';
 import type { TokenRollContext } from '../../../types/diceRollOrigin';
 import { captureRollContext } from '../../../tools/diceRollOrigins';
-import { findCreatureForNotePath } from '../../../services/FantasyStatblocksService';
+import { hasCreatureForNotePath } from '../../../services/FantasyStatblocksService';
 import { resolveStatblockNote } from '../../../services/statblockNoteSource';
 import { runInBackground } from '../../../utils/backgroundTask';
 
@@ -26,6 +26,16 @@ export interface DMScreenScene {
 
 function getStatblockPath(token: TokenEntity): string | undefined {
   return token.kind === 'character' ? token.statblockPath : undefined;
+}
+
+/** Whether a note defines a statblock of its own. One that cannot be read defines none, so the other notes keep theirs. */
+async function definesStatblock(app: App, file: TFile): Promise<boolean> {
+  try {
+    return (await resolveStatblockNote(app, file)) !== null;
+  } catch (error) {
+    console.error(`[Atlas] Could not read the statblock note ${file.path}:`, error);
+    return false;
+  }
 }
 
 /**
@@ -95,19 +105,23 @@ export function useDMScreenStatblocks(isOpen: boolean, app: App, scene: DMScreen
 
       // Old Atlas notes can still be linked to tokens, but are not Fantasy
       // Statblocks creatures. Only allocate cards for supported note sources.
-      for (const [path, pathTokens] of tokensByStatblock.entries()) {
-        const file = app.vault.getAbstractFileByPath(path);
-        if (
-          file instanceof TFile &&
-          (findCreatureForNotePath(path) || await resolveStatblockNote(app, file))
-        ) {
-          uniqueStatblocks.set(path, { path, tokens: pathTokens, originContext: contextOf(pathTokens) });
+      try {
+        for (const [path, pathTokens] of tokensByStatblock.entries()) {
+          const file = app.vault.getAbstractFileByPath(path);
+          if (
+            file instanceof TFile &&
+            (hasCreatureForNotePath(path) || await definesStatblock(app, file))
+          ) {
+            uniqueStatblocks.set(path, { path, tokens: pathTokens, originContext: contextOf(pathTokens) });
+          }
+        }
+      } finally {
+        // The screen stays hidden while its statblocks load, so a failed load ends too, with what it found.
+        if (!cancelled) {
+          setStatblocks(uniqueStatblocks);
+          setLoading(false);
         }
       }
-
-      if (cancelled) return;
-      setStatblocks(uniqueStatblocks);
-      setLoading(false);
     };
 
     runInBackground(loadStatblocks(), 'Loading DM screen statblocks');

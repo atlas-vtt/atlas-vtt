@@ -1,14 +1,14 @@
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { TFile, type App } from 'obsidian';
 import {
-  findCreatureForNotePath,
   getFantasyStatblocksApi,
   layoutForCreature,
   resolveCreatureFromFence,
   resolveLayout,
   type FantasyStatblocksCreature,
 } from '../../services/FantasyStatblocksService';
-import { resolveStatblockNote, statblockSourceFromText } from '../../services/statblockNoteSource';
+import { statblockSourceFromText } from '../../services/statblockNoteSource';
+import { bestiaryLookup, resolveLinkedCreature } from '../../creatures/linkedCreature';
 import { syncStatblockVitals, type TokenVitals } from '../../services/statblockVitalsSync';
 import { attachDiceRolling } from '../../services/statblockDiceLinks';
 import { rollHitPoints } from '../../services/statblockHitPoints';
@@ -76,15 +76,17 @@ export function FantasyStatblock({
 
   // A note outside the vault is read from its own text; the bestiary knows only vault notes.
   const bestiaryCreature = useMemo(
-    () => (noteContent === undefined ? findCreatureForNotePath(notePath) : null),
+    () => (noteContent === undefined ? bestiaryLookup().byPath.get(notePath) ?? null : null),
     // `revision` is not read by the lookup; it re-runs it when the bestiary changes.
     [notePath, noteContent, revision],
   );
 
-  // Notes that define their statblock in a ```statblock fence never enter the
-  // bestiary, so resolve those from the fence itself.
+  // A note the bestiary has not parsed is read from the note itself: its frontmatter (the
+  // bestiary may still be parsing the vault) or its ```statblock fence, which never enters it.
+  // A note with neither shows the bestiary creature of its name.
   const [noteCreature, setNoteCreature] = useState<FantasyStatblocksCreature | null>(null);
-  // The note whose own statblock has been looked for: until then "no creature" is not known yet.
+  // The note whose statblock has been looked for with the whole bestiary to look in: until
+  // then "no creature" is not known yet.
   const [readNote, setReadNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -105,17 +107,12 @@ export function FantasyStatblock({
         return;
       }
 
-      const file = app.vault.getAbstractFileByPath(notePath);
-      if (!(file instanceof TFile)) return;
-
-      const source = await resolveStatblockNote(app, file);
-      if (cancelled || source?.kind !== 'codeblock') return;
-
-      const resolved = await resolveCreatureFromFence(app, source.params, notePath);
+      const resolved = await resolveLinkedCreature(app, notePath);
       if (!cancelled) setNoteCreature(resolved);
     };
+    const bestiaryResolved = Boolean(getFantasyStatblocksApi()?.isResolved?.());
     void readNoteCreature().finally(() => {
-      if (!cancelled) setReadNote(notePath);
+      if (!cancelled) setReadNote(bestiaryResolved ? notePath : null);
     });
 
     return () => {

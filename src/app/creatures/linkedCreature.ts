@@ -1,6 +1,8 @@
 import { TFile, type App } from 'obsidian';
 import {
+  bestiaryCreatureByName,
   getFantasyStatblocksApi,
+  noteBasename,
   resolveCreatureFromFence,
   type FantasyStatblocksApi,
   type FantasyStatblocksCreature,
@@ -27,15 +29,41 @@ export function bestiaryLookup(): BestiaryLookup {
 /** A bestiary creature with its `extends` applied, which only the plugin's name lookup does. */
 function withExtensions(api: FantasyStatblocksApi | null, creature: FantasyStatblocksCreature): FantasyStatblocksCreature {
   if (!api || creature.extends === undefined) return creature;
-  const resolved = api.getCreatureFromBestiary(creature.name);
+  const resolved = bestiaryCreatureByName(api, creature.name);
   return resolved && resolved.path === creature.path ? resolved : creature;
+}
+
+/** The lists whose entries Fantasy Statblocks' watcher stores as `{ name, desc }`. */
+const TRAIT_LISTS = ['traits', 'actions', 'bonus_actions', 'reactions', 'legendary_actions'];
+
+/** A trait's text as Fantasy Statblocks' watcher writes it: the parts of a list or a map in a row. */
+function traitText(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number') return String(value);
+  if (Array.isArray(value)) return value.map(traitText).join(' ');
+  if (value && typeof value === 'object') return Object.entries(value).flat().map(traitText).join(' ');
+  return '';
+}
+
+/**
+ * A trait list whose `[name, description]` entries are the `{ name, desc }` a statblock's blocks read.
+ * Its other entries stay as they are: a list of plain words is what the Traits filter reads.
+ */
+function withNamedTraits(list: unknown): unknown {
+  if (!Array.isArray(list)) return list;
+  return list.map((entry: unknown) =>
+    (Array.isArray(entry) ? { name: traitText(entry[0]), desc: traitText(entry.slice(1)) } : entry));
 }
 
 /** The creature a note's frontmatter defines, as Fantasy Statblocks' watcher parses it. */
 function frontmatterCreature(app: App, file: TFile): FantasyStatblocksCreature {
   const frontmatter: Record<string, unknown> = app.metadataCache.getFileCache(file)?.frontmatter ?? {};
   const name = typeof frontmatter.name === 'string' && frontmatter.name.trim() ? frontmatter.name : file.basename;
-  return { ...frontmatter, name, path: file.path };
+  const creature: FantasyStatblocksCreature = { ...frontmatter, name, path: file.path };
+  for (const list of TRAIT_LISTS) {
+    if (list in frontmatter) creature[list] = withNamedTraits(frontmatter[list]);
+  }
+  return creature;
 }
 
 /**
@@ -44,6 +72,11 @@ function frontmatterCreature(app: App, file: TFile): FantasyStatblocksCreature {
  * the note's frontmatter (the plugin parses notes only with "auto parse" on),
  * else the note's ```statblock fence. A note that is none of these falls back
  * to the bestiary creature of the same name, as token links always have.
+ *
+ * While Fantasy Statblocks still parses the vault (`isBestiaryResolved`), null
+ * means "not known yet": a creature read by name is not there until the parse
+ * ends, and one that `extends` another comes without it. Show a placeholder
+ * then, and do not take such an answer for the whole statblock.
  */
 export async function resolveLinkedCreature(
   app: App,
@@ -67,8 +100,7 @@ export async function resolveLinkedCreature(
     }
   }
 
-  const basename = notePath.split('/').pop()?.replace(/\.md$/, '') ?? '';
-  return basename && api?.hasCreature(basename) ? api.getCreatureFromBestiary(basename) : null;
+  return api ? bestiaryCreatureByName(api, noteBasename(notePath)) : null;
 }
 
 /**
