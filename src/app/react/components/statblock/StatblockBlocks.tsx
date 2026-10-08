@@ -349,10 +349,12 @@ export function TraitLine({
   app,
   sourcePath,
   index,
-}: BlockProps & { trait: Trait; index?: number }): React.JSX.Element | null {
-  // A statblock is the user's own text: a name or a description may be a number, a list or a map
-  const desc = stringify(runCallback<unknown>(item.callback, { monster, property: trait }, trait.desc ?? ''), ' ', false);
-  const name = stringify(trait.name, ' ', false);
+}: BlockProps & { trait: unknown; index?: number }): React.JSX.Element | null {
+  // A statblock is the user's own text: an entry may be a word or a pair, which a layout's callback
+  // can draw, and a name or a description a number, a list or a map
+  const named: Trait = isTrait(trait) ? trait : {};
+  const desc = stringify(runCallback<unknown>(item.callback, { monster, property: trait }, named.desc ?? ''), ' ', false);
+  const name = stringify(named.name, ' ', false);
   if (!name && !desc) return null;
 
   const property = item.properties?.[0] ?? '';
@@ -405,8 +407,8 @@ export function TraitsBlock({ item, monster, app, sourcePath }: BlockProps): Rea
       <SectionHeading item={item} monster={monster} app={app} />
       {item.subheadingText && <div className="atlas-sb-text">{item.subheadingText}</div>}
       {entries.map((entry, index) => (
-        // A statblock is the user's own text: an empty list item is null, and a bare word, number or list is no trait
-        isTrait(entry) ? (
+        // An empty list item is null
+        entry == null ? null : (
           <TraitLine
             key={index}
             trait={entry}
@@ -416,7 +418,7 @@ export function TraitsBlock({ item, monster, app, sourcePath }: BlockProps): Rea
             app={app}
             sourcePath={sourcePath}
           />
-        ) : null
+        )
       ))}
     </div>
   );

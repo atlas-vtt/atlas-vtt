@@ -168,10 +168,16 @@ export function boundedFields(statblock: unknown, budget?: ReadBudget): Record<s
 
 /**
  * A statblock as its readers take it: a bounded copy, named by a text. A creature is named in
- * places that take a text for granted.
+ * places that take a text for granted; a name of several parts reads as a property of them does.
  */
 export function boundedStatblock(statblock: Readonly<Record<string, unknown>>): Record<string, unknown> & { name?: string } {
   const copy = boundedFields(statblock);
-  if (copy.name !== undefined && typeof copy.name !== 'string') copy.name = valueText(copy.name);
+  if (copy.name !== undefined && typeof copy.name !== 'string') copy.name = valueText(copy.name, { joiner: ', ', parens: false });
   return copy;
+}
+
+/** A bounded statblock that has a name, as a creature does; the name is empty where the statblock gives none. */
+export function namedStatblock(statblock: Readonly<Record<string, unknown>>): Record<string, unknown> & { name: string } {
+  const copy = boundedStatblock(statblock);
+  return { ...copy, name: copy.name ?? '' };
 }

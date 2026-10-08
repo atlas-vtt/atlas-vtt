@@ -80,6 +80,7 @@ describe('a bounded copy of a statblock value', () => {
   it('names a statblock by a text, whatever its name is', () => {
     expect(boundedStatblock({ name: { first: 'Grik', last: 'the Bold' } }).name).toBe('Grik the Bold');
     expect(boundedStatblock({ name: 7 }).name).toBe('7');
+    expect(boundedStatblock({ name: ['Grik', 'the Bold'] }).name).toBe('Grik, the Bold');
     expect(boundedStatblock({ name: null }).name).toBe('');
     expect(boundedStatblock({ hp: 3 })).toEqual({ hp: 3 });
   });

@@ -83,6 +83,16 @@ describe('statblock entries', () => {
     expect(describeCreature({ name: 'D', type: { nested: true } })).toBe('');
   });
 
+  it('lists a creature whose name is no text by what its name reads as', () => {
+    const entries = statblockEntries([
+      { name: 'Zombie', path: 'Bestiary/Zombie.md' },
+      { name: 7, path: 'Bestiary/Seven.md' },
+      { name: ['Grik', 'the Bold'], path: 'Bestiary/Grik.md' },
+      { name: {}, path: 'Bestiary/Nameless.md' },
+    ] as never);
+    expect(entries.map((entry) => entry.name)).toEqual(['7', 'Grik, the Bold', 'Zombie']);
+  });
+
   it('keeps note-backed creatures only, sorted by name, falling back to the folder', () => {
     const entries = statblockEntries([...CREATURES, { name: 'Bare', path: 'Monsters/Bare.md' }]);
     expect(entries.map((entry) => entry.name)).toEqual(['Aboleth', 'Acid Burrower', 'Adult Red Dragon', 'Bare', 'Dragon Turtle']);

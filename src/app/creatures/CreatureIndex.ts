@@ -2,7 +2,6 @@ import { TAbstractFile, type App, type EventRef, type Events } from 'obsidian';
 import { layoutForCreature } from '../services/FantasyStatblocksService';
 import { bestiaryLookup, resolveLinkedCreature, type BestiaryLookup } from './linkedCreature';
 import { workSlices } from '../utils/workSlices';
-import { boundedStatblock } from './statblockValues';
 
 /** A linked statblock as filters read it. */
 export interface IndexedCreature {
@@ -183,8 +182,7 @@ export class CreatureIndex {
       const creature = await resolveLinkedCreature(this.app, path, bestiary);
       if (!creature) return null;
       const requested = typeof creature.layout === 'string' ? creature.layout : null;
-      // The filters walk these fields, so they get them within the limits every statblock value is read in.
-      return { path, fields: boundedStatblock(creature), layout: layoutForCreature(this.app, creature)?.name ?? requested };
+      return { path, fields: creature, layout: layoutForCreature(this.app, creature)?.name ?? requested };
     } catch (error) {
       console.error(`[CreatureIndex] Could not read the statblock in ${path}:`, error);
       return null;

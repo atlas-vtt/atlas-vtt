@@ -406,6 +406,27 @@ describe('a statblock whose values are not what its blocks expect', () => {
     expect(traits).toEqual(['5Seven days.', 'BiteOne target.']);
   });
 
+  it('hands every entry but an empty one to the callback of a traits block', () => {
+    const { container } = renderStatblock(
+      layoutOf({
+        type: 'traits', id: 't', properties: ['languages'],
+        callback: 'return typeof property === "string" ? property : Array.isArray(property) ? property.join(": ") : property.desc;',
+      }),
+      { name: 'Toad', languages: ['Common', null, ['Deep Speech', 'understands'], { name: 'Sign', desc: 'with its tongue' }] },
+    );
+    const lines = [...container.querySelectorAll('.atlas-sb-trait')].map((line) => line.textContent);
+    expect(lines).toEqual(['Common', 'Deep Speech: understands', 'Signwith its tongue']);
+  });
+
+  it('names a creature whose name is a list as a property of those parts reads', () => {
+    const { container } = renderStatblock(
+      layoutOf({ type: 'heading', id: 'h', properties: ['name'] }, { type: 'property', id: 'p', properties: ['name'], display: 'Name' }),
+      { name: ['Grik', 'the Bold'] },
+    );
+    expect(container.querySelector('.atlas-sb-heading')?.textContent).toBe('Grik, the Bold');
+    expect(container.querySelector('.atlas-sb-property')?.textContent).toBe('NameGrik, the Bold');
+  });
+
   it('shows no text longer than one text, however many entries it is joined of', () => {
     const saves = Array.from({ length: 150 }, (_, index) => ({ [`save ${index} ${'x'.repeat(150)}`]: 'y'.repeat(150) }));
     const joined = renderStatblock(layoutOf({ type: 'saves', id: 's', properties: ['saves'], display: 'Saves' }), { saves }).container;

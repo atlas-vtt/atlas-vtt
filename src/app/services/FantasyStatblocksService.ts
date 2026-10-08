@@ -1,6 +1,6 @@
 import { Component, type App } from 'obsidian';
 import type { StatblockLayout } from '../react/components/statblock/statblockTypes';
-import { boundedList } from '../creatures/statblockValues';
+import { boundedList, namedStatblock } from '../creatures/statblockValues';
 
 const FANTASY_STATBLOCKS_PLUGIN_ID = 'obsidian-5e-statblocks';
 
@@ -138,6 +138,7 @@ export async function resolveCreatureFromFence(
     }
   }
 
-  const creature = { ...(base ?? {}), ...fromNote, ...params } as FantasyStatblocksCreature;
+  // A fence is a note's text: what it gives is handed on within the limits every statblock is read in.
+  const creature = namedStatblock({ ...(base ?? {}), ...fromNote, ...params });
   return creature.name ? creature : null;
 }

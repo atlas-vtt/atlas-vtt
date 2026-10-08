@@ -10,7 +10,7 @@ import {
 import { hasBestiaryFrontmatter, parseStatblockFence, resolveStatblockNote } from '../services/statblockNoteSource';
 import { workSlices } from '../utils/workSlices';
 import { namedTraitLists } from './frontmatterTraits';
-import { boundedFields } from './statblockValues';
+import { boundedFields, namedStatblock } from './statblockValues';
 
 /** The bestiary as one lookup, built once and reused for many notes. */
 export interface BestiaryLookup {
@@ -56,13 +56,26 @@ function frontmatterCreature(app: App, file: TFile): FantasyStatblocksCreature {
  * means "not known yet": a creature read by name is not there until the parse
  * ends, and one that `extends` another comes without it. Show a placeholder
  * then, and do not take such an answer for the whole statblock.
+ *
+ * The creature is a copy within the limits every statblock is read in, named
+ * by a text (`statblockValues.ts`): what tokens, resources, senses and the
+ * filters read of a statblock, they read of this.
  */
 export async function resolveLinkedCreature(
   app: App,
   notePath: string,
   bestiary: BestiaryLookup = bestiaryLookup(),
 ): Promise<FantasyStatblocksCreature | null> {
-  const { api, byPath } = bestiary;
+  const creature = await linkedCreatureAsGiven(app, notePath, bestiary);
+  return creature && namedStatblock(creature);
+}
+
+/** The creature of a linked note as its source holds it; `resolveLinkedCreature` hands it on within the limits. */
+async function linkedCreatureAsGiven(
+  app: App,
+  notePath: string,
+  { api, byPath }: BestiaryLookup,
+): Promise<FantasyStatblocksCreature | null> {
   const parsed = byPath.get(notePath);
   if (parsed) return withExtensions(api, parsed);
 
