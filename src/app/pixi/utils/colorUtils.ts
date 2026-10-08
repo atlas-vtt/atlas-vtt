@@ -59,13 +59,27 @@ export function resolveCssColor(cssColor: string): string {
   return resolved || '#00ffff'; // Fallback if resolution fails
 }
 
+/** The accent as last resolved, with the value of `--interactive-accent` it was resolved from. */
+let resolvedAccent: { raw: string; color: string } | null = null;
+
+/** Makes the next `getObsidianAccentColor` resolve the accent anew (`registerAccentColorSync`). */
+export function forgetObsidianAccentColor(): void {
+  resolvedAccent = null;
+}
+
+/**
+ * Obsidian's accent colour. Drags and measurements ask for it on every pointer move, so it is
+ * resolved once per value of `--interactive-accent`: resolving puts an element into the body,
+ * and an insertion there can make Chromium restyle the whole document.
+ */
 export function getObsidianAccentColor(): string {
   if (typeof window === 'undefined') return '#00ffff';
   try {
     const style = getComputedStyle(document.body);
     const raw = (style.getPropertyValue('--interactive-accent') || '').trim();
     if (!raw) return '#00ffff';
-    return resolveCssColor(raw);
+    if (resolvedAccent?.raw !== raw) resolvedAccent = { raw, color: resolveCssColor(raw) };
+    return resolvedAccent.color;
   } catch (error) {
     console.warn("[ColorUtils] Error getting Obsidian accent color:", error);
     return '#00ffff';
