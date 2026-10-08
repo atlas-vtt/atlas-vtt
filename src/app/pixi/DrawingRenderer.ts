@@ -4,9 +4,8 @@ import type { EventEmitter } from 'events';
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../storeFactory';
 import { beginHistoryTransaction, endHistoryTransaction } from '../stores/history';
-import type { DrawingStroke } from '../types';
-import { MAP_ICON_SVG, MAP_ICON_SIZE } from './mapIcons';
-import { createLucideIconTexture } from './utils/lucideIconTexture';
+import { MAP_ICON_SIZE } from './mapIcons';
+import { DrawingLayer, drawStroke } from './drawingLayer';
 import { splitStrokeByBrush } from './drawingEraseUtils';
 import { FogCursorPreview } from './fog/FogCursorPreview';
 import { destroyTree } from './utils/destroyTree';
@@ -40,11 +39,8 @@ const ERASER_SLACK = 6;
 export class DrawingRenderer {
   private container: PIXI.Container;
   private preview: PIXI.Graphics;
-  private nodes = new Map<string, PIXI.Container>();
-  /** Stroke each node was last drawn from; a new reference means it moved or was restored by undo. */
-  private rendered = new Map<string, DrawingStroke>();
+  private readonly layer: DrawingLayer;
   private cursorPreview: FogCursorPreview;
-  private iconTextures = new Map<string, PIXI.Texture>();
 
   private settings: DrawingSettings = { ...DEFAULT_SETTINGS };
   /** A pen stroke is in progress — committed rendering is deferred until it ends. */
@@ -70,6 +66,7 @@ export class DrawingRenderer {
     this.container.eventMode = 'none';
     this.container.interactiveChildren = false;
     this.container.sortableChildren = true;
+    this.layer = new DrawingLayer(this.container);
 
     this.preview = new PIXI.Graphics();
     this.preview.eventMode = 'none';
@@ -138,103 +135,8 @@ export class DrawingRenderer {
 
   // ── Rendering ───────────────────────────────────────────────────────
 
-  /** Sync one display object per stored annotation, reusing existing ones. */
   private rebuild(): void {
-    const drawings = this.store.getState().objects?.drawings ?? {};
-
-    for (const [id, node] of this.nodes) {
-      if (!drawings[id]) {
-        node.destroy();
-        this.nodes.delete(id);
-        this.rendered.delete(id);
-      }
-    }
-
-    for (const stroke of Object.values(drawings)) {
-      const previous = this.rendered.get(stroke.id);
-      if (previous === stroke) continue;
-      this.rendered.set(stroke.id, stroke);
-
-      let existing = this.nodes.get(stroke.id);
-      if (stroke.type === 'icon') {
-        // A restyled stamp needs a new texture; a moved one only a new position
-        if (existing && (previous?.icon !== stroke.icon || previous?.color !== stroke.color)) {
-          existing.destroy();
-          this.nodes.delete(stroke.id);
-          existing = undefined;
-        }
-        const center = stroke.points[0];
-        if (existing && center) existing.position.set(center.x, center.y);
-        else if (!existing) this.addIconNode(stroke);
-        continue;
-      }
-
-      let graphics = existing as PIXI.Graphics | undefined;
-      if (!graphics) {
-        graphics = new PIXI.Graphics();
-        graphics.eventMode = 'none';
-        this.container.addChild(graphics);
-        this.nodes.set(stroke.id, graphics);
-      }
-      this.drawStroke(graphics, stroke.points, stroke.color, stroke.width, stroke.opacity);
-    }
-  }
-
-  /** Place an icon stamp; its texture is rasterised (and cached) on demand. */
-  private addIconNode(stroke: DrawingStroke): void {
-    const center = stroke.points[0];
-    const markup = stroke.icon ? MAP_ICON_SVG[stroke.icon] : undefined;
-    if (!center || !markup) return;
-
-    const sprite = new PIXI.Sprite();
-    sprite.eventMode = 'none';
-    sprite.anchor.set(0.5);
-    sprite.position.set(center.x, center.y);
-    sprite.width = stroke.width;
-    sprite.height = stroke.width;
-    sprite.alpha = stroke.opacity;
-    this.container.addChild(sprite);
-    this.nodes.set(stroke.id, sprite);
-
-    const cacheKey = `${stroke.icon}-${stroke.color}`;
-    const cached = this.iconTextures.get(cacheKey);
-    if (cached) {
-      sprite.texture = cached;
-      return;
-    }
-
-    createLucideIconTexture(markup, stroke.color, 96)
-      .then((texture) => {
-        this.iconTextures.set(cacheKey, texture);
-        if (sprite.destroyed) return;
-        sprite.texture = texture;
-        sprite.width = stroke.width;
-        sprite.height = stroke.width;
-      })
-      .catch((err) => console.error('[DrawingRenderer] Failed to rasterise icon:', err));
-  }
-
-  private drawStroke(
-    graphics: PIXI.Graphics,
-    points: Array<{ x: number; y: number }>,
-    color: string,
-    width: number,
-    opacity: number
-  ): void {
-    graphics.clear();
-    const first = points[0];
-    if (!first) return;
-
-    if (points.length === 1) {
-      graphics.circle(first.x, first.y, width / 2).fill({ color, alpha: opacity });
-      return;
-    }
-
-    graphics.moveTo(first.x, first.y);
-    for (const point of points.slice(1)) {
-      graphics.lineTo(point.x, point.y);
-    }
-    graphics.stroke({ color, width, alpha: opacity, cap: 'round', join: 'round' });
+    this.layer.sync(this.store.getState().objects?.drawings ?? {});
   }
 
   // ── Input ───────────────────────────────────────────────────────────
@@ -316,7 +218,7 @@ export class DrawingRenderer {
   }
 
   private renderPreview(): void {
-    this.drawStroke(
+    drawStroke(
       this.preview,
       this.currentPoints,
       this.settings.color,
@@ -387,10 +289,7 @@ export class DrawingRenderer {
     this.unsubscribe?.();
     this.unsubscribe = null;
     this.cursorPreview.destroy();
-    this.nodes.clear();
-    this.rendered.clear();
-    for (const texture of this.iconTextures.values()) texture.destroy(true);
-    this.iconTextures.clear();
+    this.layer.destroy();
     destroyTree(this.container);
   }
 }

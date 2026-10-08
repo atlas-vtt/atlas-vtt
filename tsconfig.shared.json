@@ -100,7 +100,12 @@
     "src/app/tools/diceLabels.ts",
     "src/app/pixi/MeasureRenderer.ts",
     "src/app/pixi/measurePartsVisibility.ts",
-    "src/app/pixi/mapLayerOrder.ts"
+    "src/app/pixi/mapLayerOrder.ts",
+    "src/app/pixi/drawingLayer.ts",
+    "src/app/pixi/mapIcons.ts",
+    "src/app/pixi/textElementView.ts",
+    "src/app/pixi/lighting/DoorIcons.ts",
+    "src/app/pixi/token-renderer/SensedOutlines.ts"
   ],
   "exclude": [
     "src/app/grid/GridController.ts",
