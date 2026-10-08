@@ -3,6 +3,8 @@ import { resolveLinkedCreature } from '../../src/app/creatures/linkedCreature';
 import { hasCreatureForNotePath } from '../../src/app/services/FantasyStatblocksService';
 import { creatureVault, type CreatureVault } from '../mocks/creatureVault';
 import { installParsingBestiary, type ParsingBestiary } from '../mocks/parsingBestiary';
+import { STATBLOCK_LIMITS } from '../../src/app/creatures/statblockValues';
+import { HOSTILE_VALUES, counted, counts, nestedLists, resetCounts } from '../mocks/hostileValues';
 
 const SRD_GOBLIN = { name: 'Goblin', cr: '1/4', hp: 7, source: 'SRD' };
 
@@ -44,6 +46,11 @@ describe('a creature read from a note\'s frontmatter', () => {
       .resolves.toMatchObject({ traits: ['goblin', 'humanoid'] });
   });
 
+  it('takes the file\'s name where the note\'s name is no text', async () => {
+    current.frontmatter['Bestiary/Goblin.md'] = { statblock: true, name: 42, hp: 12 };
+    await expect(resolveLinkedCreature(current.app, 'Bestiary/Goblin.md')).resolves.toMatchObject({ name: 'Goblin', hp: 12 });
+  });
+
   it('is the note\'s own, with the file\'s name, where the note names no creature', async () => {
     // Fantasy Statblocks stores no creature without a name, so such a note never gets a bestiary entry.
     current.frontmatter['Bestiary/Goblin.md'] = { statblock: true, hp: 12 };
@@ -51,6 +58,61 @@ describe('a creature read from a note\'s frontmatter', () => {
 
     const creature = await resolveLinkedCreature(current.app, 'Bestiary/Goblin.md');
     expect(creature).toEqual({ statblock: true, hp: 12, name: 'Goblin', path: 'Bestiary/Goblin.md' });
+  });
+});
+
+describe('a note whose frontmatter is not what a statblock holds', () => {
+  const note = 'Bestiary/Goblin.md';
+  beforeEach(resetCounts);
+
+  const creatureOf = async (fields: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    current.frontmatter[note] = counted({ statblock: true, name: 'Goblin', ...fields });
+    resetCounts();
+    return (await resolveLinkedCreature(current.app, note))!;
+  };
+  /** The texts of a creature, as long as a walk without limits would make them: only for a bounded creature. */
+  const charactersOf = (value: unknown): number => {
+    if (typeof value === 'string') return value.length;
+    return value !== null && typeof value === 'object' ? Object.values(value).reduce<number>((sum, part) => sum + charactersOf(part), 0) : 0;
+  };
+
+  it.each(Object.keys(HOSTILE_VALUES))('reads %s within one budget for the whole note', async (shape) => {
+    const hostile = HOSTILE_VALUES[shape]!;
+    // As a trait's description, as the name beside it, as each trait list, and as any other field
+    const creature = await creatureOf({
+      traits: [[hostile(), 'named by it'], ['Described by it', hostile(), hostile()]],
+      actions: hostile(),
+      bonus_actions: hostile(),
+      reactions: hostile(),
+      legendary_actions: hostile(),
+      senses: hostile(),
+    });
+
+    expect(counts.reads).toBeLessThanOrEqual(2 * STATBLOCK_LIMITS.values);
+    expect(counts.listings).toBeLessThanOrEqual(STATBLOCK_LIMITS.values);
+    // The texts made of it: no more than was read, with a separator for each part.
+    expect(charactersOf(creature)).toBeLessThanOrEqual(STATBLOCK_LIMITS.characters + 2 * STATBLOCK_LIMITS.values);
+  });
+
+  it('reads no deeper than a few levels, however deep an entry is nested', async () => {
+    const creature = await creatureOf({ actions: [['Abyss', 'Falls.', nestedLists(10_000)]] });
+    expect(creature.actions).toEqual([{ name: 'Abyss', desc: 'Falls. ' }]);
+  });
+
+  it('reads a list that holds itself once', async () => {
+    const loop: unknown[] = ['Again and'];
+    loop.push(loop, 'again.');
+    const entry: unknown[] = ['Echo'];
+    entry.push(entry);
+
+    const creature = await creatureOf({ actions: [['Loop', loop], entry] });
+    expect(creature.actions).toEqual([{ name: 'Loop', desc: 'Again and  again.' }, { name: 'Echo', desc: '' }]);
+  });
+
+  it('reads no more entries of a list than the limit', async () => {
+    const creature = await creatureOf({ actions: Array.from({ length: 100_000 }, (_, index) => [`Action ${index}`, 'x']) });
+    expect(creature.actions).toHaveLength(STATBLOCK_LIMITS.entries);
+    expect((creature.actions as Array<{ name: string }>)[STATBLOCK_LIMITS.entries - 1]?.name).toBe(`Action ${STATBLOCK_LIMITS.entries - 1}`);
   });
 });
 

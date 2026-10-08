@@ -4,6 +4,7 @@ import { EventEmitter } from 'events';
 import { AssetService, type TokenAsset } from './AssetService';
 import { resolveLinkedCreature } from '../creatures/linkedCreature';
 import { isBestiaryResolved } from './FantasyStatblocksService';
+import { boundedFields } from '../creatures/statblockValues';
 import { mapResources } from '../resources/collectionResources';
 import { tokenFromFile, tokenToFile } from '../resources/resourceFileFormat';
 import type { ResourceDefinition } from '../resources/resourceTypes';
@@ -399,7 +400,8 @@ export class TokenStatblockLinkService extends EventEmitter {
     const file = this.app.vault.getAbstractFileByPath(statblockPath);
     if (!(file instanceof TFile)) return null;
 
-    const frontmatter: Record<string, unknown> | undefined = this.app.metadataCache.getFileCache(file)?.frontmatter;
+    const noted: unknown = this.app.metadataCache.getFileCache(file)?.frontmatter;
+    const frontmatter = noted ? boundedFields(noted) : undefined;
     // Asked before the read: a parse that ends meanwhile does not make what was read whole.
     const parsing = !isBestiaryResolved();
     const creature: Record<string, unknown> | null = await resolveLinkedCreature(this.app, statblockPath);
