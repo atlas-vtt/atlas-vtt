@@ -24,9 +24,9 @@ export interface InitiativeSlice {
   addToInitiative: (entry: Omit<InitiativeEntry, 'id' | 'order' | 'isActive'>) => string;
   removeFromInitiative: (id: string) => void;
   updateInitiativeEntry: (id: string, updates: Partial<InitiativeEntry>) => void;
-  /** Rolls `roll` (the collection's initiative dice; a d20 when left out) for every combatant. */
-  rollAllInitiative: (roll?: string) => void;
-  rollEntryInitiative: (id: string, roll?: string) => void;
+  /** Rolls the collection's dice, with current per-entry statblock modifiers when supplied. Modifiers are not persisted. */
+  rollAllInitiative: (roll?: string, modifiers?: ReadonlyMap<string, number>) => void;
+  rollEntryInitiative: (id: string, roll?: string, modifier?: number) => void;
   nextTurn: () => void;
   previousTurn: () => void;
   reorderInitiative: (fromIndex: number, toIndex: number) => void;
@@ -151,9 +151,9 @@ export function createInitiativeActions(
       }
     }),
 
-    rollAllInitiative: (roll = DEFAULT_ROLL) => {
+    rollAllInitiative: (roll = DEFAULT_ROLL, modifiers) => {
       const totals = new Map(get().initiative.entries.map(entry => [
-        entry.id, rollInitiativeDice(roll, random) + entry.initiativeModifier,
+        entry.id, rollInitiativeDice(roll, random) + (modifiers?.get(entry.id) ?? entry.initiativeModifier),
       ]));
       set((draft) => {
         for (const entry of draft.initiative.entries) {
@@ -167,10 +167,10 @@ export function createInitiativeActions(
       });
     },
 
-    rollEntryInitiative: (id, roll = DEFAULT_ROLL) => {
+    rollEntryInitiative: (id, roll = DEFAULT_ROLL, modifier) => {
       const entry = get().initiative.entries.find(e => e.id === id);
       if (!entry) return;
-      const total = rollInitiativeDice(roll, random) + entry.initiativeModifier;
+      const total = rollInitiativeDice(roll, random) + (modifier ?? entry.initiativeModifier);
       set((draft) => {
         const current = draft.initiative.entries.find(e => e.id === id);
         if (current) current.initiative = total;

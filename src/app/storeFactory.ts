@@ -199,8 +199,8 @@ export interface ViewAtlasState extends ViewState {
   addToInitiative: (entry: Omit<InitiativeEntry, 'id' | 'order' | 'isActive'>) => string;
   removeFromInitiative: (id: string) => void;
   updateInitiativeEntry: (id: string, updates: Partial<InitiativeEntry>) => void;
-  rollAllInitiative: (roll?: string) => void;
-  rollEntryInitiative: (id: string, roll?: string) => void;
+  rollAllInitiative: (roll?: string, modifiers?: ReadonlyMap<string, number>) => void;
+  rollEntryInitiative: (id: string, roll?: string, modifier?: number) => void;
   nextTurn: () => void;
   previousTurn: () => void;
   reorderInitiative: (fromIndex: number, toIndex: number) => void;

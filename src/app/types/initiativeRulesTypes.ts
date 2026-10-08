@@ -12,6 +12,8 @@ export interface InitiativeRules {
   mode: InitiativeMode;
   /** Turn order: the dice a combatant rolls, one group `NdS` such as `1d20`. */
   roll: string;
+  /** Statblock field path for the modifier; unset reads `modifier`, then `initiative`. */
+  modifierField?: string;
   /** Sides: the side that acts first in every round. */
   firstSide: InitiativeSide;
 }
