@@ -145,10 +145,8 @@ export function TimerWidgetDisplay({
     if (save && inputRef.current) {
       const seconds = parseTimeInput(inputRef.current.value);
       if (seconds !== null && seconds > 0) {
-        store.getState().updateWidget(widget.id, {
-          value: seconds,
-          duration: seconds,
-        });
+        store.getState().updateWidget(widget.id, { duration: seconds });
+        store.getState().setTimerState(widget.id, { value: seconds });
       }
     }
     setIsEditing(false);
