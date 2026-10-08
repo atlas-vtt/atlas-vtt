@@ -101,18 +101,21 @@ const NoteContent: React.FC<NoteContentProps> = ({ notePath, app, onFocus }) => 
         // Suppress setActiveLeaf during leaf creation so Obsidian never
         // switches away from the atlas canvas view (prevents flash).
         restoreActiveLeaf = suppressActiveLeaf(ws);
-        leafRef.current = app.workspace.getLeaf(true);
+        try {
+          leafRef.current = app.workspace.getLeaf(true);
 
-        if (leafRef.current) {
-          leafRef.current.containerEl.setAttribute('data-dm-screen-preview', 'true');
-          leafRef.current.tabHeaderEl?.setAttribute('data-dm-screen-preview', 'true');
+          if (leafRef.current) {
+            leafRef.current.containerEl.setAttribute('data-dm-screen-preview', 'true');
+            leafRef.current.tabHeaderEl?.setAttribute('data-dm-screen-preview', 'true');
 
-          leafRef.current.detach();
+            leafRef.current.detach();
+          }
+        } finally {
+          // Restore setActiveLeaf immediately after detach, before any async work,
+          // and also when the workspace could not make the leaf.
+          restoreActiveLeaf();
         }
 
-        // Restore setActiveLeaf and re-activate the original leaf immediately
-        // after detach, before any async work.
-        restoreActiveLeaf();
         if (originalActiveLeaf && originalActiveLeaf !== leafRef.current) {
           app.workspace.setActiveLeaf(originalActiveLeaf, { focus: false });
         }
