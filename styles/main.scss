@@ -911,8 +911,8 @@
 }
 
 // Obsidian menus opened from the asset manager must stack above its overlay.
-// Limited to while the overlay is open so other Obsidian menus are untouched.
-body:has(.atlas-asset-manager-modal) > .menu {
+// Limited to while the overlay is open (`useOverlayBodyClass`) so other Obsidian menus are untouched.
+body.atlas-asset-manager-open > .menu {
   z-index: $z-atlas-dropdown;
 }
 

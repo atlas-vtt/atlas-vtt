@@ -26,6 +26,8 @@
 
 ## Fixed
 
+- Obsidian no longer turns sluggish for the rest of a session once a right-click menu was opened while Atlas and Fantasy Statblocks are both enabled. Token drags, the ruler, typing in notes and moving files all lagged, most of all with an older Obsidian installer.
+
 - Dragging tokens, measuring and drawing a selection box no longer make Obsidian restyle its window on every mouse move.
 
 - The DM screen no longer stays empty or hidden while Fantasy Statblocks is still reading the vault after Obsidian starts. Each statblock shows as soon as its own note is read.
