@@ -50,6 +50,18 @@ const VISION_ON_USES = [
   { selector: "ExportSpecifier[local.name='visionOn']", message: VISION_ON_MESSAGE },
   { selector: "MemberExpression[property.name='visionOn']", message: VISION_ON_MESSAGE },
 ];
+// A note's text reaches the YAML parser only through the helper that checks it first. The import
+// is flagged rather than the call, so an alias cannot pass; the member selector catches a
+// namespace import, the export selector a re-export.
+const PARSE_YAML_MESSAGE = "Parse the YAML of notes, bases and bundles with parseNoteYaml (services/noteYaml.ts), which checks the text first.";
+const PARSE_YAML_USES = [
+  { selector: "ImportSpecifier[imported.name='parseYaml']", message: PARSE_YAML_MESSAGE },
+  { selector: "ExportSpecifier[local.name='parseYaml']", message: PARSE_YAML_MESSAGE },
+  { selector: "MemberExpression[property.name='parseYaml']", message: PARSE_YAML_MESSAGE },
+  { selector: "ImportDeclaration[source.value='yaml']", message: PARSE_YAML_MESSAGE },
+];
+const NOTE_YAML_PARSER = "src/app/services/noteYaml.ts";
+
 // The two files that may ask `visionOn`: no source without vision on, whatever a policy says,
 // and the selection's check of every token.
 const VISION_ON_ASKERS = ["src/app/vision/sight.ts", "src/app/vision/selectSight.ts"];
@@ -69,7 +81,7 @@ export default defineConfig([
         "ts-nocheck": true,
         "ts-expect-error": true,
       }],
-      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE],
+      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...PARSE_YAML_USES],
     },
   },
   // Which tokens give sight and which a picture always shows is decided in one place,
@@ -79,13 +91,19 @@ export default defineConfig([
     files: ["src/app/vision/**/*.{ts,tsx}", "src/app/pixi/lighting/**/*.{ts,tsx}"],
     ignores: ["src/app/vision/tokenSightPolicy.ts", ...VISION_ON_ASKERS, "**/__tests__/**"],
     rules: {
-      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...VISION_FIELD_READS, ...VISION_ON_USES],
+      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...VISION_FIELD_READS, ...VISION_ON_USES],
     },
   },
   {
     files: VISION_ON_ASKERS,
     rules: {
-      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...VISION_FIELD_READS],
+      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE, ...PARSE_YAML_USES, ...VISION_FIELD_READS],
+    },
+  },
+  {
+    files: [NOTE_YAML_PARSER],
+    rules: {
+      "no-restricted-syntax": ["error", ...NO_NATIVE_TITLE],
     },
   },
   {
