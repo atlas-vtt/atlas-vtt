@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { TFile } from 'obsidian';
 import { Texture, Sprite } from 'pixi.js';
 import { useAtlasUI } from './root/AtlasUIContext';
 import { useViewStoreHook } from './ViewStoreContext';
@@ -7,6 +8,7 @@ import type { GridOptions } from '../grid/GridSystem';
 import { parseGridColor } from '../grid/gridContrastColor';
 import { cellNumberStyleOfGrid } from '../grid/cellNumbering';
 import { backgroundTextureCache } from '../pixi/backgroundTextureCache';
+import { loadVaultTexture } from '../pixi/vaultImageTexture';
 import type { GridState } from '../types/gridTypes';
 
 const FALLBACK_GRID_OPTIONS: GridOptions = {
@@ -70,13 +72,13 @@ export const BackgroundSprite: React.FC<BackgroundSpriteProps> = ({ imagePath })
           loadedTexture = Texture.from(img);
         } else {
           const imgFile = app.vault.getAbstractFileByPath(imagePath);
-          if (!imgFile) {
+          if (!(imgFile instanceof TFile)) {
             console.error(`[BackgroundSprite] Image file not found: ${imagePath}`);
             return;
           }
           const url = app.vault.adapter.getResourcePath(imgFile.path);
           cachedUrl = url;
-          loadedTexture = await backgroundTextureCache.acquire(url);
+          loadedTexture = await backgroundTextureCache.acquire(url, () => loadVaultTexture(app.vault, imgFile));
         }
 
         if (!isCancelled) {

@@ -3,6 +3,7 @@ import type { StoreApi } from 'zustand';
 import type { PlayerCameraState } from '../local-player-view';
 import type { ViewAtlasState } from '../storeFactory';
 import type { AtlasSettings } from './SettingsService';
+import { frozenView, type FrozenFrame, type FrozenView, type Screen } from './frozenPlayerFrame';
 import type { PlayerRollSources } from './playerRollSource';
 
 type PlayerViewSettings = AtlasSettings['localPlayerView'];
@@ -47,6 +48,8 @@ export interface PlayerFrameSource {
   /** Which tokens the scene this canvas shows lets players see, for rolls to name. Without it rolls name nobody. */
   rollSources?: PlayerRollSources;
   getCamera?(): PlayerCameraState | undefined;
+  /** The screen the canvas shows: what a camera is centred in. */
+  getScreen?(): Screen | undefined;
   /** Renders the player frame for `capture`, then the DM's frame again. */
   withPlayerSafeFrame: PlayerSafeFrame;
   /** Without it the canvas is captured on every display frame of the player window. */
@@ -87,6 +90,9 @@ export interface MirrorInputs {
  * and the canvas shows the scene half built (unlit, without fog or line of sight), which would
  * give away the map. Players keep the last frame, and the mirror stays stale, so the first
  * display frame after the load asks for the finished scene.
+ *
+ * Players frozen on a camera keep the frame they were frozen on while the DM's pane changes
+ * size (`frozenView`): the first frame mirrored through a frozen camera sets that frame.
  */
 export class PlayerFrameMirror {
   private stale = true;
@@ -99,6 +105,7 @@ export class PlayerFrameMirror {
   private watched: PlayerFrameSource | null = null;
   private stopListening: (() => void) | null = null;
   private failing = false;
+  private frozen: FrozenFrame | null = null;
 
   constructor(
     private readonly target: HTMLCanvasElement,
@@ -183,18 +190,34 @@ export class PlayerFrameMirror {
     this.slotAt = time - this.slotAt >= 2 * MIRROR_INTERVAL_MS ? time : this.slotAt + MIRROR_INTERVAL_MS;
     this.requestedAt = null;
     const camera = this.inputs.frozenCamera() ?? undefined;
-    frames.withPlayerSafeFrame(() => this.draw(source.canvas), this.inputs.settings(), camera);
+    const view = this.frozenViewOf(source, camera);
+    frames.withPlayerSafeFrame(() => this.draw(source.canvas, view), this.inputs.settings(), view?.camera ?? camera);
     this.inputs.onFrame(camera ?? source.getCamera?.());
     this.failing = false;
   }
 
-  private draw(image: HTMLCanvasElement): void {
-    if (this.target.width !== image.width || this.target.height !== image.height) {
-      this.target.width = image.width;
-      this.target.height = image.height;
+  /** How `source` gives players the frame they were frozen on, once its screen is another size. */
+  private frozenViewOf(source: PlayerFrameSource, camera: PlayerCameraState | undefined): FrozenView | undefined {
+    if (!camera) {
+      this.frozen = null;
+      return undefined;
     }
-    this.context.clearRect(0, 0, image.width, image.height);
-    this.context.drawImage(image, 0, 0);
+    const screen = source.getScreen?.();
+    if (!screen) return undefined;
+    const { width, height } = source.canvas;
+    if (this.frozen?.camera !== camera) this.frozen = { camera, screen: { ...screen }, pixels: { width, height } };
+    return frozenView(this.frozen, screen, { width, height });
+  }
+
+  private draw(image: HTMLCanvasElement, view?: FrozenView): void {
+    const { width, height } = view?.size ?? image;
+    if (this.target.width !== width || this.target.height !== height) {
+      this.target.width = width;
+      this.target.height = height;
+    }
+    this.context.clearRect(0, 0, width, height);
+    if (view) this.context.drawImage(image, view.part.x, view.part.y, view.part.width, view.part.height, 0, 0, width, height);
+    else this.context.drawImage(image, 0, 0);
   }
 
   /** A failed copy must not stop the DM's render or the mirror; it is reported once until a frame succeeds. */

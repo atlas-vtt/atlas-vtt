@@ -26,6 +26,10 @@
 
 ## Fixed
 
+- The DM screen no longer stays empty or hidden while Fantasy Statblocks is still reading the vault after Obsidian starts. Each statblock shows as soon as its own note is read.
+
+- A statblock note named like a creature Fantasy Statblocks already knows, such as Goblin, now shows its own statblock in the DM screen and in previews, as its tokens already used it. Before, the creature of that name was shown.
+
 - A statblock whose spell list holds an empty item no longer takes the toolbar and the asset manager down when it is shown.
 
 - Fog now updates correctly when returning to a map or canceling a drawing.
@@ -37,6 +41,12 @@
 - Dice rolls, sounds and history stay in the map view that made them. The player window follows the presented view, and clearing a log leaves other views alone.
 
 - Undo and redo now change only what that edit changed. Changes Atlas made by itself since, such as following a renamed file, stay.
+
+- With the player camera frozen, the player view no longer jumps when you switch to another Obsidian tab, and no longer changes size when you open or close a sidebar.
+
+- Scenes with a map image no longer fail to open with "Failed to fetch" on older Obsidian installers, or where Obsidian runs on a different Electron than it shipped with.
+
+- When a scene's file or map image cannot be read, the tokens of the scene that was open before no longer stay on the canvas.
 
 - Where Atlas shows line of sight without light and shadow, because it cannot use the graphics card, players now see every area their tokens see. Areas that two tokens saw at once were black, and so was what a sense that sees in magical darkness saw around the darkness.
 
