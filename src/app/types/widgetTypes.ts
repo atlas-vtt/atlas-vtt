@@ -31,11 +31,22 @@ export interface CounterWidget extends Widget {
   max?: number;
 }
 
+/** A running timer had `remaining` seconds left at `since` (epoch ms); it counts down from there by the wall clock. */
+export interface TimerRun {
+  since: number;
+  /** Repeats `value`: a `value` that differs was written by an older Atlas (see `timerRun`). */
+  remaining: number;
+}
+
 export interface TimerWidget extends Widget {
   type: 'timer';
-  value: number;       // remainingSeconds (persisted)
-  duration: number;    // total configured seconds
+  /** Seconds left: while running, at `running.since`; older Atlas versions read it as a paused timer. */
+  value: number;
+  /** Total configured seconds. */
+  duration: number;
   direction: 'down';
+  /** Set while the timer runs. */
+  running?: TimerRun;
 }
 
 /** A progress clock (Blades in the Dark): a circle of `segments` wedges the GM fills one by one. */
