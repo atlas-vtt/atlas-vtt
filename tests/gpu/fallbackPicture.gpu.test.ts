@@ -186,6 +186,27 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
     }
   });
 
+  it('is opaque black or nothing, with a texel of black around what is hidden', () => {
+    // One token and a slanted wall: no sliver, so every edge of the black is an edge of this sight.
+    const pictures = custom({ width: 300, height: 220 }, {
+      tokens: [token('scout', 80.3, 150.7, { enabled: true, range: 25 })],
+      walls: [wall('screen', { x: 130.4, y: 40.2 }, { x: 171.8, y: 190.6 })],
+    });
+    try {
+      const clean = { canvas: { blended: 0, tight: 0 }, webgl: { blended: 0, tight: 0 } };
+      for (const view of [{ scale: 1, centre: { x: 150, y: 110 } }, { scale: MAX_ZOOM, centre: { x: 150, y: 115 } }, { scale: 2.3, centre: { x: 120.7, y: 100.3 } }]) {
+        // A black written at half strength, or left as the canvas blended it, shows pixels between the floor and black.
+        // A black without the texels around each one shows the floor closer than half a texel to what is hidden.
+        expect(pictures.make(view)).toEqual(clean);
+        const tallies = pictures.judge(view);
+        expect(faults(tallies)).toEqual(CLEAN);
+        expect(Math.min(tallies.canvas.open, tallies.webgl.open)).toBeGreaterThan(1_000);
+      }
+    } finally {
+      pictures.close();
+    }
+  });
+
   it('is the map\'s black and no larger: no frame around a map smaller than the screen, and none inside its edge', () => {
     // A token that sees all of a map without walls, and one that sees 10 ft of it.
     const all = custom({ width: 320, height: 240 }, { tokens: [token('scout', 100.3, 90.7)] });

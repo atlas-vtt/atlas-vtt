@@ -135,6 +135,14 @@ export interface Pictures {
   /** Where the black has edges worth zooming in on: the tokens that see, corners of what they see, the darknesses. */
   outlines: Point[];
   judge: (view: View) => Tallies;
+  /**
+   * The black's own make, in a view: `blended` counts pixels that are neither the floor nor
+   * black, which a black that is not opaque or not hardened gives; `tight` counts pixels that
+   * show the floor with something exactly black within half a texel, which a black hardened
+   * without the texels around each one gives. Only for scenes without a hidden sliver, and
+   * only pixels a pixel or more inside the map: one on its edge is part map, part not.
+   */
+  make: (view: View) => Record<Kind, { blended: number; tight: number }>;
   /** Whether the exact black holds a world point. */
   exactlyBlack: (x: number, y: number) => boolean;
   /** What each renderer shows at a world point through a camera: 'black', 'floor' or 'other'. */
@@ -228,6 +236,25 @@ export function openPictures(renderers: Record<Kind, Renderer>, { bounds, ...dep
     return tallies;
   };
 
+  const HALF = [[-0.5, 0], [0.5, 0], [0, -0.5], [0, 0.5], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]];
+  const make = (view: View): Record<Kind, { blended: number; tight: number }> => {
+    const origin = originOf(view);
+    const hiddenAt = (wx: number, wy: number): boolean => wx > 0 && wy > 0 && wx < bounds.width && wy < bounds.height && exactlyBlack(wx, wy);
+    const found = { canvas: { blended: 0, tight: 0 }, webgl: { blended: 0, tight: 0 } };
+    for (const kind of KINDS) {
+      const pixels = pixelsOf(kind, view);
+      for (let i = 0; i < VIEW * VIEW; i++) {
+        const [x, y] = [i % VIEW, Math.floor(i / VIEW)];
+        const [wx, wy, edge] = [(x + 0.5 - origin.x) / view.scale, (y + 0.5 - origin.y) / view.scale, 1 / view.scale];
+        if (wx < edge || wy < edge || wx > bounds.width - edge || wy > bounds.height - edge) continue;
+        const colour = colourAt(pixels, x, y);
+        if (colour !== 0 && colour !== FLOOR) found[kind].blended++;
+        else if (colour === FLOOR && HALF.some(([dx, dy]) => hiddenAt(wx + dx! * texel, wy + dy! * texel))) found[kind].tight++;
+      }
+    }
+    return found;
+  };
+
   const seeing = shown[0]!.fallback.currentSight().regions.filter((region) => showsMap(region.sense) && region.polygon);
   const everyNth = (polygon: readonly Point[], count: number): Point[] => polygon.filter((_, index) => index % Math.max(1, Math.floor(polygon.length / count)) === 0).slice(0, count);
   return {
@@ -237,6 +264,7 @@ export function openPictures(renderers: Record<Kind, Renderer>, { bounds, ...dep
       ...shown[0]!.fallback.lightReaches().flatMap((reach) => [reach.origin, ...everyNth(reach.polygon, 4)]),
     ],
     judge,
+    make,
     exactlyBlack,
     shownAt: (view, x, y) => {
       const origin = originOf(view);
