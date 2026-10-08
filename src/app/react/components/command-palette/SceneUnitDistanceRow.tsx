@@ -2,7 +2,7 @@ import React from 'react';
 import { SettingRow } from './SettingRows';
 import type { AtlasView } from '../../../atlas-view';
 import { sceneUnitDistance, unitLabelFor } from '../../../grid/measurementFormat';
-import { typedDistance } from '../../../grid/typedDistance';
+import { typedDistance } from '../../../grid/unitDistance';
 import { AssetService } from '../../../services/AssetService';
 import { mapMeasurementSettings } from '../../../services/mapMeasurementSettings';
 

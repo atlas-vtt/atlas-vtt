@@ -51,7 +51,7 @@ describe('pathLengthInCells on a grid aligned to a map', () => {
     for (let col = 0; col < SPAN; col++) {
       for (let row = 0; row < SPAN; row++) {
         results.add(measure(steps.map(([dCol, dRow]) => {
-          const point = pointInCell(grid, col + dCol, row + dRow);
+          const point = pointInCell(grid, col + dCol, row + dRow, tokenSize);
           return snapping.snapTokenCenter(point.x, point.y, tokenSize);
         })));
       }
@@ -75,8 +75,10 @@ describe('pathLengthInCells on a grid aligned to a map', () => {
     expect(everywhere(grid, [[0, 0], [3, 4]], points => pathLengthInCells(grid, points, 'euclidean'))).toEqual([5]);
   });
 
-  it.each(ALIGNED_GRIDS)('measures a token of two cells, which snaps to where cells meet, like any other (size $size)', (grid) => {
-    expect(everywhere(grid, [[0, 0], [2, 2]], points => pathLengthInCells(grid, points, 'alternating'), 2)).toEqual([3]);
+  it.each(ALIGNED_GRIDS)('measures a token of an even footprint, which snaps to where cells meet, like any other (size $size)', (grid) => {
+    for (const tokenSize of [1.5, 2.5]) {
+      expect(everywhere(grid, [[0, 0], [2, 2]], points => pathLengthInCells(grid, points, 'alternating'), tokenSize)).toEqual([3]);
+    }
   });
 
   it.each(ALIGNED_GRIDS)('labels the same path alike everywhere (size $size)', (grid) => {
