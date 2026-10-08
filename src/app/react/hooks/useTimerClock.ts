@@ -30,32 +30,31 @@ export function useTimerClock(
   const seenDeadline = useRef<number | null>(null);
   const expire = useStableCallback(onExpire);
   const run = timerRun(widget);
+  const running = run !== undefined;
   const widgetId = widget.id;
 
   useEffect(() => {
-    if (!run) return undefined;
+    if (!running) return undefined;
     let timeout: number | undefined;
+    // Each tick reads the run from the store, so checkpoints and edits in other views never stop the clock.
     const tick = (): void => {
       window.clearTimeout(timeout);
       const state = store.getState();
       const current = state.widgetSettings.widgets[widgetId];
-      // Another view or an edit changed the run; this effect runs again for the new one.
-      if (current?.type !== 'timer' || timerRun(current) !== run) return;
+      if (current?.type !== 'timer') return;
+      const currentRun = timerRun(current);
+      if (!currentRun) return;
       const time = Date.now();
       // A load rewrites the widgets in steps; only the loaded scene is written to.
-      if (state.isMapLoading) {
-        timeout = window.setTimeout(tick, msUntilNextSecond(current, time));
-        return;
-      }
-      if (isTimerExpired(current, time)) {
-        state.setTimerState(widgetId, timerAt(current, time));
-        if (seenDeadline.current !== null && Math.abs(seenDeadline.current - timerDeadline(run)) < 1) expire();
-        return;
-      }
-      seenDeadline.current = timerDeadline(run);
-      if (time - run.since >= TIMER_CHECKPOINT_MS) {
-        state.setTimerState(widgetId, timerAt(current, time, true));
-        return;
+      if (!state.isMapLoading) {
+        if (isTimerExpired(current, time)) {
+          state.setTimerState(widgetId, timerAt(current, time));
+          const seen = seenDeadline.current;
+          if (seen !== null && Math.abs(seen - timerDeadline(currentRun)) < 1) expire();
+          return;
+        }
+        seenDeadline.current = timerDeadline(currentRun);
+        if (time - currentRun.since >= TIMER_CHECKPOINT_MS) state.setTimerState(widgetId, timerAt(current, time, true));
       }
       setNow(time);
       timeout = window.setTimeout(tick, msUntilNextSecond(current, time));
@@ -68,7 +67,7 @@ export function useTimerClock(
       window.clearTimeout(timeout);
       doc.removeEventListener('visibilitychange', onVisible);
     };
-  }, [run, store, widgetId, elementRef, expire]);
+  }, [running, store, widgetId, elementRef, expire]);
 
   return timerShownSeconds(widget, run ? Math.max(now, run.since) : now);
 }
