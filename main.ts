@@ -17,7 +17,6 @@ import { PlayerLootDisplay } from './src/app/services/PlayerLootDisplay';
 import { LootHistoryStore } from './src/app/loot/LootHistoryStore';
 import { PlayerWindowService } from './src/app/services/PlayerWindowService';
 import { AssetService } from './src/app/services/AssetService';
-import { TokenStatblockLinkService } from './src/app/services/TokenStatblockLinkService';
 import { SettingsService } from './src/app/services/SettingsService';
 import { addStarterTokens } from './src/app/services/starterTokens';
 import { migratePlayerResourceVisibility } from './src/app/resources/playerVisibilityMigration';
@@ -169,7 +168,6 @@ export default class AtlasVTTPlugin extends Plugin {
     PlayerWindowService.getInstance()?.destroy(false);
     this.globalAssetManager?.close();
     CreatureIndex.release(this.app);
-    TokenStatblockLinkService.release();
     disposeImageProcessing();
   }
 

@@ -73,9 +73,6 @@ export function layoutForCreature(
   return resolveLayout(app, requested);
 }
 
-/** Fantasy Statblocks sends it over the workspace when it has parsed the vault's notes. */
-export const BESTIARY_RESOLVED_EVENT = 'fantasy-statblocks:bestiary:resolved';
-
 /**
  * Whether Fantasy Statblocks has parsed the vault's notes, which it does after
  * every start. Until then the bestiary is incomplete and its lookup by name

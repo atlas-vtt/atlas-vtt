@@ -76,7 +76,7 @@ function frontmatterCreature(app: App, file: TFile): FantasyStatblocksCreature {
  * While Fantasy Statblocks still parses the vault (`isBestiaryResolved`), null
  * means "not known yet": a creature read by name is not there until the parse
  * ends, and one that `extends` another comes without it. Show a placeholder
- * then, and never store the answer as the statblock.
+ * then, and do not take such an answer for the whole statblock.
  */
 export async function resolveLinkedCreature(
   app: App,
