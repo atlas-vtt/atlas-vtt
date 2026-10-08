@@ -38,6 +38,8 @@
 
 - A statblock whose spell list holds an empty item no longer takes the toolbar and the asset manager down when it is shown.
 
+- A statblock with an empty or malformed entry no longer breaks the toolbar or the asset manager.
+
 - Fog now updates correctly when returning to a map or canceling a drawing.
 
 - Erasing part of a drawing now keeps all saved properties on the remaining pieces.

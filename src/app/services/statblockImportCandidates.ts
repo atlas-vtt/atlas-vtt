@@ -1,6 +1,7 @@
 import { TFile, normalizePath, type App } from 'obsidian';
 import { getFantasyStatblocksApi, resolveCreatureFromFence, resolveLayout, type FantasyStatblocksCreature } from './FantasyStatblocksService';
 import { resolveStatblockNote } from './statblockNoteSource';
+import { boundedList } from '../creatures/statblockValues';
 import type { TokenAsset } from './AssetService';
 import { tokenSizeFromCreatureSize } from '../pixi/token-renderer/tokenSizing';
 import { STATBLOCK_IMAGE_KEYS, type StatblockImageKey } from './statblockImageKeys';
@@ -32,7 +33,7 @@ function decodeStatblockLink(reference: string): string {
 /** YAML interprets unquoted [[links]] as nested arrays. */
 export function imageReference(value: unknown): string | undefined {
   const reference = typeof value === 'string' ? value.trim()
-    : Array.isArray(value) ? value.flat(Infinity).find((item: unknown): item is string => typeof item === 'string' && Boolean(item.trim()))?.trim()
+    : Array.isArray(value) ? boundedList(value).flat(Infinity).find((item: unknown): item is string => typeof item === 'string' && Boolean(item.trim()))?.trim()
     : undefined;
   return reference ? decodeStatblockLink(reference) : undefined;
 }
