@@ -3,6 +3,8 @@ import { resolveLinkedCreature } from '../../src/app/creatures/linkedCreature';
 import { hasCreatureForNotePath } from '../../src/app/services/FantasyStatblocksService';
 import { creatureVault, type CreatureVault } from '../mocks/creatureVault';
 import { installParsingBestiary, type ParsingBestiary } from '../mocks/parsingBestiary';
+import { STATBLOCK_LIMITS } from '../../src/app/creatures/statblockValues';
+import { HOSTILE_VALUES, counted, counts, nestedLists, resetCounts } from '../mocks/hostileValues';
 
 const SRD_GOBLIN = { name: 'Goblin', cr: '1/4', hp: 7, source: 'SRD' };
 
@@ -44,6 +46,11 @@ describe('a creature read from a note\'s frontmatter', () => {
       .resolves.toMatchObject({ traits: ['goblin', 'humanoid'] });
   });
 
+  it('takes the file\'s name where the note\'s name is no text', async () => {
+    current.frontmatter['Bestiary/Goblin.md'] = { statblock: true, name: 42, hp: 12 };
+    await expect(resolveLinkedCreature(current.app, 'Bestiary/Goblin.md')).resolves.toMatchObject({ name: 'Goblin', hp: 12 });
+  });
+
   it('is the note\'s own, with the file\'s name, where the note names no creature', async () => {
     // Fantasy Statblocks stores no creature without a name, so such a note never gets a bestiary entry.
     current.frontmatter['Bestiary/Goblin.md'] = { statblock: true, hp: 12 };
@@ -54,48 +61,42 @@ describe('a creature read from a note\'s frontmatter', () => {
   });
 });
 
-describe('trait entries of a note that are not what a statblock holds', () => {
+describe('a note whose frontmatter is not what a statblock holds', () => {
   const note = 'Bestiary/Goblin.md';
-  /** A list that counts how often one of its items is read, and gives up where a walk has plainly run away. */
-  let reads = 0;
-  const counted = <T>(list: T[]): T[] => new Proxy(list, {
-    get(target, key, receiver): unknown {
-      if (typeof key === 'string' && /^\d+$/.test(key) && ++reads > 100_000) throw new Error('The walk did not stop.');
-      return Reflect.get(target, key, receiver);
-    },
-  });
-  const actionsOf = async (actions: unknown[]): Promise<Array<{ name: string; desc: string }>> => {
-    current.frontmatter[note] = { statblock: true, name: 'Goblin', actions };
-    reads = 0;
-    const creature = await resolveLinkedCreature(current.app, note);
-    return creature?.actions as Array<{ name: string; desc: string }>;
+  beforeEach(resetCounts);
+
+  const creatureOf = async (fields: Record<string, unknown>): Promise<Record<string, unknown>> => {
+    current.frontmatter[note] = counted({ statblock: true, name: 'Goblin', ...fields });
+    resetCounts();
+    return (await resolveLinkedCreature(current.app, note))!;
+  };
+  /** The texts of a creature, as long as a walk without limits would make them: only for a bounded creature. */
+  const charactersOf = (value: unknown): number => {
+    if (typeof value === 'string') return value.length;
+    return value !== null && typeof value === 'object' ? Object.values(value).reduce<number>((sum, part) => sum + charactersOf(part), 0) : 0;
   };
 
-  it('reads lists that hold each other many times over once, not once per way to reach them', async () => {
-    // Nine levels of ten lists, each holding the ten lists below it: a billion ways down, ninety lists.
-    let level: unknown[][] = Array.from({ length: 10 }, () => counted(Array<unknown>(10).fill('x')));
-    for (let depth = 1; depth < 9; depth++) {
-      const below = level;
-      level = Array.from({ length: 10 }, () => counted([...below]));
-    }
+  it.each(Object.keys(HOSTILE_VALUES))('reads %s within one budget for the whole note', async (shape) => {
+    const hostile = HOSTILE_VALUES[shape]!;
+    // As a trait's description, as the name beside it, as each trait list, and as any other field
+    const creature = await creatureOf({
+      traits: [[hostile(), 'named by it'], ['Described by it', hostile(), hostile()]],
+      actions: hostile(),
+      bonus_actions: hostile(),
+      reactions: hostile(),
+      legendary_actions: hostile(),
+      senses: hostile(),
+    });
 
-    const [action] = await actionsOf([counted(['Swarm', ...level])]);
-    expect(action?.name).toBe('Swarm');
-    expect(reads).toBeLessThan(1000);
-  });
-
-  it('stops reading a description at its length limit instead of reading all of it first', async () => {
-    const [action] = await actionsOf([counted(['Monologue', ...Array<string>(5000).fill('word '.repeat(200))])]);
-    expect(action?.desc.length).toBeGreaterThan(1000);
-    expect(action?.desc.length).toBeLessThanOrEqual(10_100);
-    expect(reads).toBeLessThan(100);
+    expect(counts.reads).toBeLessThanOrEqual(2 * STATBLOCK_LIMITS.values);
+    expect(counts.listings).toBeLessThanOrEqual(STATBLOCK_LIMITS.values);
+    // The texts made of it: no more than was read, with a separator for each part.
+    expect(charactersOf(creature)).toBeLessThanOrEqual(STATBLOCK_LIMITS.characters + 2 * STATBLOCK_LIMITS.values);
   });
 
   it('reads no deeper than a few levels, however deep an entry is nested', async () => {
-    let deep: unknown = 'the bottom';
-    for (let depth = 0; depth < 10_000; depth++) deep = [deep];
-
-    await expect(actionsOf([['Abyss', 'Falls.', deep]])).resolves.toEqual([{ name: 'Abyss', desc: 'Falls. ' }]);
+    const creature = await creatureOf({ actions: [['Abyss', 'Falls.', nestedLists(10_000)]] });
+    expect(creature.actions).toEqual([{ name: 'Abyss', desc: 'Falls. ' }]);
   });
 
   it('reads a list that holds itself once', async () => {
@@ -104,35 +105,14 @@ describe('trait entries of a note that are not what a statblock holds', () => {
     const entry: unknown[] = ['Echo'];
     entry.push(entry);
 
-    await expect(actionsOf([['Loop', loop], entry]))
-      .resolves.toEqual([{ name: 'Loop', desc: 'Again and  again.' }, { name: 'Echo', desc: '' }]);
+    const creature = await creatureOf({ actions: [['Loop', loop], entry] });
+    expect(creature.actions).toEqual([{ name: 'Loop', desc: 'Again and  again.' }, { name: 'Echo', desc: '' }]);
   });
 
-  it('reads many entries that share one wide list within a fixed number of steps', async () => {
-    const wide: unknown[] = [];
-    for (let item = 0; item < 3000; item++) wide.push(wide);
-    const shared = counted(wide);
-
-    const actions = await actionsOf(Array.from({ length: 3000 }, () => counted(['Shared', shared])));
-    expect(actions).toHaveLength(3000);
-    expect(reads).toBeLessThan(50_000);
-  });
-
-  it('lists the keys of a map that many entries share once', async () => {
-    let listings = 0;
-    const wide: Record<string, unknown> = { ['long '.repeat(3000)]: 'first' };
-    for (let key = 0; key < 1000; key++) wide[`key ${key}`] = key;
-    const shared = new Proxy(wide, {
-      ownKeys(target): Array<string | symbol> {
-        listings += 1;
-        return Reflect.ownKeys(target);
-      },
-    });
-
-    const actions = await actionsOf(Array.from({ length: 500 }, () => ['Shared', shared, shared]));
-    expect(actions).toHaveLength(500);
-    expect(actions[0]?.desc.length).toBeLessThanOrEqual(10_100);
-    expect(listings).toBe(1);
+  it('reads no more entries of a list than the limit', async () => {
+    const creature = await creatureOf({ actions: Array.from({ length: 100_000 }, (_, index) => [`Action ${index}`, 'x']) });
+    expect(creature.actions).toHaveLength(STATBLOCK_LIMITS.entries);
+    expect((creature.actions as Array<{ name: string }>)[STATBLOCK_LIMITS.entries - 1]?.name).toBe(`Action ${STATBLOCK_LIMITS.entries - 1}`);
   });
 });
 

@@ -3,6 +3,7 @@ import { Component, Keymap, MarkdownRenderer, type App } from 'obsidian';
 import { diceLinkProps, linkDiceIn, splitDiceSegments } from '../../../services/statblockDiceLinks';
 import { decodeStatblockLinks, statblockLinksAsText } from '../../../services/statblockLinks';
 import { runInBackground } from '../../../utils/backgroundTask';
+import { boundedText } from '../../../creatures/statblockValues';
 
 interface MarkdownTextProps {
   /** Raw text, which may contain markdown and wiki links */
@@ -39,13 +40,15 @@ function DiceText({ text }: { text: string }): React.JSX.Element {
  * and embeds behave exactly as they do elsewhere in the vault.
  */
 export function StatblockMarkdown({
-  text,
+  text: given,
   app,
   sourcePath = '',
   markdown = true,
   className,
 }: MarkdownTextProps): React.JSX.Element {
   const ref = useRef<HTMLSpanElement>(null);
+  // Blocks join texts (a list of saves, the parts of a subheading); what reads the text on has the limit of one.
+  const text = boundedText(given);
 
   useEffect(() => {
     const el = ref.current;

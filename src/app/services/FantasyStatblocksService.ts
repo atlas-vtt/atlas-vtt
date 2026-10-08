@@ -1,5 +1,6 @@
 import { Component, type App } from 'obsidian';
 import type { StatblockLayout } from '../react/components/statblock/statblockTypes';
+import { boundedList } from '../creatures/statblockValues';
 
 const FANTASY_STATBLOCKS_PLUGIN_ID = 'obsidian-5e-statblocks';
 
@@ -128,7 +129,7 @@ export async function resolveCreatureFromFence(
   const base = typeof named === 'string' ? bestiaryCreatureByName(api, named) : null;
 
   let fromNote: Record<string, unknown> = {};
-  const note: unknown = Array.isArray(params.note) ? params.note.flat(Infinity).pop() : params.note;
+  const note: unknown = Array.isArray(params.note) ? boundedList(params.note).flat(Infinity).pop() : params.note;
   if (typeof note === 'string' && note.length) {
     const linkpath = note.replace(/(^\[\[|\]\]$)/g, '').split('|')[0] ?? '';
     const file = app.metadataCache.getFirstLinkpathDest(linkpath, sourcePath);

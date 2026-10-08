@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { App } from 'obsidian';
 import type { StatblockItem, StatblockLayout, StatblockMonster } from './statblockTypes';
 import { runCallback } from './layoutCallbacks';
-import { isVisible, slugify } from './statblockUtils';
+import { isVisible, slugify, stringify } from './statblockUtils';
+import { boundedStatblock } from '../../../creatures/statblockValues';
 import { StatblockEditContext, type StatblockEditApi } from './statblockEditContext';
 import {
   HeadingBlock,
@@ -96,7 +97,7 @@ function CollapseBlock(props: BlockViewProps): React.JSX.Element {
         <StatblockBlockView key={nested.id} {...props} item={nested} />
       ))}
       {item.hasRule && <div className="atlas-sb-rule" />}
-      <span hidden>{monster.name as string}</span>
+      <span hidden>{stringify(monster.name)}</span>
     </details>
   );
 }
@@ -219,7 +220,7 @@ export function StatblockBlockView(props: BlockViewProps): React.JSX.Element | n
  * the layout the creature is assigned in Fantasy Statblocks.
  */
 export function StatblockRenderer({
-  monster,
+  monster: statblock,
   layout,
   resolveLayout,
   app,
@@ -231,6 +232,8 @@ export function StatblockRenderer({
   replaceVitals,
 }: StatblockRendererProps): React.JSX.Element {
   const blocks = useMemo(() => layout.blocks ?? [], [layout]);
+  // Whatever route a statblock came by, its blocks read a copy within the limits.
+  const monster = useMemo(() => boundedStatblock(statblock), [statblock]);
   const editApi = useMemo(
     (): StatblockEditApi => edit ?? { editable: false, commit: () => undefined },
     [edit],

@@ -32,7 +32,7 @@
 
 - A statblock whose spell list holds an empty item no longer takes the toolbar and the asset manager down when it is shown.
 
-- A statblock with an empty item among its traits or actions no longer takes the toolbar and the asset manager down when it is shown.
+- A statblock with an empty item among its traits or actions, or with a value its layout does not expect, no longer takes the toolbar and the asset manager down when it is shown.
 
 - A statblock note with malformed entries in its traits or actions can no longer make Obsidian hang while Atlas reads it.
 

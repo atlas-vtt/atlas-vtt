@@ -10,6 +10,7 @@ import {
 import { hasBestiaryFrontmatter, parseStatblockFence, resolveStatblockNote } from '../services/statblockNoteSource';
 import { workSlices } from '../utils/workSlices';
 import { namedTraitLists } from './frontmatterTraits';
+import { boundedFields } from './statblockValues';
 
 /** The bestiary as one lookup, built once and reused for many notes. */
 export interface BestiaryLookup {
@@ -34,9 +35,12 @@ function withExtensions(api: FantasyStatblocksApi | null, creature: FantasyStatb
   return resolved && resolved.path === creature.path ? resolved : creature;
 }
 
-/** The creature a note's frontmatter defines, as Fantasy Statblocks' watcher parses it. */
+/**
+ * The creature a note's frontmatter defines, as Fantasy Statblocks' watcher parses it. A note is
+ * not Atlas' own text, so all that is read of its frontmatter is read within one budget.
+ */
 function frontmatterCreature(app: App, file: TFile): FantasyStatblocksCreature {
-  const frontmatter: Record<string, unknown> = app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+  const frontmatter = boundedFields(app.metadataCache.getFileCache(file)?.frontmatter);
   const name = typeof frontmatter.name === 'string' && frontmatter.name.trim() ? frontmatter.name : file.basename;
   return { ...frontmatter, ...namedTraitLists(frontmatter), name, path: file.path };
 }
