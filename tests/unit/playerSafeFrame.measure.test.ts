@@ -5,7 +5,7 @@ import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { computeTokenPixelSize } from '../../src/app/pixi/token-renderer/tokenSizing';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
-const SETTINGS = { showGrid: true, showTokenNameplates: true } as never;
+const SETTINGS = { showTokenNameplates: true } as never;
 
 /** The orchestrator with only what a player frame and a picture of the scene read. */
 function harness(options: { tokens?: boolean; lighting?: boolean } = {}): {

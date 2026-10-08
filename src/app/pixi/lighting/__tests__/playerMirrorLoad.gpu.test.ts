@@ -16,7 +16,7 @@ const IN_SIGHT = [60, 60] as const;
 const OUT_OF_SIGHT = [240, 240] as const;
 const WHITE = [255, 255, 255];
 const BLACK = [0, 0, 0];
-const SETTINGS = { showGrid: true } as AtlasSettings['localPlayerView'];
+const SETTINGS = { showTokenNameplates: true } as AtlasSettings['localPlayerView'];
 
 /** The engine and line of sight are part of the frame being captured. */
 interface Capture {

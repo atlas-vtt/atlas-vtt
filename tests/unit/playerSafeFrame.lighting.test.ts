@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import type { LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 
-const SETTINGS = { showGrid: true, showTokenNameplates: true } as never;
+const SETTINGS = { showTokenNameplates: true } as never;
 
 interface Harness {
   renderer: PixiRendererOrchestrator;

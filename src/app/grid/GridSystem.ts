@@ -229,7 +229,7 @@ export class GridSystem implements UnlitGrid {
     applyGridMark(grid, this.markBacking, this.marked);
     this.drawnColor = { color: gridColor, contrasting: !isAligning && color === undefined };
 
-    // Keep geometry ready for player capture even when the DM hides the grid.
+    // Hidden for the players' frame too, which takes the grid as the GM sets it.
     grid.visible = this.options.enabled !== false;
     this.gridSprite = grid;
     this._gridSpriteInitialWorldX = bounds.minX;
