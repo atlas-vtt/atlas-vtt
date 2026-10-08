@@ -10,7 +10,7 @@ import type { Point } from '../../grid/hexGeometry';
 import type { HideableLayer } from '../playerSafeFrame';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
-import { createMeasureLabelText, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, measureLabelFontSize, pathMidpoint } from '../utils/measureDrawing';
+import { createMeasureLabelText, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, measureLabelFontSize, pathMidpoint, watchMeasureLabelTheme } from '../utils/measureDrawing';
 
 /** Above token UI (100) and text (500), below drawings, vision and fog. */
 const LABEL_Z_INDEX = 800;
@@ -20,6 +20,11 @@ export class DragRulerView {
   private readonly label = new Container();
   private readonly pill = new Graphics();
   private readonly text = createMeasureLabelText();
+  /** Where the label stands while the ruler shows; a theme change redraws it there. */
+  private labelCenter: Point | null = null;
+  private readonly stopThemeWatch = watchMeasureLabelTheme(() => {
+    if (this.labelCenter) drawMeasureLabel(this.pill, this.text, this.labelCenter, this.viewport.scale.x);
+  });
 
   constructor(private readonly viewport: Viewport, tokenLayer: Container) {
     this.path.eventMode = 'none';
@@ -48,6 +53,7 @@ export class DragRulerView {
     this.text.text = distance;
     this.text.style.fontSize = measureLabelFontSize(scale);
     drawMeasureLabel(this.pill, this.text, middle, scale);
+    this.labelCenter = middle;
 
     this.path.visible = true;
     this.label.visible = true;
@@ -56,6 +62,7 @@ export class DragRulerView {
   clear(): void {
     this.path.clear();
     this.pill.clear();
+    this.labelCenter = null;
     this.path.visible = false;
     this.label.visible = false;
   }
@@ -65,6 +72,7 @@ export class DragRulerView {
   }
 
   destroy(): void {
+    this.stopThemeWatch();
     destroyTree(this.path);
     destroyTree(this.label);
   }
