@@ -29,6 +29,7 @@ import { isRecord } from './utils/guards';
 import { withHistory } from './stores/history';
 import { withoutCollectionWidgets } from './utils/collectionWidgets';
 import { withWidgetOff } from './utils/widgetActivation';
+import type { TimerState } from './utils/timerWidget';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
 import { computeNextInstanceNumber } from './stores/tokenInstanceNumbers';
 import { placeTokens, raiseTokens, type TokenPlace } from './stores/tokenStacking';
@@ -173,6 +174,8 @@ export interface ViewAtlasState extends ViewState {
   setIsDragging: (dragging: boolean) => void;
   setWidgetSettings: (settings: WidgetSettings) => void;
   updateWidget: (widgetId: string, updates: Partial<AnyWidget>) => void;
+  /** Sets a timer's time; a state without `running` leaves it paused. */
+  setTimerState: (widgetId: string, state: TimerState) => void;
   addWidget: (widget: AnyWidget) => void;
   removeWidget: (widgetId: string) => void;
   /** Switches a widget on or off in this scene. */
@@ -693,6 +696,14 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             }
           }),
           
+          setTimerState: (widgetId, { value, running }) => set((draft) => {
+            const widget = draft.widgetSettings.widgets[widgetId];
+            if (widget?.type !== 'timer') return;
+            widget.value = value;
+            if (running) widget.running = running;
+            else delete widget.running;
+          }),
+
           addWidget: (widget) => set((draft) => {
             draft.widgetSettings.widgets[widget.id] = widget;
           }),
