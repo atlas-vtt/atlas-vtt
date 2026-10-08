@@ -16,8 +16,8 @@ export const TIMER_CHECKPOINT_MS = 60_000;
  * the ticks but never slows the timer, since each tick only reads the time.
  * When the timer runs out it is stopped at 0 and `onExpire` is called, once for
  * all views of it (the first to notice stops it, the others then see it stopped),
- * and only for a countdown this view saw running: a timer that ran out while no
- * view showed it (Obsidian closed, the scene not open) is stopped quietly.
+ * and only for a countdown this view saw running; one it never saw running is
+ * stopped quietly.
  */
 export function useTimerClock(
   store: ViewAtlasStore,

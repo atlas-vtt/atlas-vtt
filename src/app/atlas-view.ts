@@ -328,6 +328,9 @@ export class AtlasView extends FileView {
     // Pinned note previews keep their scroll and cursor with the map
     this._serviceManager.getNotePreviewUIManager().savePinnedPreviewStates();
 
+    // Timers stop as their scene closes, and the save below keeps the time they have left
+    this._serviceManager.stopTimersForClose();
+
     // Flush all pending saves before destroying
     await this.flushPendingSaves();
 

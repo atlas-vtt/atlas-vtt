@@ -64,7 +64,7 @@
 
 - Distance per Square in a collection's settings takes a decimal typed with a comma or a point, so 1,5 and 1.5 both give one and a half, and it takes distances below 1. Typing the decimal sign your system does not use gave 15.
 
-- Timers keep correct time while Obsidian is in the background. Before, a hidden window counted a running timer down by about one second a minute. A running timer now also keeps running while its scene is closed or Obsidian is shut, and one that ran out meanwhile shows 00:00.
+- Timers keep correct time while Obsidian is in the background. Before, a hidden window counted a running timer down by about one second a minute.
 
 ## Important changes
 
