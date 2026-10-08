@@ -40,7 +40,7 @@
 
 - Scenes with a map image no longer fail to open with "Failed to fetch" on older Obsidian installers, or where Obsidian runs on a different Electron than it shipped with.
 
-- A scene that fails to open no longer shows the tokens of the scene that was open before.
+- When a scene's file or map image cannot be read, the tokens of the scene that was open before no longer stay on the canvas.
 
 ## Important changes
 

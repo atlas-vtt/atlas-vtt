@@ -1,12 +1,7 @@
-import { ImageSource, Texture } from 'pixi.js';
+import { Texture } from 'pixi.js';
 import type { TFile, Vault } from 'obsidian';
-import { withDecodedImage } from '../imageProcessing/imageElement';
-
-/** `createImageBitmap` tells every raster format from its bytes; a vector goes through an `<img>`, which must be told its type. */
-async function decode(bytes: ArrayBuffer, extension: string): Promise<ImageBitmap> {
-  if (extension.toLowerCase() !== 'svg') return createImageBitmap(new Blob([bytes]));
-  return withDecodedImage(new Blob([bytes], { type: 'image/svg+xml' }), (image) => createImageBitmap(image));
-}
+import { describeError } from '../utils/errors';
+import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from './utils/decodedImage';
 
 /**
  * A vault image as a texture at its own size. Free it with `destroyVaultTexture`.
@@ -19,8 +14,14 @@ async function decode(bytes: ArrayBuffer, extension: string): Promise<ImageBitma
  * `<img>` shows it.
  */
 export async function loadVaultTexture(vault: Vault, file: TFile): Promise<Texture> {
-  const bitmap = await decode(await vault.readBinary(file), file.extension);
-  return new Texture({ source: new ImageSource({ resource: bitmap, label: file.path }), label: file.path });
+  let image: DecodedImage;
+  try {
+    image = await decodeImage(await vault.readBinary(file), imageMimeType(file.extension), Infinity);
+  } catch (error) {
+    // Whoever reports the failure must be able to tell which file it was
+    throw new Error(`The image ${file.path} could not be read: ${describeError(error)}`, { cause: error });
+  }
+  return new Texture({ source: decodedSource(image, { label: file.path }), label: file.path });
 }
 
 /** Destroys a texture of `loadVaultTexture` and frees its pixels now instead of at garbage collection. */

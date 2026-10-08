@@ -30,8 +30,9 @@ async function painted(type: string): Promise<ArrayBuffer> {
   return (await canvas.convertToBlob({ type, quality: 0.9 })).arrayBuffer();
 }
 
-const drawn = (): ArrayBuffer => new TextEncoder().encode(
-  `<svg xmlns="http://www.w3.org/2000/svg" width="${SIZE.width}" height="${SIZE.height}"><rect width="100%" height="100%" fill="#b0a48e"/></svg>`,
+/** A vector image; `size` is what its root element says of its own size. */
+const drawn = (size: string): ArrayBuffer => new TextEncoder().encode(
+  `<svg xmlns="http://www.w3.org/2000/svg" ${size}><rect width="100%" height="100%" fill="#b0a48e"/></svg>`,
 ).buffer;
 
 /** A vault holding one scene on `image`, whose bytes are `bytes`. */
@@ -66,9 +67,20 @@ describe('opening a scene on a map image', () => {
   });
 
   it('shows a vector image at the size it states', async () => {
-    const loaded = await open('maps/Crypt.svg', drawn());
+    const loaded = await open('maps/Crypt.svg', drawn(`width="${SIZE.width}" height="${SIZE.height}"`));
 
     expect({ width: loaded.texture.width, height: loaded.texture.height }).toEqual(SIZE);
+    backgroundTextureCache.release(loaded.backgroundUrl!);
+  });
+
+  it.each([
+    ['only a view box', `viewBox="0 0 ${SIZE.width} ${SIZE.height}"`],
+    ['a size relative to its place', `width="100%" height="100%" viewBox="0 0 ${SIZE.width} ${SIZE.height}"`],
+  ])('shows a vector image that states %s at the size an <img> gives it', async (_what, size) => {
+    const loaded = await open('maps/Crypt.svg', drawn(size));
+
+    // The browser's 300 × 150 box for an image without a size, at the view box's proportions
+    expect({ width: loaded.texture.width, height: loaded.texture.height }).toEqual({ width: 200, height: 150 });
     backgroundTextureCache.release(loaded.backgroundUrl!);
   });
 
@@ -82,9 +94,9 @@ describe('opening a scene on a map image', () => {
     expect(bitmap.width).toBe(0);
   });
 
-  it('says that the image cannot be read when the file holds none', async () => {
+  it('names the image and the reason when the file holds none', async () => {
     const load = open('atlas-vtt/assets/Crypt.webp', new TextEncoder().encode('not an image').buffer);
 
-    await expect(load).rejects.toThrow(/could not be decoded/);
+    await expect(load).rejects.toThrow('The image atlas-vtt/assets/Crypt.webp could not be read: The source image cannot be decoded.');
   });
 });
