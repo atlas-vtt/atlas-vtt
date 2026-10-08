@@ -74,20 +74,40 @@ export function layoutForCreature(
 }
 
 /**
- * Resolves a bestiary creature from a linked note path, falling back to
- * matching the note basename against creature names.
+ * Whether Fantasy Statblocks has parsed the vault's notes, which it does after
+ * every start. Until then the bestiary is incomplete and its lookup by name
+ * throws. Without the plugin there is no parse to wait for.
  */
-export function findCreatureForNotePath(notePath: string): FantasyStatblocksCreature | null {
-  const api = getFantasyStatblocksApi();
-  if (!api) return null;
-
-  const byPath = api.getBestiaryCreatures().find((creature) => creature.path === notePath);
-  if (byPath) return byPath;
-
-  const basename = notePath.split('/').pop()?.replace(/\.md$/, '') ?? '';
-  return basename && api.hasCreature(basename) ? api.getCreatureFromBestiary(basename) : null;
+export function isBestiaryResolved(api: FantasyStatblocksApi | null = getFantasyStatblocksApi()): boolean {
+  return api?.isResolved?.() !== false;
 }
 
+/**
+ * The bestiary creature of a name with its `extends` applied, which only the
+ * plugin's own lookup does; none while the bestiary is still being parsed.
+ */
+export function bestiaryCreatureByName(api: FantasyStatblocksApi, name: string): FantasyStatblocksCreature | null {
+  return name && isBestiaryResolved(api) && api.hasCreature(name) ? api.getCreatureFromBestiary(name) : null;
+}
+
+/** A note's file name without `.md`, the name a linked note's creature is looked up by. */
+export function noteBasename(notePath: string): string {
+  return notePath.split('/').pop()?.replace(/\.md$/, '') ?? '';
+}
+
+/**
+ * Whether the bestiary holds a creature for a linked note, by the note's path
+ * or its name. Unlike the creature, this can be asked while the bestiary is
+ * being parsed; a note the parse has not reached yet is not held until it has.
+ */
+export function hasCreatureForNotePath(notePath: string): boolean {
+  const api = getFantasyStatblocksApi();
+  if (!api) return false;
+
+  const basename = noteBasename(notePath);
+  return api.getBestiaryCreatures().some((creature) => creature.path === notePath)
+    || (basename !== '' && api.hasCreature(basename));
+}
 
 /**
  * Builds the creature a ```statblock fence describes, mirroring Fantasy
@@ -103,10 +123,9 @@ export async function resolveCreatureFromFence(
   if (!api) return null;
 
   const named = params.creature ?? params.monster;
-  const base =
-    typeof named === 'string' && api.hasCreature(named)
-      ? api.getCreatureFromBestiary(named)
-      : null;
+  // A fence that builds on a bestiary creature is half a statblock until that creature can be read.
+  if (typeof named === 'string' && !isBestiaryResolved(api)) return null;
+  const base = typeof named === 'string' ? bestiaryCreatureByName(api, named) : null;
 
   let fromNote: Record<string, unknown> = {};
   const note: unknown = Array.isArray(params.note) ? params.note.flat(Infinity).pop() : params.note;

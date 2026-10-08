@@ -5,7 +5,7 @@ import type { NotePin } from '../types';
 import type { TokenVitals } from './statblockVitalsSync';
 import { NotePreviewWindow } from './NotePreviewWindow';
 import { StatblockPreviewWindow } from './StatblockPreviewWindow';
-import { findCreatureForNotePath } from './FantasyStatblocksService';
+import { hasCreatureForNotePath } from './FantasyStatblocksService';
 import { MapLinkPreview } from './MapLinkPreview';
 import { linkedFilePath, linkedMapPath, linkedSceneFile } from './sceneLinks';
 import { runInBackground } from '../utils/backgroundTask';
@@ -332,7 +332,7 @@ export class NotePreviewUIManager {
     if (file instanceof TFile) {
 
       // Notes backed by a Fantasy Statblocks creature → rich statblock preview for tokens
-      const isStatblock = findCreatureForNotePath(file.path) !== null;
+      const isStatblock = hasCreatureForNotePath(file.path);
 
       if (isStatblock && 'type' in pin && pin.type === 'token') {
         const statblockPreview = new StatblockPreviewWindow(
