@@ -8,7 +8,7 @@ import type { PlayerCameraState } from '../../types/playerCamera';
 const WIDTH = 96;
 const HEIGHT = 64;
 const SETTINGS = { showGrid: true } as AtlasSettings['localPlayerView'];
-/** On a screen of 96 × 64 players see the world from (952, 468) to (1048, 532). */
+/** On a pane of 96 × 64 players see the world from (952, 468) to (1048, 532). */
 const FROZEN: PlayerCameraState = { centerX: 1000, centerY: 500, scale: 1 };
 const BACKGROUND = [0, 255, 0];
 const RED = [255, 0, 0];
@@ -20,7 +20,9 @@ interface Stage {
   target: HTMLCanvasElement;
   /** Mirrors a frame and returns the players' canvas, pixel by pixel. */
   mirrored(): number[];
-  /** What the players' canvas shows at (x, y) of a frame 96 × 64 wide. */
+  /** The DM's pane takes this size. */
+  resizePane(width: number, height: number): void;
+  /** What the players' canvas shows at the point (x, y) of the frame they were frozen on. */
   at(x: number, y: number): number[];
 }
 
@@ -30,9 +32,11 @@ describe('players frozen on a real canvas whose pane changes size', () => {
   afterEach(() => { while (cleanup.length) cleanup.pop()!(); });
 
   /** A map with a mark in two corners and the middle of what players are frozen on, and marks just outside it. */
-  async function setup(resolution = 1): Promise<Stage> {
+  async function setup(resolution = 1, width = WIDTH, height = HEIGHT): Promise<Stage> {
     const app = new Application();
-    await app.init({ width: WIDTH, height: HEIGHT, resolution, preference: 'webgl', antialias: false, autoStart: false, backgroundColor: 0x00ff00 });
+    await app.init({ width, height, resolution, preference: 'webgl', antialias: false, autoStart: false, backgroundColor: 0x00ff00 });
+    // The viewport's screen is the pane's size, also where the canvas has no whole number of pixels for it
+    let pane = { width, height };
     cleanup.push(() => app.destroy(true, { children: true }));
     const world = new Container();
     world.addChild(
@@ -46,12 +50,12 @@ describe('players frozen on a real canvas whose pane changes size', () => {
 
     const source: PlayerFrameSource = {
       canvas: app.canvas,
-      getScreen: () => ({ width: app.screen.width, height: app.screen.height }),
+      getScreen: () => ({ ...pane, resolution }),
       withPlayerSafeFrame: (capture, _settings, camera) => captureWithLayerVisibility(
         [],
         () => app.renderer.render(app.stage),
         capture,
-        camera && { target: { screenWidth: app.screen.width, screenHeight: app.screen.height, position: world.position, scale: world.scale }, camera },
+        camera && { target: { screenWidth: pane.width, screenHeight: pane.height, position: world.position, scale: world.scale }, camera },
       ),
     };
     const target = document.createElement('canvas');
@@ -67,8 +71,13 @@ describe('players frozen on a real canvas whose pane changes size', () => {
       mirror.frame();
       return Array.from(context.getImageData(0, 0, target.width, target.height).data);
     };
-    const at = (x: number, y: number): number[] => Array.from(context.getImageData(x * resolution, y * resolution, 1, 1).data.slice(0, 3));
-    return { app, target, mirrored, at };
+    const at = (x: number, y: number): number[] =>
+      Array.from(context.getImageData(Math.floor(x * resolution), Math.floor(y * resolution), 1, 1).data.slice(0, 3));
+    const resizePane = (nextWidth: number, nextHeight: number): void => {
+      app.renderer.resize(nextWidth, nextHeight);
+      pane = { width: nextWidth, height: nextHeight };
+    };
+    return { app, target, mirrored, resizePane, at };
   }
 
   function expectFrozenPicture({ at }: Stage): void {
@@ -83,18 +92,24 @@ describe('players frozen on a real canvas whose pane changes size', () => {
   }
 
   it.each([
-    { name: 'wider', width: WIDTH + 64, height: HEIGHT, resolution: 1 },
-    { name: 'wider and higher by odd amounts', width: WIDTH + 37, height: HEIGHT + 11, resolution: 1 },
-    { name: 'wider on a display with two pixels per point', width: WIDTH + 37, height: HEIGHT, resolution: 2 },
-  ])('shows players the very same pixels in a pane that became $name', async ({ width, height, resolution }) => {
-    const stage = await setup(resolution);
+    { name: 'wider', from: [WIDTH, HEIGHT], to: [WIDTH + 64, HEIGHT], resolution: 1 },
+    { name: 'wider and higher by odd amounts', from: [WIDTH, HEIGHT], to: [WIDTH + 37, HEIGHT + 11], resolution: 1 },
+    { name: 'wider on a display with two pixels per point', from: [WIDTH, HEIGHT], to: [WIDTH + 37, HEIGHT], resolution: 2 },
+    // 97 points are 121.25 pixels and 98 are 122.5: neither pane has a whole number of pixels
+    { name: 'a point wider on a display at 125 %', from: [97, 65], to: [98, 65], resolution: 1.25 },
+    { name: 'wider and higher on a display at 125 %', from: [97, 65], to: [160, 90], resolution: 1.25 },
+    { name: 'wider and higher on a display at 175 %', from: [97, 65], to: [131, 76], resolution: 1.75 },
+  ] as const)('shows players the very same pixels in a pane that became $name', async ({ from, to, resolution }) => {
+    const stage = await setup(resolution, ...from);
     const frozen = stage.mirrored();
+    const frozenSize = [stage.target.width, stage.target.height];
     expectFrozenPicture(stage);
 
-    stage.app.renderer.resize(width, height);
+    stage.resizePane(to[0], to[1]);
 
     expect(stage.mirrored()).toEqual(frozen);
-    expect([stage.target.width, stage.target.height]).toEqual([WIDTH * resolution, HEIGHT * resolution]);
+    expect([stage.target.width, stage.target.height]).toEqual([Math.round(from[0] * resolution), Math.round(from[1] * resolution)]);
+    expect(frozenSize).not.toEqual([stage.app.canvas.width, stage.app.canvas.height]);
   });
 
   it.each([
@@ -105,7 +120,7 @@ describe('players frozen on a real canvas whose pane changes size', () => {
     const stage = await setup();
     stage.mirrored();
 
-    stage.app.renderer.resize(width, height);
+    stage.resizePane(width, height);
     stage.mirrored();
 
     expect([stage.target.width, stage.target.height]).toEqual([WIDTH, HEIGHT]);

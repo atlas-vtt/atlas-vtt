@@ -31,7 +31,7 @@ function setup(): Harness {
   const source: PlayerFrameSource = {
     canvas,
     getCamera: () => DM_CAMERA,
-    getScreen: () => screen,
+    getScreen: () => ({ ...screen, resolution: 1 }),
     withPlayerSafeFrame: (capture, _settings, through) => { camera = through; capture(); },
   };
   const state: Harness['state'] = { frozen: null };

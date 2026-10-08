@@ -192,7 +192,7 @@ async function waitForRenderedFrameSource(view: AtlasView): Promise<PlayerFrameS
     },
     getScreen: () => {
       const viewport = view.serviceManager.getRendererService().getViewport();
-      return viewport ? { width: viewport.screenWidth, height: viewport.screenHeight } : undefined;
+      return viewport ? { width: viewport.screenWidth, height: viewport.screenHeight, resolution: app.renderer.resolution } : undefined;
     },
   };
 }

@@ -3,7 +3,7 @@ import type { StoreApi } from 'zustand';
 import type { PlayerCameraState } from '../local-player-view';
 import type { ViewAtlasState } from '../storeFactory';
 import type { AtlasSettings } from './SettingsService';
-import { frozenView, type FrozenFrame, type FrozenView, type Size } from './frozenPlayerFrame';
+import { frozenView, type FrozenFrame, type FrozenView, type Screen } from './frozenPlayerFrame';
 import type { PlayerRollSources } from './playerRollSource';
 
 type PlayerViewSettings = AtlasSettings['localPlayerView'];
@@ -48,8 +48,8 @@ export interface PlayerFrameSource {
   /** Which tokens the scene this canvas shows lets players see, for rolls to name. Without it rolls name nobody. */
   rollSources?: PlayerRollSources;
   getCamera?(): PlayerCameraState | undefined;
-  /** The size of the screen the canvas shows, in CSS pixels: what a camera is centred in. */
-  getScreen?(): Size | undefined;
+  /** The screen the canvas shows: what a camera is centred in. */
+  getScreen?(): Screen | undefined;
   /** Renders the player frame for `capture`, then the DM's frame again. */
   withPlayerSafeFrame: PlayerSafeFrame;
   /** Without it the canvas is captured on every display frame of the player window. */

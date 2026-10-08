@@ -6,6 +6,11 @@ export interface Size {
   height: number;
 }
 
+/** The screen a canvas shows: its size in CSS pixels, and the canvas pixels to each of them. */
+export interface Screen extends Size {
+  resolution: number;
+}
+
 /** A rectangle of a canvas, in its pixels. */
 export interface CanvasPart extends Size {
   x: number;
@@ -35,16 +40,21 @@ export interface FrozenView {
  * frozen frame then is the middle of a larger screen, copied pixel for pixel, and a screen too
  * small for it is rendered zoomed out and copied enlarged. Nothing while the screen is the frozen one.
  */
-export function frozenView(frozen: FrozenFrame, screen: Size, canvas: Size): FrozenView | undefined {
+export function frozenView(frozen: FrozenFrame, screen: Screen, canvas: Size): FrozenView | undefined {
   if (screen.width === frozen.screen.width && screen.height === frozen.screen.height) return undefined;
   const fit = Math.min(1, screen.width / frozen.screen.width, screen.height / frozen.screen.height);
-  const width = Math.round(canvas.width * frozen.screen.width * fit / screen.width);
-  const height = Math.round(canvas.height * frozen.screen.height * fit / screen.height);
+  const frameWidth = frozen.screen.width * fit;
+  const frameHeight = frozen.screen.height * fit;
+  // A canvas has whole pixels where its screen may have none (125 %): a frame copied as it is has the pixels it was frozen with
+  const { width, height } = fit === 1 ? frozen.pixels : {
+    width: Math.min(canvas.width, Math.round(frameWidth * screen.resolution)),
+    height: Math.min(canvas.height, Math.round(frameHeight * screen.resolution)),
+  };
   const part = { x: Math.round((canvas.width - width) / 2), y: Math.round((canvas.height - height) / 2), width, height };
   const scale = frozen.camera.scale * fit;
-  // A part cannot lie at half a pixel: the camera moves by what its place was rounded by
-  const offCentreX = (part.x + width / 2 - canvas.width / 2) * screen.width / canvas.width;
-  const offCentreY = (part.y + height / 2 - canvas.height / 2) * screen.height / canvas.height;
+  // The part begins on a whole pixel: the camera moves by what lies between the frame's middle there and the screen's
+  const offCentreX = part.x / screen.resolution + (frameWidth - screen.width) / 2;
+  const offCentreY = part.y / screen.resolution + (frameHeight - screen.height) / 2;
   const moved = fit !== 1 || offCentreX !== 0 || offCentreY !== 0;
   const camera = moved
     ? { centerX: frozen.camera.centerX - offCentreX / scale, centerY: frozen.camera.centerY - offCentreY / scale, scale }
