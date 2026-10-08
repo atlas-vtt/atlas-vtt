@@ -79,11 +79,7 @@ function createTabs(app: App): Tabs {
   };
 }
 
-function pressMoveKey(): void {
-  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', code: 'KeyV' }));
-}
-
-describe('map shortcuts after pinned note previews opened', () => {
+describe('map shortcuts after note previews opened at the same time', () => {
   let app: App;
   let tabs: Tabs;
   let store: ViewAtlasStore;
@@ -107,40 +103,106 @@ describe('map shortcuts after pinned note previews opened', () => {
     manager.destroy();
     document.body.empty();
     vi.unstubAllGlobals();
+    vi.restoreAllMocks();
   });
 
-  /** A map with two pinned notes loads; the notes finish loading in the order they were opened. */
-  async function loadMapWithTwoPinnedNotes(): Promise<void> {
-    const layout = { left: 10, top: 10, width: 400, height: 300 };
-    store.getState().savePinnedNotePreview({ anchorId: 'pin-1', notePath: 'notes/tavern.md', ...layout });
-    store.getState().savePinnedNotePreview({ anchorId: 'pin-2', notePath: 'notes/cellar.md', ...layout });
-    eventBus.emit('map-loaded');
-
+  /** The notes finish loading in the order their previews were opened; `shown` of them are still open then. */
+  async function finishLoading(shown: number): Promise<void> {
     expect(tabs.noteLoads).toHaveLength(2);
-    for (const [index, finishLoading] of tabs.noteLoads.entries()) {
-      finishLoading();
-      await waitFor(() => expect(document.querySelectorAll('.atlas-embedded-leaf-view')).toHaveLength(index + 1));
-    }
+    for (const finish of tabs.noteLoads) finish();
+    await waitFor(() => expect(document.querySelectorAll('.atlas-embedded-leaf-view')).toHaveLength(shown));
+  }
+
+  function pinNote(anchorId: string, notePath: string): void {
+    store.getState().savePinnedNotePreview({ anchorId, notePath, left: 10, top: 10, width: 400, height: 300 });
+  }
+
+  async function loadMapWithTwoPinnedNotes(): Promise<void> {
+    pinNote('pin-1', 'notes/tavern.md');
+    pinNote('pin-2', 'notes/cellar.md');
+    eventBus.emit('map-loaded');
+    await finishLoading(2);
+  }
+
+  function tapModKey(): void {
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Meta', metaKey: true, ctrlKey: true }));
+    document.dispatchEvent(new KeyboardEvent('keyup', { key: 'Meta' }));
+  }
+
+  /** The handler V reaches in a map view, as its toolbar binds the move tool. */
+  function moveToolOf(viewId: string): ReturnType<typeof vi.fn> {
+    const move = vi.fn();
+    renderHook(() => useMapHotkeys({ move }, viewId));
+    return move;
+  }
+
+  function pressV(): void {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'v', code: 'KeyV' }));
+  }
+
+  /** V must reach the move tool of a map opened in a new tab after the first one was closed. */
+  function expectShortcutsInReopenedMap(): void {
+    tabs.close(mapLeaf);
+    tabs.openMap(SECOND_VIEW);
+    const move = moveToolOf(SECOND_VIEW);
+
+    pressV();
+
+    expect(move).toHaveBeenCalledTimes(1);
+  }
+
+  function expectActive(leaf: WorkspaceLeaf, active: boolean): void {
+    expect(leaf.view.containerEl.closest('.workspace-leaf')?.hasClass('mod-active')).toBe(active);
   }
 
   it('still runs them in a map tab that was closed and opened again', async () => {
     await loadMapWithTwoPinnedNotes();
 
-    tabs.close(mapLeaf);
-    tabs.openMap(SECOND_VIEW);
-
-    const move = vi.fn();
-    renderHook(() => useMapHotkeys({ move }, SECOND_VIEW));
-    pressMoveKey();
-    expect(move).toHaveBeenCalledTimes(1);
+    expectShortcutsInReopenedMap();
   });
 
-  it('still activates the tab the GM switches to', async () => {
+  it('runs them in the map tab the GM switches to, not in the one left behind', async () => {
     await loadMapWithTwoPinnedNotes();
+    const moveInFirstMap = moveToolOf(FIRST_VIEW);
+
+    const otherMap = tabs.openMap(SECOND_VIEW);
+    const moveInOtherMap = moveToolOf(SECOND_VIEW);
+    pressV();
+
+    expectActive(otherMap, true);
+    expectActive(mapLeaf, false);
+    expect(moveInOtherMap).toHaveBeenCalledTimes(1);
+    expect(moveInFirstMap).not.toHaveBeenCalled();
+  });
+
+  it('still runs them after Cmd/Ctrl was tapped twice over a pin while its note loaded', async () => {
+    // The first preview's note, forgotten at the key's release, finishes loading without its window.
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    eventBus.emit('pin-hover-preview', {
+      pin: { id: 'pin-1', kind: 'pin', notePath: 'notes/tavern.md', x: 0, y: 0 },
+      screenX: 100,
+      screenY: 100,
+      sourceLeaf: mapLeaf,
+      pixiEvent: { metaKey: false, ctrlKey: false },
+    });
+    tapModKey();
+    tapModKey();
+    await finishLoading(0);
+
+    expectShortcutsInReopenedMap();
+  });
+
+  it('still activates tabs when the workspace fails to give a preview its leaf', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    app.workspace.getLeaf = (): never => {
+      throw new Error('No tab group found.');
+    };
+    pinNote('pin-1', 'notes/tavern.md');
+    eventBus.emit('map-loaded');
+    await waitFor(() => expect(document.querySelector('.atlas-note-preview-window')).toBeNull());
 
     const otherMap = tabs.openMap(SECOND_VIEW);
 
-    expect(otherMap.view.containerEl.closest('.workspace-leaf')?.hasClass('mod-active')).toBe(true);
-    expect(mapLeaf.view.containerEl.closest('.workspace-leaf')?.hasClass('mod-active')).toBe(false);
+    expectActive(otherMap, true);
   });
 });
