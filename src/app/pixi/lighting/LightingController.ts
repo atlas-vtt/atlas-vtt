@@ -36,6 +36,7 @@ import type { SceneLightingView } from './sceneLightingView';
 import { SessionLighting } from './SessionLighting';
 import { SightRulesWatch } from './SightRulesWatch';
 import { WallEditor } from './WallEditor';
+import type { LightingQualitySource } from '../../lighting/lightingQuality';
 
 export interface LightingControllerDeps {
   viewport: Viewport;
@@ -53,6 +54,8 @@ export interface LightingControllerDeps {
   senses?: TokenSensesResolver;
   /** Committed fog for the current map; null when its geometry is invalid. */
   fogCoverage?: () => FogCoverage | null;
+  /** How much the lighting may ask of the graphics device; the default quality without one. */
+  quality?: LightingQualitySource;
 }
 
 /**
@@ -107,6 +110,7 @@ export class LightingController {
       rules: () => this.sightRules(),
       onSightChange: () => this.onSightChange(),
       exploredWatcher: this.modes.memory,
+      ...(deps.quality && { quality: deps.quality }),
     });
     this.sightAids = new GmSightAids({
       viewport, store, measurement, bounds: deps.bounds,

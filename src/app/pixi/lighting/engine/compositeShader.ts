@@ -196,7 +196,9 @@ void main() {
   vec3 albedo = toLinear(uGrid > 0.5 ? back.rgb / max(back.a, 1.0 / 255.0) : back.rgb);
   // rgb: the lights' light; alpha: its luminance had every light its bright level here.
   vec4 lamps = textureLod(uLightMap, world / uLightWorld, 0.0);
-  vec3 bounce = bounceAt(world);
+  // Without bounce (the lighting quality's choice) no probe is read or traced to.
+  bool bounces = uBounceGain > 0.0;
+  vec3 bounce = bounces ? bounceAt(world) : vec3(0.0);
   // Tiles end at the capsule: from its core to the band a wall's face takes the light (direct
   // and bounce alike) of the floor in front of it, on its own side, then blends back to its own
   // over a texel, where its own is fully lit (blending earlier left a dark line along walls).
@@ -216,7 +218,7 @@ void main() {
   if (front > 0.0) {
     vec2 floorAt = climbFromWall(world, uBand);
     lamps = mix(lamps, textureLod(uLightMap, floorAt / uLightWorld, 0.0), front);
-    bounce = mix(bounce, bounceAt(floorAt), front);
+    if (bounces) bounce = mix(bounce, bounceAt(floorAt), front);
     // A wall's face has the ambient light of the floor in front of it, on its own side.
     if (uHasZones > 0.5) {
       zone = mix(zone, textureLod(uZones, floorAt / uLightWorld, 0.0), front);
