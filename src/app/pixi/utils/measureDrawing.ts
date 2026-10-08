@@ -5,6 +5,7 @@
 
 import { Text, type Graphics } from 'pixi.js';
 import type { Point } from '../../grid/hexGeometry';
+import { canvasBadgeColors, isDarkTheme } from './canvasBadgeColors';
 
 /** The shapes the measure tool draws; a sphere is drawn as a circle. */
 export type MeasureShape = 'line' | 'cone' | 'circle' | 'sphere';
@@ -122,7 +123,7 @@ export function drawMeasurement(graphics: Graphics, color: number, measurement: 
 }
 
 export function createMeasureLabelText(): Text {
-  const text = new Text({ text: '', style: { fontSize: LABEL_FONT_SIZE, fill: 0xffffff, fontWeight: 'normal' } });
+  const text = new Text({ text: '', style: { fontSize: LABEL_FONT_SIZE, fill: canvasBadgeColors().stroke, fontWeight: 'normal' } });
   text.eventMode = 'none';
   text.anchor.set(0.5);
   return text;
@@ -133,9 +134,11 @@ export function measureLabelFontSize(viewportScale: number): number {
   return Math.max(12, Math.min(32, LABEL_FONT_SIZE / viewportScale));
 }
 
-/** Centres `text` on `center` and draws its theme-coloured pill into `pill`. */
+/** Centres `text` on `center`, inks it and draws its pill into `pill`, both in the canvas badges' theme colours. */
 export function drawMeasureLabel(pill: Graphics, text: Text, center: Point, viewportScale: number): void {
   const scaleFactor = 1 / viewportScale;
+  const { background, stroke } = canvasBadgeColors();
+  if (text.style.fill !== stroke) text.style.fill = stroke;
   text.position.set(center.x, center.y);
 
   const bounds = text.getLocalBounds();
@@ -145,13 +148,20 @@ export function drawMeasureLabel(pill: Graphics, text: Text, center: Point, view
   const x = center.x - width / 2;
   const y = center.y - height / 2;
 
-  const isDarkMode = document.body.classList.contains('theme-dark');
   pill.clear();
   pill.roundRect(x, y, width, height, height / 2)
-    .fill({ color: isDarkMode ? 0x2a2a2a : 0xe3e3e3, alpha: 0.95 })
-    .stroke({
-      width: 0.5 * scaleFactor,
-      color: isDarkMode ? 0xffffff : 0x000000,
-      alpha: isDarkMode ? 0.4 : 0.3,
-    });
+    .fill({ color: background, alpha: 0.95 })
+    .stroke({ width: 0.5 * scaleFactor, color: stroke, alpha: isDarkTheme() ? 0.4 : 0.3 });
+}
+
+/** Calls `redraw` whenever Obsidian switches between its light and dark theme; returns what stops it. */
+export function watchMeasureLabelTheme(redraw: () => void): () => void {
+  let dark = isDarkTheme();
+  const observer = new MutationObserver(() => {
+    if (isDarkTheme() === dark) return;
+    dark = isDarkTheme();
+    redraw();
+  });
+  observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  return () => observer.disconnect();
 }

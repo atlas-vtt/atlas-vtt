@@ -8,7 +8,7 @@ import { formatDistance, resolveMeasurementSettings, type MeasurementSettings } 
 import type { SceneSource } from '../host/sceneSource';
 import type { ViewState } from '../types/viewState';
 import { isHandled } from './utils/handledEvents';
-import { createMeasureLabelText, drawMeasureLabel, drawMeasurement, measureLabelFontSize, type MeasureRecord, type MeasureShape } from './utils/measureDrawing';
+import { createMeasureLabelText, drawMeasureLabel, drawMeasurement, measureLabelFontSize, watchMeasureLabelTheme, type MeasureRecord, type MeasureShape } from './utils/measureDrawing';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { MeasurePartsVisibility, type MeasurePlayersView } from './measurePartsVisibility';
 import type { LayerVisibility } from './playerSafeFrame';
@@ -40,6 +40,9 @@ interface PersistentMeasurement {
   graphics: Graphics;
   pill: Graphics;
   text: Text;
+  /** Where its label stands and the zoom it was drawn at, so a theme change redraws it in place. */
+  labelCenter: { x: number; y: number };
+  labelScale: number;
 }
 
 export class MeasureRenderer {
@@ -82,6 +85,7 @@ export class MeasureRenderer {
   private _viewportScaleHandler?: () => void;
   private _measureShapeChangedHandler?: (shape: MeasureShape) => void;
   private _measurePersistenceChangedHandler?: (persist: boolean) => void;
+  private readonly stopThemeWatch: () => void;
 
   constructor(
     viewport: Viewport,
@@ -114,6 +118,7 @@ export class MeasureRenderer {
     
     // Setup viewport scale listener
     this.setupViewportScaleListener();
+    this.stopThemeWatch = watchMeasureLabelTheme(() => this.redrawLabels());
     
     // Bind handlers
     this.pointerDownHandler = this.handlePointerDown.bind(this);
@@ -185,6 +190,14 @@ export class MeasureRenderer {
     }
   }
   
+  /** Redraws every label in the current theme's colours. */
+  private redrawLabels(): void {
+    this.updatePillAndText();
+    for (const { pill, text, labelCenter, labelScale } of this.persistentMeasurements) {
+      drawMeasureLabel(pill, text, labelCenter, labelScale);
+    }
+  }
+
   private enableMeasureTool(): void {
     this.viewport.on('pointerdown', this.pointerDownHandler);
     this.viewport.on('pointermove', this.pointerMoveHandler);
@@ -340,8 +353,10 @@ export class MeasureRenderer {
     drawMeasurement(persistGraphics, cssColorToHexNumber(getObsidianAccentColor()), record, this.measurementSettings().coneAngle);
 
     persistText.anchor.set(0.5);
-    drawMeasureLabel(persistPill, persistText, this.labelAnchor(record.start, record.end), this.viewport.scale.x);
-    const measurement = { graphics: persistGraphics, pill: persistPill, text: persistText };
+    const labelCenter = this.labelAnchor(record.start, record.end);
+    const labelScale = this.viewport.scale.x;
+    drawMeasureLabel(persistPill, persistText, labelCenter, labelScale);
+    const measurement = { graphics: persistGraphics, pill: persistPill, text: persistText, labelCenter, labelScale };
     this.parts.keep(measurement);
     
     for (const part of [persistGraphics, persistPill, persistText]) {
@@ -394,6 +409,7 @@ export class MeasureRenderer {
   
   public destroy(): void {
     this._unsubscribeFromToolChanges?.();
+    this.stopThemeWatch();
     
     // Remove viewport scale listener
     if (this._viewportScaleHandler) {
