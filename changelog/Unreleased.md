@@ -38,6 +38,8 @@
 
 - Undo and redo now change only what that edit changed. Changes Atlas made by itself since, such as following a renamed file, stay.
 
+- With the player camera frozen, the player view no longer jumps when you switch to another Obsidian tab, and no longer changes size when you open or close a sidebar.
+
 ## Important changes
 
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.

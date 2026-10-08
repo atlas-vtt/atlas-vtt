@@ -195,8 +195,14 @@ export class PixiAppManager {
   }
   
 
+  /**
+   * A pane without a size is hidden (`display: none` while another Obsidian tab covers it), and
+   * the screen keeps the size it had. PIXI leaves the canvas as it is for a side of 0, but the
+   * viewport would take it, and whatever is placed by the screen's centre, such as the camera
+   * players are frozen on, would be placed by the canvas' corner.
+   */
   resize(newWidth: number, newHeight: number): void {
-    if (this._isDestroyed) return;
+    if (this._isDestroyed || newWidth <= 0 || newHeight <= 0) return;
     this.width = newWidth;
     this.height = newHeight;
 
