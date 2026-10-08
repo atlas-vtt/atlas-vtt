@@ -15,7 +15,7 @@ Atlas VTT distinguishes between **AI-assisted software development** and **gener
 - The use of AI does not reduce human responsibility. Contributors must review and understand the code they submit, be able to explain and modify it, and take responsibility for its quality, safety, testing, and maintainability.
 - AI tools must not be used to transfer the burden of understanding, debugging, or validating a contribution onto Atlas maintainers. A contributor being unable to meaningfully explain their own submission is grounds for declining a PR.
 - Atlas does not intend to include built-in generative AI features in the core application. Using AI to help build Atlas is considered separate from making AI-generated content part of the Atlas user experience.
-- Atlas values human-created art, writing, music, adventures, maps, and other creative work. We do not encourage replacing this kind of creative work with generative AI, and encourage clear labeling such as **"Zero AI"** when sharing creative content where that distinction matters.
+- Atlas values human-created art, writing, music, adventures, maps, and other creative work. We do not encourage replacing this kind of creative work with generative AI, and encourage clear labels such as **"AI assisted"** when generative AI contributes to creative content, so people can make informed choices about what they share and use.
 - Atlas recognizes that there are unresolved ethical questions around generative AI, including training data, creators' rights, environmental costs, and its effects on creative professions. This policy does not claim those questions are settled.
 - Atlas can set standards for its own repositories, official content, documentation, and contributions. It cannot control third-party Obsidian Community Plugins, BRAT plugins, companion projects, content packs, or what individual users place in their own vaults.
 - Atlas remains focused on being an open-source, local-first, user-controlled VTT. AI-assisted development should serve that goal, not replace the human judgment, creativity, and responsibility behind the project.
@@ -32,13 +32,17 @@ Plugins submitted to Obsidian's official Community Plugins directory are subject
 
 Atlas encourages third-party developers to follow the principles outlined in this policy, particularly regarding human responsibility, transparency, and respect for creative work, but cannot require or enforce compliance outside projects it maintains.
 
+### Official content sharing
+
+Atlas may set and enforce stronger standards for content submitted to an official Atlas-operated sharing platform, currently codenamed Armarium. Its planned safeguards include automated scanning for malicious software and manual review for licensing violations. Platform-specific content standards and moderation may develop over time; any rules for AI-assisted creative content should be documented transparently as the platform is developed. This policy leaves that possibility open without imposing those platform rules on independent third-party projects or content shared elsewhere.
+
 ### Separation of AI-assisted development and creative content
 
 Atlas distinguishes between using generative AI to assist with software development and using it to produce the creative content that people come to tabletop roleplaying games to experience.
 
 We recognize the concerns within the TTRPG community regarding AI-generated artwork, music, writing, adventures, and other creative material.[^dadi] Atlas values human creativity and believes that the people, experiences, and intentions behind creative work are an important part of its value. Replacing that human expression with mass-produced, AI-generated content risks diminishing the community's opportunities for meaningful creative exchange.
 
-Atlas therefore does not encourage the use of generative AI to replace human-created artistic or narrative content. We encourage creators who share content within the wider Atlas ecosystem to be transparent about their use of generative AI and to consider labels such as **"Zero AI"** for content created without generative AI.
+Atlas therefore does not encourage the use of generative AI to replace human-created artistic or narrative content. We encourage creators who share content within the wider Atlas ecosystem to be transparent about their use of generative AI, including with labels such as **"AI assisted"** when it contributed to their work.
 
 Software development serves a different purpose. Atlas is a tool intended to help GMs and players create, manage, and share their own worlds with as little friction as possible. AI-assisted coding is treated as a development tool, comparable to other forms of automation and abstraction that help developers build and maintain software.
 
