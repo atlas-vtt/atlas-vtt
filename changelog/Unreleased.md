@@ -1,5 +1,7 @@
 ## Improved
 
+- The eye on a scene tab and Send current map to player view now work without the player window open: they choose the scene players see, and the player window shows it whenever it is opened. Open player window is a command of its own.
+
 - Show my rolls to players is now a switch in the dice tray and in Dice settings, the same setting as Show dice rolls in the player view settings.
 
 - Sight and light are worked out much faster on maps with thousands of walls, such as large imported maps.
@@ -26,11 +28,17 @@
 
 ## Fixed
 
+- Obsidian no longer turns sluggish for the rest of a session once a right-click menu was opened while Atlas and Fantasy Statblocks are both enabled. Token drags, the ruler, typing in notes and moving files all lagged, most of all with an older Obsidian installer.
+
+- Dragging tokens, measuring and drawing a selection box no longer make Obsidian restyle its window on every mouse move.
+
 - The DM screen no longer stays empty or hidden while Fantasy Statblocks is still reading the vault after Obsidian starts. Each statblock shows as soon as its own note is read.
 
 - A statblock note named like a creature Fantasy Statblocks already knows, such as Goblin, now shows its own statblock in the DM screen and in previews, as its tokens already used it. Before, the creature of that name was shown.
 
 - A statblock whose spell list holds an empty item no longer takes the toolbar and the asset manager down when it is shown.
+
+- A statblock with an empty or malformed entry no longer breaks the toolbar or the asset manager.
 
 - Fog now updates correctly when returning to a map or canceling a drawing.
 
@@ -53,6 +61,8 @@
 - The measure tool and the token drag ruler now measure the same path alike everywhere on the map. On a grid aligned to its map, Pathfinder's second diagonal counted 10 ft in some places and 5 ft in others, and a distance such as 4.5 m was rounded up in some places and down in others. On a hex grid, dragging a Large or Gargantuan token measured a hex too few or too many in some places.
 
 - Distance per Square in a collection's settings takes a decimal typed with a comma or a point, so 1,5 and 1.5 both give one and a half, and it takes distances below 1. Typing the decimal sign your system does not use gave 15.
+
+- Timers keep correct time while Obsidian is in the background. Before, a hidden window counted a running timer down by about one second a minute. A running timer now also keeps running while its scene is closed or Obsidian is shut, and one that ran out meanwhile shows 00:00.
 
 ## Important changes
 

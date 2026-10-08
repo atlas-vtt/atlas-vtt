@@ -22,6 +22,7 @@ import { useStatblockLink } from './hooks/useStatblockLink';
 import { useAssetManagerEffects } from './hooks/useAssetManagerEffects';
 import { useFollowSelectedCollection } from './hooks/useFollowSelectedCollection';
 import { useHeldWhile } from './hooks/useHeldWhile';
+import { useOverlayBodyClass } from './hooks/useOverlayBodyClass';
 import { useLoadingReveal } from '../primitives/useLoadingReveal';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 import { useRememberedPlace } from './hooks/useRememberedPlace';
@@ -50,6 +51,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
   const [draggedItems, setDraggedItems] = useState<{ type: 'asset' | 'folder'; ids: string[] } | null>(null);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const modalRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useOverlayBodyClass(modalRef);
   const containerRef = useRef<HTMLDivElement>(null);
   const sidebar = useSidebarLayout(containerRef, isOpen);
   const windowVariants = useDialogWindowVariants();
@@ -179,7 +181,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
           <motion.div
             key="asset-manager-modal"
             className="atlas-vtt-plugin atlas-vtt-root atlas-asset-manager-modal"
-            ref={modalRef}
+            ref={overlayRef}
             tabIndex={-1}
             variants={wrapperVariants}
             initial="hidden"
