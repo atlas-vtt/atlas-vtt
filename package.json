@@ -24,6 +24,7 @@
     "lint": "eslint . --max-warnings 0 --suppressions-location eslint.suppressions.json",
     "api:report": "tsc -p tsconfig.api.json --declaration --emitDeclarationOnly && node scripts/declaration-tree.mjs build/api-dts api-report src/api/public",
     "api:check": "npm run api:report && node scripts/api-report-check.js && node scripts/api-version-check.js",
+    "build:packages": "vite build -c vite.shared.config.mts && tsc -p tsconfig.packages.json && node scripts/declaration-tree.mjs build/shared-dts dist-packages/shared/types --no-translations src/shared/grid src/shared/draw src/shared/rules src/shared/dice3d src/shared/diceDisplay",
     "lint:scan": "node scripts/lint-scan.js",
     "preflight": "node scripts/preflight.js",
     "check:boundaries": "node scripts/check-boundaries.mjs && tsc -p tsconfig.shared.json"

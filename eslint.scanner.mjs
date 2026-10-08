@@ -8,7 +8,7 @@ import obsidianmd from "eslint-plugin-obsidianmd";
 
 export default [
   // Local-only folders (git-ignored dev vaults and side projects) that a clean clone never contains.
-  { ignores: ["node_modules/", "dist/", "build/", "api-report/", "release/", "test-vault/", "networking-test-vault/", "workspace-vault/", "atlas-website/", "token-ui-examples/", "party/", "logs/", "benchmarks/"] },
+  { ignores: ["node_modules/", "dist/", "build/", "dist-packages/", "api-report/", "release/", "test-vault/", "networking-test-vault/", "workspace-vault/", "atlas-website/", "token-ui-examples/", "party/", "logs/", "benchmarks/"] },
   ...obsidianmd.configs.recommended,
   {
     files: ["**/*.{ts,tsx,mts,cts,js,cjs,mjs,jsx}"],

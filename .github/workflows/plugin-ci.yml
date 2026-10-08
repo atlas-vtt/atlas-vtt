@@ -74,6 +74,21 @@ jobs:
       - name: Build plugin
         run: npm run build:ci
 
+      - name: Build extension packages
+        run: npm run build:packages
+
+      # Only the branches' builds are kept; a pull request builds the packages to check them.
+      - name: Upload extension packages
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: atlas-vtt-packages-${{ github.sha }}
+          path: |
+            dist-packages/
+            api-report/
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Smoke test postbuild hook (used by npm run build)
         run: npm run postbuild
 

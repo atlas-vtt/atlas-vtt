@@ -1,6 +1,7 @@
 // Copies the declarations that some entry declarations reach, and nothing else, from an emitted tree into another.
 // `tsc` emits a declaration for every module a program holds, Atlas's translations included, while the entries'
-// types reach far fewer. Used for the extension API report (`api-report/`, package.json `api:report`).
+// types reach far fewer. Used for the extension API report (`api-report/`, package.json `api:report`) and the
+// `@atlas-vtt/shared` package types (`build:packages`).
 //
 //   node scripts/declaration-tree.mjs <from> <to> [--no-translations] <entry>...
 //

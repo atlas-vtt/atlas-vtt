@@ -7,6 +7,7 @@ export interface CameraState {
   scale: number;
 }
 
+/** A scene's grid settings as saved in the map file (pure types, shared with extensions via `@atlas-vtt/shared`). */
 export interface GridState {
   enabled: boolean;
   visible?: boolean; // Grid visibility (separate from enabled)

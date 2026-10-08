@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { ApiEvents } from '../../src/api/events';
-import { PLAYER_VIEW_RULE_KEYS } from '../../src/shared/playerViewRules';
+import { PLAYER_VIEW_RULE_KEYS } from '../../src/shared/rules';
 import { settingsApi, settingsView, watchSettings } from '../../src/api/settings';
 import { storageApi } from '../../src/api/storage';
 import { SettingsService } from '../../src/app/services/SettingsService';

@@ -81,3 +81,4 @@ party/
 
 # Extension API build outputs
 build/api-dts/
+dist-packages/

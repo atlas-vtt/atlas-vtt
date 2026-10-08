@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "build/shared-dts",
+    "rootDir": ".",
+    "inlineSourceMap": false,
+    "inlineSources": false
+  },
+  "include": ["src/assets.d.ts", "node_modules/obsidian/obsidian.d.ts"],
+  "files": ["src/shared/grid.ts", "src/shared/draw.ts", "src/shared/rules.ts", "src/shared/dice3d.ts", "src/shared/diceDisplay.ts"]
+}

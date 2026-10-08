@@ -1,7 +1,7 @@
 import type { Disposer, ViewId } from './common';
 import type { DiceRollResult } from './records';
 export interface DiceRollRequest {
-    /** e.g. "2d6+1d20-1"; the tray's selection is turned into this with Atlas's `diceFormula`. A formula without dice, such as "+3", is added to the rules' default roll. */
+    /** e.g. "2d6+1d20-1"; the tray's selection is turned into this with `diceFormula` from @atlas-vtt/shared/rules. A formula without dice, such as "+3", is added to the rules' default roll. */
     formula: string;
     /** Rolls by the rules of this map's collection (exploding dice, critical rule); Atlas's defaults otherwise. Rules only: the roll shows in every open map's log. */
     mapPath?: string | null;
