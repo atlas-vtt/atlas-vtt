@@ -1,6 +1,7 @@
 import type { Renderer, Texture } from 'pixi.js';
 import type { WallSegment } from '../../../types/wallTypes';
-import { BOUNCE, DARKNESS, FLICKER_INTERVAL_MS, LIGHT_REACH, beamEnd, tileWallReach, worldTexel } from '../../../lighting/lightingConstants';
+import { BOUNCE, DARKNESS, LIGHT_REACH, beamEnd, tileWallReach, worldTexel } from '../../../lighting/lightingConstants';
+import { DEFAULT_LIGHTING_QUALITY, bouncesOn, type LightingQuality } from '../../../lighting/lightingQuality';
 import { changedWallRects } from '../../../lighting/wallChanges';
 import type { Rect } from '../../../lighting/segments';
 import { lightReach } from '../../../vision/sight';
@@ -19,7 +20,8 @@ import { ZoneMap, sameZoneLook, type ZoneLook } from './ZoneMap';
 /**
  * Everything the lighting keeps in world space for one map: the wall field, each light's tile,
  * the light map, the bounce and, once the map has a darkness source, the darkness map.
- * Independent of any camera; rebuilt only for what changed.
+ * Independent of any camera; rebuilt only for what changed. Its texel and whether light
+ * bounces come from the lighting quality it is made with (`LightingQuality`).
  * Constructing it draws nothing: the first `update` builds every texture.
  */
 export class LightingWorld {
@@ -27,7 +29,10 @@ export class LightingWorld {
   /** The walls as light and sight each read them (`WallFields`). */
   readonly fields: WallFields;
   readonly lightMap: LightMap;
-  readonly cascades: RadianceCascades;
+  /** The bounce, where the quality lets light bounce on this map. */
+  readonly cascades: RadianceCascades | null;
+  /** How often flickering lights are redrawn, or null to keep them steady (`setFlicker`). */
+  private flickerMs: number | null;
   /** Created with the first darkness source; `trim` frees it once the scene has none and the composite has let go of it. */
   private darkness: DarknessMap | null = null;
   /** Each darkness source's area as the rule counts it, kept while the source and the walls stay. */
@@ -49,12 +54,26 @@ export class LightingWorld {
   /** When the light map last took its flicker; -Infinity while it holds the steady lights. */
   private lastFlicker = -Infinity;
 
-  constructor(private readonly renderer: Renderer, readonly bounds: MapBounds) {
-    this.texel = worldTexel(bounds);
+  constructor(private readonly renderer: Renderer, readonly bounds: MapBounds, quality: LightingQuality = DEFAULT_LIGHTING_QUALITY) {
+    this.texel = worldTexel(bounds, quality.maxTexels);
+    this.flickerMs = quality.flickerMs;
     this.fields = new WallFields(renderer, bounds, this.texel);
     this.lightMap = new LightMap(renderer, bounds, this.texel);
-    this.cascades = new RadianceCascades(renderer, bounds, this.fields.tiles);
+    this.cascades = bouncesOn(quality, bounds) ? new RadianceCascades(renderer, bounds, this.fields.tiles) : null;
     this.tiles = new TileCache(renderer, this.fields.tiles, bounds);
+  }
+
+  /** Lights that stop flickering are drawn steady at once; the world's textures stay. */
+  setFlicker(ms: number | null): void {
+    if (ms === this.flickerMs) return;
+    const flickered = this.animated() && this.lastFlicker !== -Infinity;
+    this.flickerMs = ms;
+    if (ms === null && flickered) this.drawSteady();
+  }
+
+  /** Whether this world was made as `quality` makes one for its map: else it is built anew. */
+  fits(quality: LightingQuality): boolean {
+    return this.texel === worldTexel(this.bounds, quality.maxTexels) && !!this.cascades === bouncesOn(quality, this.bounds);
   }
 
   /** Every wall that blocks light, one-way walls too, which bounce treats as blocking both ways. */
@@ -110,7 +129,7 @@ export class LightingWorld {
    */
   animate(now: number): boolean {
     let drew = false;
-    if (this.bounceDirty && now - this.lastBounce >= BOUNCE.throttleMs) {
+    if (this.bounceDirty && this.cascades && now - this.lastBounce >= BOUNCE.throttleMs) {
       // Bounce uses steady intensity, so flicker never rebuilds it.
       this.drawSteady();
       this.cascades.build(this.lightMap, this.albedo, this.fieldAll());
@@ -118,7 +137,8 @@ export class LightingWorld {
       this.lastBounce = now;
       drew = true;
     }
-    if (this.animated() && now - this.lastFlicker >= FLICKER_INTERVAL_MS) {
+    const flicker = this.flickerMs;
+    if (flicker !== null && this.animated() && now - this.lastFlicker >= flicker) {
       this.drawLightMap((light) => this.flicker.sample(light.key, light.animation, now));
       this.lastFlicker = now;
       drew = true;
@@ -171,7 +191,7 @@ export class LightingWorld {
 
   /** Animated lights or bounce still to build: keep calling `animate`. */
   busy(): boolean {
-    return this.bounceDirty || this.animated();
+    return (this.bounceDirty && !!this.cascades) || this.animated();
   }
 
   /** Builds the bounce now (map load finished, tests). */
@@ -182,15 +202,16 @@ export class LightingWorld {
 
   destroy(): void {
     this.tiles.destroy();
-    this.cascades.destroy();
+    this.cascades?.destroy();
     this.lightMap.destroy();
     this.darkness?.destroy();
     this.zoneTexture?.destroy();
     this.fields.destroy();
   }
 
+  /** Lights that flicker, while the quality lets them. */
   private animated(): boolean {
-    return this.lights.some((light) => light.animation !== 'none');
+    return this.flickerMs !== null && this.lights.some((light) => light.animation !== 'none');
   }
 
   private forgetRemoved(lights: readonly EngineLight[]): void {

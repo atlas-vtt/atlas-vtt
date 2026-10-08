@@ -3,6 +3,8 @@ import type { Application, Texture } from 'pixi.js';
 import type { UnlitGrid } from '../../grid/gridLightingMark';
 import type { Viewport } from 'pixi-viewport';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
+import { LIGHTING_QUALITY, type LightingQualitySource } from '../../lighting/lightingQuality';
+import { SettingsService } from '../../services/SettingsService';
 import type { ViewAtlasStore } from '../../storeFactory';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
@@ -41,13 +43,24 @@ export function createSceneLighting({ viewport, app, store, obsApp, measurement,
   const attempt = new StoredLightingAttempt(obsApp, () => store.getState().mapPath);
   const sight = onSightChange ? { onSightChange } : {};
   const view = { ...sight, ...(rules && { rules }) };
+  const quality = settingsQuality(obsApp);
   return new LightingViewHost({
     store,
     canvasRenderer: usesCanvasRenderer(app.renderer),
-    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store, measurement, bounds, albedo, attempt, onUnavailable, ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }) }),
+    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store, measurement, bounds, albedo, attempt, onUnavailable, ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }) }),
     createFallback: () => new CanvasLightingFallback({ viewport, store, measurement, bounds, ...view }),
     forgetAttempt: () => attempt.forget(),
     notify: showLightingUnavailableNotice,
     ...sight,
   });
+}
+
+/** The lighting quality chosen in Atlas' settings on this device. */
+function settingsQuality(obsApp: App): LightingQualitySource | undefined {
+  const settings = SettingsService.forApp(obsApp);
+  if (!settings) return undefined;
+  return {
+    current: () => LIGHTING_QUALITY[settings.getLightingQuality()],
+    onChange: (listener) => settings.onChange(listener),
+  };
 }
