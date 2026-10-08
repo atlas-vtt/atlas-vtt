@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { Container, Graphics, RenderTexture, type Application, type WebGLRenderer } from 'pixi.js';
+import { Container, RenderTexture, type Application, type WebGLRenderer } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { vi } from 'vitest';
 import type { FogOperation } from '../../../types/fogTypes';
@@ -165,8 +165,8 @@ export function engineLayer(viewport: Container): Container | undefined {
 }
 
 /** The fallback's darkness in the viewport, while line of sight stands in. */
-export function darkness(viewport: Container): Graphics | undefined {
-  return viewport.children.find((child): child is Graphics => child instanceof Graphics);
+export function darkness(viewport: Container): Container | undefined {
+  return viewport.children.find((child) => child.label === 'line-of-sight');
 }
 
 /** Every program link fails from now on, as on a driver that rejects the shaders. */
