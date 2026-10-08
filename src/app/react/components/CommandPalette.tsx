@@ -30,7 +30,7 @@ import { useStore } from 'zustand';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { PlayerWindowService } from '../../services/PlayerWindowService';
-import { presentActiveTabInPlayerWindow } from '../../services/PlayerWindowPresenter';
+import { presentActiveTab } from '../../services/PlayerWindowPresenter';
 import { playerWindowStore } from '../../stores/playerWindowStore';
 import { debounce } from '../../../utils/debounce';
 import { cn } from '../../../utils/cn';
@@ -319,7 +319,7 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       label: t('palette.sendMapToPlayerView'),
       section: "mode",
       action: () => {
-        void presentActiveTabInPlayerWindow(app);
+        void presentActiveTab(app);
         onClose();
       },
     },
