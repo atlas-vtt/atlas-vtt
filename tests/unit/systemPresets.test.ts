@@ -292,6 +292,17 @@ describe('parseUserPresets', () => {
     expect(parseUserPresets(undefined)).toEqual([]);
     expect(parseUserPresets({})).toEqual([]);
   });
+
+  it('keeps a preset whose distance per square a field can show and read back, and drops any other', () => {
+    // 1e999 is what a file's number too large to hold reads as: Infinity.
+    const distances = [0.5, 0.000001, 1_000_000, 0, -5, 0.0000001, 1e23, JSON.parse('1e999') as number, null, '5'];
+    const presets = distances.map((unitDistance, index) => ({
+      ...valid,
+      id: `p${index}`,
+      rules: { ...valid.rules, gridDefaults: { ...valid.rules.gridDefaults, unitDistance } },
+    }));
+    expect(parseUserPresets(presets).map(preset => preset.rules.gridDefaults.unitDistance)).toEqual([0.5, 0.000001, 1_000_000]);
+  });
 });
 
 describe('preset widgets', () => {

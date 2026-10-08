@@ -50,6 +50,10 @@
 
 - When a scene's file or map image cannot be read, the tokens of the scene that was open before no longer stay on the canvas.
 
+- The measure tool and the token drag ruler now measure the same path alike everywhere on the map. On a grid aligned to its map, Pathfinder's second diagonal counted 10 ft in some places and 5 ft in others, and a distance such as 4.5 m was rounded up in some places and down in others. On a hex grid, dragging a Large or Gargantuan token measured a hex too few or too many in some places.
+
+- Distance per Square in a collection's settings takes a decimal typed with a comma or a point, so 1,5 and 1.5 both give one and a half, and it takes distances below 1. Typing the decimal sign your system does not use gave 15.
+
 ## Important changes
 
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.
