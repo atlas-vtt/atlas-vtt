@@ -1,5 +1,9 @@
 ## Improved
 
+- Players see the grid as you set it on the map: hidden when you hide it, and with its style, colour, opacity and numbers. The player view settings no longer have a separate Show grid switch.
+
+- The eye on a scene tab and Send current map to player view now work without the player window open: they choose the scene players see, and the player window shows it whenever it is opened. Open player window is a command of its own.
+
 - Show my rolls to players is now a switch in the dice tray and in Dice settings, the same setting as Show dice rolls in the player view settings.
 
 - Sight and light are worked out much faster on maps with thousands of walls, such as large imported maps.
@@ -26,11 +30,17 @@
 
 ## Fixed
 
+- Obsidian no longer turns sluggish for the rest of a session once a right-click menu was opened while Atlas and Fantasy Statblocks are both enabled. Token drags, the ruler, typing in notes and moving files all lagged, most of all with an older Obsidian installer.
+
+- Dragging tokens, measuring and drawing a selection box no longer make Obsidian restyle its window on every mouse move.
+
 - The DM screen no longer stays empty or hidden while Fantasy Statblocks is still reading the vault after Obsidian starts. Each statblock shows as soon as its own note is read.
 
 - A statblock note named like a creature Fantasy Statblocks already knows, such as Goblin, now shows its own statblock in the DM screen and in previews, as its tokens already used it. Before, the creature of that name was shown.
 
 - A statblock whose spell list holds an empty item no longer takes the toolbar and the asset manager down when it is shown.
+
+- A statblock with an empty or malformed entry no longer breaks the toolbar or the asset manager.
 
 - Fog now updates correctly when returning to a map or canceling a drawing.
 
@@ -55,6 +65,8 @@
 - Distance per Square in a collection's settings takes a decimal typed with a comma or a point, so 1,5 and 1.5 both give one and a half, and it takes distances below 1. Typing the decimal sign your system does not use gave 15.
 
 - Where Atlas shows line of sight without light and shadow, because it cannot use the graphics card, areas that two tokens see at once are no longer black for the players. Neither is what a sense that sees in magical darkness sees around the darkness. A thin, broken black line can remain along a slanted wall that the party sees from both sides.
+
+- Timers keep correct time while Obsidian is in the background. Before, a hidden window counted a running timer down by about one second a minute.
 
 ## Important changes
 

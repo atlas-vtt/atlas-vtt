@@ -94,7 +94,7 @@ describe('bindViewportNavigation', () => {
 
     bindViewportNavigation(viewport, settings);
     const installed = viewport.plugins.get('wheel');
-    settings.setLocalPlayerViewSettings({ showGrid: false });
+    settings.setLocalPlayerViewSettings({ showWidgets: false });
 
     expect(viewport.plugins.get('wheel')).toBe(installed);
   });

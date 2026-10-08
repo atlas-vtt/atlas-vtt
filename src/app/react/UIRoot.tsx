@@ -21,7 +21,8 @@ import { LootRoller } from './components/loot/LootRollerPanel';
 import { MapLoadingOverlay } from './components/MapLoadingOverlay';
 import { SceneTabBar } from './components/SceneTabBar';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
-import { presentTabInPlayerWindow } from '../services/PlayerWindowPresenter';
+import { presentTab as presentSceneTab } from '../services/PlayerWindowPresenter';
+import { usePresentedScene } from './hooks/usePresentedScene';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
 import { HotkeyHelp } from '../keyboard/HotkeyHelp';
@@ -71,8 +72,9 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
     if (view) runInBackground(view.switchToTab(tabId), 'Switching scene tab');
   };
   const presentTab = (tabId: string): void => {
-    if (view) void presentTabInPlayerWindow(app, view, tabId);
+    if (view) void presentSceneTab(app, view, tabId);
   };
+  const presentedScene = usePresentedScene(app);
 
   // Context value with all required objects
   const contextValue: AtlasUIContextValue = useMemo(
@@ -167,6 +169,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                   onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
                   onAddTab={() => view?.openSceneBrowser()}
                   onPresentTab={presentTab}
+                  presentedTabId={presentedScene?.tabId ?? null}
                   onShowAllTabs={() => setSceneSwitcherOpen(true)}
                 />
               </PanelBoundary>

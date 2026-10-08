@@ -1,6 +1,8 @@
 import React from 'react';
 import { render } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { STATBLOCK_LIMITS } from '../../src/app/creatures/statblockValues';
+import { HOSTILE_VALUES, counts, resetCounts } from '../mocks/hostileValues';
 import { StatblockRenderer } from '../../src/app/react/components/statblock/StatblockRenderer';
 import type {
   StatblockItem,
@@ -182,6 +184,16 @@ describe('StatblockRenderer', () => {
     expect(spells).toEqual(['1st level: magic missile']);
   });
 
+  it('skips trait entries that are no trait', () => {
+    // An empty list item in a note's frontmatter is read as null
+    const { container } = renderStatblock(
+      layoutOf({ type: 'traits', id: 't', properties: ['actions'], heading: 'Actions' }),
+      { name: 'Toad', actions: [{ name: 'Bite', desc: 'One target.' }, null, 'leap', 3, { name: 'Tongue', desc: 'Pulls.' }] },
+    );
+    const names = [...container.querySelectorAll('.atlas-sb-trait-name')].map((name) => name.textContent);
+    expect(names).toEqual(['Bite', 'Tongue']);
+  });
+
   it('drops the trailing colon from property labels', () => {
     const { container } = renderStatblock(
       layoutOf({ type: 'property', id: 'p', properties: ['difficulty'], display: 'Difficulty:' }),
@@ -336,5 +348,109 @@ describe('hit points marker', () => {
 
     const marked = [...container.querySelectorAll('[data-hit-points]')].map((el) => el.textContent);
     expect(marked).toEqual([expect.stringContaining('2d6'), expect.stringContaining('4d8')]);
+  });
+});
+
+describe('a statblock whose values are not what its blocks expect', () => {
+  beforeEach(resetCounts);
+
+  /** Every block that reads a value, each reading `value`, under a creature named by `name`. */
+  const everyBlock = layoutOf(
+    { type: 'heading', id: 'h', properties: ['name'] },
+    { type: 'subheading', id: 'sub', properties: ['value', 'name'] },
+    { type: 'property', id: 'p', properties: ['value'], display: 'Value' },
+    { type: 'text', id: 'text', properties: ['value'], heading: 'value', headingProp: true },
+    { type: 'saves', id: 'saves', properties: ['value'] },
+    { type: 'table', id: 'table', properties: ['value'], headers: ['A', 'B'], calculate: true },
+    { type: 'image', id: 'image', properties: ['value'] },
+    { type: 'traits', id: 'traits', properties: ['value'], heading: 'Traits' },
+    { type: 'spells', id: 'spells', properties: ['value'] },
+    { type: 'collapse', id: 'c', heading: 'More', nested: [{ type: 'property', id: 'cp', properties: ['value'] }] },
+  );
+
+  /** What a note can hold where a block expects a text, a list of traits or a list of spells. */
+  const MALFORMED: Record<string, () => unknown> = {
+    'a word': () => 'leap',
+    'a text that is no address': () => '100% wrong %zz',
+    'a number': () => 3,
+    'a switch': () => true,
+    'nothing': () => null,
+    'a list of a name and a text': () => ['Bite', 'One target.'],
+    'an empty map': () => ({}),
+    'a trait of maps': () => ({ name: { first: 'Bite' }, desc: { text: 'One target.' } }),
+    'a trait of lists': () => ({ name: ['Bite'], desc: ['One', 'target.'] }),
+    'a trait of nothing': () => ({ name: null, desc: null }),
+    'a trait of numbers': () => ({ name: 5, desc: 7 }),
+    'a map that hides what every object can do': () =>
+      JSON.parse('{"name":{"toString":1},"desc":{"toString":2,"valueOf":3},"toString":4,"__proto__":{"x":1}}') as unknown,
+    'a very long text': () => ({ name: 'x'.repeat(300_000), desc: 'y'.repeat(300_000) }),
+    ...HOSTILE_VALUES,
+  };
+
+  it.each(Object.keys(MALFORMED))('draws every block for %s without failing', (shape) => {
+    const value = MALFORMED[shape]!;
+    // As the value itself, as the creature's name, and as an entry among good ones
+    expect(() => renderStatblock(everyBlock, { name: 'Toad', value: value() })).not.toThrow();
+    expect(() => renderStatblock(everyBlock, { name: value(), value: 'plain' })).not.toThrow();
+    expect(() => renderStatblock(everyBlock, { name: 'Toad', value: [value(), { name: 'Bite', desc: 'One target.' }, value()] })).not.toThrow();
+    // Each block reads the statblock's bounded copy; the value itself is read once, for that copy.
+    expect(counts.reads).toBeLessThanOrEqual(3 * 2 * STATBLOCK_LIMITS.values);
+  });
+
+  it('shows the trait among entries that are none', () => {
+    const { container } = renderStatblock(
+      layoutOf({ type: 'traits', id: 't', properties: ['actions'], heading: 'Actions' }),
+      { name: 'Toad', actions: ['leap', 3, true, null, ['Bite', 'Tuple.'], {}, { name: 5, desc: ['Seven', 'days.'] }, { name: 'Bite', desc: 'One target.' }] },
+    );
+    const traits = [...container.querySelectorAll('.atlas-sb-trait')].map((trait) => trait.textContent);
+    expect(traits).toEqual(['5Seven days.', 'BiteOne target.']);
+  });
+
+  it('hands every entry but an empty one to the callback of a traits block', () => {
+    const { container } = renderStatblock(
+      layoutOf({
+        type: 'traits', id: 't', properties: ['languages'],
+        callback: 'return typeof property === "string" ? property : Array.isArray(property) ? property.join(": ") : property.desc;',
+      }),
+      { name: 'Toad', languages: ['Common', null, ['Deep Speech', 'understands'], { name: 'Sign', desc: 'with its tongue' }] },
+    );
+    const lines = [...container.querySelectorAll('.atlas-sb-trait')].map((line) => line.textContent);
+    expect(lines).toEqual(['Common', 'Deep Speech: understands', 'Signwith its tongue']);
+  });
+
+  it('names a creature whose name is a list as a property of those parts reads', () => {
+    const { container } = renderStatblock(
+      layoutOf({ type: 'heading', id: 'h', properties: ['name'] }, { type: 'property', id: 'p', properties: ['name'], display: 'Name' }),
+      { name: ['Grik', 'the Bold'] },
+    );
+    expect(container.querySelector('.atlas-sb-heading')?.textContent).toBe('Grik, the Bold');
+    expect(container.querySelector('.atlas-sb-property')?.textContent).toBe('NameGrik, the Bold');
+  });
+
+  it('shows no text longer than one text, however many entries it is joined of', () => {
+    const saves = Array.from({ length: 150 }, (_, index) => ({ [`save ${index} ${'x'.repeat(150)}`]: 'y'.repeat(150) }));
+    const joined = renderStatblock(layoutOf({ type: 'saves', id: 's', properties: ['saves'], display: 'Saves' }), { saves }).container;
+    expect(joined.querySelector('.atlas-sb-property')?.textContent).toHaveLength('Saves'.length + STATBLOCK_LIMITS.text);
+
+    const parts = renderStatblock(
+      layoutOf({ type: 'subheading', id: 'sub', properties: ['a', 'b', 'c'] }),
+      { a: 'a'.repeat(9000), b: 'b'.repeat(9000), c: 'c'.repeat(9000) },
+    ).container;
+    expect(parts.querySelector('.atlas-sb-subheading')?.textContent).toHaveLength(STATBLOCK_LIMITS.text);
+  });
+
+  it('draws no more entries of a list than the limit', () => {
+    const many = Array.from({ length: 10_000 }, (_, index) => ({ name: `Trait ${index}`, desc: 'x' }));
+    const { container } = renderStatblock(
+      layoutOf(
+        { type: 'traits', id: 't', properties: ['traits'] },
+        { type: 'spells', id: 's', properties: ['spells'] },
+        { type: 'table', id: 'tb', properties: ['stats'] },
+      ),
+      { name: 'Legion', traits: many, spells: many.map((trait) => ({ [trait.name]: 'spell' })), stats: many.map((_, index) => index) },
+    );
+    expect(container.querySelectorAll('.atlas-sb-trait-name')).toHaveLength(STATBLOCK_LIMITS.entries);
+    expect(container.querySelectorAll('.atlas-sb-spells li')).toHaveLength(STATBLOCK_LIMITS.entries);
+    expect(container.querySelectorAll('.atlas-sb-table td')).toHaveLength(STATBLOCK_LIMITS.entries);
   });
 });

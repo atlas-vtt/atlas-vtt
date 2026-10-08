@@ -32,6 +32,7 @@ describe('AtlasView onClose', () => {
     const eventBusOff = vi.fn();
     const serviceManagerDestroy = vi.fn();
     const savePinnedPreviewStates = vi.fn();
+    const stopTimersForClose = vi.fn();
     const cancelAnimationFrameSpy = vi.fn();
     const detachLeafFocusHandlers = vi.fn();
     const detachTabHeaderActivationHandler = vi.fn();
@@ -51,6 +52,7 @@ describe('AtlasView onClose', () => {
       _serviceManager: {
         getEventBus: () => ({ off: eventBusOff }),
         getNotePreviewUIManager: () => ({ savePinnedPreviewStates }),
+        stopTimersForClose,
         destroy: serviceManagerDestroy
       }
     };
@@ -60,6 +62,8 @@ describe('AtlasView onClose', () => {
     expect(mapLoadingUnsubscribe).toHaveBeenCalledTimes(1);
     // Pinned previews record their scroll and cursor before the final save
     expect(savePinnedPreviewStates.mock.invocationCallOrder[0]).toBeLessThan(flushPendingSaves.mock.invocationCallOrder[0]!);
+    // Timers stop before the last save, which keeps the time they have left
+    expect(stopTimersForClose.mock.invocationCallOrder[0]).toBeLessThan(flushPendingSaves.mock.invocationCallOrder[0]!);
     expect(cancelAnimationFrameSpy).toHaveBeenCalledWith(123);
     expect(flushPendingSaves).toHaveBeenCalledTimes(1);
     expect(resizeObserverDisconnect).toHaveBeenCalledTimes(1);

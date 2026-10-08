@@ -9,6 +9,7 @@ import {
 } from '../../services/FantasyStatblocksService';
 import { statblockSourceFromText } from '../../services/statblockNoteSource';
 import { bestiaryLookup, resolveLinkedCreature } from '../../creatures/linkedCreature';
+import { boundedStatblock } from '../../creatures/statblockValues';
 import { syncStatblockVitals, type TokenVitals } from '../../services/statblockVitalsSync';
 import { attachDiceRolling } from '../../services/statblockDiceLinks';
 import { rollHitPoints } from '../../services/statblockHitPoints';
@@ -139,14 +140,15 @@ export function FantasyStatblock({
 
   // One block per token, matching the vitals sync. The token portrait replaces
   // the layout's own image block, so the artwork never shows twice.
+  // Read within the limits every statblock value is read in, whatever its note holds.
   const monster = useMemo(
     () =>
       creature
-        ? {
+        ? boundedStatblock({
             ...creature,
             ...(tokens.length ? { qty: tokens.length } : {}),
             ...(portrait ? { image: undefined } : {}),
-          }
+          })
         : null,
     [creature, tokens.length, portrait],
   );

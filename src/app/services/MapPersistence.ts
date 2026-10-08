@@ -13,6 +13,7 @@ import { normalizeImagePath } from '../utils/pathUtils';
 import { fixMapTokenPaths } from '../utils/fixMapPaths';
 import { getDataFilePath } from '../utils/dataFileMigration';
 import { sceneFromFile, sceneToFile, tokenFromFile } from '../resources/resourceFileFormat';
+import { pausedTimers } from '../utils/timerWidget';
 import { preserveDamagedSceneFile, SceneFileError } from './sceneFileProblems';
 import { SceneFileWriter } from './sceneFileWriter';
 
@@ -219,6 +220,9 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       }
       // Files keep the token fields older versions of Atlas read; in memory tokens hold resources
       if (state) Object.assign(state, sceneFromFile(state));
+      // A timer stops when its scene closes: a run in the file was cut short by a quit or crash
+      const widgets = state?.widgetSettings?.widgets;
+      if (state?.widgetSettings && isRecord(widgets)) state.widgetSettings.widgets = pausedTimers(widgets);
       if (state?.version && state.version < ATLAS_VERSION) {
         state.version = ATLAS_VERSION;
       }

@@ -47,7 +47,7 @@ function setup(): Harness {
     getState: (): LocalPlayerSession => ({ ...session }),
     updateSession: (state: Partial<LocalPlayerSession>): void => { Object.assign(session, state); },
   };
-  service.attachToView(view as unknown as LocalPlayerView, source, 'scene-a');
+  service.attachToView(view as unknown as LocalPlayerView, source, { tabId: 'scene-a', filePath: 'scene-a.atlasmap' });
   return {
     service, source, session, drawImage,
     setDmCamera: (camera) => { dmCamera = camera; },
