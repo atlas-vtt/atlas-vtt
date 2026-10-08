@@ -45,6 +45,7 @@ export const csm: Translation = {
   'csm.grid.diagonal.equidistant': 'Каждая диагональ = 1 (5e)',
   'csm.grid.diagonal.euclidean': 'Точное расстояние',
   'csm.grid.distance': 'Расстояние на клетку',
+  'csm.grid.distanceInvalid': 'Расстоянию на клетку нужно число от 0,000001 до 1 000 000.',
   'csm.grid.max': 'Макс.',
   'csm.grid.metric': 'Расстояние',
   'csm.grid.mode': 'Режим измерения',

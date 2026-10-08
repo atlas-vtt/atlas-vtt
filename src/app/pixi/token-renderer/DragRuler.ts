@@ -7,7 +7,8 @@
 
 import type { StoreApi } from 'zustand';
 import type { GridSystem } from '../../grid/GridSystem';
-import { pathLengthInCells } from '../../grid/gridDistance';
+import { pathLengthInCells, type GridGeometry } from '../../grid/gridDistance';
+import { tokenCenterShift } from '../../grid/gridPlacement';
 import type { Point } from '../../grid/hexGeometry';
 import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
 import type { ViewAtlasState } from '../../storeFactory';
@@ -95,16 +96,34 @@ export class DragRuler {
     }
     const grid = this.gridSystem.getOptions();
     const settings = this.settingsProvider();
-    const distance = formatDistance(pathLengthInCells(grid, points, settings.diagonalRule), settings);
-    this.view.draw(points, distance);
+    const cells = pathLengthInCells(grid, this.cellPath(points, grid), settings.diagonalRule);
+    this.view.draw(points, formatDistance(cells, settings));
     this.refreshVisibility();
   }
 
   private snap(point: Point): Point {
-    const snapToGrid = this.store.getState().grid?.snapToGrid ?? true;
-    if (!snapToGrid) return { x: point.x, y: point.y };
+    if (!this.snapsToGrid()) return { x: point.x, y: point.y };
+    return this.gridSystem.snapTokenCenter(point.x, point.y, this.tokenSize());
+  }
+
+  /**
+   * The snapped path as the cells the token's footprint starts from. An even footprint snaps to where
+   * cells meet, and on a hex grid that point lies in none of the three hexes around it: which one the
+   * rounding picks differs from place to place, so the same drag measured a hex more or less.
+   */
+  private cellPath(points: readonly Point[], grid: GridGeometry): readonly Point[] {
+    if (!this.snapsToGrid()) return points;
+    const shift = tokenCenterShift(grid.type, grid.size, this.tokenSize());
+    return points.map(point => ({ x: point.x - shift.x, y: point.y - shift.y }));
+  }
+
+  private snapsToGrid(): boolean {
+    return this.store.getState().grid?.snapToGrid ?? true;
+  }
+
+  private tokenSize(): number {
     const size = this.tokenId ? this.store.getState().objects.tokens[this.tokenId]?.size : undefined;
-    return this.gridSystem.snapTokenCenter(point.x, point.y, size || 1);
+    return size || 1;
   }
 }
 

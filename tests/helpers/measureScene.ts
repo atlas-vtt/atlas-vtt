@@ -9,7 +9,9 @@ import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 export const GRID = 70;
 const snap = (x: number, y: number): { x: number; y: number } => ({ x: Math.floor(x / GRID) * GRID + GRID / 2, y: Math.floor(y / GRID) * GRID + GRID / 2 });
 
-/** A measure renderer on a jsdom viewport with a 70 px square grid that snaps to cell centres. */
+const SQUARE_GRID: MeasureGrid = { getOptions: () => ({ type: 'square', size: GRID, offsetX: 0, offsetY: 0 }), snapToCellCenter: snap };
+
+/** A measure renderer on a jsdom viewport, by default with a 70 px square grid that snaps to cell centres. */
 export interface MeasureScene {
   measure: MeasureRenderer;
   viewport: Viewport;
@@ -22,7 +24,7 @@ export interface MeasureScene {
   destroy(): void;
 }
 
-export function measureScene(): MeasureScene {
+export function measureScene(grid: MeasureGrid = SQUARE_GRID): MeasureScene {
   const restoreGraphics = stubJsdomGraphics();
   const viewport = new Viewport({ screenWidth: 800, screenHeight: 600, worldWidth: 2000, worldHeight: 2000, events: { domElement: createEl('canvas') } as unknown as EventSystem });
   const { app } = createInMemoryApp({ files: {} });
@@ -30,7 +32,6 @@ export function measureScene(): MeasureScene {
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/measure.atlasmap');
   const bus = new EventEmitter();
-  const grid: MeasureGrid = { getOptions: () => ({ type: 'square', size: GRID, offsetX: 0, offsetY: 0 }), snapToCellCenter: snap };
   const measure = new MeasureRenderer(viewport, bus, store, grid);
   const boundary = new EventBoundary(viewport);
   const parts = (): Container[] => viewport.children.slice();

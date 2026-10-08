@@ -105,6 +105,24 @@ describe('CreateCollectionModal', () => {
     expect(stored['Homebrew Hills']).toMatchObject({ systemPresetId: saved[0]!.id, conditions: [{ name: 'Muddy' }] });
   });
 
+  it('creates no game system while its distance per square is no distance', async () => {
+    const { presets, onCreated } = setup();
+    fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'Homebrew Hills' } });
+    fireEvent.click(radio('Create your own'));
+    fireEvent.click(screen.getByRole('button', { name: 'Next' }));
+    fireEvent.change(screen.getByLabelText('Preset name'), { target: { value: 'Hills Rules' } });
+    const distance = screen.getByDisplayValue<HTMLInputElement>('5');
+
+    fireEvent.change(distance, { target: { value: 'far' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create collection' }));
+    // Creating starts by saving the preset, in the click itself.
+    expect(presets.entries()).toHaveLength(0);
+
+    fireEvent.change(distance, { target: { value: '1,5' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Create collection' }));
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith('Homebrew Hills'));
+  });
+
   it('goes back from the setup to the name and system', () => {
     setup();
     fireEvent.change(screen.getByLabelText('Name'), { target: { value: 'X' } });
