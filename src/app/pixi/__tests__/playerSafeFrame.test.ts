@@ -108,14 +108,15 @@ describe('captureBeforeRender', () => {
     const point = (x: number, y: number): { x: number; y: number; set(nx: number, ny: number): void } => ({
       x, y, set(nx, ny) { this.x = nx; this.y = ny; },
     });
-    const target = { screenWidth: 800, screenHeight: 600, position: point(5, 6), scale: point(1, 1) };
+    const target = { position: point(5, 6), scale: point(1, 1) };
     let rendered = '';
 
+    // Centred in the frame's own size, whatever screen the viewport has
     captureBeforeRender([], () => { rendered = `${target.position.x},${target.position.y}@${target.scale.x}`; }, () => undefined, {
-      target, camera: { centerX: 100, centerY: 50, scale: 2 },
+      target, camera: { centerX: 100, centerY: 50, scale: 2 }, screen: { width: 1920, height: 1080 },
     });
 
-    expect(rendered).toBe('200,200@2');
+    expect(rendered).toBe('760,440@2');
     expect([target.position.x, target.position.y, target.scale.x]).toEqual([5, 6, 1]);
   });
 

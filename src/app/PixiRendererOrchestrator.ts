@@ -20,8 +20,10 @@ import { HexLinkRenderer } from "./pixi/hexLinks/HexLinkRenderer";
 import { HexLinkInteraction } from "./pixi/hexLinks/HexLinkInteraction";
 import type { MapRect } from "./grid/cellNumbering";
 import type { NotePin } from "./types";
-import { captureBeforeRender, captureWithLayerVisibility, type LayerVisibility } from "./pixi/playerSafeFrame";
-import type { PlayerCameraState } from "./local-player-view";
+import { captureBeforeRender, frameCamera, type LayerVisibility } from "./pixi/playerSafeFrame";
+import { PlayerFrameTexture } from "./pixi/PlayerFrameTexture";
+import type { FramePiece, PlayerFrame } from "./types/playerFrame";
+import { contextLost } from "./pixi/lighting/engine/gpu";
 import { SelectionManager } from "./pixi/SelectionManager"; // Import SelectionManager
 import { FogOfWarRenderer } from "./pixi/fog/FogOfWarRenderer";
 import { MeasureRenderer } from "./pixi/MeasureRenderer"; // Import MeasureRenderer
@@ -72,6 +74,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private textTool?: TextTool; // Add TextTool instance
   /** The view's lighting, built and removed as the GM switches dynamic lighting on and off. */
   private lightingFeature?: LightingFeature;
+  /** The players' frame, rendered at the player window's size; made when this view is first presented. */
+  private playerFrames?: Pick<PlayerFrameTexture, 'canRender' | 'render' | 'copy' | 'release' | 'destroy'>;
   private get lighting(): LightingController | undefined {
     return this.lightingFeature?.controller;
   }
@@ -711,13 +715,40 @@ export class PixiRendererOrchestrator { // Renamed class
   getAppInstance(): Application { return this.pixiAppManager.getApp(); }
 
   /**
-   * Capture player settings without changing the DM's scene or preferences.
-   * With `camera`, the frame is rendered from that camera instead of the DM's.
-   * `renderFollows`: called right before the stage's own render, which puts the DM's frame back.
+   * Renders `frame`, the players' picture at a size and camera of its own, without changing the
+   * DM's scene or preferences, and hands its pixels to `copy` piece by piece (`PlayerFrameTexture`).
+   * The pieces go through this view's canvas: unless `renderFollows` (called right before the
+   * stage's own render, which puts the DM's frame back), the DM's frame is rendered again here.
+   * Nothing is rendered or copied while the graphics context is lost.
    */
-  public withPlayerSafeFrame(capture: () => void, settings: AtlasSettings['localPlayerView'], camera?: PlayerCameraState, renderFollows = false): void {
+  public withPlayerSafeFrame(copy: (piece: FramePiece) => void, settings: AtlasSettings['localPlayerView'], frame: PlayerFrame, renderFollows = false): void {
+    if (this._isDestroyed) return;
     const app = this.pixiAppManager.getApp();
-    if (!app?.renderer) return;
+    const viewport = this.pixiAppManager.getViewport();
+    if (!app?.renderer || !viewport) return;
+    const frames = this.playerFrames ??= new PlayerFrameTexture(app.renderer);
+    if (!frames.canRender()) return;
+    try {
+      captureBeforeRender(this.playerFrameLayers(settings), () => frames.render(app.stage, frame), () => frames.copy(copy), frameCamera(viewport, frame));
+    } finally {
+      if (!renderFollows) app.renderer.render(app.stage);
+    }
+  }
+
+  /** Whether a players' frame can be rendered now: not while the graphics context is lost. */
+  public canRenderPlayerFrame(): boolean {
+    if (this._isDestroyed) return false;
+    const app = this.pixiAppManager.getApp();
+    return !!app?.renderer && !contextLost(app.renderer);
+  }
+
+  /** Gives back the graphics memory of the players' frame, once nobody is shown it any more. */
+  public releasePlayerFrame(): void {
+    this.playerFrames?.release();
+  }
+
+  /** What a players' frame changes on the stage: everything players must not see, hidden for one render. */
+  private playerFrameLayers(settings: AtlasSettings['localPlayerView']): LayerVisibility[] {
     // The grid is left as the GM set it: players see it exactly as the GM does, hidden included.
     const layers = this.markerLayers();
     // The lighting's part is the list session view holds on this canvas (`SessionLighting`).
@@ -728,10 +759,7 @@ export class PixiRendererOrchestrator { // Renamed class
     layers.push(...(this.fogRenderer?.getPlayerViewLayers() ?? []));
     layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
     for (const overlay of this.dmScreenOverlays) layers.push({ layer: overlay, visible: false });
-    const viewport = this.pixiAppManager.getViewport();
-    const playerCamera = camera && viewport ? { target: viewport, camera } : undefined;
-    const captureFrame = renderFollows ? captureBeforeRender : captureWithLayerVisibility;
-    captureFrame(layers, () => app.renderer.render(app.stage), capture, playerCamera);
+    return layers;
   }
 
   /**
@@ -1045,6 +1073,8 @@ export class PixiRendererOrchestrator { // Renamed class
     this.textRenderer?.destroy(); // Destroy TextRenderer
     this.textTool?.destroy(); // Destroy TextTool
     this.lightingFeature?.destroy();
+    this.playerFrames?.destroy();
+    delete this.playerFrames;
     this.audioRenderer?.destroy();
     this.spatialAudioEngine?.dispose();
     this.bufferCache?.dispose();

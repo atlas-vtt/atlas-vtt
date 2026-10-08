@@ -34,7 +34,7 @@ describe('captureWithLayerVisibility with a player camera', () => {
       expect(viewport.scale.x).toBe(0.5);
       expect(viewport.x).toBe(400 - 500 * 0.5);
       expect(viewport.y).toBe(300 - 400 * 0.5);
-    }, { target: viewport, camera });
+    }, { target: viewport, camera, screen: { width: 800, height: 600 } });
 
     expect(renders).toEqual([{ x: 150, y: 100, scale: 0.5 }, { x: -100, y: -50, scale: 2 }]);
     expect(viewport.scale.y).toBe(2);

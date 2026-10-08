@@ -94,14 +94,14 @@ describe('PlayerFrameMirror while the presented scene loads', () => {
     frame(300);
     dm.tick(301);
     expect(events).toEqual(MIRRORED);
-    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), SETTINGS, state.frozen);
+    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), SETTINGS, expect.objectContaining({ centerX: 10, centerY: 20, scale: 4 }));
   });
 });
 
 describe('PlayerFrameMirror on a canvas without a render schedule while its scene loads', () => {
   function unscheduled(dm: ReturnType<typeof setupMirror>['dm'], withStore: boolean): PlayerFrameSource {
-    const { canvas, store, withPlayerSafeFrame } = dm.source;
-    return { canvas, withPlayerSafeFrame, ...(withStore && store ? { store } : {}) };
+    const { getCamera, getScreen, store, withPlayerSafeFrame } = dm.source;
+    return { getCamera, getScreen, withPlayerSafeFrame, ...(withStore && store ? { store } : {}) };
   }
 
   it('captures nothing during the load and the next display frame after it', () => {
