@@ -8,13 +8,14 @@ import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { sealedWalls } from '../../lighting/sealWalls';
 import { worldTexel } from '../../lighting/lightingConstants';
+import { uncoveredAreas, type FilledArea } from '../../lighting/uncoveredAreas';
 import { perceivedLevel, showsMap } from '../../gameSystems/senseRules';
 import { SightTokens, heldForSight } from '../../lighting/sightOnDrop';
-import { SEES_ALL, SightCache, sceneSight, sightSources, type AmbientLight, type LightReach, type Sight } from '../../vision/sight';
+import { SEES_ALL, SightCache, sceneSight, sightSources, type AmbientLight, type LightReach, type Sight, type SightRegion } from '../../vision/sight';
 import { wallList } from '../../vision/wallList';
 import { seenSpots, type SeenSpot } from '../../vision/perception';
 import type { SightRules } from '../../vision/sightRules';
-import type { MapBounds } from '../../vision/visibility';
+import type { MapBounds, Polygon } from '../../vision/visibility';
 import type { HideableLayer } from '../playerSafeFrame';
 import { destroyTree } from '../utils/destroyTree';
 import type { SceneFrame } from './engine/types';
@@ -49,7 +50,6 @@ export interface CanvasLightingDeps {
  * Magical darkness is the one thing of the lights it keeps, since it hides: its area is black
  * and what stands in it is not seen. The GM's canvas is unchanged.
  */
-// ponytail: overlapping sight polygons are cut as separate holes; earcut may darken their overlap. Union them if that shows.
 export class CanvasLightingFallback implements SceneLightingView {
   readonly modeLayer: HideableLayer;
   private readonly darkness = new Graphics();
@@ -140,34 +140,42 @@ export class CanvasLightingFallback implements SceneLightingView {
   }
 
   /**
-   * Black over the map, cut open where a sense shows it and at each token seen without the map
-   * around it; then black again over each magical darkness, cut open at those tokens and where
-   * a sense that sees in magical darkness looks: a token it shows must not lie under the black.
+   * Black over the map outside what a sense shows and outside each token seen without the map
+   * around it; black again over each magical darkness outside those tokens and outside where a
+   * sense that sees in magical darkness looks: a token it shows must not lie under the black.
    */
   private drawDarkness(bounds: MapBounds, spots: readonly SeenSpot[]): void {
     const g = this.darkness;
     g.clear();
-    const cutSpots = (): void => {
-      for (const { polygon } of spots) {
-        if (polygon.length >= 3) g.poly(polygon.flatMap((p) => [p.x, p.y])).cut();
-      }
-    };
-    if (!this.sight.all) {
-      g.rect(0, 0, bounds.width, bounds.height).fill({ color: 0x000000 });
-      for (const { sense, polygon } of this.sight.regions) {
-        if (showsMap(sense) && polygon && polygon.length >= 3) g.poly(polygon.flatMap((p) => [p.x, p.y])).cut();
-      }
-      cutSpots();
-    }
-    for (const { polygon } of this.reaches) {
-      if (polygon.length < 3) continue;
-      g.poly(polygon.flatMap((p) => [p.x, p.y])).fill({ color: 0x000000 });
-      for (const region of this.sight.regions) {
-        if (showsMap(region.sense) && perceivedLevel(region.sense, 'magical-dark') !== null && region.polygon && region.polygon.length >= 3) g.poly(region.polygon.flatMap((p) => [p.x, p.y])).cut();
-      }
-      cutSpots();
+    for (const { outline, holes } of this.hiddenAreas(bounds, spots)) {
+      g.poly(outline).fill({ color: 0x000000 });
+      if (holes.length === 0) continue;
+      // All holes in one cut: PIXI hands a fill's second cut to the fill before it as well.
+      for (const hole of holes) g.poly(hole);
+      g.cut();
     }
     this.darkness.visible = this.playerView.visible;
+  }
+
+  /**
+   * What the players do not see, as areas with their holes worked out: sight polygons overlap
+   * and reach the map's edge, and PIXI draws holes right only where each lies inside its shape
+   * and apart from the others (two that overlapped were black on Canvas, where three showed).
+   */
+  private hiddenAreas(bounds: MapBounds, spots: readonly SeenSpot[]): FilledArea[] {
+    const map: Polygon = [{ x: 0, y: 0 }, { x: bounds.width, y: 0 }, { x: bounds.width, y: bounds.height }, { x: 0, y: bounds.height }];
+    const footprints = spots.map((spot) => spot.polygon);
+    const seeing = this.sight.regions.filter((region) => showsMap(region.sense));
+    const polygonsOf = (regions: readonly SightRegion[]): Polygon[] => regions.flatMap((region) => (region.polygon ? [region.polygon] : []));
+    try {
+      const outOfSight = this.sight.all ? [] : uncoveredAreas([map], [...polygonsOf(seeing), ...footprints]);
+      const piercing = seeing.filter((region) => perceivedLevel(region.sense, 'magical-dark') !== null);
+      const inDarkness = uncoveredAreas(this.reaches.map((reach) => reach.polygon), [...polygonsOf(piercing), ...footprints]);
+      return [...outOfSight, ...inDarkness];
+    } catch (error) {
+      console.error('[CanvasLightingFallback] Sight could not be drawn, the map stays hidden:', error);
+      return [{ outline: map.flatMap((corner) => [corner.x, corner.y]), holes: [] }];
+    }
   }
 
   destroy(): void {

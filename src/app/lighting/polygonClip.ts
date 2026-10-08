@@ -1,4 +1,4 @@
-import { difference, EndType, FillRule, inflatePaths, JoinType, union, type Path64, type Paths64 } from 'clipper2-ts';
+import { booleanOpWithPolyTree, ClipType, difference, EndType, FillRule, inflatePaths, JoinType, PolyTree64, union, type Path64, type Paths64, type PolyPath64 } from 'clipper2-ts';
 import type { Q, QPolygon, QShape } from '../types/shapeTypes';
 import { canonicalForm } from './canonicalForm';
 import { assertQ } from './quantizedPoint';
@@ -27,6 +27,40 @@ export function unionShapes(subject: QShape, clip: QShape): QShape {
 
 export function subtractShapes(subject: QShape, clip: QShape): QShape {
   return canonicalOutput(difference(subject.map(pathOf), clip.map(pathOf), FillRule.NonZero));
+}
+
+/** A filled outline with the holes that lie directly in it; what is filled inside a hole is an area of its own. */
+export interface QArea {
+  readonly outline: QPolygon;
+  readonly holes: readonly QPolygon[];
+}
+
+function ringOf(node: PolyPath64): QPolygon {
+  return (node.poly ?? []).flatMap(point => [point.x, point.y]);
+}
+
+function childrenOf(node: PolyPath64): PolyPath64[] {
+  return Array.from({ length: node.count }, (_, i) => node.child(i));
+}
+
+function collectAreas(parent: PolyPath64, areas: QArea[]): void {
+  for (const outline of childrenOf(parent)) {
+    const holes = childrenOf(outline);
+    areas.push({ outline: ringOf(outline), holes: holes.map(ringOf) });
+    for (const hole of holes) collectAreas(hole, areas);
+  }
+}
+
+/**
+ * `subject` without `clip` as areas that know their holes, for a drawer that needs every hole
+ * inside its outline and apart from the others.
+ */
+export function subtractToAreas(subject: QShape, clip: QShape): QArea[] {
+  const tree = new PolyTree64();
+  booleanOpWithPolyTree(ClipType.Difference, subject.map(pathOf), clip.map(pathOf), tree, FillRule.NonZero);
+  const areas: QArea[] = [];
+  collectAreas(tree, areas);
+  return areas;
 }
 
 /** Resolve a raw outline's crossings before canonical cleanup can discard zero-area rings. */

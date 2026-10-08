@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import { Container, Graphics, type GraphicsPath } from 'pixi.js';
+import { Container, type Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { describe, expect, it } from 'vitest';
 import { CanvasLightingFallback } from '../../src/app/pixi/lighting/CanvasLightingFallback';
@@ -9,6 +9,7 @@ import { CanvasLightingFallback as FrozenFallback } from '../oracles/sightPolicy
 import { NO_SIGHT as FROZEN_NO_SIGHT, SEES_ALL as FROZEN_SEES_ALL } from '../oracles/sightPolicyBaseline/sight';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { darknessCovers, darknessOf } from '../helpers/darknessCover';
 import { seedBlocks, sightScene, type SightScene } from '../helpers/sightScenes';
 
 interface Fallback {
@@ -16,16 +17,28 @@ interface Fallback {
   destroy(): void;
 }
 
-/** What the fallback drew: each fill or cut with its colour and the paths it was made of, without the ids PIXI numbers its objects by. */
-function drawn(viewport: Container): string {
-  const darkness = viewport.children[0];
-  if (!(darkness instanceof Graphics)) throw new Error('The fallback drew no darkness');
-  const instructions = darkness.context.instructions.map((instruction) => {
-    if (instruction.action !== 'fill' && instruction.action !== 'cut' && instruction.action !== 'stroke') return { action: instruction.action };
-    const { style, path, hole } = instruction.data as { style: { color: number; alpha: number }; path: GraphicsPath; hole?: GraphicsPath };
-    return { action: instruction.action, color: style.color, alpha: style.alpha, path: path.instructions, hole: hole?.instructions ?? null };
-  });
-  return JSON.stringify(instructions, (key, value: unknown) => (key === 'uid' ? undefined : value));
+const PROBES = 20;
+/** Farther than the eighth of a pixel the current version rounds its outlines to. */
+const EDGE = 0.25;
+
+/**
+ * Where the darkness the previous version meant to draw and the current one's differ: its holes
+ * overlapped, which no renderer drew as meant, so the areas are compared, not the drawing.
+ * A point is compared where the previous darkness is the same a quarter pixel around it.
+ */
+function comparePoints(now: Graphics, before: Graphics, { width, height }: SightScene['bounds']): { compared: number; differ: number } {
+  let compared = 0, differ = 0;
+  for (let row = 0; row < PROBES; row++) {
+    for (let column = 0; column < PROBES; column++) {
+      const x = ((column + 0.37) * width) / PROBES, y = ((row + 0.61) * height) / PROBES;
+      const meant = darknessCovers(before, x, y);
+      if (darknessCovers(before, x - EDGE, y - EDGE) !== meant || darknessCovers(before, x + EDGE, y + EDGE) !== meant) continue;
+      if (darknessCovers(before, x - EDGE, y + EDGE) !== meant || darknessCovers(before, x + EDGE, y - EDGE) !== meant) continue;
+      compared++;
+      if (darknessCovers(now, x, y) !== meant) differ++;
+    }
+  }
+  return { compared, differ };
 }
 
 function open(scene: SightScene, store: ViewAtlasStore, Kind: new (deps: ConstructorParameters<typeof CanvasLightingFallback>[0]) => Fallback): { fallback: Fallback; viewport: Container } {
@@ -65,7 +78,7 @@ describe('the canvas fallback compared with its previous version', () => {
   it.each(seedBlocks(60, 10).map((seeds) => ({ first: seeds[0]!, last: seeds[seeds.length - 1]!, seeds })))('scenes $first to $last give the same sight and darkness', ({ seeds }) => {
     const restore = stubJsdomGraphics();
     const problems: string[] = [];
-    const seen = { darkness: 0, regions: 0 };
+    const seen = { darkness: 0, regions: 0, points: 0 };
     try {
       for (const seed of seeds) {
         const scene = sightScene(seed);
@@ -79,9 +92,11 @@ describe('the canvas fallback compared with its previous version', () => {
             const theirs = before.fallback.currentSight();
             if (!isDeepStrictEqual(ours, theirs)) problems.push(`seed ${seed}, ${step}: sight differs`);
             if (!isDeepStrictEqual(relations(ours, previous[0], NO_SIGHT, SEES_ALL), relations(theirs, previous[1], FROZEN_NO_SIGHT, FROZEN_SEES_ALL))) problems.push(`seed ${seed}, ${step}: sight identity differs`);
-            const darkness = drawn(now.viewport);
-            if (darkness !== drawn(before.viewport)) problems.push(`seed ${seed}, ${step}: darkness differs`);
-            if (darkness !== '[]') seen.darkness++;
+            const darkness = darknessOf(now.viewport);
+            const { compared, differ } = comparePoints(darkness, darknessOf(before.viewport), scene.bounds);
+            if (differ > 0) problems.push(`seed ${seed}, ${step}: darkness differs at ${differ} points`);
+            if (darkness.context.instructions.length > 0) seen.darkness++;
+            seen.points += compared;
             if (ours.regions.length > 0) seen.regions++;
             previous = [ours, theirs];
           }
@@ -97,5 +112,6 @@ describe('the canvas fallback compared with its previous version', () => {
     // The block compared something: darkness was drawn and tokens saw.
     expect(seen.darkness).toBeGreaterThan(0);
     expect(seen.regions).toBeGreaterThan(0);
+    expect(seen.points).toBeGreaterThan(PROBES * PROBES * seeds.length * 3);
   });
 });

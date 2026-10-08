@@ -38,6 +38,8 @@
 
 - Undo and redo now change only what that edit changed. Changes Atlas made by itself since, such as following a renamed file, stay.
 
+- Where Atlas shows line of sight without light and shadow, because it cannot use the graphics card, players now see every area their tokens see. Areas that two tokens saw at once were black, and so was what a sense that sees in magical darkness saw around the darkness.
+
 ## Important changes
 
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.

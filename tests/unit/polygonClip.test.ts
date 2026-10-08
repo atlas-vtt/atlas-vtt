@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { canonicalForm, signedAreaTwice } from '../../src/app/lighting/canonicalForm';
-import { inflatePolyline, normalizePolygon, subtractShapes, unionShapes } from '../../src/app/lighting/polygonClip';
+import { inflatePolyline, normalizePolygon, subtractShapes, subtractToAreas, unionShapes } from '../../src/app/lighting/polygonClip';
 import { shapeContains } from '../../src/app/lighting/shapeContains';
 import { MAX_Q } from '../../src/app/types/shapeTypes';
 import { hasCrossing, qRectangle } from '../helpers/fogShapeAssertions';
@@ -85,5 +85,19 @@ describe('integer polygon operations', () => {
   it('rejects generated coordinates outside the supported range', () => {
     expect(() => inflatePolyline([MAX_Q, 0], 8)).toThrow(RangeError);
     expect(() => unionShapes([[Infinity, 0]], [])).toThrow(RangeError);
+  });
+
+  it('gives each hole to the outline it lies in, and what is filled inside a hole an area of its own', () => {
+    const frame = subtractShapes([qRectangle(16, 16, 88, 88)], [qRectangle(40, 40, 40, 40)]);
+    const areas = subtractToAreas([qRectangle(0, 0, 120, 120), qRectangle(200, 0, 48, 48)], [...frame, qRectangle(208, 8, 8, 8), qRectangle(224, 24, 8, 8)]);
+    const summary = areas.map(({ outline, holes }) => ({ outline: signedAreaTwice(outline), holes: holes.map(signedAreaTwice) }));
+    summary.sort((a, b) => Number(a.outline - b.outline));
+    expect(summary).toEqual([
+      { outline: 3200n, holes: [] },
+      { outline: 4608n, holes: [-128n, -128n] },
+      { outline: 28800n, holes: [-15488n] },
+    ]);
+    expect(subtractToAreas([qRectangle(0, 0, 80, 80)], [qRectangle(0, 0, 80, 80)])).toEqual([]);
+    expect(() => subtractToAreas([[NaN, 0, 8, 0, 8, 8]], [])).toThrow(RangeError);
   });
 });
