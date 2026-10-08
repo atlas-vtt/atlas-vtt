@@ -191,14 +191,26 @@ describe('DM screen while Fantasy Statblocks parses the vault', () => {
     expect(skeleton(container)).toBeNull();
   });
 
-  it('still shows the screen, with the statblocks it found, when loading them fails', async () => {
+  it('keeps the statblocks after a linked note that cannot be read', async () => {
     const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    placeTokens([creaturePath, unreadablePath]);
+    placeTokens([unreadablePath, creaturePath]);
     installParsingBestiary();
     const { container } = render(<DMScreen isOpen onClose={vi.fn()} />);
 
     await waitFor(() => expect(shown(container)).not.toBeNull());
     await waitFor(() => expect(heading(container)).toBe('Acid Burrower'));
+    expect(container.querySelectorAll('.atlas-fantasy-statblock')).toHaveLength(1);
+    expect(errors).toHaveBeenCalledWith(expect.stringContaining(unreadablePath), expect.any(Error));
+  });
+
+  it('still shows the screen when looking its statblocks up fails', async () => {
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    placeTokens([creaturePath]);
+    Object.assign(window, { FantasyStatblocks: { getBestiaryCreatures: () => { throw new Error('Fantasy Statblocks is unloading.'); } } });
+    const { container } = render(<DMScreen isOpen onClose={vi.fn()} />);
+
+    await waitFor(() => expect(shown(container)).not.toBeNull());
+    expect(container.querySelector('.atlas-dm-notes-section')).not.toBeNull();
     expect(errors).toHaveBeenCalledWith('[Atlas] Loading DM screen statblocks failed:', expect.any(Error));
   });
 });

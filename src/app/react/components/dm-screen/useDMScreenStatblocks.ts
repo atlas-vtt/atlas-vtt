@@ -28,6 +28,16 @@ function getStatblockPath(token: TokenEntity): string | undefined {
   return token.kind === 'character' ? token.statblockPath : undefined;
 }
 
+/** Whether a note defines a statblock of its own. One that cannot be read defines none, so the other notes keep theirs. */
+async function definesStatblock(app: App, file: TFile): Promise<boolean> {
+  try {
+    return (await resolveStatblockNote(app, file)) !== null;
+  } catch (error) {
+    console.error(`[Atlas] Could not read the statblock note ${file.path}:`, error);
+    return false;
+  }
+}
+
 /**
  * The statblocks of the map's creatures, one per linked note, and whether they are still
  * being looked up. Each keeps its tokens together with the scene they were taken from, so
@@ -100,7 +110,7 @@ export function useDMScreenStatblocks(isOpen: boolean, app: App, scene: DMScreen
           const file = app.vault.getAbstractFileByPath(path);
           if (
             file instanceof TFile &&
-            (hasCreatureForNotePath(path) || await resolveStatblockNote(app, file))
+            (hasCreatureForNotePath(path) || await definesStatblock(app, file))
           ) {
             uniqueStatblocks.set(path, { path, tokens: pathTokens, originContext: contextOf(pathTokens) });
           }

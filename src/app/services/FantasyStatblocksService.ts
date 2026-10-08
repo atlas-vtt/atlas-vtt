@@ -73,12 +73,16 @@ export function layoutForCreature(
   return resolveLayout(app, requested);
 }
 
+/** Fantasy Statblocks sends it over the workspace when it has parsed the vault's notes. */
+export const BESTIARY_RESOLVED_EVENT = 'fantasy-statblocks:bestiary:resolved';
+
 /**
  * Whether Fantasy Statblocks has parsed the vault's notes, which it does after
- * every start. Until then the bestiary is incomplete and its lookup by name throws.
+ * every start. Until then the bestiary is incomplete and its lookup by name
+ * throws. Without the plugin there is no parse to wait for.
  */
-function isBestiaryResolved(api: FantasyStatblocksApi): boolean {
-  return api.isResolved?.() !== false;
+export function isBestiaryResolved(api: FantasyStatblocksApi | null = getFantasyStatblocksApi()): boolean {
+  return api?.isResolved?.() !== false;
 }
 
 /**
@@ -96,7 +100,8 @@ export function noteBasename(notePath: string): string {
 
 /**
  * Whether the bestiary holds a creature for a linked note, by the note's path
- * or its name. Unlike the creature, this is known while the bestiary is parsed.
+ * or its name. Unlike the creature, this can be asked while the bestiary is
+ * being parsed; a note the parse has not reached yet is not held until it has.
  */
 export function hasCreatureForNotePath(notePath: string): boolean {
   const api = getFantasyStatblocksApi();

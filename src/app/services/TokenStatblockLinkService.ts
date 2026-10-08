@@ -1,8 +1,10 @@
 import { StatblockTokenImportService } from './StatblockTokenImportService';
-import { App, TFile, Notice, Modal } from 'obsidian';
+import { App, TFile, Notice, Modal, type Events } from 'obsidian';
 import { EventEmitter } from 'events';
 import { AssetService, type TokenAsset } from './AssetService';
 import { resolveLinkedCreature } from '../creatures/linkedCreature';
+import { BESTIARY_RESOLVED_EVENT, isBestiaryResolved } from './FantasyStatblocksService';
+import { runInBackground } from '../utils/backgroundTask';
 import { mapResources } from '../resources/collectionResources';
 import { tokenFromFile, tokenToFile } from '../resources/resourceFileFormat';
 import type { ResourceDefinition } from '../resources/resourceTypes';
@@ -58,7 +60,9 @@ export class TokenStatblockLinkService extends EventEmitter {
   private static instance: TokenStatblockLinkService | null = null;
   private app: App;
   private assetService: AssetService;
-  
+  /** Ends each wait for the bestiary that is under way. */
+  private readonly bestiaryWaits = new Set<() => void>();
+
   private constructor(app: App) {
     super();
     this.app = app;
@@ -78,7 +82,12 @@ export class TokenStatblockLinkService extends EventEmitter {
     }
     return TokenStatblockLinkService.instance;
   }
-  
+
+  /** Destroys the service if there is one; called when the plugin unloads. */
+  static release(): void {
+    TokenStatblockLinkService.instance?.destroy();
+  }
+
   /**
    * Links the token asset identified by its image path to a statblock, keeping
    * the relationship one-to-one: a token previously using this statblock is
@@ -320,12 +329,50 @@ export class TokenStatblockLinkService extends EventEmitter {
       console.error('[TokenStatblockLinkService] Failed to write statblock image:', error);
     }
   }
+
+  /**
+   * Resolves once Fantasy Statblocks has parsed the vault: at once when it has,
+   * or is not installed. A wait under way when the service is destroyed never ends.
+   */
+  private whenBestiaryResolved(): Promise<void> {
+    if (isBestiaryResolved()) return Promise.resolve();
+    return new Promise((resolve) => {
+      const workspace: Events = this.app.workspace;
+      const ref = workspace.on(BESTIARY_RESOLVED_EVENT, () => {
+        end();
+        resolve();
+      });
+      const end = (): void => {
+        workspace.offref(ref);
+        this.bestiaryWaits.delete(end);
+      };
+      this.bestiaryWaits.add(end);
+    });
+  }
+
   /**
    * Updates all spawned tokens on all maps that use the given image.
+   *
+   * What a statblock supplies may come from the bestiary, and is not known
+   * while Fantasy Statblocks still parses the vault. A link made then gives the
+   * maps the link alone, and what the statblock supplies once the parse is
+   * done, unless the token's link has changed by then.
    */
   private async updateAllSpawnedTokens(tokenImagePath: string, statblockPath: string | null): Promise<void> {
+    const awaitsBestiary = Boolean(statblockPath) && !isBestiaryResolved();
+    if (awaitsBestiary) {
+      const linked = await this.getStatblockLinkedToToken(tokenImagePath);
+      runInBackground(
+        this.whenBestiaryResolved().then(async () => {
+          if ((await this.getStatblockLinkedToToken(tokenImagePath)) !== linked) return;
+          await this.updateAllSpawnedTokens(tokenImagePath, statblockPath);
+        }),
+        `Updating the map tokens linked to ${statblockPath}`,
+      );
+    }
+
     const mapFiles = this.app.vault.getFiles().filter(f => f.extension === 'atlasmap');
-    const statblockData = statblockPath ? await this.extractStatblockData(statblockPath) : null;
+    const statblockData = statblockPath && !awaitsBestiary ? await this.extractStatblockData(statblockPath) : null;
 
     /** Returns the rewritten map JSON, or null when no token on the map uses the image. */
     const rewriteMap = (content: string, definitions: readonly ResourceDefinition[]): string | null => {
@@ -543,6 +590,7 @@ export class TokenStatblockLinkService extends EventEmitter {
    * Cleanup method
    */
   destroy(): void {
+    for (const end of [...this.bestiaryWaits]) end();
     this.removeAllListeners();
     TokenStatblockLinkService.instance = null;
   }
