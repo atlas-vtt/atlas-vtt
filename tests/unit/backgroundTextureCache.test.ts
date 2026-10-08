@@ -1,20 +1,20 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
+import type { Texture } from 'pixi.js';
 
-const assets = vi.hoisted(() => ({
-  load: vi.fn(),
-  unload: vi.fn(),
-}));
+const destroy = vi.hoisted(() => vi.fn());
 
-vi.mock('pixi.js', () => ({ Assets: assets }));
+vi.mock('../../src/app/pixi/vaultImageTexture', () => ({ destroyVaultTexture: destroy }));
 
 interface FakeTexture {
+  url: string;
   width: number;
   height: number;
   source: { pixelWidth: number; pixelHeight: number; autoGenerateMipmaps: boolean; scaleMode: string; update: () => void };
 }
 
-function fakeTexture(size: number): FakeTexture {
+function fakeTexture(url: string, size: number): FakeTexture {
   return {
+    url,
     width: size,
     height: size,
     source: { pixelWidth: size, pixelHeight: size, autoGenerateMipmaps: false, scaleMode: 'nearest', update: vi.fn() },
@@ -26,15 +26,33 @@ function sideForMegabytes(mb: number): number {
   return Math.sqrt((mb * 1024 * 1024) / 4);
 }
 
-async function loadCache(): Promise<typeof import('../../src/app/pixi/backgroundTextureCache').backgroundTextureCache> {
+/** The cache with every background decoded by `decode`, which the tests count and replace. */
+interface Bench {
+  decode: Mock<(url: string) => Promise<FakeTexture>>;
+  acquire: (url: string) => Promise<FakeTexture>;
+  release: (url: string) => void;
+  /** The URLs of the backgrounds destroyed so far; the cache destroys one once its decoding has ended. */
+  destroyed: () => Promise<string[]>;
+}
+
+async function loadCache(): Promise<Bench> {
   vi.resetModules();
-  return (await import('../../src/app/pixi/backgroundTextureCache')).backgroundTextureCache;
+  const cache = (await import('../../src/app/pixi/backgroundTextureCache')).backgroundTextureCache;
+  const decode = vi.fn(async (url: string) => fakeTexture(url, 1024));
+  return {
+    decode,
+    acquire: (url) => cache.acquire(url, () => decode(url) as unknown as Promise<Texture>) as unknown as Promise<FakeTexture>,
+    release: (url) => cache.release(url),
+    destroyed: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      return destroy.mock.calls.map(([texture]) => (texture as FakeTexture).url);
+    },
+  };
 }
 
 describe('backgroundTextureCache', () => {
   beforeEach(() => {
-    assets.load.mockReset().mockImplementation(async () => fakeTexture(1024));
-    assets.unload.mockReset().mockResolvedValue(undefined);
+    destroy.mockReset();
   });
 
   it('decodes a background once and shares it between users', async () => {
@@ -43,7 +61,7 @@ describe('backgroundTextureCache', () => {
     const second = await cache.acquire('a');
 
     expect(first).toBe(second);
-    expect(assets.load).toHaveBeenCalledTimes(1);
+    expect(cache.decode).toHaveBeenCalledTimes(1);
     expect(first.source.autoGenerateMipmaps).toBe(true);
     expect(first.source.scaleMode).toBe('linear');
   });
@@ -55,11 +73,11 @@ describe('backgroundTextureCache', () => {
     cache.release('a');
 
     await cache.acquire('a');
-    expect(assets.load).toHaveBeenCalledTimes(2);
-    expect(assets.unload).not.toHaveBeenCalled();
+    expect(cache.decode).toHaveBeenCalledTimes(2);
+    expect(await cache.destroyed()).toEqual([]);
   });
 
-  it('unloads the least recently used idle maps beyond the entry limit', async () => {
+  it('destroys the least recently used idle maps beyond the entry limit', async () => {
     const cache = await loadCache();
     await cache.acquire('open');
     for (const url of ['a', 'b', 'c', 'd']) {
@@ -67,21 +85,19 @@ describe('backgroundTextureCache', () => {
       cache.release(url);
     }
 
-    expect(assets.unload).toHaveBeenCalledTimes(1);
-    expect(assets.unload).toHaveBeenCalledWith('a');
+    expect(await cache.destroyed()).toEqual(['a']);
   });
 
-  it('unloads idle maps beyond the memory budget but always keeps the last one left', async () => {
+  it('destroys idle maps beyond the memory budget but always keeps the last one left', async () => {
     const cache = await loadCache();
-    assets.load.mockImplementation(async () => fakeTexture(sideForMegabytes(200)));
+    cache.decode.mockImplementation(async (url) => fakeTexture(url, sideForMegabytes(200)));
     await cache.acquire('open');
     for (const url of ['a', 'b']) {
       await cache.acquire(url);
       cache.release(url);
     }
 
-    expect(assets.unload).toHaveBeenCalledWith('a');
-    expect(assets.unload).not.toHaveBeenCalledWith('b');
+    expect(await cache.destroyed()).toEqual(['a']);
   });
 
   it('frees every background once no map is open', async () => {
@@ -91,36 +107,32 @@ describe('backgroundTextureCache', () => {
     cache.release('a');
     cache.release('b');
 
-    expect(assets.unload).toHaveBeenCalledWith('a');
-    expect(assets.unload).toHaveBeenCalledWith('b');
+    expect(await cache.destroyed()).toEqual(['a', 'b']);
   });
 
-  it('waits for an unload to finish before loading the same background again', async () => {
+  it('destroys a background that was let go while it was still being decoded, and decodes it anew for the next user', async () => {
     const cache = await loadCache();
-    let finishUnload!: () => void;
-    assets.unload.mockReturnValueOnce(new Promise<void>((resolve) => {
-      finishUnload = resolve;
+    let finishDecoding!: (texture: FakeTexture) => void;
+    cache.decode.mockReturnValueOnce(new Promise<FakeTexture>((resolve) => {
+      finishDecoding = resolve;
     }));
-    await cache.acquire('a');
+    const abandoned = cache.acquire('a');
     cache.release('a');
-    expect(assets.unload).toHaveBeenCalledWith('a');
+    expect(await cache.destroyed()).toEqual([]);
 
-    // The unload destroys the texture PIXI still caches, so a load must not reuse it
-    const reloading = cache.acquire('a');
-    await Promise.resolve();
-    expect(assets.load).toHaveBeenCalledTimes(1);
+    const next = await cache.acquire('a');
+    finishDecoding(fakeTexture('a', 1024));
 
-    finishUnload();
-    await reloading;
-    expect(assets.load).toHaveBeenCalledTimes(2);
+    expect(await abandoned).not.toBe(next);
+    expect(destroy).toHaveBeenCalledExactlyOnceWith(await abandoned);
   });
 
   it('retries a background whose load failed', async () => {
     const cache = await loadCache();
-    assets.load.mockRejectedValueOnce(new Error('decode failed'));
+    cache.decode.mockRejectedValueOnce(new Error('decode failed'));
 
     await expect(cache.acquire('a')).rejects.toThrow('decode failed');
     await expect(cache.acquire('a')).resolves.toBeDefined();
-    expect(assets.load).toHaveBeenCalledTimes(2);
+    expect(cache.decode).toHaveBeenCalledTimes(2);
   });
 });

@@ -1,5 +1,5 @@
 import type { Texture } from 'pixi.js';
-import { loadAsset, unloadAsset } from './utils/assetLifecycle';
+import { destroyVaultTexture } from './vaultImageTexture';
 
 /** Idle backgrounds kept for quick scene switches, in addition to the ones on screen. */
 const MAX_IDLE_ENTRIES = 3;
@@ -32,8 +32,9 @@ function estimateBytes(texture: Texture): number {
 }
 
 /**
- * Reference-counted cache for map background textures, shared by every map view
- * because PIXI's `Assets` cache is global.
+ * Reference-counted cache for map background textures, shared by every map view,
+ * so that views of one map decode its image once. A background is held under its
+ * image's resource URL, which changes with the file.
  *
  * Backgrounds that no view shows any more stay decoded in a small LRU, so switching
  * back to a recent scene skips decoding and only re-uploads to the GPU; PIXI's
@@ -43,9 +44,9 @@ function estimateBytes(texture: Texture): number {
 class BackgroundTextureCache {
   private readonly entries = new Map<string, CacheEntry>();
 
-  /** Loads (or reuses) the texture for `url`. Every call must be paired with `release(url)`. */
-  acquire(url: string): Promise<Texture> {
-    const entry = this.entries.get(url) ?? this.load(url);
+  /** The texture held for `url`, made by `load` when there is none. Every call must be paired with `release(url)`. */
+  acquire(url: string, load: () => Promise<Texture>): Promise<Texture> {
+    const entry = this.entries.get(url) ?? this.load(url, load);
     entry.refs++;
     entry.lastUsed = performance.now();
     return entry.texture;
@@ -65,8 +66,8 @@ class BackgroundTextureCache {
     }
   }
 
-  private load(url: string): CacheEntry {
-    const entry: CacheEntry = { texture: loadAsset<Texture>(url), refs: 0, bytes: 0, lastUsed: 0 };
+  private load(url: string, load: () => Promise<Texture>): CacheEntry {
+    const entry: CacheEntry = { texture: load(), refs: 0, bytes: 0, lastUsed: 0 };
     entry.texture = entry.texture.then(
       (texture) => {
         configureBackgroundTexture(texture);
@@ -99,8 +100,10 @@ class BackgroundTextureCache {
   }
 
   private evict(url: string): void {
+    const entry = this.entries.get(url);
     this.entries.delete(url);
-    void unloadAsset(url);
+    // A background still being decoded is destroyed once it has arrived
+    void entry?.texture.then(destroyVaultTexture, () => undefined);
   }
 }
 

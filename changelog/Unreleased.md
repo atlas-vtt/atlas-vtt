@@ -42,6 +42,10 @@
 
 - Map shortcuts no longer stop working until the vault is reopened after two note previews load at the same time, such as on a map with two pinned notes. Obsidian lost track of the active tab then.
 
+- Scenes with a map image no longer fail to open with "Failed to fetch" on older Obsidian installers, or where Obsidian runs on a different Electron than it shipped with.
+
+- When a scene's file or map image cannot be read, the tokens of the scene that was open before no longer stay on the canvas.
+
 ## Important changes
 
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.
