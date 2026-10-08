@@ -3,7 +3,7 @@ import { App as ObsidianApp, TFile } from 'obsidian';
 import type { ITextureCache } from './types';
 import { normalizeImagePath } from '../../utils/pathUtils';
 import { loadAsset, unloadAsset } from '../utils/assetLifecycle';
-import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from '../utils/decodedImage';
+import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from '../decodedImage';
 
 /**
  * Longest edge of a token texture. Tokens render at roughly one grid cell, so

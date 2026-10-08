@@ -1,6 +1,6 @@
 import { CanvasSource, ImageSource, type TextureSourceOptions } from 'pixi.js';
-import { withDecodedImage } from '../../imageProcessing/imageElement';
-import { fitWithin } from '../../imageProcessing/imageLayout';
+import { withDecodedImage } from '../imageProcessing/imageElement';
+import { fitWithin } from '../imageProcessing/imageLayout';
 
 /** An image ready for a texture: a bitmap, or the canvas an `<img>` was drawn on. */
 export type DecodedImage = ImageBitmap | HTMLCanvasElement;

@@ -1,7 +1,7 @@
 import { Texture } from 'pixi.js';
 import type { TFile, Vault } from 'obsidian';
 import { describeError } from '../utils/errors';
-import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from './utils/decodedImage';
+import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from './decodedImage';
 
 /**
  * A vault image as a texture at its own size. Free it with `destroyVaultTexture`.
