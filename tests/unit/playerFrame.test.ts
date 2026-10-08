@@ -163,6 +163,84 @@ describe('the players\' frame for a window', () => {
   });
 });
 
+describe('how much of the world a frame can show', () => {
+  /** A repeatable sequence of numbers between 0 and 1. */
+  function seeded(seed: number): () => number {
+    let state = seed;
+    return () => {
+      state = (Math.imul(state, 1664525) + 1013904223) | 0;
+      return (state >>> 0) / 4294967296;
+    };
+  }
+
+  /** The largest rectangle a frame of that shape may show of `view`: the smallest of the shape that holds it. */
+  function bound(view: WorldView, aspect: number): { width: number; height: number } {
+    return { width: Math.max(view.width, view.height * aspect), height: Math.max(view.height, view.width / aspect) };
+  }
+
+  it('is never more than the smallest rectangle of the window\'s shape around the view, for any window, view and pane', () => {
+    const random = seeded(316);
+    const pick = (low: number, high: number): number => low * (high / low) ** random();
+    for (let trial = 0; trial < 5000; trial++) {
+      const window = screen(pick(1, 8000), pick(1, 8000), [1, 1.25, 1.5, 2, 3][trial % 5]!);
+      const view: WorldView = { centerX: (random() - 0.5) * 1e5, centerY: (random() - 0.5) * 1e5, width: pick(1e-3, 1e6), height: pick(1e-3, 1e6) };
+      const pane = trial % 3 === 0 ? undefined : screen(pick(1, 4000), pick(1, 4000), [1, 2][trial % 2]!);
+      const frame = playerFrame(window, view, pane);
+      if (!frame) continue;
+      // The frame's pixels are whole, so its shape is the window's to within a pixel: the bound is for the frame's own shape
+      const most = bound(view, frame.width / frame.height);
+      const slack = 1 + 1e-9;
+      expect(frame.width / frame.resolution / frame.scale).toBeLessThanOrEqual(most.width * slack);
+      expect(frame.height / frame.resolution / frame.scale).toBeLessThanOrEqual(most.height * slack);
+      // And it is centred on the view, so it reaches no farther on one side than on the other
+      expect([frame.centerX, frame.centerY]).toEqual([view.centerX, view.centerY]);
+    }
+  });
+
+  it('never shows players more when the pane gets smaller, down to a sliver', () => {
+    const window = screen(1920, 1080);
+    const area = (pane: { width: number; height: number }): { width: number; height: number } => {
+      const frame = playerFrame(window, paneView(pane.width, pane.height), screen(pane.width, pane.height))!;
+      const { left, right, top, bottom } = shown(frame);
+      return { width: right - left, height: bottom - top };
+    };
+    const whole = area({ width: 1200, height: 800 });
+    for (const pane of [{ width: 900, height: 800 }, { width: 1200, height: 300 }, { width: 3, height: 800 }, { width: 1200, height: 2 }, { width: 1, height: 1 }, { width: 0.5, height: 0.5 }]) {
+      const smaller = area(pane);
+      expect(smaller.width).toBeLessThanOrEqual(whole.width + 1e-9);
+      expect(smaller.height).toBeLessThanOrEqual(whole.height + 1e-9);
+    }
+  });
+
+  it.each([
+    ['a pane without a width', { width: 0, height: 800 }, 1],
+    ['a pane without a height', { width: 1200, height: 0 }, 1],
+    ['a pane of a negative size', { width: -1200, height: 800 }, 1],
+    ['a pane whose size is no number', { width: Number.NaN, height: 800 }, 1],
+    ['a pane of an infinite size', { width: Number.POSITIVE_INFINITY, height: 800 }, 1],
+    ['a zoom of zero', { width: 1200, height: 800 }, 0],
+    ['a negative zoom', { width: 1200, height: 800 }, -1],
+    ['a zoom that is no number', { width: 1200, height: 800 }, Number.NaN],
+    ['an infinite zoom', { width: 1200, height: 800 }, Number.POSITIVE_INFINITY],
+  ])('has no view to show for %s: nothing is rendered, never a wider picture', (_name, pane, scale) => {
+    expect(viewOf({ centerX: 10, centerY: 20, scale }, pane)).toBeNull();
+  });
+
+  it.each([
+    ['no number', Number.NaN],
+    ['infinite', Number.POSITIVE_INFINITY],
+  ])('has no view to show around a centre that is %s', (_name, centre) => {
+    expect(viewOf({ centerX: centre, centerY: 20, scale: 1 }, { width: 1200, height: 800 })).toBeNull();
+    expect(viewOf({ centerX: 10, centerY: centre, scale: 1, width: 600, height: 400 }, undefined)).toBeNull();
+  });
+
+  it('takes no rectangle from a camera whose own is no size, and falls back to nothing larger', () => {
+    for (const rectangle of [{ width: 0, height: 400 }, { width: 600, height: -1 }, { width: Number.NaN, height: 400 }, { width: Number.POSITIVE_INFINITY, height: 400 }]) {
+      expect(viewOf({ centerX: 10, centerY: 20, scale: 2, ...rectangle }, { width: 1200, height: 800 })).toBeNull();
+    }
+  });
+});
+
 describe('the world rectangle a camera frames', () => {
   it('is what the GM\'s screen shows at the camera\'s scale', () => {
     expect(viewOf({ centerX: 10, centerY: 20, scale: 2 }, { width: 1200, height: 800 })).toEqual({ centerX: 10, centerY: 20, width: 600, height: 400 });

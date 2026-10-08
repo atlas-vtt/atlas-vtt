@@ -165,6 +165,88 @@ describe('player camera freeze', () => {
     expect(lastFrame()).toEqual(frozen);
   });
 
+  describe('on the scene players are shown, never on another one\'s rectangle', () => {
+    /** Another scene's view, still loading: its own store, camera and pane. `loaded` ends the load. */
+    function otherScene(camera: PlayerCameraState): Harness['source'] & { loaded(): void } {
+      const store = createStore(() => ({ isMapLoading: true }));
+      return {
+        store: store as unknown as StoreApi<ViewAtlasState>,
+        withPlayerSafeFrame: vi.fn<PlayerFrameSource['withPlayerSafeFrame']>((copy, _settings, rendered) => copy(framePiece(rendered))),
+        getCamera: (): PlayerCameraState => ({ ...camera, width: 800 / camera.scale, height: 600 / camera.scale }),
+        getScreen: (): Screen => ({ width: 800, height: 600, resolution: 1 }),
+        loaded: () => store.setState({ isMapLoading: false }),
+      };
+    }
+
+    it('does not freeze players on the rectangle they saw of the scene before, nor on a camera read while the new scene loads', () => {
+      const { service, session, setDmCamera, nextFrame } = setup();
+      // Zoomed far out on the first scene: a rectangle much larger than the next scene's view
+      setDmCamera({ centerX: 5000, centerY: 5000, scale: 0.1 });
+      nextFrame();
+      expect(session.camera).toMatchObject({ centerX: 5000, width: 8000 });
+
+      const next = otherScene({ centerX: 300, centerY: 200, scale: 2 });
+      service.presentCanvas(next, 'scene-b');
+      // Nothing of the new scene was shown yet: it still loads
+      expect(next.withPlayerSafeFrame).not.toHaveBeenCalled();
+      // The rectangle of the scene before is not kept for the new one
+      expect(session.camera).toBeNull();
+      // And while it loads the view's camera is not the scene's yet: there is nothing to freeze on
+      service.toggleCameraFreeze();
+      expect(service.isFrozen()).toBe(false);
+
+      next.loaded();
+      nextFrame();
+      const frame = next.withPlayerSafeFrame.mock.lastCall![2];
+      expect(frame).toMatchObject({ centerX: 300, centerY: 200 });
+      expect(shown(frame)[3]).toBe(300);
+
+      // Once players were shown the scene, they are frozen on what they saw of it
+      service.toggleCameraFreeze();
+      expect(session.camera).toMatchObject({ centerX: 300, centerY: 200, width: 400, height: 300 });
+    });
+
+    it('freezes players on the new scene\'s own view when it is frozen before its first frame comes', () => {
+      const { service, nextFrame } = setup();
+      nextFrame();
+      const next = otherScene({ centerX: 300, centerY: 200, scale: 2 });
+      next.loaded();
+      // Presented and frozen in one go, as from a view that renders on change: its frame comes with the next render
+      const frames = next.withPlayerSafeFrame;
+      next.withPlayerSafeFrame = vi.fn();
+      service.presentCanvas(next, 'scene-b');
+      service.toggleCameraFreeze();
+      expect(service.isFrozen()).toBe(true);
+      next.withPlayerSafeFrame = frames;
+      nextFrame();
+      expect(frames.mock.lastCall![2]).toMatchObject({ centerX: 300, centerY: 200 });
+      expect(shown(frames.mock.lastCall![2])[3]).toBe(300);
+    });
+
+    it('does not freeze on the camera of the scene the DM browses while players are held on theirs and were shown nothing of it yet', () => {
+      const { service, source, setDmCamera, nextFrame, lastFrame } = setup();
+      nextFrame();
+      const next = otherScene({ centerX: 300, centerY: 200, scale: 2 });
+      service.presentCanvas(next, 'scene-b');
+      // The DM leaves the presented tab before its first frame: the view now shows another scene, through another camera
+      service.holdCurrentFrame();
+      service.toggleCameraFreeze();
+      expect(service.isFrozen()).toBe(false);
+
+      // Held on a scene they were shown, players are frozen on what they saw of it
+      service.presentCanvas(source, 'scene-a');
+      setDmCamera({ centerX: 40, centerY: 50, scale: 1 });
+      nextFrame();
+      service.holdCurrentFrame();
+      setDmCamera({ centerX: 9000, centerY: 9000, scale: 0.1 });
+      service.toggleCameraFreeze();
+      expect(service.isFrozen()).toBe(true);
+      service.releaseHeldFrame(source);
+      nextFrame();
+      expect(lastFrame()).toMatchObject({ centerX: 40, centerY: 50 });
+    });
+  });
+
   it('presenting a scene lifts the freeze', () => {
     const { service, source, nextFrame } = setup();
     nextFrame();

@@ -25,6 +25,12 @@ const OPAQUE_BLACK: [number, number, number, number] = [0, 0, 0, 1];
  */
 export class PlayerFrameTexture {
   private texture: RenderTexture | null = null;
+  /**
+   * The texture holds the frame `render` was just asked for, and nobody was handed it yet. Only
+   * such a frame is handed out: after a render that failed or drew nothing the texture still
+   * holds the frame before, which may be of another moment, camera or scene.
+   */
+  private fresh = false;
   private readonly piece = new Sprite();
   private readonly holder = new Container();
   /** The frame's size, registered as a screen of its own: PIXI's texture pool then gives a filter of the frame textures of that size, not of the next power of two. */
@@ -44,14 +50,21 @@ export class PlayerFrameTexture {
 
   /** Renders `stage` as it stands into a texture of the frame's size. */
   render(stage: Container, frame: PlayerFrame): void {
+    this.fresh = false;
+    // PIXI renders nothing of a container that is not visible, and says nothing
+    if (!stage.visible) return;
     const texture = this.textureFor(frame);
     this.renderer.render({ container: stage, target: texture, clear: true, clearColor: this.renderer.background.colorRgba });
+    this.fresh = true;
   }
 
-  /** Hands the frame rendered last to `copy`, piece by piece. */
+  /** Hands the frame just rendered to `copy`, piece by piece, once; nothing where no frame was rendered since the last copy. */
   copy(copy: (piece: FramePiece) => void): void {
     const { texture, renderer } = this;
-    if (!texture) return;
+    if (!texture || !this.fresh) return;
+    this.fresh = false;
+    // A lost context draws nothing: its canvas would hand out pieces without a picture
+    if (!this.canRender()) return;
     const { pixelWidth: width, pixelHeight: height } = texture.source;
     if (renderer instanceof CanvasRenderer) {
       // A Canvas 2D render texture is a canvas of its own
@@ -73,6 +86,7 @@ export class PlayerFrameTexture {
         for (let left = 0; left < width; left += canvas.width) {
           this.piece.position.set(-left / resolution, -top / resolution);
           renderer.render({ container: this.holder, clear: true, clearColor: OPAQUE_BLACK });
+          if (!this.canRender()) return;
           copy({ image: canvas, x: 0, y: 0, width: Math.min(canvas.width, width - left), height: Math.min(canvas.height, height - top), left, top });
         }
       }
@@ -92,6 +106,7 @@ export class PlayerFrameTexture {
    * filter still holds them.
    */
   release(): void {
+    this.fresh = false;
     this.piece.texture = Texture.EMPTY;
     this.texture?.destroy(true);
     this.texture = null;

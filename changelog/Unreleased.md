@@ -32,6 +32,8 @@
 
 ## Fixed
 
+- Freezing the player camera right after sending another scene to the player view no longer freezes players on the spot they were shown in the scene before.
+
 - The player window no longer zooms in, cuts off the map or turns blocky when you open a sidebar, split the pane or keep the map in a small pane. It is now drawn at its own size and sharpness instead of being an enlarged copy of your map pane: it shows everything your view shows, centred on the same spot. Very large player screens are drawn with up to 2560 × 1440 pixels and scaled up smoothly.
 
 - Obsidian no longer turns sluggish for the rest of a session once a right-click menu was opened while Atlas and Fantasy Statblocks are both enabled. Token drags, the ruler, typing in notes and moving files all lagged, most of all with an older Obsidian installer.

@@ -158,6 +158,51 @@ describe('the frame the mirror renders for the player window', () => {
   });
 });
 
+describe('a DM view the mirror cannot read', () => {
+  it.each([
+    ['a pane without a size', (state: Harness['state']): void => { state.pane = { width: 0, height: 0, resolution: 1 }; }],
+    ['a pane whose size is no number', (state: Harness['state']): void => { state.pane = { width: Number.NaN, height: 800, resolution: 1 }; }],
+    ['a zoom of zero', (state: Harness['state']): void => { state.dm = { centerX: 2000, centerY: 1000, scale: 0 }; }],
+    ['a zoom that is no number', (state: Harness['state']): void => { state.dm = { centerX: 2000, centerY: 1000, scale: Number.NaN }; }],
+    ['a centre that is no number', (state: Harness['state']): void => { state.dm = { centerX: Number.NaN, centerY: 1000, scale: 0.5 }; }],
+    ['an infinite centre', (state: Harness['state']): void => { state.dm = { centerX: 2000, centerY: Number.NEGATIVE_INFINITY, scale: 0.5 }; }],
+  ])('renders nothing for %s and keeps the last frame, never a wider picture', (_name, degenerate) => {
+    const { frame, state, target, onFrame, drawImage } = setup();
+    const good = { pane: state.pane, dm: state.dm };
+    frame();
+    onFrame.mockClear();
+    drawImage.mockClear();
+
+    degenerate(state);
+    expect(frame()).toBeNull();
+    expect(frame()).toBeNull();
+    expect(drawImage).not.toHaveBeenCalled();
+    expect(onFrame).not.toHaveBeenCalled();
+    expect([target.width, target.height]).toEqual([1920, 1080]);
+
+    // And the frame the DM's view asks for once it can be read again
+    Object.assign(state, good);
+    expect(frame()).toMatchObject({ centerX: 2000, centerY: 1000 });
+  });
+
+  it('renders nothing for a view that has no camera yet', () => {
+    const drawImage = vi.fn();
+    const withPlayerSafeFrame = vi.fn();
+    const mirror = new PlayerFrameMirror(document.createElement('canvas'), { clearRect: vi.fn(), drawImage } as unknown as CanvasRenderingContext2D, {
+      source: () => ({ getScreen: () => ({ width: 1200, height: 800, resolution: 1 }), getCamera: () => undefined, withPlayerSafeFrame }),
+      window: () => ({ width: 1920, height: 1080, resolution: 1 }),
+      heldFrame: () => null,
+      frozenCamera: () => null,
+      settings: () => SETTINGS,
+      onFrame: vi.fn(),
+    }, () => 0);
+    mirror.frame();
+    mirror.frame();
+    expect(withPlayerSafeFrame).not.toHaveBeenCalled();
+    expect(drawImage).not.toHaveBeenCalled();
+  });
+});
+
 describe('players frozen on a camera', () => {
   /** Frozen as the service freezes them: on the DM's camera with the world rectangle the pane showed. */
   function freeze({ state }: Harness): void {

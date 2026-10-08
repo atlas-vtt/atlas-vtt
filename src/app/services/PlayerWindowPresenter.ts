@@ -130,6 +130,8 @@ async function attachPlayerWindow(app: App, player: LocalPlayerView): Promise<vo
   }
   // Freeze before attaching so the first mirrored frame already uses the saved camera.
   if (sameScene && session.frozen) service.freezeCamera(session.camera ?? source.getCamera?.());
+  // Saved for another scene, the camera and the freeze say nothing about this one
+  if (!sameScene) player.updateSession({ camera: null, frozen: false });
   service.attachToView(player, source, { tabId: sourceTab.id, filePath: sourceTab.filePath });
   watchPresentedTab(sourceView, service);
   if (previousTabId && previousTabId !== sourceTab.id) await sourceView.switchToTab(previousTabId);

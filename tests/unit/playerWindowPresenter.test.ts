@@ -400,7 +400,7 @@ describe('PlayerWindowPresenter', () => {
 
     /** A player window leaf as Obsidian opens it, saved on `session`. */
     function playerLeaf(session: { tabId: string; filePath: string; frozen: boolean; camera?: unknown }): LocalPlayerView {
-      return { getState: () => session, contentEl: document.createElement('div'), isClosed: false } as unknown as LocalPlayerView;
+      return { getState: () => session, updateSession: vi.fn(), contentEl: document.createElement('div'), isClosed: false } as unknown as LocalPlayerView;
     }
 
     test('presents a scene with no window open, without opening one', async () => {
@@ -505,6 +505,8 @@ describe('PlayerWindowPresenter', () => {
 
       expect(serviceMock.attachToView).toHaveBeenCalledWith(player, frameSourceFor(view.atlasStore), { tabId: dungeon, filePath: DUNGEON });
       expect(serviceMock.freezeCamera).not.toHaveBeenCalled();
+      // The camera saved for the scene it showed is not kept for this one, where a later freeze would take it up
+      expect(player.updateSession).toHaveBeenCalledWith({ camera: null, frozen: false });
     });
 
     test('finds the presented scene by its file when its tab id was made anew', async () => {

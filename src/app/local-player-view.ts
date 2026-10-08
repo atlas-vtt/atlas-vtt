@@ -34,7 +34,8 @@ export interface LocalPlayerSession extends Record<string, unknown> {
   tabId: string;
   filePath: string;
   frozen: boolean;
-  camera?: PlayerCameraState;
+  /** The camera players saw the scene of `tabId` through last; null once another scene is presented, until a frame of it was shown. */
+  camera?: PlayerCameraState | null;
 }
 
 /** A real workspace leaf lets Obsidian restore the presentation and window geometry. */

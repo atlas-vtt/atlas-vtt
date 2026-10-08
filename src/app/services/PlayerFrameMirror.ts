@@ -285,7 +285,7 @@ function isLoading(source: PlayerFrameSource): boolean {
 }
 
 /** Whether nothing of `source` may be rendered for players now: no loaded scene, or no graphics context. */
-function cannotRender(source: PlayerFrameSource): boolean {
+export function cannotRender(source: PlayerFrameSource): boolean {
   return isBetweenScenes(source) || isLoading(source) || source.canRender?.() === false;
 }
 

@@ -245,6 +245,112 @@ describe('a players\' frame of its own size, brought to a 2D canvas through the 
     expect(firstDifference(rgbOf(rig.ownCanvas()), own, rig.renderer.canvas.width)).toBeNull();
   });
 
+  describe('hands out only the frame it has just rendered', () => {
+    /** The pieces a copy hands out now. */
+    function copied(rig: Rig): number {
+      let pieces = 0;
+      rig.frames.copy(() => { pieces++; });
+      rig.ownCanvas();
+      return pieces;
+    }
+
+    function rendered(rig: Rig, frame: PlayerFrame): void {
+      rig.camera(frame);
+      rig.frames.render(rig.app.stage, frame);
+    }
+
+    it('once: a second copy has nothing to hand out', async () => {
+      const rig = await setup();
+      rendered(rig, frameOf(300, 200));
+      expect(copied(rig)).toBe(4);
+      expect(copied(rig)).toBe(0);
+    });
+
+    it('never the frame before, when the render of the next one fails', async () => {
+      const rig = await setup();
+      rendered(rig, frameOf(300, 200));
+      expect(copied(rig)).toBe(4);
+      vi.spyOn(rig.renderer, 'render').mockImplementationOnce(() => { throw new Error('render failed'); });
+      expect(() => rendered(rig, frameOf(300, 200))).toThrow('render failed');
+      expect(copied(rig)).toBe(0);
+      // And a whole frame again once a render succeeds
+      expectSame(rig, frameOf(300, 200));
+    });
+
+    it('never the frame before, when the stage is not rendered at all', async () => {
+      const rig = await setup();
+      rendered(rig, frameOf(300, 200));
+      expect(copied(rig)).toBe(4);
+      rig.app.stage.visible = false;
+      rendered(rig, frameOf(300, 200));
+      expect(copied(rig)).toBe(0);
+      rig.app.stage.visible = true;
+      expectSame(rig, frameOf(300, 200));
+    });
+  });
+
+  it('shows nothing of the DM\'s canvas through a part of the frame that is not opaque', async () => {
+    const rig = await setup();
+    // The DM's own picture: all red, from a layer players are never shown
+    const gmOnly = new Graphics().rect(0, 0, 4 * MAP, 4 * MAP).fill(0xff0000);
+    rig.app.stage.addChild(gmOnly);
+    // A hole in the players' frame: where it is, the frame's texture holds no colour and no alpha
+    const hole = new Graphics().rect(MAP / 2 - 100, MAP / 2 - 100, 200, 200).fill(0xffffff);
+    hole.blendMode = 'erase';
+    rig.app.stage.addChild(hole);
+    hole.visible = false;
+    const own = rig.ownCanvas();
+    expect([own[0], own[1], own[2]]).toEqual([255, 0, 0]);
+
+    const frame = frameOf(500, 333);
+    gmOnly.visible = false;
+    hole.visible = true;
+    hole.scale.set(frame.scale);
+    hole.position.set(250 - (MAP / 2) * frame.scale, 166 - (MAP / 2) * frame.scale);
+    const target = document.createElement('canvas');
+    target.width = frame.width;
+    target.height = frame.height;
+    const context = target.getContext('2d', { willReadFrequently: true })!;
+    rig.camera(frame);
+    rig.frames.render(rig.app.stage, frame);
+    gmOnly.visible = true;
+    hole.visible = false;
+    rig.frames.copy((piece) => context.drawImage(piece.image, piece.x, piece.y, piece.width, piece.height, piece.left, piece.top, piece.width, piece.height));
+    rig.ownCanvas();
+
+    const pixels = context.getImageData(0, 0, frame.width, frame.height).data;
+    // In the hole: black, as a canvas shows a texel without colour; anywhere: not a pixel of the DM's red
+    const middle = (166 * frame.width + 250) * 4;
+    expect([pixels[middle], pixels[middle + 1], pixels[middle + 2]]).toEqual([0, 0, 0]);
+    let red = 0;
+    for (let i = 0; i < pixels.length; i += 4) if (pixels[i]! > 200 && pixels[i + 1]! < 40 && pixels[i + 2]! < 40) red++;
+    expect(red).toBe(0);
+  });
+
+  it('hands out nothing of a frame whose context was lost before its pieces were drawn', async () => {
+    const rig = await setup();
+    const frame = frameOf(300, 200);
+    rig.camera(frame);
+    rig.frames.render(rig.app.stage, frame);
+    let pieces = -1;
+    let failed: unknown = null;
+    await resetContext(rig.renderer as WebGLRenderer, () => {
+      pieces = 0;
+      try {
+        rig.frames.copy(() => { pieces++; });
+      } catch (error) {
+        failed = error;
+      }
+    });
+    expect(failed).toBeNull();
+    expect(pieces).toBe(0);
+    // Nor afterwards: the restored context holds nothing of that frame
+    let later = 0;
+    rig.frames.copy(() => { later++; });
+    expect(later).toBe(0);
+    expectSame(rig, frame);
+  });
+
   it('hands out nothing from a canvas without pixels', async () => {
     const rig = await setup();
     const frame = frameOf(300, 200);

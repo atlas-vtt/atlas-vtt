@@ -11,7 +11,7 @@ import { PlayerWidgetBar } from './PlayerWidgetBar';
 import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE, type PlayerCameraState } from '../local-player-view';
 import { freezeCanvasFrame, type SceneTransition } from '../pixi/sceneTransition';
 import { t } from '../i18n';
-import { PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
+import { cannotRender, PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
 import { framedCamera } from './playerFrame';
 import type { Screen } from '../types/playerFrame';
 import type { PresentedScene } from './presentedScene';
@@ -48,6 +48,8 @@ export class PlayerWindowService {
   private animationFrame: number | null = null;
   /** Camera the DM froze players on; the presented scene is still rendered live through it. */
   private frozenCamera: PlayerCameraState | null = null;
+  /** The camera of the last frame players were shown of the presented scene; none until a frame of that scene came. */
+  private shownCamera: PlayerCameraState | null = null;
   /** Last player frame, shown unchanged while the DM works on another scene tab. */
   private heldFrame: HTMLCanvasElement | null = null;
   /** Crossfade from the previous map, still playing after the DM presented another scene. */
@@ -93,7 +95,21 @@ export class PlayerWindowService {
    * of the DM's pane, no longer reach them.
    */
   public freezeCamera(camera?: PlayerCameraState): void {
-    this.setFrozenCamera(camera ?? this.playerView?.getState().camera ?? this.streamSource?.getCamera?.() ?? null);
+    this.setFrozenCamera(camera ?? this.cameraPlayersSee());
+  }
+
+  /**
+   * The camera players see the presented scene through now: that of its last frame, else the
+   * DM's own. Never a camera of another scene: the one players saw before this scene was
+   * presented frames a rectangle of that scene's map; while a frame is held the view shows the
+   * scene the DM browses, through its camera; and while the scene loads the view's camera is
+   * not the scene's yet. With none of its own, there is nothing to freeze on yet.
+   */
+  private cameraPlayersSee(): PlayerCameraState | null {
+    if (this.shownCamera) return this.shownCamera;
+    const source = this.streamSource;
+    if (!source || this.heldFrame || cannotRender(source)) return null;
+    return source.getCamera?.() ?? null;
   }
 
   public isFrozen(): boolean {
@@ -162,14 +178,17 @@ export class PlayerWindowService {
       new Notice(t('player.notOpen'));
       return;
     }
-    if (playerWindowStore.getState().shownTabId !== tabId) this.crossfadeToNextMap();
+    const anotherScene = playerWindowStore.getState().shownTabId !== tabId;
+    if (anotherScene) this.crossfadeToNextMap();
     this.streamSource = source;
     this.mirror?.markStale();
     this.presentScene();
     this.heldFrame = null;
     this.setFrozenCamera(null);
+    // The camera players saw the scene before through says nothing about this one
+    if (anotherScene) this.shownCamera = null;
     playerWindowStore.setState({ shownTabId: tabId });
-    this.playerView?.updateSession({ tabId, ...(filePath ? { filePath } : {}), frozen: false });
+    this.playerView?.updateSession({ tabId, ...(filePath ? { filePath } : {}), frozen: false, ...(anotherScene ? { camera: null } : {}) });
     this.followSource();
   }
 
@@ -197,6 +216,7 @@ export class PlayerWindowService {
     this.playerView = view;
     this.playerWindow = view.contentEl.win;
     this.streamSource = source;
+    this.shownCamera = null;
     this.pinFrozenCamera();
     this.mirror?.markStale();
     playerWindowStore.setState({ shownTabId: scene.tabId });
@@ -449,6 +469,7 @@ export class PlayerWindowService {
   /** Persist the camera players see so a restored window reopens on the same framing. */
   private recordPlayerCamera(camera: PlayerCameraState | undefined): void {
     if (!camera) return;
+    this.shownCamera = camera;
     const previous = this.playerView?.getState().camera;
     const changed = camera.centerX !== previous?.centerX || camera.centerY !== previous.centerY || camera.scale !== previous.scale
       || camera.width !== previous.width || camera.height !== previous.height;
@@ -490,6 +511,7 @@ export class PlayerWindowService {
     this.streamSource = null;
     this.heldFrame = null;
     this.frozenCamera = null;
+    this.shownCamera = null;
     resetPlayerWindowStore();
     // The window is gone: drop the singleton so the next present binds to the presenting view's store.
     if (PlayerWindowService.instance === this) {

@@ -28,6 +28,39 @@ describe('restorable local player view', () => {
     expect(restored.getState()).toEqual(original.getState());
   });
 
+  it('round-trips the world rectangle players are frozen on', async () => {
+    const original = createView();
+    original.updateSession({ tabId: 'tavern', filePath: 'maps/tavern.atlasmap', frozen: true, camera: { centerX: 100, centerY: 200, scale: 1.5, width: 800, height: 450 } });
+    const restored = createView();
+    await restored.setState(JSON.parse(JSON.stringify(original.getState())), {});
+    expect(restored.getState().camera).toEqual({ centerX: 100, centerY: 200, scale: 1.5, width: 800, height: 450 });
+  });
+
+  it.each([
+    ['half a rectangle', { width: 800 }],
+    ['a width of zero', { width: 0, height: 450 }],
+    ['a negative height', { width: 800, height: -450 }],
+    ['a size that is no number', { width: '800', height: 450 }],
+    ['a size JSON cannot hold (infinite, written as null)', { width: null, height: 450 }],
+    ['a size that is not finite', { width: Number.POSITIVE_INFINITY, height: 450 }],
+  ])('reads a saved camera with %s as one without a rectangle, never as a larger one', async (_name, rectangle) => {
+    const view = createView();
+    await view.setState({ tabId: 'tavern', filePath: 'maps/tavern.atlasmap', frozen: true, camera: { centerX: 100, centerY: 200, scale: 1.5, ...rectangle } }, {});
+    expect(view.getState().camera).toEqual({ centerX: 100, centerY: 200, scale: 1.5 });
+  });
+
+  it.each([
+    ['a scale of zero', { centerX: 1, centerY: 2, scale: 0 }],
+    ['a negative scale', { centerX: 1, centerY: 2, scale: -1 }],
+    ['a centre that is no number', { centerX: 'left', centerY: 2, scale: 1 }],
+    ['a centre JSON cannot hold', { centerX: null, centerY: 2, scale: 1 }],
+    ['nothing', null],
+  ])('reads a saved camera with %s as none', async (_name, camera) => {
+    const view = createView();
+    await view.setState({ tabId: 'tavern', filePath: 'maps/tavern.atlasmap', frozen: true, camera }, {});
+    expect(view.getState().camera).toBeUndefined();
+  });
+
   it('preserves the popout workspace and window when unloading the plugin', async () => {
     vi.useFakeTimers();
     const view = createView();
