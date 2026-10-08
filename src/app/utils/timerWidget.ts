@@ -1,4 +1,4 @@
-import type { TimerRun, TimerWidget } from '../types/widgetTypes';
+import type { AnyWidget, TimerRun, TimerWidget, WidgetSettings } from '../types/widgetTypes';
 
 export const DEFAULT_TIMER_COLOR = '#4caf50';
 
@@ -60,6 +60,26 @@ export function startedTimer(widget: TimerWidget, now: number): TimerState {
 export function timerAt(widget: TimerWidget, now: number, keepRunning = false): TimerState {
   const value = toMilliseconds(timerRemaining(widget, now));
   return keepRunning && value > 0 ? { value, running: { since: now, remaining: value } } : { value };
+}
+
+/**
+ * The widgets with every running timer paused: at the time it has left at `at`,
+ * or without `at` at the time it last wrote. A timer runs only while a view shows
+ * it, so a run read from a file (cut short by a quit or crash) is never resumed.
+ * Returns `widgets` when no timer runs.
+ */
+export function pausedTimers(widgets: WidgetSettings['widgets'], at?: number): WidgetSettings['widgets'] {
+  let paused: WidgetSettings['widgets'] | undefined;
+  // Read from files too, where an entry may be anything
+  const entries: [string, AnyWidget | null][] = Object.entries(widgets);
+  for (const [id, widget] of entries) {
+    if (widget?.type !== 'timer' || widget.running === undefined) continue;
+    paused ??= { ...widgets };
+    const timer = { ...widget, value: at === undefined ? widget.value : timerAt(widget, at).value };
+    delete timer.running;
+    paused[id] = timer;
+  }
+  return paused ?? widgets;
 }
 
 export function resetTimer(widget: TimerWidget): TimerState {
