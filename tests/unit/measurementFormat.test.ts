@@ -51,7 +51,9 @@ describe('formatDistance', () => {
 
   it('multiplies cells by the unit distance and rounds', () => {
     expect(formatDistance(6, metric)).toBe('30ft');
-    expect(formatDistance(Math.SQRT2, metric)).toBe('7ft');
+    expect(formatDistance(Math.SQRT2, metric)).toBe('7.1ft');
+    expect(formatDistance(1, { ...metric, unitType: 'meters', unitDistance: 1.5 })).toBe('1.5m');
+    expect(formatDistance(3, { ...metric, unitType: 'meters', unitDistance: 1.5 })).toBe('4.5m');
   });
 
   it('labels each unit type', () => {
