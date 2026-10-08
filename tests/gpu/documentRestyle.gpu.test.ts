@@ -8,8 +8,17 @@ import { isRecord } from '../../src/app/utils/guards';
 
 /** A rule Fantasy Statblocks 4.10 ships: a `:has()` any element may match, styling anything below it. */
 const FOREIGN_HAS = '.statblock.basic-13th-age-monster-layout :has(+ .rule-container) * { margin-bottom: 0 !important; }';
-/** Obsidian's menus stand at 80 by its own stylesheet. */
-const OBSIDIAN = 'body { --interactive-accent: rgb(138, 92, 245); } .menu { position: fixed; z-index: 80; }';
+/**
+ * What Obsidian's own stylesheet adds to the picture: its menus stand at 80, and one of its
+ * rules has a `:has()` argument that any `div` put into the document may match.
+ */
+const OBSIDIAN = `
+  body { --interactive-accent: rgb(138, 92, 245); }
+  .menu { position: fixed; z-index: 80; }
+  .annotationLayer section:has(div.annotationContent) canvas.annotationContent { display: none; }
+`;
+/** The rule Atlas' stylesheet held. */
+const FORMER_RULE = 'body:has(.atlas-asset-manager-modal) > .menu { z-index: 9999; }';
 const ELEMENTS = 3000;
 /** Far below the document's size, far above what one element coming or going restyles. */
 const A_FEW = 50;
@@ -75,9 +84,14 @@ async function restyledDuring(run: () => void): Promise<number> {
 /** Makes the style and layout of the document current, as the next frame would. */
 const settle = (): void => { void document.body.offsetHeight; };
 
-function comeAndGo(parent: HTMLElement, className: string): void {
+function addDiv(parent: HTMLElement, className: string): HTMLDivElement {
   const element = parent.appendChild(document.createElement('div'));
   element.className = className;
+  return element;
+}
+
+function comeAndGo(parent: HTMLElement, className: string): void {
+  const element = addDiv(parent, className);
   settle();
   element.remove();
   settle();
@@ -85,39 +99,42 @@ function comeAndGo(parent: HTMLElement, className: string): void {
 
 /**
  * Obsidian with Atlas and Fantasy Statblocks, after the first context menu of a session.
- * Atlas' stylesheet once matched `body:has(.atlas-asset-manager-modal) > .menu` against every
- * menu. From then on Chromium took every element of the document for one that `:has()` on the
- * body depends on, and with a rule like `FOREIGN_HAS` loaded it restyled the whole document
- * for every element that came or went anywhere in it: tooltips, a line typed in a note, the
- * ghost of a dragged file, and the element Atlas itself put into the body on every pointer
- * move of a token drag or a measurement.
+ * Three rules met. Atlas' stylesheet matched `body:has(.atlas-asset-manager-modal) > .menu`
+ * against every menu, after which Chromium took every element of the document for one that
+ * `:has()` on the body depends on. Obsidian's own stylesheet has a `:has()` whose argument an
+ * element put into the document may match, so every such element had the body looked at again.
+ * And a rule like `FOREIGN_HAS` makes that a restyle of everything below the body. So the whole
+ * document was restyled for every element that came or went anywhere in it: tooltips, a line
+ * typed in a note, the ghost of a dragged file, and the element Atlas itself put into the body
+ * on every pointer move of a token drag or a measurement.
  */
 describe('what an element coming or going in Obsidian restyles while Atlas is loaded', { timeout: 30_000 }, () => {
-  let styles: HTMLStyleElement[];
-  let host: HTMLElement;
+  let styles: HTMLStyleElement[] = [];
   let editor: HTMLElement;
 
-  beforeEach(() => {
-    styles = [css, OBSIDIAN, FOREIGN_HAS].map((text) => {
+  /** Obsidian's workspace in a body of its own: what Chromium remembers of `:has()` it remembers on the body. */
+  function open(atlas: string): void {
+    for (const style of styles) style.remove();
+    document.documentElement.replaceChild(document.createElement('body'), document.body);
+    styles = [atlas, OBSIDIAN, FOREIGN_HAS].map((text) => {
       const style = document.head.appendChild(document.createElement('style'));
       style.textContent = text;
       return style;
     });
-    host = document.body.appendChild(document.createElement('div'));
-    host.className = 'workspace';
-    editor = host.appendChild(document.createElement('div'));
-    for (let index = 1; index < ELEMENTS; index++) {
-      const line = (index % 50 === 0 ? host : editor).appendChild(document.createElement('div'));
-      line.className = 'cm-line';
+    const workspace = addDiv(document.body, 'workspace');
+    const tabs = addDiv(workspace, 'workspace-tabs');
+    addDiv(addDiv(tabs, 'workspace-tab-header-container'), 'workspace-tab-header');
+    editor = addDiv(tabs, 'workspace-tab-container').appendChild(document.createElement('div'));
+    for (let index = document.body.querySelectorAll('*').length; index < ELEMENTS; index++) {
+      addDiv(index % 50 === 0 ? workspace : editor, 'cm-line');
     }
     settle();
-  });
+  }
+
+  beforeEach(() => open(css));
 
   afterEach(() => {
-    host.remove();
-    for (const style of styles) style.remove();
-    document.body.classList.remove(ASSET_MANAGER_OPEN_CLASS);
-    document.querySelectorAll('body > .menu').forEach((menu) => menu.remove());
+    for (const style of styles.splice(0)) style.remove();
   });
 
   function openAndCloseMenu(): void {
@@ -152,9 +169,17 @@ describe('what an element coming or going in Obsidian restyles while Atlas is lo
     expect(restyled).toBe(0);
   });
 
+  it('was the whole document, twice, with the rule Atlas held: these fixtures alone show it', async () => {
+    open(FORMER_RULE);
+    expect(await restyledDuring(() => comeAndGo(editor, 'cm-line'))).toBeLessThan(A_FEW);
+
+    openAndCloseMenu();
+    expect(await restyledDuring(() => comeAndGo(editor, 'cm-line'))).toBeGreaterThan(ELEMENTS);
+    expect(await restyledDuring(() => comeAndGo(document.body, 'tooltip'))).toBeGreaterThan(ELEMENTS);
+  });
+
   it('lifts Obsidian menus above the asset manager only while its overlay is open', () => {
-    const menu = document.body.appendChild(document.createElement('div'));
-    menu.className = 'menu';
+    const menu = addDiv(document.body, 'menu');
     expect(getComputedStyle(menu).zIndex).toBe('80');
 
     document.body.classList.add(ASSET_MANAGER_OPEN_CLASS);

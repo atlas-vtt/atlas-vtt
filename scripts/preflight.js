@@ -9,6 +9,7 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { parseVersion } = require('./release-channel');
 const { fontNoticeProblems, fontFaceCountProblems, scriptFontProblems } = require('./font-notices');
+const { rootHasProblems } = require('./root-has');
 
 const root = path.resolve(__dirname, '..');
 const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
@@ -102,6 +103,8 @@ if (exists('dist/styles.css')) {
   if (has) warnings.push(`styles.css uses :has() ${has} times`);
   // styles.css is the only copy of the fonts users get, so it must carry their notice and hold only the fonts the list names.
   for (const problem of [...fontNoticeProblems(css), ...fontFaceCountProblems(css)]) errors.push(`styles.css: ${problem}`);
+  // One such rule makes Chromium restyle the whole of Obsidian for every element that comes or goes.
+  for (const problem of rootHasProblems(css)) errors.push(`styles.css ${problem}`);
 } else {
   errors.push('dist/styles.css is missing');
 }
