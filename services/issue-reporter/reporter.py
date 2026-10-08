@@ -15,7 +15,7 @@ CATEGORIES = json.loads(CATEGORY_FILE.read_text())
 # A plugin may know an area this service's copy of the categories does not (a newer
 # or older list). Such a report is filed under this area, never refused.
 FALLBACK_AREA = "unknown"
-FALLBACK_AREA_LABEL = CATEGORIES["ISSUE_AREAS"][FALLBACK_AREA]
+FALLBACK_AREA_LABEL = CATEGORIES["ISSUE_AREAS"].get(FALLBACK_AREA, "Not sure / other")
 CATEGORY_KEY = re.compile(r"[a-z][a-z-]{0,31}")
 LIMITS = dict(title=120, description=30000, steps=10000, environment=10000, errors=10000)
 

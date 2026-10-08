@@ -35,6 +35,17 @@ class Reports(unittest.TestCase):
         self.assertEqual(payload["labels"], ["needs-triage", "type:crash", "area:unknown"])
         self.assertIn('Not sure / other (sent as "newer-area")', payload["body"])
 
+    def test_only_a_category_key_is_taken_for_an_unlisted_area(self):
+        import uuid
+        from reporter import github_payload
+        longest = "a" * 32
+        self.assertIn(f'(sent as "{longest}")', github_payload({**REPORT, "area": longest}, str(uuid.uuid4()))["body"])
+        for area in ("newer-area\n", "\nnewer-area", "newer area", "newer_area", "new@area", 'new"area',
+                     "m\u0430ps", "-area", "1area", "a" * 33):
+            with self.assertRaises(ReportError, msg=repr(area)):
+                self.reporter.submit(str(uuid.uuid4()), {**REPORT, "area": area}, "1.2.3.4")
+        self.create.assert_not_called()
+
     def test_every_area_of_the_shared_list_keeps_its_label(self):
         import uuid
         from reporter import CATEGORIES, github_payload
