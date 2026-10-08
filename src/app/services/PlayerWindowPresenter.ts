@@ -190,6 +190,10 @@ async function waitForRenderedFrameSource(view: AtlasView): Promise<PlayerFrameS
       const viewport = view.serviceManager.getRendererService().getViewport();
       return viewport ? { centerX: viewport.center.x, centerY: viewport.center.y, scale: viewport.scale.x } : undefined;
     },
+    getScreen: () => {
+      const viewport = view.serviceManager.getRendererService().getViewport();
+      return viewport ? { width: viewport.screenWidth, height: viewport.screenHeight, resolution: app.renderer.resolution } : undefined;
+    },
   };
 }
 
