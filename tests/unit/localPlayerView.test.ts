@@ -44,7 +44,7 @@ describe('restorable local player view', () => {
     const service = new PlayerWindowService(view.app, createStore(() => ({})) as ReturnType<typeof createStore<ViewAtlasState>>, settings);
     const drawImage = vi.fn();
     vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ clearRect: vi.fn(), drawImage } as never);
-    service.attachToView(view, { canvas: document.createElement('canvas'), withPlayerSafeFrame: (draw) => draw() }, 'tavern');
+    service.attachToView(view, { canvas: document.createElement('canvas'), withPlayerSafeFrame: (draw) => draw() }, { tabId: 'tavern', filePath: 'tavern.atlasmap' });
     expect(doc.body.contains(chrome)).toBe(true);
     expect(chrome.querySelector('#atlas-player-canvas')).not.toBeNull();
     expect(drawImage).toHaveBeenCalledTimes(1);

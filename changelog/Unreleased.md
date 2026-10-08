@@ -1,6 +1,12 @@
 ## Improved
 
+<<<<<<< HEAD
 - A Lighting quality setting (High, Balanced, Saver) lets dynamic lighting use less graphics memory and battery on laptops with integrated graphics. Only the look changes: what tokens see stays the same.
+=======
+- Players see the grid as you set it on the map: hidden when you hide it, and with its style, colour, opacity and numbers. The player view settings no longer have a separate Show grid switch.
+
+- The eye on a scene tab and Send current map to player view now work without the player window open: they choose the scene players see, and the player window shows it whenever it is opened. Open player window is a command of its own.
+>>>>>>> origin/beta
 
 - Show my rolls to players is now a switch in the dice tray and in Dice settings, the same setting as Show dice rolls in the player view settings.
 

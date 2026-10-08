@@ -3,7 +3,7 @@ import type { PlayerCameraState } from '../../src/app/local-player-view';
 import { PlayerFrameMirror, type PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import type { AtlasSettings } from '../../src/app/services/SettingsService';
 
-const SETTINGS = { showGrid: true } as AtlasSettings['localPlayerView'];
+const SETTINGS = { showTokenNameplates: true } as AtlasSettings['localPlayerView'];
 const DM_CAMERA: PlayerCameraState = { centerX: 1, centerY: 2, scale: 1 };
 const FROZEN: PlayerCameraState = { centerX: 1000, centerY: 500, scale: 2 };
 

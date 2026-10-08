@@ -17,6 +17,7 @@ import { ImageDisplayService } from './src/app/services/ImageDisplayService';
 import { PlayerLootDisplay } from './src/app/services/PlayerLootDisplay';
 import { LootHistoryStore } from './src/app/loot/LootHistoryStore';
 import { PlayerWindowService } from './src/app/services/PlayerWindowService';
+import { presentedSceneOf, type PresentedSceneSource } from './src/app/services/presentedScene';
 import { AssetService } from './src/app/services/AssetService';
 import { SettingsService } from './src/app/services/SettingsService';
 import { addStarterTokens } from './src/app/services/starterTokens';
@@ -64,6 +65,11 @@ export default class AtlasVTTPlugin extends Plugin {
   public globalAssetManager!: GlobalAssetManagerService;
   private imageDisplayService!: ImageDisplayService;
   private changelogService: ChangelogService | undefined;
+
+  /** The scene presented to players on this device, whether or not the player window is open (read-only). */
+  get presentedScene(): PresentedSceneSource {
+    return presentedSceneOf(this.app);
+  }
 
   async onload(): Promise<void> {
     // Record errors from the very start so startup problems can be reported too.
