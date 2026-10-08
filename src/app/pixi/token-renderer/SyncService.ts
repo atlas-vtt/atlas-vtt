@@ -58,6 +58,10 @@ export class SyncService implements ITokenSyncService {
         } else {
           this.onTokensChanged?.(newTokens, prevTokens);
         }
+      } else if (prevState.isMapLoading && !state.isMapLoading && this.pendingTokenSync) {
+        // A load that ends without `map-loaded` (a scene that could not be opened) forces nothing:
+        // the tokens of the scene before would stay on the canvas
+        this.forceSyncTokens();
       }
     });
     

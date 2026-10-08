@@ -38,6 +38,10 @@
 
 - Undo and redo now change only what that edit changed. Changes Atlas made by itself since, such as following a renamed file, stay.
 
+- Scenes with a map image no longer fail to open with "Failed to fetch" on older Obsidian installers, or where Obsidian runs on a different Electron than it shipped with.
+
+- A scene that fails to open no longer shows the tokens of the scene that was open before.
+
 ## Important changes
 
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.
