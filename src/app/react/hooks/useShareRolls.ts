@@ -2,11 +2,9 @@ import { useAtlasStore } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { SettingsService } from '../../services/SettingsService';
 import { useShowDiceRolls } from './useShowDiceRolls';
+import type { ShareRolls } from '../components/dice/DiceTray';
 
-export interface ShareRolls {
-  shown: boolean;
-  onToggle: () => void;
-}
+export type { ShareRolls };
 
 /**
  * The GM's "Show my rolls to players" switch: the player view setting `showDiceRolls`, read

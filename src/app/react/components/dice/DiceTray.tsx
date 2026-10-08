@@ -6,11 +6,16 @@ import { DropdownToggleRow } from '../../../packages/components/primitives/Dropd
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { DieFace } from './DieFace';
 import { t } from '../../../i18n';
-import type { ShareRolls } from '../../hooks/useShareRolls';
 import {
   MAX_DICE, MAX_MODIFIER, MAX_PER_DIE, TRAY_DICE,
   addDie, clampModifier, removeDie, trayDiceCount, trayFormula, type TrayPool,
 } from './diceTrayPool';
+
+/** The GM's switch for whether players see their rolls (`useShareRolls`). */
+export interface ShareRolls {
+  shown: boolean;
+  onToggle: () => void;
+}
 
 interface DiceTrayProps {
   /** The finished formula goes up to whoever rolls it. */
