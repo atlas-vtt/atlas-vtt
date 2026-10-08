@@ -62,6 +62,11 @@ export function resolveCssColor(cssColor: string): string {
 /** The accent as last resolved, with the value of `--interactive-accent` it was resolved from. */
 let resolvedAccent: { raw: string; color: string } | null = null;
 
+/** Makes the next `getObsidianAccentColor` resolve the accent anew (`registerAccentColorSync`). */
+export function forgetObsidianAccentColor(): void {
+  resolvedAccent = null;
+}
+
 /**
  * Obsidian's accent colour. Drags and measurements ask for it on every pointer move, so it is
  * resolved once per value of `--interactive-accent`: resolving puts an element into the body,

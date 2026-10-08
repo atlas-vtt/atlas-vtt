@@ -12,6 +12,7 @@ import { CreatureIndex } from './src/app/creatures/CreatureIndex';
 import { disposeImageProcessing } from './src/app/imageProcessing/imageProcessing';
 import { registerLootQueryView } from './src/app/loot/lootQueryView';
 import { GlobalAssetManagerService } from './src/app/services/GlobalAssetManagerService';
+import { releaseOverlayBodyClass } from './src/app/packages/components/asset-manager/hooks/useOverlayBodyClass';
 import { ImageDisplayService } from './src/app/services/ImageDisplayService';
 import { PlayerLootDisplay } from './src/app/services/PlayerLootDisplay';
 import { LootHistoryStore } from './src/app/loot/LootHistoryStore';
@@ -28,6 +29,7 @@ import { hotkeySettingsSection, onboardingSettingsSection } from './src/app/sett
 import { navigationSettingsSection } from './src/app/settings/navigationSettingsSection';
 import { diceSettingsSection } from './src/app/settings/diceSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
+import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
 import { supportSettingsSection } from './src/app/settings/supportSettingsSection';
 import { registerAtlasLeafSync } from './src/app/plugin/atlasLeaves';
@@ -90,6 +92,7 @@ export default class AtlasVTTPlugin extends Plugin {
     // whose folder renames reach map files only through these vault events.
     registerVaultSync(this);
     registerDiceStageRelease(this);
+    registerAccentColorSync(this);
     // Views first, so workspace restore can resolve persisted Atlas tabs
     // before the slower startup path finishes.
     this.registerAtlasViews();
@@ -167,6 +170,8 @@ export default class AtlasVTTPlugin extends Plugin {
     LootHistoryStore.release(this.app);
     PlayerWindowService.getInstance()?.destroy(false);
     this.globalAssetManager?.close();
+    // The asset manager only starts to close here; its overlay's class must not outlive the plugin.
+    releaseOverlayBodyClass();
     CreatureIndex.release(this.app);
     disposeImageProcessing();
   }
