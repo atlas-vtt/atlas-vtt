@@ -97,7 +97,7 @@ describe('player initiative panel', () => {
     // HP stays hidden until the collection lets players see it
     expect(panel()?.querySelector('progress')).toBeNull();
     collection.hpVisibleToPlayers = true;
-    settings.setLocalPlayerViewSettings({ showTokenNameplates: true, showGrid: false });
+    settings.setLocalPlayerViewSettings({ showTokenNameplates: true, showWidgets: false });
     expect(panel()?.querySelector('progress')?.value).toBe(8);
     const objects = store.getState().objects;
     store.setState({ objects: { ...objects, tokens: { hero: { ...objects.tokens.hero!, isHidden: true } } } });

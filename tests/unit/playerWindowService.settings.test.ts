@@ -151,7 +151,7 @@ describe('live player settings', () => {
     (service as any).startMirroring();
     vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](40);
     expect(capture).toHaveBeenLastCalledWith(expect.any(Function), settings.getLocalPlayerViewSettings(), undefined);
-    settings.setLocalPlayerViewSettings({ showGrid: false, showTokenNameplates: true });
+    settings.setLocalPlayerViewSettings({ showWidgets: false, showTokenNameplates: true });
     const nextFrame = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
     capture.mockClear();
     nextFrame(56);

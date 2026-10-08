@@ -20,7 +20,7 @@ it('updates every supported setting and follows settings changed elsewhere', () 
   render(<LocalPlayerViewSettingsPanel />);
   const settings = context.settings as SettingsService;
   for (const [label, key] of [
-    ['Show initiative panel', 'showInitiative'], ['Show grid', 'showGrid'], ['Show widgets', 'showWidgets'],
+    ['Show initiative panel', 'showInitiative'], ['Show widgets', 'showWidgets'],
     ['Show nameplates', 'showTokenNameplates'], ['Show dice rolls', 'showDiceRolls'],
   ] as const) {
     const toggle = screen.getByRole('switch', { name: label });
@@ -31,6 +31,8 @@ it('updates every supported setting and follows settings changed elsewhere', () 
     expect(toggle.getAttribute('aria-checked')).toBe(String(before));
   }
   expect(screen.queryByRole('switch', { name: 'Show note previews' })).toBeNull();
+  // Players see the grid as the GM sets it on the map
+  expect(screen.queryByRole('switch', { name: 'Show grid' })).toBeNull();
   expect(screen.getByText('Note previews are not shared with the player window.')).toBeTruthy();
 });
 

@@ -6,7 +6,7 @@ import { PlayerFrameMirror, type PlayerFrameSource } from '../../src/app/service
 import type { AtlasSettings } from '../../src/app/services/SettingsService';
 import { fakeApp, fakeGroup } from './schedulerApp';
 
-export const SETTINGS = { showGrid: true } as AtlasSettings['localPlayerView'];
+export const SETTINGS = { showTokenNameplates: true } as AtlasSettings['localPlayerView'];
 export const DM_CAMERA: PlayerCameraState = { centerX: 1, centerY: 2, scale: 1 };
 
 export interface Dm {

@@ -19,7 +19,6 @@ const DEFAULT_LOCAL_PLAYER_VIEW_SETTINGS = {
   showToolbar: false,
   showTokenNameplates: false,
   showNotePreviews: false,
-  showGrid: true,
   showWidgets: true,
   showInitiative: true,
   showDiceRolls: false,
@@ -30,7 +29,6 @@ type LocalPlayerViewSettings = AtlasSettings['localPlayerView'];
 type LocalPlayerViewToggleKey = Exclude<keyof LocalPlayerViewSettings, 'showToolbar' | 'showCommandPalette' | 'showNotePreviews'>;
 
 const UI_TOGGLES: ReadonlyArray<{ key: LocalPlayerViewToggleKey; label: string }> = [
-  { key: 'showGrid', label: t('grid.show') },
   { key: 'showWidgets', label: t('lpv.showWidgets') },
   { key: 'showInitiative', label: t('lpv.showInitiative') },
   { key: 'showDiceRolls', label: t('lpv.showDiceRolls') },

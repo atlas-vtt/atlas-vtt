@@ -7,7 +7,7 @@ import type { PlayerCameraState } from '../../types/playerCamera';
 
 const WIDTH = 96;
 const HEIGHT = 64;
-const SETTINGS = { showGrid: true } as AtlasSettings['localPlayerView'];
+const SETTINGS = { showTokenNameplates: true } as AtlasSettings['localPlayerView'];
 /** On a pane of 96 × 64 players see the world from (952, 468) to (1048, 532). */
 const FROZEN: PlayerCameraState = { centerX: 1000, centerY: 500, scale: 1 };
 const BACKGROUND = [0, 255, 0];
