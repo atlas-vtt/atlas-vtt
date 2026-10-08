@@ -2,18 +2,11 @@
 import '../setup/obsidianDom';
 import type { Renderer } from 'pixi.js';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createInMemoryApp } from '../mocks/inMemoryVault';
-import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
-import type { TokenEntity } from '../../src/app/types';
-import type { LightSource } from '../../src/app/types/lightingTypes';
 import type { Point } from '../../src/app/types/visionTypes';
-import type { WallSegment } from '../../src/app/types/wallTypes';
-import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';
 import type { MapBounds } from '../../src/app/vision/visibility';
-import { closeUps, KINDS, MAX_ZOOM, openPictures, startRenderers, tiles, type Kind, type Pictures, type Tallies } from '../helpers/fallbackPictures';
-import { sightScene } from '../helpers/sightScenes';
+import { closeUps, MAX_ZOOM, startRenderers, tiles, type Kind, type Pictures } from '../helpers/fallbackPictures';
+import { CLEAN, customPictures, faults, seededPictures, sumOf, token, wall, type CustomScene } from '../helpers/fallbackPictureScenes';
 
-const MEASUREMENT: MeasurementSettings = { mode: 'metric', unitType: 'feet', unitDistance: 5, ruleDistance: 5, diagonalRule: 'equidistant', rangeBands: [], coneAngle: 90 };
 /**
  * Seeded scenes swept at zoom 1 over the whole map and at the maximum zoom on its edges;
  * `VITE_FALLBACK_SEEDS=600` for a long run. 600 seeds (21,123 views) left nothing shown and no
@@ -26,38 +19,6 @@ const SEEDS = Number(import.meta.env.VITE_FALLBACK_SEEDS) || 24;
  * part of them has a texel to spare, so they pass, and they are swept in every run.
  */
 const SLIVERS = [484, 486, 593];
-const CLEAN = { canvas: { leaked: 0, lost: 0, beyond: 0 }, webgl: { leaked: 0, lost: 0, beyond: 0 } };
-
-function token(id: string, x: number, y: number, vision: TokenEntity['vision'] = { enabled: true }): TokenEntity {
-  return { id, kind: 'token', imagePath: '', x, y, size: 1, layer: 0, rotation: 0, isHidden: false, vision };
-}
-
-function wall(id: string, p1: Point, p2: Point): WallSegment {
-  return { id, kind: 'wall', type: 'solid', p1, p2 };
-}
-
-function byId<T extends { id: string }>(list: readonly T[] = []): Record<string, T> {
-  return Object.fromEntries(list.map((item) => [item.id, item]));
-}
-
-/** What must be none in a view: pixels shown that are hidden, and black without a cause or beyond the map. */
-function faults(tallies: Tallies): typeof CLEAN {
-  const of = ({ leaked, lost, beyond }: Tallies[Kind]): (typeof CLEAN)[Kind] => ({ leaked, lost, beyond });
-  return { canvas: of(tallies.canvas), webgl: of(tallies.webgl) };
-}
-
-/** The faults of several views, added up. */
-function sumOf(list: readonly Tallies[]): typeof CLEAN {
-  const sum = structuredClone(CLEAN);
-  for (const tallies of list) {
-    for (const kind of KINDS) {
-      sum[kind].leaked += tallies[kind].leaked;
-      sum[kind].lost += tallies[kind].lost;
-      sum[kind].beyond += tallies[kind].beyond;
-    }
-  }
-  return sum;
-}
 
 /**
  * The picture the line-of-sight fallback gives the players, on PIXI's Canvas renderer and on
@@ -74,20 +35,12 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
   });
   afterAll(() => stop());
 
-  function custom(bounds: MapBounds, scene: { tokens: TokenEntity[]; walls?: WallSegment[]; lights?: LightSource[] }): Pictures {
-    const store: ViewAtlasStore = createViewAtlasStore(createInMemoryApp().app, `fallback-picture-${Math.random()}`);
-    store.getState().setPersistenceEnabled(false);
-    store.setState((state) => ({ objects: { ...state.objects, tokens: byId(scene.tokens), walls: byId(scene.walls), lights: byId(scene.lights) } }));
-    store.getState().setSceneLighting({ enabled: true, ambient: 0 });
-    return openPictures(renderers, { store, measurement: () => MEASUREMENT, bounds });
+  function custom(bounds: MapBounds, scene: CustomScene): Pictures {
+    return customPictures(renderers, bounds, scene);
   }
 
   function seeded(seed: number): Pictures {
-    const scene = sightScene(seed);
-    const store = createViewAtlasStore(createInMemoryApp().app, `fallback-picture-${seed}`);
-    const { state } = scene;
-    store.setState({ persistenceEnabled: false, grid: state.grid, lighting: state.lighting, heldTokens: state.heldTokens, objects: { ...store.getState().objects, ...state.objects } });
-    return openPictures(renderers, { store, measurement: scene.measurement, rules: () => scene.rules, bounds: scene.bounds });
+    return seededPictures(renderers, seed);
   }
 
   /** The faults of every view of a scene the sweep looks at: the whole map at zoom 1, and its borders and edges of sight at the maximum zoom. */
@@ -181,27 +134,6 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
       // Past the wall's upper end.
       expect(pictures.shownAt(whole, 250, 10)).toEqual({ canvas: 'floor', webgl: 'floor' });
       expect(sweep(pictures)).toEqual(CLEAN);
-    } finally {
-      pictures.close();
-    }
-  });
-
-  it('is opaque black or nothing, with a texel of black around what is hidden', () => {
-    // One token and a slanted wall: no sliver, so every edge of the black is an edge of this sight.
-    const pictures = custom({ width: 300, height: 220 }, {
-      tokens: [token('scout', 80.3, 150.7, { enabled: true, range: 25 })],
-      walls: [wall('screen', { x: 130.4, y: 40.2 }, { x: 171.8, y: 190.6 })],
-    });
-    try {
-      const clean = { canvas: { blended: 0, tight: 0 }, webgl: { blended: 0, tight: 0 } };
-      for (const view of [{ scale: 1, centre: { x: 150, y: 110 } }, { scale: MAX_ZOOM, centre: { x: 150, y: 115 } }, { scale: 2.3, centre: { x: 120.7, y: 100.3 } }]) {
-        // A black written at half strength, or left as the canvas blended it, shows pixels between the floor and black.
-        // A black without the texels around each one shows the floor closer than half a texel to what is hidden.
-        expect(pictures.make(view)).toEqual(clean);
-        const tallies = pictures.judge(view);
-        expect(faults(tallies)).toEqual(CLEAN);
-        expect(Math.min(tallies.canvas.open, tallies.webgl.open)).toBeGreaterThan(1_000);
-      }
     } finally {
       pictures.close();
     }

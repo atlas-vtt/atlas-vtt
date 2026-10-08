@@ -134,13 +134,13 @@ export interface Pictures {
   bounds: MapBounds;
   /** Where the black has edges worth zooming in on: the tokens that see, corners of what they see, the darknesses. */
   outlines: Point[];
-  judge: (view: View) => Tallies;
+  /** `analytic` asks the polygons about every pixel that shows something, for corners so far away that a canvas cannot draw the first look. */
+  judge: (view: View, analytic?: boolean) => Tallies;
   /**
-   * The black's own make, in a view: `blended` counts pixels that are neither the floor nor
-   * black, which a black that is not opaque or not hardened gives; `tight` counts pixels that
-   * show the floor with something exactly black within half a texel, which a black hardened
-   * without the texels around each one gives. Only for scenes without a hidden sliver, and
-   * only pixels a pixel or more inside the map: one on its edge is part map, part not.
+   * The black's own make: `blended` counts pixels that are neither the floor nor black (a black
+   * that is not opaque or not hardened), `tight` pixels that show the floor with something
+   * exactly black within half a texel (hardened without the texels around each one). Only for
+   * scenes without a hidden sliver, and only pixels a pixel or more inside the map.
    */
   make: (view: View) => Record<Kind, { blended: number; tight: number }>;
   /** Whether the exact black holds a world point. */
@@ -189,7 +189,7 @@ export function openPictures(renderers: Record<Kind, Renderer>, { bounds, ...dep
     return (pixels[i]! << 16) | (pixels[i + 1]! << 8) | pixels[i + 2]!;
   };
 
-  const judge = (view: View): Tallies => {
+  const judge = (view: View, analytic = false): Tallies => {
     const coverage = exactCoverage(exactDrawing, view);
     const origin = originOf(view);
     const world = (x: number, y: number): Point => ({ x: (x - origin.x) / view.scale, y: (y - origin.y) / view.scale });
@@ -220,7 +220,7 @@ export function openPictures(renderers: Record<Kind, Renderer>, { bounds, ...dep
           if (colour === FLOOR) tally.open++;
           if (colour !== 0) {
             // Anything but black, the floor or the floor dimmed, where the exact black holds the pixel's middle and a texel around it.
-            if (coverage[y * VIEW + x]! > 0 && SPARE.every(([dx, dy]) => blackOnMap(world(x + 0.5 + dx! * spare, y + 0.5 + dy! * spare)))) tally.leaked++;
+            if ((analytic || coverage[y * VIEW + x]! > 0) && SPARE.every(([dx, dy]) => blackOnMap(world(x + 0.5 + dx! * spare, y + 0.5 + dy! * spare)))) tally.leaked++;
           } else if (!onMap(world(x + 0.5, y + 0.5))) {
             tally.beyond++;
           } else if (mostlyOpenAround(x, y)) {

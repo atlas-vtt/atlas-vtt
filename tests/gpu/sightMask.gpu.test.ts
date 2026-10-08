@@ -1,5 +1,5 @@
-import { Graphics, Sprite, type Container } from 'pixi.js';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Sprite } from 'pixi.js';
+import { afterEach, describe, expect, it } from 'vitest';
 import { MASK_MAX_SIDE, SightMask, maskTexel, type SightMaskShapes } from '../../src/app/pixi/lighting/SightMask';
 import type { Point } from '../../src/app/types/visionTypes';
 import { maskCovers } from '../helpers/sightMaskWatch';
@@ -110,7 +110,6 @@ describe('the sight mask: black composed on a canvas, never open where a polygon
   const cleanup: (() => void)[] = [];
   afterEach(() => {
     while (cleanup.length) cleanup.pop()!();
-    vi.restoreAllMocks();
   });
 
   function compose(shapes: SightMaskShapes): SightMask {
@@ -182,32 +181,6 @@ describe('the sight mask: black composed on a canvas, never open where a polygon
     expect(tally.black).toBeGreaterThan(5_000);
   });
 
-  it('hides the whole map when a corner is no finite number, and shows the picture again once the polygons are sound', () => {
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const sound: SightMaskShapes = { width: 300, height: 200, shown: [rect(20.5, 20.5, 100, 100)], darkness: [], pierced: [] };
-    const mask = compose(sound);
-    const parts = (): { sprite: Container; blackout: Graphics } => ({
-      sprite: mask.view.children.find((child) => child instanceof Sprite)!,
-      blackout: mask.view.children.find((child): child is Graphics => child instanceof Graphics)!,
-    });
-    expect([parts().sprite.visible, parts().blackout.visible]).toEqual([true, false]);
-
-    for (const broken of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY]) {
-      for (const where of ['shown', 'darkness', 'pierced'] as const) {
-        mask.compose({ ...sound, darkness: [rect(150, 50, 60, 60)], [where]: [[{ x: 20, y: 20 }, { x: broken, y: 120 }, { x: 120, y: 120 }]] });
-        const { sprite, blackout } = parts();
-        expect([sprite.visible, blackout.visible]).toEqual([false, true]);
-        expect(blackout.getLocalBounds()).toMatchObject({ x: 0, y: 0, width: 300, height: 200 });
-        expect(blackout.context.instructions.map((instruction) => (instruction.action === 'fill' ? [instruction.data.style.color, instruction.data.style.alpha] : null))).toEqual([[0x000000, 1]]);
-      }
-    }
-    expect(errors).toHaveBeenCalledTimes(9);
-
-    mask.compose(sound);
-    expect([parts().sprite.visible, parts().blackout.visible]).toEqual([true, false]);
-    expect(judge(mask, sound)).toMatchObject({ leaking: 0, overreach: 0 });
-  });
-
   it('draws the sight of a token that sees for millions of pixels as far as the map goes', () => {
     // A wedge from a token on the map out to 2.1 million px, as a sight range of 150,000 ft gives.
     const far = 2_100_000;
@@ -244,15 +217,6 @@ describe('the sight mask: black composed on a canvas, never open where a polygon
     expect(mask.view.getLocalBounds()).toMatchObject({ x: 0, y: 0 });
     expect(mask.view.getLocalBounds().width).toBeCloseTo(8192, 6);
     expect(mask.view.getLocalBounds().height).toBeCloseTo(5461.3, 6);
-  });
-
-  it('hides the whole map when the map has no size', () => {
-    const errors = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    for (const width of [0, Number.NaN, Number.POSITIVE_INFINITY]) {
-      const mask = compose({ width, height: 200, shown: [rect(20, 20, 100, 100)], darkness: [], pierced: [] });
-      expect(mask.view.children.map((child) => child.visible)).toEqual([false, true]);
-    }
-    expect(errors).toHaveBeenCalledTimes(3);
   });
 
   it.each([

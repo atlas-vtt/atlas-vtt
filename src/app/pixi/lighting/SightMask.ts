@@ -3,6 +3,7 @@ import { getDomHost } from '../../host/dom';
 import type { Polygon } from '../../vision/visibility';
 import { coverCanvas } from '../utils/coverCanvas';
 import { destroyTree } from '../utils/destroyTree';
+import { hardenTexels } from './hardenTexels';
 
 /** What the line-of-sight fallback hides, as the polygons it is made of, in world pixels. */
 export interface SightMaskShapes {
@@ -20,6 +21,14 @@ export interface SightMaskShapes {
 /** The longest side of the mask in texels: a larger map gets texels of more than one world pixel. */
 export const MASK_MAX_SIDE = 2048;
 const BLACK = 'rgba(0, 0, 0, 1)';
+/**
+ * The farthest a polygon's corner may lie from the map's origin, in world pixels. A canvas
+ * places an edge that runs to a corner far away with an error that grows with the distance:
+ * measured in Chromium, to the last bit as with a near corner up to 3e13 px, 0.06 texel off at
+ * 1e14 px and a whole texel at 1e16 px, where it shows floor behind walls. A sight range of a
+ * thousand million feet stays under this on any grid up to a thousand pixels to the foot.
+ */
+export const MAX_CORNER = 1e12;
 
 /**
  * The side of a texel of the mask in world pixels, for a map of this size: 1 up to 2,048 px,
@@ -41,7 +50,6 @@ interface MaskGrid {
 
 /** A grid that covers the map exactly, so the mask is black nowhere beyond the map's edge. */
 function gridFor(width: number, height: number): MaskGrid {
-  if (!(width > 0 && height > 0 && Number.isFinite(width + height))) throw new RangeError('The map has no size');
   const texel = maskTexel(width, height);
   // Less a rounding error's worth: the longer side of a large map is 2,048 texels, not one more.
   const columns = Math.max(1, Math.ceil(width / texel - 1e-9));
@@ -49,13 +57,19 @@ function gridFor(width: number, height: number): MaskGrid {
   return { columns, rows, texelWidth: width / columns, texelHeight: height / rows };
 }
 
-function assertFinite(polygons: readonly Polygon[]): void {
+function assertDrawable(polygons: readonly Polygon[]): void {
   for (const polygon of polygons) {
     for (const corner of polygon) {
-      // A canvas leaves a corner that is no number out of the path, which would open another shape than the one meant.
-      if (!Number.isFinite(corner.x) || !Number.isFinite(corner.y)) throw new RangeError('A polygon corner is not a finite number');
+      // A canvas leaves a corner that is no number out of the path, which would open another shape than the one meant,
+      // and misplaces the edges to a corner too far away. Neither comparison holds for a corner that is no number.
+      if (!(Math.abs(corner.x) <= MAX_CORNER && Math.abs(corner.y) <= MAX_CORNER)) throw new RangeError('A polygon corner is no finite number or lies too far away to draw');
     }
   }
+}
+
+/** A canvas whose context is lost draws nothing and reads back as clear, which would pass for a map that is all shown. */
+function assertLive(context: CanvasRenderingContext2D): void {
+  if (typeof context.isContextLost === 'function' && context.isContextLost()) throw new Error('The 2D context of the sight mask is lost');
 }
 
 /**
@@ -97,18 +111,25 @@ export class SightMask {
 
   /**
    * Composes the black for `shapes` and shows it. Geometry that cannot be drawn (a corner that
-   * is no finite number) and any failure while drawing leave the whole map black.
+   * is no finite number or lies beyond `MAX_CORNER`), a lost canvas and any failure while
+   * drawing leave the whole map black. A map without a size has nothing to hide: nothing is drawn.
    */
   compose(shapes: SightMaskShapes): void {
+    if (!(shapes.width > 0 && shapes.height > 0 && Number.isFinite(shapes.width + shapes.height))) {
+      this.clear();
+      return;
+    }
     try {
-      assertFinite([...(shapes.shown ?? []), ...shapes.darkness, ...shapes.pierced]);
+      assertDrawable([...(shapes.shown ?? []), ...shapes.darkness, ...shapes.pierced]);
       const grid = gridFor(shapes.width, shapes.height);
       const context = this.sized(grid.columns, grid.rows);
+      assertLive(context);
       coverCanvas(context.canvas, context, BLACK);
       if (shapes.shown) erase(context, shapes.shown, grid);
       else context.clearRect(0, 0, grid.columns, grid.rows);
       if (shapes.darkness.length > 0) this.drawDarkness(context, shapes, grid);
       harden(context);
+      assertLive(context);
       this.sprite.scale.set(grid.texelWidth, grid.texelHeight);
       this.texture?.source.update();
       this.blackout.visible = false;
@@ -166,6 +187,7 @@ export class SightMask {
     trace(scratch, shapes.darkness, grid);
     scratch.fill('nonzero');
     erase(scratch, shapes.pierced, grid);
+    assertLive(scratch);
     context.drawImage(scratch.canvas, 0, 0);
   }
 }
@@ -204,25 +226,10 @@ function erase(context: CanvasRenderingContext2D, polygons: readonly Polygon[], 
   context.globalCompositeOperation = 'source-over';
 }
 
-/**
- * Makes the composed canvas conservative: opaque black wherever a texel, or one of the eight
- * around it, holds any black at all, and clear elsewhere. Beyond the canvas counts as clear.
- */
+/** Makes the composed canvas conservative (`hardenTexels`). */
 function harden(context: CanvasRenderingContext2D): void {
   const { width, height } = context.canvas;
   const image = context.getImageData(0, 0, width, height);
-  const { data } = image;
-  const count = width * height;
-  // Whether a texel or one of its two neighbours in its row holds black.
-  const inRow = new Uint8Array(count);
-  for (let y = 0, i = 0; y < height; y++) {
-    for (let x = 0; x < width; x++, i++) {
-      inRow[i] = data[i * 4 + 3]! > 0 || (x > 0 && data[i * 4 - 1]! > 0) || (x < width - 1 && data[i * 4 + 7]! > 0) ? 1 : 0;
-    }
-  }
-  data.fill(0);
-  for (let i = 0; i < count; i++) {
-    if (inRow[i] || (i >= width && inRow[i - width]) || (i < count - width && inRow[i + width])) data[i * 4 + 3] = 255;
-  }
+  hardenTexels(image.data, width, height);
   context.putImageData(image, 0, 0);
 }
