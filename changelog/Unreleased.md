@@ -26,6 +26,8 @@
 
 ## Fixed
 
+- The Atlas dashboard no longer slides a tile under the recent scenes when sidebars make its tab narrow.
+
 - Fog now updates correctly when returning to a map or canceling a drawing.
 
 - Erasing part of a drawing now keeps all saved properties on the remaining pieces.

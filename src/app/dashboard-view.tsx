@@ -47,7 +47,7 @@ function resolveSceneThumbnail(app: App, mapPath: string): string | null {
   return thumbFile instanceof TFile ? app.vault.getResourcePath(thumbFile) : null;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({
+export const Dashboard: React.FC<DashboardProps> = ({
   app,
   onOpenScene,
   onCreateMap,

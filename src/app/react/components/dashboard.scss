@@ -34,6 +34,8 @@
   overflow-y: auto;
   background: var(--background-primary);
   color: var(--text-normal);
+  // The dashboard is a tab: sidebars narrow it while the window stays wide, so its layout follows its own width
+  container: atlas-dashboard / inline-size;
 }
 
 .dashboard-container {
@@ -75,7 +77,7 @@
   align-items: stretch;
   gap: $spacing-xl;
 
-  @media (max-width: $breakpoint-l) {
+  @container atlas-dashboard (max-width: #{$breakpoint-l}) {
     flex-direction: column;
   }
 }
@@ -89,7 +91,7 @@
 .dashboard-recent {
   flex: 0 0 380px;
 
-  @media (max-width: $breakpoint-l) {
+  @container atlas-dashboard (max-width: #{$breakpoint-l}) {
     flex: 1 1 auto;
   }
 }
@@ -181,10 +183,11 @@
 
 .action-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  // A tile is a button, whose text does not wrap: without a minimum of 0 a column is as wide as its text
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: $spacing-l;
 
-  @media (max-width: $breakpoint-xs) {
+  @container atlas-dashboard (max-width: #{$breakpoint-xs}) {
     grid-template-columns: 1fr;
   }
 }
@@ -242,7 +245,7 @@
   padding: $spacing-m;
   border-radius: $radius-xl;
 
-  @media (max-width: $breakpoint-l) {
+  @container atlas-dashboard (max-width: #{$breakpoint-l}) {
     max-height: 420px;
   }
 }
@@ -351,7 +354,7 @@
   }
 }
 
-@media (max-width: $breakpoint-m) {
+@container atlas-dashboard (max-width: #{$breakpoint-m}) {
   .dashboard-container {
     padding: $spacing-l;
   }
