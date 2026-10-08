@@ -719,9 +719,8 @@ export class PixiRendererOrchestrator { // Renamed class
   public withPlayerSafeFrame(capture: () => void, settings: AtlasSettings['localPlayerView'], camera?: PlayerCameraState, renderFollows = false): void {
     const app = this.pixiAppManager.getApp();
     if (!app?.renderer) return;
+    // The grid is left as the GM set it: players see it exactly as the GM does, hidden included.
     const layers = this.markerLayers();
-    const grid = this.gridSystem?.getGridSprite();
-    if (grid) layers.push({ layer: grid, visible: settings.showGrid });
     // The lighting's part is the list session view holds on this canvas (`SessionLighting`).
     const sight = this.lighting?.playerSight();
     layers.push(...(this.tokenRenderer?.getPlayerViewLayers(settings, sight) ?? []));
