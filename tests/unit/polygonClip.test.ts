@@ -88,7 +88,8 @@ describe('integer polygon operations', () => {
   });
 
   it('gives each hole to the outline it lies in, and what is filled inside a hole an area of its own', () => {
-    const frame = subtractShapes([qRectangle(16, 16, 88, 88)], [qRectangle(40, 40, 40, 40)]);
+    // Four bars that overlap at their ends make a frame; two small squares lie apart in the second outline.
+    const frame = [qRectangle(16, 16, 88, 24), qRectangle(16, 80, 88, 24), qRectangle(16, 16, 24, 88), qRectangle(80, 16, 24, 88)];
     const areas = subtractToAreas([qRectangle(0, 0, 120, 120), qRectangle(200, 0, 48, 48)], [...frame, qRectangle(208, 8, 8, 8), qRectangle(224, 24, 8, 8)]);
     const summary = areas.map(({ outline, holes }) => ({ outline: signedAreaTwice(outline), holes: holes.map(signedAreaTwice) }));
     summary.sort((a, b) => Number(a.outline - b.outline));
@@ -97,6 +98,16 @@ describe('integer polygon operations', () => {
       { outline: 4608n, holes: [-128n, -128n] },
       { outline: 28800n, holes: [-15488n] },
     ]);
+  });
+
+  it('counts an outline the same whichever way round it runs, and one that crosses itself by what it fills', () => {
+    // qRectangle(40, 0, 80, 80) with its corners the other way round.
+    const reversed = [40, 80, 120, 80, 120, 0, 40, 0];
+    const twice = (areas: ReturnType<typeof subtractToAreas>): bigint => areas.reduce((sum, { outline, holes }) => sum + signedAreaTwice(outline) + holes.reduce((inner, hole) => inner + signedAreaTwice(hole), 0n), 0n);
+    expect(twice(subtractToAreas([qRectangle(0, 0, 80, 80), reversed], []))).toBe(2n * 120n * 80n);
+    expect(twice(subtractToAreas([qRectangle(0, 0, 200, 80)], [qRectangle(0, 0, 80, 80), reversed]))).toBe(2n * 80n * 80n);
+    // A bow: two triangles that wind opposite ways are both taken out.
+    expect(twice(subtractToAreas([qRectangle(0, 0, 80, 80)], [[0, 0, 80, 80, 0, 80, 80, 0]]))).toBe(2n * 6400n - 6400n);
     expect(subtractToAreas([qRectangle(0, 0, 80, 80)], [qRectangle(0, 0, 80, 80)])).toEqual([]);
     expect(() => subtractToAreas([[NaN, 0, 8, 0, 8, 8]], [])).toThrow(RangeError);
   });

@@ -26,7 +26,7 @@ interface Scene {
 interface Verdict {
   /** Pixels in sight that are black. */
   hidden: number;
-  /** Pixels out of sight, or in magical darkness no sense sees into, that show the map. */
+  /** Pixels out of sight, or in magical darkness no sense sees into, that are anything but black: the map, or the map dimmed. */
   leaked: number;
   /** Pixels compared: those clear of every outline. */
   compared: number;
@@ -101,11 +101,12 @@ async function judge(scene: Scene, preference: 'webgl' | 'canvas'): Promise<Verd
         const shown = viewers.size > 0 && (!inDarkness || pierced);
         const i = (y * SIZE + x) * 4;
         const isFloor = pixels[i] === FLOOR[0] && pixels[i + 1] === FLOOR[1] && pixels[i + 2] === FLOOR[2];
+        const isBlack = pixels[i] === 0 && pixels[i + 1] === 0 && pixels[i + 2] === 0;
         verdict.compared++;
         if (shown) verdict.shown++;
         if (shown) verdict.deepest = Math.max(verdict.deepest, viewers.size);
         if (shown && !isFloor) verdict.hidden++;
-        if (!shown && isFloor) verdict.leaked++;
+        if (!shown && !isBlack) verdict.leaked++;
       }
     }
     return verdict;
@@ -159,6 +160,17 @@ describe('the line-of-sight fallback where several tokens see the same floor', (
       lights: [darkness('shade', 160, 160, 12)],
     }, preference);
     expect(verdict.shown).toBeGreaterThan(1_000);
+    expect({ hidden: verdict.hidden, leaked: verdict.leaked }).toEqual({ hidden: 0, leaked: 0 });
+  });
+
+  it.each(RENDERERS)('shows the sight of a token that sees for miles, up to the wall that ends it, on %s', async (preference) => {
+    // 150,000 ft on 5 ft cells: farther than the shapes are worked out in, so the polygon is cut to the map first.
+    const verdict = await judge({
+      tokens: [token('scout', 60, 160, { enabled: true, range: 150_000 })],
+      walls: [wall('screen', { x: 200, y: 60 }, { x: 200, y: 260 })],
+    }, preference);
+    expect(verdict.shown).toBeGreaterThan(10_000);
+    expect(verdict.compared - verdict.shown).toBeGreaterThan(1_000);
     expect({ hidden: verdict.hidden, leaked: verdict.leaked }).toEqual({ hidden: 0, leaked: 0 });
   });
 });

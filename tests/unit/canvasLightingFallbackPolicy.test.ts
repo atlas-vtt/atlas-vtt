@@ -9,10 +9,11 @@ import { CanvasLightingFallback as FrozenFallback } from '../oracles/sightPolicy
 import { NO_SIGHT as FROZEN_NO_SIGHT, SEES_ALL as FROZEN_SEES_ALL } from '../oracles/sightPolicyBaseline/sight';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
-import { darknessCovers, darknessOf } from '../helpers/darknessCover';
+import { darknessCovers, darknessOf, darknessPaint } from '../helpers/darknessCover';
 import { seedBlocks, sightScene, type SightScene } from '../helpers/sightScenes';
 
 interface Fallback {
+  modeLayer: { visible: boolean };
   currentSight(): Sight;
   destroy(): void;
 }
@@ -41,9 +42,16 @@ function comparePoints(now: Graphics, before: Graphics, { width, height }: Sight
   return { compared, differ };
 }
 
+/** The players see through the darkness unless it is shown at full alpha and every fill of it is black at alpha 1, as the previous version's were. */
+function seeThrough(darkness: Graphics): boolean {
+  return !darkness.visible || darkness.alpha !== 1 || darknessPaint(darkness).some((fill) => fill.color !== 0x000000 || fill.alpha !== 1);
+}
+
 function open(scene: SightScene, store: ViewAtlasStore, Kind: new (deps: ConstructorParameters<typeof CanvasLightingFallback>[0]) => Fallback): { fallback: Fallback; viewport: Container } {
   const viewport = new Container();
   const fallback = new Kind({ viewport: viewport as unknown as Viewport, store, measurement: scene.measurement, bounds: () => scene.bounds, rules: () => scene.rules });
+  // The players' view: the current version draws its darkness only while that shows it.
+  fallback.modeLayer.visible = true;
   return { fallback, viewport };
 }
 
@@ -95,6 +103,7 @@ describe('the canvas fallback compared with its previous version', () => {
             const darkness = darknessOf(now.viewport);
             const { compared, differ } = comparePoints(darkness, darknessOf(before.viewport), scene.bounds);
             if (differ > 0) problems.push(`seed ${seed}, ${step}: darkness differs at ${differ} points`);
+            if (seeThrough(darkness) || seeThrough(darknessOf(before.viewport))) problems.push(`seed ${seed}, ${step}: the darkness is not opaque black`);
             if (darkness.context.instructions.length > 0) seen.darkness++;
             seen.points += compared;
             if (ours.regions.length > 0) seen.regions++;

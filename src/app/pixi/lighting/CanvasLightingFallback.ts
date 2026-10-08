@@ -7,7 +7,8 @@ import type { WallSegment } from '../../types/wallTypes';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { sealedWalls } from '../../lighting/sealWalls';
-import { worldTexel } from '../../lighting/lightingConstants';
+import { MAX_LIGHT_REACH, worldTexel } from '../../lighting/lightingConstants';
+import type { Rect } from '../../lighting/segments';
 import { uncoveredAreas, type FilledArea } from '../../lighting/uncoveredAreas';
 import { perceivedLevel, showsMap } from '../../gameSystems/senseRules';
 import { SightTokens, heldForSight } from '../../lighting/sightOnDrop';
@@ -65,11 +66,19 @@ export class CanvasLightingFallback implements SceneLightingView {
   private inputs: readonly unknown[] = [];
   /** The walls with their bridges, kept while the drawn walls and the map's size stay, so the sight cache knows them. */
   private sealed: { drawn: ViewAtlasState['objects']['walls']; texel: number; walls: readonly WallSegment[] } | null = null;
-  private readonly playerView = new PlayerView((shown) => { this.darkness.visible = shown; });
+  /** What the darkness is drawn from; none while there is none to draw. */
+  private source: DarknessSource | null = null;
+  /** `source` changed since the darkness was drawn. */
+  private stale = false;
+  private readonly playerView = new PlayerView((shown) => {
+    if (shown) this.drawDarkness();
+    this.darkness.visible = shown;
+  });
   private readonly unsubscribe: () => void;
 
   constructor(private readonly deps: CanvasLightingDeps) {
     this.darkness.zIndex = LIGHTING_Z_INDEX;
+    this.darkness.visible = false;
     this.darkness.eventMode = 'none';
     deps.viewport.addChild(this.darkness);
     this.modeLayer = this.playerView;
@@ -112,6 +121,8 @@ export class CanvasLightingFallback implements SceneLightingView {
     if (!state.lighting.enabled || !bounds) {
       this.sightBuilt = false;
       this.darkness.clear();
+      this.source = null;
+      this.stale = false;
       return;
     }
     const scale = unitScaleOf(measurement, state.grid);
@@ -127,7 +138,7 @@ export class CanvasLightingFallback implements SceneLightingView {
     if (!sameSight(sight, this.sight)) this.sight = sight;
     this.sightBuilt = true;
     const spots = seenSpots(this.sight, FULL_DAYLIGHT, this.reaches, state.objects.tokens, scale.cellSize, walls, { conditions: rules?.conditions ?? [], held, policy: PLAYER_SIGHT_POLICY });
-    this.drawDarkness(bounds, spots);
+    this.setDarkness(bounds, spots);
     this.deps.onSightChange?.();
   }
 
@@ -140,37 +151,54 @@ export class CanvasLightingFallback implements SceneLightingView {
   }
 
   /**
+   * Notes what the darkness is drawn from. It is drawn only while the players' view shows it,
+   * and only when that changed: the black is worked out by clipping, which a store change
+   * that leaves sight alone, or a view that does not show it, must not pay for.
+   */
+  private setDarkness(bounds: MapBounds, spots: readonly SeenSpot[]): void {
+    const source: DarknessSource = { sight: this.sight, reaches: this.reaches.map((reach) => reach.polygon), footprints: spots.map((spot) => spot.polygon), width: bounds.width, height: bounds.height };
+    if (this.source && sameSource(source, this.source)) return;
+    this.source = source;
+    this.stale = true;
+    if (this.playerView.visible) this.drawDarkness();
+  }
+
+  /**
    * Black over the map outside what a sense shows and outside each token seen without the map
    * around it; black again over each magical darkness outside those tokens and outside where a
    * sense that sees in magical darkness looks: a token it shows must not lie under the black.
    */
-  private drawDarkness(bounds: MapBounds, spots: readonly SeenSpot[]): void {
+  private drawDarkness(): void {
+    if (!this.stale || !this.source) return;
+    this.stale = false;
     const g = this.darkness;
     g.clear();
-    for (const { outline, holes } of this.hiddenAreas(bounds, spots)) {
+    for (const { outline, holes } of this.hiddenAreas(this.source)) {
       g.poly(outline).fill({ color: 0x000000 });
       if (holes.length === 0) continue;
       // All holes in one cut: PIXI hands a fill's second cut to the fill before it as well.
       for (const hole of holes) g.poly(hole);
       g.cut();
     }
-    this.darkness.visible = this.playerView.visible;
   }
 
   /**
    * What the players do not see, as areas with their holes worked out: sight polygons overlap
    * and reach the map's edge, and PIXI draws holes right only where each lies inside its shape
    * and apart from the others (two that overlapped were black on Canvas, where three showed).
+   * Canvas fills these areas exactly. WebGL triangulates them, and where an area comes back
+   * with edges that cross (`uncoveredAreas`) it can leave floor in sight black, never the reverse.
    */
-  private hiddenAreas(bounds: MapBounds, spots: readonly SeenSpot[]): FilledArea[] {
-    const map: Polygon = [{ x: 0, y: 0 }, { x: bounds.width, y: 0 }, { x: bounds.width, y: bounds.height }, { x: 0, y: bounds.height }];
-    const footprints = spots.map((spot) => spot.polygon);
-    const seeing = this.sight.regions.filter((region) => showsMap(region.sense));
+  private hiddenAreas({ sight, reaches, footprints, width, height }: DarknessSource): FilledArea[] {
+    const map: Polygon = [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }];
+    // The map and, around it, as far as a darkness placed on it can reach: nothing beyond is drawn.
+    const box: Rect = [-MAX_LIGHT_REACH, -MAX_LIGHT_REACH, width + 2 * MAX_LIGHT_REACH, height + 2 * MAX_LIGHT_REACH];
+    const seeing = sight.regions.filter((region) => showsMap(region.sense));
     const polygonsOf = (regions: readonly SightRegion[]): Polygon[] => regions.flatMap((region) => (region.polygon ? [region.polygon] : []));
     try {
-      const outOfSight = this.sight.all ? [] : uncoveredAreas([map], [...polygonsOf(seeing), ...footprints]);
+      const outOfSight = sight.all ? [] : uncoveredAreas([map], [...polygonsOf(seeing), ...footprints], box);
       const piercing = seeing.filter((region) => perceivedLevel(region.sense, 'magical-dark') !== null);
-      const inDarkness = uncoveredAreas(this.reaches.map((reach) => reach.polygon), [...polygonsOf(piercing), ...footprints]);
+      const inDarkness = uncoveredAreas(reaches, [...polygonsOf(piercing), ...footprints], box);
       return [...outOfSight, ...inDarkness];
     } catch (error) {
       console.error('[CanvasLightingFallback] Sight could not be drawn, the map stays hidden:', error);
@@ -186,4 +214,25 @@ export class CanvasLightingFallback implements SceneLightingView {
 
 function sameSight(a: Sight, b: Sight): boolean {
   return a.all === b.all && a.regions.length === b.regions.length && a.regions.every((region, i) => region === b.regions[i]);
+}
+
+/** What the darkness is drawn from. `sight` is the view's own, the same object while its regions are the same. */
+interface DarknessSource {
+  sight: Sight;
+  reaches: readonly Polygon[];
+  footprints: readonly Polygon[];
+  width: number;
+  height: number;
+}
+
+function sameSource(a: DarknessSource, b: DarknessSource): boolean {
+  return a.sight === b.sight && a.width === b.width && a.height === b.height && samePolygons(a.reaches, b.reaches) && samePolygons(a.footprints, b.footprints);
+}
+
+/** A reach keeps its polygon while it is not traced anew; a footprint is traced at every update, so its corners are compared. */
+function samePolygons(a: readonly Polygon[], b: readonly Polygon[]): boolean {
+  return a.length === b.length && a.every((polygon, i) => {
+    const other = b[i]!;
+    return polygon === other || (polygon.length === other.length && polygon.every((corner, j) => corner.x === other[j]!.x && corner.y === other[j]!.y));
+  });
 }

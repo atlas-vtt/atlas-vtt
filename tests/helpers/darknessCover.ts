@@ -24,6 +24,11 @@ export function darknessCovers(darkness: Graphics, x: number, y: number): boolea
   });
 }
 
+/** How each fill of the darkness is painted. Anything but black at alpha 1 lets the players see through it. */
+export function darknessPaint(darkness: Graphics): { color: number; alpha: number }[] {
+  return darkness.context.instructions.flatMap((instruction) => (instruction.action === 'fill' ? [{ color: instruction.data.style.color, alpha: instruction.data.style.alpha }] : []));
+}
+
 /** The stretches of the row at `y` the darkness leaves open, as [first, end) world pixels read at pixel centres. */
 export function openSpans(darkness: Graphics, y: number, width: number): [number, number][] {
   const spans: [number, number][] = [];

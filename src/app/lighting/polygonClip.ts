@@ -52,12 +52,23 @@ function collectAreas(parent: PolyPath64, areas: QArea[]): void {
 }
 
 /**
- * `subject` without `clip` as areas that know their holes, for a drawer that needs every hole
- * inside its outline and apart from the others.
+ * The union of outlines that may overlap. Each is resolved by itself first: one that crosses
+ * itself or runs the other way round must not cancel another.
  */
-export function subtractToAreas(subject: QShape, clip: QShape): QArea[] {
+function united(outlines: readonly QPolygon[]): Paths64 {
+  return union(outlines.flatMap(outline => union([pathOf(outline)], FillRule.NonZero)), FillRule.NonZero);
+}
+
+/**
+ * The union of `covered` without the union of `open`, as areas that know their holes: no hole
+ * reaches past its outline or overlaps another, as the outlines handed in may. Crossings are
+ * rounded to the grid, so where edges run closer than a grid step an outline or hole can come
+ * back crossing itself by less than that step. Uniting before taking out leaves fewer of those
+ * than one pass over all outlines does.
+ */
+export function subtractToAreas(covered: readonly QPolygon[], open: readonly QPolygon[]): QArea[] {
   const tree = new PolyTree64();
-  booleanOpWithPolyTree(ClipType.Difference, subject.map(pathOf), clip.map(pathOf), tree, FillRule.NonZero);
+  booleanOpWithPolyTree(ClipType.Difference, united(covered), united(open), tree, FillRule.NonZero);
   const areas: QArea[] = [];
   collectAreas(tree, areas);
   return areas;
