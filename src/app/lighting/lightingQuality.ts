@@ -25,7 +25,7 @@ export type LightingQualityLevel = (typeof LIGHTING_QUALITY_LEVELS)[number];
 /** The levels the GM picks from; `high` is the lighting as it always was. */
 export const LIGHTING_QUALITY: Record<LightingQualityLevel, LightingQuality> = {
   high: { maxTexels: MAX_TEXELS, bounceMaxSide: Infinity, flickerMs: FLICKER_INTERVAL_MS },
-  balanced: { maxTexels: 2048, bounceMaxSide: 4096, flickerMs: 66 },
+  balanced: { maxTexels: 2048, bounceMaxSide: 6144, flickerMs: 66 },
   saver: { maxTexels: 1024, bounceMaxSide: 0, flickerMs: null },
 };
 

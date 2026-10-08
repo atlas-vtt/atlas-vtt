@@ -1,5 +1,7 @@
 ## Improved
 
+- A Lighting quality setting (High, Balanced, Saver) lets dynamic lighting use less graphics memory and battery on laptops with integrated graphics. Only the look changes: what tokens see stays the same.
+
 - Show my rolls to players is now a switch in the dice tray and in Dice settings, the same setting as Show dice rolls in the player view settings.
 
 - Sight and light are worked out much faster on maps with thousands of walls, such as large imported maps.
