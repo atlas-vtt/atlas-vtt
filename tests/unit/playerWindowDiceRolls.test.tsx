@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { act } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { DiceRollResult } from '../../src/app/types/diceTypes';
@@ -10,6 +10,7 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { attachFakePlayerWindow } from '../mocks/playerPopout';
 import {
   MAP_A, MAP_B, MAP_C, SCENE_A_TOKENS, SCENE_B_TOKENS, WOLF_BITE, cardTexts, emitRoll, lastCard, originOf, sceneState, setupPlayerDice,
+  type PlayerDiceHarness,
 } from '../helpers/playerDiceRolls';
 
 vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
@@ -331,5 +332,26 @@ describe('which scene names the rolls in the player window', () => {
     expect(lastCard(doc)?.textContent).toContain('Wolf');
     act(() => service.destroy());
     expect(bus.listenerCount('dice-rolled')).toBe(0);
+  });
+});
+
+describe('a result card in the player window', () => {
+  beforeEach(() => { vi.useFakeTimers(); });
+  afterEach(() => { vi.useRealTimers(); });
+
+  it.each<[string, (harness: PlayerDiceHarness) => void]>([
+    ['the window closes', ({ service }) => service.destroy()],
+    ['the DM stops sharing rolls', ({ settings }) => settings.setLocalPlayerViewSettings({ showDiceRolls: false })],
+    ['another view is presented', ({ service, sourceFor }) => service.presentCanvas(sourceFor(new EventEmitter()), 'scene-other')],
+    ['its view is released', ({ service, store }) => service.releaseSource(store)],
+  ])('leaves no timer behind once %s', (_, end) => {
+    const harness = setupPlayerDice();
+    const before = vi.getTimerCount();
+    emitRoll(harness.bus, WOLF_BITE, originOf(MAP_A));
+    expect(vi.getTimerCount()).toBeGreaterThan(before);
+
+    act(() => end(harness));
+    expect(lastCard(harness.doc)).toBeNull();
+    expect(vi.getTimerCount()).toBe(before);
   });
 });
