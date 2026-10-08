@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { Button } from '../../../packages/components/primitives/button';
+import { DropdownToggleRow } from '../../../packages/components/primitives/DropdownToggleRow';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { DieFace } from './DieFace';
+import { t } from '../../../i18n';
+import type { ShareRolls } from '../../hooks/useShareRolls';
 import {
   MAX_DICE, MAX_MODIFIER, MAX_PER_DIE, TRAY_DICE,
   addDie, clampModifier, removeDie, trayDiceCount, trayFormula, type TrayPool,
@@ -12,6 +15,8 @@ import {
 interface DiceTrayProps {
   /** The finished formula goes up to whoever rolls it. */
   onRoll: (formula: string) => boolean | void;
+  /** The GM's switch for whether players see their rolls; left out where nobody else watches. */
+  shareRolls?: ShareRolls;
 }
 
 /**
@@ -21,7 +26,7 @@ interface DiceTrayProps {
  * control on a touchpad. Mixed dice are thrown together, `2d6 + 1d20 + 3`, as
  * three kinds held in one hand.
  */
-export function DiceTray({ onRoll }: DiceTrayProps): React.ReactElement {
+export function DiceTray({ onRoll, shareRolls }: DiceTrayProps): React.ReactElement {
   const [pool, setPool] = useState<TrayPool>({});
   const [modifier, setModifier] = useState(0);
 
@@ -107,6 +112,10 @@ export function DiceTray({ onRoll }: DiceTrayProps): React.ReactElement {
       <p className={cn('atlas-dice-tray__formula', formula === '' && 'atlas-dice-tray__formula--empty')} role="status" aria-live="polite">
         {formula === '' ? 'The tray is empty.' : formula}
       </p>
+
+      {shareRolls && (
+        <DropdownToggleRow label={t('dice.showRollsToPlayers')} value={shareRolls.shown} onChange={shareRolls.onToggle} />
+      )}
 
       <div className="atlas-dice-tray__actions">
         <Button size="sm" className="atlas-dice-tray__roll" onClick={throwDice} disabled={formula === ''}>

@@ -4,11 +4,13 @@ import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useDiceDisplay } from '../../hooks/useDiceDisplay';
 import { useDiceLook } from '../../hooks/useDiceLook';
 import { useDicePreviews } from '../../hooks/useDicePreviews';
+import { useShareRolls } from '../../hooks/useShareRolls';
 import { DICE_DISPLAY_HINTS, DICE_DISPLAY_OPTIONS } from '../../../dice3d/diceDisplay';
 import { DICE_FONT_OPTIONS } from '../../../dice3d/diceLook';
 import { SettingsService } from '../../../services/SettingsService';
 import { DiceColourStrip } from './DiceColourStrip';
-import { SettingRow } from './SettingRows';
+import { SettingRow, SettingToggleRow } from './SettingRows';
+import { t } from '../../../i18n';
 
 /** How dice rolls look, for every map: how they are shown, and the dice themselves. */
 export function DiceSettingsPanel(): React.ReactElement {
@@ -17,6 +19,7 @@ export function DiceSettingsPanel(): React.ReactElement {
   const look = useDiceLook(app ?? undefined);
   const previews = useDicePreviews(app ?? undefined, look.font);
   const settings = SettingsService.forApp(app ?? undefined);
+  const shareRolls = useShareRolls();
 
   return (
     <div className="atlas-command-palette-panel">
@@ -30,6 +33,14 @@ export function DiceSettingsPanel(): React.ReactElement {
             onChange={(value) => settings?.setDiceDisplay(value)}
           />
         </SettingRow>
+        {shareRolls && (
+          <SettingToggleRow
+            label={t('dice.showRollsToPlayers')}
+            hint={t('dice.showRollsToPlayersHint')}
+            value={shareRolls.shown}
+            onToggle={shareRolls.onToggle}
+          />
+        )}
       </div>
 
       <div className="atlas-command-palette-panel-column">

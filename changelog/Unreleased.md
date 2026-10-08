@@ -1,5 +1,7 @@
 ## Improved
 
+- Show my rolls to players is now a switch in the dice tray and in Dice settings, the same setting as Show dice rolls in the player view settings.
+
 - Sight and light are worked out much faster on maps with thousands of walls, such as large imported maps.
 
 - Fog paint and erase strokes now use consistent shapes.
