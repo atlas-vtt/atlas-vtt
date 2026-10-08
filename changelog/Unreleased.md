@@ -72,6 +72,8 @@
 
 ## Important changes
 
+- Atlas no longer reads a statblock code block, the properties of a note it previews from a bundle, or a loot base file that is larger than 32 KB.
+
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.
 
 - Hidden tokens no longer add sight or explore new areas in the player window. Areas already explored stay remembered.

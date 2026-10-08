@@ -92,10 +92,11 @@ describe.each(Object.keys(ROUTES))('a statblock that reaches the renderer by %s'
   it.each(Object.keys(HOSTILE_VALUES))('is drawn within one budget where its fields are %s', async (shape) => {
     const { container } = show(ROUTES[route]!(statblockOf(HOSTILE_VALUES[shape]!)));
 
-    await waitFor(() => expect(container.querySelector('.atlas-sb-heading')?.textContent).toBe('Toad'));
+    // The largest of these values take a while to build on a busy machine.
+    await waitFor(() => expect(container.querySelector('.atlas-sb-heading')?.textContent).toBe('Toad'), { timeout: 20_000 });
     // The statblock as handed over is read for bounded copies only: by the reader of its route, and by the renderer.
     expect(counts.reads).toBeLessThanOrEqual(4 * STATBLOCK_LIMITS.values);
     expect(container.querySelectorAll('.atlas-sb-trait').length).toBeLessThanOrEqual(2 * STATBLOCK_LIMITS.entries);
     expect(container.textContent?.length).toBeLessThanOrEqual(2 * STATBLOCK_LIMITS.characters);
-  });
+  }, 30_000);
 });

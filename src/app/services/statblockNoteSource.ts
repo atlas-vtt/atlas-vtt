@@ -14,7 +14,8 @@
  * be resolved from the fence itself.
  */
 
-import { TFile, parseYaml, type App } from 'obsidian';
+import { TFile, type App } from 'obsidian';
+import { parseNoteYaml } from './noteYaml';
 
 /** A ```statblock fence, capturing its body. */
 const STATBLOCK_FENCE = /^[ \t]*(?:```+|~~~+)\s*statblock\s*$([\s\S]*?)^[ \t]*(?:```+|~~~+)\s*$/m;
@@ -42,7 +43,7 @@ export function parseStatblockFence(content: string): Record<string, unknown> | 
   if (!match) return null;
 
   try {
-    const params: unknown = parseYaml(match[1] ?? '');
+    const params: unknown = parseNoteYaml(match[1] ?? '');
     return params && typeof params === 'object' ? (params as Record<string, unknown>) : {};
   } catch {
     // A malformed fence is still a statblock fence; Fantasy Statblocks renders
@@ -62,7 +63,7 @@ export function statblockSourceFromText(content: string): StatblockTextSource | 
   const block = FRONTMATTER.exec(content)?.[1];
   if (block !== undefined) {
     try {
-      const frontmatter: unknown = parseYaml(block);
+      const frontmatter: unknown = parseNoteYaml(block);
       if (frontmatter && typeof frontmatter === 'object') {
         const { statblock } = frontmatter as Record<string, unknown>;
         if (statblock === true || statblock === 'true' || statblock === 'inline') {
