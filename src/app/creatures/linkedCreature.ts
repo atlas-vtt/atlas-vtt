@@ -9,6 +9,8 @@ import {
 } from '../services/FantasyStatblocksService';
 import { hasBestiaryFrontmatter, parseStatblockFence, resolveStatblockNote } from '../services/statblockNoteSource';
 import { workSlices } from '../utils/workSlices';
+import { namedTraitLists } from './frontmatterTraits';
+import { boundedFields, namedStatblock } from './statblockValues';
 
 /** The bestiary as one lookup, built once and reused for many notes. */
 export interface BestiaryLookup {
@@ -33,37 +35,14 @@ function withExtensions(api: FantasyStatblocksApi | null, creature: FantasyStatb
   return resolved && resolved.path === creature.path ? resolved : creature;
 }
 
-/** The lists whose entries Fantasy Statblocks' watcher stores as `{ name, desc }`. */
-const TRAIT_LISTS = ['traits', 'actions', 'bonus_actions', 'reactions', 'legendary_actions'];
-
-/** A trait's text as Fantasy Statblocks' watcher writes it: the parts of a list or a map in a row. */
-function traitText(value: unknown): string {
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number') return String(value);
-  if (Array.isArray(value)) return value.map(traitText).join(' ');
-  if (value && typeof value === 'object') return Object.entries(value).flat().map(traitText).join(' ');
-  return '';
-}
-
 /**
- * A trait list whose `[name, description]` entries are the `{ name, desc }` a statblock's blocks read.
- * Its other entries stay as they are: a list of plain words is what the Traits filter reads.
+ * The creature a note's frontmatter defines, as Fantasy Statblocks' watcher parses it. A note is
+ * not Atlas' own text, so all that is read of its frontmatter is read within one budget.
  */
-function withNamedTraits(list: unknown): unknown {
-  if (!Array.isArray(list)) return list;
-  return list.map((entry: unknown) =>
-    (Array.isArray(entry) ? { name: traitText(entry[0]), desc: traitText(entry.slice(1)) } : entry));
-}
-
-/** The creature a note's frontmatter defines, as Fantasy Statblocks' watcher parses it. */
 function frontmatterCreature(app: App, file: TFile): FantasyStatblocksCreature {
-  const frontmatter: Record<string, unknown> = app.metadataCache.getFileCache(file)?.frontmatter ?? {};
+  const frontmatter = boundedFields(app.metadataCache.getFileCache(file)?.frontmatter);
   const name = typeof frontmatter.name === 'string' && frontmatter.name.trim() ? frontmatter.name : file.basename;
-  const creature: FantasyStatblocksCreature = { ...frontmatter, name, path: file.path };
-  for (const list of TRAIT_LISTS) {
-    if (list in frontmatter) creature[list] = withNamedTraits(frontmatter[list]);
-  }
-  return creature;
+  return { ...frontmatter, ...namedTraitLists(frontmatter), name, path: file.path };
 }
 
 /**
@@ -77,13 +56,26 @@ function frontmatterCreature(app: App, file: TFile): FantasyStatblocksCreature {
  * means "not known yet": a creature read by name is not there until the parse
  * ends, and one that `extends` another comes without it. Show a placeholder
  * then, and do not take such an answer for the whole statblock.
+ *
+ * The creature is a copy within the limits every statblock is read in, named
+ * by a text (`statblockValues.ts`): what tokens, resources, senses and the
+ * filters read of a statblock, they read of this.
  */
 export async function resolveLinkedCreature(
   app: App,
   notePath: string,
   bestiary: BestiaryLookup = bestiaryLookup(),
 ): Promise<FantasyStatblocksCreature | null> {
-  const { api, byPath } = bestiary;
+  const creature = await linkedCreatureAsGiven(app, notePath, bestiary);
+  return creature && namedStatblock(creature);
+}
+
+/** The creature of a linked note as its source holds it; `resolveLinkedCreature` hands it on within the limits. */
+async function linkedCreatureAsGiven(
+  app: App,
+  notePath: string,
+  { api, byPath }: BestiaryLookup,
+): Promise<FantasyStatblocksCreature | null> {
   const parsed = byPath.get(notePath);
   if (parsed) return withExtensions(api, parsed);
 

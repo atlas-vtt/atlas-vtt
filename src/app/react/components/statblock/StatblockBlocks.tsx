@@ -85,7 +85,7 @@ export function SubheadingBlock({
 }: BlockProps): React.JSX.Element | null {
   const parts = (item.properties ?? [])
     .filter((property) => property in monster)
-    .map((property) => stringify(monster[property], 0, ', ', false));
+    .map((property) => stringify(monster[property], ', ', false));
 
   if (!parts.length) return null;
 
@@ -282,6 +282,15 @@ export function TableBlock({ item, monster }: BlockProps): React.JSX.Element | n
   );
 }
 
+/** An image address without its percent escapes; one that holds a stray `%` is no escaped address and reads as it stands. */
+function decoded(address: string): string {
+  try {
+    return decodeURIComponent(address);
+  } catch {
+    return address;
+  }
+}
+
 /** `image` — creature artwork, and the click target for assigning a token. */
 export function ImageBlock({
   item,
@@ -295,7 +304,7 @@ export function ImageBlock({
 
   let src = '';
   if (hasImage) {
-    src = decodeURIComponent(raw).replace(/(^\[\[|\]\]$)/g, '').split('|')[0] ?? '';
+    src = decoded(raw).replace(/(^\[\[|\]\]$)/g, '').split('|')[0] ?? '';
     if (!/^https?:/.test(src) && app) {
       const file = app.metadataCache.getFirstLinkpathDest(src, sourcePath ?? '');
       src = file ? app.vault.getResourcePath(file) : '';
@@ -340,9 +349,12 @@ export function TraitLine({
   app,
   sourcePath,
   index,
-}: BlockProps & { trait: Trait; index?: number }): React.JSX.Element | null {
-  const desc = runCallback(item.callback, { monster, property: trait }, trait.desc ?? '');
-  const name = trait.name ?? '';
+}: BlockProps & { trait: unknown; index?: number }): React.JSX.Element | null {
+  // A statblock is the user's own text: an entry may be a word or a pair, which a layout's callback
+  // can draw, and a name or a description a number, a list or a map
+  const named: Trait = isTrait(trait) ? trait : {};
+  const desc = stringify(runCallback<unknown>(item.callback, { monster, property: trait }, named.desc ?? ''), ' ', false);
+  const name = stringify(named.name, ' ', false);
   if (!name && !desc) return null;
 
   const property = item.properties?.[0] ?? '';
@@ -364,13 +376,13 @@ export function TraitLine({
       )}
       <EditableField
         path={[property, index as number, 'desc']}
-        value={String(desc)}
+        value={desc}
         editable={canEdit}
         label={t('statblock.traitDescription')}
         multiline
       >
         <StatblockMarkdown
-          text={String(desc)}
+          text={desc}
           app={app}
           sourcePath={sourcePath}
           markdown={item.markdown ?? true}
@@ -380,26 +392,33 @@ export function TraitLine({
   );
 }
 
+function isTrait(entry: unknown): entry is Trait {
+  return typeof entry === 'object' && entry !== null && !Array.isArray(entry);
+}
+
 /** `traits` — a titled list of features, actions, reactions, etc. */
 export function TraitsBlock({ item, monster, app, sourcePath }: BlockProps): React.JSX.Element | null {
   const raw = monster[item.properties?.[0] ?? ''];
-  const traits = Array.isArray(raw) ? (raw as Trait[]) : [];
-  if (!traits.length) return null;
+  const entries: unknown[] = Array.isArray(raw) ? raw : [];
+  if (!entries.length) return null;
 
   return (
     <div className="atlas-sb-traits">
       <SectionHeading item={item} monster={monster} app={app} />
       {item.subheadingText && <div className="atlas-sb-text">{item.subheadingText}</div>}
-      {traits.map((trait, index) => (
-        <TraitLine
-          key={`${trait.name ?? 'trait'}-${index}`}
-          trait={trait}
-          index={index}
-          item={item}
-          monster={monster}
-          app={app}
-          sourcePath={sourcePath}
-        />
+      {entries.map((entry, index) => (
+        // An empty list item is null
+        entry == null ? null : (
+          <TraitLine
+            key={index}
+            trait={entry}
+            index={index}
+            item={item}
+            monster={monster}
+            app={app}
+            sourcePath={sourcePath}
+          />
+        )
       ))}
     </div>
   );
