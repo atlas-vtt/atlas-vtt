@@ -9,13 +9,18 @@ export function isLoaded(state: Pick<ViewAtlasState, 'mapLoaded' | 'isMapLoading
   return state.mapLoaded && !state.isMapLoading;
 }
 
+/** A remote view (`remoteViews.open`): its store has a remote part, and no other view's does. */
+export function isRemoteView(view: Pick<TrackedMapView, 'atlasStore'>): boolean {
+  return view.atlasStore.getState().remoteView != null;
+}
+
 /** A frozen description of `view`: one object may reach several extensions (`map-loaded`), so none can change it for another. */
 export function viewInfo(view: TrackedMapView): ViewInfo {
   const state = view.atlasStore.getState();
   const { tabs, activeTabId } = view.tabMetaStore.getState();
   return deepFrozen({
     viewId: view.viewId,
-    kind: 'map',
+    kind: isRemoteView(view) ? 'remote' : 'map',
     activeTabId,
     tabs: tabs.map((tab) => ({ tabId: tab.id, mapPath: tab.filePath, name: tab.displayName })),
     mapPath: state.mapPath,
@@ -25,9 +30,11 @@ export function viewInfo(view: TrackedMapView): ViewInfo {
 
 /**
  * The tab whose scene `view`'s store holds, loaded: its active tab once the store holds that tab's map. Null while a
- * map loads, and while the active tab already names the next tab but the store still holds the previous one.
+ * map loads, while the active tab already names the next tab but the store still holds the previous one, and in a
+ * remote view.
  */
 export function snapshotTabId(view: TrackedMapView): string | null {
+  if (isRemoteView(view)) return null;
   const { activeTabId } = view.tabMetaStore.getState();
   return activeTabId !== null && showsTab(view, activeTabId) ? activeTabId : null;
 }

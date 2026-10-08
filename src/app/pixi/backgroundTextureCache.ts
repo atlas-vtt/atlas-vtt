@@ -31,7 +31,7 @@ function estimateBytes(texture: Texture): number {
   return pixelWidth * pixelHeight * 4 * (autoGenerateMipmaps ? 4 / 3 : 1);
 }
 
-/** Streamed maps arrive as object URLs: PIXI cannot tell their format from the URL, and they are never shown again once released. */
+/** The remote view's maps arrive as object URLs: PIXI cannot tell their format from the URL, and they are never shown again once released. */
 const isObjectUrl = (url: string): boolean => url.startsWith('blob:');
 
 /**

@@ -8,6 +8,7 @@ import { withCleanTags } from '../app/tools/diceTags';
 import { isDiceRollResult, plainCopy, ROLL_TEXT_MAX } from './diceRollCheck';
 import { throwGivenRoll } from './diceThrow';
 import type { DisposerSet } from './disposers';
+import { isRemoteView } from './viewInfo';
 import { acceptsListener } from './listenerCheck';
 import { frozenCopy } from './frozen';
 import type { Disposer, ViewId } from './types/common';
@@ -43,8 +44,9 @@ export function diceApi(
 ): DiceApi {
   const dispatch = (result: DiceRollResult): void => {
     // Atlas's own log, toasts, sounds and the player window follow each map view's bus (#277): every open GM
-    // map view hears the roll. One view's failure never stops the others.
+    // map view hears the roll, a remote view none (its log is its owner's). One view's failure never stops the others.
     for (const view of views?.views() ?? []) {
+      if (isRemoteView(view)) continue;
       try {
         view.serviceManager?.getEventBus().emit('dice-rolled', result);
       } catch (error) {

@@ -41,7 +41,7 @@ export interface PresentationApi {
   current(): PresentedSceneInfo | null;
   /**
    * Switches `viewId` to `tabId` (default: its active tab), waits for the load, presents. Never throws.
-   * False for a closed view, or when nothing new is on screen. After a failed load the scene stays registered
+   * False for a closed view, a remote view, or when nothing new is on screen. After a failed load the scene stays registered
    * as presented but held (`current().held === true`), and `presented(scene, true)` follows if its map later loads.
    */
   present(viewId: ViewId, tabId?: string): Promise<boolean>;

@@ -10,8 +10,7 @@ export interface ViewCamera {
 /** A view as `views.list()`, `views.active()` and the `map-loaded` and `map-closed` events describe it; frozen. */
 export interface ViewInfo {
     viewId: ViewId;
-    /** The kind of view: an Atlas map view. */
-    kind: 'map';
+    kind: 'map' | 'remote';
     activeTabId: string | null;
     tabs: ReadonlyArray<{
         tabId: string;
@@ -31,7 +30,7 @@ export interface SceneSnapshot {
     readonly mapPath: string | null;
     readonly loaded: boolean;
     /**
-     * Capability `scene-tabs`: the tab whose scene this is, set once `loaded`; null while loading.
+     * Capability `scene-tabs`: the tab whose scene this is, set once `loaded`; null while loading and in remote views.
      * Null too while the view's `activeTabId` already names the next tab but the store still holds the previous one's
      * scene, so a snapshot whose `tabId` names a tab always holds that tab's scene. A snapshot with no tab is no tab's.
      */
@@ -62,9 +61,9 @@ export interface SceneSnapshot {
     readonly lighting: SceneLighting;
 }
 export interface ViewsApi {
-    /** Every open map view, in no set order. */
+    /** Every open map view and remote view, in no set order; `kind` tells them apart. */
     list(): ViewInfo[];
-    /** The active Atlas map view. */
+    /** The active Atlas map view; never a remote view. */
     active(): ViewInfo | null;
     /** The scene in the view's store now; null for a view that is not open. */
     snapshot(viewId: ViewId): SceneSnapshot | null;
@@ -76,7 +75,7 @@ export interface ViewsApi {
     watchCamera(viewId: ViewId, listener: (camera: ViewCamera) => void): Disposer;
     /**
      * Capability `scene-tabs`: makes a tab of a GM map view active without presenting it.
-     * Answers true once that tab's map is loaded. Answers false for a closed or unknown view,
+     * Answers true once that tab's map is loaded. Answers false for a closed, unknown or remote view,
      * an unknown tab, or when another switch overtook this one; also when the view closes before the tab has loaded, or
      * the switch and load take longer than 60 s. Never throws for these.
      * The presented scene holds while the view shows another tab, as on any switch, and resumes when the GM returns to it.

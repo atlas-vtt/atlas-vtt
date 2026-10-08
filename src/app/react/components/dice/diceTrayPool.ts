@@ -42,3 +42,8 @@ export function removeDie(pool: TrayPool, sides: TrayDie): TrayPool {
 export function clampModifier(modifier: number): number {
   return Math.max(-MAX_MODIFIER, Math.min(MAX_MODIFIER, modifier));
 }
+
+/** The tray's dice keyed by die name (`d6`), as a roll's dice are. */
+export function trayPoolByDie(pool: TrayPool): Record<string, number> {
+  return Object.fromEntries(TRAY_DICE.filter((sides) => (pool[sides] ?? 0) > 0).map((sides) => [`d${sides}`, pool[sides] ?? 0]));
+}

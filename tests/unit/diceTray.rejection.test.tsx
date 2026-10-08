@@ -14,8 +14,8 @@ describe('dice tray rejection', () => {
     render(<DiceTray onRoll={onRoll} />);
     fireEvent.click(screen.getByRole('button', { name: 'Add a d6' }));
     fireEvent.click(screen.getByRole('button', { name: 'Roll' }));
-    // The tray also hands up each die's colour (none here).
-    expect(onRoll).toHaveBeenCalledWith('1d6', [null]);
+    // The tray also hands its dice, modifier and each die's colour (none here) up (the remote view's owner rolls them).
+    expect(onRoll).toHaveBeenCalledWith('1d6', { 6: 1 }, 0, [null]);
     expect(screen.getByRole('status').textContent).toBe('1d6');
   });
   it('clears the tray after an accepted roll', () => {

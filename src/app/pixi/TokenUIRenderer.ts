@@ -311,10 +311,11 @@ export class TokenUIRenderer {
   public update(token: BaseToken & Partial<Character>, spriteWidth: number, playerSettings?: Pick<AtlasSettings['localPlayerView'], 'showTokenNameplates'>): void {
     const tokenSettings = this.store?.getState().tokenSettings;
     // Players see the resources their definitions allow, whatever the DM hides on this map.
-    const viewer: ResourceViewer = playerSettings ? 'player' : 'dm';
-    const definitions = this.resourceDefsProvider();
-    // The map's own switches hide resources from the GM; the player view never reads them
-    const hidden = playerSettings ? [] : tokenSettings?.hiddenResources ?? [];
+    // A remote view draws what its owner lets the player see of each token's own definitions.
+    const viewer: ResourceViewer = playerSettings || this.isRemote() ? 'player' : 'dm';
+    const definitions = this.resourceDefsProvider(token.id);
+    // The map's own switches hide resources from the GM; the player view and the remote view never read them
+    const hidden = viewer === 'player' ? [] : tokenSettings?.hiddenResources ?? [];
     const shown = visibleResources(token, definitions, viewer).filter(({ definition }) => !hidden.includes(definition.key));
 
     const bars = shown.filter(({ slot }) => shapeOf(slot) === 'bar');
@@ -582,8 +583,13 @@ export class TokenUIRenderer {
     this.wheels.setAlpha(alpha);
   }
 
+  /** The remote view shows what the player window shows: bars, no numbers on hover or selection. */
+  private isRemote(): boolean {
+    return this.store?.getState().remoteView != null;
+  }
+
   private updateTextVisibility(): void {
-    const shouldShowText = this.isHovered || this.isSelected;
+    const shouldShowText = (this.isHovered || this.isSelected) && !this.isRemote();
     const targetAlpha = shouldShowText ? 1 : 0;
     
     // Cancel any existing animation

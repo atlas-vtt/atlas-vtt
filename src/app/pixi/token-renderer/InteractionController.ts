@@ -41,6 +41,7 @@ import { conditionsSubmenu } from '../../react/components/context-menu/condition
 import { tokenMenuEntries } from '../../extensions/menuEntries';
 import { viewContextOf } from '../../extensions/viewContext';
 import { holdTokens } from '../../lighting/sightOnDrop';
+import { mayDragInRemoteView, REMOTE_DRAG_CANCEL, REMOTE_TOKEN_DROPPED, remoteDropPoint } from '../../remote-view/remoteDrag';
 import { t } from '../../i18n';
 
 interface DragState {
@@ -116,6 +117,7 @@ export class InteractionController implements ITokenInteractionController {
     this.eventBus = eventBus;
     this.obsApp = obsApp;
     this.isPlayerView = isPlayerView;
+    if (isPlayerView) eventBus.on(REMOTE_DRAG_CANCEL, this.cancelDrag);
   }
 
   attachInteractionHandlers(_tokenId: string, _container: Container, _token: TokenEntity): void {
@@ -156,6 +158,8 @@ export class InteractionController implements ITokenInteractionController {
     const token = this.store.getState().objects.tokens[tokenId];
     if (!token) return;
     if (this.isPlayerView) {
+      // A remote view's player drags the tokens its owner lets them move, one at a time; the local player window drags none.
+      if (mayDragInRemoteView(this.store.getState(), tokenId)) this.prepareInteraction(token, e, { single: true });
       return;
     }
 
@@ -233,7 +237,9 @@ export class InteractionController implements ITokenInteractionController {
     return this.dragState.isDragging;
   }
 
-  private prepareInteraction(token: TokenEntity, e: FederatedPointerEvent): void {
+  /** `single`: the remote view drags only the pressed token: no Shift groups, no Alt copies. */
+  private prepareInteraction(token: TokenEntity, e: FederatedPointerEvent, options: { single?: boolean } = {}): void {
+    const single = options.single === true;
     // A second pointer (another finger) pressing during a drag is not a new gesture: taking it
     // would let go of the held tokens and leave the drag's history transaction open.
     if (this.dragState.isDragging && this.dragState.hasMoved) return;
@@ -242,7 +248,7 @@ export class InteractionController implements ITokenInteractionController {
     const isTokenSelected = selectedIds.includes(token.id);
 
     // Shift-click toggles membership; removing never starts a drag.
-    if (e.shiftKey && isTokenSelected) {
+    if (!single && e.shiftKey && isTokenSelected) {
       setSelection(selectedIds.filter((id) => id !== token.id));
       return;
     }
@@ -256,13 +262,13 @@ export class InteractionController implements ITokenInteractionController {
     // Store the token for potential click handling
     this.dragState.clickToken = token;
     this.dragState.hasMoved = false;
-    this.dragState.copyOnDrag = e.altKey;
+    this.dragState.copyOnDrag = !single && e.altKey;
     
     // Determine which tokens to potentially drag
-    if (e.shiftKey) {
+    if (!single && e.shiftKey) {
       this.dragState.dragIds = [...selectedIds, token.id];
       setSelection(this.dragState.dragIds);
-    } else if (isTokenSelected && selectedIds.length > 1) {
+    } else if (!single && isTokenSelected && selectedIds.length > 1) {
       this.dragState.dragIds = [...selectedIds];
     } else {
       this.dragState.dragIds = [token.id];
@@ -426,6 +432,38 @@ export class InteractionController implements ITokenInteractionController {
     this.onSelectionUpdate?.();
   };
 
+  /** The remote view took the token's right to move away mid-drag: the token goes back and nothing is dropped. */
+  public cancelDrag = (): void => {
+    if (!this.dragState.isDragging) return;
+    const wasDrag = this.dragState.hasMoved;
+    this.dragState.isDragging = false;
+    this.returnTokens();
+    if (wasDrag) {
+      this.store.getState().setIsDragging(false);
+      endHistoryTransaction(this.store);
+    }
+    if (this.dragState.animationFrameId) window.cancelAnimationFrame(this.dragState.animationFrameId);
+    delete this.dragState.animationFrameId;
+    this.dragRuler?.end();
+    delete this.dragState.rulerTokenId;
+    this.cleanupDragListeners();
+    this.viewport.plugins.resume('drag');
+    this.dragState.pendingUpdate = false;
+    this.dragState.hasMoved = false;
+    this.lastDragStreamSentAt = 0;
+    delete this.dragState.clickToken;
+    this.reportHeld([]);
+  };
+
+  /** The dragged tokens back where the drag started, sprites and store alike. */
+  private returnTokens(): void {
+    const initial = Object.entries(this.dragState.initialPositions);
+    for (const [id, position] of initial) {
+      this.getTokenSprite?.(id)?.position.set(position.x, position.y);
+      this.updateUIPosition?.(id, position.x, position.y);
+    }
+    if (this.dragState.hasMoved) this.store.getState().setTokenPositions(initial.map(([id, position]) => ({ id, x: position.x, y: position.y })));
+  }
 
   private cleanupDragListeners(): void {
     // Remove all drag-related event listeners from viewport
@@ -481,6 +519,7 @@ export class InteractionController implements ITokenInteractionController {
       const tokenUpdates: Array<{id: string, x: number, y: number}> = [];
       const snapToGrid = this.store.getState().grid?.snapToGrid ?? true;
       const tokens = this.store.getState().objects.tokens;
+      const remote = this.store.getState().remoteView != null;
       
       for (const id of this.dragState.dragIds) {
         const initPos = this.dragState.initialPositions[id];
@@ -490,9 +529,12 @@ export class InteractionController implements ITokenInteractionController {
         const newY = initPos.y + dy;
         
         // Snap to grid if enabled
-        const finalPos = snapToGrid 
-          ? this.gridSystem.snapTokenCenter(newX, newY, tokens[id]?.size || 1)
-          : { x: newX, y: newY };
+        // A remote view reports where the drop snaps in its own grid, as the GM's drag would put it.
+        const finalPos = remote
+          ? remoteDropPoint(this.store.getState(), tokens[id], { x: newX, y: newY })
+          : snapToGrid
+            ? this.gridSystem.snapTokenCenter(newX, newY, tokens[id]?.size || 1)
+            : { x: newX, y: newY };
         
         const sprite = this.getTokenSprite?.(id);
         if (sprite) {
@@ -505,7 +547,11 @@ export class InteractionController implements ITokenInteractionController {
         tokenUpdates.push({id, x: finalPos.x, y: finalPos.y});
       }
       
-      if (tokenUpdates.length > 0) this.store.getState().dropTokens(tokenUpdates);
+      if (remote) {
+        // The owner decides where the token stays: it goes back, and the drop is reported.
+        this.returnTokens();
+        for (const { id, x, y } of tokenUpdates) this.eventBus.emit(REMOTE_TOKEN_DROPPED, { tokenId: id, x, y });
+      } else if (tokenUpdates.length > 0) this.store.getState().dropTokens(tokenUpdates);
       
       // Update UI
       this.onSelectionUpdate?.();
@@ -848,6 +894,7 @@ export class InteractionController implements ITokenInteractionController {
   }
 
   destroyAll(): void {
+    if (this.isPlayerView) this.eventBus.off(REMOTE_DRAG_CANCEL, this.cancelDrag);
     // Clean up all hover handlers
     for (const tokenId in this.hoverHandlers) {
       delete this.hoverHandlers[tokenId];

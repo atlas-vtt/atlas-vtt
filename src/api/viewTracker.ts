@@ -7,7 +7,7 @@ import type { CameraViewport } from '../app/services/presentedCamera';
 import type { ViewAtlasStore } from '../app/storeFactory';
 import type { TabMetaStore } from '../app/stores/tabMetaStore';
 import type { ApiEvents } from './events';
-import { isLoaded, viewInfo } from './viewInfo';
+import { isLoaded, isRemoteView, viewInfo } from './viewInfo';
 
 /** What the API reads of an open Atlas map view (`AtlasView` provides it). */
 export interface TrackedMapView {
@@ -34,7 +34,7 @@ export interface TrackedMapView {
 
 /** How the tracker recognises Atlas map views; injected so it never loads the view's code itself (`atlasViewHooks.ts` holds the real ones). */
 export interface ViewHooks {
-  /** The leaf types that hold Atlas map views. */
+  /** The leaf types that hold Atlas map views: Atlas's own and the remote view. */
   readonly viewTypes: readonly string[];
   isMapView(view: unknown): view is TrackedMapView;
   /** The view the user is working in, if it is an Atlas map view. */
@@ -90,10 +90,10 @@ export class ViewTracker {
     return view && !view.isClosed ? view : null;
   }
 
-  /** The active map view, once tracked and open. */
+  /** The active map view, once tracked and open; never a remote view. */
   activeView(): TrackedMapView | null {
     const active = this.hooks.activeView(this.app);
-    if (!this.hooks.isMapView(active)) return null;
+    if (!this.hooks.isMapView(active) || isRemoteView(active)) return null;
     return this.view(active.viewId) === active ? active : null;
   }
 
@@ -119,14 +119,14 @@ export class ViewTracker {
     }
   }
 
-  /** One `tabs-changed` per view per microtask, once its tabs differ from the last described; never for a closed view. */
+  /** One `tabs-changed` per view per microtask, once its tabs differ from the last described; never for a remote or closed view. */
   private queueTabsChanged(entry: Entry): void {
     if (entry.tabsQueued) return;
     entry.tabsQueued = true;
     queueMicrotask(() => {
       entry.tabsQueued = false;
       const { view } = entry;
-      if (view.isClosed || this.entries.get(view.viewId) !== entry) return;
+      if (view.isClosed || this.entries.get(view.viewId) !== entry || isRemoteView(view)) return;
       const key = tabsKey(view);
       if (key === entry.tabsKey) return;
       entry.tabsKey = key;

@@ -2,6 +2,7 @@ import { presentedScene, type PresentedSceneInfo as InternalScene } from '../app
 import { presentTabToPlayers, stopPresenting } from '../app/services/presentToPlayers';
 import { addPresentationTarget, presentationTargetSlot, type PresentationTargetEntry } from '../app/services/presentationTargets';
 import type { DisposerSet } from './disposers';
+import { isRemoteView } from './viewInfo';
 import type { ViewTracker } from './viewTracker';
 import type { Disposer, ViewId } from './types/common';
 import type { PresentationApi, PresentationListener, PresentationTarget, PresentedSceneInfo } from './types/presentation';
@@ -23,7 +24,8 @@ export function presentationApi(tracker: ViewTracker, disposers: DisposerSet, ow
     present: async (viewId: ViewId, tabId?: string): Promise<boolean> => {
       const view = tracker.view(viewId);
       const target = tabId ?? view?.tabMetaStore.getState().activeTabId ?? null;
-      if (!view || !target) return false;
+      // A remote view shows a scene fed from outside, never one of this vault's maps.
+      if (!view || !target || isRemoteView(view)) return false;
       try {
         await presentTabToPlayers(view, target);
       } catch (error) {

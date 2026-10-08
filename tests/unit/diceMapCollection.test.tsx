@@ -26,6 +26,9 @@ import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
 import { AssetService } from '../../src/app/services/AssetService';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import type { DiceTool } from '../../src/app/tools/DiceTool';
+import { RemoteOwnRolls } from '../../src/app/remote-view/RemoteOwnRolls';
+import { RemoteViewDice } from '../../src/app/remote-view/RemoteViewDice';
+import { initialRemoteViewState } from '../../src/app/remote-view/remoteViewState';
 import { createInMemoryApp, type InMemoryApp } from '../mocks/inMemoryVault';
 import { emitRoll, sceneState, SCENE_A_TOKENS, setupPlayerDice } from '../helpers/playerDiceRolls';
 
@@ -93,6 +96,23 @@ describe("Atlas's dice in a map view know the map's collection", () => {
     expect(show((children) => <ViewStoreProvider store={storeOn('atlas-vtt/elsewhere.atlasmap')}>{children}</ViewStoreProvider>)).toBe('ext:wood');
   });
 
+  it("a remote view throws in the look its owner sets for the scene's collection, and in the player's own without one", async () => {
+    const memory = await vault();
+    const store = createStore(() => ({ remoteView: { ...initialRemoteViewState() } }));
+    const dice = new RemoteViewDice(store as never);
+    expect(() => dice.setDiceLook(7)).toThrow('[Atlas API] RemoteView.setDiceLook: the look must be a look id of at most 300 characters, or null.');
+    render(
+      <AtlasUIContext.Provider value={{ app: memory.app, view: null, pixiApp: null, renderer: null }}>
+        <ViewStoreProvider store={store as never}><RemoteOwnRolls /></ViewStoreProvider>
+      </AtlasUIContext.Provider>,
+    );
+    const roll = (id: string): never => ({ id, timestamp: 0, formula: '1d20', rolls: [{ die: 'd20', value: 3, max: 20 }], modifiers: 0, total: 3, crit: null }) as never;
+    act(() => dice.throwRoll(roll('r1')));
+    expect(captured.rolls.at(-1)?.at(-1)?.scene.lookId).toBeUndefined();
+    act(() => dice.setDiceLook('ext:fire'));
+    act(() => dice.throwRoll(roll('r2')));
+    expect(captured.rolls.at(-1)?.at(-1)?.scene.lookId).toBe('ext:fire');
+  });
   it("the player window throws in the presented scene's collection look, though it lends no store since #319", async () => {
     const harness = setupPlayerDice('full');
     const assets = AssetService.getInstance(harness.app);

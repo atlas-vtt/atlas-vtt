@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { diceApi } from '../../src/api/dice';
 import { DisposerSet } from '../../src/api/disposers';
+import { RemoteViewDice } from '../../src/app/remote-view/RemoteViewDice';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { DiceRollResult } from '../../src/app/tools/diceRolling';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -27,6 +28,18 @@ describe('tagged dice through the API', () => {
     expect(heard[0]!.rolls).toEqual([{ die: 'd6', value: 4, max: 6, color: '#dd3333', colorName: 'Fire' }, { die: 'd6', value: 5, max: 6 }]);
     expect(heard[0]!.total).toBe(9);
     expect(Object.isFrozen(heard[0]!.rolls[0])).toBe(true);
+  });
+
+  it('a remote view keeps good tags in its log and its own throws, and drops bad ones', () => {
+    const { app } = createInMemoryApp();
+    const store = createViewAtlasStore(app, 'remote-tags', undefined, false, { remote: true });
+    const remote = new RemoteViewDice(store);
+    remote.setDiceLog([thrown()]);
+    const log = store.getState().remoteView!.diceLog;
+    expect(log[0]!.rolls.map((die) => [die.color, die.colorName])).toEqual([['#dd3333', 'Fire'], [undefined, undefined]]);
+    expect(Object.isFrozen(log[0]!.rolls[0])).toBe(true);
+    remote.throwRoll(thrown());
+    expect(store.getState().remoteView!.ownRoll?.rolls[1]).toEqual({ die: 'd6', value: 5, max: 6 });
   });
 
   it('a malformed tag never makes a roll malformed: throw still answers for it', () => {

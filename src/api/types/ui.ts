@@ -4,10 +4,15 @@ import type { TokenEntity } from './records';
 /** What a slot callback is told about the view it is drawn or run in. */
 export interface ViewContext {
   viewId: ViewId;
-  /** The kind of view: an Atlas map view. */
-  kind: 'map';
-  /** True in a view players look at (the player window); false in the GM's own map views. */
+  kind: 'map' | 'remote';
+  /** True in a view players look at (a remote view, or the player window); false in the GM's own map views. */
   isPlayerView: boolean;
+}
+
+/** What `ToolbarItem.isVisible` is told: the view, and for a remote view whether the asking extension opened it. */
+export interface ToolbarItemContext extends ViewContext {
+  /** True in a remote view this extension opened (`remoteViews.open`); false in any other view. */
+  ownRemote: boolean;
 }
 
 export interface MenuItem {
@@ -41,12 +46,14 @@ export interface ToolbarItem {
    * left. The bar moves items into "More tools" from its right end, so lower priorities move there first. Default 50.
    */
   priority?: number;
+  /** Default ['map']. */
+  views?: ReadonlyArray<'map' | 'remote'>;
   /**
-   * Whether the item shows in this view; left out, it always shows. Only `true` shows it: a hidden
+   * Whether the item shows in this view, among the `views` it is for; left out, it always shows. Only `true` shows it: a hidden
    * item takes no room in the bar and is not in "More tools". Read again after `ui.invalidate()`. A predicate that throws
    * hides the item, and the failure is logged once.
    */
-  isVisible?(ctx: ViewContext): boolean;
+  isVisible?(ctx: ToolbarItemContext): boolean;
   /** Draws the button as the one in use, and keeps it in the bar rather than in "More tools". */
   isActive?(ctx: ViewContext): boolean;
   /** A dot (`true`) or a count on the button; `null` shows nothing. */

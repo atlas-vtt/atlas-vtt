@@ -1,6 +1,6 @@
 /**
- * Rolls decided elsewhere that a map view throws with its own 3D dice
- * (`dice.throw`): which roll ids a view threw already, so each is thrown once, and the channel
+ * Rolls decided elsewhere that a map view throws with its own 3D dice (`RemoteView.throwRoll`,
+ * `dice.throw`): which roll ids a view threw already, so each is thrown once, and the channel
  * that hands a roll to a GM map view's dice display. Kept per view store, so a closed view's
  * memory goes with its store and no map file can ever carry it.
  */

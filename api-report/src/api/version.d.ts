@@ -3,4 +3,4 @@
  * Minor: something added. Major: something removed, renamed or tightened. The API report
  * check fails when `api-report/` changes and this does not.
  */
-export declare const API_VERSION = "1.0.0";
+export declare const API_VERSION = "1.1.0";

@@ -47,7 +47,7 @@ export type SavedMap = SavedMapInput & {
 export interface ScenesApi {
   /** Every scene record in the asset index, as frozen copies; rejects when the index could not load. */
   list(): Promise<SceneRecord[]>;
-  /** The scene whose map file is `mapPath`, as a frozen copy; null when none is. */
+  /** The scene whose map file is `mapPath`, as a frozen copy; null when none is, also for a `remote:` path. */
   findByMap(mapPath: string): Promise<SceneRecord | null>;
   /** This extension's data on the scene record (`data.extensions[<extension id>]`); a frozen copy, undefined when unset. */
   getData(sceneId: string): Promise<Json | undefined>;

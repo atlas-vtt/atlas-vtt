@@ -11,6 +11,8 @@ If you set a token or map background to an `http://` or `https://` image URL, or
 
 Another Obsidian plugin can add a dice look through Atlas's extension API. When the look's face art or preview is an `https:` link, Atlas loads that image from the web, when the look is shown or thrown. Without such a plugin no image is loaded this way.
 
+Another Obsidian plugin can also open a read-only map view through Atlas's extension API and show it a scene it supplies. Atlas loads that scene's `https:` image links from the web, and only in that view. Atlas itself never opens such a view, and without such a plugin no image is loaded this way.
+
 ## Files outside the vault
 
 Atlas VTT does not read or write files outside your vault.

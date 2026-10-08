@@ -2,7 +2,7 @@ import { showsTab } from '../app/services/PresentedScene';
 import { viewCamera, watchViewCamera } from '../app/services/presentedCamera';
 import type { DisposerSet } from './disposers';
 import { acceptsListener } from './listenerCheck';
-import { sceneSnapshot, snapshotSlice, viewInfo } from './viewInfo';
+import { isRemoteView, sceneSnapshot, snapshotSlice, viewInfo } from './viewInfo';
 import type { TrackedMapView, ViewTracker } from './viewTracker';
 import type { SceneSnapshot, ViewCamera, ViewInfo, ViewsApi } from './types/views';
 import type { Disposer, ViewId } from './types/common';
@@ -72,7 +72,7 @@ function switchSettled(tracker: ViewTracker, view: TrackedMapView, switching: Pr
 /** `views.showTab`: switches to `tabId` without presenting it; true only when this request's tab is the one loaded. */
 async function showTab(tracker: ViewTracker, viewId: ViewId, tabId: string): Promise<boolean> {
   const view = tracker.view(viewId);
-  if (!view || typeof tabId !== 'string') return false;
+  if (!view || isRemoteView(view) || typeof tabId !== 'string') return false;
   if (!view.tabMetaStore.getState().tabs.some((tab) => tab.id === tabId)) return false;
   const request = (showRequests.get(view) ?? 0) + 1;
   showRequests.set(view, request);

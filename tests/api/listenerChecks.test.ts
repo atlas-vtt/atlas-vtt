@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AtlasApiHost } from '../../src/api/AtlasApiHost';
 import { LANDED_CAPABILITIES } from '../../src/api/capabilities';
 import { buildExtension } from '../../src/api/extension';
+import { ListenerSet } from '../../src/app/remote-view/listeners';
 import { fakeApp, fakePlugin, fakeServices, fakeView, trackerWith } from './apiFakes';
 
 function connected(): ReturnType<AtlasApiHost['api']['connect']> {
@@ -36,4 +37,11 @@ describe('a listener that is not a function', () => {
     }
   });
 
+  it("is refused by a remote view's listener sets the same way, naming the method", () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const set = new ListenerSet<() => void>('onRoll');
+    set.add('x' as never)();
+    expect(set.list()).toEqual([]);
+    expect(String(logged.mock.calls[0]![0])).toContain('RemoteView.onRoll');
+  });
 });

@@ -36,8 +36,11 @@ export interface ResourceValue {
 
 export type ResourceViewer = 'dm' | 'player';
 
-/** Supplies the resource definitions of the collection a map belongs to. */
-export type ResourceDefsProvider = () => readonly ResourceDefinition[];
+/**
+ * Supplies the resource definitions of the collection a map belongs to. A view that has no
+ * collection (the remote view) answers for the token it is asked about.
+ */
+export type ResourceDefsProvider = (tokenId?: string) => readonly ResourceDefinition[];
 
 /** A token has this many sockets, so it shows at most this many resources. */
 export const MAX_RESOURCES = 6;

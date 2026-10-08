@@ -5,6 +5,8 @@ import './styles/index.css';
 import './styles/main.scss';
 import { AtlasView, ATLAS_VIEW_TYPE } from './src/app/atlas-view';
 import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE } from './src/app/local-player-view';
+import { RemoteMapView } from './src/app/remote-view/RemoteMapView';
+import { REMOTE_VIEW_TYPE } from './src/app/remote-view/remoteViewType';
 import { DashboardView, DASHBOARD_VIEW_TYPE } from './src/app/dashboard-view';
 import { initializeAtlasStorage } from './src/app/atlasStorageInit';
 import { t } from './src/app/i18n';
@@ -185,6 +187,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerExtensions([EXTENSION_ATLASMAP], ATLAS_VIEW_TYPE);
     this.registerView(ATLAS_VIEW_TYPE, (leaf) => new AtlasView(leaf, this));
     this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
+    this.registerView(REMOTE_VIEW_TYPE, (leaf) => new RemoteMapView(leaf, this));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
     registerLootQueryView(this);
   }

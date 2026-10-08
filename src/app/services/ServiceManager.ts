@@ -17,6 +17,11 @@ import { SoundEffectService } from './SoundEffectService';
 import { DiceToastObserver } from './DiceToastObserver';
 import type { ViewAtlasStore } from '../storeFactory';
 
+export interface ServiceManagerOptions {
+  /** The remote map view's: its widgets are fed from outside and never sync with this vault's collections. */
+  remote?: boolean;
+}
+
 /**
  * ServiceManager serves as a central registry for all Atlas services
  * It provides a single point of access to all services and manages their lifecycle
@@ -39,7 +44,7 @@ export class ServiceManager {
   private viewId: string;
   private sceneThumbnails: SceneThumbnailUpdater;
   
-  constructor(private app: App, private store: ViewAtlasStore, private plugin?: AtlasVTTPlugin, viewId?: string) {
+  constructor(private app: App, private store: ViewAtlasStore, private plugin?: AtlasVTTPlugin, viewId?: string, options: ServiceManagerOptions = {}) {
     // Create event bus for inter-service communication
     this.eventBus = new EventEmitter();
     this.eventBus.setMaxListeners(30); // Increase max listeners
@@ -78,7 +83,7 @@ export class ServiceManager {
     });
     
     // Initialize widget sync service if plugin is available
-    if (plugin) {
+    if (plugin && !options.remote) {
       // Get or create singleton widget sync service from plugin
       plugin.widgetSyncService ??= new WidgetSyncService(plugin);
       this.widgetSyncService = plugin.widgetSyncService;

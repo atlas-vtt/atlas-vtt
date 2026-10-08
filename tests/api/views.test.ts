@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { DisposerSet } from '../../src/api/disposers';
 import { viewsApi } from '../../src/api/views';
+import { initialRemoteViewState } from '../../src/app/remote-view/remoteViewState';
 import { FakeViewport } from './fakeViewport';
 import { fakeView, loadMap, trackerWith, type FakeView } from './apiFakes';
 
@@ -124,6 +125,14 @@ describe('views', () => {
     expect(api.active()).toBeNull();
     current = first;
     first.close();
+    expect(api.active()).toBeNull();
+  });
+
+  it('C-views-3: a remote view is listed as remote and is never active', () => {
+    const remote = fakeView('r1');
+    remote.atlasStore.setState({ remoteView: initialRemoteViewState() });
+    const { api } = setup([fakeView('v1'), remote], () => remote);
+    expect(api.list().map((info) => [info.viewId, info.kind])).toEqual([['v1', 'map'], ['r1', 'remote']]);
     expect(api.active()).toBeNull();
   });
 

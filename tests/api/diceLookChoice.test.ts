@@ -45,6 +45,7 @@ describe('dice.useLook and dice.lookFor', () => {
     expect(await choice.lookFor('other')).toEqual({ lookId: 'ext:wood', from: 'default', loaded: false });
     expect(mapDiceLookId(memory.app, MAP)).toBe('ext:fire');
     expect(mapDiceLookId(memory.app, 'atlas-vtt/elsewhere.atlasmap')).toBe('ext:wood');
+    expect(mapDiceLookId(memory.app, 'remote:view')).toBe('ext:wood');
     const remove = addCustomLook({ id: 'ext:fire', name: 'Fire', faces: () => Promise.resolve({}), body: null, ink: null, preview: null });
     expect((await choice.lookFor('source')).loaded).toBe(true);
     remove();

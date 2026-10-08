@@ -8,6 +8,7 @@ import type { ImageDisplayService } from '../services/ImageDisplayService';
 import { presentActiveTabInPlayerWindow } from '../services/PlayerWindowPresenter';
 import { hasBestiaryFrontmatter } from '../services/statblockNoteSource';
 import { TokenStatblockLinkService } from '../services/TokenStatblockLinkService';
+import { activeMapView } from './atlasLeaves';
 import { cleanupMissingAssets } from './cleanupMissingAssets';
 
 export interface CommandDependencies {
@@ -91,7 +92,7 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
     id: 'toggle-initiative-tracker',
     name: t('command.toggleInitiativeTracker'),
     checkCallback: (checking) => {
-      const view = app.workspace.getActiveViewOfType(AtlasView);
+      const view = activeMapView(app);
       if (!view) return false;
       if (!checking) {
         const state = view.getStore().getState();
@@ -105,7 +106,7 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
     id: 'toggle-loot-roller',
     name: t('command.toggleLootRoller'),
     checkCallback: (checking) => {
-      const view = app.workspace.getActiveViewOfType(AtlasView);
+      const view = activeMapView(app);
       if (!view) return false;
       if (!checking) {
         const state = view.getStore().getState();
@@ -133,7 +134,7 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
     id: 'clean-up-missing-assets',
     name: t('command.cleanUpMissingAssets'),
     checkCallback: (checking) => {
-      const view = app.workspace.getActiveViewOfType(AtlasView);
+      const view = activeMapView(app);
       if (!view) return false;
       if (!checking) void cleanupMissingAssets(app, view);
       return true;

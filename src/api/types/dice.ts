@@ -98,8 +98,8 @@ export interface DiceApi {
    */
   publish(result: DiceRollResult, options?: DicePublishOptions): void;
   /**
-   * Throws `roll`, a result decided elsewhere, with Atlas's 3D dice in the GM map view `viewId`,
-   * seeded by the roll's id as Atlas's own throws are, in the user's dice look and speed. Each roll id is thrown
+   * Throws `roll`, a result decided elsewhere, with Atlas's 3D dice in the map view `viewId` (a GM map view or a remote
+   * view), seeded by the roll's id as Atlas's own throws are, in the user's dice look and speed. Each roll id is thrown
    * once per view: handing it again throws nothing and answers true. False when nothing is thrown: the view is not open
    * or its map not loaded, its dice display is not showing, the user shows dice as result cards, or `roll` is not a roll
    * (not plain data, more than 1,000 dice, or a die whose value is not a whole number from 1 to its `max` included); show
@@ -112,7 +112,7 @@ export interface DiceApi {
   throw?(viewId: ViewId, roll: DiceRollResult): boolean;
   /**
    * Adds a dice look the GM can choose in Atlas's dice settings, after Atlas's own; only when `has('dice-looks')`. It
-   * paints Atlas's 3D dice everywhere they are thrown (the dice tray, the player window, `throw`). The
+   * paints Atlas's 3D dice everywhere they are thrown (the dice tray, the player window, remote views, `throw`). The
    * spec is read once. Throws for an `id` or `name` that is not a non-empty string, an `id` this extension already
    * registered, a `faces` that is not a function, a `body` colour that is not `#rrggbb`, or a `fill` other than `'numeral'` or `'face'`. The GM's choice is kept by
    * full id: while this extension is not loaded, or after the disposer ran, Atlas paints its own look and keeps the choice,

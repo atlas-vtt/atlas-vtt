@@ -4,6 +4,7 @@ import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { focusToken } from '../pixi/tokenFocus';
 import { addTokenHighlight } from '../pixi/utils/tokenHighlight';
 import type { SettingsService } from '../services/SettingsService';
+import { fitRemoteMap } from '../remote-view/remoteControls';
 import type { ViewAtlasStore } from '../storeFactory';
 
 /** Map navigation keyboard shortcuts (Shift+1: fit map, Shift+2: zoom to selected token). */
@@ -15,6 +16,8 @@ export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlas
       if (matchesMapHotkey(e, 'fitMap', settings)) {
         // Shift+1: Fit entire map in view with smooth animation
         e.preventDefault();
+        // A remote view fits through its camera, which tells its owner the camera moved.
+        if (fitRemoteMap(view?.viewId)) return;
         const vp = view?.renderer?.getViewportInstance?.();
         const bg = view?.renderer?.getBackgroundSprite?.();
         if (!vp || !bg) return;

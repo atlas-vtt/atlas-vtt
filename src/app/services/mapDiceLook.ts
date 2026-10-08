@@ -14,7 +14,7 @@ export function collectionDiceLookId(app: App, collectionId: string | null): str
 
 /**
  * The dice look rolls on the map `mapPath` throw in: its collection's choice, else the GM's (`''` for Atlas's
- * own). A map outside every collection follows the GM's.
+ * own). A remote view's map, and one outside every collection, follow the GM's.
  */
 export function mapDiceLookId(app: App, mapPath: string | null): string {
   let collectionId: string | null = null;

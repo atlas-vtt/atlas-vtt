@@ -9,7 +9,7 @@
 export const MIN_GRID_CELL_SIZE = 4;
 /** The most cells a grid may have along one side of its map. */
 export const MAX_GRID_CELLS_PER_SIDE = 2000;
-/** The farthest a grid's origin may lie from the map's, in pixels: far beyond any map's side. */
+/** The farthest a grid's origin may lie from the map's, in pixels: the largest map side a remote scene may have. */
 export const MAX_GRID_OFFSET = 100_000;
 
 const GRID_TYPES: readonly unknown[] = ['square', 'hex-horizontal', 'hex-vertical'];

@@ -18,6 +18,7 @@ const storeState = {
   setLootRollerOpen: vi.fn(),
   objects: { tokens: {} },
   selectedIds: [],
+  remoteView: null as object | null,
   isToolbarEditing: false,
   setToolbarEditing: vi.fn(),
 };
@@ -59,6 +60,7 @@ vi.mock('../../src/app/react/root/ContextMenuContext', async (importOriginal) =>
 
 import { MainToolbar } from '../../src/app/packages/components/MainToolbar';
 import { toolbarSlot } from '../../src/app/extensions/slots';
+import { registerRemoteControls } from '../../src/app/remote-view/remoteControls';
 import type { ToolbarItem } from '../../src/api/types/ui';
 
 const item = (overrides: Partial<ToolbarItem> = {}): ToolbarItem => ({
@@ -75,6 +77,7 @@ function add(toolbarItem: ToolbarItem): () => void {
 describe('MainToolbar with extension items', () => {
   beforeEach(() => {
     storeState.isPlayerView = false;
+    storeState.remoteView = null;
     storeState.isToolbarEditing = false;
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
@@ -161,6 +164,13 @@ describe('MainToolbar with extension items', () => {
     remove();
   });
 
+  it('leaves out an item that is for the remote view only', () => {
+    render(<MainToolbar viewId="view-1" />);
+    const remove = add(item({ views: ['remote'] }));
+    expect(button()).toBeNull();
+    remove();
+  });
+
   it('shows nothing of the extensions in a player view', () => {
     storeState.isPlayerView = true;
     render(<MainToolbar viewId="view-1" />);
@@ -187,7 +197,30 @@ describe('MainToolbar with extension items', () => {
     remove();
   });
 
+  it('shows the remote view its own items, told it is the remote view, and leaves out map items and GM tools there', () => {
+    storeState.isPlayerView = true;
+    storeState.remoteView = {};
+    const onClick = vi.fn();
+    render(<MainToolbar viewId="view-1" />);
+    const removeRemote = add(item({ views: ['remote'], onClick }));
+    const removeMap = add(item({ id: 'map-only', label: 'Map only' }));
+    fireEvent.click(button()!);
+    expect(onClick).toHaveBeenCalledWith({ viewId: 'view-1', kind: 'remote', isPlayerView: true });
+    expect(screen.queryByRole('button', { name: 'Map only' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Loot Roller' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Roll Dice' })).toBeTruthy();
+    removeRemote();
+    removeMap();
+  });
+
   describe('isVisible', () => {
+    /** Makes `view-1` a remote view opened by `owner`; the returned function closes it again. */
+    function remoteOpenedBy(owner: string): () => void {
+      storeState.isPlayerView = true;
+      storeState.remoteView = {};
+      return registerRemoteControls('view-1', { owner, fitMap: () => undefined, roll: () => null });
+    }
+
     it('shows an item only while its predicate answers true, re-read on invalidate, and leaves no More tools entry', () => {
       let visible = false;
       const { container } = render(<MainToolbar viewId="view-1" />);
@@ -206,6 +239,44 @@ describe('MainToolbar with extension items', () => {
     it('hides an item that is active as well', () => {
       render(<MainToolbar viewId="view-1" />);
       const remove = add(item({ isVisible: () => false, isActive: () => true }));
+      expect(button()).toBeNull();
+      remove();
+    });
+
+    it('tells the predicate whether the extension opened the remote view', () => {
+      const isVisible = vi.fn(() => true);
+      render(<MainToolbar viewId="view-1" />);
+      const remove = add(item({ isVisible }));
+      expect(isVisible).toHaveBeenLastCalledWith({ viewId: 'view-1', kind: 'map', isPlayerView: false, ownRemote: false });
+      remove();
+      cleanup();
+
+      const closeOwn = remoteOpenedBy('ext');
+      render(<MainToolbar viewId="view-1" />);
+      const removeOwn = add(item({ views: ['remote'], isVisible: (ctx) => ctx.ownRemote }));
+      expect(button()).not.toBeNull();
+      removeOwn();
+      closeOwn();
+      cleanup();
+
+      const closeOther = remoteOpenedBy('someone-else');
+      render(<MainToolbar viewId="view-1" />);
+      const removeOther = add(item({ views: ['remote'], isVisible: (ctx) => ctx.ownRemote }));
+      expect(button()).toBeNull();
+      removeOther();
+      closeOther();
+    });
+
+    it('asks again once the remote view it is drawn in finds its owner, and when the owner lets it go', () => {
+      storeState.isPlayerView = true;
+      storeState.remoteView = {};
+      render(<MainToolbar viewId="view-1" />);
+      const remove = add(item({ views: ['remote'], isVisible: (ctx) => ctx.ownRemote }));
+      expect(button()).toBeNull();
+      let close = (): void => undefined;
+      act(() => { close = registerRemoteControls('view-1', { owner: 'ext', fitMap: () => undefined, roll: () => null }); });
+      expect(button()).not.toBeNull();
+      act(() => { close(); });
       expect(button()).toBeNull();
       remove();
     });

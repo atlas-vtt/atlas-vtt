@@ -23,11 +23,12 @@ export function mapConeAngle(assetService: AssetService, mapPath: string | null)
   return isValidConeAngle(angle) ? angle : DEFAULT_CONE_ANGLE;
 }
 
-/** Measurement settings for the map in `state`, read from its collection when it has one. */
+/** Measurement settings for the map in `state`: its collection's, or, in the remote view, its owner's. */
 export function mapMeasurementSettings(
   assetService: AssetService,
-  state: Pick<ViewAtlasState, 'mapPath' | 'grid'>,
+  state: Pick<ViewAtlasState, 'mapPath' | 'grid'> & Partial<Pick<ViewAtlasState, 'remoteView'>>,
 ): MeasurementSettings {
+  if (state.remoteView) return state.remoteView.measurement;
   const settings = collectionSettingsFor(assetService, state.mapPath);
   if (!settings) return resolveMeasurementSettings(undefined, state.grid);
   return { ...resolveMeasurementSettings(settings.gridDefaults, state.grid), coneAngle: mapConeAngle(assetService, state.mapPath) };

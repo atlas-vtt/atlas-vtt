@@ -129,7 +129,7 @@ export class UIManager implements ITokenUIManager {
     
     const ui = new TokenUIRenderer(this.store, this.viewport.options?.ticker);
     ui.conditionDefsProvider = this.conditionDefsProvider;
-    ui.resourceDefsProvider = () => this.resourceDefsProvider();
+    ui.resourceDefsProvider = (tokenId) => this.resourceDefsProvider(tokenId);
     ui.zoomProvider = () => this.viewport.scale.x;
     ui.onScaleChange = (scale) => this.tokenControlsUI?.setScaleFor(tokenId, scale);
     this.tokenUIs[tokenId] = ui;
@@ -491,7 +491,7 @@ export class UIManager implements ITokenUIManager {
         this.playerUIContainer.addChild(ui.getContainer());
       }
       ui.conditionDefsProvider = this.conditionDefsProvider;
-      ui.resourceDefsProvider = () => this.resourceDefsProvider();
+      ui.resourceDefsProvider = (tokenId) => this.resourceDefsProvider(tokenId);
       ui.update(token, sprite.tokenSize || 70, settings);
       ui.getContainer().position.copyFrom(sprite.position);
       ui.getContainer().renderable = sprite.visible && !token.isHidden && isSeen(tokenId);

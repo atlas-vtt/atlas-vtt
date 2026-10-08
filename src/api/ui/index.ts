@@ -13,6 +13,8 @@ import type {
 /** The longest heading a scene tab menu section shows; a longer one is cut. */
 const SCENE_TAB_MENU_HEADING_MAX = 40;
 
+const VIEW_KINDS: readonly string[] = ['map', 'remote'];
+
 function isText(value: unknown): value is string {
   return typeof value === 'string' && value !== '';
 }
@@ -105,8 +107,13 @@ export function uiApi(scope: ExtensionScope, views: ViewTracker): UiApi {
   return Object.freeze({
     addToolbarItem: (given: ToolbarItem): Disposer => {
       const record = checked('ui.addToolbarItem', given, { id: 'text', icon: 'text', label: 'text', onClick: 'function' },
-        { shortcut: 'text', priority: 'number', isVisible: 'function', isActive: 'function', badge: 'function' });
-      const item = kept<ToolbarItem>(given, record);
+        { shortcut: 'text', priority: 'number', views: 'list', isVisible: 'function', isActive: 'function', badge: 'function' });
+      // Copied before it is checked, so the list Atlas keeps is the one it checked.
+      const kinds: unknown = Array.isArray(record.views) ? Object.freeze([...(record.views as unknown[])]) : record.views;
+      if (kinds !== undefined && !(Array.isArray(kinds) && kinds.every((kind) => typeof kind === 'string' && VIEW_KINDS.includes(kind)))) {
+        throw new Error('[Atlas API] ui.addToolbarItem: "views" must list \'map\' and \'remote\'.');
+      }
+      const item = kept<ToolbarItem>(given, { ...record, views: kinds });
       assertNew('ui.addToolbarItem', toolbarSlot, scope.id, item.id);
       return register(toolbarSlot, item);
     },

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { diceApi } from '../../src/api/dice';
 import { DisposerSet } from '../../src/api/disposers';
 import { DEFAULT_DICE_RULES } from '../../src/app/gameSystems/diceRules';
+import { initialRemoteViewState } from '../../src/app/remote-view/remoteViewState';
 import { DiceTool, type DiceRollInputs } from '../../src/app/tools/DiceTool';
 import { rollFormula, type DiceRollResult } from '../../src/app/tools/diceRolling';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
@@ -11,7 +12,7 @@ import { fakeView, trackerWith, type FakeView } from './apiFakes';
 /**
  * #277 keeps Atlas's own rolls in the map view that made them: each view's log, toasts, sounds and the player
  * window hear its `dice-rolled` bus event. The API keeps its contract on top of that: `roll` and `publish` reach every
- * open GM map view, and `onRolled` hears every roll Atlas logs once.
+ * open GM map view (never a remote view, whose log is its owner's), and `onRolled` hears every roll Atlas logs once.
  */
 
 /** A fake map view with its own event bus, as `AtlasView.serviceManager.getEventBus()` gives it. */
@@ -43,6 +44,17 @@ describe('dice and the map views that show them', () => {
     expect(a.heard).toEqual([made]);
     expect(b.heard).toEqual([made]);
     expect(heard).toHaveBeenCalledTimes(1);
+  });
+
+  it('roll shows in every GM map view but never in a remote view', () => {
+    const gm = viewWithBus('gm');
+    const remote = viewWithBus('remote');
+    remote.view.atlasStore.setState({ remoteView: initialRemoteViewState() });
+    const { tracker } = trackerWith([gm.view, remote.view]);
+    const dice = diceApi(createInMemoryApp().app, new DisposerSet(), tracker);
+    const result = dice.roll({ formula: '1d6', rolledBy: 'Ana' });
+    expect(gm.heard.map((roll) => roll.id)).toEqual([result.id]);
+    expect(remote.heard).toEqual([]);
   });
 
   it('a view whose bus throws is logged and does not keep the roll from the others', () => {

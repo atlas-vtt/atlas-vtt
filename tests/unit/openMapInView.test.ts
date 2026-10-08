@@ -29,4 +29,12 @@ describe('openMapInView', () => {
     expect(fresh.setViewState).not.toHaveBeenCalled();
   });
 
+  it('never replaces a remote view tab, which never opens a map, or a pinned one', async () => {
+    for (const recent of [{ type: 'atlas-vtt-remote' }, { type: 'markdown', pinned: true }]) {
+      const { app, fresh, recentLeaf } = appWith(recent);
+      await openMapInView(app, { path: 'a.atlasmap' } as never);
+      expect(recentLeaf.setViewState).not.toHaveBeenCalled();
+      expect(fresh.setViewState).toHaveBeenCalledOnce();
+    }
+  });
 });

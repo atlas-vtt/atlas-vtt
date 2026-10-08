@@ -638,7 +638,7 @@ export class TokenRenderer {
 
   /** Greys out a token at 0 HP and marks it with a skull; killing and healing a loaded token animate. */
   private applyDownedState(token: TokenEntity, tokenGroup: TokenGroupContainer, prevToken?: TokenEntity): void {
-    const definitions = this.resourceDefsProvider();
+    const definitions = this.resourceDefsProvider(token.id);
     const downed = isTokenDowned(token, definitions);
     const canvas = this.pixiApp?.canvas;
     const animate = prevToken !== undefined && isTokenDowned(prevToken, definitions) !== downed && !!canvas && !prefersReducedMotion(canvas);

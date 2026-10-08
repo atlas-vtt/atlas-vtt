@@ -11,6 +11,8 @@ import { CommandPalette } from "../../react/components/CommandPalette"
 import AssetManager from "./asset-manager/AssetManager"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { Toggle } from "./primitives/Toggle"
+import { remoteTrayRoll } from "../../remote-view/remoteControls"
+import { REMOTE_MAX_DICE } from "../../remote-view/RemoteViewDice"
 import { isAtlasToolAvailable } from "../../tools/toolAvailability"
 import { useExtensionToolbarItems, withExtensionToolbarItems } from "../../extensions/extensionToolbarItems"
 import { useExperimentalFeature } from "../../react/hooks/useExperimentalFeature"
@@ -57,6 +59,9 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const { layout } = layoutAccess
 
   const isActualPlayerView = view?.getViewType?.() === 'atlas-vtt-player'
+  // A remote view: a scene fed from outside, with the player's tools only
+  const remote = useAtlasStore(state => state.remoteView != null)
+  const remoteMaxDice = useAtlasStore(state => state.remoteView?.maxDice ?? REMOTE_MAX_DICE)
 
   const diceTool = useMemo(() => view?.serviceManager?.getToolController?.()?.getDiceTool?.() ?? null, [view]);
 
@@ -115,7 +120,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   }, [isDiceTrayOpen, setDiceTrayOpen])
 
   useMapClipboardHotkeys(store, view, viewId);
-  useToolbarHotkeys(viewId, isActualPlayerView, {
+  useToolbarHotkeys(viewId, isActualPlayerView || remote, {
     selectTool: handleToolClick,
     toggleAssetManager: handleAssetManagerToggle,
     closeAssetManager: handleCloseAssetManager,
@@ -123,7 +128,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
     closeMenus,
   })
 
-  const dm = !isActualPlayerView
+  const dm = !isActualPlayerView && !remote
   const editing = dm && isToolbarEditing
   // Whether the palette action that started edit mode was chosen with the keyboard.
   const [editingByKeyboard, setEditingByKeyboard] = useState(false)
@@ -151,7 +156,11 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
       toggleMenu: () => setOpenMenu(current => current === menu ? null : menu),
       closeMenu: closeMenus,
     }),
-    dice: { open: isDiceTrayOpen, toggle: toggleDiceTray, tool: diceTool, buttonRef: diceButtonRef },
+    dice: {
+      open: isDiceTrayOpen, toggle: toggleDiceTray, tool: diceTool, buttonRef: diceButtonRef,
+      // A remote view never rolls locally: its owner's listeners send the roll
+      ...(remote && { remote: { onRoll: remoteTrayRoll(view?.viewId), maxDice: remoteMaxDice } }),
+    },
     loot: { open: lootRollerOpen, setOpen: setLootRollerOpen },
     assets: { open: isAssetManagerOpen, toggle: handleAssetManagerToggle },
     palette: { open: isCommandPaletteOpen, setOpen: setCommandPaletteOpen },
@@ -213,17 +222,21 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
       </ToolbarEditContext.Provider>
       {/* Always mounted, so the message that edit mode ended is still read once the tray is gone. */}
       {dm && <ToolbarLiveRegion announcement={editor.announcement} />}
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => setCommandPaletteOpen(false)}
-        toolbarRef={toolbarRef}
-        {...(dm && { onCustomizeToolbar: startEditing })}
-      />
-      <AssetManager
-        isOpen={isAssetManagerOpen}
-        onClose={handleCloseAssetManager}
-        {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
-      />
+      {!remote && (
+        <CommandPalette
+          isOpen={isCommandPaletteOpen}
+          onClose={() => setCommandPaletteOpen(false)}
+          toolbarRef={toolbarRef}
+          {...(dm && { onCustomizeToolbar: startEditing })}
+        />
+      )}
+      {!remote && (
+        <AssetManager
+          isOpen={isAssetManagerOpen}
+          onClose={handleCloseAssetManager}
+          {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
+        />
+      )}
       {isDiceTrayOpen && !diceTool && (
         <div style={{
           position: 'fixed',

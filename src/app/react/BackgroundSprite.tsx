@@ -44,9 +44,9 @@ export const BackgroundSprite: React.FC<BackgroundSpriteProps> = ({ imagePath })
 
     const loadTexture = async (): Promise<void> => {
       try {
-        // Streamed maps arrive as object URLs; vault images load by their resource URL.
+        // A remote view's maps arrive by URL (object URLs); vault images load by their resource URL.
         let url = imagePath;
-        if (!imagePath.startsWith('blob:')) {
+        if (!imagePath.startsWith('blob:') && !store.getState().remoteView) {
           const imgFile = app.vault.getAbstractFileByPath(imagePath);
           if (!(imgFile instanceof TFile)) {
             console.error(`[BackgroundSprite] Image file not found: ${imagePath}`);
@@ -84,7 +84,7 @@ export const BackgroundSprite: React.FC<BackgroundSpriteProps> = ({ imagePath })
     return () => {
       isCancelled = true;
     };
-  }, [imagePath, app.vault]);
+  }, [imagePath, app.vault, store]);
 
   // Add/update the sprite in the viewport when texture is loaded
   useEffect(() => {

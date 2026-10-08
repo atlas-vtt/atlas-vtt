@@ -6,6 +6,7 @@ import { LANDED_CAPABILITIES } from '../../src/api/capabilities';
 import { presentationApi } from '../../src/api/presentation';
 import { SHOW_TAB_TIMEOUT_MS, viewsApi } from '../../src/api/views';
 import type { ViewInfo } from '../../src/api/types/views';
+import { initialRemoteViewState } from '../../src/app/remote-view/remoteViewState';
 import { presentedScene } from '../../src/app/services/PresentedScene';
 import { fakeApp, fakeServices, fakeView, tabbedView, trackerWith, type FakeView } from './apiFakes';
 
@@ -17,6 +18,12 @@ function setup(views: FakeView[]): ReturnType<typeof trackerWith> & { api: Retur
   const tracked = trackerWith(views);
   const disposers = new DisposerSet();
   return { ...tracked, disposers, api: viewsApi(tracked.tracker, disposers, true) };
+}
+
+function remoteView(viewId: string): FakeView {
+  const view = fakeView(viewId);
+  view.atlasStore.setState({ remoteView: initialRemoteViewState() });
+  return view;
 }
 
 /** Lets queued microtasks (the coalesced `tabs-changed`) run. */
@@ -57,14 +64,18 @@ describe('views.showTab', () => {
     await expect(asked).resolves.toBe(false);
   });
 
-  it('C-tabs-3: answers false for an unknown tab and an unknown or closed view, and never throws', async () => {
+  it('C-tabs-3: answers false for an unknown tab, an unknown or closed view and a remote view, and never throws', async () => {
     const view = tabbedView('v1', [A, B], { autoLoad: true });
+    const remote = remoteView('r1');
     const closed = tabbedView('v2', [A, B], { autoLoad: true });
-    const { api } = setup([view, closed]);
+    const { api } = setup([view, remote, closed]);
     closed.close();
+    const remoteSwitch = vi.spyOn(remote, 'switchToTab');
     await expect(api.showTab!('v1', 'no-such-tab')).resolves.toBe(false);
     await expect(api.showTab!('nope', view.tabIds[1]!)).resolves.toBe(false);
     await expect(api.showTab!('v2', closed.tabIds[1]!)).resolves.toBe(false);
+    await expect(api.showTab!('r1', remote.tabMetaStore.getState().activeTabId!)).resolves.toBe(false);
+    expect(remoteSwitch).not.toHaveBeenCalled();
     expect(view.tabMetaStore.getState().activeTabId).toBe(view.tabIds[0]);
   });
 
@@ -168,6 +179,13 @@ describe('SceneSnapshot.tabId', () => {
     for (const entry of seen) if (entry.tabId === view.tabIds[1]) expect(entry.mapPath).toBe(B);
   });
 
+  it('C-tabs-2: is null in a remote view', () => {
+    const remote = remoteView('r1');
+    remote.atlasStore.setState({ mapPath: 'remote:r1', mapLoaded: true, isMapLoading: false });
+    const { api } = setup([remote]);
+    expect(api.snapshot('r1')!.tabId).toBeNull();
+  });
+
   it('C-tabs-2: a subscriber hears the active tab closing, before any load', () => {
     const view = tabbedView('v1', [A, B]);
     const { api } = setup([view]);
@@ -231,6 +249,14 @@ describe('tabs-changed', () => {
     await api.showTab!('v1', view.tabIds[1]!);
     await flush();
     expect(calls.map((info) => info.activeTabId)).toEqual([view.tabIds[1]]);
+  });
+
+  it('C-tabs-1: never fires for a remote view', async () => {
+    const remote = remoteView('r1');
+    const { calls } = heard([remote]);
+    remote.tabMetaStore.getState().addTab('maps/b.atlasmap', 'B');
+    await flush();
+    expect(calls).toHaveLength(0);
   });
 
   it('C-tabs-1: stops when the view closes, even with a change queued', async () => {

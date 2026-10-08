@@ -128,6 +128,7 @@ describe('ui registration', () => {
     expect(() => ui.addToolbarItem(undefined as never)).toThrow(/addToolbarItem needs an object/);
     expect(() => ui.addToolbarItem({ id: '', icon: 'x', label: 'T', onClick: () => undefined })).toThrow(/"id" must be a non-empty string/);
     expect(() => ui.addToolbarItem({ id: 't', icon: 'x', label: 'T' } as never)).toThrow(/"onClick" must be a function/);
+    expect(() => ui.addToolbarItem({ id: 't', icon: 'x', label: 'T', onClick: () => undefined, views: ['sideways'] as never })).toThrow(/"views"/);
     expect(() => ui.addToolbarItem({ id: 't', icon: 'x', label: 'T', onClick: () => undefined, priority: Number.NaN })).toThrow(/"priority" must be a number/);
     expect(() => ui.addToolbarItem({ id: 't', icon: 'x', label: 'T', onClick: () => undefined, isVisible: true as never })).toThrow(/"isVisible" must be a function/);
     expect(() => ui.addPaletteSection({ id: 'p', title: 'P' } as never)).toThrow(/"commands" must be a function/);
@@ -155,11 +156,13 @@ describe('ui registration', () => {
 
   it('keeps its own copy of what it was given, frozen', () => {
     const { ui, plugin } = connected();
-    const item = { id: 't', icon: 'x', label: 'T', onClick: () => undefined };
+    const item = { id: 't', icon: 'x', label: 'T', onClick: () => undefined, views: ['map'] as Array<'map' | 'remote'> };
     ui.addToolbarItem(item);
     item.label = 'Changed';
+    item.views.push('remote');
     const registered = toolbarSlot.list()[0]?.item;
     expect(registered?.label).toBe('T');
+    expect(registered?.views).toEqual(['map']);
     expect(Object.isFrozen(registered)).toBe(true);
     expect(Object.isFrozen(ui)).toBe(true);
     plugin.unload();

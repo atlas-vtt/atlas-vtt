@@ -1,13 +1,14 @@
 import React from 'react';
 import { ToolButton } from '../packages/components/primitives/ToolButton';
 import type { ResponsiveToolbarItem } from '../packages/components/toolbar/toolbarTypes';
-import type { ToolbarItem, ViewContext } from '../../api/types/ui';
+import type { ToolbarItem, ToolbarItemContext, ViewContext } from '../../api/types/ui';
 import { obsidianIconComponent } from '../react/components/ObsidianIcon';
 import { safely, type SlotEntry } from './SlotRegistry';
 import { toolbarSlot } from './slots';
 import { useSlot } from './useSlot';
 import { t } from '../i18n';
 import { viewContextOf, type ViewContextState } from './viewContext';
+import { remoteOwnerOf } from '../remote-view/remoteControls';
 
 /** An item's place among other extensions' items when it names none: higher sits further left. */
 export const DEFAULT_EXTENSION_PRIORITY = 50;
@@ -82,7 +83,8 @@ export function extensionToolbarItem({ owner, item }: SlotEntry<ToolbarItem>, ct
 /** Whether `entry` shows in the view of `ctx`: only `isVisible` answering true hides nothing; a throw hides it. */
 function isVisibleIn({ owner, item }: SlotEntry<ToolbarItem>, ctx: ViewContext): boolean {
   if (!item.isVisible) return true;
-  return guarded(owner, item, 'isVisible', () => item.isVisible?.(ctx) === true, false);
+  const visibility: ToolbarItemContext = Object.freeze({ ...ctx, ownRemote: ctx.kind === 'remote' && remoteOwnerOf(ctx.viewId) === owner });
+  return guarded(owner, item, 'isVisible', () => item.isVisible?.(visibility) === true, false);
 }
 
 function priorityOf({ item }: SlotEntry<ToolbarItem>): number {
@@ -107,7 +109,7 @@ export function withExtensionToolbarItems(
 
 /**
  * The registered toolbar items that belong in this view and are visible there, to be placed among Atlas's own. None in a player
- * view. A hidden item never reaches the bar, so it takes no room and is not in "More tools".
+ * view, except a remote view's own. A hidden item never reaches the bar, so it takes no room and is not in "More tools".
  */
 export function useExtensionToolbarItems(
   viewId: string | undefined,
@@ -117,8 +119,8 @@ export function useExtensionToolbarItems(
   const entries = useSlot(toolbarSlot);
   if (!viewId || isActualPlayerView) return [];
   const ctx = viewContextOf({ viewId }, store);
-  if (ctx.isPlayerView) return [];
-  return byPriority(entries.filter((entry) => isVisibleIn(entry, ctx)))
+  if (ctx.isPlayerView && ctx.kind !== 'remote') return [];
+  return byPriority(entries.filter((entry) => (entry.item.views ?? ['map']).includes(ctx.kind) && isVisibleIn(entry, ctx)))
     .map((entry) => extensionToolbarItem(entry, ctx));
 }
 

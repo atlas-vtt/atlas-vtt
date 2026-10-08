@@ -12,6 +12,7 @@ import { presentationApi } from '../../src/api/presentation';
 import { PresentedScene, presentedScene } from '../../src/app/services/PresentedScene';
 import { activePresentationTarget, addPresentationTarget, tabBadgeFor } from '../../src/app/services/presentationTargets';
 import { playerWindowStore } from '../../src/app/stores/playerWindowStore';
+import { initialRemoteViewState } from '../../src/app/remote-view/remoteViewState';
 import { fakeView, loadMap as load, trackerWith, type FakeView } from './apiFakes';
 
 function setupWith(view: FakeView): { presentation: ReturnType<typeof presentationApi>; disposers: DisposerSet } {
@@ -185,6 +186,13 @@ describe('presentation', () => {
     expect(activePresentationTarget()).toBeNull();
     stop();
     disposers.disposeAll();
+  });
+
+  it('present answers false for a remote view, which shows a scene fed from outside', async () => {
+    const view = fakeView('v1');
+    const { presentation } = setupWith(view);
+    view.atlasStore.setState({ remoteView: initialRemoteViewState() });
+    expect(await presentation.present('v1')).toBe(false);
   });
 
   it('C-badge-1: tabBadge is read once and called on the target; a throw or a badge too long is handled, a non-function refused', () => {

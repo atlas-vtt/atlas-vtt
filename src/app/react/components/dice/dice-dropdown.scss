@@ -280,6 +280,14 @@ $tray-art: 32px;
   flex: 1;
 }
 
+// ── Note (why the tray's roll could not go) ──
+
+.atlas-dice-note {
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  text-align: center;
+}
+
 // ── Colours (`dice.registerColours`) ────────────
 
 // The colour the next dice are added in: "No colour", then a swatch per colour.

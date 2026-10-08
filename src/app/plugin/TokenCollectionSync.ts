@@ -21,7 +21,7 @@ export class TokenCollectionSync {
 
   constructor(
     private readonly app: App,
-    private readonly readState: () => Pick<ViewAtlasState, 'mapPath' | 'grid'>,
+    private readonly readState: () => Pick<ViewAtlasState, 'mapPath' | 'grid' | 'remoteView'>,
     callbacks: CollectionCallbacks,
   ) {
     this.assets = AssetService.getInstance(app);
@@ -38,14 +38,22 @@ export class TokenCollectionSync {
     this.fileRef = app.vault.on('modify', (file) => { void callbacks.refreshArt(file.path); });
   }
 
+  /** A map's collection's conditions; in a remote view the ones its owner feeds (`RemoteView.setPlayer`), never a collection's. */
   readonly conditions = (): ConditionDefinition[] => {
-    const { mapPath } = this.readState();
+    const { mapPath, remoteView } = this.readState();
+    if (remoteView) return [...remoteView.conditions];
     if (!mapPath) return [];
     const collectionId = this.assets.getCollectionForMap(mapPath);
     return collectionId ? this.assets.getCollectionSettings(collectionId).conditions : [];
   };
 
-  readonly resources = (): readonly ResourceDefinition[] => mapResources(this.assets, this.readState().mapPath);
+  /** A map's collection's resources; in a remote view the ones its owner feeds for each token, none for a token without any. */
+  readonly resources = (tokenId?: string): readonly ResourceDefinition[] => {
+    const { mapPath, remoteView } = this.readState();
+    if (!remoteView) return mapResources(this.assets, mapPath);
+    const { resources } = remoteView;
+    return tokenId !== undefined && Object.hasOwn(resources, tokenId) ? resources[tokenId] ?? [] : [];
+  };
 
   readonly measurement = (): MeasurementSettings => mapMeasurementSettings(this.assets, this.readState());
 

@@ -17,6 +17,8 @@ import DMScreen from './components/DMScreen';
 import { InitiativeTracker } from './components/InitiativeTracker';
 import { DiceRollLog } from './components/dice-log/DiceRollLog';
 import { DiceRollDisplay } from './components/dice/DiceRollDisplay';
+import { RemoteOwnRolls } from '../remote-view/RemoteOwnRolls';
+import { RemoteStatusBar } from '../remote-view/RemoteStatusBar';
 import { LootRoller } from './components/loot/LootRollerPanel';
 import { MapLoadingOverlay } from './components/MapLoadingOverlay';
 import { SceneTabBar } from './components/SceneTabBar';
@@ -92,6 +94,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   // Check if this is a player view - use store state which is authoritative
   const storeIsPlayerView = useAtlasStore(state => state.isPlayerView);
   const isPlayerView = storeIsPlayerView || view?.getViewType?.() === 'atlas-vtt-player';
+  const remote = useAtlasStore(state => state.remoteView != null);
   // Get loading state from store
   const isMapLoading = useAtlasStore(state => state.isMapLoading);
   const mapLoadingProgress = useAtlasStore(state => state.mapLoadingProgress);
@@ -164,6 +167,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}
           <div className="atlas-top-bar-row">
+            {remote && <PanelBoundary name="the status bar"><RemoteStatusBar /></PanelBoundary>}
             {!isPlayerView && (
               <PanelBoundary name="the scene tabs">
                 <SceneTabBar
@@ -182,6 +186,8 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                 <ResponsiveWidgetBar isPlayerView={isPlayerView} store={store} viewId={view?.viewId} />
               </PanelBoundary>
               {!isPlayerView && <PanelBoundary name="the dice rolls"><DiceRollDisplay /></PanelBoundary>}
+              {/* The remote view is a player view: it throws only the player's own rolls */}
+              {remote && <PanelBoundary name="your dice rolls"><RemoteOwnRolls /></PanelBoundary>}
             </div>
           </div>
 

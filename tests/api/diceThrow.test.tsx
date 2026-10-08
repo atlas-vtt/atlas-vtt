@@ -8,7 +8,9 @@ import { onGivenThrow } from '../../src/app/dice3d/givenThrows';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import type { DiceRollResult } from '../../src/app/tools/diceRolling';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { remoteScene } from '../unit/remoteSceneFixtures';
 import { fakeView, loadMap, trackerWith } from './apiFakes';
+import { remoteHarness } from './remoteViewHarness';
 
 const roll = (id: string, overrides: Partial<DiceRollResult> = {}): DiceRollResult => ({
   id, timestamp: 0, formula: '1d20+2', rolls: [{ die: 'd20', value: 13, max: 20 }], modifiers: 2, total: 15, crit: null,
@@ -90,4 +92,22 @@ describe('dice.throw', () => {
     expect(thrown).not.toHaveBeenCalled();
   });
 
+  it("throws in a remote view as one of its own rolls, sharing the view's thrown ids, and stops when it closes", async () => {
+    const harness = await remoteHarness();
+    const remote = await harness.api.open({ title: 'Remote' });
+    const dice = diceApi(harness.app, new DisposerSet(), harness.tracker);
+    const store = harness.tracker.view(remote.viewId)!.atlasStore;
+    expect(dice.throw?.(remote.viewId, roll('r1'))).toBe(false);
+    remote.setScene(remoteScene());
+    expect(dice.throw?.(remote.viewId, roll('r1'))).toBe(true);
+    expect(store.getState().remoteView?.ownRoll?.id).toBe('r1');
+    remote.throwRoll(roll('r2'));
+    // r1 was thrown by `dice.throw`: the handle does not throw it again, nor `dice.throw` r2.
+    remote.throwRoll(roll('r1'));
+    expect(dice.throw?.(remote.viewId, roll('r2'))).toBe(true);
+    expect(store.getState().remoteView?.ownRoll?.id).toBe('r2');
+    remote.close();
+    expect(dice.throw?.(remote.viewId, roll('r3'))).toBe(false);
+    harness.dispose();
+  });
 });

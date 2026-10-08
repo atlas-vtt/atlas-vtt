@@ -81,7 +81,7 @@ export class AtlasView extends FileView {
   private boundClaimLeafFocus: (() => void) | null = null;
   private boundHeaderLeafActivation: ((event: MouseEvent) => void) | null = null;
 
-  constructor(leaf: WorkspaceLeaf, plugin?: AtlasVTTPlugin, isPlayerView: boolean = false) {
+  constructor(leaf: WorkspaceLeaf, plugin?: AtlasVTTPlugin, isPlayerView: boolean = false, remote: boolean = false) {
     super(leaf);
     // Scene tabs handle deleted maps. Prevent FileView from concurrently replacing
     // or detaching this leaf while Atlas closes the deleted scene's tab.
@@ -95,13 +95,13 @@ export class AtlasView extends FileView {
 
     // Create isolated store for this view with plugin reference for collection service
     // Pass isPlayerView flag during store creation to ensure it's set from the start
-    this.store = createViewAtlasStore(this.app, this.viewId, this.plugin, isPlayerView);
+    this.store = createViewAtlasStore(this.app, this.viewId, this.plugin, isPlayerView, { remote });
 
     // Create the per-view tab metadata store
     this.tabMetaStore = createTabMetaStore();
 
     // Initialize the service manager with the view store and plugin
-    this._serviceManager = new ServiceManager(this.app, this.store, this.plugin, this.viewId);
+    this._serviceManager = new ServiceManager(this.app, this.store, this.plugin, this.viewId, { remote });
   }
 
   // --- State Management ---
@@ -212,6 +212,11 @@ export class AtlasView extends FileView {
 
   getStore(): ViewAtlasStore {
     return this.store;
+  }
+
+  /** True for the remote map view, which shows a scene fed from outside and never one of this vault's maps. */
+  get isRemote(): boolean {
+    return this.store.getState().remoteView != null;
   }
 
   getTabMetaStore(): TabMetaStore {
@@ -902,10 +907,16 @@ export class AtlasView extends FileView {
         // Resize the renderer to match the container
         const rendererService = this._serviceManager.getRendererService();
         rendererService.resize(currentWidth, currentHeight);
+        this.onContainerResized();
       }
     });
 
     // Observe the container element for size changes (fires immediately)
     this.resizeObserver.observe(this.containerEl);
+  }
+
+  /** The view's container changed size, after the renderer resized. */
+  protected onContainerResized(): void {
+    // Map views have nothing more to follow; the remote view puts its camera back.
   }
 }

@@ -106,7 +106,7 @@ describe('tray dice in a colour', () => {
     fireEvent.click(screen.getByLabelText(/^Add a d6/));
     expect(screen.getByText('Fire: 2d6')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Roll' }));
-    expect(onRoll).toHaveBeenCalledWith('2d6 + 1d20', [FIRE, FIRE, null]);
+    expect(onRoll).toHaveBeenCalledWith('2d6 + 1d20', { 6: 2, 20: 1 }, 0, [FIRE, FIRE, null]);
     expect(document.querySelector('[title]')).toBeNull();
   });
 });

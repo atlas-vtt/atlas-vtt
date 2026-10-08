@@ -1,5 +1,6 @@
 import { App, Plugin, TFile, WorkspaceLeaf } from 'obsidian';
 import { AtlasView, ATLAS_VIEW_TYPE } from '../atlas-view';
+import { REMOTE_VIEW_TYPE } from '../remote-view/remoteViewType';
 
 function getExistingAtlasLeaf(app: App): WorkspaceLeaf | null {
   return app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE)[0] ?? null;
@@ -41,7 +42,8 @@ export async function openMapInView(app: App, mapFile: TFile): Promise<void> {
   }
 
   let leaf = app.workspace.getMostRecentLeaf();
-  if (!leaf || leaf.getViewState().pinned) {
+  // A pinned leaf, or a remote view (it never opens a map), keeps its place.
+  if (!leaf || leaf.getViewState().pinned || leaf.getViewState().type === REMOTE_VIEW_TYPE) {
     leaf = app.workspace.getLeaf('tab');
   }
 
@@ -82,4 +84,10 @@ export function registerAtlasLeafSync(plugin: Plugin): void {
   plugin.registerEvent(
     plugin.app.workspace.on('layout-change', () => mergeDuplicateAtlasLeaves(plugin.app))
   );
+}
+
+/** The active view of one of this vault's maps; null for none, or for a remote view, which shows a scene fed from outside. */
+export function activeMapView(app: App): AtlasView | null {
+  const view = app.workspace.getActiveViewOfType(AtlasView);
+  return view && !view.isRemote ? view : null;
 }

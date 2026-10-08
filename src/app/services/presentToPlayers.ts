@@ -11,8 +11,9 @@ import { t } from '../i18n';
  * (`PlayerWindowPresenter`); without one, the player window is opened.
  */
 export async function presentViewToPlayers(view: unknown): Promise<void> {
-  const tabId = view instanceof AtlasView ? view.tabMetaStore.getState().activeTabId : null;
-  if (!(view instanceof AtlasView) || !tabId) {
+  // A remote view shows a scene fed from outside, never one of this vault's maps.
+  const tabId = view instanceof AtlasView && !view.isRemote ? view.tabMetaStore.getState().activeTabId : null;
+  if (!(view instanceof AtlasView) || view.isRemote || !tabId) {
     new Notice(t('present.openSceneFirst'));
     return;
   }

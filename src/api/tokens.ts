@@ -2,7 +2,7 @@ import { snapDroppedToken } from '../app/clipboard/mapObjectPlacement';
 import { loadedMapSize } from '../app/services/viewMapSize';
 import { runHistoryTransaction } from '../app/stores/history';
 import type { TokenEntity } from '../app/types';
-import { isLoaded } from './viewInfo';
+import { isLoaded, isRemoteView } from './viewInfo';
 import type { ViewTracker } from './viewTracker';
 import type { Point, ViewId } from './types/common';
 import type { TokenMove, TokenMoveOptions, TokenMoveResult, TokensApi } from './types/tokens';
@@ -83,7 +83,8 @@ export function tokensApi(tracker: ViewTracker): TokensApi {
       const { snap, clampToMap, allowHidden } = settled(options);
       const wanted = lastMoves(moves);
       const view = tracker.view(viewId);
-      if (!view || !isLoaded(view.atlasStore.getState())) return { ok: false, reason: 'not-loaded' };
+      // A remote view is read-only: its owner feeds its scene.
+      if (!view || isRemoteView(view) || !isLoaded(view.atlasStore.getState())) return { ok: false, reason: 'not-loaded' };
       const state = view.atlasStore.getState();
       // Own keys only: "constructor" or "__proto__" must never read as a token.
       const known = (id: string): TokenEntity | null => (Object.hasOwn(state.objects.tokens, id) ? (state.objects.tokens[id] ?? null) : null);

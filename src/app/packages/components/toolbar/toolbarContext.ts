@@ -1,5 +1,6 @@
 import type React from "react"
 import type { DiceTool } from "../../../tools/DiceTool"
+import type { DiceDropdownMenuProps } from "../../../react/components/dice/DiceDropdownMenu"
 import type { MapHotkeyId } from "../../../keyboard/mapHotkeys"
 import type { Tool } from "./toolFaces"
 import type { ToolGroupControls } from "./ToolGroup"
@@ -18,7 +19,11 @@ export interface ToolbarContext {
   hotkeyLabel: (id: MapHotkeyId) => string
   openMenu: ToolMenu | null
   groupControls: (menu: ToolMenu) => ToolGroupControls
-  dice: { open: boolean; toggle: () => void; tool: DiceTool | null; buttonRef: React.RefObject<HTMLDivElement | null> }
+  dice: {
+    open: boolean; toggle: () => void; tool: DiceTool | null; buttonRef: React.RefObject<HTMLDivElement | null>
+    /** In a remote view the tray sends its rolls to the view's owner instead of rolling, with the owner's dice limit. */
+    remote?: { onRoll: NonNullable<DiceDropdownMenuProps['onRoll']>; maxDice: number }
+  }
   loot: { open: boolean; setOpen: (open: boolean) => void }
   assets: { open: boolean; toggle: () => void }
   palette: { open: boolean; setOpen: (open: boolean) => void }

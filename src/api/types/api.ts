@@ -4,6 +4,7 @@ import type { DiceApi } from './dice';
 import type { LasersApi } from './lasers';
 import type { LightingApi } from './lighting';
 import type { PresentationApi } from './presentation';
+import type { RemoteViewsApi } from './remoteViews';
 import type { RulesApi } from './rules';
 import type { BundlesApi, ScenesApi } from './scenes';
 import type { CollectionsApi } from './collections';
@@ -43,7 +44,7 @@ export interface AtlasEvents {
   'scenes-changed': () => void;
   /**
    * Capability `scene-tabs`: a GM map view's tabs (added, closed, moved, renamed) or its active tab changed. Fires once per
-   * view per microtask with the view as it is then. `map-loaded` and `map-closed` are unchanged.
+   * view per microtask with the view as it is then; never for a remote view. `map-loaded` and `map-closed` are unchanged.
    */
   'tabs-changed': (view: ViewInfo) => void;
   /**
@@ -68,6 +69,8 @@ export interface AtlasExtension {
   readonly ui: UiApi;
   readonly scenes: ScenesApi;
   readonly bundles: BundlesApi;
+  /** Only when `has('remote-view')`. */
+  readonly remoteViews?: RemoteViewsApi;
   /** Only when `has('collections')`. */
   readonly collections?: CollectionsApi;
   /**

@@ -1,6 +1,6 @@
 /**
- * A stand-in for `src/app/atlas-view` in tests (`vi.mock`): a map view with a real
- * store, tab meta, a laser hub, an event bus and a fake viewport, and no PIXI.
+ * A stand-in for `src/app/atlas-view` in the remote view tests (`vi.mock`): a map view with a real
+ * store (remote when asked), tab meta, a laser hub, an event bus and a fake viewport, and no PIXI.
  * Obsidian's `register` callbacks run when the view closes, as they do when a view unloads.
  */
 import { EventEmitter } from 'events';
@@ -12,8 +12,8 @@ export const ATLAS_VIEW_TYPE = 'atlas-vtt';
 
 let made = 0;
 
-/** pixi-viewport, as far as these tests move and watch it. */
-export class FakeViewport {
+/** pixi-viewport, as far as the remote view moves and watches it. */
+export class FakeRemoteViewport {
   center = { x: 0, y: 0 };
   scale = { x: 1, y: 1 };
   screenWidth = 800;
@@ -43,14 +43,14 @@ export class FakeViewport {
   }
 }
 
-/** The renderer's part these tests use: the background sprite, the grid and the lasers. */
-export class FakeRenderer {
+/** The renderer's part the remote view uses: the background sprite, the grid and the lasers. */
+export class FakeRemoteRenderer {
   readonly laserHub = new LaserHub();
   background: { width: number; height: number; destroyed: boolean } | null = null;
   grid: unknown = null;
-  constructor(private readonly viewport: FakeViewport) {}
+  constructor(private readonly viewport: FakeRemoteViewport) {}
   getBackgroundSprite(): { width: number; height: number; destroyed: boolean } | null { return this.background; }
-  getViewportInstance(): FakeViewport { return this.viewport; }
+  getViewportInstance(): FakeRemoteViewport { return this.viewport; }
   getLaserHub(): LaserHub { return this.laserHub; }
   setBackgroundSprite(sprite: { width: number; height: number; destroyed: boolean }): void { this.background = sprite; }
   initGrid(): void { this.grid = {}; }
@@ -66,8 +66,8 @@ export class AtlasView {
   readonly viewId: string;
   readonly atlasStore: ViewAtlasStore;
   readonly tabMetaStore: TabMetaStore = createTabMetaStore();
-  readonly viewport = new FakeViewport();
-  readonly renderer = new FakeRenderer(this.viewport);
+  readonly viewport = new FakeRemoteViewport();
+  readonly renderer = new FakeRemoteRenderer(this.viewport);
   readonly eventBus = new EventEmitter();
   readonly containerEl: HTMLElement = document.createElement('div');
   readonly serviceManager = {
@@ -77,15 +77,16 @@ export class AtlasView {
   private closed = false;
   private readonly closers: Array<() => void> = [];
 
-  constructor(leaf: FakeLeafLike, _plugin?: unknown, isPlayerView = false) {
+  constructor(leaf: FakeLeafLike, _plugin?: unknown, isPlayerView = false, remote = false) {
     this.leaf = leaf;
     this.app = leaf.app as never;
     this.viewId = `view-${++made}`;
-    this.atlasStore = createViewAtlasStore(leaf.app as never, this.viewId, undefined, isPlayerView);
+    this.atlasStore = createViewAtlasStore(leaf.app as never, this.viewId, undefined, isPlayerView, { remote });
     (this.containerEl as HTMLElement & { addClass(cls: string): void }).addClass = (cls: string): void => this.containerEl.classList.add(cls);
   }
 
   get isClosed(): boolean { return this.closed; }
+  get isRemote(): boolean { return this.atlasStore.getState().remoteView != null; }
   register(callback: () => void): void { this.closers.push(callback); }
   switchToTab(): Promise<void> { return Promise.resolve(); }
   async onOpen(): Promise<void> { this.closed = false; }

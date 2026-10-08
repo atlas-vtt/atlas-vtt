@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { cn } from '../../../../utils/cn';
 import { Button } from '../../../packages/components/primitives/button';
@@ -8,7 +8,7 @@ import { DieFace } from './DieFace';
 import { t } from '../../../i18n';
 import {
   MAX_DICE, MAX_MODIFIER, MAX_PER_DIE, TRAY_DICE,
-  clampModifier, trayDiceCount, trayFormula,
+  clampModifier, trayDiceCount, trayFormula, type TrayPool,
 } from './diceTrayPool';
 import { addPick, poolOfPicks, removePick, taggedGroups, trayTags, type TrayPick } from './trayPicks';
 import { DiceColourPicker } from './DiceColourPicker';
@@ -21,10 +21,14 @@ export interface ShareRolls {
 }
 
 interface DiceTrayProps {
-  /** The finished formula, with each die's tag, goes up to whoever rolls it. False: it was not rolled, so the tray keeps its dice. */
-  onRoll: (formula: string, tags: Array<DieTag | null>) => boolean;
+  /** The finished formula, with the dice and modifier it was built from, goes up to whoever rolls it. False: it was not rolled, so the tray keeps its dice. */
+  onRoll: (formula: string, pool: TrayPool, modifier: number, tags: Array<DieTag | null>) => boolean;
   /** Colours dice can be added in (`dice.registerColours`); none shows no picker. */
   colours?: readonly DieTag[];
+  /** The most dice the tray holds in all, when lower than its own limit. */
+  maxDice?: number;
+  /** The dice or the modifier changed. */
+  onChange?: () => void;
   /** The GM's switch for whether players see their rolls; left out where nobody else watches. */
   shareRolls?: ShareRolls;
 }
@@ -36,7 +40,7 @@ interface DiceTrayProps {
  * control on a touchpad. Mixed dice are thrown together, `2d6 + 1d20 + 3`, as
  * three kinds held in one hand.
  */
-export function DiceTray({ onRoll, colours = [], shareRolls }: DiceTrayProps): React.ReactElement {
+export function DiceTray({ onRoll, maxDice = MAX_DICE, onChange, colours = [], shareRolls }: DiceTrayProps): React.ReactElement {
   const [picks, setPicks] = useState<readonly TrayPick[]>([]);
   const pool = useMemo(() => poolOfPicks(picks), [picks]);
   const [colour, setColour] = useState<DieTag | null>(null);
@@ -45,7 +49,12 @@ export function DiceTray({ onRoll, colours = [], shareRolls }: DiceTrayProps): R
   const [modifier, setModifier] = useState(0);
 
   const formula = trayFormula(pool, modifier);
+  // A cap that is not a number (or is negative) leaves the tray's own limit.
+  const limit = Number.isFinite(maxDice) && maxDice >= 0 ? Math.min(maxDice, MAX_DICE) : MAX_DICE;
 
+  const changed = useRef(onChange);
+  changed.current = onChange;
+  useEffect(() => { changed.current?.(); }, [formula]);
   const empty = formula === '' && modifier === 0;
   const total = trayDiceCount(pool);
   const groups = taggedGroups(picks);
@@ -59,7 +68,7 @@ export function DiceTray({ onRoll, colours = [], shareRolls }: DiceTrayProps): R
   // left standing is the mistake nobody sees, carried into the next roll.
   const throwDice = (): void => {
     if (formula === '') return;
-    if (onRoll(formula, trayTags(picks))) clear();
+    if (onRoll(formula, pool, modifier, trayTags(picks))) clear();
   };
 
   return (
@@ -75,7 +84,7 @@ export function DiceTray({ onRoll, colours = [], shareRolls }: DiceTrayProps): R
                   type="button"
                   className="atlas-dice-tray__face"
                   onClick={() => setPicks((prev) => addPick(prev, sides, chosen))}
-                  disabled={count >= MAX_PER_DIE || total >= MAX_DICE}
+                  disabled={count >= MAX_PER_DIE || total >= limit}
                   aria-label={count === 0 ? `Add a d${sides}` : `Add a d${sides}, ${count} in the tray`}
                 >
                   <DieFace sides={sides} />

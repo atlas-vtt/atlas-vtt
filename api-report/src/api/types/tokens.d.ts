@@ -33,7 +33,7 @@ export interface TokensApi {
     snapPoint(viewId: ViewId, point: Point, tokenSize: number): Readonly<Point>;
     /**
      * Moves tokens as one undo step, like a GM drop: the moved tokens rise to the top of the stack and are no longer held. Checked in this order, and nothing is written when any move
-     * fails: the map is loaded (`not-loaded`), every token exists (`unknown-token`), none is hidden unless
+     * fails: the map is loaded and the view is not a remote view, which is read-only (`not-loaded`), every token exists (`unknown-token`), none is hidden unless
      * `allowHidden` (`hidden`), every position is a number within 1e9 of the origin (`invalid-position`, also when snapping would
      * not give one). A token named twice moves to its last position. Throws when `moves` is not a list or `options` is malformed.
      */

@@ -1,0 +1,85 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// The remote view's status bar, at the start of the top row. Imported inside
+// the `.atlas-vtt-plugin` scope of styles/main.scss.
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+
+$remote-status-bar-inset: $spacing-s;
+$remote-status-dot-size: 8px;
+// A button's label truncates past this, so a narrow tab still shows every button.
+$remote-status-action-max-width: 160px;
+
+.atlas-remote-status-bar {
+  @include atlas-elevated-surface;
+  // Shorter than the radius allows, so the bar renders as a capsule.
+  @include atlas-panel-radius($radius-2xl);
+  flex: 0 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  // Uniform padding equal to the gap.
+  padding: $remote-status-bar-inset;
+  // Nothing draws outside the capsule, however narrow the tab.
+  overflow: hidden;
+  pointer-events: auto;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+}
+
+.atlas-remote-status-bar__dot {
+  width: $remote-status-dot-size;
+  height: $remote-status-dot-size;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--text-faint);
+
+  &--connected { background: var(--color-green); }
+  &--pending { background: var(--color-yellow); }
+  &--ended { background: var(--color-red); }
+}
+
+.atlas-remote-status-bar__title {
+  @include atlas-truncate;
+  font-weight: $font-weight-medium;
+}
+
+.atlas-remote-status-bar__connection {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.atlas-remote-status-bar__message {
+  @include atlas-truncate;
+  color: var(--text-muted);
+}
+
+// The message gives way first; a button's label then truncates past its width, and its icon stays.
+.atlas-remote-status-bar__action {
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: $remote-status-action-max-width;
+}
+
+.atlas-remote-status-bar__action-label {
+  @include atlas-truncate;
+  min-width: 0;
+}
+
+.atlas-remote-status-bar__action-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+// The last button sits at the capsule's end: only the corners facing the bar's end follow it.
+.atlas-remote-status-bar__action:last-child {
+  border-top-right-radius: atlas-panel-inset-radius-value($remote-status-bar-inset, $button-height-s * 0.5);
+  border-bottom-right-radius: atlas-panel-inset-radius-value($remote-status-bar-inset, $button-height-s * 0.5);
+}
