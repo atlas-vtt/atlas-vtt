@@ -3,8 +3,7 @@ import type { Application, Texture } from 'pixi.js';
 import type { UnlitGrid } from '../../grid/gridLightingMark';
 import type { Viewport } from 'pixi-viewport';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
-import { LIGHTING_QUALITY, type LightingQualitySource } from '../../lighting/lightingQuality';
-import { SettingsService } from '../../services/SettingsService';
+import type { LightingQualitySource } from '../../lighting/lightingQuality';
 import type { ViewAtlasStore } from '../../storeFactory';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
@@ -33,17 +32,18 @@ export interface SceneLightingDeps {
   onSightChange?: () => void;
   /** Who shows the GM the engine's explored memory while it is edited. */
   exploredWatcher?: ExploredMemoryWatcher;
+  /** How much the engine may ask of the graphics device (Atlas' settings on this device); the default quality without one. */
+  quality?: LightingQualitySource;
 }
 
 /**
  * The scene lighting of a map view: the GPU engine where the graphics device runs it, the
  * line-of-sight fallback where it does not (`LightingViewHost` swaps them).
  */
-export function createSceneLighting({ viewport, app, store, obsApp, measurement, bounds, albedo, grid, rules, onSightChange, exploredWatcher }: SceneLightingDeps): LightingViewHost {
+export function createSceneLighting({ viewport, app, store, obsApp, measurement, bounds, albedo, grid, rules, onSightChange, exploredWatcher, quality }: SceneLightingDeps): LightingViewHost {
   const attempt = new StoredLightingAttempt(obsApp, () => store.getState().mapPath);
   const sight = onSightChange ? { onSightChange } : {};
   const view = { ...sight, ...(rules && { rules }) };
-  const quality = settingsQuality(obsApp);
   return new LightingViewHost({
     store,
     canvasRenderer: usesCanvasRenderer(app.renderer),
@@ -53,14 +53,4 @@ export function createSceneLighting({ viewport, app, store, obsApp, measurement,
     notify: showLightingUnavailableNotice,
     ...sight,
   });
-}
-
-/** The lighting quality chosen in Atlas' settings on this device. */
-function settingsQuality(obsApp: App): LightingQualitySource | undefined {
-  const settings = SettingsService.forApp(obsApp);
-  if (!settings) return undefined;
-  return {
-    current: () => LIGHTING_QUALITY[settings.getLightingQuality()],
-    onChange: (listener) => settings.onChange(listener),
-  };
 }

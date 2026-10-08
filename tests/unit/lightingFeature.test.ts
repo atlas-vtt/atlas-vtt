@@ -1,10 +1,11 @@
 // The harness first: it mocks what the controller imports.
-import { setup } from './lightingControllerHarness';
+import { sceneLightingDeps, setup } from './lightingControllerHarness';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Application } from 'pixi.js';
 import { LightingFeature } from '../../src/app/pixi/lighting/LightingFeature';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { SettingsService } from '../../src/app/services/SettingsService';
+import { LIGHTING_QUALITY } from '../../src/app/lighting/lightingQuality';
 
 /** A view's lighting feature on the harness' scene, with the token renderer it is wired to. */
 async function feature(on: boolean): Promise<{ lighting: LightingFeature; settings: SettingsService; tokens: Record<string, ReturnType<typeof vi.fn>> } & Pick<ReturnType<typeof setup>, 'store' | 'viewport'>> {
@@ -38,6 +39,18 @@ describe('a map view\'s lighting', () => {
     const { lighting, tokens } = await feature(false);
     expect(lighting.controller).toBeUndefined();
     expect(tokens.setLightHandlers).not.toHaveBeenCalled();
+  });
+
+  it('lights at the quality chosen on this device, and hears when it changes', async () => {
+    const { settings } = await feature(true);
+    const quality = sceneLightingDeps.last!.quality!;
+    expect(quality.current()).toBe(LIGHTING_QUALITY.high);
+    const listener = vi.fn();
+    const unsubscribe = quality.onChange(listener);
+    settings.setLightingQuality('saver');
+    expect(listener).toHaveBeenCalledOnce();
+    expect(quality.current()).toBe(LIGHTING_QUALITY.saver);
+    unsubscribe();
   });
 
   it('is built on the open map when the GM switches the feature on, and takes the pointer', async () => {
