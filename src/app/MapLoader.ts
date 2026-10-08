@@ -5,6 +5,7 @@ import { migrateMapFile, parseSceneFile } from './services/MapPersistence';
 import { SceneFileError } from './services/sceneFileProblems';
 import { AssetValidationService, type MissingAsset } from './services/AssetValidationService';
 import { backgroundTextureCache } from './pixi/backgroundTextureCache';
+import { loadVaultTexture } from './pixi/vaultImageTexture';
 
 export interface LoadedMap {
   mapData: MapFile;
@@ -58,7 +59,7 @@ export class MapLoader {
         hasBackground = false;
       } else {
         const url = app.vault.adapter.getResourcePath(imgFile.path);
-        texture = await backgroundTextureCache.acquire(url);
+        texture = await backgroundTextureCache.acquire(url, () => loadVaultTexture(app.vault, imgFile));
         backgroundUrl = url;
         hasBackground = true;
       }

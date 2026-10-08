@@ -44,6 +44,10 @@
 
 - With the player camera frozen, the player view no longer jumps when you switch to another Obsidian tab, and no longer changes size when you open or close a sidebar.
 
+- Scenes with a map image no longer fail to open with "Failed to fetch" on older Obsidian installers, or where Obsidian runs on a different Electron than it shipped with.
+
+- When a scene's file or map image cannot be read, the tokens of the scene that was open before no longer stay on the canvas.
+
 ## Important changes
 
 - Fog-covered tokens and door badges are now hidden in the player view, including token labels and drag rulers.
