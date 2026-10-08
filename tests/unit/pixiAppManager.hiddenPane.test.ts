@@ -1,12 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Rectangle, Ticker, type Application, type ApplicationOptions } from 'pixi.js';
 import { PixiAppManager } from '../../src/app/pixi/PixiAppManager';
-import { captureBeforeRender } from '../../src/app/pixi/playerSafeFrame';
-import type { PlayerCameraState } from '../../src/app/types/playerCamera';
 
 vi.mock('obsidian', () => ({ Notice: class {} }));
-
-const FROZEN: PlayerCameraState = { centerX: 400, centerY: 300, scale: 2 };
 
 /** What `Application.init` leaves on the app, as far as `PixiAppManager` reads it. */
 function startRenderer(app: Application, options: Partial<ApplicationOptions>): ReturnType<typeof vi.fn> {
@@ -48,23 +44,67 @@ describe('PixiAppManager.resize', () => {
     vi.restoreAllMocks();
   });
 
-  /** Where on the canvas players frozen on `FROZEN` find the map's origin. */
-  function frozenMapOrigin(): { x: number; y: number } {
+  /** What the screen shows: the world point in its middle and the size of the world rectangle. */
+  function view(): { centerX: number; centerY: number; width: number; height: number } {
     const viewport = manager.getViewport()!;
-    let origin = { x: NaN, y: NaN };
-    captureBeforeRender([], () => undefined, () => { origin = { x: viewport.position.x, y: viewport.position.y }; }, { target: viewport, camera: FROZEN });
-    return origin;
+    return { centerX: viewport.center.x, centerY: viewport.center.y, width: viewport.screenWidth / viewport.scale.x, height: viewport.screenHeight / viewport.scale.y };
   }
 
-  it('leaves a frozen player camera where it is when the pane is hidden', () => {
-    const shown = frozenMapOrigin();
-    expect(shown).toEqual({ x: 400 - 800, y: 300 - 600 });
+  it('leaves what the screen shows as it is when the pane is hidden: players are still shown it', () => {
+    const viewport = manager.getViewport()!;
+    viewport.setZoom(2);
+    viewport.moveCenter(1000, 500);
+    const shown = view();
+    expect(shown).toEqual({ centerX: 1000, centerY: 500, width: 400, height: 300 });
 
     // What a pane measures while another Obsidian tab covers it (`display: none`)
     manager.resize(0, 0);
 
-    expect(frozenMapOrigin()).toEqual(shown);
+    expect(view()).toEqual(shown);
     expect(resizeRenderer).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['narrower, as when a sidebar opens', 500, 600],
+    ['wider', 1300, 600],
+    ['lower', 800, 250],
+    ['another shape altogether', 333, 911],
+  ])('keeps the centre of the view when the pane becomes %s', (_name, width, height) => {
+    const viewport = manager.getViewport()!;
+    viewport.setZoom(0.5);
+    viewport.moveCenter(1234, 567);
+
+    manager.resize(width, height);
+
+    expect(viewport.center.x).toBeCloseTo(1234, 6);
+    expect(viewport.center.y).toBeCloseTo(567, 6);
+    expect(viewport.scale.x).toBe(0.5);
+    // The view loses or gains the same on both sides
+    expect(viewport.left).toBeCloseTo(1234 - width, 6);
+    expect(viewport.right).toBeCloseTo(1234 + width, 6);
+  });
+
+  it('tells what follows the camera that it moved, once per change of size', () => {
+    const viewport = manager.getViewport()!;
+    const moved = vi.fn();
+    viewport.on('moved', moved);
+
+    manager.resize(500, 600);
+    expect(moved).toHaveBeenCalledTimes(1);
+    manager.resize(500, 600);
+    manager.resize(0, 0);
+    expect(moved).toHaveBeenCalledTimes(1);
+  });
+
+  it('comes back to the same view when the pane takes its old size again', () => {
+    const viewport = manager.getViewport()!;
+    viewport.moveCenter(300, 200);
+    const corner = { x: viewport.left, y: viewport.top };
+
+    manager.resize(450, 600);
+    manager.resize(800, 600);
+
+    expect({ x: viewport.left, y: viewport.top }).toEqual(corner);
   });
 
   it('keeps the size of the screen while one side of the pane is gone', () => {

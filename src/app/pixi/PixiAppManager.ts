@@ -196,10 +196,15 @@ export class PixiAppManager {
   
 
   /**
+   * The map keeps its centre: what was in the middle of the pane stays there when a sidebar or a
+   * split changes the pane's size, so the view loses or gains the same on both sides. The
+   * players' frame is centred on that point, and would slide by half of what the pane lost if
+   * the pane kept its top left corner instead.
+   *
    * A pane without a size is hidden (`display: none` while another Obsidian tab covers it), and
    * the screen keeps the size it had. PIXI leaves the canvas as it is for a side of 0, but the
-   * viewport would take it, and whatever is placed by the screen's centre, such as the camera
-   * players are frozen on, would be placed by the canvas' corner.
+   * viewport would take it, and with it everything that reads what the screen shows: the centre
+   * kept here, and the world rectangle the players' frame is fitted to.
    */
   resize(newWidth: number, newHeight: number): void {
     if (this._isDestroyed || newWidth <= 0 || newHeight <= 0) return;
@@ -212,15 +217,25 @@ export class PixiAppManager {
       this.renderScheduler?.requestRender();
     }
 
-    if (this.viewport) {
-      this.viewport.resize(newWidth, newHeight);
-    }
+    if (this.viewport) this.resizeViewport(this.viewport, newWidth, newHeight);
     
     // Update canvas element dimensions
     if (this.canvasEl) {
       this.canvasEl.style.width = `${newWidth}px`;
       this.canvasEl.style.height = `${newHeight}px`;
     }
+  }
+
+  /** Gives `viewport` its new screen around the world point that was in the middle of the old one. */
+  private resizeViewport(viewport: Viewport, width: number, height: number): void {
+    if (viewport.screenWidth === width && viewport.screenHeight === height) return;
+    const { x, y } = viewport.center;
+    viewport.resize(width, height);
+    const moved = viewport.center.x !== x || viewport.center.y !== y;
+    viewport.moveCenter(x, y);
+    // As after a pan: what follows the camera (the laser's dot, handles, what is drawn for the screen only) follows.
+    // `ensureVisible` is the viewport's name for a move of its own that keeps something in view.
+    if (moved) viewport.emit('moved', { viewport, type: 'ensureVisible' });
   }
 
   destroy(): void {
