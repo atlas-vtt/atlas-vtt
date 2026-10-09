@@ -52,6 +52,7 @@ import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
+import { TileDecoderClient } from './src/app/pixi/mapImage/TileDecoderClient';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -181,6 +182,7 @@ export default class AtlasVTTPlugin extends Plugin {
     // The asset manager only starts to close here; its overlay's class must not outlive the plugin.
     releaseOverlayBodyClass();
     CreatureIndex.release(this.app);
+    TileDecoderClient.release(this.app);
     disposeImageProcessing();
   }
 

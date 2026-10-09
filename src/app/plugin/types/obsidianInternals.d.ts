@@ -9,6 +9,8 @@ import type { Component, EditorSuggest, EventRef, Menu, Plugin, TAbstractFile, T
  */
 declare module 'obsidian' {
   interface App {
+    /** Identifies the vault on this device; names device-local databases such as the map tile cache. */
+    appId: string;
     openWithDefaultApp(path: string): void;
     showInFolder(path: string): void;
     /** Community plugin registry; read only for diagnostics in issue reports. */
