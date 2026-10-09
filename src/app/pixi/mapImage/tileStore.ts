@@ -201,6 +201,8 @@ export class TileStore {
       const evicted: string[] = [];
       for (const manifest of candidates) {
         if (total <= budget) break;
+        // Pinned since the list was read: an open is about to serve it.
+        if (this.pins.has(manifest.hash)) continue;
         await this.backend.deletePyramid(manifest.hash);
         total -= manifest.bytes;
         evicted.push(manifest.hash);
@@ -214,9 +216,24 @@ export class TileStore {
     return manifests.reduce((sum, m) => sum + m.bytes, 0);
   }
 
-  /** Deletes every pyramid and identity. Builds still running find their pyramid gone and stop writing. */
-  clear(): Promise<void> {
-    return this.serial(() => this.backend.clear());
+  /**
+   * Deletes every pyramid that is not pinned when its turn comes, so open
+   * maps, opens under way and running builds keep theirs; with nothing pinned
+   * the identities go too. Returns the bytes left in the cache.
+   */
+  clear(): Promise<number> {
+    return this.serial(async () => {
+      if (this.pins.size === 0) {
+        await this.backend.clear();
+        return 0;
+      }
+      let kept = 0;
+      for (const manifest of await this.backend.listManifests()) {
+        if (this.pins.has(manifest.hash)) kept += manifest.bytes;
+        else await this.backend.deletePyramid(manifest.hash);
+      }
+      return kept;
+    });
   }
 
   private async currentManifest(hash: string): Promise<PyramidManifest | null> {

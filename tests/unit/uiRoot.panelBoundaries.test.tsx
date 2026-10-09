@@ -3,22 +3,11 @@ import { render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
-const backgroundUnmounted = vi.hoisted(() => vi.fn());
-
 /** Stands in for a map surface: a named marker, so the test sees which surfaces are still there. */
 function surface(name: string) {
   return (): React.ReactElement => <i data-surface={name} />;
 }
 
-vi.mock('../../src/app/react/BackgroundSprite', async () => {
-  const { useEffect } = await import('react');
-  return {
-    BackgroundSprite: (): React.ReactElement => {
-      useEffect(() => backgroundUnmounted, []);
-      return <i data-surface="background" />;
-    },
-  };
-});
 vi.mock('../../src/app/react/components/InitiativeTracker', () => ({
   InitiativeTracker: (): never => { throw new TypeError("Cannot read properties of undefined (reading 'max')"); },
 }));
@@ -48,7 +37,8 @@ import type { AtlasView } from '../../src/app/atlas-view';
 afterEach(() => vi.restoreAllMocks());
 
 describe('the map UI when one of its panels cannot render', () => {
-  it('keeps the map image, the scene tabs and the toolbar, and logs the panel once', () => {
+  // The map image is drawn by the renderer, outside React, so no panel can take it down.
+  it('keeps the scene tabs and the toolbar, and logs the panel once', () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const { app } = createInMemoryApp();
     const store = createViewAtlasStore(app, 'ui-root-boundary-test');
@@ -58,8 +48,7 @@ describe('the map UI when one of its panels cannot render', () => {
     const { container } = render(<ViewStoreProvider store={store}><UIRoot app={app} view={view} pixiApp={null} /></ViewStoreProvider>);
 
     const shown = Array.from(container.querySelectorAll('[data-surface]'), (element) => element.getAttribute('data-surface'));
-    expect(shown).toEqual(expect.arrayContaining(['background', 'scene-tabs', 'widgets', 'dice', 'toolbar', 'undo-redo', 'view-actions', 'loot']));
-    expect(backgroundUnmounted).not.toHaveBeenCalled();
+    expect(shown).toEqual(expect.arrayContaining(['scene-tabs', 'widgets', 'dice', 'toolbar', 'undo-redo', 'view-actions', 'loot']));
     const panelErrors = logged.mock.calls.filter(([message]) => message === '[Atlas VTT] Could not show the initiative tracker:');
     expect(panelErrors).toHaveLength(1);
   });

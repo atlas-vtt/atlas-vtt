@@ -63,14 +63,14 @@ export function hostTileCore(createCore: CoreFactory, post: PostMessage): (reque
       case 'init':
         return;
       case 'open': {
-        const outcome = await ready.open(request.identity, request.bytes);
+        const outcome = await ready.open(request.identity, request.bytes, request.decoded ?? null);
         if (outcome.kind === 'opened') reply({ type: 'opened', id: request.id, opened: outcome.opened });
         else if (outcome.kind === 'need-bytes') reply({ type: 'need-bytes', id: request.id });
         else reply({ type: 'open-failed', id: request.id, failure: outcome.failure });
         return;
       }
       case 'prebuild': {
-        const outcome = await ready.prebuild(request.identity, request.bytes);
+        const outcome = await ready.prebuild(request.identity, request.bytes, request.decoded ?? null);
         if (outcome.kind === 'prebuilt') reply({ type: 'prebuilt', id: request.id, hash: outcome.hash, complete: outcome.complete });
         else if (outcome.kind === 'need-bytes') reply({ type: 'need-bytes', id: request.id });
         else reply({ type: 'open-failed', id: request.id, failure: outcome.failure });
@@ -98,8 +98,7 @@ export function hostTileCore(createCore: CoreFactory, post: PostMessage): (reque
         reply({ type: 'cache-size', id: request.id, bytes: await ready.cacheSize() });
         return;
       case 'clear-cache':
-        await ready.clearCache();
-        reply({ type: 'cleared', id: request.id });
+        reply({ type: 'cleared', id: request.id, bytes: await ready.clearCache() });
         return;
     }
   };

@@ -8,7 +8,7 @@ import type { GridBounds, GridLineType } from './gridLineStyle';
 import { GridLines } from './gridLines';
 import { createHexLayout, hexCellExtent, isHexGridType, nearestHexCenter } from './hexGeometry';
 import type { HexLayout } from './hexGeometry';
-import { contrastColorForSprite } from './gridContrastColor';
+import { contrastColorForPixels, contrastColorForSprite, type MapPixels } from './gridContrastColor';
 import { snapTokenCenter } from './gridPlacement';
 import { numberCells, type CellLattice, type CellNumberStyle } from './cellNumbering';
 import { hexLattice } from './hexLattice';
@@ -70,8 +70,16 @@ export class GridSystem implements UnlitGrid {
   private readonly onViewportZoomed = (): void => {
     this.cellNumberLabels?.setView(this.numberView());
   };
-  /** The map the grid overlays; null between two maps, when there is nothing to draw on. */
-  private bgSprite: Sprite | null;
+  /**
+   * The map the grid overlays (its bounds, and where it lies in the viewport): the map image's
+   * layer, whose bounds area is the image's world rect; null between two maps, when there is nothing to draw on.
+   */
+  private bgSprite: Container | null;
+  /** The map's pixels, for the automatic colour where the map is no sprite with a readable texture. */
+  private pixels: MapPixels | null;
+  /** Counts the maps shown, so a colour read from one is never applied to the next. */
+  private mapGeneration = 0;
+  private autoColorPending = false;
   private viewport: Viewport;
   private app: Application;
   private options: GridOptions;
@@ -92,18 +100,21 @@ export class GridSystem implements UnlitGrid {
   /**
    * @param app      – the Pixi Application
    * @param viewport – the Pixi‑Viewport instance containing your map
-   * @param bgSprite – the background Sprite you want the grid to overlay
+   * @param bgSprite – what the grid overlays: its bounds are the map's, and the grid is inserted above it
    * @param options  – grid styling options
+   * @param pixels   – the map's pixels, read for the automatic line colour
    */
   constructor(
     app: Application,
     viewport: Viewport,
-    bgSprite: Sprite,
-    options: GridOptions
+    bgSprite: Container,
+    options: GridOptions,
+    pixels: MapPixels | null = null,
   ) {
     this.app = app;
     this.viewport = viewport;
     this.bgSprite = bgSprite;
+    this.pixels = pixels;
     this.options = {
       ...options,
       type: options.type ?? 'square',
@@ -257,14 +268,31 @@ export class GridSystem implements UnlitGrid {
     return { zoom: this.viewport.scale.x, pixelRatio: this.app.renderer.resolution };
   }
 
-  /** Black or white, whichever contrasts with the map image; cached because it reads the texture's pixels. */
-  private getAutoColor(bgSprite: Sprite): number {
-    this.autoColor ??= contrastColorForSprite(bgSprite);
+  /**
+   * Black or white, whichever contrasts with the map image; cached because it reads the map's
+   * pixels. Read from `pixels` it arrives later: white until then, and the grid is drawn again.
+   */
+  private getAutoColor(bgSprite: Container): number {
+    if (this.autoColor === null && bgSprite instanceof Sprite) this.autoColor = contrastColorForSprite(bgSprite);
+    else if (this.autoColor === null) this.readAutoColor();
     return this.autoColor ?? 0xffffff;
   }
 
-  /** The map to draw on; a sprite that was destroyed elsewhere counts as none. */
-  private get background(): Sprite | null {
+  private readAutoColor(): void {
+    const pixels = this.pixels;
+    if (!pixels || this.autoColorPending) return;
+    const generation = this.mapGeneration;
+    this.autoColorPending = true;
+    void contrastColorForPixels(pixels).then((color) => {
+      if (generation !== this.mapGeneration || this.isDestroying) return;
+      this.autoColorPending = false;
+      this.autoColor = color;
+      if (color !== null && this.options.color === undefined && !this.options.isAligning) this.createGrid();
+    });
+  }
+
+  /** The map to draw on; one that was destroyed elsewhere counts as none. */
+  private get background(): Container | null {
     return this.bgSprite && !this.bgSprite.destroyed ? this.bgSprite : null;
   }
 
@@ -383,15 +411,16 @@ export class GridSystem implements UnlitGrid {
     this.destroyGridResources();
   }
 
-  /** Updates the internal reference to the background sprite */
-  public updateBackgroundSprite(newBgSprite: Sprite): void {
+  /** The map changed (another image, or the same one at another size): the grid is drawn over it anew. */
+  public updateBackgroundSprite(newBgSprite: Container, pixels: MapPixels | null = null): void {
     if (!newBgSprite) {
       console.error('[GridSystem] Cannot update background sprite: new sprite is null');
       return;
     }
 
     this.bgSprite = newBgSprite;
-    this.autoColor = null;
+    this.pixels = pixels;
+    this.forgetAutoColor();
 
     if (newBgSprite.width > 0 && newBgSprite.height > 0) {
       this.createGrid();
@@ -414,8 +443,15 @@ export class GridSystem implements UnlitGrid {
   /** The map was taken away: the grid goes with it until `updateBackgroundSprite` brings the next one. */
   public clearBackgroundSprite(): void {
     this.bgSprite = null;
-    this.autoColor = null;
+    this.pixels = null;
+    this.forgetAutoColor();
     this.destroyGridResources();
+  }
+
+  private forgetAutoColor(): void {
+    this.autoColor = null;
+    this.autoColorPending = false;
+    this.mapGeneration++;
   }
 
   /** Provide a render layer so the grid sprite can automatically be attached */
@@ -509,19 +545,6 @@ export class GridSystem implements UnlitGrid {
   /** Set grid scale */
   public setGridScale(scale: number): void {
     this.updateOptions({ scale });
-  }
-
-  /** Set map scale for grid alignment mode */
-  public setMapScale(scale: number): void {
-    this.options.mapScale = scale;
-    const bgSprite = this.background;
-    if (bgSprite) {
-      if (bgSprite.texture && bgSprite.texture.source) {
-        bgSprite.texture.source.scaleMode = 'linear';
-      }
-      bgSprite.scale.set(scale);
-      this.createGrid();
-    }
   }
 
   /** Set alignment mode for visual feedback */

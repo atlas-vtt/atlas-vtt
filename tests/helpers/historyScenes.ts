@@ -1,6 +1,5 @@
 import { EventEmitter } from 'events';
 import { vi } from 'vitest';
-import { Texture } from 'pixi.js';
 import { TFile, TFolder } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
 import { MapLoader } from '../../src/app/MapLoader';
@@ -13,6 +12,7 @@ import { AssetService } from '../../src/app/services/AssetService';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { getHistoryStore, type HistoryState } from '../../src/app/stores/history';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { fakeMapRenderer, loadedMap } from './fakeMapRenderer';
 
 /**
  * Scenes for the undo history tests on the real view store. A test file that uses the tab
@@ -109,13 +109,13 @@ export function tabScene(): TabScene {
     initialize: async (): Promise<void> => undefined, rewriteAssets: async (): Promise<boolean> => false, getAssets: async (): Promise<[]> => [],
     getCollections: async (): Promise<[]> => [], getCollectionForMap: (): null => null, getCollectionSettings: () => ({ conditions: [] }),
   } as never);
-  vi.mocked(MapLoader.load).mockImplementation(async (_app, path) => ({
-    mapData: migrateMapFile((JSON.parse(files.get(path)!) as PersistedMapEnvelope).state), texture: Texture.WHITE, hasBackground: false, backgroundUrl: null,
-  }));
+  vi.mocked(MapLoader.load).mockImplementation(async (_app, path) => loadedMap(
+    migrateMapFile((JSON.parse(files.get(path)!) as PersistedMapEnvelope).state),
+  ));
   const store = createViewAtlasStore(app, `tab-cache-${Math.random()}`);
   const eventBus = new EventEmitter();
   eventBus.on('wait-for-tokens-loaded', (done: () => void) => done());
-  const renderer = { clearBackgroundSprite: vi.fn(), setBackgroundSprite: vi.fn(), getGridSystem: () => null, initGrid: vi.fn(), getViewportInstance: () => null, getBackgroundSprite: () => null };
+  const renderer = fakeMapRenderer();
   const rendererService = { getRenderer: () => renderer } as unknown as RendererService;
   const service = new MapService(app, eventBus, store);
   const view = { store, temporalCache: new Map<string, Pick<HistoryState, 'pastStates' | 'futureStates'>>() };

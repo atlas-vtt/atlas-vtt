@@ -1,6 +1,12 @@
+## New
+
+- Maps of up to 144 megapixels, such as a 16,000 × 9,000 pixel world map, stay sharp at every zoom. Imported maps keep that much detail instead of being scaled down to 8,192 pixels.
+
 ## Improved
 
 - Tokens glide to their place when they are dropped, snap to the grid or are moved by an undo, instead of jumping there. On a scene with dynamic lighting, a token the players do not always see is still placed at once when it is moved other than by a drop, so its way never shows where it stood. With reduced motion switched on in the system every token is placed at once.
+
+- Large maps open faster the second time on the same device. A Map image cache row in Atlas' settings shows how much space this takes and clears it.
 
 - Players see the grid as you set it on the map: hidden when you hide it, and with its style, colour, opacity and numbers. The player view settings no longer have a separate Show grid switch.
 
@@ -35,6 +41,8 @@
 ## Fixed
 
 - The map no longer flickers while a sidebar opens or closes, or while you resize its pane.
+
+- Maps larger than the graphics card can show no longer stay black. Tokens kept working on them, but the map itself never appeared.
 
 - Freezing the player camera right after sending another scene to the player view no longer freezes players on the spot they were shown in the scene before.
 

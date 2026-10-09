@@ -13,4 +13,5 @@ export const map = {
   'map.loadingNTokens': { one: 'Loading {count} token...', other: 'Loading {count} tokens...' },
   'map.finalizing': 'Finalizing...',
   'map.openFailed': 'Atlas VTT could not open the scene {name} ({reason}).',
+  'map.imageUnshown': 'Atlas VTT could not show the map image {file}. {reason}',
 } as const satisfies Record<string, Message>;

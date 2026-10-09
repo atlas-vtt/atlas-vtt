@@ -20,7 +20,7 @@ export const TILE_BATCH = 16;
 /**
  * `complete`: every tile written and the pyramid marked complete, every level released.
  * `stopped`: asked to stop (another build needed the memory).
- * `lost`: the pyramid left the cache meanwhile (cleared, evicted).
+ * `lost`: the pyramid left the cache meanwhile (its storage was wiped; a pinned pyramid is never cleared or evicted).
  * `failed`: encoding or writing threw.
  */
 export type BuildOutcome = 'complete' | 'stopped' | 'lost' | 'failed';

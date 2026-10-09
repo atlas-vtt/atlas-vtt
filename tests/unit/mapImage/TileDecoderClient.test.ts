@@ -83,7 +83,7 @@ describe('TileDecoderClient', () => {
     }, null);
     expect(reads).toBe(1);
     expect(await client.cacheSize()).toBeGreaterThan(0);
-    await client.clearCache();
+    expect(await client.clearCache()).toBe(0);
     expect(await client.cacheSize()).toBe(0);
     client.dispose();
   });

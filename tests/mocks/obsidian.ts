@@ -478,6 +478,8 @@ export class Setting {
 
 export function setIcon(_parent: HTMLElement, _iconId: string): void {}
 
+export function displayTooltip(_target: HTMLElement, _content: string | DocumentFragment): void {}
+
 /** Case-insensitive subsequence match; Obsidian's real scoring is richer. */
 export function prepareFuzzySearch(query: string): (text: string) => { score: number; matches: [number, number][] } | null {
   const needle = query.toLowerCase().replace(/\s+/g, '');

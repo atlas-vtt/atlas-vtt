@@ -32,8 +32,10 @@ export type TileRequest =
    * Opens a map for serving (`prebuild`: builds its pyramid without serving).
    * Sent first without bytes; the worker answers `need-bytes` when the cache
    * cannot serve it, and the same id is sent again with the file's bytes.
+   * `decoded` is the image decoded on the main thread, for what a worker cannot
+   * decode (SVG): the pyramid is built from it, the hash is still the bytes'.
    */
-  | { type: 'open' | 'prebuild'; id: number; identity: FileIdentity | null; bytes: ArrayBuffer | null }
+  | { type: 'open' | 'prebuild'; id: number; identity: FileIdentity | null; bytes: ArrayBuffer | null; decoded?: ImageBitmap | null }
   | { type: 'tile'; id: number; handle: number; ref: TileRef }
   | { type: 'overview'; id: number; handle: number; maxSide: number }
   /** Drops a tile or overview request; nothing is answered for it. */
@@ -51,7 +53,8 @@ export type TileReply =
   | { type: 'prebuilt'; id: number; hash: string; complete: boolean }
   | { type: 'bitmap'; id: number; bitmap: ImageBitmap }
   | { type: 'cache-size'; id: number; bytes: number }
-  | { type: 'cleared'; id: number }
+  /** The cache was cleared except for the pyramids in use; `bytes` is what they still take. */
+  | { type: 'cleared'; id: number; bytes: number }
   /** A tile or overview request that could not be answered (an unknown handle, a tile missing from a cleared cache). */
   | { type: 'error'; id: number; message: string };
 

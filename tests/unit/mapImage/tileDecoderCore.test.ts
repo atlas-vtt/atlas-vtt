@@ -215,25 +215,68 @@ describe('TileDecoderCore', () => {
     expect(opened(await second).hash).not.toBe(first.hash);
   });
 
-  it('keeps showing crops when the cache is cleared during a build', async () => {
+  it('keeps the pyramid of a map still building when the cache is cleared', async () => {
     const h = coreHarness();
     const map = opened(await h.core.open(identity, fakePng(3000, 2000)));
     await nextTask();
     await h.core.clearCache();
-    for (let i = 0; i < 40; i++) await nextTask();
-    expect(h.events.some((event) => event.type === 'complete')).toBe(false);
-    expect(fake(await h.core.tile(1, map.handle, { level: 0, col: 5, row: 3 })).origin).toBe('crop');
-    h.core.close(map.handle);
-    await nextTask();
-    expect(h.graphics.bitmaps.filter((b) => b.origin === 'source').every((b) => b.closed)).toBe(true);
+    await h.completed(map.hash);
+    expect(await h.store.existingTiles(map.hash)).toHaveProperty('size', TOTAL_TILES);
+    expect(fake(await h.core.tile(1, map.handle, { level: 0, col: 5, row: 3 })).origin).toBe('cache');
   });
 
-  it('counts cache bytes and clears them', async () => {
+  it('clears closed maps, keeps open ones and reports what they take', async () => {
+    const h = coreHarness();
+    const open = opened(await h.core.open(identity, fakePng(3000, 2000, { salt: 1 })));
+    const closed = opened(await h.core.open(null, fakePng(1000, 800, { salt: 2 })));
+    await h.completed(open.hash);
+    await h.completed(closed.hash);
+    h.core.close(closed.handle);
+    const openBytes = (await h.store.readManifest(open.hash))!.bytes;
+    expect(await h.core.clearCache()).toBe(openBytes);
+    expect(await h.core.cacheSize()).toBe(openBytes);
+    expect(await h.store.existingTiles(closed.hash)).toEqual(new Set());
+    expect(fake(await h.core.tile(1, open.handle, { level: 0, col: 0, row: 0 })).origin).toBe('cache');
+  });
+
+  it('keeps a cached map being opened when a clear lands between its identity lookup and manifest read', async () => {
+    const h = coreHarness();
+    const first = opened(await h.core.open(identity, fakePng(3000, 2000)));
+    await h.completed(first.hash);
+    h.core.close(first.handle);
+    const bytes = (await h.store.readManifest(first.hash))!.bytes;
+
+    let release = (): void => undefined;
+    let reached = (): void => undefined;
+    const atRead = new Promise<void>((resolve) => { reached = resolve; });
+    const read = h.backend.getManifest.bind(h.backend);
+    h.backend.getManifest = async (hash) => {
+      if (hash === first.hash) {
+        reached();
+        await new Promise<void>((resolve) => { release = resolve; });
+      }
+      return read(hash);
+    };
+
+    const opening = h.core.open(identity, null);
+    await atRead;
+    h.backend.getManifest = read;
+    const cleared = h.core.clearCache();
+    release();
+    const map = opened(await opening);
+    expect(await cleared).toBe(bytes);
+    expect(fake(await h.core.tile(1, map.handle, { level: 0, col: 5, row: 3 })).origin).toBe('cache');
+    h.core.close(map.handle);
+    expect(await h.core.clearCache()).toBe(0);
+  });
+
+  it('counts cache bytes and clears them once no map is open', async () => {
     const h = coreHarness();
     const map = opened(await h.core.open(identity, fakePng(3000, 2000)));
     await h.completed(map.hash);
     expect(await h.core.cacheSize()).toBeGreaterThan(0);
-    await h.core.clearCache();
+    h.core.close(map.handle);
+    expect(await h.core.clearCache()).toBe(0);
     expect(await h.core.cacheSize()).toBe(0);
     expect(await h.store.existingTiles(map.hash)).toEqual(new Set());
   });

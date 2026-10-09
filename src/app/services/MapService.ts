@@ -6,7 +6,6 @@ import type { ViewAtlasStore } from '../storeFactory';
 import type { MapFile } from './MapPersistence';
 import { getHistoryStore } from '../stores/history';
 import { autoDetectGridOnFirstLoad } from './gridAutoDetect';
-import { backgroundTextureCache } from '../pixi/backgroundTextureCache';
 import { describeError } from '../utils/errors';
 import { sceneNameOf } from '../utils/sceneName';
 import { settledWithin } from '../utils/settledWithin';
@@ -16,12 +15,12 @@ import { t } from '../i18n';
 
 /** How long a scene may take to load before the load is given up. */
 export const STALLED_LOAD_MS = 30_000;
+/** How long the loading screen waits for the map image's tiles in view; past it the map shows as they arrive. */
+export const MAP_IMAGE_READY_MS = 1500;
 
 export class MapService {
   private currentMapFilePath: string | null = null;
   private currentMapData: MapFile | null = null;
-  /** Background texture reference held for the loaded map. */
-  private currentBackgroundUrl: string | null = null;
   private eventBus: EventEmitter;
   private readonly loads = new LatestRequestQueue();
 
@@ -119,8 +118,10 @@ export class MapService {
         isSuperseded,
       );
       if (!displayed) return null;
-      this.holdBackground(displayed.backgroundUrl);
       this.currentMapData = displayed.mapData;
+      // The tiles in view load meanwhile; the loading screen stays until they are drawn, or for a while.
+      const mapImage = renderer.getMapImage();
+      const imageReady = mapImage ? mapImage.whenCameraReady(MAP_IMAGE_READY_MS) : null;
 
       if (this.currentMapData) {
         // Update loading progress
@@ -164,7 +165,8 @@ export class MapService {
         // Let the overlay paint before the CPU-bound detection blocks the thread.
         await new Promise(resolve => window.setTimeout(resolve, 30));
         if (isSuperseded()) return null;
-        autoDetectGridOnFirstLoad(this.store, renderer.getBackgroundSprite());
+        await autoDetectGridOnFirstLoad(this.store, mapImage, () => !isSuperseded());
+        if (isSuperseded()) return null;
       }
 
       // Legacy mapData is now mostly for the renderer
@@ -190,13 +192,17 @@ export class MapService {
       this.eventBus.emit('map-loaded', mapInitData);
 
       // map-loaded starts every token sprite synchronously, so the wait below sees all of them
-      const hideLoadingScreen = (): void => {
+      const revealMap = (): void => {
         // Tokens of a map that was left meanwhile must not end the next load's setup
         if (isSuperseded()) return;
         this.store.getState().setMapLoading(false);
 
         // Resume history tracking now that map load is complete
         getHistoryStore(this.store)?.getState().resume();
+      };
+      const hideLoadingScreen = (): void => {
+        if (imageReady) void imageReady.then(revealMap);
+        else revealMap();
       };
       this.eventBus.emit('wait-for-tokens-loaded', hideLoadingScreen);
 
@@ -224,9 +230,8 @@ export class MapService {
       if (!mapStillLoaded) {
         this.currentMapFilePath = null;
         this.currentMapData = null;
-        this.holdBackground(null);
         // The image of the map before must not stay on the canvas without its fog and tokens
-        rendererService.getRenderer()?.clearBackgroundSprite();
+        rendererService.getRenderer()?.clearMapImage();
       }
       // One write, so a subscriber that throws cannot leave the store half reset. Unbinding
       // it from the file states what `mapLoaded` already enforces: this state is not the map's.
@@ -242,13 +247,6 @@ export class MapService {
     }
   }
 
-  /** Swaps the held background reference, releasing the previous map's one. */
-  private holdBackground(url: string | null): void {
-    const previous = this.currentBackgroundUrl;
-    this.currentBackgroundUrl = url;
-    if (previous) backgroundTextureCache.release(previous);
-  }
-
   /**
    * Takes the store out of use before the scene's file is rewritten from outside: loads that
    * wait or run are stopped, and the store, left like a scene that is being closed, is no
@@ -261,10 +259,9 @@ export class MapService {
     state.setMapLoaded(false);
   }
 
-  /** Stops waiting and running loads and releases resources held for the loaded map. */
+  /** Stops waiting and running loads; the map image belongs to the renderer, which releases it. */
   public destroy(): void {
     this.loads.cancel();
-    this.holdBackground(null);
   }
 
   /** `loadMap` for a file of the vault. */

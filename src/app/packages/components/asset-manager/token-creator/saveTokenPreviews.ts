@@ -10,6 +10,7 @@ import { prepareSaveImages, type SaveImageContext } from './prepareSaveImages';
 import { saveEditedPreview } from './saveEditedPreview';
 import type { EditTokenInput, TokenPreview } from './types';
 import type { ProcessedImage } from '../../../../imageProcessing/imageProcessing';
+import { prebuildMapImageAt } from '../../../../pixi/mapImage/prebuildMapImage';
 
 export interface SaveTokenPreviewsOptions extends SaveImageContext {
   app: App;
@@ -92,6 +93,9 @@ async function savePreviews(options: SaveTokenPreviewsOptions): Promise<number> 
       return;
     }
     saved += written.length;
+    for (const { asset } of written) {
+      if (asset.type === 'map') prebuildMapImageAt(app, asset.mapFilePath);
+    }
     options.onSaved?.(written.map(w => w.id));
   };
 

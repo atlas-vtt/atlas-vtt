@@ -1,5 +1,5 @@
 import { DecodeBudget } from './decodeBudget';
-import { DecodedLevels, decodeSource, decodedLevelsCost, OpenError } from './decodedLevels';
+import { DecodedLevels, decodeSource, decodedLevelsCost, decodedSizeCost, OpenError } from './decodedLevels';
 import { PyramidBuild, type BuildOutcome } from './pyramidBuilder';
 import { pyramidOf, type Pyramid, type TileRef } from './pyramid';
 import type { TileGraphics } from './tileGraphics';
@@ -48,6 +48,11 @@ interface MapEntry extends MapSource {
 
 const PENDING_PYRAMID: Pyramid = pyramidOf(1, 1);
 
+/** A bitmap decoded on the main thread, until a build takes it over. */
+interface HeldBitmap {
+  bitmap: ImageBitmap | null;
+}
+
 /** Thrown by an entry that found no complete pyramid and was given no bytes. */
 class NeedBytes extends Error {}
 
@@ -68,24 +73,28 @@ export class TileDecoderCore {
     this.server = new TileServer(deps.store, deps.graphics);
   }
 
-  /** Opens a map for serving; `need-bytes` when only its bytes can tell or build it. */
-  async open(identity: FileIdentity | null, bytes: ArrayBuffer | null): Promise<OpenOutcome> {
-    const found = await this.acquire(identity, bytes);
+  /**
+   * Opens a map for serving; `need-bytes` when only its bytes can tell or build it. `decoded`
+   * (the image decoded on the main thread) is built from instead of the bytes, which still give
+   * the hash; the core takes it over and closes it when it is not needed.
+   */
+  async open(identity: FileIdentity | null, bytes: ArrayBuffer | null, decoded: ImageBitmap | null = null): Promise<OpenOutcome> {
+    const found = await this.acquire(identity, bytes, decoded);
     if (found.kind !== 'entry') return found;
     const { entry } = found;
-    entry.refs += 1;
-    this.deps.store.pin(entry.hash);
+    entry.refs += 1; // keeps the pin `acquire` took until `close`
     const handle = this.nextHandle++;
     this.handles.set(handle, entry);
     return { kind: 'opened', opened: { handle, hash: entry.hash, pyramid: entry.pyramid } };
   }
 
   /** Builds a map's pyramid without serving it; resolves once the build has ended. */
-  async prebuild(identity: FileIdentity | null, bytes: ArrayBuffer | null): Promise<PrebuildOutcome> {
-    const found = await this.acquire(identity, bytes);
+  async prebuild(identity: FileIdentity | null, bytes: ArrayBuffer | null, decoded: ImageBitmap | null = null): Promise<PrebuildOutcome> {
+    const found = await this.acquire(identity, bytes, decoded);
     if (found.kind !== 'entry') return found;
     const { entry } = found;
     const complete = entry.built ? (await entry.built) === 'complete' : entry.complete;
+    this.deps.store.unpin(entry.hash);
     this.dropIfUnused(entry);
     return { kind: 'prebuilt', hash: entry.hash, complete };
   }
@@ -118,7 +127,8 @@ export class TileDecoderCore {
     return this.deps.store.totalBytes();
   }
 
-  clearCache(): Promise<void> {
+  /** Deletes every pyramid no open map or running build uses; returns the bytes left. */
+  clearCache(): Promise<number> {
     return this.deps.store.clear();
   }
 
@@ -128,11 +138,15 @@ export class TileDecoderCore {
     return entry;
   }
 
+  /** The entry once it can serve, its hash pinned before the manifest is read (no clear or eviction comes between); the caller unpins. */
   private async acquire(
     identity: FileIdentity | null,
     bytes: ArrayBuffer | null,
+    decoded: ImageBitmap | null,
   ): Promise<{ kind: 'entry'; entry: MapEntry } | { kind: 'need-bytes' } | { kind: 'failed'; failure: OpenFailure }> {
     const { store } = this.deps;
+    const held: HeldBitmap = { bitmap: decoded };
+    let pinned: string | null = null;
     try {
       let hash = identity ? await store.lookupIdentity(identity.path, identity.size, identity.mtime) : null;
       if (!hash && !bytes) return { kind: 'need-bytes' };
@@ -140,27 +154,33 @@ export class TileDecoderCore {
         hash = await this.deps.sha256(bytes);
         if (identity) await store.rememberIdentity(identity.path, identity.size, identity.mtime, hash);
       }
-      return { kind: 'entry', entry: await this.readyEntry(hash!, bytes) };
+      pinned = hash!;
+      store.pin(pinned);
+      return { kind: 'entry', entry: await this.readyEntry(pinned, bytes, held) };
     } catch (error) {
+      if (pinned) store.unpin(pinned);
       return error instanceof NeedBytes ? { kind: 'need-bytes' } : { kind: 'failed', failure: failureOf(error) };
+    } finally {
+      // Not built from: the cache served the map, or another open of it was under way.
+      held.bitmap?.close();
     }
   }
 
   /** The entry of `hash` once it can serve; an entry that waited without bytes is tried again with them. */
-  private async readyEntry(hash: string, bytes: ArrayBuffer | null): Promise<MapEntry> {
-    const entry = this.entryFor(hash, bytes);
+  private async readyEntry(hash: string, bytes: ArrayBuffer | null, held: HeldBitmap): Promise<MapEntry> {
+    const entry = this.entryFor(hash, bytes, held);
     try {
       await entry.ready;
       return entry;
     } catch (error) {
       if (!(error instanceof NeedBytes) || !bytes) throw error;
-      const retried = this.entryFor(hash, bytes);
+      const retried = this.entryFor(hash, bytes, held);
       await retried.ready;
       return retried;
     }
   }
 
-  private entryFor(hash: string, bytes: ArrayBuffer | null): MapEntry {
+  private entryFor(hash: string, bytes: ArrayBuffer | null, held: HeldBitmap): MapEntry {
     const existing = this.entries.get(hash);
     if (existing) return existing;
     const entry: MapEntry = {
@@ -176,14 +196,14 @@ export class TileDecoderCore {
       releaseBudget: null,
     };
     this.entries.set(hash, entry);
-    entry.ready = this.prepare(entry, bytes);
+    entry.ready = this.prepare(entry, bytes, held);
     entry.ready.catch(() => {
       if (this.entries.get(hash) === entry) this.entries.delete(hash);
     });
     return entry;
   }
 
-  private async prepare(entry: MapEntry, bytes: ArrayBuffer | null): Promise<void> {
+  private async prepare(entry: MapEntry, bytes: ArrayBuffer | null, held: HeldBitmap): Promise<void> {
     const manifest = await this.deps.store.readManifest(entry.hash);
     if (manifest?.complete) {
       entry.pyramid = pyramidOf(manifest.width, manifest.height, manifest.decodedScale);
@@ -192,10 +212,18 @@ export class TileDecoderCore {
       return;
     }
     if (!bytes) throw new NeedBytes('The map image must be read to build its tiles.');
+    const decoded = held.bitmap;
+    held.bitmap = null;
     const blob = new Blob([bytes]);
-    const release = await this.budget.acquire(await decodedLevelsCost(blob));
+    let release: () => void;
     try {
-      const source = await decodeSource(blob, this.deps.graphics);
+      release = await this.budget.acquire(decoded ? decodedSizeCost(decoded.width, decoded.height) : await decodedLevelsCost(blob));
+    } catch (error) {
+      decoded?.close();
+      throw error;
+    }
+    try {
+      const source = decoded ? { pyramid: pyramidOf(decoded.width, decoded.height), bitmap: decoded } : await decodeSource(blob, this.deps.graphics);
       entry.pyramid = source.pyramid;
       entry.levels = new DecodedLevels(source.pyramid, source.bitmap, this.deps.graphics);
       entry.releaseBudget = release;

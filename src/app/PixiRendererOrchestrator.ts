@@ -2,7 +2,7 @@ import { createSceneSource } from './plugin/host/sceneSource';
 import { canRunMapHotkeys, matchesMapHotkey } from './keyboard/mapHotkeys';
 import { SettingsService, type AtlasSettings } from './services/SettingsService';
 import { DEFAULT_LASER_POINTER_SETTINGS } from './tools/laserPointerSettings';
-import { Application, Sprite, Container, type FederatedPointerEvent } from "pixi.js";
+import { Application, Container, type FederatedPointerEvent } from "pixi.js";
 import { runInBackground } from './utils/backgroundTask';
 import { Viewport } from "pixi-viewport"; // Keep for type, but instance comes from PixiAppManager
 import { WorkspaceLeaf } from 'obsidian';
@@ -48,12 +48,13 @@ import { SpatialAudioEngine } from './audio/SpatialAudioEngine';
 import { AssetService } from './services/AssetService';
 import { mapMeasurementSettings } from './services/mapMeasurementSettings';
 import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
-import { destroyTree } from './pixi/utils/destroyTree';
 import { requestRender } from './pixi/RenderScheduler';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
 import { shownRollTokens } from './pixi/playerRollTokens';
 import type { ShownRollToken } from './services/playerRollSource';
 import { t } from './i18n';
+import type { MapImage, MapImageChange } from './pixi/mapImage/MapImage';
+import { MapController } from './MapController';
 
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
@@ -85,13 +86,14 @@ export class PixiRendererOrchestrator { // Renamed class
   private bufferCache?: AudioBufferCache;
   private spatialAudioEngine?: SpatialAudioEngine;
 
-  private layerMap: Container | null = null;
   private layerGrid: Container | null = null;
   private layerTemplate: Container | null = null;
   private layerLighting: Container | null = null;
   private layerFog: Container | null = null; // Add fog layer
   private gridSystem?: GridSystem; // Instance of GridSystem
-  private backgroundSprite: Sprite | null = null;
+  /** The view's map image, owned here once the first load hands it over. */
+  private mapImage: MapImage | null = null;
+  private stopFollowingMapImage: (() => void) | null = null;
   private obsApp: App;
   private eventBus: EventEmitter;
   private activeHoverLinkAnchorEl: HTMLElement | null = null;
@@ -106,7 +108,6 @@ export class PixiRendererOrchestrator { // Renamed class
   private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
   private getViewportPositionHandler: ((e: WindowEventMap['get-viewport-position']) => void) | null = null;
   private eventBusUnsubscribers: Array<() => void> = [];
-  private gridInitRetryTimeout: number | null = null;
   /** Screen-space overlays that exist only for the DM, such as tool previews. */
   private readonly dmScreenOverlays = new Set<Container>();
 
@@ -395,7 +396,7 @@ export class PixiRendererOrchestrator { // Renamed class
         obsApp: this.obsApp,
         viewId: this.viewId,
         bounds: () => this.getMapRect(),
-        albedo: () => (this.backgroundSprite && !this.backgroundSprite.destroyed ? this.backgroundSprite.texture : null),
+        albedo: () => this.mapImage?.albedoTexture() ?? null,
         grid: () => this.gridSystem ?? null,
         fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
       });
@@ -466,61 +467,29 @@ export class PixiRendererOrchestrator { // Renamed class
     
   }
 
-  public initGrid(options: GridOptions, bgSprite: Sprite): void {
-    const currentViewport = this.viewport;
-    if (!currentViewport) return;
-    if (!bgSprite) return;
-    this.backgroundSprite = bgSprite;
-
-    // Check if sprite is ready before initializing grid
-    if (!bgSprite.width || !bgSprite.height || bgSprite.width <= 0 || bgSprite.height <= 0) {
-      if (this.gridInitRetryTimeout) {
-        window.clearTimeout(this.gridInitRetryTimeout);
-        this.gridInitRetryTimeout = null;
-      }
-
-      // Wait for sprite to be ready
-      const checkAndInitGrid = () => {
-        if (this._isDestroyed || this.backgroundSprite !== bgSprite) {
-          this.gridInitRetryTimeout = null;
-          return;
-        }
-
-        if (bgSprite.width > 0 && bgSprite.height > 0) {
-          this.gridInitRetryTimeout = null;
-          this._initGridInternal(options, bgSprite);
-        } else {
-          // Check again after a short delay
-          this.gridInitRetryTimeout = window.setTimeout(checkAndInitGrid, 50);
-        }
-      };
-      
-      this.gridInitRetryTimeout = window.setTimeout(checkAndInitGrid, 50);
-      return;
-    }
-
-    if (this.gridInitRetryTimeout) {
-      window.clearTimeout(this.gridInitRetryTimeout);
-      this.gridInitRetryTimeout = null;
-    }
-    
-    this._initGridInternal(options, bgSprite);
+  /** Builds the grid over `mapImage`, or brings the existing grid `options` and the image. */
+  public initGrid(options: GridOptions, mapImage: MapImage): void {
+    if (!this.viewport) return;
+    this.setMapImage(mapImage);
+    // Without an image (a scene that failed) the grid follows the next one, through `mapImageChanged`.
+    if (!mapImage.worldRect) return;
+    this._initGridInternal(options, mapImage);
   }
-  
-  private _initGridInternal(options: GridOptions, bgSprite: Sprite): void {
+
+  private _initGridInternal(options: GridOptions, mapImage: MapImage): void {
     const currentViewport = this.viewport;
     const currentApp = this.app;
-    if (!currentViewport || !bgSprite) return;
+    if (!currentViewport) return;
     
     if (!this.gridSystem) {
-      this.gridSystem = new GridSystem(currentApp, currentViewport, bgSprite, options);
+      this.gridSystem = new GridSystem(currentApp, currentViewport, mapImage.layer, options, mapImage);
       // Apply current grid visibility state from store
       const currentState = this.store.getState();
       const grid = currentState.grid;
       const gridVisible = grid && typeof grid.visible === 'boolean' ? grid.visible : true;
       this.gridSystem.setEnabled(gridVisible);
     } else {
-      this.gridSystem.updateBackgroundSprite(bgSprite);
+      this.gridSystem.updateBackgroundSprite(mapImage.layer, mapImage);
       // Only update options that have changed, preserving offset if not provided
       const currentOptions = this.gridSystem.getOptions();
       const mergedOptions: GridOptions = {
@@ -599,62 +568,57 @@ export class PixiRendererOrchestrator { // Renamed class
     
   }
 
-  public setBackgroundSprite(sprite: Sprite): void {
-    const currentViewport = this.viewport;
-    if (!currentViewport) return;
-
-    const previous = this.backgroundSprite;
-    this.backgroundSprite = sprite;
-    // The texture of the sprite it replaces is unloaded by whoever loaded it
-    if (previous && previous !== sprite) destroyTree(previous);
-    this.lighting?.renderer.refreshBounds();
-
-    // Ensure new background is at the bottom
-    if (!sprite.parent) {
-        currentViewport.addChildAt(sprite, 0);
-    } else if (currentViewport.getChildAt(0) !== sprite) {
-        currentViewport.setChildIndex(sprite, 0);
-    }
-
-    this.eventBus.emit('background-sprite-updated', {
-      x: sprite.x,
-      y: sprite.y,
-      width: sprite.width,
-      height: sprite.height,
-    });
-
-    if (this.gridSystem) {
-      this.gridSystem.updateBackgroundSprite(sprite);
-      // Don't pass empty options - this would reset the grid settings!
-      // The updateBackgroundSprite call should trigger recreation with current options
-    }
+  /**
+   * Takes over the view's map image: its layer goes to the bottom of the viewport, and the grid,
+   * the fog and the lighting follow every image it shows. Called once; the same image again does nothing.
+   */
+  public setMapImage(mapImage: MapImage): void {
+    if (this.mapImage === mapImage || this._isDestroyed) return;
+    const viewport = this.viewport;
+    if (!viewport) return;
+    this.releaseMapImage();
+    this.mapImage = mapImage;
+    viewport.addChildAt(mapImage.layer, 0);
+    const stopChanges = mapImage.onChange((change) => this.mapImageChanged(change));
+    const stopBackground = MapController.followBackground(this.obsApp, this.store, mapImage);
+    this.stopFollowingMapImage = (): void => {
+      stopChanges();
+      stopBackground();
+    };
+    this.mapImageChanged('image');
   }
 
-  /**
-   * Takes a background sprite off the map and destroys it. When it was the one
-   * shown, the map has no background until `setBackgroundSprite` brings the next:
-   * the grid and the lighting must not keep reading a destroyed sprite.
-   */
-  public removeBackgroundSprite(sprite: Sprite): void {
-    if (this.backgroundSprite === sprite) {
-      this.backgroundSprite = null;
-      this.gridSystem?.clearBackgroundSprite();
-      if (!this._isDestroyed) this.lighting?.renderer.refreshBounds();
-      this.eventBus.emit('background-sprite-updated', undefined);
-    }
-    destroyTree(sprite);
+  public getMapImage(): MapImage | null {
+    return this.mapImage;
   }
 
   /** Takes the map image off the canvas, as when its scene could not be opened. */
-  public clearBackgroundSprite(): void {
-    if (this.backgroundSprite) this.removeBackgroundSprite(this.backgroundSprite);
+  public clearMapImage(): void {
+    this.mapImage?.clear();
   }
 
-  /** The map image in world space; null until it has loaded. */
-  private getMapRect(): MapRect | null {
-    const sprite = this.backgroundSprite;
-    if (!sprite || sprite.destroyed || !(sprite.width > 0)) return null;
-    return { x: sprite.x, y: sprite.y, width: sprite.width, height: sprite.height };
+  /** The map image in world space; null while none is shown. */
+  public getMapRect(): MapRect | null {
+    const rect = this.mapImage?.worldRect;
+    return rect && rect.width > 0 ? rect : null;
+  }
+
+  private mapImageChanged(change: MapImageChange): void {
+    if (this._isDestroyed) return;
+    this.lighting?.renderer.refreshBounds();
+    if (change !== 'image') return;
+    const mapImage = this.mapImage;
+    const rect = this.getMapRect();
+    this.eventBus.emit('map-image-updated', rect ?? undefined);
+    if (mapImage && rect) this.gridSystem?.updateBackgroundSprite(mapImage.layer, mapImage);
+    else this.gridSystem?.clearBackgroundSprite();
+  }
+
+  private releaseMapImage(): void {
+    this.stopFollowingMapImage?.();
+    this.stopFollowingMapImage = null;
+    this.mapImage?.destroy();
+    this.mapImage = null;
   }
 
   public toggleGrid(visible?: boolean): boolean {
@@ -806,7 +770,6 @@ export class PixiRendererOrchestrator { // Renamed class
   getViewportInstance(): Viewport | null { return this.pixiAppManager.getViewport(); }
   getCanvasElement(): HTMLCanvasElement { return this.pixiAppManager.getCanvasElement(); }
   getGridSystem(): GridSystem | null { return this.gridSystem || null; }
-  getBackgroundSprite(): Sprite | null { return this.backgroundSprite; }
   getTokenRenderer(): TokenRenderer | null { return this.tokenRenderer || null; }
 
   /**
@@ -1046,11 +1009,6 @@ export class PixiRendererOrchestrator { // Renamed class
     delete this._unsubscribeFromGridVisibility;
     
 
-    if (this.gridInitRetryTimeout) {
-      window.clearTimeout(this.gridInitRetryTimeout);
-      this.gridInitRetryTimeout = null;
-    }
-    
     // Remove keyboard handler
     if (this.keyboardHandler) {
       document.removeEventListener('keydown', this.keyboardHandler);
@@ -1081,7 +1039,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.gridSystem?.destroy(); // Destroy GridSystem
     this.selectionManager?.destroy(); // Destroy SelectionManager
     
-    this.clearBackgroundSprite();
+    this.releaseMapImage();
 
     this.pixiAppManager.destroy();
 

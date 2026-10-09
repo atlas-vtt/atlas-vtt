@@ -176,15 +176,29 @@ describe('TileStore', () => {
     expect(await h.store.readManifest('built')).toMatchObject({ complete: true, bytes: 40 });
   });
 
-  it('clears pyramids and identities, and a running build stops writing', async () => {
+  it('clears pyramids and identities when nothing is pinned, and a lost build stops writing', async () => {
     const { store, backend } = harness();
     await store.rememberIdentity('a.png', 1, 1, 'h');
     await store.beginPyramid(source('h'));
     await store.writeTiles('h', [tile(0, 0, 0, 8)]);
-    await store.clear();
+    expect(await store.clear()).toBe(0);
     expect(await store.totalBytes()).toBe(0);
     expect(await store.lookupIdentity('a.png', 1, 1)).toBeNull();
     expect(await store.writeTiles('h', [tile(0, 1, 0, 8)])).toBe(false);
     expect((await backend.hasTiles('h')).size).toBe(0);
+  });
+
+  it('keeps pinned pyramids when clearing and reports what they take', async () => {
+    const h = harness();
+    await completePyramid(h, 'open', 30, 1);
+    await completePyramid(h, 'closed', 50, 2);
+    await h.store.rememberIdentity('open.png', 1, 1, 'open');
+    h.store.pin('open');
+    expect(await h.store.clear()).toBe(30);
+    expect(await h.store.readManifest('open')).toMatchObject({ complete: true, bytes: 30 });
+    expect(await h.store.readManifest('closed')).toBeNull();
+    expect((await h.backend.hasTiles('closed')).size).toBe(0);
+    expect(await h.store.lookupIdentity('open.png', 1, 1)).toBe('open');
+    expect(await h.store.writeTiles('open', [tile(0, 1, 0, 5)])).toBe(true);
   });
 });

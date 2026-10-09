@@ -75,7 +75,7 @@ export class FogOfWarRenderer {
   private fogBrushSizeChangedHandler: (size: number) => void;
   private fogClearAllHandler: () => void;
   private fogModeChangedHandler: (mode: StrokeMode) => void;
-  private backgroundBoundsUpdatedHandler: (data?: { x: number; y: number; width: number; height: number }) => void;
+  private mapImageUpdatedHandler: (data?: { x: number; y: number; width: number; height: number }) => void;
 
   constructor(
     private viewport: Viewport,
@@ -133,7 +133,7 @@ export class FogOfWarRenderer {
     this.fogBrushSizeChangedHandler = (size: number) => this.setBrushSize(size);
     this.fogClearAllHandler = () => this.clearAllFog();
     this.fogModeChangedHandler = (mode: StrokeMode) => this.setFogMode(mode);
-    this.backgroundBoundsUpdatedHandler = (data) => {
+    this.mapImageUpdatedHandler = (data) => {
       if (
         data &&
         typeof data.x === 'number' &&
@@ -307,7 +307,7 @@ export class FogOfWarRenderer {
     this.eventBus.off('fog-brush-size-changed', this.fogBrushSizeChangedHandler);
     this.eventBus.off('fog-clear-all', this.fogClearAllHandler);
     this.eventBus.off('fog-mode-changed', this.fogModeChangedHandler);
-    this.eventBus.off('background-sprite-updated', this.backgroundBoundsUpdatedHandler);
+    this.eventBus.off('map-image-updated', this.mapImageUpdatedHandler);
 
     this.cursorPreview.destroy();
     this.compositor.destroy();
@@ -375,7 +375,7 @@ export class FogOfWarRenderer {
     this.eventBus.on('fog-brush-size-changed', this.fogBrushSizeChangedHandler);
     this.eventBus.on('fog-clear-all', this.fogClearAllHandler);
     this.eventBus.on('fog-mode-changed', this.fogModeChangedHandler);
-    this.eventBus.on('background-sprite-updated', this.backgroundBoundsUpdatedHandler);
+    this.eventBus.on('map-image-updated', this.mapImageUpdatedHandler);
   }
 
   private setupStoreSubscriptions(): void {
@@ -843,91 +843,18 @@ export class FogOfWarRenderer {
       return explicitPadded;
     }
 
-    type Candidate = {
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      area: number;
-      source: string;
-    };
-
-    const candidates: Candidate[] = [];
-    for (const child of this.viewport.children) {
-      if (child === this.container) {
-        continue;
-      }
-      if (this.isTexturedDisplayObject(child)) {
-        candidates.push({
-          x: child.x,
-          y: child.y,
-          width: child.width,
-          height: child.height,
-          area: child.width * child.height,
-          source: `viewport-child:${child.label || child.constructor?.name || 'DisplayObject'}`,
-        });
-      }
-    }
-
-    if (candidates.length === 0) {
-      const stack: PIXI.Container[] = [...this.viewport.children];
-      while (stack.length > 0) {
-        const node = stack.pop()!;
-        if (node === this.container) {
-          continue;
-        }
-
-        if (this.isTexturedDisplayObject(node)) {
-          const globalBounds = node.getBounds();
-          const topLeft = this.viewport.toLocal(new PIXI.Point(globalBounds.x, globalBounds.y));
-          const bottomRight = this.viewport.toLocal(
-            new PIXI.Point(globalBounds.x + globalBounds.width, globalBounds.y + globalBounds.height),
-          );
-          const width = Math.abs(bottomRight.x - topLeft.x);
-          const height = Math.abs(bottomRight.y - topLeft.y);
-          if (width > 0 && height > 0) {
-            candidates.push({
-              x: Math.min(topLeft.x, bottomRight.x),
-              y: Math.min(topLeft.y, bottomRight.y),
-              width,
-              height,
-              area: width * height,
-              source: `descendant:${node.label || node.constructor?.name || 'Sprite'}`,
-            });
-          }
-        }
-
-        if (node.children.length > 0) {
-          stack.push(...node.children);
-        }
-      }
-    }
-
-    const fogOpsBounds = this.calculateFogOpsBoundsCandidate();
-    if (fogOpsBounds) {
-      candidates.push(fogOpsBounds);
-    }
-
-    const sorted = [...candidates].sort((a, b) => b.area - a.area);
-    const chosen = sorted[0];
+    // Without a map image (none loaded yet) the fog covers what was painted, or a default area.
+    const chosen = this.calculateFogOpsBoundsCandidate();
     if (!chosen) {
       return DEFAULT_BOUNDS;
     }
 
-    const paddedBounds = {
+    return {
       x: chosen.x - BOUNDS_PADDING,
       y: chosen.y - BOUNDS_PADDING,
       width: chosen.width + BOUNDS_PADDING * 2,
       height: chosen.height + BOUNDS_PADDING * 2,
     };
-    return paddedBounds;
-  }
-
-  private isTexturedDisplayObject(node: PIXI.Container): boolean {
-    if (!('texture' in node) || !node.texture || node.texture === PIXI.Texture.EMPTY) {
-      return false;
-    }
-    return node.width > 0 && node.height > 0;
   }
 
   private calculateFogOpsBoundsCandidate():

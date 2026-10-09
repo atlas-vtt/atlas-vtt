@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import type { AtlasView } from '../atlas-view';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { focusToken } from '../pixi/tokenFocus';
+import { mapFit } from '../pixi/fitMapRect';
 import { addTokenHighlight } from '../pixi/utils/tokenHighlight';
 import type { SettingsService } from '../services/SettingsService';
 import type { ViewAtlasStore } from '../storeFactory';
@@ -16,20 +17,14 @@ export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlas
         // Shift+1: Fit entire map in view with smooth animation
         e.preventDefault();
         const vp = view?.renderer?.getViewportInstance?.();
-        const bg = view?.renderer?.getBackgroundSprite?.();
-        if (!vp || !bg) return;
+        const rect = view?.renderer?.getMapRect?.();
+        if (!vp || !rect) return;
 
-        const mapWidth = bg.width;
-        const mapHeight = bg.height;
-        const padding = 0.9;
-        const scaleX = (vp.screenWidth * padding) / mapWidth;
-        const scaleY = (vp.screenHeight * padding) / mapHeight;
-        const targetScale = Math.max(0.1, Math.min(Math.min(scaleX, scaleY), 5));
-
+        const fit = mapFit(vp, rect);
         // Use pixi-viewport's animate method for smooth transition
         vp.animate({
-          position: { x: mapWidth / 2, y: mapHeight / 2 },
-          scale: targetScale,
+          position: { x: fit.x, y: fit.y },
+          scale: fit.scale,
           time: 400,
           ease: 'easeInOutCubic',
         });

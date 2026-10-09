@@ -1,5 +1,5 @@
 import type { Sprite } from 'pixi.js';
-import { grayFromSprite } from '../pixi/gridDetection/grayImage';
+import { grayFromCanvasSource, grayFromSprite } from '../pixi/gridDetection/grayImage';
 import type { GrayImage } from '../pixi/gridDetection/grayImage';
 
 const BLACK = 0x000000;
@@ -21,6 +21,29 @@ export function contrastColorForGray(image: GrayImage): number {
 export function contrastColorForSprite(sprite: Sprite): number | null {
   const image = grayFromSprite(sprite, SAMPLE_SIDE);
   return image ? contrastColorForGray(image) : null;
+}
+
+/** Where a map's pixels are read from: the whole image fit within `maxSide`, or null without one (`MapImage`). */
+export interface MapPixels {
+  overview(maxSide: number): Promise<ImageBitmap | null>;
+}
+
+/** The automatic grid colour for a map, from a small overview of it; null when it has no pixels to read. */
+export async function contrastColorForPixels(pixels: MapPixels): Promise<number | null> {
+  let bitmap: ImageBitmap | null;
+  try {
+    bitmap = await pixels.overview(SAMPLE_SIDE);
+  } catch (error) {
+    console.debug('[Atlas] The map image could not be read for the grid colour:', error);
+    return null;
+  }
+  if (!bitmap) return null;
+  try {
+    const image = grayFromCanvasSource(bitmap, bitmap.width, bitmap.height, SAMPLE_SIDE);
+    return image ? contrastColorForGray(image) : null;
+  } finally {
+    bitmap.close();
+  }
 }
 
 /** The store keeps the grid colour as a hex string, the GridSystem as a number; unset stays unset (automatic). */

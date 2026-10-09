@@ -4,7 +4,6 @@ import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
 import { SceneLightingPanelHost } from '../pixi/lighting/SceneLightingPanel';
 import { App } from 'obsidian';
 import { Application } from 'pixi.js';
-import { BackgroundSprite } from './BackgroundSprite';
 import { MainToolbar } from '../packages/components/MainToolbar';
 import { GridSettingsModal } from './components/GridSettingsModalSimple';
 import { GridAlignmentOverlay } from './components/GridAlignmentOverlay';
@@ -94,9 +93,6 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const isMapLoading = useAtlasStore(state => state.isMapLoading);
   const mapLoadingProgress = useAtlasStore(state => state.mapLoadingProgress);
   const mapLoadingMessage = useAtlasStore(state => state.mapLoadingMessage);
-  
-  // Get background directly from store (for streamed maps)
-  const storeBackground = useAtlasStore(state => state.background);
 
   // Get initiative state and actions for keyboard shortcuts
   const initiativeTrackerOpen = useAtlasStore(state => state.initiativeTrackerOpen);
@@ -156,9 +152,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           </PanelBoundary>
         )}
         <div className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%' }}>
-          {/* Every surface has its own boundary: one that fails must not take the map image or the others with it */}
-          {storeBackground && <PanelBoundary name="the map image"><BackgroundSprite imagePath={storeBackground} /></PanelBoundary>}
-
+          {/* Every surface has its own boundary: one that fails must not take the others with it */}
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}
           <div className="atlas-top-bar-row">

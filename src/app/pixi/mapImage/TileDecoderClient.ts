@@ -29,6 +29,9 @@ export type OpenedMap = OpenedPyramid;
  */
 export type BytesSource = ArrayBuffer | (() => Promise<ArrayBuffer>);
 
+/** Decodes a file's bytes on the main thread, for images a worker cannot decode. */
+export type MainThreadDecode = (bytes: ArrayBuffer) => Promise<ImageBitmap>;
+
 /** A map image that cannot be shown; reported once per open. */
 export class TileOpenError extends Error {
   constructor(readonly failure: OpenFailure) {
@@ -84,9 +87,13 @@ export class TileDecoderClient {
 
   constructor(private readonly options: TileDecoderClientOptions) {}
 
-  /** Opens a map image for tiles; rejects with `TileOpenError` when it cannot be shown. */
-  async open(source: BytesSource, identity: FileIdentity | null): Promise<OpenedMap> {
-    const reply = await this.openLike('open', source, identity);
+  /**
+   * Opens a map image for tiles; rejects with `TileOpenError` when it cannot be shown. `decode`
+   * decodes the bytes on this thread for images a worker cannot decode (SVG); it runs only when
+   * the bytes are read, and its bitmap is transferred along with them.
+   */
+  async open(source: BytesSource, identity: FileIdentity | null, decode?: MainThreadDecode): Promise<OpenedMap> {
+    const reply = await this.openLike('open', source, identity, decode);
     if (reply.type !== 'opened') throw new Error(`Unexpected reply to open: ${reply.type}`);
     return reply.opened;
   }
@@ -118,9 +125,11 @@ export class TileDecoderClient {
     return reply.bytes;
   }
 
-  async clearCache(): Promise<void> {
+  /** Deletes every cached pyramid except those of open maps and running builds; resolves with the bytes left. */
+  async clearCache(): Promise<number> {
     const reply = await this.request({ type: 'clear-cache', id: this.nextId++ }, []);
     if (reply.type !== 'cleared') throw this.failure(reply);
+    return reply.bytes;
   }
 
   /** Build progress, completion and failures; returns the unsubscribe. */
@@ -142,15 +151,26 @@ export class TileDecoderClient {
     this.stop(new Error(STOPPED));
   }
 
-  private async openLike(type: 'open' | 'prebuild', source: BytesSource, identity: FileIdentity | null): Promise<TileReply> {
+  private async openLike(
+    type: 'open' | 'prebuild',
+    source: BytesSource,
+    identity: FileIdentity | null,
+    decode?: MainThreadDecode,
+  ): Promise<TileReply> {
     const id = this.nextId++;
     const read = (): Promise<ArrayBuffer> => (typeof source === 'function' ? source() : Promise.resolve(source));
+    const send = async (bytes: ArrayBuffer | null): Promise<TileReply> => {
+      // Decoded before the bytes are transferred, which empties their buffer.
+      const decoded = bytes && decode ? await decode(bytes) : null;
+      if (!decoded) return this.request({ type, id, identity, bytes }, bytes ? [bytes] : []);
+      return this.request({ type, id, identity, bytes, decoded }, bytes ? [bytes, decoded] : [decoded]);
+    };
     // Bytes in hand go along at once; a reader waits until the worker asks, unless no identity can stand for them.
     let bytes = typeof source !== 'function' || !identity ? await read() : null;
-    let reply = await this.request({ type, id, identity, bytes }, bytes ? [bytes] : []);
+    let reply = await send(bytes);
     if (reply.type === 'need-bytes' && !bytes) {
       bytes = await read();
-      reply = await this.request({ type, id, identity, bytes }, [bytes]);
+      reply = await send(bytes);
     }
     if (reply.type === 'open-failed') throw new TileOpenError(reply.failure);
     if (reply.type === 'error' || reply.type === 'need-bytes') throw this.failure(reply);

@@ -4,7 +4,7 @@ import { useAtlasUI } from '../root/AtlasUIContext';
 import { GridAlignmentController } from '../../pixi/GridAlignmentController';
 import type { AlignmentResult } from '../../pixi/GridAlignmentController';
 import type { GridType } from '../../grid/GridSystem';
-import { detectGridFromSprite } from '../../pixi/gridDetection/detectGrid';
+import { detectGridFromMapImage } from '../../pixi/gridDetection/detectGrid';
 import { describeGridType } from '../hooks/useGridAlignmentEffects';
 import type { AlignmentTabProps } from '../hooks/useGridAlignmentEffects';
 import { IntersectionsTab } from './IntersectionsTab';
@@ -63,10 +63,10 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
     const viewport = view?.renderer?.getViewportInstance();
     const gridSystem = view?.renderer?.getGridSystem();
     const canvasEl = view?.renderer?.getCanvasElement();
-    const bgSprite = view?.renderer?.getBackgroundSprite?.() ?? null;
+    const mapLayer = view?.renderer?.getMapImage?.()?.layer ?? null;
     if (!viewport || !gridSystem || !canvasEl) return;
 
-    controllerRef.current = new GridAlignmentController(viewport, gridSystem, canvasEl, bgSprite);
+    controllerRef.current = new GridAlignmentController(viewport, gridSystem, canvasEl, mapLayer);
     setControllerVersion(v => v + 1);
   }, [view]);
 
@@ -119,8 +119,8 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
   }, [initController, view]);
 
   const handleAutoDetect = useCallback((): void => {
-    const sprite = view?.renderer?.getBackgroundSprite?.();
-    if (!sprite || detecting) return;
+    const mapImage = view?.renderer?.getMapImage?.();
+    if (!mapImage || detecting) return;
 
     controllerRef.current?.cleanupVisuals();
     setResult(null);
@@ -128,14 +128,11 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
     setDetecting(true);
     setDetectionStatus(t('align.analysing'));
 
-    // Let the status paint before the CPU-bound detection runs.
-    window.setTimeout(() => {
-      let detected: AlignmentResult | null = null;
-      try {
-        detected = detectGridFromSprite(sprite);
-      } catch (error) {
-        console.error('[GridAlignment] Auto-detect failed', error);
-      }
+    // The map's pixels come from the tile worker, so the status paints before the CPU-bound detection runs.
+    void detectGridFromMapImage(mapImage).catch((error: unknown): null => {
+      console.error('[GridAlignment] Auto-detect failed', error);
+      return null;
+    }).then((detected) => {
       setDetecting(false);
       if (!detected || !detected.gridType) {
         setDetectionStatus(t('align.noGrid'));
@@ -146,7 +143,7 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
       setDetectionStatus(
         t('align.detectedFull', { type: describeGridType(detected.gridType), size: detected.cellSize.toFixed(2), percent: Math.round((detected.confidence ?? 0) * 100) }),
       );
-    }, 30);
+    });
   }, [view, detecting]);
 
   const handleApply = useCallback((): void => {

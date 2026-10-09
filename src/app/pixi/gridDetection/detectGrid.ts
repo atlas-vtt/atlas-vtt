@@ -4,10 +4,9 @@
  * proposal whose edges really sit on lines of the map wins.
  */
 
-import type { Sprite } from 'pixi.js';
 import type { AlignmentResult } from '../gridAlignmentMath';
 import { powerSpectrum2D } from './fft';
-import { downsampleGray, grayFromSprite, localContrast, toWindowedSquare } from './grayImage';
+import { downsampleGray, grayFromCanvasSource, localContrast, toWindowedSquare } from './grayImage';
 import type { GrayImage } from './grayImage';
 import { spectralHypotheses } from './spectralHypotheses';
 import type { SpectralHypothesis } from './spectralHypotheses';
@@ -15,6 +14,8 @@ import type { GridType } from '../../grid/GridSystem';
 import { latticeSupport } from './latticeFit';
 import { refineGrid } from './refineGrid';
 import type { RefinedGrid } from './refineGrid';
+import type { MapPixels } from '../../grid/gridContrastColor';
+import type { PixelRect } from '../mapImage/pyramid';
 
 const SPECTRUM_SIZE = 512;
 /** Plausible line spacing in spectrum pixels. */
@@ -103,29 +104,42 @@ export function detectGridInImage(image: GrayImage): RefinedGrid | null {
   return fits.length > 0 ? chooseFit(image, fits) : null;
 }
 
-function readBackgroundGray(sprite: Sprite): GrayImage | null {
-  if (sprite.destroyed) return null;
-  const source = sprite.texture?.source;
-  if (!source || source.pixelWidth < 64 || source.pixelHeight < 64) return null;
-  return grayFromSprite(sprite, MAX_ANALYSIS_SIDE);
+/** A map image to detect a grid on: its world rect and its pixels (`MapImage`). */
+export interface DetectableMap extends MapPixels {
+  readonly worldRect: PixelRect | null;
 }
 
-/** Detects the grid of a background sprite and returns it in world coordinates. */
-export function detectGridFromSprite(sprite: Sprite): AlignmentResult | null {
-  const image = readBackgroundGray(sprite);
-  if (!image) return null;
+/** The map's luminance at up to `MAX_ANALYSIS_SIDE` a side; null for a map too small or without pixels. */
+async function readMapGray(map: DetectableMap): Promise<{ image: GrayImage; rect: PixelRect } | null> {
+  const rect = map.worldRect;
+  if (!rect || rect.width < 64 || rect.height < 64) return null;
+  const bitmap = await map.overview(MAX_ANALYSIS_SIDE);
+  if (!bitmap) return null;
+  try {
+    const image = grayFromCanvasSource(bitmap, bitmap.width, bitmap.height, MAX_ANALYSIS_SIDE);
+    return image ? { image, rect } : null;
+  } finally {
+    bitmap.close();
+  }
+}
+
+/** Detects the grid of a map image and returns it in world coordinates. */
+export async function detectGridFromMapImage(map: DetectableMap): Promise<AlignmentResult | null> {
+  const read = await readMapGray(map);
+  if (!read) return null;
+  const { image, rect } = read;
 
   const detected = detectGridInImage(image);
   if (!detected) return null;
 
-  const worldPerPixel = sprite.width / image.width;
+  const worldPerPixel = rect.width / image.width;
   const round2 = (value: number): number => Math.round(value * 100) / 100;
   // Detected offsets index pixels; a pixel's centre is half a pixel further in continuous world space.
   return {
     gridType: detected.gridType,
     cellSize: round2(detected.cellSize * worldPerPixel),
-    offsetX: round2(sprite.x + (detected.offsetX + 0.5) * worldPerPixel),
-    offsetY: round2(sprite.y + (detected.offsetY + 0.5) * worldPerPixel),
+    offsetX: round2(rect.x + (detected.offsetX + 0.5) * worldPerPixel),
+    offsetY: round2(rect.y + (detected.offsetY + 0.5) * worldPerPixel),
     confidence: round2(detected.support),
   };
 }

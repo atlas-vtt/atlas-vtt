@@ -48,7 +48,7 @@ function setup(contextLost = false) {
   const orchestrator = new PixiRendererOrchestrator({} as any, manager as any, new EventEmitter(), store as any, 'test');
   const frames: SceneFrame[] = [];
   Object.assign(orchestrator as any, {
-    backgroundSprite: background,
+    mapImage: { layer: background },
     pinRenderer: { getPinContainer: () => pins },
     hexLinkRenderer: { container: hexLinks },
     tokenRenderer: { getGmViewLayers: () => [{ layer: hiddenToken, visible: true, alpha: 0.5 }] },

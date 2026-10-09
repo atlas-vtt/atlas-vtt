@@ -4,6 +4,7 @@ import type { AssetThumbnailService } from '../../../../services/AssetThumbnailS
 import { writeAssetImage } from '../../../../services/assetImageFiles';
 import { transferAssets } from '../../../../services/assetTransfer/assetTransfer';
 import type { ProcessedImage } from '../../../../imageProcessing/imageProcessing';
+import { prebuildMapImageAt } from '../../../../pixi/mapImage/prebuildMapImage';
 import { STORED_IMAGE_SCALE } from './cropMath';
 import { prepareSaveImage, type SaveImageContext } from './prepareSaveImages';
 import { overwriteStoredImage, storedImageFile } from './storedTokenImage';
@@ -51,6 +52,7 @@ export async function saveEditedPreview(save: EditedPreviewSave): Promise<number
     const data = await prepared.image.arrayBuffer();
     imagePath = await overwriteStoredImage(app, editToken.imagePath, data) ?? await writeAssetImage(app, preview.name, data);
     thumbnailPath = await thumbnails.tryThumbnailForImage(imagePath, prepared.thumbnail);
+    if (mode === 'map') prebuildMapImageAt(app, imagePath);
   }
   const before = await assetService.getAssetById(editToken.id);
   const previousThumbnail = before?.type === 'token' || before?.type === 'map' ? before.thumbnailPath : undefined;

@@ -76,7 +76,6 @@ export class AtlasView extends FileView {
   private lastContainerWidth: number = 0;
   private lastContainerHeight: number = 0;
   private mapLoadingUnsubscribe: (() => void) | null = null;
-  private pendingViewportRestoreRaf: number | null = null;
   private isViewClosing = false;
   private boundClaimLeafFocus: (() => void) | null = null;
   private boundHeaderLeafActivation: ((event: MouseEvent) => void) | null = null;
@@ -261,25 +260,14 @@ export class AtlasView extends FileView {
           return;
         }
 
-        // Restore viewport position for the active tab.  We must wait until
-        // loading finishes because (a) getState() → saveViewportState would
-        // overwrite the cache with centerAndFitMap values while loading, and
-        // (b) BackgroundSprite's useEffect calls moveCenter() asynchronously
-        // after texture load, which would override an immediate restore.
+        // Restore viewport position for the active tab once loading finishes:
+        // getState() → saveViewportState would otherwise overwrite the cache
+        // with the fitted camera of the load.
         const activeTabId = this.tabMetaStore.getState().activeTabId;
         if (activeTabId && this.viewportCache.has(activeTabId)) {
           const doRestore = (): void => {
             if (this.isViewClosing) return;
-            if (this.pendingViewportRestoreRaf !== null) {
-              window.cancelAnimationFrame(this.pendingViewportRestoreRaf);
-            }
-            // One extra frame so any remaining React effects (BackgroundSprite
-            // moveCenter) have already flushed.
-            this.pendingViewportRestoreRaf = window.requestAnimationFrame(() => {
-              this.pendingViewportRestoreRaf = null;
-              if (this.isViewClosing) return;
-              this.restoreViewportState(activeTabId);
-            });
+            this.restoreViewportState(activeTabId);
           };
 
           if (!this.store.getState().isMapLoading) {
@@ -318,11 +306,6 @@ export class AtlasView extends FileView {
     if (this.mapLoadingUnsubscribe) {
       this.mapLoadingUnsubscribe();
       this.mapLoadingUnsubscribe = null;
-    }
-
-    if (this.pendingViewportRestoreRaf !== null) {
-      window.cancelAnimationFrame(this.pendingViewportRestoreRaf);
-      this.pendingViewportRestoreRaf = null;
     }
 
     // Pinned note previews keep their scroll and cursor with the map

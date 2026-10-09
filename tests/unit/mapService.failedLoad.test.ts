@@ -40,7 +40,7 @@ function setup(renderer: object | null): {
 
 describe('MapService.loadMap failure', () => {
   it('never saves the emptied store over a map that failed to load', async () => {
-    const { service, store, files, rendererService } = setup({ clearBackgroundSprite: vi.fn() });
+    const { service, store, files, rendererService } = setup({ clearMapImage: vi.fn() });
 
     expect(await service.loadMap(rendererService, BROKEN_MAP)).toBeNull();
     expect(store.getState().mapPath).toBeNull();
@@ -59,7 +59,7 @@ describe('MapService.loadMap failure', () => {
   });
 
   it('takes the tokens of the scene before off the canvas, which waits for the load to end before it follows the store', async () => {
-    const { service, store, rendererService } = setup({ clearBackgroundSprite: vi.fn() });
+    const { service, store, rendererService } = setup({ clearMapImage: vi.fn() });
     const previous = { hero: token() };
     store.setState((state) => ({ mapPath: 'maps/previous.atlasmap', mapLoaded: true, objects: { ...state.objects, tokens: previous } }));
     const drawn = vi.fn();
@@ -79,7 +79,7 @@ describe('MapService.loadMap failure', () => {
   });
 
   it('tells the user which scene failed and why, instead of leaving an empty canvas', async () => {
-    const { service, rendererService } = setup({ clearBackgroundSprite: vi.fn() });
+    const { service, rendererService } = setup({ clearMapImage: vi.fn() });
 
     await service.loadMap(rendererService, BROKEN_MAP);
 

@@ -38,7 +38,12 @@ export async function decodedLevelsCost(blob: Blob): Promise<number> {
       maxPixels: Math.floor(DECODER_MAX_BYTES / BYTES_PER_PIXEL),
     });
   }
-  return Math.ceil((header.width * header.height * BYTES_PER_PIXEL * 4) / 3);
+  return decodedSizeCost(header.width, header.height);
+}
+
+/** The bytes the decoded levels of a `width` × `height` level 0 hold: it plus a third for the halvings. */
+export function decodedSizeCost(width: number, height: number): number {
+  return Math.ceil((width * height * BYTES_PER_PIXEL * 4) / 3);
 }
 
 export interface DecodedSource {

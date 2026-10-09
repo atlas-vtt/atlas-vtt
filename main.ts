@@ -30,6 +30,7 @@ import { hotkeySettingsSection, onboardingSettingsSection } from './src/app/sett
 import { navigationSettingsSection } from './src/app/settings/navigationSettingsSection';
 import { diceSettingsSection } from './src/app/settings/diceSettingsSection';
 import { lightingSettingsSections } from './src/app/settings/lightingSettingsSection';
+import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
 import { registerDiceStageRelease } from './src/app/plugin/diceStageRelease';
@@ -53,6 +54,7 @@ import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
 import { TileDecoderClient } from './src/app/pixi/mapImage/TileDecoderClient';
+import { MapImageService } from './src/app/pixi/mapImage/MapImageService';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -123,6 +125,7 @@ export default class AtlasVTTPlugin extends Plugin {
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
       ...lightingSettingsSections(this.settingsService),
+      mapImageCacheSettingsSection(() => TileDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
       changelogSettingsSection(this.settingsService, changelogService, this.manifest.version),
@@ -183,6 +186,7 @@ export default class AtlasVTTPlugin extends Plugin {
     releaseOverlayBodyClass();
     CreatureIndex.release(this.app);
     TileDecoderClient.release(this.app);
+    MapImageService.release(this.app);
     disposeImageProcessing();
   }
 
