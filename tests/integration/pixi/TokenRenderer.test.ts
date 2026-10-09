@@ -464,6 +464,7 @@ describe('TokenRenderer Integration Tests', () => {
       viewport.emit('pointermove', pointerEvent(320, 105));
       expect(tokenGroup('moving').visible).toBe(true);
       viewport.emit('pointerup', pointerEvent(320, 105));
+      ticker.advance(1000);
       expect(store.getState().objects.tokens['moving']?.x).toBe(tokenGroup('moving').x);
       expect(store.getState().objects.tokens['moving']?.x).toBeGreaterThan(250);
     });
@@ -486,7 +487,10 @@ describe('TokenRenderer Integration Tests', () => {
       expect(history.getState().pastStates).toHaveLength(before + 1);
       expect(tokenGroup('moving').visible).toBe(false);
       history.getState().undo();
-      await vi.waitFor(() => expect(tokenGroup('moving').x).toBe(105));
+      await vi.waitFor(() => {
+        ticker.advance(1000);
+        expect(tokenGroup('moving').x).toBe(105);
+      });
       expect(tokenGroup('moving').visible).toBe(true);
     });
 
@@ -535,7 +539,14 @@ describe('TokenRenderer Integration Tests', () => {
 
       store.getState().moveToken('token-1', 200, 240);
 
-      await vi.waitFor(() => expect(tokenGroup('token-1').position).toMatchObject({ x: 200, y: 240 }));
+      // The sprite glides there: on its way after a frame, arrived once the glide has run out.
+      await vi.waitFor(() => expect(ticker.size).toBe(1));
+      ticker.advance(16);
+      expect(tokenGroup('token-1').x).toBeGreaterThan(100);
+      expect(tokenGroup('token-1').x).toBeLessThan(200);
+      ticker.advance(1000);
+      expect(tokenGroup('token-1').position).toMatchObject({ x: 200, y: 240 });
+      expect(ticker.size).toBe(0);
     });
 
     it('should play back a recorded path and commit the final position to the store', async () => {
@@ -586,6 +597,9 @@ describe('TokenRenderer Integration Tests', () => {
 
       // 180 lies in the third 70px cell, whose centre is 175.
       expect(store.getState().objects.tokens['token-1']).toMatchObject({ x: 175, y: 105 });
+      // The sprite glides from the pointer to the cell's centre.
+      expect(tokenGroup('token-1').position).toMatchObject({ x: 180, y: 105 });
+      ticker.advance(1000);
       expect(tokenGroup('token-1').position).toMatchObject({ x: 175, y: 105 });
       expect(store.getState().isDragging).toBe(false);
       expect(selectionOverlayUpdater).toHaveBeenCalled();

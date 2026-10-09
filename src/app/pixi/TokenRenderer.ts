@@ -29,6 +29,7 @@ import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler } from './token-renderer/DragRuler';
 import { DragRulerView } from './token-renderer/DragRulerView';
 import { SyncService } from './token-renderer/SyncService';
+import { TokenGlide } from './token-renderer/TokenGlide';
 import { createSceneSource } from '../plugin/host/sceneSource';
 import { updateInstanceBadge } from './token-renderer/InstanceBadge';
 import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
@@ -80,6 +81,12 @@ export class TokenRenderer {
     },
     () => this.pixiApp?.ticker ?? null,
   );
+  private readonly glide = new TokenGlide({
+    getTicker: () => this.pixiApp?.ticker ?? null,
+    getSprite: (tokenId) => this.tokenSprites[tokenId] ?? null,
+    onMove: (tokenId, x, y) => this.followToken(tokenId, x, y),
+    reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
+  });
   private uiManager: UIManager;
   private interactionController: InteractionController;
   private dragRuler: DragRuler;
@@ -202,6 +209,7 @@ export class TokenRenderer {
       this.uiManager.syncUIPosition(tokenId, x, y);
       this.refreshDisplayedToken(tokenId);
     });
+    this.interactionController.setTokenSettler((tokenId, x, y) => this.glide.to(tokenId, x, y));
     this.interactionController.setControlsPositionUpdater((x: number, y: number, tokenSize: number) =>
       this.uiManager.updateControlsPosition(x, y, tokenSize)
     );
@@ -255,6 +263,7 @@ export class TokenRenderer {
       runInBackground(this.syncTokens(newTokens, prevTokens), 'Token sync')
     );
     this.syncService.setAnimationStartCallback((tokenId: string) => {
+      this.glide.cancel(tokenId);
       // Could add visual feedback for animation start
     });
     this.syncService.setAnimationEndCallback((tokenId: string) => {
@@ -653,6 +662,19 @@ export class TokenRenderer {
     this.refreshPlayerSight();
   }
 
+  /** Takes along what stands with a token's sprite as it glides: its UI, its controls and the selection frame. */
+  private followToken(tokenId: string, x: number, y: number): void {
+    this.uiManager.syncUIPosition(tokenId, x, y);
+    this.refreshDisplayedToken(tokenId);
+    const selectedIds = this.store.getState().selectedIds;
+    if (!selectedIds.includes(tokenId)) return;
+    if (selectedIds.length === 1) {
+      const tokenSize = this.tokenSprites[tokenId]?.getChildByLabel('tokenSprite')?.width || 70;
+      this.uiManager.updateControlsPosition(x, y, tokenSize);
+    }
+    this.selectionOverlayUpdater();
+  }
+
   /** Movement can lead the store; apply fog before the displayed position is rendered. */
   private refreshDisplayedToken(tokenId: string): void {
     const token = this.store.getState().objects.tokens[tokenId];
@@ -749,6 +771,7 @@ export class TokenRenderer {
     for (const id of deletedTokenIds) {
       const tokenGroup = this.tokenSprites[id];
 
+      this.glide.cancel(id);
       if (tokenGroup) {
         this.destroyTokenGroup(id, tokenGroup);
         delete this.tokenSprites[id];
@@ -786,8 +809,13 @@ export class TokenRenderer {
           if (!this.syncService.isTokenAnimating(token.id)) {
             // Cancel any ongoing animation for this token to ensure store position takes precedence
             this.syncService.cancelAnimation(token.id);
-            existingTokenGroup.position.set(token.x, token.y);
-            this.uiManager.syncUIPosition(token.id, token.x, token.y);
+            // A token the pointer holds is placed by its drag; a load shows the scene as it is
+            const { heldTokens, isMapLoading } = this.store.getState();
+            if (heldTokens[token.id] || isMapLoading) {
+              this.glide.jump(token.id, token.x, token.y);
+            } else {
+              this.glide.to(token.id, token.x, token.y);
+            }
           }
           
           // Update rotation handle positions when token moves
@@ -1113,6 +1141,7 @@ export class TokenRenderer {
     // Destroy interaction controller
     this.interactionController.destroyAll();
     this.dragRuler.destroy();
+    this.glide.destroy();
     this.playerSight.destroy();
     
     // Clean up theme observer

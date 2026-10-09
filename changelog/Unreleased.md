@@ -1,5 +1,7 @@
 ## Improved
 
+- Tokens glide to their place when they are dropped, snap to the grid or are moved by an undo, instead of jumping there. With reduced motion switched on in the system they are placed at once.
+
 - Players see the grid as you set it on the map: hidden when you hide it, and with its style, colour, opacity and numbers. The player view settings no longer have a separate Show grid switch.
 
 - The eye on a scene tab and Send current map to player view now work without the player window open: they choose the scene players see, and the player window shows it whenever it is opened. Open player window is a command of its own.
