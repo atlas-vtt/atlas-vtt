@@ -16,6 +16,8 @@ Ease of use matters just as much to me. Atlas aims for a minimal, streamlined in
 
 AtlasVTT is desktop only for now
 
+Documentation at: [atlas-vtt.dev](https://atlas-vtt.dev/)
+
 ![Atlas VTT showing a battle map, character tokens, a linked statblock, and the initiative tracker](docs/images/atlas-overview.webp)
 
 ## At the table
