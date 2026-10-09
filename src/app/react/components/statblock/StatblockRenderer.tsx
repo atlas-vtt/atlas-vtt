@@ -4,6 +4,7 @@ import type { StatblockItem, StatblockLayout, StatblockMonster } from './statblo
 import { runCallback } from './layoutCallbacks';
 import { isVisible, slugify, stringify } from './statblockUtils';
 import { boundedStatblock } from '../../../creatures/statblockValues';
+import { linkDiceIn } from '../../../services/statblockDiceLinks';
 import { StatblockEditContext, type StatblockEditApi } from './statblockEditContext';
 import {
   HeadingBlock,
@@ -72,6 +73,8 @@ function JavaScriptBlock({ item, monster, replaceVitals }: BlockViewProps): Reac
           }
         });
       }
+      // The layout's script built these nodes and this effect builds them anew: React never owns them.
+      linkDiceIn(el);
     }
     el.hidden = removedVitals && !el.textContent?.trim() && !el.querySelector('input, img, canvas, svg, progress, meter');
 
