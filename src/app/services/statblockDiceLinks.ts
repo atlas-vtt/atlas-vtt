@@ -5,8 +5,9 @@
  * Two halves, deliberately separate:
  *
  * - `linkDiceIn` rewrites text nodes into clickable spans. It must ONLY be used
- *   on static DOM that Atlas produced and owns — currently the output of
- *   Obsidian's MarkdownRenderer, which is rebuilt wholesale on every render.
+ *   on static DOM that Atlas produced and owns — the output of Obsidian's
+ *   MarkdownRenderer and the DOM a layout's `javascript` block returns, both
+ *   rebuilt wholesale on every render.
  *   Never point it at DOM owned by React or Svelte: those frameworks hold
  *   references to the text nodes it replaces, and throw on their next update.
  * - `attachDiceRolling` only listens for clicks, so it is safe on any container.

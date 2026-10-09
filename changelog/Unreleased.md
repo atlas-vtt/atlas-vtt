@@ -32,6 +32,8 @@
 
 ## Fixed
 
+- Dice in a statblock can be rolled with a click in every Fantasy Statblocks layout, also in custom layouts that draw the statblock with their own script.
+
 - Freezing the player camera right after sending another scene to the player view no longer freezes players on the spot they were shown in the scene before.
 
 - The player window no longer zooms in, cuts off the map or turns blocky when you open a sidebar, split the pane or keep the map in a small pane. It is now drawn at its own size and sharpness instead of being an enlarged copy of your map pane: it shows everything your view shows, centred on the same spot. Very large player screens are drawn with up to 2560 × 1440 pixels and scaled up smoothly.

@@ -164,6 +164,30 @@ describe('StatblockRenderer', () => {
     expect(container.querySelector('.stat-line')?.textContent).toBe('Acid Burrower');
   });
 
+  it('makes dice in the DOM of a javascript block clickable', () => {
+    const { container } = renderStatblock(
+      layoutOf({
+        type: 'javascript',
+        id: 'js',
+        code: `
+          const card = document.createElement('div');
+          const style = document.createElement('style');
+          style.textContent = '.card { margin: -4px; }';
+          const line = document.createElement('p');
+          line.textContent = 'Hit: 4 (1d4 + 2) Piercing damage.';
+          card.append(style, line);
+          return card;
+        `,
+      }),
+      { name: 'Goblin Minion' },
+    );
+
+    const links = Array.from(container.querySelectorAll('.atlas-dice-link'), (link) => link.textContent);
+    expect(links).toEqual(['1d4 + 2']);
+    expect(container.querySelector('p')?.textContent).toBe('Hit: 4 (1d4 + 2) Piercing damage.');
+    expect(container.querySelector('style')?.textContent).toBe('.card { margin: -4px; }');
+  });
+
   it('groups spells under their header lines', () => {
     const { container } = renderStatblock(
       layoutOf({ type: 'spells', id: 'sp', properties: ['spells'] }),
