@@ -11,4 +11,5 @@ export const image = {
   'image.windowUnavailable': 'Player window is not available',
   'image.displayFailed': 'Failed to display image on player view',
   'image.closed': 'Image display closed',
+  'image.tooLarge': 'This image is {width} × {height} px, larger than Obsidian can open: at most {megapixels} megapixels and {side} px a side. Export it smaller and import it again.',
 } as const satisfies Record<string, Message>;

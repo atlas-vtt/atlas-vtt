@@ -1,7 +1,9 @@
+import { t } from '../i18n';
+import { DECODER_MAX_BYTES, DECODER_MAX_SIDE, decodable, scaledJpegDecodeSize } from './decodeLimits';
 import type { FramePlacement, ImageJob, ImageJobResult, ImageLayout, ThumbnailSpec } from './imageJob';
-import { imageDimensions } from './imageDimensions';
+import { imageHeader, type ImageHeader } from './imageDimensions';
 import { withDecodedImage } from './imageElement';
-import { vectorRasterSize, type Size } from './imageLayout';
+import { fitSize, vectorRasterSize, type Size } from './imageLayout';
 import { ImageDecodeError, ImageWorkerPool, type ImageJobOptions } from './ImageWorkerPool';
 import ImageWorker from './imageWorker?worker&inline';
 
@@ -17,13 +19,16 @@ export type { FramePlacement, ThumbnailSpec, ImageJobResult as ProcessedImage } 
 export interface ImagePreset {
   maxWidth: number;
   maxHeight: number;
+  /** Pixels in all; unset limits only the sides. */
+  maxPixels?: number;
   /** WebP quality, 0–1. */
   quality: number;
 }
 
 export const IMAGE_PRESETS = {
   token: { maxWidth: 400, maxHeight: 400, quality: 0.85 },
-  map: { maxWidth: 8192, maxHeight: 8192, quality: 0.8 },
+  /** Owlbear Rodeo's largest maps (144 MP), within the sides a WebP can have. */
+  map: { maxWidth: 16383, maxHeight: 16383, maxPixels: 144_000_000, quality: 0.8 },
 } as const satisfies Record<string, ImagePreset>;
 
 export interface ProcessOptions {
@@ -49,7 +54,7 @@ const SVG = 'image/svg+xml';
 /**
  * Main-thread rasters go one at a time, each until its worker is done: the
  * bitmap waits outside the pool's memory budget, and an SVG map's holds up to
- * 256 MB.
+ * 576 MB.
  */
 let lastRaster: Promise<unknown> = Promise.resolve();
 
@@ -107,13 +112,36 @@ function jobCost(size: Size | null): number | undefined {
   return size ? size.width * size.height * 4 * 2 : undefined;
 }
 
+/** Raised for a source larger than the browser can decode, with a message to show. */
+export class ImageTooLargeError extends Error {
+  constructor(readonly size: Size) {
+    super(t('image.tooLarge', {
+      width: size.width,
+      height: size.height,
+      megapixels: Math.floor(DECODER_MAX_BYTES / 4 / 1e6),
+      side: DECODER_MAX_SIDE,
+    }));
+  }
+}
+
+/** A JPEG larger than a fit keeps is decoded at the smallest eighth of its size that still has every pixel the fit keeps. */
+function scaledDecodeOf(header: ImageHeader | null, layout: ImageLayout): ImageJob['scaledDecode'] {
+  if (header?.format !== 'jpeg' || layout.kind !== 'fit') return undefined;
+  const source = { width: header.width, height: header.height };
+  const decoded = scaledJpegDecodeSize(source, fitSize(source, layout));
+  return decoded ? { source, decoded } : undefined;
+}
+
 async function process(source: Blob, job: Omit<ImageJob, 'source'>, options: ProcessOptions): Promise<ImageJobResult> {
-  const run: ImageJobOptions = { signal: options.signal, background: options.background ?? false, cost: jobCost(await imageDimensions(source)) };
+  const header = await imageHeader(source);
+  if (header && !decodable(header)) throw new ImageTooLargeError(header);
+  const scaledDecode = scaledDecodeOf(header, job.layout);
+  const run: ImageJobOptions = { signal: options.signal, background: options.background ?? false, cost: jobCost(scaledDecode?.decoded ?? header) };
   const withCopies = { ...job, thumbnail: options.thumbnail, preview: options.preview, sourcePreview: options.sourcePreview };
   // One pool for both attempts: after unload it refuses the fallback and frees its bitmap
   const workers = workerPool();
   try {
-    return await workers.run({ ...withCopies, source }, run);
+    return await workers.run({ ...withCopies, source, scaledDecode }, run);
   } catch (error) {
     if (!(error instanceof ImageDecodeError)) throw error;
     return afterEarlierRasters(async () => {
@@ -126,7 +154,8 @@ async function process(source: Blob, job: Omit<ImageJob, 'source'>, options: Pro
 
 /** `source` scaled down to fit the preset and encoded as WebP. */
 export function optimizeImage(source: Blob, preset: ImagePreset, options: ProcessOptions = {}): Promise<ImageJobResult> {
-  return process(source, { layout: { kind: 'fit', maxWidth: preset.maxWidth, maxHeight: preset.maxHeight }, quality: preset.quality }, options);
+  const { maxWidth, maxHeight, maxPixels, quality } = preset;
+  return process(source, { layout: { kind: 'fit', maxWidth, maxHeight, maxPixels }, quality }, options);
 }
 
 export interface FrameOptions extends ProcessOptions {
