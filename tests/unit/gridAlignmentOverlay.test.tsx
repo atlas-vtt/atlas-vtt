@@ -92,6 +92,11 @@ describe('GridAlignmentOverlay', () => {
 
     expect(stretches.at(-1)).toEqual({ x: 1.048, y: 1 });
     expect(lastPreview(gridSystem)).toMatchObject({ type: 'hex-horizontal', size: 35.3, offsetX: 4, offsetY: 9, isAligning: true });
+    // A detected grid is a preview like any other: nothing asks for a measurement, and the arrow keys nudge it.
+    expect(screen.queryByText(/Click a hex corner/)).toBeNull();
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(lastPreview(gridSystem)).toMatchObject({ offsetX: 5, offsetY: 9 });
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
     // The panel's grid type is the detected one from here on.
     expect(screen.getByRole('radio', { name: /Flat/ }).getAttribute('aria-checked')).toBe('true');
 
@@ -111,6 +116,19 @@ describe('GridAlignmentOverlay', () => {
 
     expect(stretches.at(-1)).toEqual(NO_STRETCH);
     expect(store.getState().grid).toBe(SCENE_GRID);
+  });
+
+  it('goes back from a detected grid to measuring when a tab is chosen', async () => {
+    detectGridFromMapImage.mockResolvedValue({ gridType: 'hex-vertical', cellSize: 35.3, offsetX: 4, offsetY: 9, confidence: 0.51, mapStretch: { x: 1.048, y: 1 } });
+    const { stretches } = open();
+    fireEvent.click(screen.getByText('Auto-detect from map image'));
+    await screen.findByText('The map is drawn 4.8% wider, so that its cells are regular.');
+
+    fireEvent.click(screen.getByText('Measure'));
+
+    await screen.findByText('Click a hex corner in the top-left area.');
+    expect(stretches.at(-1)).toEqual(NO_STRETCH);
+    expect((screen.getByText('Apply') as HTMLButtonElement).disabled).toBe(true);
   });
 
   it('fits one measurement to the map\'s lines: the chosen grid type first, the lines\' answer previewed', async () => {

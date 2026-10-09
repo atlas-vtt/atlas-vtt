@@ -79,9 +79,11 @@ export function searchLattice(image: GrayImage, gridType: GridType, roughCellSiz
     // Votes of each direction as a function of the shift along its normal.
     directions.forEach((group, d) => {
       const tally = tallies[d]!;
+      // How far this size moves each edge is the same for every shift tallied.
+      const moved = group.map((entry) => edgeShift(entry.edge, 0, 0, dSize));
       for (let u = -tallyHalf; u <= tallyHalf; u++) {
         let sum = 0;
-        for (const entry of group) sum += readProfile(entry.profile, u + edgeShift(entry.edge, 0, 0, dSize));
+        for (let k = 0; k < group.length; k++) sum += readProfile(group[k]!.profile, u + moved[k]!);
         tally[u + tallyHalf] = sum / group.length;
       }
     });

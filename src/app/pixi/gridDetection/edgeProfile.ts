@@ -44,6 +44,13 @@ export function aspectOf(candidate: LatticeCandidate): number {
 
 /** Distance between a line's centre and the flanks it is compared with; lines thicker than twice this lose contrast. */
 const LINE_PROBE = 3;
+/** Lines grow with their cells (a map of 300 px hexes is printed with lines of several pixels): the flanks lie at least this share of a cell away. */
+const LINE_PROBE_PER_CELL = 1 / 32;
+
+/** Distance between a line's centre and the flanks it is compared with, for a grid of `cellSize`. */
+function lineProbe(cellSize: number): number {
+  return Math.max(LINE_PROBE, Math.floor(cellSize * LINE_PROBE_PER_CELL));
+}
 /** Spacing of the samples averaged along an edge. */
 const ALONG_STEP = 2;
 /** Ends of an edge are left out: crossing lines and hex vertices disturb the profile there. */
@@ -66,7 +73,7 @@ export function latticeEdges(
   const { cellSize, offsetX, offsetY } = candidate;
   const width = image.width;
   const height = image.height / aspectOf(candidate);
-  const margin = reach + LINE_PROBE + 2;
+  const margin = reach + lineProbe(cellSize) + 2;
   const inside = (x: number, y: number): boolean => x >= margin && y >= margin && x < width - margin && y < height - margin;
 
   const edges: LatticeEdge[] = [];
@@ -93,36 +100,64 @@ export function latticeEdges(
   return stride === 1 ? edges : Array.from({ length: maxEdges }, (_, i) => edges[Math.floor(i * stride)]!);
 }
 
+/** An edge is measured in this many pieces where it is long enough, and what most of them agree on counts. */
+const EDGE_PIECES = 5;
+/** Samples a piece needs for its average to mean anything. */
+const MIN_PIECE_SAMPLES = 3;
+
 /**
  * Line response at every `step` across an edge, from `-reach` to `+reach` along its
  * normal (index `reach / step` is the edge itself). The response is the contrast
  * between a point and its two flanks minus the flank asymmetry, so lines of either
  * polarity peak at their centre and plain steps in brightness do not count. The edge
  * lies on the squared-up image of `aspect`.
+ *
+ * A long edge is measured in pieces, each averaged along its own length, and the
+ * response is the mean of the middle ones: what lies across part of an edge (a terrain
+ * icon on a hex map, a wall, a label) is far stronger than a grid line and would
+ * otherwise set the whole edge's answer, while a line shows in most pieces.
  */
 export function edgeResponse(image: GrayImage, edge: LatticeEdge, reach: number, step: number, aspect = 1): Float32Array {
-  const probe = Math.round(LINE_PROBE / step);
+  const probe = Math.round(lineProbe(edge.cellSize) / step);
   const half = Math.round(reach / step);
-  const profile = new Float32Array(2 * (half + probe) + 1);
+  const width = 2 * (half + probe) + 1;
   const dx = edge.x2 - edge.x1;
   const dy = edge.y2 - edge.y1;
   const count = Math.max(2, Math.floor((Math.hypot(dx, dy) * (1 - 2 * EDGE_TRIM)) / ALONG_STEP));
+  const pieces = count >= EDGE_PIECES * MIN_PIECE_SAMPLES ? EDGE_PIECES : 1;
+  // One row of sums per piece.
+  const profiles = new Float32Array(pieces * width);
+  const samples = new Float32Array(pieces);
   for (let i = 0; i < count; i++) {
     const t = EDGE_TRIM + ((1 - 2 * EDGE_TRIM) * (i + 0.5)) / count;
     const px = edge.x1 + dx * t;
     const py = edge.y1 + dy * t;
-    for (let j = 0; j < profile.length; j++) {
+    const piece = Math.floor((i * pieces) / count);
+    const row = piece * width;
+    samples[piece] = samples[piece]! + 1;
+    for (let j = 0; j < width; j++) {
       const d = (j - half - probe) * step;
-      profile[j] = profile[j]! + sampleBilinear(image, px + edge.nx * d, (py + edge.ny * d) * aspect);
+      profiles[row + j] = profiles[row + j]! + sampleBilinear(image, px + edge.nx * d, (py + edge.ny * d) * aspect);
     }
   }
 
   const response = new Float32Array(2 * half + 1);
   for (let j = 0; j < response.length; j++) {
-    const on = profile[j + probe]!;
-    const a = profile[j]!;
-    const b = profile[j + 2 * probe]!;
-    response[j] = (Math.abs(on - (a + b) / 2) - Math.abs(a - b)) / count;
+    let sum = 0;
+    let least = Infinity;
+    let most = -Infinity;
+    for (let piece = 0; piece < pieces; piece++) {
+      const row = piece * width + j;
+      const on = profiles[row + probe]!;
+      const a = profiles[row]!;
+      const b = profiles[row + 2 * probe]!;
+      const answer = (Math.abs(on - (a + b) / 2) - Math.abs(a - b)) / samples[piece]!;
+      sum += answer;
+      if (answer < least) least = answer;
+      if (answer > most) most = answer;
+    }
+    // The strongest and the weakest piece never count.
+    response[j] = pieces === 1 ? sum : (sum - least - most) / (pieces - 2);
   }
   return response;
 }

@@ -6,6 +6,7 @@ import type { ViewAtlasStore } from '../storeFactory';
 import type { MapFile } from './MapPersistence';
 import { getHistoryStore } from '../stores/history';
 import { autoDetectGridOnFirstLoad } from './gridAutoDetect';
+import { offerGridAlignment } from './gridAlignmentNotice';
 import { describeError } from '../utils/errors';
 import { sceneNameOf } from '../utils/sceneName';
 import { settledWithin } from '../utils/settledWithin';
@@ -171,9 +172,10 @@ export class MapService {
         // Let the overlay paint before the CPU-bound detection blocks the thread.
         await new Promise(resolve => window.setTimeout(resolve, 30));
         if (isSuperseded()) return null;
-        await autoDetectGridOnFirstLoad(this.store, mapImage, () => !isSuperseded());
+        const detection = await autoDetectGridOnFirstLoad(this.store, mapImage, () => !isSuperseded());
         if (isSuperseded()) return null;
         this.showDetectedStretch(renderer, camera === null);
+        if (detection === 'none') offerGridAlignment(this.store);
       }
 
       // Legacy mapData is now mostly for the renderer

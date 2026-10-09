@@ -33,7 +33,7 @@ describe('autoDetectGridOnFirstLoad', () => {
     detectGridFromMapImage.mockResolvedValue({ gridType: 'hex-vertical', cellSize: 83.21, offsetX: 40.2, offsetY: 17.7, confidence: 0.8 });
     const store = setup(NEW_GRID);
 
-    await autoDetectGridOnFirstLoad(store, mapImage);
+    await expect(autoDetectGridOnFirstLoad(store, mapImage)).resolves.toBe('found');
 
     expect(detectGridFromMapImage).toHaveBeenCalledWith(mapImage);
     expect(store.getState().grid).toMatchObject({ type: 'hex-vertical', size: 83.21, offsetX: 40.2, offsetY: 17.7, visible: true, color: '#00FFFF' });
@@ -56,7 +56,8 @@ describe('autoDetectGridOnFirstLoad', () => {
     detectGridFromMapImage.mockResolvedValue(null);
     const store = setup(NEW_GRID);
 
-    await autoDetectGridOnFirstLoad(store, mapImage);
+    // The caller offers the alignment for a map that showed no grid.
+    await expect(autoDetectGridOnFirstLoad(store, mapImage)).resolves.toBe('none');
 
     expect(store.getState().grid).toMatchObject({ visible: false, size: 70 });
     expect(store.getState().grid).not.toHaveProperty('autoDetect');
@@ -67,7 +68,7 @@ describe('autoDetectGridOnFirstLoad', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const store = setup(NEW_GRID);
 
-    await expect(autoDetectGridOnFirstLoad(store, mapImage)).resolves.toBeUndefined();
+    await expect(autoDetectGridOnFirstLoad(store, mapImage)).resolves.toBe('none');
     expect(store.getState().grid?.visible).toBe(false);
   });
 

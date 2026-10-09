@@ -4,6 +4,9 @@ import { gridAlignedTo, type AlignmentResult } from '../pixi/gridAlignmentMath';
 import type { GridState } from '../types/gridTypes';
 import type { ViewAtlasState } from '../storeFactory';
 
+/** What the first load of a new scene did about its grid: aligned it, found none on the map and hid it, or had nothing to look at. */
+export type GridAutoDetection = 'found' | 'none' | 'skipped';
+
 /**
  * Aligns the grid of a freshly created scene to its map image, once. New scenes
  * carry `grid.autoDetect`; the GM view consumes the flag on the first load. A map
@@ -17,26 +20,27 @@ export async function autoDetectGridOnFirstLoad(
   store: StoreApi<ViewAtlasState>,
   background: DetectableMap | null,
   isCurrent: () => boolean = () => true,
-): Promise<void> {
+): Promise<GridAutoDetection> {
   const { grid, background: backgroundPath, isPlayerView, setGrid } = store.getState();
-  if (!grid?.autoDetect || isPlayerView) return;
+  if (!grid?.autoDetect || isPlayerView) return 'skipped';
 
   const settled: GridState = { ...grid };
   delete settled.autoDetect;
 
   if (!backgroundPath || !background) {
     setGrid(settled);
-    return;
+    return 'skipped';
   }
 
   const detected = await detectGrid(background);
-  if (!isCurrent()) return;
+  if (!isCurrent()) return 'skipped';
   if (!detected) {
     setGrid({ ...settled, visible: false });
-    return;
+    return 'none';
   }
 
   setGrid({ ...gridAlignedTo(settled, detected), visible: true });
+  return 'found';
 }
 
 /** A map whose pixels cannot be read is a map without a grid, not a failed load. */

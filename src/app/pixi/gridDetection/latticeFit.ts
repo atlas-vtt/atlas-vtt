@@ -70,11 +70,28 @@ function measureEdge(image: GrayImage, edge: LatticeEdge, reach: number, aspect:
   // A peak on the window border is the flank of something outside the window.
   if (peak <= 0 || peak >= response.length - 1) return null;
 
-  const before = response[peak - 1]!;
-  const after = response[peak + 1]!;
-  const curvature = before - 2 * strength + after;
-  const subStep = curvature < 0 ? (0.5 * (before - after)) / curvature : 0;
-  return { edge, shift: (peak - (response.length - 1) / 2 + subStep) * PROFILE_STEP, strength };
+  return { edge, shift: (lineCentre(response, peak) - (response.length - 1) / 2) * PROFILE_STEP, strength };
+}
+
+/**
+ * Where the line whose response peaks at `peak` has its centre, to a fraction of a profile step: the
+ * centre of gravity of the response above half its peak. A line of several pixels answers with a
+ * plateau as wide as itself, whose highest sample is anywhere on it.
+ */
+function lineCentre(response: Float32Array, peak: number): number {
+  const floor = response[peak]! / 2;
+  let from = peak;
+  let to = peak;
+  while (from > 0 && response[from - 1]! > floor) from--;
+  while (to < response.length - 1 && response[to + 1]! > floor) to++;
+  let weight = 0;
+  let moment = 0;
+  for (let j = from; j <= to; j++) {
+    const above = response[j]! - floor;
+    weight += above;
+    moment += above * j;
+  }
+  return moment / weight;
 }
 
 function measureEdges(image: GrayImage, edges: LatticeEdge[], reach: number, aspect: number): EdgeMeasurement[] {

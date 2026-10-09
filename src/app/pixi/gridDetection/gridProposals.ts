@@ -30,6 +30,8 @@ export interface Proposal {
   aspect: number;
   /** How many more times a supported fit of this proposal may queue its half and double. */
   harmonicsLeft: number;
+  /** Set on the half and the double of a supported fit: its size and aspect are exact, where a spectral proposal's are rough. */
+  fromFit?: true;
 }
 
 /** Strongest spectral hypotheses first; every supported fit queues its half and its double. */
@@ -51,8 +53,8 @@ export interface Spectra {
   contrast: Float32Array[];
   /** Made when the second round asks for it: of line evidence that ignores edges, so the blocks of a JPEG and painted areas propose nothing. */
   lines?: Float32Array;
-  /** The image the second round searches, made when it first does: `image` reduced `factor` times. */
-  reduced?: { image: GrayImage; factor: number };
+  /** `image` reduced, by the factor it was reduced by. */
+  reduced: Map<number, GrayImage>;
 }
 
 /** The spectra of an image are the same for every grid looked for in it (a manual alignment asks several times). */
@@ -66,7 +68,7 @@ export function spectraOf(image: GrayImage): Spectra {
   let spectra = knownSpectra.get(image);
   if (!spectra) {
     const factor = spectrumFactor(image);
-    spectra = { contrast: [downsampleGray(localContrast(image, 1), factor), localContrast(downsampleGray(image, factor), 1)].map(spectrumOf) };
+    spectra = { contrast: [downsampleGray(localContrast(image, 1), factor), localContrast(downsampleGray(image, factor), 1)].map(spectrumOf), reduced: new Map() };
     knownSpectra.set(image, spectra);
   }
   return spectra;
@@ -102,10 +104,18 @@ export function secondRoundProposals(image: GrayImage, spectra: Spectra, factor:
   return ranked.slice(0, SECOND_ROUND_PROPOSALS);
 }
 
-/** The image the second round searches: `image` reduced until no side is longer than `SECOND_ROUND_SIDE`. */
-export function reducedForSecondRound(image: GrayImage, spectra: Spectra): { image: GrayImage; factor: number } {
-  if (spectra.reduced) return spectra.reduced;
-  const factor = Math.ceil(Math.max(image.width, image.height) / SECOND_ROUND_SIDE);
-  spectra.reduced = { image: downsampleGray(image, factor), factor };
-  return spectra.reduced;
+/** How many times the second round reduces `image`, so that no side is longer than `SECOND_ROUND_SIDE`. */
+export function secondRoundFactor(image: GrayImage): number {
+  return Math.ceil(Math.max(image.width, image.height) / SECOND_ROUND_SIDE);
+}
+
+/** `image` reduced `factor` times, made once for every grid looked for at that scale. */
+export function reducedImage(image: GrayImage, spectra: Spectra, factor: number): GrayImage {
+  if (factor <= 1) return image;
+  let reduced = spectra.reduced.get(factor);
+  if (!reduced) {
+    reduced = downsampleGray(image, factor);
+    spectra.reduced.set(factor, reduced);
+  }
+  return reduced;
 }

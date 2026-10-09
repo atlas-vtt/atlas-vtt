@@ -38,6 +38,13 @@ const ASPECT_MARGIN = 0.02;
 /** With this much of the grid on the map's lines, no other aspect can fit better: none is tried. */
 const SETTLED_SUPPORT = 0.9;
 
+/** The fit takes up lines a few pixels from where it expects them: on an image this low, cells a few percent off regular are that near at its rim. */
+const REACHABLE_HEIGHT = 400;
+
+function aspectsWithinReach(image: GrayImage): boolean {
+  return image.height <= REACHABLE_HEIGHT;
+}
+
 function isRegular(image: GrayImage, aspect: number): boolean {
   return (Math.abs(aspect - 1) * image.height) / 2 < REGULAR_DRIFT;
 }
@@ -47,8 +54,10 @@ function isRegular(image: GrayImage, aspect: number): boolean {
  * most maps are regular.
  */
 function withFittedAspect(image: GrayImage, gridType: GridType, regular: LatticeFit): LatticeFit {
-  // Where no line lies on the regular grid, an aspect within the fit's reach of it finds none either.
-  if (regular.support === 0 || regular.support >= SETTLED_SUPPORT) return regular;
+  if (regular.support >= SETTLED_SUPPORT) return regular;
+  // Where no line lies on the regular grid, an aspect within the fit's reach of it finds none either,
+  // unless the image is so small that every plausible aspect is within reach.
+  if (regular.support === 0 && !aspectsWithinReach(image)) return regular;
   const free = fittedAspect(image, gridType, regular.candidate);
   return free.support > regular.support * ASPECT_GAIN + ASPECT_MARGIN ? free : regular;
 }
@@ -64,20 +73,25 @@ function onRegularImage(candidate: LatticeCandidate): LatticeCandidate {
   return { ...candidate, offsetY: candidate.offsetY * aspectOf(candidate), aspect: 1 };
 }
 
+/**
+ * The fit from a candidate that is good to a few pixels. A regular candidate stays regular unless the
+ * lines speak for another aspect; another aspect is only ever rough (a percent off moves the lines at
+ * the map's rim by pixels), so its fit leaves the aspect free from the start.
+ */
+function fitFrom(image: GrayImage, gridType: GridType, start: LatticeCandidate): LatticeFit {
+  return aspectOf(start) === 1 ? withFittedAspect(image, gridType, fitLattice(image, gridType, start)) : fittedAspect(image, gridType, start);
+}
+
 function refined(gridType: GridType, fit: LatticeFit): RefinedGrid {
   const { cellSize, offsetX, offsetY } = fit.candidate;
   return { gridType, cellSize, ...normaliseGridOffset(gridType, cellSize, offsetX, offsetY), aspect: aspectOf(fit.candidate), support: fit.support };
 }
 
-/**
- * `roughAspect` is the aspect the hypothesis gives the map's cells; 1 for a regular grid. Another
- * aspect is only ever rough (a percent off moves the lines at the map's rim by pixels), so its fit
- * leaves the aspect free from the start.
- */
+/** `roughAspect` is the aspect the hypothesis gives the map's cells; 1 for a regular grid. */
 export function refineGrid(image: GrayImage, gridType: GridType, roughCellSize: number, roughAspect = 1): RefinedGrid | null {
   const found = searchLattice(image, gridType, roughCellSize, roughAspect);
   if (!found) return null;
-  return refined(gridType, roughAspect === 1 ? withFittedAspect(image, gridType, fitLattice(image, gridType, found)) : fittedAspect(image, gridType, found));
+  return refined(gridType, fitFrom(image, gridType, found));
 }
 
 /**
@@ -92,5 +106,5 @@ export function refineFromReduced(image: GrayImage, grid: RefinedGrid, factor: n
     offsetY: grid.offsetY * factor + shift / grid.aspect,
     aspect: grid.aspect,
   };
-  return refined(grid.gridType, grid.aspect === 1 ? fitLattice(image, grid.gridType, start) : fittedAspect(image, grid.gridType, start));
+  return refined(grid.gridType, fitFrom(image, grid.gridType, start));
 }

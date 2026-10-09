@@ -320,3 +320,73 @@ describe('snapGridToMapGray', () => {
     expect(snapped.cellSize).toBeCloseTo(58.7, 1);
   }, 30000);
 });
+
+/**
+ * A map as hex map makers print them: white paper, pale grid lines of `lineWidth`, and in every cell
+ * a black terrain icon that reaches across the cell's upper edges. Drawn on the squared-up image and
+ * printed with `aspect`.
+ */
+function printedMap(gridType: GridType, cellSize: number, width: number, height: number, { aspect = 1, lineWidth = 2, icons = false }): GrayImage {
+  const data = new Float32Array(width * height).fill(250);
+  const plot = (x: number, y: number, shade: number): void => {
+    const px = Math.round(x);
+    const py = Math.round(y * aspect);
+    if (px >= 0 && py >= 0 && px < width && py < height) data[py * width + px] = Math.min(data[py * width + px]!, shade);
+  };
+  const bounds = { minX: -cellSize, minY: -cellSize, maxX: width + cellSize, maxY: height / aspect + cellSize };
+  for (const s of gridLineSamples(gridType, cellSize, 11.3, 7.9, bounds, 0.5)) {
+    for (let t = -lineWidth / 2; t <= lineWidth / 2; t += 0.5) plot(s.x + s.nx * t, s.y + s.ny * t, 195);
+  }
+  if (icons && isHexGridType(gridType)) {
+    const layout = createHexLayout(gridType, cellSize, 11.3, 7.9);
+    for (let q = -20; q <= 40; q++) {
+      for (let r = -20; r <= 40; r++) {
+        const centre = axialToPixel(layout, { q, r });
+        if (centre.x < -cellSize || centre.y < -cellSize || centre.x > width + cellSize || centre.y > height / aspect + cellSize) continue;
+        // Blades fanning up from the middle of the hex, past its upper edges, as a grass icon does.
+        for (const lean of [-0.7, -0.35, 0, 0.35, 0.7]) {
+          for (let t = 0; t <= 0.68 * cellSize; t += 0.5) {
+            for (let w = -0.05 * cellSize; w <= 0.05 * cellSize; w += 0.5) plot(centre.x + lean * t + w, centre.y + 0.12 * cellSize - t, 0);
+          }
+        }
+      }
+    }
+  }
+  return { width, height, data };
+}
+
+describe('grids as map makers print them', () => {
+  // The map a GM reported: flat-top hexes 5.7 % too tall, pale lines, grass icons across every hex's edges.
+  it('finds pale lines under terrain icons that cross them', () => {
+    const detected = detectGridInImage(printedMap('hex-horizontal', 194.9, 1206, 1021, { aspect: 1.057, icons: true }))!;
+
+    expect(detected).not.toBeNull();
+    expect(detected.gridType).toBe('hex-horizontal');
+    expect(Math.abs(detected.cellSize - 194.9) / 194.9).toBeLessThan(0.003);
+    expect(Math.abs(detected.aspect - 1.057) / 1.057).toBeLessThan(0.002);
+  }, 60000);
+
+  it.each<[GridType, number, number]>([
+    ['hex-horizontal', 310, 7],
+    ['square', 256, 9],
+  ])('finds the thick lines of a large %s grid of %f px', (gridType, cellSize, lineWidth) => {
+    const detected = detectGridInImage(printedMap(gridType, cellSize, 2600, 2100, { lineWidth }))!;
+
+    expect(detected).not.toBeNull();
+    expect(detected.gridType).toBe(gridType);
+    expect(detected.aspect).toBe(1);
+    expect(Math.abs(detected.cellSize - cellSize) / cellSize).toBeLessThan(0.002);
+    for (const corner of trueCorners(gridType, cellSize, 11.3, 7.9, 2600, 2100, 1)) {
+      expect(cornerError(gridType, detected.cellSize, detected.offsetX, detected.offsetY, corner)).toBeLessThan(1);
+    }
+  }, 60000);
+
+  it('finds a few large cells that are not regular', () => {
+    const detected = detectGridInImage(printedMap('hex-vertical', 420, 2300, 2500, { aspect: 1.06, lineWidth: 6 }))!;
+
+    expect(detected).not.toBeNull();
+    expect(detected.gridType).toBe('hex-vertical');
+    expect(Math.abs(detected.aspect - 1.06) / 1.06).toBeLessThan(0.002);
+    expect(Math.abs(detected.cellSize - 420) / 420).toBeLessThan(0.003);
+  }, 60000);
+});

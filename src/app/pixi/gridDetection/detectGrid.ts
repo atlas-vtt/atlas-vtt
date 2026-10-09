@@ -12,7 +12,7 @@
 import type { AlignmentResult } from '../gridAlignmentMath';
 import { grayFromCanvasSource } from './grayImage';
 import type { GrayImage } from './grayImage';
-import { firstRoundProposals, MIN_PERIOD, reducedForSecondRound, secondRoundProposals, spectraOf, spectrumFactor } from './gridProposals';
+import { firstRoundProposals, MIN_PERIOD, reducedImage, secondRoundFactor, secondRoundProposals, spectraOf, spectrumFactor } from './gridProposals';
 import type { Proposal, Spectra } from './gridProposals';
 import type { GridType } from '../../grid/GridSystem';
 import { latticeSupport } from './latticeFit';
@@ -64,26 +64,63 @@ function sameAspect(a: number, b: number): boolean {
   return Math.abs(a - b) < SAME_ASPECT_TOLERANCE * b;
 }
 
+/** A proposal with an exact size is the same attempt only as one that began this much nearer than rough proposals may lie. */
+const EXACT_PROPOSAL = 1 / 6;
+
 /**
- * Fits every proposal the map's lines may support, strongest first, and keeps those they do.
- * `firstDecisive` ends at the first fit that settles the grid, where the sizes are known not to be harmonics of it.
+ * Whether fitting `proposal` would repeat `earlier`. The half or double of a supported fit is exact:
+ * a rough proposal near it that found nothing (its aspect a little off) says nothing about it.
  */
-function fitProposals(image: GrayImage, proposals: Proposal[], minSize: number, maxSize: number, firstDecisive = false): RefinedGrid[] {
+function isSameAttempt(earlier: Proposal, proposal: Proposal): boolean {
+  if (earlier.gridType !== proposal.gridType) return false;
+  const closeness = proposal.fromFit ? EXACT_PROPOSAL : 1;
+  return Math.abs(earlier.aspect - proposal.aspect) < SAME_ASPECT_TOLERANCE * closeness * proposal.aspect
+    && Math.abs(earlier.size - proposal.size) < SAME_SIZE_TOLERANCE * closeness * proposal.size;
+}
+
+/**
+ * A grid is looked for where its cells are about this many pixels. Lines, the windows they are
+ * measured in and what an aspect a little off does to them all grow with the cell, so a map of 300 px
+ * hexes with lines of six pixels is searched reduced, like the same map at a third of its size, and
+ * what is found there is fitted on the map itself.
+ */
+const SEARCH_CELL_SIZE = 96;
+
+interface Round {
+  /** Sizes outside this range are not fitted. */
+  minSize: number;
+  maxSize: number;
+  /** Ends at the first fit that settles the grid, where the sizes are known not to be harmonics of it. */
+  firstDecisive: boolean;
+  /** The image is reduced at least this many times before it is searched. */
+  minFactor: number;
+}
+
+/** The grid of a proposal, searched at the scale of its cells and fitted on the image itself; null where the lines support none. */
+function fitProposal(image: GrayImage, spectra: Spectra, { gridType, size, aspect }: Proposal, minFactor: number): RefinedGrid | null {
+  const factor = Math.max(minFactor, Math.floor(size / SEARCH_CELL_SIZE));
+  if (factor <= 1) return refineGrid(image, gridType, size, aspect);
+  const reduced = refineGrid(reducedImage(image, spectra, factor), gridType, size / factor, aspect);
+  return reduced && reduced.support >= MIN_SUPPORT ? refineFromReduced(image, reduced, factor) : null;
+}
+
+/** Fits every proposal the map's lines may support, strongest first, and keeps those they do. */
+function fitProposals(image: GrayImage, spectra: Spectra, proposals: Proposal[], { minSize, maxSize, firstDecisive, minFactor }: Round): RefinedGrid[] {
   const attempted: Proposal[] = [];
   const fits: RefinedGrid[] = [];
   let queue = [...proposals];
 
   while (queue.length > 0) {
-    const { gridType, size, aspect, harmonicsLeft } = queue.shift()!;
-    const isNew = !attempted.some((a) => a.gridType === gridType && sameAspect(a.aspect, aspect) && sameSize(a.size, size));
-    if (!isNew || size < minSize || size > maxSize) continue;
-    attempted.push({ gridType, size, aspect, harmonicsLeft });
+    const proposal = queue.shift()!;
+    const { gridType, size, harmonicsLeft } = proposal;
+    if (attempted.some((earlier) => isSameAttempt(earlier, proposal)) || size < minSize || size > maxSize) continue;
+    attempted.push(proposal);
 
-    const refined = refineGrid(image, gridType, size, aspect);
+    const refined = fitProposal(image, spectra, proposal, minFactor);
     if (!refined || refined.support < MIN_SUPPORT || !isStretchableAspect(refined.aspect)) continue;
     fits.push(refined);
     if (harmonicsLeft > 0) {
-      queue.push(...HARMONIC_MULTIPLES.map((multiple) => ({ gridType, size: refined.cellSize * multiple, aspect: refined.aspect, harmonicsLeft: harmonicsLeft - 1 })));
+      queue.push(...HARMONIC_MULTIPLES.map((multiple): Proposal => ({ gridType, size: refined.cellSize * multiple, aspect: refined.aspect, harmonicsLeft: harmonicsLeft - 1, fromFit: true })));
     }
     if (refined.support < DECISIVE_SUPPORT) continue;
     if (firstDecisive) break;
@@ -110,18 +147,6 @@ function chooseFit(image: GrayImage, fits: RefinedGrid[]): RefinedGrid {
 }
 
 /**
- * Fits the second round's proposals. A large map is searched reduced, which costs a fraction, and
- * only what its lines support there is fitted on the map itself.
- */
-function fitSecondRound(image: GrayImage, spectra: Spectra, proposals: Proposal[], minSize: number, maxSize: number, firstDecisive: boolean): RefinedGrid[] {
-  const { image: reduced, factor } = reducedForSecondRound(image, spectra);
-  if (factor === 1) return fitProposals(image, proposals, minSize, maxSize, firstDecisive);
-  return fitProposals(reduced, proposals.map((p) => ({ ...p, size: p.size / factor })), minSize / factor, maxSize / factor, firstDecisive)
-    .map((fit) => refineFromReduced(image, fit, factor))
-    .filter((fit) => fit.support >= MIN_SUPPORT);
-}
-
-/**
  * Detects the grid in a luminance image. Sizes and offsets are in pixels of the squared-up image
  * (`RefinedGrid.aspect`), which for a regular grid is the image itself. With a `hint`, only grids
  * of its type and about its size are looked for.
@@ -137,11 +162,12 @@ export function detectGridInImage(image: GrayImage, hint?: GridHint): RefinedGri
     : [];
 
   // A hint's sizes all lie within a few percent of each other: the first that settles the grid is it.
-  const firstDecisive = hint !== undefined;
-  const fits = fitProposals(image, [...hinted, ...wanted(firstRoundProposals(spectra, factor))], minSize, maxSize, firstDecisive);
+  const round: Round = { minSize, maxSize, firstDecisive: hint !== undefined, minFactor: 1 };
+  const fits = fitProposals(image, spectra, [...hinted, ...wanted(firstRoundProposals(spectra, factor))], round);
   // A regular grid that most of the map's lines agree with is the map's grid: only otherwise is a second round worth its time.
   if (!fits.some((fit) => fit.support >= DECISIVE_SUPPORT)) {
-    fits.push(...fitSecondRound(image, spectra, wanted(secondRoundProposals(image, spectra, factor)), minSize, maxSize, firstDecisive));
+    // A large map is searched reduced, which costs a fraction; what its lines support there is fitted on the map itself.
+    fits.push(...fitProposals(image, spectra, wanted(secondRoundProposals(image, spectra, factor)), { ...round, minFactor: secondRoundFactor(image) }));
   }
   return fits.length > 0 ? chooseFit(image, fits) : null;
 }
