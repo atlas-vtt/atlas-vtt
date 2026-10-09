@@ -54,7 +54,7 @@ import { shownRollTokens } from './pixi/playerRollTokens';
 import type { ShownRollToken } from './services/playerRollSource';
 import { t } from './i18n';
 import type { MapImage } from './pixi/mapImage/MapImage';
-import type { MapImageChange } from './pixi/mapImage/mapImageTypes';
+import type { MapImageChange } from './pixi/mapImage/mapImageView';
 import type { TileView } from './pixi/mapImage/levelOfDetail';
 import { frameView } from './services/playerFrameDemand';
 import { MapController } from './MapController';

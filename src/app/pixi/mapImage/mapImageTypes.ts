@@ -10,9 +10,6 @@ export type MapImageSource =
   | { kind: 'placeholder' }
   | { kind: 'none'; width: number; height: number };
 
-/** `image`: another image (or none) is shown, its world rect may differ; `albedo`: `albedoTexture()` became ready. */
-export type MapImageChange = 'image' | 'albedo';
-
 /** The part of `MapImageService` a map image opens and reads its file through. */
 export interface MapImageOpener extends TileReader {
   open(file: TFile): Promise<OpenedMap>;

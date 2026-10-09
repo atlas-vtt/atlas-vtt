@@ -1,6 +1,8 @@
 import type { Container } from 'pixi.js';
-import type { MapImageChange } from './mapImageTypes';
 import type { PixelRect } from './pyramid';
+
+/** `image`: another image (or none) is shown, its world rect may differ; `albedo`: `albedoTexture()` became ready. */
+export type MapImageChange = 'image' | 'albedo';
 
 /** Where a map's pixels are read from: the whole image fit within `maxSide`, or null without one. */
 export interface MapPixels {
