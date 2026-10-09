@@ -66,7 +66,7 @@ async function setup(): Promise<MirrorHarness & {
     ticker,
     renderer: null,
     requestRender: () => harness.dm.source.beforeRender!.requestRender(),
-    reducedMotion: () => true,
+    drawAtOnce: () => true,
   });
   images.push(mapImage);
   await mapImage.load({ kind: 'file', file: Object.assign(new TFile('maps/world.webp'), { stat: { ctime: 0, mtime: 1, size: 2 } }) });

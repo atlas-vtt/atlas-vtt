@@ -32,7 +32,7 @@ export interface MapImageLayerOptions {
   /** The size of the pictures of the whole map taken (thumbnails): their tiles are kept loaded. */
   picture?: { width: number; height: number } | null;
   /** Read when a tile appears: true draws it at once instead of fading it in. */
-  reducedMotion?: () => boolean;
+  drawAtOnce?: () => boolean;
   maxInFlight?: number;
   /** Called once per tile whose request failed; the layer does not request it again. */
   onTileError?: (ref: TileRef, error: unknown) => void;
@@ -74,7 +74,7 @@ export class MapImageLayer {
       levels,
       texture: ref => (this.isLoaded(tileKey(ref)) ? options.cache.get(this.textureKey(ref)) : null),
       requestRender: options.requestRender,
-      ...(options.reducedMotion && { reducedMotion: options.reducedMotion }),
+      ...(options.drawAtOnce && { drawAtOnce: options.drawAtOnce }),
       onOpaque: () => { this.dirty = true; },
     });
     const whole = { x: 0, y: 0, width: pyramid.width, height: pyramid.height };

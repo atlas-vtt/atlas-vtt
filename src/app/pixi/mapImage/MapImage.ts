@@ -206,7 +206,7 @@ export class MapImage {
         requestRender: this.deps.requestRender,
         camera: this.camera,
         picture: this.deps.picture ?? null,
-        ...(this.deps.reducedMotion && { reducedMotion: this.deps.reducedMotion }),
+        ...(this.deps.drawAtOnce && { drawAtOnce: this.deps.drawAtOnce }),
         onTileError: onceLogged(),
       });
       this.layer.addChild(layer.container);

@@ -13,7 +13,7 @@ export interface TileSpritesOptions {
   texture: (ref: TileRef) => Texture | null;
   requestRender: () => void;
   /** Read when a tile appears: true draws it at once instead of fading it in. */
-  reducedMotion?: () => boolean;
+  drawAtOnce?: () => boolean;
   /** A tile finished fading in. */
   onOpaque: () => void;
 }
@@ -109,7 +109,7 @@ export class TileSprites {
     const key = tileKey(ref);
     const tile: TileSprite = { ref, sprite, fade: null };
     this.sprites.set(key, tile);
-    if (this.options.reducedMotion?.()) {
+    if (this.options.drawAtOnce?.()) {
       this.opaque.add(key);
       this.options.onOpaque();
       return true;

@@ -130,7 +130,7 @@ describe('a tiled map image', () => {
   async function renderTiled(tiles: TileSource, camera: Camera): Promise<Uint8ClampedArray> {
     const ticker = new Ticker();
     const cache = new TileTextureCache({ ticker, renderer, requestRender: () => undefined });
-    const layer = new MapImageLayer({ source: tiles, cache, ticker, requestRender: () => undefined, reducedMotion: () => true });
+    const layer = new MapImageLayer({ source: tiles, cache, ticker, requestRender: () => undefined, drawAtOnce: () => true });
     const world = new Container();
     world.addChild(layer.container);
     place(world, camera);

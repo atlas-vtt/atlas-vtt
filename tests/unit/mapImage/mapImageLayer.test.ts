@@ -21,7 +21,7 @@ interface Pending {
 const pyramid = pyramidOf(3000, 2000);
 const OVERVIEW = ['1/0/0', '1/1/0', '1/2/0', '1/0/1', '1/1/1', '1/2/1'];
 
-function harness(options: { camera?: TileView | null; reducedMotion?: boolean; picture?: { width: number; height: number } } = {}): {
+function harness(options: { camera?: TileView | null; drawAtOnce?: boolean; picture?: { width: number; height: number } } = {}): {
   layer: MapImageLayer;
   cache: TileTextureCache;
   pending: Pending[];
@@ -48,7 +48,7 @@ function harness(options: { camera?: TileView | null; reducedMotion?: boolean; p
   };
   let camera = options.camera ?? null;
   const layer = new MapImageLayer({
-    source, cache, ticker, requestRender, camera: () => camera, reducedMotion: () => options.reducedMotion ?? false, picture: options.picture ?? null,
+    source, cache, ticker, requestRender, camera: () => camera, drawAtOnce: () => options.drawAtOnce ?? false, picture: options.picture ?? null,
   });
   const frame = async (): Promise<void> => {
     await vi.advanceTimersByTimeAsync(16);
@@ -103,7 +103,7 @@ describe('MapImageLayer', () => {
   });
 
   it('draws tiles at integer level-pixel positions with their content frames, untouchable', async () => {
-    const { layer, serve, frame } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), reducedMotion: true });
+    const { layer, serve, frame } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), drawAtOnce: true });
     await frame();
     await serve();
     const tile = spriteOf(layer, '0/1/1')!;
@@ -143,7 +143,7 @@ describe('MapImageLayer', () => {
   });
 
   it('drops the finer tiles once the coarser ones are opaque when the camera zooms out', async () => {
-    const { layer, serve, frame, setCamera } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), reducedMotion: true });
+    const { layer, serve, frame, setCamera } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), drawAtOnce: true });
     await frame();
     await serve();
     expect(spriteOf(layer, '0/0/0')?.visible).toBe(true);
@@ -158,7 +158,7 @@ describe('MapImageLayer', () => {
   });
 
   it('shows on the canvas only the camera\'s tiles, and another view\'s for one render', async () => {
-    const { layer, serve, frame, requestRender } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), reducedMotion: true });
+    const { layer, serve, frame, requestRender } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), drawAtOnce: true });
     // A player window looking at the bottom right corner at a quarter: level 1.
     const player: TileView = { rect: { x: 2000, y: 1000, width: 1000, height: 1000 }, worldPerScreenPixel: 4 };
     layer.addDemandRegion(player);
@@ -180,7 +180,7 @@ describe('MapImageLayer', () => {
   });
 
   it('draws a picture of the whole map from its own level, with tiles kept loaded for it', async () => {
-    const { layer, cache, serve, frame } = harness({ camera: level0({ x: 0, y: 0, width: 200, height: 150 }), reducedMotion: true, picture: { width: 400, height: 300 } });
+    const { layer, cache, serve, frame } = harness({ camera: level0({ x: 0, y: 0, width: 200, height: 150 }), drawAtOnce: true, picture: { width: 400, height: 300 } });
     await frame();
     await serve();
     await frame();
@@ -195,7 +195,7 @@ describe('MapImageLayer', () => {
   });
 
   it('draws a picture whose tiles have no sprite from the cached textures, and removes them after', async () => {
-    const { layer, serve, frame, setCamera } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), reducedMotion: true });
+    const { layer, serve, frame, setCamera } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), drawAtOnce: true });
     await frame();
     await serve();
     setCamera(level0({ x: 2600, y: 1600, width: 300, height: 300 }));
@@ -211,7 +211,7 @@ describe('MapImageLayer', () => {
   });
 
   it('keeps every part of the map drawn under a camera zoomed far out on a corner', async () => {
-    const { layer, serve, frame } = harness({ camera: { rect: { x: 2900, y: 1900, width: 4000, height: 3000 }, worldPerScreenPixel: 8 }, reducedMotion: true });
+    const { layer, serve, frame } = harness({ camera: { rect: { x: 2900, y: 1900, width: 4000, height: 3000 }, worldPerScreenPixel: 8 }, drawAtOnce: true });
     await frame();
     await serve();
     await frame();
@@ -221,7 +221,7 @@ describe('MapImageLayer', () => {
   });
 
   it('draws at once under reduced motion', async () => {
-    const { layer, serve, frame } = harness({ camera: level0({ x: 0, y: 0, width: 500, height: 500 }), reducedMotion: true });
+    const { layer, serve, frame } = harness({ camera: level0({ x: 0, y: 0, width: 500, height: 500 }), drawAtOnce: true });
     await frame();
     await serve();
     expect(sprites(layer).every(sprite => sprite.alpha === 1)).toBe(true);
@@ -266,7 +266,7 @@ describe('MapImageLayer', () => {
   });
 
   it('resolves whenReady once the view\'s tiles are opaque, or at its timeout', async () => {
-    const { layer, serve, frame } = harness({ reducedMotion: true });
+    const { layer, serve, frame } = harness({ drawAtOnce: true });
     let ready = false;
     void layer.whenReady(level0({ x: 0, y: 0, width: 600, height: 600 }), 5000).then(() => { ready = true; });
     await frame();
@@ -282,7 +282,7 @@ describe('MapImageLayer', () => {
   });
 
   it('counts a view drawn where opaque finer tiles cover it, without its own level\'s tiles', async () => {
-    const { layer, serve, frame, requested } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), reducedMotion: true });
+    const { layer, serve, frame, requested } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), drawAtOnce: true });
     await frame();
     await serve();
     await frame();

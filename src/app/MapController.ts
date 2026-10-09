@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import { Ticker } from 'pixi.js';
 import { MapLoader, mapImageSourceFor } from './MapLoader';
 import type { MapFile } from './services/MapPersistence';
 import { MAP_THUMBNAIL_SIZE } from './services/MapThumbnailService';
@@ -37,10 +38,13 @@ function viewMapImage(app: App, renderer: MapRenderer): MapImage | null {
   const mapImage = new MapImage({
     service: MapImageService.forApp(app),
     viewport,
-    ticker: pixi.ticker,
+    // Not the app's ticker: a load stops that one to hold the last frame (`bindMapLoadingFrameHold`)
+    // and waits for the tiles in view, which arrive on this one.
+    ticker: Ticker.shared,
     renderer: pixi.renderer,
     requestRender: () => requestRender(pixi),
-    reducedMotion: () => prefersReducedMotion(pixi.canvas),
+    // While a load holds the last frame, the crossfade from it shows the tiles, so they do not fade in too.
+    drawAtOnce: () => !pixi.ticker.started || prefersReducedMotion(pixi.canvas),
     picture: MAP_THUMBNAIL_SIZE,
   });
   renderer.setMapImage(mapImage);

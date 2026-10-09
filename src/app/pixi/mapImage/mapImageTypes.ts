@@ -40,7 +40,8 @@ export interface MapImageDeps {
   /** The renderer that draws the tiles; null uploads nothing ahead. */
   renderer: (TileUploader & { resolution: number }) | null;
   requestRender: () => void;
-  reducedMotion?: () => boolean;
+  /** Read when a tile appears: true draws it at once instead of fading it in. */
+  drawAtOnce?: () => boolean;
   /** The size of the pictures of the whole map taken (thumbnails), whose tiles stay loaded. */
   picture?: { width: number; height: number };
 }
