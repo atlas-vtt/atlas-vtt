@@ -406,29 +406,63 @@ describe('PlayerWindowPresenter', () => {
       return { getState: () => session, updateSession: vi.fn(), contentEl: document.createElement('div'), isClosed: false } as unknown as LocalPlayerView;
     }
 
-    test('presents a scene with no window open, without opening one', async () => {
+    test('opens the player window on the scene when players see it nowhere', async () => {
       serviceMock.isWindowOpen.mockReturnValue(false);
       const { view } = createFakeView();
       const tavern = view.tabMetaStore.getState().addTab(TAVERN, 'Tavern');
       const dungeon = view.tabMetaStore.getState().addTab(DUNGEON, 'Dungeon');
       view.tabMetaStore.getState().setActiveTab(tavern);
-      const changes = vi.fn();
-      presentedSceneOf(app).onChange(changes);
+      app = deviceApp([{ view }]);
+      const player = playerLeaf({ tabId: dungeon, filePath: DUNGEON, frozen: false });
+      serviceMock.openLeaf.mockResolvedValueOnce(player);
+      serviceMock.attachToView.mockImplementationOnce(() => serviceMock.isWindowOpen.mockReturnValue(true));
 
       await presentTab(app, view, dungeon);
 
-      expect(view.switchToTab).toHaveBeenCalledWith(dungeon);
-      expect(serviceMock.openLeaf).not.toHaveBeenCalled();
-      expect(serviceMock.presentCanvas).not.toHaveBeenCalled();
-      // Players see nothing yet, and the notice says how they will
-      expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Players will see Dungeon when you open the player window');
+      expect(serviceMock.openLeaf).toHaveBeenCalledWith(app, { tabId: dungeon, filePath: DUNGEON });
+      expect(serviceMock.attachToView).toHaveBeenCalledWith(player, frameSourceFor(view.atlasStore), { tabId: dungeon, filePath: DUNGEON });
       expect(presentedSceneOf(app).get()).toEqual({ tabId: dungeon, filePath: DUNGEON });
-      expect(changes).toHaveBeenCalledWith({ tabId: dungeon, filePath: DUNGEON });
       // Kept on this device, so a reload still presents it
       expect(app.stored.get(PRESENTED_SCENE_KEY)).toEqual({ tabId: dungeon, filePath: DUNGEON });
+      expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Player view shows Dungeon');
+    });
+
+    test('opens no window while another plugin shows the presented scene, which follows the scene', async () => {
+      serviceMock.isWindowOpen.mockReturnValue(false);
+      const { view } = createFakeView();
+      const tavern = view.tabMetaStore.getState().addTab(TAVERN, 'Tavern');
+      const dungeon = view.tabMetaStore.getState().addTab(DUNGEON, 'Dungeon');
+      view.tabMetaStore.getState().setActiveTab(tavern);
+      const presented = presentedSceneOf(app);
+      const stopShowing = presented.showElsewhere();
+      const changes = vi.fn();
+      presented.onChange(changes);
+
+      await presentTab(app, view, dungeon);
+
+      expect(serviceMock.openLeaf).not.toHaveBeenCalled();
+      expect(serviceMock.presentCanvas).not.toHaveBeenCalled();
+      expect(changes).toHaveBeenCalledWith({ tabId: dungeon, filePath: DUNGEON });
+      expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Player view shows Dungeon');
       // Browsing other tabs holds nothing: there is no window to hold a frame in
       view.tabMetaStore.getState().setActiveTab(tavern);
       expect(serviceMock.holdCurrentFrame).not.toHaveBeenCalled();
+
+      // Once it stops, presenting opens the player window again
+      stopShowing();
+      await presentTab(app, view, tavern);
+      expect(serviceMock.openLeaf).toHaveBeenCalledOnce();
+    });
+
+    test('says the scene waits for the player window when the window could not be opened', async () => {
+      serviceMock.isWindowOpen.mockReturnValue(false);
+      const { view } = createFakeView();
+      const dungeon = view.tabMetaStore.getState().addTab(DUNGEON, 'Dungeon');
+
+      await presentTab(app, view, dungeon);
+
+      expect(presentedSceneOf(app).get()).toEqual({ tabId: dungeon, filePath: DUNGEON });
+      expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Players will see Dungeon when you open the player window');
     });
 
     test('opening the window later shows the presented scene, and the window then holds while the DM browses', async () => {

@@ -30,9 +30,9 @@ export async function presentActiveTab(app: App): Promise<void> {
 
 /**
  * Switch `view` to the scene tab `tabId`, wait until it is rendered, then make it the presented
- * scene. This works the same whether the player window is open or not: an open window shows the
- * scene at once, and from then on keeps showing it while the DM browses other tabs; a closed one
- * shows it once it is opened (`openPlayerWindow`).
+ * scene and show it to players wherever they look: an open player window shows it at once and
+ * keeps showing it while the DM browses other tabs, and so does a plugin that shows the presented
+ * scene elsewhere (`showElsewhere`). With neither, the player window is opened on it.
  */
 export async function presentTab(app: App, view: AtlasView, tabId: string): Promise<void> {
   const tab = findTab(view, tabId);
@@ -47,7 +47,8 @@ export async function presentTab(app: App, view: AtlasView, tabId: string): Prom
     return;
   }
 
-  presentedSceneOf(app).set({ tabId, filePath: tab.filePath });
+  const presented = presentedSceneOf(app);
+  presented.set({ tabId, filePath: tab.filePath });
   const service = PlayerWindowService.getInstance();
   if (service?.isWindowOpen()) {
     service.presentCanvas(source, tabId, tab.filePath);
@@ -56,9 +57,11 @@ export async function presentTab(app: App, view: AtlasView, tabId: string): Prom
     // A window still waiting for its scene (restored, but its scene was not open) takes this one
     const waiting = PlayerWindowService.openPlayerView(app);
     if (waiting) await restorePlayerWindow(app, waiting);
+    // Players who see the scene nowhere get the player window
+    else if (!presented.isShownElsewhere()) await openPlayerWindow(app);
   }
-  // A closed window shows the scene once it is opened; saying players see it now would be wrong
-  const shown = PlayerWindowService.getInstance()?.isWindowOpen() ?? false;
+  // Only a window that could not be opened leaves the scene unseen; the notice says so then
+  const shown = (PlayerWindowService.getInstance()?.isWindowOpen() ?? false) || presented.isShownElsewhere();
   new Notice(t(shown ? 'present.shows' : 'present.chosen', { name: tab.displayName }));
 }
 

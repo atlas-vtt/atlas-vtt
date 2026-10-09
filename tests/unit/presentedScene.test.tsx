@@ -36,6 +36,21 @@ it('keeps the presented scene on this device and tells listeners of each change'
   expect(storage.stored.get(PRESENTED_SCENE_KEY)).toBeNull();
 });
 
+it('knows while other plugins show the presented scene, each until it stops, and keeps nothing of it', () => {
+  const storage = deviceStorage();
+  const presented = new PresentedSceneStore(storage);
+  expect(presented.isShownElsewhere()).toBe(false);
+
+  const stopFirst = presented.showElsewhere();
+  const stopSecond = presented.showElsewhere();
+  stopFirst();
+  stopFirst();
+  expect(presented.isShownElsewhere()).toBe(true);
+  stopSecond();
+  expect(presented.isShownElsewhere()).toBe(false);
+  expect(storage.stored.size).toBe(0);
+});
+
 it('reads anything stored that is no scene as nothing presented, and survives storage that fails', () => {
   for (const value of [null, 'Cave', { tabId: 'tab-1' }, { tabId: '', filePath: 'Cave.atlasmap' }, { tabId: 3, filePath: 'Cave.atlasmap' }]) {
     expect(readPresentedScene(value)).toBeNull();

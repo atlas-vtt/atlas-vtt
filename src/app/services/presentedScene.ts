@@ -14,6 +14,12 @@ export interface PresentedSceneSource {
   get(): PresentedScene | null;
   /** Calls `listener` with every change of the presented scene; returns the call that stops it. */
   onChange(listener: (scene: PresentedScene | null) => void): () => void;
+  /**
+   * For a plugin that shows the presented scene to players on a screen of its own: call this
+   * while it shows it, and the function it returns once it stops. While one does, presenting a
+   * scene opens no player window, since players already see it there.
+   */
+  showElsewhere(): () => void;
 }
 
 type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
@@ -40,6 +46,7 @@ export function readPresentedScene(value: unknown): PresentedScene | null {
 export class PresentedSceneStore implements PresentedSceneSource {
   private scene: PresentedScene | null;
   private readonly listeners = new Set<(scene: PresentedScene | null) => void>();
+  private readonly elsewhere = new Set<object>();
 
   constructor(private readonly storage: DeviceStorage) {
     this.scene = this.read();
@@ -52,6 +59,19 @@ export class PresentedSceneStore implements PresentedSceneSource {
   onChange(listener: (scene: PresentedScene | null) => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
+  }
+
+  showElsewhere(): () => void {
+    const viewer = {};
+    this.elsewhere.add(viewer);
+    return (): void => {
+      this.elsewhere.delete(viewer);
+    };
+  }
+
+  /** Whether another plugin shows the presented scene to players now (`showElsewhere`). */
+  isShownElsewhere(): boolean {
+    return this.elsewhere.size > 0;
   }
 
   /** Present `scene`, or nothing for null. Only the presenter calls this. */
