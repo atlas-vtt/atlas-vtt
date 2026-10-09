@@ -6,8 +6,12 @@ import type { PixelRect } from './pyramid';
  * and `OffscreenCanvas`, or fakes in jsdom tests.
  */
 
-/** Lossy WebP; exactly 1.0 would make it lossless and several times larger. */
-export const TILE_QUALITY = 0.9;
+/**
+ * Lossless WebP (Chromium encodes exactly 1 losslessly): a tile shows the map's own pixels.
+ * Lossy WebP halves the resolution of colour, so thin coloured lines lost their colour; lossless
+ * tiles are 2.7 to 4 times larger and encode faster.
+ */
+export const TILE_QUALITY = 1;
 const WEBP = 'image/webp';
 
 export interface CreateBitmap {

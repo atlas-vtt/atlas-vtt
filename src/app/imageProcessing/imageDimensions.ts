@@ -81,7 +81,11 @@ const READERS: ReadonlyArray<readonly [ImageFormat, Reader]> = [['png', png], ['
  * decoding it, or null for formats it does not know (SVG, AVIF) or a truncated header.
  */
 export async function imageHeader(blob: Blob): Promise<ImageHeader | null> {
-  const bytes = new DataView(await blob.slice(0, HEADER_BYTES).arrayBuffer());
+  return headerOf(new DataView(await blob.slice(0, HEADER_BYTES).arrayBuffer()));
+}
+
+/** `imageHeader` of bytes already read, which begin with the image's header. */
+export function headerOf(bytes: DataView): ImageHeader | null {
   for (const [format, read] of READERS) {
     const size = read(bytes);
     if (size) return size.width > 0 && size.height > 0 ? { format, width: size.width, height: size.height } : null;

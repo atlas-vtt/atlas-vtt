@@ -46,14 +46,14 @@ describe('createTileGraphics', () => {
     ]);
   });
 
-  it('encodes a tile from its rect as lossy WebP', async () => {
+  it('encodes a tile from its rect as lossless WebP', async () => {
     const { graphics, recorded } = primitives();
     const source = new FakeBitmap(1000, 1000, 'source');
     const blob = await graphics.encodeTile(source, { x: 509, y: 0, width: 512, height: 511 });
     expect(blob.type).toBe('image/webp');
     expect(recorded.draws).toEqual([[source, 509, 0, 512, 511, 0, 0, 512, 511]]);
     expect(recorded.encodes).toEqual([{ type: 'image/webp', quality: TILE_QUALITY }]);
-    expect(TILE_QUALITY).toBeLessThan(1);
+    expect(TILE_QUALITY).toBe(1);
   });
 
   it('refuses a system that cannot encode WebP', async () => {

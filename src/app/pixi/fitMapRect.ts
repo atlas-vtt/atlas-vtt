@@ -1,9 +1,8 @@
 import type { PixelRect } from './mapImage/pyramid';
+import { MAX_ZOOM, MIN_ZOOM, setMapZoomFloor, type ZoomLimited } from './zoomRange';
 
 /** Share of the screen the fitted map takes along its tighter side. */
 const FIT_PADDING = 0.9;
-const MIN_FIT_ZOOM = 0.1;
-const MAX_FIT_ZOOM = 5;
 
 /** The camera that shows the whole of `rect`: its centre and zoom. */
 export interface MapFit {
@@ -18,16 +17,23 @@ export function mapFit(screen: { screenWidth: number; screenHeight: number }, re
   return {
     x: rect.x + rect.width / 2,
     y: rect.y + rect.height / 2,
-    scale: Math.max(MIN_FIT_ZOOM, Math.min(scale, MAX_FIT_ZOOM)),
+    // Never below what shows the whole map: a map larger than `MIN_ZOOM` allows widens the view's range.
+    scale: scale > 0 ? Math.min(scale, MAX_ZOOM) : MIN_ZOOM,
   };
+}
+
+/** Sets the view's least zoom to what shows the whole map, where that is below `MIN_ZOOM`. */
+export function fitZoomRange(viewport: ZoomLimited & { screenWidth: number; screenHeight: number }, rect: PixelRect): void {
+  setMapZoomFloor(viewport, mapFit(viewport, rect).scale);
 }
 
 /** Centres the viewport on the map and zooms so the whole of it shows. */
 export function fitMapRect(
-  viewport: { screenWidth: number; screenHeight: number; setZoom(scale: number): unknown; moveCenter(x: number, y: number): unknown },
+  viewport: ZoomLimited & { screenWidth: number; screenHeight: number; setZoom(scale: number): unknown; moveCenter(x: number, y: number): unknown },
   rect: PixelRect,
 ): void {
   const fit = mapFit(viewport, rect);
+  setMapZoomFloor(viewport, fit.scale);
   viewport.setZoom(fit.scale);
   viewport.moveCenter(fit.x, fit.y);
 }

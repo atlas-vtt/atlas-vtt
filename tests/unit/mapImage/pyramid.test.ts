@@ -36,7 +36,7 @@ describe('pyramid constants', () => {
   it('match the agreed tile spec', () => {
     expect(TILE_CONTENT).toBe(510);
     expect(TILE_OVERLAP).toBe(1);
-    expect(TILE_SPEC).toBe(1);
+    expect(TILE_SPEC).toBe(2);
     expect(TILE_CONTENT + 2 * TILE_OVERLAP).toBe(512);
   });
 });

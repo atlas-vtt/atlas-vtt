@@ -21,14 +21,18 @@ export interface ImagePreset {
   maxHeight: number;
   /** Pixels in all; unset limits only the sides. */
   maxPixels?: number;
-  /** WebP quality, 0–1. */
+  /** WebP quality, 0–1; Chromium encodes exactly 1 losslessly. */
   quality: number;
 }
 
 export const IMAGE_PRESETS = {
   token: { maxWidth: 400, maxHeight: 400, quality: 0.85 },
-  /** Owlbear Rodeo's largest maps (144 MP), within the sides a WebP can have. */
-  map: { maxWidth: 16383, maxHeight: 16383, maxPixels: 144_000_000, quality: 0.8 },
+  /**
+   * Owlbear Rodeo's largest maps (144 MP), within the sides a WebP can have. A map that fits is
+   * kept as uploaded; one that is scaled down is written losslessly, since lossy WebP blurs fine
+   * lines and halves the resolution of colour.
+   */
+  map: { maxWidth: 16383, maxHeight: 16383, maxPixels: 144_000_000, quality: 1 },
 } as const satisfies Record<string, ImagePreset>;
 
 export interface ProcessOptions {

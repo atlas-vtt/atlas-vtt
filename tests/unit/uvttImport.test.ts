@@ -98,7 +98,7 @@ describe('importing a Universal VTT file', () => {
     expect(scene).toMatchObject({ name: 'Crypt', tags: [], collection: COLLECTION, data: { mapPath: result.scenePath } });
     if (map?.type !== 'map' || scene?.type !== 'scene') throw new Error('Records are missing');
 
-    expect(map.mapFilePath).toMatch(/^atlas-vtt\/assets\/Crypt_.+\.webp$/);
+    expect(map.mapFilePath).toMatch(/^atlas-vtt\/assets\/Crypt_.+\.png$/);
     expect(b.vault.files.has(map.mapFilePath)).toBe(true);
     expect(prebuildMapImageAt).toHaveBeenCalledWith(b.vault.app, map.mapFilePath);
     expect(b.vault.files.get(map.thumbnailPath!)).toBe('THUMB');

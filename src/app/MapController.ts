@@ -9,7 +9,7 @@ import { parseGridColor } from './grid/gridContrastColor';
 import { cellNumberStyleOfGrid } from './grid/cellNumbering';
 import { MapImage } from './pixi/mapImage/MapImage';
 import { MapImageService } from './pixi/mapImage/MapImageService';
-import { fitMapRect } from './pixi/fitMapRect';
+import { fitMapRect, fitZoomRange } from './pixi/fitMapRect';
 import { showCamera, type ViewCamera } from './pixi/viewCamera';
 import { requestRender } from './pixi/RenderScheduler';
 import { prefersReducedMotion } from './utils/motion';
@@ -102,8 +102,10 @@ async function loadAndDisplay(
   const viewport = renderer.getViewportInstance();
   const worldRect = mapImage?.worldRect;
   if (!viewport) console.warn('[MapController] Viewport not available for camera positioning');
-  else if (camera) showCamera(viewport, camera);
-  else if (worldRect) fitMapRect(viewport, worldRect);
+  else if (camera) {
+    if (worldRect) fitZoomRange(viewport, worldRect);
+    showCamera(viewport, camera);
+  } else if (worldRect) fitMapRect(viewport, worldRect);
 
   // Ensure in‑memory map data reflects current grid enabled status so the UI
   // shows the correct state.

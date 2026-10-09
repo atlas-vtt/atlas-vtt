@@ -2,6 +2,8 @@
 
 - Maps of up to 144 megapixels, such as a 16,000 × 9,000 pixel world map, stay sharp at every zoom. Imported maps keep that much detail instead of being scaled down to 8,192 pixels.
 
+- Imported maps are no longer compressed: a PNG, JPEG or WebP is kept exactly as you uploaded it, so thin lines and small labels stay crisp and keep their colour.
+
 ## Improved
 
 - Tokens glide to their place when they are dropped, snap to the grid or are moved by an undo, instead of jumping there. On a scene with dynamic lighting, a token the players do not always see is still placed at once when it is moved other than by a drop, so its way never shows where it stood. With reduced motion switched on in the system every token is placed at once.
@@ -41,6 +43,8 @@
 ## Fixed
 
 - The map no longer flickers while a sidebar opens or closes, or while you resize its pane.
+
+- Fit map (Shift+1) shows very large maps whole, and you can zoom out that far. The view used to stop zooming out before such a map fit.
 
 - Maps larger than the graphics card can show no longer stay black. Tokens kept working on them, but the map itself never appeared.
 

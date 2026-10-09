@@ -1,6 +1,7 @@
-import type { ClampZoom, Viewport } from 'pixi-viewport';
+import type { Viewport } from 'pixi-viewport';
 import type { TokenEntity } from '../types';
 import { computeTokenPixelSize } from './token-renderer/tokenSizing';
+import { allowZoom } from './zoomRange';
 
 /** Focus at a readable CSS-pixel diameter, leaving context in small panes. */
 export function focusToken(viewport: Viewport, token: Pick<TokenEntity, 'x' | 'y' | 'size'>, gridSize: number): void {
@@ -9,17 +10,8 @@ export function focusToken(viewport: Viewport, token: Pick<TokenEntity, 'x' | 'y
   const scale = screenDiameter / diameter;
   if (!Number.isFinite(diameter) || diameter <= 0 || !Number.isFinite(scale) || scale <= 0) return;
 
-  // The default absolute limits cannot accommodate every map resolution.
-  // Expand them to include this focus so animation and later wheel input agree.
-  const clamp = viewport.plugins.get<ClampZoom>('clamp-zoom');
-  if (clamp) {
-    if (typeof clamp.options.minScale === 'number') {
-      clamp.options.minScale = Math.min(clamp.options.minScale, scale);
-    }
-    if (typeof clamp.options.maxScale === 'number') {
-      clamp.options.maxScale = Math.max(clamp.options.maxScale, scale);
-    }
-  }
+  // The default limits cannot accommodate every map resolution.
+  allowZoom(viewport, scale);
 
   viewport.animate({
     position: { x: token.x, y: token.y },

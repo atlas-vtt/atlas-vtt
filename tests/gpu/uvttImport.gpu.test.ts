@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { imageDimensions } from '../../src/app/imageProcessing/imageDimensions';
+import { imageDimensions, imageHeader } from '../../src/app/imageProcessing/imageDimensions';
 import { IMAGE_PRESETS, disposeImageProcessing, optimizeImage } from '../../src/app/imageProcessing/imageProcessing';
 import { importUvttFile, type UvttImportDeps, type UvttImported } from '../../src/app/import/uvtt/importUvttFile';
 import { AssetService } from '../../src/app/services/AssetService';
@@ -85,14 +85,19 @@ beforeEach(() => { AssetService.resetInstance(); });
 afterAll(() => { disposeImageProcessing(); });
 
 describe('importing a Universal VTT file with the image workers', () => {
-  it.each(['image/png', 'image/webp', 'image/jpeg'])('saves a %s map as WebP of the same size, with a thumbnail, and puts the wall on it', async (type) => {
+  it.each([
+    ['image/png', 'png', 'png'],
+    ['image/webp', 'webp', 'webp'],
+    ['image/jpeg', 'jpeg', 'jpg'],
+  ] as const)('keeps a %s map as it is, with a thumbnail, and puts the wall on it', async (type, format, extension) => {
     const b = await bench();
 
     const result = arrived(await importUvttFile(b.deps, await mapFile({ x: 10, y: 8 }, 100, type), COLLECTION));
 
     const scene = sceneOf(b, result);
     const saved = new Blob([b.binaries.get(scene.background)!]);
-    expect(new TextDecoder().decode((await saved.arrayBuffer()).slice(8, 12))).toBe('WEBP');
+    expect(scene.background.endsWith(`.${extension}`)).toBe(true);
+    expect((await imageHeader(saved))?.format).toBe(format);
     expect(await imageDimensions(saved)).toEqual({ width: 1000, height: 800 });
     expect(scene.grid.size).toBe(100);
     expect(scene.objects.walls.wall_uvtt_1).toMatchObject({ p1: { x: 100, y: 100 }, p2: { x: 900, y: 100 } });

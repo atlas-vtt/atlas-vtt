@@ -12,7 +12,7 @@ export const TILE_CONTENT = 510;
 /** Pixels each tile bitmap carries of its neighbour, on inner sides only. */
 export const TILE_OVERLAP = 1;
 /** Bumped whenever tile size, overlap, quality or the level rule change: cached pyramids of another spec are rebuilt. */
-export const TILE_SPEC = 1;
+export const TILE_SPEC = 2;
 /** The overview is the finest level whose longer side is at most this (at most 16 tiles). */
 export const OVERVIEW_MAX_SIDE = 2048;
 

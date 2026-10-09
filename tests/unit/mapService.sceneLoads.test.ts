@@ -462,7 +462,7 @@ describe('MapService scene loads', () => {
       const { service, rendererService, mapImage } = setup();
       // The viewport places itself by its scale, as pixi-viewport does
       const viewport = {
-        screenWidth: 1000, screenHeight: 800, scale: 1, center: { x: 0, y: 0 },
+        screenWidth: 1000, screenHeight: 800, scale: 1, center: { x: 0, y: 0 }, plugins: { get: () => null },
         setZoom(scale: number): void { this.scale = scale; },
         moveCenter(x: number, y: number): void { this.center = { x: x * this.scale, y: y * this.scale }; },
       };

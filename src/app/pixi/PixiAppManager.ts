@@ -6,6 +6,7 @@ import { destroyTree } from "./utils/destroyTree";
 import { usesCanvasRenderer } from "./utils/rendererType";
 import { webglAvailable } from "./utils/webglAvailable";
 import { showSoftwareRenderingNotice } from "./softwareRenderingNotice";
+import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
 
 type RendererPreference = 'webgl' | 'canvas';
 
@@ -171,8 +172,8 @@ export class PixiAppManager {
     this.viewport
       .drag({ mouseButtons: 'right', pressDrag: true })
       .clampZoom({
-        minScale: 0.1,
-        maxScale: 5,
+        minScale: MIN_ZOOM,
+        maxScale: MAX_ZOOM,
       });
     this.viewport.plugins.add('decelerate', new SmoothDecelerate(this.viewport));
     

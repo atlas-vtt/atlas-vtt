@@ -1,6 +1,9 @@
 import type { ImageJob, ImageJobResult, ImageLayout, ThumbnailSpec } from './imageJob';
 import { WEBP_MAX_SIDE } from './decodeLimits';
 import { fitSize, frameImageRect, frameSize, scaleDown, type Size } from './imageLayout';
+import { imageHeader, type ImageFormat } from './imageDimensions';
+
+const KEPT_FORMATS: ReadonlySet<ImageFormat> = new Set(['png', 'jpeg', 'webp']);
 
 /**
  * Runs inside an image worker: one decode per job, scaling on a 2D canvas,
@@ -42,13 +45,6 @@ async function decode(job: ImageJob): Promise<ImageBitmap> {
   } catch (error) {
     throw new SourceDecodeError(error instanceof Error ? error.message : 'Could not decode the image.');
   }
-}
-
-/** WebP files start with `RIFF`, a four-byte length and `WEBP`. */
-async function isWebp(blob: Blob): Promise<boolean> {
-  const header = new Uint8Array(await blob.slice(0, 12).arrayBuffer());
-  const text = String.fromCharCode(...header);
-  return text.startsWith('RIFF') && text.slice(8, 12) === 'WEBP';
 }
 
 /**
@@ -138,11 +134,16 @@ async function renderCopies(output: Drawable, job: ImageJob): Promise<Pick<Image
   return { thumbnail, preview };
 }
 
-/** A WebP source that needs no scaling is kept as it is: re-encoding would only lose quality. */
+/**
+ * A source that needs no scaling is kept as it is: re-encoding would only lose quality, and
+ * players notice. Only formats every Atlas view shows are kept; others (GIF, BMP) are encoded.
+ */
 async function keepsSource(layout: ImageLayout, source: Blob, bitmap: ImageBitmap): Promise<boolean> {
   if (layout.kind !== 'fit') return false;
   const fitted = fitSize(bitmap, layout);
-  return fitted.width === bitmap.width && fitted.height === bitmap.height && isWebp(source);
+  if (fitted.width !== bitmap.width || fitted.height !== bitmap.height) return false;
+  const format = (await imageHeader(source))?.format;
+  return format !== undefined && KEPT_FORMATS.has(format);
 }
 
 /**
