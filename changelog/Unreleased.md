@@ -7,7 +7,7 @@
 
 ## Important changes
 
-- The player window shows everything your map view shows, and may show more of the map around it. Hide rooms from players with fog or lighting, not by scrolling them off your screen
+- Local player view window no longer adapts in size and resolution to host windows and instead adapts to it's own monitor
 - When the map pane changes size, the map keeps its centre in place instead of its top-left corner
 - Hidden tokens no longer give players sight or explore new areas. Areas already explored stay explored
 - Tokens and door icons under fog are hidden from players, with their names and rulers
@@ -15,15 +15,12 @@
 - Measurements that start on a token players can't see are hidden from players
 - Look-alike token numbers in the player view count only the tokens players can see
 - Atlas skips statblocks, note properties and loot files larger than 32 KB
-- The old, unused map view is gone. Tabs that still used it no longer reopen
 
 ## Improved
 
 - Large maps open faster, and much faster the second time. Settings show the space this uses and clear it
-- Players see the grid exactly as you set it. The separate Show grid switch is gone
-- The eye on a scene tab opens the player window when it is closed, and switches it to that scene when it is open
-- Open Player Window is now in the command palette
-- Show my rolls to players is now in the dice tray and in Dice settings
+- Grid on maps now correctly adjusts again to host changes on the player view
+- New toggle for public dice rolls in the dice tray
 - Invalid or oversized dice formulas are rejected with a clear message
 - Sight and light are much faster on maps with thousands of walls
 - Fog strokes keep consistent shapes
@@ -31,17 +28,16 @@
 ## Fixed
 
 - The map no longer flickers when a sidebar opens or closes
-- Fit map (Shift+1) shows very large maps whole
+- Fit map (Shift+1) shows very large maps entirely
 - Maps larger than the graphics card can show no longer stay black
 - The player window no longer zooms in, cuts off the map or turns blocky when you open a sidebar or use a small pane
 - The frozen player camera no longer jumps or resizes when you switch tabs or open a sidebar
 - Freezing the player camera right after switching scenes freezes it in the right place
 - Obsidian no longer turns sluggish after a right-click menu while Fantasy Statblocks is enabled
 - Dragging tokens and measuring no longer slow Obsidian down
-- The DM screen shows statblocks right away after Obsidian starts
-- A statblock note named like a known creature, such as Goblin, shows its own statblock
+- Fixed performance for DM screen after fresh Obsidian start
 - Empty or broken statblock entries no longer break the toolbar or the asset manager. With a contribution by ISorokaI
-- Dice in statblocks can be clicked in every Fantasy Statblocks layout, including custom ones
+- Dice in statblocks can be clicked in every Fantasy Statblocks layout, including custom ones with scripts
 - Dice rolls, sounds and history stay in the map view that made them
 - Undo and redo change only what that edit changed
 - The ruler and token dragging measure the same distance everywhere on the map
