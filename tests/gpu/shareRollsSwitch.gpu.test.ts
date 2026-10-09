@@ -58,19 +58,19 @@ describe('the show my rolls to players switch', () => {
 
   const rect = (element: Element): DOMRect => element.getBoundingClientRect();
 
-  it('sits in the tray across its content, between the formula and the Roll button', () => {
+  it('sits in the tray across its content, between the dice and the modifier', () => {
     const tray = document.querySelector('.atlas-dice-tray__content')!;
     const row = tray.querySelector('.atlas-dropdown-toggle-row')!;
     const toggle = row.querySelector('.atlas-toggle')!;
-    const formula = rect(tray.querySelector('.atlas-dice-tray__formula')!);
-    const roll = rect(tray.querySelector('.atlas-dice-tray__roll')!);
+    const dice = rect(tray.querySelector('.atlas-dice-tray__dice')!);
+    const modifier = rect(tray.querySelector('.atlas-dice-tray__modifier')!);
     const content = rect(tray);
     const box = rect(row);
 
     expect(box.left).toBeCloseTo(content.left, 0);
     expect(box.right).toBeCloseTo(content.right, 0);
-    expect(box.top).toBeGreaterThan(formula.bottom);
-    expect(box.bottom).toBeLessThan(roll.top);
+    expect(box.top).toBeGreaterThan(dice.bottom);
+    expect(box.bottom).toBeLessThan(modifier.top);
     expect(rect(toggle).right).toBeCloseTo(content.right, 0);
     // The toolbar's blanket button rules must not reach the switch.
     expect(getComputedStyle(toggle).height).toBe(getComputedStyle(document.querySelector('.atlas-command-palette-container .atlas-toggle')!).height);

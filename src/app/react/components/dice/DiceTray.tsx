@@ -90,6 +90,10 @@ export function DiceTray({ onRoll, shareRolls }: DiceTrayProps): React.ReactElem
         })}
       </div>
 
+      {shareRolls && (
+        <DropdownToggleRow label={t('dice.showRollsToPlayers')} value={shareRolls.shown} onChange={shareRolls.onToggle} />
+      )}
+
       <div className="atlas-dice-tray__modifier">
         <span className="atlas-dice-tray__modifier-label">Modifier</span>
         <button
@@ -117,10 +121,6 @@ export function DiceTray({ onRoll, shareRolls }: DiceTrayProps): React.ReactElem
       <p className={cn('atlas-dice-tray__formula', formula === '' && 'atlas-dice-tray__formula--empty')} role="status" aria-live="polite">
         {formula === '' ? 'The tray is empty.' : formula}
       </p>
-
-      {shareRolls && (
-        <DropdownToggleRow label={t('dice.showRollsToPlayers')} value={shareRolls.shown} onChange={shareRolls.onToggle} />
-      )}
 
       <div className="atlas-dice-tray__actions">
         <Button size="sm" className="atlas-dice-tray__roll" onClick={throwDice} disabled={formula === ''}>
