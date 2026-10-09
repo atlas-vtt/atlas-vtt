@@ -57,7 +57,9 @@ export async function presentTab(app: App, view: AtlasView, tabId: string): Prom
     const waiting = PlayerWindowService.openPlayerView(app);
     if (waiting) await restorePlayerWindow(app, waiting);
   }
-  new Notice(t('present.shows', { name: tab.displayName }));
+  // A closed window shows the scene once it is opened; saying players see it now would be wrong
+  const shown = PlayerWindowService.getInstance()?.isWindowOpen() ?? false;
+  new Notice(t(shown ? 'present.shows' : 'present.chosen', { name: tab.displayName }));
 }
 
 /**

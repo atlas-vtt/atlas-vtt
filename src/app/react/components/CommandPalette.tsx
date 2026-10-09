@@ -18,6 +18,7 @@ import {
   Settings,
   Snowflake,
   MonitorUp,
+  AppWindow,
   Move,
   Users,
   Palette,
@@ -30,7 +31,7 @@ import { useStore } from 'zustand';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { PlayerWindowService } from '../../services/PlayerWindowService';
-import { presentActiveTab } from '../../services/PlayerWindowPresenter';
+import { openPlayerWindow, presentActiveTab } from '../../services/PlayerWindowPresenter';
 import { playerWindowStore } from '../../stores/playerWindowStore';
 import { debounce } from '../../../utils/debounce';
 import { cn } from '../../../utils/cn';
@@ -312,6 +313,16 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       },
       isToggle: true,
       isActive: isPlayerWindowFrozen,
+    },
+    {
+      id: "open-player-window",
+      icon: <AppWindow />,
+      label: t('palette.openPlayerWindow'),
+      section: "mode",
+      action: () => {
+        void openPlayerWindow(app);
+        onClose();
+      },
     },
     {
       id: "transfer-player-view",

@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import type { App } from 'obsidian';
 import type { LocalPlayerView } from '../../src/app/local-player-view';
 import { describe, expect, test, vi, beforeEach } from 'vitest';
+import { Notice } from 'obsidian';
 import { createStore } from 'zustand/vanilla';
 import { createTabMetaStore } from '../../src/app/stores/tabMetaStore';
 import { playerWindowStore, resetPlayerWindowStore } from '../../src/app/stores/playerWindowStore';
@@ -12,6 +13,7 @@ import type { Application } from 'pixi.js';
 import { fakeApp, fakeGroup } from '../mocks/schedulerApp';
 import { FRAME } from '../mocks/playerFrameSource';
 
+vi.mock('obsidian', async (importOriginal) => ({ ...await importOriginal<typeof import('obsidian')>(), Notice: vi.fn() }));
 vi.mock('../../src/app/atlas-view', () => ({
   AtlasView: class AtlasView {},
   ATLAS_VIEW_TYPE: 'atlas-vtt',
@@ -147,6 +149,7 @@ describe('PlayerWindowPresenter', () => {
     expect(serviceMock.presentCanvas).toHaveBeenCalledWith(frameSourceFor(view.atlasStore), dungeon);
     expect(presentedSceneOf(app).get()).toEqual({ tabId: dungeon, filePath: 'maps/dungeon.md' });
     expect(playerWindowStore.getState().shownTabId).toBe(dungeon);
+    expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Player view shows Dungeon');
 
     // Frames are captured through the renderer so DM-only layers stay out of the player view.
     const source = shownSource();
@@ -417,6 +420,8 @@ describe('PlayerWindowPresenter', () => {
       expect(view.switchToTab).toHaveBeenCalledWith(dungeon);
       expect(serviceMock.openLeaf).not.toHaveBeenCalled();
       expect(serviceMock.presentCanvas).not.toHaveBeenCalled();
+      // Players see nothing yet, and the notice says how they will
+      expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Players will see Dungeon when you open the player window');
       expect(presentedSceneOf(app).get()).toEqual({ tabId: dungeon, filePath: DUNGEON });
       expect(changes).toHaveBeenCalledWith({ tabId: dungeon, filePath: DUNGEON });
       // Kept on this device, so a reload still presents it

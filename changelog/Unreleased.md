@@ -21,7 +21,7 @@
 
 - Large maps open faster, and much faster the second time. Settings show the space this uses and clear it
 - Players see the grid exactly as you set it. The separate Show grid switch is gone
-- Choose the scene players see without opening the player window. Open player window is now its own command
+- Choose the scene players see without opening the player window. Open it with Open Player Window in the command palette
 - Show my rolls to players is now in the dice tray and in Dice settings
 - Invalid or oversized dice formulas are rejected with a clear message
 - Sight and light are much faster on maps with thousands of walls
