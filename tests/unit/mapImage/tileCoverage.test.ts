@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tileCoverage, type TileCoverage } from '../../../src/app/pixi/mapImage/tileCoverage';
+import { coversView, tileCoverage, type TileCoverage } from '../../../src/app/pixi/mapImage/tileCoverage';
 import { childTiles, pyramidOf, tileKey, type TileRef } from '../../../src/app/pixi/mapImage/pyramid';
 
 const t = (level: number, col: number, row: number): TileRef => ({ level, col, row });
@@ -93,40 +93,46 @@ describe('tileCoverage', () => {
     expect(result.retain).not.toContain('0/0/0');
   });
 
-  it('hides a coarse tile once opaque finer drawn tiles cover it', () => {
+  it('never hides a wanted tile, even where opaque finer tiles cover it', () => {
+    // Zooming out: the wanted coarse tile fades in under its retained children, and is drawn.
     const fading = cover(square, [t(1, 0, 0)], [t(1, 0, 0), ...quarter], quarter);
-    expect(fading.hidden).toEqual(['1/0/0']);
-    expect(fading.draw).toEqual(['0/0/0', '0/1/0', '0/0/1', '0/1/1']);
-    expect(fading.retain).toEqual([...fading.draw, ...fading.hidden]);
+    expect(fading.hidden).toEqual([]);
+    expect(fading.draw).toEqual(['1/0/0', '0/0/0', '0/1/0', '0/0/1', '0/1/1']);
+    expect(fading.retain).toEqual(fading.draw);
   });
 
-  it('keeps a coarse tile drawn while any finer tile over it is missing or fading', () => {
-    const oneMissing = cover(square, [t(1, 0, 0)], [t(1, 0, 0), ...quarter.slice(1)], quarter.slice(1));
-    expect(oneMissing.draw[0]).toBe('1/0/0');
-    expect(oneMissing.hidden).toEqual([]);
-    const oneFading = cover(square, [t(1, 0, 0)], [t(1, 0, 0), ...quarter], quarter.slice(1));
-    expect(oneFading.draw[0]).toBe('1/0/0');
+  it('drops the retained finer tiles once the wanted coarse tile is opaque', () => {
+    const settled = cover(square, [t(1, 0, 0)], [t(1, 0, 0), ...quarter]);
+    expect(settled.draw).toEqual(['1/0/0']);
+    expect(settled.retain).toEqual(['1/0/0']);
+  });
+
+  it('draws every loaded wanted tile of the whole map, whatever finer tiles are loaded', () => {
+    const all = [0, 1, 2, 3].flatMap(row => [0, 1, 2, 3].map(col => t(0, col, row)));
+    const covered = cover(square, [...all, t(2, 0, 0)], [...all, t(2, 0, 0)]);
+    expect(covered.hidden).toEqual([]);
+    expect(covered.draw).toEqual(['2/0/0', ...keys(all)]);
+  });
+
+  it('keeps a fallback ancestor drawn while any finer tile over it is missing or fading', () => {
+    const oneFading = cover(square, quarter, [t(1, 0, 0), ...quarter], [t(1, 0, 0), ...quarter.slice(1)]);
+    expect(oneFading.draw).toEqual(['1/0/0', ...keys(quarter)]);
     expect(oneFading.hidden).toEqual([]);
   });
 
-  it('hides the coarse level under transparent tiles once they have faded in', () => {
-    // The GM camera wants level 0 and a demand region the overview: the tiles' own alpha would let the
-    // overview show through, so only the fade decides and the overview is hidden.
-    const level0 = [t(0, 0, 0), t(0, 1, 0), t(0, 2, 0), t(0, 3, 0), t(0, 0, 1), t(0, 1, 1), t(0, 2, 1), t(0, 3, 1)];
-    const result = cover(square, [...level0, t(2, 0, 0)], [...level0, t(1, 0, 0), t(1, 1, 0), t(2, 0, 0)]);
-    expect(result.draw).toEqual(['2/0/0', ...keys(level0)]);
-    expect(result.hidden).toEqual([]);
-
-    const all = [0, 1, 2, 3].flatMap(row => [0, 1, 2, 3].map(col => t(0, col, row)));
-    const covered = cover(square, [...all, t(2, 0, 0)], [...all, t(2, 0, 0)]);
-    expect(covered.hidden).toEqual(['2/0/0']);
-    expect(covered.draw).toEqual(keys(all));
-  });
-
-  it('counts coverage across levels', () => {
-    const mixed = [t(1, 0, 0), t(1, 1, 0), t(0, 0, 2), t(0, 1, 2), t(0, 0, 3), t(0, 1, 3), t(1, 1, 1)];
-    const result = cover(square, [...mixed, t(2, 0, 0)], [...mixed, t(2, 0, 0)]);
+  it('hides a fallback ancestor that opaque finer tiles cover, across levels', () => {
+    // Every level 1 tile is wanted; 1/0/1 is missing, its four children are retained and opaque.
+    const level1 = [t(1, 0, 0), t(1, 1, 0), t(1, 0, 1), t(1, 1, 1)];
+    const below = [t(0, 0, 2), t(0, 1, 2), t(0, 0, 3), t(0, 1, 3)];
+    const result = cover(square, level1, [t(1, 0, 0), t(1, 1, 0), t(1, 1, 1), ...below, t(2, 0, 0)]);
+    expect(result.missing).toEqual(['1/0/1']);
     expect(result.hidden).toEqual(['2/0/0']);
+    expect(result.draw).toEqual(['1/0/0', '1/1/0', '1/1/1', ...keys(below)]);
+    // The transparent case: one retained child still fading lets the ancestor show through no hole.
+    const fading = cover(square, level1, [t(1, 0, 0), t(1, 1, 0), t(1, 1, 1), ...below, t(2, 0, 0)],
+      [t(1, 0, 0), t(1, 1, 0), t(1, 1, 1), ...below.slice(1), t(2, 0, 0)]);
+    expect(fading.hidden).toEqual([]);
+    expect(fading.draw[0]).toBe('2/0/0');
   });
 
   it('covers edge tiles that have fewer children', () => {
@@ -134,8 +140,9 @@ describe('tileCoverage', () => {
     const edge = pyramidOf(1021, 600);
     const children = [t(0, 2, 0), t(0, 2, 1)];
     expect(keys(childTiles(edge, t(1, 1, 0)))).toEqual(keys(children));
-    expect(cover(edge, [t(1, 1, 0)], [t(1, 1, 0), ...children], children).hidden).toEqual(['1/1/0']);
-    expect(cover(edge, [t(1, 1, 0)], [t(1, 1, 0), ...children], [children[0]]).hidden).toEqual([]);
+    const wanted = [t(1, 0, 0), t(1, 1, 0)];
+    expect(cover(edge, wanted, [t(1, 0, 0), ...children, t(2, 0, 0)]).hidden).toEqual(['2/0/0']);
+    expect(cover(edge, wanted, [t(1, 0, 0), ...children, t(2, 0, 0)], [t(1, 0, 0), children[0]!, t(2, 0, 0)]).hidden).toEqual([]);
   });
 
   it('serves several views at different levels at once', () => {
@@ -152,5 +159,30 @@ describe('tileCoverage', () => {
   it('ignores opaque marks of tiles that are not loaded', () => {
     const result = cover(square, [t(0, 0, 0)], [t(2, 0, 0)], [t(1, 0, 0), t(2, 0, 0)]);
     expect(result.draw).toEqual(['2/0/0']);
+  });
+});
+
+describe('coversView', () => {
+  const whole = { x: 0, y: 0, width: 2040, height: 2040 };
+
+  it('counts a view drawn when its tiles are done', () => {
+    expect(coversView(square, quarter, quarter, whole)).toBe(true);
+    expect(coversView(square, quarter, quarter.slice(1), whole)).toBe(false);
+  });
+
+  it('counts finer done tiles as covering a coarser tile of the view', () => {
+    expect(coversView(square, [t(1, 0, 0)], quarter, whole)).toBe(true);
+    expect(coversView(square, [t(2, 0, 0)], [...quarter, t(1, 1, 0), t(1, 0, 1), t(1, 1, 1)], whole)).toBe(true);
+    expect(coversView(square, [t(2, 0, 0)], [...quarter, t(1, 1, 0), t(1, 0, 1)], whole)).toBe(false);
+  });
+
+  it('asks only for the finer tiles that reach into the view', () => {
+    const topLeft = { x: 0, y: 0, width: 400, height: 400 };
+    expect(coversView(square, [t(1, 0, 0)], [t(0, 0, 0)], topLeft)).toBe(true);
+    expect(coversView(square, [t(1, 0, 0)], [t(0, 0, 0)], whole)).toBe(false);
+  });
+
+  it('never counts coarser done tiles', () => {
+    expect(coversView(square, quarter, [t(1, 0, 0), t(2, 0, 0)], whole)).toBe(false);
   });
 });

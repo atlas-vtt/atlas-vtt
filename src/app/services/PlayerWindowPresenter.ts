@@ -245,8 +245,11 @@ async function waitForRenderedFrameSource(view: AtlasView): Promise<PlayerFrameS
     },
     canRender: () => renderer.canRenderPlayerFrame(),
     release: () => renderer.releasePlayerFrame(),
+    addDemandRegion: (region) => renderer.getMapImage()?.addDemandRegion(region) ?? noRegion,
   };
 }
+
+function noRegion(): void {}
 
 function waitForMapLoaded(store: StoreApi<ViewAtlasState>): Promise<void> {
   if (!store.getState().isMapLoading) return Promise.resolve();

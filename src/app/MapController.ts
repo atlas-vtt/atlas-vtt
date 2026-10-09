@@ -1,6 +1,7 @@
 import type { App } from 'obsidian';
 import { MapLoader, mapImageSourceFor } from './MapLoader';
 import type { MapFile } from './services/MapPersistence';
+import { MAP_THUMBNAIL_SIZE } from './services/MapThumbnailService';
 import type { PixiRendererOrchestrator } from './PixiRendererOrchestrator';
 import type { GridOptions } from './grid/GridSystem';
 import { parseGridColor } from './grid/gridContrastColor';
@@ -39,6 +40,7 @@ function viewMapImage(app: App, renderer: MapRenderer): MapImage | null {
     renderer: pixi.renderer,
     requestRender: () => requestRender(pixi),
     reducedMotion: () => prefersReducedMotion(pixi.canvas),
+    picture: MAP_THUMBNAIL_SIZE,
   });
   renderer.setMapImage(mapImage);
   return mapImage;

@@ -1,8 +1,8 @@
 import { Sprite, Ticker, type Container } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MapImageLayer, viewportCamera, type TileSource } from '../../../src/app/pixi/mapImage/MapImageLayer';
-import type { TileView } from '../../../src/app/pixi/mapImage/levelOfDetail';
-import { pyramidOf, tileContentFrame, tileKey, tileSourceRect, type TileRef } from '../../../src/app/pixi/mapImage/pyramid';
+import { pictureView, visibleTiles, type TileView } from '../../../src/app/pixi/mapImage/levelOfDetail';
+import { parentTile, pyramidOf, tileContentFrame, tileKey, tileSourceRect, type TileRef } from '../../../src/app/pixi/mapImage/pyramid';
 import { TileTextureCache } from '../../../src/app/pixi/mapImage/tileTextureCache';
 import { MOTION_NORMAL_MS } from '../../../src/app/utils/motion';
 
@@ -21,7 +21,7 @@ interface Pending {
 const pyramid = pyramidOf(3000, 2000);
 const OVERVIEW = ['1/0/0', '1/1/0', '1/2/0', '1/0/1', '1/1/1', '1/2/1'];
 
-function harness(options: { camera?: TileView | null; reducedMotion?: boolean } = {}): {
+function harness(options: { camera?: TileView | null; reducedMotion?: boolean; picture?: { width: number; height: number } } = {}): {
   layer: MapImageLayer;
   cache: TileTextureCache;
   pending: Pending[];
@@ -48,7 +48,7 @@ function harness(options: { camera?: TileView | null; reducedMotion?: boolean } 
   };
   let camera = options.camera ?? null;
   const layer = new MapImageLayer({
-    source, cache, ticker, requestRender, camera: () => camera, reducedMotion: () => options.reducedMotion ?? false,
+    source, cache, ticker, requestRender, camera: () => camera, reducedMotion: () => options.reducedMotion ?? false, picture: options.picture ?? null,
   });
   const frame = async (): Promise<void> => {
     await vi.advanceTimersByTimeAsync(16);
@@ -119,8 +119,8 @@ describe('MapImageLayer', () => {
     expect(edge.texture.frame).toMatchObject({ x: 1, y: 1, width: 450, height: 470 });
   });
 
-  it('fades tiles in over the normal motion time, asking for a render at each step, then hides covered coarse tiles', async () => {
-    const { layer, serve, frame, requestRender } = harness({ camera: level0({ x: 0, y: 0, width: 1020, height: 1020 }) });
+  it('fades tiles in over the normal motion time, asking for a render at each step, then lets the fallback go', async () => {
+    const { layer, cache, serve, frame, requestRender } = harness({ camera: level0({ x: 0, y: 0, width: 1020, height: 1020 }) });
     await frame();
     await serve(ref => ref.level === pyramid.overview);
     const overview = spriteOf(layer, '1/0/0')!;
@@ -135,10 +135,89 @@ describe('MapImageLayer', () => {
     await serve();
     await vi.advanceTimersByTimeAsync(MOTION_NORMAL_MS * 2);
     await frame();
-    // Its four children are opaque now: the overview tile is kept but not drawn.
+    // Its four children are opaque now: the overview tile is no longer drawn, its texture stays resident.
     expect(spriteOf(layer, '0/1/1')!.alpha).toBe(1);
-    expect(overview.visible).toBe(false);
-    expect(overview.destroyed).toBe(false);
+    expect(spriteOf(layer, '1/0/0')).toBeUndefined();
+    expect(overview.destroyed).toBe(true);
+    expect(cache.isReady('hash/1/0/0')).toBe(true);
+  });
+
+  it('drops the finer tiles once the coarser ones are opaque when the camera zooms out', async () => {
+    const { layer, serve, frame, setCamera } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), reducedMotion: true });
+    await frame();
+    await serve();
+    expect(spriteOf(layer, '0/0/0')?.visible).toBe(true);
+    // The whole map at 1/8: level 2, whose texels cover half a screen pixel or more.
+    setCamera({ rect: { x: 0, y: 0, width: 3000, height: 2000 }, worldPerScreenPixel: 8 });
+    await frame();
+    await serve();
+    await frame();
+    const shown = sprites(layer).filter(sprite => sprite.visible).map(sprite => sprite.label);
+    expect(shown.sort()).toEqual(['2/0/0', '2/1/0']);
+    expect(sprites(layer).filter(sprite => sprite.label.startsWith('0/'))).toEqual([]);
+  });
+
+  it('shows on the canvas only the camera\'s tiles, and another view\'s for one render', async () => {
+    const { layer, serve, frame, requestRender } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), reducedMotion: true });
+    // A player window looking at the bottom right corner at a quarter: level 1.
+    const player: TileView = { rect: { x: 2000, y: 1000, width: 1000, height: 1000 }, worldPerScreenPixel: 4 };
+    layer.addDemandRegion(player);
+    await frame();
+    await serve();
+    await frame();
+    const visible = (): string[] => sprites(layer).filter(sprite => sprite.visible).map(sprite => sprite.label).sort();
+    const canvas = visible();
+    expect(canvas.every(key => key.startsWith('0/'))).toBe(true);
+    expect(spriteOf(layer, '1/2/1')?.visible).toBe(false);
+
+    requestRender.mockClear();
+    const restore = layer.drawFor(player);
+    // Its level's tiles and their prefetch ring, as its region loaded them.
+    expect(visible()).toEqual(OVERVIEW.slice().sort());
+    restore();
+    expect(visible()).toEqual(canvas);
+    expect(requestRender).not.toHaveBeenCalled();
+  });
+
+  it('draws a picture of the whole map from its own level, with tiles kept loaded for it', async () => {
+    const { layer, cache, serve, frame } = harness({ camera: level0({ x: 0, y: 0, width: 200, height: 150 }), reducedMotion: true, picture: { width: 400, height: 300 } });
+    await frame();
+    await serve();
+    await frame();
+    // 2667 × 2000 of the map in 400 × 300 pixels: 6.7 world units a pixel, level 2.
+    const picture = pictureView({ x: 0, y: 0, width: 3000, height: 2000 }, { width: 400, height: 300 })!;
+    expect(cache.isReady('hash/2/0/0') && cache.isReady('hash/2/1/0')).toBe(true);
+    expect(spriteOf(layer, '2/0/0')?.visible).toBe(false);
+    const restore = layer.drawFor(picture);
+    expect(sprites(layer).filter(sprite => sprite.visible).map(sprite => sprite.label).sort()).toEqual(['2/0/0', '2/1/0']);
+    restore();
+    expect(spriteOf(layer, '2/0/0')?.visible).toBe(false);
+  });
+
+  it('draws a picture whose tiles have no sprite from the cached textures, and removes them after', async () => {
+    const { layer, serve, frame, setCamera } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), reducedMotion: true });
+    await frame();
+    await serve();
+    setCamera(level0({ x: 2600, y: 1600, width: 300, height: 300 }));
+    await frame();
+    await serve();
+    await frame();
+    expect(spriteOf(layer, '0/0/0')).toBeUndefined();
+    const restore = layer.drawFor(level0({ x: 0, y: 0, width: 400, height: 400 }));
+    expect(spriteOf(layer, '0/0/0')?.visible).toBe(true);
+    expect(spriteOf(layer, '0/0/0')?.alpha).toBe(1);
+    restore();
+    expect(spriteOf(layer, '0/0/0')).toBeUndefined();
+  });
+
+  it('keeps every part of the map drawn under a camera zoomed far out on a corner', async () => {
+    const { layer, serve, frame } = harness({ camera: { rect: { x: 2900, y: 1900, width: 4000, height: 3000 }, worldPerScreenPixel: 8 }, reducedMotion: true });
+    await frame();
+    await serve();
+    await frame();
+    const drawnOver = (ref: TileRef | null): boolean => !!ref && (spriteOf(layer, tileKey(ref))?.visible === true || drawnOver(parentTile(pyramid, ref)));
+    const overview = visibleTiles(pyramid, pyramid.overview, { x: 0, y: 0, width: 3000, height: 2000 }, 0);
+    expect(overview.filter(ref => !drawnOver(ref))).toEqual([]);
   });
 
   it('draws at once under reduced motion', async () => {
@@ -200,6 +279,18 @@ describe('MapImageLayer', () => {
     void layer.whenReady(level0({ x: 2500, y: 1500, width: 400, height: 400 }), 100).then(() => { timedOut = true; });
     await vi.advanceTimersByTimeAsync(120);
     expect(timedOut).toBe(true);
+  });
+
+  it('counts a view drawn where opaque finer tiles cover it, without its own level\'s tiles', async () => {
+    const { layer, serve, frame, requested } = harness({ camera: level0({ x: 0, y: 0, width: 800, height: 600 }), reducedMotion: true });
+    await frame();
+    await serve();
+    await frame();
+    expect(requested()).not.toContain('2/0/0');
+    let ready = false;
+    void layer.whenReady({ rect: { x: 0, y: 0, width: 500, height: 500 }, worldPerScreenPixel: 8 }, 5000).then(() => { ready = true; });
+    await Promise.resolve();
+    expect(ready).toBe(true);
   });
 
   it('leaves no texture, sprite or open request when destroyed', async () => {

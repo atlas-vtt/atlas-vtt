@@ -1,4 +1,5 @@
 import type { DecodedLevels } from './decodedLevels';
+import { fitWithin } from '../../imageProcessing/imageLayout';
 import {
   levelOf,
   tileContentFrame,
@@ -108,9 +109,8 @@ export class TileServer {
 
   private async composeOverview(source: MapSource, maxSide: number, signal: AbortSignal): Promise<ImageBitmap | null> {
     const level = overviewSourceLevel(source.pyramid, maxSide);
-    const fit = Math.min(1, maxSide / Math.max(level.width, level.height));
-    const width = Math.max(1, Math.round(level.width * fit));
-    const height = Math.max(1, Math.round(level.height * fit));
+    // Fit from the full size, not the level's: a level's sides are rounded up, which can shift the shorter side by a pixel.
+    const { width, height } = fitWithin(source.pyramid, maxSide, maxSide);
     // A level is never handed out itself: transferring it would take it from the build.
     const direct = await source.levels?.use(level.index, (bitmap) => this.graphics.resize(bitmap, width, height));
     if (direct) return direct;

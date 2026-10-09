@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { Container, Sprite, Texture } from 'pixi.js';
 import { GridSystem } from '../../src/app/grid/GridSystem';
+import { mapImageViewOf } from '../helpers/fakeMapImageView';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import { FRAME, fakePlayerFrames, fakeViewport } from '../mocks/playerFrameSource';
 
@@ -18,7 +19,7 @@ function mapWithGrid(enabled: boolean): { grid: GridSystem; renderer: PixiRender
   const viewport = new Container();
   const background = new Sprite(Texture.WHITE); background.width = 500; background.height = 500;
   viewport.addChild(background);
-  const grid = new GridSystem({ renderer: { resolution: 1 } } as never, viewport as never, background, { size: 70, enabled, color: 0xff0000 });
+  const grid = new GridSystem({ renderer: { resolution: 1 } } as never, viewport as never, mapImageViewOf(background), { size: 70, enabled, color: 0xff0000 });
   grids.push(grid);
   const renderer = Object.assign(Object.create(PixiRendererOrchestrator.prototype) as PixiRendererOrchestrator, {
     pixiAppManager: { getApp: () => ({ renderer: { render: vi.fn() }, stage: {} }), getViewport: fakeViewport },

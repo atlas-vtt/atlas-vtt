@@ -6,6 +6,7 @@ import { afterEach, expect, vi } from 'vitest';
 
 vi.mock('events', async () => import('eventemitter3'));
 import { GridSystem, type GridOptions } from '../../src/app/grid/GridSystem';
+import { mapImageViewOf } from './fakeMapImageView';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { MeasureRenderer } from '../../src/app/pixi/MeasureRenderer';
@@ -91,7 +92,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
     store.getState().setPersistenceEnabled(false);
     store.setState({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true });
     const events = new EventEmitter();
-    const grid = new GridSystem(app, viewport, floor, { size: CELL, enabled: false, color: 0xffffff, ...gridOptions });
+    const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: CELL, enabled: false, color: 0xffffff, ...gridOptions });
     const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, 'player-view-test');
     tokens.setPixiApp(app);
     const fog = new FogOfWarRenderer(viewport, app, events, store);

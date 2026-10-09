@@ -14,15 +14,17 @@ import type { GridType } from '../../grid/GridSystem';
 import { latticeSupport } from './latticeFit';
 import { refineGrid } from './refineGrid';
 import type { RefinedGrid } from './refineGrid';
-import type { MapPixels } from '../../grid/gridContrastColor';
 import type { PixelRect } from '../mapImage/pyramid';
+import type { DetectableMap } from '../mapImage/mapImageView';
+
+export type { DetectableMap } from '../mapImage/mapImageView';
 
 const SPECTRUM_SIZE = 512;
 /** Plausible line spacing in spectrum pixels. */
 const MIN_PERIOD = 4;
 const MAX_PERIOD = SPECTRUM_SIZE / 4;
 /** Longest side of the analysed image; larger maps are scaled down before detection. */
-const MAX_ANALYSIS_SIDE = 4096;
+export const MAX_ANALYSIS_SIDE = 4096;
 /** Support below which the map is reported as having no grid. */
 const MIN_SUPPORT = 0.05;
 /** A spectral peak may be a harmonic of the grid, so the half and the double of a supported size are fitted too. */
@@ -104,11 +106,6 @@ export function detectGridInImage(image: GrayImage): RefinedGrid | null {
   return fits.length > 0 ? chooseFit(image, fits) : null;
 }
 
-/** A map image to detect a grid on: its world rect and its pixels (`MapImage`). */
-export interface DetectableMap extends MapPixels {
-  readonly worldRect: PixelRect | null;
-}
-
 /** The map's luminance at up to `MAX_ANALYSIS_SIDE` a side; null for a map too small or without pixels. */
 async function readMapGray(map: DetectableMap): Promise<{ image: GrayImage; rect: PixelRect } | null> {
   const rect = map.worldRect;
@@ -126,9 +123,11 @@ async function readMapGray(map: DetectableMap): Promise<{ image: GrayImage; rect
 /** Detects the grid of a map image and returns it in world coordinates. */
 export async function detectGridFromMapImage(map: DetectableMap): Promise<AlignmentResult | null> {
   const read = await readMapGray(map);
-  if (!read) return null;
-  const { image, rect } = read;
+  return read ? detectGridInMapGray(read.image, read.rect) : null;
+}
 
+/** Detects the grid in `image`, the luminance of the map that covers `rect`, and returns it in world coordinates. */
+export function detectGridInMapGray(image: GrayImage, rect: PixelRect): AlignmentResult | null {
   const detected = detectGridInImage(image);
   if (!detected) return null;
 

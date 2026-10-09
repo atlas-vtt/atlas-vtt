@@ -14,6 +14,8 @@ import type { ThumbnailSize } from '../MapThumbnailService';
 
 /** The map: 800 × 600 world pixels. A scene card (400 × 300) frames all of it, a snapshot card (640 × 360) rows 75 to 525. */
 export const MAP = { width: 800, height: 600 };
+/** The map image's world rect, which a thumbnail frames. */
+export const MAP_RECT = { x: 0, y: 0, ...MAP };
 /** A torch, bright to 70 px and dim to 140 px. */
 export const LIGHT_AT = { x: 200, y: 300 };
 /** Floor far beyond the torch's reach. */

@@ -8,6 +8,7 @@ import { createHexLayout, hexCellExtent, isHexGridType } from '../../src/app/gri
 import { drawSquareGrid } from '../../src/app/grid/squareGridDrawer';
 import type { GridBounds, GridLineType, GridPath } from '../../src/app/grid/gridLineStyle';
 import { captureBeforeRender } from '../../src/app/pixi/playerSafeFrame';
+import { mapImageViewOf } from '../helpers/fakeMapImageView';
 
 const VIEW = 300;
 const MAP = 2048;
@@ -126,7 +127,7 @@ async function scene(resolution: number, type: GridType, lineType: GridLineType)
   const stage = new Container();
   const viewport = stage.addChild(new Viewport({ screenWidth: VIEW, screenHeight: VIEW, worldWidth: MAP, worldHeight: MAP, events: renderer.events }));
   const map = viewport.addChild(new Sprite(plainMap()));
-  const grid = new GridSystem({ renderer } as unknown as Application, viewport, map, {
+  const grid = new GridSystem({ renderer } as unknown as Application, viewport, mapImageViewOf(map), {
     type, size: SIZE, offsetX: OFFSET, offsetY: OFFSET, color: 0x000000, alpha: 1, lineWidth: 1, lineType,
   });
   return {

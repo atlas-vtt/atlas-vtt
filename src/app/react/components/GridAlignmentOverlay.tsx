@@ -63,10 +63,10 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
     const viewport = view?.renderer?.getViewportInstance();
     const gridSystem = view?.renderer?.getGridSystem();
     const canvasEl = view?.renderer?.getCanvasElement();
-    const mapLayer = view?.renderer?.getMapImage?.()?.layer ?? null;
+    const mapImage = view?.renderer?.getMapImage?.() ?? null;
     if (!viewport || !gridSystem || !canvasEl) return;
 
-    controllerRef.current = new GridAlignmentController(viewport, gridSystem, canvasEl, mapLayer);
+    controllerRef.current = new GridAlignmentController(viewport, gridSystem, canvasEl, mapImage);
     setControllerVersion(v => v + 1);
   }, [view]);
 

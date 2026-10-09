@@ -1,4 +1,4 @@
-import { Application, Container, Graphics, Sprite } from 'pixi.js';
+import { Application, Container, Graphics } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import type { RenderLayer } from 'pixi.js';
 import { drawSquareGrid } from './squareGridDrawer';
@@ -8,7 +8,7 @@ import type { GridBounds, GridLineType } from './gridLineStyle';
 import { GridLines } from './gridLines';
 import { createHexLayout, hexCellExtent, isHexGridType, nearestHexCenter } from './hexGeometry';
 import type { HexLayout } from './hexGeometry';
-import { contrastColorForPixels, contrastColorForSprite, type MapPixels } from './gridContrastColor';
+import { contrastColorForPixels } from './gridContrastColor';
 import { snapTokenCenter } from './gridPlacement';
 import { numberCells, type CellLattice, type CellNumberStyle } from './cellNumbering';
 import { hexLattice } from './hexLattice';
@@ -16,6 +16,8 @@ import { squareLattice } from './squareLattice';
 import { CellNumberLabels, type CellNumberView } from './cellNumberLabels';
 import { destroyTree } from '../pixi/utils/destroyTree';
 import { applyGridMark, createMarkBacking, type GridMarkColor, type UnlitGrid } from './gridLightingMark';
+import type { MapImageView } from '../pixi/mapImage/mapImageView';
+import type { PixelRect } from '../pixi/mapImage/pyramid';
 
 export type GridType = 'square' | 'hex-horizontal' | 'hex-vertical';
 
@@ -46,10 +48,8 @@ export interface GridOptions {
   lineType?: GridLineType;
   /** Whether the grid is visible */
   enabled?: boolean;
-  /** Scale factor for the grid (visual scale, distinct from mapScale) */
+  /** Scale factor for the grid (visual scale) */
   scale?: number;
-  /** Map scale for grid alignment mode - DEPRECATED or re-evaluate usage */
-  mapScale?: number;
   /** Whether in alignment mode (for visual feedback) */
   isAligning?: boolean;
   /** Numbers every cell of the grid in this style; unset shows no numbers. */
@@ -60,7 +60,7 @@ export interface GridOptions {
 export const ALIGNMENT_GRID_COLOR = 0x00ff00;
 
 /**
- * Manages a static grid overlay that exactly matches a background sprite,
+ * Manages a static grid overlay that exactly matches the map image,
  * staying locked under pan/zoom by the Pixi‑Viewport container.
  */
 export class GridSystem implements UnlitGrid {
@@ -70,16 +70,13 @@ export class GridSystem implements UnlitGrid {
   private readonly onViewportZoomed = (): void => {
     this.cellNumberLabels?.setView(this.numberView());
   };
-  /**
-   * The map the grid overlays (its bounds, and where it lies in the viewport): the map image's
-   * layer, whose bounds area is the image's world rect; null between two maps, when there is nothing to draw on.
-   */
-  private bgSprite: Container | null;
-  /** The map's pixels, for the automatic colour where the map is no sprite with a readable texture. */
-  private pixels: MapPixels | null;
-  /** Counts the maps shown, so a colour read from one is never applied to the next. */
+  /** The map the grid overlays: its world rect bounds the grid, and the grid lies just above its layer. */
+  private map: MapImageView;
+  private stopFollowingMap: () => void;
+  /** Counts the images shown, so a colour read from one is never applied to the next. */
   private mapGeneration = 0;
-  private autoColorPending = false;
+  /** The automatic colour of the image shown: unread, being read, or read (`autoColor`, null where it had no pixels). */
+  private autoColorState: 'unread' | 'reading' | 'read' = 'unread';
   private viewport: Viewport;
   private app: Application;
   private options: GridOptions;
@@ -90,7 +87,6 @@ export class GridSystem implements UnlitGrid {
   private _gridOptionsOffsetXAtCreation: number = 0;
   private _gridOptionsOffsetYAtCreation: number = 0;
   private isDestroying: boolean = false;
-  private _isCreating: boolean = false;
   private autoColor: number | null = null;
   /** Whether the lighting composite draws the grid (`UnlitGrid`). */
   private marked = false;
@@ -100,21 +96,19 @@ export class GridSystem implements UnlitGrid {
   /**
    * @param app      – the Pixi Application
    * @param viewport – the Pixi‑Viewport instance containing your map
-   * @param bgSprite – what the grid overlays: its bounds are the map's, and the grid is inserted above it
+   * @param map      – the map image the grid overlays and follows to every image it shows
    * @param options  – grid styling options
-   * @param pixels   – the map's pixels, read for the automatic line colour
    */
   constructor(
     app: Application,
     viewport: Viewport,
-    bgSprite: Container,
+    map: MapImageView,
     options: GridOptions,
-    pixels: MapPixels | null = null,
   ) {
     this.app = app;
     this.viewport = viewport;
-    this.bgSprite = bgSprite;
-    this.pixels = pixels;
+    this.map = map;
+    this.stopFollowingMap = this.follow(map);
     this.options = {
       ...options,
       type: options.type ?? 'square',
@@ -128,7 +122,6 @@ export class GridSystem implements UnlitGrid {
       scale: options.scale ?? 1,
     };
 
-    this.updateMapScale();
     this.viewport.on('zoomed', this.onViewportZoomed);
     this.createGrid();
   }
@@ -137,15 +130,6 @@ export class GridSystem implements UnlitGrid {
     if (this.isDestroying) {
       return;
     }
-    if (this._isCreating) {
-      window.setTimeout(() => {
-        this._isCreating = false;
-        this.createGrid();
-      }, 100);
-      return;
-    }
-
-    this._isCreating = true;
     this.destroyGridResources();
     this.createExplicitGrid();
   }
@@ -159,42 +143,25 @@ export class GridSystem implements UnlitGrid {
   private createExplicitGrid(): void {
     const { size, offsetX = 0, offsetY = 0, color, alpha, lineWidth, lineType = 'solid', isAligning } = this.options;
 
-    const bgSprite = this.background;
-    if (!bgSprite) {
-      // `updateBackgroundSprite` builds the grid once the next map is there
-      this._isCreating = false;
-      return;
-    }
+    // Without an image the grid is drawn once the map image shows the next one (`onChange`).
+    const mapRect = this.mapRect;
+    if (!mapRect) return;
+    // `??`, not `||`: black is 0x000000 and must not fall through to the automatic colour.
+    // While the automatic colour is read the grid waits for it rather than flash in another colour.
+    const gridColor = isAligning ? ALIGNMENT_GRID_COLOR : (color ?? this.getAutoColor());
+    if (gridColor === null) return;
 
-    if (!bgSprite.width || !bgSprite.height || bgSprite.width <= 0 || bgSprite.height <= 0) {
-      console.warn('[GridSystem] Background sprite not ready yet (invalid dimensions), scheduling retry', {
-        width: bgSprite.width,
-        height: bgSprite.height
-      });
-      this._isCreating = false;
-      window.setTimeout(() => {
-        if (!this.isDestroying) {
-          this.createGrid();
-        }
-      }, 100);
-      return;
-    }
-
-    const bgX = bgSprite.x || 0;
-    const bgY = bgSprite.y || 0;
+    const { x: mapX, y: mapY, width: mapWidth, height: mapHeight } = mapRect;
     const hexLayout = this.getHexLayout();
 
     // One cell of padding around the map; the mask clips the overflow.
     const padding = hexLayout ? Math.max(hexCellExtent(hexLayout).width, hexCellExtent(hexLayout).height) : size;
     const bounds: GridBounds = {
-      minX: bgX - padding,
-      minY: bgY - padding,
-      maxX: bgX + bgSprite.width + padding,
-      maxY: bgY + bgSprite.height + padding,
+      minX: mapX - padding,
+      minY: mapY - padding,
+      maxX: mapX + mapWidth + padding,
+      maxY: mapY + mapHeight + padding,
     };
-
-    // `??`, not `||`: black is 0x000000 and must not fall through to the automatic colour
-    const gridColor = isAligning ? ALIGNMENT_GRID_COLOR : (color ?? this.getAutoColor(bgSprite));
 
     const lines = new GridLines({
       lineType,
@@ -215,7 +182,6 @@ export class GridSystem implements UnlitGrid {
     const cellNumbers = this.options.cellNumbers;
     if (cellNumbers) {
       const lattice: CellLattice = hexLayout ? hexLattice(hexLayout) : squareLattice(size, offsetX, offsetY);
-      const mapRect = { x: bgX, y: bgY, width: bgSprite.width, height: bgSprite.height };
       this.cellNumberLabels = new CellNumberLabels(
         numberCells(lattice, mapRect, cellNumbers.format),
         lattice.size,
@@ -230,12 +196,12 @@ export class GridSystem implements UnlitGrid {
     // a visible mask whose grid is hidden is left out of PIXI's batch yet still updated in place on
     // every zoom, writing its corners over whatever took its slot (the map folded towards a pin).
     const maskGraphics = new Graphics();
-    maskGraphics.rect(0, 0, bgSprite.width, bgSprite.height);
+    maskGraphics.rect(0, 0, mapWidth, mapHeight);
     maskGraphics.fill(0xffffff);
-    maskGraphics.position.set(bgX - bounds.minX, bgY - bounds.minY);
+    maskGraphics.position.set(mapX - bounds.minX, mapY - bounds.minY);
     grid.addChild(maskGraphics);
     grid.mask = maskGraphics;
-    this.markBacking = createMarkBacking(bgX - bounds.minX, bgY - bounds.minY, bgSprite.width, bgSprite.height);
+    this.markBacking = createMarkBacking(mapX - bounds.minX, mapY - bounds.minY, mapWidth, mapHeight);
     grid.addChildAt(this.markBacking, 0);
     applyGridMark(grid, this.markBacking, this.marked);
     this.drawnColor = { color: gridColor, contrasting: !isAligning && color === undefined };
@@ -248,12 +214,12 @@ export class GridSystem implements UnlitGrid {
     this._gridOptionsOffsetXAtCreation = offsetX;
     this._gridOptionsOffsetYAtCreation = offsetY;
 
-    // Insert just above the background
+    // Insert just above the map image
     const existingGrids = this.viewport.children.filter(child => gridSpriteIds.has(child));
     existingGrids.forEach(g => this.viewport.removeChild(g));
 
-    const bgIndex = this.viewport.children.indexOf(bgSprite);
-    this.viewport.addChildAt(grid, bgIndex >= 0 ? bgIndex + 1 : 0);
+    const mapIndex = this.viewport.children.indexOf(this.map.layer);
+    this.viewport.addChildAt(grid, mapIndex >= 0 ? mapIndex + 1 : 0);
     gridSpriteIds.set(grid, Date.now());
 
     if (this.layer) {
@@ -261,7 +227,6 @@ export class GridSystem implements UnlitGrid {
     }
 
     this.viewport.dirty = true;
-    this._isCreating = false;
   }
 
   private numberView(): CellNumberView {
@@ -269,31 +234,45 @@ export class GridSystem implements UnlitGrid {
   }
 
   /**
-   * Black or white, whichever contrasts with the map image; cached because it reads the map's
-   * pixels. Read from `pixels` it arrives later: white until then, and the grid is drawn again.
+   * Black or white, whichever contrasts with the map image, read once per image from a small
+   * overview of it; null while it is read, after which the grid is drawn again.
    */
-  private getAutoColor(bgSprite: Container): number {
-    if (this.autoColor === null && bgSprite instanceof Sprite) this.autoColor = contrastColorForSprite(bgSprite);
-    else if (this.autoColor === null) this.readAutoColor();
-    return this.autoColor ?? 0xffffff;
+  private getAutoColor(): number | null {
+    if (this.autoColorState === 'read') return this.autoColor ?? 0xffffff;
+    if (this.autoColorState === 'unread') this.readAutoColor();
+    return null;
   }
 
   private readAutoColor(): void {
-    const pixels = this.pixels;
-    if (!pixels || this.autoColorPending) return;
     const generation = this.mapGeneration;
-    this.autoColorPending = true;
-    void contrastColorForPixels(pixels).then((color) => {
+    this.autoColorState = 'reading';
+    void contrastColorForPixels(this.map).then((color) => {
       if (generation !== this.mapGeneration || this.isDestroying) return;
-      this.autoColorPending = false;
       this.autoColor = color;
-      if (color !== null && this.options.color === undefined && !this.options.isAligning) this.createGrid();
+      this.autoColorState = 'read';
+      if (this.options.color === undefined && !this.options.isAligning) this.createGrid();
     });
   }
 
-  /** The map to draw on; one that was destroyed elsewhere counts as none. */
-  private get background(): Container | null {
-    return this.bgSprite && !this.bgSprite.destroyed ? this.bgSprite : null;
+  /** The image the grid is drawn over, in world units; null while the map image shows none. */
+  private get mapRect(): PixelRect | null {
+    const rect = this.map.worldRect;
+    return rect && rect.width > 0 && rect.height > 0 ? rect : null;
+  }
+
+  /** Follows `map` to every image it shows; returns the function that stops. */
+  private follow(map: MapImageView): () => void {
+    return map.onChange((change) => {
+      if (change === 'image') this.mapImageChanged();
+    });
+  }
+
+  /** Another image (or none) is shown: its colour is read anew and the grid is drawn over it. */
+  private mapImageChanged(): void {
+    this.autoColor = null;
+    this.autoColorState = 'unread';
+    this.mapGeneration++;
+    this.createGrid();
   }
 
   /** Clean up grid-only resources */
@@ -369,9 +348,6 @@ export class GridSystem implements UnlitGrid {
     }
 
     this._updateDebounceTimer = window.setTimeout(() => {
-      if (opts.size !== undefined) {
-        this.updateMapScale();
-      }
       this.createGrid();
       this._updateDebounceTimer = null;
     }, 100);
@@ -389,69 +365,26 @@ export class GridSystem implements UnlitGrid {
     return this.options;
   }
 
-  /** Get the calculated map scale factor */
-  public getMapScale(): number {
-    return this.options.mapScale || 1;
-  }
-
   /** Returns the grid container: its lines and, on a numbered grid, the cell numbers */
   public getGridSprite(): Container | null {
     return this.gridSprite;
   }
 
-  /** Map scale is 1:1 - the grid renders at its logical size */
-  private updateMapScale(): void {
-    this.options.mapScale = 1;
-  }
-
   /** Completely destroy */
   public destroy(): void {
     this.isDestroying = true;
+    this.stopFollowingMap();
     this.viewport.off('zoomed', this.onViewportZoomed);
     this.destroyGridResources();
   }
 
-  /** The map changed (another image, or the same one at another size): the grid is drawn over it anew. */
-  public updateBackgroundSprite(newBgSprite: Container, pixels: MapPixels | null = null): void {
-    if (!newBgSprite) {
-      console.error('[GridSystem] Cannot update background sprite: new sprite is null');
-      return;
-    }
-
-    this.bgSprite = newBgSprite;
-    this.pixels = pixels;
-    this.forgetAutoColor();
-
-    if (newBgSprite.width > 0 && newBgSprite.height > 0) {
-      this.createGrid();
-      return;
-    }
-
-    // Wait for the sprite's texture to load before building the grid
-    const checkSpriteReady = (): void => {
-      // Stop polling once the grid or this sprite is gone
-      if (this.isDestroying || this.bgSprite !== newBgSprite || newBgSprite.destroyed) return;
-      if (newBgSprite.width > 0 && newBgSprite.height > 0) {
-        this.createGrid();
-      } else {
-        window.setTimeout(checkSpriteReady, 50);
-      }
-    };
-    window.setTimeout(checkSpriteReady, 50);
-  }
-
-  /** The map was taken away: the grid goes with it until `updateBackgroundSprite` brings the next one. */
-  public clearBackgroundSprite(): void {
-    this.bgSprite = null;
-    this.pixels = null;
-    this.forgetAutoColor();
-    this.destroyGridResources();
-  }
-
-  private forgetAutoColor(): void {
-    this.autoColor = null;
-    this.autoColorPending = false;
-    this.mapGeneration++;
+  /** Draws over another map image from now on, as when the view's map image was replaced. */
+  public setMapImage(map: MapImageView): void {
+    if (map === this.map) return;
+    this.stopFollowingMap();
+    this.map = map;
+    this.stopFollowingMap = this.follow(map);
+    this.mapImageChanged();
   }
 
   /** Provide a render layer so the grid sprite can automatically be attached */

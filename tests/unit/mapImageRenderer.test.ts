@@ -1,10 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'events';
-import { Container, Sprite, Texture, TextureSource, Ticker } from 'pixi.js';
+import { Container, Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
-import { GridSystem } from '../../src/app/grid/GridSystem';
 import { MapImage, type MapImageOpener } from '../../src/app/pixi/mapImage/MapImage';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 
@@ -146,28 +145,5 @@ describe('a background that changes outside a load', () => {
     store.getState().setBackground('maps/gone.png');
 
     expect(load).toHaveBeenCalledWith({ kind: 'placeholder' });
-  });
-});
-
-describe('a grid whose background was destroyed', () => {
-  it('waits for the next background instead of reading the destroyed sprite', () => {
-    const texture = (): Texture => new Texture({ source: new TextureSource({ width: 280, height: 210 }) });
-    const viewport = new Container();
-    const background = new Sprite(texture());
-    viewport.addChild(background);
-    const grid = new GridSystem({} as never, viewport as never, background, { size: 70, enabled: false });
-    try {
-      background.destroy();
-
-      expect(() => grid.setEnabled(true)).not.toThrow();
-      expect(grid.getGridSprite()).toBeNull();
-
-      const next = new Sprite(texture());
-      viewport.addChild(next);
-      grid.updateBackgroundSprite(next);
-      expect(grid.getGridSprite()).not.toBeNull();
-    } finally {
-      grid.destroy();
-    }
   });
 });

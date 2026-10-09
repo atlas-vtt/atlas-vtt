@@ -50,6 +50,22 @@ export function visibleTiles(pyramid: Pyramid, level: number, worldRect: PixelRe
   return tiles;
 }
 
+/**
+ * A picture of `size` pixels framed on the centred crop of `rect` with the picture's aspect (a
+ * thumbnail), rendered at no more than one pixel per world unit; null when `rect` has no area.
+ */
+export function pictureView(rect: PixelRect, size: { width: number; height: number }): TileView | null {
+  const { x, y, width, height } = rect;
+  if (![x, y, width, height].every(Number.isFinite) || !(width > 0) || !(height > 0)) return null;
+  const aspect = size.width / size.height;
+  const cropWidth = Math.min(width, height * aspect);
+  const cropHeight = Math.min(height, width / aspect);
+  return {
+    rect: { x: x + (width - cropWidth) / 2, y: y + (height - cropHeight) / 2, width: cropWidth, height: cropHeight },
+    worldPerScreenPixel: Math.max(1, cropWidth / size.width, cropHeight / size.height),
+  };
+}
+
 /** The tiles a view wants: those of its level of detail it touches, plus the prefetch ring. */
 export function tilesForView(pyramid: Pyramid, view: TileView, prefetch = 1): TileRef[] {
   return visibleTiles(pyramid, levelFor(pyramid, view.worldPerScreenPixel), view.rect, prefetch);

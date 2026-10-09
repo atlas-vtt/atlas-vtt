@@ -3,6 +3,8 @@ import { Application, Container, Rectangle, type Texture } from 'pixi.js';
 import { mapThumbnailPath } from '../utils/dataFileMigration';
 import { contextLost } from '../pixi/lighting/engine/gpu';
 import { requestRender } from '../pixi/RenderScheduler';
+import { pictureView } from '../pixi/mapImage/levelOfDetail';
+import type { PixelRect } from '../pixi/mapImage/pyramid';
 import type { SceneFrameCapture } from '../pixi/sceneFrameCapture';
 import { trashHiddenPath } from '../utils/hiddenVaultFiles';
 
@@ -25,40 +27,53 @@ export interface ThumbnailSize {
 }
 
 /** Map cards in the asset manager and dashboard. */
-const MAP_THUMBNAIL_SIZE: ThumbnailSize = { width: 400, height: 300 };
+export const MAP_THUMBNAIL_SIZE: ThumbnailSize = { width: 400, height: 300 };
 /** Scene snapshot cards: 16:9 and sharp enough for their larger preview. */
 export const SNAPSHOT_THUMBNAIL_SIZE: ThumbnailSize = { width: 640, height: 360 };
 
 /** A map view without lighting or GM overlays to take care of: the render is the picture. */
 const PLAIN_CAPTURE: SceneFrameCapture = (_frame, render) => render();
 
+/** What a thumbnail renders: a world rect and the output pixels per world unit. */
+export interface ThumbnailFrame {
+  rect: Rectangle;
+  resolution: number;
+}
+
+/**
+ * The centred crop of `bounds` (the map image's world rect, else everything on the viewport) with
+ * the thumbnail's aspect, and the resolution it renders at: never above 1, so a large map does not
+ * spike memory. In world (viewport-local) coordinates, since `generateTexture` ignores the target's
+ * camera. Null when `bounds` has no area.
+ */
+export function thumbnailFrame(bounds: PixelRect, size: ThumbnailSize): ThumbnailFrame | null {
+  const view = pictureView(bounds, size);
+  if (!view) return null;
+  const { x, y, width, height } = view.rect;
+  return { rect: new Rectangle(x, y, width, height), resolution: 1 / view.worldPerScreenPixel };
+}
+
 /** Renders a map view into a thumbnail and stores it next to the scene's map file. */
 export class MapThumbnailService {
   constructor(private readonly app: App) {}
 
   /**
-   * Renders the map as it looks now into a JPEG data URL of `size` (400×300 by
-   * default), framed on the map image. Returns null when there is nothing to frame, or nothing
-   * can be drawn: a lost WebGL context renders blank, and that must not replace a thumbnail.
+   * Renders the map as it looks now into a JPEG data URL of `size` (400×300 by default),
+   * framed on `mapRect`, the map image's world rect (`thumbnailFrame`). Returns null when there
+   * is nothing to frame, or nothing can be drawn: a lost WebGL context renders blank, and that must not replace a thumbnail.
    * `capture` runs the off-screen render: the map view's hides the GM's overlays and lights the frame.
    */
   renderThumbnail(
     pixiApp: Application,
     viewport: Container,
-    background?: Container | null,
+    mapRect?: PixelRect | null,
     size: ThumbnailSize = MAP_THUMBNAIL_SIZE,
     capture: SceneFrameCapture = PLAIN_CAPTURE,
   ): string | null {
     if (contextLost(pixiApp.renderer)) return null;
-    const contentBounds = this.calculateContentBounds(viewport, size, background);
-    if (!contentBounds) return null;
-
-    // Keep render texture bounded so large scenes do not spike memory.
-    const renderResolution = Math.min(
-      1,
-      size.width / contentBounds.width,
-      size.height / contentBounds.height
-    );
+    const framed = thumbnailFrame(mapRect ?? viewport.getLocalBounds(), size);
+    if (!framed) return null;
+    const { rect: contentBounds, resolution: renderResolution } = framed;
 
     const frame = { x: contentBounds.x, y: contentBounds.y, resolution: renderResolution };
     let renderTexture: Texture;
@@ -126,33 +141,6 @@ export class MapThumbnailService {
 
     ctx.drawImage(sourceCanvas, drawX, drawY, drawWidth, drawHeight);
     return canvas;
-  }
-  
-  /**
-   * Frame a centered cover crop in viewport-local coordinates. generateTexture
-   * ignores the target's transform, so screen-space bounds include an unwanted
-   * camera offset and zoom. Prefer the map image over grids and editor overlays.
-   */
-  private calculateContentBounds(viewport: Container, size: ThumbnailSize, background?: Container | null): Rectangle | null {
-    let bounds = viewport.getLocalBounds();
-    if (background?.parent === viewport) {
-      background.updateLocalTransform();
-      bounds = background.getLocalBounds().clone();
-      bounds.applyMatrix(background.localTransform);
-    }
-
-    const { x, y, width, height } = bounds;
-    if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) return null;
-
-    const aspect = size.width / size.height;
-    const cropWidth = Math.min(width, height * aspect);
-    const cropHeight = Math.min(height, width / aspect);
-    return new Rectangle(
-      x + (width - cropWidth) / 2,
-      y + (height - cropHeight) / 2,
-      cropWidth,
-      cropHeight
-    );
   }
   
   /** Writes `bytes` as the thumbnail of the scene at `mapPath` and tells open asset lists. */

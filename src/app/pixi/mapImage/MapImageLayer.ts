@@ -1,15 +1,17 @@
 /**
- * Draws a map image from its tile pyramid: the tiles the GM's camera and every demand region need, at their
- * level of detail, over coarser tiles while finer ones load. One render group of one container per level.
+ * Draws a map image from its tile pyramid at the level of detail of each picture that shows it, over
+ * coarser tiles while finer ones load. Every view (the GM's camera, each demand region, a picture of the
+ * whole map) has its own tiles; the layer keeps sprites for all of them, so textures and fades are
+ * shared, and the canvas shows only the camera's. `drawFor` shows another view's for one render.
+ * One render group of one container per level.
  */
-import { Container, Rectangle, Sprite, UPDATE_PRIORITY, type Ticker } from 'pixi.js';
-import { MOTION_NORMAL_MS } from '../../utils/motion';
+import { Container, Rectangle, UPDATE_PRIORITY, type Ticker } from 'pixi.js';
 import { destroyTree } from '../utils/destroyTree';
-import { ValueTransition } from '../utils/ValueTransition';
-import { levelFor, orderByPriority, visibleTiles, type TileView } from './levelOfDetail';
-import { tileContentFrame, tileContentRect, tileKey, type TileRef } from './pyramid';
-import { tileCoverage } from './tileCoverage';
+import { levelFor, orderByPriority, pictureView, visibleTiles, type TileView } from './levelOfDetail';
+import { tileContentFrame, tileKey, type TileRef } from './pyramid';
+import { coversView, tileCoverage, type TileKeySet } from './tileCoverage';
 import { TileRequests, type TileSource } from './tileRequests';
+import { TileSprites } from './tileSprites';
 import { tileTextureKey, type TileTextureCache } from './tileTextureCache';
 
 export type { TileSource } from './tileRequests';
@@ -27,16 +29,13 @@ export interface MapImageLayerOptions {
   ticker: Ticker;
   requestRender: () => void;
   camera?: CameraSource | null;
+  /** The size of the pictures of the whole map taken (thumbnails): their tiles are kept loaded. */
+  picture?: { width: number; height: number } | null;
   /** Read when a tile appears: true draws it at once instead of fading it in. */
   reducedMotion?: () => boolean;
   maxInFlight?: number;
   /** Called once per tile whose request failed; the layer does not request it again. */
   onTileError?: (ref: TileRef, error: unknown) => void;
-}
-
-interface DrawnTile {
-  sprite: Sprite;
-  fade: ValueTransition | null;
 }
 
 interface Waiter {
@@ -47,18 +46,17 @@ interface Waiter {
 export class MapImageLayer {
   /** Add this to the viewport at (0, 0): world units are the source's natural pixels. */
   readonly container: Container;
-  private readonly levels: Container[];
-  private readonly drawn = new Map<string, DrawnTile>();
-  private readonly opaque = new Set<string>();
-  private readonly failed = new Set<string>();
+  private readonly sprites: TileSprites;
+  private readonly failed = new Map<string, TileRef>();
   private readonly regions = new Set<TileView>();
   private readonly waiters = new Set<Waiter>();
   private readonly overviewTiles: TileRef[];
+  private readonly picture: TileView | null;
   private readonly requests: TileRequests;
+  private readonly loaded: TileKeySet = { has: key => this.isLoaded(key) };
   private readonly stopReady: () => void;
   private camera: CameraSource | null;
   private lastCamera: TileView | null = null;
-  private covered = new Set<string>();
   private dirty = true;
   private destroyed = false;
 
@@ -69,10 +67,20 @@ export class MapImageLayer {
     this.container.boundsArea = new Rectangle(0, 0, pyramid.width, pyramid.height);
     this.container.eventMode = 'none';
     // Coarsest first, so finer levels lie on top.
-    this.levels = pyramid.levels.map(level => new Container({ scale: { x: level.scaleX, y: level.scaleY } }));
-    for (const level of [...this.levels].reverse()) this.container.addChild(level);
+    const levels = pyramid.levels.map(level => new Container({ scale: { x: level.scaleX, y: level.scaleY } }));
+    for (const level of [...levels].reverse()) this.container.addChild(level);
+    this.sprites = new TileSprites({
+      pyramid,
+      levels,
+      texture: ref => (this.isLoaded(tileKey(ref)) ? options.cache.get(this.textureKey(ref)) : null),
+      requestRender: options.requestRender,
+      ...(options.reducedMotion && { reducedMotion: options.reducedMotion }),
+      onOpaque: () => { this.dirty = true; },
+    });
+    const whole = { x: 0, y: 0, width: pyramid.width, height: pyramid.height };
     const overview = pyramid.levels[pyramid.overview];
-    this.overviewTiles = overview ? visibleTiles(pyramid, overview.index, { x: 0, y: 0, width: pyramid.width, height: pyramid.height }, 0) : [];
+    this.overviewTiles = overview ? visibleTiles(pyramid, overview.index, whole, 0) : [];
+    this.picture = options.picture ? pictureView(whole, options.picture) : null;
     this.requests = new TileRequests(options.source, { arrived: this.arrived, failed: this.failedTile }, options.maxInFlight);
     const prefix = `${options.source.key}/`;
     this.stopReady = options.cache.onReady((key) => {
@@ -81,13 +89,13 @@ export class MapImageLayer {
     options.ticker.add(this.tick, undefined, UPDATE_PRIORITY.LOW + 1);
   }
 
-  /** Replaces the GM camera (null: only demand regions are drawn). */
+  /** Replaces the GM camera (null: the canvas shows no tile; demand regions are still loaded). */
   setCamera(camera: CameraSource | null): void {
     this.camera = camera;
     this.dirty = true;
   }
 
-  /** Keeps the tiles `view` needs loaded and drawn, e.g. another camera's; returns the function that ends it. */
+  /** Keeps the tiles `view` needs loaded and ready to draw, e.g. another camera's; returns the function that ends it. */
   addDemandRegion(view: TileView): () => void {
     const region = { rect: { ...view.rect }, worldPerScreenPixel: view.worldPerScreenPixel };
     this.regions.add(region);
@@ -98,8 +106,24 @@ export class MapImageLayer {
   }
 
   /**
-   * Resolves once every tile `view` shows at its level of detail is drawn opaque, covered by opaque finer
-   * tiles, or failed; or after `timeoutMs`, or when the layer is destroyed. Its tiles are requested meanwhile.
+   * Shows what `view` draws instead of the GM camera's picture, until the returned function puts that
+   * back: for one render of another picture (the player window's, a thumbnail). Call it right before
+   * that render and restore before the canvas renders again. Tiles `view` asks for that are not loaded
+   * fall back on what is, as on the canvas; keep them loaded with `addDemandRegion`.
+   */
+  drawFor(view: TileView): () => void {
+    if (this.destroyed) return noop;
+    const { pyramid } = this.options.source;
+    // As `update` covers a view, so a demand region's picture is the one its tiles were loaded for.
+    const tiles = visibleTiles(pyramid, levelFor(pyramid, view.worldPerScreenPixel), view.rect, PREFETCH_RING);
+    // The render shows each tile as it is now: one with no fade under way is opaque in it.
+    const settled: TileKeySet = { has: key => this.sprites.isSettled(key) };
+    return this.sprites.drawOnly(tileCoverage(pyramid, tiles, this.loaded, settled).draw);
+  }
+
+  /**
+   * Resolves once every point of `view` is covered by opaque (or failed) tiles of its level of detail
+   * or finer; or after `timeoutMs`, or when the layer is destroyed. Its tiles are requested meanwhile.
    */
   whenReady(view: TileView, timeoutMs: number): Promise<void> {
     if (this.destroyed || this.isReady(view)) return Promise.resolve();
@@ -126,8 +150,7 @@ export class MapImageLayer {
     this.options.ticker.remove(this.tick);
     this.stopReady();
     this.requests.close();
-    for (const tile of this.drawn.values()) tile.fade?.cancel();
-    this.drawn.clear();
+    this.sprites.destroy();
     destroyTree(this.container);
     this.options.cache.unpin(this);
     if (!keepTextures) this.options.cache.deletePyramid(this.options.source.key);
@@ -143,94 +166,48 @@ export class MapImageLayer {
     }
     if (!this.dirty || this.destroyed) return;
     this.dirty = false;
-    this.update(camera ? [camera, ...this.regions] : [...this.regions]);
+    this.update(camera);
   };
 
-  private update(views: readonly TileView[]): void {
+  /** Each view's tiles by its own coverage; the union is loaded and kept, the camera's shown. */
+  private update(camera: TileView | null): void {
     const { pyramid } = this.options.source;
-    const wanted: TileRef[] = [];
-    for (const view of views) {
-      const level = levelFor(pyramid, view.worldPerScreenPixel);
-      wanted.push(...visibleTiles(pyramid, level, view.rect, PREFETCH_RING));
-      // The overview is the fallback under every finer level; never drawn minified past its level.
-      if (level < pyramid.overview) wanted.push(...visibleTiles(pyramid, pyramid.overview, view.rect, 0));
-    }
-    const coverage = tileCoverage(pyramid, wanted, { has: key => this.isLoaded(key) }, this.opaque);
-    this.covered = new Set(coverage.hidden.map(tileKey));
+    const views = camera ? [camera, ...this.regions] : [...this.regions];
+    const draw: TileRef[] = [];
+    const keep = new Set<string>();
+    const retained: TileRef[] = [];
+    const wanted: TileRef[] = [...this.overviewTiles];
+    const missing: TileRef[] = [];
+    let shown = new Set<string>();
+    const cover = (view: TileView): TileRef[] => {
+      const tiles = visibleTiles(pyramid, levelFor(pyramid, view.worldPerScreenPixel), view.rect, PREFETCH_RING);
+      wanted.push(...tiles);
+      const coverage = tileCoverage(pyramid, tiles, this.loaded, this.sprites.opaqueKeys);
+      draw.push(...coverage.draw);
+      retained.push(...coverage.retain);
+      for (const ref of coverage.retain) keep.add(tileKey(ref));
+      if (view === camera) shown = new Set(coverage.draw.map(tileKey));
+      return coverage.missing;
+    };
+    for (const view of views) missing.push(...cover(view));
+    // A picture of the whole map waits behind every view someone looks at.
+    const pictureMissing = this.picture ? cover(this.picture) : [];
 
-    const keep = new Set([...this.overviewTiles, ...wanted].map(tileKey));
     const toRequest = (ref: TileRef): boolean => !this.failed.has(tileKey(ref)) && !this.options.cache.has(this.textureKey(ref));
-    const fine = coverage.missing.filter(ref => ref.level !== pyramid.overview);
-    this.requests.sync([...this.overviewTiles.filter(toRequest), ...orderByPriority(pyramid, fine, views).filter(toRequest)], keep);
+    const queue = [...this.overviewTiles, ...orderByPriority(pyramid, missing, views), ...pictureMissing];
+    this.requests.sync(queue.filter(toRequest), new Set(wanted.map(tileKey)));
 
-    this.syncSprites(coverage.draw, coverage.retain);
+    this.sprites.sync(draw, keep, shown);
     const pinned = new Set<string>();
-    for (const ref of [...coverage.retain, ...this.overviewTiles, ...wanted]) pinned.add(this.textureKey(ref));
+    for (const ref of [...wanted, ...retained]) pinned.add(this.textureKey(ref));
     this.options.cache.pin(this, pinned);
     for (const waiter of [...this.waiters]) if (this.isReady(waiter.view)) waiter.settle();
-  }
-
-  private syncSprites(draw: readonly TileRef[], retain: readonly TileRef[]): void {
-    const retained = new Set(retain.map(tileKey));
-    const shown = new Set(draw.map(tileKey));
-    let changed = false;
-    for (const [key, tile] of this.drawn) {
-      if (retained.has(key)) {
-        if (tile.sprite.visible !== shown.has(key)) {
-          tile.sprite.visible = shown.has(key);
-          changed = true;
-        }
-        continue;
-      }
-      tile.fade?.cancel();
-      destroyTree(tile.sprite);
-      this.drawn.delete(key);
-      this.opaque.delete(key);
-      changed = true;
-    }
-    for (const ref of draw) {
-      if (this.drawn.has(tileKey(ref))) continue;
-      this.show(ref);
-      changed = true;
-    }
-    if (changed) this.options.requestRender();
-  }
-
-  private show(ref: TileRef): void {
-    const texture = this.options.cache.get(this.textureKey(ref));
-    const level = this.levels[ref.level];
-    if (!texture || !level) return;
-    const key = tileKey(ref);
-    const content = tileContentRect(this.options.source.pyramid, ref);
-    const sprite = new Sprite({ texture, x: content.x, y: content.y, label: key });
-    sprite.eventMode = 'none';
-    level.addChild(sprite);
-    const tile: DrawnTile = { sprite, fade: null };
-    this.drawn.set(key, tile);
-    if (this.options.reducedMotion?.()) {
-      this.opaque.add(key);
-      this.dirty = true;
-      return;
-    }
-    sprite.alpha = 0;
-    tile.fade = new ValueTransition(0, MOTION_NORMAL_MS, (alpha) => {
-      sprite.alpha = alpha;
-      this.options.requestRender();
-    });
-    tile.fade.animateTo(1, () => {
-      tile.fade = null;
-      this.opaque.add(key);
-      this.dirty = true;
-    });
   }
 
   private isReady(view: TileView): boolean {
     const { pyramid } = this.options.source;
     const tiles = visibleTiles(pyramid, levelFor(pyramid, view.worldPerScreenPixel), view.rect, 0);
-    return tiles.every((ref) => {
-      const key = tileKey(ref);
-      return this.opaque.has(key) || this.covered.has(key) || this.failed.has(key);
-    });
+    return coversView(pyramid, tiles, [...this.sprites.opaqueTiles(), ...this.failed.values()], view.rect);
   }
 
   private isLoaded(key: string): boolean {
@@ -251,11 +228,13 @@ export class MapImageLayer {
   };
 
   private readonly failedTile = (ref: TileRef, error: unknown): void => {
-    this.failed.add(tileKey(ref));
+    this.failed.set(tileKey(ref), ref);
     this.dirty = true;
     this.options.onTileError?.(ref, error);
   };
 }
+
+function noop(): void {}
 
 /** The GM camera of a pixi-viewport: what it shows and the world units per device pixel. */
 export function viewportCamera(

@@ -8,6 +8,9 @@ import { BOUNCE, wallRadius } from '../../../../lighting/lightingConstants';
 import { splitBlocking } from '../../../../lighting/segments';
 import { createTestRenderer, readFloats } from './gpuTestUtils';
 import type { WallSegment } from '../../../../types/wallTypes';
+import type { MapBounds } from '../../../../vision/visibility';
+import { MapAlbedo } from '../../../mapImage/mapAlbedo';
+import type { MapTiles } from '../../../mapImage/mapImageTiles';
 
 const wall = (id: string, x1: number, y1: number, x2: number, y2: number): WallSegment => ({ id, kind: 'wall', type: 'solid', p1: { x: x1, y: y1 }, p2: { x: x2, y: y2 } });
 
@@ -38,6 +41,49 @@ function dottedTexture(): Texture {
   return new Texture({ source: new BufferImageSource({ resource: pixels, width: bounds.width, height: bounds.height, autoGenerateMipmaps: true }) });
 }
 
+/** A map's colours in world pixels: blocks of 64 px in each channel, opaque. */
+function blocks(x: number, y: number): [number, number, number] {
+  return [(x >> 6) & 1 ? 200 : 110, (y >> 6) & 1 ? 170 : 90, ((x + y) >> 7) & 1 ? 150 : 60];
+}
+
+interface Painted { pixels: Uint8ClampedArray<ArrayBuffer>; width: number; height: number }
+
+/**
+ * `world` painted by `colour` at one pixel per `step` world pixels: each pixel the average of the
+ * world pixels it covers, as the map image's pyramid halves its levels.
+ */
+function painted(world: MapBounds, colour: (x: number, y: number) => [number, number, number], step: number): Painted {
+  const width = Math.ceil(world.width / step);
+  const height = Math.ceil(world.height / step);
+  const pixels = new Uint8ClampedArray(width * height * 4);
+  for (let ty = 0; ty < height; ty++) {
+    for (let tx = 0; tx < width; tx++) {
+      const sum: [number, number, number] = [0, 0, 0];
+      let count = 0;
+      for (let y = ty * step; y < Math.min((ty + 1) * step, world.height); y++) {
+        for (let x = tx * step; x < Math.min((tx + 1) * step, world.width); x++) {
+          colour(x, y).forEach((channel, i) => { sum[i as 0 | 1 | 2] += channel; });
+          count++;
+        }
+      }
+      pixels.set([...sum.map((channel) => Math.round(channel / count)), 255], (ty * width + tx) * 4);
+    }
+  }
+  return { pixels, width, height };
+}
+
+/** The lighting's albedo texture of a map image whose overview is `overview`, and its owner (`MapAlbedo`). */
+async function albedoOf(overview: Painted): Promise<{ texture: Texture; albedo: MapAlbedo }> {
+  const bitmap = await createImageBitmap(new ImageData(overview.pixels, overview.width, overview.height));
+  const tiles = { overview: () => Promise.resolve(bitmap) } as unknown as MapTiles;
+  let made = (): void => undefined;
+  const ready = new Promise<void>((resolve) => { made = resolve; });
+  const albedo = new MapAlbedo(() => made());
+  albedo.textureOf(tiles);
+  await ready;
+  return { texture: albedo.textureOf(tiles)!, albedo };
+}
+
 describe('RadianceCascades', () => {
   const cleanup: (() => void)[] = [];
   afterEach(() => {
@@ -45,13 +91,13 @@ describe('RadianceCascades', () => {
   });
 
   /** Builds the bounce of the two rooms with `albedo`; returns the fluence and its probe lookup. */
-  async function bounce(albedo: Texture | null): Promise<{ probes: Float32Array; probe: (x: number, y: number) => number }> {
+  async function bounce(albedo: Texture | null, world: MapBounds = bounds): Promise<{ probes: Float32Array; probe: (x: number, y: number) => number }> {
     const renderer: WebGLRenderer = await createTestRenderer(64);
     cleanup.push(() => renderer.destroy());
-    const field = new CapsuleField(renderer, [0, 0, bounds.width, bounds.height], 2, wallRadius(2));
-    const tiles = new TileCache(renderer, field, bounds);
-    const map = new LightMap(renderer, bounds, 2);
-    const cascades = new RadianceCascades(renderer, bounds, field);
+    const field = new CapsuleField(renderer, [0, 0, world.width, world.height], 2, wallRadius(2));
+    const tiles = new TileCache(renderer, field, world);
+    const map = new LightMap(renderer, world, 2);
+    const cascades = new RadianceCascades(renderer, world, field);
     cleanup.push(() => {
       cascades.destroy();
       map.destroy();
@@ -106,6 +152,47 @@ describe('RadianceCascades', () => {
     // Read at the image's full resolution, the dots would bounce as pure white: about 20 times as much.
     expect(mipmapped.probe(420, 256) / flat.probe(420, 256)).toBeCloseTo(1, 1);
     expect(mipmapped.probe(120, 100) / flat.probe(120, 100)).toBeCloseTo(1, 1);
+  });
+
+  it('bounces an overview an eighth of the map\'s size as the map image at its full size', async () => {
+    // A map of 8192 px whose albedo is its overview of 1024 px, as the map image's albedo texture is.
+    const world = { width: 8192, height: 1024 };
+    const image = painted(world, blocks, 1);
+    const full = new Texture({ source: new BufferImageSource({ resource: image.pixels, width: image.width, height: image.height, autoGenerateMipmaps: true }) });
+    const { texture: overview, albedo } = await albedoOf(painted(world, blocks, 8));
+    cleanup.push(() => {
+      full.destroy(true);
+      albedo.reset();
+    });
+    expect(overview.source.pixelWidth).toBe(1024);
+    const fromFull = await bounce(full, world);
+    const fromOverview = await bounce(overview, world);
+    // Uploaded by the bounce's renderer with its whole mip chain, read with linear filtering between levels.
+    expect(overview.source.mipLevelCount).toBe(11);
+    expect(overview.source.style.mipmapFilter).toBe('linear');
+    const grey = await bounce(null, world);
+    let largest = 0;
+    let differs = 0;
+    for (let i = 0; i < fromFull.probes.length; i++) {
+      if (i % 4 === 3) continue;
+      largest = Math.max(largest, fromFull.probes[i]!);
+      differs = Math.max(differs, Math.abs(fromFull.probes[i]! - grey.probes[i]!));
+    }
+    // The picture's colours matter: it bounces far from mid grey.
+    expect(differs).toBeGreaterThan(largest * 0.2);
+    // Only the detail an overview lacks differs: the blocks' edges, blurred over an overview texel.
+    let worst = 0;
+    let difference = 0;
+    let light = 0;
+    for (let i = 0; i < fromFull.probes.length; i++) {
+      if (i % 4 === 3) continue;
+      const d = Math.abs(fromOverview.probes[i]! - fromFull.probes[i]!);
+      worst = Math.max(worst, d);
+      difference += d;
+      light += fromFull.probes[i]!;
+    }
+    expect(worst).toBeLessThanOrEqual(largest * 0.05);
+    expect(difference / light).toBeLessThan(0.02);
   });
 
   it('bounces a map image destroyed before the build as mid grey', async () => {

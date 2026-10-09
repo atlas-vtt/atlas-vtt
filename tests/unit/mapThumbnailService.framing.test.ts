@@ -2,6 +2,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Application, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { MapThumbnailService, SNAPSHOT_THUMBNAIL_SIZE, type ThumbnailSize } from '../../src/app/services/MapThumbnailService';
 import * as renderScheduler from '../../src/app/pixi/RenderScheduler';
+import type { PixelRect } from '../../src/app/pixi/mapImage/pyramid';
 import type { SceneFrame } from '../../src/app/pixi/lighting/engine/types';
 import type { SceneFrameCapture } from '../../src/app/pixi/sceneFrameCapture';
 
@@ -24,11 +25,13 @@ function setup(width = 1200, height = 600) {
   vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/jpeg;base64,AA==');
   const app = { renderer: { generateTexture, extract: { canvas: vi.fn(() => source) } } };
   const service = new MapThumbnailService({ vault: { getAbstractFileByPath: () => null } } as any);
-  const capture = async (mapBackground?: Container, size?: ThumbnailSize, sceneCapture?: SceneFrameCapture): Promise<string | null> => service.renderThumbnail(
-    app as unknown as Application, viewport, mapBackground, size, sceneCapture,
+  const capture = async (mapRect?: PixelRect, size?: ThumbnailSize, sceneCapture?: SceneFrameCapture): Promise<string | null> => service.renderThumbnail(
+    app as unknown as Application, viewport, mapRect, size, sceneCapture,
   );
+  // The map image's world rect, where the background lies.
+  const mapRect: PixelRect = { x: 100, y: 200, width, height };
   const frame = () => generateTexture.mock.calls.at(-1)![0].frame as Rectangle;
-  return { viewport, background, app, capture, frame, generateTexture, destroy, source, drawImage };
+  return { viewport, mapRect, app, capture, frame, generateTexture, destroy, source, drawImage };
 }
 
 describe('scene thumbnail framing', () => {
@@ -51,16 +54,16 @@ describe('scene thumbnail framing', () => {
     [600, 1200, new Rectangle(100, 575, 600, 450)],
     [800, 600, new Rectangle(100, 200, 800, 600)],
   ])('fills the thumbnail with a centered crop of a %s × %s map', async (width, height, expected) => {
-    const { viewport, background, capture, frame } = setup(width, height);
+    const { viewport, mapRect, capture, frame } = setup(width, height);
     // Grids, fog and editor overlays can extend far beyond the actual map.
     viewport.addChild(new Graphics().rect(-10000, -10000, 20000, 20000).fill(0xffffff));
-    await capture(background);
+    await capture(mapRect);
     expect(frame()).toEqual(expected);
   });
 
   test('keeps rendering bounded even for very large maps', async () => {
-    const { background, capture, frame, generateTexture, destroy } = setup(100000, 100000);
-    await capture(background);
+    const { mapRect, capture, frame, generateTexture, destroy } = setup(100000, 100000);
+    await capture(mapRect);
     const resolution = generateTexture.mock.calls[0]![0].resolution;
     expect(frame().width * resolution).toBeLessThanOrEqual(400);
     expect(frame().height * resolution).toBeLessThanOrEqual(300);
@@ -79,14 +82,14 @@ describe('scene thumbnail framing', () => {
     [undefined, { x: 300, y: 200, resolution: 0.5 }],
     [SNAPSHOT_THUMBNAIL_SIZE, { x: 166.66666666666669, y: 200, resolution: 0.6 }],
   ])('hands the map view the frame it renders, for a thumbnail of %o', async (size, expected) => {
-    const { background, capture, frame, generateTexture } = setup();
+    const { mapRect, capture, frame, generateTexture } = setup();
     const frames: SceneFrame[] = [];
     const sceneCapture: SceneFrameCapture = (sceneFrame, render) => {
       frames.push(sceneFrame);
       expect(generateTexture).not.toHaveBeenCalled();
       return render();
     };
-    await capture(background, size, sceneCapture);
+    await capture(mapRect, size, sceneCapture);
     expect(frames).toHaveLength(1);
     expect(frames[0]!.x).toBeCloseTo(expected.x);
     expect(frames[0]!).toMatchObject({ y: expected.y, resolution: expected.resolution });
@@ -95,17 +98,17 @@ describe('scene thumbnail framing', () => {
   });
 
   test('asks for a canvas render even when the map view fails to capture the frame', async () => {
-    const { app, background, capture } = setup();
+    const { app, mapRect, capture } = setup();
     const requestRender = vi.spyOn(renderScheduler, 'requestRender');
     const failing: SceneFrameCapture = () => { throw new Error('Capture failed'); };
-    await expect(capture(background, undefined, failing)).rejects.toThrow('Capture failed');
+    await expect(capture(mapRect, undefined, failing)).rejects.toThrow('Capture failed');
     expect(requestRender).toHaveBeenCalledWith(app);
   });
 
   test('renders nothing while the WebGL context is lost, so the thumbnail the scene has stays', async () => {
-    const { app, background, capture, generateTexture } = setup();
+    const { app, mapRect, capture, generateTexture } = setup();
     Object.assign(app.renderer, { name: 'webgl', gl: { isContextLost: () => true } });
-    expect(await capture(background)).toBeNull();
+    expect(await capture(mapRect)).toBeNull();
     expect(generateTexture).not.toHaveBeenCalled();
   });
 

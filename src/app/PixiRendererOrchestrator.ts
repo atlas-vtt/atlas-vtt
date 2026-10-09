@@ -54,6 +54,8 @@ import { shownRollTokens } from './pixi/playerRollTokens';
 import type { ShownRollToken } from './services/playerRollSource';
 import { t } from './i18n';
 import type { MapImage, MapImageChange } from './pixi/mapImage/MapImage';
+import type { TileView } from './pixi/mapImage/levelOfDetail';
+import { frameView } from './services/playerFrameDemand';
 import { MapController } from './MapController';
 
 export class PixiRendererOrchestrator { // Renamed class
@@ -471,7 +473,7 @@ export class PixiRendererOrchestrator { // Renamed class
   public initGrid(options: GridOptions, mapImage: MapImage): void {
     if (!this.viewport) return;
     this.setMapImage(mapImage);
-    // Without an image (a scene that failed) the grid follows the next one, through `mapImageChanged`.
+    // Without an image (a scene that failed) an existing grid follows the next one by itself.
     if (!mapImage.worldRect) return;
     this._initGridInternal(options, mapImage);
   }
@@ -482,15 +484,14 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!currentViewport) return;
     
     if (!this.gridSystem) {
-      this.gridSystem = new GridSystem(currentApp, currentViewport, mapImage.layer, options, mapImage);
+      this.gridSystem = new GridSystem(currentApp, currentViewport, mapImage, options);
       // Apply current grid visibility state from store
       const currentState = this.store.getState();
       const grid = currentState.grid;
       const gridVisible = grid && typeof grid.visible === 'boolean' ? grid.visible : true;
       this.gridSystem.setEnabled(gridVisible);
     } else {
-      this.gridSystem.updateBackgroundSprite(mapImage.layer, mapImage);
-      // Only update options that have changed, preserving offset if not provided
+      // The grid follows the map image by itself; only its options are new, the offset kept unless given.
       const currentOptions = this.gridSystem.getOptions();
       const mergedOptions: GridOptions = {
         ...currentOptions,
@@ -579,6 +580,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.releaseMapImage();
     this.mapImage = mapImage;
     viewport.addChildAt(mapImage.layer, 0);
+    this.gridSystem?.setMapImage(mapImage);
     const stopChanges = mapImage.onChange((change) => this.mapImageChanged(change));
     const stopBackground = MapController.followBackground(this.obsApp, this.store, mapImage);
     this.stopFollowingMapImage = (): void => {
@@ -604,14 +606,10 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   private mapImageChanged(change: MapImageChange): void {
-    if (this._isDestroyed) return;
+    // The lighting follows a new albedo by itself, without building its scene anew.
+    if (this._isDestroyed || change !== 'image') return;
     this.lighting?.renderer.refreshBounds();
-    if (change !== 'image') return;
-    const mapImage = this.mapImage;
-    const rect = this.getMapRect();
-    this.eventBus.emit('map-image-updated', rect ?? undefined);
-    if (mapImage && rect) this.gridSystem?.updateBackgroundSprite(mapImage.layer, mapImage);
-    else this.gridSystem?.clearBackgroundSprite();
+    this.eventBus.emit('map-image-updated', this.getMapRect() ?? undefined);
   }
 
   private releaseMapImage(): void {
@@ -692,9 +690,12 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!app?.renderer || !viewport) return;
     const frames = this.playerFrames ??= new PlayerFrameTexture(app.renderer);
     if (!frames.canRender()) return;
+    // The map image at the players' own detail, put back before the DM's render
+    const restoreMapImage = this.mapImage?.drawFor(frameView(frame));
     try {
       captureBeforeRender(this.playerFrameLayers(settings), () => frames.render(app.stage, frame), () => frames.copy(copy), frameCamera(viewport, frame));
     } finally {
+      restoreMapImage?.();
       if (!renderFollows) app.renderer.render(app.stage);
     }
   }
@@ -752,10 +753,16 @@ export class PixiRendererOrchestrator { // Renamed class
 
   /**
    * Runs `render`, the off-screen render of a thumbnail's `frame`: always the GM's picture
-   * (`gmViewLayers`), lit as the GM sees the scene, without the GM's overlays.
+   * (`gmViewLayers`), lit as the GM sees the scene, without the GM's overlays. `picture` is what
+   * the thumbnail shows of the world and at what detail: the map image draws its own tiles for it.
    */
-  public captureSceneFrame<T>(frame: SceneFrame, render: () => T): T {
-    return captureSceneFrame({ gmViewLayers: this.gmViewLayers(), markerLayers: this.markerLayers(), lighting: this.lighting }, frame, render);
+  public captureSceneFrame<T>(frame: SceneFrame, render: () => T, picture?: TileView | null): T {
+    const restoreMapImage = picture ? this.mapImage?.drawFor(picture) : undefined;
+    try {
+      return captureSceneFrame({ gmViewLayers: this.gmViewLayers(), markerLayers: this.markerLayers(), lighting: this.lighting }, frame, render);
+    } finally {
+      restoreMapImage?.();
+    }
   }
 
   /**

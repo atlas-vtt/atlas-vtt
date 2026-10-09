@@ -1,6 +1,6 @@
-import type { Sprite } from 'pixi.js';
-import { grayFromCanvasSource, grayFromSprite } from '../pixi/gridDetection/grayImage';
+import { grayFromCanvasSource } from '../pixi/gridDetection/grayImage';
 import type { GrayImage } from '../pixi/gridDetection/grayImage';
+import type { MapPixels } from '../pixi/mapImage/mapImageView';
 
 const BLACK = 0x000000;
 const WHITE = 0xffffff;
@@ -17,17 +17,6 @@ export function contrastColorForGray(image: GrayImage): number {
   return sum / image.data.length > BRIGHT_MAP_THRESHOLD ? BLACK : WHITE;
 }
 
-/** The automatic grid colour for a map, or null while its texture is not readable yet. */
-export function contrastColorForSprite(sprite: Sprite): number | null {
-  const image = grayFromSprite(sprite, SAMPLE_SIDE);
-  return image ? contrastColorForGray(image) : null;
-}
-
-/** Where a map's pixels are read from: the whole image fit within `maxSide`, or null without one (`MapImage`). */
-export interface MapPixels {
-  overview(maxSide: number): Promise<ImageBitmap | null>;
-}
-
 /** The automatic grid colour for a map, from a small overview of it; null when it has no pixels to read. */
 export async function contrastColorForPixels(pixels: MapPixels): Promise<number | null> {
   let bitmap: ImageBitmap | null;
@@ -41,6 +30,9 @@ export async function contrastColorForPixels(pixels: MapPixels): Promise<number 
   try {
     const image = grayFromCanvasSource(bitmap, bitmap.width, bitmap.height, SAMPLE_SIDE);
     return image ? contrastColorForGray(image) : null;
+  } catch (error) {
+    console.debug('[Atlas] The map image could not be read for the grid colour:', error);
+    return null;
   } finally {
     bitmap.close();
   }

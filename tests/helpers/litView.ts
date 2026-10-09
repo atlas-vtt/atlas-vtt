@@ -3,6 +3,7 @@ import { EventEmitter } from 'events';
 import { Application, Sprite, Texture } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { GridSystem } from '../../src/app/grid/GridSystem';
+import { mapImageViewOf } from './fakeMapImageView';
 import { LightingController } from '../../src/app/pixi/lighting/LightingController';
 import { RenderScheduler } from '../../src/app/pixi/RenderScheduler';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
@@ -53,7 +54,7 @@ export async function openLitView({ preference, pane, map, floor = 0x8899aa, gri
   const store = createViewAtlasStore(obsApp, `lit-view-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setMapPath('maps/lit.atlasmap');
-  const gridSystem = grid ? new GridSystem(app, viewport, background, { size: grid, enabled: true, color: 0x000000 }) : null;
+  const gridSystem = grid ? new GridSystem(app, viewport, mapImageViewOf(background), { size: grid, enabled: true, color: 0x000000 }) : null;
   const controller = new LightingController({
     viewport, app, store, eventBus: new EventEmitter(), obsApp, viewId: 'lit-view',
     bounds: () => ({ width: map, height: map }), albedo: () => null, grid: () => gridSystem,

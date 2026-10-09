@@ -7,12 +7,13 @@
  * live grid preview through the existing GridSystem.
  */
 
-import { Container, Graphics } from 'pixi.js';
+import { Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { GridSystem, GridType } from '../grid/GridSystem';
 import { getQuadrantBounds } from './gridAlignmentMath';
 import type { AlignmentPoint, MapBounds } from './gridAlignmentMath';
 import { MAP_LAYER_Z } from './mapLayerOrder';
+import type { DetectableMap } from './mapImage/mapImageView';
 
 // Re-exports so consumers can import from one place
 export type { AlignmentPoint, AlignmentResult } from './gridAlignmentMath';
@@ -37,7 +38,7 @@ export class GridAlignmentController {
   private viewport: Viewport;
   private gridSystem: GridSystem;
   private canvasEl: HTMLCanvasElement;
-  private bgSprite: Container | null;
+  private map: Pick<DetectableMap, 'worldRect'> | null;
 
   private crosshairs: (Graphics | null)[] = [];
   private connectingLines: (Graphics | null)[] = [];
@@ -48,12 +49,12 @@ export class GridAlignmentController {
     viewport: Viewport,
     gridSystem: GridSystem,
     canvasEl: HTMLCanvasElement,
-    bgSprite: Container | null = null,
+    map: Pick<DetectableMap, 'worldRect'> | null = null,
   ) {
     this.viewport = viewport;
     this.gridSystem = gridSystem;
     this.canvasEl = canvasEl;
-    this.bgSprite = bgSprite;
+    this.map = map;
   }
 
   // -----------------------------------------------------------------------
@@ -66,19 +67,10 @@ export class GridAlignmentController {
     return { x: world.x, y: world.y };
   }
 
+  /** The map image in world units; null while none is shown. */
   getMapBounds(): MapBounds | null {
-    if (this.bgSprite) {
-      return {
-        x: this.bgSprite.x || 0,
-        y: this.bgSprite.y || 0,
-        width: this.bgSprite.width,
-        height: this.bgSprite.height,
-      };
-    }
-    const ww = this.viewport.worldWidth;
-    const wh = this.viewport.worldHeight;
-    if (ww > 0 && wh > 0) return { x: 0, y: 0, width: ww, height: wh };
-    return null;
+    const rect = this.map?.worldRect;
+    return rect && rect.width > 0 && rect.height > 0 ? { ...rect } : null;
   }
 
   // -----------------------------------------------------------------------

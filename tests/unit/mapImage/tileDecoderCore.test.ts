@@ -106,6 +106,15 @@ describe('TileDecoderCore', () => {
     expect([small.width, small.height]).toEqual([3000, 2000]);
   });
 
+  it('fits an overview from the full size, not from the rounded-up size of the level it is drawn from', async () => {
+    const h = coreHarness();
+    const map = opened(await h.core.open(identity, fakePng(4097, 307)));
+    // Level 1 is 2049 × 154, fit within 2048 it would be 2048 × 154; the full image fit within 2048 is 2048 × 153, as a whole-image draw is.
+    const overview = fake(await h.core.overview(1, map.handle, 2048));
+    expect([overview.width, overview.height]).toEqual([2048, 153]);
+    await h.completed(map.hash);
+  });
+
   it('shares one entry between opens of the same image and drops it after the last close', async () => {
     const h = coreHarness();
     const first = opened(await h.core.open(identity, fakePng(3000, 2000)));

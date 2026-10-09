@@ -74,7 +74,7 @@ export function useSceneSnapshots(onRestore: () => void): SceneSnapshotsControll
 
     await run(async () => {
       await view.saveMap();
-      await service.create(folder, mapFile, name, view.serviceManager.renderMapThumbnail(SNAPSHOT_THUMBNAIL_SIZE));
+      await service.create(folder, mapFile, name, await view.serviceManager.renderMapThumbnailWhenDrawn(SNAPSHOT_THUMBNAIL_SIZE));
     }, t('snapshots.saveFailed'));
   }, [entries, folder, run, service, view]);
 
@@ -101,7 +101,7 @@ export function useSceneSnapshots(onRestore: () => void): SceneSnapshotsControll
 
     await run(async () => {
       await view.saveMap();
-      await service.overwrite(entry, mapFile, view.serviceManager.renderMapThumbnail(SNAPSHOT_THUMBNAIL_SIZE));
+      await service.overwrite(entry, mapFile, await view.serviceManager.renderMapThumbnailWhenDrawn(SNAPSHOT_THUMBNAIL_SIZE));
     }, t('snapshots.overwriteFailed'));
   }, [run, service, view]);
 

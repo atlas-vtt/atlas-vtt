@@ -6,6 +6,7 @@ import { afterEach, expect, vi } from 'vitest';
 
 vi.mock('events', async () => import('eventemitter3'));
 import { GridSystem } from '../../src/app/grid/GridSystem';
+import { mapImageViewOf } from './fakeMapImageView';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
@@ -46,7 +47,7 @@ export function fogTokenScenes(): { scene: typeof createScene } {
     store.getState().setPersistenceEnabled(false);
     store.setState({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true });
     const events = new EventEmitter();
-    const grid = new GridSystem(app, viewport, floor, { size: 40, enabled: false, color: 0xffffff });
+    const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: 40, enabled: false, color: 0xffffff });
     const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, 'fog-token-test');
     tokens.setPixiApp(app);
     const fog = new FogOfWarRenderer(viewport, app, events, store);

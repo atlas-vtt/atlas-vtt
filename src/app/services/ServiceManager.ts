@@ -10,12 +10,16 @@ import { GridManager } from './GridManager';
 import { NotePreviewUIManager } from './NotePreviewUIManager';
 import { AssetService } from './AssetService';
 import { SettingsService } from './SettingsService';
-import { MapThumbnailService, dataUrlToBytes, type ThumbnailSize } from './MapThumbnailService';
+import { MAP_THUMBNAIL_SIZE, MapThumbnailService, dataUrlToBytes, type ThumbnailSize } from './MapThumbnailService';
 import { SceneThumbnailUpdater } from './SceneThumbnailUpdater';
 import { WidgetSyncService } from './WidgetSyncService';
 import { SoundEffectService } from './SoundEffectService';
 import { DiceToastObserver } from './DiceToastObserver';
 import type { ViewAtlasStore } from '../storeFactory';
+import { pictureView } from '../pixi/mapImage/levelOfDetail';
+
+/** How long a snapshot waits for the map image's detail before it renders what is drawn. */
+const THUMBNAIL_DETAIL_WAIT_MS = 500;
 
 /**
  * ServiceManager serves as a central registry for all Atlas services
@@ -187,10 +191,32 @@ export class ServiceManager {
     const viewport = renderer?.getViewportInstance();
     if (!renderer || !pixiApp || !viewport) return null;
 
+    const mapRect = renderer.getMapRect();
+    const thumbnailSize = size ?? MAP_THUMBNAIL_SIZE;
+    // What the thumbnail frames (`thumbnailFrame`), for the map image to draw at the thumbnail's own detail
+    const picture = mapRect ? pictureView(mapRect, thumbnailSize) : null;
     const dataUrl = this.mapThumbnailService.renderThumbnail(
-      pixiApp, viewport, renderer.getMapImage()?.layer ?? null, size, (frame, render) => renderer.captureSceneFrame(frame, render),
+      pixiApp, viewport, mapRect, thumbnailSize, (frame, render) => renderer.captureSceneFrame(frame, render, picture),
     );
     return dataUrl ? dataUrlToBytes(dataUrl) : null;
+  }
+
+  /**
+   * `renderMapThumbnail` once the map image is drawn at the detail the thumbnail's frame needs, or
+   * after a short wait: for a snapshot, whose card is larger than the overview may be sharp for.
+   * Null when the view shows another scene by then.
+   */
+  public async renderMapThumbnailWhenDrawn(size: ThumbnailSize): Promise<ArrayBuffer | null> {
+    const renderer = this.rendererService.getRenderer();
+    const mapImage = renderer?.getMapImage();
+    const mapRect = renderer?.getMapRect();
+    const picture = mapRect ? pictureView(mapRect, size) : null;
+    if (mapImage && picture) {
+      const { mapPath } = this.store.getState();
+      await mapImage.whenReady(picture.rect, picture.worldPerScreenPixel, THUMBNAIL_DETAIL_WAIT_MS);
+      if (this.store.getState().mapPath !== mapPath) return null;
+    }
+    return this.renderMapThumbnail(size);
   }
 
   /** Writes the scene's thumbnail now if an edit left it out of date; call before the view shows another scene. */

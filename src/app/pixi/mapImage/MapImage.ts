@@ -52,6 +52,8 @@ export interface MapImageDeps {
   renderer: (TileUploader & { resolution: number }) | null;
   requestRender: () => void;
   reducedMotion?: () => boolean;
+  /** The size of the pictures of the whole map taken (thumbnails), whose tiles stay loaded. */
+  picture?: { width: number; height: number };
 }
 
 /** The viewport's world is never smaller than this a side, so a small map can still be panned around. */
@@ -147,7 +149,15 @@ export class MapImage {
     return view ? this.whenReady(view.rect, view.worldPerScreenPixel, timeoutMs) : Promise.resolve();
   }
 
-  /** Keeps the tiles another camera needs (the player window's) loaded and drawn; returns the function that ends it. */
+  /**
+   * Shows what `view` (another camera's, a thumbnail's) draws instead of the view's own camera,
+   * until the returned function puts that back: for one render of another picture.
+   */
+  drawFor(view: TileView): () => void {
+    return this.shown?.layer?.drawFor(view) ?? noop;
+  }
+
+  /** Keeps the tiles another camera needs (the player window's) loaded for its own picture (`drawFor`); returns the function that ends it. */
   addDemandRegion(view: TileView): () => void {
     const region: TileView = { rect: { ...view.rect }, worldPerScreenPixel: view.worldPerScreenPixel };
     this.regions.set(region, this.shown?.layer?.addDemandRegion(region) ?? noop);
@@ -212,6 +222,7 @@ export class MapImage {
         ticker: this.deps.ticker,
         requestRender: this.deps.requestRender,
         camera: this.camera,
+        picture: this.deps.picture ?? null,
         ...(this.deps.reducedMotion && { reducedMotion: this.deps.reducedMotion }),
         onTileError: onceLogged(),
       });

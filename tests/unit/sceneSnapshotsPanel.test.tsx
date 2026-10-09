@@ -27,7 +27,7 @@ interface FakeView {
   file: TFile;
   saveMap: ReturnType<typeof vi.fn>;
   reloadActiveScene: ReturnType<typeof vi.fn>;
-  serviceManager: { renderMapThumbnail: ReturnType<typeof vi.fn<(size?: ThumbnailSize) => ArrayBuffer>> };
+  serviceManager: { renderMapThumbnailWhenDrawn: ReturnType<typeof vi.fn<(size: ThumbnailSize) => Promise<ArrayBuffer>>> };
 }
 
 function mapWithGoblinAt(x: number): string {
@@ -44,7 +44,7 @@ async function renderPanel(mapPath = MAP_PATH): Promise<{ vault: InMemoryApp; vi
     file: new TFile(mapPath),
     saveMap: vi.fn(async () => {}),
     reloadActiveScene: vi.fn(async (rewrite: (file: TFile) => Promise<void>) => rewrite(new TFile(mapPath))),
-    serviceManager: { renderMapThumbnail: vi.fn(() => new TextEncoder().encode('JPG').buffer) },
+    serviceManager: { renderMapThumbnailWhenDrawn: vi.fn(async () => new TextEncoder().encode('JPG').buffer) },
   };
   ui.current = { app: vault.app, view };
   const store = create(() => ({ mapPath }));
@@ -94,7 +94,7 @@ describe('scene snapshots page', () => {
     expect(screen.getAllByRole('group').map((card) => card.getAttribute('aria-label')).sort()).toEqual(['Snapshot 1', 'Snapshot 2']);
     expect(view.saveMap).toHaveBeenCalledTimes(2);
     // The map view's own thumbnail render, at the snapshot card's size: lit and without GM overlays like a scene card's
-    expect(view.serviceManager.renderMapThumbnail.mock.calls).toEqual([[SNAPSHOT_THUMBNAIL_SIZE], [SNAPSHOT_THUMBNAIL_SIZE]]);
+    expect(view.serviceManager.renderMapThumbnailWhenDrawn.mock.calls).toEqual([[SNAPSHOT_THUMBNAIL_SIZE], [SNAPSHOT_THUMBNAIL_SIZE]]);
     const thumbnail = screen.getByRole('button', { name: 'Restore Snapshot 1' }).querySelector('img');
     expect(thumbnail?.getAttribute('src')).toMatch(/^app:\/\/vault\/atlas-vtt\/collections\/c\/snapshots\/[^/]+\/.*\.jpg\?v=\d+$/);
   });
@@ -173,8 +173,8 @@ describe('scene snapshots page', () => {
     dialogs.confirmAction.mockResolvedValueOnce(true);
     chooseFromMenu('Snapshot 1', 'Overwrite with current map');
     await waitFor(() => expect(savedGoblinX(vault)).toBe(42));
-    expect(view.serviceManager.renderMapThumbnail).toHaveBeenLastCalledWith(SNAPSHOT_THUMBNAIL_SIZE);
-    expect(view.serviceManager.renderMapThumbnail).toHaveBeenCalledTimes(2);
+    expect(view.serviceManager.renderMapThumbnailWhenDrawn).toHaveBeenLastCalledWith(SNAPSHOT_THUMBNAIL_SIZE);
+    expect(view.serviceManager.renderMapThumbnailWhenDrawn).toHaveBeenCalledTimes(2);
     expect(screen.getByRole('group', { name: 'Snapshot 1' })).toBeTruthy();
   });
 

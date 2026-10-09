@@ -6,6 +6,7 @@ import type { AtlasSettings } from './SettingsService';
 import type { FramePiece, PlayerFrame, Screen } from '../types/playerFrame';
 import { playerFrame, viewOf } from './playerFrame';
 import type { PlayerRollSources } from './playerRollSource';
+import { PlayerFrameDemand, type DemandRegions } from './playerFrameDemand';
 
 type PlayerViewSettings = AtlasSettings['localPlayerView'];
 
@@ -40,8 +41,11 @@ export interface BeforeRenderCapture {
   withPlayerSafeFrame: PlayerSafeFrame;
 }
 
-/** A DM map view that can render its scene without DM-only layers, at a size and camera of the players' own. */
-export interface PlayerFrameSource {
+/**
+ * A DM map view that can render its scene without DM-only layers, at a size and camera of the
+ * players' own. `addDemandRegion` keeps its map image's tiles of the players' frame loaded.
+ */
+export interface PlayerFrameSource extends DemandRegions {
   store?: StoreApi<ViewAtlasState>;
   /** Dice events from the view that owns this canvas. */
   diceEvents?: EventEmitter;
@@ -126,6 +130,7 @@ export class PlayerFrameMirror {
   private failing = false;
   /** The window the last frame was rendered for. */
   private shown: Screen | null = null;
+  private readonly demand = new PlayerFrameDemand();
 
   constructor(
     private readonly target: HTMLCanvasElement,
@@ -152,6 +157,7 @@ export class PlayerFrameMirror {
         // A held frame is static: draw it once, then idle until it changes
         if (held !== this.lastHeld) this.draw(held);
         this.lastHeld = held;
+        this.demand.release();
         return;
       }
       if (this.lastHeld) this.stale = true;
@@ -164,12 +170,14 @@ export class PlayerFrameMirror {
         this.requestedAt = null;
         return;
       }
+      const frame = this.frameOf(source);
+      this.demand.follow(source, frame);
       if (!source.beforeRender) {
         this.mirror(source, source, now);
         return;
       }
       if (!this.stale || !this.isDue(now)) return;
-      if (!this.frameOf(source)) {
+      if (!frame) {
         // No window to render for yet: no render is asked for, and none awaited
         this.requestedAt = null;
         return;
@@ -185,6 +193,8 @@ export class PlayerFrameMirror {
   }
 
   private readonly beforeRender = (frameTime: number): void => {
+    // A window asleep shows nothing, so its frame needs no tiles; its next display frame asks again
+    if (frameTime - this.lastFrameAt > ASLEEP_AFTER_MS) this.demand.release();
     const source = this.watched;
     // A canvas that is no longer presented, or stands behind a held frame, is not what players see
     if (!source?.beforeRender || source !== this.inputs.source() || this.inputs.heldFrame()) return;
@@ -198,6 +208,7 @@ export class PlayerFrameMirror {
 
   private watch(source: PlayerFrameSource | null): void {
     if (source === this.watched) return;
+    this.demand.release();
     this.stopListening?.();
     this.watched?.release?.();
     this.watched = source;

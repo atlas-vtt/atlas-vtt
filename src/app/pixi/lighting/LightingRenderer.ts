@@ -42,7 +42,10 @@ export interface LightingRendererDeps {
   measurement: () => MeasurementSettings;
   /** Size of the map image in world pixels, or null before it loaded. */
   bounds: () => MapBounds | null;
-  /** The map image, covering world `[0, width] × [0, height]`; bounce reads its colours. */
+  /**
+   * The map image's colours, covering world `[0, width] × [0, height]` at any resolution; bounce
+   * reads them. Null while they are not ready (mid grey meanwhile); the view follows when they arrive.
+   */
   albedo: () => Texture | null;
   /** The grid the composite draws unlit, while there is one (`UnlitGrid`). */
   grid?: () => UnlitGrid | null;
@@ -60,7 +63,7 @@ export interface LightingRendererDeps {
   quality?: LightingQualitySource;
 }
 
-type SceneWithoutLook = Omit<EngineScene, keyof SceneLook>;
+type SceneWithoutLook = Omit<EngineScene, keyof SceneLook | 'albedo'>;
 /**
  * From the build that begins an attempt, over the first lit frame and the tick that waits for
  * the graphics process to execute it, to the tick after that one.
@@ -94,6 +97,8 @@ export class LightingRenderer implements SceneLightingView {
   private ambient: { lighting: SceneLighting; zones: readonly AmbientZone[]; light: AmbientLight } | null = null;
   /** The last scene without its look (`SceneLook`), reused while only the look changes; none from lighting off, the map leaving or a lost context until the next build. */
   private lastScene: SceneWithoutLook | null = null;
+  /** The albedo the engine was last given. */
+  private albedo: Texture | null = null;
   private attemptState: AttemptState = 'none';
   private stopped = false;
   /** A scene build worked out new sight; reported once the guarded work is over. */
@@ -149,7 +154,10 @@ export class LightingRenderer implements SceneLightingView {
 
   renderForFrame<T>(frame: SceneFrame, render: () => T): T {
     // Bounce still to build after an edit belongs in the picture; so does a world a restored context took.
-    this.run(() => this.engine.flush());
+    this.run(() => {
+      this.followAlbedo();
+      this.engine.flush();
+    });
     return this.engine.renderFrame(frame, render);
   }
 
@@ -247,7 +255,8 @@ export class LightingRenderer implements SceneLightingView {
     const gmSight = model.gmSight ?? model.sight;
     // Both pictures always show the same tokens (`GM_SIGHT_POLICY`), so the same sight gives the same footprints.
     const gmSpots = gmSight === model.sight ? spots : this.gmSpots.update(model, state, this.deps.measurement, this.deps.rules, gmSight);
-    this.engine.update({ ...base, spots: gmSpots, ...(gmSight !== model.sight && { playerSight: model.sight, playerSpots: spots }), ...sceneLook(lighting) });
+    this.albedo = this.deps.albedo();
+    this.engine.update({ ...base, albedo: this.albedo, spots: gmSpots, ...(gmSight !== model.sight && { playerSight: model.sight, playerSpots: spots }), ...sceneLook(lighting) });
     requestRender(this.deps.app);
   }
 
@@ -258,7 +267,7 @@ export class LightingRenderer implements SceneLightingView {
     this.zones = ambient.zones ?? [];
     this.sightChanged = true;
     if (explored) this.memory.record(explored);
-    return { bounds, albedo: this.deps.albedo(), walls, lights, sight: gmSight, sightRadius: (state.grid?.size ?? DEFAULT_CELL_SIZE) * 0.5, zones };
+    return { bounds, walls, lights, sight: gmSight, sightRadius: (state.grid?.size ?? DEFAULT_CELL_SIZE) * 0.5, zones };
   }
 
   /**
@@ -316,8 +325,17 @@ export class LightingRenderer implements SceneLightingView {
     if (this.attemptState === 'begun' && this.engine.hasWorld()) this.attemptState = 'drawn';
   }
 
+  /**
+   * The map image's albedo is made after the image (from its overview, once asked for) and goes
+   * with it: a lit scene hands the engine the one there is now, which rebuilds only the bounce.
+   */
+  private followAlbedo(): void {
+    if (this.lastScene && this.deps.albedo() !== this.albedo) this.update(this.deps.store.getState());
+  }
+
   private animate(): void {
     this.settleAttempt();
+    this.followAlbedo();
     if (!this.layer.visible || !this.engine.busy()) return;
     // ponytail: animated lights redraw the whole light map even while off-screen; cull to the viewport if that gets slow.
     if (this.engine.animate(performance.now())) requestRender(this.deps.app);

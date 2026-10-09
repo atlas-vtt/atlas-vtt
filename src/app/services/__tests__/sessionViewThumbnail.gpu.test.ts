@@ -9,7 +9,7 @@ import { playerLightingLayers, type GmOverlays } from '../../pixi/lighting/playe
 import { SessionLighting } from '../../pixi/lighting/SessionLighting';
 import { captureSceneFrame, type SceneFrameCapture } from '../../pixi/sceneFrameCapture';
 import { MapThumbnailService, type ThumbnailSize } from '../MapThumbnailService';
-import { LIGHT_AT, brightnessAt, createThumbnailScene, decodeImage, inThumbnail, largestDifference, overlayLayers, type Pixels, type ThumbnailScene } from './thumbnailScene';
+import { LIGHT_AT, MAP_RECT, brightnessAt, createThumbnailScene, decodeImage, inThumbnail, largestDifference, overlayLayers, type Pixels, type ThumbnailScene } from './thumbnailScene';
 
 const SCENE_CARD: ThumbnailSize = { width: 400, height: 300 };
 const THEME = { background: 0x2a2a2a, stroke: 0xffffff, accent: 0x8a5cf5 };
@@ -43,7 +43,7 @@ describe('thumbnail of a scene while the canvas shows the players\' view', () =>
   async function setup(): Promise<{ gmOverlays: GmOverlays; session: SessionLighting; thumbnail: (capture?: SceneFrameCapture) => Promise<Pixels> }> {
     // The token sees 5 ft around itself: the players' view of the torch is black.
     scene = await createThumbnailScene({ enabled: true, ambient: 0 }, false, { t: visionToken(680, 300, 5) });
-    const { viewport, store, lighting, app, background } = scene;
+    const { viewport, store, lighting, app } = scene;
     // The harness's stand-in overlays cover the map; this scene has the real ones.
     overlayLayers(scene.overlays).forEach((layer) => (layer.visible = false));
     const markers = new LightMarkers(viewport as unknown as Viewport, store, () => THEME);
@@ -66,7 +66,7 @@ describe('thumbnail of a scene while the canvas shows the players\' view', () =>
     const mapViewCapture: SceneFrameCapture = (frame, render) =>
       captureSceneFrame({ gmViewLayers: [], markerLayers: [], lighting: { gmOverlays: () => gmOverlays, renderer: lighting } }, frame, render);
     const thumbnail = (capture: SceneFrameCapture = mapViewCapture): Promise<Pixels> =>
-      decodeImage(new MapThumbnailService({} as App).renderThumbnail(app, viewport, background, SCENE_CARD, capture)!);
+      decodeImage(new MapThumbnailService({} as App).renderThumbnail(app, viewport, MAP_RECT, SCENE_CARD, capture)!);
     scene.tick();
     return { gmOverlays, session, thumbnail };
   }
