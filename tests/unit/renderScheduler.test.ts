@@ -50,6 +50,38 @@ describe('RenderScheduler', () => {
     scheduler.destroy();
   });
 
+  it('renders at once on renderNow, after the before-render hook, and not again on the next tick', () => {
+    const { app, render, ticker } = fakeApp(fakeGroup());
+    const scheduler = new RenderScheduler(app);
+    ticker.update(16);
+    vi.mocked(render).mockClear();
+    const hook = vi.fn();
+    setBeforeRender(app, hook);
+    ticker.started = true;
+
+    scheduler.renderNow();
+    expect(hook).toHaveBeenCalledTimes(1);
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(hook.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(render).mock.invocationCallOrder[0]!);
+
+    ticker.update(32);
+    expect(render).toHaveBeenCalledTimes(1);
+    scheduler.destroy();
+  });
+
+  it('leaves renderNow to the next tick while the ticker is stopped', () => {
+    const { app, render, ticker } = fakeApp(fakeGroup());
+    const scheduler = new RenderScheduler(app);
+    ticker.update(16);
+    vi.mocked(render).mockClear();
+
+    scheduler.renderNow();
+    expect(render).not.toHaveBeenCalled();
+    ticker.update(32);
+    expect(render).toHaveBeenCalledTimes(1);
+    scheduler.destroy();
+  });
+
   it('stops rendering after destroy', () => {
     const group = fakeGroup({ structureDidChange: true });
     const { app, render, ticker } = fakeApp(group);

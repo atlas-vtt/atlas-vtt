@@ -34,6 +34,8 @@
 
 ## Fixed
 
+- The map no longer flickers while a sidebar opens or closes, or while you resize its pane.
+
 - Freezing the player camera right after sending another scene to the player view no longer freezes players on the spot they were shown in the scene before.
 
 - The player window no longer zooms in, cuts off the map or turns blocky when you open a sidebar, split the pane or keep the map in a small pane. It is now drawn at its own size and sharpness instead of being an enlarged copy of your map pane: it shows everything your view shows, centred on the same spot. Very large player screens are drawn with up to 2560 × 1440 pixels and scaled up smoothly.

@@ -211,11 +211,7 @@ export class PixiAppManager {
     this.width = newWidth;
     this.height = newHeight;
 
-    if (this.app.renderer) {
-      this.app.renderer.resize(newWidth, newHeight);
-      // Resizing clears the drawing buffer
-      this.renderScheduler?.requestRender();
-    }
+    if (this.app.renderer) this.app.renderer.resize(newWidth, newHeight);
 
     if (this.viewport) this.resizeViewport(this.viewport, newWidth, newHeight);
     
@@ -224,6 +220,11 @@ export class PixiAppManager {
       this.canvasEl.style.width = `${newWidth}px`;
       this.canvasEl.style.height = `${newHeight}px`;
     }
+
+    // Resizing clears the drawing buffer. A pane resizes from a ResizeObserver, after the frame's
+    // render and before the paint: rendering only on the next tick showed a blank frame, so a
+    // sidebar sliding open made the map flicker.
+    if (this.app.renderer) this.renderScheduler?.renderNow();
   }
 
   /** Gives `viewport` its new screen around the world point that was in the middle of the old one. */

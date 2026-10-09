@@ -116,6 +116,26 @@ describe('PixiAppManager.resize', () => {
     expect(manager.getCanvasElement().style.width).toBe('800px');
   });
 
+  it('draws the picture again in the same task, before the browser paints the cleared canvas', () => {
+    const render = vi.mocked(manager.app.render);
+    render.mockClear();
+
+    manager.resize(1000, 700);
+
+    expect(render).toHaveBeenCalledTimes(1);
+    expect(resizeRenderer.mock.invocationCallOrder[0]).toBeLessThan(render.mock.invocationCallOrder[0]!);
+  });
+
+  it('leaves the frame a load holds alone: with the ticker stopped the render waits for it', () => {
+    const render = vi.mocked(manager.app.render);
+    manager.getApp().ticker.stop();
+    render.mockClear();
+
+    manager.resize(1000, 700);
+
+    expect(render).not.toHaveBeenCalled();
+  });
+
   it('follows a pane that changes size', () => {
     manager.resize(1000, 700);
 
