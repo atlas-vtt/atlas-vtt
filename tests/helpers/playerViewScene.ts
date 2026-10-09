@@ -95,7 +95,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
     const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: CELL, enabled: false, color: 0xffffff, ...gridOptions });
     const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, 'player-view-test');
     tokens.setPixiApp(app);
-    const fog = new FogOfWarRenderer(viewport, app, events, store);
+    const fog = new FogOfWarRenderer(viewport, app, events, store, () => null);
     viewport.addChild(fog.getContainer());
     tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
     const lighting: PlayerViewScene['lighting'] = { perception: undefined, peeking: false };

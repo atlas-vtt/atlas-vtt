@@ -1,5 +1,5 @@
 import { Container } from 'pixi.js';
-import type { MapImageChange } from '../../src/app/pixi/mapImage/MapImage';
+import type { MapImageChange } from '../../src/app/pixi/mapImage/mapImageTypes';
 import type { MapImageView } from '../../src/app/pixi/mapImage/mapImageView';
 import type { PixelRect } from '../../src/app/pixi/mapImage/pyramid';
 

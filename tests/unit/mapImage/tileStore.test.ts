@@ -4,7 +4,6 @@ import { TILE_SPEC, type TileRef } from '../../../src/app/pixi/mapImage/pyramid'
 import {
   TILE_CACHE_MAX_BYTES,
   TileStore,
-  identityKeyOf,
   tileCacheBudget,
   type PyramidSpec,
   type StoredTile,
@@ -48,13 +47,13 @@ describe('TileStore', () => {
     await store.rememberIdentity('maps/a.webp', 10, 5, 'abc');
     expect(await store.lookupIdentity('maps/a.webp', 10, 5)).toBe('abc');
     expect(await store.lookupIdentity('maps/a.webp', 11, 5)).toBeNull();
-    expect(await backend.getIdentity(identityKeyOf('maps/a.webp', 10, 5))).toBe('abc');
+    expect(await backend.getIdentity('maps/a.webp')).toEqual({ path: 'maps/a.webp', size: 10, mtime: 5, hash: 'abc' });
   });
 
   it('treats a manifest of another spec as absent and deletes its pyramid', async () => {
     const { store, backend } = harness();
     await backend.putManifest({ ...source('old'), spec: TILE_SPEC + 1, complete: true, bytes: 4, lastUsed: 0 });
-    await backend.putTiles('old', [tile(0, 0, 0, 4)]);
+    await backend.writeTiles('old', [tile(0, 0, 0, 4)], (stored) => stored);
     expect(await store.readManifest('old')).toBeNull();
     expect(await backend.getManifest('old')).toBeNull();
     expect((await backend.hasTiles('old')).size).toBe(0);
@@ -200,5 +199,53 @@ describe('TileStore', () => {
     expect((await h.backend.hasTiles('closed')).size).toBe(0);
     expect(await h.store.lookupIdentity('open.png', 1, 1)).toBe('open');
     expect(await h.store.writeTiles('open', [tile(0, 1, 0, 5)])).toBe(true);
+  });
+
+  it('keeps one identity per path, the latest', async () => {
+    const { store } = harness();
+    await store.rememberIdentity('maps/a.webp', 10, 5, 'first');
+    await store.rememberIdentity('maps/a.webp', 12, 6, 'edited');
+
+    expect(await store.lookupIdentity('maps/a.webp', 10, 5)).toBeNull();
+    expect(await store.lookupIdentity('maps/a.webp', 12, 6)).toBe('edited');
+  });
+
+  it('drops the identities of the pyramids it evicts or clears, and keeps those of pinned ones', async () => {
+    // A quota of 1000 gives a budget of 100.
+    const h = harness(1000);
+    await completePyramid(h, 'old', 80, 1);
+    await completePyramid(h, 'kept', 60, 2);
+    await h.store.rememberIdentity('old.png', 1, 1, 'old');
+    await h.store.rememberIdentity('kept.png', 1, 1, 'kept');
+    await h.store.rememberIdentity('opening.png', 1, 1, 'opening');
+    h.store.pin('opening');
+
+    expect(await h.store.evict()).toEqual(['old']);
+    expect(await h.store.lookupIdentity('old.png', 1, 1)).toBeNull();
+    expect(await h.store.lookupIdentity('kept.png', 1, 1)).toBe('kept');
+    expect(await h.store.lookupIdentity('opening.png', 1, 1)).toBe('opening');
+
+    expect(await h.store.clear()).toBe(0);
+    expect(await h.store.lookupIdentity('kept.png', 1, 1)).toBeNull();
+    expect(await h.store.lookupIdentity('opening.png', 1, 1)).toBe('opening');
+  });
+
+  it('never leaves tiles the manifest does not count when the worker dies between writes', async () => {
+    const h = harness();
+    await h.store.beginPyramid(source('a'));
+    // The backend's first write of the batch lands; the worker dies before anything else is written.
+    let writes = 0;
+    const dies = <T>(write: () => Promise<T>): Promise<T> => (++writes > 1 ? Promise.reject(new Error('worker died')) : write());
+    const backend = h.backend as unknown as Record<string, (...args: never[]) => Promise<unknown>>;
+    for (const name of ['putTiles', 'putManifest', 'writeTiles'] as const) {
+      const original = backend[name]?.bind(h.backend);
+      if (original) backend[name] = (...args: never[]) => dies(() => original(...args));
+    }
+
+    await h.store.writeTiles('a', [tile(0, 0, 0, 7), tile(0, 1, 0, 9)]).catch(() => false);
+
+    const stored = (await h.backend.hasTiles('a')).size;
+    const counted = (await h.backend.getManifest('a'))!.bytes;
+    expect({ stored, counted }).toEqual({ stored: 2, counted: 16 });
   });
 });

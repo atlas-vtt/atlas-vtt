@@ -19,7 +19,7 @@ it('captures painted fog at full opacity and preserves the DM preview across rep
       x: 0, y: 0, width: 100, height: 100, isErasing: false,
     } } },
   }));
-  const renderer = new FogOfWarRenderer(new Container() as any, { canvas: createEl('canvas') } as any, new EventEmitter(), store as any);
+  const renderer = new FogOfWarRenderer(new Container() as any, { canvas: createEl('canvas') } as any, new EventEmitter(), store as any, () => null);
   try {
     const fog = renderer.getContainer().children.find(child => child instanceof Sprite && child.alpha > 0)!;
     expect(fog.visible).toBe(true);

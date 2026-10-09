@@ -20,7 +20,6 @@ describe('AtlasView onClose', () => {
   });
 
   it('cleans up subscriptions, pending callbacks, and service resources', async () => {
-    const mapLoadingUnsubscribe = vi.fn();
     const flushPendingSaves = vi.fn<() => Promise<void>>().mockResolvedValue();
     const resizeObserverDisconnect = vi.fn();
     const eventBusOff = vi.fn();
@@ -32,7 +31,6 @@ describe('AtlasView onClose', () => {
 
     const context: any = {
       isViewClosing: false,
-      mapLoadingUnsubscribe,
       flushPendingSaves,
       temporalCache: new Map([['t', { value: 1 }]]),
       viewportCache: new Map([['v', { value: 1 }]]),
@@ -49,7 +47,6 @@ describe('AtlasView onClose', () => {
 
     await AtlasView.prototype.onClose.call(context);
 
-    expect(mapLoadingUnsubscribe).toHaveBeenCalledTimes(1);
     // Pinned previews record their scroll and cursor before the final save
     expect(savePinnedPreviewStates.mock.invocationCallOrder[0]).toBeLessThan(flushPendingSaves.mock.invocationCallOrder[0]!);
     // Timers stop before the last save, which keeps the time they have left
@@ -61,7 +58,6 @@ describe('AtlasView onClose', () => {
     expect(serviceManagerDestroy).toHaveBeenCalledTimes(1);
 
     expect(context.isViewClosing).toBe(true);
-    expect(context.mapLoadingUnsubscribe).toBeNull();
     expect(context.resizeObserver).toBeNull();
     expect(context.temporalCache.size).toBe(0);
     expect(context.viewportCache.size).toBe(0);
@@ -73,7 +69,6 @@ describe('AtlasView onClose', () => {
 
     const context: any = {
       isViewClosing: true,
-      mapLoadingUnsubscribe: vi.fn(),
       flushPendingSaves,
       temporalCache: new Map([['t', { value: 1 }]]),
       viewportCache: new Map([['v', { value: 1 }]]),
@@ -89,6 +84,6 @@ describe('AtlasView onClose', () => {
 
     expect(flushPendingSaves).not.toHaveBeenCalled();
     expect(serviceManagerDestroy).not.toHaveBeenCalled();
-    expect(context.mapLoadingUnsubscribe).not.toBeNull();
+    expect(context.temporalCache.size).toBe(1);
   });
 });

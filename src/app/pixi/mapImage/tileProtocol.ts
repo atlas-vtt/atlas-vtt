@@ -40,7 +40,7 @@ export type TileRequest =
   | { type: 'overview'; id: number; handle: number; maxSide: number }
   /** Drops a tile or overview request; nothing is answered for it. */
   | { type: 'cancel'; id: number }
-  /** Ends an open; its pending requests are cancelled. */
+  /** Ends an open; its pending requests are answered with an `error`. */
   | { type: 'close'; handle: number }
   | { type: 'cache-size'; id: number }
   | { type: 'clear-cache'; id: number };
@@ -65,7 +65,12 @@ export type TileEvent =
   /** A build stopped writing the cache (storage full, encoding unsupported); the open map keeps showing. */
   | { type: 'build-failed'; hash: string; message: string };
 
-export type TileMessage = TileReply | TileEvent;
+/** Sent once after `init`, when the core is up: a worker that fails before it never started. */
+export interface TileReady {
+  type: 'ready';
+}
+
+export type TileMessage = TileReply | TileEvent | TileReady;
 
 export function isTileEvent(message: TileMessage): message is TileEvent {
   return message.type === 'progress' || message.type === 'complete' || message.type === 'build-failed';

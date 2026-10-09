@@ -1,10 +1,11 @@
 import { Texture, Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MapImage, type MapImageChange, type MapImageOpener } from '../../../src/app/pixi/mapImage/MapImage';
+import { MapImage } from '../../../src/app/pixi/mapImage/MapImage';
+import type { MapImageChange, MapImageOpener } from '../../../src/app/pixi/mapImage/mapImageTypes';
 import { placeholderTiles } from '../../../src/app/pixi/mapImage/mapImageTiles';
 import { pyramidOf } from '../../../src/app/pixi/mapImage/pyramid';
-import type { OpenedMap } from '../../../src/app/pixi/mapImage/TileDecoderClient';
+import { MapClosedError, type OpenedMap } from '../../../src/app/pixi/mapImage/TileDecoderClient';
 
 class Bitmap {
   readonly close = vi.fn();
@@ -28,20 +29,29 @@ function harness(): {
   service: { [K in keyof MapImageOpener]: ReturnType<typeof vi.fn> };
   viewport: { left: number; top: number; worldScreenWidth: number; worldScreenHeight: number; scale: { x: number }; worldWidth: number; worldHeight: number };
   changes: MapImageChange[];
+  ticker: Ticker;
+  /** What the tile worker's restart tells the map images. */
+  restart: () => void;
 } {
+  const restarts = new Set<() => void>();
   const service = {
     open: vi.fn(),
     tile: vi.fn(() => new Promise<ImageBitmap>(() => undefined)),
     overview: vi.fn(async (_handle: number, maxSide: number) => new Bitmap(maxSide, maxSide) as unknown as ImageBitmap),
     close: vi.fn(),
     reportUnshown: vi.fn(),
+    onRestart: vi.fn((listener: () => void) => {
+      restarts.add(listener);
+      return () => restarts.delete(listener);
+    }),
   };
+  const ticker = new Ticker();
   const viewport = { left: 0, top: 0, worldScreenWidth: 800, worldScreenHeight: 600, scale: { x: 1 }, worldWidth: 0, worldHeight: 0 };
-  const mapImage = new MapImage({ service: service as unknown as MapImageOpener, viewport, ticker: new Ticker(), renderer: null, requestRender: vi.fn() });
+  const mapImage = new MapImage({ service: service as unknown as MapImageOpener, viewport, ticker, renderer: null, requestRender: vi.fn() });
   const changes: MapImageChange[] = [];
   mapImage.onChange((change) => changes.push(change));
   images.push(mapImage);
-  return { mapImage, service, viewport, changes };
+  return { mapImage, service, viewport, changes, ticker, restart: () => [...restarts].forEach((listener) => listener()) };
 }
 
 const images: MapImage[] = [];
@@ -185,5 +195,59 @@ describe('MapImage', () => {
     expect(mapImage.layer.children).toHaveLength(0);
     expect(service.close).toHaveBeenCalledWith(1);
     expect(changes).toEqual(['image', 'image']);
+  });
+
+  it('answers null for an overview whose map was closed meanwhile, and rejects for other failures', async () => {
+    const { mapImage, service } = harness();
+    service.open.mockResolvedValue(opened(1, 'cave'));
+    await mapImage.load({ kind: 'file', file: fileAt('maps/cave.webp') });
+
+    service.overview.mockRejectedValueOnce(new MapClosedError());
+    await expect(mapImage.overview(512)).resolves.toBeNull();
+    service.overview.mockRejectedValueOnce(new Error('Corrupt tile'));
+    await expect(mapImage.overview(512)).rejects.toThrow('Corrupt tile');
+  });
+
+  it('opens the shown map again in a new layer when the tile worker restarts, which asks again for the tiles that failed', async () => {
+    const { mapImage, service, changes, ticker, restart } = harness();
+    service.open.mockResolvedValueOnce(opened(1, 'cave')).mockResolvedValueOnce(opened(2, 'cave'));
+    service.tile.mockImplementation((handle: number) => (handle === 1
+      ? Promise.reject(new Error('The map tile worker stopped unexpectedly.'))
+      : new Promise<ImageBitmap>(() => undefined)));
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await mapImage.load({ kind: 'file', file: fileAt('maps/cave.webp') });
+    const before = mapImage.layer.children[0];
+    ticker.update(1000);
+    await vi.waitFor(() => expect(service.tile).toHaveBeenCalledWith(1, expect.anything(), expect.anything()));
+    const failedRefs = service.tile.mock.calls.map((call) => JSON.stringify(call[1]));
+
+    restart();
+    await vi.waitFor(() => expect(service.open).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(mapImage.layer.children[0]).not.toBe(before));
+    ticker.update(2000);
+
+    expect(mapImage.layer.children).toHaveLength(1);
+    expect(service.close).toHaveBeenCalledWith(1);
+    const again = service.tile.mock.calls.filter((call) => call[0] === 2).map((call) => JSON.stringify(call[1]));
+    expect(again).toEqual(expect.arrayContaining(failedRefs));
+    expect(changes).toEqual(['image', 'image']);
+  });
+
+  it('does not reopen after a restart while another load is under way, nor once destroyed', async () => {
+    const { mapImage, service, restart } = harness();
+    service.open.mockResolvedValueOnce(opened(1, 'cave'));
+    await mapImage.load({ kind: 'file', file: fileAt('maps/cave.webp') });
+    const slow = deferred<OpenedMap>();
+    service.open.mockReturnValueOnce(slow.promise);
+    const loading = mapImage.load({ kind: 'file', file: fileAt('maps/tower.webp') });
+
+    restart();
+    slow.resolve(opened(2, 'tower'));
+    await loading;
+    expect(service.open).toHaveBeenCalledTimes(2);
+
+    mapImage.destroy();
+    restart();
+    expect(service.open).toHaveBeenCalledTimes(2);
   });
 });

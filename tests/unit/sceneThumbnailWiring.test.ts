@@ -83,7 +83,7 @@ function setup(contextLost = false) {
   // Session view shows the fog opaque
   fog.alpha = 1;
 
-  const view = { mapPath: 'maps/cave.atlasmap' };
+  const view = { mapPath: 'maps/cave.atlasmap', mapLoaded: true, isMapLoading: false };
   const services = Object.assign(Object.create(ServiceManager.prototype) as ServiceManager, {
     rendererService: { getRenderer: () => orchestrator },
     mapThumbnailService: new MapThumbnailService({} as any),
@@ -152,6 +152,15 @@ describe('a map view\'s thumbnail render', () => {
     const { services, rendered, drawn, view } = setup();
     const bytes = services.renderMapThumbnailWhenDrawn({ width: 640, height: 360 });
     view.mapPath = 'maps/tower.atlasmap';
+    drawn.resolve();
+    expect(await bytes).toBeNull();
+    expect(rendered).toHaveLength(0);
+  });
+
+  it('renders no snapshot of the same scene while it loads again after the wait', async () => {
+    const { services, rendered, drawn, view } = setup();
+    const bytes = services.renderMapThumbnailWhenDrawn({ width: 640, height: 360 });
+    Object.assign(view, { mapLoaded: false, isMapLoading: true });
     drawn.resolve();
     expect(await bytes).toBeNull();
     expect(rendered).toHaveLength(0);

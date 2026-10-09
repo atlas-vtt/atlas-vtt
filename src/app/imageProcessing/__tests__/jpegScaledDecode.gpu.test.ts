@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { jpegScaledSize } from '../decodeLimits';
 import { renderImageJob } from '../imageRenderer';
 import { grayJpeg } from './grayJpeg';
@@ -61,5 +61,25 @@ describe('decoding a JPEG at a smaller scale', () => {
     expect([bitmap.width, bitmap.height]).toEqual([750, 1000]);
     expect(result.scaledDown).toEqual({ from: { width: 3000, height: 4000 }, to: { width: 750, height: 1000 } });
     bitmap.close();
+  });
+
+  it('keeps the turn where ImageDecoder is missing and the JPEG is decoded whole', async () => {
+    vi.stubGlobal('ImageDecoder', undefined);
+    try {
+      const stored = { width: 4000, height: 3000 };
+      const result = await renderImageJob({
+        source: grayJpeg(stored.width, stored.height, 6),
+        layout: { kind: 'fit', maxWidth: 1000, maxHeight: 1000 },
+        quality: 0.8,
+        scaledDecode: { source: stored, decoded: jpegScaledSize(stored, 2) },
+      });
+      const bitmap = await createImageBitmap(result.image);
+
+      expect([bitmap.width, bitmap.height]).toEqual([750, 1000]);
+      expect(result.scaledDown).toEqual({ from: { width: 3000, height: 4000 }, to: { width: 750, height: 1000 } });
+      bitmap.close();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

@@ -1,14 +1,14 @@
-import { Container, Rectangle, type Texture, type Ticker } from 'pixi.js';
-import type { TFile } from 'obsidian';
+import { Container, Rectangle, type Texture } from 'pixi.js';
 import { destroyTree } from '../utils/destroyTree';
 import { MapAlbedo } from './mapAlbedo';
 import { MapImageLayer, viewportCamera, type CameraSource } from './MapImageLayer';
-import { decoderTiles, placeholderTiles, type MapTiles, type TileReader } from './mapImageTiles';
-import { visibleTiles, type TileView } from './levelOfDetail';
+import { decoderTiles, placeholderTiles, type MapTiles } from './mapImageTiles';
+import type { MapImageChange, MapImageDeps, MapImageSource } from './mapImageTypes';
+import type { TileView } from './levelOfDetail';
 import type { PixelRect } from './pyramid';
-import type { OpenedMap } from './TileDecoderClient';
-import { TileTextureCache, tileTextureKey, type TileUploader } from './tileTextureCache';
-import type { TileSource } from './tileRequests';
+import { isMapClosed } from './tileErrors';
+import { ResidentOverviews } from './residentOverviews';
+import { TileTextureCache } from './tileTextureCache';
 
 /**
  * The one owner of a view's map image (decisions 1, 12 and 13 of the tiled map images plan): it
@@ -17,49 +17,8 @@ import type { TileSource } from './tileRequests';
  * drawn in full detail. World units are the image's natural pixels, its top left corner at (0, 0).
  */
 
-/** What a scene shows under its tokens: a vault image, the missing-image placeholder, or nothing of a given size. */
-export type MapImageSource =
-  | { kind: 'file'; file: TFile }
-  | { kind: 'placeholder' }
-  | { kind: 'none'; width: number; height: number };
-
-/** `image`: another image (or none) is shown, its world rect may differ; `albedo`: `albedoTexture()` became ready. */
-export type MapImageChange = 'image' | 'albedo';
-
-/** The part of `MapImageService` a map image opens and reads its file through. */
-export interface MapImageOpener extends TileReader {
-  open(file: TFile): Promise<OpenedMap>;
-  reportUnshown(file: TFile, error: unknown): void;
-}
-
-/** The part of a pixi-viewport a map image reads its camera from and sets the world size of. */
-export interface MapImageViewport {
-  left: number;
-  top: number;
-  worldScreenWidth: number;
-  worldScreenHeight: number;
-  scale: { x: number };
-  worldWidth: number;
-  worldHeight: number;
-}
-
-export interface MapImageDeps {
-  service: MapImageOpener;
-  viewport: MapImageViewport;
-  /** Runs the tile layer's updates and the texture uploads, once per frame. */
-  ticker: Ticker;
-  /** The renderer that draws the tiles; null uploads nothing ahead. */
-  renderer: (TileUploader & { resolution: number }) | null;
-  requestRender: () => void;
-  reducedMotion?: () => boolean;
-  /** The size of the pictures of the whole map taken (thumbnails), whose tiles stay loaded. */
-  picture?: { width: number; height: number };
-}
-
 /** The viewport's world is never smaller than this a side, so a small map can still be panned around. */
 const MIN_WORLD_SIDE = 10000;
-/** Maps left whose overview tiles stay on the GPU, so switching back to one shows it at once. */
-export const RESIDENT_MAPS = 3;
 
 interface Opened {
   tiles: MapTiles | null;
@@ -80,18 +39,22 @@ export class MapImage {
   private readonly listeners = new Set<(change: MapImageChange) => void>();
   /** Demand regions, each with the function that ends it on the layer shown now. */
   private readonly regions = new Map<TileView, () => void>();
-  /** Pyramids of maps left most recently first, whose overview tiles are pinned in the cache. */
-  private resident: TileSource[] = [];
+  private readonly resident: ResidentOverviews;
   private shown: Shown | null = null;
+  /** The source of what is shown, and the load that showed it. */
+  private loaded: { source: MapImageSource; generation: number } | null = null;
   private generation = 0;
   private destroyed = false;
+  private readonly stopRestarts: () => void;
 
   constructor(private readonly deps: MapImageDeps) {
     this.layer = new Container({ label: 'map-image', eventMode: 'none', interactiveChildren: false });
     this.layer.boundsArea = new Rectangle(0, 0, 0, 0);
     this.cache = new TileTextureCache({ ticker: deps.ticker, renderer: deps.renderer, requestRender: deps.requestRender });
+    this.resident = new ResidentOverviews(this.cache);
     this.camera = viewportCamera(deps.viewport, deps.renderer ?? { resolution: 1 });
     this.albedo = new MapAlbedo(() => this.emit('albedo'));
+    this.stopRestarts = deps.service.onRestart(() => this.reopen());
   }
 
   /** The image in world units; null before the first load and after `clear`. */
@@ -104,14 +67,7 @@ export class MapImage {
    * be shown is reported and the placeholder shows instead. A load overtaken by a later one is dropped.
    */
   async load(source: MapImageSource): Promise<void> {
-    if (this.destroyed) return;
-    const generation = ++this.generation;
-    const next = await this.open(source);
-    if (generation !== this.generation || this.destroyed) {
-      next.tiles?.close();
-      return;
-    }
-    this.show(next);
+    return this.loadAs(source, false);
   }
 
   /** Takes the image off, as when its scene could not be opened; `worldRect` is null until the next load. */
@@ -127,9 +83,10 @@ export class MapImage {
     this.emit('image');
   }
 
-  /** The whole image fit within `maxSide` pixels (never read from a GPU texture); null without an image. */
+  /** The whole image fit within `maxSide` pixels (never read from a GPU texture); null without an image, also once it is closed meanwhile. */
   overview(maxSide: number): Promise<ImageBitmap | null> {
-    return this.shown?.tiles?.overview(maxSide) ?? Promise.resolve(null);
+    const pending = this.shown?.tiles?.overview(maxSide);
+    return pending ? pending.catch(nullWhenClosed) : Promise.resolve(null);
   }
 
   /** A mipmapped texture of the overview for the lighting; null until it is made, then `onChange('albedo')`. */
@@ -178,17 +135,42 @@ export class MapImage {
   destroy(): void {
     if (this.destroyed) return;
     this.destroyed = true;
+    this.stopRestarts();
     this.generation++;
     const previous = this.shown;
     this.shown = null;
     previous?.layer?.destroy();
     previous?.tiles?.close();
-    this.resident = [];
+    this.resident.clear();
     this.regions.clear();
     this.albedo.reset();
     this.cache.destroy();
     destroyTree(this.layer);
     this.listeners.clear();
+  }
+
+  /** `replace`: shows the open even when it is the pyramid shown now, as after the tile worker restarted. */
+  private async loadAs(source: MapImageSource, replace: boolean): Promise<void> {
+    if (this.destroyed) return;
+    const generation = ++this.generation;
+    const next = await this.open(source);
+    if (generation !== this.generation || this.destroyed) {
+      next.tiles?.close();
+      return;
+    }
+    this.loaded = { source, generation };
+    this.show(next, replace);
+  }
+
+  /**
+   * The tile worker restarted and the shown map's handle went with it: opens it again in a new
+   * layer, which asks again for the tiles that failed meanwhile (textures it holds stay cached).
+   * A load under way opens in the new worker by itself.
+   */
+  private reopen(): void {
+    const loaded = this.loaded;
+    if (this.destroyed || !loaded || loaded.generation !== this.generation || !this.shown?.tiles?.cacheable) return;
+    void this.loadAs(loaded.source, true);
   }
 
   private async open(source: MapImageSource): Promise<Opened> {
@@ -205,17 +187,18 @@ export class MapImage {
     return { tiles, width: tiles.source.pyramid.width, height: tiles.source.pyramid.height };
   }
 
-  private show(next: Opened): void {
+  private show(next: Opened, replace: boolean): void {
     const previous = this.shown;
+    const samePyramid = previous?.tiles && next.tiles && previous.tiles.source.key === next.tiles.source.key;
     // The same pyramid again (another scene on it, a renamed file): what is drawn stays, the second open goes.
-    if (previous?.tiles && next.tiles && previous.tiles.source.key === next.tiles.source.key) {
-      next.tiles.close();
+    if (samePyramid && !replace) {
+      next.tiles?.close();
       this.emit('image');
       return;
     }
     let layer: MapImageLayer | null = null;
     if (next.tiles) {
-      this.resident = this.resident.filter(source => source.key !== next.tiles!.source.key);
+      this.resident.release(next.tiles.source.key);
       layer = new MapImageLayer({
         source: next.tiles.source,
         cache: this.cache,
@@ -229,7 +212,13 @@ export class MapImage {
       this.layer.addChild(layer.container);
     }
     this.shown = { ...next, layer };
-    this.retire(previous);
+    if (samePyramid) {
+      // Reopened: its textures stay for the new layer, its resident slot stays free.
+      previous?.layer?.destroy({ keepTextures: true });
+      previous?.tiles?.close();
+    } else {
+      this.retire(previous);
+    }
     for (const region of this.regions.keys()) this.regions.set(region, layer?.addDemandRegion(region) ?? noop);
     this.layer.boundsArea = new Rectangle(0, 0, next.width, next.height);
     this.deps.viewport.worldWidth = Math.max(next.width, MIN_WORLD_SIDE);
@@ -244,11 +233,7 @@ export class MapImage {
     if (!shown) return;
     const cacheable = shown.tiles?.cacheable ?? false;
     if (shown.tiles && cacheable) {
-      const { source } = shown.tiles;
-      this.resident = [source, ...this.resident.filter(other => other.key !== source.key)];
-      for (const dropped of this.resident.splice(RESIDENT_MAPS)) this.cache.deletePyramid(dropped.key);
-      // Pinned before the layer lets go of them, so the budget cannot take them in between.
-      this.cache.pin(this, this.resident.flatMap(overviewKeys));
+      this.resident.keep(shown.tiles.source);
     }
     shown.layer?.destroy({ keepTextures: cacheable });
     shown.tiles?.close();
@@ -267,10 +252,10 @@ export class MapImage {
 
 function noop(): void {}
 
-/** The texture keys of a pyramid's overview tiles. */
-function overviewKeys({ key, pyramid }: TileSource): string[] {
-  const whole = { x: 0, y: 0, width: pyramid.width, height: pyramid.height };
-  return visibleTiles(pyramid, pyramid.overview, whole, 0).map(ref => tileTextureKey(key, ref));
+/** A map closed while its overview was read (another scene, a restarted worker) has no image: null. */
+function nullWhenClosed(error: unknown): null {
+  if (isMapClosed(error)) return null;
+  throw error;
 }
 
 /** Logs the first tile a layer could not get; the layer asks for none of them again. */

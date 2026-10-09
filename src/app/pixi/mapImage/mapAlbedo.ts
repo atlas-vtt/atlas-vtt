@@ -1,6 +1,7 @@
 import { ImageSource, Texture } from 'pixi.js';
 import type { MapTiles } from './mapImageTiles';
 import { OVERVIEW_MAX_SIDE } from './pyramid';
+import { isMapClosed } from './tileErrors';
 
 /**
  * The lighting's albedo of a map image: a mipmapped texture of its overview,
@@ -33,7 +34,7 @@ export class MapAlbedo {
         this.ready();
       },
       (error: unknown) => {
-        if (this.owner === tiles) console.warn('[MapImage] The map image could not be read for the lighting:', error);
+        if (this.owner === tiles && !isMapClosed(error)) console.warn('[MapImage] The map image could not be read for the lighting:', error);
       },
     );
     return null;

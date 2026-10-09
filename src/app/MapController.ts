@@ -9,6 +9,7 @@ import { cellNumberStyleOfGrid } from './grid/cellNumbering';
 import { MapImage } from './pixi/mapImage/MapImage';
 import { MapImageService } from './pixi/mapImage/MapImageService';
 import { fitMapRect } from './pixi/fitMapRect';
+import { showCamera, type ViewCamera } from './pixi/viewCamera';
 import { requestRender } from './pixi/RenderScheduler';
 import { prefersReducedMotion } from './utils/motion';
 import type { ViewAtlasStore } from './storeFactory';
@@ -50,12 +51,13 @@ function viewMapImage(app: App, renderer: MapRenderer): MapImage | null {
  * Load the given map file, show its map image, initialise grid and
  * return the parsed mapData. Returns null without touching the renderer when
  * `isSuperseded` reports that a newer load took over while the file was read.
+ * The camera goes to `camera` (a tab's own, kept from when it was last shown), else fits the map.
  */
 async function loadAndDisplay(
   app: App,
   renderer: MapRenderer,
   filePath: string,
-  restoreCamera: boolean = true,
+  camera: ViewCamera | null = null,
   isSuperseded: () => boolean = () => false,
 ): Promise<DisplayedMap | null> {
   const { mapData, image } = await MapLoader.load(app, filePath);
@@ -93,25 +95,11 @@ async function loadAndDisplay(
 
   if (mapImage) renderer.initGrid(gridOptions, mapImage);
 
-  // Restore camera state if present, otherwise center and fit
   const viewport = renderer.getViewportInstance();
-  if (viewport) {
-    // Always center and fit on initial load, unless explicitly restoring camera
-    // Check if camera has valid values (not just default 0,0,1)
-    const hasValidCamera = mapData.camera &&
-                         (mapData.camera.x !== 0 || mapData.camera.y !== 0 || mapData.camera.scale !== 1);
-
-    const worldRect = mapImage?.worldRect;
-    if (restoreCamera && hasValidCamera) {
-      // Restore saved camera position
-      viewport.moveCenter(mapData.camera.x, mapData.camera.y);
-      viewport.setZoom(mapData.camera.scale);
-    } else if (worldRect) {
-      fitMapRect(viewport, worldRect);
-    }
-  } else {
-    console.warn('[MapController] Viewport not available for camera positioning');
-  }
+  const worldRect = mapImage?.worldRect;
+  if (!viewport) console.warn('[MapController] Viewport not available for camera positioning');
+  else if (camera) showCamera(viewport, camera);
+  else if (worldRect) fitMapRect(viewport, worldRect);
 
   // Ensure in‑memory map data reflects current grid enabled status so the UI
   // shows the correct state.

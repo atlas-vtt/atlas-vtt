@@ -53,9 +53,16 @@ function message(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-/** Returns the handler for requests; every reply and event goes out through `post`. */
-export function hostTileCore(createCore: CoreFactory, post: PostMessage): (request: TileRequest) => void {
+export interface TileCoreHost {
+  receive(request: TileRequest): void;
+  /** Stops the core's builds and closes its cache; later requests are ignored. */
+  dispose(): Promise<void>;
+}
+
+/** Hosts a core behind the protocol; every reply and event goes out through `post`. */
+export function hostTileCore(createCore: CoreFactory, post: PostMessage): TileCoreHost {
   let core: Promise<TileDecoderCore> | null = null;
+  let disposed = false;
   const reply = (answer: TileReply, transfer: Transferable[] = []): void => post(answer, transfer);
 
   const handle = async (request: TileRequest, ready: TileDecoderCore): Promise<void> => {
@@ -103,12 +110,26 @@ export function hostTileCore(createCore: CoreFactory, post: PostMessage): (reque
     }
   };
 
-  return (request) => {
-    if (request.type === 'init') core ??= createCore(request.appId, (event) => post(event, []));
-    const started = core ?? createCore(null, (event) => post(event, []));
-    core = started;
-    void started.then((ready) => handle(request, ready)).catch((error: unknown) => {
-      if ('id' in request && request.type !== 'cancel') reply({ type: 'error', id: request.id, message: message(error) });
-    });
+  const start = (appId: string | null): Promise<TileDecoderCore> => {
+    const started = createCore(appId, (event) => post(event, []));
+    // Before any reply: the client counts a worker that fails before this as one that never started.
+    void started.then(() => post({ type: 'ready' }, []), () => undefined);
+    return started;
+  };
+
+  return {
+    receive: (request) => {
+      if (disposed) return;
+      if (request.type === 'init') core ??= start(request.appId);
+      const started = core ?? start(null);
+      core = started;
+      void started.then((ready) => handle(request, ready)).catch((error: unknown) => {
+        if ('id' in request && request.type !== 'cancel') reply({ type: 'error', id: request.id, message: message(error) });
+      });
+    },
+    dispose: async () => {
+      disposed = true;
+      await core?.then((ready) => ready.dispose(), () => undefined);
+    },
   };
 }

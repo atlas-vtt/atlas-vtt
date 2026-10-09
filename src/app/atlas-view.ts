@@ -12,14 +12,9 @@ import { t } from './i18n';
 import { isScenePath } from './utils/sceneFiles';
 import { runInBackground } from './utils/backgroundTask';
 import { restoreLinkedSnapshot } from './links/openAtlasLink';
+import type { ViewCamera } from './pixi/viewCamera';
 
 export const ATLAS_VIEW_TYPE = "atlas-vtt";
-
-interface TabViewportState {
-  centerX: number;
-  centerY: number;
-  scale: number;
-}
 
 interface AtlasViewState {
   mapFilePath: string | null;
@@ -41,7 +36,7 @@ function isSceneTab(value: unknown): value is SceneTab {
     && typeof value.displayName === 'string';
 }
 
-function isTabViewportState(value: unknown): value is TabViewportState {
+function isViewCamera(value: unknown): value is ViewCamera {
   return isRecord(value)
     && typeof value.centerX === 'number'
     && typeof value.centerY === 'number'
@@ -63,7 +58,7 @@ export class AtlasView extends FileView {
   private store: ViewAtlasStore;
   public tabMetaStore: TabMetaStore;
   private temporalCache: Map<string, Pick<HistoryState, 'pastStates' | 'futureStates'>> = new Map();
-  private viewportCache: Map<string, TabViewportState> = new Map();
+  private viewportCache: Map<string, ViewCamera> = new Map();
   public readonly viewId: string;
   /**
    * Counts tab switches, new tabs and reloads. One that is no longer the latest after
@@ -75,7 +70,6 @@ export class AtlasView extends FileView {
   private resizeObserver: ResizeObserver | null = null;
   private lastContainerWidth: number = 0;
   private lastContainerHeight: number = 0;
-  private mapLoadingUnsubscribe: (() => void) | null = null;
   private isViewClosing = false;
   private boundClaimLeafFocus: (() => void) | null = null;
   private boundHeaderLeafActivation: ((event: MouseEvent) => void) | null = null;
@@ -128,7 +122,7 @@ export class AtlasView extends FileView {
     // Restore per-tab viewport positions from persisted state
     if (isRecord(persisted.viewportPerTab)) {
       for (const [tabId, camera] of Object.entries(persisted.viewportPerTab)) {
-        if (isTabViewportState(camera)) {
+        if (isViewCamera(camera)) {
           this.viewportCache.set(tabId, camera);
         }
       }
@@ -190,7 +184,7 @@ export class AtlasView extends FileView {
     }
 
     // Build a plain object of viewport positions per tab for persistence
-    const viewportPerTab: Record<string, TabViewportState> = {};
+    const viewportPerTab: Record<string, ViewCamera> = {};
     for (const [tabId, camera] of this.viewportCache) {
       viewportPerTab[tabId] = camera;
     }
@@ -255,33 +249,11 @@ export class AtlasView extends FileView {
 
       // If state already has a map, trigger load now (file property provided by FileView)
       if (this.file instanceof TFile) {
-        await this.onLoadFile(this.file);
+        // The active tab opens at the camera it was left with
+        const activeTabId = this.tabMetaStore.getState().activeTabId;
+        await this.onLoadFile(this.file, activeTabId ? this.viewportCache.get(activeTabId) : undefined);
         if (this.isViewClosing) {
           return;
-        }
-
-        // Restore viewport position for the active tab once loading finishes:
-        // getState() → saveViewportState would otherwise overwrite the cache
-        // with the fitted camera of the load.
-        const activeTabId = this.tabMetaStore.getState().activeTabId;
-        if (activeTabId && this.viewportCache.has(activeTabId)) {
-          const doRestore = (): void => {
-            if (this.isViewClosing) return;
-            this.restoreViewportState(activeTabId);
-          };
-
-          if (!this.store.getState().isMapLoading) {
-            doRestore();
-          } else {
-            this.mapLoadingUnsubscribe?.();
-            this.mapLoadingUnsubscribe = this.store.subscribe((state) => {
-              if (!state.isMapLoading) {
-                this.mapLoadingUnsubscribe?.();
-                this.mapLoadingUnsubscribe = null;
-                doRestore();
-              }
-            });
-          }
         }
       }
 
@@ -302,11 +274,6 @@ export class AtlasView extends FileView {
       return;
     }
     this.isViewClosing = true;
-
-    if (this.mapLoadingUnsubscribe) {
-      this.mapLoadingUnsubscribe();
-      this.mapLoadingUnsubscribe = null;
-    }
 
     // Pinned note previews keep their scroll and cursor with the map
     this._serviceManager.getNotePreviewUIManager().savePinnedPreviewStates();
@@ -376,15 +343,14 @@ export class AtlasView extends FileView {
     // Set active tab in meta store
     this.tabMetaStore.getState().setActiveTab(tabId);
 
-    // Load the map from disk (clears state, rehydrates, emits map-loaded)
-    const loaded = await this.performSceneLoad(abstractFile);
+    // Load the map from disk (clears state, rehydrates, emits map-loaded), at the tab's own camera
+    const loaded = await this.performSceneLoad(abstractFile, this.viewportCache.get(tabId));
 
-    // Restore the target tab's undo/redo history and viewport position.
+    // Restore the target tab's undo/redo history.
     // Writing past/future states directly never records a step, so tracking can stay as the load left it.
-    // A scene that failed to load, or was replaced by a later request, takes none of them.
+    // A scene that failed to load, or was replaced by a later request, takes none of it.
     if (loaded) {
       this.restoreTemporalState(tabId);
-      this.restoreViewportState(tabId);
       this.rememberOpened(abstractFile);
     } else if (request === this.sceneRequests) {
       this.showLoadedTab();
@@ -466,18 +432,6 @@ export class AtlasView extends FileView {
       centerY: viewport.center.y,
       scale: viewport.scale.x,
     });
-  }
-
-  /** Restore a tab's viewport position/zoom from the cache (if any). */
-  private restoreViewportState(tabId: string): void {
-    const cached = this.viewportCache.get(tabId);
-    if (!cached) return;
-    const viewport = this._serviceManager.getRendererService().getViewport();
-    if (!viewport) return;
-    // setZoom MUST come before moveCenter — moveCenter calculates viewport.x/y
-    // using the current scale, so the scale must already be correct.
-    viewport.setZoom(cached.scale);
-    viewport.moveCenter(cached.centerX, cached.centerY);
   }
 
   public async closeTab(tabId: string): Promise<void> {
@@ -581,9 +535,8 @@ export class AtlasView extends FileView {
 
     // A tab switch made meanwhile shows its own scene
     if (request !== this.sceneRequests) return;
-    if (!(await this.performSceneLoad(file))) return;
+    if (!(await this.performSceneLoad(file, tabId ? this.viewportCache.get(tabId) : undefined))) return;
     this.showLoadedTab();
-    if (tabId) this.restoreViewportState(tabId);
   }
 
   /**
@@ -595,8 +548,11 @@ export class AtlasView extends FileView {
 
   // --- Scene Loading ---
 
-  /** Obsidian will call this each time a file is loaded into this view (including first open). */
-  public async onLoadFile(file: TFile): Promise<void> {
+  /**
+   * Obsidian will call this each time a file is loaded into this view (including first open).
+   * @param camera where the file's tab opens when it is the active tab; without one the map is fitted
+   */
+  public async onLoadFile(file: TFile, camera?: ViewCamera): Promise<void> {
     if (!isScenePath(file.path)) {
       new Notice(`"${file.name}" is not an Atlas scene. To play on a map image, create a scene from it in the asset manager.`, 5000);
       // onOpen shows the loading overlay before it gets here; nothing else will hide it
@@ -610,7 +566,7 @@ export class AtlasView extends FileView {
       // File is already a tab
       if (tabState.activeTabId === existingTab.id) {
         this.sceneRequests++;
-        if (await this.performSceneLoad(file)) {
+        if (await this.performSceneLoad(file, camera)) {
           this.tabMetaStore.getState().markTabLoaded(existingTab.id);
           this.rememberOpened(file);
         }
@@ -644,9 +600,10 @@ export class AtlasView extends FileView {
   /**
    * Loads a scene into the existing renderer and UI. Every renderer follows the
    * store, so switching maps never rebuilds the PIXI application.
+   * @param camera where the scene is shown; the loading screen waits for its tiles. Without one the map is fitted.
    * @returns whether the view now shows the scene: false when loading failed or a later request replaced this one
    */
-  private async performSceneLoad(file: TFile): Promise<boolean> {
+  private async performSceneLoad(file: TFile, camera?: ViewCamera): Promise<boolean> {
     // The renderer still shows the previous scene; its pending thumbnail is taken now or never
     this._serviceManager.flushSceneThumbnail();
     this.store.getState().setMapLoading(true, 0, t('view.preparing'));
@@ -660,7 +617,7 @@ export class AtlasView extends FileView {
     }
 
     const mapService = this._serviceManager.getMapService();
-    return (await mapService.loadMapFromFile(rendererService, file)) !== null;
+    return (await mapService.loadMapFromFile(rendererService, file, camera ?? null)) !== null;
   }
 
   /** Remembers the scene the GM opened, for the dashboard's "Continue your adventure". Never fails the load. */

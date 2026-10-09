@@ -148,12 +148,14 @@ async function keepsSource(layout: ImageLayout, source: Blob, bitmap: ImageBitma
 /**
  * The natural size of the source as it is shown. Header sizes are stored
  * sizes, while decoders apply a JPEG's EXIF rotation: a bitmap decoded with
- * swapped sides is a turned image.
+ * swapped sides is a turned image. The bitmap has the scaled size, or the
+ * full one where `ImageDecoder` is missing and the JPEG was decoded whole.
  */
 function shownSource(bitmap: ImageBitmap, scaledDecode: ImageJob['scaledDecode']): Size {
   if (!scaledDecode) return bitmap;
   const { source, decoded } = scaledDecode;
-  const turned = bitmap.width !== bitmap.height && bitmap.width === decoded.height && bitmap.height === decoded.width;
+  const swaps = (size: Size): boolean => bitmap.width === size.height && bitmap.height === size.width;
+  const turned = bitmap.width !== bitmap.height && (swaps(decoded) || swaps(source));
   return turned ? { width: source.height, height: source.width } : source;
 }
 

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { decodable, jpegScaledSize, scaledJpegDecodeSize } from '../../src/app/imageProcessing/decodeLimits';
+import { IMAGE_PRESETS } from '../../src/app/imageProcessing/imageProcessing';
+import { decodedSizeCost, MAX_DECODED_LEVELS_BYTES, MAX_SOURCE_PIXELS } from '../../src/app/pixi/mapImage/decodedLevels';
 
 describe('decodable', () => {
   it('takes images whose RGBA pixels fit in 2 GiB less a byte', () => {
@@ -30,5 +32,16 @@ describe('scaled JPEG decoding', () => {
   it('decodes at full size when no smaller step reaches the target', () => {
     expect(scaledJpegDecodeSize({ width: 17000, height: 12000 }, { width: 16383, height: 11565 })).toBeNull();
     expect(scaledJpegDecodeSize({ width: 4000, height: 3000 }, { width: 4000, height: 3000 })).toBeNull();
+  });
+});
+
+describe('the tile worker’s limit on a source', () => {
+  it('opens every map an import writes, and refuses less than the decoders take', () => {
+    const { maxPixels } = IMAGE_PRESETS.map;
+    expect(decodedSizeCost(maxPixels, 1)).toBeLessThan(MAX_DECODED_LEVELS_BYTES / 2);
+    expect(MAX_SOURCE_PIXELS).toBeGreaterThan(maxPixels);
+    expect(decodable({ width: 20000, height: 20000 })).toBe(true);
+    expect(20000 * 20000).toBeLessThanOrEqual(MAX_SOURCE_PIXELS);
+    expect(decodedSizeCost(MAX_SOURCE_PIXELS, 1)).toBeLessThanOrEqual(MAX_DECODED_LEVELS_BYTES);
   });
 });

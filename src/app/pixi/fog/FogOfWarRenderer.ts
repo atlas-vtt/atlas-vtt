@@ -19,6 +19,7 @@ import { hitTestFogOp, findConnectedFogOps } from './fogHitTest';
 import { extractConnectedComponentRects } from './fogComponentDelete';
 import { canInteractWithFog, resolveFogPreviewAlpha } from './fogVisibilityPolicy';
 import type { LayerVisibility } from '../playerSafeFrame';
+import type { MapRect } from '../../grid/cellNumbering';
 import { destroyTree } from '../utils/destroyTree';
 import { requestRender } from '../RenderScheduler';
 import { isHandled } from '../utils/handledEvents';
@@ -61,9 +62,6 @@ export class FogOfWarRenderer {
   private readonly stroke = new ShapeStroke();
   private isErasing = false;
 
-  // Map tracking
-  private explicitMapBounds: FogBounds | null = null;
-
   // Store subscriptions
   private unsubscribe?: () => void;
 
@@ -75,13 +73,24 @@ export class FogOfWarRenderer {
   private fogBrushSizeChangedHandler: (size: number) => void;
   private fogClearAllHandler: () => void;
   private fogModeChangedHandler: (mode: StrokeMode) => void;
-  private mapImageUpdatedHandler: (data?: { x: number; y: number; width: number; height: number }) => void;
+  private readonly mapImageUpdatedHandler = (): void => {
+    if (!this.store.getState().isMapLoading) {
+      this.refreshBounds();
+      this.rebuildFogSprites();
+    }
+  };
 
+  /**
+   * @param mapRect the map image in world space, read whenever the fog sizes its canvas, so a
+   * renamed scene or a load keeps the bounds of the image that is shown; `map-image-updated`
+   * only says that it changed.
+   */
   constructor(
     private viewport: Viewport,
     private _pixiApp: PIXI.Application,
     private eventBus: EventEmitter,
-    private store: StoreApi<ViewAtlasState>
+    private store: StoreApi<ViewAtlasState>,
+    private readonly mapRect: () => MapRect | null,
   ) {
     // ── Container setup ─────────────────────────────────────────────
     this.container = new PIXI.Container();
@@ -133,31 +142,6 @@ export class FogOfWarRenderer {
     this.fogBrushSizeChangedHandler = (size: number) => this.setBrushSize(size);
     this.fogClearAllHandler = () => this.clearAllFog();
     this.fogModeChangedHandler = (mode: StrokeMode) => this.setFogMode(mode);
-    this.mapImageUpdatedHandler = (data) => {
-      if (
-        data &&
-        typeof data.x === 'number' &&
-        typeof data.y === 'number' &&
-        typeof data.width === 'number' &&
-        typeof data.height === 'number' &&
-        data.width > 0 &&
-        data.height > 0
-      ) {
-        this.explicitMapBounds = {
-          x: data.x,
-          y: data.y,
-          width: data.width,
-          height: data.height,
-        };
-      } else {
-        this.explicitMapBounds = null;
-      }
-
-      if (!this.store.getState().isMapLoading) {
-        this.refreshBounds();
-        this.rebuildFogSprites();
-      }
-    };
 
     // ── Event listeners ─────────────────────────────────────────────
     this.setupEventListeners();
@@ -394,7 +378,6 @@ export class FogOfWarRenderer {
         this.resetDrawingState();
         this.clearAllFogSprites();
         this.compositor.clearCanvas();
-        this.explicitMapBounds = null;
       }
 
       // Tool changes → enable/disable fog mode or toggle interaction
@@ -833,18 +816,8 @@ export class FogOfWarRenderer {
   // ═══════════════════════════════════════════════════════════════════
 
   private calculateFogBounds(): FogBounds {
-    if (this.explicitMapBounds) {
-      const explicitPadded = {
-        x: this.explicitMapBounds.x - BOUNDS_PADDING,
-        y: this.explicitMapBounds.y - BOUNDS_PADDING,
-        width: this.explicitMapBounds.width + BOUNDS_PADDING * 2,
-        height: this.explicitMapBounds.height + BOUNDS_PADDING * 2,
-      };
-      return explicitPadded;
-    }
-
     // Without a map image (none loaded yet) the fog covers what was painted, or a default area.
-    const chosen = this.calculateFogOpsBoundsCandidate();
+    const chosen = this.mapRect() ?? this.calculateFogOpsBoundsCandidate();
     if (!chosen) {
       return DEFAULT_BOUNDS;
     }

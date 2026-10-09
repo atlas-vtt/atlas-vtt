@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MemoryTileBackend } from '../../../src/app/pixi/mapImage/memoryTileBackend';
-import { TileDecoderClient, TileOpenError } from '../../../src/app/pixi/mapImage/TileDecoderClient';
+import { MapClosedError, TileDecoderClient, TileOpenError } from '../../../src/app/pixi/mapImage/TileDecoderClient';
 import type { CoreFactory } from '../../../src/app/pixi/mapImage/tileCoreHost';
 import { inThreadPort, type PortFactory } from '../../../src/app/pixi/mapImage/tilePorts';
 import type { TileMessage, TileRequest } from '../../../src/app/pixi/mapImage/tileProtocol';
@@ -18,8 +18,8 @@ interface Setup {
   appIds: Array<string | null>;
 }
 
-/** A client whose worker cannot start, so it runs fake cores in-thread over one shared cache. */
-function setup(worker: PortFactory = noWorker): Setup {
+/** Fake cores over one shared cache, each recorded. */
+function cores(): { createCore: CoreFactory; harnesses: CoreHarness[]; appIds: Array<string | null> } {
   const backend = new MemoryTileBackend();
   const harnesses: CoreHarness[] = [];
   const appIds: Array<string | null> = [];
@@ -29,8 +29,29 @@ function setup(worker: PortFactory = noWorker): Setup {
     harnesses.push(harness);
     return Promise.resolve(harness.core);
   };
+  return { createCore, harnesses, appIds };
+}
+
+/** A client whose worker cannot start, so it runs fake cores in-thread over one shared cache. */
+function setup(worker: PortFactory = noWorker): Setup {
+  const { createCore, harnesses, appIds } = cores();
   const client = new TileDecoderClient({ appId: 'vault-1', worker, inThread: inThreadPort(createCore) });
   return { client, harnesses, appIds };
+}
+
+/** "Workers" that are fake cores run in-thread, each of which a test can crash. */
+function crashableWorkers(createCore: CoreFactory): { worker: PortFactory; crash: (reason: string) => void; started: () => number } {
+  const crashes: Array<(reason: string) => void> = [];
+  const worker: PortFactory = (receive, crash) => {
+    crashes.push(crash);
+    return inThreadPort(createCore)(receive, crash);
+  };
+  return { worker, crash: (reason) => crashes.at(-1)!(reason), started: () => crashes.length };
+}
+
+/** Rejects with `hung` when `promise` has not settled within a few tasks. */
+function settles<T>(promise: Promise<T>): Promise<T> {
+  return Promise.race([promise, new Promise<T>((_resolve, reject) => window.setTimeout(() => reject(new Error('hung')), 50))]);
 }
 
 function whenComplete(client: TileDecoderClient, hash: string): Promise<void> {
@@ -122,7 +143,9 @@ describe('TileDecoderClient', () => {
       return { post: (request) => void posted.push(request), terminate: () => undefined };
     };
     const { client } = setup(worker);
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     const pending = client.cacheSize();
+    receive({ type: 'ready' });
     crash('boom');
     await expect(pending).rejects.toThrow('boom');
     const next = client.cacheSize();
@@ -132,5 +155,95 @@ describe('TileDecoderClient', () => {
     expect(await next).toBe(42);
     client.dispose();
     await expect(client.cacheSize()).rejects.toThrow(/stopped/);
+  });
+
+  it('rejects the requests of a map when it is closed, so no awaiter hangs', async () => {
+    const { client, harnesses } = setup();
+    const map = await client.open(fakePng(3000, 2000), identity);
+    let release = (): void => undefined;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const { graphics } = harnesses[0]!;
+    const decode = graphics.decode.bind(graphics);
+    const resize = graphics.resize.bind(graphics);
+    // Held whether the build is still running (crops, resizes) or done (cached tiles).
+    graphics.cropGate = () => gate;
+    graphics.decode = async (blob) => gate.then(() => decode(blob));
+    graphics.resize = async (bitmap, width, height) => gate.then(() => resize(bitmap, width, height));
+    const tile = client.tile(map.handle, { level: 0, col: 1, row: 1 });
+    const overview = client.overview(map.handle, 512);
+    await new Promise((resolve) => window.setTimeout(resolve, 5));
+
+    client.close(map.handle);
+
+    await expect(settles(tile)).rejects.toBeInstanceOf(MapClosedError);
+    await expect(settles(overview)).rejects.toBeInstanceOf(MapClosedError);
+    await expect(client.tile(map.handle, { level: 0, col: 0, row: 0 })).rejects.toBeInstanceOf(MapClosedError);
+    release();
+    client.dispose();
+  });
+
+  it('tells listeners to reopen when a worker that held open maps crashes', async () => {
+    const { createCore } = cores();
+    const workers = crashableWorkers(createCore);
+    const client = new TileDecoderClient({ appId: 'vault-1', worker: workers.worker, inThread: noWorker });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const restarts = vi.fn();
+    client.onRestart(restarts);
+    await client.open(fakePng(3000, 2000, { salt: 1 }), null);
+
+    workers.crash('out of memory');
+
+    expect(restarts).toHaveBeenCalledTimes(1);
+    client.dispose();
+  });
+
+  it('voids the handles of a crashed worker and never lets them reach the next worker', async () => {
+    const { createCore } = cores();
+    const workers = crashableWorkers(createCore);
+    const client = new TileDecoderClient({ appId: 'vault-1', worker: workers.worker, inThread: noWorker });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const first = await client.open(fakePng(3000, 2000, { salt: 1 }), null);
+
+    workers.crash('out of memory');
+    const second = await client.open(fakePng(800, 600, { salt: 2 }), null);
+
+    expect(workers.started()).toBe(2);
+    expect(second.handle).not.toBe(first.handle);
+    await expect(client.tile(first.handle, { level: 1, col: 0, row: 0 })).rejects.toBeTruthy();
+    client.close(first.handle);
+    // The second map's level 1 is one tile of 400 × 300; the first map's would be larger.
+    const tile = await client.tile(second.handle, { level: 1, col: 0, row: 0 });
+    expect([tile.width, tile.height]).toEqual([400, 300]);
+    client.dispose();
+  });
+
+  it('runs the core in-thread for good once a worker fails before it started, and still opens the map', async () => {
+    const { createCore, harnesses } = cores();
+    let workersStarted = 0;
+    const failing: PortFactory = (_receive, crash) => {
+      workersStarted += 1;
+      window.setTimeout(() => crash('Could not load the worker script.'), 0);
+      return { post: () => undefined, terminate: () => undefined };
+    };
+    const client = new TileDecoderClient({ appId: 'vault-1', worker: failing, inThread: inThreadPort(createCore) });
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+    const map = await settles(client.open(() => Promise.resolve(fakePng(3000, 2000)), identity));
+    expect(await client.cacheSize()).toBeGreaterThanOrEqual(0);
+
+    expect(map.pyramid.width).toBe(3000);
+    expect(workersStarted).toBe(1);
+    expect(harnesses).toHaveLength(1);
+    client.dispose();
+  });
+
+  it('closes a bitmap decoded on this thread when its open is refused', async () => {
+    const { client } = setup();
+    client.dispose();
+    const decoded = new FakeBitmap(10, 10, 'source');
+
+    await expect(client.open(fakePng(10, 10), identity, () => Promise.resolve(decoded))).rejects.toThrow(/stopped/);
+
+    expect(decoded.closed).toBe(true);
   });
 });

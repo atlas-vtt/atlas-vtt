@@ -3,7 +3,7 @@ import type { MapFile } from './services/MapPersistence';
 import { migrateMapFile, parseSceneFile } from './services/MapPersistence';
 import { SceneFileError } from './services/sceneFileProblems';
 import { AssetValidationService, type MissingAsset } from './services/AssetValidationService';
-import type { MapImageSource } from './pixi/mapImage/MapImage';
+import type { MapImageSource } from './pixi/mapImage/mapImageTypes';
 
 export interface LoadedMap {
   mapData: MapFile;

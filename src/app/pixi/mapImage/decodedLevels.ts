@@ -1,4 +1,4 @@
-import { DECODER_MAX_BYTES, DECODER_MAX_SIDE, decodable } from '../../imageProcessing/decodeLimits';
+import { DECODER_MAX_SIDE, decodable } from '../../imageProcessing/decodeLimits';
 import { imageHeader } from '../../imageProcessing/imageDimensions';
 import { pyramidOf, type Pyramid } from './pyramid';
 import type { TileGraphics } from './tileGraphics';
@@ -20,24 +20,42 @@ export class OpenError extends Error {
 const BYTES_PER_PIXEL = 4;
 
 /**
+ * The decoded levels one map image may need, level 0 included: 2 GiB, a level 0 of 1.5 GiB
+ * (about 402 megapixels, 20000 × 20000). A build holds them alone in the tile worker beside the
+ * file's bytes and the decoder's buffers, and a map opened meanwhile is let in over the budget,
+ * so a larger source risks the worker running out of memory. An import never comes near it
+ * (at most 144 megapixels, 768 MiB of levels); only images placed in the vault outside Atlas do.
+ */
+export const MAX_DECODED_LEVELS_BYTES = 2 * 1024 ** 3;
+
+/** The most pixels a source may have: a level 0 whose levels fit `MAX_DECODED_LEVELS_BYTES`. */
+export const MAX_SOURCE_PIXELS = Math.floor((MAX_DECODED_LEVELS_BYTES * 3) / 4 / BYTES_PER_PIXEL);
+
+/** Refuses a source of `size` when no browser decoder takes it or its levels would not fit `MAX_DECODED_LEVELS_BYTES`. */
+export function checkDecodable(size: { width: number; height: number }): void {
+  if (decodable(size) && size.width * size.height <= MAX_SOURCE_PIXELS) return;
+  throw new OpenError({
+    kind: 'too-large',
+    width: size.width,
+    height: size.height,
+    maxSide: DECODER_MAX_SIDE,
+    // Below the decoders' own limit (`DECODER_MAX_BYTES`), so it is the one to name.
+    maxPixels: MAX_SOURCE_PIXELS,
+  });
+}
+
+/**
  * The bytes a source's decoded levels will hold (level 0 plus a third for the
  * halvings), read from its header before any pixel is decoded; unknown sizes
- * (SVG, AVIF) cost the whole budget. Refuses a source no browser decoder takes
- * (more than `DECODER_MAX_BYTES` of pixels or a side over `DECODER_MAX_SIDE`;
- * WebCodecs refuses such a JPEG even at an eighth of its size).
+ * (SVG, AVIF) are Infinity. Refuses a source no browser decoder takes (more
+ * than `DECODER_MAX_BYTES` of pixels or a side over `DECODER_MAX_SIDE`;
+ * WebCodecs refuses such a JPEG even at an eighth of its size) and one larger
+ * than `MAX_DECODED_LEVELS_BYTES`.
  */
 export async function decodedLevelsCost(blob: Blob): Promise<number> {
   const header = await imageHeader(blob);
   if (!header) return Infinity;
-  if (!decodable(header)) {
-    throw new OpenError({
-      kind: 'too-large',
-      width: header.width,
-      height: header.height,
-      maxSide: DECODER_MAX_SIDE,
-      maxPixels: Math.floor(DECODER_MAX_BYTES / BYTES_PER_PIXEL),
-    });
-  }
+  checkDecodable(header);
   return decodedSizeCost(header.width, header.height);
 }
 
@@ -53,7 +71,7 @@ export interface DecodedSource {
 }
 
 /**
- * Decodes `blob` once at full size; throws `OpenError` when it cannot be. The
+ * Decodes `blob` once at full size; throws `OpenError` when it cannot be or is too large. The
  * pyramid takes the decoded bitmap's size, not the header's: decoding applies
  * the EXIF orientation, which can swap the sides.
  */
@@ -63,6 +81,13 @@ export async function decodeSource(blob: Blob, graphics: TileGraphics): Promise<
     bitmap = await graphics.decode(blob);
   } catch (error) {
     throw new OpenError({ kind: 'decode-failed', message: error instanceof Error ? error.message : 'Could not decode the image.' });
+  }
+  try {
+    // Sources whose header gave no size (SVG, AVIF) are measured here.
+    checkDecodable(bitmap);
+  } catch (error) {
+    bitmap.close();
+    throw error;
   }
   return { pyramid: pyramidOf(bitmap.width, bitmap.height), bitmap };
 }

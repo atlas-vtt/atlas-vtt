@@ -458,6 +458,26 @@ describe('MapService scene loads', () => {
       expect(store.getState().isMapLoading).toBe(false);
     });
 
+    it('waits for the tiles of the camera the scene opens at, not of the fitted map', async () => {
+      const { service, rendererService, mapImage } = setup();
+      // The viewport places itself by its scale, as pixi-viewport does
+      const viewport = {
+        screenWidth: 1000, screenHeight: 800, scale: 1, center: { x: 0, y: 0 },
+        setZoom(scale: number): void { this.scale = scale; },
+        moveCenter(x: number, y: number): void { this.center = { x: x * this.scale, y: y * this.scale }; },
+      };
+      Object.assign(rendererService.getRenderer()!, { getViewportInstance: () => viewport });
+      let waitedFor: { scale: number; center: { x: number; y: number } } | null = null;
+      mapImage.whenCameraReady.mockImplementation(() => {
+        waitedFor = { scale: viewport.scale, center: { ...viewport.center } };
+        return Promise.resolve();
+      });
+
+      await service.loadMap(rendererService, CAVE, { centerX: 300, centerY: 200, scale: 2 });
+
+      expect(waitedFor).toEqual({ scale: 2, center: { x: 600, y: 400 } });
+    });
+
     it('leaves the loading screen to the next load when the scene was left meanwhile', async () => {
       const { service, store, rendererService, mapImage } = setup();
       const caveTiles = deferred();

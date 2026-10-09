@@ -1,5 +1,5 @@
 import { tileKey, type TileRef } from './pyramid';
-import type { PyramidManifest, TileStoreBackend } from './tileStore';
+import type { IdentityRecord, ManifestUpdate, PyramidManifest, StoredTile, TileStoreBackend } from './tileStore';
 
 /**
  * A `TileStoreBackend` that keeps everything in memory for the life of the
@@ -9,7 +9,7 @@ import type { PyramidManifest, TileStoreBackend } from './tileStore';
 export class MemoryTileBackend implements TileStoreBackend {
   private readonly manifests = new Map<string, PyramidManifest>();
   private readonly tiles = new Map<string, Map<string, Blob>>();
-  private readonly identities = new Map<string, string>();
+  private readonly identities = new Map<string, IdentityRecord>();
 
   getManifest(hash: string): Promise<PyramidManifest | null> {
     const manifest = this.manifests.get(hash);
@@ -29,14 +29,18 @@ export class MemoryTileBackend implements TileStoreBackend {
     return Promise.resolve(this.tiles.get(hash)?.get(tileKey(t)) ?? null);
   }
 
-  putTiles(hash: string, tiles: Array<{ ref: TileRef; bytes: Blob }>): Promise<void> {
+  writeTiles(hash: string, tiles: readonly StoredTile[], update: ManifestUpdate): Promise<boolean> {
+    const stored = this.manifests.get(hash);
+    const manifest = update(stored ? { ...stored } : null);
+    if (!manifest) return Promise.resolve(false);
     let pyramid = this.tiles.get(hash);
     if (!pyramid) {
       pyramid = new Map();
       this.tiles.set(hash, pyramid);
     }
     for (const tile of tiles) pyramid.set(tileKey(tile.ref), tile.bytes);
-    return Promise.resolve();
+    this.manifests.set(hash, { ...manifest });
+    return Promise.resolve(true);
   }
 
   hasTiles(hash: string): Promise<Set<string>> {
@@ -49,12 +53,20 @@ export class MemoryTileBackend implements TileStoreBackend {
     return Promise.resolve();
   }
 
-  getIdentity(key: string): Promise<string | null> {
-    return Promise.resolve(this.identities.get(key) ?? null);
+  getIdentity(path: string): Promise<IdentityRecord | null> {
+    const record = this.identities.get(path);
+    return Promise.resolve(record ? { ...record } : null);
   }
 
-  putIdentity(key: string, hash: string): Promise<void> {
-    this.identities.set(key, hash);
+  putIdentity(record: IdentityRecord): Promise<void> {
+    this.identities.set(record.path, { ...record });
+    return Promise.resolve();
+  }
+
+  pruneIdentities(keep: ReadonlySet<string>): Promise<void> {
+    for (const [path, record] of this.identities) {
+      if (!keep.has(record.hash)) this.identities.delete(path);
+    }
     return Promise.resolve();
   }
 
@@ -62,6 +74,11 @@ export class MemoryTileBackend implements TileStoreBackend {
     this.manifests.clear();
     this.tiles.clear();
     this.identities.clear();
+    return Promise.resolve();
+  }
+
+  /** Nothing to close: the cache lives as long as the worker. */
+  close(): Promise<void> {
     return Promise.resolve();
   }
 }

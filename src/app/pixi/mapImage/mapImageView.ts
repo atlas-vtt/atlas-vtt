@@ -1,5 +1,5 @@
 import type { Container } from 'pixi.js';
-import type { MapImageChange } from './MapImage';
+import type { MapImageChange } from './mapImageTypes';
 import type { PixelRect } from './pyramid';
 
 /** Where a map's pixels are read from: the whole image fit within `maxSide`, or null without one. */

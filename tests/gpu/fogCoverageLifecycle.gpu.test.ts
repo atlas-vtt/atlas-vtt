@@ -95,7 +95,7 @@ describe('fog renderer lifecycle', () => {
   it('redraws after bounds changes without changing saved fog', async () => {
     const s = await scene({ paint: fogRect() });
     const fog = s.store.getState().objects.fog;
-    s.events.emit('map-image-updated', { x: -32, y: -32, width: 256, height: 256 });
+    s.showMapImage({ x: -32, y: -32, width: 256, height: 256 });
     expect(s.store.getState().objects.fog).toBe(fog);
     expect(s.read(32, 32)).toBe(0);
     s.store.setState({ isGMView: false });

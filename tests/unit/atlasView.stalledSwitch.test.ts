@@ -3,6 +3,7 @@ import { TFile } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
 import { createTabMetaStore } from '../../src/app/stores/tabMetaStore';
 import { LatestRequestQueue, STALLED_JOB_MS } from '../../src/app/services/latestRequestQueue';
+import type { ViewCamera } from '../../src/app/pixi/viewCamera';
 
 vi.mock('../../src/app/services/ServiceManager', () => ({ ServiceManager: class {} }));
 vi.mock('../../src/app/storeFactory', () => ({ createViewAtlasStore: vi.fn() }));
@@ -12,6 +13,7 @@ const CAVE = new TFile('maps/cave.atlasmap');
 const TOWER = new TFile('maps/tower.atlasmap');
 const CRYPT = new TFile('maps/crypt.atlasmap');
 const files = [CAVE, TOWER, CRYPT];
+const CRYPT_CAMERA: ViewCamera = { centerX: 300, centerY: 200, scale: 2 };
 
 afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
 
@@ -24,7 +26,9 @@ describe('a tab switch whose scene never finishes loading', () => {
     const scene = { mapLoaded: true, isMapLoading: false, mapPath: CAVE.path as string | null };
     // The store and queue side of MapService.loadMap; Tower's file never arrives
     const loads = new LatestRequestQueue();
-    const performSceneLoad = (file: TFile): Promise<boolean> => loads.run(async (isSuperseded) => {
+    const cameras: Array<[string, ViewCamera | undefined]> = [];
+    const performSceneLoad = (file: TFile, camera?: ViewCamera): Promise<boolean> => loads.run(async (isSuperseded) => {
+      cameras.push([file.path, camera]);
       Object.assign(scene, { mapLoaded: false, isMapLoading: true, mapPath: file.path });
       if (file === TOWER) await new Promise<void>(() => {});
       if (isSuperseded()) return false;
@@ -35,9 +39,9 @@ describe('a tab switch whose scene never finishes loading', () => {
       tabMetaStore, sceneRequests: 0,
       store: { getState: () => scene },
       flushPendingSaves: vi.fn().mockResolvedValue(undefined),
-      temporalCache: new Map(), viewportCache: new Map(),
+      temporalCache: new Map(), viewportCache: new Map([[cryptId!, CRYPT_CAMERA]]),
       saveTemporalState: vi.fn(), saveViewportState: vi.fn(),
-      restoreTemporalState: vi.fn(), restoreViewportState: vi.fn(),
+      restoreTemporalState: vi.fn(),
       performSceneLoad,
       leaf: { detach: vi.fn() },
       app: {
@@ -60,7 +64,8 @@ describe('a tab switch whose scene never finishes loading', () => {
     expect(switched).toBe(true);
     expect(tabMetaStore.getState().activeTabId).toBe(cryptId);
     expect(scene).toEqual({ mapLoaded: true, isMapLoading: false, mapPath: CRYPT.path });
-    expect(context.restoreViewportState).toHaveBeenCalledWith(cryptId);
+    expect(context.restoreTemporalState).toHaveBeenCalledWith(cryptId);
+    expect(cameras).toContainEqual([CRYPT.path, CRYPT_CAMERA]);
     // Only Cave was loaded when it was left; the stalled Tower has nothing to cache
     expect(context.saveViewportState.mock.calls).toEqual([[caveId]]);
 

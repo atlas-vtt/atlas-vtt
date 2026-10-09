@@ -1,7 +1,8 @@
 import { Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MapImage, type MapImageOpener } from '../../src/app/pixi/mapImage/MapImage';
+import { MapImage } from '../../src/app/pixi/mapImage/MapImage';
+import type { MapImageOpener } from '../../src/app/pixi/mapImage/mapImageTypes';
 import type { TileView } from '../../src/app/pixi/mapImage/levelOfDetail';
 import { pyramidOf, tileKey, tileSourceRect, type TileRef } from '../../src/app/pixi/mapImage/pyramid';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
@@ -55,6 +56,7 @@ async function setup(): Promise<MirrorHarness & {
     overview: vi.fn(),
     close: vi.fn(),
     reportUnshown: vi.fn(),
+    onRestart: vi.fn(() => () => undefined),
   };
   const ticker = new Ticker();
   const viewport = { left: 0, top: 0, worldScreenWidth: 800, worldScreenHeight: 600, scale: { x: 1 }, worldWidth: 0, worldHeight: 0 };

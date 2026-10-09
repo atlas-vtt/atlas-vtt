@@ -34,16 +34,18 @@ export function workerPort(createWorker: () => Worker): PortFactory {
 export function inThreadPort(createCore: CoreFactory = browserTileCore): PortFactory {
   return (receive) => {
     let stopped = false;
-    const handle = hostTileCore(createCore, (message) => {
+    const host = hostTileCore(createCore, (message) => {
       if (!stopped) window.setTimeout(() => receive(message), 0);
       else if (message.type === 'bitmap') message.bitmap.close();
     });
     return {
       post: (request) => {
-        if (!stopped) window.setTimeout(() => handle(request), 0);
+        if (!stopped) window.setTimeout(() => host.receive(request), 0);
       },
+      // As a worker's end would: its builds stop and its cache's connection closes.
       terminate: () => {
         stopped = true;
+        void host.dispose().catch((error: unknown) => console.debug('[Atlas] The map tile cache did not close cleanly', error));
       },
     };
   };

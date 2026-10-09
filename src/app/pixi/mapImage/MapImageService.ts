@@ -62,6 +62,11 @@ export class MapImageService {
     this.client.close(handle);
   }
 
+  /** Called when the tile worker stopped and took the open maps along; each must be opened again. */
+  onRestart(listener: () => void): () => void {
+    return this.client.onRestart(listener);
+  }
+
   /** Tells the GM once per file and session that its image cannot be shown, and why. */
   reportUnshown(file: TFile, error: unknown): void {
     console.error(`[Atlas] The map image ${file.path} cannot be shown:`, error);

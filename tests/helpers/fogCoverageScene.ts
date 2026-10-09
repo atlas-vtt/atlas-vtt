@@ -10,6 +10,7 @@ import { destroyTree } from '../../src/app/pixi/utils/destroyTree';
 import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import { watchGl } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';
 import type { FogOperation, FogRectangleFill } from '../../src/app/types/fogTypes';
+import type { MapRect } from '../../src/app/grid/cellNumbering';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 export function fogRect(id = 'paint', timestamp = 1, isErasing = false): FogRectangleFill {
@@ -22,6 +23,8 @@ interface FogScene {
   events: EventEmitter;
   lookAt(x: number, y: number): void;
   setFog(ops: Record<string, FogOperation>): void;
+  /** Shows a map image of this rect (null: none) and announces it as the orchestrator does. */
+  showMapImage(rect: MapRect | null): void;
   read(x: number, y: number, player?: boolean): number;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number): void;
 }
@@ -55,7 +58,8 @@ export function fogScenes(): { scene: (ops?: Record<string, FogOperation>, befor
     store.temporal.getState().clear();
     const unsubscribe = beforeRenderer?.(store);
     const events = new EventEmitter();
-    const fog = new FogOfWarRenderer(viewport, app, events, store);
+    let mapRect: MapRect | null = null;
+    const fog = new FogOfWarRenderer(viewport, app, events, store, () => mapRect);
     viewport.addChild(fog.getContainer());
     const target = RenderTexture.create({ width: 128, height: 128 });
     const pixels = (): Uint8ClampedArray => {
@@ -81,6 +85,10 @@ export function fogScenes(): { scene: (ops?: Record<string, FogOperation>, befor
       },
       setFog(next: Record<string, FogOperation>): void {
         store.setState(state => ({ objects: { ...state.objects, fog: next } }));
+      },
+      showMapImage(rect: MapRect | null): void {
+        mapRect = rect;
+        events.emit('map-image-updated', rect ?? undefined);
       },
       read(x: number, y: number, player = true): number {
         let value = Number.NaN;

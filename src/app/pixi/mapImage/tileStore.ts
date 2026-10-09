@@ -1,4 +1,5 @@
 import { TILE_SPEC, type TileRef } from './pyramid';
+import type { FileIdentity } from './tileProtocol';
 
 /**
  * The device's cache of map tile pyramids (decision 6 of the tiled map images
@@ -19,25 +20,42 @@ export interface PyramidManifest {
   lastUsed: number;
 }
 
-export interface TileStoreBackend {
-  getManifest(hash: string): Promise<PyramidManifest | null>;
-  putManifest(m: PyramidManifest): Promise<void>;
-  listManifests(): Promise<PyramidManifest[]>;
-  getTile(hash: string, t: TileRef): Promise<Blob | null>;
-  putTiles(hash: string, tiles: Array<{ ref: TileRef; bytes: Blob }>): Promise<void>;
-  /** Keys (`tileKey`, "level/col/row") of the tiles stored for a pyramid. */
-  hasTiles(hash: string): Promise<Set<string>>;
-  /** Removes the manifest and every tile of a pyramid. */
-  deletePyramid(hash: string): Promise<void>;
-  /** key = `identityKeyOf(path, size, mtime)` → hash */
-  getIdentity(key: string): Promise<string | null>;
-  putIdentity(key: string, hash: string): Promise<void>;
-  clear(): Promise<void>;
+/** The hash of a file's content as it was when last read: one per path, the latest. */
+export interface IdentityRecord extends FileIdentity {
+  hash: string;
 }
 
 export interface StoredTile {
   ref: TileRef;
   bytes: Blob;
+}
+
+/** Given a pyramid's stored manifest, the manifest to store with new tiles, or null to store nothing. */
+export type ManifestUpdate = (stored: PyramidManifest | null) => PyramidManifest | null;
+
+export interface TileStoreBackend {
+  getManifest(hash: string): Promise<PyramidManifest | null>;
+  putManifest(m: PyramidManifest): Promise<void>;
+  listManifests(): Promise<PyramidManifest[]>;
+  getTile(hash: string, t: TileRef): Promise<Blob | null>;
+  /**
+   * In one transaction: reads the pyramid's manifest, and when `update` answers one, stores it
+   * with the tiles, so a crash never leaves tiles the manifest does not count. Answers whether
+   * the tiles were stored.
+   */
+  writeTiles(hash: string, tiles: readonly StoredTile[], update: ManifestUpdate): Promise<boolean>;
+  /** Keys (`tileKey`, "level/col/row") of the tiles stored for a pyramid. */
+  hasTiles(hash: string): Promise<Set<string>>;
+  /** Removes the manifest and every tile of a pyramid. */
+  deletePyramid(hash: string): Promise<void>;
+  getIdentity(path: string): Promise<IdentityRecord | null>;
+  /** Replaces the path's identity: a path keeps only its latest. */
+  putIdentity(record: IdentityRecord): Promise<void>;
+  /** Deletes every identity whose hash is not in `keep`. */
+  pruneIdentities(keep: ReadonlySet<string>): Promise<void>;
+  clear(): Promise<void>;
+  /** Closes the storage for good; later calls reject. */
+  close(): Promise<void>;
 }
 
 export interface PyramidSpec {
@@ -59,10 +77,6 @@ export const TILE_CACHE_MAX_BYTES = 2 * 1024 ** 3;
 /** Share of the origin's quota the cache may take. */
 export const TILE_CACHE_QUOTA_SHARE = 0.1;
 
-export function identityKeyOf(path: string, size: number, mtime: number): string {
-  return `${path}|${size}|${mtime}`;
-}
-
 export function tileCacheBudget(quota: number | null): number {
   if (quota === null || !Number.isFinite(quota) || quota <= 0) return TILE_CACHE_MAX_BYTES;
   return Math.min(TILE_CACHE_MAX_BYTES, Math.floor(quota * TILE_CACHE_QUOTA_SHARE));
@@ -83,12 +97,14 @@ export class TileStore {
   }
 
   /** The hash recorded for a file with this path, size and modification time. */
-  lookupIdentity(path: string, size: number, mtime: number): Promise<string | null> {
-    return this.backend.getIdentity(identityKeyOf(path, size, mtime));
+  async lookupIdentity(path: string, size: number, mtime: number): Promise<string | null> {
+    const record = await this.backend.getIdentity(path);
+    return record && record.size === size && record.mtime === mtime ? record.hash : null;
   }
 
+  /** Records the file's hash, replacing what was recorded for its path. */
   rememberIdentity(path: string, size: number, mtime: number, hash: string): Promise<void> {
-    return this.backend.putIdentity(identityKeyOf(path, size, mtime), hash);
+    return this.backend.putIdentity({ path, size, mtime, hash });
   }
 
   /** The pyramid's manifest; one written under another `TILE_SPEC` is deleted and reads as absent. */
@@ -125,18 +141,14 @@ export class TileStore {
   }
 
   /**
-   * Writes one batch and adds its bytes to the manifest. Returns false, and
+   * Writes one batch and adds its bytes to the manifest, in one transaction. Returns false, and
    * writes nothing, when the pyramid is gone (cleared or evicted meanwhile).
    */
   writeTiles(hash: string, tiles: readonly StoredTile[]): Promise<boolean> {
-    return this.serial(async () => {
-      const manifest = await this.backend.getManifest(hash);
-      if (!manifest || manifest.spec !== TILE_SPEC) return false;
-      if (tiles.length > 0) await this.backend.putTiles(hash, [...tiles]);
-      const bytes = tiles.reduce((sum, tile) => sum + tile.bytes.size, 0);
-      await this.backend.putManifest({ ...manifest, bytes: manifest.bytes + bytes, lastUsed: this.now() });
-      return true;
-    });
+    const bytes = tiles.reduce((sum, tile) => sum + tile.bytes.size, 0);
+    return this.serial(() => this.backend.writeTiles(hash, tiles, (manifest) => (
+      manifest && manifest.spec === TILE_SPEC ? { ...manifest, bytes: manifest.bytes + bytes, lastUsed: this.now() } : null
+    )));
   }
 
   /**
@@ -207,6 +219,7 @@ export class TileStore {
         total -= manifest.bytes;
         evicted.push(manifest.hash);
       }
+      if (evicted.length > 0) await this.pruneIdentities();
       return evicted;
     });
   }
@@ -232,8 +245,21 @@ export class TileStore {
         if (this.pins.has(manifest.hash)) kept += manifest.bytes;
         else await this.backend.deletePyramid(manifest.hash);
       }
+      await this.pruneIdentities();
       return kept;
     });
+  }
+
+  /** Closes the storage once the writes under way are done; the store is not used afterwards. */
+  close(): Promise<void> {
+    return this.serial(() => this.backend.close());
+  }
+
+  /** Drops the identities of pyramids no longer cached; a pinned hash keeps its own (an open may not have begun its pyramid yet). */
+  private async pruneIdentities(): Promise<void> {
+    const keep = new Set(this.pins.keys());
+    for (const manifest of await this.backend.listManifests()) keep.add(manifest.hash);
+    await this.backend.pruneIdentities(keep);
   }
 
   private async currentManifest(hash: string): Promise<PyramidManifest | null> {

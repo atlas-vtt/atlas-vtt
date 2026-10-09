@@ -1,5 +1,5 @@
 import { tileKey, type TileRef } from './pyramid';
-import type { PyramidManifest, TileStoreBackend } from './tileStore';
+import type { IdentityRecord, ManifestUpdate, PyramidManifest, StoredTile, TileStoreBackend } from './tileStore';
 
 /**
  * The tile cache in IndexedDB, one database per vault and device. It runs in
@@ -7,10 +7,11 @@ import type { PyramidManifest, TileStoreBackend } from './tileStore';
  * nothing of Obsidian.
  *
  * Stores: `manifests` (key: hash), `tiles` (key: [hash, level, col, row], so
- * a pyramid is one key range), `identities` (key: `path|size|mtime` → hash).
+ * a pyramid is one key range), `identities` (key: the file's path, one record per path).
  */
 
-const DB_VERSION = 1;
+/** 2: identities keyed by path, so a path keeps only its latest. */
+const DB_VERSION = 2;
 const MANIFESTS = 'manifests';
 const TILES = 'tiles';
 const IDENTITIES = 'identities';
@@ -51,6 +52,12 @@ function isStoreKey(key: IDBValidKey): key is StoreKey {
   return Array.isArray(key) && key.length === 4 && typeof key[1] === 'number' && typeof key[2] === 'number' && typeof key[3] === 'number';
 }
 
+function isIdentityRecord(value: unknown): value is IdentityRecord {
+  if (!value || typeof value !== 'object') return false;
+  const r = value as Record<string, unknown>;
+  return typeof r.path === 'string' && typeof r.size === 'number' && typeof r.mtime === 'number' && typeof r.hash === 'string';
+}
+
 function isManifest(value: unknown): value is PyramidManifest {
   if (!value || typeof value !== 'object') return false;
   const m = value as Record<string, unknown>;
@@ -68,6 +75,7 @@ function isManifest(value: unknown): value is PyramidManifest {
 
 export class IndexedDbTileBackend implements TileStoreBackend {
   private connection: Promise<IDBDatabase> | null = null;
+  private closed = false;
 
   constructor(
     private readonly factory: IDBFactory,
@@ -93,11 +101,33 @@ export class IndexedDbTileBackend implements TileStoreBackend {
     return value instanceof Blob ? value : null;
   }
 
-  async putTiles(hash: string, tiles: Array<{ ref: TileRef; bytes: Blob }>): Promise<void> {
-    await this.write([TILES], (tx) => {
-      const store = tx.objectStore(TILES);
-      for (const tile of tiles) store.put(tile.bytes, storeKey(hash, tile.ref));
-    });
+  async writeTiles(hash: string, tiles: readonly StoredTile[], update: ManifestUpdate): Promise<boolean> {
+    // Set from the transaction's callbacks.
+    const outcome: { stored: boolean; failure: Error | null } = { stored: false, failure: null };
+    try {
+      await this.write([MANIFESTS, TILES], (tx) => {
+        const manifests = tx.objectStore(MANIFESTS);
+        const read = manifests.get(hash);
+        read.onsuccess = (): void => {
+          try {
+            const manifest = update(isManifest(read.result) ? read.result : null);
+            if (!manifest) return;
+            const store = tx.objectStore(TILES);
+            for (const tile of tiles) store.put(tile.bytes, storeKey(hash, tile.ref));
+            manifests.put(manifest);
+            outcome.stored = true;
+          } catch (error) {
+            // Nothing of the batch is written.
+            outcome.failure = error instanceof Error ? error : new Error(String(error));
+            tx.abort();
+          }
+        };
+      });
+    } catch (error) {
+      if (outcome.failure) throw outcome.failure;
+      throw error;
+    }
+    return outcome.stored;
   }
 
   async hasTiles(hash: string): Promise<Set<string>> {
@@ -116,13 +146,26 @@ export class IndexedDbTileBackend implements TileStoreBackend {
     });
   }
 
-  async getIdentity(key: string): Promise<string | null> {
-    const value = await this.read<unknown>(IDENTITIES, (store) => store.get(key));
-    return typeof value === 'string' ? value : null;
+  async getIdentity(path: string): Promise<IdentityRecord | null> {
+    const value = await this.read<unknown>(IDENTITIES, (store) => store.get(path));
+    return isIdentityRecord(value) ? value : null;
   }
 
-  async putIdentity(key: string, hash: string): Promise<void> {
-    await this.write([IDENTITIES], (tx) => tx.objectStore(IDENTITIES).put(hash, key));
+  async putIdentity(record: IdentityRecord): Promise<void> {
+    await this.write([IDENTITIES], (tx) => tx.objectStore(IDENTITIES).put(record));
+  }
+
+  async pruneIdentities(keep: ReadonlySet<string>): Promise<void> {
+    await this.write([IDENTITIES], (tx) => {
+      const cursor = tx.objectStore(IDENTITIES).openCursor();
+      cursor.onsuccess = (): void => {
+        const current = cursor.result;
+        if (!current) return;
+        const value: unknown = current.value;
+        if (!isIdentityRecord(value) || !keep.has(value.hash)) current.delete();
+        current.continue();
+      };
+    });
   }
 
   async clear(): Promise<void> {
@@ -131,8 +174,9 @@ export class IndexedDbTileBackend implements TileStoreBackend {
     });
   }
 
-  /** Closes the connection; the next call opens it again. */
+  /** Closes the connection for good, once the transactions under way are done; later calls reject. */
   async close(): Promise<void> {
+    this.closed = true;
     const connection = this.connection;
     this.connection = null;
     if (connection) await connection.then((db) => db.close(), () => undefined);
@@ -152,6 +196,7 @@ export class IndexedDbTileBackend implements TileStoreBackend {
   }
 
   private open(): Promise<IDBDatabase> {
+    if (this.closed) return Promise.reject(new Error('The map tile cache is closed.'));
     if (this.connection) return this.connection;
     const lost = (): void => {
       if (this.connection === opening) this.connection = null;
@@ -164,11 +209,13 @@ export class IndexedDbTileBackend implements TileStoreBackend {
 
   private async connect(lost: () => void): Promise<IDBDatabase> {
     const req = this.factory.open(this.name, DB_VERSION);
-    req.onupgradeneeded = (): void => {
+    req.onupgradeneeded = (event): void => {
       const db = req.result;
       if (!db.objectStoreNames.contains(MANIFESTS)) db.createObjectStore(MANIFESTS, { keyPath: 'hash' });
       if (!db.objectStoreNames.contains(TILES)) db.createObjectStore(TILES);
-      if (!db.objectStoreNames.contains(IDENTITIES)) db.createObjectStore(IDENTITIES);
+      // Version 1 keyed identities by path, size and time; they are only a shortcut, so they go.
+      if (event.oldVersion < 2 && db.objectStoreNames.contains(IDENTITIES)) db.deleteObjectStore(IDENTITIES);
+      if (!db.objectStoreNames.contains(IDENTITIES)) db.createObjectStore(IDENTITIES, { keyPath: 'path' });
     };
     const db = await request(req);
     // Another connection wants to upgrade or delete the database: let it, and reopen on the next call.

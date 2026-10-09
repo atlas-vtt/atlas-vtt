@@ -12,6 +12,7 @@ import { settledWithin } from '../utils/settledWithin';
 import { LatestRequestQueue } from './latestRequestQueue';
 import { fillStoreFromMapFile } from './mapFileFallback';
 import { t } from '../i18n';
+import type { ViewCamera } from '../pixi/viewCamera';
 
 /** How long a scene may take to load before the load is given up. */
 export const STALLED_LOAD_MS = 30_000;
@@ -33,11 +34,13 @@ export class MapService {
    * in flight starts once that one has stopped, and of several waiting only the latest runs.
    * @param rendererService The RendererService instance
    * @param filePath The path to the map file
+   * @param camera Where the scene is shown (its tab's own camera); without one the map is fitted to the view.
+   * The loading screen waits for the tiles this camera shows.
    * @returns The loaded map data, or null when loading failed or a later request replaced this one
    */
-  public loadMap(rendererService: RendererService, filePath: string, restoreCamera: boolean = false): Promise<MapFile | null> {
+  public loadMap(rendererService: RendererService, filePath: string, camera: ViewCamera | null = null): Promise<MapFile | null> {
     return this.loads.run(async (isSuperseded) => {
-      const load = this.runLoad(rendererService, filePath, restoreCamera, isSuperseded);
+      const load = this.runLoad(rendererService, filePath, camera, isSuperseded);
       if (await settledWithin(load, STALLED_LOAD_MS)) return load;
       if (isSuperseded()) return null;
       // The loading overlay covers the whole view, its tabs included: a load that never ends
@@ -56,7 +59,7 @@ export class MapService {
   private async runLoad(
     rendererService: RendererService,
     filePath: string,
-    restoreCamera: boolean,
+    camera: ViewCamera | null,
     isSuperseded: () => boolean,
   ): Promise<MapFile | null> {
     try {
@@ -114,7 +117,7 @@ export class MapService {
         this.app,
         renderer,
         filePath,
-        restoreCamera,
+        camera,
         isSuperseded,
       );
       if (!displayed) return null;
@@ -265,8 +268,8 @@ export class MapService {
   }
 
   /** `loadMap` for a file of the vault. */
-  public async loadMapFromFile(rendererService: RendererService, file: TFile, restoreCamera: boolean = false): Promise<MapFile | null> {
-    return this.loadMap(rendererService, file.path, restoreCamera);
+  public async loadMapFromFile(rendererService: RendererService, file: TFile, camera: ViewCamera | null = null): Promise<MapFile | null> {
+    return this.loadMap(rendererService, file.path, camera);
   }
 
   /** The data of the loaded map, or null if none is loaded. */

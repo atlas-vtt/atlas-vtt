@@ -204,7 +204,7 @@ export class ServiceManager {
   /**
    * `renderMapThumbnail` once the map image is drawn at the detail the thumbnail's frame needs, or
    * after a short wait: for a snapshot, whose card is larger than the overview may be sharp for.
-   * Null when the view shows another scene by then.
+   * Null when the view shows another scene by then, or is loading one (the same scene reloaded too).
    */
   public async renderMapThumbnailWhenDrawn(size: ThumbnailSize): Promise<ArrayBuffer | null> {
     const renderer = this.rendererService.getRenderer();
@@ -214,7 +214,8 @@ export class ServiceManager {
     if (mapImage && picture) {
       const { mapPath } = this.store.getState();
       await mapImage.whenReady(picture.rect, picture.worldPerScreenPixel, THUMBNAIL_DETAIL_WAIT_MS);
-      if (this.store.getState().mapPath !== mapPath) return null;
+      const scene = this.store.getState();
+      if (scene.mapPath !== mapPath || !scene.mapLoaded || scene.isMapLoading) return null;
     }
     return this.renderMapThumbnail(size);
   }

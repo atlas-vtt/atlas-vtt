@@ -1,4 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import { MAX_SOURCE_PIXELS } from '../../../src/app/pixi/mapImage/decodedLevels';
+import { MemoryTileBackend } from '../../../src/app/pixi/mapImage/memoryTileBackend';
+import { inThreadPort } from '../../../src/app/pixi/mapImage/tilePorts';
+import type { TileMessage } from '../../../src/app/pixi/mapImage/tileProtocol';
+import { MapClosedError } from '../../../src/app/pixi/mapImage/tileServer';
 import { pyramidOf, tileSourceRect } from '../../../src/app/pixi/mapImage/pyramid';
 import type { OpenOutcome } from '../../../src/app/pixi/mapImage/tileDecoderCore';
 import type { OpenedPyramid } from '../../../src/app/pixi/mapImage/tileProtocol';
@@ -144,16 +149,21 @@ describe('TileDecoderCore', () => {
     expect(h.graphics.bitmaps.filter((b) => b.origin === 'crop').every((b) => b.closed)).toBe(true);
   });
 
-  it('cancels pending requests when their map closes', async () => {
+  it('answers the pending requests of a closed map with an error, an explicit cancel with nothing', async () => {
     const h = coreHarness();
     const map = opened(await h.core.open(identity, fakePng(3000, 2000)));
     let release = (): void => undefined;
-    h.graphics.cropGate = () => new Promise((resolve) => (release = resolve));
-    const pending = h.core.tile(1, map.handle, { level: 0, col: 0, row: 0 });
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    h.graphics.cropGate = () => gate;
+    const cancelled = h.core.tile(1, map.handle, { level: 0, col: 1, row: 0 });
+    const pending = h.core.tile(2, map.handle, { level: 0, col: 0, row: 0 });
+    const closed = expect(pending).rejects.toBeInstanceOf(MapClosedError);
     await nextTask();
+    h.core.cancel(1);
     h.core.close(map.handle);
     release();
-    expect(await pending).toBeNull();
+    expect(await cancelled).toBeNull();
+    await closed;
   });
 
   it('reports a broken image once, as decode-failed', async () => {
@@ -209,19 +219,106 @@ describe('TileDecoderCore', () => {
     expect(resumed).toMatchObject({ kind: 'prebuilt', complete: true });
   });
 
-  it('keeps an open build running and makes the next one wait', async () => {
+  it('lets an open in over the budget when only shown maps hold it, and keeps their builds running', async () => {
     const h = coreHarness({ decodedBudget: 40_000_000 });
     const first = opened(await h.core.open(null, fakePng(3000, 2000, { salt: 1 })));
-    let secondOpened = false;
-    const second = h.core.open(null, fakePng(3000, 2000, { salt: 2 })).then((outcome) => {
-      secondOpened = true;
-      return outcome;
-    });
-    await nextTask();
-    await nextTask();
-    expect(secondOpened).toBe(false);
+    const second = opened(await h.core.open(null, fakePng(3000, 2000, { salt: 2 })));
+    expect(h.events.some((event) => event.type === 'complete' && event.hash === first.hash)).toBe(false);
     await h.completed(first.hash);
-    expect(opened(await second).hash).not.toBe(first.hash);
+    await h.completed(second.hash);
+  });
+
+  it('stops the build of a map closed while the budget is over, as a scene switch closes the map it leaves', async () => {
+    const h = coreHarness({ decodedBudget: 40_000_000 });
+    const left = opened(await h.core.open(null, fakePng(3000, 2000, { salt: 1 })));
+    const next = opened(await h.core.open(null, fakePng(3000, 2000, { salt: 2 })));
+    h.core.close(left.handle);
+    await h.completed(next.hash);
+    expect(h.events.some((event) => event.type === 'complete' && event.hash === left.hash)).toBe(false);
+    expect((await h.store.readManifest(left.hash))?.complete).toBe(false);
+  });
+
+  it('releases the levels and the budget of a build that could not write while its map is shown, and serves the cache it left', async () => {
+    const h = coreHarness({ decodedBudget: 40_000_000 });
+    const write = h.store.writeTiles.bind(h.store);
+    // The coarse levels are written; the first batch of level 0 meets a full disk.
+    h.store.writeTiles = (hash, tiles) => (tiles.some((tile) => tile.ref.level === 0)
+      ? Promise.reject(new Error('QuotaExceededError'))
+      : write(hash, tiles));
+    const map = opened(await h.core.open(null, fakePng(3000, 2000, { salt: 1 })));
+    await vi.waitFor(() => expect(h.events.some((event) => event.type === 'build-failed')).toBe(true));
+    await nextTask();
+
+    const levels = h.graphics.bitmaps.filter((b) => b.origin === 'source' || (b.origin === 'resized' && b.width >= 375 && b.width <= 1500));
+    expect(levels.every((b) => b.closed)).toBe(true);
+    // The whole picture comes from level 1, the finest the cache holds whole.
+    const overview = fake(await h.core.overview(1, map.handle, 4000));
+    expect([overview.width, overview.height]).toEqual([3000, 2000]);
+    expect(h.graphics.composes).toEqual([{ width: 1500, height: 1000, parts: 6 }]);
+    await expect(h.core.tile(2, map.handle, { level: 0, col: 0, row: 0 })).rejects.toThrow(/not in the cache/);
+    // Its share of the budget is free: another map opens and builds within it.
+    h.store.writeTiles = write;
+    const next = opened(await h.core.open(null, fakePng(3000, 2000, { salt: 2 })));
+    await h.completed(next.hash);
+  });
+
+  it('lets a prebuild still decoding give way to an open, ahead of it in the queue', async () => {
+    const h = coreHarness({ decodedBudget: 40_000_000 });
+    let finishDecode = (): void => undefined;
+    const decoding = new Promise<void>((resolve) => (finishDecode = resolve));
+    const decode = h.graphics.decode.bind(h.graphics);
+    h.graphics.decode = async (blob) => {
+      const bitmap = await decode(blob);
+      if (bitmap.width === 3001) await decoding;
+      return bitmap;
+    };
+    const background = h.core.prebuild(null, fakePng(3001, 2000));
+    await nextTask();
+    const opening = h.core.open(null, fakePng(3000, 2000));
+    await nextTask();
+    finishDecode();
+
+    const shown = opened(await opening);
+    expect(await background).toMatchObject({ kind: 'prebuilt', complete: false });
+    await h.completed(shown.hash);
+    expect(h.graphics.encodes.every((call) => call.source.width !== 3001 && call.source.width !== 1501)).toBe(true);
+  });
+
+  it('refuses a source whose decoded levels would not fit in the worker, before decoding it', async () => {
+    const h = coreHarness();
+    const side = Math.ceil(Math.sqrt(MAX_SOURCE_PIXELS)) + 1;
+    const outcome = await h.core.open(identity, fakePng(side, side));
+    expect(outcome).toMatchObject({ kind: 'failed', failure: { kind: 'too-large', width: side, height: side, maxPixels: MAX_SOURCE_PIXELS } });
+    expect(h.graphics.decodes).toHaveLength(0);
+  });
+
+  it('stops its builds and closes the cache when its in-thread port is terminated', async () => {
+    const backend = new MemoryTileBackend();
+    let closed = false;
+    backend.close = (): Promise<void> => {
+      closed = true;
+      return Promise.resolve();
+    };
+    const h = coreHarness({ backend });
+    let release = (): void => undefined;
+    const gate = new Promise<void>((resolve) => (release = resolve));
+    const encode = h.graphics.encodeTile.bind(h.graphics);
+    // The build holds at its first tile until the port is gone.
+    h.graphics.encodeTile = async (bitmap, rect) => gate.then(() => encode(bitmap, rect));
+    const replies: TileMessage[] = [];
+    const port = inThreadPort(() => Promise.resolve(h.core))((message) => replies.push(message), () => undefined);
+    port.post({ type: 'init', appId: null }, []);
+    port.post({ type: 'open', id: 1, identity, bytes: fakePng(3000, 2000) }, []);
+    await vi.waitFor(() => expect(replies.some((reply) => reply.type === 'opened')).toBe(true));
+    await nextTask();
+
+    port.terminate();
+    release();
+    await vi.waitFor(() => expect(closed).toBe(true));
+    for (let i = 0; i < 5; i++) await nextTask();
+
+    expect(h.graphics.encodes.length).toBeLessThanOrEqual(1);
+    expect(h.events.some((event) => event.type === 'complete')).toBe(false);
   });
 
   it('keeps the pyramid of a map still building when the cache is cleared', async () => {

@@ -1,7 +1,7 @@
 import { vi } from 'vitest';
 import type { LoadedMap } from '../../src/app/MapLoader';
 import type { MapFile } from '../../src/app/services/MapPersistence';
-import type { MapImageSource } from '../../src/app/pixi/mapImage/MapImage';
+import type { MapImageSource } from '../../src/app/pixi/mapImage/mapImageTypes';
 
 /** The map image a scene without a background shows: an empty world of 20 × 20 cells of 70 px. */
 export const EMPTY_MAP_IMAGE: MapImageSource = { kind: 'none', width: 1400, height: 1400 };

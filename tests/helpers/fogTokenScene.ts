@@ -50,7 +50,7 @@ export function fogTokenScenes(): { scene: typeof createScene } {
     const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: 40, enabled: false, color: 0xffffff });
     const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, 'fog-token-test');
     tokens.setPixiApp(app);
-    const fog = new FogOfWarRenderer(viewport, app, events, store);
+    const fog = new FogOfWarRenderer(viewport, app, events, store, () => null);
     viewport.addChild(fog.getContainer());
     tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
     const covered: Character = { id: 'covered', x: 64, y: 64, size: 1, imagePath: '', kind: 'character', name: 'Covered token name outside fog', showNameplate: true };

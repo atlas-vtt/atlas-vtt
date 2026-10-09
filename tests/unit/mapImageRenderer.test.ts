@@ -4,7 +4,8 @@ import { Container, Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
-import { MapImage, type MapImageOpener } from '../../src/app/pixi/mapImage/MapImage';
+import { MapImage } from '../../src/app/pixi/mapImage/MapImage';
+import type { MapImageOpener } from '../../src/app/pixi/mapImage/mapImageTypes';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 
 interface Harness {
@@ -50,6 +51,7 @@ async function showScene(size = 1400): Promise<Harness> {
     overview: vi.fn(),
     close: vi.fn(),
     reportUnshown: vi.fn(),
+    onRestart: vi.fn(() => () => undefined),
   };
   const mapImage = new MapImage({ service: opener, viewport, ticker: new Ticker(), renderer: null, requestRender: vi.fn() });
   await mapImage.load({ kind: 'none', width: size, height: size });

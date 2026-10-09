@@ -32,6 +32,11 @@ function bytes(...values: number[]): Blob {
   return new Blob([new Uint8Array(values)], { type: 'image/webp' });
 }
 
+/** Stores tiles with the manifest as it is, as a build's batch does with its byte count. */
+function putTiles(store: IndexedDbTileBackend, hash: string, tiles: Array<{ ref: { level: number; col: number; row: number }; bytes: Blob }>): Promise<boolean> {
+  return store.writeTiles(hash, tiles, (stored) => stored);
+}
+
 async function text(blob: Blob | null): Promise<number[]> {
   return blob ? [...new Uint8Array(await blob.arrayBuffer())] : [];
 }
@@ -45,19 +50,19 @@ describe('IndexedDbTileBackend', () => {
   it('stores manifests, tiles and identities in the vault database', async () => {
     const store = backend();
     await store.putManifest(manifest('a', 3));
-    await store.putTiles('a', [
+    await putTiles(store, 'a', [
       { ref: { level: 0, col: 0, row: 0 }, bytes: bytes(1, 2) },
       { ref: { level: 1, col: 2, row: 3 }, bytes: bytes(9) },
     ]);
-    await store.putIdentity('maps/a.png|10|20', 'a');
+    await store.putIdentity({ path: 'maps/a.png', size: 10, mtime: 20, hash: 'a' });
 
     expect(await store.getManifest('a')).toEqual(manifest('a', 3));
     expect(await store.getManifest('missing')).toBeNull();
     expect(await text(await store.getTile('a', { level: 1, col: 2, row: 3 }))).toEqual([9]);
     expect(await store.getTile('a', { level: 1, col: 0, row: 0 })).toBeNull();
     expect(await store.hasTiles('a')).toEqual(new Set(['0/0/0', '1/2/3']));
-    expect(await store.getIdentity('maps/a.png|10|20')).toBe('a');
-    expect(await store.getIdentity('maps/a.png|10|21')).toBeNull();
+    expect(await store.getIdentity('maps/a.png')).toEqual({ path: 'maps/a.png', size: 10, mtime: 20, hash: 'a' });
+    expect(await store.getIdentity('maps/b.png')).toBeNull();
 
     const names = (await indexedDB.databases()).map((db) => db.name);
     expect(names).toContain(`atlas-vtt-map-tiles-${APP_ID}`);
@@ -66,7 +71,7 @@ describe('IndexedDbTileBackend', () => {
   it('keeps what it stored across connections', async () => {
     const first = backend();
     await first.putManifest(manifest('a', 1));
-    await first.putTiles('a', [{ ref: { level: 0, col: 1, row: 1 }, bytes: bytes(5) }]);
+    await putTiles(first, 'a', [{ ref: { level: 0, col: 1, row: 1 }, bytes: bytes(5) }]);
     await first.close();
     const second = backend();
     expect(await second.listManifests()).toEqual([manifest('a', 1)]);
@@ -77,7 +82,7 @@ describe('IndexedDbTileBackend', () => {
     const store = backend();
     for (const hash of ['a', 'ab', 'b']) {
       await store.putManifest(manifest(hash, 1));
-      await store.putTiles(hash, [
+      await putTiles(store, hash, [
         { ref: { level: 0, col: 0, row: 0 }, bytes: bytes(1) },
         { ref: { level: 3, col: 12, row: 40 }, bytes: bytes(2) },
       ]);
@@ -94,8 +99,8 @@ describe('IndexedDbTileBackend', () => {
   it('clears every store', async () => {
     const store = backend();
     await store.putManifest(manifest('a', 1));
-    await store.putTiles('a', [{ ref: { level: 0, col: 0, row: 0 }, bytes: bytes(1) }]);
-    await store.putIdentity('k', 'a');
+    await putTiles(store, 'a', [{ ref: { level: 0, col: 0, row: 0 }, bytes: bytes(1) }]);
+    await store.putIdentity({ path: 'k', size: 1, mtime: 1, hash: 'a' });
     await store.clear();
 
     expect(await store.listManifests()).toEqual([]);
@@ -103,12 +108,49 @@ describe('IndexedDbTileBackend', () => {
     expect(await store.getIdentity('k')).toBeNull();
   });
 
+  it('writes tiles and the manifest that counts them in one transaction', async () => {
+    const store = backend();
+    await store.putManifest(manifest('a', 3));
+    const tiles = [{ ref: { level: 0, col: 0, row: 0 }, bytes: bytes(1, 2) }];
+
+    expect(await store.writeTiles('a', tiles, (stored) => (stored ? { ...stored, bytes: stored.bytes + 2 } : null))).toBe(true);
+    expect(await store.getManifest('a')).toEqual(manifest('a', 5));
+
+    // An update that fails takes the tiles of its batch with it.
+    const failing = store.writeTiles('a', [{ ref: { level: 1, col: 0, row: 0 }, bytes: bytes(7) }], () => {
+      throw new Error('cannot count');
+    });
+    await expect(failing).rejects.toBeTruthy();
+    expect(await store.hasTiles('a')).toEqual(new Set(['0/0/0']));
+    // A pyramid that is gone stores nothing.
+    expect(await store.writeTiles('gone', tiles, (stored) => stored)).toBe(false);
+    expect((await store.hasTiles('gone')).size).toBe(0);
+  });
+
+  it('keeps one identity per path and prunes those of pyramids that are gone', async () => {
+    const store = backend();
+    await store.putIdentity({ path: 'a.png', size: 1, mtime: 1, hash: 'a' });
+    await store.putIdentity({ path: 'a.png', size: 2, mtime: 2, hash: 'a2' });
+    await store.putIdentity({ path: 'b.png', size: 1, mtime: 1, hash: 'b' });
+    await store.pruneIdentities(new Set(['a2']));
+
+    expect(await store.getIdentity('a.png')).toEqual({ path: 'a.png', size: 2, mtime: 2, hash: 'a2' });
+    expect(await store.getIdentity('b.png')).toBeNull();
+  });
+
+  it('stays closed once closed', async () => {
+    const store = backend();
+    await store.putManifest(manifest('a', 1));
+    await store.close();
+    await expect(store.listManifests()).rejects.toThrow(/closed/);
+  });
+
   it('closes for a deletion from elsewhere and reopens on the next call', async () => {
     const store = backend();
-    await store.putIdentity('k', 'a');
+    await store.putIdentity({ path: 'k', size: 1, mtime: 1, hash: 'a' });
     await deleteDatabase(tileDatabaseName(APP_ID));
     expect(await store.getIdentity('k')).toBeNull();
-    await store.putIdentity('k', 'b');
-    expect(await store.getIdentity('k')).toBe('b');
+    await store.putIdentity({ path: 'k', size: 1, mtime: 1, hash: 'b' });
+    expect(await store.getIdentity('k')).toMatchObject({ hash: 'b' });
   });
 });
