@@ -578,6 +578,46 @@ describe('TokenRenderer Integration Tests', () => {
     });
   });
 
+  describe('Glides on a lit scene', () => {
+    const lit = (): void => {
+      store.getState().setSceneLighting({ enabled: true });
+      tokenRenderer.setPlayerSightProvider(() => undefined, () => false);
+    };
+
+    it('puts a token the players may not have seen in its place at once, so its way there shows nothing', async () => {
+      store.getState().addToken(token({ id: 'monster' }));
+      await waitForTokens('monster');
+      lit();
+      store.getState().moveToken('monster', 500, 100);
+      await vi.waitFor(() => expect(tokenGroup('monster').x).toBe(500));
+      expect(ticker.size).toBe(0);
+    });
+
+    it('glides a party token, which the players see wherever it stands', async () => {
+      store.getState().addToken(token({ id: 'hero', vision: { enabled: true } }));
+      await waitForTokens('hero');
+      lit();
+      store.getState().moveToken('hero', 500, 100);
+      await vi.waitFor(() => expect(ticker.size).toBe(1));
+      ticker.advance(16);
+      expect(tokenGroup('hero').x).toBeLessThan(500);
+      ticker.advance(1000);
+      expect(tokenGroup('hero').x).toBe(500);
+    });
+
+    it('still glides a dropped token from the pointer to its cell', async () => {
+      store.getState().addToken(token({ id: 'monster', x: 105, y: 105 }));
+      await waitForTokens('monster');
+      lit();
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointermove', pointerEvent(180, 105));
+      viewport.emit('pointerup', pointerEvent(180, 105));
+      expect(tokenGroup('monster').x).toBe(180);
+      ticker.advance(1000);
+      expect(tokenGroup('monster').x).toBe(175);
+    });
+  });
+
   describe('Selection & Drag', () => {
     it('should select a token on pointer down, drag it and commit the snapped position as one undo step', async () => {
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));

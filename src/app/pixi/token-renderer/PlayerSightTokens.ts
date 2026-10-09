@@ -52,6 +52,11 @@ export class PlayerSightTokens {
     this.current = current;
   }
 
+  /** A lighting controller is attached, so on a lit scene the players see a token only where their sight finds it. */
+  hasLighting(): boolean {
+    return this.active !== undefined;
+  }
+
   /** Committed fog remains available when the optional lighting controller is removed. */
   setFogProvider(provider: () => FogCoverage | null, playerView: () => boolean): void {
     this.fog = provider;

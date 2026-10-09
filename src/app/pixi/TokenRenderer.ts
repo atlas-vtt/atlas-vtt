@@ -30,6 +30,7 @@ import { DragRuler } from './token-renderer/DragRuler';
 import { DragRulerView } from './token-renderer/DragRulerView';
 import { SyncService } from './token-renderer/SyncService';
 import { TokenGlide } from './token-renderer/TokenGlide';
+import { PLAYER_SIGHT_POLICY } from '../vision/tokenSightPolicy';
 import { createSceneSource } from '../plugin/host/sceneSource';
 import { updateInstanceBadge } from './token-renderer/InstanceBadge';
 import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
@@ -662,6 +663,19 @@ export class TokenRenderer {
     this.refreshPlayerSight();
   }
 
+  /**
+   * Whether a move the store made may be shown as a glide. On a lit scene the players see a token by where the
+   * store has it, so one that comes into their sight would be shown on its way from a place they did not see,
+   * giving away where it stood. There only tokens they see wherever they stand (the party's), or never (hidden
+   * ones), glide; any other is put in its place at once.
+   */
+  private mayGlide(token: TokenEntity, prevToken: TokenEntity | undefined): boolean {
+    if (!this.playerSight.hasLighting() || !this.store.getState().lighting?.enabled) return true;
+    if (!prevToken) return false;
+    const { alwaysSeen } = PLAYER_SIGHT_POLICY;
+    return (!!token.isHidden && !!prevToken.isHidden) || (alwaysSeen(token) && alwaysSeen(prevToken));
+  }
+
   /** Takes along what stands with a token's sprite as it glides: its UI, its controls and the selection frame. */
   private followToken(tokenId: string, x: number, y: number): void {
     this.uiManager.syncUIPosition(tokenId, x, y);
@@ -811,7 +825,9 @@ export class TokenRenderer {
             this.syncService.cancelAnimation(token.id);
             // A token the pointer holds is placed by its drag; a load shows the scene as it is
             const { heldTokens, isMapLoading } = this.store.getState();
-            if (heldTokens[token.id] || isMapLoading) {
+            // A dropped token is already gliding from the pointer, where it showed, to this place
+            const glides = this.glide.headsTo(token.id, token.x, token.y) || this.mayGlide(token, prevToken);
+            if (heldTokens[token.id] || isMapLoading || !glides) {
               this.glide.jump(token.id, token.x, token.y);
             } else {
               this.glide.to(token.id, token.x, token.y);

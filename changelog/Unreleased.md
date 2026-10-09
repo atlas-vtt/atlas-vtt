@@ -1,6 +1,6 @@
 ## Improved
 
-- Tokens glide to their place when they are dropped, snap to the grid or are moved by an undo, instead of jumping there. With reduced motion switched on in the system they are placed at once.
+- Tokens glide to their place when they are dropped, snap to the grid or are moved by an undo, instead of jumping there. On a scene with dynamic lighting, a token the players do not always see is still placed at once when it is moved other than by a drop, so its way never shows where it stood. With reduced motion switched on in the system every token is placed at once.
 
 - Players see the grid as you set it on the map: hidden when you hide it, and with its style, colour, opacity and numbers. The player view settings no longer have a separate Show grid switch.
 

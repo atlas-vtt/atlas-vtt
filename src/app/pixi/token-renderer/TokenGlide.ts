@@ -52,6 +52,12 @@ export class TokenGlide {
     ticker.add(this.step, undefined, UPDATE_PRIORITY.HIGH);
   }
 
+  /** Whether `tokenId` is already on its way to `(x, y)`. */
+  headsTo(tokenId: string, x: number, y: number): boolean {
+    const target = this.targets.get(tokenId);
+    return target?.x === x && target.y === y;
+  }
+
   /** Puts `tokenId` at `(x, y)` at once, ending its glide. */
   jump(tokenId: string, x: number, y: number): void {
     this.cancel(tokenId);
