@@ -11,10 +11,16 @@ import { sampleBilinear } from './grayImage';
 import type { GrayImage } from './grayImage';
 import { gridLineSegments } from './gridTemplate';
 
+/**
+ * A grid on the squared-up image: the image with its rows `aspect` times closer together, where the
+ * map's cells are regular. Size, offsets and every edge are in that space; `aspect` 1 is the image itself.
+ */
 export interface LatticeCandidate {
   cellSize: number;
   offsetX: number;
   offsetY: number;
+  /** How many times further apart the image's rows lie than a regular grid's; unset is 1. */
+  aspect?: number;
 }
 
 export interface LatticeEdge {
@@ -28,6 +34,12 @@ export interface LatticeEdge {
   /** Edge midpoint relative to the image centre, in cells. */
   cx: number;
   cy: number;
+  /** Cell size of the grid the edge belongs to. */
+  cellSize: number;
+}
+
+export function aspectOf(candidate: LatticeCandidate): number {
+  return candidate.aspect ?? 1;
 }
 
 /** Distance between a line's centre and the flanks it is compared with; lines thicker than twice this lose contrast. */
@@ -52,11 +64,13 @@ export function latticeEdges(
   edgeLength: number = candidate.cellSize,
 ): LatticeEdge[] {
   const { cellSize, offsetX, offsetY } = candidate;
+  const width = image.width;
+  const height = image.height / aspectOf(candidate);
   const margin = reach + LINE_PROBE + 2;
-  const inside = (x: number, y: number): boolean => x >= margin && y >= margin && x < image.width - margin && y < image.height - margin;
+  const inside = (x: number, y: number): boolean => x >= margin && y >= margin && x < width - margin && y < height - margin;
 
   const edges: LatticeEdge[] = [];
-  for (const s of gridLineSegments(gridType, cellSize, offsetX, offsetY, { minX: 0, minY: 0, maxX: image.width, maxY: image.height })) {
+  for (const s of gridLineSegments(gridType, cellSize, offsetX, offsetY, { minX: 0, minY: 0, maxX: width, maxY: height })) {
     const length = Math.hypot(s.x2 - s.x1, s.y2 - s.y1);
     const pieces = Math.max(1, Math.round(length / edgeLength));
     if (length / pieces < 2 * ALONG_STEP) continue;
@@ -70,9 +84,9 @@ export function latticeEdges(
       const x2 = s.x1 + ((s.x2 - s.x1) * (i + 1)) / pieces;
       const y2 = s.y1 + ((s.y2 - s.y1) * (i + 1)) / pieces;
       if (!inside(x1, y1) || !inside(x2, y2)) continue;
-      const cx = ((x1 + x2) / 2 - image.width / 2) / cellSize;
-      const cy = ((y1 + y2) / 2 - image.height / 2) / cellSize;
-      edges.push({ x1, y1, x2, y2, nx, ny, cx, cy });
+      const cx = ((x1 + x2) / 2 - width / 2) / cellSize;
+      const cy = ((y1 + y2) / 2 - height / 2) / cellSize;
+      edges.push({ x1, y1, x2, y2, nx, ny, cx, cy, cellSize });
     }
   }
   const stride = Math.max(1, edges.length / maxEdges);
@@ -83,9 +97,10 @@ export function latticeEdges(
  * Line response at every `step` across an edge, from `-reach` to `+reach` along its
  * normal (index `reach / step` is the edge itself). The response is the contrast
  * between a point and its two flanks minus the flank asymmetry, so lines of either
- * polarity peak at their centre and plain steps in brightness do not count.
+ * polarity peak at their centre and plain steps in brightness do not count. The edge
+ * lies on the squared-up image of `aspect`.
  */
-export function edgeResponse(image: GrayImage, edge: LatticeEdge, reach: number, step: number): Float32Array {
+export function edgeResponse(image: GrayImage, edge: LatticeEdge, reach: number, step: number, aspect = 1): Float32Array {
   const probe = Math.round(LINE_PROBE / step);
   const half = Math.round(reach / step);
   const profile = new Float32Array(2 * (half + probe) + 1);
@@ -98,7 +113,7 @@ export function edgeResponse(image: GrayImage, edge: LatticeEdge, reach: number,
     const py = edge.y1 + dy * t;
     for (let j = 0; j < profile.length; j++) {
       const d = (j - half - probe) * step;
-      profile[j] = profile[j]! + sampleBilinear(image, px + edge.nx * d, py + edge.ny * d);
+      profile[j] = profile[j]! + sampleBilinear(image, px + edge.nx * d, (py + edge.ny * d) * aspect);
     }
   }
 
@@ -121,20 +136,28 @@ export function edgeDirectionKey(edge: LatticeEdge): number {
   return ((degrees % 180) + 180) % 180;
 }
 
-/** How far a change of offset and size moves an edge along its normal. */
-export function edgeShift(edge: LatticeEdge, dx: number, dy: number, dSize: number): number {
-  return edge.nx * dx + edge.ny * dy + (edge.nx * edge.cx + edge.ny * edge.cy) * dSize;
+/**
+ * How far a change of offset, size and aspect moves an edge along its normal. `dAspect` is relative:
+ * rows that lie 1 % further apart than the candidate says move every line 1 % away from the centre row.
+ */
+export function edgeShift(edge: LatticeEdge, dx: number, dy: number, dSize: number, dAspect = 0): number {
+  return edge.nx * dx + edge.ny * dy + (edge.nx * edge.cx + edge.ny * edge.cy) * dSize + edge.ny * edge.cy * edge.cellSize * dAspect;
 }
 
-/** Size changes scale the grid about the image centre, where the edge coordinates are measured from. */
-export function moveCandidate(image: GrayImage, candidate: LatticeCandidate, dx: number, dy: number, dSize: number): LatticeCandidate {
+/**
+ * Size changes scale the grid about the image centre, where the edge coordinates are measured from.
+ * A change of aspect squares the image up anew, which moves its centre row; the grid keeps its place on the map.
+ */
+export function moveCandidate(image: GrayImage, candidate: LatticeCandidate, dx: number, dy: number, dSize: number, dAspect = 0): LatticeCandidate {
   const cellSize = candidate.cellSize + dSize;
   const scale = cellSize / candidate.cellSize;
+  const aspect = aspectOf(candidate);
   const centerX = image.width / 2;
-  const centerY = image.height / 2;
+  const centerY = image.height / aspect / 2;
   return {
     cellSize,
     offsetX: centerX + (candidate.offsetX - centerX) * scale + dx,
-    offsetY: centerY + (candidate.offsetY - centerY) * scale + dy,
+    offsetY: centerY + (candidate.offsetY - centerY) * scale + dy - (centerY * dAspect) / (1 + dAspect),
+    aspect: aspect * (1 + dAspect),
   };
 }

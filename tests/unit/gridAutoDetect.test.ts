@@ -11,7 +11,11 @@ import type { GridState } from '../../src/app/types/gridTypes';
 
 const SETTLED_GRID: GridState = { enabled: true, visible: true, type: 'square', size: 70, offsetX: 0, offsetY: 0, color: '#00FFFF', opacity: 0.5 };
 const NEW_GRID: GridState = { ...SETTLED_GRID, autoDetect: true };
-const mapImage: DetectableMap = { worldRect: { x: 0, y: 0, width: 2000, height: 1500 }, overview: () => Promise.resolve(null) };
+const mapImage: DetectableMap = {
+  worldRect: { x: 0, y: 0, width: 2000, height: 1500 },
+  imageSize: { width: 2000, height: 1500 },
+  overview: () => Promise.resolve(null),
+};
 
 function setup(grid: GridState, background: string | null = 'maps/dungeon.webp', isPlayerView = false): ReturnType<typeof createViewAtlasStore> {
   const { app } = createInMemoryApp({ files: {} });
@@ -34,6 +38,18 @@ describe('autoDetectGridOnFirstLoad', () => {
     expect(detectGridFromMapImage).toHaveBeenCalledWith(mapImage);
     expect(store.getState().grid).toMatchObject({ type: 'hex-vertical', size: 83.21, offsetX: 40.2, offsetY: 17.7, visible: true, color: '#00FFFF' });
     expect(store.getState().grid).not.toHaveProperty('autoDetect');
+  });
+
+  it('writes the stretch a map with cells that are not regular needs, and none for a regular one', async () => {
+    detectGridFromMapImage.mockResolvedValue({ gridType: 'hex-vertical', cellSize: 35.3, offsetX: 4, offsetY: 9, confidence: 0.5, mapStretch: { x: 1.048, y: 1 } });
+    const stretched = setup(NEW_GRID);
+    await autoDetectGridOnFirstLoad(stretched, mapImage);
+    expect(stretched.getState().grid).toMatchObject({ type: 'hex-vertical', size: 35.3, mapStretch: { x: 1.048, y: 1 } });
+
+    detectGridFromMapImage.mockResolvedValue({ gridType: 'square', cellSize: 70, offsetX: 0, offsetY: 0, confidence: 0.9 });
+    const regular = setup({ ...NEW_GRID, mapStretch: { x: 1.048, y: 1 } });
+    await autoDetectGridOnFirstLoad(regular, mapImage);
+    expect(regular.getState().grid).not.toHaveProperty('mapStretch');
   });
 
   it('hides the grid when the map has none, without throwing', async () => {

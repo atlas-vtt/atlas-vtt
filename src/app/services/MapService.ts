@@ -13,6 +13,9 @@ import { LatestRequestQueue } from './latestRequestQueue';
 import { fillStoreFromMapFile } from './mapFileFallback';
 import { t } from '../i18n';
 import type { ViewCamera } from '../pixi/viewCamera';
+import type { PixiRendererOrchestrator } from '../PixiRendererOrchestrator';
+import { fitMapRect } from '../pixi/fitMapRect';
+import { readMapStretch, sameStretch } from '../grid/mapStretch';
 
 /** How long a scene may take to load before the load is given up. */
 export const STALLED_LOAD_MS = 30_000;
@@ -170,6 +173,7 @@ export class MapService {
         if (isSuperseded()) return null;
         await autoDetectGridOnFirstLoad(this.store, mapImage, () => !isSuperseded());
         if (isSuperseded()) return null;
+        this.showDetectedStretch(renderer, camera === null);
       }
 
       // Legacy mapData is now mostly for the renderer
@@ -218,6 +222,22 @@ export class MapService {
       this.recoverFromFailedLoad(rendererService, filePath, error);
       return null;
     }
+  }
+
+  /**
+   * Draws the map with the stretch the grid found on a new scene's first load asks for. The load
+   * showed the image before its grid was known, so the store's stretch is shown here, and a camera
+   * that was fitted to the map is fitted again to its new size.
+   */
+  private showDetectedStretch(renderer: Pick<PixiRendererOrchestrator, 'getMapImage' | 'getViewportInstance'>, refit: boolean): void {
+    const mapImage = renderer.getMapImage();
+    if (!mapImage) return;
+    const stretch = readMapStretch(this.store.getState().grid?.mapStretch);
+    if (sameStretch(stretch, mapImage.mapStretch)) return;
+    mapImage.setStretch(stretch);
+    const viewport = renderer.getViewportInstance();
+    const rect = mapImage.worldRect;
+    if (refit && viewport && rect) fitMapRect(viewport, rect);
   }
 
   /** Tells the user and leaves the view ready for another load. */

@@ -91,6 +91,14 @@
     transform: rotate(90deg);
   }
 
+  // ── Switch row: its label on the panel's text edge, the switch at the end ──
+  .atlas-grid-alignment-switch {
+    @include atlas-flex-row($spacing-m);
+    justify-content: space-between;
+    font-size: 0.8125rem;
+    color: var(--text-normal);
+  }
+
   // ── Progress indicator (Intersections tab) ───────────────────────────
   .atlas-grid-alignment-progress {
     display: flex;

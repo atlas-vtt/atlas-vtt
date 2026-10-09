@@ -11,6 +11,10 @@
  * The spectrum only proposes: a peak may be a harmonic (honeycombs have weak
  * fundamentals) or belong to map art, so the caller fits every proposal to the
  * map's lines and keeps the one they support.
+ *
+ * A grid whose cells are not regular (rows `aspect` times further apart than a
+ * regular grid's) has the same peaks with their vertical frequency divided by
+ * `aspect`, so the same search run at other aspects finds stretched grids.
  */
 
 import type { GridType } from '../../grid/GridSystem';
@@ -21,6 +25,8 @@ export interface SpectralHypothesis {
   cellSize: number;
   /** Harmonic sum of the peak-to-ring-median excess; comparable between hypotheses of one image. */
   score: number;
+  /** How many times further apart the image's rows lie than a regular grid's; 1 for a regular grid. */
+  aspect: number;
 }
 
 const SQRT3 = Math.sqrt(3);
@@ -33,6 +39,11 @@ const HARMONIC_DECAY = 0.85;
 /** Harmonic score below which a frequency is not proposed at all. */
 const MIN_HARMONIC_SCORE = 3;
 const PROPOSALS_PER_TYPE = 2;
+/** Aspects tried for grids that are not regular: 1 % steps up to a quarter either way. */
+const ASPECT_STEP = 1.01;
+const ASPECT_STEPS = 22;
+/** Aspects proposed per grid type, each the best of its neighbourhood. */
+const ASPECTS_PER_TYPE = 2;
 
 function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
@@ -74,6 +85,34 @@ function peakRatioAt(power: Float32Array, n: number, k: number, angles: number[]
   return sum / angles.length / background;
 }
 
+/** Ring medians by radius, shared by every aspect of one spectrum: each peak is compared with the ring it lies on. */
+type RingMedians = (radius: number) => number;
+
+function ringMedians(power: Float32Array, n: number): RingMedians {
+  const known = new Map<number, number>();
+  return (radius) => {
+    const step = Math.round(radius / K_STEP);
+    let median = known.get(step);
+    if (median === undefined) {
+      median = ringMedian(power, n, step * K_STEP);
+      known.set(step, median);
+    }
+    return median;
+  };
+}
+
+/** `peakRatioAt` for a grid of another aspect: its peaks lie at different radii, so each has its own ring. */
+function stretchedPeakRatioAt(power: Float32Array, n: number, k: number, angles: number[], aspect: number, rings: RingMedians): number {
+  let sum = 0;
+  for (const angle of angles) {
+    const fx = k * Math.cos(angle);
+    const fy = (k * Math.sin(angle)) / aspect;
+    const background = rings(Math.hypot(fx, fy));
+    if (background > 0) sum += readPower(power, n, fx, fy) / background;
+  }
+  return sum / angles.length;
+}
+
 function cellSizeFromFrequency(gridType: GridType, n: number, k: number): number {
   return gridType === 'square' ? n / k : (2 * n) / (SQRT3 * k);
 }
@@ -95,9 +134,12 @@ function candidateFundamentals(
   angles: number[],
   kMin: number,
   kMax: number,
+  stretched?: { aspect: number; rings: RingMedians },
 ): SpectralHypothesis[] {
   const ratios: number[] = [];
-  for (let k = kMin; k <= kMax; k += K_STEP) ratios.push(peakRatioAt(power, n, k, angles));
+  for (let k = kMin; k <= kMax; k += K_STEP) {
+    ratios.push(stretched ? stretchedPeakRatioAt(power, n, k, angles, stretched.aspect, stretched.rings) : peakRatioAt(power, n, k, angles));
+  }
 
   /** Peak excess over the ring background around frequency `k`; harmonics may sit a little off their nominal place. */
   const excessAt = (k: number, slack: number): number => {
@@ -122,11 +164,17 @@ function candidateFundamentals(
   return peaks
     .sort((a, b) => scores[b]! - scores[a]!)
     .slice(0, PROPOSALS_PER_TYPE)
-    .map((i) => ({ gridType, cellSize: cellSizeFromFrequency(gridType, n, kMin + i * K_STEP), score: scores[i]! }));
+    .map((i) => ({ gridType, cellSize: cellSizeFromFrequency(gridType, n, kMin + i * K_STEP), score: scores[i]!, aspect: stretched?.aspect ?? 1 }));
 }
 
+const GRID_ANGLES: ReadonlyArray<[GridType, number[]]> = [
+  ['square', SQUARE_ANGLES],
+  ['hex-vertical', POINTY_ANGLES],
+  ['hex-horizontal', FLAT_ANGLES],
+];
+
 /**
- * Grid hypotheses worth fitting, for every grid type. `minPeriod`/`maxPeriod` bound
+ * Regular grid hypotheses worth fitting, for every grid type. `minPeriod`/`maxPeriod` bound
  * the line spacing (in analysed pixels) considered plausible.
  */
 export function spectralHypotheses(
@@ -137,9 +185,34 @@ export function spectralHypotheses(
 ): SpectralHypothesis[] {
   const kMin = n / maxPeriod;
   const kMax = Math.min(n / minPeriod, n / 2 - 2);
-  return [
-    ...candidateFundamentals(power, n, 'square', SQUARE_ANGLES, kMin, kMax),
-    ...candidateFundamentals(power, n, 'hex-vertical', POINTY_ANGLES, kMin, kMax),
-    ...candidateFundamentals(power, n, 'hex-horizontal', FLAT_ANGLES, kMin, kMax),
-  ];
+  return GRID_ANGLES.flatMap(([gridType, angles]) => candidateFundamentals(power, n, gridType, angles, kMin, kMax));
+}
+
+/**
+ * Hypotheses of grids that are not regular, for every grid type: the aspects whose best
+ * fundamental stands out among the aspects next to them and beats the regular grid's.
+ */
+export function stretchedHypotheses(
+  power: Float32Array,
+  n: number,
+  minPeriod: number,
+  maxPeriod: number,
+): SpectralHypothesis[] {
+  const kMin = n / maxPeriod;
+  // A squeezed grid's peaks lie further out than a regular grid's; they must stay inside the spectrum.
+  const kMax = Math.min(n / minPeriod, (n / 2 - 2) / ASPECT_STEP ** ASPECT_STEPS);
+  const rings = ringMedians(power, n);
+  const aspects = Array.from({ length: 2 * ASPECT_STEPS + 1 }, (_, i) => ASPECT_STEP ** (i - ASPECT_STEPS));
+
+  return GRID_ANGLES.flatMap(([gridType, angles]) => {
+    const best = aspects.map((aspect) => candidateFundamentals(power, n, gridType, angles, kMin, kMax, { aspect, rings })[0] ?? null);
+    const regular = best[ASPECT_STEPS]?.score ?? 0;
+    return best
+      .filter((hypothesis, i): hypothesis is SpectralHypothesis => {
+        if (!hypothesis || i === ASPECT_STEPS || hypothesis.score <= regular) return false;
+        return hypothesis.score > (best[i - 1]?.score ?? 0) && hypothesis.score >= (best[i + 1]?.score ?? 0);
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, ASPECTS_PER_TYPE);
+  });
 }

@@ -28,9 +28,9 @@ interface ProfiledEdge {
   profile: Float32Array;
 }
 
-function profileEdges(image: GrayImage, edges: LatticeEdge[], reach: number): ProfiledEdge[] {
+function profileEdges(image: GrayImage, edges: LatticeEdge[], reach: number, aspect: number): ProfiledEdge[] {
   return edges.map((edge) => {
-    const profile = edgeResponse(image, edge, reach, 1);
+    const profile = edgeResponse(image, edge, reach, 1, aspect);
     let max = 0;
     for (const value of profile) max = Math.max(max, value);
     for (let j = 0; j < profile.length; j++) profile[j] = max > 0 ? Math.max(0, profile[j]!) / max : 0;
@@ -58,14 +58,15 @@ function byDirection(profiled: ProfiledEdge[]): ProfiledEdge[][] {
   return [...groups.values()];
 }
 
-export function searchLattice(image: GrayImage, gridType: GridType, roughCellSize: number): LatticeCandidate | null {
-  const start: LatticeCandidate = { cellSize: roughCellSize, offsetX: 0, offsetY: 0 };
+/** `aspect` is the rough aspect of the map's cells (see `LatticeCandidate`); the search keeps it. */
+export function searchLattice(image: GrayImage, gridType: GridType, roughCellSize: number, aspect = 1): LatticeCandidate | null {
+  const start: LatticeCandidate = { cellSize: roughCellSize, offsetX: 0, offsetY: 0, aspect };
   // Offsets span one cell; at the map's rim a size change moves edges further still.
-  const maxCells = Math.hypot(image.width, image.height) / 2 / roughCellSize;
+  const maxCells = Math.hypot(image.width, image.height / aspect) / 2 / roughCellSize;
   const reach = roughCellSize * (0.75 + SIZE_RANGE * maxCells);
   const edges = latticeEdges(image, gridType, start, reach, SEARCH_EDGES);
   if (edges.length < 6) return null;
-  const directions = byDirection(profileEdges(image, edges, reach));
+  const directions = byDirection(profileEdges(image, edges, reach, aspect));
 
   const offsetStep = Math.max(1, roughCellSize / MAX_OFFSET_STEPS);
   const offsetSteps = Math.ceil(roughCellSize / offsetStep);

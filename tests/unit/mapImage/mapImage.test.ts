@@ -77,6 +77,63 @@ describe('MapImage', () => {
     expect(changes).toEqual(['image']);
   });
 
+  it('draws the image stretched: the world rect grows, the image keeps its own size, and listeners hear of another image', async () => {
+    const { mapImage, service, viewport, changes } = harness();
+    service.open.mockResolvedValue(opened(1, 'coast', 12000, 3000));
+    await mapImage.load({ kind: 'file', file: fileAt('maps/coast.webp') });
+
+    mapImage.setStretch({ x: 1.05, y: 1 });
+
+    expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 12600, height: 3000 });
+    expect(mapImage.imageSize).toEqual({ width: 12000, height: 3000 });
+    expect(mapImage.mapStretch).toEqual({ x: 1.05, y: 1 });
+    expect({ x: mapImage.layer.scale.x, y: mapImage.layer.scale.y }).toEqual({ x: 1.05, y: 1 });
+    // The layer's own bounds are the image's; its scale stretches them.
+    expect(mapImage.layer.boundsArea).toMatchObject({ x: 0, y: 0, width: 12000, height: 3000 });
+    expect(viewport.worldWidth).toBe(12600);
+    expect(changes).toEqual(['image', 'image']);
+
+    mapImage.setStretch({ x: 1.05, y: 1 });
+    expect(changes).toEqual(['image', 'image']);
+  });
+
+  it('shows a loaded image with the stretch the load names, and the next one with the same unless it names another', async () => {
+    const { mapImage, service, changes } = harness();
+    service.open.mockResolvedValueOnce(opened(1, 'coast', 1000, 2000)).mockResolvedValueOnce(opened(2, 'cave', 500, 500));
+
+    await mapImage.load({ kind: 'file', file: fileAt('maps/coast.webp') }, { x: 1, y: 1.1 });
+    expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 1000, height: 2200 });
+    expect(changes).toEqual(['image']);
+
+    await mapImage.load({ kind: 'file', file: fileAt('maps/cave.webp') });
+    expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 500, height: 550 });
+
+    await mapImage.load({ kind: 'none', width: 1400, height: 1400 }, { x: 1, y: 1 });
+    expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 1400, height: 1400 });
+  });
+
+  it('asks the tile layer in the image\'s own pixels, whatever the stretch', async () => {
+    const { mapImage, service, viewport, ticker } = harness();
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    // Tiles that fail are not asked for again, so the layer works through everything it wants.
+    service.tile.mockRejectedValue(new Error('no tile'));
+    service.open.mockResolvedValue(opened(1, 'coast', 4000, 4000));
+    await mapImage.load({ kind: 'file', file: fileAt('maps/coast.webp') }, { x: 2, y: 1 });
+    // The camera shows the world's right quarter at one world unit per pixel: the image's right quarter, twice as fine.
+    Object.assign(viewport, { left: 6000, top: 0, worldScreenWidth: 2000, worldScreenHeight: 600 });
+
+    for (let i = 0; i < 40; i++) {
+      ticker.update();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+
+    const columns = service.tile.mock.calls.map(([, ref]) => (ref as { level: number; col: number }));
+    const finest = columns.filter((ref) => ref.level === 0).map((ref) => ref.col);
+    // Level 0 tiles are 510 image pixels wide; image x 3000 to 4000 is columns 5 to 7 (and one more to the left as prefetch).
+    expect(Math.min(...finest)).toBe(4);
+    expect(Math.max(...finest)).toBe(7);
+  });
+
   it('drops a load that a later one overtook, and closes what it opened', async () => {
     const { mapImage, service } = harness();
     const slow = deferred<OpenedMap>();

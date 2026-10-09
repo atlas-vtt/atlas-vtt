@@ -11,8 +11,10 @@ export interface MapPixels {
 
 /** A map image's size and pixels, what grid detection reads. */
 export interface DetectableMap extends MapPixels {
-  /** The image in world units; null while none is shown. */
+  /** The image in world units, as it is drawn (stretched, where its grid's alignment says so); null while none is shown. */
   readonly worldRect: PixelRect | null;
+  /** The image's own size in pixels; null while none is shown. */
+  readonly imageSize: { width: number; height: number } | null;
 }
 
 /**

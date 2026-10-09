@@ -1,6 +1,6 @@
 import type { StoreApi } from 'zustand';
 import { detectGridFromMapImage, type DetectableMap } from '../pixi/gridDetection/detectGrid';
-import type { AlignmentResult } from '../pixi/gridAlignmentMath';
+import { gridAlignedTo, type AlignmentResult } from '../pixi/gridAlignmentMath';
 import type { GridState } from '../types/gridTypes';
 import type { ViewAtlasState } from '../storeFactory';
 
@@ -8,8 +8,10 @@ import type { ViewAtlasState } from '../storeFactory';
  * Aligns the grid of a freshly created scene to its map image, once. New scenes
  * carry `grid.autoDetect`; the GM view consumes the flag on the first load. A map
  * without a detectable grid simply gets its grid hidden. The renderer follows the
- * store's grid, so writing the store is all that is needed. Detection reads the map's pixels
- * from the tile worker: nothing is written once `isCurrent` says the load was overtaken meanwhile.
+ * store's grid, so writing the store is all that is needed, except for the map's stretch
+ * (`GridState.mapStretch`), which a load shows itself: the caller draws the map with it.
+ * Detection reads the map's pixels from the tile worker: nothing is written once `isCurrent`
+ * says the load was overtaken meanwhile.
  */
 export async function autoDetectGridOnFirstLoad(
   store: StoreApi<ViewAtlasState>,
@@ -34,14 +36,7 @@ export async function autoDetectGridOnFirstLoad(
     return;
   }
 
-  setGrid({
-    ...settled,
-    ...(detected.gridType ? { type: detected.gridType } : {}),
-    size: detected.cellSize,
-    offsetX: detected.offsetX,
-    offsetY: detected.offsetY,
-    visible: true,
-  });
+  setGrid({ ...gridAlignedTo(settled, detected), visible: true });
 }
 
 /** A map whose pixels cannot be read is a map without a grid, not a failed load. */

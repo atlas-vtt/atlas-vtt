@@ -1,4 +1,5 @@
 import type { CellNumberFormat } from '../grid/cellNumbering';
+import type { MapStretch } from '../grid/mapStretch';
 
 // Type definitions
 export interface CameraState {
@@ -33,6 +34,12 @@ export interface GridState {
   measurementType?: 'units' | 'abstract'; // Measurement system to use
   /** Set on new scenes: align the grid to the map image on the first load, then cleared. */
   autoDetect?: boolean;
+  /**
+   * How the map image is drawn stretched so that this regular grid fits the cells printed on it
+   * (hexes a few percent too tall, squares that are rectangles). Part of the alignment: size and
+   * offsets are in the stretched world. Unset draws the image as it is; read it with `readMapStretch`.
+   */
+  mapStretch?: MapStretch;
   /** Numbers every cell of the grid in this format; unset shows no numbers. */
   cellNumbers?: CellNumberFormat;
   /** Opacity of the cell numbers (0 to 1), separate from the grid lines; unset is `DEFAULT_CELL_NUMBER_OPACITY`. */
