@@ -63,6 +63,12 @@ function registerPlayerViewCommands(plugin: Plugin, imageDisplay: ImageDisplaySe
   });
 
   plugin.addCommand({
+    id: 'show-map-in-player-window',
+    name: t('command.showMapInPlayerWindow'),
+    callback: () => void presentActiveTab(plugin.app, { openWindow: true }),
+  });
+
+  plugin.addCommand({
     id: 'open-player-window',
     name: t('command.openPlayerWindow'),
     callback: () => void openPlayerWindow(plugin.app),
