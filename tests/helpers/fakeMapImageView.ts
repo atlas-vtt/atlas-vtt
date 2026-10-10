@@ -24,6 +24,9 @@ export function fakeMapImageView(width: number, height: number, options: FakeMap
     get worldRect(): PixelRect | null {
       return worldRect;
     },
+    get imageSize(): { width: number; height: number } | null {
+      return worldRect && { width: worldRect.width, height: worldRect.height };
+    },
     overview: options.overview ?? ((): Promise<ImageBitmap | null> => Promise.resolve(null)),
     onChange(listener): () => void {
       listeners.add(listener);

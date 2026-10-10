@@ -6,8 +6,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { GridAlignmentController } from '../../pixi/GridAlignmentController';
 import type { AlignmentPoint, AlignmentResult } from '../../pixi/GridAlignmentController';
-import { calculateAlignment } from '../../pixi/gridAlignmentMath';
-import type { MeasurementPair } from '../../pixi/gridAlignmentMath';
+import type { FitToLines } from './useGridFit';
 import type { GridType } from '../../grid/GridSystem';
 import { isHexGridType } from '../../grid/hexGeometry';
 import { setCanvasCursor } from '../../pixi/utils/canvasCursor';
@@ -23,7 +22,10 @@ export interface AlignmentTabProps {
   view: AtlasView | null;
   result: AlignmentResult | null;
   setResult: (r: AlignmentResult | null) => void;
+  /** The grid type the GM picked in the panel. */
   gridType: GridType;
+  /** Fits what the tab measures to the map's lines; null while the GM has that switched off. */
+  fit: FitToLines | null;
 }
 
 /** Instructions for the two clicks of a measurement, per grid type; `first` takes the `{area}` to click in. */
@@ -176,31 +178,28 @@ export function useCursorPreview(
 }
 
 // ---------------------------------------------------------------------------
-// useAlignmentPreview — recalculates grid preview when measurements change
+// useAlignmentPreview — shows an alignment with the arrow-key nudges on top
 // ---------------------------------------------------------------------------
 
+/** Previews `alignment` moved by the nudges and reports it as the tab's result; null reports none and leaves the grid as it is shown. */
 export function useAlignmentPreview(
-  measurements: MeasurementPair[],
+  alignment: AlignmentResult | null,
   offsetAdjust: { dx: number; dy: number },
-  isPreviewing: boolean,
   controller: GridAlignmentController | null,
   setResult: (r: AlignmentResult | null) => void,
-  gridType: GridType,
 ): void {
   useEffect(() => {
-    if (!controller || !isPreviewing || measurements.length === 0) return;
-
-    const calc = calculateAlignment(measurements, gridType);
-    if (calc) {
-      const adjustedResult: AlignmentResult = {
-        ...calc,
-        offsetX: calc.offsetX + offsetAdjust.dx,
-        offsetY: calc.offsetY + offsetAdjust.dy,
-      };
-      setResult(adjustedResult);
-      controller.showPreview(adjustedResult.cellSize, adjustedResult.offsetX, adjustedResult.offsetY, adjustedResult.gridType);
-    } else {
+    if (!controller) return;
+    if (!alignment) {
       setResult(null);
+      return;
     }
-  }, [measurements, offsetAdjust, isPreviewing, controller, setResult, gridType]);
+    const nudged: AlignmentResult = {
+      ...alignment,
+      offsetX: alignment.offsetX + offsetAdjust.dx,
+      offsetY: alignment.offsetY + offsetAdjust.dy,
+    };
+    setResult(nudged);
+    controller.showPreview(nudged);
+  }, [alignment, offsetAdjust, controller, setResult]);
 }

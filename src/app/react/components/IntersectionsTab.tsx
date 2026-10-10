@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Check } from 'lucide-react';
 import type { AlignmentPoint } from '../../pixi/GridAlignmentController';
-import { isPointInQuadrant, measurementCellSize } from '../../pixi/gridAlignmentMath';
+import { alignmentCandidates, isPointInQuadrant, measurementCellSize } from '../../pixi/gridAlignmentMath';
+import type { GridType } from '../../grid/GridSystem';
 import { isHexGridType } from '../../grid/hexGeometry';
-import type { MeasurementPair } from '../../pixi/gridAlignmentMath';
+import { NO_STRETCH, sameStretch, type MapStretch } from '../../grid/mapStretch';
+import type { AlignmentResult, MeasurementPair } from '../../pixi/gridAlignmentMath';
 import {
   useCrosshairCursor,
   useCanvasClick,
@@ -11,9 +13,10 @@ import {
   useCursorPreview,
   useAlignmentPreview,
   alignmentPointHints,
-  describeGridType,
 } from '../hooks/useGridAlignmentEffects';
 import type { AlignmentTabProps } from '../hooks/useGridAlignmentEffects';
+import { useFittedAlignment } from '../hooks/useGridFit';
+import { AlignmentSummary } from './AlignmentSummary';
 import { t } from '../../i18n';
 
 // ---------------------------------------------------------------------------
@@ -23,28 +26,49 @@ import { t } from '../../i18n';
 const QUADRANT_LABELS = [t('align.area.topLeft'), t('align.area.topRight'), t('align.area.bottomLeft'), t('align.area.bottomRight')] as const;
 const TOTAL_PAIRS = 4;
 const TOTAL_STEPS = TOTAL_PAIRS * 2;
+const NO_CANDIDATES: AlignmentResult[] = [];
+
+/** The grids the measurements can stand for, in the world as the map was drawn while they were taken. */
+function measuredGrids(measurements: MeasurementPair[], gridType: GridType, stretch: MapStretch): AlignmentResult[] {
+  const candidates = alignmentCandidates(measurements, gridType);
+  return sameStretch(stretch, NO_STRETCH) ? candidates : candidates.map((candidate) => ({ ...candidate, mapStretch: stretch }));
+}
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function IntersectionsTab({ controller, view, result, setResult, gridType }: AlignmentTabProps): React.ReactElement {
+export function IntersectionsTab({ controller, view, result, setResult, gridType, fit }: AlignmentTabProps): React.ReactElement {
   const isHex = isHexGridType(gridType);
   const hints = alignmentPointHints(gridType);
   const [step, setStep] = useState(0);
   const [measurements, setMeasurements] = useState<MeasurementPair[]>([]);
   const [currentPointA, setCurrentPointA] = useState<AlignmentPoint | null>(null);
+  /** How the map was drawn when the first point was clicked; a preview may stretch it otherwise later. */
+  const [measuredStretch, setMeasuredStretch] = useState<MapStretch>(NO_STRETCH);
 
   // Derived state
   const isPreviewing = step >= TOTAL_STEPS;
   const quadrantIndex = Math.min(Math.floor(step / 2), 3) as 0 | 1 | 2 | 3;
   const isPlacingA = step % 2 === 0;
 
+  // One measurement names the grid well enough for the map's lines to place it, so they are asked
+  // after the first and, where they did not answer then, once all four are in.
+  const candidates = useMemo(() => measuredGrids(measurements, gridType, measuredStretch), [measurements, gridType, measuredStretch]);
+  const fitted = useFittedAlignment(measurements.length === 1 || isPreviewing ? candidates : NO_CANDIDATES, fit);
+  const foundOnLines = fitted.result?.confidence !== undefined;
+  useEffect(() => {
+    if (!foundOnLines) return;
+    // The grid comes from the lines now: the clicks that named it, a half-made measurement too, are done with.
+    controller?.cleanupVisuals();
+    setStep(TOTAL_STEPS);
+  }, [foundOnLines, controller]);
+
   // Shared hooks
   useCrosshairCursor(isPreviewing, view);
   const offsetAdjust = useArrowNudge(isPreviewing);
   useCursorPreview(isPreviewing, isPlacingA, currentPointA, controller, !isHex);
-  useAlignmentPreview(measurements, offsetAdjust, isPreviewing, controller, setResult, gridType);
+  useAlignmentPreview(isPreviewing ? fitted.result : null, offsetAdjust, controller, setResult);
 
   // -----------------------------------------------------------------------
   // Instruction text
@@ -92,6 +116,7 @@ export function IntersectionsTab({ controller, view, result, setResult, gridType
       const mapBounds = controller.getMapBounds();
       if (mapBounds && !isPointInQuadrant(world, quadrantIndex, mapBounds)) return;
 
+      if (step === 0) setMeasuredStretch(controller.getMapStretch());
       controller.showMeasurementCrosshair(step, world);
       setCurrentPointA(world);
       setStep(s => s + 1);
@@ -149,27 +174,21 @@ export function IntersectionsTab({ controller, view, result, setResult, gridType
 
       <p className="atlas-grid-alignment-hint">{getInstructionText()}</p>
 
-      {/* Result display */}
+      {fitted.pending && !isPreviewing && <p className="atlas-grid-alignment-hint">{t('align.fitting')}</p>}
+
       {result && (
-        <div className="atlas-grid-alignment-result">
-          <div>
-            {t('align.cellSize', { size: result.cellSize.toFixed(2) })}
-            {measurements.length > 0 && t('align.fromMeasurements', { count: measurements.length })}
-          </div>
-          {measurements.length > 1 && (
+        <AlignmentSummary result={result} fitting={fitted.pending} fitAsked={fit !== null}>
+          {!foundOnLines && measurements.length > 1 && (
             <div className="atlas-grid-alignment-measurements">
               {t('align.individual', { sizes: individualSizes.map(s => s.toFixed(1)).join(', ') })}
             </div>
           )}
-          {result.gridType && result.gridType !== 'square' && (
-            <div className="atlas-grid-alignment-measurements">{t('align.detected', { type: describeGridType(result.gridType) })}</div>
-          )}
-          {result.maxResidual !== undefined && result.maxResidual > 3 && (
+          {!foundOnLines && result.maxResidual !== undefined && result.maxResidual > 3 && (
             <div className="atlas-grid-alignment-measurements">
               {t('align.disagree', { residual: result.maxResidual.toFixed(1) })}
             </div>
           )}
-        </div>
+        </AlignmentSummary>
       )}
     </>
   );

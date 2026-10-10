@@ -1,12 +1,18 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useId, useRef } from 'react';
 import { Crosshair, RotateCcw, Wand2 } from 'lucide-react';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { GridAlignmentController } from '../../pixi/GridAlignmentController';
 import type { AlignmentResult } from '../../pixi/GridAlignmentController';
 import type { GridType } from '../../grid/GridSystem';
+import { gridAlignedTo } from '../../pixi/gridAlignmentMath';
+import { movedWithMap, readMapStretch, sameStretch } from '../../grid/mapStretch';
+import { runHistoryTransaction } from '../../stores/history';
 import { detectGridFromMapImage } from '../../pixi/gridDetection/detectGrid';
-import { describeGridType } from '../hooks/useGridAlignmentEffects';
 import type { AlignmentTabProps } from '../hooks/useGridAlignmentEffects';
+import { useGridFit } from '../hooks/useGridFit';
+import { ToggleSwitch } from '../../packages/components/primitives/Toggle';
+import { DetectedGridPreview } from './DetectedGridPreview';
+import { GridTypePicker } from './GridTypePicker';
 import { IntersectionsTab } from './IntersectionsTab';
 import { FreehandTab } from './FreehandTab';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
@@ -44,16 +50,23 @@ interface GridAlignmentOverlayProps {
 export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): React.ReactElement {
   const { view } = useAtlasUI();
   const store = view?.atlasStore;
-  const gridType: GridType = store?.getState().grid?.type ?? 'square';
 
+  // The grid the GM aligns: the scene's own to begin with, theirs to change, and what auto-detect finds.
+  const [gridType, setGridType] = useState<GridType>(() => store?.getState().grid?.type ?? 'square');
+  const [fitToLines, setFitToLines] = useState(true);
+  const fit = useGridFit(view);
   const [activeTab, setActiveTab] = useState<AlignmentTab>('intersections');
   const [result, setResult] = useState<AlignmentResult | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const [, setControllerVersion] = useState(0);
   const [detecting, setDetecting] = useState(false);
   const [detectionStatus, setDetectionStatus] = useState<string | null>(null);
+  /** What auto-detect found: shown in place of the tab until the GM measures or places a grid themselves. */
+  const [detected, setDetected] = useState<AlignmentResult | null>(null);
 
   const controllerRef = useRef<GridAlignmentController | null>(null);
+  /** Counts what the GM asked for since a detection began: its answer is shown only if nothing was asked since. */
+  const detectionRun = useRef(0);
 
   // -----------------------------------------------------------------------
   // Controller lifecycle
@@ -107,24 +120,32 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
     onClose();
   }, [onClose, view]);
 
+  /** Forgets what was measured or detected, and starts the tab's content anew. */
+  const clearAlignment = useCallback((): void => {
+    detectionRun.current++;
+    setDetecting(false);
+    setResult(null);
+    setDetected(null);
+    setDetectionStatus(null);
+    setResetKey(k => k + 1);
+  }, []);
+
   const handleReset = useCallback((): void => {
     view?.renderer?.cancelGridAlignment?.();
     controllerRef.current?.destroy();
     controllerRef.current = null;
 
-    setResult(null);
-    setDetectionStatus(null);
+    clearAlignment();
     initController();
-    setResetKey(k => k + 1);
-  }, [initController, view]);
+  }, [clearAlignment, initController, view]);
 
   const handleAutoDetect = useCallback((): void => {
     const mapImage = view?.renderer?.getMapImage?.();
     if (!mapImage || detecting) return;
 
     controllerRef.current?.cleanupVisuals();
-    setResult(null);
-    setResetKey(k => k + 1);
+    clearAlignment();
+    const run = detectionRun.current;
     setDetecting(true);
     setDetectionStatus(t('align.analysing'));
 
@@ -132,40 +153,36 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
     void detectGridFromMapImage(mapImage).catch((error: unknown): null => {
       console.error('[GridAlignment] Auto-detect failed', error);
       return null;
-    }).then((detected) => {
+    }).then((found) => {
+      if (run !== detectionRun.current) return;
       setDetecting(false);
-      if (!detected || !detected.gridType) {
+      if (!found?.gridType) {
         setDetectionStatus(t('align.noGrid'));
         return;
       }
-      setResult(detected);
-      controllerRef.current?.showPreview(detected.cellSize, detected.offsetX, detected.offsetY, detected.gridType);
-      setDetectionStatus(
-        t('align.detectedFull', { type: describeGridType(detected.gridType), size: detected.cellSize.toFixed(2), percent: Math.round((detected.confidence ?? 0) * 100) }),
-      );
+      setDetectionStatus(null);
+      setGridType(found.gridType);
+      setDetected(found);
     });
-  }, [view, detecting]);
+  }, [view, detecting, clearAlignment]);
 
   const handleApply = useCallback((): void => {
     if (!store || !result) return;
 
-    const { cellSize, offsetX, offsetY, gridType: resultType } = result;
-
-    const renderer = view?.renderer;
-    if (renderer?.applyGridAlignment) {
-      renderer.applyGridAlignment(cellSize, offsetX, offsetY, resultType);
-    }
-
     const currentGrid = store.getState().grid;
     if (!currentGrid) return;
-    store.getState().setGrid({
-      ...currentGrid,
-      ...(resultType ? { type: resultType } : {}),
-      size: cellSize,
-      offsetX,
-      offsetY,
-      enabled: true,
-      visible: true,
+    const renderer = view?.renderer;
+    const grid = { ...gridAlignedTo(currentGrid, result), enabled: true, visible: true };
+    // The map keeps the stretch the preview gave it (the renderer follows the store's), and what
+    // stands on the map keeps its place on it.
+    const from = readMapStretch(currentGrid.mapStretch);
+    const to = readMapStretch(grid.mapStretch);
+    const imageSize = renderer?.getMapImage?.()?.imageSize;
+    const move = imageSize && !sameStretch(from, to) ? movedWithMap(imageSize, from, to) : undefined;
+    // One undo step: the grid, what moved with the map, and the tokens snapped to the new cells.
+    runHistoryTransaction(store, () => {
+      store.getState().alignGrid(grid, move);
+      renderer?.applyGridAlignment?.(result.cellSize, result.offsetX, result.offsetY, result.gridType);
     });
 
     controllerRef.current?.destroy();
@@ -177,14 +194,45 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
   // Tab switching — clean up visuals from previous tab
   // -----------------------------------------------------------------------
 
-  const handleTabChange = useCallback((tab: AlignmentTab): void => {
-    if (tab === activeTab) return;
+  /** Starts the active tab anew, as after another tab, grid type or way of fitting was chosen. */
+  const restartTab = useCallback((): void => {
     controllerRef.current?.cleanupVisuals();
-    setResult(null);
-    setDetectionStatus(null);
-    setResetKey(k => k + 1);
+    view?.renderer?.cancelGridAlignment?.();
+    clearAlignment();
+  }, [clearAlignment, view]);
+
+  const handleTabChange = useCallback((tab: AlignmentTab): void => {
+    // The tab already chosen is a way back from a detected grid to measuring.
+    if (tab === activeTab && !detected) return;
+    restartTab();
     setActiveTab(tab);
-  }, [activeTab]);
+  }, [activeTab, detected, restartTab]);
+
+  const handleGridTypeChange = useCallback((type: GridType): void => {
+    if (type === gridType) return;
+    restartTab();
+    setGridType(type);
+  }, [gridType, restartTab]);
+
+  const handleFitToLinesChange = useCallback((): void => {
+    restartTab();
+    setFitToLines(on => !on);
+  }, [restartTab]);
+
+  // -----------------------------------------------------------------------
+  // Another scene in this view ends the alignment: what was measured belongs to the map it was measured on
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!store) return;
+    const mapPath = store.getState().mapPath;
+    let ended = false;
+    return store.subscribe((state) => {
+      if (ended || (state.mapPath === mapPath && !state.isMapLoading)) return;
+      ended = true;
+      handleCancel();
+    });
+  }, [store, handleCancel]);
 
   // -----------------------------------------------------------------------
   // Escape key
@@ -208,6 +256,7 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
   // -----------------------------------------------------------------------
 
   const ActiveTab = TAB_COMPONENTS[activeTab];
+  const fitLabelId = useId();
 
   return (
     <div className="atlas-vtt-plugin atlas-vtt-root" style={{ pointerEvents: 'none' }}>
@@ -225,7 +274,7 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
           {ALIGNMENT_TABS.map(tab => (
             <button
               key={tab.id}
-              className={`atlas-grid-alignment-tab${activeTab === tab.id ? ' is-active' : ''}`}
+              className={`atlas-grid-alignment-tab${activeTab === tab.id && !detected ? ' is-active' : ''}`}
               onClick={() => handleTabChange(tab.id)}
             >
               {tab.label}
@@ -246,15 +295,28 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
         </LabelTooltip>
         {detectionStatus && <p className="atlas-grid-alignment-hint">{detectionStatus}</p>}
 
-        {/* Active tab content */}
-        <ActiveTab
-          key={resetKey}
-          controller={controllerRef.current}
-          view={view}
-          result={result}
-          setResult={setResult}
-          gridType={gridType}
-        />
+        <GridTypePicker value={gridType} onChange={handleGridTypeChange} />
+
+        <LabelTooltip label={t('align.fitToLinesTip')} describe>
+          <div className="atlas-grid-alignment-switch">
+            <span id={fitLabelId}>{t('align.fitToLines')}</span>
+            <ToggleSwitch value={fitToLines} labelledBy={fitLabelId} onChange={handleFitToLinesChange} />
+          </div>
+        </LabelTooltip>
+
+        {detected ? (
+          <DetectedGridPreview controller={controllerRef.current} detected={detected} result={result} setResult={setResult} />
+        ) : (
+          <ActiveTab
+            key={resetKey}
+            controller={controllerRef.current}
+            view={view}
+            result={result}
+            setResult={setResult}
+            gridType={gridType}
+            fit={fitToLines ? fit : null}
+          />
+        )}
 
         {/* Action buttons */}
         <div className="atlas-grid-alignment-actions">

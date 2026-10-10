@@ -196,7 +196,10 @@ export class GridSystem implements UnlitGrid {
     // a visible mask whose grid is hidden is left out of PIXI's batch yet still updated in place on
     // every zoom, writing its corners over whatever took its slot (the map folded towards a pin).
     const maskGraphics = new Graphics();
-    maskGraphics.rect(0, 0, mapWidth, mapHeight);
+    // A scan turned level lies askew in its world rect: the grid ends at the image, not at the rect's empty corners.
+    const outline = this.map.outline;
+    if (outline) maskGraphics.poly(outline.flatMap((corner) => [corner.x - mapX, corner.y - mapY]));
+    else maskGraphics.rect(0, 0, mapWidth, mapHeight);
     maskGraphics.fill(0xffffff);
     maskGraphics.position.set(mapX - bounds.minX, mapY - bounds.minY);
     grid.addChild(maskGraphics);

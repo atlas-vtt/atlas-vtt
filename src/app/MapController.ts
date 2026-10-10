@@ -6,6 +6,7 @@ import { MAP_THUMBNAIL_SIZE } from './services/MapThumbnailService';
 import type { PixiRendererOrchestrator } from './PixiRendererOrchestrator';
 import type { GridOptions } from './grid/GridSystem';
 import { parseGridColor } from './grid/gridContrastColor';
+import { readMapStretch, sameStretch } from './grid/mapStretch';
 import { cellNumberStyleOfGrid } from './grid/cellNumbering';
 import { MapImage } from './pixi/mapImage/MapImage';
 import { MapImageService } from './pixi/mapImage/MapImageService';
@@ -70,7 +71,7 @@ async function loadAndDisplay(
   const mapImage = viewMapImage(app, renderer);
   if (mapImage) {
     shownBackground.set(mapImage, mapData.background ?? null);
-    await mapImage.load(image);
+    await mapImage.load(image, readMapStretch(mapData.grid?.mapStretch));
     if (isSuperseded()) return null;
   }
 
@@ -140,6 +141,21 @@ function followBackground(app: App, store: ViewAtlasStore, mapImage: MapImage): 
 }
 
 /**
+ * Draws the map image with the stretch of the store's grid whenever that changes outside a load
+ * (an alignment applied, its undo or redo), and says so with `onFollowed`. Returns the unsubscribe.
+ */
+function followStretch(store: ViewAtlasStore, mapImage: MapImage, onFollowed: () => void): () => void {
+  return store.subscribe((state) => readMapStretch(state.grid?.mapStretch), (stretch) => {
+    const state = store.getState();
+    // A load shows its image with the stretch of its file.
+    if (!state.mapLoaded || state.isMapLoading) return;
+    mapImage.setStretch(stretch);
+    // The image may have been drawn this way already, as an alignment's preview: nothing changed on it then.
+    onFollowed();
+  }, { equalityFn: sameStretch });
+}
+
+/**
  * Handles loading map resources and initialising renderer state.
  */
-export const MapController = { loadAndDisplay, followBackground };
+export const MapController = { loadAndDisplay, followBackground, followStretch };
