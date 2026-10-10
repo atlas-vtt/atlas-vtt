@@ -2,6 +2,11 @@
   "version": "0.7.1-beta.0",
   "releases": [
     {
+      "version": "0.7.1-beta.0",
+      "title": "Coming in 0.7.1",
+      "markdown": "## Fixed\n\n- A collection's cover and the thumbnails of small images are saved as WebP, as their file names say, and an export no longer carries one that is a PNG or JPEG under a WebP name"
+    },
+    {
       "version": "0.7.0",
       "date": "2026-10-09",
       "title": "Huge sharp maps, gliding tokens and a lighting quality setting",
