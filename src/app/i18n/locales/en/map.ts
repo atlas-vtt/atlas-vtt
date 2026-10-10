@@ -9,9 +9,11 @@ export const map = {
   'map.loadingImage': 'Loading map image...',
   'map.restoring': 'Restoring map data...',
   'map.loadingTokens': 'Loading tokens and pins...',
+  'map.alignGrid': 'Align the grid',
   'map.detectingGrid': 'Detecting grid...',
   'map.loadingNTokens': { one: 'Loading {count} token...', other: 'Loading {count} tokens...' },
   'map.finalizing': 'Finalizing...',
+  'map.noGridFound': 'No grid was found on this map, so none is shown.',
   'map.openFailed': 'Atlas VTT could not open the scene {name} ({reason}).',
   'map.imageUnshown': 'Atlas VTT could not show the map image {file}. {reason}',
 } as const satisfies Record<string, Message>;

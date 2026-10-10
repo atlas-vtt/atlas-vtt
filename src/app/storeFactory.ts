@@ -31,6 +31,8 @@ import { withoutCollectionWidgets } from './utils/collectionWidgets';
 import { withWidgetOff } from './utils/widgetActivation';
 import type { TimerState } from './utils/timerWidget';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
+import type { MapMove } from './grid/mapStretch';
+import { objectsMovedWithMap } from './grid/mapStretchObjects';
 import { computeNextInstanceNumber } from './stores/tokenInstanceNumbers';
 import { placeTokens, raiseTokens, type TokenPlace } from './stores/tokenStacking';
 import type { DiceRollResult } from './types/diceTypes';
@@ -51,6 +53,11 @@ export interface ViewAtlasState extends ViewState {
   setMapLoading: (loading: boolean, progress?: number, message?: string) => void;
   setBackground: (bg: string | null) => void;
   setGrid: (grid: GridState) => void;
+  /**
+   * Sets an aligned grid. Where the alignment draws the map another way (`GridState.mapStretch`),
+   * `move` takes what stands on the map along (`objectsMovedWithMap`), in the same write.
+   */
+  alignGrid: (grid: GridState, move?: MapMove) => void;
   setGridUnits: (units: { unitType: 'feet' | 'yards' | 'meters' | 'units'; unitDistance: number }) => void;
   setGridVisible: (visible: boolean) => void;
   setSnapToGrid: (snap: boolean) => void;
@@ -493,6 +500,14 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           setGrid: (grid) => set((draft) => {
             draft.grid = grid;
           }),
+
+          alignGrid: (grid, move) => {
+            const objects = move ? objectsMovedWithMap(get().objects, move) : null;
+            set((draft) => {
+              draft.grid = grid;
+              if (objects) draft.objects = objects;
+            });
+          },
           
           // Set grid units
           setGridUnits: (units) => set((draft) => {

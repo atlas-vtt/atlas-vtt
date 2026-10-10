@@ -74,6 +74,38 @@ export function localContrast(image: GrayImage, d: number): GrayImage {
   return { width, height, data: out };
 }
 
+/**
+ * Line evidence that ignores edges: how much darker (or lighter) a pixel is than both of its flanks
+ * at distance `d`, for the line direction (level, upright or a diagonal) that shows it best. A step
+ * in brightness (the border of a painted area, the blocks of a JPEG) has only one flank that differs
+ * and counts nothing.
+ */
+export function lineContrast(image: GrayImage, d: number): GrayImage {
+  const { width, height, data } = image;
+  const out = new Float32Array(width * height);
+  // Offsets to the flank on one side, for the four line directions; the other flank lies opposite.
+  const across = d;
+  const along = d * width;
+  const falling = along + d;
+  const rising = along - d;
+  /** How far the pixel lies beyond both flanks, on either side of them; negative where it lies between them. */
+  const beyond = (a: number, b: number): number => (a < b ? Math.max(a, -b) : Math.max(b, -a));
+  for (let y = d; y < height - d; y++) {
+    for (let x = d; x < width - d; x++) {
+      const i = y * width + x;
+      const on = data[i]!;
+      out[i] = Math.max(
+        0,
+        beyond(data[i + across]! - on, data[i - across]! - on),
+        beyond(data[i + along]! - on, data[i - along]! - on),
+        beyond(data[i + falling]! - on, data[i - falling]! - on),
+        beyond(data[i + rising]! - on, data[i - rising]! - on),
+      );
+    }
+  }
+  return { width, height, data: out };
+}
+
 export function sampleBilinear(image: GrayImage, x: number, y: number): number {
   const x0 = Math.floor(x);
   const y0 = Math.floor(y);

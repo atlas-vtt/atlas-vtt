@@ -9,11 +9,18 @@
 
 import { Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { GridSystem, GridType } from '../grid/GridSystem';
+import type { GridSystem } from '../grid/GridSystem';
+import { NO_STRETCH, sameStretch, type MapStretch } from '../grid/mapStretch';
 import { getQuadrantBounds } from './gridAlignmentMath';
-import type { AlignmentPoint, MapBounds } from './gridAlignmentMath';
+import type { AlignmentPoint, AlignmentResult, MapBounds } from './gridAlignmentMath';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import type { DetectableMap } from './mapImage/mapImageView';
+
+/** The part of the view's map image an alignment reads and tries its stretch on. */
+export interface AlignedMap extends Pick<DetectableMap, 'worldRect'> {
+  readonly mapStretch: MapStretch;
+  setStretch(stretch: MapStretch): void;
+}
 
 // Re-exports so consumers can import from one place
 export type { AlignmentPoint, AlignmentResult } from './gridAlignmentMath';
@@ -38,7 +45,7 @@ export class GridAlignmentController {
   private viewport: Viewport;
   private gridSystem: GridSystem;
   private canvasEl: HTMLCanvasElement;
-  private map: Pick<DetectableMap, 'worldRect'> | null;
+  private map: AlignedMap | null;
 
   private crosshairs: (Graphics | null)[] = [];
   private connectingLines: (Graphics | null)[] = [];
@@ -49,7 +56,7 @@ export class GridAlignmentController {
     viewport: Viewport,
     gridSystem: GridSystem,
     canvasEl: HTMLCanvasElement,
-    map: Pick<DetectableMap, 'worldRect'> | null = null,
+    map: AlignedMap | null = null,
   ) {
     this.viewport = viewport;
     this.gridSystem = gridSystem;
@@ -71,6 +78,11 @@ export class GridAlignmentController {
   getMapBounds(): MapBounds | null {
     const rect = this.map?.worldRect;
     return rect && rect.width > 0 && rect.height > 0 ? { ...rect } : null;
+  }
+
+  /** How the map is drawn stretched right now: what points clicked on it are measured in. */
+  getMapStretch(): MapStretch {
+    return this.map?.mapStretch ?? NO_STRETCH;
   }
 
   // -----------------------------------------------------------------------
@@ -222,14 +234,20 @@ export class GridAlignmentController {
   // Grid preview
   // -----------------------------------------------------------------------
 
-  showPreview(cellSize: number, offsetX: number, offsetY: number, type?: GridType): void {
+  /** Shows the grid of `result` over the map as the result stretches it. */
+  showPreview(result: AlignmentResult): void {
+    const stretch = result.mapStretch ?? NO_STRETCH;
+    // Marks stay where they were clicked in the world, which a map stretched otherwise has moved away under them.
+    if (this.map && !sameStretch(stretch, this.map.mapStretch)) this.clearMeasurements();
+    // The grid is drawn over the map's rect, so the map takes its stretch first.
+    this.map?.setStretch(stretch);
     this.gridSystem.updateOptions({
-      size: cellSize,
-      offsetX,
-      offsetY,
+      size: result.cellSize,
+      offsetX: result.offsetX,
+      offsetY: result.offsetY,
       enabled: true,
       isAligning: true,
-      ...(type ? { type } : {}),
+      ...(result.gridType ? { type: result.gridType } : {}),
     });
   }
 
@@ -243,6 +261,12 @@ export class GridAlignmentController {
   // -----------------------------------------------------------------------
 
   cleanupVisuals(): void {
+    this.clearMeasurements();
+    this.clearQuadrantDimming();
+    this.hideCursorPreview();
+  }
+
+  private clearMeasurements(): void {
     for (const g of this.crosshairs) {
       if (g) this.removeGraphics(g);
     }
@@ -252,9 +276,6 @@ export class GridAlignmentController {
       if (g) this.removeGraphics(g);
     }
     this.connectingLines = [];
-
-    this.clearQuadrantDimming();
-    this.hideCursorPreview();
   }
 
   destroy(): void {
