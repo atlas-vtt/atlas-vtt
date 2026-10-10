@@ -443,7 +443,7 @@ describe('PlayerWindowPresenter', () => {
       expect(serviceMock.openLeaf).not.toHaveBeenCalled();
       expect(serviceMock.presentCanvas).not.toHaveBeenCalled();
       expect(changes).toHaveBeenCalledWith({ tabId: dungeon, filePath: DUNGEON });
-      expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Player view shows Dungeon');
+      expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Players see Dungeon; the local player window stays closed');
       // Browsing other tabs holds nothing: there is no window to hold a frame in
       view.tabMetaStore.getState().setActiveTab(tavern);
       expect(serviceMock.holdCurrentFrame).not.toHaveBeenCalled();
@@ -452,6 +452,23 @@ describe('PlayerWindowPresenter', () => {
       stopShowing();
       await presentTab(app, view, tavern);
       expect(serviceMock.openLeaf).toHaveBeenCalledOnce();
+    });
+
+    test('opens the player window on request while another plugin shows the presented scene', async () => {
+      serviceMock.isWindowOpen.mockReturnValue(false);
+      const { view } = createFakeView();
+      const dungeon = view.tabMetaStore.getState().addTab(DUNGEON, 'Dungeon');
+      app = deviceApp([{ view }]);
+      presentedSceneOf(app).showElsewhere();
+      const player = playerLeaf({ tabId: dungeon, filePath: DUNGEON, frozen: false });
+      serviceMock.openLeaf.mockResolvedValueOnce(player);
+      serviceMock.attachToView.mockImplementationOnce(() => serviceMock.isWindowOpen.mockReturnValue(true));
+
+      await presentTab(app, view, dungeon, { openWindow: true });
+
+      expect(serviceMock.openLeaf).toHaveBeenCalledWith(app, { tabId: dungeon, filePath: DUNGEON });
+      expect(serviceMock.attachToView).toHaveBeenCalledWith(player, frameSourceFor(view.atlasStore), { tabId: dungeon, filePath: DUNGEON });
+      expect(vi.mocked(Notice)).toHaveBeenLastCalledWith('Player view shows Dungeon');
     });
 
     test('says the scene waits for the player window when the window could not be opened', async () => {

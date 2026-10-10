@@ -14,6 +14,7 @@ import { readInstallRecord, type InstalledPreset } from './installRecord';
 import { withLinkedFiles } from './noteLinks';
 import { remapPaths } from './pathRemap';
 import { originNames, recordRelease } from './releaseRecord';
+import { storeNamedWebps, thumbnailAsNamedWebp, type NamedWebp } from './webpNamedFiles';
 import { readVaultBinary, vaultFileSize } from '../../utils/hiddenVaultFiles';
 import { t } from '../../i18n';
 
@@ -175,6 +176,7 @@ export async function exportCollectionBundle(
   const zip = new JSZip();
   const files: BundleFile[] = [];
   const presets: Record<string, InstalledPreset> = {};
+  const namedWebps: NamedWebp[] = [];
   if (selected.files.some((file) => file.role === PRESET_ROLE)) await flushPresetEdits(app);
   for (const [index, file] of selected.files.entries()) {
     reportFileStep(onProgress, 'bundle.step.adding', index, selected.files.length, 0, 0.6);
@@ -184,7 +186,9 @@ export async function exportCollectionBundle(
     const preset = file.role === PRESET_ROLE ? await packedPresetRecord(content) : null;
     if (file.role === PRESET_ROLE && !preset) continue;
     if (preset) presets[preset.localId] = preset;
-    const data = rewriteContent(file, comparedBytes(file.vaultPath, content), origin.names);
+    const webp = file.role === 'thumbnail' ? await thumbnailAsNamedWebp(file.vaultPath, content) : null;
+    if (webp) namedWebps.push({ path: file.vaultPath, data: webp });
+    const data = webp ?? rewriteContent(file, comparedBytes(file.vaultPath, content), origin.names);
     const bundlePath = named(file.vaultPath);
     files.push({
       ...file,
@@ -216,7 +220,12 @@ export async function exportCollectionBundle(
   });
   return {
     blob,
-    commit: () => (choice.kind === 'share' ? Promise.resolve() : recordRelease(app, assets, preview.collection, manifest, cover, presets)),
+    commit: async (): Promise<void> => {
+      // A shared copy leaves the vault as its install record knows it.
+      if (choice.kind === 'share') return;
+      await storeNamedWebps(app, namedWebps);
+      await recordRelease(app, assets, preview.collection, manifest, cover, presets);
+    },
     fileName: bundleFileName(collection.name, collection.version),
     collectionName: collection.name,
     version: collection.version,

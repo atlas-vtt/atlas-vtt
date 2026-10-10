@@ -113,6 +113,10 @@ export function toRollFormula(text: string): string {
 
 /** Nearest heading-ish label above the roll, used to title the dice toast. */
 function abilityNameFor(node: Node): string | undefined {
+  // A table cell holds no label of its own: its column names the roll
+  const column = node.parentElement?.closest<HTMLElement>('[data-roll-name]')?.dataset.rollName;
+  if (column) return column;
+
   const el = node.parentElement?.closest<HTMLElement>(
     '.atlas-sb-trait, .atlas-sb-property, li, p, tr',
   );

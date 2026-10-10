@@ -33,6 +33,7 @@ export const palette = {
   'palette.searchPlaceholder': 'Search commands...',
   'palette.openPlayerWindow': 'Open Player Window',
   'palette.sendMapToPlayerView': 'Send Current Map to Player View',
+  'palette.showMapInPlayerWindow': 'Show Current Map in Local Player Window',
   'palette.tab.all': 'All',
   'palette.tab.mode': 'Mode',
   'palette.tab.settings': 'Settings',

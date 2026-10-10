@@ -9,7 +9,7 @@ import { t } from '../i18n';
 import type { PlayerFrameSource } from './PlayerFrameMirror';
 import { viewportCamera } from './playerFrame';
 import { PlayerWindowService } from './PlayerWindowService';
-import { presentedSceneOf, readPresentedScene, type PresentedScene } from './presentedScene';
+import { presentedSceneOf, readPresentedScene, type PresentedScene, type PresentedSceneStore } from './presentedScene';
 import { rendersOnChange, requestRender, setBeforeRender } from '../pixi/RenderScheduler';
 
 /** Unsubscribes the tab watcher of the view whose tab is currently presented. */
@@ -17,24 +17,30 @@ let stopWatchingPresentedTab: (() => void) | null = null;
 /** The view whose presented tab is being watched. */
 let watchedView: AtlasView | null = null;
 
+/** How a presented scene reaches players. */
+export interface PresentOptions {
+  /** Open the player window on this device even where another plugin shows players the scene (`showElsewhere`). */
+  openWindow?: boolean;
+}
+
 /** Present the active view's current scene tab to players. */
-export async function presentActiveTab(app: App): Promise<void> {
+export async function presentActiveTab(app: App, options: PresentOptions = {}): Promise<void> {
   const view = app.workspace.getActiveViewOfType(AtlasView);
   const activeTabId = view?.tabMetaStore.getState().activeTabId ?? null;
   if (!view || !activeTabId) {
     new Notice(t('present.noMap'));
     return;
   }
-  await presentTab(app, view, activeTabId);
+  await presentTab(app, view, activeTabId, options);
 }
 
 /**
  * Switch `view` to the scene tab `tabId`, wait until it is rendered, then make it the presented
  * scene and show it to players wherever they look: an open player window shows it at once and
  * keeps showing it while the DM browses other tabs, and so does a plugin that shows the presented
- * scene elsewhere (`showElsewhere`). With neither, the player window is opened on it.
+ * scene elsewhere (`showElsewhere`). With neither, or with `openWindow`, the player window is opened on it.
  */
-export async function presentTab(app: App, view: AtlasView, tabId: string): Promise<void> {
+export async function presentTab(app: App, view: AtlasView, tabId: string, { openWindow = false }: PresentOptions = {}): Promise<void> {
   const tab = findTab(view, tabId);
   if (!tab) return;
 
@@ -57,12 +63,16 @@ export async function presentTab(app: App, view: AtlasView, tabId: string): Prom
     // A window still waiting for its scene (restored, but its scene was not open) takes this one
     const waiting = PlayerWindowService.openPlayerView(app);
     if (waiting) await restorePlayerWindow(app, waiting);
-    // Players who see the scene nowhere get the player window
-    else if (!presented.isShownElsewhere()) await openPlayerWindow(app);
+    // Players who see the scene nowhere get the player window, and so does a GM who asks for it
+    else if (openWindow || !presented.isShownElsewhere()) await openPlayerWindow(app);
   }
-  // Only a window that could not be opened leaves the scene unseen; the notice says so then
-  const shown = (PlayerWindowService.getInstance()?.isWindowOpen() ?? false) || presented.isShownElsewhere();
-  new Notice(t(shown ? 'present.shows' : 'present.chosen', { name: tab.displayName }));
+  new Notice(t(presentedNotice(presented), { name: tab.displayName }));
+}
+
+/** What players were shown: the player window, only what another plugin shows, or nothing until the window opens. */
+function presentedNotice(presented: PresentedSceneStore): 'present.shows' | 'present.shownElsewhere' | 'present.chosen' {
+  if (PlayerWindowService.getInstance()?.isWindowOpen() ?? false) return 'present.shows';
+  return presented.isShownElsewhere() ? 'present.shownElsewhere' : 'present.chosen';
 }
 
 /**
