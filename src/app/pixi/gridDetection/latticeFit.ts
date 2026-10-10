@@ -9,9 +9,10 @@
  * at once. It is the manual alignment tool with every edge of the map clicked.
  *
  * A map whose cells are not regular (hexes printed a few percent too tall, squares
- * that are rectangles) has a fourth unknown, the aspect of its cells. To first
- * order it moves every line in proportion to its distance from the centre row, so
- * it is solved along with the others when asked for (`freeAspect`).
+ * that are rectangles) has a fourth unknown, the aspect of its cells, and a scan that
+ * lay askew a fifth, its angle. To first order the aspect moves every line in
+ * proportion to its distance from the centre row and the angle in proportion to its
+ * distance from the centre, so both are solved along with the others when asked for (`FreeShape`).
  *
  * Edges that are hidden or that lock on to map art are outliers; a Tukey weight
  * with a shrinking cutoff removes them, and the measuring window narrows from
@@ -20,8 +21,8 @@
 
 import type { GridType } from '../../grid/GridSystem';
 import type { GrayImage } from './grayImage';
-import { aspectOf, edgeDirectionKey, edgeResponse, edgeShift, latticeEdges, moveCandidate } from './edgeProfile';
-import type { LatticeCandidate, LatticeEdge } from './edgeProfile';
+import { edgeDirectionKey, edgeResponse, edgeShift, frameOf, latticeEdges, moveCandidate } from './edgeProfile';
+import type { LatticeCandidate, LatticeEdge, LatticeFrame } from './edgeProfile';
 
 interface EdgeMeasurement {
   edge: LatticeEdge;
@@ -36,9 +37,21 @@ interface LatticeDelta {
   dy: number;
   dSize: number;
   dAspect: number;
+  dRotation: number;
 }
 
-const NO_CHANGE: LatticeDelta = { dx: 0, dy: 0, dSize: 0, dAspect: 0 };
+const NO_CHANGE: LatticeDelta = { dx: 0, dy: 0, dSize: 0, dAspect: 0, dRotation: 0 };
+
+/** What of a map's shape a fit finds along with size and offsets; what it does not, it keeps as the candidate has it. */
+export interface FreeShape {
+  /** The aspect of the map's cells. */
+  aspect: boolean;
+  /** The angle the map is turned by. */
+  rotation: boolean;
+}
+
+export const FIXED_SHAPE: FreeShape = { aspect: false, rotation: false };
+export const FREE_SHAPE: FreeShape = { aspect: true, rotation: true };
 
 /** Resolution of the profile measured across an edge. */
 const PROFILE_STEP = 0.5;
@@ -49,16 +62,16 @@ const MAX_REACH_IN_CELLS = 0.3;
 /** Upper bound on the edges measured per pass; a few thousand spread over the map already pin the lattice down to a hundredth of a pixel. */
 const MAX_EDGES = 2500;
 const REACH_SCHEDULE = [8, 4, 2];
-/** A change of aspect turns slanted edges a little, which the linear solve leaves out: one more pass at the narrowest window takes it up. */
-const FREE_ASPECT_SCHEDULE = [...REACH_SCHEDULE, 2];
+/** A change of shape turns edges a little, which the linear solve leaves out: one more pass at the narrowest window takes it up. */
+const FREE_SHAPE_SCHEDULE = [...REACH_SCHEDULE, 2];
 /** Window used to tell real lines from chance hits when scoring a finished fit. */
 const SUPPORT_REACH = 6;
 /** Excess of on-line edges over chance, in standard deviations, below which support counts as zero. */
 const MIN_SUPPORT_SIGMAS = 5;
 
 /** Locates the line across one edge within `reach` pixels of its predicted position, to a fraction of a profile step. */
-function measureEdge(image: GrayImage, edge: LatticeEdge, reach: number, aspect: number): EdgeMeasurement | null {
-  const response = edgeResponse(image, edge, reach, PROFILE_STEP, aspect);
+function measureEdge(image: GrayImage, edge: LatticeEdge, reach: number, frame: LatticeFrame): EdgeMeasurement | null {
+  const response = edgeResponse(image, edge, reach, PROFILE_STEP, frame);
   let peak = -1;
   let strength = 0;
   for (let j = 0; j < response.length; j++) {
@@ -94,8 +107,8 @@ function lineCentre(response: Float32Array, peak: number): number {
   return moment / weight;
 }
 
-function measureEdges(image: GrayImage, edges: LatticeEdge[], reach: number, aspect: number): EdgeMeasurement[] {
-  return edges.map((edge) => measureEdge(image, edge, reach, aspect)).filter((m): m is EdgeMeasurement => m !== null);
+function measureEdges(image: GrayImage, edges: LatticeEdge[], reach: number, frame: LatticeFrame): EdgeMeasurement[] {
+  return edges.map((edge) => measureEdge(image, edge, reach, frame)).filter((m): m is EdgeMeasurement => m !== null);
 }
 
 /** Solves `a x = b` for a small symmetric system by Gaussian elimination with pivoting; null when it is singular. */
@@ -121,26 +134,34 @@ function solveLinear(a: number[][], b: number[]): number[] | null {
   return x;
 }
 
-/** Weighted least squares for the lattice unknowns: the two offsets, the size and, with `freeAspect`, the aspect. */
-function solveLattice(measurements: EdgeMeasurement[], weights: Float64Array, freeAspect: boolean): LatticeDelta | null {
-  const unknowns = freeAspect ? 4 : 3;
+/** Weighted least squares for the lattice unknowns: the two offsets, the size and what of the shape is `free`. */
+function solveLattice(measurements: EdgeMeasurement[], weights: Float64Array, free: FreeShape): LatticeDelta | null {
+  const unknowns = 3 + (free.aspect ? 1 : 0) + (free.rotation ? 1 : 0);
   const ata = Array.from({ length: unknowns }, () => new Array<number>(unknowns).fill(0));
   const atb = new Array<number>(unknowns).fill(0);
+  const row = new Array<number>(unknowns).fill(0);
   measurements.forEach((m, i) => {
     const w = weights[i]!;
     if (w <= 0) return;
-    const row = [m.edge.nx, m.edge.ny, edgeShift(m.edge, 0, 0, 1), edgeShift(m.edge, 0, 0, 0, 1)];
+    let column = 0;
+    row[column++] = m.edge.nx;
+    row[column++] = m.edge.ny;
+    row[column++] = edgeShift(m.edge, 0, 0, 1);
+    if (free.aspect) row[column++] = edgeShift(m.edge, 0, 0, 0, 1);
+    if (free.rotation) row[column++] = edgeShift(m.edge, 0, 0, 0, 0, 1);
     for (let r = 0; r < unknowns; r++) {
       atb[r] = atb[r]! + w * row[r]! * m.shift;
       for (let c = 0; c < unknowns; c++) ata[r]![c] = ata[r]![c]! + w * row[r]! * row[c]!;
     }
   });
   const solved = solveLinear(ata, atb);
-  return solved ? { dx: solved[0]!, dy: solved[1]!, dSize: solved[2]!, dAspect: solved[3] ?? 0 } : null;
+  if (!solved) return null;
+  const rotationAt = free.aspect ? 4 : 3;
+  return { dx: solved[0]!, dy: solved[1]!, dSize: solved[2]!, dAspect: free.aspect ? solved[3]! : 0, dRotation: free.rotation ? solved[rotationAt]! : 0 };
 }
 
 /** Robust solve on one set of measurements: the outlier cutoff shrinks from the window size to a sub-pixel band. */
-function robustDelta(measurements: EdgeMeasurement[], reach: number, freeAspect: boolean): LatticeDelta {
+function robustDelta(measurements: EdgeMeasurement[], reach: number, free: FreeShape): LatticeDelta {
   const strengths = measurements.map((m) => m.strength).sort((a, b) => a - b);
   const strongEdge = strengths[Math.floor(strengths.length * 0.75)] ?? 1;
 
@@ -148,10 +169,10 @@ function robustDelta(measurements: EdgeMeasurement[], reach: number, freeAspect:
   const weights = new Float64Array(measurements.length);
   for (const cutoff of [reach, reach / 2, Math.max(reach / 4, MIN_CUTOFF), MIN_CUTOFF]) {
     measurements.forEach((m, i) => {
-      const u = (m.shift - edgeShift(m.edge, delta.dx, delta.dy, delta.dSize, delta.dAspect)) / cutoff;
+      const u = (m.shift - edgeShift(m.edge, delta.dx, delta.dy, delta.dSize, delta.dAspect, delta.dRotation)) / cutoff;
       weights[i] = Math.abs(u) < 1 ? (1 - u * u) ** 2 * Math.min(1, m.strength / strongEdge) : 0;
     });
-    delta = solveLattice(measurements, weights, freeAspect) ?? delta;
+    delta = solveLattice(measurements, weights, free) ?? delta;
   }
   return delta;
 }
@@ -159,6 +180,12 @@ function robustDelta(measurements: EdgeMeasurement[], reach: number, freeAspect:
 function clampReach(reach: number, cellSize: number): number {
   return Math.max(1.5, Math.min(reach, cellSize * MAX_REACH_IN_CELLS));
 }
+
+/** Half the width of the band around a grid line in which a line of the map counts as on it. */
+export const CHANCE_BAND = MIN_CUTOFF;
+
+/** An edge whose strongest response is below this share of a typical line of the grid shows no line: blank paper, a flat fill. */
+const BLANK_SHARE = 0.15;
 
 /**
  * Share of the grid's edges that have a line exactly where the grid predicts one,
@@ -169,30 +196,60 @@ function clampReach(reach: number, cellSize: number): number {
  * of one direction, but not of all of them. Longer edges average more of the map
  * and find fainter lines, so grids of different sizes are only comparable when
  * measured with the same `edgeLength`.
+ *
+ * Only an edge that shows a line can hit by chance. A grid drawn on the floors of a
+ * dungeon alone, on a map that is blank paper elsewhere, has few of its edges on a
+ * line, and far more than the few lines of that map would put there by chance: so
+ * chance is counted from the edges that show a line, and the share from all of them.
  */
 export function latticeSupport(image: GrayImage, gridType: GridType, candidate: LatticeCandidate, edgeLength: number = candidate.cellSize): number {
-  const reach = clampReach(SUPPORT_REACH, candidate.cellSize);
-  const chance = MIN_CUTOFF / reach;
-  const edges = latticeEdges(image, gridType, candidate, reach, MAX_EDGES, edgeLength);
-  const onLine = new Set(measureEdges(image, edges, reach, aspectOf(candidate)).filter((m) => Math.abs(m.shift) < MIN_CUTOFF).map((m) => m.edge));
+  const { edges, withLine, onLine, reach } = edgesOnLines(image, gridType, candidate, edgeLength);
 
-  const directions = new Map<number, { edges: number; onLine: number }>();
+  const directions = new Map<number, { edges: number; withLine: number; onLine: number }>();
   for (const edge of edges) {
     const key = edgeDirectionKey(edge);
-    const tally = directions.get(key) ?? { edges: 0, onLine: 0 };
+    const tally = directions.get(key) ?? { edges: 0, withLine: 0, onLine: 0 };
     tally.edges++;
+    if (withLine.has(edge)) tally.withLine++;
     if (onLine.has(edge)) tally.onLine++;
     directions.set(key, tally);
   }
 
   let support = directions.size > 0 ? 1 : 0;
   for (const tally of directions.values()) {
+    const chance = (tally.withLine / tally.edges) * (MIN_CUTOFF / reach);
     const excess = tally.onLine / tally.edges - chance;
     // With few edges a handful of chance hits looks like a grid; demand a clear excess over the binomial noise.
     const noise = Math.sqrt((chance * (1 - chance)) / tally.edges);
-    support = Math.min(support, excess < MIN_SUPPORT_SIGMAS * noise ? 0 : excess / (1 - chance));
+    support = Math.min(support, excess <= 0 || excess < MIN_SUPPORT_SIGMAS * noise ? 0 : excess / (1 - chance));
   }
   return support;
+}
+
+/** The edges of a grid, and which of them show a line and have it where the grid says. */
+export interface EdgesOnLines {
+  edges: LatticeEdge[];
+  /** Edges that show a line at all, anywhere in the window. */
+  withLine: Set<LatticeEdge>;
+  /** Edges whose line lies where the grid predicts it. */
+  onLine: Set<LatticeEdge>;
+  /** Half the width of the window an edge's line was looked for in. */
+  reach: number;
+}
+
+export function edgesOnLines(image: GrayImage, gridType: GridType, candidate: LatticeCandidate, edgeLength: number = candidate.cellSize): EdgesOnLines {
+  const reach = clampReach(SUPPORT_REACH, candidate.cellSize);
+  const edges = latticeEdges(image, gridType, candidate, reach, MAX_EDGES, edgeLength);
+  const measurements = measureEdges(image, edges, reach, frameOf(image, candidate));
+  const hits = measurements.filter((m) => Math.abs(m.shift) < MIN_CUTOFF);
+  const strengths = hits.map((m) => m.strength).sort((a, b) => a - b);
+  const blank = (strengths[Math.floor(strengths.length / 2)] ?? 0) * BLANK_SHARE;
+  return {
+    edges,
+    withLine: new Set(measurements.filter((m) => m.strength >= blank).map((m) => m.edge)),
+    onLine: new Set(hits.filter((m) => m.strength >= blank).map((m) => m.edge)),
+    reach,
+  };
 }
 
 export interface LatticeFit {
@@ -202,16 +259,17 @@ export interface LatticeFit {
 
 /**
  * Refines a candidate that is good to a few pixels into a sub-pixel fit over the whole map.
- * `freeAspect` also fits the aspect of the map's cells; without it the candidate's own is kept.
+ * `free` names what of the map's shape is fitted too; the rest is kept as the candidate has it.
  */
-export function fitLattice(image: GrayImage, gridType: GridType, start: LatticeCandidate, freeAspect = false): LatticeFit {
+export function fitLattice(image: GrayImage, gridType: GridType, start: LatticeCandidate, free: FreeShape = FIXED_SHAPE): LatticeFit {
+  const fixed = !free.aspect && !free.rotation;
   let candidate = start;
-  for (const scheduled of freeAspect ? FREE_ASPECT_SCHEDULE : REACH_SCHEDULE) {
+  for (const scheduled of fixed ? REACH_SCHEDULE : FREE_SHAPE_SCHEDULE) {
     const reach = clampReach(scheduled, candidate.cellSize);
-    const measurements = measureEdges(image, latticeEdges(image, gridType, candidate, reach, MAX_EDGES), reach, aspectOf(candidate));
-    if (measurements.length < (freeAspect ? 4 : 3)) break;
-    const delta = robustDelta(measurements, reach, freeAspect);
-    candidate = moveCandidate(image, candidate, delta.dx, delta.dy, delta.dSize, delta.dAspect);
+    const measurements = measureEdges(image, latticeEdges(image, gridType, candidate, reach, MAX_EDGES), reach, frameOf(image, candidate));
+    if (measurements.length < 5) break;
+    const delta = robustDelta(measurements, reach, free);
+    candidate = moveCandidate(image, candidate, delta.dx, delta.dy, delta.dSize, delta.dAspect, delta.dRotation);
   }
   return { candidate, support: latticeSupport(image, gridType, candidate) };
 }

@@ -12,8 +12,6 @@ import type { MapGray } from '../../pixi/gridDetection/detectGrid';
 /** The grid among `candidates` (the likeliest first) that the map's lines support; null where they support none. */
 export type FitToLines = (candidates: AlignmentResult[]) => Promise<AlignmentResult | null>;
 
-/** Below this share of a grid on the map's lines, the lines are no better a guide than the GM's own measurement. */
-const MIN_FIT_CONFIDENCE = 0.15;
 /** Lets the "fitting" status paint before the fit, which is CPU-bound, holds the thread. */
 const PAINT_DELAY_MS = 30;
 
@@ -36,8 +34,7 @@ export function useGridFit(view: AtlasView | null): FitToLines {
         return null;
       }
       await new Promise((resolve) => window.setTimeout(resolve, PAINT_DELAY_MS));
-      const fitted = snapGridToMapGray(read, candidates);
-      return fitted && (fitted.confidence ?? 0) >= MIN_FIT_CONFIDENCE ? fitted : null;
+      return snapGridToMapGray(read, candidates);
     } catch (error) {
       gray.current = null;
       console.error('[GridAlignment] The grid could not be fitted to the map image', error);

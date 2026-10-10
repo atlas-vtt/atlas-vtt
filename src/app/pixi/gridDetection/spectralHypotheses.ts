@@ -27,6 +27,8 @@ export interface SpectralHypothesis {
   score: number;
   /** How many times further apart the image's rows lie than a regular grid's; 1 for a regular grid. */
   aspect: number;
+  /** The angle in radians the map lies turned by; unset is level. */
+  rotation?: number;
 }
 
 const SQRT3 = Math.sqrt(3);
@@ -44,6 +46,9 @@ const ASPECT_STEP = 1.01;
 const ASPECT_STEPS = 22;
 /** Aspects proposed per grid type, each the best of its neighbourhood. */
 const ASPECTS_PER_TYPE = 2;
+/** Angles tried for maps that lie askew: half-degree steps up to four degrees either way. */
+const ROTATION_STEP = (0.5 * Math.PI) / 180;
+const ROTATION_STEPS = 8;
 
 function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
@@ -214,5 +219,36 @@ export function stretchedHypotheses(
       })
       .sort((a, b) => b.score - a.score)
       .slice(0, ASPECTS_PER_TYPE);
+  });
+}
+
+/**
+ * Hypotheses of regular grids on a map that lies askew, for every grid type: a turned image has a
+ * turned spectrum, so the same search with its angles turned finds them. Per type the angle whose
+ * best fundamental beats the level grid's and its neighbours'.
+ */
+export function turnedHypotheses(
+  power: Float32Array,
+  n: number,
+  minPeriod: number,
+  maxPeriod: number,
+): SpectralHypothesis[] {
+  const kMin = n / maxPeriod;
+  const kMax = Math.min(n / minPeriod, n / 2 - 2);
+  const rotations = Array.from({ length: 2 * ROTATION_STEPS + 1 }, (_, i) => (i - ROTATION_STEPS) * ROTATION_STEP);
+
+  return GRID_ANGLES.flatMap(([gridType, angles]) => {
+    const best = rotations.map((rotation) => {
+      const top = candidateFundamentals(power, n, gridType, angles.map((angle) => angle + rotation), kMin, kMax)[0];
+      return top ? { ...top, rotation } : null;
+    });
+    const level = best[ROTATION_STEPS]?.score ?? 0;
+    return best
+      .filter((hypothesis, i): hypothesis is SpectralHypothesis & { rotation: number } => {
+        if (!hypothesis || i === ROTATION_STEPS || hypothesis.score <= level) return false;
+        return hypothesis.score > (best[i - 1]?.score ?? 0) && hypothesis.score >= (best[i + 1]?.score ?? 0);
+      })
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 1);
   });
 }

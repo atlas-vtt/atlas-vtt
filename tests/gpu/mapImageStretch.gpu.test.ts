@@ -105,4 +105,50 @@ describe('a map image drawn stretched', () => {
     stage.destroy();
     ticker.destroy();
   });
+
+  it('turns an image that lies askew level about its centre', async () => {
+    const stretch = { x: 1, y: 1, rotation: 4 };
+    const ticker = new Ticker();
+    const turn = (stretch.rotation * Math.PI) / 180;
+    const world = { width: WIDTH * Math.cos(turn) + HEIGHT * Math.sin(turn), height: WIDTH * Math.sin(turn) + HEIGHT * Math.cos(turn) };
+    const zoom = SCREEN / world.width;
+    const viewport = { left: 0, top: 0, worldScreenWidth: world.width, worldScreenHeight: world.width, scale: { x: zoom }, worldWidth: 0, worldHeight: 0 };
+    const mapImage = new MapImage({ service: twoColouredMap(), viewport, ticker, renderer, requestRender: () => undefined, drawAtOnce: () => true });
+    const stage = new Container();
+    const camera = new Container({ scale: zoom });
+    stage.addChild(camera);
+    camera.addChild(mapImage.layer);
+
+    await mapImage.load({ kind: 'file', file: Object.assign(new TFile(), { path: 'maps/two.png', stat: { ctime: 0, mtime: 1, size: 2 } }) }, stretch);
+    expect(mapImage.worldRect!.width).toBeCloseTo(world.width, 6);
+
+    let ready = false;
+    void mapImage.whenReady({ x: 0, y: 0, ...world }, 1 / zoom, 20_000).then(() => { ready = true; });
+    for (let step = 0, time = 0; !ready && step < 1000; step++) {
+      ticker.update((time += 16));
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+    expect(ready).toBe(true);
+    ticker.update(100_000);
+
+    renderer.render(stage);
+    const context = new OffscreenCanvas(SCREEN, SCREEN).getContext('2d')!;
+    context.drawImage(renderer.canvas, 0, 0);
+    const pixels = context.getImageData(0, 0, SCREEN, SCREEN).data;
+    const margin = 4 / zoom;
+
+    // The image's centre is the world's, with the boundary between its halves through it.
+    expect(colourAt(pixels, zoom, world.width / 2 - margin, world.height / 2)).toEqual(LEFT);
+    expect(colourAt(pixels, zoom, world.width / 2 + margin, world.height / 2)).toEqual(RIGHT);
+    // The boundary runs turned: the image is turned back anticlockwise, so its upper end lies to the left of the centre.
+    const lean = Math.tan(turn) * (HEIGHT / 2 - 2 * margin);
+    expect(colourAt(pixels, zoom, world.width / 2 + lean / 2 - margin - lean, 2 * margin + world.height / 2 - HEIGHT / 2 + margin)).toEqual(LEFT);
+    // The corners of the box that holds the turned image are empty.
+    expect(colourAt(pixels, zoom, margin / 2, margin / 2)).toEqual([0, 0, 0]);
+    expect(colourAt(pixels, zoom, world.width - margin / 2, world.height - margin / 2)).toEqual([0, 0, 0]);
+
+    mapImage.destroy();
+    stage.destroy();
+    ticker.destroy();
+  });
 });

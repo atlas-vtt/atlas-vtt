@@ -55,6 +55,9 @@ function harness(): {
   return { mapImage, service, viewport, changes, ticker, restart: () => [...restarts].forEach((listener) => listener()) };
 }
 
+/** The tile layers a map image shows: inside the container that turns them level. */
+const tileLayers = (image: MapImage): readonly unknown[] => image.layer.children[0]!.children;
+
 const images: MapImage[] = [];
 
 afterEach(() => {
@@ -72,7 +75,9 @@ describe('MapImage', () => {
 
     expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 12000, height: 3000 });
     expect(mapImage.layer.boundsArea).toMatchObject({ x: 0, y: 0, width: 12000, height: 3000 });
+    // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
+    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
     expect({ width: viewport.worldWidth, height: viewport.worldHeight }).toEqual({ width: 12000, height: 10000 });
     expect(changes).toEqual(['image']);
   });
@@ -95,6 +100,24 @@ describe('MapImage', () => {
 
     mapImage.setStretch({ x: 1.05, y: 1 });
     expect(changes).toEqual(['image', 'image']);
+  });
+
+  it('draws an image that lies askew turned level about its centre, in the box that then holds it', async () => {
+    const { mapImage, service } = harness();
+    service.open.mockResolvedValue(opened(1, 'scan', 4000, 3000));
+    await mapImage.load({ kind: 'file', file: fileAt('maps/scan.jpg') }, { x: 1, y: 1, rotation: 1 });
+
+    const turn = Math.PI / 180;
+    const box = { width: 4000 * Math.cos(turn) + 3000 * Math.sin(turn), height: 4000 * Math.sin(turn) + 3000 * Math.cos(turn) };
+    expect(mapImage.worldRect!.width).toBeCloseTo(box.width, 6);
+    expect(mapImage.worldRect!.height).toBeCloseTo(box.height, 6);
+    expect(mapImage.imageSize).toEqual({ width: 4000, height: 3000 });
+    // The image's centre is the box's centre, and the tile layer is turned back by the angle.
+    const turned = mapImage.layer.children[0]!;
+    expect(turned.rotation).toBeCloseTo(-turn, 9);
+    const centre = turned.toGlobal({ x: 2000, y: 1500 });
+    expect(centre.x).toBeCloseTo(box.width / 2, 6);
+    expect(centre.y).toBeCloseTo(box.height / 2, 6);
   });
 
   it('shows a loaded image with the stretch the load names, and the next one with the same unless it names another', async () => {
@@ -145,7 +168,7 @@ describe('MapImage', () => {
     await first;
 
     expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 1400, height: 1400 });
-    expect(mapImage.layer.children).toHaveLength(0);
+    expect(tileLayers(mapImage)).toHaveLength(0);
     expect(service.close).toHaveBeenCalledWith(7);
   });
 
@@ -153,11 +176,11 @@ describe('MapImage', () => {
     const { mapImage, service, changes } = harness();
     service.open.mockResolvedValueOnce(opened(1, 'cave')).mockResolvedValueOnce(opened(2, 'cave'));
     await mapImage.load({ kind: 'file', file: fileAt('maps/cave.webp') });
-    const drawn = mapImage.layer.children[0];
+    const drawn = tileLayers(mapImage)[0];
 
     await mapImage.load({ kind: 'file', file: fileAt('maps/renamed.webp') });
 
-    expect(mapImage.layer.children).toEqual([drawn]);
+    expect(tileLayers(mapImage)).toEqual([drawn]);
     expect(service.close).toHaveBeenCalledWith(2);
     expect(service.close).not.toHaveBeenCalledWith(1);
     expect(changes).toEqual(['image', 'image']);
@@ -172,7 +195,9 @@ describe('MapImage', () => {
 
     expect(service.close).toHaveBeenCalledWith(1);
     expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 800, height: 600 });
+    // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
+    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
   });
 
   it('shows the placeholder and reports the file when its image cannot be opened', async () => {
@@ -185,7 +210,9 @@ describe('MapImage', () => {
 
     expect(service.reportUnshown).toHaveBeenCalledWith(file, failure);
     expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 128, height: 128 });
+    // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
+    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
   });
 
   it('shows the placeholder for a missing image as a picture of one tile, never kept in the cache', async () => {
@@ -194,7 +221,9 @@ describe('MapImage', () => {
     await mapImage.load({ kind: 'placeholder' });
 
     expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 128, height: 128 });
+    // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
+    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
     const tiles = placeholderTiles();
     expect(tiles.source.pyramid.levels).toHaveLength(1);
     expect(tiles.cacheable).toBe(false);
@@ -206,7 +235,7 @@ describe('MapImage', () => {
     await mapImage.load({ kind: 'none', width: 1400, height: 1400 });
 
     expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 1400, height: 1400 });
-    expect(mapImage.layer.children).toHaveLength(0);
+    expect(tileLayers(mapImage)).toHaveLength(0);
     expect(viewport.worldWidth).toBe(10000);
     await expect(mapImage.overview(64)).resolves.toBeNull();
     expect(mapImage.albedoTexture()).toBeNull();
@@ -250,7 +279,7 @@ describe('MapImage', () => {
     mapImage.clear();
 
     expect(mapImage.worldRect).toBeNull();
-    expect(mapImage.layer.children).toHaveLength(0);
+    expect(tileLayers(mapImage)).toHaveLength(0);
     expect(service.close).toHaveBeenCalledWith(1);
     expect(changes).toEqual(['image', 'image']);
   });
@@ -274,17 +303,19 @@ describe('MapImage', () => {
       : new Promise<ImageBitmap>(() => undefined)));
     vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     await mapImage.load({ kind: 'file', file: fileAt('maps/cave.webp') });
-    const before = mapImage.layer.children[0];
+    const before = tileLayers(mapImage)[0];
     ticker.update(1000);
     await vi.waitFor(() => expect(service.tile).toHaveBeenCalledWith(1, expect.anything(), expect.anything()));
     const failedRefs = service.tile.mock.calls.map((call) => JSON.stringify(call[1]));
 
     restart();
     await vi.waitFor(() => expect(service.open).toHaveBeenCalledTimes(2));
-    await vi.waitFor(() => expect(mapImage.layer.children[0]).not.toBe(before));
+    await vi.waitFor(() => expect(tileLayers(mapImage)[0]).not.toBe(before));
     ticker.update(2000);
 
+    // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
+    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
     expect(service.close).toHaveBeenCalledWith(1);
     const again = service.tile.mock.calls.filter((call) => call[0] === 2).map((call) => JSON.stringify(call[1]));
     expect(again).toEqual(expect.arrayContaining(failedRefs));

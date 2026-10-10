@@ -12,8 +12,9 @@ import type { GrayImage } from './grayImage';
 import { gridLineSegments } from './gridTemplate';
 
 /**
- * A grid on the squared-up image: the image with its rows `aspect` times closer together, where the
- * map's cells are regular. Size, offsets and every edge are in that space; `aspect` 1 is the image itself.
+ * A grid on the squared-up image: the image turned level about its centre (`rotation`) and then its
+ * rows brought `aspect` times closer together, where the map's cells are regular and its lines level.
+ * Size, offsets and every edge are in that space; with `aspect` 1 and no rotation it is the image itself.
  */
 export interface LatticeCandidate {
   cellSize: number;
@@ -21,7 +22,26 @@ export interface LatticeCandidate {
   offsetY: number;
   /** How many times further apart the image's rows lie than a regular grid's; unset is 1. */
   aspect?: number;
+  /** The angle in radians by which the image is turned against a level grid, clockwise on screen (a scan that lay askew); unset is 0. */
+  rotation?: number;
 }
+
+/** How the squared-up image of a candidate lies on the image itself. */
+export interface LatticeFrame {
+  aspect: number;
+  cos: number;
+  sin: number;
+  /** The image's centre, which the rotation turns about. */
+  centerX: number;
+  centerY: number;
+}
+
+export function frameOf(image: GrayImage, candidate: LatticeCandidate): LatticeFrame {
+  const rotation = rotationOf(candidate);
+  return { aspect: aspectOf(candidate), cos: Math.cos(rotation), sin: Math.sin(rotation), centerX: image.width / 2, centerY: image.height / 2 };
+}
+
+const PLAIN_FRAME: LatticeFrame = { aspect: 1, cos: 1, sin: 0, centerX: 0, centerY: 0 };
 
 export interface LatticeEdge {
   x1: number;
@@ -34,12 +54,17 @@ export interface LatticeEdge {
   /** Edge midpoint relative to the image centre, in cells. */
   cx: number;
   cy: number;
-  /** Cell size of the grid the edge belongs to. */
+  /** Cell size and aspect of the grid the edge belongs to. */
   cellSize: number;
+  aspect: number;
 }
 
 export function aspectOf(candidate: LatticeCandidate): number {
   return candidate.aspect ?? 1;
+}
+
+export function rotationOf(candidate: LatticeCandidate): number {
+  return candidate.rotation ?? 0;
 }
 
 /** Distance between a line's centre and the flanks it is compared with; lines thicker than twice this lose contrast. */
@@ -71,10 +96,20 @@ export function latticeEdges(
   edgeLength: number = candidate.cellSize,
 ): LatticeEdge[] {
   const { cellSize, offsetX, offsetY } = candidate;
+  const frame = frameOf(image, candidate);
+  const aspect = frame.aspect;
   const width = image.width;
-  const height = image.height / aspectOf(candidate);
+  const height = image.height / aspect;
   const margin = reach + lineProbe(cellSize) + 2;
-  const inside = (x: number, y: number): boolean => x >= margin && y >= margin && x < width - margin && y < height - margin;
+  const inside = (x: number, y: number): boolean => {
+    if (frame.sin === 0) return x >= margin && y >= margin && x < width - margin && y < height - margin;
+    // Turned, the squared-up image's rim lies partly off the image: the point itself must be on it.
+    const qx = x - frame.centerX;
+    const qy = y * aspect - frame.centerY;
+    const px = frame.centerX + frame.cos * qx - frame.sin * qy;
+    const py = frame.centerY + frame.sin * qx + frame.cos * qy;
+    return px >= margin && py >= margin && px < image.width - margin && py < image.height - margin;
+  };
 
   const edges: LatticeEdge[] = [];
   for (const s of gridLineSegments(gridType, cellSize, offsetX, offsetY, { minX: 0, minY: 0, maxX: width, maxY: height })) {
@@ -93,7 +128,7 @@ export function latticeEdges(
       if (!inside(x1, y1) || !inside(x2, y2)) continue;
       const cx = ((x1 + x2) / 2 - width / 2) / cellSize;
       const cy = ((y1 + y2) / 2 - height / 2) / cellSize;
-      edges.push({ x1, y1, x2, y2, nx, ny, cx, cy, cellSize });
+      edges.push({ x1, y1, x2, y2, nx, ny, cx, cy, cellSize, aspect });
     }
   }
   const stride = Math.max(1, edges.length / maxEdges);
@@ -110,14 +145,15 @@ const MIN_PIECE_SAMPLES = 3;
  * normal (index `reach / step` is the edge itself). The response is the contrast
  * between a point and its two flanks minus the flank asymmetry, so lines of either
  * polarity peak at their centre and plain steps in brightness do not count. The edge
- * lies on the squared-up image of `aspect`.
+ * lies on the squared-up image that `frame` places on the image.
  *
  * A long edge is measured in pieces, each averaged along its own length, and the
  * response is the mean of the middle ones: what lies across part of an edge (a terrain
  * icon on a hex map, a wall, a label) is far stronger than a grid line and would
  * otherwise set the whole edge's answer, while a line shows in most pieces.
  */
-export function edgeResponse(image: GrayImage, edge: LatticeEdge, reach: number, step: number, aspect = 1): Float32Array {
+export function edgeResponse(image: GrayImage, edge: LatticeEdge, reach: number, step: number, frame: LatticeFrame = PLAIN_FRAME): Float32Array {
+  const { aspect, cos, sin, centerX, centerY } = frame;
   const probe = Math.round(lineProbe(edge.cellSize) / step);
   const half = Math.round(reach / step);
   const width = 2 * (half + probe) + 1;
@@ -137,7 +173,11 @@ export function edgeResponse(image: GrayImage, edge: LatticeEdge, reach: number,
     samples[piece] = samples[piece]! + 1;
     for (let j = 0; j < width; j++) {
       const d = (j - half - probe) * step;
-      profiles[row + j] = profiles[row + j]! + sampleBilinear(image, px + edge.nx * d, (py + edge.ny * d) * aspect);
+      const x = px + edge.nx * d;
+      const y = (py + edge.ny * d) * aspect;
+      profiles[row + j] = profiles[row + j]! + (sin === 0
+        ? sampleBilinear(image, x, y)
+        : sampleBilinear(image, centerX + cos * (x - centerX) - sin * (y - centerY), centerY + sin * (x - centerX) + cos * (y - centerY)));
     }
   }
 
@@ -172,18 +212,23 @@ export function edgeDirectionKey(edge: LatticeEdge): number {
 }
 
 /**
- * How far a change of offset, size and aspect moves an edge along its normal. `dAspect` is relative:
- * rows that lie 1 % further apart than the candidate says move every line 1 % away from the centre row.
+ * How far a change of offset, size, aspect and rotation moves an edge along its normal. `dAspect` is
+ * relative: rows that lie 1 % further apart than the candidate says move every line 1 % away from the
+ * centre row. `dRotation` (radians) turns the image about its centre, which on the squared-up image
+ * moves a point across by its height and down by its distance from the middle column.
  */
-export function edgeShift(edge: LatticeEdge, dx: number, dy: number, dSize: number, dAspect = 0): number {
-  return edge.nx * dx + edge.ny * dy + (edge.nx * edge.cx + edge.ny * edge.cy) * dSize + edge.ny * edge.cy * edge.cellSize * dAspect;
+export function edgeShift(edge: LatticeEdge, dx: number, dy: number, dSize: number, dAspect = 0, dRotation = 0): number {
+  const shift = edge.nx * dx + edge.ny * dy + (edge.nx * edge.cx + edge.ny * edge.cy) * dSize + edge.ny * edge.cy * edge.cellSize * dAspect;
+  if (dRotation === 0) return shift;
+  const turned = (edge.ny * edge.cx) / edge.aspect - edge.nx * edge.cy * edge.aspect;
+  return shift + turned * edge.cellSize * dRotation;
 }
 
 /**
  * Size changes scale the grid about the image centre, where the edge coordinates are measured from.
  * A change of aspect squares the image up anew, which moves its centre row; the grid keeps its place on the map.
  */
-export function moveCandidate(image: GrayImage, candidate: LatticeCandidate, dx: number, dy: number, dSize: number, dAspect = 0): LatticeCandidate {
+export function moveCandidate(image: GrayImage, candidate: LatticeCandidate, dx: number, dy: number, dSize: number, dAspect = 0, dRotation = 0): LatticeCandidate {
   const cellSize = candidate.cellSize + dSize;
   const scale = cellSize / candidate.cellSize;
   const aspect = aspectOf(candidate);
@@ -194,5 +239,7 @@ export function moveCandidate(image: GrayImage, candidate: LatticeCandidate, dx:
     offsetX: centerX + (candidate.offsetX - centerX) * scale + dx,
     offsetY: centerY + (candidate.offsetY - centerY) * scale + dy - (centerY * dAspect) / (1 + dAspect),
     aspect: aspect * (1 + dAspect),
+    // The image turns about its centre, which is the centre of the squared-up image too: the grid keeps its place.
+    rotation: rotationOf(candidate) + dRotation,
   };
 }

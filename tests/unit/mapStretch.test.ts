@@ -27,6 +27,17 @@ describe('map stretch', () => {
     for (const aspect of [1.6, 0.6, Number.NaN]) expect(isStretchableAspect(aspect)).toBe(false);
   });
 
+  it('carries the angle of a map that lies askew, in degrees, and reads it back only in range', () => {
+    expect(stretchForAspect(1, (0.5 * Math.PI) / 180)).toEqual({ x: 1, y: 1, rotation: 0.5 });
+    expect(stretchForAspect(0.979, (-0.29 * Math.PI) / 180)).toEqual({ x: 1, y: 1.02145, rotation: -0.29 });
+    expect(readMapStretch({ x: 1, y: 1, rotation: 0.5 })).toEqual({ x: 1, y: 1, rotation: 0.5 });
+    expect(readMapStretch({ x: 1.05, y: 1, rotation: 0 })).toEqual({ x: 1.05, y: 1 });
+    for (const value of [{ x: 1, y: 1, rotation: 12 }, { x: 1, y: 1, rotation: 'askew' }, { x: 1, y: 1, rotation: Number.NaN }]) {
+      expect(readMapStretch(value)).toBe(NO_STRETCH);
+    }
+    expect(sameStretch({ x: 1, y: 1, rotation: 0.5 }, { x: 1, y: 1 })).toBe(false);
+  });
+
   it('compares stretches by their factors', () => {
     expect(sameStretch({ x: 1.1, y: 1 }, { x: 1.1, y: 1 })).toBe(true);
     expect(sameStretch({ x: 1.1, y: 1 }, { x: 1, y: 1.1 })).toBe(false);

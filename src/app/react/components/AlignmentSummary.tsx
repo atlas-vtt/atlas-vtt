@@ -42,6 +42,9 @@ export function AlignmentSummary({ result, fitting = false, fitAsked = false, ch
       {mapStretch && mapStretch.y > 1 && (
         <div className="atlas-grid-alignment-measurements">{t('align.stretchTaller', { percent: percentOver(mapStretch.y) })}</div>
       )}
+      {mapStretch?.rotation !== undefined && (
+        <div className="atlas-grid-alignment-measurements">{t('align.turned', { degrees: Math.abs(mapStretch.rotation).toFixed(2) })}</div>
+      )}
       {children}
     </div>
   );

@@ -41,6 +41,7 @@ export const align = {
   'align.tab.freehand': 'Freehand',
   'align.tab.intersections': 'Measure',
   'align.title': 'Grid Alignment',
+  'align.turned': 'The map is turned by {degrees}°, so that its grid is level.',
   'align.zoomHex': 'Zoom the map (mouse wheel or pinch) until each hex of the preview covers one hex of the map, then click to place the grid.',
   'align.zoomSquare': 'Zoom the map (mouse wheel or pinch) until each square of the preview covers one square of the map, then click to place the grid.',
 } as const satisfies Record<string, Message>;

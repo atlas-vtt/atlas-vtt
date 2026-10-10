@@ -8,7 +8,7 @@ import type { GridType } from '../../grid/GridSystem';
 import { powerSpectrum2D } from './fft';
 import { downsampleGray, lineContrast, localContrast, toWindowedSquare } from './grayImage';
 import type { GrayImage } from './grayImage';
-import { spectralHypotheses, stretchedHypotheses } from './spectralHypotheses';
+import { spectralHypotheses, stretchedHypotheses, turnedHypotheses } from './spectralHypotheses';
 import type { SpectralHypothesis } from './spectralHypotheses';
 
 const SPECTRUM_SIZE = 512;
@@ -19,15 +19,25 @@ const HARMONIC_DEPTH = 2;
 /** Flank distance of the line evidence the second round of proposals reads; lines up to twice as thick show. */
 const LINE_FLANK = 3;
 /** Proposals fitted in the second round, which every map without a clear regular grid pays for. */
-const SECOND_ROUND_PROPOSALS = 12;
+const SECOND_ROUND_PROPOSALS = 15;
 /** The second round looks for its grids on an image of at most this side; what it finds is fitted on the image itself. */
 const SECOND_ROUND_SIDE = 2048;
+/**
+ * Sides of the windows at the map's middle that propose small cells. The spectrum of the whole map
+ * is taken of the map reduced to `SPECTRUM_SIZE`, where cells of a hundredth of its side are a few
+ * pixels and their lines are gone (the fine grid of a large dungeon map); a window is reduced less.
+ */
+const FINE_WINDOWS = [2048, 1024];
+/** A window proposes the cells the next larger view shows as fewer pixels than this, which is where a spectrum loses them. */
+const FINE_PERIOD = 10;
 
 export interface Proposal {
   gridType: GridType;
   size: number;
   /** Aspect of the map's cells the proposal assumes; 1 for a regular grid. */
   aspect: number;
+  /** Angle in radians the proposal takes the map to be turned by; unset is level. */
+  rotation?: number;
   /** How many more times a supported fit of this proposal may queue its half and double. */
   harmonicsLeft: number;
   /** Set on the half and the double of a supported fit: its size and aspect are exact, where a spectral proposal's are rough. */
@@ -38,7 +48,7 @@ export interface Proposal {
 function asProposals(hypotheses: SpectralHypothesis[], factor: number): Proposal[] {
   return [...hypotheses]
     .sort((a, b) => b.score - a.score)
-    .map((h) => ({ gridType: h.gridType, size: h.cellSize * factor, aspect: h.aspect, harmonicsLeft: HARMONIC_DEPTH }));
+    .map((h) => ({ gridType: h.gridType, size: h.cellSize * factor, aspect: h.aspect, ...(h.rotation ? { rotation: h.rotation } : {}), harmonicsLeft: HARMONIC_DEPTH }));
 }
 
 export function spectrumFactor(image: GrayImage): number {
@@ -81,7 +91,7 @@ export function firstRoundProposals(spectra: Spectra, factor: number): Proposal[
 
 /**
  * What is worth fitting on a map the regular proposals did not settle: grids of other aspects from
- * every view, and regular grids its lines alone suggest. Scores of different grid types and views do
+ * every view, regular grids its lines alone suggest, and grids on a map that lies askew. Scores of different grid types and views do
  * not compare (squares always score above hexes), so every view's best of each type comes before
  * anyone's second best, and no more than `SECOND_ROUND_PROPOSALS` in all, since every map without a
  * grid is fitted for each of them.
@@ -91,17 +101,49 @@ export function secondRoundProposals(image: GrayImage, spectra: Spectra, factor:
   const lists = [
     stretchedHypotheses(spectra.lines, SPECTRUM_SIZE, MIN_PERIOD, MAX_PERIOD),
     spectralHypotheses(spectra.lines, SPECTRUM_SIZE, MIN_PERIOD, MAX_PERIOD),
+    turnedHypotheses(spectra.lines, SPECTRUM_SIZE, MIN_PERIOD, MAX_PERIOD),
     ...spectra.contrast.map((spectrum) => stretchedHypotheses(spectrum, SPECTRUM_SIZE, MIN_PERIOD, MAX_PERIOD)),
-  ].flatMap((hypotheses) => {
-    const proposals = asProposals(hypotheses, factor);
-    return [...new Set(proposals.map((p) => p.gridType))].map((gridType) => proposals.filter((p) => p.gridType === gridType));
-  });
+  ].flatMap((hypotheses) => byType(asProposals(hypotheses, factor)));
 
   const ranked: Proposal[] = [];
   for (let rank = 0; lists.some((list) => rank < list.length); rank++) {
     for (const list of lists) if (rank < list.length) ranked.push(list[rank]!);
   }
-  return ranked.slice(0, SECOND_ROUND_PROPOSALS);
+  // Small cells are a question of their own, and cheap to fit: the best of each window and type come along.
+  return [...ranked.slice(0, SECOND_ROUND_PROPOSALS), ...fineProposals(image, factor).map((list) => list[0]!)];
+}
+
+/** The middle of `image`, at most `side` wide and high. */
+function middleWindow(image: GrayImage, side: number): GrayImage {
+  const width = Math.min(image.width, side);
+  const height = Math.min(image.height, side);
+  const left = Math.floor((image.width - width) / 2);
+  const top = Math.floor((image.height - height) / 2);
+  const data = new Float32Array(width * height);
+  for (let y = 0; y < height; y++) data.set(image.data.subarray((top + y) * image.width + left, (top + y) * image.width + left + width), y * width);
+  return { width, height, data };
+}
+
+/**
+ * Regular grids of small cells, which only a window of the map shows: each window's best of each
+ * type among the sizes the view above it cannot tell.
+ */
+function fineProposals(image: GrayImage, factor: number): Proposal[][] {
+  const lists: Proposal[][] = [];
+  let coarser = factor;
+  for (const side of FINE_WINDOWS) {
+    const finer = Math.ceil(side / SPECTRUM_SIZE);
+    if (finer >= coarser) continue;
+    const spectrum = spectrumOf(downsampleGray(lineContrast(middleWindow(image, side), LINE_FLANK), finer));
+    const small = asProposals(spectralHypotheses(spectrum, SPECTRUM_SIZE, MIN_PERIOD, MAX_PERIOD), finer).filter((p) => p.size < FINE_PERIOD * coarser);
+    lists.push(...byType(small));
+    coarser = finer;
+  }
+  return lists;
+}
+
+function byType(proposals: Proposal[]): Proposal[][] {
+  return [...new Set(proposals.map((p) => p.gridType))].map((gridType) => proposals.filter((p) => p.gridType === gridType));
 }
 
 /** How many times the second round reduces `image`, so that no side is longer than `SECOND_ROUND_SIDE`. */
