@@ -3,6 +3,7 @@ import type { FogOperation } from './fogTypes';
 import type { WallSegment } from './wallTypes';
 import type { LightSource, LightZone, SceneLighting } from './lightingTypes';
 import type { AudioSource } from './audioTypes';
+import type { ViewportRect } from './viewportTypes';
 import type { WidgetSettings } from './widgetTypes';
 import type { InitiativeState } from './initiativeTypes';
 import type { DiceRollResult } from './diceTypes';
@@ -53,6 +54,7 @@ export interface ViewState extends ViewUIState {
     audios: Record<string, AudioSource>;
     /** Areas with ambient light of their own, in the order they were drawn; absent until the first is. Read with `lightZoneList`. */
     lightZones?: Record<string, LightZone>;
+    viewports: Record<string, ViewportRect>;
   };
 
   // Camera state
@@ -74,7 +76,7 @@ export interface ViewState extends ViewUIState {
   _audioDirty: boolean;
 
   // Tool and selection state
-  activeTool: 'move' | 'select' | 'fog' | 'text' | 'measure' | 'measure-circle' | 'measure-cone' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'draw-pen' | 'draw-eraser' | 'draw-icon' | 'draw-line' | 'draw-rectangle' | 'draw-circle' | 'wall' | 'audio';
+  activeTool: 'move' | 'select' | 'fog' | 'text' | 'measure' | 'measure-circle' | 'measure-cone' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'draw-pen' | 'draw-eraser' | 'draw-icon' | 'draw-line' | 'draw-rectangle' | 'draw-circle' | 'wall' | 'audio' | 'viewport';
   selectionMode: 'box' | 'lasso';
   selectedIds: string[];
 
@@ -93,6 +95,9 @@ export interface ViewState extends ViewUIState {
 
   // DM screen state
   dmNotePath: string | null;
+
+  // TV viewport follow: when true, the player window camera locks onto the active ViewportRect
+  followViewport: boolean;
 
   // Collection management
   currentCollectionId?: string;

@@ -42,6 +42,10 @@ import { captureSceneFrame } from './pixi/sceneFrameCapture';
 import { AudioTool } from './tools/AudioTool';
 import { openAudioConfigPanel } from './pixi/audio/AudioConfigPanel';
 import { AudioRenderer } from './pixi/audio/AudioRenderer';
+import { ViewportRectRenderer } from './pixi/viewport-tool/ViewportRectRenderer';
+import { ViewportInteraction } from './pixi/viewport-tool/ViewportInteraction';
+import { ViewportTool } from './tools/ViewportTool';
+import { calibratedViewportSize } from './utils/viewportPhysicalScale';
 import { SoundRegistry } from './audio/SoundRegistry';
 import { AudioBufferCache } from './audio/AudioBufferCache';
 import { SpatialAudioEngine } from './audio/SpatialAudioEngine';
@@ -90,6 +94,9 @@ export class PixiRendererOrchestrator { // Renamed class
   private soundRegistry?: SoundRegistry;
   private bufferCache?: AudioBufferCache;
   private spatialAudioEngine?: SpatialAudioEngine;
+  private viewportRectRenderer?: ViewportRectRenderer;
+  private viewportInteraction?: ViewportInteraction;
+  private viewportTool?: ViewportTool;
 
   private layerGrid: Container | null = null;
   private layerTemplate: Container | null = null;
@@ -412,6 +419,11 @@ export class PixiRendererOrchestrator { // Renamed class
     // Initialize Audio system
     this.audioRenderer = new AudioRenderer(viewport, this.store);
     this.audioTool = new AudioTool(this.eventBus);
+
+    // Initialize TV viewport tool
+    this.viewportRectRenderer = new ViewportRectRenderer(viewport, this.store);
+    this.viewportInteraction = new ViewportInteraction(this.store, this.viewportRectRenderer);
+    this.viewportTool = new ViewportTool(this.eventBus);
 
     // Initialize SoundRegistry and SpatialAudioEngine
     const pluginDir = this.store.getState().plugin?.manifest?.dir ?? `${this.obsApp.vault.configDir}/plugins/atlas-vtt`;
@@ -782,6 +794,7 @@ export class PixiRendererOrchestrator { // Renamed class
     const layers: LayerVisibility[] = [];
     if (this.pinRenderer) layers.push({ layer: this.pinRenderer.getPinContainer(), visible: false });
     if (this.hexLinkRenderer) layers.push({ layer: this.hexLinkRenderer.container, visible: false });
+    if (this.viewportRectRenderer) layers.push({ layer: this.viewportRectRenderer.container, visible: false });
     return layers;
   }
 
@@ -949,6 +962,22 @@ export class PixiRendererOrchestrator { // Renamed class
         // Future: hover feedback for audio sources
       });
     }
+
+    // Wire TV viewport tool handlers
+    if (this.viewportInteraction && this.viewportTool) {
+      this.tokenRenderer.setViewportPointerDownHandler((worldX, worldY, _e) => {
+        return this.handleViewportPointerDown(worldX, worldY);
+      });
+      this.tokenRenderer.setViewportPointerMoveHandler((worldX, worldY, _e) => {
+        this.viewportInteraction?.handlePointerMove(worldX, worldY);
+      });
+      this.tokenRenderer.setViewportPointerUpHandler(() => {
+        this.viewportInteraction?.handlePointerUp();
+      });
+      this.tokenRenderer.setViewportCursorProvider((worldX, worldY) => {
+        return this.viewportInteraction?.cursorAt(worldX, worldY) ?? 'crosshair';
+      });
+    }
   }
 
   /** Lets MeasureRenderer read the current map's measurement settings, and follow what the players see of the tokens. */
@@ -961,6 +990,35 @@ export class PixiRendererOrchestrator { // Renamed class
     if (grid) measure.playersView = measurePlayersView({ store: this.store, grid, tokens: () => this.tokenRenderer, lighting: () => this.lighting?.playerSight() });
     this.stopMeasuresFollowingPlayers?.();
     this.stopMeasuresFollowingPlayers = this.tokenRenderer?.onPlayersViewChange(() => measure.refreshVisibility());
+  }
+
+  /** Handle TV viewport tool pointer down: drag an existing rect, or place a new one. */
+  private handleViewportPointerDown(worldX: number, worldY: number): boolean {
+    if (!this.viewportInteraction) return false;
+
+    // Body or handle drag on an existing rect takes priority.
+    if (this.viewportInteraction.handlePointerDown(worldX, worldY)) {
+      return true;
+    }
+
+    // No rect exists yet: place one, centered on the click, sized from calibration.
+    const existing = Object.keys(this.store.getState().objects.viewports).length > 0;
+    if (existing) return false;
+
+    const calibration = SettingsService.forApp(this.obsApp)?.getTVCalibration();
+    if (!calibration) return false;
+    const gridSize = this.store.getState().grid?.size ?? 70;
+    const { width, height } = calibratedViewportSize(calibration, gridSize);
+
+    this.store.getState().addViewport({
+      x: worldX - width / 2,
+      y: worldY - height / 2,
+      width,
+      height,
+      locked: true,
+      active: true,
+    });
+    return true;
   }
 
   /** Handle audio tool pointer down: click to select existing source or place new one */
@@ -1075,6 +1133,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.playerFrames?.destroy();
     delete this.playerFrames;
     this.audioRenderer?.destroy();
+    this.viewportRectRenderer?.destroy();
     this.spatialAudioEngine?.dispose();
     this.bufferCache?.dispose();
     this.gridSystem?.destroy(); // Destroy GridSystem

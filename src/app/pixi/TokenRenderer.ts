@@ -156,6 +156,12 @@ export class TokenRenderer {
   private audioPointerDownHandler?: (worldX: number, worldY: number, e: FederatedPointerEvent) => boolean;
   private audioPointerMoveHandler?: (worldX: number, worldY: number, e: FederatedPointerEvent) => void;
 
+  // Viewport (TV) provider pattern — wired by PixiRendererOrchestrator
+  private viewportPointerDownHandler?: (worldX: number, worldY: number, e: FederatedPointerEvent) => boolean;
+  private viewportPointerMoveHandler?: (worldX: number, worldY: number, e: FederatedPointerEvent) => void;
+  private viewportPointerUpHandler?: () => void;
+  private viewportCursorProvider?: (worldX: number, worldY: number) => string;
+
   constructor(
     obsApp: ObsidianApp,
     viewport: Viewport,
@@ -1465,6 +1471,22 @@ export class TokenRenderer {
     this.audioPointerMoveHandler = fn;
   }
 
+  public setViewportPointerDownHandler(fn: (worldX: number, worldY: number, e: FederatedPointerEvent) => boolean): void {
+    this.viewportPointerDownHandler = fn;
+  }
+
+  public setViewportPointerMoveHandler(fn: (worldX: number, worldY: number, e: FederatedPointerEvent) => void): void {
+    this.viewportPointerMoveHandler = fn;
+  }
+
+  public setViewportPointerUpHandler(fn: () => void): void {
+    this.viewportPointerUpHandler = fn;
+  }
+
+  public setViewportCursorProvider(fn: (worldX: number, worldY: number) => string): void {
+    this.viewportCursorProvider = fn;
+  }
+
   // ─── Viewport-level event dispatch ──────────────────────────────────
 
   /** Circle-collision hit test against all visible token sprites; in a pile the token drawn on top wins. */
@@ -1677,6 +1699,15 @@ export class TokenRenderer {
       }
     }
 
+    // Viewport tool: click empty canvas to place the TV viewport rectangle
+    if (activeTool === 'viewport' && e.button === 0 && this.viewportPointerDownHandler) {
+      const handled = this.viewportPointerDownHandler(worldPos.x, worldPos.y, e);
+      if (handled) {
+        markHandled(e);
+        return;
+      }
+    }
+
     // ── Token + fog interactions: only for select/move tools ────────────
     if (activeTool !== 'select' && activeTool !== 'move') return;
 
@@ -1831,6 +1862,14 @@ export class TokenRenderer {
       return;
     }
 
+    // Viewport tool: pointer move for body/handle dragging and hover cursors
+    if (activeTool === 'viewport' && this.viewportPointerMoveHandler) {
+      this.viewportPointerMoveHandler(worldPos.x, worldPos.y, e);
+      const viewportCursor = this.viewportCursorProvider?.(worldPos.x, worldPos.y) ?? 'crosshair';
+      this.applyCursor(viewportCursor);
+      return;
+    }
+
     // Token hover: only for select/move tools
     if (activeTool !== 'select' && activeTool !== 'move') {
       this.interactionController.handleViewportTokenHover(null);
@@ -1861,6 +1900,9 @@ export class TokenRenderer {
   private onViewportPointerUp = (): void => {
     if (this.store.getState().activeTool === 'wall') {
       this.wallPointerUpHandler?.();
+    }
+    if (this.store.getState().activeTool === 'viewport') {
+      this.viewportPointerUpHandler?.();
     }
   };
 

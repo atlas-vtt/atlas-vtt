@@ -42,6 +42,13 @@ describe('map hotkeys', () => {
     expect(reloaded.getSetting('onboarding').tokenImported).toBe(true);
     expect(reloaded.getHotkeys().palette).toBe('Space');
   });
+  it('ships the TV viewport tool without a key, which can still be bound', () => {
+    expect(MAP_HOTKEYS.find(action => action.id === 'viewport')?.defaultKey).toBe('');
+    const { settings } = service();
+    expect(settings.getHotkeys().viewport).toBe('');
+    expect(() => settings.setHotkey('viewport', 'u')).not.toThrow();
+    expect(settings.getHotkeys().viewport).toBe('u');
+  });
   it('allows bindings reserved only by disabled tools', () => {
     const { settings } = service();
     expect(() => settings.setHotkey('assets', 's')).not.toThrow();

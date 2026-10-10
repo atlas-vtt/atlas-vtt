@@ -1,7 +1,7 @@
 // Type-only: that module imports SettingsService at runtime, which imports this catalog.
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import type { MapHotkeyId } from '../keyboard/mapHotkeys';
-import { AMBIENT_AUDIO_ENABLED } from '../featureFlags';
+import { AMBIENT_AUDIO_ENABLED, TV_VIEWPORT_ENABLED } from '../featureFlags';
 
 /** One control of the main toolbar, as the settings and the toolbar editor know it. */
 export interface ToolbarControlDefinition {
@@ -19,6 +19,8 @@ export interface ToolbarControlDefinition {
   experimental?: ExperimentalFeatureId;
   /** Every control can be hidden except the way into the editor. */
   hideable: boolean;
+  /** Starts in the editor's tray, not on the bar: for a control most tables do not use. The GM adds it from the tray. */
+  hiddenByDefault?: boolean;
 }
 
 /** The main toolbar's controls in their default order. Never rename an id: stored layouts use them. */
@@ -56,6 +58,10 @@ export const TOOLBAR_CONTROLS = [
     description: 'Place sounds on the map that grow louder as tokens come near.',
   },
   {
+    id: 'viewport', label: 'TV viewport', hotkey: 'viewport', dmOnly: true, hideable: true, hiddenByDefault: true, enabled: TV_VIEWPORT_ENABLED,
+    description: 'Frame the part of the map a table TV shows, sized so its squares match your miniatures.',
+  },
+  {
     id: 'dice', label: 'Dice', hotkey: 'diceTray', dmOnly: false, hideable: true,
     description: 'Roll any mix of dice and show the result to everyone at the table.',
   },
@@ -91,6 +97,11 @@ export const UNDO_BAR_ID = UNDO_BAR.id;
 export type ToolbarUnitId = ToolbarControlId | typeof UNDO_BAR_ID;
 
 export const DEFAULT_TOOLBAR_ORDER: readonly ToolbarControlId[] = TOOLBAR_CONTROLS.map(control => control.id);
+
+/** The controls that start in the tray until the GM adds them to the bar. */
+export const DEFAULT_HIDDEN_CONTROLS: readonly ToolbarControlId[] = TOOLBAR_CONTROLS
+  .filter((control: ToolbarControlDefinition) => control.hiddenByDefault === true)
+  .map(control => control.id);
 
 const CONTROLS_BY_ID = new Map<string, ToolbarControlDefinition>(TOOLBAR_CONTROLS.map(control => [control.id, control]));
 const UNITS_BY_ID = new Map<string, ToolbarControlDefinition>([...CONTROLS_BY_ID, [UNDO_BAR_ID, UNDO_BAR]]);

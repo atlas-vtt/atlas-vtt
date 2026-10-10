@@ -1,3 +1,4 @@
+import { viewportFollowCamera } from '../utils/viewportFollowCamera';
 import { App, Notice } from 'obsidian';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
@@ -50,6 +51,8 @@ export class PlayerWindowService {
   private frozenCamera: PlayerCameraState | null = null;
   /** The camera of the last frame players were shown of the presented scene; none until a frame of that scene came. */
   private shownCamera: PlayerCameraState | null = null;
+  /** When true, players see the scene's active TV viewport rect instead of the DM's camera. */
+  private viewportFollowEnabled = false;
   /** Last player frame, shown unchanged while the DM works on another scene tab. */
   private heldFrame: HTMLCanvasElement | null = null;
   /** Crossfade from the previous map, still playing after the DM presented another scene. */
@@ -118,6 +121,29 @@ export class PlayerWindowService {
 
   public isFrozen(): boolean {
     return this.frozenCamera !== null;
+  }
+
+  /** Toggle following the scene's active TV viewport and return the new state. */
+  public toggleViewportFollow(): boolean {
+    this.viewportFollowEnabled = !this.viewportFollowEnabled;
+    this.mirror?.markStale();
+    const store = this.streamSource?.store ?? this.store;
+    store.getState().setFollowViewport(this.viewportFollowEnabled);
+    playerWindowStore.setState({ isFollowingViewport: this.viewportFollowEnabled });
+    new Notice(this.viewportFollowEnabled ? t('player.viewportFollowing') : t('player.viewportFollowingDm'));
+    return this.viewportFollowEnabled;
+  }
+
+  public isFollowingViewport(): boolean {
+    return this.viewportFollowEnabled;
+  }
+
+  /** The camera that frames the scene's active TV viewport, or undefined while following is off or no viewport is active. */
+  private getViewportFollowCamera(): PlayerCameraState | undefined {
+    if (!this.viewportFollowEnabled) return undefined;
+    const store = this.streamSource?.store ?? this.store;
+    const rect = Object.values(store.getState().objects.viewports).find((viewport) => viewport.active);
+    return rect ? viewportFollowCamera(rect, this.streamSource?.getScreen?.()) : undefined;
   }
 
   public isWindowOpen(): boolean {
@@ -441,7 +467,8 @@ export class PlayerWindowService {
       source: () => this.streamSource,
       window: () => this.windowScreen(targetCanvas),
       heldFrame: () => this.heldFrame,
-      frozenCamera: () => this.frozenCamera,
+      // Following the TV viewport wins over a freeze: it is the deliberate choice for the physical table.
+      frozenCamera: () => this.getViewportFollowCamera() ?? this.frozenCamera,
       settings: () => this.settingsService.getLocalPlayerViewSettings(),
       onFrame: (camera) => this.recordPlayerCamera(camera),
     });

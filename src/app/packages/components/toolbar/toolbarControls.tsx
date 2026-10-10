@@ -10,7 +10,8 @@ import { LightingToolGroup } from "./LightingToolGroup"
 import { MeasureToolGroup } from "./MeasureToolGroup"
 import { MoveToolGroup } from "./MoveToolGroup"
 import { TextToolGroup } from "./TextToolGroup"
-import { drawToolFace, fogToolFace, lightingToolFace, measureToolFace, moveToolFace, textToolFace, type Tool, type ToolFace } from "./toolFaces"
+import { ViewportToolGroup } from "./ViewportToolGroup"
+import { drawToolFace, fogToolFace, lightingToolFace, measureToolFace, moveToolFace, textToolFace, viewportToolFace, type Tool, type ToolFace } from "./toolFaces"
 import { buttonItem, toolGroupItem, type ToolbarItemBody } from "./toolbarItems"
 import type { ToolbarContext } from "./toolbarContext"
 import { t } from "../../../i18n"
@@ -31,6 +32,7 @@ export const TOOLBAR_CONTROL_ITEMS = {
   wall: ctx => toolGroupItem(ctx, 'wall', lightingToolFace(ctx.activeTool), <LightingToolGroup {...ctx.groupControls('wall')} />),
   pin: ctx => toolButtonItem(ctx, "note-pin", MapPin, t('toolbar.notePin'), ctx.hotkeyLabel('pin')),
   audio: ctx => toolButtonItem(ctx, "audio", Volume2, t('toolbar.ambientSound'), ctx.hotkeyLabel('audio')),
+  viewport: ctx => toolGroupItem(ctx, 'viewport', viewportToolFace(ctx.activeTool), <ViewportToolGroup {...ctx.groupControls('viewport')} />),
   dice: ({ dice, hotkeyLabel }) => ({
     kind: 'button',
     // The dice tray hangs from this button.

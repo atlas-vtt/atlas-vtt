@@ -44,8 +44,8 @@ describe('the undo/redo bar in the toolbar editor', () => {
     expect(bar?.classList.contains('is-editing')).toBe(true);
     expect(screen.getByRole('button', { name: 'Undo and redo' })).toBe(handle(harness.container, 'undo'));
     expect(harness.container.querySelector('.atlas-main-toolbar [data-toolbar-item="undo"]')).toBeNull();
-    // The tray keeps a slot for it, closed while the bar shows.
-    expect(trayIds(harness.container)).toEqual([]);
+    // The tray keeps a slot for it, closed while the bar shows; only the TV viewport waits in it.
+    expect(trayIds(harness.container)).toEqual(['viewport']);
   });
 
   it('hides with Hide from its menu, stays mounted, and shows first in the tray', async () => {
@@ -55,7 +55,7 @@ describe('the undo/redo bar in the toolbar editor', () => {
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Hide' }));
     expect(harness.settings.getToolbarLayout()).toEqual({ hidden: ['undo', 'fog'] });
     expect(undoSlot(harness.container).hidden).toBe(true);
-    expect(trayIds(harness.container)).toEqual(['undo', 'fog']);
+    expect(trayIds(harness.container)).toEqual(['undo', 'fog', 'viewport']);
     expect(liveRegion(harness.container)).toBe('Undo and redo hidden. Ctrl/Cmd + Z still undoes.');
   });
 
@@ -70,13 +70,13 @@ describe('the undo/redo bar in the toolbar editor', () => {
   });
 
   it('shows again with Enter on its tray face, at its own place', () => {
-    const harness = renderToolbar({ undoBar: true, stored: { hidden: ['undo'] } });
+    const harness = renderToolbar({ undoBar: true, stored: { hidden: ['undo'], shown: ['viewport'] } });
     startEditing(harness);
     expect(undoSlot(harness.container).hidden).toBe(true);
     const face = handle(harness.container, 'undo', 'tray');
     act(() => face.focus());
     expect(fireEvent.keyDown(face, { key: 'Enter' })).toBe(false);
-    expect(harness.settings.getToolbarLayout()).toEqual({});
+    expect(harness.settings.getToolbarLayout()).toEqual({ shown: ['viewport'] });
     expect(undoSlot(harness.container).hidden).toBe(false);
     expect(liveRegion(harness.container)).toBe('Undo and redo is back, left of the toolbar.');
     // The tray emptied, so focus goes to the bar's handle for it.

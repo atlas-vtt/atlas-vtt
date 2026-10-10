@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TOOLBAR_ORDER, type ToolbarControlId } from '../../src/app/toolbar/toolbarCatalog';
+import { DEFAULT_HIDDEN_CONTROLS, DEFAULT_TOOLBAR_ORDER, type ToolbarControlId } from '../../src/app/toolbar/toolbarCatalog';
 import {
   controlPlacement,
   isDefaultToolbarLayout,
@@ -41,7 +41,9 @@ describe('readToolbarLayout', () => {
 describe('resolveToolbarLayout', () => {
   it('gives the default order without a stored one', () => {
     expect(DEFAULT.order).toEqual(DEFAULT_TOOLBAR_ORDER);
-    expect(DEFAULT.hidden.size).toBe(0);
+    // The TV viewport starts in the tray; nothing else is hidden.
+    expect([...DEFAULT.hidden]).toEqual(DEFAULT_HIDDEN_CONTROLS);
+    expect(DEFAULT_HIDDEN_CONTROLS).toEqual(['viewport']);
     expect(isDefaultToolbarLayout(DEFAULT)).toBe(true);
   });
 
@@ -51,7 +53,7 @@ describe('resolveToolbarLayout', () => {
     expect(resolved.order.slice(0, 6)).toEqual(['palette', 'dice', 'loot', 'assets', 'move', 'fog']);
     expect(resolved.order.indexOf('draw')).toBe(resolved.order.indexOf('fog') + 1);
     expect([...resolved.order].sort()).toEqual([...DEFAULT_TOOLBAR_ORDER].sort());
-    expect([...resolved.hidden]).toEqual(['loot']);
+    expect([...resolved.hidden]).toEqual(['loot', 'viewport']);
   });
 
   it('places controls of a later version after the control before them by default', () => {
@@ -173,5 +175,35 @@ describe('visits', () => {
     memory = { active: false, armed: nextVisitArmed(memory, false, true, false) };
     memory = { active: true, armed: nextVisitArmed(memory, true, true, false) };
     expect(controlPlacement(true, true, false, memory.armed)).toBe('visiting');
+  });
+});
+
+describe('a control that starts hidden', () => {
+  it('shows once the GM adds it, remembering only that', () => {
+    const added = withControlShown(DEFAULT, 'viewport');
+    expect(added.hidden.has('viewport')).toBe(false);
+    expect(storedToolbarLayout({}, added)).toEqual({ shown: ['viewport'] });
+    expect(resolveToolbarLayout({ shown: ['viewport'] }).hidden.has('viewport')).toBe(false);
+  });
+
+  it('is back to the default layout, and stores nothing, when the GM hides it again', () => {
+    const hiddenAgain = withControlHidden(withControlShown(DEFAULT, 'viewport'), 'viewport');
+    expect(storedToolbarLayout({ shown: ['viewport'] }, hiddenAgain)).toEqual({});
+    expect(isDefaultToolbarLayout(hiddenAgain)).toBe(true);
+  });
+
+  it('is not the default layout once shown', () => {
+    expect(isDefaultToolbarLayout(withControlShown(DEFAULT, 'viewport'))).toBe(false);
+  });
+
+  it('keeps a shown control of a newer version and reads the list defensively', () => {
+    const kept = storedToolbarLayout({ shown: ['viewport', 'future'] }, withControlShown(DEFAULT, 'viewport'));
+    expect(kept.shown).toEqual(['viewport', 'future']);
+    expect(readToolbarLayout({ shown: ['viewport', 7, '', 'x'.repeat(200)] })).toEqual({ shown: ['viewport'] });
+    expect(readToolbarLayout({ shown: 'viewport' })).toEqual({});
+  });
+
+  it('stays hidden in the layout of a GM who hid other tools', () => {
+    expect(resolveToolbarLayout({ hidden: ['fog'] }).hidden).toEqual(new Set(['fog', 'viewport']));
   });
 });
