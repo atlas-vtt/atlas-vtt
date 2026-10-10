@@ -6,6 +6,7 @@
 - A grid you measure or place by hand is fitted exactly to the lines printed on the map
 - Grid alignment has its own choice of squares, pointy hexes or flat hexes
 - A new scene whose map shows no grid says so and offers to align it
+- Show current map in local player window opens the player window on this computer with the active map, also while another plugin shows the scene to your players
 
 ## Improved
 
@@ -20,3 +21,4 @@
 - Auto-detect no longer takes a grid for several times its cell size on some maps
 - Applying a grid alignment is one undo step
 - Grid alignment ends when another scene is opened, and no longer applies one scene's grid to another
+- Sending a map to players while another plugin shows it to them no longer says that the player view shows it when no player window is open
