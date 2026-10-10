@@ -118,6 +118,18 @@ describe('MapImage', () => {
     const centre = turned.toGlobal({ x: 2000, y: 1500 });
     expect(centre.x).toBeCloseTo(box.width / 2, 6);
     expect(centre.y).toBeCloseTo(box.height / 2, 6);
+    // Its outline is where its corners are drawn: each touches one side of the box, and the grid ends there.
+    const outline = mapImage.outline!;
+    [[0, 0], [4000, 0], [4000, 3000], [0, 3000]].forEach(([x, y], i) => {
+      const drawn = turned.toGlobal({ x: x!, y: y! });
+      expect(outline[i]!.x).toBeCloseTo(drawn.x, 6);
+      expect(outline[i]!.y).toBeCloseTo(drawn.y, 6);
+    });
+    expect(Math.min(...outline.map((corner) => corner.x))).toBeCloseTo(0, 6);
+    expect(Math.max(...outline.map((corner) => corner.y))).toBeCloseTo(box.height, 6);
+
+    mapImage.setStretch({ x: 1.05, y: 1 });
+    expect(mapImage.outline).toBeNull();
   });
 
   it('shows a loaded image with the stretch the load names, and the next one with the same unless it names another', async () => {

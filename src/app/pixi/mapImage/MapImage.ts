@@ -10,7 +10,7 @@ import type { PixelRect } from './pyramid';
 import { isMapClosed } from './tileErrors';
 import { ResidentOverviews } from './residentOverviews';
 import { TileTextureCache } from './tileTextureCache';
-import { NO_STRETCH, sameStretch, turnedBox, type MapStretch } from '../../grid/mapStretch';
+import { imageToWorld, NO_STRETCH, sameStretch, turnedBox, type MapStretch } from '../../grid/mapStretch';
 
 /**
  * The one owner of a view's map image (decisions 1, 12 and 13 of the tiled map images plan): it
@@ -80,6 +80,14 @@ export class MapImage {
   /** The image's own size in pixels, whatever its stretch; null before the first load and after `clear`. */
   get imageSize(): { width: number; height: number } | null {
     return this.shown ? { width: this.shown.width, height: this.shown.height } : null;
+  }
+
+  /** The corners of an image that lies turned in its world rect, which then holds a little more than the image; null for a level one. */
+  get outline(): Array<{ x: number; y: number }> | null {
+    const { shown, stretch } = this;
+    if (!shown || !stretch.rotation) return null;
+    const { width, height } = shown;
+    return [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }].map((corner) => imageToWorld(corner, { width, height }, stretch));
   }
 
   /** How the image is drawn stretched. */
@@ -291,12 +299,12 @@ export class MapImage {
    * axes' detail. Of a turned image it is the upright box around the view, which holds a little more.
    */
   private onImage(view: TileView): TileView {
-    const { x, y } = this.stretch;
-    if (x === 1 && y === 1 && !this.stretch.rotation) return view;
+    const { x, y, rotation } = this.stretch;
+    if (x === 1 && y === 1 && !rotation) return view;
     const { rect } = view;
     const unstretched = { x: rect.x / x, y: rect.y / y, width: rect.width / x, height: rect.height / y };
     const worldPerScreenPixel = view.worldPerScreenPixel / Math.max(x, y);
-    if (!this.stretch.rotation || !this.shown) return { rect: unstretched, worldPerScreenPixel };
+    if (!rotation || !this.shown) return { rect: unstretched, worldPerScreenPixel };
 
     const { width, height } = this.shown;
     const { cos, sin, corner } = turnedBox(width, height, this.stretch);

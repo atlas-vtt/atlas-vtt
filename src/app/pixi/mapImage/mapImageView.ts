@@ -23,5 +23,7 @@ export interface DetectableMap extends MapPixels {
  */
 export interface MapImageView extends DetectableMap {
   readonly layer: Container;
+  /** The image's four corners in world units where it lies turned in its world rect; null or unset where the rect is the image. */
+  readonly outline?: ReadonlyArray<{ x: number; y: number }> | null;
   onChange(listener: (change: MapImageChange) => void): () => void;
 }

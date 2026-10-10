@@ -179,6 +179,21 @@ const GRID_ANGLES: ReadonlyArray<[GridType, number[]]> = [
 ];
 
 /**
+ * Of one grid type's best hypothesis at every step of a shape (aspect or angle; the plain shape at
+ * `plainAt`), those that beat the plain one and their neighbours, strongest first and at most `count`.
+ */
+function standingOut(best: Array<SpectralHypothesis | null>, plainAt: number, count: number): SpectralHypothesis[] {
+  const plain = best[plainAt]?.score ?? 0;
+  return best
+    .filter((hypothesis, i): hypothesis is SpectralHypothesis => {
+      if (!hypothesis || i === plainAt || hypothesis.score <= plain) return false;
+      return hypothesis.score > (best[i - 1]?.score ?? 0) && hypothesis.score >= (best[i + 1]?.score ?? 0);
+    })
+    .sort((a, b) => b.score - a.score)
+    .slice(0, count);
+}
+
+/**
  * Regular grid hypotheses worth fitting, for every grid type. `minPeriod`/`maxPeriod` bound
  * the line spacing (in analysed pixels) considered plausible.
  */
@@ -211,14 +226,7 @@ export function stretchedHypotheses(
 
   return GRID_ANGLES.flatMap(([gridType, angles]) => {
     const best = aspects.map((aspect) => candidateFundamentals(power, n, gridType, angles, kMin, kMax, { aspect, rings })[0] ?? null);
-    const regular = best[ASPECT_STEPS]?.score ?? 0;
-    return best
-      .filter((hypothesis, i): hypothesis is SpectralHypothesis => {
-        if (!hypothesis || i === ASPECT_STEPS || hypothesis.score <= regular) return false;
-        return hypothesis.score > (best[i - 1]?.score ?? 0) && hypothesis.score >= (best[i + 1]?.score ?? 0);
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, ASPECTS_PER_TYPE);
+    return standingOut(best, ASPECT_STEPS, ASPECTS_PER_TYPE);
   });
 }
 
@@ -242,13 +250,6 @@ export function turnedHypotheses(
       const top = candidateFundamentals(power, n, gridType, angles.map((angle) => angle + rotation), kMin, kMax)[0];
       return top ? { ...top, rotation } : null;
     });
-    const level = best[ROTATION_STEPS]?.score ?? 0;
-    return best
-      .filter((hypothesis, i): hypothesis is SpectralHypothesis & { rotation: number } => {
-        if (!hypothesis || i === ROTATION_STEPS || hypothesis.score <= level) return false;
-        return hypothesis.score > (best[i - 1]?.score ?? 0) && hypothesis.score >= (best[i + 1]?.score ?? 0);
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 1);
+    return standingOut(best, ROTATION_STEPS, 1);
   });
 }

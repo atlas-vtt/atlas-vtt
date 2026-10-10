@@ -142,14 +142,16 @@ function followBackground(app: App, store: ViewAtlasStore, mapImage: MapImage): 
 
 /**
  * Draws the map image with the stretch of the store's grid whenever that changes outside a load
- * (an alignment applied, its undo or redo). Returns the unsubscribe.
+ * (an alignment applied, its undo or redo), and says so with `onFollowed`. Returns the unsubscribe.
  */
-function followStretch(store: ViewAtlasStore, mapImage: MapImage): () => void {
+function followStretch(store: ViewAtlasStore, mapImage: MapImage, onFollowed: () => void): () => void {
   return store.subscribe((state) => readMapStretch(state.grid?.mapStretch), (stretch) => {
     const state = store.getState();
     // A load shows its image with the stretch of its file.
     if (!state.mapLoaded || state.isMapLoading) return;
     mapImage.setStretch(stretch);
+    // The image may have been drawn this way already, as an alignment's preview: nothing changed on it then.
+    onFollowed();
   }, { equalityFn: sameStretch });
 }
 

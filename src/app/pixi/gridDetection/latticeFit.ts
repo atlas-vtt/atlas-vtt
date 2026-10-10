@@ -21,7 +21,7 @@
 
 import type { GridType } from '../../grid/GridSystem';
 import type { GrayImage } from './grayImage';
-import { edgeDirectionKey, edgeResponse, edgeShift, frameOf, latticeEdges, moveCandidate } from './edgeProfile';
+import { aspectOf, edgeDirectionKey, edgeResponse, edgeShift, frameOf, latticeEdges, moveCandidate } from './edgeProfile';
 import type { LatticeCandidate, LatticeEdge, LatticeFrame } from './edgeProfile';
 
 interface EdgeMeasurement {
@@ -217,7 +217,7 @@ export function latticeSupport(image: GrayImage, gridType: GridType, candidate: 
 
   let support = directions.size > 0 ? 1 : 0;
   for (const tally of directions.values()) {
-    const chance = (tally.withLine / tally.edges) * (MIN_CUTOFF / reach);
+    const chance = (tally.withLine / tally.edges) * (CHANCE_BAND / reach);
     const excess = tally.onLine / tally.edges - chance;
     // With few edges a handful of chance hits looks like a grid; demand a clear excess over the binomial noise.
     const noise = Math.sqrt((chance * (1 - chance)) / tally.edges);
@@ -241,7 +241,7 @@ export function edgesOnLines(image: GrayImage, gridType: GridType, candidate: La
   const reach = clampReach(SUPPORT_REACH, candidate.cellSize);
   const edges = latticeEdges(image, gridType, candidate, reach, MAX_EDGES, edgeLength);
   const measurements = measureEdges(image, edges, reach, frameOf(image, candidate));
-  const hits = measurements.filter((m) => Math.abs(m.shift) < MIN_CUTOFF);
+  const hits = measurements.filter((m) => Math.abs(m.shift) < CHANCE_BAND);
   const strengths = hits.map((m) => m.strength).sort((a, b) => a - b);
   const blank = (strengths[Math.floor(strengths.length / 2)] ?? 0) * BLANK_SHARE;
   return {
@@ -269,7 +269,10 @@ export function fitLattice(image: GrayImage, gridType: GridType, start: LatticeC
     const measurements = measureEdges(image, latticeEdges(image, gridType, candidate, reach, MAX_EDGES), reach, frameOf(image, candidate));
     if (measurements.length < 5) break;
     const delta = robustDelta(measurements, reach, free);
-    candidate = moveCandidate(image, candidate, delta.dx, delta.dy, delta.dSize, delta.dAspect, delta.dRotation);
+    const moved = moveCandidate(image, candidate, delta.dx, delta.dy, delta.dSize, delta.dAspect, delta.dRotation);
+    // A step to cells of no size or shape (a fit on a handful of lines that agree on nothing) is none: the drawers never end on such a grid.
+    if (!(moved.cellSize >= 1) || !(aspectOf(moved) > 0)) break;
+    candidate = moved;
   }
   return { candidate, support: latticeSupport(image, gridType, candidate) };
 }

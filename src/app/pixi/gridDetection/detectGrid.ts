@@ -12,15 +12,15 @@
 import type { AlignmentResult } from '../gridAlignmentMath';
 import { grayFromCanvasSource } from './grayImage';
 import type { GrayImage } from './grayImage';
-import { firstRoundProposals, MIN_PERIOD, reducedImage, secondRoundFactor, secondRoundProposals, spectraOf, spectrumFactor } from './gridProposals';
+import { firstRoundProposals, reducedImage, secondRoundFactor, secondRoundProposals, spectraOf, spectrumFactor } from './gridProposals';
 import type { Proposal, Spectra } from './gridProposals';
 import type { GridType } from '../../grid/GridSystem';
 import { latticeSupport } from './latticeFit';
-import { isFinerCopy } from './subGrid';
+import { isFinerCopy, sharesLinesOnly } from './subGrid';
 import { refineFromReduced, refineGrid } from './refineGrid';
 import type { RefinedGrid } from './refineGrid';
 import type { DetectableMap } from '../mapImage/mapImageView';
-import { isStretchableAspect, MAX_ROTATION_DEGREES, NO_STRETCH, sameStretch, stretchForAspect, turnedBox } from '../../grid/mapStretch';
+import { MAX_ROTATION_DEGREES, MAX_STRETCH_FACTOR, NO_STRETCH, sameStretch, stretchForAspect, turnedBox } from '../../grid/mapStretch';
 
 export type { DetectableMap } from '../mapImage/mapImageView';
 
@@ -30,6 +30,19 @@ export const MAX_ANALYSIS_SIDE = 4096;
 const MIN_SUPPORT = 0.05;
 /** A spectral peak may be a harmonic of the grid, so the half and the double of a supported size are fitted too. */
 const HARMONIC_MULTIPLES = [2, 0.5];
+/** A square fit with lines of its own between the map's is a harmonic of the map's grid, which may be three or five times as large as well. */
+const FINER_COPY_MULTIPLES = [3, 5];
+/** The smallest cells looked for, in pixels of the analysed image. */
+const MIN_CELL_SIZE = 12;
+/**
+ * A square fit with cells further off regular than this has taken every fourth line one way and
+ * every fifth the other for a grid: columns and rows of a square grid fit each on their own. Hexes
+ * are found by three directions at once, and tile sets draw them up to a sixth off regular. A grid
+ * the GM measured says its own shape.
+ */
+const MAX_DETECTED_SQUARE_ASPECT = 1.1;
+/** Fits supported this nearly alike are a tie, which the more regular one wins. */
+const SUPPORT_TIE = 0.02;
 /** Support at which a fit settles the grid type. */
 const DECISIVE_SUPPORT = 0.5;
 /** Sizes closer than this fraction are the same proposal. */
@@ -105,6 +118,10 @@ interface Round {
   minFactor: number;
   /** Support below which a fit found no grid. */
   minSupport: number;
+  /** A square grid's rows may lie this many times further apart, or closer together, than a regular grid's. */
+  maxSquareAspect: number;
+  /** A square fit that only shares lines with the map's grid (`sharesLinesOnly`) is no fit: for a hint, whose size says which grid is meant. */
+  ownLinesOnly: boolean;
 }
 
 /**
@@ -140,8 +157,43 @@ function fitProposal(image: GrayImage, spectra: Spectra, { gridType, size, aspec
   return reduced && acceptedSupport(small, reduced) > 0 ? refineFromReduced(image, reduced, factor) : null;
 }
 
+/**
+ * The half and the double of a supported fit, as proposals of its exact shape; of a spectral peak
+ * that turned out a finer copy of the map's grid, its larger multiples too. Only of a peak: on a map
+ * whose grid shows on its floors alone, multiples of the grid look like finer copies as well, and
+ * theirs would be no grid of the map's.
+ */
+function harmonicProposals(image: GrayImage, fit: RefinedGrid, { harmonicsLeft, fromFit }: Proposal): Proposal[] {
+  const isPeak = !fromFit && fit.gridType === 'square';
+  const multiples = isPeak && isFinerCopy(image, fit) === true ? [...HARMONIC_MULTIPLES, ...FINER_COPY_MULTIPLES] : HARMONIC_MULTIPLES;
+  return multiples.map((multiple): Proposal => ({ gridType: fit.gridType, size: fit.cellSize * multiple, aspect: fit.aspect, rotation: fit.rotation, harmonicsLeft: harmonicsLeft - 1, fromFit: true }));
+}
+
+/**
+ * A spectral peak is the grid's period or a fraction or multiple of it, and a hint says which: the
+ * peak's shape at the sizes near the hint's.
+ */
+function atHintedSizes(proposals: Proposal[], minSize: number, maxSize: number): Proposal[] {
+  const sizesOf = (size: number): number[] => {
+    const sizes = [size / 3, size / 2];
+    for (let multiple = 1; multiple <= MAX_MULTIPLE && size * multiple <= maxSize; multiple++) sizes.push(size * multiple);
+    return sizes.filter((candidate) => candidate >= minSize && candidate <= maxSize);
+  };
+  return proposals.flatMap((proposal) => sizesOf(proposal.size).map((size): Proposal => ({ ...proposal, size, harmonicsLeft: 0 })));
+}
+
+/** Whether cells of `aspect` are further off regular than `max` times, either way. */
+function isOffRegularBeyond(aspect: number, max: number): boolean {
+  return aspect > max || aspect < 1 / max;
+}
+
+/** Whether a square fit short of settling the grid only shares lines with the map's own grid (`sharesLinesOnly`). */
+function sharesMapLinesOnly(image: GrayImage, fit: RefinedGrid): boolean {
+  return fit.gridType === 'square' && fit.support < DECISIVE_SUPPORT && sharesLinesOnly(image, fit);
+}
+
 /** Fits every proposal the map's lines may support, strongest first, and keeps those they do. */
-function fitProposals(image: GrayImage, spectra: Spectra, proposals: Proposal[], { minSize, maxSize, firstDecisive, minFactor, minSupport }: Round): RefinedGrid[] {
+function fitProposals(image: GrayImage, spectra: Spectra, proposals: Proposal[], { minSize, maxSize, firstDecisive, minFactor, minSupport, maxSquareAspect, ownLinesOnly }: Round): RefinedGrid[] {
   const attempted: Proposal[] = [];
   const fits: RefinedGrid[] = [];
   const weak: RefinedGrid[] = [];
@@ -154,20 +206,22 @@ function fitProposals(image: GrayImage, spectra: Spectra, proposals: Proposal[],
     attempted.push(proposal);
 
     const fitted = fitProposal(image, spectra, proposal, minFactor);
-    if (!fitted || !isStretchableAspect(fitted.aspect) || Math.abs(fitted.rotation) > MAX_ROTATION) continue;
+    const maxAspect = gridType === 'square' ? maxSquareAspect : MAX_STRETCH_FACTOR;
+    if (!fitted || !(fitted.cellSize > 0) || isOffRegularBeyond(fitted.aspect, maxAspect) || Math.abs(fitted.rotation) > MAX_ROTATION) continue;
     const refined: RefinedGrid = { ...fitted, support: acceptedSupport(image, fitted) };
+    // Hexes further off regular than any print are a tile set's, whose lines agree with them all over the map.
+    if (isOffRegularBeyond(fitted.aspect, maxSquareAspect) && refined.support < DECISIVE_SUPPORT) continue;
     if (refined.support < minSupport) {
       if (refined.support > 0) weak.push(refined);
       continue;
     }
+    if (ownLinesOnly && sharesMapLinesOnly(image, refined)) continue;
     fits.push(refined);
-    if (harmonicsLeft > 0) {
-      queue.push(...HARMONIC_MULTIPLES.map((multiple): Proposal => ({ gridType, size: refined.cellSize * multiple, aspect: refined.aspect, rotation: refined.rotation, harmonicsLeft: harmonicsLeft - 1, fromFit: true })));
-    }
+    if (harmonicsLeft > 0) queue.push(...harmonicProposals(image, refined, proposal));
     if (refined.support < DECISIVE_SUPPORT) continue;
     if (firstDecisive) break;
     // No other grid type can explain a map this well; only this type's sizes are still worth fitting.
-    queue = queue.filter((proposal) => proposal.gridType === gridType);
+    queue = queue.filter((queued) => queued.gridType === gridType);
   }
   // Too little of a grid to stand on its own is still the map's grid at another size, where a multiple of it stands.
   return [...fits, ...weak.filter((fit) => fits.some((accepted) => areMultiples(accepted, fit)))];
@@ -185,12 +239,14 @@ function areMultiples(a: RefinedGrid, b: RefinedGrid): boolean {
 }
 
 /**
- * The grid type and shape of the strongest fit win (a regular grid, tried first, on a tie), and of
+ * The grid type and shape of the strongest fit win (the most regular one on a tie), and of
  * its sizes the densest that is the map's own grid: a coarser one has lines of the map between its
  * own, a finer one has lines of its own between the map's.
  */
 function chooseFit(image: GrayImage, fits: RefinedGrid[]): RefinedGrid {
-  const best = fits.reduce((a, b) => (a.support >= b.support ? a : b));
+  const strongest = Math.max(...fits.map((fit) => fit.support));
+  const offRegular = (fit: RefinedGrid): number => Math.abs(Math.log(fit.aspect)) + Math.abs(fit.rotation);
+  const best = fits.filter((fit) => fit.support >= strongest - SUPPORT_TIE).reduce((a, b) => (offRegular(a) <= offRegular(b) ? a : b));
   const rivals = fits.filter((fit) => fit.gridType === best.gridType && sameAspect(fit.aspect, best.aspect) && Math.abs(fit.rotation - best.rotation) < SAME_ROTATION);
   return best.gridType === 'square' ? densestSquareGrid(image, best, rivals) : densestSupported(image, best.gridType, rivals);
 }
@@ -224,24 +280,29 @@ function densestSquareGrid(image: GrayImage, best: RefinedGrid, rivals: RefinedG
  * of its type and about its size are looked for.
  */
 export function detectGridInImage(image: GrayImage, hint?: GridHint): RefinedGrid | null {
+  // A size that is no positive number hints at nothing.
+  if (hint && !(hint.cellSize > 0 && Number.isFinite(hint.cellSize))) return null;
   const factor = spectrumFactor(image);
   const spectra = spectraOf(image);
-  const minSize = hint ? hint.cellSize * (1 - HINT_SIZE_RANGE) : MIN_PERIOD * factor;
+  const minSize = hint ? hint.cellSize * (1 - HINT_SIZE_RANGE) : MIN_CELL_SIZE;
   const maxSize = hint ? hint.cellSize * (1 + HINT_SIZE_RANGE) : Math.min(image.width, image.height) / 3;
-  const wanted = (proposals: Proposal[]): Proposal[] => (hint ? proposals.filter((p) => p.gridType === hint.gridType) : proposals);
+  const wanted = (proposals: Proposal[]): Proposal[] => (hint ? atHintedSizes(proposals.filter((p) => p.gridType === hint.gridType), minSize, maxSize) : proposals);
   const hinted: Proposal[] = hint
     ? HINT_SIZE_STEPS.map((step) => ({ gridType: hint.gridType, size: hint.cellSize * (1 + step), aspect: hint.aspect, rotation: hint.rotation, harmonicsLeft: 0 }))
     : [];
 
   // A hint's sizes all lie within a few percent of each other: the first that settles the grid is it.
-  const round: Round = { minSize, maxSize, firstDecisive: hint !== undefined, minFactor: 1, minSupport: hint ? MIN_HINTED_SUPPORT : MIN_SUPPORT };
+  const round: Round = { minSize, maxSize, firstDecisive: hint !== undefined, minFactor: 1, minSupport: hint ? MIN_HINTED_SUPPORT : MIN_SUPPORT, maxSquareAspect: hint ? MAX_STRETCH_FACTOR : MAX_DETECTED_SQUARE_ASPECT, ownLinesOnly: hint !== undefined };
   const fits = fitProposals(image, spectra, [...hinted, ...wanted(firstRoundProposals(spectra, factor))], round);
   // A regular grid that most of the map's lines agree with is the map's grid: only otherwise is a second round worth its time.
   if (!fits.some((fit) => fit.support >= DECISIVE_SUPPORT)) {
     // A large map is searched reduced, which costs a fraction; what its lines support there is fitted on the map itself.
     fits.push(...fitProposals(image, spectra, wanted(secondRoundProposals(image, spectra, factor)), { ...round, minFactor: secondRoundFactor(image) }));
   }
-  return fits.length > 0 ? chooseFit(image, fits) : null;
+  if (fits.length === 0) return null;
+  const chosen = chooseFit(image, fits);
+  // What is left of a square grid that shares lines with the map's own, where that one was never fitted, is no grid.
+  return sharesMapLinesOnly(image, chosen) ? null : chosen;
 }
 
 interface ImageSize {
@@ -305,8 +366,7 @@ export function snapGridToMapGray({ image, size }: MapGray, candidates: Alignmen
       rotation: ((stretch.rotation ?? 0) * Math.PI) / 180,
     };
     // Readings of one measurement often name the same grid at another place: the lines place it either way.
-    const isNew = !asked.some((a) => a.gridType === hint.gridType && sameAspect(a.aspect, hint.aspect) && sameSize(a.cellSize, hint.cellSize));
-    if (!isNew) continue;
+    if (asked.some((earlier) => earlier.gridType === hint.gridType && sameAspect(earlier.aspect, hint.aspect) && sameSize(earlier.cellSize, hint.cellSize))) continue;
     if (fits.some((fit) => fit.gridType !== hint.gridType && fit.support >= DECISIVE_SUPPORT)) break;
     asked.push(hint);
     const detected = detectGridInImage(image, hint);

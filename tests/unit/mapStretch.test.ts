@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isStretchableAspect, NO_STRETCH, readMapStretch, sameStretch, stretchForAspect } from '../../src/app/grid/mapStretch';
+import { imageToWorld, MAX_STRETCH_FACTOR, movedWithMap, NO_STRETCH, readMapStretch, sameStretch, stretchForAspect, turnedBox, worldToImage } from '../../src/app/grid/mapStretch';
 
 describe('map stretch', () => {
   it('grows the map along the axis its cells are too short on, and never shrinks it', () => {
@@ -18,13 +18,11 @@ describe('map stretch', () => {
     }
   });
 
-  it('takes only aspects whose stretch it would also read back', () => {
-    for (const aspect of [1, 1.048, 0.8, 1.5, 1 / 1.5]) {
-      expect(isStretchableAspect(aspect)).toBe(true);
+  it('reads back the stretch of every aspect a fit may have', () => {
+    for (const aspect of [1, 1.048, 0.8, MAX_STRETCH_FACTOR, 1 / MAX_STRETCH_FACTOR]) {
       const stretch = stretchForAspect(aspect);
       expect(readMapStretch(stretch)).toEqual(stretch);
     }
-    for (const aspect of [1.6, 0.6, Number.NaN]) expect(isStretchableAspect(aspect)).toBe(false);
   });
 
   it('carries the angle of a map that lies askew, in degrees, and reads it back only in range', () => {
@@ -36,6 +34,42 @@ describe('map stretch', () => {
       expect(readMapStretch(value)).toBe(NO_STRETCH);
     }
     expect(sameStretch({ x: 1, y: 1, rotation: 0.5 }, { x: 1, y: 1 })).toBe(false);
+  });
+
+  it('places a pixel of the image in the world and finds it again, stretched and turned', () => {
+    const size = { width: 1200, height: 800 };
+    for (const stretch of [NO_STRETCH, { x: 1.05, y: 1 }, { x: 1, y: 1.2 }, { x: 1, y: 1, rotation: 1.5 }, { x: 1.04, y: 1, rotation: -2.5 }]) {
+      for (const pixel of [{ x: 0, y: 0 }, { x: 1200, y: 800 }, { x: 600, y: 400 }, { x: 37.5, y: 711.25 }]) {
+        const world = imageToWorld(pixel, size, stretch);
+        const back = worldToImage(world, size, stretch);
+        expect(back.x).toBeCloseTo(pixel.x, 8);
+        expect(back.y).toBeCloseTo(pixel.y, 8);
+        // Every pixel lies in the box the map has in the world, which begins at the origin.
+        const { box } = turnedBox(size.width, size.height, stretch);
+        expect(world.x).toBeGreaterThanOrEqual(-1e-9);
+        expect(world.y).toBeGreaterThanOrEqual(-1e-9);
+        expect(world.x).toBeLessThanOrEqual(box.width * stretch.x + 1e-9);
+        expect(world.y).toBeLessThanOrEqual(box.height * stretch.y + 1e-9);
+      }
+    }
+    expect(imageToWorld({ x: 100, y: 200 }, size, NO_STRETCH)).toEqual({ x: 100, y: 200 });
+    expect(imageToWorld({ x: 100, y: 200 }, size, { x: 1.05, y: 1 })).toEqual({ x: 105, y: 200 });
+  });
+
+  it('keeps a point on its pixel of the image when the map is drawn another way', () => {
+    const size = { width: 1200, height: 800 };
+    const from = { x: 1, y: 1.1 };
+    const to = { x: 1.04, y: 1, rotation: 2 };
+    const move = movedWithMap(size, from, to);
+    const moved = move({ x: 300, y: 440 });
+    // The point stood on pixel (300, 400) and still does.
+    const pixel = worldToImage(moved, size, to);
+    expect(pixel.x).toBeCloseTo(300, 5);
+    expect(pixel.y).toBeCloseTo(400, 5);
+    // There and back is where it was.
+    const back = movedWithMap(size, to, from)(moved);
+    expect(back.x).toBeCloseTo(300, 5);
+    expect(back.y).toBeCloseTo(440, 5);
   });
 
   it('compares stretches by their factors', () => {

@@ -91,10 +91,10 @@ export function firstRoundProposals(spectra: Spectra, factor: number): Proposal[
 
 /**
  * What is worth fitting on a map the regular proposals did not settle: grids of other aspects from
- * every view, regular grids its lines alone suggest, and grids on a map that lies askew. Scores of different grid types and views do
- * not compare (squares always score above hexes), so every view's best of each type comes before
- * anyone's second best, and no more than `SECOND_ROUND_PROPOSALS` in all, since every map without a
- * grid is fitted for each of them.
+ * every view, regular grids its lines alone suggest, and grids on a map that lies askew. Scores of
+ * different grid types and views do not compare (squares always score above hexes), so every view's
+ * best of each type comes before anyone's second best, and no more than `SECOND_ROUND_PROPOSALS` in
+ * all, since every map without a grid is fitted for each of them.
  */
 export function secondRoundProposals(image: GrayImage, spectra: Spectra, factor: number): Proposal[] {
   spectra.lines ??= spectrumOf(downsampleGray(lineContrast(image, LINE_FLANK), factor));
@@ -110,7 +110,7 @@ export function secondRoundProposals(image: GrayImage, spectra: Spectra, factor:
     for (const list of lists) if (rank < list.length) ranked.push(list[rank]!);
   }
   // Small cells are a question of their own, and cheap to fit: the best of each window and type come along.
-  return [...ranked.slice(0, SECOND_ROUND_PROPOSALS), ...fineProposals(image, factor).map((list) => list[0]!)];
+  return [...ranked.slice(0, SECOND_ROUND_PROPOSALS), ...fineProposals(image, factor)];
 }
 
 /** The middle of `image`, at most `side` wide and high. */
@@ -128,18 +128,18 @@ function middleWindow(image: GrayImage, side: number): GrayImage {
  * Regular grids of small cells, which only a window of the map shows: each window's best of each
  * type among the sizes the view above it cannot tell.
  */
-function fineProposals(image: GrayImage, factor: number): Proposal[][] {
-  const lists: Proposal[][] = [];
+function fineProposals(image: GrayImage, factor: number): Proposal[] {
+  const best: Proposal[] = [];
   let coarser = factor;
   for (const side of FINE_WINDOWS) {
     const finer = Math.ceil(side / SPECTRUM_SIZE);
     if (finer >= coarser) continue;
     const spectrum = spectrumOf(downsampleGray(lineContrast(middleWindow(image, side), LINE_FLANK), finer));
     const small = asProposals(spectralHypotheses(spectrum, SPECTRUM_SIZE, MIN_PERIOD, MAX_PERIOD), finer).filter((p) => p.size < FINE_PERIOD * coarser);
-    lists.push(...byType(small));
+    best.push(...byType(small).map((list) => list[0]!));
     coarser = finer;
   }
-  return lists;
+  return best;
 }
 
 function byType(proposals: Proposal[]): Proposal[][] {

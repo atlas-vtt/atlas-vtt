@@ -43,7 +43,7 @@ export class SceneThumbnailUpdater {
   flush(): void {
     if (!this.stalePath) return;
     this.clearTimer();
-    this.write();
+    this.write(false);
   }
 
   destroy(): void {
@@ -79,20 +79,27 @@ export class SceneThumbnailUpdater {
     this.clearTimer();
     this.timer = window.setTimeout(() => {
       this.timer = null;
-      this.write();
+      this.write(true);
     }, delay);
   }
 
   /**
    * Renders the stale scene if the view still shows it; another scene's pixels must never become
    * its thumbnail. Nor does a store that is out of use (`mapLoaded` false: the scene's file is
-   * being rewritten, or its load failed) show the scene: the thumbnail it has stays.
+   * being rewritten, or its load failed) show the scene: the thumbnail it has stays. While the
+   * grid is being aligned the canvas shows the alignment's preview and its marks, and the thumbnail
+   * waits for the scene itself where it `canWait`; a view that moves on or closes meanwhile leaves
+   * the thumbnail the scene has.
    */
-  private write(): void {
+  private write(canWait: boolean): void {
     const mapPath = this.stalePath;
     this.stalePath = null;
     const state = this.store.getState();
     if (!mapPath || state.mapPath !== mapPath || state.isMapLoading || !state.mapLoaded) return;
+    if (state.isGridAlignmentOpen) {
+      if (canWait) this.markStale(mapPath, AFTER_EDIT_MS);
+      return;
+    }
     let bytes: ArrayBuffer | null;
     try {
       bytes = this.ports.render();

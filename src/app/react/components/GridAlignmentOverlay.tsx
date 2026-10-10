@@ -5,6 +5,8 @@ import { GridAlignmentController } from '../../pixi/GridAlignmentController';
 import type { AlignmentResult } from '../../pixi/GridAlignmentController';
 import type { GridType } from '../../grid/GridSystem';
 import { gridAlignedTo } from '../../pixi/gridAlignmentMath';
+import { movedWithMap, readMapStretch, sameStretch } from '../../grid/mapStretch';
+import { runHistoryTransaction } from '../../stores/history';
 import { detectGridFromMapImage } from '../../pixi/gridDetection/detectGrid';
 import type { AlignmentTabProps } from '../hooks/useGridAlignmentEffects';
 import { useGridFit } from '../hooks/useGridFit';
@@ -63,6 +65,8 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
   const [detected, setDetected] = useState<AlignmentResult | null>(null);
 
   const controllerRef = useRef<GridAlignmentController | null>(null);
+  /** Counts what the GM asked for since a detection began: its answer is shown only if nothing was asked since. */
+  const detectionRun = useRef(0);
 
   // -----------------------------------------------------------------------
   // Controller lifecycle
@@ -116,26 +120,32 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
     onClose();
   }, [onClose, view]);
 
+  /** Forgets what was measured or detected, and starts the tab's content anew. */
+  const clearAlignment = useCallback((): void => {
+    detectionRun.current++;
+    setDetecting(false);
+    setResult(null);
+    setDetected(null);
+    setDetectionStatus(null);
+    setResetKey(k => k + 1);
+  }, []);
+
   const handleReset = useCallback((): void => {
     view?.renderer?.cancelGridAlignment?.();
     controllerRef.current?.destroy();
     controllerRef.current = null;
 
-    setResult(null);
-    setDetected(null);
-    setDetectionStatus(null);
+    clearAlignment();
     initController();
-    setResetKey(k => k + 1);
-  }, [initController, view]);
+  }, [clearAlignment, initController, view]);
 
   const handleAutoDetect = useCallback((): void => {
     const mapImage = view?.renderer?.getMapImage?.();
     if (!mapImage || detecting) return;
 
     controllerRef.current?.cleanupVisuals();
-    setResult(null);
-    setDetected(null);
-    setResetKey(k => k + 1);
+    clearAlignment();
+    const run = detectionRun.current;
     setDetecting(true);
     setDetectionStatus(t('align.analysing'));
 
@@ -144,8 +154,9 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
       console.error('[GridAlignment] Auto-detect failed', error);
       return null;
     }).then((found) => {
+      if (run !== detectionRun.current) return;
       setDetecting(false);
-      if (!found || !found.gridType) {
+      if (!found?.gridType) {
         setDetectionStatus(t('align.noGrid'));
         return;
       }
@@ -153,22 +164,26 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
       setGridType(found.gridType);
       setDetected(found);
     });
-  }, [view, detecting]);
+  }, [view, detecting, clearAlignment]);
 
   const handleApply = useCallback((): void => {
     if (!store || !result) return;
 
-    const { cellSize, offsetX, offsetY, gridType: resultType } = result;
-
-    const renderer = view?.renderer;
-    if (renderer?.applyGridAlignment) {
-      renderer.applyGridAlignment(cellSize, offsetX, offsetY, resultType);
-    }
-
     const currentGrid = store.getState().grid;
     if (!currentGrid) return;
-    // The map keeps the stretch the preview gave it: the renderer follows the store's.
-    store.getState().setGrid({ ...gridAlignedTo(currentGrid, result), enabled: true, visible: true });
+    const renderer = view?.renderer;
+    const grid = { ...gridAlignedTo(currentGrid, result), enabled: true, visible: true };
+    // The map keeps the stretch the preview gave it (the renderer follows the store's), and what
+    // stands on the map keeps its place on it.
+    const from = readMapStretch(currentGrid.mapStretch);
+    const to = readMapStretch(grid.mapStretch);
+    const imageSize = renderer?.getMapImage?.()?.imageSize;
+    const move = imageSize && !sameStretch(from, to) ? movedWithMap(imageSize, from, to) : undefined;
+    // One undo step: the grid, what moved with the map, and the tokens snapped to the new cells.
+    runHistoryTransaction(store, () => {
+      store.getState().alignGrid(grid, move);
+      renderer?.applyGridAlignment?.(result.cellSize, result.offsetX, result.offsetY, result.gridType);
+    });
 
     controllerRef.current?.destroy();
     controllerRef.current = null;
@@ -183,11 +198,8 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
   const restartTab = useCallback((): void => {
     controllerRef.current?.cleanupVisuals();
     view?.renderer?.cancelGridAlignment?.();
-    setResult(null);
-    setDetected(null);
-    setDetectionStatus(null);
-    setResetKey(k => k + 1);
-  }, [view]);
+    clearAlignment();
+  }, [clearAlignment, view]);
 
   const handleTabChange = useCallback((tab: AlignmentTab): void => {
     // The tab already chosen is a way back from a detected grid to measuring.
@@ -206,6 +218,21 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
     restartTab();
     setFitToLines(on => !on);
   }, [restartTab]);
+
+  // -----------------------------------------------------------------------
+  // Another scene in this view ends the alignment: what was measured belongs to the map it was measured on
+  // -----------------------------------------------------------------------
+
+  useEffect(() => {
+    if (!store) return;
+    const mapPath = store.getState().mapPath;
+    let ended = false;
+    return store.subscribe((state) => {
+      if (ended || (state.mapPath === mapPath && !state.isMapLoading)) return;
+      ended = true;
+      handleCancel();
+    });
+  }, [store, handleCancel]);
 
   // -----------------------------------------------------------------------
   // Escape key

@@ -414,6 +414,18 @@ describe('maps that lie askew', () => {
     expect(Math.abs(detected.rotation / DEGREE - degrees)).toBeLessThan(0.01);
   }, 60000);
 
+  // The size and shape of the map a GM reported, scanned 1.3° askew: far enough from level and regular that the fit must find both at once.
+  it('finds a map that is stretched and lies askew at once', () => {
+    const detected = detectGridInImage(printedMap('hex-horizontal', 194.9, 1229, 1048, { aspect: 1.057, rotation: 1.3 * DEGREE }))!;
+
+    expect(detected).not.toBeNull();
+    expect(detected.gridType).toBe('hex-horizontal');
+    expect(Math.abs(detected.cellSize - 194.9) / 194.9).toBeLessThan(0.003);
+    expect(Math.abs(detected.aspect - 1.057) / 1.057).toBeLessThan(0.002);
+    expect(Math.abs(detected.rotation / DEGREE - 1.3)).toBeLessThan(0.02);
+    expect(detected.support).toBeGreaterThan(0.5);
+  }, 60000);
+
   it('leaves a level map level', () => {
     const detected = detectGridInImage(printedMap('square', 70, 1600, 1200, {}))!;
     expect(detected.rotation).toBe(0);
@@ -445,5 +457,60 @@ describe('maps that lie askew', () => {
       expect(wrapToGrid(world.x, result.offsetX, result.cellSize)).toBeLessThan(0.75);
       expect(wrapToGrid(world.y, result.offsetY, result.cellSize)).toBeLessThan(0.75);
     }
+  }, 60000);
+});
+
+/** A grid as a program draws it: flat paper and lines one pixel wide, every one alike, rows `aspect` times further apart. */
+function drawnGrid(cellSize: number, aspect: number, width: number, height: number, ink = 205): GrayImage {
+  const data = new Float32Array(width * height).fill(235);
+  for (let x = 13; x < width; x += cellSize) for (let y = 0; y < height; y++) data[y * width + Math.round(x)] = ink;
+  for (let y = 9; y < height; y += cellSize * aspect) for (let x = 0; x < width; x++) data[Math.round(y) * width + x] = ink;
+  return { width, height, data };
+}
+
+describe('grids a program drew, whose lines are all alike', () => {
+  // Every harmonic of such a grid is as strong as the grid itself: a fifth of the cell is proposed first.
+  it('finds the grid and not a finer copy of it', () => {
+    const detected = detectGridInImage(drawnGrid(80, 1, 2000, 1500))!;
+
+    expect(detected).toMatchObject({ gridType: 'square', aspect: 1, rotation: 0 });
+    expect(detected.cellSize).toBeCloseTo(80, 1);
+    expect(detected.support).toBeGreaterThan(0.9);
+  }, 60000);
+
+  it('finds cells that are rectangles, and not a grid of every fourth line one way and every fifth the other', () => {
+    const detected = detectGridInImage(drawnGrid(80, 1.03, 2000, 1500))!;
+
+    expect(detected.gridType).toBe('square');
+    expect(detected.cellSize).toBeCloseTo(80, 1);
+    expect(detected.aspect).toBeCloseTo(1.03, 3);
+  }, 60000);
+
+  it('finds small cells on a large map', () => {
+    const detected = detectGridInImage(drawnGrid(20, 1, 4096, 3000, 120))!;
+
+    expect(detected.gridType).toBe('square');
+    expect(detected.cellSize).toBeCloseTo(20, 1);
+  }, 60000);
+
+  it('fits a measurement to cells that are rectangles', () => {
+    const [width, height] = [2000, 1500];
+    const snapped = snapGridToMapGray({ image: drawnGrid(80, 1.03, width, height), size: { width, height } }, [{ gridType: 'square', cellSize: 76, offsetX: 0, offsetY: 0 }])!;
+
+    expect(snapped.mapStretch).toEqual({ x: expect.closeTo(1.03, 3), y: 1 });
+    expect(snapped.cellSize).toBeCloseTo(82.4, 1);
+    expect(snapped.confidence).toBeGreaterThan(0.9);
+  }, 60000);
+
+  // Rows 3 % off on a map this size are found by no proposal: a grid of nearly the measured size shares every eighth line with the map's.
+  it('keeps a measurement as it is where only a grid that shares some lines with the map\'s fits', () => {
+    const [width, height] = [1600, 1200];
+    const gray = { image: drawnGrid(70, 1.03, width, height), size: { width, height } };
+
+    for (const cellSize of [66.5, 62.3, 75.6]) {
+      expect(snapGridToMapGray(gray, [{ gridType: 'square', cellSize, offsetX: 0, offsetY: 0 }])).toBeNull();
+    }
+    // Nor is the map taken for hexes a fifth off regular, which a third of its lines would agree with.
+    expect(detectGridInImage(gray.image)).toBeNull();
   }, 60000);
 });

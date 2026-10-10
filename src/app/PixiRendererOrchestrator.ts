@@ -588,7 +588,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.gridSystem?.setMapImage(mapImage);
     const stopChanges = mapImage.onChange((change) => this.mapImageChanged(change));
     const stopBackground = MapController.followBackground(this.obsApp, this.store, mapImage);
-    const stopStretch = MapController.followStretch(this.store, mapImage);
+    const stopStretch = MapController.followStretch(this.store, mapImage, () => this.mapSizeSettled());
     this.stopFollowingMapImage = (): void => {
       stopChanges();
       stopBackground();
@@ -615,6 +615,22 @@ export class PixiRendererOrchestrator { // Renamed class
   private mapImageChanged(change: MapImageChange): void {
     // The lighting follows a new albedo by itself, without building its scene anew.
     if (this._isDestroyed || change !== 'image') return;
+    // An alignment's preview draws the map another way than the scene has it: only the zoom range
+    // follows it, and the fog, the lighting and the explored memory keep the scene's size until the
+    // alignment is applied.
+    if (this.isPreviewingStretch()) this.fitZoomRangeToStretch();
+    else this.mapSizeSettled();
+  }
+
+  private isPreviewingStretch(): boolean {
+    const state = this.store.getState();
+    if (!this.mapImage || !state.mapLoaded || state.isMapLoading) return false;
+    return !sameStretch(this.mapImage.mapStretch, readMapStretch(state.grid?.mapStretch));
+  }
+
+  /** The map has the size the scene gives it: what covers the map follows. */
+  private mapSizeSettled(): void {
+    if (this._isDestroyed) return;
     this.fitZoomRangeToStretch();
     this.lighting?.renderer.refreshBounds();
     this.eventBus.emit('map-image-updated', this.getMapRect() ?? undefined);

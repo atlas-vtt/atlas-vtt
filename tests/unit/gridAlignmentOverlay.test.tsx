@@ -22,8 +22,20 @@ import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 
 const SCENE_GRID: GridState = { enabled: true, visible: false, type: 'hex-vertical', size: 70, offsetX: 0, offsetY: 0, opacity: 0.7 };
 
+type Move = (point: { x: number; y: number }) => { x: number; y: number };
+
+interface SceneStore {
+  grid: GridState | null;
+  mapPath: string;
+  isMapLoading: boolean;
+  /** Where the alignment that was applied took a point of the map; null where the map stayed as it was. */
+  moved: { x: number; y: number } | null;
+  setGrid: (grid: GridState) => void;
+  alignGrid: (grid: GridState, move?: Move) => void;
+}
+
 interface Harness {
-  store: ReturnType<typeof create<{ grid: GridState | null; setGrid: (grid: GridState) => void }>>;
+  store: ReturnType<typeof create<SceneStore>>;
   gridSystem: { updateOptions: ReturnType<typeof vi.fn>; setAlignmentMode: ReturnType<typeof vi.fn> };
   stretches: MapStretch[];
   canvas: HTMLCanvasElement;
@@ -32,7 +44,14 @@ interface Harness {
 
 /** The alignment panel over a 1000 × 1000 map whose canvas shows the world one to one from its corner. */
 function open(grid: GridState = SCENE_GRID): Harness {
-  const store = create<{ grid: GridState | null; setGrid: (grid: GridState) => void }>((set) => ({ grid, setGrid: (next) => set({ grid: next }) }));
+  const store = create<SceneStore>((set) => ({
+    grid,
+    mapPath: 'scene.atlasmap',
+    isMapLoading: false,
+    moved: null,
+    setGrid: (next) => set({ grid: next }),
+    alignGrid: (next, move) => set({ grid: next, moved: move ? move({ x: 100, y: 200 }) : null }),
+  }));
   const stretches: MapStretch[] = [];
   let stretch = readMapStretch(grid.mapStretch);
   const mapImage = {
@@ -103,7 +122,53 @@ describe('GridAlignmentOverlay', () => {
     fireEvent.click(screen.getByText('Apply'));
 
     expect(store.getState().grid).toMatchObject({ type: 'hex-horizontal', size: 35.3, offsetX: 4, offsetY: 9, visible: true, mapStretch: { x: 1.048, y: 1 } });
+    // What stands on the map goes with it: a point keeps its place on the image.
+    expect(store.getState().moved!.x).toBeCloseTo(104.8, 6);
+    expect(store.getState().moved!.y).toBeCloseTo(200, 6);
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('moves nothing where the applied alignment draws the map as the scene has it', async () => {
+    detectGridFromMapImage.mockResolvedValue({ gridType: 'square', cellSize: 64, offsetX: 3, offsetY: 5, confidence: 0.9 });
+    const { store } = open();
+    fireEvent.click(screen.getByText('Auto-detect from map image'));
+    await screen.findByText(/Grid: squares, 64/);
+
+    fireEvent.click(screen.getByText('Apply'));
+
+    expect(store.getState().grid).toMatchObject({ type: 'square', size: 64 });
+    expect(store.getState().moved).toBeNull();
+  });
+
+  it('ends the alignment when the view opens another scene, with the map put back', async () => {
+    detectGridFromMapImage.mockResolvedValue({ gridType: 'square', cellSize: 64, offsetX: 0, offsetY: 0, confidence: 0.6, mapStretch: { x: 1, y: 1.1 } });
+    const { store, stretches, onClose } = open();
+    fireEvent.click(screen.getByText('Auto-detect from map image'));
+    await screen.findByText('The map is drawn 10.0% taller, so that its cells are regular.');
+
+    act(() => store.setState({ isMapLoading: true }));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(stretches.at(-1)).toEqual(NO_STRETCH);
+    expect(store.getState().grid).toBe(SCENE_GRID);
+  });
+
+  it('shows nothing of a detection that answers after the GM went on by hand', async () => {
+    let answer: (found: unknown) => void = () => undefined;
+    detectGridFromMapImage.mockReturnValue(new Promise((resolve) => { answer = resolve; }));
+    const { stretches } = open();
+    fireEvent.click(screen.getByText('Auto-detect from map image'));
+
+    fireEvent.click(screen.getByText('Reset'));
+    await act(async () => {
+      answer({ gridType: 'hex-horizontal', cellSize: 35.3, offsetX: 4, offsetY: 9, confidence: 0.51, mapStretch: { x: 1.048, y: 1 } });
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText(/The map is drawn/)).toBeNull();
+    expect(stretches.every((stretch) => stretch.x === 1 && stretch.y === 1)).toBe(true);
+    expect(screen.getByRole('radio', { name: /Pointy/ }).getAttribute('aria-checked')).toBe('true');
+    expect((screen.getByText('Auto-detect from map image').closest('button') as HTMLButtonElement).disabled).toBe(false);
   });
 
   it('puts the map back as the scene has it when a previewed stretch is cancelled', async () => {

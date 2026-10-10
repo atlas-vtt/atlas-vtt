@@ -77,12 +77,32 @@ function withFittedShape(image: GrayImage, gridType: GridType, plain: LatticeFit
  * as good as 1, an angle as good as none) is plain, and the rest is fitted again from where it ended.
  */
 function fittedShape(image: GrayImage, gridType: GridType, start: LatticeCandidate): LatticeFit {
-  const free = fitLattice(image, gridType, start, FREE_SHAPE);
+  const free = reseated(image, gridType, start, fitLattice(image, gridType, start, FREE_SHAPE));
   const regular = isRegular(image, aspectOf(free.candidate));
   const level = isLevel(image, rotationOf(free.candidate));
   if (!regular && !level) return free;
   const settled: LatticeCandidate = { ...(regular ? onRegularImage(free.candidate) : free.candidate), ...(level ? { rotation: 0 } : {}) };
   return fitLattice(image, gridType, settled, { aspect: !regular, rotation: !level });
+}
+
+/** A fit whose shape moved the map's lines by this many pixels or more since its start may have left the place it started from behind. */
+const RESEAT_DRIFT = 2;
+
+/**
+ * A fit that found another shape keeps the place it was given for the shape it started with, and
+ * may end with the right cells beside the map's lines. The search places the grid again on the
+ * shape the fit ended with and the fit runs once more from there; the better supported one stays.
+ */
+function reseated(image: GrayImage, gridType: GridType, start: LatticeCandidate, fit: LatticeFit): LatticeFit {
+  if (fit.support >= SETTLED_SUPPORT) return fit;
+  const aspect = aspectOf(fit.candidate);
+  const rotation = rotationOf(fit.candidate);
+  const drift = (Math.abs(aspect - aspectOf(start)) * image.height + Math.abs(rotation - rotationOf(start)) * Math.hypot(image.width, image.height)) / 2;
+  if (drift < RESEAT_DRIFT) return fit;
+  const placed = searchLattice(image, gridType, fit.candidate.cellSize, aspect, rotation);
+  if (!placed) return fit;
+  const again = fitLattice(image, gridType, placed, FREE_SHAPE);
+  return again.support > fit.support ? again : fit;
 }
 
 /** The same grid read with regular cells; right only where the aspect is as good as 1. */

@@ -6,6 +6,8 @@
  * alignment (`GridState.mapStretch`); the world, the grid and everything measured on it stay as they are.
  */
 
+import type { Point } from './hexGeometry';
+
 export interface MapStretch {
   x: number;
   y: number;
@@ -17,14 +19,10 @@ export const NO_STRETCH: MapStretch = { x: 1, y: 1 };
 
 /** Stretches outside this range are not alignments of a printed grid; they read as none. */
 const MIN_FACTOR = 1;
-const MAX_FACTOR = 1.5;
+/** The most a map is stretched along an axis for its cells to be regular. */
+export const MAX_STRETCH_FACTOR = 1.5;
 /** A map turned further than this is no scan that lay askew. */
 export const MAX_ROTATION_DEGREES = 5;
-
-/** Whether cells of this aspect can be made regular by a stretch in range; a detector's fit outside it found no grid. */
-export function isStretchableAspect(aspect: number): boolean {
-  return aspect >= 1 / MAX_FACTOR && aspect <= MAX_FACTOR;
-}
 
 /**
  * How to draw a map whose rows lie `aspect` times as far apart as a regular grid's and which lies
@@ -43,7 +41,7 @@ export function stretchForAspect(aspect: number, rotation = 0): MapStretch {
 export function readMapStretch(value: unknown): MapStretch {
   if (typeof value !== 'object' || value === null) return NO_STRETCH;
   const { x, y, rotation } = value as { x?: unknown; y?: unknown; rotation?: unknown };
-  const valid = (factor: unknown): factor is number => typeof factor === 'number' && factor >= MIN_FACTOR && factor <= MAX_FACTOR;
+  const valid = (factor: unknown): factor is number => typeof factor === 'number' && factor >= MIN_FACTOR && factor <= MAX_STRETCH_FACTOR;
   const turned = typeof rotation === 'number' && rotation !== 0 && Math.abs(rotation) <= MAX_ROTATION_DEGREES;
   if (!valid(x) || !valid(y) || (rotation !== undefined && !turned && rotation !== 0)) return NO_STRETCH;
   if (x === 1 && y === 1 && !turned) return NO_STRETCH;
@@ -52,11 +50,6 @@ export function readMapStretch(value: unknown): MapStretch {
 
 export function sameStretch(a: MapStretch, b: MapStretch): boolean {
   return a.x === b.x && a.y === b.y && (a.rotation ?? 0) === (b.rotation ?? 0);
-}
-
-/** Whether the image is drawn as it is: neither stretched nor turned. */
-export function isPlain(stretch: MapStretch): boolean {
-  return sameStretch(stretch, NO_STRETCH);
 }
 
 /**
@@ -70,4 +63,45 @@ export function turnedBox(width: number, height: number, stretch: MapStretch): {
   const sin = Math.sin(angle);
   const box = { width: width * Math.abs(cos) + height * Math.abs(sin), height: width * Math.abs(sin) + height * Math.abs(cos) };
   return { cos, sin, box, corner: { x: (width - box.width) / 2, y: (height - box.height) / 2 } };
+}
+
+interface ImageSize {
+  width: number;
+  height: number;
+}
+
+/** How points of the world move when the map under them is drawn another way (`movedWithMap`). */
+export type MapMove = (point: Point) => Point;
+
+/** Where a pixel of an image of `size` lies in the world when the image is drawn with `stretch`. */
+export function imageToWorld(point: Point, size: ImageSize, stretch: MapStretch): Point {
+  const { cos, sin, corner } = turnedBox(size.width, size.height, stretch);
+  const dx = point.x - size.width / 2;
+  const dy = point.y - size.height / 2;
+  return {
+    x: (size.width / 2 - corner.x + cos * dx + sin * dy) * stretch.x,
+    y: (size.height / 2 - corner.y - sin * dx + cos * dy) * stretch.y,
+  };
+}
+
+/** The pixel of an image of `size`, drawn with `stretch`, that lies at a point of the world. */
+export function worldToImage(point: Point, size: ImageSize, stretch: MapStretch): Point {
+  const { cos, sin, corner } = turnedBox(size.width, size.height, stretch);
+  const dx = point.x / stretch.x + corner.x - size.width / 2;
+  const dy = point.y / stretch.y + corner.y - size.height / 2;
+  return { x: size.width / 2 + cos * dx - sin * dy, y: size.height / 2 + sin * dx + cos * dy };
+}
+
+/**
+ * Where a point of the world lies once the map is drawn with `to` instead of `from`: on the same
+ * pixel of the image. What stands on the map (a wall along a corridor, a token in a room) keeps its
+ * place on it this way when an alignment changes how the map is drawn.
+ */
+export function movedWithMap(size: ImageSize, from: MapStretch, to: MapStretch): MapMove {
+  // A millionth of a pixel: what the two steps' rounding leaves is not written into the scene.
+  const round = (value: number): number => Math.round(value * 1e6) / 1e6;
+  return (point) => {
+    const moved = imageToWorld(worldToImage(point, size, from), size, to);
+    return { x: round(moved.x), y: round(moved.y) };
+  };
 }

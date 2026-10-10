@@ -76,6 +76,7 @@ const LINE_PROBE_PER_CELL = 1 / 32;
 function lineProbe(cellSize: number): number {
   return Math.max(LINE_PROBE, Math.floor(cellSize * LINE_PROBE_PER_CELL));
 }
+
 /** Spacing of the samples averaged along an edge. */
 const ALONG_STEP = 2;
 /** Ends of an edge are left out: crossing lines and hex vertices disturb the profile there. */
