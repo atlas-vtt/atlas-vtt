@@ -1,9 +1,10 @@
 {
-  "version": "0.7.1-beta.0",
+  "version": "0.7.1",
   "releases": [
     {
-      "version": "0.7.1-beta.0",
-      "title": "Coming in 0.7.1",
+      "version": "0.7.1",
+      "date": "2026-10-10",
+      "title": "Local player window and more precise grid alignment",
       "markdown": "## New\n\n- New command in Atlas Command Palette: Show Current Map in Local Player Window as a differentiation between online player view and local player view\n\n## Improved\n\n- Significantly improved reliability and precision of grid alignment both in auto and manual mode\n- Grid alignment now detects stretched hexes and pointy hex grids much better\n## Fixed\n\n- A collection's cover and the thumbnails of small images are saved as WebP, as their file names say, and an export no longer carries one that is a PNG or JPEG under a WebP name\n- Fixed a bug where too small cover images of exported collections weren't converted to .webp correctly as expected by the Armarium parser\n- Fixed a bug where modifier rolls in FS statblock tables weren't clickable"
     },
     {
