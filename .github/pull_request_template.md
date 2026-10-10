@@ -1,11 +1,19 @@
-## Change
+## Purpose and scope
 
 Describe the problem and resulting behavior. Link the issue if one exists.
 
-## Verification
+## AI assistance
 
-State what you tested. For interactions, include concise Obsidian reproduction steps.
+Briefly describe any substantial AI involvement, including the approximate extent of AI-generated implementation where reasonably assessable. Precise percentages are not required.
 
-## User impact
+## Human verification
 
-Mention any vault-data migration, compatibility change, or remaining limitation.
+Describe what you manually reviewed and tested, including relevant test results and any limitations. For interactions, include concise Obsidian reproduction steps.
+
+## Maintainability
+
+Explain significant architectural decisions or new dependencies, and how the implementation follows existing project conventions.
+
+## Known risks
+
+List known limitations, unresolved issues, or areas requiring particular attention during review. Mention any vault-data migration or compatibility changes.
