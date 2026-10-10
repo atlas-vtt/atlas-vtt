@@ -17,6 +17,7 @@ import { EditableValue } from './EditableValue';
 import { useStatblockEdit } from './statblockEditContext';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { isHitPointsKey } from '../../../resources/resourceFields';
+import { diceLinkProps } from '../../../services/statblockDiceLinks';
 import { t } from '../../../i18n';
 
 /** Values that map cleanly onto a single editable frontmatter entry. */
@@ -259,7 +260,7 @@ export function TableBlock({ item, monster }: BlockProps): React.JSX.Element | n
       <tbody>
         <tr>
           {values.map((value, index) => (
-            <td key={headers[index] ?? index}>
+            <td key={headers[index] ?? index} data-roll-name={headers[index]}>
               <EditableField
                 path={[item.properties?.[0] ?? '', index]}
                 value={stringify(value)}
@@ -271,7 +272,7 @@ export function TableBlock({ item, monster }: BlockProps): React.JSX.Element | n
               {item.calculate && typeof value === 'number' && (
                 <span className="atlas-sb-modifier">
                   {' '}
-                  ({abilityModifier(value, item, monster)})
+                  (<ModifierRoll modifier={abilityModifier(value, item, monster)} />)
                 </span>
               )}
             </td>
@@ -280,6 +281,11 @@ export function TableBlock({ item, monster }: BlockProps): React.JSX.Element | n
       </tbody>
     </table>
   );
+}
+
+/** A calculated modifier as a roll: the dice tool adds a bare bonus to the collection's default roll. */
+function ModifierRoll({ modifier }: { modifier: string }): React.JSX.Element {
+  return <span {...diceLinkProps(modifier)}>{modifier}</span>;
 }
 
 /** An image address without its percent escapes; one that holds a stray `%` is no escaped address and reads as it stands. */

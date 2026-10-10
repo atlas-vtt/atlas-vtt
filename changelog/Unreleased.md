@@ -1,3 +1,4 @@
 ## Fixed
 
 - A collection's cover and the thumbnails of small images are saved as WebP, as their file names say, and an export no longer carries one that is a PNG or JPEG under a WebP name
+- The ability modifiers in a statblock's table can be clicked to roll, like every other bonus, and the roll is named after the ability

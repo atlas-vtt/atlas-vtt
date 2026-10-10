@@ -96,6 +96,20 @@ describe('linkDiceIn + attachDiceRolling', () => {
     dispose();
   });
 
+  it('names a roll in an ability table after its column', () => {
+    const rolls: Roll[] = [];
+    const el = host(
+      '<table><tbody><tr><td data-roll-name="STR">16 (<span class="atlas-dice-link" data-formula="+3">+3</span>)</td></tr></tbody></table>',
+    );
+    const dispose = attachDiceRolling(el, fakeApp(rolls), () => ({}));
+
+    el.querySelector<HTMLElement>('.atlas-dice-link')!.click();
+
+    expect(rolls[0]).toEqual({ formula: '+3', source: { type: 'statblock', abilityName: 'STR' } });
+
+    dispose();
+  });
+
   it('leaves surrounding text intact', () => {
     const el = host('<div>Zunge (+1, Reichweite 15\')</div>');
     linkDiceIn(el);

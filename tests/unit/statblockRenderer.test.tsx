@@ -98,6 +98,24 @@ describe('StatblockRenderer', () => {
     expect(cells[1]?.textContent).toContain('-1');
   });
 
+  it('makes a calculated ability modifier a roll named after its column', () => {
+    const { container } = renderStatblock(
+      layoutOf({
+        type: 'table',
+        id: 'tb',
+        properties: ['stats'],
+        headers: ['STR', 'DEX'],
+        calculate: true,
+      }),
+      { stats: [16, 8] },
+    );
+
+    const links = container.querySelectorAll<HTMLElement>('td .atlas-dice-link');
+    expect(Array.from(links, (link) => link.dataset.formula)).toEqual(['+3', '-1']);
+    expect(links[0]?.closest('[data-roll-name]')?.getAttribute('data-roll-name')).toBe('STR');
+    expect(container.querySelectorAll('td')[0]?.textContent).toBe('16 (+3)');
+  });
+
   it('renders only the matching branch of an ifelse block', () => {
     const { container } = renderStatblock(
       layoutOf({
