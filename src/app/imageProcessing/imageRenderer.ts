@@ -136,14 +136,16 @@ async function renderCopies(output: Drawable, job: ImageJob): Promise<Pick<Image
 
 /**
  * A source that needs no scaling is kept as it is: re-encoding would only lose quality, and
- * players notice. Only formats every Atlas view shows are kept; others (GIF, BMP) are encoded.
+ * players notice. Only formats every Atlas view shows are kept; others (GIF, BMP) are encoded,
+ * and so is everything but a WebP where the job's result must be one.
  */
-async function keepsSource(layout: ImageLayout, source: Blob, bitmap: ImageBitmap): Promise<boolean> {
+async function keepsSource(job: ImageJob, source: Blob, bitmap: ImageBitmap): Promise<boolean> {
+  const { layout } = job;
   if (layout.kind !== 'fit') return false;
   const fitted = fitSize(bitmap, layout);
   if (fitted.width !== bitmap.width || fitted.height !== bitmap.height) return false;
   const format = (await imageHeader(source))?.format;
-  return format !== undefined && KEPT_FORMATS.has(format);
+  return job.webpOnly ? format === 'webp' : format !== undefined && KEPT_FORMATS.has(format);
 }
 
 /**
@@ -170,7 +172,7 @@ export async function renderImageJob(job: ImageJob): Promise<ImageJobResult> {
   try {
     const source = shownSource(bitmap, job.scaledDecode);
     const sourcePreview = await renderCopy(bitmap, job.sourcePreview);
-    if (job.source instanceof Blob && !job.scaledDecode && await keepsSource(job.layout, job.source, bitmap)) {
+    if (job.source instanceof Blob && !job.scaledDecode && await keepsSource(job, job.source, bitmap)) {
       return { image: job.source, sourcePreview, ...await renderCopies(bitmap, job) };
     }
     const canvas = render(bitmap, source, job.layout);

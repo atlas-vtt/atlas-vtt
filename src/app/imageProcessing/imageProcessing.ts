@@ -42,6 +42,8 @@ export interface ProcessOptions {
   sourcePreview?: ThumbnailSpec | undefined;
   /** Work nobody waits for yet, such as preview conversions; jobs someone waits for run first. */
   background?: boolean;
+  /** The result is stored under a WebP name: a PNG or JPEG that fits is encoded too instead of kept. */
+  webpOnly?: boolean;
 }
 
 /** Workers beyond this add little for batches of token art and cost memory. */
@@ -141,7 +143,7 @@ async function process(source: Blob, job: Omit<ImageJob, 'source'>, options: Pro
   if (header && !decodable(header)) throw new ImageTooLargeError(header);
   const scaledDecode = scaledDecodeOf(header, job.layout);
   const run: ImageJobOptions = { signal: options.signal, background: options.background ?? false, cost: jobCost(scaledDecode?.decoded ?? header) };
-  const withCopies = { ...job, thumbnail: options.thumbnail, preview: options.preview, sourcePreview: options.sourcePreview };
+  const withCopies = { ...job, thumbnail: options.thumbnail, preview: options.preview, sourcePreview: options.sourcePreview, webpOnly: options.webpOnly };
   // One pool for both attempts: after unload it refuses the fallback and frees its bitmap
   const workers = workerPool();
   try {
@@ -156,7 +158,7 @@ async function process(source: Blob, job: Omit<ImageJob, 'source'>, options: Pro
   }
 }
 
-/** `source` scaled down to fit the preset and encoded as WebP. */
+/** `source` scaled down to fit the preset and encoded as WebP; a PNG, JPEG or WebP that fits is kept as it is (see `webpOnly`). */
 export function optimizeImage(source: Blob, preset: ImagePreset, options: ProcessOptions = {}): Promise<ImageJobResult> {
   const { maxWidth, maxHeight, maxPixels, quality } = preset;
   return process(source, { layout: { kind: 'fit', maxWidth, maxHeight, maxPixels }, quality }, options);
@@ -176,6 +178,6 @@ export function renderFramedImage(source: Blob, placement: FramePlacement, optio
 
 /** WebP bytes of `source` whose longer side is at most `spec.size` pixels. */
 export async function renderThumbnail(source: Blob, spec: ThumbnailSpec): Promise<ArrayBuffer> {
-  const { image } = await optimizeImage(source, { maxWidth: spec.size, maxHeight: spec.size, quality: spec.quality });
+  const { image } = await optimizeImage(source, { maxWidth: spec.size, maxHeight: spec.size, quality: spec.quality }, { webpOnly: true });
   return image.arrayBuffer();
 }

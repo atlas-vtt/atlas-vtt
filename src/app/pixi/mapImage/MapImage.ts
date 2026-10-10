@@ -10,12 +10,16 @@ import type { PixelRect } from './pyramid';
 import { isMapClosed } from './tileErrors';
 import { ResidentOverviews } from './residentOverviews';
 import { TileTextureCache } from './tileTextureCache';
+import { imageToWorld, NO_STRETCH, sameStretch, turnedBox, type MapStretch } from '../../grid/mapStretch';
 
 /**
  * The one owner of a view's map image (decisions 1, 12 and 13 of the tiled map images plan): it
  * loads the image, draws it from its tile pyramid in `layer`, and answers every question about
  * it: its world rect, its pixels (`overview`), the lighting's albedo, and whether a view of it is
- * drawn in full detail. World units are the image's natural pixels, its top left corner at (0, 0).
+ * drawn in full detail. World units are the image's natural pixels, its top left corner at (0, 0),
+ * unless the grid's alignment stretches the image (`MapStretch`): then the image is drawn that many
+ * times wider or taller, `worldRect` is its stretched size, and everything the tile layer is asked
+ * (views, regions) is brought back into the image's own pixels here, so the layer never knows.
  */
 
 /** The viewport's world is never smaller than this a side, so a small map can still be panned around. */
@@ -46,29 +50,68 @@ export class MapImage {
   private loaded: { source: MapImageSource; generation: number } | null = null;
   private generation = 0;
   private destroyed = false;
+  private stretch: MapStretch = NO_STRETCH;
+  /** Holds the tile layer inside `layer`, turned level about the image's centre; `layer` stretches it. */
+  private readonly turned = new Container({ label: 'map-image-turned' });
   private readonly stopRestarts: () => void;
 
   constructor(private readonly deps: MapImageDeps) {
     this.layer = new Container({ label: 'map-image', eventMode: 'none', interactiveChildren: false });
     this.layer.boundsArea = new Rectangle(0, 0, 0, 0);
+    this.layer.addChild(this.turned);
     this.cache = new TileTextureCache({ ticker: deps.ticker, renderer: deps.renderer, requestRender: deps.requestRender });
     this.resident = new ResidentOverviews(this.cache);
-    this.camera = viewportCamera(deps.viewport, deps.renderer ?? { resolution: 1 });
+    const camera = viewportCamera(deps.viewport, deps.renderer ?? { resolution: 1 });
+    this.camera = (): TileView | null => {
+      const view = camera();
+      return view && this.onImage(view);
+    };
     this.albedo = new MapAlbedo(() => this.emit('albedo'));
     this.stopRestarts = deps.service.onRestart(() => this.reopen());
   }
 
-  /** The image in world units; null before the first load and after `clear`. */
+  /** The image in world units, as it is drawn; null before the first load and after `clear`. */
   get worldRect(): PixelRect | null {
-    return this.shown ? { x: 0, y: 0, width: this.shown.width, height: this.shown.height } : null;
+    if (!this.shown) return null;
+    const { box } = turnedBox(this.shown.width, this.shown.height, this.stretch);
+    return { x: 0, y: 0, width: box.width * this.stretch.x, height: box.height * this.stretch.y };
+  }
+
+  /** The image's own size in pixels, whatever its stretch; null before the first load and after `clear`. */
+  get imageSize(): { width: number; height: number } | null {
+    return this.shown ? { width: this.shown.width, height: this.shown.height } : null;
+  }
+
+  /** The corners of an image that lies turned in its world rect, which then holds a little more than the image; null for a level one. */
+  get outline(): Array<{ x: number; y: number }> | null {
+    const { shown, stretch } = this;
+    if (!shown || !stretch.rotation) return null;
+    const { width, height } = shown;
+    return [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }].map((corner) => imageToWorld(corner, { width, height }, stretch));
+  }
+
+  /** How the image is drawn stretched. */
+  get mapStretch(): MapStretch {
+    return this.stretch;
   }
 
   /**
    * Shows `source`, once its pyramid is open (not its tiles: see `whenReady`). An image that cannot
    * be shown is reported and the placeholder shows instead. A load overtaken by a later one is dropped.
+   * The image appears with `stretch`; without one it keeps the stretch of the image before it.
    */
-  async load(source: MapImageSource): Promise<void> {
-    return this.loadAs(source, false);
+  async load(source: MapImageSource, stretch?: MapStretch): Promise<void> {
+    return this.loadAs(source, false, stretch);
+  }
+
+  /** Draws the shown image, and every one after it, with `stretch`: `worldRect` changes, which listeners hear as another image. */
+  setStretch(stretch: MapStretch): void {
+    if (this.destroyed || sameStretch(stretch, this.stretch)) return;
+    this.stretch = stretch;
+    if (!this.shown) return;
+    this.place(this.shown);
+    this.deps.requestRender();
+    this.emit('image');
   }
 
   /** Takes the image off, as when its scene could not be opened; `worldRect` is null until the next load. */
@@ -98,13 +141,14 @@ export class MapImage {
 
   /** Resolves once `rect` is drawn at the detail `worldPerScreenPixel` asks for, or after `timeoutMs`. */
   whenReady(rect: PixelRect, worldPerScreenPixel: number, timeoutMs: number): Promise<void> {
-    return this.shown?.layer?.whenReady({ rect, worldPerScreenPixel }, timeoutMs) ?? Promise.resolve();
+    return this.shown?.layer?.whenReady(this.onImage({ rect, worldPerScreenPixel }), timeoutMs) ?? Promise.resolve();
   }
 
   /** `whenReady` for what the view's own camera shows now. */
   whenCameraReady(timeoutMs: number): Promise<void> {
     const view = this.camera();
-    return view ? this.whenReady(view.rect, view.worldPerScreenPixel, timeoutMs) : Promise.resolve();
+    if (!view) return Promise.resolve();
+    return this.shown?.layer?.whenReady(view, timeoutMs) ?? Promise.resolve();
   }
 
   /**
@@ -112,13 +156,13 @@ export class MapImage {
    * until the returned function puts that back: for one render of another picture.
    */
   drawFor(view: TileView): () => void {
-    return this.shown?.layer?.drawFor(view) ?? noop;
+    return this.shown?.layer?.drawFor(this.onImage(view)) ?? noop;
   }
 
   /** Keeps the tiles another camera needs (the player window's) loaded for its own picture (`drawFor`); returns the function that ends it. */
   addDemandRegion(view: TileView): () => void {
     const region: TileView = { rect: { ...view.rect }, worldPerScreenPixel: view.worldPerScreenPixel };
-    this.regions.set(region, this.shown?.layer?.addDemandRegion(region) ?? noop);
+    this.regions.set(region, this.shown?.layer?.addDemandRegion(this.onImage(region)) ?? noop);
     return (): void => {
       const release = this.regions.get(region);
       this.regions.delete(region);
@@ -151,7 +195,7 @@ export class MapImage {
   }
 
   /** `replace`: shows the open even when it is the pyramid shown now, as after the tile worker restarted. */
-  private async loadAs(source: MapImageSource, replace: boolean): Promise<void> {
+  private async loadAs(source: MapImageSource, replace: boolean, stretch?: MapStretch): Promise<void> {
     if (this.destroyed) return;
     const generation = ++this.generation;
     const next = await this.open(source);
@@ -160,6 +204,7 @@ export class MapImage {
       return;
     }
     this.loaded = { source, generation };
+    if (stretch) this.stretch = stretch;
     this.show(next, replace);
   }
 
@@ -194,6 +239,7 @@ export class MapImage {
     // The same pyramid again (another scene on it, a renamed file): what is drawn stays, the second open goes.
     if (samePyramid && !replace) {
       next.tiles?.close();
+      if (previous) this.place(previous);
       this.emit('image');
       return;
     }
@@ -210,7 +256,7 @@ export class MapImage {
         ...(this.deps.drawAtOnce && { drawAtOnce: this.deps.drawAtOnce }),
         onTileError: onceLogged(),
       });
-      this.layer.addChild(layer.container);
+      this.turned.addChild(layer.container);
     }
     this.shown = { ...next, layer };
     if (samePyramid) {
@@ -220,13 +266,60 @@ export class MapImage {
     } else {
       this.retire(previous);
     }
-    for (const region of this.regions.keys()) this.regions.set(region, layer?.addDemandRegion(region) ?? noop);
-    this.layer.boundsArea = new Rectangle(0, 0, next.width, next.height);
-    this.deps.viewport.worldWidth = Math.max(next.width, MIN_WORLD_SIDE);
-    this.deps.viewport.worldHeight = Math.max(next.height, MIN_WORLD_SIDE);
+    this.place(this.shown);
     this.albedo.reset();
     this.deps.requestRender();
     this.emit('image');
+  }
+
+  /**
+   * Puts `shown` into the world as the stretch says: the tile layer turned level about the image's
+   * centre, the box that holds it then stretched from the world's origin, the world's size, and the
+   * demand regions, which the tile layer knows in image pixels.
+   */
+  private place(shown: Shown): void {
+    const { x, y } = this.stretch;
+    const { box, corner } = turnedBox(shown.width, shown.height, this.stretch);
+    this.turned.pivot.set(shown.width / 2, shown.height / 2);
+    this.turned.position.set(shown.width / 2 - corner.x, shown.height / 2 - corner.y);
+    this.turned.rotation = (-(this.stretch.rotation ?? 0) * Math.PI) / 180;
+    this.layer.scale.set(x, y);
+    // In the layer's own space, which the scale stretches.
+    this.layer.boundsArea = new Rectangle(0, 0, box.width, box.height);
+    this.deps.viewport.worldWidth = Math.max(box.width * x, MIN_WORLD_SIDE);
+    this.deps.viewport.worldHeight = Math.max(box.height * y, MIN_WORLD_SIDE);
+    for (const [region, release] of this.regions) {
+      release();
+      this.regions.set(region, shown.layer?.addDemandRegion(this.onImage(region)) ?? noop);
+    }
+  }
+
+  /**
+   * A view of the world as the tile layer sees it: in the image's own pixels, at the finer of the two
+   * axes' detail. Of a turned image it is the upright box around the view, which holds a little more.
+   */
+  private onImage(view: TileView): TileView {
+    const { x, y, rotation } = this.stretch;
+    if (x === 1 && y === 1 && !rotation) return view;
+    const { rect } = view;
+    const unstretched = { x: rect.x / x, y: rect.y / y, width: rect.width / x, height: rect.height / y };
+    const worldPerScreenPixel = view.worldPerScreenPixel / Math.max(x, y);
+    if (!rotation || !this.shown) return { rect: unstretched, worldPerScreenPixel };
+
+    const { width, height } = this.shown;
+    const { cos, sin, corner } = turnedBox(width, height, this.stretch);
+    const xs: number[] = [];
+    const ys: number[] = [];
+    for (const [px, py] of [[0, 0], [1, 0], [0, 1], [1, 1]] as const) {
+      // Back from the level box to the image as it lies: turned about its centre.
+      const qx = unstretched.x + px * unstretched.width + corner.x - width / 2;
+      const qy = unstretched.y + py * unstretched.height + corner.y - height / 2;
+      xs.push(width / 2 + cos * qx - sin * qy);
+      ys.push(height / 2 + sin * qx + cos * qy);
+    }
+    const left = Math.min(...xs);
+    const top = Math.min(...ys);
+    return { rect: { x: left, y: top, width: Math.max(...xs) - left, height: Math.max(...ys) - top }, worldPerScreenPixel };
   }
 
   /** Ends what `shown` drew; a cached pyramid's overview stays resident for the next few maps. */

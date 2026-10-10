@@ -18,6 +18,7 @@ import {
   Settings,
   Snowflake,
   MonitorUp,
+  MonitorPlay,
   AppWindow,
   Move,
   Users,
@@ -331,6 +332,16 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       section: "mode",
       action: () => {
         void presentActiveTab(app);
+        onClose();
+      },
+    },
+    {
+      id: "show-map-in-player-window",
+      icon: <MonitorPlay />,
+      label: t('palette.showMapInPlayerWindow'),
+      section: "mode",
+      action: () => {
+        void presentActiveTab(app, { openWindow: true });
         onClose();
       },
     },

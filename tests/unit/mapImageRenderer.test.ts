@@ -25,7 +25,8 @@ async function showScene(size = 1400): Promise<Harness> {
   const { app } = createInMemoryApp({ files: { 'maps/a.png': 'a', 'maps/b.png': 'b' } });
   const store = createViewAtlasStore(app, 'map-image-renderer-test');
   const viewport = Object.assign(new Container(), {
-    plugins: { resume: vi.fn(), pause: vi.fn() },
+    plugins: { resume: vi.fn(), pause: vi.fn(), get: () => null },
+    screenWidth: 800, screenHeight: 600,
     moveCenter: vi.fn(),
     left: 0, top: 0, worldScreenWidth: 800, worldScreenHeight: 600,
     worldWidth: 0,
@@ -83,6 +84,48 @@ describe('the renderer and its map image', () => {
     mapImage.clear();
 
     expect(bounds.mock.calls).toEqual([[{ x: 0, y: 0, width: 2100, height: 700 }], [undefined]]);
+  });
+
+  it('keeps what covers the map at the scene\'s size while an alignment previews a stretch, and lets it follow once applied', async () => {
+    const { renderer, store, mapImage, events } = await showScene(1000);
+    store.getState().setGrid({ enabled: true, visible: true, type: 'square', size: 70, offsetX: 0, offsetY: 0, opacity: 0.5 });
+    store.getState().setMapLoaded(true);
+    const bounds = vi.fn();
+    events.on('map-image-updated', bounds);
+
+    // The panel's preview: the image alone is drawn wider.
+    mapImage.setStretch({ x: 1.1, y: 1 });
+    expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 1100, height: 1000 });
+    expect(bounds).not.toHaveBeenCalled();
+
+    // Cancelled: the map is the scene's again, and nothing was told another size meanwhile.
+    renderer.cancelGridAlignment();
+    expect(bounds).toHaveBeenCalledTimes(1);
+    expect(bounds).toHaveBeenLastCalledWith({ x: 0, y: 0, width: 1000, height: 1000 });
+
+    // Previewed again and applied: the store's stretch is the image's, and the fog and the lighting follow.
+    mapImage.setStretch({ x: 1.1, y: 1 });
+    expect(bounds).toHaveBeenCalledTimes(1);
+    store.getState().alignGrid({ ...store.getState().grid!, mapStretch: { x: 1.1, y: 1 } });
+    expect(bounds).toHaveBeenCalledTimes(2);
+    expect(bounds).toHaveBeenLastCalledWith({ x: 0, y: 0, width: 1100, height: 1000 });
+
+    // Undone: both go back together.
+    store.temporal.getState().undo();
+    expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 1000, height: 1000 });
+    expect(bounds).toHaveBeenLastCalledWith({ x: 0, y: 0, width: 1000, height: 1000 });
+  });
+
+  it('takes the stretch a load shows for the scene\'s size at once', async () => {
+    const { store, mapImage, events } = await showScene(1000);
+    store.getState().setMapLoading(true);
+    const bounds = vi.fn();
+    events.on('map-image-updated', bounds);
+
+    // The first load's detection shows what it found while the scene is still loading.
+    mapImage.setStretch({ x: 1, y: 1.05 });
+
+    expect(bounds).toHaveBeenLastCalledWith({ x: 0, y: 0, width: 1000, height: 1050 });
   });
 
   it('leaves the map without a grid when the image is taken off, and draws it again on the next', async () => {

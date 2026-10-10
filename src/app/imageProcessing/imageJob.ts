@@ -55,6 +55,11 @@ export interface ImageJob {
    * sized as if the source had been decoded whole.
    */
   scaledDecode?: { source: Size; decoded: Size } | undefined;
+  /**
+   * The result is stored under a WebP name, so a PNG or JPEG that needs no
+   * scaling is encoded too instead of kept. A WebP source is still kept.
+   */
+  webpOnly?: boolean | undefined;
 }
 
 /** Pixel sizes of a source and of the smaller image a fit made of it. */
@@ -64,7 +69,7 @@ export interface ScaleDown {
 }
 
 export interface ImageJobResult {
-  /** WebP bytes. A WebP source that needs no scaling is returned as it is, avoiding a lossy re-encode. */
+  /** WebP bytes, or the source itself where a PNG, JPEG or WebP needed no scaling (`webpOnly`: only a WebP). */
   image: Blob;
   thumbnail: Blob | null;
   preview: Blob | null;

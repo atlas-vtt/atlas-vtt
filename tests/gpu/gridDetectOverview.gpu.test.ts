@@ -26,6 +26,8 @@ interface GridCase {
   size: number;
   offsetX: number;
   offsetY: number;
+  /** Prints the grid with its rows this many times further apart; a regular grid without. */
+  aspect?: number;
 }
 
 /** Deterministic pseudo-random numbers, so the maps are the same on every run. */
@@ -38,7 +40,7 @@ function rng(seed: number): () => number {
 }
 
 /** A parchment-like map with blotches and a thin dark grid drawn by the real drawers. */
-function drawMap({ type, width, height, size, offsetX, offsetY }: GridCase): OffscreenCanvas {
+function drawMap({ type, width, height, size, offsetX, offsetY, aspect = 1 }: GridCase): OffscreenCanvas {
   const canvas = new OffscreenCanvas(width, height);
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = '#c8b890';
@@ -55,10 +57,13 @@ function drawMap({ type, width, height, size, offsetX, offsetY }: GridCase): Off
     lineTo: (x, y) => (ctx.lineTo(x, y), path),
     poly: () => path,
   };
-  const bounds = { minX: 0, minY: 0, maxX: width, maxY: height };
+  const bounds = { minX: 0, minY: 0, maxX: width, maxY: height / aspect };
   ctx.beginPath();
+  ctx.save();
+  ctx.scale(1, aspect);
   if (type === 'square') drawSquareGrid(path, bounds, size, offsetX, offsetY, 'solid');
   else drawHexGrid(path, bounds, createHexLayout(type, size, offsetX, offsetY), 'solid');
+  ctx.restore();
   ctx.strokeStyle = '#302820';
   ctx.lineWidth = 3;
   ctx.stroke();
@@ -93,16 +98,18 @@ describe('grid auto-detect through the map image overview', () => {
     { type: 'square', width: 6000, height: 4000, size: 97.3, offsetX: 31.4, offsetY: 58.2 },
     // Smaller: both read it at its own size.
     { type: 'hex-vertical', width: 3000, height: 2200, size: 88.6, offsetX: 17.5, offsetY: 40.3 },
+    // Hexes printed 5 % too tall: the grid comes with the stretch that makes them regular.
+    { type: 'hex-vertical', width: 2400, height: 3000, size: 88.6, offsetX: 17.5, offsetY: 40.3, aspect: 1.05 },
   ];
 
   for (const grid of cases) {
     it(`finds the grid the whole texture gave: ${grid.type}, ${grid.width} × ${grid.height}`, async () => {
       const source = drawMap(grid);
-      const rect = { x: 0, y: 0, width: grid.width, height: grid.height };
+      const imageSize = { width: grid.width, height: grid.height };
 
       // The way detection read a map before tiles: the whole image drawn into a canvas.
       const direct = grayFromCanvasSource(source, grid.width, grid.height, MAX_ANALYSIS_SIDE)!;
-      const before = detectGridInMapGray(direct, rect);
+      const before = detectGridInMapGray(direct, imageSize);
 
       const png = await (await source.convertToBlob({ type: 'image/png' })).arrayBuffer();
       const identity = { path: `maps/${grid.type}.png`, size: png.byteLength, mtime: grid.width };
@@ -112,7 +119,8 @@ describe('grid auto-detect through the map image overview', () => {
       const tiles = decoderTiles(client, opened);
       const sizes: Array<[number, number]> = [];
       const after = await detectGridFromMapImage({
-        worldRect: rect,
+        worldRect: { x: 0, y: 0, ...imageSize },
+        imageSize,
         overview: async (maxSide) => {
           const bitmap = await tiles.overview(maxSide);
           sizes.push([bitmap.width, bitmap.height]);
@@ -122,7 +130,10 @@ describe('grid auto-detect through the map image overview', () => {
       tiles.close();
 
       expect(sizes).toEqual([[direct.width, direct.height]]);
-      expect(before).toMatchObject({ gridType: grid.type, cellSize: expect.closeTo(grid.size, 0) });
+      const aspect = grid.aspect ?? 1;
+      expect(before).toMatchObject({ gridType: grid.type, cellSize: expect.closeTo(grid.size * aspect, 0) });
+      if (grid.aspect) expect(before!.mapStretch).toEqual({ x: expect.closeTo(aspect, 3), y: 1 });
+      else expect(before).not.toHaveProperty('mapStretch');
       // Cached tiles are WebP at quality 0.9, so a map read at its own size may move an offset by a few hundredths.
       expect({ ...after, offsetX: 0, offsetY: 0 }).toEqual({ ...before, offsetX: 0, offsetY: 0 });
       expect(Math.abs(after!.offsetX - before!.offsetX)).toBeLessThanOrEqual(0.1);

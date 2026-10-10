@@ -58,6 +58,8 @@ import type { MapImageChange } from './pixi/mapImage/mapImageView';
 import type { TileView } from './pixi/mapImage/levelOfDetail';
 import { frameView } from './services/playerFrameDemand';
 import { MapController } from './MapController';
+import { NO_STRETCH, readMapStretch, sameStretch, type MapStretch } from './grid/mapStretch';
+import { fitZoomRange } from './pixi/fitMapRect';
 
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
@@ -97,6 +99,8 @@ export class PixiRendererOrchestrator { // Renamed class
   /** The view's map image, owned here once the first load hands it over. */
   private mapImage: MapImage | null = null;
   private stopFollowingMapImage: (() => void) | null = null;
+  /** The stretch of the map the zoom range was last fitted to. */
+  private zoomFittedStretch: MapStretch = NO_STRETCH;
   private obsApp: App;
   private eventBus: EventEmitter;
   private activeHoverLinkAnchorEl: HTMLElement | null = null;
@@ -584,9 +588,11 @@ export class PixiRendererOrchestrator { // Renamed class
     this.gridSystem?.setMapImage(mapImage);
     const stopChanges = mapImage.onChange((change) => this.mapImageChanged(change));
     const stopBackground = MapController.followBackground(this.obsApp, this.store, mapImage);
+    const stopStretch = MapController.followStretch(this.store, mapImage, () => this.mapSizeSettled());
     this.stopFollowingMapImage = (): void => {
       stopChanges();
       stopBackground();
+      stopStretch();
     };
     this.mapImageChanged('image');
   }
@@ -609,8 +615,34 @@ export class PixiRendererOrchestrator { // Renamed class
   private mapImageChanged(change: MapImageChange): void {
     // The lighting follows a new albedo by itself, without building its scene anew.
     if (this._isDestroyed || change !== 'image') return;
+    // An alignment's preview draws the map another way than the scene has it: only the zoom range
+    // follows it, and the fog, the lighting and the explored memory keep the scene's size until the
+    // alignment is applied.
+    if (this.isPreviewingStretch()) this.fitZoomRangeToStretch();
+    else this.mapSizeSettled();
+  }
+
+  private isPreviewingStretch(): boolean {
+    const state = this.store.getState();
+    if (!this.mapImage || !state.mapLoaded || state.isMapLoading) return false;
+    return !sameStretch(this.mapImage.mapStretch, readMapStretch(state.grid?.mapStretch));
+  }
+
+  /** The map has the size the scene gives it: what covers the map follows. */
+  private mapSizeSettled(): void {
+    if (this._isDestroyed) return;
+    this.fitZoomRangeToStretch();
     this.lighting?.renderer.refreshBounds();
     this.eventBus.emit('map-image-updated', this.getMapRect() ?? undefined);
+  }
+
+  /** A map drawn with another stretch has another size than the one the load fitted the zoom range to. */
+  private fitZoomRangeToStretch(): void {
+    const stretch = this.mapImage?.mapStretch ?? NO_STRETCH;
+    if (sameStretch(stretch, this.zoomFittedStretch)) return;
+    this.zoomFittedStretch = stretch;
+    const rect = this.getMapRect();
+    if (this.viewport && rect) fitZoomRange(this.viewport, rect);
   }
 
   private releaseMapImage(): void {
@@ -634,7 +666,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.gridSystem.updateOptions(options);
   }
 
-  /** Apply final grid alignment: update grid, resize + resnap all tokens. */
+  /** Apply final grid alignment: update grid, resize + resnap all tokens. The map's stretch follows the store's grid. */
   public applyGridAlignment(size: number, offsetX: number, offsetY: number, type?: GridType): void {
     if (!this.gridSystem) return;
 
@@ -646,11 +678,12 @@ export class PixiRendererOrchestrator { // Renamed class
     this.resnapTokensToGrid();
   }
 
-  /** Cancel grid alignment: restore original grid values from the store. */
+  /** Cancel grid alignment: restore original grid values and the map's stretch from the store. */
   public cancelGridAlignment(): void {
     if (!this.gridSystem) return;
 
     const grid = this.store.getState().grid;
+    this.mapImage?.setStretch(readMapStretch(grid?.mapStretch));
     this.gridSystem.updateOptions({
       type: grid?.type ?? 'square',
       size: grid?.size || 50,
