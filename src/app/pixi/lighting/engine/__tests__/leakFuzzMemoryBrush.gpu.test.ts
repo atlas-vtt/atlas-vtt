@@ -10,6 +10,7 @@ import type { MapBounds } from '../../../../vision/visibility';
 import { distSqToSegment } from '../../../../vision/visionGeometry';
 import { ExploredMemory } from '../../ExploredMemory';
 import { LightingEngine } from '../LightingEngine';
+import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY, type LightingQuality } from '../../../../lighting/lightingQuality';
 import { createTestRenderer } from './gpuTestUtils';
 import { distToOutline, fuzzRooms, insidePolygon, rng, roomOutline, type P } from './fuzzRooms';
 import { NO_SIGHT, renderView } from './leakFuzzScene';
@@ -49,6 +50,8 @@ interface FuzzOptions {
   overshoot?: number;
   bounds?: MapBounds;
   resolution?: number;
+  /** The lighting quality the engine draws at; the walls are sealed as the rules seal them, at the map's own texel. */
+  quality?: LightingQuality;
 }
 
 const reveal = (area: ExploredEdit['area']): ExploredEdit => ({ mode: 'reveal', area });
@@ -81,10 +84,10 @@ function editCountingStore(): { store: ViewAtlasStore; undo: () => void } {
  * A dab of the brush across a wall reveals both sides, since the GM decides what is explored;
  * it shows nowhere beyond its own radius and the blur the composite reads the memory through.
  */
-async function fuzz({ seed, trials, overshoot = 1, bounds = { width: 2048, height: 2048 }, resolution = 1 }: FuzzOptions): Promise<Report> {
+async function fuzz({ seed, trials, overshoot = 1, bounds = { width: 2048, height: 2048 }, resolution = 1, quality = DEFAULT_LIGHTING_QUALITY }: FuzzOptions): Promise<Report> {
   const renderer = await createTestRenderer(SIZE, resolution);
   const watch = watchGl(renderer.gl);
-  const engine = new LightingEngine(renderer);
+  const engine = new LightingEngine(renderer, quality);
   const target = RenderTexture.create({ width: SIZE, height: SIZE, resolution });
   const { store, undo } = editCountingStore();
   let memoryTexel = 1;
@@ -108,8 +111,9 @@ async function fuzz({ seed, trials, overshoot = 1, bounds = { width: 2048, heigh
     const rand = rng(seed + 9);
     const report: Report = { rooms: 0, room: 0, dab: 0, revealed: 0, leaks: 0, restored: 0, restoredLeaks: 0, leftovers: 0, dabbed: 0, beyond: 0, missing: 0, stray: 0 };
     for (const room of fuzzRooms(seed, trials)) {
-      const texel = worldTexel(bounds);
-      const walls = sealWalls(room.walls, sealTolerance(texel));
+      // The rules seal at the map's texel; the picture is held to the texel the engine draws at.
+      const texel = worldTexel(bounds, quality.maxTexels);
+      const walls = sealWalls(room.walls, sealTolerance(worldTexel(bounds)));
       const outline = roomOutline(room);
       if (!insidePolygon(room.centre, room.outline)) continue;
       const kind = KINDS[report.rooms % KINDS.length]!;
@@ -216,6 +220,15 @@ describe('leak fuzz: explored memory edited by hand', () => {
   it('holds on a map large enough for memory texels wider than a wall', { timeout: 600_000 }, async () => {
     const report = await fuzz({ seed: 13, trials: SIDE_TRIALS, bounds: { width: 9000, height: 9000 } });
     console.info(`leak fuzz (memory brush, large map): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
+    expect(report.revealed).toBeGreaterThan(SIDE_TRIALS * 40);
+    expect(report.restored).toBe(report.revealed);
+    expect(report.dabbed).toBeGreaterThan(SIDE_TRIALS * 8);
+    expect(report).toMatchObject(CLEAN);
+  });
+
+  it.each(['balanced', 'saver'] as const)('holds at the %s lighting quality on a map whose texels it coarsens', { timeout: 600_000 }, async (level) => {
+    const report = await fuzz({ seed: 13, trials: SIDE_TRIALS, bounds: { width: 8192, height: 8192 }, quality: LIGHTING_QUALITY[level] });
+    console.info(`leak fuzz (memory brush, ${level}): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
     expect(report.revealed).toBeGreaterThan(SIDE_TRIALS * 40);
     expect(report.restored).toBe(report.revealed);
     expect(report.dabbed).toBeGreaterThan(SIDE_TRIALS * 8);

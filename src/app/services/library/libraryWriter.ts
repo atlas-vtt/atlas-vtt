@@ -3,7 +3,8 @@ import { ensureFolder } from '../../plugin/vaultFolders';
 import { trashVaultItem } from '../../utils/trashVaultItem';
 import { parentPath } from '../../utils/pathUtils';
 import type { DesiredFile } from './libraryFiles';
-import { assetKey, hashText, idOfKey, type FileStamp, type LibraryState } from './libraryState';
+import { assetKey, idOfKey, type FileStamp, type LibraryState } from './libraryState';
+import { hashText } from '../../utils/hashing';
 
 const stampOf = (file: TFile, key: string, hash: string): FileStamp => ({ key, hash, mtime: file.stat.mtime, size: file.stat.size });
 

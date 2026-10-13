@@ -81,8 +81,9 @@ export interface StatblockMonster {
   [key: string]: unknown;
 }
 
+/** A trait as a note writes it: its name and description are texts in a well-formed statblock only. */
 export interface Trait {
-  name?: string;
-  desc?: string;
+  name?: unknown;
+  desc?: unknown;
   [key: string]: unknown;
 }

@@ -49,7 +49,6 @@ export interface AtlasSettings {
     showToolbar: boolean;
     showTokenNameplates: boolean;
     showNotePreviews: boolean;
-    showGrid: boolean;
     showWidgets: boolean;
     showInitiative: boolean;
     /** Show the DM's dice rolls to players as toasts in the player window. */
@@ -80,7 +79,6 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showToolbar: false, // Hide toolbar by default in player view
     showTokenNameplates: false, // Hide nameplates
     showNotePreviews: false, // Hide note previews
-    showGrid: true, // Show grid by default
     showWidgets: true,
     showInitiative: true,
     showDiceRolls: false,

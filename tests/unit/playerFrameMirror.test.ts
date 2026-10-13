@@ -88,14 +88,14 @@ describe('PlayerFrameMirror on a canvas that renders on change', () => {
 
     dm.change();
     dm.tick(100);
-    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), SETTINGS, undefined);
+    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), SETTINGS, expect.objectContaining({ centerX: 1, centerY: 2, scale: 2 }));
     expect(onFrame).toHaveBeenLastCalledWith(DM_CAMERA);
 
-    state.frozen = { centerX: 10, centerY: 20, scale: 2 };
+    state.frozen = { centerX: 10, centerY: 20, scale: 2, width: 400, height: 300 };
     mirror.markStale();
     frame(200);
     dm.tick(201);
-    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), SETTINGS, state.frozen);
+    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), SETTINGS, expect.objectContaining({ centerX: 10, centerY: 20, scale: 4 }));
     expect(onFrame).toHaveBeenLastCalledWith(state.frozen);
   });
 
@@ -184,7 +184,8 @@ describe('PlayerFrameMirror on a canvas that renders on change', () => {
 describe('PlayerFrameMirror on a canvas without a render schedule', () => {
   it('captures every display frame and restores the DM frame itself', () => {
     const { events, frame, dm, state, onFrame } = setupMirror();
-    state.source = { canvas: dm.source.canvas, withPlayerSafeFrame: dm.source.withPlayerSafeFrame };
+    const { getCamera, getScreen, withPlayerSafeFrame } = dm.source;
+    state.source = { getCamera, getScreen, withPlayerSafeFrame };
 
     frame(0);
     frame(8);

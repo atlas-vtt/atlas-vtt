@@ -2,7 +2,8 @@ import { readWall } from '../../lighting/lightingObjects';
 import { wallList } from '../../vision/wallList';
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import { DOOR_GLYPH_PATHS, type DoorGlyph } from '../../lighting/doorGlyphs';
-import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
+import type { StoreApi } from 'zustand';
+import type { ViewState } from '../../types/viewState';
 import type { WallSegment } from '../../types/wallTypes';
 import { doorMiddle } from '../../vision/doorSight';
 import { MOTION_SLOW_MS, prefersReducedMotion } from '../../utils/motion';
@@ -35,6 +36,14 @@ function isDoor(wall: WallSegment): boolean {
 }
 
 const NO_DOORS: ReadonlySet<string> = new Set();
+
+/** What the badges read of their view's state: the doors, the cell size they are sized by, what moves the players' sight, and the door switch. */
+export type DoorIconsState = Pick<ViewState, 'grid' | 'lighting' | 'mapPath'> & {
+  objects: Pick<ViewState['objects'], 'walls' | 'fog'>;
+  toggleDoor(id: string): void;
+};
+
+export type DoorIconsStore = Pick<StoreApi<DoorIconsState>, 'getState' | 'subscribe'>;
 
 /** One set of badges: the discs and padlocks in one drawing, and the door glyph of every badge that has one. */
 interface BadgeSet {
@@ -75,7 +84,7 @@ export class DoorIcons {
 
   /** `canvas` is the map's: a popout window has its own document, whose motion setting counts. */
   constructor(
-    private readonly store: ViewAtlasStore,
+    private readonly store: DoorIconsStore,
     private readonly canvas: HTMLCanvasElement,
     /** The doors the players see now (`playerDoorSight`). */
     private readonly playersSee: () => ReadonlySet<string> = () => NO_DOORS,
@@ -152,17 +161,17 @@ export class DoorIcons {
     return { doorId, offset, tint: reduced };
   }
 
-  private radius(state: ViewAtlasState): number {
+  private radius(state: DoorIconsState): number {
     return (state.grid?.size ?? 70) * BADGE_SHARE;
   }
 
-  private draw(state: ViewAtlasState): void {
+  private draw(state: DoorIconsState): void {
     this.seen = this.playersSee();
     this.drawBadges(this.gmBadges, state, false);
     this.drawBadges(this.playerBadges, state, true);
   }
 
-  private drawBadges(badges: BadgeSet, state: ViewAtlasState, forPlayers: boolean): void {
+  private drawBadges(badges: BadgeSet, state: DoorIconsState, forPlayers: boolean): void {
     const { view, graphics: g, glyphs } = badges;
     g.clear();
     const r = this.radius(state);

@@ -12,8 +12,8 @@
 
 import type { GridType } from '../../grid/GridSystem';
 import type { GrayImage } from './grayImage';
-import { edgeDirectionKey, edgeResponse, edgeShift, latticeEdges, moveCandidate } from './edgeProfile';
-import type { LatticeCandidate, LatticeEdge } from './edgeProfile';
+import { edgeDirectionKey, edgeResponse, edgeShift, frameOf, latticeEdges, moveCandidate } from './edgeProfile';
+import type { LatticeCandidate, LatticeEdge, LatticeFrame } from './edgeProfile';
 
 const SEARCH_EDGES = 800;
 /** Rough sizes come from spectral peaks; this is how far off they may be. */
@@ -28,9 +28,9 @@ interface ProfiledEdge {
   profile: Float32Array;
 }
 
-function profileEdges(image: GrayImage, edges: LatticeEdge[], reach: number): ProfiledEdge[] {
+function profileEdges(image: GrayImage, edges: LatticeEdge[], reach: number, frame: LatticeFrame): ProfiledEdge[] {
   return edges.map((edge) => {
-    const profile = edgeResponse(image, edge, reach, 1);
+    const profile = edgeResponse(image, edge, reach, 1, frame);
     let max = 0;
     for (const value of profile) max = Math.max(max, value);
     for (let j = 0; j < profile.length; j++) profile[j] = max > 0 ? Math.max(0, profile[j]!) / max : 0;
@@ -58,14 +58,15 @@ function byDirection(profiled: ProfiledEdge[]): ProfiledEdge[][] {
   return [...groups.values()];
 }
 
-export function searchLattice(image: GrayImage, gridType: GridType, roughCellSize: number): LatticeCandidate | null {
-  const start: LatticeCandidate = { cellSize: roughCellSize, offsetX: 0, offsetY: 0 };
+/** `aspect` and `rotation` are the rough shape of the map (see `LatticeCandidate`); the search keeps them. */
+export function searchLattice(image: GrayImage, gridType: GridType, roughCellSize: number, aspect = 1, rotation = 0): LatticeCandidate | null {
+  const start: LatticeCandidate = { cellSize: roughCellSize, offsetX: 0, offsetY: 0, aspect, rotation };
   // Offsets span one cell; at the map's rim a size change moves edges further still.
-  const maxCells = Math.hypot(image.width, image.height) / 2 / roughCellSize;
+  const maxCells = Math.hypot(image.width, image.height / aspect) / 2 / roughCellSize;
   const reach = roughCellSize * (0.75 + SIZE_RANGE * maxCells);
   const edges = latticeEdges(image, gridType, start, reach, SEARCH_EDGES);
   if (edges.length < 6) return null;
-  const directions = byDirection(profileEdges(image, edges, reach));
+  const directions = byDirection(profileEdges(image, edges, reach, frameOf(image, start)));
 
   const offsetStep = Math.max(1, roughCellSize / MAX_OFFSET_STEPS);
   const offsetSteps = Math.ceil(roughCellSize / offsetStep);
@@ -78,9 +79,11 @@ export function searchLattice(image: GrayImage, gridType: GridType, roughCellSiz
     // Votes of each direction as a function of the shift along its normal.
     directions.forEach((group, d) => {
       const tally = tallies[d]!;
+      // How far this size moves each edge is the same for every shift tallied.
+      const moved = group.map((entry) => edgeShift(entry.edge, 0, 0, dSize));
       for (let u = -tallyHalf; u <= tallyHalf; u++) {
         let sum = 0;
-        for (const entry of group) sum += readProfile(entry.profile, u + edgeShift(entry.edge, 0, 0, dSize));
+        for (let k = 0; k < group.length; k++) sum += readProfile(group[k]!.profile, u + moved[k]!);
         tally[u + tallyHalf] = sum / group.length;
       }
     });

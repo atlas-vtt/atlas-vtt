@@ -55,10 +55,10 @@ describe('SettingsService startup', () => {
     expect(settings.legacyPlayerBars()).toEqual({ hp: true, stress: false });
     settings.clearLegacyPlayerBars();
     expect(settings.legacyPlayerBars()).toBeNull();
-    expect(settings.getLocalPlayerViewSettings().showGrid).toBe(false);
 
     await settings.saveSettingsNow();
-    expect(data.stored()).toMatchObject({ localPlayerView: { showTokenHP: true, showTokenStress: false, tokenBarsCarriedOver: true } });
+    // The old grid switch is no longer read, and stays for an older Atlas like the bar switches
+    expect(data.stored()).toMatchObject({ localPlayerView: { showTokenHP: true, showTokenStress: false, showGrid: false, tokenBarsCarriedOver: true } });
 
     const reopened = new SettingsService(new App(), undefined, data);
     await reopened.initialize();

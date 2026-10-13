@@ -6,6 +6,8 @@
 
 A game system agnostic virtual tabletop for tabletop RPGs that runs inside [Obsidian](https://obsidian.md). 
 
+The guides, with screenshots and clips of every feature, are on **[atlas-vtt.dev](https://atlas-vtt.dev)**.
+
 I built Atlas as part of my bachelor's thesis to give the TTRPG community a virtual tabletop that's open source, hackable, and free to use. Every file Atlas creates, every token, every map, every world you build, stays yours and stays local. It follows the same philosophy as Obsidian: your work lives on your machine, in formats you control, with no account and no server in between.
 
 TTRPG worlds in my opinion are something very personal and players and DMs get attached to them. That attachment deserves better than a subscription and someone else's database. Atlas makes sure your creative output stays yours, just like a sheet of paper would.
@@ -13,6 +15,8 @@ TTRPG worlds in my opinion are something very personal and players and DMs get a
 Ease of use matters just as much to me. Atlas aims for a minimal, streamlined interface that feels native to Obsidian, with clear controls and simple workflows that keep your attention on the game.
 
 AtlasVTT is desktop only for now
+
+Documentation at: [atlas-vtt.dev](https://atlas-vtt.dev/)
 
 ![Atlas VTT showing a battle map, character tokens, a linked statblock, and the initiative tracker](docs/images/atlas-overview.webp)
 
@@ -46,6 +50,8 @@ Requires **Obsidian 1.8.7 or newer on desktop**. Atlas VTT is available through 
 3. Select **Install**, then **Enable**.
 
 Check for updates under **Settings → Community plugins**.
+
+New to Atlas? [Start here](https://atlas-vtt.dev/docs/start/install) takes you from installing it to showing your first map to your players.
 
 Want to try upcoming features early? Beta builds are available through BRAT, see [docs/beta-testing.md](docs/beta-testing.md).
 

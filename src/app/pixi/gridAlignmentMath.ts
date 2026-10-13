@@ -7,7 +7,9 @@
 
 import type { GridType } from '../grid/GridSystem';
 import { isHexGridType } from '../grid/hexGeometry';
-import { calculateHexAlignment, hexSizeFromEdge } from './hexAlignmentMath';
+import { hexAlignmentCandidates, hexSizeFromEdge } from './hexAlignmentMath';
+import { NO_STRETCH, sameStretch, type MapStretch } from '../grid/mapStretch';
+import type { GridState } from '../types/gridTypes';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,6 +32,21 @@ export interface AlignmentResult {
   maxResidual?: number;
   /** Share of the detected grid's edges that sit on a line of the map (0–1), when the result came from image auto-detection. */
   confidence?: number;
+  /** How the map image must be drawn for this grid to fit it; size and offsets are in that stretched world. Unset draws the image as it is. */
+  mapStretch?: MapStretch;
+}
+
+/** `grid` with an alignment written into it: its type, size and offsets, and the map's stretch that goes with them. */
+export function gridAlignedTo(grid: GridState, result: AlignmentResult): GridState {
+  const { mapStretch: _previous, ...rest } = grid;
+  return {
+    ...rest,
+    ...(result.gridType ? { type: result.gridType } : {}),
+    size: result.cellSize,
+    offsetX: result.offsetX,
+    offsetY: result.offsetY,
+    ...(result.mapStretch && !sameStretch(result.mapStretch, NO_STRETCH) ? { mapStretch: result.mapStretch } : {}),
+  };
 }
 
 export interface MapBounds {
@@ -130,13 +147,14 @@ export function measurementCellSize(pair: MeasurementPair, gridType: GridType): 
 }
 
 /**
- * Compute grid alignment for the given grid type. Square grids measure adjacent
- * intersections; hex grids measure one hex edge per pair.
+ * Every grid the measurements can stand for, the likeliest first. Square grids measure adjacent
+ * intersections and have one reading; hex grids measure two corners of a hex, which can be read
+ * in several ways (`hexAlignmentCandidates`).
  */
-export function calculateAlignment(pairs: MeasurementPair[], gridType: GridType): AlignmentResult | null {
-  if (isHexGridType(gridType)) return calculateHexAlignment(pairs, gridType);
+export function alignmentCandidates(pairs: MeasurementPair[], gridType: GridType): AlignmentResult[] {
+  if (isHexGridType(gridType)) return hexAlignmentCandidates(pairs, gridType);
   const result = calculateFromMeasurements(pairs);
-  return result ? { ...result, gridType: 'square' } : null;
+  return result ? [{ ...result, gridType: 'square' }] : [];
 }
 
 /**

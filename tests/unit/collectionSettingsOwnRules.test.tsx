@@ -163,3 +163,27 @@ describe('the collection settings modal and the initiative rules', () => {
   });
 });
 
+describe('the collection settings modal and the distance per square', () => {
+  const distanceField = (): HTMLInputElement => screen.getAllByRole<HTMLInputElement>('textbox')[0]!;
+  const saveButton = (): HTMLButtonElement => screen.getByRole<HTMLButtonElement>('button', { name: 'Save' });
+
+  it('cannot save text that is no distance, also after the field and the tab were left, and saves a distance below 1', async () => {
+    const { saved } = open(fresh());
+    await waitFor(() => expect(activeRow()).toBeTruthy());
+    fireEvent.click(screen.getByRole('button', { name: 'Grid & Measure' }));
+    expect(distanceField().value).toBe('5');
+
+    fireEvent.change(distanceField(), { target: { value: '0' } });
+    fireEvent.blur(distanceField());
+    expect(saveButton().disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Conditions' }));
+    expect(saveButton().disabled).toBe(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Grid & Measure' }));
+    expect(distanceField().getAttribute('aria-invalid')).toBe('true');
+
+    fireEvent.change(distanceField(), { target: { value: '0,5' } });
+    expect(saveButton().disabled).toBe(false);
+    await save();
+    expect(saved()?.gridDefaults?.unitDistance).toBe(0.5);
+  });
+});

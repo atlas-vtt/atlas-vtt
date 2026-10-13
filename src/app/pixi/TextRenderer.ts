@@ -5,7 +5,7 @@
  * Handles text creation, updates, selection, and interaction similar to tokens.
  */
 
-import { Container, Graphics, Text as PIXIText, TextStyle, FederatedPointerEvent } from 'pixi.js';
+import { Container, Graphics, Text as PIXIText, FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
 import { OutlineFilter } from 'pixi-filters';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/ContextMenuContext';
@@ -15,6 +15,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { TextRotationUI } from './TextRotationUI';
 import { TextResizeUI } from './TextResizeUI';
+import { createTextElementView, TEXT_BACKGROUND_LABEL, TEXT_CONTENT_LABEL, updateTextElementView } from './textElementView';
 import { promptForText } from '../ui/textInputDialog';
 import { destroyTree } from './utils/destroyTree';
 import { t } from '../i18n';
@@ -122,43 +123,8 @@ export class TextRenderer {
   }
 
   private createText(textElement: TextElement): void {
-    const container = new Container();
-    container.label = textElement.id;
-    container.position.set(textElement.x, textElement.y);
-    container.sortableChildren = true;
-    
-    // Create background
-    const background = new Graphics();
-    background.label = 'textBackground';
-    container.addChild(background);
-    
-    // Create text style
-    const style = new TextStyle({
-      fontFamily: textElement.fontFamily,
-      fontSize: textElement.fontSize,
-      fill: textElement.color,
-      align: textElement.align || 'center',
-      fontWeight: textElement.bold ? 'bold' : 'normal',
-      fontStyle: textElement.italic ? 'italic' : 'normal'
-    });
-    
-    // Create text
-    const pixiText = new PIXIText({ text: textElement.text, style });
-    pixiText.label = 'textContent';
-    pixiText.anchor.set(0.5);
-    container.addChild(pixiText);
-    
-    // Draw background
-    this.drawTextBackground(background, pixiText, textElement);
-    
-    // Apply transformations
-    if (textElement.rotation) {
-      container.rotation = (textElement.rotation * Math.PI) / 180;
-    }
-    if (textElement.scale) {
-      container.scale.set(textElement.scale);
-    }
-    
+    const container = createTextElementView(textElement);
+
     // Set up interaction if not player view
     if (!this.isPlayerView) {
       this.setupInteraction(container, textElement.id);
@@ -169,71 +135,9 @@ export class TextRenderer {
     this.textElements[textElement.id] = container;
   }
 
-  private drawTextBackground(
-    background: Graphics,
-    text: PIXIText,
-    textElement: TextElement
-  ): void {
-    background.clear();
-    
-    if (textElement.backgroundColor) {
-      const padding = textElement.padding || 8;
-      const bounds = text.getLocalBounds();
-      
-      if (textElement.borderRadius) {
-        background.roundRect(
-          bounds.x - padding,
-          bounds.y - padding,
-          bounds.width + padding * 2,
-          bounds.height + padding * 2,
-          textElement.borderRadius
-        );
-      } else {
-        background.rect(
-          bounds.x - padding,
-          bounds.y - padding,
-          bounds.width + padding * 2,
-          bounds.height + padding * 2
-        );
-      }
-
-      background.fill({
-        color: parseInt(textElement.backgroundColor.replace('#', ''), 16),
-        alpha: textElement.opacity || 1,
-      });
-    }
-  }
-
   private updateText(textElement: TextElement): void {
     const container = this.textElements[textElement.id];
-    if (!container) return;
-    
-    // Update position
-    container.position.set(textElement.x, textElement.y);
-    
-    // Update text content and style
-    const pixiText = container.getChildByLabel('textContent') as PIXIText;
-    if (pixiText) {
-      pixiText.text = textElement.text;
-      pixiText.style = new TextStyle({
-        fontFamily: textElement.fontFamily,
-        fontSize: textElement.fontSize,
-        fill: textElement.color,
-        align: textElement.align || 'center',
-        fontWeight: textElement.bold ? 'bold' : 'normal',
-        fontStyle: textElement.italic ? 'italic' : 'normal'
-      });
-    }
-    
-    // Update background
-    const background = container.getChildByLabel('textBackground') as Graphics;
-    if (background && pixiText) {
-      this.drawTextBackground(background, pixiText, textElement);
-    }
-    
-    // Update transformations
-    container.rotation = textElement.rotation ? (textElement.rotation * Math.PI) / 180 : 0;
-    container.scale.set(textElement.scale || 1);
+    if (container) updateTextElementView(container, textElement);
   }
 
   private removeText(id: string): void {
@@ -250,8 +154,8 @@ export class TextRenderer {
     container.cursor = 'move';
     
     // Make both background and text interactive
-    const background = container.getChildByLabel('textBackground') as Graphics;
-    const text = container.getChildByLabel('textContent') as PIXIText;
+    const background = container.getChildByLabel(TEXT_BACKGROUND_LABEL) as Graphics;
+    const text = container.getChildByLabel(TEXT_CONTENT_LABEL) as PIXIText;
     
     if (background) {
       background.eventMode = 'static';

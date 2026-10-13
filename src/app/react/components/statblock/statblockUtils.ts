@@ -5,31 +5,14 @@
 
 import type { StatblockItem, StatblockMonster } from './statblockTypes';
 import { runCallback } from './layoutCallbacks';
+import { valueText } from '../../../creatures/statblockValues';
 
-/** Flattens arbitrary frontmatter values to display text, as Fantasy Statblocks does. */
-export function stringify(
-  property: unknown,
-  depth = 0,
-  joiner = ' ',
-  parens = true,
-): string {
-  if (depth === 5) return '';
-  if (property == null) return '';
-  if (typeof property === 'string') return property;
-  if (typeof property === 'number') return `${property}`;
-
-  if (Array.isArray(property)) {
-    const inner = property.map((p) => stringify(p, depth + 1)).join(joiner);
-    return parens ? `(${inner})` : inner;
-  }
-
-  if (typeof property === 'object') {
-    return Object.values(property as Record<string, unknown>)
-      .map((value) => stringify(value, depth + 1))
-      .join(' ');
-  }
-
-  return '';
+/**
+ * A statblock value as display text, as Fantasy Statblocks writes it: read within the limits
+ * every statblock value is read in.
+ */
+export function stringify(property: unknown, joiner = ' ', parens = true): string {
+  return valueText(property, { joiner, parens });
 }
 
 export function slugify(str: string): string {
@@ -75,7 +58,7 @@ export function isVisible(item: StatblockItem, monster: StatblockMonster): boole
 /** The first bound property's display value, with fallback handling. */
 export function propertyText(item: StatblockItem, monster: StatblockMonster): string {
   const key = item.properties?.[0];
-  let text = key ? stringify(monster[key], 0, ', ', false) : '';
+  let text = key ? stringify(monster[key], ', ', false) : '';
 
   if (item.callback) {
     text = tidyCallbackText(stringify(runCallback(item.callback, { monster }, text)));

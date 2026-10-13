@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Texture } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { fakeMapRenderer, loadedMap } from '../helpers/fakeMapRenderer';
 
 vi.mock('obsidian', async (importOriginal) => ({ ...(await importOriginal<typeof import('obsidian')>()), Notice: vi.fn() }));
 vi.mock('../../src/app/services/ServiceManager', () => ({ ServiceManager: class {} }));
@@ -51,12 +51,9 @@ function harness(holdImage: boolean): Harness {
   vi.mocked(MapLoader.load).mockImplementation(async (_app, path): Promise<LoadedMap> => {
     const envelope = JSON.parse(files.get(path) ?? '{}') as PersistedMapEnvelope;
     if (!releaseImage) await new Promise<void>((resolve) => { releaseImage = resolve; });
-    return { mapData: migrateMapFile(envelope.state), texture: Texture.WHITE, hasBackground: false, backgroundUrl: null };
+    return loadedMap(migrateMapFile(envelope.state));
   });
-  const renderer = {
-    setBackgroundSprite: vi.fn(), clearBackgroundSprite: vi.fn(), getGridSystem: () => null, initGrid: vi.fn(),
-    getViewportInstance: () => null, getBackgroundSprite: () => null,
-  };
+  const renderer = fakeMapRenderer();
   const rendererService = { getRenderer: () => renderer, isInitialized: () => true, getViewport: () => null };
   const mapService = new MapService(app, eventBus, store);
   const tabMetaStore = createTabMetaStore();

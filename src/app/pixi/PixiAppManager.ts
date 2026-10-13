@@ -6,6 +6,7 @@ import { destroyTree } from "./utils/destroyTree";
 import { usesCanvasRenderer } from "./utils/rendererType";
 import { webglAvailable } from "./utils/webglAvailable";
 import { showSoftwareRenderingNotice } from "./softwareRenderingNotice";
+import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
 
 type RendererPreference = 'webgl' | 'canvas';
 
@@ -171,8 +172,8 @@ export class PixiAppManager {
     this.viewport
       .drag({ mouseButtons: 'right', pressDrag: true })
       .clampZoom({
-        minScale: 0.1,
-        maxScale: 5,
+        minScale: MIN_ZOOM,
+        maxScale: MAX_ZOOM,
       });
     this.viewport.plugins.add('decelerate', new SmoothDecelerate(this.viewport));
     
@@ -195,26 +196,48 @@ export class PixiAppManager {
   }
   
 
+  /**
+   * The map keeps its centre: what was in the middle of the pane stays there when a sidebar or a
+   * split changes the pane's size, so the view loses or gains the same on both sides. The
+   * players' frame is centred on that point, and would slide by half of what the pane lost if
+   * the pane kept its top left corner instead.
+   *
+   * A pane without a size is hidden (`display: none` while another Obsidian tab covers it), and
+   * the screen keeps the size it had. PIXI leaves the canvas as it is for a side of 0, but the
+   * viewport would take it, and with it everything that reads what the screen shows: the centre
+   * kept here, and the world rectangle the players' frame is fitted to.
+   */
   resize(newWidth: number, newHeight: number): void {
-    if (this._isDestroyed) return;
+    if (this._isDestroyed || newWidth <= 0 || newHeight <= 0) return;
     this.width = newWidth;
     this.height = newHeight;
 
-    if (this.app.renderer) {
-      this.app.renderer.resize(newWidth, newHeight);
-      // Resizing clears the drawing buffer
-      this.renderScheduler?.requestRender();
-    }
+    if (this.app.renderer) this.app.renderer.resize(newWidth, newHeight);
 
-    if (this.viewport) {
-      this.viewport.resize(newWidth, newHeight);
-    }
+    if (this.viewport) this.resizeViewport(this.viewport, newWidth, newHeight);
     
     // Update canvas element dimensions
     if (this.canvasEl) {
       this.canvasEl.style.width = `${newWidth}px`;
       this.canvasEl.style.height = `${newHeight}px`;
     }
+
+    // Resizing clears the drawing buffer. A pane resizes from a ResizeObserver, after the frame's
+    // render and before the paint: rendering only on the next tick showed a blank frame, so a
+    // sidebar sliding open made the map flicker.
+    if (this.app.renderer) this.renderScheduler?.renderNow();
+  }
+
+  /** Gives `viewport` its new screen around the world point that was in the middle of the old one. */
+  private resizeViewport(viewport: Viewport, width: number, height: number): void {
+    if (viewport.screenWidth === width && viewport.screenHeight === height) return;
+    const { x, y } = viewport.center;
+    viewport.resize(width, height);
+    const moved = viewport.center.x !== x || viewport.center.y !== y;
+    viewport.moveCenter(x, y);
+    // As after a pan: what follows the camera (the laser's dot, handles, what is drawn for the screen only) follows.
+    // `ensureVisible` is the viewport's name for a move of its own that keeps something in view.
+    if (moved) viewport.emit('moved', { viewport, type: 'ensureVisible' });
   }
 
   destroy(): void {

@@ -41,6 +41,19 @@ export class RenderScheduler {
   }
 
   /**
+   * Render now, in this task: for what clears the canvas between the frame's render and the
+   * browser's paint (a resize from a `ResizeObserver`), which would otherwise show as a blank frame.
+   * While the ticker is stopped (a load holding the last frame) the render waits for the next tick.
+   */
+  public renderNow(): void {
+    if (!this.app.ticker?.started) {
+      this.requestRender();
+      return;
+    }
+    this.render(performance.now());
+  }
+
+  /**
    * Run `hook` right before each stage render, in the same task: whatever it draws on the canvas
    * is replaced by that render before the browser composites. One hook at a time; returns the
    * function that removes it.
@@ -64,11 +77,15 @@ export class RenderScheduler {
     const group = this.app.stage.renderGroup;
     if (!this.renderRequested && group && !hasPendingChanges(group)) return;
     // `lastTime` is still the previous frame's while the ticker runs its callbacks
-    this.runBeforeRender(ticker.lastTime + ticker.elapsedMS);
+    this.render(ticker.lastTime + ticker.elapsedMS);
+  };
+
+  private render(frameTime: number): void {
+    this.runBeforeRender(frameTime);
     // Cleared after the hook: the render below shows whatever the hook changed or requested
     this.renderRequested = false;
     this.app.render();
-  };
+  }
 
   /** A throwing hook must not skip the render, nor end the ticker, which stops at an uncaught error. */
   private runBeforeRender(frameTime: number): void {

@@ -1,7 +1,8 @@
 import { Container } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fogCoverage, type FogCoverage } from '../../src/app/fog/fogCoverage';
-import { playerDoorSight, tokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import { playerDoorSight } from '../../src/app/pixi/lighting/playerLightingLayers';
+import { tokenPerception } from '../../src/app/vision/tokenPerception';
 import { PlayerSightTokens } from '../../src/app/pixi/token-renderer/PlayerSightTokens';
 import type { TokenGroupContainer } from '../../src/app/pixi/token-renderer/types';
 import { rng } from '../../src/app/pixi/lighting/engine/__tests__/fuzzRooms';

@@ -27,16 +27,35 @@ export function initialWidgetValue(widget: AnyWidget): number {
 
 /**
  * The scene's widgets as the collection's library stores them. Widgets on in
- * every scene carry their shared current value; the others only their definition,
- * with the value a scene starts them at, since each scene counts on its own.
+ * every scene carry their shared current value (and a timer's run); the others
+ * only their definition, with the value a scene starts them at and never running,
+ * since each scene counts on its own.
  */
 export function pickLibraryWidgets({ widgets, widgetValues }: SceneWidgets): WidgetRecord {
   const library: WidgetRecord = {};
   for (const widget of Object.values(widgets)) {
-    const value = isCollectionWidget(widget) ? currentValue(widget, widgetValues) : initialWidgetValue(widget);
-    library[widget.id] = widget.value === value ? widget : { ...widget, value };
+    if (isCollectionWidget(widget)) {
+      const value = currentValue(widget, widgetValues);
+      library[widget.id] = widget.value === value ? widget : { ...widget, value };
+    } else {
+      library[widget.id] = withSceneTime(widget, { value: initialWidgetValue(widget) });
+    }
   }
   return library;
+}
+
+/**
+ * The widget with a scene's own value, and for a timer whether and since when it
+ * runs in that scene; returns `widget` when nothing differs.
+ */
+function withSceneTime(widget: AnyWidget, own: AnyWidget | { value: number }): AnyWidget {
+  if (widget.type !== 'timer') return widget.value === own.value ? widget : { ...widget, value: own.value };
+  const running = 'type' in own && own.type === 'timer' ? own.running : undefined;
+  if (widget.value === own.value && widget.running === running) return widget;
+  const timer = { ...widget, value: own.value };
+  if (running) timer.running = running;
+  else delete timer.running;
+  return timer;
 }
 
 /**
@@ -53,7 +72,7 @@ export function withCollectionWidgets(scene: SceneWidgets, library: WidgetRecord
       merged.widgets[widget.id] = widget;
       if (isSteppedWidget(widget)) merged.widgetValues[widget.id] = widget.value;
     } else if (own) {
-      const refreshed = { ...widget, value: own.value };
+      const refreshed = withSceneTime(widget, own);
       if (!shallow(own, refreshed)) merged.widgets[widget.id] = refreshed;
     }
   }

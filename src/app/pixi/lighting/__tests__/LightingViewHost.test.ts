@@ -12,6 +12,8 @@ interface FakeView extends SceneLightingView {
   pictures: number;
   /** What the view does before it renders a frame, such as an engine failing while it prepares it. */
   beforeFrame: () => void;
+  /** Whether its sight is that of the scene the store holds. */
+  current: boolean;
 }
 
 function fakeView(sight: Sight = SEES_ALL): FakeView {
@@ -20,8 +22,10 @@ function fakeView(sight: Sight = SEES_ALL): FakeView {
     destroyed: false,
     pictures: 0,
     beforeFrame: () => undefined,
+    current: true,
     isEnabled: () => true,
     currentSight: () => sight,
+    sightIsCurrent: () => view.current,
     lightReaches: () => [],
     ambientLight: () => ({ ambient: 1 }),
     refreshBounds: vi.fn(),
@@ -161,6 +165,14 @@ describe('LightingViewHost', () => {
     host.beforeMapUnload();
     expect(fallbacks[0]!.refreshBounds).toHaveBeenCalledOnce();
     expect(fallbacks[0]!.beforeMapUnload).toHaveBeenCalledOnce();
+  });
+
+  it('says whether its sight is the scene\'s as the view that draws says, also after a swap', () => {
+    const { host, engines, giveUp } = setup();
+    engines[0]!.current = false;
+    expect(host.sightIsCurrent()).toBe(false);
+    giveUp('failed');
+    expect(host.sightIsCurrent()).toBe(true);
   });
 
   it('reports the sight of the view it swapped in, once that view answers for the host', () => {

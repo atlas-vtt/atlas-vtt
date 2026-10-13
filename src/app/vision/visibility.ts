@@ -1,10 +1,14 @@
 import type { Point } from '../types/visionTypes';
 import type { WallChannel, WallSegment } from '../types/wallTypes';
-import { blocksNothing, concerns } from '../lighting/segments';
-import { angleTo, distSqToSegment, isOnBlockingSide, raySegmentIntersect } from './visionGeometry';
+import { angleTo, raySegmentIntersect } from './visionGeometry';
 import { limitedJoins } from './limitedJoins';
 import { limitedCrossings, limitedHit, secondCrossing, type LimitedHit } from './limitedRays';
 import { clipToCone, type VisionCone } from './visionCone';
+import { angularSpans, SPAN_SLACK, spanCovers, type AngularSpan } from './angularSpans';
+import { blocksInReach } from './wallReach';
+import { culledSweep } from './culledSweep';
+
+export { blocksFrom } from './wallReach';
 
 export type Polygon = Point[];
 
@@ -15,24 +19,11 @@ export interface MapBounds {
 
 const BOUNDARY_RAYS = 64;
 const RAY_OFFSET = 1e-5;
-/** Angles slightly beyond a wall's own, so rays at its ends always test it. */
-const SPAN_SLACK = 1e-4;
-
-/**
- * Whether `wall` stops what comes from `origin`: open doors never do, one-way walls only from
- * one side, and a wall that blocks one thing only stops `channel` when that is its thing.
- * Without a channel every wall counts whatever it blocks, so a caller that forgets to say what
- * it asks for is stopped by more walls, never by fewer.
- */
-export function blocksFrom(wall: WallSegment, origin: Point, channel?: WallChannel): boolean {
-  if (blocksNothing(wall) || (channel && !concerns(wall, channel))) return false;
-  return !wall.direction || isOnBlockingSide(origin, wall.p1, wall.p2, wall.direction);
-}
 
 /** Walls that block `channel` from `origin` and come within `radius` of it. */
 export function wallsInReach(walls: readonly WallSegment[], origin: Point, radius: number, channel?: WallChannel): WallSegment[] {
   const radiusSq = radius * radius;
-  return walls.filter((wall) => blocksFrom(wall, origin, channel) && distSqToSegment(origin, wall.p1, wall.p2) <= radiusSq);
+  return walls.filter((wall) => blocksInReach(wall, origin, radiusSq, channel));
 }
 
 /**
@@ -42,10 +33,11 @@ export function wallsInReach(walls: readonly WallSegment[], origin: Point, radiu
  * nearest wall, or by the second limited wall it crosses if that is nearer
  * (`WallSegment.limited`). With a `cone`, only its part inside the cone, closed
  * through the origin. `channel` says what is asked for, sight or light: the walls that block
- * only the other are no walls then.
+ * only the other are no walls then. Without limited walls in reach the rays towards hidden
+ * wall ends are not cast (`culledSweep`); the polygon is the same to the last bit.
  */
 export function computeVisibility(origin: Point, radius: number, walls: readonly WallSegment[], cone?: VisionCone, channel?: WallChannel): Polygon {
-  const { polygon } = sweep(origin, radius, walls, channel);
+  const polygon = culledSweep(origin, radius, walls, channel) ?? sweep(origin, radius, walls, channel).polygon;
   return cone && cone.angle < 2 * Math.PI ? clipToCone(origin, polygon, cone) : polygon;
 }
 
@@ -57,7 +49,8 @@ export interface Swept {
 
 /** `computeVisibility` without a cone, telling which corners of the polygon lie on a limited wall that stopped the ray. */
 export function sweepVisibility(origin: Point, radius: number, walls: readonly WallSegment[], channel?: WallChannel): Swept {
-  return sweep(origin, radius, walls, channel);
+  const polygon = culledSweep(origin, radius, walls, channel);
+  return polygon ? { polygon, stops: polygon.map(() => null) } : sweep(origin, radius, walls, channel);
 }
 
 /**
@@ -117,7 +110,7 @@ function sweep(origin: Point, radius: number, walls: readonly WallSegment[], cha
     };
     for (const span of active) meet(span.wall);
     for (const span of seam) {
-      if (angle >= span.from - SPAN_SLACK || angle <= span.to + SPAN_SLACK) meet(span.wall);
+      if (spanCovers(span, angle)) meet(span.wall);
     }
     const second = joins ? secondCrossing(hits, joins) : null;
     let stop: readonly WallSegment[] | null = null;
@@ -143,24 +136,6 @@ function sweep(origin: Point, radius: number, walls: readonly WallSegment[], cha
 
 /** No limited wall on a ray. */
 const FAR = { t: Infinity };
-
-interface AngularSpan {
-  wall: WallSegment;
-  from: number;
-  to: number;
-  /** Crosses the ±π seam: covers angles ≥ from and ≤ to. */
-  wraps: boolean;
-}
-
-/** The angles each wall covers as seen from `origin` (always less than π, since it is a segment). */
-function angularSpans(origin: Point, walls: readonly WallSegment[]): AngularSpan[] {
-  return walls.map((wall) => {
-    const a = angleTo(origin, wall.p1), b = angleTo(origin, wall.p2);
-    const [lo, hi] = a < b ? [a, b] : [b, a];
-    const wraps = hi - lo > Math.PI;
-    return { wall, from: wraps ? hi : lo, to: wraps ? lo : hi, wraps };
-  });
-}
 
 /** Even-odd point-in-polygon test. */
 export function pointInPolygon(point: Point, polygon: Polygon): boolean {

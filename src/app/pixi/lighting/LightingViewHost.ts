@@ -76,6 +76,7 @@ export class LightingViewHost implements SceneLightingView {
 
   isEnabled(): boolean { return this.view.isEnabled(); }
   currentSight(): Sight { return this.view.currentSight(); }
+  sightIsCurrent(): boolean { return this.view.sightIsCurrent(); }
   lightReaches(): LightReach[] { return this.view.lightReaches(); }
   ambientLight(): AmbientLight { return this.view.ambientLight(); }
   refreshBounds(): void { this.view.refreshBounds(); }

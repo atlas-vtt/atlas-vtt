@@ -1,5 +1,6 @@
 import type { FantasyStatblocksCreature } from '../../../../services/FantasyStatblocksService';
 import { t } from '../../../../i18n';
+import { valueText } from '../../../../creatures/statblockValues';
 
 /** A note-backed creature a token can link to. */
 export interface StatblockEntry {
@@ -34,12 +35,14 @@ export function noteFolder(path: string): string {
 /** Only note-backed creatures can be linked (the link is a note path), sorted by name. */
 export function statblockEntries(creatures: readonly FantasyStatblocksCreature[]): StatblockEntry[] {
   return creatures
-    .filter((creature): creature is FantasyStatblocksCreature & { path: string } => Boolean(creature.name && creature.path))
+    .filter((creature): creature is FantasyStatblocksCreature & { path: string } => typeof creature.path === 'string' && creature.path !== '')
     .map((creature) => ({
       path: creature.path,
-      name: creature.name,
+      // The bestiary's own entries come as Fantasy Statblocks parsed them: a name may be a number
+      name: valueText(creature.name, { joiner: ', ', parens: false }),
       detail: describeCreature(creature) || noteFolder(creature.path),
     }))
+    .filter((entry) => entry.name !== '')
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 

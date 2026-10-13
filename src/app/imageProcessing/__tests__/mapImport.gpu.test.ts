@@ -1,6 +1,8 @@
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { disposeImageProcessing, IMAGE_PRESETS, optimizeImage } from '../imageProcessing';
+import { WEBP_MAX_SIDE } from '../decodeLimits';
+import { disposeImageProcessing, IMAGE_PRESETS, ImageTooLargeError, optimizeImage } from '../imageProcessing';
 import type { Size } from '../imageLayout';
+import { grayJpeg } from './grayJpeg';
 
 const MAP_SIDE = IMAGE_PRESETS.map.maxWidth;
 
@@ -32,7 +34,7 @@ describe('importing maps with the real workers', () => {
   afterAll(disposeImageProcessing);
 
   it('draws an SVG map at map size, whatever size its file states', async () => {
-    // A line one twentieth of a unit wide: about a pixel at map size, a quarter of one at 2048 px.
+    // A line one twentieth of a unit wide: two pixels at map size, a quarter of one at 2048 px.
     const svg = new Blob([
       '<svg xmlns="http://www.w3.org/2000/svg" width="400" height="200" viewBox="0 0 400 200">',
       '<rect width="400" height="200" fill="#fff"/><path d="M0 100h400" stroke="#000" stroke-width="0.05"/></svg>',
@@ -41,9 +43,9 @@ describe('importing maps with the real workers', () => {
     const result = await optimizeImage(svg, IMAGE_PRESETS.map);
     const map = await decoded(result.image);
 
-    expect(map.size).toEqual({ width: MAP_SIDE, height: MAP_SIDE / 2 });
+    expect(map.size).toEqual({ width: MAP_SIDE, height: 8192 });
     expect(result.scaledDown).toBeUndefined();
-    const lineY = MAP_SIDE / 4;
+    const lineY = map.size.height / 2;
     const darkest = Math.min(...[-1, 0, 1].map((dy) => map.luminanceAt(MAP_SIDE / 2, lineY + dy)));
     expect(darkest).toBeLessThan(140);
     expect(map.luminanceAt(MAP_SIDE / 2, lineY + 8)).toBeGreaterThan(240);
@@ -64,11 +66,27 @@ describe('importing maps with the real workers', () => {
     expect(rastersWhenConverted).toEqual([1, 2, 3]);
   });
 
-  it('reports the pixels a map above the limit lost', async () => {
-    const result = await optimizeImage(await png(9000, 90), IMAGE_PRESETS.map);
+  it('fits a map wider than the limit to its side and reports what it lost', async () => {
+    const result = await optimizeImage(await png(20000, 9000), IMAGE_PRESETS.map);
 
-    expect(result.scaledDown).toEqual({ from: { width: 9000, height: 90 }, to: { width: MAP_SIDE, height: 82 } });
-    expect((await decoded(result.image)).size).toEqual({ width: MAP_SIDE, height: 82 });
+    expect(result.scaledDown).toEqual({ from: { width: 20000, height: 9000 }, to: { width: MAP_SIDE, height: 7372 } });
+    expect((await decoded(result.image)).size).toEqual({ width: MAP_SIDE, height: 7372 });
+  });
+
+  it('fits a map with more pixels than the limit to 144 megapixels', async () => {
+    const result = await optimizeImage(await png(13000, 13000), IMAGE_PRESETS.map);
+    const { size } = await decoded(result.image);
+
+    expect(size).toEqual({ width: 12000, height: 12000 });
+    expect(size.width * size.height).toBeLessThanOrEqual(144_000_000);
+    expect(result.scaledDown?.from).toEqual({ width: 13000, height: 13000 });
+  });
+
+  it('never encodes a WebP side over 16383, whatever the bounds allow', async () => {
+    const result = await optimizeImage(await png(20000, 90), { maxWidth: 30000, maxHeight: 30000, quality: 0.8 });
+
+    expect((await decoded(result.image)).size).toEqual({ width: WEBP_MAX_SIDE, height: 74 });
+    expect(result.scaledDown?.to).toEqual({ width: WEBP_MAX_SIDE, height: 74 });
   });
 
   it('reports nothing for a map within the limit', async () => {
@@ -76,5 +94,24 @@ describe('importing maps with the real workers', () => {
 
     expect(result.scaledDown).toBeUndefined();
     expect((await decoded(result.image)).size).toEqual({ width: 4000, height: 40 });
+  });
+
+  it('decodes a large JPEG at a smaller scale and fits it as a whole decode would', async () => {
+    const result = await optimizeImage(grayJpeg(20000, 9000), IMAGE_PRESETS.map);
+    const map = await decoded(result.image);
+
+    expect(map.size).toEqual({ width: MAP_SIDE, height: 7372 });
+    expect(result.scaledDown).toEqual({ from: { width: 20000, height: 9000 }, to: { width: MAP_SIDE, height: 7372 } });
+    expect(map.luminanceAt(MAP_SIDE / 2, 3686)).toBeCloseTo(128, -1);
+  });
+
+  it('refuses an image larger than the browser decodes, naming its size', async () => {
+    // Only the header is read: a PNG signature and an IHDR of 30000 × 30000.
+    const header = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0x75, 0x30, 0, 0, 0x75, 0x30, 8, 6, 0, 0, 0]);
+    const png = optimizeImage(new Blob([header], { type: 'image/png' }), IMAGE_PRESETS.map);
+    await expect(png).rejects.toBeInstanceOf(ImageTooLargeError);
+    await expect(png).rejects.toThrow(/30,000 × 30,000 px/);
+    // DCT scaling does not help: the decoder refuses the source's size, not the size it is asked for.
+    await expect(optimizeImage(grayJpeg(23171, 23171), IMAGE_PRESETS.map)).rejects.toBeInstanceOf(ImageTooLargeError);
   });
 });

@@ -10,6 +10,9 @@ vi.mock('../../src/app/MapController', () => ({
 }));
 
 import { createViewAtlasStore } from '../../src/app/storeFactory';
+import { createSceneSource } from '../../src/app/plugin/host/sceneSource';
+import { SyncService } from '../../src/app/pixi/token-renderer/SyncService';
+import { token } from '../mocks/tokenSyncHarness';
 import { MapService } from '../../src/app/services/MapService';
 import type { RendererService } from '../../src/app/services/RendererService';
 
@@ -37,7 +40,7 @@ function setup(renderer: object | null): {
 
 describe('MapService.loadMap failure', () => {
   it('never saves the emptied store over a map that failed to load', async () => {
-    const { service, store, files, rendererService } = setup({ clearBackgroundSprite: vi.fn() });
+    const { service, store, files, rendererService } = setup({ clearMapImage: vi.fn() });
 
     expect(await service.loadMap(rendererService, BROKEN_MAP)).toBeNull();
     expect(store.getState().mapPath).toBeNull();
@@ -55,8 +58,28 @@ describe('MapService.loadMap failure', () => {
     expect(store.getState().mapPath).toBe('maps/previous.atlasmap');
   });
 
+  it('takes the tokens of the scene before off the canvas, which waits for the load to end before it follows the store', async () => {
+    const { service, store, rendererService } = setup({ clearMapImage: vi.fn() });
+    const previous = { hero: token() };
+    store.setState((state) => ({ mapPath: 'maps/previous.atlasmap', mapLoaded: true, objects: { ...state.objects, tokens: previous } }));
+    const drawn = vi.fn();
+    const sync = new SyncService(
+      createSceneSource(store, (state) => ({ tokens: state.objects.tokens, isMapLoading: state.isMapLoading, selectedIds: state.selectedIds })),
+      vi.fn(),
+      new EventEmitter(),
+    );
+    sync.setTokensChangedCallback(drawn);
+    sync.initialize();
+    drawn.mockClear();
+
+    await service.loadMap(rendererService, BROKEN_MAP);
+
+    expect(drawn).toHaveBeenCalledExactlyOnceWith({}, previous);
+    sync.destroyAll();
+  });
+
   it('tells the user which scene failed and why, instead of leaving an empty canvas', async () => {
-    const { service, rendererService } = setup({ clearBackgroundSprite: vi.fn() });
+    const { service, rendererService } = setup({ clearMapImage: vi.fn() });
 
     await service.loadMap(rendererService, BROKEN_MAP);
 

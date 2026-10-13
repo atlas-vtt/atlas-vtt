@@ -2,19 +2,9 @@ import React from 'react';
 import { SettingRow } from './SettingRows';
 import type { AtlasView } from '../../../atlas-view';
 import { sceneUnitDistance, unitLabelFor } from '../../../grid/measurementFormat';
+import { typedDistance } from '../../../grid/unitDistance';
 import { AssetService } from '../../../services/AssetService';
 import { mapMeasurementSettings } from '../../../services/mapMeasurementSettings';
-
-const DECIMAL = /^(?:\d+(?:[.,]\d*)?|[.,]\d+)$/;
-
-/** What the field holds: `undefined` when empty (follow the collection), null when it is no positive number. */
-function typedDistance(text: string): number | undefined | null {
-  const trimmed = text.trim();
-  if (!trimmed) return undefined;
-  if (!DECIMAL.test(trimmed)) return null;
-  const value = Number(trimmed.replace(',', '.'));
-  return value > 0 ? value : null;
-}
 
 /**
  * How far one cell of this scene reaches, when its map is drawn at another scale than the

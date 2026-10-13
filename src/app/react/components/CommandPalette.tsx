@@ -18,6 +18,8 @@ import {
   Settings,
   Snowflake,
   MonitorUp,
+  MonitorPlay,
+  AppWindow,
   Move,
   Users,
   Palette,
@@ -30,7 +32,7 @@ import { useStore } from 'zustand';
 import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { PlayerWindowService } from '../../services/PlayerWindowService';
-import { presentActiveTabInPlayerWindow } from '../../services/PlayerWindowPresenter';
+import { openPlayerWindow, presentActiveTab } from '../../services/PlayerWindowPresenter';
 import { playerWindowStore } from '../../stores/playerWindowStore';
 import { debounce } from '../../../utils/debounce';
 import { cn } from '../../../utils/cn';
@@ -314,12 +316,32 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       isActive: isPlayerWindowFrozen,
     },
     {
+      id: "open-player-window",
+      icon: <AppWindow />,
+      label: t('palette.openPlayerWindow'),
+      section: "mode",
+      action: () => {
+        void openPlayerWindow(app);
+        onClose();
+      },
+    },
+    {
       id: "transfer-player-view",
       icon: <MonitorUp />,
       label: t('palette.sendMapToPlayerView'),
       section: "mode",
       action: () => {
-        void presentActiveTabInPlayerWindow(app);
+        void presentActiveTab(app);
+        onClose();
+      },
+    },
+    {
+      id: "show-map-in-player-window",
+      icon: <MonitorPlay />,
+      label: t('palette.showMapInPlayerWindow'),
+      section: "mode",
+      action: () => {
+        void presentActiveTab(app, { openWindow: true });
         onClose();
       },
     },

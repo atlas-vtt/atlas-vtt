@@ -1,5 +1,14 @@
 import { TFile, type App } from 'obsidian';
+import { headerOf } from '../imageProcessing/imageDimensions';
 import { GLOBAL_ASSETS_DIR } from './assetPaths';
+
+/** The file extension for an image Atlas stores, read from its bytes: what imports keep (PNG, JPEG) or write (WebP). */
+export function imageExtension(data: ArrayBuffer): 'png' | 'jpg' | 'webp' {
+  const format = headerOf(new DataView(data))?.format;
+  if (format === 'png') return 'png';
+  if (format === 'jpeg') return 'jpg';
+  return 'webp';
+}
 
 /** Writes a token or map image into Atlas' shared assets folder under a unique name and returns its path. */
 export async function writeAssetImage(app: App, name: string, data: ArrayBuffer): Promise<string> {
@@ -8,7 +17,7 @@ export async function writeAssetImage(app: App, name: string, data: ArrayBuffer)
   }
   const safeName = name.replace(/[^a-zA-Z0-9]/g, '_');
   const suffix = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-  const path = `${GLOBAL_ASSETS_DIR}/${safeName}_${suffix}.webp`;
+  const path = `${GLOBAL_ASSETS_DIR}/${safeName}_${suffix}.${imageExtension(data)}`;
   await app.vault.createBinary(path, data);
   return path;
 }

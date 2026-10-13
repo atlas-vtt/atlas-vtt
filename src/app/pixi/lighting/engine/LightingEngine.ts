@@ -1,5 +1,6 @@
 import { Container, Graphics, Matrix, Texture, type Renderer } from 'pixi.js';
 import { exploredMemoryOn } from '../../../lighting/sceneLightingOptions';
+import { DEFAULT_LIGHTING_QUALITY, type LightingQuality } from '../../../lighting/lightingQuality';
 import type { UnlitGrid } from '../../../grid/gridLightingMark';
 import { destroyTree } from '../../utils/destroyTree';
 import { BackBufferHold } from './backBuffer';
@@ -54,7 +55,7 @@ export class LightingEngine {
 
   private readonly backBuffer: BackBufferHold;
 
-  constructor(private readonly renderer: Renderer) {
+  constructor(private readonly renderer: Renderer, private quality: LightingQuality = DEFAULT_LIGHTING_QUALITY) {
     this.backBuffer = new BackBufferHold(renderer);
     this.layer.eventMode = 'none';
     this.layer.addChild(this.boundsRect, this.sightLayers.view);
@@ -84,10 +85,22 @@ export class LightingEngine {
     this.attempt(() => this.build(scene));
   }
 
+  /**
+   * A new quality takes effect at once: flicker on the world as it is, a texel or bounce of its
+   * own in a world built anew from the last scene (the old one's textures go once the composite
+   * has the new ones).
+   */
+  setQuality(quality: LightingQuality): void {
+    this.quality = quality;
+    this.world?.setFlicker(quality.flickerMs);
+    const { scene } = this;
+    if (scene && this.world && !this.world.fits(quality)) this.attempt(() => this.build(scene));
+  }
+
   private build(scene: EngineScene): void {
     const { bounds } = scene;
-    if (!this.world || this.world.bounds.width !== bounds.width || this.world.bounds.height !== bounds.height) {
-      this.replaceWorld(new LightingWorld(this.renderer, bounds));
+    if (!this.world || this.world.bounds.width !== bounds.width || this.world.bounds.height !== bounds.height || !this.world.fits(this.quality)) {
+      this.replaceWorld(new LightingWorld(this.renderer, bounds, this.quality));
     }
     const world = this.world!;
     const composite = this.composite!;

@@ -7,12 +7,20 @@
  * live grid preview through the existing GridSystem.
  */
 
-import { Container, Graphics } from 'pixi.js';
+import { Graphics } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { GridSystem, GridType } from '../grid/GridSystem';
+import type { GridSystem } from '../grid/GridSystem';
+import { NO_STRETCH, sameStretch, type MapStretch } from '../grid/mapStretch';
 import { getQuadrantBounds } from './gridAlignmentMath';
-import type { AlignmentPoint, MapBounds } from './gridAlignmentMath';
+import type { AlignmentPoint, AlignmentResult, MapBounds } from './gridAlignmentMath';
 import { MAP_LAYER_Z } from './mapLayerOrder';
+import type { DetectableMap } from './mapImage/mapImageView';
+
+/** The part of the view's map image an alignment reads and tries its stretch on. */
+export interface AlignedMap extends Pick<DetectableMap, 'worldRect'> {
+  readonly mapStretch: MapStretch;
+  setStretch(stretch: MapStretch): void;
+}
 
 // Re-exports so consumers can import from one place
 export type { AlignmentPoint, AlignmentResult } from './gridAlignmentMath';
@@ -37,7 +45,7 @@ export class GridAlignmentController {
   private viewport: Viewport;
   private gridSystem: GridSystem;
   private canvasEl: HTMLCanvasElement;
-  private bgSprite: Container | null;
+  private map: AlignedMap | null;
 
   private crosshairs: (Graphics | null)[] = [];
   private connectingLines: (Graphics | null)[] = [];
@@ -48,12 +56,12 @@ export class GridAlignmentController {
     viewport: Viewport,
     gridSystem: GridSystem,
     canvasEl: HTMLCanvasElement,
-    bgSprite: Container | null = null,
+    map: AlignedMap | null = null,
   ) {
     this.viewport = viewport;
     this.gridSystem = gridSystem;
     this.canvasEl = canvasEl;
-    this.bgSprite = bgSprite;
+    this.map = map;
   }
 
   // -----------------------------------------------------------------------
@@ -66,19 +74,15 @@ export class GridAlignmentController {
     return { x: world.x, y: world.y };
   }
 
+  /** The map image in world units; null while none is shown. */
   getMapBounds(): MapBounds | null {
-    if (this.bgSprite) {
-      return {
-        x: this.bgSprite.x || 0,
-        y: this.bgSprite.y || 0,
-        width: this.bgSprite.width,
-        height: this.bgSprite.height,
-      };
-    }
-    const ww = this.viewport.worldWidth;
-    const wh = this.viewport.worldHeight;
-    if (ww > 0 && wh > 0) return { x: 0, y: 0, width: ww, height: wh };
-    return null;
+    const rect = this.map?.worldRect;
+    return rect && rect.width > 0 && rect.height > 0 ? { ...rect } : null;
+  }
+
+  /** How the map is drawn stretched right now: what points clicked on it are measured in. */
+  getMapStretch(): MapStretch {
+    return this.map?.mapStretch ?? NO_STRETCH;
   }
 
   // -----------------------------------------------------------------------
@@ -230,14 +234,20 @@ export class GridAlignmentController {
   // Grid preview
   // -----------------------------------------------------------------------
 
-  showPreview(cellSize: number, offsetX: number, offsetY: number, type?: GridType): void {
+  /** Shows the grid of `result` over the map as the result stretches it. */
+  showPreview(result: AlignmentResult): void {
+    const stretch = result.mapStretch ?? NO_STRETCH;
+    // Marks stay where they were clicked in the world, which a map stretched otherwise has moved away under them.
+    if (this.map && !sameStretch(stretch, this.map.mapStretch)) this.clearMeasurements();
+    // The grid is drawn over the map's rect, so the map takes its stretch first.
+    this.map?.setStretch(stretch);
     this.gridSystem.updateOptions({
-      size: cellSize,
-      offsetX,
-      offsetY,
+      size: result.cellSize,
+      offsetX: result.offsetX,
+      offsetY: result.offsetY,
       enabled: true,
       isAligning: true,
-      ...(type ? { type } : {}),
+      ...(result.gridType ? { type: result.gridType } : {}),
     });
   }
 
@@ -251,6 +261,12 @@ export class GridAlignmentController {
   // -----------------------------------------------------------------------
 
   cleanupVisuals(): void {
+    this.clearMeasurements();
+    this.clearQuadrantDimming();
+    this.hideCursorPreview();
+  }
+
+  private clearMeasurements(): void {
     for (const g of this.crosshairs) {
       if (g) this.removeGraphics(g);
     }
@@ -260,9 +276,6 @@ export class GridAlignmentController {
       if (g) this.removeGraphics(g);
     }
     this.connectingLines = [];
-
-    this.clearQuadrantDimming();
-    this.hideCursorPreview();
   }
 
   destroy(): void {

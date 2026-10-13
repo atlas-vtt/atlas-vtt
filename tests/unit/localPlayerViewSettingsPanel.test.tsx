@@ -11,7 +11,7 @@ vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () 
 vi.mock('../../src/app/react/ViewStoreContext', () => ({ useAtlasStore: (selector: (state: { mapPath: string }) => unknown) => selector({ mapPath: 'atlas-vtt/collections/Own/scenes/Cave.atlasmap' }) }));
 vi.mock('../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => ({ getCollectionForMap: () => context.collection, updateCollectionSettings: context.updateCollectionSettings }) } }));
 vi.mock('../../src/app/react/root/AtlasUIContext', () => ({ useAtlasUI: () => ({ app: {}, view: { serviceManager: { getSettingsService: () => context.settings } } }) }));
-vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTabInPlayerWindow: vi.fn() }));
+vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTab: vi.fn(), openPlayerWindow: vi.fn() }));
 afterEach(() => { cleanup(); vi.useRealTimers(); context.resources = []; context.collection = 'Own'; context.updateCollectionSettings.mockClear(); });
 
 it('updates every supported setting and follows settings changed elsewhere', () => {
@@ -20,7 +20,7 @@ it('updates every supported setting and follows settings changed elsewhere', () 
   render(<LocalPlayerViewSettingsPanel />);
   const settings = context.settings as SettingsService;
   for (const [label, key] of [
-    ['Show initiative panel', 'showInitiative'], ['Show grid', 'showGrid'], ['Show widgets', 'showWidgets'],
+    ['Show initiative panel', 'showInitiative'], ['Show widgets', 'showWidgets'],
     ['Show nameplates', 'showTokenNameplates'], ['Show dice rolls', 'showDiceRolls'],
   ] as const) {
     const toggle = screen.getByRole('switch', { name: label });
@@ -31,6 +31,8 @@ it('updates every supported setting and follows settings changed elsewhere', () 
     expect(toggle.getAttribute('aria-checked')).toBe(String(before));
   }
   expect(screen.queryByRole('switch', { name: 'Show note previews' })).toBeNull();
+  // Players see the grid as the GM sets it on the map
+  expect(screen.queryByRole('switch', { name: 'Show grid' })).toBeNull();
   expect(screen.getByText('Note previews are not shared with the player window.')).toBeTruthy();
 });
 

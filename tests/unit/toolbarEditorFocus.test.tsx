@@ -4,7 +4,7 @@ import { canRunMapHotkeys, matchesMapHotkey } from '../../src/app/keyboard/mapHo
 import { handle, renderToolbar, setUpToolbarTestDom, startEditing } from './toolbarEditorHarness';
 
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: {} }));
-vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTabInPlayerWindow: vi.fn() }));
+vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTab: vi.fn() }));
 vi.mock('../../src/app/utils/activeLeafGuard', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/app/utils/activeLeafGuard')>(),
   isShortcutScopeActive: () => true,

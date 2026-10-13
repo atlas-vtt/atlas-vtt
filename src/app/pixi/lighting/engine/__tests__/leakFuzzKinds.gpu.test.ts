@@ -15,6 +15,7 @@ import { distSqToSegment } from '../../../../vision/visionGeometry';
 import { ExploredTexture } from '../../ExploredTexture';
 import { LightingEngine } from '../LightingEngine';
 import type { EngineLight, EngineScene } from '../types';
+import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY, type LightingQuality } from '../../../../lighting/lightingQuality';
 import { createTestRenderer } from './gpuTestUtils';
 import { distToOutline, fuzzRooms, insidePolygon, rng, roomOutline, type P } from './fuzzRooms';
 import { NO_SIGHT, footprints, inPenumbra, renderView } from './leakFuzzScene';
@@ -61,6 +62,8 @@ interface FuzzOptions {
   gap?: boolean | number;
   bounds?: MapBounds;
   resolution?: number;
+  /** The lighting quality the engine draws at; the walls are sealed as the rules seal them, at the map's own texel. */
+  quality?: LightingQuality;
 }
 
 const sum = (pixels: Uint8ClampedArray, o: number): number => pixels[o]! + pixels[o + 1]! + pixels[o + 2]!;
@@ -80,10 +83,10 @@ const other = (channel: WallChannel): WallChannel => (channel === 'sight' ? 'lig
  * more, the picture is lit; where it counts a point as seen or unseen, away from the edges of
  * sight and the soft edges of its shadows, the picture agrees.
  */
-async function fuzz({ seed, trials, gap = false, bounds = { width: 2048, height: 2048 }, resolution = 1 }: FuzzOptions): Promise<Report> {
+async function fuzz({ seed, trials, gap = false, bounds = { width: 2048, height: 2048 }, resolution = 1, quality = DEFAULT_LIGHTING_QUALITY }: FuzzOptions): Promise<Report> {
   vi.stubGlobal('createEl', (tag: string): HTMLElement => document.createElement(tag));
   const renderer = await createTestRenderer(SIZE, resolution);
-  const engine = new LightingEngine(renderer);
+  const engine = new LightingEngine(renderer, quality);
   const target = RenderTexture.create({ width: SIZE, height: SIZE, resolution });
   const memory = new ExploredTexture(renderer, bounds);
   const blank = new ExploredTexture(renderer, bounds);
@@ -95,14 +98,15 @@ async function fuzz({ seed, trials, gap = false, bounds = { width: 2048, height:
     const rand = rng(seed + 3);
     const report: Report = { rooms: 0, glass: 0, curtain: 0, lightChecked: 0, lightLeaks: 0, seenThrough: 0, sightChecked: 0, sightLeaks: 0, senseLeaks: 0, spotLeaks: 0, memoryLeaks: 0, litThrough: 0, lightMixed: 0, sightMixed: 0, memoryMixed: 0, ruleLit: 0, lightWrong: 0, ruleSight: 0, sightWrong: 0 };
     for (const room of fuzzRooms(seed, trials, gap)) {
-      const texel = worldTexel(bounds);
+      // The rules seal at the map's texel; the picture is held to the texel the engine draws at.
+      const texel = worldTexel(bounds, quality.maxTexels);
       const outline = roomOutline(room);
       if (!room.lights.every((p) => insidePolygon(p, outline))) continue;
       const kind: WallChannel = report.rooms % 2 === 0 ? 'light' : 'sight';
       report.rooms++;
       report[kind === 'light' ? 'glass' : 'curtain']++;
       const drawn = room.walls.map((wall, i): WallSegment => ({ ...wall, blocks: i < room.roomWallCount ? kind : other(kind) }));
-      const walls = sealWalls(drawn, sealTolerance(texel));
+      const walls = sealWalls(drawn, sealTolerance(worldTexel(bounds)));
       /** Only the walls that block `channel`, as plain walls: what the channel's picture must be the picture of. */
       const plain = (channel: WallChannel): WallSegment[] => walls.filter((wall) => concerns(wall, channel)).map(({ blocks: _blocks, ...wall }) => wall);
       const lights: EngineLight[] = room.lights.map(([lx, ly], i) => {
@@ -224,6 +228,13 @@ describe('leak fuzz: walls that block one thing', () => {
   it('holds on a map of 12,000 px, large enough for coarser texels of the lighting and of the memory', { timeout: 3_600_000 }, async () => {
     const report = await fuzz({ seed: 7, trials: SIDE_TRIALS, bounds: { width: 12_000, height: 12_000 } });
     console.info(`leak fuzz (wall kinds, 12000 px map): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
+    expect(report.lightChecked).toBeGreaterThan(SIDE_TRIALS * 500);
+    expect(report).toMatchObject(CLEAN);
+  });
+
+  it.each(['balanced', 'saver'] as const)('holds at the %s lighting quality on a map whose texels it coarsens', { timeout: 3_600_000 }, async (level) => {
+    const report = await fuzz({ seed: 7, trials: SIDE_TRIALS, bounds: { width: 8192, height: 8192 }, quality: LIGHTING_QUALITY[level] });
+    console.info(`leak fuzz (wall kinds, ${level}): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
     expect(report.lightChecked).toBeGreaterThan(SIDE_TRIALS * 500);
     expect(report).toMatchObject(CLEAN);
   });

@@ -11,7 +11,7 @@ import { unitScaleOf } from '../../src/app/lighting/lightingUnits';
 import { sealedWalls } from '../../src/app/lighting/sealWalls';
 import { heldForSight } from '../../src/app/lighting/sightOnDrop';
 import { LightingController } from '../../src/app/pixi/lighting/LightingController';
-import { tokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import { tokenPerception } from '../../src/app/vision/tokenPerception';
 import type { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { AssetService } from '../../src/app/services/AssetService';
 import { mapMeasurementSettings } from '../../src/app/services/mapMeasurementSettings';

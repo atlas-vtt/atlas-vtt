@@ -1,5 +1,5 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { imageDimensions } from '../../src/app/imageProcessing/imageDimensions';
+import { imageDimensions, imageHeader } from '../../src/app/imageProcessing/imageDimensions';
 import { IMAGE_PRESETS, disposeImageProcessing, optimizeImage } from '../../src/app/imageProcessing/imageProcessing';
 import { importUvttFile, type UvttImportDeps, type UvttImported } from '../../src/app/import/uvtt/importUvttFile';
 import { AssetService } from '../../src/app/services/AssetService';
@@ -85,14 +85,19 @@ beforeEach(() => { AssetService.resetInstance(); });
 afterAll(() => { disposeImageProcessing(); });
 
 describe('importing a Universal VTT file with the image workers', () => {
-  it.each(['image/png', 'image/webp', 'image/jpeg'])('saves a %s map as WebP of the same size, with a thumbnail, and puts the wall on it', async (type) => {
+  it.each([
+    ['image/png', 'png', 'png'],
+    ['image/webp', 'webp', 'webp'],
+    ['image/jpeg', 'jpeg', 'jpg'],
+  ] as const)('keeps a %s map as it is, with a thumbnail, and puts the wall on it', async (type, format, extension) => {
     const b = await bench();
 
     const result = arrived(await importUvttFile(b.deps, await mapFile({ x: 10, y: 8 }, 100, type), COLLECTION));
 
     const scene = sceneOf(b, result);
     const saved = new Blob([b.binaries.get(scene.background)!]);
-    expect(new TextDecoder().decode((await saved.arrayBuffer()).slice(8, 12))).toBe('WEBP');
+    expect(scene.background.endsWith(`.${extension}`)).toBe(true);
+    expect((await imageHeader(saved))?.format).toBe(format);
     expect(await imageDimensions(saved)).toEqual({ width: 1000, height: 800 });
     expect(scene.grid.size).toBe(100);
     expect(scene.objects.walls.wall_uvtt_1).toMatchObject({ p1: { x: 100, y: 100 }, p2: { x: 900, y: 100 } });
@@ -105,15 +110,15 @@ describe('importing a Universal VTT file with the image workers', () => {
   it('puts the walls on the image as it is saved when the image is larger than a map keeps', async () => {
     const b = await bench();
 
-    const result = arrived(await importUvttFile(b.deps, await mapFile({ x: 90, y: 70 }, 100, 'image/jpeg'), COLLECTION));
+    const result = arrived(await importUvttFile(b.deps, await mapFile({ x: 200, y: 90 }, 100, 'image/jpeg'), COLLECTION));
 
     const scene = sceneOf(b, result);
     const saved = await imageDimensions(new Blob([b.binaries.get(scene.background)!]));
-    expect(saved).toEqual({ width: 8192, height: 6372 });
-    expect(result.scaledDown).toEqual({ from: { width: 9000, height: 7000 }, to: { width: 8192, height: 6372 } });
-    const cell = 8192 / 90;
+    expect(saved).toEqual({ width: 16383, height: 7372 });
+    expect(result.scaledDown).toEqual({ from: { width: 20000, height: 9000 }, to: { width: 16383, height: 7372 } });
+    const cell = 16383 / 200;
     expect(scene.grid.size).toBe(cell);
-    expect(scene.objects.walls.wall_uvtt_1).toMatchObject({ p1: { x: cell, y: cell }, p2: { x: 89 * cell, y: cell } });
+    expect(scene.objects.walls.wall_uvtt_1).toMatchObject({ p1: { x: cell, y: cell }, p2: { x: 199 * cell, y: cell } });
   });
 
   it('refuses a file whose image has a true header and a body no decoder reads, and leaves nothing', async () => {

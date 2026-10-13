@@ -1,8 +1,8 @@
 import { EventEmitter } from 'events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Texture } from 'pixi.js';
 import { Notice, type App } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { fakeMapRenderer, loadedMap, type FakeMapImage } from '../helpers/fakeMapRenderer';
 
 vi.mock('obsidian', async (importOriginal) => ({ ...(await importOriginal<typeof import('obsidian')>()), Notice: vi.fn() }));
 vi.mock('../../src/app/MapLoader', () => ({ MapLoader: { load: vi.fn() } }));
@@ -11,7 +11,7 @@ import { MapLoader, type LoadedMap } from '../../src/app/MapLoader';
 import { createViewAtlasStore, type ViewAtlasState, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { migrateMapFile, type PersistedMapEnvelope } from '../../src/app/services/MapPersistence';
 import { STALLED_SAVE_MS } from '../../src/app/services/sceneFileWriter';
-import { MapService, STALLED_LOAD_MS } from '../../src/app/services/MapService';
+import { MAP_IMAGE_READY_MS, MapService, STALLED_LOAD_MS } from '../../src/app/services/MapService';
 import type { RendererService } from '../../src/app/services/RendererService';
 import { STALLED_JOB_MS } from '../../src/app/services/latestRequestQueue';
 import { getHistoryStore } from '../../src/app/stores/history';
@@ -52,9 +52,10 @@ interface Harness {
   /** Scenes whose image the renderer was given, in order. */
   shown: string[];
   /** Counts how often the renderer was told to take the map image off the canvas. */
-  clearBackgroundSprite: ReturnType<typeof vi.fn>;
+  clearMapImage: ReturnType<typeof vi.fn>;
   /** Holds back reading a scene's file until the returned gate is resolved or rejected. */
   holdBack: (path: string) => Deferred;
+  mapImage: FakeMapImage;
 }
 
 function setup(): Harness {
@@ -72,25 +73,18 @@ function setup(): Harness {
     // The file is read first; the image then takes its time
     const envelope = JSON.parse(files.get(path) ?? '{}') as PersistedMapEnvelope;
     await gates.get(path)?.promise;
-    return { mapData: migrateMapFile(envelope.state), texture: Texture.WHITE, hasBackground: false, backgroundUrl: null };
+    return loadedMap(migrateMapFile(envelope.state));
   });
 
   const shown: string[] = [];
-  const clearBackgroundSprite = vi.fn();
-  const renderer = {
-    clearBackgroundSprite,
-    setBackgroundSprite: () => { shown.push(reading[reading.length - 1] ?? ''); },
-    getGridSystem: () => null,
-    initGrid: vi.fn(),
-    getViewportInstance: () => null,
-    getBackgroundSprite: () => null,
-  };
+  const renderer = fakeMapRenderer(() => { shown.push(reading[reading.length - 1] ?? ''); });
+  const { clearMapImage } = renderer;
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   return {
     app,
     service: new MapService(app, eventBus, store),
-    store, files, eventBus, shown, clearBackgroundSprite,
+    store, files, eventBus, shown, clearMapImage, mapImage: renderer.mapImage,
     rendererService: { getRenderer: () => renderer } as unknown as RendererService,
     holdBack: (path) => {
       const gate = deferred();
@@ -200,7 +194,7 @@ describe('MapService scene loads', () => {
     });
 
     it('takes the image of the scene before it off the canvas, so no map shows without its fog and tokens', async () => {
-      const { service, store, rendererService, clearBackgroundSprite, holdBack } = setup();
+      const { service, store, rendererService, clearMapImage, holdBack } = setup();
       await service.loadMap(rendererService, CAVE);
       store.getState().setBackground('maps/cave.png');
       holdBack(TOWER).reject(new Error('[MapLoader] Map file not found'));
@@ -208,19 +202,19 @@ describe('MapService scene loads', () => {
       expect(await service.loadMap(rendererService, TOWER)).toBeNull();
 
       expect(store.getState().background).toBeNull();
-      expect(clearBackgroundSprite).toHaveBeenCalledTimes(1);
+      expect(clearMapImage).toHaveBeenCalledTimes(1);
       expect(getHistoryStore(store)?.getState().pastStates).toEqual([]);
     });
 
     it('leaves the image of the open scene when the next one fails before the store was switched', async () => {
-      const { service, store, rendererService, clearBackgroundSprite } = setup();
+      const { service, store, rendererService, clearMapImage } = setup();
       await service.loadMap(rendererService, CAVE);
       store.getState().setBackground('maps/cave.png');
 
       await service.loadMap({ getRenderer: () => null } as unknown as RendererService, TOWER);
 
       expect(store.getState().background).toBe('maps/cave.png');
-      expect(clearBackgroundSprite).not.toHaveBeenCalled();
+      expect(clearMapImage).not.toHaveBeenCalled();
     });
 
     it('gives up on a scene that never finishes loading, so the loading overlay does not block the view for good', async () => {
@@ -445,6 +439,57 @@ describe('MapService scene loads', () => {
       expect(await third).not.toBeNull();
       expect(shown).toEqual([CAVE]);
       expect(tokenIds(store.getState())).toEqual(['bat']);
+    });
+  });
+
+  describe('when the map image is still loading its tiles', () => {
+    it('keeps the loading screen until the tiles in view are drawn, waiting at most a while', async () => {
+      const { service, store, rendererService, mapImage } = setup();
+      const tiles = deferred();
+      mapImage.whenCameraReady.mockReturnValue(tiles.promise);
+
+      await service.loadMap(rendererService, CAVE);
+
+      expect(mapImage.whenCameraReady).toHaveBeenCalledWith(MAP_IMAGE_READY_MS);
+      expect(store.getState().mapLoaded).toBe(true);
+      expect(store.getState().isMapLoading).toBe(true);
+      tiles.resolve();
+      await vi.advanceTimersByTimeAsync(0);
+      expect(store.getState().isMapLoading).toBe(false);
+    });
+
+    it('waits for the tiles of the camera the scene opens at, not of the fitted map', async () => {
+      const { service, rendererService, mapImage } = setup();
+      // The viewport places itself by its scale, as pixi-viewport does
+      const viewport = {
+        screenWidth: 1000, screenHeight: 800, scale: 1, center: { x: 0, y: 0 }, plugins: { get: () => null },
+        setZoom(scale: number): void { this.scale = scale; },
+        moveCenter(x: number, y: number): void { this.center = { x: x * this.scale, y: y * this.scale }; },
+      };
+      Object.assign(rendererService.getRenderer()!, { getViewportInstance: () => viewport });
+      let waitedFor: { scale: number; center: { x: number; y: number } } | null = null;
+      mapImage.whenCameraReady.mockImplementation(() => {
+        waitedFor = { scale: viewport.scale, center: { ...viewport.center } };
+        return Promise.resolve();
+      });
+
+      await service.loadMap(rendererService, CAVE, { centerX: 300, centerY: 200, scale: 2 });
+
+      expect(waitedFor).toEqual({ scale: 2, center: { x: 600, y: 400 } });
+    });
+
+    it('leaves the loading screen to the next load when the scene was left meanwhile', async () => {
+      const { service, store, rendererService, mapImage } = setup();
+      const caveTiles = deferred();
+      mapImage.whenCameraReady.mockReturnValueOnce(caveTiles.promise).mockReturnValueOnce(new Promise(() => undefined));
+
+      await service.loadMap(rendererService, CAVE);
+      await service.loadMap(rendererService, TOWER);
+      caveTiles.resolve();
+      await vi.advanceTimersByTimeAsync(0);
+
+      expect(store.getState().mapPath).toBe(TOWER);
+      expect(store.getState().isMapLoading).toBe(true);
     });
   });
 });

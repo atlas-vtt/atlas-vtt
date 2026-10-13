@@ -3,7 +3,7 @@ import type { LightZone, SceneLighting } from '../types/lightingTypes';
 import type { SenseDefinition } from '../types/senseTypes';
 import type { Point } from '../types/visionTypes';
 import type { WallSegment } from '../types/wallTypes';
-import { tableSightSource } from './tokenSightPolicy';
+import { PLAYER_SIGHT_POLICY, visionOn, type SightPolicy } from './tokenSightPolicy';
 import { NORMAL_SIGHT } from '../gameSystems/senses/generic';
 import { gameUnitsToWorld, type UnitScale } from '../lighting/lightingUnits';
 import { tokenVisionOn } from '../lighting/sceneLightingOptions';
@@ -109,8 +109,8 @@ export interface LightReach {
 export type LightReachKind = Pick<LightReach, 'darkness' | 'priority' | 'cone'>;
 
 /**
- * Eligible tokens with vision on, with ranges converted to world pixels. The local player
- * picture excludes hidden tokens; GM tooling explicitly supplies its own eligibility rule. A blinded token keeps
+ * The tokens `policy` lets give sight (the players' picture unless another is named), with ranges
+ * converted to world pixels; never a token without vision on, whatever the policy says. A blinded token keeps
  * only its senses that work while blinded; a sense that lets the eyes see invisible things is
  * not a sense of its own. A token whose way of perceiving is not known yet (`TokenSight.pending`)
  * is a source that perceives nothing: it must not see, or record as explored, what its statblock
@@ -121,12 +121,12 @@ export function sightSources(
   scale: UnitScale,
   bounds: MapBounds,
   rules: SightRules = GENERIC_SIGHT_RULES,
-  eligible: (token: TokenEntity) => boolean = tableSightSource,
+  policy: SightPolicy = PLAYER_SIGHT_POLICY,
 ): SightSource[] {
   const unlimited = Math.hypot(bounds.width, bounds.height);
   const sources: SightSource[] = [];
   for (const token of Object.values(tokens)) {
-    if (!token.vision?.enabled || !eligible(token)) continue;
+    if (!visionOn(token) || !policy.givesSight(token)) continue;
     const origin = { x: token.x, y: token.y };
     const how = rules.visionOf?.(token) ?? { senses: tokenSenses(token.vision, rules.definitions), ...(token.vision.range !== undefined && { sightRange: token.vision.range }) };
     if (how.pending) {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILT_IN_SENSES, GENERIC_SENSES, NORMAL_SIGHT } from '../../src/app/gameSystems/senses';
 import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { LIGHT_PRESETS } from '../../src/app/lighting/lightPresets';
-import { SceneModelBuilder, SceneSpots } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneModelBuilder, SceneSpots } from '../../src/app/vision/sceneModel';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import type { LightEmission, LightSource } from '../../src/app/types/lightingTypes';

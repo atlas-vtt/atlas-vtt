@@ -5,6 +5,7 @@ import { SEES_ALL, computeSight } from '../../../../vision/sight';
 import type { CompositeFilter } from '../compositeFilter';
 import { LightingEngine } from '../LightingEngine';
 import { LightingWorld } from '../LightingWorld';
+import { LIGHTING_QUALITY } from '../../../../lighting/lightingQuality';
 import type { EngineLight, EngineScene } from '../types';
 import { createTestRenderer, renderThroughEngine } from './gpuTestUtils';
 
@@ -60,6 +61,25 @@ describe('LightingEngine', () => {
     const at = render(engine, renderer, 0.5, -22, -22);
     expect(at(128, 128)).toBeGreaterThan(150);
     expect(at(250, 250)).toBe(0);
+  });
+
+  it('lights the same room at every quality, and builds a new world when the quality changes', async () => {
+    const { renderer, engine } = await setup();
+    engine.setMode('player');
+    engine.update(scene({ walls: room }));
+    engine.flush();
+    const first = render(engine, renderer, 0.5, -22, -22);
+    expect(first(128, 128)).toBeGreaterThan(150);
+    const replaced = vi.spyOn(LightingWorld.prototype, 'destroy');
+    engine.setQuality(LIGHTING_QUALITY.saver);
+    expect(replaced).toHaveBeenCalledTimes(1);
+    engine.flush();
+    const saver = render(engine, renderer, 0.5, -22, -22);
+    expect(saver(128, 128)).toBeGreaterThan(150);
+    expect(saver(250, 250)).toBe(0);
+    // Flicker alone changes nothing the world was built with.
+    engine.setQuality({ ...LIGHTING_QUALITY.saver, flickerMs: 30 });
+    expect(replaced).toHaveBeenCalledTimes(1);
   });
 
   it("follows each render's own camera (player window)", async () => {

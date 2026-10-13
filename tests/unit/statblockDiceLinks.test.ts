@@ -96,6 +96,20 @@ describe('linkDiceIn + attachDiceRolling', () => {
     dispose();
   });
 
+  it('names a roll in an ability table after its column', () => {
+    const rolls: Roll[] = [];
+    const el = host(
+      '<table><tbody><tr><td data-roll-name="STR">16 (<span class="atlas-dice-link" data-formula="+3">+3</span>)</td></tr></tbody></table>',
+    );
+    const dispose = attachDiceRolling(el, fakeApp(rolls), () => ({}));
+
+    el.querySelector<HTMLElement>('.atlas-dice-link')!.click();
+
+    expect(rolls[0]).toEqual({ formula: '+3', source: { type: 'statblock', abilityName: 'STR' } });
+
+    dispose();
+  });
+
   it('leaves surrounding text intact', () => {
     const el = host('<div>Zunge (+1, Reichweite 15\')</div>');
     linkDiceIn(el);
@@ -210,5 +224,55 @@ describe('statblock roll owner', () => {
     leaves.pop();
     expect(rollStatblockDice(app, 'd20', { viewId: 'view-1' })).toBeNull();
     expect(first.rollDice).not.toHaveBeenCalled();
+  });
+});
+
+describe('statblock roll origin', () => {
+  const context = { viewId: 'view-1', mapPath: 'maps/a.atlasmap', tokenIds: ['wolf'] };
+
+  function openViews(): { app: App; first: { rollDice: ReturnType<typeof vi.fn> }; second: { rollDice: ReturnType<typeof vi.fn> }; leaves: unknown[] } {
+    const first = { rollDice: vi.fn() };
+    const second = { rollDice: vi.fn() };
+    const leaves = [first, second].map((tool, index) => ({
+      view: { viewId: `view-${index}`, serviceManager: { getToolController: () => ({ getDiceTool: () => tool }) } },
+    }));
+    return { app: { workspace: { getLeavesOfType: () => leaves } } as unknown as App, first, second, leaves };
+  }
+
+  it('passes the origin of a token the statblock was opened for, in the view it was opened in', () => {
+    const { app, first, second } = openViews();
+    rollStatblockDice(app, 'd20', { tokenId: 'wolf', tokenName: 'Wolf', originContext: context });
+    expect(first.rollDice).not.toHaveBeenCalled();
+    expect(second.rollDice).toHaveBeenCalledWith(
+      'd20', { type: 'statblock', tokenId: 'wolf', tokenName: 'Wolf' }, { viewId: 'view-1', mapPath: 'maps/a.atlasmap', tokenId: 'wolf' },
+    );
+  });
+
+  it.each([
+    ['another token', { tokenId: 'bear', originContext: context }],
+    ['a context of another view than the roll', { viewId: 'view-0', tokenId: 'wolf', originContext: { ...context, viewId: 'view-1' } }],
+    ['no context', { viewId: 'view-1', tokenId: 'wolf' }],
+  ])('passes none for %s', (_, source) => {
+    const { app, first, second } = openViews();
+    rollStatblockDice(app, 'd20', source);
+    const [call] = [...first.rollDice.mock.calls, ...second.rollDice.mock.calls];
+    expect(call).toHaveLength(2);
+  });
+
+  it('rolls nothing once the view the statblock was opened in is closed', () => {
+    const { app, first, leaves } = openViews();
+    leaves.pop();
+    expect(rollStatblockDice(app, 'd20', { tokenId: 'wolf', originContext: context })).toBeNull();
+    expect(first.rollDice).not.toHaveBeenCalled();
+  });
+
+  it('takes the context with the source a click reads', () => {
+    const { app, second } = openViews();
+    const el = host('<div class="atlas-sb-trait"><span class="atlas-sb-trait-name">Bite</span> 1d4+1</div>');
+    linkDiceIn(el);
+    const dispose = attachDiceRolling(el, app, () => ({ tokenId: 'wolf', originContext: context }));
+    el.querySelector<HTMLElement>('.atlas-dice-link')!.click();
+    expect(second.rollDice).toHaveBeenCalledWith('1d4+1', { type: 'statblock', tokenId: 'wolf', abilityName: 'Bite' }, expect.objectContaining({ tokenId: 'wolf' }));
+    dispose();
   });
 });

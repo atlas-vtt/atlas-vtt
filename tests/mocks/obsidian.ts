@@ -200,7 +200,7 @@ export class TFolder extends TAbstractFile {
 
 export class Notice {
   // Keep a signature close to Obsidian's constructor.
-  constructor(_message: string, _timeout?: number) {}
+  constructor(_message: string | DocumentFragment, _timeout?: number) {}
   hide(): void {}
 }
 
@@ -477,6 +477,8 @@ export class Setting {
 }
 
 export function setIcon(_parent: HTMLElement, _iconId: string): void {}
+
+export function displayTooltip(_target: HTMLElement, _content: string | DocumentFragment): void {}
 
 /** Case-insensitive subsequence match; Obsidian's real scoring is richer. */
 export function prepareFuzzySearch(query: string): (text: string) => { score: number; matches: [number, number][] } | null {

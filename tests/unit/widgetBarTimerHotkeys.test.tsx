@@ -7,6 +7,7 @@ import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { ResponsiveWidgetBar } from '../../src/app/react/components/ResponsiveWidgetBar';
 import { useMapHotkeys } from '../../src/app/keyboard/useMapHotkeys';
 import type { CounterWidget, TimerWidget } from '../../src/app/types/widgetTypes';
+import { timerShownSeconds } from '../../src/app/utils/timerWidget';
 
 const counter: CounterWidget = {
   id: 'fear', type: 'counter', label: 'Fear', icon: 'skull',
@@ -53,7 +54,7 @@ function renderBar(shortcuts: MapShortcuts = mapShortcuts()): ViewAtlasStore {
   return store;
 }
 
-const timerValue = (store: ViewAtlasStore): number | undefined => store.getState().widgetSettings.widgets.torch?.value;
+const timerValue = (store: ViewAtlasStore): number => timerShownSeconds(store.getState().widgetSettings.widgets.torch as TimerWidget, Date.now());
 
 beforeEach(() => { vi.useFakeTimers(); });
 afterEach(() => { cleanup(); document.body.empty(); vi.useRealTimers(); });

@@ -1,7 +1,7 @@
 import type JSZip from 'jszip';
 import { BUNDLE_MANIFEST, manifestProblem, zipPathFor, type BundleFile, type CollectionBundleManifest } from './bundleFormat';
 import { reportFileStep, type BundleProgressListener } from './bundleProgress';
-import { sha256 } from './hashing';
+import { sha256 } from '../../utils/hashing';
 import { baseName } from '../../utils/pathUtils';
 import { t } from '../../i18n';
 

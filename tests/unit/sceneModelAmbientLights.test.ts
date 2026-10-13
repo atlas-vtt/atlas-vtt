@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { MeasurementSettings } from '../../src/app/grid/measurementFormat';
 import { LIGHT_PRESETS } from '../../src/app/lighting/lightPresets';
-import { SceneModelBuilder } from '../../src/app/pixi/lighting/sceneModel';
+import { SceneModelBuilder } from '../../src/app/vision/sceneModel';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { LightSource } from '../../src/app/types/lightingTypes';
 import { lightLevelAt } from '../../src/app/vision/lightLevels';

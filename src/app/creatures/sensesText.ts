@@ -1,5 +1,7 @@
 /** Reads the senses line out of a statblock's fields, whatever shape Fantasy Statblocks holds it in. */
 
+import { boundedText } from './statblockValues';
+
 function words(key: string): string {
   return key.replace(/_/g, ' ');
 }
@@ -31,7 +33,7 @@ function afterModifier(perception: unknown): string | null {
     const after = typeof line === 'string' && modifierEnd >= 0 ? line.slice(modifierEnd + 1).trim() : '';
     return after ? [after] : [];
   });
-  return senses.length > 0 ? senses.join(', ') : null;
+  return senses.length > 0 ? boundedText(senses.join(', ')) : null;
 }
 
 /**
@@ -46,5 +48,5 @@ export function sensesTextOf(fields: Readonly<Record<string, unknown>>): string 
   if (typeof senses === 'string') phrases = senses.trim() ? [senses.trim()] : [];
   else if (Array.isArray(senses)) phrases = senses.flatMap((entry) => phraseOf(entry) ?? []);
   else if (typeof senses === 'object' && senses !== null) phrases = namedSenses(senses as Record<string, unknown>);
-  return phrases.length > 0 ? phrases.join(', ') : afterModifier(fields.perception);
+  return phrases.length > 0 ? boundedText(phrases.join(', ')) : afterModifier(fields.perception);
 }

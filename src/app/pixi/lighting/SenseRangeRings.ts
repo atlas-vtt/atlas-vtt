@@ -4,7 +4,7 @@ import { formatReach, type MeasurementSettings } from '../../grid/measurementFor
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import type { ViewAtlasStore } from '../../storeFactory';
 import type { Point } from '../../types/visionTypes';
-import { gmSightSource } from '../../vision/tokenSightPolicy';
+import { GM_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
 import { sightSources } from '../../vision/sight';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
@@ -89,14 +89,14 @@ export class SenseRangeRings {
     if (!shown() || !map) return [];
     const tokens = state.selectedIds.flatMap((id) => {
       const token = state.objects.tokens[id];
-      return token?.vision?.enabled ? [token] : [];
+      return token && GM_SIGHT_POLICY.givesSight(token) ? [token] : [];
     });
     if (tokens.length === 0 || tokens.length > MAX_TOKENS) return [];
     const settings = measurement();
     const scale = unitScaleOf(settings, state.grid);
     const unlimited = Math.hypot(map.width, map.height);
     const distance = (radius: number): string => formatReach(radius / scale.cellSize, settings);
-    return tokens.flatMap((token) => sightSources({ [token.id]: token }, scale, map, rules(), gmSightSource).map((source) => senseRings(source, unlimited, distance)));
+    return tokens.flatMap((token) => sightSources({ [token.id]: token }, scale, map, rules(), GM_SIGHT_POLICY).map((source) => senseRings(source, unlimited, distance)));
   }
 
   /**

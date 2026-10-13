@@ -1,11 +1,14 @@
 import { Matrix, type Application, type Container, type Texture } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
+import type { StoreApi } from 'zustand/vanilla';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { ExploredEdit } from '../../lighting/exploredEdits';
+import { DEFAULT_LIGHTING_QUALITY, type LightingQuality, type LightingQualitySource } from '../../lighting/lightingQuality';
 import { sceneLook, type SceneLook } from '../../lighting/sceneLightingOptions';
 import type { SceneLighting } from '../../types/lightingTypes';
+import type { ViewState } from '../../types/viewState';
 import { SEES_ALL, type AmbientLight, type AmbientZone, type LightReach, type Sight } from '../../vision/sight';
+import { GM_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
 import type { HideableLayer } from '../playerSafeFrame';
@@ -14,10 +17,10 @@ import { requestRender } from '../RenderScheduler';
 import { awaitGpu, contextLost } from './engine/gpu';
 import { LightingEngine } from './engine/LightingEngine';
 import type { EngineScene, SceneFrame } from './engine/types';
-import { ExploredMemory } from './ExploredMemory';
+import { ExploredMemory, type ExploredMemoryState } from './ExploredMemory';
 import type { LightingAttempt } from './lightingAttempts';
 import { PlayerView } from './PlayerView';
-import { SceneModelBuilder, SceneSpots, type SceneModel } from './sceneModel';
+import { SceneModelBuilder, SceneSpots, type SceneModel, type SceneState } from '../../vision/sceneModel';
 import type { ExploredMemoryWatcher, SceneLightingView } from './sceneLightingView';
 
 /** Above tokens, below their nameplates and bars (100): the GM keeps readable labels in the dark. */
@@ -27,14 +30,22 @@ const DEFAULT_CELL_SIZE = 70;
 /** Why the engine does not light a view: it stopped on this device, or its last attempt never drew a frame. */
 export type LightingUnavailable = 'failed' | 'unfinished';
 
+/** What the lighting reads of its view's state: the scene it lights, the load flag and the explored memory's part. */
+export type LightingState = SceneState & ExploredMemoryState & Pick<ViewState, 'exploredMask'>;
+
+export type LightingStore = Pick<StoreApi<LightingState>, 'getState' | 'subscribe'>;
+
 export interface LightingRendererDeps {
   viewport: Viewport;
   app: Application;
-  store: ViewAtlasStore;
+  store: LightingStore;
   measurement: () => MeasurementSettings;
   /** Size of the map image in world pixels, or null before it loaded. */
   bounds: () => MapBounds | null;
-  /** The map image, covering world `[0, width] × [0, height]`; bounce reads its colours. */
+  /**
+   * The map image's colours, covering world `[0, width] × [0, height]` at any resolution; bounce
+   * reads them. Null while they are not ready (mid grey meanwhile); the view follows when they arrive.
+   */
   albedo: () => Texture | null;
   /** The grid the composite draws unlit, while there is one (`UnlitGrid`). */
   grid?: () => UnlitGrid | null;
@@ -48,9 +59,11 @@ export interface LightingRendererDeps {
   onSightChange?: () => void;
   /** Who shows the GM the explored memory while it is edited. */
   exploredWatcher?: ExploredMemoryWatcher;
+  /** How much the lighting may ask of the graphics device, followed while the view lives; the default quality without one. */
+  quality?: LightingQualitySource;
 }
 
-type SceneWithoutLook = Omit<EngineScene, keyof SceneLook>;
+type SceneWithoutLook = Omit<EngineScene, keyof SceneLook | 'albedo'>;
 /**
  * From the build that begins an attempt, over the first lit frame and the tick that waits for
  * the graphics process to execute it, to the tick after that one.
@@ -76,14 +89,16 @@ export class LightingRenderer implements SceneLightingView {
   /** What the scene is built from, and when it is built anew (`SceneModelBuilder`). */
   private readonly model = new SceneModelBuilder();
   private readonly spots = new SceneSpots();
-  private readonly gmSpots = new SceneSpots();
+  private readonly gmSpots = new SceneSpots(GM_SIGHT_POLICY);
   private reaches: LightReach[] = [];
   private sight: Sight = SEES_ALL;
   /** The zones of the scene as the rules read them, and the ambient light made of them and the scene's lighting. */
   private zones: readonly AmbientZone[] = [];
   private ambient: { lighting: SceneLighting; zones: readonly AmbientZone[]; light: AmbientLight } | null = null;
-  /** The last scene without its look (`SceneLook`), reused while only the look changes. */
+  /** The last scene without its look (`SceneLook`), reused while only the look changes; none from lighting off, the map leaving or a lost context until the next build. */
   private lastScene: SceneWithoutLook | null = null;
+  /** The albedo the engine was last given. */
+  private albedo: Texture | null = null;
   private attemptState: AttemptState = 'none';
   private stopped = false;
   /** A scene build worked out new sight; reported once the guarded work is over. */
@@ -91,11 +106,14 @@ export class LightingRenderer implements SceneLightingView {
   private readonly onContextLost = (): void => this.memory.holdSaves();
   private readonly playerView = new PlayerView((shown) => this.engine.setMode(shown ? 'player' : 'gm'));
   private readonly unsubscribe: () => void;
+  private readonly unsubscribeQuality: () => void;
+  private quality: LightingQuality;
   private readonly tick = (): void => this.run(() => this.animate());
 
   constructor(private readonly deps: LightingRendererDeps) {
     const { renderer } = deps.app;
-    this.engine = new LightingEngine(renderer);
+    this.quality = deps.quality?.current() ?? DEFAULT_LIGHTING_QUALITY;
+    this.engine = new LightingEngine(renderer, this.quality);
     this.layer = this.engine.layer;
     this.memory = new ExploredMemory({
       renderer,
@@ -114,6 +132,7 @@ export class LightingRenderer implements SceneLightingView {
     deps.viewport.addChild(this.layer);
     this.modeLayer = this.playerView;
     this.unsubscribe = deps.store.subscribe((state) => this.run(() => this.update(state)));
+    this.unsubscribeQuality = deps.quality?.onChange(() => this.followQuality()) ?? ((): void => undefined);
     deps.app.ticker.add(this.tick);
     this.run(() => this.update(deps.store.getState()));
   }
@@ -123,6 +142,7 @@ export class LightingRenderer implements SceneLightingView {
   }
 
   currentSight(): Sight { return this.sight; }
+  sightIsCurrent(): boolean { return !this.isEnabled() || this.lastScene !== null; }
   lightReaches(): LightReach[] { return this.reaches; }
   /** The scene's lighting as the rules read it: with its zones when it has any, the same object while both stay. */
   ambientLight(): AmbientLight {
@@ -134,8 +154,20 @@ export class LightingRenderer implements SceneLightingView {
 
   renderForFrame<T>(frame: SceneFrame, render: () => T): T {
     // Bounce still to build after an edit belongs in the picture; so does a world a restored context took.
-    this.run(() => this.engine.flush());
+    this.run(() => {
+      this.followAlbedo();
+      this.engine.flush();
+    });
     return this.engine.renderFrame(frame, render);
+  }
+
+  /** The quality changed: the engine redraws at the new one, from the scene it holds. */
+  private followQuality(): void {
+    const quality = this.deps.quality?.current() ?? DEFAULT_LIGHTING_QUALITY;
+    if (quality === this.quality) return;
+    this.quality = quality;
+    this.run(() => this.engine.setQuality(quality));
+    requestRender(this.deps.app);
   }
 
   /** The map image changed size or finished loading. */
@@ -158,19 +190,24 @@ export class LightingRenderer implements SceneLightingView {
   beforeMapUnload(): void {
     this.run(() => this.memory.beforeMapUnload());
     this.model.reset();
+    this.lastScene = null;
     this.endAttempt();
   }
 
   /**
-   * Runs lighting work that reaches the GPU. Nothing is drawn while the context is lost; the
-   * first call after its restore rebuilds; an error stops the engine and reports the view
-   * unavailable, once. New sight is reported afterwards, outside the guard: what its listener
-   * does is not the engine's to fail on.
+   * Runs lighting work that reaches the GPU. Nothing is drawn while the context is lost, and the
+   * scene counts as not built from then on, since a change of it may go by; the first call after
+   * its restore rebuilds; an error stops the engine and reports the view unavailable, once. New
+   * sight is reported afterwards, outside the guard: what its listener does is not the engine's
+   * to fail on.
    */
   private run(work: () => void): void {
     if (this.stopped) return;
     try {
-      if (contextLost(this.deps.app.renderer)) return;
+      if (contextLost(this.deps.app.renderer)) {
+        this.lastScene = null;
+        return;
+      }
       if (this.engine.takeRestored()) this.afterContextRestored();
       if (!this.stopped) work();
     } catch (error) {
@@ -192,7 +229,7 @@ export class LightingRenderer implements SceneLightingView {
     this.deps.onUnavailable?.(reason);
   }
 
-  private update(state: ViewAtlasState): void {
+  private update(state: LightingState): void {
     const { lighting } = state;
     // A load rewrites the store in steps (the next map's path, a cleared scene, the saved one):
     // lighting is off for its duration, and the update that ends it builds the scene whole.
@@ -201,6 +238,7 @@ export class LightingRenderer implements SceneLightingView {
       // Nothing is drawn while off; the next update after switching on rebuilds everything.
       this.engine.setEnabled(false);
       this.model.reset();
+      this.lastScene = null;
       this.endAttempt();
       return;
     }
@@ -215,19 +253,21 @@ export class LightingRenderer implements SceneLightingView {
     const base = rebuilt || !this.lastScene ? (this.lastScene = this.takeModel(model, state, bounds)) : this.lastScene;
     const spots = this.spots.update(model, state, this.deps.measurement, this.deps.rules);
     const gmSight = model.gmSight ?? model.sight;
+    // Both pictures always show the same tokens (`GM_SIGHT_POLICY`), so the same sight gives the same footprints.
     const gmSpots = gmSight === model.sight ? spots : this.gmSpots.update(model, state, this.deps.measurement, this.deps.rules, gmSight);
-    this.engine.update({ ...base, spots: gmSpots, ...(gmSight !== model.sight && { playerSight: model.sight, playerSpots: spots }), ...sceneLook(lighting) });
+    this.albedo = this.deps.albedo();
+    this.engine.update({ ...base, albedo: this.albedo, spots: gmSpots, ...(gmSight !== model.sight && { playerSight: model.sight, playerSpots: spots }), ...sceneLook(lighting) });
     requestRender(this.deps.app);
   }
 
   /** A model built anew: its sight and reaches are the view's, and what the tokens now see is recorded. */
-  private takeModel({ walls, lights, reaches, sight, gmSight = sight, explored, zones, ambient }: SceneModel, state: ViewAtlasState, bounds: MapBounds): SceneWithoutLook {
+  private takeModel({ walls, lights, reaches, sight, gmSight = sight, explored, zones, ambient }: SceneModel, state: LightingState, bounds: MapBounds): SceneWithoutLook {
     this.reaches = reaches;
     this.sight = sight;
     this.zones = ambient.zones ?? [];
     this.sightChanged = true;
     if (explored) this.memory.record(explored);
-    return { bounds, albedo: this.deps.albedo(), walls, lights, sight: gmSight, sightRadius: (state.grid?.size ?? DEFAULT_CELL_SIZE) * 0.5, zones };
+    return { bounds, walls, lights, sight: gmSight, sightRadius: (state.grid?.size ?? DEFAULT_CELL_SIZE) * 0.5, zones };
   }
 
   /**
@@ -285,8 +325,17 @@ export class LightingRenderer implements SceneLightingView {
     if (this.attemptState === 'begun' && this.engine.hasWorld()) this.attemptState = 'drawn';
   }
 
+  /**
+   * The map image's albedo is made after the image (from its overview, once asked for) and goes
+   * with it: a lit scene hands the engine the one there is now, which rebuilds only the bounce.
+   */
+  private followAlbedo(): void {
+    if (this.lastScene && this.deps.albedo() !== this.albedo) this.update(this.deps.store.getState());
+  }
+
   private animate(): void {
     this.settleAttempt();
+    this.followAlbedo();
     if (!this.layer.visible || !this.engine.busy()) return;
     // ponytail: animated lights redraw the whole light map even while off-screen; cull to the viewport if that gets slow.
     if (this.engine.animate(performance.now())) requestRender(this.deps.app);
@@ -295,6 +344,7 @@ export class LightingRenderer implements SceneLightingView {
   destroy(): void {
     this.stopped = true;
     this.unsubscribe();
+    this.unsubscribeQuality();
     this.deps.app.ticker.remove(this.tick);
     this.deps.app.renderer.canvas.removeEventListener('webglcontextlost', this.onContextLost);
     this.endAttempt();

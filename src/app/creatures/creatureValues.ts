@@ -56,6 +56,8 @@ export function formatRating(value: number): string {
 
 /** Longer text is a description, not a category. */
 const MAX_OPTION_LENGTH = 80;
+/** As a note writes it an option may be longer (a link with its path, a page reference); far longer text is read as none. */
+const MAX_WRITTEN_OPTION_LENGTH = 1000;
 
 const PAGE_REFERENCE = /[\s,;]*\b(?:pp?|pg|page)\.?\s*\d+(?:\s*[-–]\s*\d+)?\s*$/i;
 /** Private-use characters: glyphs of a PDF's own font that no other font draws (text copied from rulebooks). */
@@ -71,6 +73,7 @@ export function plainText(text: string): string {
 }
 
 function cleanOption(text: string): string | null {
+  if (text.length > MAX_WRITTEN_OPTION_LENGTH) return null;
   const cleaned = plainText(text).replace(PAGE_REFERENCE, '').trim();
   return cleaned && cleaned.length <= MAX_OPTION_LENGTH ? cleaned : null;
 }

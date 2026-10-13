@@ -6,6 +6,7 @@ import type { StoreApi } from 'zustand';
 import { barDimensions } from '../styles/designTokens';
 import { TokenConditionsUI, type TokenConditionsLayout } from './token-renderer/TokenConditionsUI';
 import { isNameplateVisible } from './token-renderer/nameplateVisibility';
+import { tokenDisplayName } from './token-renderer/tokenDisplayName';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import { ResourceStack, type ResourceSlot } from './token-renderer/resources/ResourceStack';
@@ -342,7 +343,6 @@ export class TokenUIRenderer {
     this.nameText.text = '';
     
     // Check if we have any data to display
-    const hasStatblock = !!token.statblockPath;
     const hasResources = bars.length > 0 || wheels.length > 0;
     // showNameplate is already calculated above for change detection
 
@@ -378,19 +378,7 @@ export class TokenUIRenderer {
     }
 
     // Name badge - only show if showNameplate is true AND there's a meaningful name
-    // Determine displayName first to decide whether to show the nameplate
-    let displayName: string | null = null;
-    if (token.name) {
-      // Token has a custom name (overrides statblock name)
-      displayName = token.name;
-    } else if (hasStatblock && token.statblockName) {
-      // Token has a statblock and we loaded the statblock name
-      displayName = token.statblockName;
-    } else if (hasStatblock) {
-      // Token has a statblock but no name was loaded - show placeholder
-      displayName = t('token.unknownCreature');
-    }
-    // If no statblock and no name, displayName stays null - don't show nameplate
+    const displayName = tokenDisplayName(token);
 
     // Only show nameplate if enabled AND we have a name to display
     if (showNameplate && displayName) {

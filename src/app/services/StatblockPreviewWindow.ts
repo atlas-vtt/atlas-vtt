@@ -6,6 +6,7 @@ import { toTokenVitals, type TokenVitals } from './statblockVitalsSync';
 import type { NotePreviewUIManager, PreviewAnchorRef, TokenPreviewAnchor } from './NotePreviewUIManager';
 import './statblock-preview-window.scss';
 import { previewEdgeGaps } from '../react/components/statblock/previewEdgeGap';
+import type { TokenRollContext } from '../types/diceRollOrigin';
 
 /**
  * Floating CMD+hover preview window for token statblocks: of a token placed on
@@ -31,6 +32,8 @@ export class StatblockPreviewWindow {
     /** The note's text when it is not in the vault, e.g. inside a collection being imported. */
     noteContent?: string,
     viewId?: string,
+    /** The view, scene and token a token on a map was hovered in; none for a token in a list. */
+    originContext?: TokenRollContext,
   ) {
     this.notePath = notePath;
     this.originatingPin = 'type' in originatingToken ? originatingToken : null;
@@ -52,6 +55,7 @@ export class StatblockPreviewWindow {
         notePath,
         noteContent,
         viewId,
+        originContext,
         app: this.app,
         tokens: vitals,
       }),

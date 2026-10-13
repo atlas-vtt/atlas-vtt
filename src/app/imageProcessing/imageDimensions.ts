@@ -3,6 +3,13 @@ import type { Size } from './imageLayout';
 /** JPEG files may put large EXIF blocks before the frame header; beyond this the size stays unknown. */
 const HEADER_BYTES = 256 * 1024;
 
+export type ImageFormat = 'png' | 'jpeg' | 'webp' | 'gif' | 'bmp';
+
+/** What an image's header says about it. */
+export interface ImageHeader extends Size {
+  format: ImageFormat;
+}
+
 type Reader = (bytes: DataView) => Size | null;
 
 function ascii(bytes: DataView, offset: number, length: number): string {
@@ -67,17 +74,27 @@ const jpeg: Reader = (bytes) => {
   return null;
 };
 
-const READERS: readonly Reader[] = [png, jpeg, webp, gif, bmp];
+const READERS: ReadonlyArray<readonly [ImageFormat, Reader]> = [['png', png], ['jpeg', jpeg], ['webp', webp], ['gif', gif], ['bmp', bmp]];
 
 /**
- * Pixel size of an encoded image, read from its header without decoding it,
- * or null for formats it does not know (SVG, AVIF) or a truncated header.
+ * Format and pixel size of an encoded image, read from its header without
+ * decoding it, or null for formats it does not know (SVG, AVIF) or a truncated header.
  */
-export async function imageDimensions(blob: Blob): Promise<Size | null> {
-  const bytes = new DataView(await blob.slice(0, HEADER_BYTES).arrayBuffer());
-  for (const read of READERS) {
+export async function imageHeader(blob: Blob): Promise<ImageHeader | null> {
+  return headerOf(new DataView(await blob.slice(0, HEADER_BYTES).arrayBuffer()));
+}
+
+/** `imageHeader` of bytes already read, which begin with the image's header. */
+export function headerOf(bytes: DataView): ImageHeader | null {
+  for (const [format, read] of READERS) {
     const size = read(bytes);
-    if (size) return size.width > 0 && size.height > 0 ? size : null;
+    if (size) return size.width > 0 && size.height > 0 ? { format, width: size.width, height: size.height } : null;
   }
   return null;
+}
+
+/** Pixel size of an encoded image, read from its header; see `imageHeader`. */
+export async function imageDimensions(blob: Blob): Promise<Size | null> {
+  const header = await imageHeader(blob);
+  return header && { width: header.width, height: header.height };
 }

@@ -28,9 +28,17 @@ export function raySegmentIntersect(
   origin: Point, angle: number,
   p1: Point, p2: Point,
 ): number {
-  const dx = Math.cos(angle);
-  const dy = Math.sin(angle);
+  return rayHit(origin, Math.cos(angle), Math.sin(angle), p1, p2);
+}
 
+/**
+ * `raySegmentIntersect` for a ray whose direction (`dx`, `dy`) = (cos, sin) of its angle is
+ * already worked out: the same arithmetic, so the same result to the last bit.
+ */
+export function rayHit(
+  origin: Point, dx: number, dy: number,
+  p1: Point, p2: Point,
+): number {
   const ex = p2.x - p1.x;
   const ey = p2.y - p1.y;
 

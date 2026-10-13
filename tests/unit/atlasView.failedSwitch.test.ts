@@ -9,6 +9,7 @@ vi.mock('../../src/app/stores/history', () => ({ getHistoryStore: () => undefine
 
 const CAVE = new TFile('maps/cave.atlasmap');
 const TOWER = new TFile('maps/tower.atlasmap');
+const TOWER_CAMERA = { centerX: 300, centerY: 200, scale: 2 };
 
 function setup(options: { sceneLoads: boolean; mapLoaded: boolean; isMapLoading?: boolean }) {
   const tabMetaStore = createTabMetaStore();
@@ -24,7 +25,8 @@ function setup(options: { sceneLoads: boolean; mapLoaded: boolean; isMapLoading?
     _serviceManager: { getMapService: () => ({ suspendForRewrite: vi.fn() }) },
     flushPendingSaves: vi.fn().mockResolvedValue(undefined),
     saveTemporalState: vi.fn(), saveViewportState: vi.fn(),
-    restoreTemporalState: vi.fn(), restoreViewportState: vi.fn(),
+    restoreTemporalState: vi.fn(),
+    viewportCache: new Map([[towerId, TOWER_CAMERA]]),
     performSceneLoad: vi.fn().mockResolvedValue(options.sceneLoads),
     app: {
       vault: { getAbstractFileByPath: (path: string) => (path === CAVE.path ? CAVE : TOWER) },
@@ -37,24 +39,32 @@ function setup(options: { sceneLoads: boolean; mapLoaded: boolean; isMapLoading?
 }
 
 describe('switching scene tabs around a load that did not finish', () => {
-  it('restores the history and viewport of a tab whose scene loaded', async () => {
+  it('loads a tab\'s scene at the camera it was left with and restores its history', async () => {
     const { context, switchToTab, caveId, towerId } = setup({ sceneLoads: true, mapLoaded: true });
 
     await switchToTab(towerId);
 
     expect(context.saveViewportState).toHaveBeenCalledWith(caveId);
+    expect(context.performSceneLoad).toHaveBeenCalledWith(TOWER, TOWER_CAMERA);
     expect(context.restoreTemporalState).toHaveBeenCalledWith(towerId);
-    expect(context.restoreViewportState).toHaveBeenCalledWith(towerId);
   });
 
-  it('does not apply a tab\'s history and viewport when its scene failed to load or was replaced', async () => {
+  it('opens the active tab\'s scene at the camera it is given, as the view does on opening', async () => {
+    const { context } = setup({ sceneLoads: true, mapLoaded: false });
+    const camera = { centerX: 10, centerY: 20, scale: 0.5 };
+
+    await AtlasView.prototype.onLoadFile.call(context as unknown as AtlasView, CAVE, camera);
+
+    expect(context.performSceneLoad).toHaveBeenCalledWith(CAVE, camera);
+  });
+
+  it('does not apply a tab\'s history when its scene failed to load or was replaced', async () => {
     const { context, switchToTab, towerId } = setup({ sceneLoads: false, mapLoaded: true });
 
     await switchToTab(towerId);
 
-    expect(context.performSceneLoad).toHaveBeenCalledWith(TOWER);
+    expect(context.performSceneLoad).toHaveBeenCalledWith(TOWER, TOWER_CAMERA);
     expect(context.restoreTemporalState).not.toHaveBeenCalled();
-    expect(context.restoreViewportState).not.toHaveBeenCalled();
   });
 
   it('keeps the cached history and viewport of a tab whose scene is not loaded', async () => {
@@ -64,7 +74,7 @@ describe('switching scene tabs around a load that did not finish', () => {
 
     expect(context.saveTemporalState).not.toHaveBeenCalled();
     expect(context.saveViewportState).not.toHaveBeenCalled();
-    expect(context.performSceneLoad).toHaveBeenCalledWith(TOWER);
+    expect(context.performSceneLoad).toHaveBeenCalledWith(TOWER, TOWER_CAMERA);
   });
 
   it('loads the active tab again when its scene failed to load', async () => {
@@ -72,7 +82,7 @@ describe('switching scene tabs around a load that did not finish', () => {
 
     await switchToTab(caveId);
 
-    expect(context.performSceneLoad).toHaveBeenCalledWith(CAVE);
+    expect(context.performSceneLoad).toHaveBeenCalledWith(CAVE, undefined);
   });
 
   it.each([
@@ -104,7 +114,7 @@ describe('switching scene tabs around a load that did not finish', () => {
 
     await switchToTab(towerId);
 
-    expect(context.performSceneLoad).toHaveBeenCalledWith(TOWER);
+    expect(context.performSceneLoad).toHaveBeenCalledWith(TOWER, TOWER_CAMERA);
   });
 
   it('reloads the scene the store holds, not the file of a tab that failed to open', async () => {
@@ -115,6 +125,6 @@ describe('switching scene tabs around a load that did not finish', () => {
     await AtlasView.prototype.reloadActiveScene.call(context as unknown as AtlasView, rewrite);
 
     expect(rewrite).toHaveBeenCalledWith(CAVE);
-    expect(context.performSceneLoad).toHaveBeenCalledWith(CAVE);
+    expect(context.performSceneLoad).toHaveBeenCalledWith(CAVE, undefined);
   });
 });

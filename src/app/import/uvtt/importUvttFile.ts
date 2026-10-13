@@ -4,6 +4,7 @@ import { imageDimensions } from '../../imageProcessing/imageDimensions';
 import type { Size } from '../../imageProcessing/imageLayout';
 import type { ProcessedImage } from '../../imageProcessing/imageProcessing';
 import type { ScaleDown } from '../../imageProcessing/imageJob';
+import { prebuildMapImageAt } from '../../pixi/mapImage/prebuildMapImage';
 import { AssetService, type CollectionMetadata, type MapAsset, type SceneAsset } from '../../services/AssetService';
 import type { AssetThumbnailService } from '../../services/AssetThumbnailService';
 import { discardAssetFiles, writeAssetImage } from '../../services/assetImageFiles';
@@ -119,6 +120,7 @@ function writeImport({ app, assetService, thumbnails }: UvttImportDeps, plan: Im
         if (recordFile) await files.write(recordFile.path, recordFile.content);
       }
       await assetService.commitAssetTransfer({ collectionId: collection.id, records: [map, sceneRecord], tags: [] });
+      prebuildMapImageAt(app, mapFilePath);
       return { ok: true, name, scenePath };
     } catch (error) {
       console.error('[Atlas] Saving an imported Universal VTT map failed', error);

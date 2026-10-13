@@ -5,6 +5,7 @@ import type { PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import { attachFakePlayerWindow } from '../mocks/playerPopout';
+import { frameSource, sizePlayerWindow } from '../mocks/playerFrameSource';
 
 vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
@@ -127,7 +128,7 @@ describe('live player settings', () => {
     Object.defineProperty(doc.body, 'win', { value: {
       document: doc, closed: false, addEventListener, removeEventListener: vi.fn(), close: vi.fn(),
     } });
-    service.attachToView({ contentEl: doc.body, updateSession: vi.fn() } as never, source, 'scene-a');
+    service.attachToView({ contentEl: doc.body, updateSession: vi.fn() } as never, source, { tabId: 'scene-a', filePath: 'scene-a.atlasmap' });
     service.holdCurrentFrame();
     store.setState(counterScene('Browsed', 9));
     Object.defineProperty(doc, 'readyState', { value: 'complete' });
@@ -147,15 +148,16 @@ describe('live player settings', () => {
     vi.spyOn(target, 'getContext').mockReturnValue({ clearRect: vi.fn(), drawImage: vi.fn() } as any);
     (service as any).playerWindow = { document: doc, closed: false, requestAnimationFrame, cancelAnimationFrame, removeEventListener: vi.fn(), close: vi.fn() };
     const capture = vi.fn();
-    (service as any).streamSource = { canvas: document.createElement('canvas'), withPlayerSafeFrame: capture };
+    sizePlayerWindow();
+    (service as any).streamSource = frameSource({ withPlayerSafeFrame: capture });
     (service as any).startMirroring();
     vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](40);
-    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), settings.getLocalPlayerViewSettings(), undefined);
-    settings.setLocalPlayerViewSettings({ showGrid: false, showTokenNameplates: true });
+    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), settings.getLocalPlayerViewSettings(), expect.objectContaining({ width: 1280, height: 720 }));
+    settings.setLocalPlayerViewSettings({ showWidgets: false, showTokenNameplates: true });
     const nextFrame = vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0];
     capture.mockClear();
     nextFrame(56);
     expect(capture).toHaveBeenCalledTimes(1);
-    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), settings.getLocalPlayerViewSettings(), undefined);
+    expect(capture).toHaveBeenLastCalledWith(expect.any(Function), settings.getLocalPlayerViewSettings(), expect.objectContaining({ width: 1280, height: 720 }));
   });
 });

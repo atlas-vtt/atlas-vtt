@@ -3,7 +3,7 @@ import type { AnyWidget, ClockWidget, CounterWidget, TimerWidget } from '../type
 import { WIDGET_ICON_PATHS, WIDGET_ICON_VIEW_BOX, resolveWidgetIcon } from '../types/widgetIcons';
 import { DEFAULT_COUNTER_COLOR, readCounterValue } from '../utils/counterWidget';
 import { isWidgetOn } from '../utils/widgetActivation';
-import { DEFAULT_TIMER_COLOR, formatTimerTime } from '../utils/timerWidget';
+import { DEFAULT_TIMER_COLOR, formatTimerTime, isTimerExpired, msUntilNextSecond, timerRun, timerShownSeconds } from '../utils/timerWidget';
 import { CLOCK_VIEW_SIZE, DEFAULT_CLOCK_COLOR, clockFace, clockProgressLabel } from '../utils/clockWidget';
 import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
@@ -12,6 +12,10 @@ type WidgetScene = Pick<ViewAtlasState, 'widgetSettings' | 'widgetValues'>;
 
 /** Read-only widget bar showing the presented scene's player-visible widgets. */
 export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
+  /** The shown running timers, whose time this bar counts itself between store changes. */
+  private runningTimers: { widget: TimerWidget; display: HTMLElement }[] = [];
+  private tickTimeout: number | undefined;
+
   constructor(settings: SettingsService) {
     super({ cls: 'atlas-vtt-plugin', attr: { id: 'atlas-player-widgets' } }, settings);
   }
@@ -37,6 +41,17 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
       else if (widget.type === 'clock') this.renderClock(widgetContainer, widget, readCounterValue(scene, widget));
       else this.renderCounter(widgetContainer, widget, readCounterValue(scene, widget));
     }
+    this.tick();
+  }
+
+  override refresh(): void {
+    this.stopTicking();
+    super.refresh();
+  }
+
+  override destroy(): void {
+    this.stopTicking();
+    super.destroy();
   }
 
   private renderCounter(parent: HTMLElement, widget: CounterWidget, value: number): void {
@@ -68,10 +83,31 @@ export class PlayerWidgetBar extends PlayerSceneOverlay<WidgetScene> {
     }
   }
 
-  /** The DM's timer ticks the widget's remaining seconds in the store, so each tick redraws this. */
+  /** A running timer's time comes from the wall clock, so the bar counts it down without store changes. */
   private renderTimer(parent: HTMLElement, widget: TimerWidget): void {
     const valueRow = this.renderWidget(parent, widget, 'atlas-widget-timer', DEFAULT_TIMER_COLOR);
-    valueRow.createSpan({ cls: 'atlas-timer-display', text: formatTimerTime(widget.value ?? 0) });
+    const display = valueRow.createSpan({ cls: 'atlas-timer-display', text: formatTimerTime(timerShownSeconds(widget, Date.now())) });
+    if (timerRun(widget)) this.runningTimers.push({ widget, display });
+  }
+
+  /** Shows the running timers' time and waits for their next second; a hidden window's late ticks catch up. */
+  private tick(): void {
+    window.clearTimeout(this.tickTimeout);
+    const now = Date.now();
+    for (const { widget, display } of this.runningTimers) {
+      display.setText(formatTimerTime(timerShownSeconds(widget, now)));
+    }
+    // A timer that has run out stays at 0 until the DM's view stops it.
+    this.runningTimers = this.runningTimers.filter(({ widget }) => !isTimerExpired(widget, now));
+    if (this.runningTimers.length === 0) return;
+    const next = Math.min(...this.runningTimers.map(({ widget }) => msUntilNextSecond(widget, now)));
+    this.tickTimeout = window.setTimeout(() => this.tick(), next);
+  }
+
+  private stopTicking(): void {
+    window.clearTimeout(this.tickTimeout);
+    this.tickTimeout = undefined;
+    this.runningTimers = [];
   }
 
   /**

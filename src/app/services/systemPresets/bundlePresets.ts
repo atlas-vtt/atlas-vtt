@@ -11,7 +11,7 @@
 
 import { parseUserPreset } from '../../gameSystems/presetValidation';
 import type { SystemPreset } from '../../types/systemPresetTypes';
-import { hashJson } from '../collectionBundle/hashing';
+import { hashJson } from '../../utils/hashing';
 import type { InstalledPreset } from '../collectionBundle/installRecord';
 import type { StoredPreset } from './presetFiles';
 

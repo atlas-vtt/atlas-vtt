@@ -3,12 +3,18 @@ import { TFile } from 'obsidian';
 import { AssetService } from '../../src/app/services/AssetService';
 import { saveTokenPreviews } from '../../src/app/packages/components/asset-manager/token-creator/saveTokenPreviews';
 import type { TokenPreview } from '../../src/app/packages/components/asset-manager/token-creator/types';
+import { prebuildMapImageAt } from '../../src/app/pixi/mapImage/prebuildMapImage';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+
+vi.mock('../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
 
 const note = 'Bestiary/Goblin.md';
 const image = 'Artwork/goblin.webp';
 const converted = { image: { arrayBuffer: async () => new Uint8Array([1, 2]).buffer } as Blob, thumbnail: null, preview: null, sourcePreview: null };
-beforeEach(() => Reflect.set(AssetService, 'instance', null));
+beforeEach(() => {
+  Reflect.set(AssetService, 'instance', null);
+  vi.mocked(prebuildMapImageAt).mockClear();
+});
 afterEach(() => Reflect.deleteProperty(window, 'FantasyStatblocks'));
 function setup() {
   const { app, files } = createInMemoryApp({ files: { [note]: 'original note', [image]: 'original art' } });
@@ -48,4 +54,15 @@ it('retains failed previews for retry and removes only successfully saved previe
   expect(await saveTokenPreviews(options)).toBe(1);
   expect(options.onSaved.mock.calls).toEqual([[['wolf']]]);
   expect((await assetService.getTokenAssets()).map(t => t.name)).toEqual(['Wolf']);
+});
+
+it('builds the tiles of a saved map ahead, and of no token', async () => {
+  const { app, assetService, options, preview } = setup();
+  expect(await saveTokenPreviews(options)).toBe(1);
+  expect(prebuildMapImageAt).not.toHaveBeenCalled();
+  const map = { ...preview, id: 'crypt', name: 'Crypt', statblockPath: undefined, tags: [] };
+  expect(await saveTokenPreviews({ ...options, mode: 'map', previews: [map] })).toBe(1);
+  const [saved] = await assetService.getAssets(undefined, 'map');
+  expect(saved!.mapFilePath).toMatch(/^atlas-vtt\/assets\/Crypt_.+\.webp$/);
+  expect(prebuildMapImageAt).toHaveBeenCalledExactlyOnceWith(app, saved!.mapFilePath);
 });

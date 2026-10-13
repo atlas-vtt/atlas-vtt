@@ -13,6 +13,21 @@ import { axialDistance, createHexLayout, isHexGridType, pixelToAxial, type Point
 
 export type GridGeometry = Pick<GridOptions, 'type' | 'size' | 'offsetX' | 'offsetY'>;
 
+/** How far from a whole number of cells a distance still is that number, in cells. */
+const WHOLE_CELL_TOLERANCE = 1e-6;
+
+/**
+ * Cells between two coordinates along one axis. Snapped points lie whole cells apart, but their
+ * pixel distance divided by the cell size misses the whole number by a rounding error that depends
+ * on where on the map they are, and the alternating rule rounds the diagonals down: two diagonals
+ * read as 1.9999999999999996 cost one cell less. So a distance that close to whole cells is whole.
+ */
+function cellsBetween(from: number, to: number, cellSize: number): number {
+  const cells = Math.abs(to - from) / cellSize;
+  const whole = Math.round(cells);
+  return Math.abs(cells - whole) < WHOLE_CELL_TOLERANCE ? whole : cells;
+}
+
 /** Length in cells of the path through `points`. */
 export function pathLengthInCells(grid: GridGeometry, points: readonly Point[], diagonalRule: DiagonalRule): number {
   if (isHexGridType(grid.type)) {
@@ -27,8 +42,8 @@ export function pathLengthInCells(grid: GridGeometry, points: readonly Point[], 
   let diagonal = 0;
   let euclidean = 0;
   for (let i = 1; i < points.length; i++) {
-    const dx = Math.abs(points[i]!.x - points[i - 1]!.x) / grid.size;
-    const dy = Math.abs(points[i]!.y - points[i - 1]!.y) / grid.size;
+    const dx = cellsBetween(points[i - 1]!.x, points[i]!.x, grid.size);
+    const dy = cellsBetween(points[i - 1]!.y, points[i]!.y, grid.size);
     straight += Math.abs(dx - dy);
     diagonal += Math.min(dx, dy);
     euclidean += Math.hypot(dx, dy);

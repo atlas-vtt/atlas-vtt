@@ -7,6 +7,7 @@ import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator
 import { WallRenderer } from '../../src/app/pixi/vision/WallRenderer';
 import { WallTool } from '../../src/app/tools/WallTool';
 import { MeasureRenderer } from '../../src/app/pixi/MeasureRenderer';
+import { FRAME, fakePlayerFrames } from '../mocks/playerFrameSource';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -62,6 +63,23 @@ describe('renderer lifecycle across map switches', () => {
     } finally {
       renderer.destroy();
     }
+  });
+
+  it('gives the players\' frame back when the view unloads, and renders none after', async () => {
+    const { renderer } = createHarness(new EventEmitter());
+    await renderer.init(document.createElement('div'));
+    const frames = fakePlayerFrames();
+    (renderer as any).playerFrames = frames;
+
+    renderer.destroy();
+
+    expect(frames.destroy).toHaveBeenCalledTimes(1);
+    expect(renderer.canRenderPlayerFrame()).toBe(false);
+    const copy = vi.fn();
+    renderer.withPlayerSafeFrame(copy, {} as never, FRAME);
+    expect(copy).not.toHaveBeenCalled();
+    // The player window lets go of a view that is gone already
+    expect(() => renderer.releasePlayerFrame()).not.toThrow();
   });
 
   it('removes its own event listeners while preserving other event bus subscribers', async () => {

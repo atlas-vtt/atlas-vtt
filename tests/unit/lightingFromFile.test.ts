@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { beamOf } from '../../src/app/lighting/lightBeam';
 import { lightList, readLight, readWall } from '../../src/app/lighting/lightingObjects';
 import { MAX_LIGHT_ZONES, MAX_ZONE_CORNERS, lightZoneList } from '../../src/app/lighting/lightZones';
-import { activeLights, engineLight } from '../../src/app/pixi/lighting/lightSources';
+import { activeLights, engineLight } from '../../src/app/vision/lightSources';
 import { migrateMapFile } from '../../src/app/services/MapPersistence';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { wallList } from '../../src/app/vision/wallList';

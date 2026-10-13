@@ -8,6 +8,7 @@ import { PinRenderer } from '../../src/app/pixi/PinRenderer';
 import { createTestRenderer, readRgba } from '../../src/app/pixi/lighting/engine/__tests__/gpuTestUtils';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { mapImageViewOf } from '../helpers/fakeMapImageView';
 
 const SIZE = 256;
 const MAP = 1024;
@@ -45,7 +46,7 @@ describe('the grid while it is switched off', () => {
     store.setState((state) => ({ objects: { ...state.objects, pins: {
       a: { id: 'a', kind: 'pin', x: 500, y: 300, icon: 'treasure', notePath: 'a.md' },
     } } }));
-    const grid = new GridSystem({ renderer } as unknown as Application, viewport as unknown as Viewport, map, { size: 64 });
+    const grid = new GridSystem({ renderer } as unknown as Application, viewport as unknown as Viewport, mapImageViewOf(map), { size: 64, color: 0x000000 });
     const target = RenderTexture.create({ width: SIZE, height: SIZE });
     const zoom = (scale: number): void => {
       viewport.scale.set(scale);
@@ -81,7 +82,7 @@ describe('the grid while it is switched off', () => {
     const renderer = await createTestRenderer(SIZE);
     const viewport = new Container();
     const map = viewport.addChild(new Sprite(mapTexture()));
-    const grid = new GridSystem({ renderer } as unknown as Application, viewport as unknown as Viewport, map, {
+    const grid = new GridSystem({ renderer } as unknown as Application, viewport as unknown as Viewport, mapImageViewOf(map), {
       size: 64, offsetX: 32, offsetY: 32, color: 0xff0000, alpha: 1, lineWidth: 4,
     });
     const target = RenderTexture.create({ width: SIZE, height: SIZE });

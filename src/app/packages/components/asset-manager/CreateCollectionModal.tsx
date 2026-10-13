@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { ArrowLeft, FolderPlus } from 'lucide-react';
 import { DEFAULT_GRID_DEFAULTS } from '../../../gameSystems/systemRules';
 import { areRangeBandsValid } from '../../../grid/measurementFormat';
+import { isUnitDistance } from '../../../grid/unitDistance';
 import { useSystemPresets } from '../../../react/hooks/useSystemPresets';
 import { useAtlasUI } from '../../../react/root/AtlasUIContext';
 import { createCollectionWithSystem } from '../../../services/collectionCreation';
@@ -65,6 +66,7 @@ export function CreateCollectionModal({ existingNames, onClose, onCreated }: Cre
       : null);
   const presetNameError = service?.nameError(presetName) ?? null;
   const rulesValid = areRangeBandsValid(rules.gridDefaults.abstractRangeBands)
+    && isUnitDistance(rules.gridDefaults.unitDistance)
     && isValidInitiativeRules(rules.initiative)
     && rules.resources.every((resource) => resource.name.trim() !== '' && resource.field.trim() !== '');
 

@@ -6,7 +6,7 @@ import { seeing } from '../../src/app/gameSystems/senses/senseHelpers';
 import { emissionOf } from '../../src/app/lighting/lightPresetChoice';
 import { gameUnitsToWorld, unitScaleOf } from '../../src/app/lighting/lightingUnits';
 import { visionForm, visionFromForm } from '../../src/app/lighting/tokenLighting';
-import { tokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import { tokenPerception } from '../../src/app/vision/tokenPerception';
 import { senseRings } from '../../src/app/pixi/lighting/senseRings';
 import { SightRulesWatch } from '../../src/app/pixi/lighting/SightRulesWatch';
 import { AssetService } from '../../src/app/services/AssetService';

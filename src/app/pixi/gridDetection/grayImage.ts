@@ -3,8 +3,6 @@ import { getDomHost } from '../../host/dom';
  * Single-channel float images used by grid auto-detection.
  */
 
-import type { Sprite } from 'pixi.js';
-
 export interface GrayImage {
   width: number;
   height: number;
@@ -39,22 +37,6 @@ export function grayFromCanvasSource(
   return { width, height, data };
 }
 
-/** The part of a PIXI texture source detection reads; its `resource` is untyped upstream. */
-interface TexturePixels {
-  resource?: CanvasImageSource;
-  pixelWidth: number;
-  pixelHeight: number;
-}
-
-/** Luminance of a sprite's texture image, or null while the texture has no readable pixels. */
-export function grayFromSprite(sprite: Sprite, maxSide: number): GrayImage | null {
-  if (sprite.destroyed) return null;
-  const source: TexturePixels | undefined = sprite.texture?.source;
-  const resource = source?.resource;
-  if (!source || !resource) return null;
-  return grayFromCanvasSource(resource, source.pixelWidth, source.pixelHeight, maxSide);
-}
-
 /** Box-filter downsample by an integer factor. */
 export function downsampleGray(image: GrayImage, factor: number): GrayImage {
   if (factor <= 1) return image;
@@ -87,6 +69,38 @@ export function localContrast(image: GrayImage, d: number): GrayImage {
       const i = y * width + x;
       const around = (data[i - d]! + data[i + d]! + data[i - d * width]! + data[i + d * width]!) / 4;
       out[i] = Math.abs(data[i]! - around);
+    }
+  }
+  return { width, height, data: out };
+}
+
+/**
+ * Line evidence that ignores edges: how much darker (or lighter) a pixel is than both of its flanks
+ * at distance `d`, for the line direction (level, upright or a diagonal) that shows it best. A step
+ * in brightness (the border of a painted area, the blocks of a JPEG) has only one flank that differs
+ * and counts nothing.
+ */
+export function lineContrast(image: GrayImage, d: number): GrayImage {
+  const { width, height, data } = image;
+  const out = new Float32Array(width * height);
+  // Offsets to the flank on one side, for the four line directions; the other flank lies opposite.
+  const across = d;
+  const along = d * width;
+  const falling = along + d;
+  const rising = along - d;
+  /** How far the pixel lies beyond both flanks, on either side of them; negative where it lies between them. */
+  const beyond = (a: number, b: number): number => (a < b ? Math.max(a, -b) : Math.max(b, -a));
+  for (let y = d; y < height - d; y++) {
+    for (let x = d; x < width - d; x++) {
+      const i = y * width + x;
+      const on = data[i]!;
+      out[i] = Math.max(
+        0,
+        beyond(data[i + across]! - on, data[i - across]! - on),
+        beyond(data[i + along]! - on, data[i - along]! - on),
+        beyond(data[i + falling]! - on, data[i - falling]! - on),
+        beyond(data[i + rising]! - on, data[i - rising]! - on),
+      );
     }
   }
   return { width, height, data: out };

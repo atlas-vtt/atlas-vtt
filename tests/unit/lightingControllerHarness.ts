@@ -18,13 +18,17 @@ vi.mock('../../src/app/pixi/lighting/createSceneLighting', () => ({
   createSceneLighting: (deps: SceneLightingDeps): SceneLightingView => {
     // As the engine's view does: a lit scene is built while the view is constructed, and its sight reported.
     if (deps.store.getState().lighting.enabled) deps.onSightChange?.();
+    sceneLightingDeps.last = deps;
     return lightingView(deps);
   },
 }));
+/** What the controller last built its scene lighting with. */
+export const sceneLightingDeps: { last: SceneLightingDeps | null } = { last: null };
 const lightingView = vi.hoisted(() => (deps: SceneLightingDeps): SceneLightingView => ({
   modeLayer: { visible: false },
   isEnabled: () => deps.store.getState().lighting.enabled,
   currentSight: () => SEES_ALL,
+  sightIsCurrent: () => true,
   lightReaches: () => [],
   ambientLight: () => ({ ambient: 1 }),
   refreshBounds: vi.fn(),

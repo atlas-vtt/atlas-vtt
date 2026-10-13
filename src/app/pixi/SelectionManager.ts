@@ -8,6 +8,7 @@ import { EventEmitter } from 'events';
 import { getDrawingBounds, type DrawingBounds } from './drawingGeometry';
 import type { LayerVisibility } from './playerSafeFrame';
 import { MAP_LAYER_Z } from './mapLayerOrder';
+import { pointInPolygon } from '../vision/visibility';
 
 export class SelectionManager {
   private viewport: Viewport;
@@ -241,14 +242,14 @@ export class SelectionManager {
           const tokenX = tokenGroup.position.x;
           const tokenY = tokenGroup.position.y;
 
-          if (this.isPointInPolygon(tokenX, tokenY, this.lassoPoints)) {
+          if (pointInPolygon({ x: tokenX, y: tokenY }, this.lassoPoints)) {
             selectedIds.push(id);
           }
         }
       }
 
       for (const [id, bounds] of this.getDrawingBoundsById()) {
-        if (this.isPointInPolygon(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2, this.lassoPoints)) {
+        if (pointInPolygon({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, this.lassoPoints)) {
           selectedIds.push(id);
         }
       }
@@ -259,7 +260,7 @@ export class SelectionManager {
           const bounds = fogSprite.getBounds();
           const cx = bounds.x + bounds.width / 2;
           const cy = bounds.y + bounds.height / 2;
-          if (this.isPointInPolygon(cx, cy, this.lassoPoints)) {
+          if (pointInPolygon({ x: cx, y: cy }, this.lassoPoints)) {
             selectedIds.push(id);
           }
         }
@@ -340,20 +341,6 @@ export class SelectionManager {
     }
     
     return false;
-  }
-
-  // Helper method to check if a point is inside a polygon
-  private isPointInPolygon(x: number, y: number, polygon: { x: number; y: number }[]): boolean {
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-      const xi = polygon[i]?.x ?? 0, yi = polygon[i]?.y ?? 0;
-      const xj = polygon[j]?.x ?? 0, yj = polygon[j]?.y ?? 0;
-      
-      const intersect = ((yi > y) != (yj > y))
-          && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-      if (intersect) inside = !inside;
-    }
-    return inside;
   }
 
   /** DM selection feedback that must not reach the mirrored player frame. */

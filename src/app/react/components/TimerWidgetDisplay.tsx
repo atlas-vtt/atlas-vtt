@@ -5,7 +5,8 @@ import type { TimerWidget } from '../../types/widgetTypes';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { WidgetIconGlyph } from './WidgetIconGlyph';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
-import { DEFAULT_TIMER_COLOR, formatTimerTime } from '../../utils/timerWidget';
+import { DEFAULT_TIMER_COLOR, formatTimerTime, resetTimer, startedTimer, timerAt, timerRun } from '../../utils/timerWidget';
+import { useTimerClock } from '../hooks/useTimerClock';
 import { t } from '../../i18n';
 
 interface TimerWidgetDisplayProps {
@@ -87,84 +88,50 @@ export function TimerWidgetDisplay({
   ref,
 }: TimerWidgetDisplayProps): React.ReactElement | null {
   const { view } = useAtlasUI();
-  const [isRunning, setIsRunning] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isExpired, setIsExpired] = useState(false);
-  const intervalRef = useRef<number | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const expireTimeoutRef = useRef<number | null>(null);
 
-  const remainingSeconds = (widget.value) ?? 0;
+  const isRunning = timerRun(widget) !== undefined;
   const duration = widget.duration ?? 300; // default 5 min
 
-  // Clean up interval on unmount
   useEffect(() => {
     return () => {
-      if (intervalRef.current) window.clearInterval(intervalRef.current);
       if (expireTimeoutRef.current) window.clearTimeout(expireTimeoutRef.current);
     };
   }, []);
 
-  // Tick logic
-  useEffect(() => {
-    if (!isRunning) {
-      if (intervalRef.current) {
-        window.clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-      return;
-    }
+  const shownSeconds = useTimerClock(store, widget, rootRef, () => {
+    setIsExpired(true);
+    view?.serviceManager?.getSoundEffectService?.()?.playTimerDing();
+    // Clear the expired flash after 3 seconds
+    if (expireTimeoutRef.current) window.clearTimeout(expireTimeoutRef.current);
+    expireTimeoutRef.current = window.setTimeout(() => setIsExpired(false), 3000);
+  });
 
-    intervalRef.current = window.setInterval(() => {
-      const current = store.getState().widgetSettings?.widgets?.[widget.id]?.value ?? 0;
-
-      if (current <= 1) {
-        // Timer expired
-        window.clearInterval(intervalRef.current!);
-        intervalRef.current = null;
-        store.getState().updateWidget(widget.id, { value: 0 });
-        setIsRunning(false);
-        setIsExpired(true);
-
-        // Play ding sound
-        const soundService = view?.serviceManager?.getSoundEffectService?.();
-        soundService?.playTimerDing();
-
-        // Clear expired flash after 3 seconds
-        expireTimeoutRef.current = window.setTimeout(() => setIsExpired(false), 3000);
-      } else {
-        store.getState().updateWidget(widget.id, { value: current - 1 });
-      }
-    }, 1000);
-
-    return () => {
-      if (intervalRef.current) {
-        window.clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
-  }, [isRunning, store, widget.id, view]);
+  /** The timer as the store holds it now, not as this render saw it. */
+  const currentTimer = useCallback((): TimerWidget | undefined => {
+    const current = store.getState().widgetSettings.widgets[widget.id];
+    return current?.type === 'timer' ? current : undefined;
+  }, [store, widget.id]);
 
   const handlePlayPause = useCallback((): void => {
     onInteraction(widget.id);
-    if (remainingSeconds <= 0 && !isRunning) {
-      // Reset to duration before starting
-      store.getState().updateWidget(widget.id, { value: duration });
-    }
-    setIsRunning(prev => !prev);
+    const current = currentTimer();
+    if (!current) return;
+    const now = Date.now();
+    store.getState().setTimerState(widget.id, timerRun(current) ? timerAt(current, now) : startedTimer(current, now));
     setIsExpired(false);
-  }, [widget.id, remainingSeconds, isRunning, duration, store, onInteraction]);
+  }, [widget.id, store, onInteraction, currentTimer]);
 
   const handleReset = useCallback((): void => {
     onInteraction(widget.id);
-    setIsRunning(false);
     setIsExpired(false);
-    if (intervalRef.current) {
-      window.clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    store.getState().updateWidget(widget.id, { value: duration });
-  }, [widget.id, duration, store, onInteraction]);
+    const current = currentTimer();
+    if (current) store.getState().setTimerState(widget.id, resetTimer(current));
+  }, [widget.id, store, onInteraction, currentTimer]);
 
   useImperativeHandle(ref, () => ({ togglePlay: handlePlayPause, reset: handleReset }), [handlePlayPause, handleReset]);
 
@@ -178,10 +145,8 @@ export function TimerWidgetDisplay({
     if (save && inputRef.current) {
       const seconds = parseTimeInput(inputRef.current.value);
       if (seconds !== null && seconds > 0) {
-        store.getState().updateWidget(widget.id, {
-          value: seconds,
-          duration: seconds,
-        });
+        store.getState().updateWidget(widget.id, { duration: seconds });
+        store.getState().setTimerState(widget.id, { value: seconds });
       }
     }
     setIsEditing(false);
@@ -209,6 +174,7 @@ export function TimerWidgetDisplay({
 
   return (
     <div
+      ref={rootRef}
       className={widgetClasses}
       style={{ '--widget-color': color, '--pulse-intensity': pulseIntensity } as React.CSSProperties}
     >
@@ -249,7 +215,7 @@ export function TimerWidgetDisplay({
               className={`atlas-timer-display ${!isPlayerView && !isRunning ? 'editable' : ''}`}
               onClick={handleTimeClick}
             >
-              {formatTimerTime(remainingSeconds)}
+              {formatTimerTime(shownSeconds)}
             </span>
           )}
 

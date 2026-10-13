@@ -11,6 +11,6 @@ export function attachFakePlayerWindow(service: PlayerWindowService, source: Pla
     document: doc, closed: false, addEventListener: vi.fn(), removeEventListener: vi.fn(), close: vi.fn(),
     requestAnimationFrame: vi.fn(() => 1), cancelAnimationFrame: vi.fn(),
   } });
-  service.attachToView({ contentEl: doc.body, updateSession: vi.fn() } as unknown as LocalPlayerView, source, tabId);
+  service.attachToView({ contentEl: doc.body, updateSession: vi.fn() } as unknown as LocalPlayerView, source, { tabId, filePath: `${tabId}.atlasmap` });
   return doc;
 }

@@ -6,6 +6,7 @@
 
 import { HP_RESOURCE, parseResourceDefinitions, withLegacyBars } from '../resources/resourceDefinitions';
 import { isValidConeAngle, isValidRangeBandThreshold } from '../grid/measurementFormat';
+import { isUnitDistance } from '../grid/unitDistance';
 import {
   CONDITION_EFFECTS,
   type CollectionGridDefaults,
@@ -55,7 +56,7 @@ function parseGridDefaults(raw: unknown): CollectionGridDefaults | null {
   if (!isRecord(raw)) return null;
   const { unitType, unitDistance, measurementMode, diagonalRule, coneAngle, abstractRangeBands } = raw;
   if (!isOneOf(UNIT_TYPES, unitType) || !isOneOf(MEASUREMENT_MODES, measurementMode)) return null;
-  if (typeof unitDistance !== 'number' || !(unitDistance > 0)) return null;
+  if (!isUnitDistance(unitDistance)) return null;
   const bands = Array.isArray(abstractRangeBands) ? abstractRangeBands.map(parseBand) : [];
   if (bands.some((band) => band === null)) return null;
   return {

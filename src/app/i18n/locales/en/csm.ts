@@ -45,6 +45,7 @@ export const csm = {
   'csm.grid.diagonal.equidistant': 'Every diagonal counts 1 (5e)',
   'csm.grid.diagonal.euclidean': 'Exact distance',
   'csm.grid.distance': 'Distance per Square',
+  'csm.grid.distanceInvalid': 'Distance per Square needs a number from 0.000001 to 1,000,000.',
   'csm.grid.max': 'Max',
   'csm.grid.metric': 'Metric',
   'csm.grid.mode': 'Measurement Mode',

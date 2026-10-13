@@ -6,7 +6,7 @@ import { visionToken } from '../../pixi/lighting/__tests__/rendererHarness';
 import type { SceneFrameCapture } from '../../pixi/sceneFrameCapture';
 import { MapThumbnailService, SNAPSHOT_THUMBNAIL_SIZE, type ThumbnailSize } from '../MapThumbnailService';
 import {
-  DARK_AT, LIGHT_AT, OPEN_AT, SHADOW_AT, brightnessAt, createThumbnailScene, decodeImage, inThumbnail, largestDifference, overlayLayers, type Pixels, type ThumbnailScene,
+  DARK_AT, LIGHT_AT, MAP_RECT, OPEN_AT, SHADOW_AT, brightnessAt, createThumbnailScene, decodeImage, inThumbnail, largestDifference, overlayLayers, type Pixels, type ThumbnailScene,
 } from './thumbnailScene';
 
 const notices = vi.hoisted(() => [] as string[]);
@@ -39,8 +39,8 @@ describe.each([false, true])('thumbnail of a scene with dynamic lighting (antial
   });
 
   function dataUrl(size: ThumbnailSize, capture: SceneFrameCapture | undefined = scene!.capture): string {
-    const { app, viewport, background } = scene!;
-    return new MapThumbnailService({} as App).renderThumbnail(app, viewport, background, size, capture)!;
+    const { app, viewport } = scene!;
+    return new MapThumbnailService({} as App).renderThumbnail(app, viewport, MAP_RECT, size, capture)!;
   }
 
   function thumbnail(size: ThumbnailSize = SCENE_CARD): Promise<Pixels> {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { imageDimensions } from '../../src/app/imageProcessing/imageDimensions';
+import { imageDimensions, imageHeader } from '../../src/app/imageProcessing/imageDimensions';
 
 /** jsdom's Blob lacks `slice().arrayBuffer()`; this stand-in serves the header bytes the reader asks for. */
 function file(...parts: number[][]): Blob {
@@ -23,11 +23,13 @@ describe('imageDimensions', () => {
     const app1 = [0xff, 0xe1, ...u16be(6), 1, 2, 3, 4];
     const sof2 = [0xff, 0xc2, ...u16be(17), 8, ...u16be(3326), ...u16be(5886), 3];
     expect(await imageDimensions(file([0xff, 0xd8], app1, sof2, new Array(12).fill(0)))).toEqual({ width: 5886, height: 3326 });
+    expect(await imageHeader(file([0xff, 0xd8], app1, sof2, new Array(12).fill(0)))).toEqual({ format: 'jpeg', width: 5886, height: 3326 });
   });
 
   it('reads lossy, lossless and extended WebP headers', async () => {
     const riff = (chunk: string, body: number[]): Blob => file(text('RIFF'), u32le(100), text('WEBP'), text(chunk), u32le(body.length), body);
     expect(await imageDimensions(riff('VP8 ', [0, 0, 0, 0x9d, 0x01, 0x2a, ...u16le(2048), ...u16le(1024)]))).toEqual({ width: 2048, height: 1024 });
+    expect((await imageHeader(riff('VP8 ', [0, 0, 0, 0x9d, 0x01, 0x2a, ...u16le(2048), ...u16le(1024)])))?.format).toBe('webp');
     const lossless = (400 - 1) | ((300 - 1) << 14);
     expect(await imageDimensions(riff('VP8L', [0x2f, ...u32le(lossless), 0]))).toEqual({ width: 400, height: 300 });
     expect(await imageDimensions(riff('VP8X', [0, 0, 0, 0, ...[0xff, 0x1f, 0], ...[0xff, 0x0f, 0]]))).toEqual({ width: 8192, height: 4096 });

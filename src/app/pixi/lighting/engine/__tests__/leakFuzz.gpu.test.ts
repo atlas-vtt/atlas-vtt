@@ -11,6 +11,7 @@ import { perceivedLevel } from '../../../../gameSystems/senseRules';
 import { lightLevelAt } from '../../../../vision/lightLevels';
 import { SEES_ALL, computeSight, lightReach } from '../../../../vision/sight';
 import type { MapBounds } from '../../../../vision/visibility';
+import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY, type LightingQuality } from '../../../../lighting/lightingQuality';
 import { createTestRenderer } from './gpuTestUtils';
 import { distToOutline, fuzzRooms, insidePolygon, rng, roomOutline, type P } from './fuzzRooms';
 import { NO_SIGHT, SENSE_SETS, footprints, renderView, type Report } from './leakFuzzScene';
@@ -32,6 +33,8 @@ interface FuzzOptions {
   wholeFootprints?: boolean;
   /** Gives every light a priority above the darkness, so it shines in it (a negative control). */
   outshine?: boolean;
+  /** The lighting quality the engine draws at; the walls are sealed as the rules seal them, at the map's own texel. */
+  quality?: LightingQuality;
 }
 
 /**
@@ -54,9 +57,9 @@ interface FuzzOptions {
  * may light at all is held by `leakFuzzBeams`): nothing past the walls is lit. Ambient zones and
  * explored memory have their own fuzz over the same rooms (`leakFuzzZones`).
  */
-async function fuzz({ seed, trials, gap = false, bounds = { width: 2048, height: 2048 }, resolution = 1, wholeFootprints = false, outshine = false }: FuzzOptions): Promise<Report> {
+async function fuzz({ seed, trials, gap = false, bounds = { width: 2048, height: 2048 }, resolution = 1, wholeFootprints = false, outshine = false, quality = DEFAULT_LIGHTING_QUALITY }: FuzzOptions): Promise<Report> {
   const renderer = await createTestRenderer(SIZE, resolution);
-  const engine = new LightingEngine(renderer);
+  const engine = new LightingEngine(renderer, quality);
   const target = RenderTexture.create({ width: SIZE, height: SIZE, resolution });
   const device = SIZE * resolution;
   try {
@@ -65,8 +68,9 @@ async function fuzz({ seed, trials, gap = false, bounds = { width: 2048, height:
     const rand = rng(seed + 1);
     const report: Report = { rooms: 0, doors: 0, oneWay: 0, twoLights: 0, checked: 0, leaks: 0, sightChecked: 0, sightLeaks: 0, senseLeaks: 0, senseInside: 0, spots: 0, spotLeaks: 0, spotInside: 0, litInside: 0, bounceInside: 0, darkRooms: 0, darkLeaks: 0, darkInside: 0, darkRevealed: 0, senseDarkInside: 0, senseDarkRevealed: 0, beamRooms: 0, beamInside: 0, beamLeaks: 0 };
     for (const room of fuzzRooms(seed, trials, gap)) {
-      const texel = worldTexel(bounds);
-      const walls = sealWalls(room.walls, sealTolerance(texel));
+      // The rules seal at the map's texel; the picture is held to the texel the engine draws at.
+      const texel = worldTexel(bounds, quality.maxTexels);
+      const walls = sealWalls(room.walls, sealTolerance(worldTexel(bounds)));
       const outline = roomOutline(room);
       if (!room.lights.every((p) => insidePolygon(p, outline))) continue;
       report.rooms++;
@@ -227,6 +231,30 @@ describe('leak fuzz', () => {
     expect(report.beamInside).toBeGreaterThan(400);
     expect(report).toMatchObject(NO_LEAKS);
   });
+
+  /** The levels, and a coarse texel with bounce, which no level pairs but a caller may. */
+  const QUALITIES: [string, LightingQuality, number][] = [
+    ['balanced', LIGHTING_QUALITY.balanced, 9],
+    ['saver', LIGHTING_QUALITY.saver, 7],
+    ['coarse with bounce', { maxTexels: 1024, bounceMaxSide: Infinity, flickerMs: null }, 7],
+  ];
+  for (const [name, quality, seed] of QUALITIES) {
+    it(`holds at the ${name} lighting quality on a map whose texels it coarsens`, { timeout: 600_000 }, async () => {
+      const bounds = { width: 8192, height: 8192 };
+      expect(worldTexel(bounds, quality.maxTexels)).toBeGreaterThan(worldTexel(bounds));
+      const report = await fuzz({ seed, trials: SIDE_TRIALS, bounds, quality });
+      console.info(`leak fuzz (${name}): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
+      expect(Math.min(report.doors, report.oneWay, report.twoLights)).toBeGreaterThan(0);
+      expect(report.checked).toBeGreaterThan(8000);
+      expect(report.litInside).toBeGreaterThan(800);
+      if (quality.bounceMaxSide >= bounds.width) expect(report.bounceInside).toBeGreaterThan(80);
+      expect(report.senseInside).toBeGreaterThan(800);
+      expect(report.spotInside).toBeGreaterThan(400);
+      expect(report.darkInside).toBeGreaterThan(50);
+      expect(report.beamInside).toBeGreaterThan(400);
+      expect(report).toMatchObject(NO_LEAKS);
+    });
+  }
 
   it('holds at renderer resolution 2', { timeout: 600_000 }, async () => {
     const report = await fuzz({ seed: 5, trials: SIDE_TRIALS, resolution: 2 });

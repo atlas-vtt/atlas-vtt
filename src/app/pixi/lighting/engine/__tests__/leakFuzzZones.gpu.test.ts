@@ -11,6 +11,7 @@ import { ExploredTexture } from '../../ExploredTexture';
 import { saveExploredMask } from '../../exploredMaskSaving';
 import { LightingEngine } from '../LightingEngine';
 import type { EngineZone } from '../types';
+import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY, type LightingQuality } from '../../../../lighting/lightingQuality';
 import { createTestRenderer } from './gpuTestUtils';
 import { distToOutline, fuzzRooms, insidePolygon, rng, roomOutline, type FuzzRoom, type P } from './fuzzRooms';
 import { NO_SIGHT, outsideOf, renderView } from './leakFuzzScene';
@@ -60,6 +61,8 @@ interface FuzzOptions {
   gap?: number;
   bounds?: MapBounds;
   resolution?: number;
+  /** The lighting quality the engine draws at; the walls are sealed as the rules seal them, at the map's own texel. */
+  quality?: LightingQuality;
 }
 
 /** The memory as older versions saved it: at 1,024 px on its longer side at most. */
@@ -91,14 +94,14 @@ function halved(source: HTMLCanvasElement): string {
  * reopened scene draws it, which changes nothing, and once more from a mask of half its size, as
  * older versions saved it: the same bound holds.
  */
-async function fuzz({ seed, trials, gap = 0, bounds = { width: 2048, height: 2048 }, resolution = 1 }: FuzzOptions): Promise<Report> {
+async function fuzz({ seed, trials, gap = 0, bounds = { width: 2048, height: 2048 }, resolution = 1, quality = DEFAULT_LIGHTING_QUALITY }: FuzzOptions): Promise<Report> {
   vi.stubGlobal('createEl', (tag: string, options?: { attr?: Record<string, string> }): HTMLElement => {
     const el = document.createElement(tag);
     for (const [key, value] of Object.entries(options?.attr ?? {})) el.setAttribute(key, value);
     return el;
   });
   const renderer = await createTestRenderer(SIZE, resolution);
-  const engine = new LightingEngine(renderer);
+  const engine = new LightingEngine(renderer, quality);
   const target = RenderTexture.create({ width: SIZE, height: SIZE, resolution });
   const memory = new ExploredTexture(renderer, bounds);
   const blank = new ExploredTexture(renderer, bounds);
@@ -110,8 +113,9 @@ async function fuzz({ seed, trials, gap = 0, bounds = { width: 2048, height: 204
     const rand = rng(seed + 5);
     const report: Report = { rooms: 0, within: 0, room: 0, across: 0, leaks: 0, inside: 0, wrong: 0, outside: 0, stray: 0, watched: 0, atWalls: 0, seenLit: 0, remembered: 0, memoryLeaks: 0, restored: 0, restoredLeaks: 0, older: 0, olderLeaks: 0 };
     for (const room of fuzzRooms(seed, trials, gap || false)) {
-      const texel = worldTexel(bounds);
-      const walls = sealWalls(room.walls, sealTolerance(texel));
+      // The rules seal at the map's texel; the picture is held to the texel the engine draws at.
+      const texel = worldTexel(bounds, quality.maxTexels);
+      const walls = sealWalls(room.walls, sealTolerance(worldTexel(bounds)));
       const outline = roomOutline(room);
       // The zone is drawn about the centre the outline is star-shaped around, which three corners need not surround.
       if (!room.lights.every((p) => insidePolygon(p, outline)) || !insidePolygon(room.centre, room.outline)) continue;
@@ -228,6 +232,17 @@ describe('leak fuzz: ambient zones and explored memory', () => {
   it.each([[7000, 7], [8192, 31], [9000, 7]])('holds on a map of %i px, large enough for coarser texels of the lighting and of the memory', { timeout: 3_600_000 }, async (side, seed) => {
     const report = await fuzz({ seed, trials: SIDE_TRIALS, bounds: { width: side, height: side } });
     console.info(`leak fuzz (zones, memory, ${side} px map): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
+    expect(report.inside).toBeGreaterThan(SIDE_TRIALS * 80);
+    expect(report.remembered).toBeGreaterThan(SIDE_TRIALS * 80);
+    expect(report.restored).toBe(report.remembered);
+    expect(report.older).toBeGreaterThan(report.remembered * 0.98);
+    expect(report).toMatchObject(CLEAN);
+  });
+
+  // Coarser lighting texels make walls wider; the memory keeps its own texel at every quality.
+  it.each(['balanced', 'saver'] as const)('holds at the %s lighting quality on a map whose texels it coarsens', { timeout: 3_600_000 }, async (level) => {
+    const report = await fuzz({ seed: 31, trials: SIDE_TRIALS, bounds: { width: 8192, height: 8192 }, quality: LIGHTING_QUALITY[level] });
+    console.info(`leak fuzz (zones, memory, ${level}): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
     expect(report.inside).toBeGreaterThan(SIDE_TRIALS * 80);
     expect(report.remembered).toBeGreaterThan(SIDE_TRIALS * 80);
     expect(report.restored).toBe(report.remembered);

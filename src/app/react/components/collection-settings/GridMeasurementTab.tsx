@@ -9,7 +9,9 @@ import { Button } from '../../../packages/components/primitives/button';
 import { SegmentedControl, type SegmentedOption } from '../../../packages/components/primitives/SegmentedControl';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
+import { UnitDistanceField } from './UnitDistanceField';
 import { areRangeBandsValid, DEFAULT_CONE_ANGLE, isValidConeAngle, isValidRangeBandThreshold } from '../../../grid/measurementFormat';
+import { isUnitDistance } from '../../../grid/unitDistance';
 import type {
   CollectionGridDefaults,
   DiagonalRule,
@@ -92,16 +94,12 @@ export function GridMeasurementTab({
       {/* Distance per square */}
       <div className="atlas-csm-field">
         <label className="atlas-csm-label">{t('csm.grid.distance')}</label>
-        <input
-          type="number"
-          className="atlas-csm-input atlas-csm-input--number"
-          min={1}
-          value={gridDefaults.unitDistance}
-          onChange={(e) => {
-            const val = Number(e.target.value);
-            if (!Number.isNaN(val)) updateField('unitDistance', Math.max(1, val));
-          }}
-        />
+        <UnitDistanceField value={gridDefaults.unitDistance} onChange={(distance) => updateField('unitDistance', distance)} />
+        {!isUnitDistance(gridDefaults.unitDistance) && (
+          <p className="atlas-csm-hint atlas-csm-hint--error" role="alert">
+            {t('csm.grid.distanceInvalid')}
+          </p>
+        )}
       </div>
 
       {/* Diagonal rule (square grids; hex grids always count hex steps) */}

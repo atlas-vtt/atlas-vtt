@@ -5,8 +5,11 @@ import type { ResourceDefsProvider } from '../resources/resourceTypes';
 import { fitTokenArtwork, syncTokenArtwork } from './token-renderer/tokenArtwork';
 import type { AtlasSettings } from '../services/SettingsService';
 import { HIDDEN_TOKEN_ALPHA, gmTokenLayers, type HideableLayer, type LayerVisibility } from './playerSafeFrame';
-import type { TokenPerception } from './lighting/playerLightingLayers';
-import { PlayerSightTokens, seenTokens } from './token-renderer/PlayerSightTokens';
+import type { TokenPerception } from '../vision/tokenPerception';
+import { NOTHING_SEEN, PlayerSightTokens, seenByPlayers, seenTokens } from './token-renderer/PlayerSightTokens';
+import { PlayersViewWatch } from './token-renderer/PlayersViewWatch';
+import { PlayerInstanceBadges } from './token-renderer/PlayerInstanceBadges';
+import type { TokenSeen } from '../vision/measureOrigin';
 import { Sprite, Container, Graphics, Application, FederatedPointerEvent } from "pixi.js";
 import { Viewport } from "pixi-viewport";
 import { App as ObsidianApp } from 'obsidian';
@@ -26,6 +29,8 @@ import { InteractionController } from './token-renderer/InteractionController';
 import { DragRuler } from './token-renderer/DragRuler';
 import { DragRulerView } from './token-renderer/DragRulerView';
 import { SyncService } from './token-renderer/SyncService';
+import { TokenGlide } from './token-renderer/TokenGlide';
+import { PLAYER_SIGHT_POLICY } from '../vision/tokenSightPolicy';
 import { createSceneSource } from '../plugin/host/sceneSource';
 import { updateInstanceBadge } from './token-renderer/InstanceBadge';
 import { HiddenTokenIcon } from './token-renderer/HiddenTokenIcon';
@@ -77,6 +82,12 @@ export class TokenRenderer {
     },
     () => this.pixiApp?.ticker ?? null,
   );
+  private readonly glide = new TokenGlide({
+    getTicker: () => this.pixiApp?.ticker ?? null,
+    getSprite: (tokenId) => this.tokenSprites[tokenId] ?? null,
+    onMove: (tokenId, x, y) => this.followToken(tokenId, x, y),
+    reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
+  });
   private uiManager: UIManager;
   private interactionController: InteractionController;
   private dragRuler: DragRuler;
@@ -126,6 +137,8 @@ export class TokenRenderer {
   private doorMenuHandlers?: DoorMenuHandlers;
   /** The tokens as the players' sight shows them: which are left out, and the outlines of sensed ones. */
   private readonly playerSight = new PlayerSightTokens({ tokens: () => this.store.getState().objects.tokens, sprites: () => this.tokenSprites, held: () => this.heldTokenIds });
+  private readonly playersView = new PlayersViewWatch();
+  private readonly playerBadges = new PlayerInstanceBadges({ state: () => this.store.getState(), sprites: () => this.tokenSprites });
   private lightHandlers?: LightPointerHandlers;
   /** Tokens held by the pointer; lighting alone does not hide them until release. */
   private heldTokenIds: ReadonlySet<string> = new Set();
@@ -197,6 +210,7 @@ export class TokenRenderer {
       this.uiManager.syncUIPosition(tokenId, x, y);
       this.refreshDisplayedToken(tokenId);
     });
+    this.interactionController.setTokenSettler((tokenId, x, y) => this.glide.to(tokenId, x, y));
     this.interactionController.setControlsPositionUpdater((x: number, y: number, tokenSize: number) =>
       this.uiManager.updateControlsPosition(x, y, tokenSize)
     );
@@ -250,6 +264,7 @@ export class TokenRenderer {
       runInBackground(this.syncTokens(newTokens, prevTokens), 'Token sync')
     );
     this.syncService.setAnimationStartCallback((tokenId: string) => {
+      this.glide.cancel(tokenId);
       // Could add visual feedback for animation start
     });
     this.syncService.setAnimationEndCallback((tokenId: string) => {
@@ -264,6 +279,7 @@ export class TokenRenderer {
     this.tokenContainer.zIndex = 0;
     this.viewport.addChild(this.tokenContainer);
     this.viewport.addChild(this.playerSight.outlineLayer);
+    this.playersView.listen(() => this.playerSight.whenSettled(() => this.syncCanvasBadges()));
 
     this.dragRuler = new DragRuler(
       new DragRulerView(this.viewport, this.tokenContainer),
@@ -342,6 +358,7 @@ export class TokenRenderer {
         if (tokenGroup) this.destroyTokenGroup(id, tokenGroup);
       }
       this.tokenSprites = {};
+      this.playerBadges.reset();
       
       // Also clear token rings
       this.tokenRings = {};
@@ -556,6 +573,7 @@ export class TokenRenderer {
       const tokenGroup = this.tokenSprites[token.id];
       if (tokenGroup) this.drawInstanceBadge(token, tokenGroup, countByImage.get(token.imagePath) ?? 0);
     }
+    this.notifyPlayersView();
   }
 
   /** Draws the badge of a single token, e.g. one whose sprite finished loading after the last sync. */
@@ -563,6 +581,7 @@ export class TokenRenderer {
     const token = this.store.getState().objects.tokens[tokenId];
     const tokenGroup = this.tokenSprites[tokenId];
     if (token && tokenGroup) this.drawInstanceBadge(token, tokenGroup, this.countTokensWithImage(token.imagePath));
+    this.notifyPlayersView();
   }
 
   private countTokensWithImage(imagePath: string): number {
@@ -634,14 +653,40 @@ export class TokenRenderer {
   }
 
   /** How the players perceive each token while this canvas shows their view of a lit scene (`PlayerSightTokens.setProvider`). */
-  public setPlayerSightProvider(provider: () => TokenPerception | undefined, active?: () => boolean): void {
-    this.playerSight.setProvider(provider, active);
+  public setPlayerSightProvider(provider: () => TokenPerception | undefined, active?: () => boolean, current?: () => boolean): void {
+    this.playerSight.setProvider(provider, active, current);
   }
 
   /** Shares the committed coverage with the fog renderer, independently of lighting. */
   public setFogCoverageProvider(provider: () => FogCoverage | null): void {
     this.playerSight.setFogProvider(provider, () => this.isInPlayerMode());
     this.refreshPlayerSight();
+  }
+
+  /**
+   * Whether a move the store made may be shown as a glide. On a lit scene the players see a token by where the
+   * store has it, so one that comes into their sight would be shown on its way from a place they did not see,
+   * giving away where it stood. There only tokens they see wherever they stand (the party's), or never (hidden
+   * ones), glide; any other is put in its place at once.
+   */
+  private mayGlide(token: TokenEntity, prevToken: TokenEntity | undefined): boolean {
+    if (!this.playerSight.hasLighting() || !this.store.getState().lighting?.enabled) return true;
+    if (!prevToken) return false;
+    const { alwaysSeen } = PLAYER_SIGHT_POLICY;
+    return (!!token.isHidden && !!prevToken.isHidden) || (alwaysSeen(token) && alwaysSeen(prevToken));
+  }
+
+  /** Takes along what stands with a token's sprite as it glides: its UI, its controls and the selection frame. */
+  private followToken(tokenId: string, x: number, y: number): void {
+    this.uiManager.syncUIPosition(tokenId, x, y);
+    this.refreshDisplayedToken(tokenId);
+    const selectedIds = this.store.getState().selectedIds;
+    if (!selectedIds.includes(tokenId)) return;
+    if (selectedIds.length === 1) {
+      const tokenSize = this.tokenSprites[tokenId]?.getChildByLabel('tokenSprite')?.width || 70;
+      this.uiManager.updateControlsPosition(x, y, tokenSize);
+    }
+    this.selectionOverlayUpdater();
   }
 
   /** Movement can lead the store; apply fog before the displayed position is rendered. */
@@ -652,6 +697,7 @@ export class TokenRenderer {
     if (!token || !sprite || !perception) return;
     this.applyTokenVisibilityPolicy(token, sprite, token, perception);
     this.playerSight.syncOutline(tokenId, perception);
+    this.playersView.moved(tokenId, seenByPlayers(this.store.getState().objects.tokens, perception)(tokenId));
   }
 
   /** The tokens the canvas shows: those a selection may take. */
@@ -670,6 +716,23 @@ export class TokenRenderer {
     }
     this.playerSight.syncOutlines(perception);
     this.dragRuler.refreshVisibility();
+    this.notifyPlayersView();
+  }
+
+  /**
+   * The canvas shows the players' badges while it sees as their frame does, so both number alike, and the GM's
+   * otherwise. A load keeps what it shows: the store holds the scene only in part, and the lighting the sight of
+   * the scene before. While the lighting has no sight for the scene, it shows none.
+   */
+  private syncCanvasBadges(): void {
+    const seen = this.playerSight.sharesFrameSight() ? this.playersSeeOnCanvas() : null;
+    if (!seen) this.playerBadges.syncCanvas(null);
+    else if (!this.store.getState().isMapLoading) this.playerBadges.syncCanvas(this.playerSight.sightIsCurrent() ? seen : NOTHING_SEEN);
+  }
+
+  /** Tells whoever follows the players' view (`onPlayersViewChange`) which tokens they see now. */
+  private notifyPlayersView(): void {
+    this.playersView.passed(() => Object.keys(this.store.getState().objects.tokens), this.playersSeeOnCanvas());
   }
 
   /** The layer of the sensed tokens' outlines, for the list of what the players' view shows. */
@@ -722,6 +785,7 @@ export class TokenRenderer {
     for (const id of deletedTokenIds) {
       const tokenGroup = this.tokenSprites[id];
 
+      this.glide.cancel(id);
       if (tokenGroup) {
         this.destroyTokenGroup(id, tokenGroup);
         delete this.tokenSprites[id];
@@ -759,8 +823,15 @@ export class TokenRenderer {
           if (!this.syncService.isTokenAnimating(token.id)) {
             // Cancel any ongoing animation for this token to ensure store position takes precedence
             this.syncService.cancelAnimation(token.id);
-            existingTokenGroup.position.set(token.x, token.y);
-            this.uiManager.syncUIPosition(token.id, token.x, token.y);
+            // A token the pointer holds is placed by its drag; a load shows the scene as it is
+            const { heldTokens, isMapLoading } = this.store.getState();
+            // A dropped token is already gliding from the pointer, where it showed, to this place
+            const glides = this.glide.headsTo(token.id, token.x, token.y) || this.mayGlide(token, prevToken);
+            if (heldTokens[token.id] || isMapLoading || !glides) {
+              this.glide.jump(token.id, token.x, token.y);
+            } else {
+              this.glide.to(token.id, token.x, token.y);
+            }
           }
           
           // Update rotation handle positions when token moves
@@ -932,7 +1003,7 @@ export class TokenRenderer {
       })();
     }
 
-    // Update instance badges for all tokens after any changes
+    // Update instance badges for all tokens after any changes; this also tells whoever follows the players' view
     if (totalChanges > 0) {
       this.refreshInstanceBadges();
     }
@@ -1086,6 +1157,7 @@ export class TokenRenderer {
     // Destroy interaction controller
     this.interactionController.destroyAll();
     this.dragRuler.destroy();
+    this.glide.destroy();
     this.playerSight.destroy();
     
     // Clean up theme observer
@@ -1237,11 +1309,39 @@ export class TokenRenderer {
     }
   }
 
-  /** Player overlays prepared for the next mirrored frame; `perception` leaves out what the players do not see and outlines what they only sense. */
+  /**
+   * How a players' frame perceives each token: `lighting` (the scene's lighting) with
+   * committed fog, whatever the canvas itself shows. Reads only.
+   */
+  public playerFramePerception(lighting?: TokenPerception): TokenPerception | undefined {
+    return this.playerSight.framePerception(lighting);
+  }
+
+  /** Whether the players see each token in their frame, by `lighting` with committed fog; never a hidden or missing one. */
+  public playersSeeInFrame(lighting?: TokenPerception): TokenSeen {
+    return seenByPlayers(this.store.getState().objects.tokens, this.playerFramePerception(lighting));
+  }
+
+  /** The same by the canvas's own sight while it shows the players' view (session view, the peek, the palette's player mode); null in the GM view. */
+  public playersSeeOnCanvas(): TokenSeen | null {
+    const shows = this.playerSight.showsPlayers() || this.isInPlayerMode();
+    return shows ? seenByPlayers(this.store.getState().objects.tokens, this.playerSight.perception()) : null;
+  }
+
+  /** Calls `listener` whenever what the players see of the tokens may have changed. Returns the function that stops it. */
+  public onPlayersViewChange(listener: () => void): () => void {
+    return this.playersView.listen(listener);
+  }
+
+  /**
+   * Player overlays prepared for the next mirrored frame; `perception` leaves out what the players do not see, outlines
+   * what they only sense and numbers the instance badges among what they see, none while the lighting has no sight for the scene.
+   */
   public getPlayerViewLayers(settings: AtlasSettings['localPlayerView'], perception?: TokenPerception): LayerVisibility[] {
-    perception = this.playerSight.framePerception(perception);
+    perception = this.playerFramePerception(perception);
     const isSeen = seenTokens(perception);
-    return [...this.playerSight.frameLayers(perception), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.dragRuler.getPlayerViewLayers(isSeen)];
+    this.playerBadges.pass(this.playerSight.sightIsCurrent() ? seenByPlayers(this.store.getState().objects.tokens, perception) : NOTHING_SEEN);
+    return [...this.playerSight.frameLayers(perception), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.playerBadges.layers(), ...this.dragRuler.getPlayerViewLayers(isSeen)];
   }
 
   /** How far a selected token's resources reach beyond its bottom, right and top edges, in world units. */
@@ -1249,9 +1349,9 @@ export class TokenRenderer {
     return this.uiManager.barsReach(tokenId);
   }
 
-  /** Tokens and their bars and nameplates as the GM view shows them, whatever view the canvas is in: for a picture of the scene. */
+  /** Tokens and their bars, nameplates and badges as the GM view shows them, whatever view the canvas is in: for a picture of the scene. */
   public getGmViewLayers(): LayerVisibility[] {
-    return [...gmTokenLayers(this.store.getState().objects.tokens, this.tokenSprites), ...this.uiManager.getGmViewLayers(), ...this.playerSight.gmLayers()];
+    return [...gmTokenLayers(this.store.getState().objects.tokens, this.tokenSprites), ...this.uiManager.getGmViewLayers(), ...this.playerSight.gmLayers(), ...this.playerBadges.gmLayers()];
   }
 
   /** Get all token sprites for external systems like SelectionManager. */

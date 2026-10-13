@@ -6,6 +6,7 @@ import { afterEach, expect, vi } from 'vitest';
 
 vi.mock('events', async () => import('eventemitter3'));
 import { GridSystem } from '../../src/app/grid/GridSystem';
+import { mapImageViewOf } from './fakeMapImageView';
 import { TokenRenderer } from '../../src/app/pixi/TokenRenderer';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { captureWithLayerVisibility } from '../../src/app/pixi/playerSafeFrame';
@@ -15,7 +16,7 @@ import { createTestRenderer } from '../../src/app/pixi/lighting/engine/__tests__
 import { watchGl } from '../../src/app/pixi/lighting/engine/__tests__/strictGl';
 import { destroyTree } from '../../src/app/pixi/utils/destroyTree';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
-import type { TokenPerception } from '../../src/app/pixi/lighting/playerLightingLayers';
+import type { TokenPerception } from '../../src/app/vision/tokenPerception';
 import type { Character } from '../../src/app/types';
 import type { FogOperation } from '../../src/app/types/fogTypes';
 
@@ -46,10 +47,10 @@ export function fogTokenScenes(): { scene: typeof createScene } {
     store.getState().setPersistenceEnabled(false);
     store.setState({ mapPath: 'maps/a.atlasmap', isMapLoading: false, isGMView: true });
     const events = new EventEmitter();
-    const grid = new GridSystem(app, viewport, floor, { size: 40, enabled: false, color: 0xffffff });
+    const grid = new GridSystem(app, viewport, mapImageViewOf(floor), { size: 40, enabled: false, color: 0xffffff });
     const tokens = new TokenRenderer(obsidian, viewport, grid, () => {}, store, events, 'fog-token-test');
     tokens.setPixiApp(app);
-    const fog = new FogOfWarRenderer(viewport, app, events, store);
+    const fog = new FogOfWarRenderer(viewport, app, events, store, () => null);
     viewport.addChild(fog.getContainer());
     tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
     const covered: Character = { id: 'covered', x: 64, y: 64, size: 1, imagePath: '', kind: 'character', name: 'Covered token name outside fog', showNameplate: true };

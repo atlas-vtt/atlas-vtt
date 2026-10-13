@@ -37,13 +37,27 @@ describe('token synchronization state', () => {
     const previous = h.store.getState().objects.tokens;
     h.replaceTokens({ hero: token(20) });
     const latest = h.store.getState().objects.tokens;
-    h.store.setState({ isMapLoading: false });
     expect(h.changed).not.toHaveBeenCalled();
     h.sync.forceSyncTokens();
     expect(h.changed).toHaveBeenCalledExactlyOnceWith(latest, previous);
     h.changed.mockClear();
+    h.store.setState({ isMapLoading: false });
+    expect(h.changed).not.toHaveBeenCalled();
     h.sync.forceSyncTokens();
     expect(h.changed).toHaveBeenCalledExactlyOnceWith(latest, {});
+    h.destroy();
+  });
+
+  it('applies the held update when the load ends unforced, so a scene that failed to open keeps no tokens of the one before', () => {
+    const h = tokenSyncHarness({ hero: token() });
+    h.sync.initialize();
+    h.changed.mockClear();
+    const previous = h.store.getState().objects.tokens;
+    h.store.setState({ isMapLoading: true });
+    h.replaceTokens({});
+    expect(h.changed).not.toHaveBeenCalled();
+    h.store.setState({ isMapLoading: false });
+    expect(h.changed).toHaveBeenCalledExactlyOnceWith({}, previous);
     h.destroy();
   });
 

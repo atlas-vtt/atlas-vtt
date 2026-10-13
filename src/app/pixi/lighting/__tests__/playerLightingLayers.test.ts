@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { Container } from 'pixi.js';
-import { PerceptionMemo, playerDoorSight, playerLightingLayers, playerTokenSight, tokenPerception, type GmOverlays } from '../playerLightingLayers';
+import { playerDoorSight, playerLightingLayers, playerTokenSight, type GmOverlays } from '../playerLightingLayers';
+import { PerceptionMemo, tokenPerception } from '../../../vision/tokenPerception';
 import { hiddenTokenLayers } from '../../playerSafeFrame';
 import { computeSight, lightReach, sightSources, type LightReach } from '../../../vision/sight';
 import type { Perception } from '../../../vision/perception';

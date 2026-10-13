@@ -23,6 +23,9 @@ import { SEES_ALL } from '../../../vision/sight';
 
 export type LightingMode = 'gm' | 'player';
 
+/** The bounce's weight in the composite; 0 in a world without bounce. */
+const BOUNCE_GAIN: number = BOUNCE.gain;
+
 /** Final pass of the lighting layer: lights the scene beneath it and hides what no one sees. */
 export interface CompositeFilter {
   filter: Filter;
@@ -106,7 +109,7 @@ export function createCompositeFilter(world: LightingWorld, explored: Texture): 
     uMapSize: { value: mapSize, type: 'vec2<f32>' },
     uAmbient: { value: ambient, type: 'vec3<f32>' },
     uExposure: { value: EXPOSURE, type: 'f32' },
-    uBounceGain: { value: BOUNCE.gain, type: 'f32' },
+    uBounceGain: { value: BOUNCE_GAIN, type: 'f32' },
     uPurkinje: { value: PURKINJE, type: 'f32' },
     uMode: { value: 0, type: 'f32' },
     uAllSeen: { value: 1, type: 'f32' },
@@ -130,7 +133,7 @@ export function createCompositeFilter(world: LightingWorld, explored: Texture): 
     uGridColor: { value: gridColor, type: 'vec3<f32>' },
   });
   const u = group.uniforms;
-  // Bound while the scene has no darkness source and no ambient zone, so the filter never holds a destroyed map.
+  // Bound while the scene has no darkness source, no ambient zone or no bounce, so the filter never holds a destroyed map.
   const noDarkness = createPlaceholder();
   let darkness: DarknessMap | null = null;
   let zones: ZoneMap | null = null;
@@ -140,7 +143,7 @@ export function createCompositeFilter(world: LightingWorld, explored: Texture): 
       compositeUniforms: group,
       uExplored: explored.source,
       uLightMap: world.lightMap.texture.source,
-      uFluence: world.cascades.fluence.source,
+      uFluence: (world.cascades?.fluence ?? noDarkness).source,
       uDarkness: noDarkness.source,
       uZones: noDarkness.source,
       uZonesLifted: noDarkness.source,
@@ -157,7 +160,9 @@ export function createCompositeFilter(world: LightingWorld, explored: Texture): 
       u.uCore = wallCore(next.texel);
       u.uBand = wallBand(next.texel);
       u.uTexel = next.texel;
-      Object.assign(filter.resources, { uLightMap: next.lightMap.texture.source, uFluence: next.cascades.fluence.source, ...fieldResources(next) });
+      // A world without bounce: the composite reads none (gain 0) and binds the placeholder.
+      u.uBounceGain = next.cascades ? BOUNCE_GAIN : 0;
+      Object.assign(filter.resources, { uLightMap: next.lightMap.texture.source, uFluence: (next.cascades?.fluence ?? noDarkness).source, ...fieldResources(next) });
       group.update();
     },
     setAmbient(level, color, lift): void {

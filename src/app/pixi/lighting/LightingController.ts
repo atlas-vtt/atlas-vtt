@@ -30,11 +30,13 @@ import { LightRangeRings } from './LightRangeRings';
 import { LightingModes } from './LightingModes';
 import { showExploredTravelNotice, showZonesFullNotice } from './lightingNotices';
 import { closeStalePopovers } from './popoverGuards';
-import { PerceptionMemo, playerDoorSight, playerLightingLayers, playerTokenSight, type GmOverlays, type TokenPerception } from './playerLightingLayers';
+import { playerDoorSight, playerLightingLayers, playerTokenSight, type GmOverlays } from './playerLightingLayers';
+import { PerceptionMemo, type TokenPerception } from '../../vision/tokenPerception';
 import type { SceneLightingView } from './sceneLightingView';
 import { SessionLighting } from './SessionLighting';
 import { SightRulesWatch } from './SightRulesWatch';
 import { WallEditor } from './WallEditor';
+import type { LightingQualitySource } from '../../lighting/lightingQuality';
 
 export interface LightingControllerDeps {
   viewport: Viewport;
@@ -52,6 +54,8 @@ export interface LightingControllerDeps {
   senses?: TokenSensesResolver;
   /** Committed fog for the current map; null when its geometry is invalid. */
   fogCoverage?: () => FogCoverage | null;
+  /** How much the lighting may ask of the graphics device; the default quality without one. */
+  quality?: LightingQualitySource;
 }
 
 /**
@@ -106,6 +110,7 @@ export class LightingController {
       rules: () => this.sightRules(),
       onSightChange: () => this.onSightChange(),
       exploredWatcher: this.modes.memory,
+      ...(deps.quality && { quality: deps.quality }),
     });
     this.sightAids = new GmSightAids({
       viewport, store, measurement, bounds: deps.bounds,
@@ -147,7 +152,7 @@ export class LightingController {
   /** Routes the pointer from the token renderer's dispatch: lights and door badges with any tool, walls with the lighting tool. */
   wire(tokens: TokenRenderer): void {
     this.tokens = tokens;
-    tokens.setPlayerSightProvider(() => (this.session.active ? this.playerSight() : undefined), () => this.session.active);
+    tokens.setPlayerSightProvider(() => (this.session.active ? this.playerSight() : undefined), () => this.session.active, () => this.renderer.sightIsCurrent());
     wireLightingPointer(tokens, {
       lights: this.lights, editor: this.editor, modes: this.modes, doors: this.doors,
       wallMenu: (x, y, screenX, screenY) => showWallMenu(this.menuContext(), x, y, screenX, screenY),

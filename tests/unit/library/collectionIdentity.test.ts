@@ -5,6 +5,12 @@ import { createInMemoryApp } from '../../mocks/inMemoryVault';
 
 afterEach(() => AssetService.resetInstance());
 
+describe('derivedCollectionRecord', () => {
+  it('gives a collection worked out from its folder the uid it had before', () => {
+    expect(derivedCollectionRecord('Default').uid).toBe('collection-2faaveaf735');
+  });
+});
+
 describe('ensureOwnCollectionUid', () => {
   it('gives a collection worked out from its folder a uid no other vault shares, written to its file', async () => {
     const vault = createInMemoryApp({ folders: ['atlas-vtt/collections/Default'] });

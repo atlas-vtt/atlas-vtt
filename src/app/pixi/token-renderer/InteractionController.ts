@@ -91,6 +91,7 @@ export class InteractionController implements ITokenInteractionController {
   private onTokenMove?: (tokenId: string, x: number, y: number) => void;
   private getTokenSprite?: (tokenId: string) => TokenGroupContainer | null;
   private updateUIPosition?: (tokenId: string, x: number, y: number) => void;
+  private settleToken?: (tokenId: string, x: number, y: number) => void;
   private updateControlsPosition?: (x: number, y: number, tokenSize: number) => void;
   private onTokensHeldChange?: (tokenIds: string[]) => void;
   private updateHandlePositions?: () => void;
@@ -489,13 +490,8 @@ export class InteractionController implements ITokenInteractionController {
           ? this.gridSystem.snapTokenCenter(newX, newY, tokens[id]?.size || 1)
           : { x: newX, y: newY };
         
-        const sprite = this.getTokenSprite?.(id);
-        if (sprite) {
-          sprite.position.set(finalPos.x, finalPos.y);
-        }
-        
-        // Sync UI elements (resource bars, nameplates) to the final snapped position
-        this.updateUIPosition?.(id, finalPos.x, finalPos.y);
+        // The token, with its resource bars and nameplate, glides from the pointer to where it snaps
+        this.settleToken?.(id, finalPos.x, finalPos.y);
         
         tokenUpdates.push({id, x: finalPos.x, y: finalPos.y});
       }
@@ -504,20 +500,6 @@ export class InteractionController implements ITokenInteractionController {
       
       // Update UI
       this.onSelectionUpdate?.();
-      
-      // Update controls position
-      const selectedIds = this.store.getState().selectedIds;
-      if (selectedIds.length === 1) {
-        const selectedId = selectedIds[0];
-        if (selectedId) {
-          const finalUpdate = tokenUpdates.find(u => u.id === selectedId);
-          if (finalUpdate) {
-            const sprite = this.getTokenSprite?.(selectedId);
-            const tokenSize = sprite?.getChildByLabel('tokenSprite')?.width || 70;
-            this.updateControlsPosition?.(finalUpdate.x, finalUpdate.y, tokenSize);
-          }
-        }
-      }
       
       // Update handle positions
       this.updateHandlePositions?.();
@@ -777,6 +759,11 @@ export class InteractionController implements ITokenInteractionController {
 
   setUIPositionUpdater(updater: (tokenId: string, x: number, y: number) => void): void {
     this.updateUIPosition = updater;
+  }
+
+  /** How a dropped token gets from where the pointer left it to its place. */
+  setTokenSettler(settler: (tokenId: string, x: number, y: number) => void): void {
+    this.settleToken = settler;
   }
 
   setControlsPositionUpdater(updater: (x: number, y: number, tokenSize: number) => void): void {

@@ -1,8 +1,9 @@
-import { App, TFile, parseYaml } from 'obsidian';
+import { App, TFile } from 'obsidian';
 import type { TokenEntity } from '../types';
 import type { ResourceDefsProvider } from '../resources/resourceTypes';
 import type { TokenStatblockLinkService } from '../services/TokenStatblockLinkService';
 import { buildStatblockLinkUpdates } from '../pixi/token-renderer/statblockFrontmatter';
+import { parseNoteYaml } from '../services/noteYaml';
 
 /** Reads linked note fields used when a token sprite is first created. */
 export async function statblockTokenAppearance(
@@ -64,7 +65,7 @@ async function enhanceCharacterWithStatblockName(app: App, character: TokenEntit
       return character;
     }
 
-    const statblockData: unknown = parseYaml(match[1]!);
+    const statblockData: unknown = parseNoteYaml(match[1]!);
     if (!statblockData || typeof statblockData !== 'object') {
       console.warn(`[TokenRenderer] Failed to parse YAML in statblock: ${statblockPath}`);
       return character;

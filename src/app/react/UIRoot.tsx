@@ -4,7 +4,6 @@ import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
 import { SceneLightingPanelHost } from '../pixi/lighting/SceneLightingPanel';
 import { App } from 'obsidian';
 import { Application } from 'pixi.js';
-import { BackgroundSprite } from './BackgroundSprite';
 import { MainToolbar } from '../packages/components/MainToolbar';
 import { GridSettingsModal } from './components/GridSettingsModalSimple';
 import { GridAlignmentOverlay } from './components/GridAlignmentOverlay';
@@ -21,7 +20,8 @@ import { LootRoller } from './components/loot/LootRollerPanel';
 import { MapLoadingOverlay } from './components/MapLoadingOverlay';
 import { SceneTabBar } from './components/SceneTabBar';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
-import { presentTabInPlayerWindow } from '../services/PlayerWindowPresenter';
+import { presentTab as presentSceneTab } from '../services/PlayerWindowPresenter';
+import { usePresentedScene } from './hooks/usePresentedScene';
 import { canRunMapHotkeys, matchesMapHotkey } from '../keyboard/mapHotkeys';
 import { SettingsService } from '../services/SettingsService';
 import { HotkeyHelp } from '../keyboard/HotkeyHelp';
@@ -71,8 +71,9 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
     if (view) runInBackground(view.switchToTab(tabId), 'Switching scene tab');
   };
   const presentTab = (tabId: string): void => {
-    if (view) void presentTabInPlayerWindow(app, view, tabId);
+    if (view) void presentSceneTab(app, view, tabId);
   };
+  const presentedScene = usePresentedScene(app);
 
   // Context value with all required objects
   const contextValue: AtlasUIContextValue = useMemo(
@@ -92,9 +93,6 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const isMapLoading = useAtlasStore(state => state.isMapLoading);
   const mapLoadingProgress = useAtlasStore(state => state.mapLoadingProgress);
   const mapLoadingMessage = useAtlasStore(state => state.mapLoadingMessage);
-  
-  // Get background directly from store (for streamed maps)
-  const storeBackground = useAtlasStore(state => state.background);
 
   // Get initiative state and actions for keyboard shortcuts
   const initiativeTrackerOpen = useAtlasStore(state => state.initiativeTrackerOpen);
@@ -154,9 +152,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           </PanelBoundary>
         )}
         <div className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%' }}>
-          {/* Every surface has its own boundary: one that fails must not take the map image or the others with it */}
-          {storeBackground && <PanelBoundary name="the map image"><BackgroundSprite imagePath={storeBackground} /></PanelBoundary>}
-
+          {/* Every surface has its own boundary: one that fails must not take the others with it */}
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}
           <div className="atlas-top-bar-row">
@@ -167,6 +163,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                   onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
                   onAddTab={() => view?.openSceneBrowser()}
                   onPresentTab={presentTab}
+                  presentedTabId={presentedScene?.tabId ?? null}
                   onShowAllTabs={() => setSceneSwitcherOpen(true)}
                 />
               </PanelBoundary>

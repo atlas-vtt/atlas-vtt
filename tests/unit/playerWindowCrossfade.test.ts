@@ -46,7 +46,7 @@ function setup(): { service: PlayerWindowService; source: PlayerFrameSource; doc
     updateSession: (state: Partial<LocalPlayerSession>): void => { Object.assign(session, state); },
   };
   const source = { canvas: createEl('canvas'), withPlayerSafeFrame: vi.fn(), store };
-  service.attachToView(view as unknown as LocalPlayerView, source, 'scene-a');
+  service.attachToView(view as unknown as LocalPlayerView, source, { tabId: 'scene-a', filePath: 'scene-a.atlasmap' });
   return { service, source, doc };
 }
 

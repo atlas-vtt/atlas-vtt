@@ -6,7 +6,6 @@ import type { Mutate, StoreApi } from "zustand";
 import { subscribeWithSelector, persist } from "zustand/middleware";
 import type { StorageValue } from "zustand/middleware";
 import { immer } from "zustand/middleware/immer";
-import { temporal } from 'zundo';
 import type { App, Plugin } from 'obsidian';
 import type AtlasVTTPlugin from '../../main';
 import type { TokenEntity, Character, NotePin, TextElement, DrawingStroke } from './types';
@@ -27,12 +26,15 @@ import { createInitialUIState, createUIActions, type UISlice } from './stores/ui
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
 import { isRecord } from './utils/guards';
-import { createHistoryOptions } from './stores/history';
+import { withHistory } from './stores/history';
 import { withoutCollectionWidgets } from './utils/collectionWidgets';
 import { withWidgetOff } from './utils/widgetActivation';
+import type { TimerState } from './utils/timerWidget';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
+import type { MapMove } from './grid/mapStretch';
+import { objectsMovedWithMap } from './grid/mapStretchObjects';
 import { computeNextInstanceNumber } from './stores/tokenInstanceNumbers';
-import { raiseTokens } from './stores/tokenStacking';
+import { placeTokens, raiseTokens, type TokenPlace } from './stores/tokenStacking';
 import type { DiceRollResult } from './types/diceTypes';
 import { isAtlasToolAvailable } from './tools/toolAvailability';
 import { readExploredMask } from './lighting/exploredMaskCodec';
@@ -51,6 +53,11 @@ export interface ViewAtlasState extends ViewState {
   setMapLoading: (loading: boolean, progress?: number, message?: string) => void;
   setBackground: (bg: string | null) => void;
   setGrid: (grid: GridState) => void;
+  /**
+   * Sets an aligned grid. Where the alignment draws the map another way (`GridState.mapStretch`),
+   * `move` takes what stands on the map along (`objectsMovedWithMap`), in the same write.
+   */
+  alignGrid: (grid: GridState, move?: MapMove) => void;
   setGridUnits: (units: { unitType: 'feet' | 'yards' | 'meters' | 'units'; unitDistance: number }) => void;
   setGridVisible: (visible: boolean) => void;
   setSnapToGrid: (snap: boolean) => void;
@@ -164,16 +171,18 @@ export interface ViewAtlasState extends ViewState {
   moveTokensBulk: (ids: string[], dx: number, dy: number) => void;
   setTokenPositions: (positions: Array<{id: string, x: number, y: number}>) => void;
   /**
-   * The pointer lets go of the tokens it dragged: they stand at `positions`, on top of every
-   * other token, and are no longer held. One write, so sight works the drop out once.
+   * The pointer lets go of the tokens it dragged: `placeTokens` puts them at `positions`, on top
+   * of every other token, and they are no longer held. One write, so sight works the drop out once.
    */
-  dropTokens: (positions: Array<{id: string, x: number, y: number}>) => void;
+  dropTokens: (positions: readonly TokenPlace[]) => void;
   deleteTokens: (ids: string[]) => void;
   /** Deletes every selected token, drawing, text and pin in one undo step. */
   deleteSelected: () => void;
   setIsDragging: (dragging: boolean) => void;
   setWidgetSettings: (settings: WidgetSettings) => void;
   updateWidget: (widgetId: string, updates: Partial<AnyWidget>) => void;
+  /** Sets a timer's time; a state without `running` leaves it paused. */
+  setTimerState: (widgetId: string, state: TimerState) => void;
   addWidget: (widget: AnyWidget) => void;
   removeWidget: (widgetId: string) => void;
   /** Switches a widget on or off in this scene. */
@@ -239,7 +248,7 @@ export interface ViewAtlasState extends ViewState {
   setCommandPaletteOpen: UISlice['setCommandPaletteOpen'];
   setDiceTrayOpen: UISlice['setDiceTrayOpen'];
 
-  // Note: Undo/Redo functionality is added by temporal middleware
+  // Note: Undo/Redo is added by the history middleware (`store.temporal`, stores/history.ts)
 }
 
 /** The subset of view state that is written to the map file. */
@@ -423,8 +432,10 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
     return storage;
   };
   
+  // Undo/redo tracks objects, grid, background, widgetValues and the count of explored-memory
+  // edits only; selection, camera, tool and loading state never enter the history.
   const store = create<ViewAtlasState>()(
-    temporal(
+    withHistory(
       subscribeWithSelector(
         persist(
           immer<ViewAtlasState>((set, get) => ({
@@ -489,6 +500,14 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           setGrid: (grid) => set((draft) => {
             draft.grid = grid;
           }),
+
+          alignGrid: (grid, move) => {
+            const objects = move ? objectsMovedWithMap(get().objects, move) : null;
+            set((draft) => {
+              draft.grid = grid;
+              if (objects) draft.objects = objects;
+            });
+          },
           
           // Set grid units
           setGridUnits: (units) => set((draft) => {
@@ -692,6 +711,14 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             }
           }),
           
+          setTimerState: (widgetId, { value, running }) => set((draft) => {
+            const widget = draft.widgetSettings.widgets[widgetId];
+            if (widget?.type !== 'timer') return;
+            widget.value = value;
+            if (running) widget.running = running;
+            else delete widget.running;
+          }),
+
           addWidget: (widget) => set((draft) => {
             draft.widgetSettings.widgets[widget.id] = widget;
           }),
@@ -767,16 +794,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           }),
 
           dropTokens: (positions) => set((draft) => {
-            for (const { id, x, y } of positions) {
-              const token = draft.objects.tokens[id];
-              if (token) {
-                token.x = x;
-                token.y = y;
-              }
-            }
-            raiseTokens(draft.objects.tokens, positions.map(({ id }) => id));
+            placeTokens(draft, positions);
             if (Object.keys(draft.heldTokens).length > 0) draft.heldTokens = {};
-            draft._audioDirty = true;
           }),
 
           deleteTokens: (ids) => set((draft) => {
@@ -1442,11 +1461,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           }),
         }
       )
-    ),
-    // Undo/redo tracks objects, grid, background, widgetValues and the count of explored-memory
-    // edits only; selection, camera, tool and loading state never enter the history.
-    // storeRef is assigned right after creation, before any history call.
-    createHistoryOptions<ViewAtlasState>(() => storeRef!.getState())
+    )
   )
 );
 

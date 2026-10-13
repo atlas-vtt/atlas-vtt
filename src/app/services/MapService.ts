@@ -6,22 +6,26 @@ import type { ViewAtlasStore } from '../storeFactory';
 import type { MapFile } from './MapPersistence';
 import { getHistoryStore } from '../stores/history';
 import { autoDetectGridOnFirstLoad } from './gridAutoDetect';
-import { backgroundTextureCache } from '../pixi/backgroundTextureCache';
+import { offerGridAlignment } from './gridAlignmentNotice';
 import { describeError } from '../utils/errors';
 import { sceneNameOf } from '../utils/sceneName';
 import { settledWithin } from '../utils/settledWithin';
 import { LatestRequestQueue } from './latestRequestQueue';
 import { fillStoreFromMapFile } from './mapFileFallback';
 import { t } from '../i18n';
+import type { ViewCamera } from '../pixi/viewCamera';
+import type { PixiRendererOrchestrator } from '../PixiRendererOrchestrator';
+import { fitMapRect } from '../pixi/fitMapRect';
+import { readMapStretch, sameStretch } from '../grid/mapStretch';
 
 /** How long a scene may take to load before the load is given up. */
 export const STALLED_LOAD_MS = 30_000;
+/** How long the loading screen waits for the map image's tiles in view; past it the map shows as they arrive. */
+export const MAP_IMAGE_READY_MS = 1500;
 
 export class MapService {
   private currentMapFilePath: string | null = null;
   private currentMapData: MapFile | null = null;
-  /** Background texture reference held for the loaded map. */
-  private currentBackgroundUrl: string | null = null;
   private eventBus: EventEmitter;
   private readonly loads = new LatestRequestQueue();
 
@@ -34,11 +38,13 @@ export class MapService {
    * in flight starts once that one has stopped, and of several waiting only the latest runs.
    * @param rendererService The RendererService instance
    * @param filePath The path to the map file
+   * @param camera Where the scene is shown (its tab's own camera); without one the map is fitted to the view.
+   * The loading screen waits for the tiles this camera shows.
    * @returns The loaded map data, or null when loading failed or a later request replaced this one
    */
-  public loadMap(rendererService: RendererService, filePath: string, restoreCamera: boolean = false): Promise<MapFile | null> {
+  public loadMap(rendererService: RendererService, filePath: string, camera: ViewCamera | null = null): Promise<MapFile | null> {
     return this.loads.run(async (isSuperseded) => {
-      const load = this.runLoad(rendererService, filePath, restoreCamera, isSuperseded);
+      const load = this.runLoad(rendererService, filePath, camera, isSuperseded);
       if (await settledWithin(load, STALLED_LOAD_MS)) return load;
       if (isSuperseded()) return null;
       // The loading overlay covers the whole view, its tabs included: a load that never ends
@@ -57,7 +63,7 @@ export class MapService {
   private async runLoad(
     rendererService: RendererService,
     filePath: string,
-    restoreCamera: boolean,
+    camera: ViewCamera | null,
     isSuperseded: () => boolean,
   ): Promise<MapFile | null> {
     try {
@@ -115,12 +121,14 @@ export class MapService {
         this.app,
         renderer,
         filePath,
-        restoreCamera,
+        camera,
         isSuperseded,
       );
       if (!displayed) return null;
-      this.holdBackground(displayed.backgroundUrl);
       this.currentMapData = displayed.mapData;
+      // The tiles in view load meanwhile; the loading screen stays until they are drawn, or for a while.
+      const mapImage = renderer.getMapImage();
+      const imageReady = mapImage ? mapImage.whenCameraReady(MAP_IMAGE_READY_MS) : null;
 
       if (this.currentMapData) {
         // Update loading progress
@@ -164,7 +172,10 @@ export class MapService {
         // Let the overlay paint before the CPU-bound detection blocks the thread.
         await new Promise(resolve => window.setTimeout(resolve, 30));
         if (isSuperseded()) return null;
-        autoDetectGridOnFirstLoad(this.store, renderer.getBackgroundSprite());
+        const detection = await autoDetectGridOnFirstLoad(this.store, mapImage, () => !isSuperseded());
+        if (isSuperseded()) return null;
+        this.showDetectedStretch(renderer, camera === null);
+        if (detection === 'none') offerGridAlignment(this.store);
       }
 
       // Legacy mapData is now mostly for the renderer
@@ -190,13 +201,17 @@ export class MapService {
       this.eventBus.emit('map-loaded', mapInitData);
 
       // map-loaded starts every token sprite synchronously, so the wait below sees all of them
-      const hideLoadingScreen = (): void => {
+      const revealMap = (): void => {
         // Tokens of a map that was left meanwhile must not end the next load's setup
         if (isSuperseded()) return;
         this.store.getState().setMapLoading(false);
 
         // Resume history tracking now that map load is complete
         getHistoryStore(this.store)?.getState().resume();
+      };
+      const hideLoadingScreen = (): void => {
+        if (imageReady) void imageReady.then(revealMap);
+        else revealMap();
       };
       this.eventBus.emit('wait-for-tokens-loaded', hideLoadingScreen);
 
@@ -209,6 +224,22 @@ export class MapService {
       this.recoverFromFailedLoad(rendererService, filePath, error);
       return null;
     }
+  }
+
+  /**
+   * Draws the map with the stretch the grid found on a new scene's first load asks for. The load
+   * showed the image before its grid was known, so the store's stretch is shown here, and a camera
+   * that was fitted to the map is fitted again to its new size.
+   */
+  private showDetectedStretch(renderer: Pick<PixiRendererOrchestrator, 'getMapImage' | 'getViewportInstance'>, refit: boolean): void {
+    const mapImage = renderer.getMapImage();
+    if (!mapImage) return;
+    const stretch = readMapStretch(this.store.getState().grid?.mapStretch);
+    if (sameStretch(stretch, mapImage.mapStretch)) return;
+    mapImage.setStretch(stretch);
+    const viewport = renderer.getViewportInstance();
+    const rect = mapImage.worldRect;
+    if (refit && viewport && rect) fitMapRect(viewport, rect);
   }
 
   /** Tells the user and leaves the view ready for another load. */
@@ -224,9 +255,8 @@ export class MapService {
       if (!mapStillLoaded) {
         this.currentMapFilePath = null;
         this.currentMapData = null;
-        this.holdBackground(null);
         // The image of the map before must not stay on the canvas without its fog and tokens
-        rendererService.getRenderer()?.clearBackgroundSprite();
+        rendererService.getRenderer()?.clearMapImage();
       }
       // One write, so a subscriber that throws cannot leave the store half reset. Unbinding
       // it from the file states what `mapLoaded` already enforces: this state is not the map's.
@@ -242,13 +272,6 @@ export class MapService {
     }
   }
 
-  /** Swaps the held background reference, releasing the previous map's one. */
-  private holdBackground(url: string | null): void {
-    const previous = this.currentBackgroundUrl;
-    this.currentBackgroundUrl = url;
-    if (previous) backgroundTextureCache.release(previous);
-  }
-
   /**
    * Takes the store out of use before the scene's file is rewritten from outside: loads that
    * wait or run are stopped, and the store, left like a scene that is being closed, is no
@@ -261,15 +284,14 @@ export class MapService {
     state.setMapLoaded(false);
   }
 
-  /** Stops waiting and running loads and releases resources held for the loaded map. */
+  /** Stops waiting and running loads; the map image belongs to the renderer, which releases it. */
   public destroy(): void {
     this.loads.cancel();
-    this.holdBackground(null);
   }
 
   /** `loadMap` for a file of the vault. */
-  public async loadMapFromFile(rendererService: RendererService, file: TFile, restoreCamera: boolean = false): Promise<MapFile | null> {
-    return this.loadMap(rendererService, file.path, restoreCamera);
+  public async loadMapFromFile(rendererService: RendererService, file: TFile, camera: ViewCamera | null = null): Promise<MapFile | null> {
+    return this.loadMap(rendererService, file.path, camera);
   }
 
   /** The data of the loaded map, or null if none is loaded. */

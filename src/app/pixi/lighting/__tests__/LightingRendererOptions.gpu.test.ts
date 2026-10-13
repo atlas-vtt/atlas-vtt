@@ -3,6 +3,8 @@ import type { SceneLighting } from '../../../types/lightingTypes';
 import type { LightingEngine } from '../engine/LightingEngine';
 import { renderThroughEngine, type PixelReader } from '../engine/__tests__/gpuTestUtils';
 import { SAVE_DELAY, SIZE, createHarness, tokens, until, visionToken, type Harness } from './rendererHarness';
+import { LIGHTING_QUALITY, type LightingQuality } from '../../../lighting/lightingQuality';
+import type { LightingWorld } from '../engine/LightingWorld';
 
 /** A token at (100, 128) that sees 5 ft (70 px): the rest of the map is out of its sight. */
 const nearSighted = tokens(visionToken(100, 128, 5));
@@ -134,5 +136,30 @@ describe('LightingRenderer scene options', () => {
     const { state, change } = harness!;
     change({ lighting: { enabled: true, ambient: state.lighting.ambient } });
     expect(seen()).toEqual(grey);
+  });
+
+  it('follows its quality source: the world is built anew at the new quality, the memory and the sight stay', async () => {
+    let current: LightingQuality = LIGHTING_QUALITY.high;
+    const listeners = new Set<() => void>();
+    harness = await createHarness({
+      patch: { lighting: { enabled: true, ambient: 1 }, ...nearSighted },
+      quality: { current: () => current, onChange: (listener) => (listeners.add(listener), () => listeners.delete(listener)) },
+    });
+    await harness.settle();
+    const { lighting, redAt } = harness;
+    const world = (): LightingWorld => (lighting as unknown as { engine: { world: LightingWorld } }).engine.world;
+    const sight = lighting.currentSight();
+    const remembered = redAt(200, 200);
+    expect(world().cascades).not.toBeNull();
+    current = LIGHTING_QUALITY.saver;
+    for (const listener of listeners) listener();
+    expect(world().cascades).toBeNull();
+    expect(lighting.currentSight()).toBe(sight);
+    expect(redAt(200, 200)).toBe(remembered);
+    // The players' view is lit as before: the token's surroundings show.
+    expect(playerView()(100, 128)[0]).toBeGreaterThan(200);
+    lighting.destroy();
+    expect(listeners.size).toBe(0);
+    harness = null;
   });
 });

@@ -4,7 +4,6 @@ import { useStore } from 'zustand';
 import { cn } from '../../../utils/cn';
 import { useSceneTabStore } from '../hooks/useSceneTabStore';
 import { useTabStripOverflow } from '../hooks/useTabStripOverflow';
-import { playerWindowStore } from '../../stores/playerWindowStore';
 import type { SceneTab } from '../../types/sceneTabTypes';
 import { LabelTooltip, TooltipProvider } from '../../packages/components/primitives/tooltip';
 import './scene-tab-bar.scss';
@@ -15,6 +14,8 @@ interface SceneTabBarProps {
   onCloseTab: (tabId: string) => void;
   onAddTab: () => void;
   onPresentTab: (tabId: string) => void;
+  /** The tab players are shown, whether or not the player window is open; null while none is. */
+  presentedTabId?: string | null;
   /** Lists every open map; offered while the tabs do not fit the bar. */
   onShowAllTabs: () => void;
 }
@@ -48,13 +49,11 @@ function TabActionButton({ icon: Icon, label, isActive, onClick }: TabActionButt
   );
 }
 
-export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
+export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, presentedTabId = null, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
   const store = useSceneTabStore();
 
   const tabs = useStore(store, (s) => s.tabs);
   const activeTabId = useStore(store, (s) => s.activeTabId);
-  const presentedTabId = useStore(playerWindowStore, (s) => s.presentedTabId);
-  const isPlayerWindowOpen = useStore(playerWindowStore, (s) => s.isOpen);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
   const { overflows, hiddenBefore, hiddenAfter } = useTabStripOverflow(strip, activeTabId);
 
@@ -75,7 +74,7 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, o
         >
           {tabs.map((tab: SceneTab) => {
             const isActive = tab.id === activeTabId;
-            const isPresented = isPlayerWindowOpen && tab.id === presentedTabId;
+            const isPresented = tab.id === presentedTabId;
             const stateClass = isActive
               ? 'atlas-scene-tab--active'
               : tab.isLoaded

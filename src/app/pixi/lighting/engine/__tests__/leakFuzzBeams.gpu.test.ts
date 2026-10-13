@@ -7,6 +7,7 @@ import { allSegments, splitBlocking } from '../../../../lighting/segments';
 import type { VisionCone } from '../../../../vision/visionCone';
 import { LightingWorld } from '../LightingWorld';
 import type { EngineLight } from '../types';
+import { DEFAULT_LIGHTING_QUALITY, LIGHTING_QUALITY, type LightingQuality } from '../../../../lighting/lightingQuality';
 import { createTestRenderer, readFloats } from './gpuTestUtils';
 import { fuzzRooms, insidePolygon, rng, roomOutline } from './fuzzRooms';
 
@@ -36,6 +37,9 @@ interface FuzzOptions {
   allAround?: boolean;
   /** Draws every beam a quarter turn from where the checks expect it (a negative control). */
   turned?: boolean;
+  bounds?: { width: number; height: number };
+  /** The lighting quality the world draws at; the walls are sealed as the rules seal them, at the map's own texel. */
+  quality?: LightingQuality;
 }
 
 /**
@@ -47,15 +51,15 @@ interface FuzzOptions {
  * the beam past its soft edge (a width in world pixels at its sides and its far end), everything
  * of the light inside it up to its dim radius.
  */
-async function fuzz({ seed, trials, allAround = false, turned = false }: FuzzOptions): Promise<Report> {
+async function fuzz({ seed, trials, allAround = false, turned = false, bounds = BOUNDS, quality = DEFAULT_LIGHTING_QUALITY }: FuzzOptions): Promise<Report> {
   const renderer = await createTestRenderer(64);
-  const world = new LightingWorld(renderer, BOUNDS);
-  const texel = worldTexel(BOUNDS);
+  const world = new LightingWorld(renderer, bounds, quality);
+  const texel = worldTexel(bounds, quality.maxTexels);
   try {
     const rand = rng(seed + 3);
     const report: Report = { rooms: 0, lit: 0, brighter: 0, outside: 0, stray: 0, inside: 0, dimmed: 0 };
     for (const room of fuzzRooms(seed, trials)) {
-      const walls = sealWalls(room.walls, sealTolerance(texel));
+      const walls = sealWalls(room.walls, sealTolerance(worldTexel(bounds)));
       const outline = roomOutline(room);
       if (!room.lights.every((p) => insidePolygon(p, outline))) continue;
       report.rooms++;
@@ -120,6 +124,14 @@ describe('leak fuzz: beams', () => {
     expect(report.rooms).toBeGreaterThan(TRIALS * 0.8);
     expect(report.outside).toBeGreaterThan(TRIALS * 1000);
     expect(report.inside).toBeGreaterThan(TRIALS * 1000);
+    expect(report).toMatchObject({ brighter: 0, stray: 0, dimmed: 0 });
+  });
+
+  it.each(['balanced', 'saver'] as const)('holds at the %s lighting quality on a map whose texels it coarsens', { timeout: 3_600_000 }, async (level) => {
+    const report = await fuzz({ seed: 7, trials: Math.max(8, Math.round(TRIALS / 3)), bounds: { width: 8192, height: 8192 }, quality: LIGHTING_QUALITY[level] });
+    console.info(`leak fuzz (beams, ${level}): ${JSON.stringify(report)}`);
+    expect(report.outside).toBeGreaterThan(1000);
+    expect(report.inside).toBeGreaterThan(1000);
     expect(report).toMatchObject({ brighter: 0, stray: 0, dimmed: 0 });
   });
 

@@ -8,6 +8,7 @@ import type { TokenUpdates } from '../types/viewState';
 import { rollStatblockDice } from './statblockDiceLinks';
 import { AssetService } from './AssetService';
 import type { TokenVitals } from './statblockVitalsSync';
+import type { TokenRollContext } from '../types/diceRollOrigin';
 
 type PlacedToken = TokenVitals & { id: string };
 
@@ -28,7 +29,8 @@ function storeHoldingTokens(app: App, ids: readonly string[], viewId?: string): 
  * health with its own result. A rolled maximum is a deliberate choice, so it is
  * marked as overridden and survives later edits to the statblock. Without
  * placed tokens, or in a collection that tracks no hit points, this is an
- * ordinary roll.
+ * ordinary roll. Each token's roll carries its origin from `originContext`, the
+ * scene the statblock was opened for; finding the tokens on a map adds none.
  */
 export function rollHitPoints(
   app: App,
@@ -37,6 +39,7 @@ export function rollHitPoints(
   tokens: readonly TokenVitals[],
   abilityName?: string,
   viewId?: string,
+  originContext?: TokenRollContext,
 ): void {
   const placed = tokens.filter((token): token is PlacedToken => Boolean(token.id));
   const store = placed.length ? storeHoldingTokens(app, placed.map((token) => token.id), viewId) : null;
@@ -52,6 +55,7 @@ export function rollHitPoints(
   for (const token of placed) {
     const roll = rollStatblockDice(app, formula, {
       viewId,
+      originContext,
       tokenId: token.id,
       statblockPath,
       tokenName: token.name,

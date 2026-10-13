@@ -3,7 +3,7 @@ import { collectionFolderPath } from '../assetPaths';
 import { mapStrings } from '../../utils/mapStrings';
 import { baseName, parentPath } from '../../utils/pathUtils';
 import type { RecordReading } from './libraryReader';
-import { hashText } from './libraryState';
+import { hashText } from '../../utils/hashing';
 
 /** How the files holding one record id are taken in. */
 export interface HolderResolution {

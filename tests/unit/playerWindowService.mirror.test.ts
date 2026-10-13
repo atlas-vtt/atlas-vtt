@@ -3,6 +3,7 @@ import { createStore } from 'zustand/vanilla';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import type { BeforeRenderCapture, PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
+import { frameSource, framePiece, sizePlayerWindow } from '../mocks/playerFrameSource';
 
 vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
@@ -25,7 +26,7 @@ function scheduledRenders(): ScheduledRenders & { beforeRender: BeforeRenderCapt
   let listener: ((frameTime: number) => void) | null = null;
   const stopListening = vi.fn(() => { listener = null; });
   const requestRender = vi.fn();
-  const capture = vi.fn((draw: () => void) => draw());
+  const capture = vi.fn<PlayerFrameSource['withPlayerSafeFrame']>((copy, _settings, frame) => copy(framePiece(frame)));
   return {
     requestRender, capture, stopListening,
     render: () => listener?.(performance.now()),
@@ -43,6 +44,7 @@ function mirror(renders?: ScheduledRenders & { beforeRender: BeforeRenderCapture
 } {
   vi.stubGlobal('requestAnimationFrame', vi.fn(() => 1));
   vi.stubGlobal('cancelAnimationFrame', vi.fn());
+  sizePlayerWindow();
   const settings = new SettingsService(app);
   const service = new PlayerWindowService(app, createStore(() => ({})) as any, settings);
   const doc = document.implementation.createHTMLDocument();
@@ -53,10 +55,8 @@ function mirror(renders?: ScheduledRenders & { beforeRender: BeforeRenderCapture
     document: doc, closed: false, requestAnimationFrame, cancelAnimationFrame,
     addEventListener: vi.fn(), removeEventListener: vi.fn(), close: vi.fn(),
   };
-  const capture = vi.fn();
-  const source: PlayerFrameSource = {
-    canvas: document.createElement('canvas'), withPlayerSafeFrame: capture, ...(renders ? { beforeRender: renders.beforeRender } : {}),
-  };
+  const capture = vi.fn<PlayerFrameSource['withPlayerSafeFrame']>();
+  const source = frameSource({ withPlayerSafeFrame: capture, ...(renders ? { beforeRender: renders.beforeRender } : {}) });
   (service as any).streamSource = source;
   (service as any).setupPlayerWindow();
   const nextFrame = (): void => vi.mocked(requestAnimationFrame).mock.calls.at(-1)![0](0);
@@ -86,7 +86,7 @@ describe('player window mirroring', () => {
     renders.requestRender.mockClear();
     vi.spyOn(performance, 'now').mockReturnValue(performance.now() + 100);
 
-    settings.setLocalPlayerViewSettings({ showGrid: false });
+    settings.setLocalPlayerViewSettings({ showWidgets: false });
     nextFrame();
 
     expect(renders.requestRender).toHaveBeenCalled();
@@ -127,7 +127,7 @@ describe('player window mirroring', () => {
     const next = scheduledRenders();
     const { service } = mirror(previous);
     previous.render();
-    const source: PlayerFrameSource = { canvas: document.createElement('canvas'), withPlayerSafeFrame: vi.fn(), beforeRender: next.beforeRender };
+    const source = frameSource({ withPlayerSafeFrame: vi.fn(), beforeRender: next.beforeRender });
 
     vi.spyOn(performance, 'now').mockReturnValue(performance.now() + 100);
     // No frame of the player window in between: it may be hidden
@@ -146,6 +146,47 @@ describe('player window mirroring', () => {
     service.destroy();
 
     expect(renders.stopListening).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the frame for the window\'s own size and pixel ratio, and anew when either changes', () => {
+    const { capture, nextFrame, service } = mirror();
+    expect(capture.mock.lastCall![2]).toMatchObject({ width: 1280, height: 720, resolution: 1 });
+
+    // The player window is resized
+    sizePlayerWindow({ width: 1000, height: 800 });
+    nextFrame();
+    expect(capture.mock.lastCall![2]).toMatchObject({ width: 1000, height: 800, resolution: 1 });
+
+    // And dragged to a screen with two pixels to a point
+    (service as any).playerWindow.devicePixelRatio = 2;
+    nextFrame();
+    expect(capture.mock.lastCall![2]).toMatchObject({ width: 2000, height: 1600, resolution: 2 });
+  });
+
+  it('asks a view that renders on change for a frame when the window is resized, though nothing else changed', () => {
+    const renders = scheduledRenders();
+    const { nextFrame } = mirror(renders);
+    renders.render();
+    renders.requestRender.mockClear();
+    vi.spyOn(performance, 'now').mockReturnValue(performance.now() + 100);
+    nextFrame();
+    expect(renders.requestRender).not.toHaveBeenCalled();
+
+    sizePlayerWindow({ width: 640, height: 360 });
+    nextFrame();
+    expect(renders.requestRender).toHaveBeenCalledTimes(1);
+    renders.render();
+    expect(renders.capture.mock.lastCall![2]).toMatchObject({ width: 640, height: 360 });
+  });
+
+  it('gives the frame back to its view when the window closes', () => {
+    const { service } = mirror();
+    const release = vi.fn();
+    (service as any).streamSource.release = release;
+    // The mirror meets the source at its next frame
+    (service as any).mirror.frame();
+    service.destroy();
+    expect(release).toHaveBeenCalledTimes(1);
   });
 
   it('copies every frame for sources without a render schedule', () => {

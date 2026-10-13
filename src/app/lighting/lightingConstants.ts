@@ -119,9 +119,13 @@ export const FLICKER_INTERVAL_MS = 30;
  */
 export const HALO = { gain: 0.8, size: 0.25 } as const;
 
-/** World pixels per texel for a map: 2 px, coarser on maps longer than 8,192 px. */
-export function worldTexel(bounds: MapBounds): number {
-  return Math.max(BASE_TEXEL, Math.max(bounds.width, bounds.height) / MAX_TEXELS);
+/**
+ * World pixels per texel for a map: 2 px, coarser on maps longer than 8,192 px, or than twice
+ * `maxTexels` where the lighting quality holds its textures smaller (`LightingQuality`). The
+ * rules always read the map at the default: what is sealed must not depend on the device.
+ */
+export function worldTexel(bounds: MapBounds, maxTexels = MAX_TEXELS): number {
+  return Math.max(BASE_TEXEL, Math.max(bounds.width, bounds.height) / maxTexels);
 }
 
 /**

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { installedFileHash } from '../../src/app/services/collectionBundle/importInputs';
-import { sha256 } from '../../src/app/services/collectionBundle/hashing';
+import { sha256 } from '../../src/app/utils/hashing';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 const MAP = 'atlas-vtt/collections/Cairn/maps/map-1.json';

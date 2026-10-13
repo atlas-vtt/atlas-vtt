@@ -4,10 +4,20 @@ import { RenderScheduler, requestRender, setBeforeRender } from '../../src/app/p
 import { captureBeforeRender, captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { PlayerFrameMirror, type PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import type { AtlasSettings } from '../../src/app/services/SettingsService';
+import type { FramePiece, Screen } from '../../src/app/types/playerFrame';
 import { fakeApp, fakeGroup } from './schedulerApp';
 
-export const SETTINGS = { showGrid: true } as AtlasSettings['localPlayerView'];
-export const DM_CAMERA: PlayerCameraState = { centerX: 1, centerY: 2, scale: 1 };
+export const SETTINGS = { showTokenNameplates: true } as AtlasSettings['localPlayerView'];
+/** The DM's pane, and what it shows: the world from (−399, −298) to (401, 302). */
+export const DM_SCREEN: Screen = { width: 800, height: 600, resolution: 1 };
+export const DM_CAMERA: PlayerCameraState = { centerX: 1, centerY: 2, scale: 1, width: 800, height: 600 };
+/** The player window the harness starts with: the pane's shape, larger. */
+export const WINDOW: Screen = { width: 1600, height: 1200, resolution: 1 };
+
+/** A rendered frame in one piece, as a view hands it out. */
+export function wholeFrame(image: HTMLCanvasElement, width = 1, height = 1): FramePiece {
+  return { image, x: 0, y: 0, width, height, left: 0, top: 0 };
+}
 
 export interface Dm {
   source: PlayerFrameSource;
@@ -28,7 +38,9 @@ export interface MirrorHarness {
   frame(time: number): void;
   dm: Dm;
   createDm(): Dm;
-  state: { source: PlayerFrameSource | null; held: HTMLCanvasElement | null; frozen: PlayerCameraState | null };
+  state: { source: PlayerFrameSource | null; held: HTMLCanvasElement | null; frozen: PlayerCameraState | null; window: Screen | null };
+  /** The players' canvas. */
+  target: HTMLCanvasElement;
   onFrame: ReturnType<typeof vi.fn>;
   captureFails: { value: boolean };
 }
@@ -61,14 +73,14 @@ export function setupMirror(): MirrorHarness {
     let loading = false;
     const store = { getState: () => ({ isMapLoading: loading }) } as unknown as NonNullable<PlayerFrameSource['store']>;
     const source: PlayerFrameSource = {
-      canvas,
       store,
       getCamera: () => DM_CAMERA,
-      withPlayerSafeFrame: (capture) => captureWithLayerVisibility(layers, render, capture),
+      getScreen: () => DM_SCREEN,
+      withPlayerSafeFrame: (copy, _settings, frame) => captureWithLayerVisibility(layers, render, () => copy(wholeFrame(canvas, frame.width, frame.height))),
       beforeRender: {
         listen: (listener) => setBeforeRender(app, listener),
         requestRender: () => requestRender(app),
-        withPlayerSafeFrame: (capture) => captureBeforeRender(layers, render, capture),
+        withPlayerSafeFrame: (copy, _settings, frame) => captureBeforeRender(layers, render, () => copy(wholeFrame(canvas, frame.width, frame.height))),
       },
     };
     return {
@@ -81,7 +93,7 @@ export function setupMirror(): MirrorHarness {
   }
 
   const dm = createDm();
-  const state: MirrorHarness['state'] = { source: dm.source, held: null, frozen: null };
+  const state: MirrorHarness['state'] = { source: dm.source, held: null, frozen: null, window: WINDOW };
   const target = document.createElement('canvas');
   const context = {
     clearRect: vi.fn(),
@@ -93,12 +105,13 @@ export function setupMirror(): MirrorHarness {
   const onFrame = vi.fn();
   const mirror = new PlayerFrameMirror(target, context, {
     source: () => state.source,
+    window: () => state.window,
     heldFrame: () => state.held,
     frozenCamera: () => state.frozen,
     settings: () => SETTINGS,
     onFrame,
   }, () => now);
-  return { mirror, events, dm, createDm, state, onFrame, captureFails, frame: (time) => { now = time; mirror.frame(); } };
+  return { mirror, events, dm, createDm, state, onFrame, captureFails, target, frame: (time) => { now = time; mirror.frame(); } };
 }
 
 /** What one mirrored frame costs: the player frame, its copy, then the DM's own render. */
