@@ -2,6 +2,11 @@
   "version": "0.7.2-beta.0",
   "releases": [
     {
+      "version": "0.7.2-beta.0",
+      "title": "Coming in 0.7.2",
+      "markdown": "## New\n\n- Simplified Chinese interface when Obsidian's language is 简体中文 or 繁體中文. Text that is not translated yet stays in English."
+    },
+    {
       "version": "0.7.1",
       "date": "2026-10-10",
       "title": "Local player window and more precise grid alignment",

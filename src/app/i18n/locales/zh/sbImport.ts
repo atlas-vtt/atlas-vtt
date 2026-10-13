@@ -1,0 +1,28 @@
+import type { Translation } from '../../types';
+
+export const sbImport: Translation = {
+  'sbImport.status.ready': '就绪',
+  'sbImport.status.imported': '已导入',
+  'sbImport.status.missingImage': '缺少图片',
+  'sbImport.status.remoteImage': '远程图片',
+  'sbImport.status.conflict': '冲突',
+  'sbImport.scanFailed': '无法扫描属性块。',
+  'sbImport.loadFailed': '无法加载属性块图片。',
+  'sbImport.unspecified': '未指定',
+  'sbImport.intro': '选择系统或版式，然后把生物加入导入。可在预览卡片里编辑标签、裁剪和棋子环。',
+  'sbImport.layout': '系统 / 版式',
+  'sbImport.allLayouts': '全部版式',
+  'sbImport.search': '搜索属性块',
+  'sbImport.searchPlaceholder': '搜索生物或文件夹…',
+  'sbImport.selectShown': '选择当前显示的全部',
+  'sbImport.list': '属性块',
+  'sbImport.added': '已加入导入',
+  'sbImport.noMatch': '没有符合搜索的属性块。',
+  'sbImport.noneFound': '没有找到属性块笔记。请在 Fantasy Statblocks 中启用 frontmatter 解析，或在笔记里加入 statblock 代码块。',
+  'sbImport.scanAgain': '重新扫描',
+  'sbImport.back': '返回预览',
+  'sbImport.loadingImages': '正在加载图片…',
+  'sbImport.addN': '把 {count} 个加入导入',
+  'sbImport.scanningNotes': '正在扫描笔记',
+  'sbImport.loadingImagesStatus': '正在加载图片',
+};

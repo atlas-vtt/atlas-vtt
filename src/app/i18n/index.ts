@@ -1,11 +1,12 @@
 import { en } from './locales/en';
 import { ru } from './locales/ru';
+import { zh } from './locales/zh';
 import type { Message, MessageKey, MessageValues, Translation } from './types';
 
 export type { MessageKey } from './types';
 
 /** Languages Atlas speaks, keyed by Obsidian's language codes (`getLanguage()`: `ru`, `pt-BR`, `zh-TW`, …). */
-export const TRANSLATIONS: Readonly<Record<string, Translation>> = { en, ru };
+export const TRANSLATIONS: Readonly<Record<string, Translation>> = { en, ru, zh };
 
 const DEFAULT_LOCALE = 'en';
 const DEFAULT_PLURAL_RULES = new Intl.PluralRules(DEFAULT_LOCALE);
