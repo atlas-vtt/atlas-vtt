@@ -44,6 +44,7 @@ export interface Scene {
   setLighting: (changes: Partial<ViewAtlasState['lighting']>) => void;
   /** A fog-only update, preserving every lighting and source record. */
   setFog: (fog: Record<string, FogOperation>) => void;
+  setWalls: (walls: ViewAtlasState['objects']['walls']) => void;
   /** The store writes and lighting calls of `MapService.loadMap`, in its order. */
   loadMap: (path: string, saved: SavedScene, bounds: MapBounds) => void;
   /**
@@ -136,6 +137,7 @@ export async function createScene({ enabled, noted = null, exploredMask = null, 
     moveToken: (x, y) => write({ objects: { ...state.objects, tokens: { t: visionToken(x, y, 5) } } }),
     setLighting: (changes) => write({ lighting: { ...state.lighting, ...changes } }),
     setFog: (fog) => write({ objects: { ...state.objects, fog } }),
+    setWalls: (walls) => write({ objects: { ...state.objects, walls } }),
     loadMap: (path, saved, mapBounds) => {
       startLoad(path, saved, mapBounds);
       finishLoad();

@@ -10,6 +10,7 @@ import { MAX_Q, Q_SCALE, type QShape } from '../../types/shapeTypes';
 import type { WallSegment } from '../../types/wallTypes';
 import { wallList } from '../../vision/wallList';
 import { ringColour } from './scenePicture.ts';
+import { isPlayerDoor, isWindow } from '../../lighting/doorKind';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 /** A place players may be sent: finite and within the protocol's reach. */
@@ -40,11 +41,11 @@ export function sharedGrid(options: Readonly<GridOptions> | null): SharedGrid | 
 
 /**
  * The badges of the doors players see: each ordinary door's ends and whether it stands open; nothing
- * else of it. A secret door never has one for players, whatever `seen` says.
+ * else of it. A secret door has one only once the GM reveals it.
  */
 export function sharedDoors(walls: Readonly<Record<string, WallSegment>>, seen: ReadonlySet<string>): SharedDoor[] {
-  return wallList(walls).filter((wall) => wall.type === 'door' && seen.has(wall.id)).slice(0, MAX_DOOR_BADGES)
-    .map((wall) => ({ p: [wall.p1.x, wall.p1.y, wall.p2.x, wall.p2.y], open: !(wall.closed ?? true) }));
+  return wallList(walls).filter((wall) => isPlayerDoor(wall) && seen.has(wall.id)).slice(0, MAX_DOOR_BADGES)
+    .map((wall) => ({ p: [wall.p1.x, wall.p1.y, wall.p2.x, wall.p2.y], open: !(wall.closed ?? true), ...(isWindow(wall) && { window: true as const }) }));
 }
 
 interface Box { minX: number; minY: number; maxX: number; maxY: number }

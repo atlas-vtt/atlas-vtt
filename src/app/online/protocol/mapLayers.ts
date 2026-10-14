@@ -48,6 +48,7 @@ export interface SharedGrid {
 export interface SharedDoor {
   readonly p: readonly [number, number, number, number];
   readonly open: boolean;
+  readonly window?: true;
 }
 
 /** A token the players only sense: where it stands and how large it is (diameter, world pixels). */
@@ -144,9 +145,9 @@ export function parseDoors(value: unknown): SharedDoor[] | null {
   if (!Array.isArray(value) || value.length > MAX_DOOR_BADGES) return null;
   const doors: SharedDoor[] = [];
   for (const door of value) {
-    if (!isRecord(door) || !isPoints(door.p, 2) || door.p.length !== 4 || typeof door.open !== 'boolean') return null;
+    if (!isRecord(door) || !isPoints(door.p, 2) || door.p.length !== 4 || typeof door.open !== 'boolean' || (door.window !== undefined && door.window !== true)) return null;
     const [x1, y1, x2, y2] = door.p as [number, number, number, number];
-    doors.push({ p: [x1, y1, x2, y2], open: door.open });
+    doors.push({ p: [x1, y1, x2, y2], open: door.open, ...(door.window === true && { window: true }) });
   }
   return doors;
 }

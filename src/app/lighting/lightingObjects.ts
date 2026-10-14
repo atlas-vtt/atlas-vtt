@@ -90,10 +90,13 @@ export function readWall(value: unknown): WallSegment | null {
 function wallOf(value: Record<string, unknown>): WallSegment | null {
   const isEnd = (end: unknown): boolean => isRecord(end) && finite(end.x) && finite(end.y);
   if (typeof value.id !== 'string' || !isEnd(value.p1) || !isEnd(value.p2)) return null;
-  const { locked, blocks, limited, ...rest } = value;
+  const { locked, blocks, limited, window, revealed, ...rest } = value;
   const flag = (it: unknown): boolean => it === undefined || it === true;
   // With limited walls switched off, a wall that says it is limited reads as a wall like any other: it blocks.
   const isLimited = LIMITED_WALLS && limited === true;
-  if (flag(locked) && (limited === undefined || isLimited) && (blocks === undefined || blocks === 'sight' || blocks === 'light')) return value as unknown as WallSegment;
-  return { ...rest, ...(locked === true && { locked }), ...(isLimited ? { limited: true } : {}), ...((blocks === 'sight' || blocks === 'light') && { blocks }) } as unknown as WallSegment;
+  if (flag(locked) && flag(window) && flag(revealed) && (limited === undefined || isLimited) && (blocks === undefined || blocks === 'sight' || blocks === 'light')) return value as unknown as WallSegment;
+  return {
+    ...rest, ...(locked === true && { locked }), ...(window === true && { window }), ...(revealed === true && { revealed }),
+    ...(isLimited ? { limited: true } : {}), ...((blocks === 'sight' || blocks === 'light') && { blocks }),
+  } as unknown as WallSegment;
 }

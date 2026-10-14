@@ -182,9 +182,22 @@ describe('LightingToolGroup', () => {
     const toggle = screen.getByRole('switch', { name: 'Dynamic lighting' });
     fireEvent.keyDown(toggle, { key: ' ' });
     expect(store.getState().lighting.enabled).toBe(true);
-    expect(screen.getAllByRole('switch')).toHaveLength(1);
+    expect(screen.getAllByRole('switch')).toHaveLength(2);
     expect(screen.queryByText('Preview player view')).toBeNull();
     expect(events.some(([event]) => event === 'lighting-preview')).toBe(false);
+  });
+
+  it('shares grid snapping with the scene, keeps it across remounts and offers Alt as an override', () => {
+    const { store, remount } = renderGroup('wall');
+    const toggle = screen.getByRole('switch', { name: 'Snap to grid' });
+    expect(toggle.getAttribute('aria-checked')).toBe('true');
+    expect(screen.getByText('Hold Alt to place or drag freely.')).toBeDefined();
+    fireEvent.click(toggle);
+    expect(store.getState().grid?.snapToGrid).toBe(false);
+    remount();
+    expect(screen.getByRole('switch', { name: 'Snap to grid' }).getAttribute('aria-checked')).toBe('false');
+    fireEvent.click(row('Place lights'));
+    expect(screen.queryByRole('switch', { name: 'Snap to grid' })).toBeNull();
   });
 
   it('forgets explored areas and opens the settings from rows that close the menu', () => {

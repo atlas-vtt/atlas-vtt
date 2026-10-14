@@ -8,6 +8,7 @@ import type { WallInteraction } from '../vision/WallInteraction';
 import type { WallRenderer } from '../vision/WallRenderer';
 import { removeDoor, removeJoint } from './wallJoints';
 import { t } from '../../i18n';
+import { isDoor, isWindow } from '../../lighting/doorKind';
 
 export interface LightingMenuContext {
   store: ViewAtlasStore;
@@ -37,13 +38,24 @@ export function showLightMenu(context: LightingMenuContext, lightId: string, scr
 /** What a door offers: to open or close it, and to lock it; a locked door only to unlock it. Nothing for a wall that is no door. */
 export function doorMenuEntries(store: ViewAtlasStore, wallId: string): ContextMenuEntry[] {
   const wall = readWall(store.getState().objects.walls[wallId]);
-  if (!wall || (wall.type !== 'door' && wall.type !== 'secret-door')) return [];
-  if (wall.locked) return [{ type: 'item', label: 'Unlock door', icon: 'lock-open', onClick: () => store.getState().setDoorLocked(wallId, false) }];
+  if (!wall || !isDoor(wall)) return [];
+  const window = isWindow(wall);
   const closed = wall.closed ?? true;
-  return [
-    { type: 'item', label: closed ? 'Open door' : 'Close door', icon: closed ? 'door-open' : 'door-closed', onClick: () => store.getState().toggleDoor(wallId) },
-    { type: 'item', label: 'Lock door', icon: 'lock', onClick: () => store.getState().setDoorLocked(wallId, true) },
-  ];
+  const entries: ContextMenuEntry[] = wall.locked
+    ? [{ type: 'item', label: t(window ? 'wall.unlockWindow' : 'wall.unlockDoor'), icon: 'lock-open', onClick: () => store.getState().setDoorLocked(wallId, false) }]
+    : [
+      { type: 'item', label: t(window ? (closed ? 'wall.openWindow' : 'wall.closeWindow') : (closed ? 'wall.openDoor' : 'wall.closeDoor')), icon: closed ? 'door-open' : 'door-closed', onClick: () => store.getState().toggleDoor(wallId) },
+      { type: 'item', label: t(window ? 'wall.lockWindow' : 'wall.lockDoor'), icon: 'lock', onClick: () => store.getState().setDoorLocked(wallId, true) },
+    ];
+  if (wall.type === 'door') entries.push({
+    type: 'item', label: t('wall.window'), icon: 'panels-top-left', checked: window,
+    onClick: () => store.getState().updateWall(wallId, { window: window ? undefined : true }),
+  });
+  if (wall.type === 'secret-door') entries.push({
+    type: 'item', label: t(wall.revealed ? 'wall.hideDoor' : 'wall.revealDoor'), icon: wall.revealed ? 'eye-off' : 'eye',
+    onClick: () => store.getState().updateWall(wallId, { revealed: wall.revealed ? undefined : true }),
+  });
+  return entries;
 }
 
 /** A door badge's context menu, with any tool. */
@@ -81,13 +93,14 @@ export function showWallMenu(context: LightingMenuContext, worldX: number, world
     entries.push(
       { type: 'item', label: t('wall.placeDoor'), icon: 'door-open', onClick: () => context.doors.start(segment.id, 'door', at) },
       { type: 'item', label: t('wall.placeSecretDoor'), icon: 'lock', onClick: () => context.doors.start(segment.id, 'secret-door', at) },
+      { type: 'item', label: t('wall.placeWindow'), icon: 'panels-top-left', onClick: () => context.doors.start(segment.id, 'door', at, true) },
     );
   }
 
   if (segment) {
     entries.push(...doorMenuEntries(store, segment.id));
     const doorRemoval = removeDoor(allWalls, segment.id);
-    if (doorRemoval) entries.push({ type: 'item', label: 'Remove door', icon: 'brick-wall', onClick: () => walls.apply(doorRemoval) });
+    if (doorRemoval) entries.push({ type: 'item', label: isWindow(segment) ? t('wall.removeWindow') : 'Remove door', icon: 'brick-wall', onClick: () => walls.apply(doorRemoval) });
   }
 
   const jointRemoval = joint ? removeJoint(allWalls, joint) : null;

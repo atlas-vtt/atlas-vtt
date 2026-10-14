@@ -121,6 +121,48 @@ describe('door badges in the players\' frame', () => {
     expect(gm(SECRET)).toEqual(SECRET_ORANGE);
   });
 
+  it('reveals a secret door as an ordinary player badge, still subject to fog, and can hide it again', () => {
+    const { store } = scene;
+    const walls = store.getState().objects.walls;
+    scene.setWalls({ ...walls, secret: { ...walls.secret!, revealed: true } });
+    scene.tick();
+    expect(playerFrame()(SECRET)).toEqual(DOOR_BLUE);
+    expect(gmFrame()(SECRET)).toEqual(SECRET_ORANGE);
+    coverage = fogCoverage({ cover: fogRectangle({ x: 50, y: 166, width: 20, height: 20 }) });
+    doors.refreshPlayers();
+    expect(playerFrame()(SECRET)).not.toEqual(DOOR_BLUE);
+    doors.view.visible = false;
+    doors.playerView.visible = true;
+    expect(doors.hitTest(...SECRET)).toBeNull();
+    doors.view.visible = true;
+    doors.playerView.visible = false;
+    coverage = fogCoverage({});
+    scene.setWalls(walls);
+    scene.tick();
+    expect(playerFrame()(SECRET)).not.toEqual(DOOR_BLUE);
+  });
+
+  it('draws different window and shutter glyphs in both badge sets', () => {
+    const { store } = scene;
+    const pixels = (players: boolean): Uint8ClampedArray => {
+      if (players) playerFrame();
+      else gmFrame();
+      const context = new OffscreenCanvas(32, 32).getContext('2d')!;
+      context.drawImage(scene.renderer.canvas, 16 - SEEN[0], 16 - SEEN[1]);
+      return context.getImageData(0, 0, 32, 32).data;
+    };
+    const ordinary = [pixels(false), pixels(true)];
+    const walls = store.getState().objects.walls;
+    scene.setWalls({ ...walls, seen: { ...walls.seen!, window: true } });
+    scene.tick();
+    const shutters = [pixels(false), pixels(true)];
+    for (const i of [0, 1]) expect(shutters[i]).not.toEqual(ordinary[i]);
+    scene.setWalls({ ...walls, seen: { ...walls.seen!, window: true, closed: false } });
+    scene.tick();
+    for (const i of [0, 1]) expect(pixels(i === 1)).not.toEqual(shutters[i]);
+    expect(doors.hitTest(...SEEN)).toBe('seen');
+  });
+
   it('removes a fogged badge and its player hit target while keeping the GM badge unchanged', () => {
     const before = gmFrame();
     const paint = fogRectangle({ x: 95, y: 123, width: 10, height: 10 });

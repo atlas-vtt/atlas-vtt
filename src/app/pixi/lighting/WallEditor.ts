@@ -14,6 +14,7 @@ import { WallRenderer } from '../vision/WallRenderer';
 import { WallDrawingSession } from './WallDrawingSession';
 import { splitWall } from './wallEdits';
 import { chainEndingAt, wallEndNear } from './wallEnds';
+import { pointOnWall, wallPoint } from './wallPoint';
 
 interface SegmentEvent { p1: Point; p2: Point; type: WallType; chainId: string }
 
@@ -33,6 +34,7 @@ export class WallEditor {
   private readonly cleanups: Array<() => void> = [];
   /** Alt was held at the last pointer move: what is drawn lands where the pointer is, not on a wall end close by. */
   private free = false;
+  private pressedWall: { at: Point; pressedAt: Point } | null = null;
 
   /** `onLightSelection` shows the selected lights on their markers; `lightPresets` are the lights of the map's collection. */
   constructor(
@@ -93,6 +95,9 @@ export class WallEditor {
     }
     // Without Shift (or with Ctrl to multi-select), existing walls take the click
     if ((!shift || ctrl) && this.walls.handlePointerDown(point.x, point.y, ctrl)) {
+      const id = this.renderer.hitTestWalls(point.x, point.y);
+      const wall = id ? this.store.getState().objects.walls[id] : undefined;
+      this.pressedWall = this.drawsChains && !ctrl && !this.vertexAt(point) && wall?.type === 'solid' ? { at: pointOnWall(wall, point), pressedAt: point } : null;
       this.renderer.preview.clear();
       return true;
     }
@@ -102,10 +107,11 @@ export class WallEditor {
       return true;
     }
     if (settings.mode === 'point-to-point') {
-      this.tool.addVertex(point.x, point.y, shift);
+      const at = this.snap(point, alt).point;
+      this.tool.addVertex(at.x, at.y, shift);
       return true;
     }
-    const start = this.vertexAt(point) ?? point;
+    const start = this.snap(point, alt).point;
     this.tool.startFreeform(start.x, start.y);
     this.renderer.preview.startStroke(start.x, start.y);
     return true;
@@ -114,6 +120,8 @@ export class WallEditor {
   pointerMove(point: Point, alt: boolean = false): void {
     if (!this.shown) return;
     this.free = alt;
+    if (this.pressedWall && Math.hypot(point.x - this.pressedWall.pressedAt.x, point.y - this.pressedWall.pressedAt.y) >= 3 / this.renderer.zoom) this.pressedWall = null;
+    if (this.pressedWall) return;
     if (this.doors.active) {
       this.doors.move(point);
       return;
@@ -124,8 +132,8 @@ export class WallEditor {
     }
     if (!this.tool.isCurrentlyDrawing()) return;
     if (this.tool.getSettings().mode === 'point-to-point') {
-      const end = alt ? null : this.wallEndNear(point);
-      this.renderer.preview.moveCursor((end ?? point).x, (end ?? point).y, end !== null);
+      const at = this.snap(point, alt);
+      this.renderer.preview.moveCursor(at.point.x, at.point.y, at.joined);
     } else {
       this.tool.addFreeformPoint(point.x, point.y);
       this.renderer.preview.addStrokePoint(point.x, point.y);
@@ -134,7 +142,8 @@ export class WallEditor {
 
   /** A wall end clicked in place starts a chain there, joined to it; pressed and dragged, it moved. */
   pointerUp(): void {
-    const clicked = this.walls.handlePointerUp();
+    const clicked = this.walls.handlePointerUp() ?? this.pressedWall?.at;
+    this.pressedWall = null;
     if (clicked && this.drawsChains && !this.tool.isCurrentlyDrawing()) {
       this.walls.clearSelection();
       this.startChainAt(clicked);
@@ -192,7 +201,7 @@ export class WallEditor {
 
   /** The chain's next corner, on the wall end close by unless `free`. A click on its last corner adds nothing, and one that closes the chain on its first ends it. */
   private placeCorner(point: Point, shift: boolean, free: boolean): void {
-    const at = free ? point : this.wallEndNear(point) ?? point;
+    const at = this.snap(point, free).point;
     const chain = this.tool.getCurrentChain();
     const same = (other: Point | undefined): boolean => !!other && other.x === at.x && other.y === at.y;
     if (same(chain[chain.length - 1])) return;
@@ -209,7 +218,7 @@ export class WallEditor {
     if (!this.tool.isCurrentlyDrawing() || this.tool.getSettings().mode !== 'freeform') return;
     const stroke = this.tool.getCurrentChain();
     const last = stroke[stroke.length - 1];
-    const end = last && !this.free ? this.wallEndNear(last, stroke.slice(0, 1)) : null;
+    const end = last && !this.free ? this.wallEndNear(last, stroke.slice(0, 1)) ?? this.snap(last, false).point : null;
     if (end) this.tool.addFreeformPoint(end.x, end.y);
     // A stroke's segments arrive together; one session makes them one undo step
     this.drawing.start();
@@ -220,6 +229,7 @@ export class WallEditor {
 
   /** Ends a drag, a door placement and the chain or stroke being drawn. */
   private stop(): void {
+    this.pressedWall = null;
     this.walls.handlePointerUp();
     this.doors.cancel();
     if (this.store.getState().activeTool === 'wall') {
@@ -235,6 +245,11 @@ export class WallEditor {
 
   private wallEndNear(point: Point, also: readonly Point[] = []): Point | null {
     return wallEndNear(point, this.store.getState().objects.walls, this.renderer.zoom, { also });
+  }
+
+  private snap(point: Point, free: boolean): { point: Point; joined: boolean } {
+    const state = this.store.getState();
+    return wallPoint(point, state.objects.walls, state.grid, this.renderer.zoom, free);
   }
 
   private vertexAt(point: Point): Point | null {

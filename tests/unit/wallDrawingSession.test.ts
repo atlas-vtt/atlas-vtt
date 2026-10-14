@@ -72,4 +72,40 @@ describe('WallDrawingSession', () => {
     expect(Object.keys(walls)).toEqual([doorId]);
     expect(walls[doorId]!.closed).toBe(false);
   });
+
+  it('splits both ends of a new wall into existing interiors as one reversible step', () => {
+    const { store, session, steps } = setup();
+    const a = store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 }, chainId: 'a', blocks: 'sight' });
+    const b = store.getState().addWall({ type: 'solid', p1: { x: 0, y: 100 }, p2: { x: 100, y: 100 }, chainId: 'b' });
+    const before = store.getState().objects.walls;
+    const count = steps();
+    session.start();
+    expect(steps()).toBe(count);
+    session.add({ type: 'solid', p1: { x: 50, y: 0 }, p2: { x: 50, y: 100 } });
+    session.finish();
+    expect(steps()).toBe(count + 1);
+    const joined = store.getState().objects.walls;
+    expect(Object.keys(joined)).toHaveLength(5);
+    expect(joined[a]).toMatchObject({ p2: { x: 50, y: 0 }, blocks: 'sight', chainId: 'a' });
+    expect(joined[b]).toMatchObject({ p2: { x: 50, y: 100 }, chainId: 'b' });
+    const history = getHistoryStore(store)!;
+    history.getState().undo();
+    expect(store.getState().objects.walls).toEqual(before);
+    history.getState().redo();
+    expect(store.getState().objects.walls).toEqual(joined);
+  });
+
+  it('restores repeatedly split originals on cancel and keeps unrelated property edits', () => {
+    const { store, session, steps } = setup();
+    const id = store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } });
+    const count = steps();
+    session.start();
+    session.add({ type: 'solid', p1: { x: 50, y: 0 }, p2: { x: 50, y: 50 } });
+    session.add({ type: 'solid', p1: { x: 25, y: 0 }, p2: { x: 25, y: 50 } });
+    store.getState().updateWall(id, { blocks: 'light' });
+    session.cancel();
+    expect(Object.keys(store.getState().objects.walls)).toEqual([id]);
+    expect(store.getState().objects.walls[id]).toMatchObject({ p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 }, blocks: 'light' });
+    expect(steps()).toBe(count);
+  });
 });

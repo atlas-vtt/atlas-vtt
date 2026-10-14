@@ -120,7 +120,7 @@ export class WallPreview {
     const midX = (from.x + to.x) / 2;
     const midY = (from.y + to.y) / 2;
 
-    const color = doorType === 'secret-door' ? 0xff8844 : 0x44aaff;
+    const color = doorType === 'secret-door' ? 0xff8844 : doorType === 'window' ? 0x66cccc : 0x44aaff;
 
     // Door segment preview line
     g.moveTo(from.x, from.y);

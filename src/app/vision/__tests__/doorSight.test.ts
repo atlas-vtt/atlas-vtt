@@ -54,6 +54,15 @@ describe('doorsInSight', () => {
     expect(seen(SEES_ALL)).not.toContain('secret');
   });
 
+  it('shows a discovered secret door only where the party currently sees lit floor', () => {
+    const walls = WALLS.map((wall) => wall.type === 'secret-door' || wall.id === 'behind' ? { ...wall, type: 'secret-door' as const, revealed: true } : wall);
+    const sight = computeSight([HERO], walls);
+    expect([...doorsInSight(walls, sight, DAY, [])]).toContain('secret');
+    expect([...doorsInSight(walls, sight, DAY, [])]).not.toContain('behind');
+    expect([...doorsInSight(walls, sight, NIGHT, [])]).toEqual([]);
+    expect([...doorsInSight(walls, SEES_ALL, DAY, [])]).toContain('behind');
+  });
+
   it('shows every ordinary door on lit floor without a vision token or with token vision off', () => {
     expect(seen(computeSight([], WALLS))).toEqual(['behind', 'locked', 'near']);
     expect(seen(sceneSight({ tokenVision: false }, [HERO], WALLS))).toEqual(['behind', 'locked', 'near']);

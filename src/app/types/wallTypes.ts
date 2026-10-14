@@ -13,6 +13,10 @@ export interface WallSegment {
   closed?: boolean;               // Doors/secret doors: true = blocks vision (default true)
   /** A door the GM locked: it is closed and its badge does not open it until it is unlocked. A GM aid; light and sight read only `closed`. */
   locked?: boolean;
+  /** A door used as a window: open lets sight and light through; closed represents shutters. */
+  window?: boolean | undefined;
+  /** A discovered secret door shows an ordinary door badge to players who can see it. */
+  revealed?: boolean | undefined;
   /**
    * The one thing the wall stops: a curtain stops sight and lets light through, glass that glows
    * stops light and lets sight through. Unset, it stops both. A door keeps its kind.

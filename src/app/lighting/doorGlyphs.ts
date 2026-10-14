@@ -1,5 +1,5 @@
 /** What a door's badge shows of the door, unless it shows a padlock. */
-export type DoorGlyph = 'closed' | 'open';
+export type DoorGlyph = 'closed' | 'open' | 'window-open' | 'window-closed';
 
 /**
  * Glyphs of the door badges: silhouettes from game-icons.net (CC BY 3.0, see
@@ -7,6 +7,11 @@ export type DoorGlyph = 'closed' | 'open';
  * open. They are not pin icons and are not offered in the pin palette.
  */
 export const DOOR_GLYPH_PATHS: Record<DoorGlyph, string> = {
+  // Atlas window frame and shutters.
+  'window-open':
+    'M64 64h384v384H64V64zm32 32v320h320V96H96zm144 0h32v320h-32V96zM96 240h320v32H96v-32z',
+  'window-closed':
+    'M64 64h384v384H64V64zm32 32v320h320V96H96zm144 0h32v320h-32V96zM112 112h112v32H112v-32zm176 0h112v32H288v-32zM112 176h112v32H112v-32zm176 0h112v32H288v-32zM112 240h112v32H112v-32zm176 0h112v32H288v-32zM112 304h112v32H112v-32zm176 0h112v32H288v-32zM112 368h112v32H112v-32zm176 0h112v32H288v-32z',
   // closed-doors by Delapouite
   closed:
     'M247 57.545c-29.212 2.622-71.312 17.137-106.37 38.172-19.394 11.637-36.707 25.19-48.83 39.178C79.68 148.882 73 163 73 176v263h174v-78h-46v16h-66v-16h-32v-66h32v-16h66v16h46V57.545zm18 0V295h46v-16h66v16h32v66h-32v16h-66v-16h-46v78h174V176c0-13-6.678-27.118-18.8-41.105-12.123-13.988-29.436-27.54-48.83-39.178C336.31 74.682 294.21 60.167 265 57.545zM153 297v62h30v-62h-30zm176 0v62h30v-62h-30zm-208 16v30h14v-30h-14zm80 0v30h110v-30H201zm176 0v30h14v-30h-14zM73 457v30h174v-30H73zm192 0v30h174v-30H265z',

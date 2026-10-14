@@ -11,7 +11,7 @@ export interface CameraState {
 export interface GridState {
   enabled: boolean;
   visible?: boolean; // Grid visibility (separate from enabled)
-  snapToGrid?: boolean; // Whether tokens snap to grid
+  snapToGrid?: boolean; // Whether tokens and wall points snap to grid
   type?: 'square' | 'hex-horizontal' | 'hex-vertical';
   size: number;
   offsetX: number;

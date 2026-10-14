@@ -8,6 +8,10 @@ import type { WallSegment } from '../../src/app/types/wallTypes';
 import { computeVisibility } from '../../src/app/vision/visibility';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { readWall } from '../../src/app/lighting/lightingObjects';
+import { sharedWall } from '../../src/app/online/gm/sceneInputs';
+import { sharedDoors } from '../../src/app/online/gm/mapLayerInputs';
+import { placeDoor } from '../../src/app/pixi/lighting/wallEdits';
 
 let cleanup: (() => void) | null = null;
 afterEach(() => {
@@ -145,13 +149,13 @@ describe('a door\'s menu', () => {
 
   it('opens and closes the door and locks it; a locked door can only be unlocked', () => {
     const { store, door, wall } = setup();
-    expect(labels(store, door)).toEqual(['Open door', 'Lock door']);
+    expect(labels(store, door)).toEqual(['Open door', 'Lock door', 'Window']);
     click(store, door, 'Open door');
     expect(wall().closed).toBe(false);
-    expect(labels(store, door)).toEqual(['Close door', 'Lock door']);
+    expect(labels(store, door)).toEqual(['Close door', 'Lock door', 'Window']);
     click(store, door, 'Lock door');
     expect(wall()).toMatchObject({ closed: true, locked: true });
-    expect(labels(store, door)).toEqual(['Unlock door']);
+    expect(labels(store, door)).toEqual(['Unlock door', 'Window']);
     click(store, door, 'Unlock door');
     expect('locked' in wall()).toBe(false);
   });
@@ -160,6 +164,72 @@ describe('a door\'s menu', () => {
     const { store } = setup();
     const solid = store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 10, y: 0 }, closed: true });
     expect(doorMenuEntries(store, solid)).toEqual([]);
+  });
+
+  it('marks a door as a window, toggles its shutters, and removes the option on undo', () => {
+    const { store, door, wall, undo } = setup();
+    click(store, door, 'Window');
+    expect(wall()).toMatchObject({ type: 'door', window: true, closed: true });
+    expect(labels(store, door)).toEqual(['Open shutters', 'Lock window', 'Window']);
+    click(store, door, 'Open shutters');
+    expect(wall().closed).toBe(false);
+    expect(labels(store, door)).toContain('Close shutters');
+    undo();
+    undo();
+    expect('window' in wall()).toBe(false);
+  });
+
+  it('reveals and hides a locked secret door without changing its identity or lock', () => {
+    const { store, door, wall, undo } = setup();
+    store.getState().updateWall(door, { type: 'secret-door', locked: true });
+    expect(labels(store, door)).toEqual(['Unlock door', 'Show discovered door to players']);
+    click(store, door, 'Show discovered door to players');
+    expect(wall()).toMatchObject({ type: 'secret-door', locked: true, revealed: true });
+    expect(sharedWall(wall())).toMatchObject({ door: 'closed' });
+    expect(sharedWall(wall())).not.toHaveProperty('revealed');
+    expect(sharedDoors(store.getState().objects.walls, new Set([door]))).toEqual([{ p: [0, 100, 100, 100], open: false }]);
+    expect(sharedDoors(store.getState().objects.walls, new Set())).toEqual([]);
+    click(store, door, 'Hide secret door from players');
+    expect('revealed' in wall()).toBe(false);
+    expect(sharedDoors(store.getState().objects.walls, new Set([door]))).toEqual([]);
+    undo();
+    expect(wall().revealed).toBe(true);
+  });
+});
+
+describe('windows', () => {
+  it('places an open window and closes its shutters to block sight and light', () => {
+    const solid: WallSegment = { id: 'w', kind: 'wall', type: 'solid', p1: { x: -1000, y: 100 }, p2: { x: 1000, y: 100 } };
+    const opening = placeDoor(solid, { x: 50, y: 100 }, 70, 'door', true).find((piece) => piece.type === 'door')!;
+    expect(opening).toMatchObject({ window: true, closed: false });
+    const window: WallSegment = { ...opening, kind: 'wall', id: 'window' };
+    for (const channel of ['sight', 'light'] as const) {
+      expect(computeVisibility({ x: 50, y: 50 }, 300, [window], undefined, channel)).toEqual(computeVisibility({ x: 50, y: 50 }, 300, [], undefined, channel));
+      expect(computeVisibility({ x: 50, y: 50 }, 300, [{ ...window, closed: true }], undefined, channel)).toEqual(computeVisibility({ x: 50, y: 50 }, 300, [{ ...window, window: undefined, closed: true }], undefined, channel));
+    }
+    expect(sharedDoors({ window }, new Set(['window']))).toEqual([{ p: [expect.closeTo(15), 100, expect.closeTo(85), 100], open: true, window: true }]);
+  });
+
+  it('uses distinct window glyphs for open and shut shutters', () => {
+    const { store, door } = setup();
+    const badges = icons(store);
+    const glyph = badges.view.children[1] as Sprite;
+    const ordinary = glyph.texture;
+    store.getState().updateWall(door, { window: true });
+    const closedWindow = glyph.texture;
+    expect(closedWindow).not.toBe(ordinary);
+    store.getState().toggleDoor(door);
+    expect(glyph.texture).not.toBe(closedWindow);
+  });
+
+  it('interprets flags strictly while keeping the saved record untouched', () => {
+    const { wall } = setup();
+    const invalid = { ...wall(), window: 'yes', revealed: 1 };
+    expect(readWall(invalid)).not.toHaveProperty('window');
+    expect(readWall(invalid)).not.toHaveProperty('revealed');
+    expect(invalid).toMatchObject({ window: 'yes', revealed: 1 });
+    const valid = { ...wall(), window: true, revealed: true };
+    expect(readWall(valid)).toBe(valid);
   });
 });
 

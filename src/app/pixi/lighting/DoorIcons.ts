@@ -11,6 +11,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 import { destroyTree } from '../utils/destroyTree';
 import { createGlyphTexture } from '../utils/pinIconTexture';
 import { ValueTransition } from '../utils/ValueTransition';
+import { isDoor, isWindow } from '../../lighting/doorKind';
 
 /** Above the lighting layer and token UI, so the GM finds doors in the dark. */
 export const DOOR_ICONS_Z_INDEX = 1150;
@@ -30,10 +31,6 @@ const REFUSED_COLOR = 0xff5d5d;
 /** How far a refusing badge swings, as a share of its radius, and how often. */
 const SHAKE_SHARE = 0.35;
 const SHAKES = 2;
-
-function isDoor(wall: WallSegment): boolean {
-  return wall.type === 'door' || wall.type === 'secret-door';
-}
 
 const NO_DOORS: ReadonlySet<string> = new Set();
 
@@ -184,14 +181,14 @@ export class DoorIcons {
       const x = centre.x + (refusing?.offset ?? 0);
       const { y } = centre;
       const { secret, lock } = badgeLook(wall, forPlayers);
-      const color = refusing?.tint ? REFUSED_COLOR : secret ? SECRET_DOOR_COLOR : DOOR_COLOR;
+      const color = refusing?.tint ? REFUSED_COLOR : secret ? SECRET_DOOR_COLOR : isWindow(wall) ? 0x66cccc : DOOR_COLOR;
       const open = !(wall.closed ?? true);
       g.circle(x, y, r).fill({ color: 0x1b1b1f, alpha: 0.85 }).stroke({ width: r * 0.14, color });
       if (lock) {
         drawLock(g, x, y, r, color);
         continue;
       }
-      const texture = this.glyphTexture(open ? 'open' : 'closed');
+      const texture = this.glyphTexture(isWindow(wall) ? (open ? 'window-open' : 'window-closed') : (open ? 'open' : 'closed'));
       if (!texture) continue;
       let glyph = glyphs.get(wall.id);
       if (!glyph) {

@@ -94,6 +94,7 @@ let cleanup: (() => void) | null = null;
 afterEach(() => {
   cleanup?.();
   cleanup = null;
+  openContextMenuGlobal.mockReset();
 });
 
 const nextFrame = (): Promise<void> => new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
@@ -107,6 +108,7 @@ function setup(extra: Partial<ConstructorParameters<typeof LightingController>[0
   const { app: obsApp } = createInMemoryApp({ files: {} });
   const store = createViewAtlasStore(obsApp, `lighting-session-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
+  store.getState().setGrid({ ...store.getState().grid!, snapToGrid: false });
   store.getState().setMapPath('maps/session.atlasmap');
   const eventBus = new EventEmitter();
   const controller = new LightingController({
@@ -295,7 +297,7 @@ describe('LightingController in session view', () => {
     handlers.open(door, 10, 20);
     const [entries, at] = openContextMenuGlobal.mock.calls.at(-1)! as [{ label: string; onClick: () => void }[], { x: number; y: number }];
     expect(at).toEqual({ x: 10, y: 20 });
-    expect(entries.map((entry) => entry.label)).toEqual(['Open door', 'Lock door']);
+    expect(entries.map((entry) => entry.label)).toEqual(['Open door', 'Lock door', 'Window']);
     entries[1]!.onClick();
     expect(store.getState().objects.walls[door]).toMatchObject({ locked: true, closed: true });
     store.getState().setGMView(false);
