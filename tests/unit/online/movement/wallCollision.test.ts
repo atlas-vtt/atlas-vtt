@@ -115,7 +115,8 @@ function dragAround(shape: Room, walls: MoveWalls, segments: readonly (readonly 
   }
 }
 
-describe('stopping a token at walls', () => {
+// A room test walks 300 rooms: about 2 s here, three to four times that on a hosted runner.
+describe('stopping a token at walls', { timeout: 30_000 }, () => {
   it('never lets a token out of a closed room, whatever path it takes, through joints the sealing closes', () => {
     for (let seed = 1; seed <= TRIALS; seed += 1) {
       const random = seeded(seed);

@@ -53,7 +53,8 @@ function oneByOne(text: string, patches: readonly NotePatch[]): string {
   return current;
 }
 
-describe('applyFrontmatterPatches on random notes', () => {
+// A chunk of 500 notes takes about 1 s here, three to four times that on a hosted runner.
+describe('applyFrontmatterPatches on random notes', { timeout: 30_000 }, () => {
   const chunks = Array.from({ length: CASES / CHUNK }, (_, index) => index * CHUNK + 1);
   it.each(chunks)('keeps every invariant for seeds %i to +499', (first) => {
     for (let seed = first; seed < first + CHUNK; seed++) runCase(seed);
