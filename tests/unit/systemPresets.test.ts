@@ -67,8 +67,12 @@ describe('built-in presets', () => {
   it('give every built-in system HP, Cairn STR from its stat row and Daggerheart Stress', () => {
     for (const preset of BUILT_IN_SYSTEM_PRESETS) {
       const hp = preset.rules.resources?.find((r) => r.key === 'hp');
-      // In Cairn a character at 0 HP still stands; STR 0 is death
-      expect(hp?.defeatedWhenSpent, preset.name).toBe(preset.name !== 'Cairn');
+      expect(hp?.defeatedWhenSpent, preset.name).toBe(
+        // In Cairn a character at 0 HP still stands; STR 0 is death
+        preset.name !== 'Cairn' &&
+        // In Cosmere RPG a character at 0 HP still stands; an injury roll total lower than 6 
+        // is death
+        preset.name !== 'Cosmere RPG');
       expect(preset.rules.defaultWidgets?.hpBar, preset.name).toBeUndefined();
     }
     const cairn = BUILT_IN_SYSTEM_PRESETS.find((p) => p.name === 'Cairn')!;
@@ -519,6 +523,9 @@ describe('conditions that change sight', () => {
       .filter((condition) => condition.effect !== undefined)
       .map((condition) => [condition.id, condition.effect]));
     expect(effects).toEqual({
+      'cosmereRpg-blinded': 'blinded',
+      'cosmereRpg-flying': 'airborne',
+      'cosmereRpg-invisible': 'invisible',
       'dnd5e-blinded': 'blinded',
       'dnd5e-invisible': 'invisible',
       'pathfinder2e-blinded': 'blinded',
@@ -534,7 +541,7 @@ describe('conditions that change sight', () => {
 
   it('are every condition named Blinded, Invisible, Undetected or Unnoticed, and no other; Hidden depends on who looks', () => {
     for (const condition of BUILT_IN_SYSTEM_PRESETS.flatMap((preset) => preset.rules.conditions)) {
-      const expected = { Blinded: 'blinded', Invisible: 'invisible', Undetected: 'undetected', Unnoticed: 'undetected' }[condition.name];
+      const expected = { Blinded: 'blinded', Invisible: 'invisible', Undetected: 'undetected', Unnoticed: 'undetected', Flying: 'airborne' }[condition.name];
       expect(condition.effect).toBe(expected);
     }
   });

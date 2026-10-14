@@ -27,7 +27,7 @@ describe('initiative rules of a collection', () => {
   it('rolls a d10 in Cyberpunk RED and a d20 in every other built-in turn order', () => {
     const rolls = Object.fromEntries(BUILT_IN_SYSTEM_PRESETS.map((p) => [p.name, collectionInitiativeRules({ systemPresetId: p.id }, BUILT_IN_SYSTEM_PRESETS)]));
     expect(rolls['Cyberpunk RED']).toMatchObject({ mode: 'turn-order', roll: '1d10' });
-    expect(Object.entries(rolls).filter(([, rules]) => rules.mode === 'sides').map(([name]) => name)).toEqual(['Cairn']);
+    expect(Object.entries(rolls).filter(([, rules]) => rules.mode === 'sides').map(([name]) => name)).toEqual(['Cairn', 'Cosmere RPG']);
   });
 
   it('reads stored rules that are none as unset, so the preset decides', () => {
