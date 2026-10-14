@@ -16,6 +16,7 @@ import { tokenSenses } from '../../vision/tokenSenses';
 import { wallList } from '../../vision/wallList';
 import type { SceneState } from './atlasView.ts';
 import { roundPlace } from './scenePicture.ts';
+import { isPlayerDoor } from '../../lighting/doorKind';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
@@ -52,7 +53,7 @@ export function sharedFog(operations: Readonly<Record<string, FogOperation>>, al
  */
 export function sharedWall(wall: WallSegment): SharedWall {
   const closed = wall.closed ?? true;
-  const door = wall.type === 'door' || (wall.type === 'secret-door' && !closed) ? { door: closed ? 'closed' as const : 'open' as const } : {};
+  const door = isPlayerDoor(wall) || (wall.type === 'secret-door' && !closed) ? { door: closed ? 'closed' as const : 'open' as const } : {};
   return {
     p: [wall.p1.x, wall.p1.y, wall.p2.x, wall.p2.y], ...door,
     ...(wall.direction && { direction: wall.direction }), ...(wall.blocks && { blocks: wall.blocks }), ...(wall.limited === true && { limited: true as const }),

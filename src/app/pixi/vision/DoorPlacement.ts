@@ -18,7 +18,7 @@ const DOOR_WIDTH_WITHOUT_GRID = 40;
  * The preview shows exactly the door the click places.
  */
 export class DoorPlacement {
-  private placing: { wallId: string; doorType: DoorType; at: Point } | null = null;
+  private placing: { wallId: string; doorType: DoorType; at: Point; window: boolean } | null = null;
 
   constructor(
     private readonly store: StoreApi<ViewAtlasState>,
@@ -31,10 +31,10 @@ export class DoorPlacement {
   }
 
   /** Starts placing a door in `wallId`, at the point of the wall nearest `at` (its middle without one). */
-  start(wallId: string, doorType: DoorType, at?: Point): void {
+  start(wallId: string, doorType: DoorType, at?: Point, window = false): void {
     const wall = this.wall(wallId);
     if (!wall) return;
-    this.placing = { wallId, doorType, at: at ?? { x: (wall.p1.x + wall.p2.x) / 2, y: (wall.p1.y + wall.p2.y) / 2 } };
+    this.placing = { wallId, doorType, at: at ?? { x: (wall.p1.x + wall.p2.x) / 2, y: (wall.p1.y + wall.p2.y) / 2 }, window };
     this.walls.selectSegment(wallId);
     this.preview();
   }
@@ -55,7 +55,7 @@ export class DoorPlacement {
     const state = this.store.getState();
     runHistoryTransaction(this.store, () => {
       state.deleteWall(wall.id);
-      for (const piece of placeDoor(wall, placing.at, this.width(), placing.doorType)) state.addWall(piece);
+      for (const piece of placeDoor(wall, placing.at, this.width(), placing.doorType, placing.window)) state.addWall(piece);
     });
     this.cancel();
     this.walls.clearSelection();
@@ -73,8 +73,8 @@ export class DoorPlacement {
       this.cancel();
       return;
     }
-    const door = placeDoor(wall, placing.at, this.width(), placing.doorType).find((piece) => piece.type === placing.doorType);
-    if (door) this.renderer.preview.showDoor(door.p1, door.p2, placing.doorType);
+    const door = placeDoor(wall, placing.at, this.width(), placing.doorType, placing.window).find((piece) => piece.type === placing.doorType);
+    if (door) this.renderer.preview.showDoor(door.p1, door.p2, placing.window ? 'window' : placing.doorType);
   }
 
   private wall(wallId: string): WallSegment | undefined {

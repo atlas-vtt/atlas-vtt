@@ -13,6 +13,7 @@ import type { LightPresetDefinition } from '../../src/app/types/lightPresetTypes
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
+import { getHistoryStore } from '../../src/app/stores/history';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({ openContextMenuGlobal }));
@@ -36,6 +37,8 @@ function setup(): { editor: WallEditor; store: ViewAtlasStore; wall: string; bus
   const store = createViewAtlasStore(app, `wall-editor-${Math.random()}`);
   store.getState().setPersistenceEnabled(false);
   store.getState().setActiveTool('wall');
+  const grid = store.getState().grid!;
+  store.getState().setGrid({ ...grid, snapToGrid: false });
   const wall = store.getState().addWall({ type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 }, closed: true });
   const bus = new EventEmitter();
   const editor = new WallEditor(viewport, store, bus, () => undefined, () => lights.current);
@@ -105,6 +108,69 @@ function others(store: ViewAtlasStore, id: string): WallSegment[] {
 }
 
 describe('WallEditor joining walls', () => {
+  it('snaps new corners and dragged points to the grid, with Alt temporarily bypassing it', () => {
+    const { editor, store, wall } = setup();
+    store.getState().setGrid({ ...store.getState().grid!, snapToGrid: true });
+    click(editor, { x: 504, y: 403 });
+    click(editor, { x: 604, y: 503 });
+    expect(others(store, wall)[0]).toMatchObject({ p1: { x: 490, y: 420 }, p2: { x: 630, y: 490 } });
+    click(editor, { x: 704, y: 603 }, true);
+    click(editor, { x: 804, y: 703 }, true);
+    expect(others(store, wall)[1]).toMatchObject({ p1: { x: 704, y: 603 }, p2: { x: 804, y: 703 } });
+    drag(editor, { x: 100, y: 100 }, { x: 144, y: 164 });
+    expect(store.getState().objects.walls[wall]?.p1).toEqual({ x: 140, y: 140 });
+    editor.pointerDown({ x: 140, y: 140 }, false, false);
+    editor.pointerMove({ x: 151, y: 168 }, true);
+    editor.pointerUp();
+    expect(store.getState().objects.walls[wall]?.p1).toEqual({ x: 151, y: 168 });
+    expect(store.getState().grid?.snapToGrid).toBe(true);
+  });
+
+  it('starts a junction by clicking a wall interior, tolerates click jitter, and cancels without splitting', () => {
+    const { editor, store, wall } = setup();
+    editor.pointerDown({ x: 200, y: 102 }, false, false);
+    editor.pointerMove({ x: 201, y: 102 });
+    editor.pointerUp();
+    expect(Object.keys(store.getState().objects.walls)).toEqual([wall]);
+    editor.handleEscape();
+    expect(store.getState().objects.walls[wall]?.p2).toEqual({ x: 300, y: 100 });
+    click(editor, { x: 200, y: 102 });
+    click(editor, { x: 200, y: 200 });
+    expect(Object.values(store.getState().objects.walls)).toHaveLength(3);
+    expect(store.getState().objects.walls[wall]?.p2).toEqual({ x: 200, y: 100 });
+  });
+
+  it('splits a target segment when a dragged point lands there, and undoes the whole gesture', () => {
+    const { editor, store, wall } = setup();
+    const target = store.getState().addWall({ type: 'solid', p1: { x: 500, y: 200 }, p2: { x: 500, y: 400 } });
+    const before = store.getState().objects.walls;
+    const history = getHistoryStore(store)!;
+    history.getState().clear();
+    drag(editor, { x: 300, y: 100 }, { x: 503, y: 300 });
+    expect(store.getState().objects.walls[wall]?.p2).toEqual({ x: 500, y: 300 });
+    expect(store.getState().objects.walls[target]?.p2).toEqual({ x: 500, y: 300 });
+    expect(Object.keys(store.getState().objects.walls)).toHaveLength(3);
+    expect(history.getState().pastStates).toHaveLength(1);
+    history.getState().undo();
+    expect(store.getState().objects.walls).toEqual(before);
+  });
+
+  it('snaps either door end to attached walls far points without collapsing the door', () => {
+    const { editor, store, wall } = setup();
+    store.getState().deleteWall(wall);
+    const left = store.getState().addWall({ type: 'solid', p1: { x: 0, y: 0 }, p2: { x: 100, y: 0 } });
+    const door = store.getState().addWall({ type: 'door', p1: { x: 100, y: 0 }, p2: { x: 170, y: 0 }, closed: true });
+    const right = store.getState().addWall({ type: 'solid', p1: { x: 170, y: 0 }, p2: { x: 300, y: 0 } });
+    drag(editor, { x: 170, y: 0 }, { x: 296, y: 3 });
+    expect(store.getState().objects.walls[door]?.p2).toEqual({ x: 300, y: 0 });
+    expect(store.getState().objects.walls[right]).toBeUndefined();
+    drag(editor, { x: 100, y: 0 }, { x: 3, y: 3 });
+    expect(store.getState().objects.walls[door]?.p1).toEqual({ x: 0, y: 0 });
+    expect(store.getState().objects.walls[left]).toBeUndefined();
+    drag(editor, { x: 300, y: 0 }, { x: 1, y: 1 });
+    expect(store.getState().objects.walls[door]?.p2).toEqual({ x: 300, y: 0 });
+  });
+
   it('starts a wall on a wall end clicked in place, joined to it, and leaves that end where it was', () => {
     const { editor, store, wall } = setup();
     click(editor, { x: 302, y: 103 });
@@ -122,8 +188,8 @@ describe('WallEditor joining walls', () => {
     click(editor, { x: 200, y: 100 });
     click(editor, { x: 600, y: 500 });
     click(editor, { x: 306, y: 104 }, true);
-    expect(others(store, wall).map((other) => other.p2)).toEqual([{ x: 300, y: 100 }, { x: 200, y: 100 }, { x: 306, y: 104 }]);
-    expect(store.getState().objects.walls[wall]?.p2).toEqual({ x: 300, y: 100 });
+    expect(others(store, wall).map((other) => other.p2)).toEqual([{ x: 300, y: 100 }, { x: 300, y: 100 }, { x: 200, y: 100 }, { x: 306, y: 104 }]);
+    expect(store.getState().objects.walls[wall]?.p2).toEqual({ x: 200, y: 100 });
   });
 
   it('continues the chain of the wall it starts on', () => {
@@ -196,5 +262,18 @@ describe('the wall menu', () => {
     choose(menu(editor, store, { x: 280, y: 0 }), 'Remove point');
     expect(Object.values(store.getState().objects.walls).map((side) => [side.p1, side.p2])).toEqual(expect.arrayContaining([[{ x: 0, y: 0 }, { x: 280, y: 280 }]]));
     expect(Object.values(store.getState().objects.walls)).toHaveLength(2);
+  });
+
+  it('places an open window through the wall menu and removes its window flag with the opening', () => {
+    const { editor, store, wall } = setup();
+    choose(menu(editor, store, { x: 200, y: 100 }), 'Place window');
+    editor.pointerDown({ x: 200, y: 100 }, false, false);
+    const window = Object.values(store.getState().objects.walls).find((wall) => wall.window);
+    expect(window).toMatchObject({ type: 'door', closed: false });
+    expect(store.getState().objects.walls[wall]).toBeUndefined();
+    choose(menu(editor, store, { x: 200, y: 100 }), 'Remove window');
+    expect(Object.values(store.getState().objects.walls)).toHaveLength(1);
+    expect(Object.values(store.getState().objects.walls)[0]).toMatchObject({ type: 'solid', p1: { x: 100, y: 100 }, p2: { x: 300, y: 100 } });
+    expect(Object.values(store.getState().objects.walls)[0]).not.toHaveProperty('window');
   });
 });

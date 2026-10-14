@@ -4,6 +4,7 @@ import type { WallSegment } from '../types/wallTypes';
 import { lightLevelAt } from './lightLevels';
 import { perceive } from './perception';
 import type { AmbientLight, LightReach, Sight } from './sight';
+import { isPlayerDoor } from '../lighting/doorKind';
 
 /** How far beside a door's centre line its floor is looked at, in world pixels: past the line itself, well within the doorway. */
 const BESIDE_DOOR = 4;
@@ -25,7 +26,7 @@ function besideDoor(wall: WallSegment): Point[] {
 /**
  * The doors the players see now: ordinary doors with floor beside their middle, on either side,
  * that the players' picture shows. That is `perceive`, the rule tokens are seen by, asked of the
- * senses that show the map: in sight and in light the sense sees by. A secret door never, nor a
+ * senses that show the map: in sight and in light the sense sees by. An undiscovered secret door never, nor a
  * door in darkness, out of sight or only remembered. Without a vision token, or with the scene's
  * token vision off (`sight.all`), every ordinary door on lit floor.
  */
@@ -33,7 +34,7 @@ export function doorsInSight(walls: readonly WallSegment[], sight: Sight, ambien
   const shows = mapShownAt(sight, ambient, lights);
   const seen = new Set<string>();
   for (const wall of walls) {
-    if (wall.type !== 'door') continue;
+    if (!isPlayerDoor(wall)) continue;
     if (besideDoor(wall).some(shows)) seen.add(wall.id);
   }
   return seen;

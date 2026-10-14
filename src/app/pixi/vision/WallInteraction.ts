@@ -5,8 +5,10 @@ import { beginHistoryTransaction, endHistoryTransaction, runHistoryTransaction }
 import type { WallRenderer } from './WallRenderer';
 import type { Point } from '../../types/visionTypes';
 import type { WallSegment, WallType } from '../../types/wallTypes';
-import { endsAt, snapToWallEnd, type WallEnd } from '../lighting/wallEnds';
+import { endsAt, sameJoint, type WallEnd } from '../lighting/wallEnds';
+import { wallPoint } from '../lighting/wallPoint';
 import type { WallEdit } from '../lighting/wallJoints';
+import { connectWallPoint } from '../lighting/wallConnections';
 
 /** Screen pixels a pressed wall end must travel before it follows the pointer: less is a click. */
 const DRAG_THRESHOLD = 3;
@@ -18,6 +20,7 @@ interface JointDrag {
   ends: WallEnd[];
   /** The other ends of the joint's walls, which stay where they are. */
   farEnds: Point[];
+  joiningEnds: Point[];
   /** The joint has followed the pointer; its history transaction is open. */
   moved: boolean;
   /** Pressed without adding to the selection, so a release in place is a click on the joint. */
@@ -90,7 +93,10 @@ export class WallInteraction {
     const state = this.store.getState();
     const point = { x: worldX, y: worldY };
     // Never onto the far end of a wall that moves with it, which would shrink that wall to a point.
-    const to = free ? point : snapToWallEnd(point, state.objects.walls, zoom, { skip: new Set(drag.ends.map((end) => end.wallId)), avoid: drag.farEnds });
+    const to = wallPoint(point, state.objects.walls, state.grid, zoom, free, {
+      skip: new Set(drag.ends.map((end) => end.wallId)), avoid: drag.farEnds, also: drag.joiningEnds,
+    }).point;
+    if (drag.farEnds.some((end) => sameJoint(end, to))) return;
     for (const end of drag.ends) state.updateWall(end.wallId, { [end.end]: to });
   }
 
@@ -104,7 +110,19 @@ export class WallInteraction {
   private endDrag(): void {
     const drag = this.drag;
     this.drag = null;
-    if (drag?.moved) endHistoryTransaction(this.store);
+    if (drag?.moved) {
+      const state = this.store.getState();
+      const collapsed = drag.ends.flatMap(({ wallId }) => {
+        const wall = state.objects.walls[wallId];
+        return wall?.type === 'solid' && wall.p1.x === wall.p2.x && wall.p1.y === wall.p2.y ? [wallId] : [];
+      });
+      if (collapsed.length > 0) state.deleteWalls(collapsed);
+      const attached = new Set(drag.ends.map(({ wallId }) => wallId));
+      const end = drag.ends[0];
+      const at = end && state.objects.walls[end.wallId]?.[end.end];
+      if (at) connectWallPoint(this.store, at, attached);
+      endHistoryTransaction(this.store);
+    }
   }
 
   // ─── Bulk Operations ─────────────────────────────────────────────────
@@ -256,8 +274,16 @@ export class WallInteraction {
     this.endDrag();
     const joint = { ...wall[vertex] };
     const ends = endsAt(joint, walls);
-    const farEnds = ends.flatMap((end) => walls[end.wallId]?.[end.end === 'p1' ? 'p2' : 'p1'] ?? []);
-    this.drag = { joint, pressedAt, ends, farEnds, moved: false, plain };
+    const resizingDoor = ends.some((end) => walls[end.wallId]?.type !== 'solid');
+    const farEnds: Point[] = [];
+    const joiningEnds: Point[] = [];
+    for (const end of ends) {
+      const at = walls[end.wallId];
+      if (!at) continue;
+      const far = at[end.end === 'p1' ? 'p2' : 'p1'];
+      (resizingDoor && at.type === 'solid' ? joiningEnds : farEnds).push(far);
+    }
+    this.drag = { joint, pressedAt, ends, farEnds, joiningEnds, moved: false, plain };
   }
 
   destroy(): void {

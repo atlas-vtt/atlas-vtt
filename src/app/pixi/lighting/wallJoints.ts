@@ -55,7 +55,7 @@ export function removeJoint(walls: Record<string, WallSegment>, point: Point): W
 export function removeDoor(walls: Record<string, WallSegment>, doorId: string): WallEdit | null {
   const door = walls[doorId];
   if (!door || (door.type !== 'door' && door.type !== 'secret-door')) return null;
-  const { closed: _closed, locked: _locked, ...rest } = withoutIdentity(door);
+  const { closed: _closed, locked: _locked, window: _window, revealed: _revealed, ...rest } = withoutIdentity(door);
   let wall: WallInput = { ...rest, type: 'solid' };
   const remove = [doorId];
   for (const end of [door.p1, door.p2]) {

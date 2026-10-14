@@ -22,10 +22,10 @@ function pointAlong(wall: Pick<WallSegment, 'p1' | 'p2'>, share: number): Point 
 }
 
 /** The two walls replacing `wall` when it is split at the point nearest `at`; null for a zero-length wall. */
-export function splitWall(wall: WallSegment, at: Point): [WallInput, WallInput] | null {
+export function splitWall(wall: WallSegment, at: Point, minShare = MIN_SPLIT_SHARE): [WallInput, WallInput] | null {
   const projected = shareAlong(wall, at);
   if (projected === null) return null;
-  const split = pointAlong(wall, Math.max(MIN_SPLIT_SHARE, Math.min(1 - MIN_SPLIT_SHARE, projected)));
+  const split = pointAlong(wall, Math.max(minShare, Math.min(1 - minShare, projected)));
   const { id: _id, kind: _kind, p1, p2, ...shared } = wall;
   return [{ ...shared, p1, p2: split }, { ...shared, p1: split, p2 }];
 }
@@ -49,14 +49,14 @@ export function doorSpan(length: number, share: number, width: number): [number,
  * `at`: the door and the pieces of wall left beside it, which all keep what the wall blocks and
  * its chain.
  */
-export function placeDoor(wall: WallSegment, at: Point, width: number, doorType: 'door' | 'secret-door'): WallInput[] {
+export function placeDoor(wall: WallSegment, at: Point, width: number, doorType: 'door' | 'secret-door', window = false): WallInput[] {
   const [start, end] = doorSpan(Math.hypot(wall.p2.x - wall.p1.x, wall.p2.y - wall.p1.y), shareAlong(wall, at) ?? 0.5, width);
   const shared = keptByParts(wall);
   const from = pointAlong(wall, start);
   const to = pointAlong(wall, end);
   return [
     ...(start > 0 ? [{ type: wall.type, p1: wall.p1, p2: from, ...shared }] : []),
-    { type: doorType, p1: from, p2: to, closed: true, ...shared },
+    { type: doorType, p1: from, p2: to, closed: !window, ...shared, ...(window && { window: true }) },
     ...(end < 1 ? [{ type: wall.type, p1: to, p2: wall.p2, ...shared }] : []),
   ];
 }

@@ -9,6 +9,7 @@ import { useMapLightPresets } from "../../../react/hooks/useMapLightPresets"
 import type { LightKind } from "../../../types/lightingTypes"
 import type { WallToolMode, WallToolSubMode } from "../../../tools/WallTool"
 import { DropdownMenuItem, type DropdownMenuItemProps } from "../primitives/DropdownMenuItem"
+import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { ExploredMemorySection } from "./ExploredMemorySection"
 import { SceneLightingSection } from "./SceneLightingSection"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
@@ -48,6 +49,8 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
   const lighting = useAtlasStore((state) => state.lighting)
   const setSceneLighting = useAtlasStore((state) => state.setSceneLighting)
   const setSceneLightingPanelOpen = useAtlasStore((state) => state.setSceneLightingPanelOpen)
+  const grid = useAtlasStore((state) => state.grid)
+  const setGrid = useAtlasStore((state) => state.setGrid)
   const [subMode, setSubMode] = useState<WallToolSubMode>('draw')
   const [drawMode, setDrawMode] = useState<WallToolMode>('point-to-point')
   const presets = useMapLightPresets()
@@ -101,6 +104,16 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
       {subMode === 'explored-memory' && (
         <ExploredMemorySection options={brush} onChange={setBrush} />
       )}
+
+      {subMode === 'draw' && <div className="atlas-dropdown-section">
+        <DropdownToggleRow
+          label={t('wall.snap')}
+          value={grid?.snapToGrid ?? true}
+          disabled={!grid}
+          onChange={() => { if (grid) setGrid({ ...grid, snapToGrid: !(grid.snapToGrid ?? true) }) }}
+        />
+        <span className="atlas-dropdown-label">{t('wall.snapHint')}</span>
+      </div>}
 
       {/* The zone mode has no choices of its own: a zone is drawn corner by corner. */}
       {(subMode === 'draw' || subMode === 'place-light') && <div className="atlas-dropdown-section">

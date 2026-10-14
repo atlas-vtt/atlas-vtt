@@ -11,6 +11,7 @@ import { destroyTree } from '../utils/destroyTree';
 import { KindWallLayer, type KindWall } from './KindWallLayer';
 import { drawDashedLine, hasKindLook } from './wallKindLook';
 import { VERTEX_HANDLE_RADIUS, WallPreview } from './WallPreview';
+import { isWindow } from '../../lighting/doorKind';
 
 /** Screen pixels: how close to a wall or a wall's end a press lands on it, never less than what is drawn. */
 const HIT_TOLERANCE = 6;
@@ -120,6 +121,13 @@ export class WallRenderer {
         g.moveTo(wall.p1.x, wall.p1.y);
         g.lineTo(wall.p2.x, wall.p2.y);
         g.stroke({ width: isOpen ? 1.5 : 2.5, color: isOpen ? 0x44dd44 : color, alpha: isOpen ? 0.5 : 1 });
+        if (isWindow(wall)) {
+          const dx = wall.p2.x - wall.p1.x, dy = wall.p2.y - wall.p1.y;
+          const length = Math.hypot(dx, dy) || 1;
+          const nx = -dy / length * 3, ny = dx / length * 3;
+          g.moveTo(wall.p1.x + nx, wall.p1.y + ny).lineTo(wall.p2.x + nx, wall.p2.y + ny).stroke({ width: 1, color });
+          g.moveTo(wall.p1.x - nx, wall.p1.y - ny).lineTo(wall.p2.x - nx, wall.p2.y - ny).stroke({ width: 1, color });
+        }
         break;
       }
 
@@ -157,7 +165,7 @@ export class WallRenderer {
   private getWallColor(wall: WallSegment): number {
     switch (wall.type) {
       case 'solid': return 0xaaaaaa;
-      case 'door': return 0x44aaff;
+      case 'door': return isWindow(wall) ? 0x66cccc : 0x44aaff;
       case 'secret-door': return 0xff8844;
       default: return 0xaaaaaa;
     }
