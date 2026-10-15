@@ -99,6 +99,25 @@ describe('the Random tables tab', () => {
     expect(draft().randomTables).toEqual([]);
   });
 
+  it('names a table in Atlas, its own name coming back when the field is cleared', async () => {
+    const { app } = createInMemoryApp({ files: { 'Adventures/Brew.md': BREW_NOTE } });
+    const stored: RandomTableSource = { path: 'Adventures/Brew.md', table: '🗣️ Rumours in the Taproom', index: 1, kind: 'text' };
+    const { draft } = renderTab(app, { randomTables: [stored] });
+    fireEvent.click(await screen.findByRole('button', { name: /Rumours in the Taproom/ }));
+    const field = screen.getByRole('textbox', { name: 'Name in Atlas' }) as HTMLInputElement;
+    await waitFor(() => expect(field.placeholder).toBe('🗣️ Rumours in the Taproom'));
+
+    fireEvent.change(field, { target: { value: ' Tavern talk ' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    fireEvent.blur(field);
+    expect(draft().randomTables[0]).toEqual({ ...stored, label: 'Tavern talk' });
+    expect(screen.getByRole('button', { name: /Tavern talk/ })).toBeTruthy();
+
+    fireEvent.change(field, { target: { value: '' } });
+    fireEvent.blur(field);
+    expect(draft().randomTables[0]).toEqual(stored);
+  });
+
   it('edits the rarity words, storing nothing while they are the system\'s', () => {
     const { app } = createInMemoryApp({ files: {} });
     const { draft } = renderTab(app, {}, 'builtin:pathfinder2e');

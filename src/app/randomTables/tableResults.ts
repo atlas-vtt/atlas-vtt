@@ -44,7 +44,7 @@ async function textResult(found: CollectionTable, draw: TableDraw, context: Cell
   }
   const result: TableResult = {
     id: crypto.randomUUID(),
-    source: [found.noteName, table!.name],
+    source: [found.noteName, source.label ?? table!.name],
     notePath: source.path,
     ...(draw.roll && { roll: draw.roll }),
     text: text.text,

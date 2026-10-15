@@ -167,6 +167,30 @@ describe('the Random tables window', () => {
     expect(getComputedStyle(row).borderTopLeftRadius).toBe(getComputedStyle(sidebar().querySelector('.atlas-tables-search')!).borderTopLeftRadius);
   });
 
+  it('shows a row\'s ⋯ in the fact\'s place, concentric inside the row, and keeps the name clear of it', async () => {
+    await page.viewport(1280, 860);
+    shown = await mountTablesWindow('dark');
+    await expect.poll(() => panel()?.querySelector('button.atlas-tables-row') != null).toBe(true);
+    select(/Rumours/);
+    const entry = within(sidebar()).getByRole('button', { name: /Rumours/ }).closest<HTMLElement>('.atlas-tables-entry')!;
+    const row = entry.querySelector<HTMLElement>('.atlas-tables-row')!;
+    const more = entry.querySelector<HTMLElement>('.atlas-tables-entry__more')!;
+    await expect.poll(() => getComputedStyle(more).opacity).toBe('1');
+    expect(getComputedStyle(entry.querySelector('.atlas-tables-row__fact')!).visibility).toBe('hidden');
+    const [r, m] = [rect(row), rect(more)];
+    expect(r.right - m.right).toBeCloseTo(4, 0);
+    expect((m.top + m.bottom) / 2).toBeCloseTo((r.top + r.bottom) / 2, 0);
+    const inset = r.right - m.right;
+    expect(parseFloat(getComputedStyle(more).borderTopRightRadius)).toBeCloseTo(parseFloat(getComputedStyle(row).borderTopRightRadius) - inset, 0);
+    expect(rect(entry.querySelector('.atlas-tables-row__name')!).right).toBeLessThanOrEqual(m.left + 0.5);
+
+    // The row selected before fades its ⋯ out.
+    const others = [...sidebar().querySelectorAll<HTMLElement>('.atlas-tables-entry:not(:has(.is-selected)) .atlas-tables-entry__more')];
+    await expect.poll(() => others.every((other) => getComputedStyle(other).opacity === '0')).toBe(true);
+    expect(overflowing()).toEqual([]);
+    await page.screenshot({ path: '__screenshots__/random-tables-row-menu.png', element: panel() });
+  });
+
   for (const theme of ['light', 'dark'] as const) {
     it(`paints rarities in the collection's words, its own word too, in ${theme}`, async () => {
       await page.viewport(1280, 860);
