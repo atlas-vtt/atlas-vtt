@@ -146,7 +146,7 @@ describe('the players\' books at a running table', () => {
     tab.store.set(cave());
     await advance(1_000);
     since = delivered(socket).length;
-    ownership.give([BRANNOCH], BEN);
+    ownership.give([BRANNOCH], {}, BEN);
     await advance(0);
     expect(books(delivered(socket).slice(since), ANA)).toMatchObject([{ character: null, notes: [], items: [], pins: [], purse: [] }]);
     expect(books(delivered(socket).slice(since), ANA)[0]?.worldMap).not.toBeNull();
@@ -173,7 +173,7 @@ describe('the players\' books at a running table', () => {
     const kept = new BookShelf(readBooks(JSON.parse(JSON.stringify(shelf.toData()))));
     const second = await openTable(kept, [{ id: CAL, name: 'Cal' }], {});
     expect(books(delivered(second.socket), CAL).at(-1)).toMatchObject({ character: null, notes: [], items: [] });
-    second.ownership.give([BRANNOCH], CAL);
+    second.ownership.give([BRANNOCH], {}, CAL);
     await advance(100);
     expect(books(delivered(second.socket), CAL).at(-1)).toMatchObject({ character: { name: 'Brannoch' }, notes: [{ id: NOTE, title: 'Kept', body: SECRET_NOTE }], items: [{ name: 'Moon Blade' }] });
     second.online.stop();

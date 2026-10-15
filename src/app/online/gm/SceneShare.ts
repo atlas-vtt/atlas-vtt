@@ -16,7 +16,7 @@ import { MapLayerShare } from './MapLayerShare.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
 import { MarkShare, type MarkSharePorts } from './MarkShare.ts';
 import { sceneWalls, type MapSize } from './moveCheck.ts';
-import type { SeatSource } from './seatSource.ts';
+import { ownerIn, type SeatSource } from './seatSource.ts';
 import { PlayerMoves } from './playerMoves.ts';
 import { RulesShare, type RulesSharePorts } from './RulesShare.ts';
 import { TOKEN_POLL_MS, TokenShare, type TokenSharePorts } from './TokenShare.ts';
@@ -84,7 +84,8 @@ export class SceneShare {
     this.store = store;
     this.ports = ports;
     const seats = ports.seats;
-    const mine = seats === undefined ? null : new MineShare(seats, (body, to) => ports.send(body, to));
+    const ownerOf = ownerIn(seats, store);
+    const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => seats.onlinePlayers(), ownerOf }, (body, to) => ports.send(body, to));
     this.mine = mine;
     this.tokens = new TokenShare(store, ports, (listed) => mine?.setList(listed));
     this.live = ports.sendLive === undefined ? null : new LiveShare(store, { ...ports, sendLive: (body, key) => ports.sendLive?.(body, key) }, () => ({
@@ -104,7 +105,7 @@ export class SceneShare {
       context: () => ({
         scene: this.tokens.listedScene,
         listedToken: (alias) => this.tokens.listedToken(alias),
-        ownerOf: (tokenId) => seats?.ownerOf(tokenId),
+        ownerOf,
         map: this.mapSize,
         walls: sceneWalls(store.getState().objects.walls, this.scene?.lit === true, this.mapSize),
       }),

@@ -65,7 +65,7 @@ describe('moves through the shared scene', () => {
     });
     const owners = new Ownership(readOwnership(undefined), () => undefined);
     owners.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
-    owners.give(['ogre', 'ghost'], ANA);
+    owners.give(['ogre', 'ghost'], {}, ANA);
     const share = shareHarness(initial, new Map([['maps/cave.png', PNG_1000x800]]), owners);
     share.share.start();
     await share.set(initial);

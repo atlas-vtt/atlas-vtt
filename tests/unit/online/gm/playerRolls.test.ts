@@ -30,7 +30,7 @@ async function table(rules: DiceRules, random: () => number): Promise<ShareHarne
   share.share.start();
   await share.set(state);
   await share.advance(TOKEN_INTERVAL_MS);
-  owners.give(['hero'], ANA);
+  owners.give(['hero'], {}, ANA);
   const list = tokenLists(share.sent).at(-1);
   return Object.assign(share, atlas, {
     scene: list?.scene ?? '',

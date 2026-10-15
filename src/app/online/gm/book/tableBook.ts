@@ -53,7 +53,7 @@ export function tableBook(ports: TableBookPorts): TableBook {
     randomId: () => ports.randomId(),
     scene: () => ports.scene(),
     players: () => ownership.list(),
-    ownerOf: (tokenId) => ownership.ownerOf(tokenId),
+    ownerOf: (tokenId, token) => ownership.ownerOf(tokenId, token),
     readImage: (path) => ports.readImage(path),
     stat: (path) => {
       const file = app.vault.getFileByPath(normalizePath(path));

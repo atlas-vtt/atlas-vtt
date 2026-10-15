@@ -40,7 +40,7 @@ describe('a token the GM gives to a player', () => {
     const before = steps();
     online.give(['fighter', 'scout'], ANA);
     expect([vision('fighter'), vision('scout')]).toEqual([{ enabled: true }, { enabled: true, range: 60 }]);
-    expect(owners.ownerOf('fighter')).toBe(ANA);
+    expect(owners.ownerOf('fighter', undefined)).toBe(ANA);
     expect(steps()).toBe(before + 1);
     undo();
     expect(vision('fighter')).toBeUndefined();
