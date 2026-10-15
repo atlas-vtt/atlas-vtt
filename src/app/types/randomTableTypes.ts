@@ -14,6 +14,8 @@ export interface RandomTableSource {
   /** Which table of the note, counted from 0: finds the table again when its heading was renamed. */
   index: number;
   kind: RandomTableKind;
+  /** The name the GM gave it in Atlas, shown in place of the note's; the note is never renamed. */
+  label?: string;
   /** Column headers players never see (a rumour's "True?"). */
   hiddenColumns?: string[];
   /** Several rolled at once never repeat a row. */

@@ -14,7 +14,9 @@ type TableSettings = Pick<CollectionSettings, 'randomTables'>;
 
 const KINDS: readonly RandomTableKind[] = ['text', 'items'];
 /** Fields this Atlas reads; any other field of an entry belongs to a newer one and is kept. */
-const KNOWN_FIELDS = new Set(['path', 'table', 'index', 'kind', 'hiddenColumns', 'noRepeats']);
+const KNOWN_FIELDS = new Set(['path', 'table', 'index', 'kind', 'label', 'hiddenColumns', 'noRepeats']);
+/** Longest name the GM may give a table, as long as a heading is read. */
+const MAX_LABEL = 200;
 const MAX_HIDDEN_COLUMNS = TABLE_LIMITS.columns;
 
 function isKind(value: unknown): value is RandomTableKind {
@@ -23,7 +25,7 @@ function isKind(value: unknown): value is RandomTableKind {
 
 function readSource(value: unknown): RandomTableSource | null {
   if (!isRecord(value)) return null;
-  const { path, table, index, kind, hiddenColumns, noRepeats } = value;
+  const { path, table, index, kind, label, hiddenColumns, noRepeats } = value;
   if (typeof path !== 'string' || !path.trim() || !isKind(kind)) return null;
   if (typeof index !== 'number' || !Number.isInteger(index) || index < 0 || index >= TABLE_LIMITS.tables) return null;
   const hidden = Array.isArray(hiddenColumns)
@@ -34,6 +36,7 @@ function readSource(value: unknown): RandomTableSource | null {
     ...(typeof table === 'string' && table.trim() && { table }),
     index,
     kind,
+    ...(typeof label === 'string' && label.trim() && { label: label.trim().slice(0, MAX_LABEL) }),
     ...(hidden.length > 0 && { hiddenColumns: hidden }),
     ...(noRepeats === true && { noRepeats: true }),
   };

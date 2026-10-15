@@ -31,7 +31,7 @@ import { TableSummary } from './TableSummary';
 import { TablesSkeleton } from './TablesSkeleton';
 import { useSourceRoll } from './useSourceRoll';
 import { openLink, openNote } from './openNote';
-import { setTableNoRepeats } from './tableSettingsWrite';
+import { removeLootBase, removeTableSource, setTableLabel, setTableNoRepeats } from './tableSettingsWrite';
 import { PasteTableDialog, type PastedTableNote } from './PasteTableDialog';
 import { saveImportedTables, type ImportedTableNote, type ImportSaveJournal } from '../../../randomTables/import/saveImportedTables';
 import { tableSourceId } from '../../../randomTables/tableLookup';
@@ -185,6 +185,15 @@ function RandomTablesPanel(): React.ReactElement {
               disabledViews={disabledViews}
               onDisabledViewsChange={(views) => update({ disabledViews: views })}
               onNewTable={openImporter}
+              onRename={(found, name) => {
+                if (collectionId) setTableLabel(app, collectionId, found, name);
+              }}
+              onRemove={(removed) => {
+                if (!collectionId) return;
+                if (typeof removed === 'string') removeLootBase(app, collectionId, removed);
+                else removeTableSource(app, collectionId, removed.source);
+              }}
+              onOpen={(path, name) => openNote(app, path, name)}
             />
           </aside>
           <div className="atlas-loot-roller__main">

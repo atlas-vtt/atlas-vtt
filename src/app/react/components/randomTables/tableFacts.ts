@@ -34,7 +34,7 @@ export function statusLine(found: CollectionTable): string | null {
   }
 }
 
-/** The name a listed table shows: as its note holds it now, else as the settings named it. */
+/** The name a listed table shows: the GM's own, else as its note holds it now, else as the settings named it. */
 export function tableName(found: CollectionTable): string {
-  return found.table?.name ?? found.source.table ?? found.noteName;
+  return found.source.label ?? found.table?.name ?? found.source.table ?? found.noteName;
 }

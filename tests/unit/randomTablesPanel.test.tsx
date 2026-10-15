@@ -9,6 +9,7 @@ import { BREW_NOTE } from '../fixtures/tableNotes';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
+import { ContextMenuProvider } from '../../src/app/react/root/ContextMenuContext';
 import { RandomTables } from '../../src/app/react/components/randomTables/RandomTablesPanel';
 import { AssetService } from '../../src/app/services/AssetService';
 import { LootHistoryStore } from '../../src/app/loot/LootHistoryStore';
@@ -55,7 +56,7 @@ async function mount(randomTables: RandomTableSource[], lootBases: string[] = []
   store.getState().setLootRollerOpen(true);
   render(
     <AtlasUIContext.Provider value={{ app, view: null, pixiApp: null, renderer: null }}>
-      <ViewStoreProvider store={store}><RandomTables /></ViewStoreProvider>
+      <ViewStoreProvider store={store}><ContextMenuProvider><RandomTables /></ContextMenuProvider></ViewStoreProvider>
     </AtlasUIContext.Provider>,
   );
   return { app, store, collectionId };
@@ -147,6 +148,65 @@ describe('the Random tables window', () => {
     await mount([]);
     expect(await screen.findByText('No random tables yet')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Use a table from a note' })).toBeTruthy();
+  });
+
+  it('renames a table from its menu without touching the note, and its own name comes back when cleared', async () => {
+    const { app, collectionId } = await mount([RUMOURS, GEAR]);
+    const sidebar = await screen.findByRole('complementary');
+    const optionsOf = (name: RegExp): HTMLElement => within(within(sidebar).getByRole('button', { name }).closest('.atlas-tables-entry') as HTMLElement)
+      .getByRole('button', { name: 'Table options' });
+    const settings = (): RandomTableSource[] | undefined => AssetService.getInstance(app).getCollectionSettings(collectionId).randomTables;
+
+    fireEvent.click(optionsOf(/Rumours in the Taproom/));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }));
+    const field = await screen.findByRole('textbox', { name: 'New name for 🗣️ Rumours in the Taproom' });
+    fireEvent.change(field, { target: { value: 'Tavern talk' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+    await waitFor(() => expect(settings()?.[0]).toEqual({ ...RUMOURS, label: 'Tavern talk' }));
+    expect(await within(sidebar).findByRole('button', { name: /Tavern talk/ })).toBeTruthy();
+    expect(await app.vault.adapter.read('Adventures/Brew.md')).toBe(BREW_NOTE);
+
+    fireEvent.click(optionsOf(/Tavern talk/));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }));
+    const again = await screen.findByRole('textbox', { name: 'New name for Tavern talk' });
+    fireEvent.change(again, { target: { value: '' } });
+    fireEvent.keyDown(again, { key: 'Enter' });
+    await waitFor(() => expect(settings()?.[0]).toEqual(RUMOURS));
+  });
+
+  it('keeps the name when renaming is cancelled with Escape', async () => {
+    const { app, collectionId } = await mount([GEAR]);
+    const sidebar = await screen.findByRole('complementary');
+    fireEvent.click(within(sidebar).getByRole('button', { name: 'Table options' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Rename' }));
+    const field = await screen.findByRole('textbox', { name: 'New name for Gear' });
+    fireEvent.change(field, { target: { value: 'Junk' } });
+    fireEvent.keyDown(field, { key: 'Escape' });
+    expect(within(sidebar).getByRole('button', { name: /Gear/ })).toBeTruthy();
+    expect(AssetService.getInstance(app).getCollectionSettings(collectionId).randomTables).toEqual([GEAR]);
+  });
+
+  it('removes a table whose note is gone and a base from the list, leaving the others', async () => {
+    const gone: RandomTableSource = { path: 'Gone.md', index: 0, kind: 'text' };
+    const { app, collectionId } = await mount([gone, GEAR], ['Loot/Items.base']);
+    await waitFor(() => fakeQueries.of('Weapons'));
+    act(() => fakeQueries.of('Weapons').listener.onSnapshot({ entries: [], order: [], displayNames: {} }));
+    const sidebar = await screen.findByRole('complementary');
+    const options = (): HTMLElement[] => within(sidebar).getAllByRole('button', { name: 'Table options' });
+    await waitFor(() => expect(options()).toHaveLength(3));
+
+    fireEvent.click(within(within(sidebar).getByRole('button', { name: /Gone/ }).closest('.atlas-tables-entry') as HTMLElement)
+      .getByRole('button', { name: 'Table options' }));
+    expect((await screen.findByRole('menuitem', { name: 'Open note' })).getAttribute('aria-disabled')).toBe('true');
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Remove from list' }));
+    await waitFor(() => expect(AssetService.getInstance(app).getCollectionSettings(collectionId).randomTables).toEqual([GEAR]));
+
+    fireEvent.click(within(within(sidebar).getByRole('button', { name: /Items/ }).closest('.atlas-tables-entry') as HTMLElement)
+      .getByRole('button', { name: 'Table options' }));
+    fireEvent.click(await screen.findByRole('menuitem', { name: 'Remove from list' }));
+    await waitFor(() => expect(AssetService.getInstance(app).getCollectionSettings(collectionId).lootBases).toEqual([]));
+    await waitFor(() => expect(options()).toHaveLength(1));
+    expect(app.vault.getFileByPath('Loot/Items.base')).toBeTruthy();
   });
 
   it('marks a table whose note is gone and does not roll it', async () => {

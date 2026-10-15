@@ -41,6 +41,16 @@ describe('reading the tables of a collection', () => {
     ]);
   });
 
+  it('reads the name the GM gave a table, trimmed and bounded, and none that is blank or no text', () => {
+    const settings = stored([
+      { ...RUMOURS, label: '  Tavern talk ' },
+      { path: 'Long.md', index: 0, kind: 'text', label: 'x'.repeat(300) },
+      { path: 'Blank.md', index: 0, kind: 'text', label: '   ' },
+      { path: 'Odd.md', index: 0, kind: 'text', label: 7 },
+    ]);
+    expect(readRandomTables(settings).map((source) => source.label)).toEqual(['Tavern talk', 'x'.repeat(200), undefined, undefined]);
+  });
+
   it('reads nothing from a value that is no list', () => {
     expect(readRandomTables(stored({ path: 'A.md' }))).toEqual([]);
     expect(readRandomTables({})).toEqual([]);

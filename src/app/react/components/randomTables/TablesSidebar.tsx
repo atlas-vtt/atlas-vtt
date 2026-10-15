@@ -1,40 +1,16 @@
 import React, { useState } from 'react';
-import { AlertTriangle, Plus, Search } from 'lucide-react';
+import { Plus, Search } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { lootBaseItemCount, needsBases, type LootBase } from '../../../loot/LootBaseReader';
 import type { CollectionTable } from '../../../randomTables/TableNoteReader';
 import { LootViewChecks } from '../loot/LootSourceTree';
+import type { ContextMenuEntry } from '../../root/ContextMenuContext';
+import { SourceRow } from './SourceRow';
 import { matchesSearch } from './tableSelection';
 import { problemLines, rollFact, statusLine, tableName } from './tableFacts';
 import type { RandomTablesLibrary } from './useRandomTables';
 import { t } from '../../../i18n';
-
-interface SourceRowProps {
-  name: string;
-  /** The die or the number of entries, at the row's end. */
-  fact: string;
-  /** What is wrong with the source, one line each; the row carries a warning when any. */
-  problems: readonly string[];
-  selected: boolean;
-  onSelect: () => void;
-}
-
-function SourceRow({ name, fact, problems, selected, onSelect }: SourceRowProps): React.ReactElement {
-  const row = (
-    <button
-      type="button"
-      className={`atlas-tables-row${selected ? ' is-selected' : ''}`}
-      aria-current={selected || undefined}
-      onClick={onSelect}
-    >
-      <span className="atlas-tables-row__name">{name}</span>
-      {problems.length > 0 && <AlertTriangle className="atlas-tables-row__problem" aria-hidden />}
-      <span className="atlas-tables-row__fact">{fact}</span>
-    </button>
-  );
-  return problems.length > 0 ? <LabelTooltip describe multiline label={problems.join(' · ')}>{row}</LabelTooltip> : row;
-}
 
 function baseProblems(base: LootBase): string[] {
   if (base.missing) return [t('csm.loot.notFound')];
@@ -58,14 +34,35 @@ interface TablesSidebarProps {
   onDisabledViewsChange: (disabled: string[]) => void;
   /** Opens New table, which writes a table pasted from elsewhere as a note. */
   onNewTable: () => void;
+  /** Gives a table the name the window shows; an empty name shows its own again. */
+  onRename: (table: CollectionTable, name: string) => void;
+  /** Takes a table or a base (by its path) off the list; the note or base stays. */
+  onRemove: (source: CollectionTable | string) => void;
+  /** Opens a table's note or a base. */
+  onOpen: (path: string, name: string) => void;
 }
 
 /**
  * The collection's tables to pick one to roll on, grouped by what they give: Items (the loot
  * bases, the selected one with its views to tick, then the Items tables of notes) and Text.
  */
-export function TablesSidebar({ library, selectedId, onSelect, disabledViews, onDisabledViewsChange, onNewTable }: TablesSidebarProps): React.ReactElement {
+export function TablesSidebar(props: TablesSidebarProps): React.ReactElement {
+  const { library, selectedId, onSelect, disabledViews, onDisabledViewsChange, onNewTable, onRename, onRemove, onOpen } = props;
   const [search, setSearch] = useState('');
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+
+  const removeEntry = (source: CollectionTable | string): ContextMenuEntry => (
+    { type: 'item', label: t('tables.removeFromList'), icon: 'trash-2', destructive: true, onClick: () => onRemove(source) }
+  );
+  const tableMenu = (table: CollectionTable): ContextMenuEntry[] => [
+    { type: 'item', label: t('tables.rename'), icon: 'pencil', onClick: () => setRenamingId(table.id) },
+    { type: 'item', label: t('tables.openNote'), icon: 'file-text', disabled: table.status === 'note-missing', onClick: () => onOpen(table.source.path, table.noteName) },
+    removeEntry(table),
+  ];
+  const baseMenu = (base: LootBase): ContextMenuEntry[] => [
+    { type: 'item', label: t('tables.openBase'), icon: 'table', disabled: base.missing, onClick: () => onOpen(base.path, base.name) },
+    removeEntry(base.path),
+  ];
   const bases = library.items.bases.filter((base) => matchesSearch(base.name, search)
     || base.views.some((view) => matchesSearch(view.name, search)));
   const itemTables = library.items.tables.filter((table) => matchesSearch(tableName(table), search));
@@ -79,6 +76,12 @@ export function TablesSidebar({ library, selectedId, onSelect, disabledViews, on
         problems={tableProblems(table)}
         selected={table.id === selectedId}
         onSelect={() => onSelect(table.id)}
+        menu={() => tableMenu(table)}
+        renaming={table.id === renamingId}
+        onRenamed={(name) => {
+          setRenamingId(null);
+          if (name !== null) onRename(table, name);
+        }}
       />
     </li>
   );
@@ -115,6 +118,7 @@ export function TablesSidebar({ library, selectedId, onSelect, disabledViews, on
                   problems={baseProblems(base)}
                   selected={base.path === selectedId}
                   onSelect={() => onSelect(base.path)}
+                  menu={() => baseMenu(base)}
                 />
                 {base.path === selectedId && (
                   <LootViewChecks base={base} disabled={disabledViews} onChange={onDisabledViewsChange} />
