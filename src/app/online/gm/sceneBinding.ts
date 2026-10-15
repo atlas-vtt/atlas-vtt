@@ -126,7 +126,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     share,
     store,
     resources,
-    book: () => (shown() ? bookSceneOf(store.getState(), asTokenSource(renderer), tokenRulesOf(renderer), rulesLookupOf(leaf.view)) : null),
+    book: () => (shown() ? bookSceneOf(store.getState(), asTokenSource(renderer), tokenRulesOf(renderer), rulesLookupOf(leaf.view), (scene, alias) => share.listedToken(scene, alias)) : null),
     get showing() {
       return !store.held;
     },

@@ -4,7 +4,9 @@ import { isMapId, parseNestedMaps, rootEntrances, type BookNestedMap, type MapEn
 import { MAX_BOOK_PINS, MAX_BOOK_QUESTS, parseBookPin, parseBookQuest, type BookPin, type BookQuest } from './bookMap.ts';
 import { DEFAULT_BOOK_SLOTS, parseBookSlots, parseEquipped, parseSlotMessage, settledEquipped, type BookSlots, type Equipped, type SlotMessage } from './bookSlots.ts';
 import { bookLine, bookText, MAX_BOOK_TITLE } from './bookText.ts';
+import { MAX_SCENE_ID } from './moves.ts';
 import { isRecord } from './shape.ts';
+import { TOKEN_ID_PATTERN } from './tokens.ts';
 import { MAX_TOKEN_VALUE } from './tokenUI.ts';
 
 export * from './bookCharacter.ts';
@@ -105,6 +107,18 @@ export type PlayerBookMessage =
   | { readonly t: 'book-purse'; readonly purse: readonly PurseRow[] }
   | BookResourceMessage
   | SlotMessage;
+
+/**
+ * The token a player acts with (the one picked in the token menu or selected on the map): one of
+ * their own in the shared scene, by the id the token list names it by. Their book follows it: the GM
+ * makes that token's character theirs, sheet, items, notes and purse. A choice stays until the next;
+ * a token that is not theirs is passed over, and a GM that does not know the message leaves it unread.
+ */
+export interface BookTokenMessage {
+  readonly t: 'book-token';
+  readonly scene: string;
+  readonly token: string;
+}
 
 const GM_TYPES: readonly unknown[] = ['book', 'book-sheet', 'book-item'];
 const PLAYER_TYPES: readonly unknown[] = ['book-note', 'book-note-delete', 'book-pin', 'book-pin-delete', 'book-purse', 'book-resource', 'book-equip', 'book-slots'];
@@ -236,6 +250,13 @@ export function parseBookMessage(value: Record<string, unknown>): BookMessage | 
   }
   const item = value.t === 'book-item' ? parseBookItem(value.item) : null;
   return item === null ? null : { t: 'book-item', item };
+}
+
+/** The token a player's book follows as the GM reads it, or null when it is malformed. */
+export function parseBookTokenMessage(value: Record<string, unknown>): BookTokenMessage | null {
+  const { scene, token } = value;
+  if (typeof scene !== 'string' || scene.length > MAX_SCENE_ID || typeof token !== 'string' || !TOKEN_ID_PATTERN.test(token)) return null;
+  return { t: 'book-token', scene, token };
 }
 
 /** What a player wrote into their book as the GM reads it, cleaned; null for anything malformed. */

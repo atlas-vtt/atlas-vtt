@@ -199,6 +199,11 @@ export class SceneShare {
     if (message.t === 'asset-request') this.assets.answer(from, message);
   }
 
+  /** The GM id of a token by the id players know it by in the list of `scene`, while that is the scene of the last list they were sent. */
+  listedToken(scene: string, alias: string): string | undefined {
+    return scene === this.tokens.listedScene ? this.tokens.listedToken(alias) : undefined;
+  }
+
   /** A token of the scene players were last sent a list of, as their frame shows it now; null when they do not see it. */
   private shownToken(mapPath: string, tokenId: string): ReturnType<RollSceneLookup['shownToken']> {
     const state = this.store.getState();

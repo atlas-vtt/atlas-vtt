@@ -65,10 +65,11 @@ const UNNAMED = 'Unnamed character';
 
 /**
  * The players' books: each connected player's own pages besides the table, sent to that player
- * alone and never to all. A book is its character's (`Characters`): the sheet is read from the
- * shared scene, items, notes, pins and purse are kept on the shelf, the world map of the campaign
- * being played and its quests (the GM's quest notes, which no player writes) go to everyone at the
- * table, with a character or without; notes on a quest name it by its id. It is the table's, not a
+ * alone and never to all. A book is its character's (`Characters`: the token the player acts
+ * with, among their own): the sheet is read from the shared scene, items, notes, pins and purse
+ * are kept on the shelf, the world map of the campaign being played and its quests (the GM's
+ * quest notes, which no player writes) go to everyone at the table, with a character or without;
+ * notes on a quest name it by its id. It is the table's, not a
  * scene's, so it hears players while no scene is shared. What a player writes is taken as
  * the protocol's parser cleaned it, only for a player with a character and within their rate; a
  * refused write is answered with the whole book. A player changes their own character's resources
@@ -167,8 +168,8 @@ export class BookShare implements LootRecipientSource {
 
   /**
    * A player's message: true when it was the book's, so nobody else reads it. That is a write into
-   * their book, and a request for an asset only their book names (their character's artwork while
-   * the scene does not show it, the world map).
+   * their book, the token their book follows, and a request for an asset only their book names
+   * (their character's artwork while the scene does not show it, the world map).
    */
   receive(from: string, body: unknown): boolean {
     if (!isRecord(body)) return false;
@@ -178,6 +179,7 @@ export class BookShare implements LootRecipientSource {
       this.answers.answer(from, request);
       return true;
     }
+    if (body.t === 'book-token') return this.follow(from, body);
     if (!isPlayerBookType(body.t)) return false;
     if (!this.write(from, body)) this.owe(from);
     return true;
@@ -214,6 +216,14 @@ export class BookShare implements LootRecipientSource {
       isKnown: (player) => known.has(player),
       sheet: (shown, token) => sheetOf(shown, token, scene.resources, (path) => this.art.get(path)),
     });
+  }
+
+  /** A player chose the token they act with: their book follows it (`Characters.choose`), read at once while their writes are within their rate, else at the next poll. */
+  private follow(from: string, body: Record<string, unknown>): boolean {
+    const message = parsePlayerMessage(body);
+    const tokenId = message?.t === 'book-token' && this.isOnline(from) ? this.ports.scene()?.listedToken(message.scene, message.token) : undefined;
+    if (tokenId !== undefined && this.characters.choose(from, tokenId) && this.rate.take(from, this.ports.now())) this.update();
+    return true;
   }
 
   private sync(player: string): void {
