@@ -273,6 +273,8 @@ export class SceneShare {
     this.inputs.setScene(null);
     this.layers.setScene(null);
     this.rules.setScene(null);
+    // Marks of the scene before must not follow the new one: the live lane would let them overtake it.
+    this.marks.setScene(null);
     this.resend();
     this.tokens.setScene(scene?.id ?? null);
     this.live?.setScene(scene);
