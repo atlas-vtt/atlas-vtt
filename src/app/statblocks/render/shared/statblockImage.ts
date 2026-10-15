@@ -1,7 +1,7 @@
-import type { App, TFile } from 'obsidian';
+import { normalizePath, type App, type TFile } from 'obsidian';
 import { AssetService, type TokenAsset } from '../../../services/AssetService';
 
-const WIKI_BRACKETS = /(^\[\[|\]\]$)/g;
+const WIKI_BRACKETS = /(^!?\[\[|\]\]$)/g;
 const WEB_ADDRESS = /^https?:/;
 
 /** A value with a stray `%` is not percent-encoded; it is read as written. */
@@ -32,11 +32,26 @@ function linkTarget(raw: string): string {
   return decoded(raw).replace(WIKI_BRACKETS, '').split('|')[0] ?? '';
 }
 
-/** The vault file a statblock's image value names; null for none, a missing file or a web address. */
+/**
+ * The vault paths an image value may name, in the order they are tried: as written, then without a
+ * heading, then both percent-decoded; each without a wiki link's brackets and alias and without
+ * leading slashes. TTRPG Convert CLI writes `/2.%20Mechanics/token.png`, whose encoded spaces
+ * Obsidian's link resolver does not read (Fantasy Statblocks decodes them before it resolves).
+ */
+function vaultTargets(raw: string): string[] {
+  const written = raw.trim().replace(WIKI_BRACKETS, '').split('|')[0] ?? '';
+  const paths = [written, decoded(written)].flatMap((path) => [path, path.split('#')[0] ?? '']);
+  return [...new Set(paths.map((path) => path.trim().replace(/^\/+/, '')))].filter((path) => path !== '');
+}
+
+/** The vault file a statblock's image value names: a link from `sourcePath`, else a vault path; null for none, a missing file or a web address. */
 export function statblockImageFile(app: App, raw: string, sourcePath: string | undefined): TFile | null {
-  const src = raw ? linkTarget(raw) : '';
-  if (!src || WEB_ADDRESS.test(src)) return null;
-  return app.metadataCache.getFirstLinkpathDest(src, sourcePath ?? '');
+  if (!raw || WEB_ADDRESS.test(linkTarget(raw))) return null;
+  for (const path of vaultTargets(raw)) {
+    const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath ?? '') ?? app.vault.getFileByPath(normalizePath(path));
+    if (file) return file;
+  }
+  return null;
 }
 
 /** The token asset whose art the statblock's image is: its ring is the one the statblock shows. */
