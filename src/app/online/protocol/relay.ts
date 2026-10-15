@@ -19,6 +19,8 @@ export const KEEPALIVE_MS = 30_000;
 
 /** Largest frame a GM may send: one asset chunk with its envelope. */
 export const MAX_GM_FRAME = 320 * 1024;
+/** The most game messages one `sends` frame of the GM carries. */
+export const MAX_BATCH_SENDS = 64;
 /** Largest frame a player or a socket that has not said hello may send. */
 export const MAX_PLAYER_FRAME = 4 * 1024;
 /** Players connected at once. */
@@ -89,6 +91,12 @@ export interface PlayerHello {
 
 export type Hello = { readonly v: 1; readonly t: 'hello'; readonly role: 'gm'; readonly secret: string } | PlayerHello;
 
+/** One game message of a GM's `sends` frame: to one player, or to all (`ALL_PLAYERS`). */
+export interface BatchedSend {
+  readonly to: string;
+  readonly body: unknown;
+}
+
 /**
  * What a client sends the relay. A player's `send` has no `to`: it always reaches the GM. `kick`,
  * `gate` (the join code, or null for none, and whether newcomers wait for the GM), `admit` and
@@ -97,6 +105,8 @@ export type Hello = { readonly v: 1; readonly t: 'hello'; readonly role: 'gm'; r
 export type ClientFrame =
   | Hello
   | { readonly v: 1; readonly t: 'send'; readonly to?: string; readonly body: unknown }
+  /** The GM's game messages of one moment in one frame, each passed on as its own `send` would be; only to a relay that offers it (`batch`). */
+  | { readonly v: 1; readonly t: 'sends'; readonly sends: readonly BatchedSend[] }
   | { readonly v: 1; readonly t: 'kick'; readonly id: string }
   | { readonly v: 1; readonly t: 'gate'; readonly code: string | null; readonly ask: boolean }
   | { readonly v: 1; readonly t: 'admit'; readonly id: string }
@@ -105,8 +115,8 @@ export type ClientFrame =
 
 /** What the relay sends a client. */
 export type RelayFrame =
-  /** `waiting`: the newcomers who wait for the GM's answer, left out while there are none. */
-  | { readonly v: 1; readonly t: 'welcome'; readonly role: 'gm'; readonly players: readonly PlayerInfo[]; readonly waiting?: readonly PlayerInfo[] }
+  /** `waiting`: the newcomers who wait for the GM's answer, left out while there are none. `batch`: the relay takes `sends` frames; an older one says nothing. */
+  | { readonly v: 1; readonly t: 'welcome'; readonly role: 'gm'; readonly players: readonly PlayerInfo[]; readonly waiting?: readonly PlayerInfo[]; readonly batch?: true }
   /** A newcomer waits for the GM's answer; `knock-gone` once they do not (left, timed out, answered; `full`: admitted into a table without a seat). */
   | { readonly v: 1; readonly t: 'knock'; readonly id: string; readonly name: string }
   | { readonly v: 1; readonly t: 'knock-gone'; readonly id: string; readonly full?: true }
@@ -181,6 +191,7 @@ export function parseClientFrame(text: string): ClientFrame | null {
     if (value.to === undefined) return { v: 1, t: 'send', body: value.body };
     return typeof value.to === 'string' ? { v: 1, t: 'send', to: value.to, body: value.body } : null;
   }
+  if (value.t === 'sends') return parseSends(value.sends);
   if (value.t !== 'hello') return null;
   if (value.role === 'gm') return typeof value.secret === 'string' && SECRET_PATTERN.test(value.secret) ? { v: 1, t: 'hello', role: 'gm', secret: value.secret } : null;
   if (value.role !== 'player') return null;
@@ -196,6 +207,17 @@ export function parseClientFrame(text: string): ClientFrame | null {
     ...(value.key === undefined ? {} : { key: value.key }), ...(code === null ? {} : { code }),
     ...(value.waits === true ? { waits: true as const } : {}), ...(value.wait === undefined ? {} : { wait: value.wait }),
   };
+}
+
+/** A GM's `sends` frame: one to `MAX_BATCH_SENDS` messages, each with whom it goes to; null for anything else. Bodies are left unread. */
+function parseSends(value: unknown): ClientFrame | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > MAX_BATCH_SENDS) return null;
+  const sends: BatchedSend[] = [];
+  for (const entry of value) {
+    if (!isRecord(entry) || typeof entry.to !== 'string' || !('body' in entry)) return null;
+    sends.push({ to: entry.to, body: entry.body });
+  }
+  return { v: 1, t: 'sends', sends };
 }
 
 /** A join code as sent, or undefined for anything that is none. */
@@ -227,7 +249,7 @@ export function parseRelayFrame(text: string): RelayFrame | null {
         const players = value.players === undefined ? null : playerList(value.players);
         const waiting = playerList(value.waiting);
         if (players === null || waiting === null) return null;
-        return waiting.length === 0 ? { v: 1, t: 'welcome', role: 'gm', players } : { v: 1, t: 'welcome', role: 'gm', players, waiting };
+        return { v: 1, t: 'welcome', role: 'gm', players, ...(waiting.length > 0 && { waiting }), ...(value.batch === true && { batch: true as const }) };
       }
       if (value.role === 'player' && typeof value.id === 'string' && typeof value.key === 'string' && typeof value.gmOnline === 'boolean') {
         return { v: 1, t: 'welcome', role: 'player', id: value.id, key: value.key, gmOnline: value.gmOnline };

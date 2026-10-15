@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import {
-  ASSET_CHUNK_BYTES, CLOSE, FINAL_CLOSE_CODES, GATE_CLOSE_CODES, MAX_ASSET_BYTES, MAX_CURSOR_NUMBERS, MAX_LASER_SPAN_MS, MAX_LIVE_TOKENS, MAX_PLAYER_NAME, MAX_PLAYERS, MAX_TOKEN_CONDITIONS, MAX_TOKENS, parseClientFrame, parseGmMessage, parsePlayerMessage, parseRelayFrame,
+  ASSET_CHUNK_BYTES, CLOSE, FINAL_CLOSE_CODES, GATE_CLOSE_CODES, MAX_ASSET_BYTES, MAX_CURSOR_NUMBERS, MAX_LASER_SPAN_MS, MAX_LIVE_TOKENS, MAX_BATCH_SENDS, MAX_PLAYER_NAME, MAX_PLAYERS, MAX_TOKEN_CONDITIONS, MAX_TOKENS, parseClientFrame, parseGmMessage, parsePlayerMessage, parseRelayFrame,
   playerName,
 } from '../../../../src/app/online/protocol/index.ts';
 
@@ -15,10 +15,13 @@ describe('client frames', () => {
     expect(parseClientFrame(`{"v":1,"t":"kick","id":"${'a'.repeat(20)}"}`)).toEqual({ v: 1, t: 'kick', id: 'a'.repeat(20) });
     expect(parseClientFrame('{"v":1,"t":"send","to":"*","body":{"t":"x"}}')).toEqual({ v: 1, t: 'send', to: '*', body: { t: 'x' } });
     expect(parseClientFrame('{"v":1,"t":"end"}')).toEqual({ v: 1, t: 'end' });
+    expect(parseClientFrame('{"v":1,"t":"sends","sends":[{"to":"*","body":{"t":"x"}},{"to":"p","body":null}]}')).toEqual({ v: 1, t: 'sends', sends: [{ to: '*', body: { t: 'x' } }, { to: 'p', body: null }] });
   });
 
   it('refuse other versions, short secrets, a send without body and non-JSON', () => {
-    for (const text of ['{"v":2,"t":"end"}', '{"v":1,"t":"hello","role":"player"}', '{"v":1,"t":"kick","id":"*"}', '{"v":1,"t":"hello","role":"gm","secret":"short"}', '{"v":1,"t":"send"}', '{"v":1,"t":"hello","role":"admin"}', 'not json', '[1]']) {
+    const tooMany = JSON.stringify({ v: 1, t: 'sends', sends: Array.from({ length: MAX_BATCH_SENDS + 1 }, () => ({ to: '*', body: 1 })) });
+    for (const text of ['{"v":2,"t":"end"}', '{"v":1,"t":"hello","role":"player"}', '{"v":1,"t":"kick","id":"*"}', '{"v":1,"t":"hello","role":"gm","secret":"short"}', '{"v":1,"t":"send"}', '{"v":1,"t":"hello","role":"admin"}', 'not json', '[1]',
+      '{"v":1,"t":"sends","sends":[]}', '{"v":1,"t":"sends","sends":[{"to":"*"}]}', '{"v":1,"t":"sends","sends":[{"body":1}]}', '{"v":1,"t":"sends","sends":{}}', tooMany]) {
       expect(parseClientFrame(text), text).toBeNull();
     }
   });
@@ -60,6 +63,8 @@ describe('the join gates\' frames', () => {
     expect(parseRelayFrame('{"v":1,"t":"waiting"}')).toEqual({ v: 1, t: 'waiting' });
     expect(parseRelayFrame(`{"v":1,"t":"welcome","role":"gm","players":[],"waiting":[{"id":"${id}","name":"Mira"}]}`)).toEqual({ v: 1, t: 'welcome', role: 'gm', players: [], waiting: [{ id, name: 'Mira' }] });
     expect(parseRelayFrame('{"v":1,"t":"welcome","role":"gm","players":[],"waiting":[]}')).toEqual({ v: 1, t: 'welcome', role: 'gm', players: [] });
+    expect(parseRelayFrame('{"v":1,"t":"welcome","role":"gm","players":[],"batch":true}')).toEqual({ v: 1, t: 'welcome', role: 'gm', players: [], batch: true });
+    expect(parseRelayFrame('{"v":1,"t":"welcome","role":"gm","players":[],"batch":"yes"}')).toEqual({ v: 1, t: 'welcome', role: 'gm', players: [] });
   });
 
   it('refuse a knock without a name or id, a knock-gone without an id, a pause without a time and a welcome whose waiting list is malformed', () => {

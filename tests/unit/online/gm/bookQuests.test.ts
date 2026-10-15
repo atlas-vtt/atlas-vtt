@@ -6,7 +6,7 @@ import { applyBookMessage, EMPTY_BOOK, readBooks } from '../../../../src/app/onl
 import { setQuestGate, type QuestAsset } from '../../../../src/app/online/gm/book/questGate.ts';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
 import { FakeSocket, png, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH_ART, CAL, delivered, MIRA_ART, nameWorldMapTree, ofType, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
+import { ANA, BEN, BRANNOCH_ART, CAL, delivered, MIRA_ART, nameWorldMap, nameWorldMapTree, ofType, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
 import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -107,6 +107,27 @@ describe('quests at a running table', () => {
     writeQuests(quests);
     await advance(100);
     expect(ofType(delivered(table.socket), 'book')).toHaveLength(books);
+    table.online.stop();
+  });
+
+  it('sends a page that reads its book in parts a changed quest list or world map alone, and any other page its whole book', async () => {
+    quests = [quest(1)];
+    const table = await openTable(new BookShelf(), [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
+    table.from(ANA, { t: 'book-parts' });
+    await advance(100);
+    const books = (player: string): number => ofType(delivered(table.socket), 'book').filter(({ to }) => to === player).length;
+    const before = { ana: books(ANA), ben: books(BEN) };
+    const part = (type: string): unknown => ofType(delivered(table.socket), type).filter(({ to }) => to === ANA).map(({ body }) => parseGmMessage(JSON.parse(JSON.stringify(body)))).at(-1);
+
+    writeQuests([quest(1, { state: 'done' })]);
+    await advance(100);
+    expect(part('book-quests')).toEqual({ t: 'book-quests', quests: [quest(1, { state: 'done' })] });
+    workspace.files.set('maps/other world.png', png(640, 480));
+    nameWorldMap('maps/other world.png');
+    await advance(100);
+    expect(part('book-map')).toMatchObject({ t: 'book-map', worldMap: { width: 640, height: 480 } });
+    expect(books(ANA)).toBe(before.ana);
+    expect(books(BEN)).toBe(before.ben + 2);
     table.online.stop();
   });
 

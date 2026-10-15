@@ -2,6 +2,11 @@
   "version": "0.8.1-beta.0",
   "releases": [
     {
+      "version": "0.8.1-beta.0",
+      "title": "Coming in 0.8.1",
+      "markdown": "## Improved\n- Online play: busy tables send far fewer messages. Cursors, lasers and measurements go out ten times a second and still move smoothly, and a changed quest or world map reaches players without their whole book being sent again."
+    },
+    {
       "version": "0.8.0",
       "date": "2026-10-14",
       "title": "Online play and native statblocks",

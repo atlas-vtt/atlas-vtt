@@ -47,6 +47,9 @@ function cryptoFraction(): number {
   return (crypto.getRandomValues(new Uint32Array(1))[0] ?? 0) / 2 ** 32;
 }
 
+/** A `send` frame of a message as a batch carries it (`{"to":…,"body":…}`), so it is written out once. */
+const sendFrame = (entry: string): string => `{"v":${PROTOCOL_VERSION},"t":"send",${entry.slice(1)}`;
+
 /** A random id for the parts of one large message. */
 const partId = (): string => randomHex(12);
 
@@ -137,7 +140,10 @@ export class TableConnection {
   /** Sends a game message to one player, or to all. */
   send(body: GmMessage, to: string = ALL_PLAYERS): void {
     if (this.isGone(to)) return;
-    for (const part of messageParts(body, partId)) this.queue.push(JSON.stringify({ v: PROTOCOL_VERSION, t: 'send', to, body: part }), to);
+    for (const part of messageParts(body, partId)) {
+      const entry = JSON.stringify({ to, body: part });
+      this.queue.push(sendFrame(entry), to, entry);
+    }
   }
 
   /**
@@ -146,7 +152,8 @@ export class TableConnection {
    */
   sendLive(body: GmMessage, key: string, to: string = ALL_PLAYERS): void {
     if (this.isGone(to)) return;
-    this.queue.pushLive(`${to}\n${key}`, JSON.stringify({ v: PROTOCOL_VERSION, t: 'send', to, body }), to);
+    const entry = JSON.stringify({ to, body });
+    this.queue.pushLive(`${to}\n${key}`, sendFrame(entry), to, entry);
   }
 
   /** Whether a message to `to` would reach nobody: no player is connected, or not that one. */
@@ -220,7 +227,7 @@ export class TableConnection {
       for (const player of frame.players) this.players.add(player.id);
       // The gates first, ahead of whatever waits in the queue: the relay keeps them, and a restarted companion's are the same.
       if (this.gate !== null) socket.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'gate', ...this.gate.frame() }));
-      this.queue.attach(this.pulse.start(socket));
+      this.queue.attach(this.pulse.start(socket), frame.batch === true);
       this.setStatus('online');
       // A table that still closes for want of access says so again after its welcome.
       this.events.access(null);

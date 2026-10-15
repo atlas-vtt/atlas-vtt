@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
-import { PointerTap, type TapEvent, type TapViewport } from '../../../../src/app/online/marks/PointerTap.ts';
+import { PointerTap, thinTrail, type TapEvent, type TapViewport } from '../../../../src/app/online/marks/PointerTap.ts';
 import { MAX_LASER_SPAN_MS } from '../../../../src/app/online/protocol/index.ts';
 
 type Listener = (event: TapEvent) => void;
@@ -74,12 +74,18 @@ describe('PointerTap', () => {
     expect(tap.takeTrail(64).span).toBe(100);
   });
 
-  it('gives the newest points when more were drawn than a message holds', () => {
+  it('spreads the points it gives along the whole stroke, the newest last, when more were drawn than a message holds', () => {
     const { tap, send } = tapped();
     send('pointerdown', 0, 0);
     for (let index = 1; index <= 40; index += 1) send('pointermove', index * 10, index);
     const { pts } = tap.takeTrail(8);
-    expect(pts).toEqual([370, 0, 380, 0, 390, 0, 400, 0]);
+    expect(pts).toEqual([90, 0, 200, 0, 300, 0, 400, 0]);
     expect(tap.takeTrail(8).pts).toEqual([]);
+  });
+
+  it('thins a trail evenly and keeps one that fits whole', () => {
+    expect(thinTrail([1, 1, 2, 2, 3, 3], 8)).toEqual([1, 1, 2, 2, 3, 3]);
+    expect(thinTrail([1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6], 6)).toEqual([2, 2, 4, 4, 6, 6]);
+    expect(thinTrail([1, 1, 2, 2], 0)).toEqual([]);
   });
 });

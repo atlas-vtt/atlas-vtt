@@ -35,18 +35,18 @@ describe('RemoteCursors', () => {
   it('moves between messages on every frame, a moment behind them, and comes to rest on the device\'s pixels', () => {
     const drawn = cursors();
     drawn.update([ana({ at: [0, 0] })], 0);
-    drawn.update([ana({ at: [100, 0], pts: [], span: MARKS_INTERVAL_MS })], MARKS_INTERVAL_MS);
+    drawn.update([ana({ at: [130, 0], pts: [], span: MARKS_INTERVAL_MS })], MARKS_INTERVAL_MS);
     const places: number[] = [];
     for (let now = MARKS_INTERVAL_MS; now <= 6 * MARKS_INTERVAL_MS; now += 8) {
       drawn.tick(now, { x: 0, y: 0, scale: 1 }, 2, true);
       places.push(Number(/translate3d\(([-\d.]+)px/.exec(element()?.style.transform ?? '')?.[1]));
     }
-    const between = places.filter((x) => x > 0 && x < 100);
+    const between = places.filter((x) => x > 0 && x < 130);
     expect(between.length).toBeGreaterThan(1);
     expect(places.every((x, index) => index === 0 || x >= (places[index - 1] ?? 0))).toBe(true);
     // On its way it lies where it falls, so it keeps its place on a map that moves in fractions of a pixel.
     expect(between.some((x) => !Number.isInteger(x * 2))).toBe(true);
-    expect(places.at(-1)).toBe(100);
+    expect(places.at(-1)).toBe(130);
   });
 
   it('stays where the camera puts it while the camera moves, and goes onto the device\'s pixels once it settled', () => {

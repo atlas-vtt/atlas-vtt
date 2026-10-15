@@ -24,3 +24,22 @@ export function sentOf(character: PlayedCharacter | null, worldMap: WorldMapFile
     sheet: JSON.stringify(character?.sheet ?? null),
   };
 }
+
+/** The parts of a book that changed since a player was last sent it. */
+export interface ChangedParts {
+  readonly map: boolean;
+  readonly quests: boolean;
+  readonly sheet: boolean;
+}
+
+/**
+ * What a player is sent of their book now: the whole book when they were sent none, play another
+ * character, or their page reads no parts (`readsParts`) and the world map or quests changed; else
+ * the parts that changed, or null for none.
+ */
+export function bookUpdate(last: SentBook | undefined, now: SentBook, readsParts: boolean): 'whole' | ChangedParts | null {
+  if (last === undefined || last.book !== now.book) return 'whole';
+  const changed = { map: last.map !== now.map, quests: last.quests !== now.quests, sheet: last.sheet !== now.sheet };
+  if ((changed.map || changed.quests) && !readsParts) return 'whole';
+  return changed.map || changed.quests || changed.sheet ? changed : null;
+}

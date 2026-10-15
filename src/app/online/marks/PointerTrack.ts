@@ -29,7 +29,7 @@ export interface PointerTrackOptions {
 
 /** The longest a pointer is drawn behind what arrived, in ms. */
 export const TRACK_MAX_DELAY_MS = 250;
-/** No message for longer than this is a rest: the next one starts a new stretch. */
+/** No message for longer than this, or than `PACE_INTERVALS` send intervals, is a rest: the next one starts a new stretch. */
 export const TRACK_REST_MS = 250;
 /** The longest span a message is taken to cover, in ms. */
 const MAX_SPAN_MS = 1000;
@@ -84,6 +84,8 @@ function saidSpan(span: number | undefined): number | null {
 export class PointerTrack {
   private readonly interval: number;
   private readonly keep: number;
+  /** A gap longer than this between two messages is a rest. */
+  private readonly rest: number;
   private readonly samples: Sample[] = [];
   /** How many samples the drawn pointer has passed. */
   private passed = 0;
@@ -101,6 +103,8 @@ export class PointerTrack {
   constructor({ interval, keep = 0 }: PointerTrackOptions) {
     this.interval = interval;
     this.keep = keep;
+    // A cursor relayed by the GM can wait for the GM's next message as well: two intervals between messages are no rest.
+    this.rest = Math.max(TRACK_REST_MS, PACE_INTERVALS * interval);
     this.wait = interval;
   }
 
@@ -125,7 +129,7 @@ export class PointerTrack {
     const last = this.samples.at(-1);
     const floor = last?.t ?? Number.NEGATIVE_INFINITY;
     const apart = last === undefined || this.ended;
-    const fresh = apart || now - this.arrived > TRACK_REST_MS;
+    const fresh = apart || now - this.arrived > this.rest;
     const span = saidSpan(spanMs);
     const live = Math.max(floor, now - this.lead);
     const head = fresh || span === null ? live : this.head + span;

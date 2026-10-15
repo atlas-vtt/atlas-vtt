@@ -1,7 +1,6 @@
-import { isSide, parseAsset, type AssetRef } from './asset.ts';
 import { parseBookCharacter, parseBookResourceMessage, type BookCharacter, type BookResourceMessage } from './bookCharacter.ts';
-import { isMapId, parseNestedMaps, rootEntrances, type BookNestedMap, type MapEntrance } from './bookLevels.ts';
-import { MAX_BOOK_PINS, MAX_BOOK_QUESTS, parseBookPin, parseBookQuest, type BookPin, type BookQuest } from './bookMap.ts';
+import { MAX_BOOK_PINS, parseBookPin, type BookPin, type BookQuest } from './bookMap.ts';
+import { isBookPartType, parseBookPart, parseQuests, parseWorldMap, type BookPartMessage, type BookWorldMap } from './bookParts.ts';
 import { DEFAULT_BOOK_SLOTS, parseBookSlots, parseEquipped, parseSlotMessage, settledEquipped, type BookSlots, type Equipped, type SlotMessage } from './bookSlots.ts';
 import { bookLine, bookText, MAX_BOOK_TITLE } from './bookText.ts';
 import { isRecord } from './shape.ts';
@@ -10,6 +9,7 @@ import { MAX_TOKEN_VALUE } from './tokenUI.ts';
 export * from './bookCharacter.ts';
 export * from './bookLevels.ts';
 export * from './bookMap.ts';
+export * from './bookParts.ts';
 export * from './questText.ts';
 
 /** What a player's book holds at most. */
@@ -60,21 +60,6 @@ export interface PurseRow {
   readonly amount: number;
 }
 
-/**
- * The campaign's world map: an image by hash and its own size in pixels. It never names its file. Its
- * entrances lead into the maps the GM's pins open, and theirs further (`maps`, each once however
- * often it is entered); an older GM names neither.
- */
-export interface BookWorldMap {
-  readonly image: AssetRef;
-  readonly width: number;
-  readonly height: number;
-  /** Its id, where an entrance leads back to it. */
-  readonly id?: string;
-  readonly entrances?: readonly MapEntrance[];
-  readonly maps?: readonly BookNestedMap[];
-}
-
 /** Everything one player's pages besides the table show. Without a character only the world map is there. */
 export interface PlayerBook {
   readonly character: BookCharacter | null;
@@ -90,11 +75,12 @@ export interface PlayerBook {
   readonly equipped: readonly Equipped[];
 }
 
-/** Sent to one player: their book whole, the character alone once only it changed, or an item just handed over. */
+/** Sent to one player: their book whole, the character alone once only it changed, an item just handed over, or another part alone (`BookPartMessage`). */
 export type BookMessage =
   | { readonly t: 'book'; readonly book: PlayerBook }
   | { readonly t: 'book-sheet'; readonly character: BookCharacter | null }
-  | { readonly t: 'book-item'; readonly item: BookItem };
+  | { readonly t: 'book-item'; readonly item: BookItem }
+  | BookPartMessage;
 
 /** What a player writes into their own book. The GM keeps it and answers a refused one with the whole book. */
 export type PlayerBookMessage =
@@ -106,7 +92,7 @@ export type PlayerBookMessage =
   | BookResourceMessage
   | SlotMessage;
 
-const GM_TYPES: readonly unknown[] = ['book', 'book-sheet', 'book-item'];
+const GM_TYPES: readonly unknown[] = ['book', 'book-sheet', 'book-item', 'book-map', 'book-quests'];
 const PLAYER_TYPES: readonly unknown[] = ['book-note', 'book-note-delete', 'book-pin', 'book-pin-delete', 'book-purse', 'book-resource', 'book-equip', 'book-slots'];
 
 export const isBookType = (t: unknown): t is BookMessage['t'] => GM_TYPES.includes(t);
@@ -182,33 +168,6 @@ export function parsePurse(value: unknown): PurseRow[] | null {
   return parseList(value, MAX_PURSE_ROWS, parsePurseRow);
 }
 
-function parseWorldMap(value: unknown): BookWorldMap | null | undefined {
-  if (value === null) return null;
-  if (!isRecord(value) || !isSide(value.width) || !isSide(value.height)) return undefined;
-  const image = parseAsset(value.image);
-  const id = isMapId(value.id) ? value.id : undefined;
-  const maps = parseNestedMaps(value.maps, id);
-  const entrances = maps === null ? null : rootEntrances(value.entrances, maps);
-  if (image === null || maps === null || entrances === null) return undefined;
-  return { image, width: value.width, height: value.height, ...(id !== undefined && { id }), ...(entrances.length > 0 && { entrances }), ...(maps.length > 0 && { maps }) };
-}
-
-/**
- * A book's quests: the GM's text, which the player only reads, so a quest the page cannot read (of a
- * newer GM, say) is left out and the rest of the book still shown; an id twice keeps the first.
- * None for a GM that gives none; null for a list that is no list or longer than a book holds.
- */
-function parseQuests(value: unknown): BookQuest[] | null {
-  if (value === undefined) return [];
-  if (!Array.isArray(value) || value.length > MAX_BOOK_QUESTS) return null;
-  const quests = new Map<string, BookQuest>();
-  for (const entry of value) {
-    const quest = parseBookQuest(entry);
-    if (quest !== null && !quests.has(quest.id)) quests.set(quest.id, quest);
-  }
-  return [...quests.values()];
-}
-
 export function parsePlayerBook(value: unknown): PlayerBook | null {
   if (!isRecord(value)) return null;
   const character = parseBookCharacter(value.character);
@@ -234,6 +193,7 @@ export function parseBookMessage(value: Record<string, unknown>): BookMessage | 
     const character = parseBookCharacter(value.character);
     return character === undefined ? null : { t: 'book-sheet', character };
   }
+  if (isBookPartType(value.t)) return parseBookPart(value);
   const item = value.t === 'book-item' ? parseBookItem(value.item) : null;
   return item === null ? null : { t: 'book-item', item };
 }

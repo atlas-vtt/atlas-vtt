@@ -25,6 +25,12 @@ export type PlayerMarks = Pick<MarksMessage, 'lasers' | 'measures'>;
 
 export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePorts, 'nameOf' | 'showPlayerCursors'>> {
   send(body: GmMessage, to?: string): void;
+  /**
+   * Sends to all through the live lane, where there is one: before any game message that waits, and
+   * a newer `marks` takes the place of one not sent yet, so nothing queues for a slow uplink. Without
+   * it marks go in order with the rest.
+   */
+  sendLive?(body: GmMessage, key: string): void;
   /** The GM's measurements and laser on the shared tab, the same object while its renderer is the same; null while it has none, and without it players see none of the GM's marks. */
   gmMarks?(): GmMarkSource | null;
   /** The GM's accent colour as `#rrggbb`, which the GM's measurements are drawn in; null while it cannot be read. */
@@ -37,6 +43,9 @@ export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePort
   /** Whether the GM lets everyone see each other's cursor; without it nobody's cursor is taken or sent. */
   cursorsShown?(): boolean;
 }
+
+/** The live lane's key for `marks`: one waits at most. */
+const MARKS_KEY = 'marks';
 
 /** A player's laser that sent nothing for this long is gone (the client sends while it shows, at least twice a second). */
 export const LASER_SILENCE_MS = 1000;
@@ -78,8 +87,8 @@ const spansAdded = (covered: number | null, span: number | undefined): number | 
 
 /**
  * Everyone's marks in the shared scene, sent to all as one `marks` message at most every
- * `MARKS_INTERVAL_MS`, only when something changed: the GM's measurements players may see
- * (`GmMeasures`), the GM's laser, each player's checked laser and measurements, and, while the GM lets
+ * `MARKS_INTERVAL_MS` through the live lane, only when something changed: the GM's measurements
+ * players may see (`GmMeasures`), the GM's laser, each player's checked laser and measurements, and, while the GM lets
  * everyone see them, everyone's cursors (`CursorShare`). Each client leaves out its own. The GM's own overlay does not wait for that pace: it is shown a player's marks
  * as they arrive.
  */
@@ -246,7 +255,8 @@ export class MarkShare {
     if ((text === this.last?.text && !keepAlive) || (this.last === null && isEmpty(body))) return;
     this.last = { body, text };
     this.sentAt = now;
-    this.ports.send(body);
+    if (this.ports.sendLive === undefined) this.ports.send(body);
+    else this.ports.sendLive(body, MARKS_KEY);
   }
 
   /** Whether someone's laser shows its pointer now. */

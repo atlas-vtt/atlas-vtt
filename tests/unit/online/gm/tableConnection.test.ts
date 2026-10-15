@@ -2,7 +2,7 @@
 import { CLOSE, KEEPALIVE_MS, KEEPALIVE_PING, KEEPALIVE_PONG } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { Timers } from '../../../../src/app/online/gm/companionTimers.ts';
-import { BURST } from '../../../../src/app/online/gm/sendQueue.ts';
+import { BATCH_MS, BURST } from '../../../../src/app/online/gm/sendQueue.ts';
 import { FLUSH_LOOK_MS, LATE_MS, OPEN_TIMEOUT_MS, PULSE_DEADLINE_MS, SETTLE_MS, WELCOME_TIMEOUT_MS } from '../../../../src/app/online/gm/socketWatch.ts';
 import { TableConnection, type TableStatus } from '../../../../src/app/online/gm/TableConnection.ts';
 
@@ -43,9 +43,9 @@ class FakeSocket extends EventTarget {
     this.dispatchEvent(Object.assign(new Event('message'), { data }));
   }
 
-  welcome(players: readonly { id: string; name: string }[] = []): void {
+  welcome(players: readonly { id: string; name: string }[] = [], batch = false): void {
     this.open();
-    this.receive(JSON.stringify({ v: 1, t: 'welcome', role: 'gm', players }));
+    this.receive(JSON.stringify({ v: 1, t: 'welcome', role: 'gm', players, ...(batch && { batch: true }) }));
   }
 
   drop(code = 1006): void {
@@ -403,5 +403,27 @@ describe('the pulse of the GM\'s socket', () => {
     expect(statuses.at(-1)).toBe('stopped');
     expect(timers.pending()).toBe(0);
     expect(last().closedByGm).toBe(true);
+  });
+
+  it('batches game messages only for a relay whose welcome offers it, and each one as its own send for any other', () => {
+    const ana = [{ id: 'abcdefghijklmnopqrst', name: 'Ana' }];
+    const { timers, connection } = table();
+    const plain = last();
+    plain.welcome(ana);
+    const before = plain.sent.length;
+    for (let index = 0; index < 3; index += 1) connection.send({ t: 'scene', scene: null });
+    expect(plain.sent.slice(before).map((text) => (JSON.parse(text) as { t: string }).t)).toEqual(['send', 'send', 'send']);
+
+    plain.drop();
+    timers.advance(1_000);
+    const batching = last();
+    batching.welcome(ana, true);
+    timers.advance(BATCH_MS);
+    const start = batching.sent.length;
+    for (let index = 0; index < 3; index += 1) connection.send({ t: 'scene', scene: null });
+    timers.advance(BATCH_MS);
+    const frames = batching.sent.slice(start).map((text) => JSON.parse(text) as { t: string; sends?: unknown[] });
+    expect(frames.map((frame) => frame.t)).toEqual(['send', 'sends']);
+    expect(frames[1]?.sends).toEqual([{ to: '*', body: { t: 'scene', scene: null } }, { to: '*', body: { t: 'scene', scene: null } }]);
   });
 });
