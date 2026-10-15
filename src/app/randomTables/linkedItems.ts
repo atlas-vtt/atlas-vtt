@@ -46,10 +46,11 @@ function noteValues(frontmatter: unknown): [string, string][] {
 }
 
 /**
- * The item a row of an Items table stands for. `notePath` and `noteName` are the table's note;
- * `linked` the note its Name cell links to, when that note was found.
+ * The item a row of an Items table stands for. `notePath` is the table's note, `source` the
+ * note's and the table's name as results show them; `linked` the note its Name cell links to,
+ * when that note was found.
  */
-export function tableRowItem(table: RandomTable, row: TableRow, notePath: string, noteName: string, linked: LinkedItemNote | null): LootItem {
+export function tableRowItem(table: RandomTable, row: TableRow, notePath: string, source: readonly [string, string], linked: LinkedItemNote | null): LootItem {
   const nameCell = row.cells[0] ?? '';
   const link = nameLink(nameCell);
   const name = linked ? link?.alias ?? linked.name : plainCell(nameCell.replace(/\*\*|__/g, ''));
@@ -79,6 +80,6 @@ export function tableRowItem(table: RandomTable, row: TableRow, notePath: string
   });
 
   const entry: LootQueryEntry = { path: linked?.path ?? notePath, name, values };
-  const [item] = toLootItems({ entries: [entry], order: [...rowIds, ...noteIds], displayNames }, [noteName, table.name]);
+  const [item] = toLootItems({ entries: [entry], order: [...rowIds, ...noteIds], displayNames }, [...source]);
   return { ...item!, properties: item!.properties.slice(0, MAX_PROPERTIES) };
 }

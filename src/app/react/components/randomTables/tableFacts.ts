@@ -34,7 +34,19 @@ export function statusLine(found: CollectionTable): string | null {
   }
 }
 
-/** The name a listed table shows: as its note holds it now, else as the settings named it. */
-export function tableName(found: CollectionTable): string {
+/** The table's own name: as its note holds it now, else as the settings named it, else its note's. */
+export function ownTableName(found: CollectionTable): string {
   return found.table?.name ?? found.source.table ?? found.noteName;
+}
+
+/** The name a listed table shows: the one the GM gave it in Atlas, else its own. */
+export function tableName(found: CollectionTable): string {
+  return found.source.label ?? ownTableName(found);
+}
+
+/** The source entry with `label` as the name Atlas shows: none when it is blank or the table's own. */
+export function withLabel(found: CollectionTable, source: CollectionTable['source'], label: string): CollectionTable['source'] {
+  const { label: _was, ...rest } = source;
+  const name = label.trim();
+  return name && name !== ownTableName(found) ? { ...rest, label: name } : rest;
 }
