@@ -34,8 +34,8 @@ async function table(initial = withTokens(token('f', { x: 1 }), token('r', { x: 
 describe('mine flags', () => {
   it('tell each player alone which tokens of the list are theirs, and the list stays one for all', async () => {
     const { share, owners } = await table();
-    owners.give(['f'], ANA);
-    owners.give(['r'], BEN);
+    owners.give(['f'], {}, ANA);
+    owners.give(['r'], {}, BEN);
     expect(mineTo(share, ANA).at(-1)?.tokens).toEqual([aliasAt(share, 1)]);
     expect(mineTo(share, BEN).at(-1)?.tokens).toEqual([aliasAt(share, 2)]);
     expect(share.sent.filter(({ body }) => body.t === 'tokens').every(({ to }) => to === undefined)).toBe(true);
@@ -45,7 +45,7 @@ describe('mine flags', () => {
 
   it('never name a hidden token, even one the player owns', async () => {
     const { share, owners } = await table();
-    owners.give(['x', 'f'], ANA);
+    owners.give(['x', 'f'], {}, ANA);
     expect(mineTo(share, ANA).at(-1)?.tokens).toEqual([aliasAt(share, 1)]);
     await share.set(withTokens(token('f', { x: 1, isHidden: true }), token('r', { x: 2 }), token('x', { x: 3 })));
     await share.advance(TOKEN_INTERVAL_MS);
@@ -54,7 +54,7 @@ describe('mine flags', () => {
 
   it('go out only when a player\'s share changes, and once more, after the list, to a player who comes back', async () => {
     const { share, owners } = await table();
-    owners.give(['f'], ANA);
+    owners.give(['f'], {}, ANA);
     const count = mineTo(share, ANA).length;
     await share.set(withTokens(token('f', { x: 1 }), token('r', { x: 5 }), token('x', { x: 3, isHidden: true })));
     await share.advance(TOKEN_INTERVAL_MS);
@@ -68,13 +68,13 @@ describe('mine flags', () => {
 
   it('are taken back when the GM gives a token to nobody or removes its player', async () => {
     const { share, owners } = await table();
-    owners.give(['f', 'r'], ANA);
+    owners.give(['f', 'r'], {}, ANA);
     expect(mineTo(share, ANA).at(-1)?.tokens).toHaveLength(2);
-    owners.give(['r'], null);
+    owners.give(['r'], {}, null);
     expect(mineTo(share, ANA).at(-1)?.tokens).toEqual([aliasAt(share, 1)]);
     owners.remove(ANA);
     const before = share.sent.length;
-    owners.give(['f'], BEN);
+    owners.give(['f'], {}, BEN);
     expect(share.sent.slice(before).map(({ to }) => to)).toEqual([BEN]);
   });
 });

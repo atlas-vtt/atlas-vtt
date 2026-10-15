@@ -206,15 +206,15 @@ export class OnlineControl {
   /** Gives tokens to a player, or takes them back from whoever has them (null). A token nobody had sees from then on (`seeAsPlayers`). */
   give(tokenIds: readonly string[], playerId: string | null): void {
     const scene = this.sharedScene();
-    if (scene !== null && playerId !== null && this.ownership.nameOf(playerId) !== null) seeAsPlayers(scene.store, tokenIds, (id) => this.ownership.ownerOf(id) === undefined);
-    this.ownership.give(tokenIds, playerId);
+    if (scene !== null && playerId !== null && this.ownership.nameOf(playerId) !== null) seeAsPlayers(scene.store, tokenIds, (id, token) => this.ownership.ownerOf(id, token) === undefined);
+    this.ownership.give(tokenIds, scene?.store.getState().objects.tokens ?? {}, playerId);
   }
 
   /** A token that becomes a player token sees from then on (`seeAsPlayers`). */
   private mark(scene: WorkScene | null, tokenIds: readonly string[], player: boolean): void {
     if (scene === null || tokenIds.length === 0) return;
     if (player) seeAsPlayers(scene.store, tokenIds, (id, token) => !this.ownership.isPlayerToken(scene.mapPath, id, token));
-    this.ownership.markPlayerTokens(scene.mapPath, tokenIds, player);
+    this.ownership.markPlayerTokens(scene.mapPath, tokenIds, scene.store.getState().objects.tokens, player);
   }
 
   private sharedScene(): WorkScene | null {

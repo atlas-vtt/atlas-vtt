@@ -210,7 +210,7 @@ describe('the online table', () => {
     expect(resumed.frames()[0]).toMatchObject({ t: 'hello', role: 'gm', secret: created.secret });
     resumed.relay({ t: 'welcome', role: 'gm', players: [{ id: ANA, name: 'Ana' }] });
     await advance(500);
-    expect(kept.ownerOf('gm-ogre')).toBe(ANA);
+    expect(kept.ownerOf('gm-ogre', undefined)).toBe(ANA);
     const mine = resumed.frames().filter((frame) => frame.t === 'send' && frame.to === ANA && frame.body?.t === 'mine').at(-1);
     expect(mine?.body?.tokens).toHaveLength(1);
 

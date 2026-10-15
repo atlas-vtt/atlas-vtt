@@ -13,7 +13,7 @@ import { companionTimers } from './companionTimers.ts';
 import { GmMarks } from './gmMarks.ts';
 import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
-import type { SeatSource } from './seatSource.ts';
+import { ownerIn, type SeatSource } from './seatSource.ts';
 import type { PresentedTab } from './presentedScene.ts';
 import { PresentedStore } from './presentedStore.ts';
 import { SceneShare } from './SceneShare.ts';
@@ -117,7 +117,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
   });
   const resources = new ResourceWrites(store, {
     definitions: () => tokenRulesOf(shownRenderer())?.resources ?? [],
-    ownerOf: (tokenId) => ports.seats.ownerOf(tokenId),
+    ownerOf: ownerIn(ports.seats, store),
     now: () => timers.now(),
     setTimer: (run, ms) => timers.setTimer(() => live() && run(), ms),
     clearTimer: (timer) => timers.clearTimer(timer),

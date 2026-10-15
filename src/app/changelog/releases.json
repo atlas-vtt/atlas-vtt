@@ -4,7 +4,7 @@
     {
       "version": "0.8.1-beta.0",
       "title": "Coming in 0.8.1",
-      "markdown": "## Fixed\n- Online play: a player with several tokens now sees the inventory and sheet of the token picked in the token menu, and switching back works."
+      "markdown": "## Fixed\n- Online play: players keep control of their characters when you change scenes. Giving a token to a player gives them the character it was placed from, so every token of that character is theirs on every scene.\n- Online play: a player with several tokens now sees the inventory and sheet of the token picked in the token menu, and switching back works."
     },
     {
       "version": "0.8.0",
