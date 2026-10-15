@@ -134,10 +134,10 @@ export class TableNoteReader {
   }
 
   private itemsOf(table: RandomTable, source: RandomTableSource): LootItem[] {
-    const noteName = noteNameOf(source.path);
+    const from = [noteNameOf(source.path), source.label ?? table.name] as const;
     return table.rows.map((row) => {
       const link = nameLink(row.cells[0] ?? '');
-      return tableRowItem(table, row, source.path, noteName, link ? this.linkedNote(link.link, source.path) : null);
+      return tableRowItem(table, row, source.path, from, link ? this.linkedNote(link.link, source.path) : null);
     });
   }
 

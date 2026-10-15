@@ -7,7 +7,8 @@ import { parseSystemRules } from '../../../src/app/gameSystems/presetValidation'
 import { sameSystemRules, vanillaSystemSettings } from '../../../src/app/gameSystems/systemRules';
 import { tablesFolder } from '../../../src/app/randomTables/tablePaths';
 import {
-  readRandomTables, withMovedTableNotes, withRandomTable, withoutRandomTable,
+  readRandomTables, storedRandomTable, withMovedTableNotes, withRandomTable, withRandomTableChanged, withRestoredRandomTable,
+  withoutRandomTable,
 } from '../../../src/app/randomTables/tableSettings';
 import { isReservedCollectionPath } from '../../../src/app/services/vault-sync/reservedPaths';
 import type { CollectionSettings } from '../../../src/app/types/collectionSettingsTypes';
@@ -41,6 +42,16 @@ describe('reading the tables of a collection', () => {
     ]);
   });
 
+  it('reads the name the GM gave a table, trimmed and bounded, and none that is blank or no text', () => {
+    const settings = stored([
+      { ...RUMOURS, label: '  Tavern talk ' },
+      { path: 'Long.md', index: 0, kind: 'text', label: 'x'.repeat(300) },
+      { path: 'Blank.md', index: 0, kind: 'text', label: '   ' },
+      { path: 'Odd.md', index: 0, kind: 'text', label: 7 },
+    ]);
+    expect(readRandomTables(settings).map((source) => source.label)).toEqual(['Tavern talk', 'x'.repeat(200), undefined, undefined]);
+  });
+
   it('reads nothing from a value that is no list', () => {
     expect(readRandomTables(stored({ path: 'A.md' }))).toEqual([]);
     expect(readRandomTables({})).toEqual([]);
@@ -48,6 +59,23 @@ describe('reading the tables of a collection', () => {
 });
 
 describe('writing the tables of a collection', () => {
+  it('changes an entry as stored now, its fields of a newer Atlas kept, and never adds one that is gone', () => {
+    const settings = stored([{ ...RUMOURS, future: 1 }]);
+    expect(withRandomTableChanged(settings, RUMOURS.path, 1, (source) => ({ ...source, label: 'Talk' })))
+      .toEqual([{ ...RUMOURS, future: 1, label: 'Talk' }]);
+    expect(withRandomTableChanged(settings, 'Gone.md', 0, (source) => source)).toBeNull();
+  });
+
+  it('puts a removed entry back where it was, whole, unless the table is listed again', () => {
+    const later = { path: 'Later.md', index: 0, kind: 'npcs' };
+    const settings = stored([later, { ...RUMOURS, future: 1 }]);
+    const removed = storedRandomTable(settings, RUMOURS.path, 1)!;
+    expect(removed.at).toBe(1);
+    const without = stored(withoutRandomTable(settings, RUMOURS.path, 1));
+    expect(withRestoredRandomTable(without, removed.entry, removed.at)).toEqual([later, { ...RUMOURS, future: 1 }]);
+    expect(withRestoredRandomTable(settings, removed.entry, removed.at)).toEqual(settings.randomTables);
+  });
+
   it('changes one entry and keeps the fields of a newer Atlas', () => {
     const settings = stored([{ ...RUMOURS, players: 'roll', columns: { 'True?': 'secret' } }, { path: 'Later.md', index: 0, kind: 'npcs' }]);
     const next = withRandomTable(settings, { path: RUMOURS.path, table: 'Rumours', index: 1, kind: 'text', noRepeats: true });

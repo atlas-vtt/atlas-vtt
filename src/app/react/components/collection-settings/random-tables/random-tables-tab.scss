@@ -201,6 +201,12 @@ $rt-row-height: $button-height-m;
   font-size: $font-ui-smaller;
 }
 
+.atlas-rt-row__name-input {
+  flex: 1;
+  min-width: 0;
+  max-width: 280px;
+}
+
 // ── Hidden columns: a chip per column, ringed while players never see it ───
 .atlas-rt-columns {
   @include atlas-flex-row($spacing-xs);
