@@ -1,7 +1,8 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { AlertTriangle, MoreHorizontal } from 'lucide-react';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { useOptionalContextMenu, type ContextMenuEntry } from '../../root/ContextMenuContext';
+import { MAX_TABLE_LABEL } from '../../../randomTables/tableSettings';
 import { t } from '../../../i18n';
 
 interface SourceRowProps {
@@ -24,27 +25,39 @@ interface SourceRowProps {
 export function SourceRow({ name, fact, problems, selected, onSelect, menu, renaming = false, onRenamed }: SourceRowProps): React.ReactElement {
   const contextMenu = useOptionalContextMenu();
   const entryRef = useRef<HTMLDivElement>(null);
-  const moreRef = useRef<HTMLButtonElement>(null);
+  const rowRef = useRef<HTMLButtonElement>(null);
   // Escape ends renaming before the input goes, and its blur must not save after all.
   const settled = useRef(false);
+  // Renaming ended from the keyboard hands focus back to the row; a click elsewhere keeps it there.
+  const refocus = useRef(false);
   const settle = (typed: string | null): void => {
     if (settled.current) return;
     settled.current = true;
     onRenamed?.(typed);
   };
+  useEffect(() => {
+    if (renaming) {
+      settled.current = false;
+      refocus.current = false;
+      return;
+    }
+    if (!refocus.current) return;
+    refocus.current = false;
+    rowRef.current?.focus();
+  }, [renaming]);
 
-  const openMenu = (at: { x: number; y: number }): void => {
-    contextMenu?.open(menu(), at, { returnFocus: moreRef.current });
+  const openMenu = (at: { x: number; y: number }, returnFocus: HTMLElement | null): void => {
+    contextMenu?.open(menu(), at, { returnFocus });
   };
-  const openBelow = (element: HTMLElement): void => {
+  const openBelow = (element: HTMLElement, returnFocus: HTMLElement | null): void => {
     const rect = element.getBoundingClientRect();
-    openMenu({ x: rect.left, y: rect.bottom });
+    openMenu({ x: rect.left, y: rect.bottom }, returnFocus);
   };
   const onContextMenu = (event: React.MouseEvent): void => {
     event.preventDefault();
     // A menu opened from the keyboard has no point: it hangs from the row.
-    if (event.clientX === 0 && event.clientY === 0 && entryRef.current) openBelow(entryRef.current);
-    else openMenu({ x: event.clientX, y: event.clientY });
+    if (event.clientX === 0 && event.clientY === 0 && entryRef.current) openBelow(entryRef.current, rowRef.current);
+    else openMenu({ x: event.clientX, y: event.clientY }, rowRef.current);
   };
 
   if (renaming) {
@@ -53,17 +66,21 @@ export function SourceRow({ name, fact, problems, selected, onSelect, menu, rena
         <input
           className="atlas-tables-row atlas-tables-row--rename"
           defaultValue={name}
+          maxLength={MAX_TABLE_LABEL}
           aria-label={t('tables.renameField', { name })}
           autoFocus
-          onFocus={(event) => {
-            settled.current = false;
-            event.target.select();
-          }}
+          onFocus={(event) => event.target.select()}
           onBlur={(event) => settle(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === 'Enter') event.currentTarget.blur();
-            else if (event.key === 'Escape') settle(null);
-            else return;
+            // Enter that ends an input method's composition is the composition's.
+            if (event.nativeEvent.isComposing) return;
+            if (event.key === 'Enter') {
+              refocus.current = true;
+              event.currentTarget.blur();
+            } else if (event.key === 'Escape') {
+              refocus.current = true;
+              settle(null);
+            } else return;
             event.preventDefault();
             event.stopPropagation();
           }}
@@ -74,6 +91,7 @@ export function SourceRow({ name, fact, problems, selected, onSelect, menu, rena
 
   const row = (
     <button
+      ref={rowRef}
       type="button"
       className={`atlas-tables-row${selected ? ' is-selected' : ''}`}
       aria-current={selected || undefined}
@@ -89,7 +107,7 @@ export function SourceRow({ name, fact, problems, selected, onSelect, menu, rena
       {problems.length > 0 ? <LabelTooltip describe multiline label={problems.join(' · ')}>{row}</LabelTooltip> : row}
       {contextMenu && (
         <LabelTooltip label={t('tables.options')}>
-          <button ref={moreRef} type="button" className="atlas-tables-entry__more" onClick={(event) => openBelow(event.currentTarget)}>
+          <button type="button" className="atlas-tables-entry__more" onClick={(event) => openBelow(event.currentTarget, event.currentTarget)}>
             <MoreHorizontal />
           </button>
         </LabelTooltip>

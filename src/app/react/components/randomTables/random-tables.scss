@@ -101,16 +101,36 @@
     text-align: right;
   }
 
-  &:hover,
-  &:focus-within,
-  &:has(.is-selected) {
-    .atlas-tables-entry__more {
-      opacity: 1;
-      pointer-events: auto;
+  // Without hover (a touch screen) a row cannot be pointed at first: the ⋯ stands beside it.
+  @media (hover: none) {
+    display: flex;
+    align-items: center;
+
+    .atlas-tables-row {
+      min-width: 0;
     }
 
-    .atlas-tables-row__fact {
-      visibility: hidden;
+    .atlas-tables-entry__more {
+      position: static;
+      flex-shrink: 0;
+      opacity: 1;
+      pointer-events: auto;
+      transform: none;
+    }
+  }
+
+  @media (hover: hover) {
+    &:hover,
+    &:focus-within,
+    &:has(.is-selected) {
+      .atlas-tables-entry__more {
+        opacity: 1;
+        pointer-events: auto;
+      }
+
+      .atlas-tables-row__fact {
+        visibility: hidden;
+      }
     }
   }
 }

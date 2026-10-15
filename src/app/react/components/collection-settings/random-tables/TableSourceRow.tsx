@@ -5,7 +5,8 @@ import { SegmentedControl } from '../../../../packages/components/primitives/Seg
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import type { CollectionTable } from '../../../../randomTables/TableNoteReader';
 import type { RandomTableKind, RandomTableSource } from '../../../../types/randomTableTypes';
-import { problemLines, rollFact, statusLine, tableName } from '../../randomTables/tableFacts';
+import { ownTableName, problemLines, rollFact, statusLine, tableName, withLabel } from '../../randomTables/tableFacts';
+import { MAX_TABLE_LABEL } from '../../../../randomTables/tableSettings';
 import { t } from '../../../../i18n';
 
 const KINDS = [
@@ -31,6 +32,7 @@ function toggled(hidden: readonly string[], column: string): string[] {
 export function TableSourceRow({ found, onChange, onRemove }: TableSourceRowProps): React.ReactElement {
   const [open, setOpen] = useState(false);
   const switchId = useId();
+  const nameId = useId();
   const { source, table } = found;
   const status = statusLine(found);
   const problems = [...(status ? [status] : []), ...(table ? problemLines(table.problems) : [])];
@@ -71,6 +73,24 @@ export function TableSourceRow({ found, onChange, onRemove }: TableSourceRowProp
       </div>
       {open && (
         <div className="atlas-rt-row__options">
+          <div className="atlas-rt-row__option">
+            <label htmlFor={nameId} className="atlas-rt-row__label">{t('tables.settings.label')}</label>
+            <input
+              id={nameId}
+              type="text"
+              className="atlas-csm-input atlas-rt-row__name-input"
+              defaultValue={source.label ?? ''}
+              placeholder={ownTableName(found)}
+              maxLength={MAX_TABLE_LABEL}
+              onBlur={(event) => {
+                const next = withLabel(found, source, event.target.value);
+                if (next.label !== source.label) onChange(next);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.nativeEvent.isComposing) event.currentTarget.blur();
+              }}
+            />
+          </div>
           {columns.length > 0 && (
             <div className="atlas-rt-row__option">
               <span className="atlas-rt-row__label">{t('tables.settings.hiddenColumns')}</span>

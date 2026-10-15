@@ -27,6 +27,7 @@ import { openTemplateEditor } from '../../../statblocks/editor/openTemplateEdito
 import { useRandomTables } from './useRandomTables';
 import { librarySources, selectedSource } from './tableSelection';
 import { TablesSidebar } from './TablesSidebar';
+import { tableName } from './tableFacts';
 import { TableSummary } from './TableSummary';
 import { TablesSkeleton } from './TablesSkeleton';
 import { useSourceRoll } from './useSourceRoll';
@@ -190,8 +191,8 @@ function RandomTablesPanel(): React.ReactElement {
               }}
               onRemove={(removed) => {
                 if (!collectionId) return;
-                if (typeof removed === 'string') removeLootBase(app, collectionId, removed);
-                else removeTableSource(app, collectionId, removed.source);
+                if ('source' in removed) removeTableSource(app, collectionId, removed.source, tableName(removed));
+                else removeLootBase(app, collectionId, removed.path, removed.name);
               }}
               onOpen={(path, name) => openNote(app, path, name)}
             />

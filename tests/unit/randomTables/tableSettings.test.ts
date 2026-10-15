@@ -7,7 +7,8 @@ import { parseSystemRules } from '../../../src/app/gameSystems/presetValidation'
 import { sameSystemRules, vanillaSystemSettings } from '../../../src/app/gameSystems/systemRules';
 import { tablesFolder } from '../../../src/app/randomTables/tablePaths';
 import {
-  readRandomTables, withMovedTableNotes, withRandomTable, withoutRandomTable,
+  readRandomTables, storedRandomTable, withMovedTableNotes, withRandomTable, withRandomTableChanged, withRestoredRandomTable,
+  withoutRandomTable,
 } from '../../../src/app/randomTables/tableSettings';
 import { isReservedCollectionPath } from '../../../src/app/services/vault-sync/reservedPaths';
 import type { CollectionSettings } from '../../../src/app/types/collectionSettingsTypes';
@@ -58,6 +59,23 @@ describe('reading the tables of a collection', () => {
 });
 
 describe('writing the tables of a collection', () => {
+  it('changes an entry as stored now, its fields of a newer Atlas kept, and never adds one that is gone', () => {
+    const settings = stored([{ ...RUMOURS, future: 1 }]);
+    expect(withRandomTableChanged(settings, RUMOURS.path, 1, (source) => ({ ...source, label: 'Talk' })))
+      .toEqual([{ ...RUMOURS, future: 1, label: 'Talk' }]);
+    expect(withRandomTableChanged(settings, 'Gone.md', 0, (source) => source)).toBeNull();
+  });
+
+  it('puts a removed entry back where it was, whole, unless the table is listed again', () => {
+    const later = { path: 'Later.md', index: 0, kind: 'npcs' };
+    const settings = stored([later, { ...RUMOURS, future: 1 }]);
+    const removed = storedRandomTable(settings, RUMOURS.path, 1)!;
+    expect(removed.at).toBe(1);
+    const without = stored(withoutRandomTable(settings, RUMOURS.path, 1));
+    expect(withRestoredRandomTable(without, removed.entry, removed.at)).toEqual([later, { ...RUMOURS, future: 1 }]);
+    expect(withRestoredRandomTable(settings, removed.entry, removed.at)).toEqual(settings.randomTables);
+  });
+
   it('changes one entry and keeps the fields of a newer Atlas', () => {
     const settings = stored([{ ...RUMOURS, players: 'roll', columns: { 'True?': 'secret' } }, { path: 'Later.md', index: 0, kind: 'npcs' }]);
     const next = withRandomTable(settings, { path: RUMOURS.path, table: 'Rumours', index: 1, kind: 'text', noRepeats: true });
