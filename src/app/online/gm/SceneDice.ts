@@ -9,6 +9,7 @@ import { PlayerRolls } from './PlayerRolls.ts';
 import { quietRoll } from './quietRoll.ts';
 import { RollShare, type RollNotes } from './RollShare.ts';
 import type { SceneSharePorts } from './SceneShare.ts';
+import { ownerIn } from './seatSource.ts';
 import type { TokenShare } from './TokenShare.ts';
 
 /** What the dice read of the rest of the shared scene. */
@@ -49,7 +50,7 @@ export class SceneDice {
         scene: tokens.listedScene,
         mapPath: store.getState().mapPath,
         listedToken: (alias) => tokens.listedToken(alias),
-        ownerOf: (tokenId) => seats?.ownerOf(tokenId),
+        ownerOf: ownerIn(seats, store),
         tokens: store.getState().objects.tokens,
       }),
       dice: () => ports.dice?.() ?? null,
@@ -84,7 +85,7 @@ export class SceneDice {
       tokens: this.store.getState().objects.tokens,
       listedToken: (alias) => tokens.listedToken(alias),
       listedAlias: (tokenId) => tokens.listedAlias(tokenId),
-      ownerOf: (tokenId) => seats?.ownerOf(tokenId),
+      ownerOf: ownerIn(seats, this.store),
     });
   }
 

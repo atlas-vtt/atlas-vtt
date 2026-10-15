@@ -2,6 +2,11 @@
   "version": "0.8.1-beta.0",
   "releases": [
     {
+      "version": "0.8.1-beta.0",
+      "title": "Coming in 0.8.1",
+      "markdown": "## Fixed\n- Online play: players keep control of their characters when you change scenes. Giving a token to a player gives them the character it was placed from, so every token of that character is theirs on every scene."
+    },
+    {
       "version": "0.8.0",
       "date": "2026-10-14",
       "title": "Online play and native statblocks",

@@ -53,26 +53,25 @@ describe('player tokens', () => {
     const before = share.sent.length;
     await send(ANA, 'claim', hero);
     await send(BEN, 'claim', listed(share, 'ogre')?.id);
-    expect(owners.tokensOf(ANA)).toEqual([]);
-    expect(owners.tokensOf(BEN)).toEqual([]);
+    expect([owners.toData().characters, owners.toData().owners]).toEqual([{}, {}]);
     expect(share.sent.slice(before)).toEqual([]);
-    owners.give(['hero'], ANA);
+    owners.give(['hero'], {}, ANA);
     await share.advance(TOKEN_INTERVAL_MS);
     expect(mineTo(share, ANA)).toEqual([hero]);
     await send(BEN, 'claim', hero);
-    expect(owners.ownerOf('hero')).toBe(ANA);
+    expect(owners.ownerOf('hero', undefined)).toBe(ANA);
   });
 
   it('let no player give a token back, its owner neither: the GM does', async () => {
     const { share, owners, send } = await table();
     const hero = listed(share, 'hero')?.id;
-    owners.give(['hero'], ANA);
+    owners.give(['hero'], {}, ANA);
     await share.advance(TOKEN_INTERVAL_MS);
     await send(BEN, 'release', hero);
     await send(ANA, 'release', hero);
-    expect(owners.ownerOf('hero')).toBe(ANA);
+    expect(owners.ownerOf('hero', undefined)).toBe(ANA);
     expect(mineTo(share, ANA)).toEqual([hero]);
-    owners.give(['hero'], null);
+    owners.give(['hero'], {}, null);
     await share.advance(TOKEN_INTERVAL_MS);
     expect(listed(share, 'hero')?.claim).toBe('taken');
     expect(mineTo(share, ANA)).toEqual([]);
@@ -80,9 +79,9 @@ describe('player tokens', () => {
 
   it('follow the GM: a token made the GM\'s is taken back and loses its name, one made a player token is named', async () => {
     const { share, owners } = await table();
-    owners.give(['hero'], ANA);
-    owners.markPlayerTokens(MAP, ['hero'], false);
-    owners.markPlayerTokens(MAP, ['ogre'], true);
+    owners.give(['hero'], {}, ANA);
+    owners.markPlayerTokens(MAP, ['hero'], {}, false);
+    owners.markPlayerTokens(MAP, ['ogre'], {}, true);
     await share.advance(TOKEN_INTERVAL_MS);
     const tokens = tokenLists(share.sent).at(-1)?.tokens ?? [];
     expect(tokens.map(({ name, claim }) => [name, claim])).toEqual([[null, null], ['ogre', 'taken']]);

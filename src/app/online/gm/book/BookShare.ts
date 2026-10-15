@@ -8,7 +8,7 @@ import { every, type Timers } from '../companionTimers.ts';
 import { MoveRate } from '../moveCheck.ts';
 import { AskedAnswer } from './askedAnswer.ts';
 import { bookAssetOf, bookPicture } from './bookAssets.ts';
-import type { KnownPlayer } from '../ownership.ts';
+import type { KnownPlayer, OwnedToken } from '../ownership.ts';
 import type { VaultImage } from '../TokenShare.ts';
 import { bookItemOf } from './bookItem.ts';
 import type { BookScene } from './bookScene.ts';
@@ -33,7 +33,8 @@ export interface BookSharePorts extends Timers {
   scene(): BookScene | null;
   /** Everyone the table knows, and who of them is connected. */
   players(): readonly KnownPlayer[];
-  ownerOf(tokenId: string): string | undefined;
+  /** The owner of a token of the shared scene (`Ownership.ownerOf`). */
+  ownerOf(tokenId: string, token: OwnedToken | undefined): string | undefined;
   readImage(path: string): Promise<VaultImage | null>;
   /** The file at a vault path as it is now, or null when there is none. */
   stat(path: string): FileStat | null;
@@ -210,7 +211,7 @@ export class BookShare implements LootRecipientSource {
     if (scene.mapPath !== this.mapPath) this.art.clear();
     this.mapPath = scene.mapPath;
     this.characters.update(scene, {
-      ownerOf: (tokenId) => this.ports.ownerOf(tokenId),
+      ownerOf: (tokenId) => this.ports.ownerOf(tokenId, scene.tokens[tokenId]),
       isKnown: (player) => known.has(player),
       sheet: (shown, token) => sheetOf(shown, token, scene.resources, (path) => this.art.get(path)),
     });
@@ -267,7 +268,8 @@ export class BookShare implements LootRecipientSource {
 
   /** Hands a checked edit of the player's own resource to Atlas; they are sent their sheet with what it holds then, or their whole book when it was not taken. */
   private editResource(from: string, character: PlayedCharacter, message: BookResourceMessage): boolean {
-    const edit = checkResourceEdit(from, character, this.ports.scene(), (tokenId) => this.ports.ownerOf(tokenId), message);
+    const scene = this.ports.scene();
+    const edit = checkResourceEdit(from, character, scene, (tokenId) => this.ports.ownerOf(tokenId, scene?.tokens[tokenId]), message);
     if (edit === null) return false;
     this.ports.editResource(edit, (taken) => {
       if (taken === null) return this.owe(from);
