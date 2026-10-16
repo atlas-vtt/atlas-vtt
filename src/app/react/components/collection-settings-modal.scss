@@ -114,6 +114,28 @@
   @include atlas-flex-col($spacing-l);
 }
 
+// ── Played campaign notice ─────────────────────────────────────────────────
+// One line over the rules' tabs while a played campaign's game system applies in their place.
+.atlas-csm-played-notice {
+  @include atlas-flex-row($spacing-s);
+  @include atlas-corner-shape;
+  justify-content: space-between;
+  padding: $spacing-s;
+  border-radius: $radius-xl;
+  background: var(--background-modifier-hover);
+  font-size: $font-ui-small;
+  color: var(--text-muted);
+}
+
+.atlas-csm-played-notice__text {
+  min-width: 0;
+}
+
+.atlas-csm-played-notice__action.btn {
+  flex-shrink: 0;
+  border-radius: $radius-l;
+}
+
 // ── Footer ─────────────────────────────────────────────────────────────────
 .atlas-collection-settings-footer {
   @include atlas-modal-footer;

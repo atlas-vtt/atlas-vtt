@@ -33,7 +33,8 @@ interface GridMeasurementTabProps {
   onChange: (gridDefaults: CollectionGridDefaults) => void;
 }
 
-const UNIT_OPTIONS: Record<GridUnitType, string> = {
+/** The units a measurement can name, as the settings label them. */
+export const UNIT_OPTIONS: Record<GridUnitType, string> = {
   feet: t('csm.grid.unit.feet'),
   yards: t('csm.grid.unit.yards'),
   meters: t('csm.grid.unit.meters'),

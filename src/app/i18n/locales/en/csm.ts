@@ -2,6 +2,8 @@ import type { Message } from '../../types';
 
 export const csm = {
   'csm.close': 'Close settings',
+  'csm.playedCampaign': 'While {name} is played, every map uses its game system.',
+  'csm.playedCampaignEdit': 'Edit campaign rules',
   'csm.conditions.add': 'Add Condition',
   'csm.conditions.chooseIcon': 'Choose icon',
   'csm.conditions.empty': 'No conditions defined',

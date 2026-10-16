@@ -32,6 +32,9 @@ import { statblockRolesAreValid } from '../../statblocks/roles/roleValidation';
 import { StatblocksTab } from '../../statblocks/settings/StatblocksTab';
 import { initiativeEdit, RulesSettingsTabs, type SettingsTab } from './collection-settings/RulesSettingsTabs';
 import { SettingsDialog } from './collection-settings/SettingsDialog';
+import { PlayedCampaignNotice } from './collection-settings/PlayedCampaignNotice';
+import { CampaignRulesDialog } from './dashboard/CampaignRulesDialog';
+import { usePlayedSystemCampaign } from '../../campaigns/usePlayedSystemCampaign';
 import { t } from '../../i18n';
 
 interface CollectionSettingsModalProps {
@@ -73,6 +76,12 @@ export function CollectionSettingsModal({
   const diceSets = useDiceSets(app);
 
   const [activeTab, setActiveTab] = useState<SettingsTab>(initialTab);
+  // While a played campaign has a game system, every map plays by it: its rules open in place of these.
+  const played = usePlayedSystemCampaign(app);
+  const playedId = played?.campaign.id ?? null;
+  const [campaignOpen, setCampaignOpen] = useState(false);
+  // Another campaign played, or none: the dialog of the one before is gone for good.
+  useEffect(() => setCampaignOpen(false), [playedId]);
   const [collectionName, setCollectionName] = useState('');
   const [releaseLine, setReleaseLine] = useState('');
 
@@ -200,6 +209,10 @@ export function CollectionSettingsModal({
 
   if (!isOpen) return null;
 
+  if (app && played && campaignOpen) {
+    return <CampaignRulesDialog app={app} campaign={played.campaign} service={played.service} initialTab={activeTab} onClose={() => setCampaignOpen(false)} />;
+  }
+
   return (
     <SettingsDialog
       title={t('csm.title', { name: collectionName })}
@@ -222,6 +235,7 @@ export function CollectionSettingsModal({
         fieldSuggestions={resourceFieldSuggestions(roleTemplates, statblockRecords)}
         initiativeFieldSuggestions={initiativeFields}
         renderOther={renderOther}
+        rulesNotice={played && <PlayedCampaignNotice campaignName={played.campaign.name} onEdit={() => setCampaignOpen(true)} />}
       />
     </SettingsDialog>
   );
