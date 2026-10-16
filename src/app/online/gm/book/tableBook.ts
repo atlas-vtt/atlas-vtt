@@ -10,6 +10,7 @@ import { BookShare } from './BookShare.ts';
 import { writeCharacterValue } from './characterValues.ts';
 import type { ResourceWrites } from './resourceWrites.ts';
 import { gatedQuestAsset, gatedQuests, onQuestsChange } from './questGate.ts';
+import { gatedStatblocks } from './statblockGate.ts';
 import { gatedWorldMap, onWorldMapChange } from './worldMapGate.ts';
 import type { BookShelf } from './BookShelf.ts';
 
@@ -39,7 +40,8 @@ export interface TableBook {
  * once when tokens change hands or the world map or the quests may be others, and named to the
  * loot roller as the people an item can be handed to for as long as the table runs. A player's edit
  * of a resource goes to their token in the shared scene, else to the values the played campaign
- * keeps of their character.
+ * keeps of their character; their character's statblock is read and written through the statblock
+ * gate, and followed while its note or a template changes.
  */
 export function tableBook(ports: TableBookPorts): TableBook {
   const { app, ownership } = ports;
@@ -68,6 +70,9 @@ export function tableBook(ports: TableBookPorts): TableBook {
       if (writes === null) answer(null);
       else writes.write(edit, answer);
     },
+    libraryStatblock: (placed) => gatedStatblocks.libraryStatblock(placed),
+    readStatblock: (path) => gatedStatblocks.read(path),
+    writeStatblock: (path, patches) => gatedStatblocks.write(path, patches),
     scaleImage: scaleInWindow,
   }, ports.shelf);
   let stops: (() => void)[] = [];
@@ -79,6 +84,7 @@ export function tableBook(ports: TableBookPorts): TableBook {
         ownership.onChange(() => share.update()),
         onWorldMapChange(() => share.worldMapChanged()),
         onQuestsChange(() => share.questsChanged()),
+        gatedStatblocks.onChange((path) => share.statblockChanged(path)),
         () => setLootRecipientSource(null),
         () => share.stop(),
       ];

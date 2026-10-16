@@ -1,6 +1,6 @@
 import {
   DEFAULT_BOOK_SLOTS, isRecord, MAX_BOOK_ITEMS, MAX_BOOK_NOTES, MAX_BOOK_PINS, mayEquip, parseBookItem, parseBookNoteDraft, parseBookPin, parseBookSlots, parseEquipped, parsePurse, settledEquipped, withEquipped,
-  type BookItem, type BookNote, type BookPin, type BookResourceMessage, type BookSlots, type Equipped, type PlayerBookMessage, type PurseRow,
+  type BookAbilityMessage, type BookFieldMessage, type BookItem, type BookNote, type BookPin, type BookResourceMessage, type BookSlots, type Equipped, type PlayerBookMessage, type PurseRow,
 } from '../../protocol/index.ts';
 
 /**
@@ -57,7 +57,7 @@ function mayNameQuest(book: StoredBook, quests: ReadonlySet<string>, note: { rea
  * the book holds it and shows the slot; slots are replaced whole, and an item whose slot went is back
  * in the bag. Null when the book takes no more, or not this.
  */
-export function applyBookMessage(book: StoredBook, message: Exclude<PlayerBookMessage, BookResourceMessage>, now: number, quests: ReadonlySet<string>): StoredBook | null {
+export function applyBookMessage(book: StoredBook, message: Exclude<PlayerBookMessage, BookResourceMessage | BookFieldMessage | BookAbilityMessage>, now: number, quests: ReadonlySet<string>): StoredBook | null {
   switch (message.t) {
     case 'book-note': {
       if (!mayNameQuest(book, quests, message.note)) return null;

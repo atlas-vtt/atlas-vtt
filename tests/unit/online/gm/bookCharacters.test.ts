@@ -17,6 +17,8 @@ const BEN = 'ben';
 interface Table {
   readonly owners: Map<string, string>;
   readonly known: Set<string>;
+  /** The statblock notes of library tokens, by asset id or artwork. */
+  readonly library: Map<string, string>;
   readonly characters: Characters;
   /** Reads a scene of these tokens, in this order; the ones in `unseen` are not in the players' frame. */
   read(tokens: readonly TokenEntity[], unseen?: readonly string[], collection?: string): void;
@@ -29,6 +31,7 @@ function table(owners: Readonly<Record<string, string>>): Table {
   const held: Table = {
     owners: new Map(Object.entries(owners)),
     known: new Set([ANA, BEN]),
+    library: new Map(),
     characters,
     read: (tokens, unseen = [], collection = 'Cairn') => {
       const scene: BookScene = {
@@ -40,6 +43,7 @@ function table(owners: Readonly<Record<string, string>>): Table {
         ownerOf: (tokenId) => held.owners.get(tokenId),
         isKnown: (player) => held.known.has(player),
         sheet: (shown): BookCharacter => ({ name: shown.name ?? '', art: null, ring: null, resources: [] }),
+        libraryStatblock: (placed) => held.library.get(placed.assetId ?? placed.imagePath) ?? null,
       });
     },
     played: (player) => {
@@ -175,6 +179,26 @@ describe('the scene as the books read it', () => {
     expect(bookSceneOf(sceneState({ mapPath }), null, null, lookup, () => undefined)).toBeNull();
     expect(bookSceneOf(sceneState({ mapPath: 'atlas-vtt/collections/Unknown/scenes/a.atlasmap' }), source, null, lookup, () => undefined)).toBeNull();
     expect(bookSceneOf(sceneState({ mapPath }), source, null, null, () => undefined)).toBeNull();
+  });
+});
+
+describe('a character\'s statblock note', () => {
+  it('is its token\'s own, else the one of the library token it was placed from, else none', () => {
+    const seats = table({ knight: ANA, squire: BEN, wolf: 'cal' });
+    seats.known.add('cal');
+    seats.library.set('lib-squire', 'Characters/Squire.md');
+    seats.library.set('art/wolf.webp', 'Characters/Wolf.md');
+    const knight = token('knight', { kind: 'character', name: 'knight', statblockPath: 'Characters/Knight.md', assetId: 'lib-knight' } as Partial<TokenEntity>);
+    seats.library.set('lib-knight', 'Characters/Other.md');
+    seats.read([knight, token('squire', { assetId: 'lib-squire' }), token('wolf')]);
+    expect(seats.characters.of(ANA)?.statblockPath).toBe('Characters/Knight.md');
+    expect(seats.characters.of(BEN)?.statblockPath).toBe('Characters/Squire.md');
+    expect(seats.characters.of('cal')?.statblockPath).toBe('Characters/Wolf.md');
+    expect(seats.characters.statblockPaths()).toEqual(new Set(['Characters/Knight.md', 'Characters/Squire.md', 'Characters/Wolf.md']));
+    seats.library.clear();
+    seats.read([token('knight'), token('squire', { assetId: 'lib-squire' }), token('wolf')]);
+    expect(seats.characters.of(ANA)?.statblockPath).toBeNull();
+    expect(seats.characters.statblockPaths()).toEqual(new Set());
   });
 });
 

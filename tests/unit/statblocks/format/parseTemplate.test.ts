@@ -164,6 +164,23 @@ describe('parseTemplate: repairing the body', () => {
     expect(written).toMatchObject({ description: 5, suits: ['npc', 3], sample: [1] });
   });
 
+  it('reads "Roll as a bonus" only where it is on, and keeps another value as written', () => {
+    const fields = [{ key: 'agi', label: 'Agility', type: 'number' }, { key: 'exp', label: 'Experiences', type: 'pairs' }];
+    const result = parseTemplate(minimal({
+      fields,
+      layout: { maxColumns: 2, blocks: [
+        { id: 'traits01', type: 'metric', fields: ['agi'], rollable: true },
+        { id: 'experie1', type: 'pairs', field: 'exp', rollable: 'yes' },
+      ] },
+    }));
+    const [metric, pairs] = result.template?.layout.blocks ?? [];
+    expect(metric).toMatchObject({ type: 'metric', rollable: true });
+    expect(pairs).not.toHaveProperty('rollable');
+    expect(result.problems).toHaveLength(1);
+    const written = JSON.parse(serializeTemplate(result.template as StatblockTemplate)) as { layout: { blocks: unknown[] } };
+    expect(written.layout.blocks).toMatchObject([{ rollable: true }, { rollable: 'yes' }]);
+  });
+
   it('reads derivedFrom, source and importedFrom only when whole', () => {
     const template = parsed(minimal({
       derivedFrom: { templateId: 'builtin:generic-creature', revision: -1 },

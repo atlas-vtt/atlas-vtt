@@ -1,21 +1,12 @@
 import React from 'react';
-import type { FieldValue, TagsBlock } from '../../model/templateTypes';
-import { isEmptyValue } from '../../values/emptyValue';
-import { splitListText } from '../../values/listText';
-import { valueText } from '../../values/valueText';
+import type { TagsBlock } from '../../model/templateTypes';
+import { listItems } from '../../values/listText';
 import { StatblockMarkdown } from '../shared/StatblockMarkdown';
 import { useSheet } from '../sheetContext';
 import { LabelledLine } from '../values/LabelledLine';
 import { StandIn, ValueText } from '../values/ValueText';
 import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
-
-/** A list field's items; a list written as one line of text is split at its commas. */
-function tagItems(value: FieldValue | undefined): string[] {
-  if (value === undefined || isEmptyValue(value)) return [];
-  if (Array.isArray(value)) return value.map(valueText).filter((text) => text.trim() !== '');
-  return splitListText(valueText(value));
-}
 
 type ItemLook = Exclude<TagsBlock['look'], 'comma'>;
 
@@ -44,7 +35,7 @@ function Items({ items, look }: { items: readonly string[]; look: ItemLook }): R
 export function TagsView({ block, display }: BlockViewProps<TagsBlock>): React.JSX.Element {
   const { state } = useSheet();
   const label = block.label ?? state.fields.get(block.field)?.label ?? block.field;
-  const items = display.state === 'value' ? tagItems(state.reader(block.field)) : [];
+  const items = display.state === 'value' ? listItems(state.reader(block.field)) : [];
 
   // Items that stand on their own name themselves; they get a label only where the template gives one.
   if (block.look !== 'comma') {

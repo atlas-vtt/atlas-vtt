@@ -1,8 +1,8 @@
 import React from 'react';
-import type { FieldValue, SpellsBlock } from '../../model/templateTypes';
+import type { SpellsBlock } from '../../model/templateTypes';
 import { toFieldValue } from '../../values/fieldValueOf';
 import { valueText } from '../../values/valueText';
-import { spellGroups, type SpellLine } from '../shared/spellGroups';
+import { spellEntries, spellGroups, type SpellLine } from '../shared/spellGroups';
 import { StatblockMarkdown } from '../shared/StatblockMarkdown';
 import { useSheet } from '../sheetContext';
 import { SheetHeading } from '../values/SheetHeading';
@@ -10,14 +10,6 @@ import { StandIn } from '../values/ValueText';
 import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
 import { SpellTabs } from './SpellTabs';
-
-/** A spells value as Fantasy Statblocks writes it: a list, or a record of level lines, or one line. */
-function spellEntries(value: FieldValue | undefined): FieldValue[] {
-  if (value === undefined || value === null) return [];
-  if (Array.isArray(value)) return value;
-  if (typeof value === 'object') return Object.entries(value).map(([level, spells]): FieldValue => ({ [level]: spells }));
-  return [value];
-}
 
 function SpellList({ lines }: { lines: readonly SpellLine[] }): React.JSX.Element | null {
   const { app, sourcePath } = useSheet();

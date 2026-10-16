@@ -1,8 +1,10 @@
 import React from 'react';
-import { diceLinkProps, splitDiceSegments } from '../../../services/statblockDiceLinks';
+import { diceLinkProps } from '../../../services/statblockDiceLinks';
+import { splitDiceSegments } from '../../../services/statblockDiceText';
 import type { StatBlock } from '../../model/templateTypes';
 import { isDiceNotation } from '../../values/diceNotation';
 import type { BlockDisplay } from '../blockDisplay';
+import { BonusLink } from '../shared/BonusLink';
 import { namesHitPoints } from '../shared/hitPoints';
 import { useSheet } from '../sheetContext';
 import type { SheetState } from '../sheetState';
@@ -32,10 +34,13 @@ export function StatView({ block, display }: BlockViewProps<StatBlock>): React.J
   const hitPoints = field?.meaning === 'hit-points' || namesHitPoints(block.field, label);
   const dice = rollFromDice(block, state, display);
   const value = <DisplayText display={display} />;
+  const shown = display.state === 'value' ? display.text?.text ?? '' : '';
 
   return (
     <LabelledLine label={label} look={block.look} className="atlas-sb-stat" hitPoints={hitPoints} placeholder={state.provisional !== undefined}>
-      <ValueSlot block={block}>{dice ? <span {...diceLinkProps(dice)}>{value}</span> : value}</ValueSlot>
+      <ValueSlot block={block}>
+        {dice ? <span {...diceLinkProps(dice)}>{value}</span> : <BonusLink text={shown} rollable={block.rollable}>{value}</BonusLink>}
+      </ValueSlot>
     </LabelledLine>
   );
 }

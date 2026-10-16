@@ -4,10 +4,9 @@ import { ChevronRight } from 'lucide-react';
 import { useElementHeight } from '../../../react/hooks/useElementHeight';
 import { MOTION_NORMAL_MS, EASE_OUT_CONTROL_POINTS } from '../../../utils/motion';
 import type { SectionBlock } from '../../model/templateTypes';
-import { valueText } from '../../values/valueText';
-import type { SheetState } from '../sheetState';
 import { useSheet } from '../sheetContext';
 import { TabPanelContext } from '../tabs/openTabs';
+import { sectionHeading } from '../values/sectionHeading';
 import { SheetHeading } from '../values/SheetHeading';
 import type { BlockViewProps } from './blockViewProps';
 
@@ -62,11 +61,6 @@ function Collapsible({ heading, initiallyOpen, children }: {
       </motion.div>
     </>
   );
-}
-
-/** What a Section is headed with: its heading property's value, else its own heading. */
-export function sectionHeading(block: SectionBlock, state: SheetState): string {
-  return (block.headingField ? valueText(state.reader(block.headingField)) : '') || block.heading || '';
 }
 
 /**

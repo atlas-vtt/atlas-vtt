@@ -29,6 +29,8 @@ export interface TemplateEditorContextValue {
   collectionKeys: CollectionFieldKeys;
   /** Opens the selected tile's Options, focusing the input named `focusKey` (`data-focus-key`) where given. */
   openOptions: (focusKey?: string) => void;
+  /** Whether tiles' Options say what players may do with them (`usePlayersRow`). */
+  playersRow?: boolean | undefined;
   /** The last request that a Table type its first cell. */
   tableTyping?: TableTypingRequest | null | undefined;
 }

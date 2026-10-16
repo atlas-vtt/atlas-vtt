@@ -92,9 +92,25 @@ export function fieldsNotShown(template: StatblockTemplate): TemplateField[] {
 export function removeField(template: StatblockTemplate, key: FieldKey): StatblockTemplate {
   if (!template.fields.some((field) => field.key === key) || blocksReadingField(template, key).length > 0) return template;
   const fields = template.fields.filter((field) => field.key !== key);
-  if (!template.sample || !Object.hasOwn(template.sample, key)) return { ...template, fields };
-  const sample = Object.fromEntries(Object.entries(template.sample).filter(([sampleKey]) => sampleKey !== key));
-  return { ...template, fields, sample };
+  return withKeyMoved({ ...template, fields }, key, null);
+}
+
+/**
+ * The template with what its sample and its player settings hold under `from` moved to `to`, or
+ * dropped for null: they follow a field's key, so a rename keeps them and a field added later under
+ * a removed key starts without them.
+ */
+function withKeyMoved(template: StatblockTemplate, from: FieldKey, to: FieldKey | null): StatblockTemplate {
+  const moved = <T>(record: Record<FieldKey, T> | undefined): Record<FieldKey, T> | undefined => {
+    if (!record || !Object.hasOwn(record, from)) return record;
+    const entries = Object.entries(record).filter(([key]) => key !== from);
+    const value = record[from];
+    return Object.fromEntries(to === null || value === undefined ? entries : [...entries, [to, value]]);
+  };
+  const sample = moved(template.sample);
+  const players = moved(template.players);
+  if (sample === template.sample && players === template.players) return template;
+  return { ...template, ...(sample && { sample }), ...(players && { players }) };
 }
 
 /** Why `from` cannot be renamed to `to`, in plain words, or null when it can. */
@@ -165,10 +181,11 @@ function renamedBlocks(blocks: TemplateBlock[], from: FieldKey, to: FieldKey): T
 /**
  * Renames a field's key. The old key goes first onto `formerKeys` (newest
  * first; renaming back to a former key takes it off), and every block that
- * names it, every pattern, Scores column, Line field and condition, and the
- * sample, name the new one. Notes are not rewritten: they keep reading the old
- * key until a batch or their next edit moves the value. Refused, with the
- * template returned as it was, while `renameKeyProblem` names a problem.
+ * names it, every pattern, Scores column, Line field and condition, the
+ * sample and the player settings, name the new one. Notes are not
+ * rewritten: they keep reading the old key until a batch or their next edit
+ * moves the value. Refused, with the template returned as it was, while
+ * `renameKeyProblem` names a problem.
  */
 export function renameFieldKey(template: StatblockTemplate, from: FieldKey, to: FieldKey): StatblockTemplate {
   if (to === from || renameKeyProblem(template, from, to) !== null) return template;
@@ -179,7 +196,5 @@ export function renameFieldKey(template: StatblockTemplate, from: FieldKey, to: 
   });
   const blocks = renamedBlocks(template.layout.blocks, from, to);
   const renamed: StatblockTemplate = { ...template, fields, layout: blocks === template.layout.blocks ? template.layout : { ...template.layout, blocks } };
-  if (!template.sample || !Object.hasOwn(template.sample, from)) return renamed;
-  const { [from]: value, ...rest } = template.sample;
-  return value === undefined ? renamed : { ...renamed, sample: { ...rest, [to]: value } };
+  return withKeyMoved(renamed, from, to);
 }

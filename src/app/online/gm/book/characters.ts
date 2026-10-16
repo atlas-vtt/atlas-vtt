@@ -1,5 +1,6 @@
 import type { BookCharacter } from '../../protocol/index.ts';
 import type { PlacedTokenSource } from '../../../characters/playerCharacters';
+import type { ResourceDefinition, ResourceValue } from '../../../resources/resourceTypes';
 import type { ShownRollToken } from '../../../services/playerRollSource';
 import type { TokenEntity } from '../../../types';
 import type { BookScene } from './bookScene.ts';
@@ -15,6 +16,13 @@ export interface PlayedCharacter {
   readonly placed: PlacedTokenSource;
   /** The sheet as last read from the scene. */
   readonly sheet: BookCharacter;
+  /** The statblock note of the character: its token's, else the one of the library token it was placed from; null for none. */
+  readonly statblockPath: string | null;
+  /** What its statblock is drawn with, as last read from the scene: the scene's resources and the values its token holds. */
+  readonly drawnWith: {
+    readonly definitions: readonly ResourceDefinition[];
+    readonly resources: Readonly<Record<string, ResourceValue>> | undefined;
+  };
 }
 
 /** Who owns the tokens and who is at the table, and how a token becomes a sheet. */
@@ -24,9 +32,15 @@ export interface CharacterInputs {
   isKnown(player: string): boolean;
   /** The sheet of a token the players' frame shows, or null when none can be made of it. */
   sheet(shown: ShownRollToken, token: TokenEntity): BookCharacter | null;
+  /** The statblock note the library token a placed token came from links, or null. */
+  libraryStatblock(placed: PlacedTokenSource): string | null;
 }
 
 const placedOf = (token: TokenEntity): PlacedTokenSource => (token.assetId === undefined ? { imagePath: token.imagePath } : { assetId: token.assetId, imagePath: token.imagePath });
+
+/** A token's own statblock note, else its library token's. */
+const statblockOf = (token: TokenEntity, inputs: CharacterInputs): string | null =>
+  (token.kind === 'character' && token.statblockPath ? token.statblockPath : null) ?? inputs.libraryStatblock(placedOf(token));
 
 const bookOf = (character: Pick<PlayedCharacter, 'collection' | 'key'>): string => `${character.collection}\n${character.key}`;
 
@@ -57,12 +71,20 @@ export class Characters {
     return true;
   }
 
+  /** The statblock notes of every character played. */
+  statblockPaths(): Set<string> {
+    return new Set([...this.played.values()].flatMap((character) => (character.statblockPath === null ? [] : [character.statblockPath])));
+  }
+
   /** The sheet of a player's character with a resource's value as it was written, for a character whose token no shown scene holds to be read from. */
   setValue(player: string, key: string, current: number): void {
     const character = this.played.get(player);
     if (character === undefined) return;
     const resources = character.sheet.resources.map((resource) => (resource.key === key ? { ...resource, current } : resource));
-    this.played.set(player, { ...character, sheet: { ...character.sheet, resources } });
+    const held = character.drawnWith.resources;
+    const value = held?.[key];
+    const drawnWith = value === undefined ? character.drawnWith : { ...character.drawnWith, resources: { ...held, [key]: { ...value, current } } };
+    this.played.set(player, { ...character, sheet: { ...character.sheet, resources }, drawnWith });
   }
 
   /** Reads the shared scene: who plays which character now. */
@@ -99,7 +121,8 @@ export class Characters {
       if (sheet === null) continue;
       if (before !== undefined) holders.delete(bookOf(before));
       holders.set(bookOf(character), owner);
-      this.played.set(owner, { ...character, tokenId, placed: placedOf(token), sheet });
+      const drawnWith = { definitions: scene.resources, resources: token.resources };
+      this.played.set(owner, { ...character, tokenId, placed: placedOf(token), sheet, statblockPath: statblockOf(token, inputs), drawnWith });
       settled.add(owner);
     }
   }

@@ -1,11 +1,14 @@
 // @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseGmMessage, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
+import { parseGmMessage, type BookStatblock, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 import { PartySync } from '../../../../src/app/campaigns/partyValues/PartySync';
+import { BOOK_POLL_MS } from '../../../../src/app/online/gm/book/BookShare.ts';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
+import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGate.ts';
 import { app, FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH, delivered, MIRA, openTable, type OpenTable } from './bookTableHarness.ts';
+import { ANA, BEN, BRANNOCH, cave, delivered, MIRA, ofType, openTable, type OpenTable } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
+import { StatblockNotes, templateOf } from './statblockNotes.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
@@ -22,6 +25,19 @@ vi.mock('../../../../src/app/online/gm/atlasLighting.ts', async (original) => ({
 
 const PLAYERS = [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }];
 const NOTE_ID = 'abcdefabcdefabcdefabcdef';
+const TEMPLATE = templateOf([{ key: 'name', label: 'Name', type: 'text' }, { key: 'speed', label: 'Speed', type: 'text' }], [{ id: 'speed001', type: 'stat', field: 'speed', look: 'run-in' }]);
+const statblockNote = (name: string, speed: string): string => ['---', 'statblock: true', `atlas-template: ${TEMPLATE.id}`, `name: ${name}`, `speed: ${speed}`, '---', ''].join('\n');
+
+/** The statblock a player's page holds now: the last one sent since their last book, null for none. */
+function statblockOf(table: OpenTable, player: string): BookStatblock | null {
+  let held: BookStatblock | null = null;
+  for (const { to, body } of ofType(delivered(table.socket), 'book', 'book-statblock')) {
+    if (to !== player) continue;
+    const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
+    held = read?.t === 'book-statblock' ? read.statblock : null;
+  }
+  return held;
+}
 
 /** The book a player's page holds after everything sent so far: the last whole book, with the sheets that followed. */
 function bookOf(table: OpenTable, player: string): PlayerBook | undefined {
@@ -55,6 +71,7 @@ describe('a player\'s book follows the token they act with', () => {
   });
 
   afterEach(() => {
+    setStatblockGate(null);
     PartySync.release(app);
     workspace.assets = null;
     vi.useRealTimers();
@@ -83,6 +100,26 @@ describe('a player\'s book follows the token they act with', () => {
     // Another reading of the scene keeps the choice.
     await advance(2_000);
     expect(bookOf(table, ANA)?.character?.name).toBe('Mira');
+    table.online.stop();
+  });
+
+  it('sends the statblock of the chosen token\'s character, never the other one\'s', async () => {
+    const notes = new StatblockNotes().install();
+    notes.put('Characters/Brannoch.md', TEMPLATE, statblockNote('Brannoch', '30 ft.'));
+    notes.put('Characters/Mira.md', TEMPLATE, statblockNote('Mira', '40 ft.'));
+    const table = await openTable(new BookShelf(), PLAYERS, { [BRANNOCH]: ANA, [MIRA]: ANA });
+    table.tab.store.set(cave({ brannoch: { statblockPath: 'Characters/Brannoch.md' }, mira: { statblockPath: 'Characters/Mira.md' } }));
+    await advance(BOOK_POLL_MS);
+    expect(statblockOf(table, ANA)?.displayName).toBe('Brannoch');
+
+    table.from(ANA, { t: 'book-token', ...listed(table, MIRA) });
+    await advance(BOOK_POLL_MS);
+    expect(bookOf(table, ANA)?.character?.name).toBe('Mira');
+    expect(statblockOf(table, ANA)?.displayName).toBe('Mira');
+
+    table.from(ANA, { t: 'book-token', ...listed(table, BRANNOCH) });
+    await advance(BOOK_POLL_MS);
+    expect(statblockOf(table, ANA)?.displayName).toBe('Brannoch');
     table.online.stop();
   });
 

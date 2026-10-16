@@ -1,6 +1,7 @@
 import React, { useContext } from 'react';
 import { cn } from '../../../../utils/cn';
 import { valuePrompt } from '../blockDisplay';
+import { BonusLink } from '../shared/BonusLink';
 import { hitPointsAttribute, namesHitPoints } from '../shared/hitPoints';
 import { useSheet } from '../sheetContext';
 import type { SheetState } from '../sheetState';
@@ -46,7 +47,7 @@ function MetricCell({ block, number }: { block: MetricBlock; number: MetricNumbe
   // In the template editor a number not named yet shows the prompt it will have, worded after its placeholder name.
   const unnamedPrompt = useContext(ValueEditingContext)?.drawsUnnamed ? valuePrompt({ label }, label) : BLANK;
   const value = hasText(shown) || shown.problems.length > 0
-    ? <ValueText shown={shown} />
+    ? <BonusLink text={shown.text} rollable={block.rollable}><ValueText shown={shown} /></BonusLink>
     : editing ? <FieldPrompt prompt={key ? valuePrompt(field, label) : unnamedPrompt} /> : <span className="atlas-sb-value atlas-sb-metric__blank">{BLANK}</span>;
 
   return (
@@ -54,6 +55,7 @@ function MetricCell({ block, number }: { block: MetricBlock; number: MetricNumbe
       className="atlas-sb-metric__number"
       {...{ [METRIC_INDEX_ATTRIBUTE]: index }}
       data-prop={key || undefined}
+      data-roll-name={block.rollable && key ? label : undefined}
       {...hitPointsAttribute(Boolean(key) && (field?.meaning === 'hit-points' || namesHitPoints(key, label)))}
     >
       <span className={cn('atlas-sb-label', !key && 'atlas-sb-prompt')}>{label}</span>

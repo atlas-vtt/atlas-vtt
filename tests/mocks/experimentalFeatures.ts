@@ -34,3 +34,8 @@ export function withDynamicLighting<T>(app: T): T {
 export function withStatblockEditor<T>(app: T): T {
   return withFeature(app, 'statblockEditor');
 }
+
+/** An app whose GM switched online play on. */
+export function withOnlinePlay<T>(app: T): T {
+  return withFeature(app, 'onlinePlay');
+}

@@ -2,6 +2,7 @@ import { requireApiVersion, type Plugin } from 'obsidian';
 import { SECRET_STORAGE_VERSION } from '../online/gm/account/tokenStore.ts';
 import { ONLINE_COMMANDS } from '../online/gm/onlineCommands.ts';
 import { setQuestGate } from '../online/gm/book/questGate.ts';
+import { setStatblockGate } from '../online/gm/book/statblockGate.ts';
 import { setWorldMapGate } from '../online/gm/book/worldMapGate.ts';
 import { OnlineFeature } from '../online/gm/OnlineFeature.ts';
 import type { TableChat } from '../online/gm/tableChat.ts';
@@ -11,6 +12,7 @@ import type { AtlasSettingSection } from '../settings/settingSections';
 import { showNotice } from '../ui/notice';
 import { campaignQuestGate } from './campaignQuestGate';
 import { campaignWorldMapGate } from './campaignWorldMapGate';
+import { characterStatblockGate } from './characterStatblockGate';
 
 /** Online play as the plugin holds it. */
 export interface OnlinePlay {
@@ -39,6 +41,7 @@ export function registerOnlinePlay(plugin: Plugin, settings: SettingsService): O
     if (feature !== null) plugin.removeChild(feature);
     setWorldMapGate(on ? campaignWorldMapGate(plugin.app) : null);
     setQuestGate(on ? campaignQuestGate(plugin.app) : null);
+    setStatblockGate(on ? characterStatblockGate(plugin.app) : null);
     feature = on ? plugin.addChild(new OnlineFeature(plugin, onlineDataFile(plugin.app))) : null;
   };
   // Registered once: a command asks whichever feature is loaded, and is not offered while none is.
@@ -49,6 +52,7 @@ export function registerOnlinePlay(plugin: Plugin, settings: SettingsService): O
   plugin.register(() => {
     setWorldMapGate(null);
     setQuestGate(null);
+    setStatblockGate(null);
   });
   sync();
   return { settingsSections: () => feature?.settingsSections() ?? [], chat: () => feature?.chat ?? null };
