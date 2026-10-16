@@ -94,7 +94,7 @@ describe('MarkShare', () => {
       harness.laser.changed();
       harness.advance(4);
     }
-    expect(harness.sent.length).toBeGreaterThan(30);
+    expect(harness.sent.length).toBeGreaterThanOrEqual(Math.floor(3000 / MARKS_INTERVAL_MS) - 1);
     expect(harness.sent.length).toBeLessThanOrEqual(Math.floor(3000 / MARKS_INTERVAL_MS) + 1);
   });
 
@@ -200,7 +200,7 @@ describe('MarkShare', () => {
     ]);
     harness.advance(MARKS_INTERVAL_MS);
     expect(lastMarks(harness)?.measures).toEqual([
-      { who: 'gm', color: '#123456', live: { shape: 'line', a: [0, 0], b: [20, 0] }, kept: [], span: 48 },
+      { who: 'gm', color: '#123456', live: { shape: 'line', a: [0, 0], b: [20, 0] }, kept: [], span: MARKS_INTERVAL_MS + 15 },
       { who: BEN, color: '#66ffa9', live: { shape: 'line', a: [10, 10], b: [90, 10] }, kept: [], span: 405 },
       { who: ANA, color: '#66ffa9', live: { shape: 'line', a: [10, 10], b: [80, 10] }, kept: [], span: 9 },
     ]);
@@ -251,5 +251,17 @@ describe('MarkShare', () => {
     harness.advance(MARKS_INTERVAL_MS);
     harness.share.resend(ANA);
     expect(harness.sent.at(-1)).toEqual({ body: lastMarks(harness), to: ANA });
+  });
+
+  it('goes to everyone through the live lane, one waiting at most, and to a joiner in order with the rest', () => {
+    const harness = markHarness();
+    harness.share.setScene('s1');
+    harness.share.receive(BEN, measure());
+    harness.advance(MARKS_INTERVAL_MS);
+    expect(harness.live).toEqual(['marks']);
+    expect(harness.sent.at(-1)?.to).toBeUndefined();
+    harness.share.resend(ANA);
+    expect(harness.live).toHaveLength(1);
+    expect(harness.sent.at(-1)?.to).toBe(ANA);
   });
 });

@@ -89,6 +89,8 @@ export interface MarkHarness {
   readonly share: MarkShare;
   /** Every `marks` message sent, with whom it went to. */
   readonly sent: { readonly body: MarksMessage; readonly to: string | undefined }[];
+  /** The live lane's key of each `marks` message that went through it, in order. */
+  readonly live: string[];
   /** What the GM's overlay was last told to draw, and everything it was told, in order. */
   shown: PlayerMarks | null;
   readonly shows: PlayerMarks[];
@@ -134,6 +136,7 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
   };
   const harness: MarkHarness = {
     sent: [],
+    live: [],
     shown: null,
     shows: [],
     laser,
@@ -148,6 +151,12 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
         if (body.t !== 'marks') return;
         harness.onSend?.(body);
         harness.sent.push({ body, to });
+      },
+      sendLive: (body: GmMessage, key: string) => {
+        if (body.t !== 'marks') return;
+        harness.onSend?.(body);
+        harness.sent.push({ body, to: undefined });
+        harness.live.push(key);
       },
       gmMarks: () => source,
       accent: () => '#123456',

@@ -1,4 +1,4 @@
-import { TFile, normalizePath, type App } from 'obsidian';
+import { normalizePath, type App, type TFile } from 'obsidian';
 import { getFantasyStatblocksApi, type FantasyStatblocksCreature } from './FantasyStatblocksService';
 import { statblockDisplayName } from '../creatures/statblockRating';
 import { boundedList } from '../creatures/statblockValues';
@@ -10,6 +10,7 @@ import { readStatblock } from '../statblocks/resolve/readStatblock';
 import { STATBLOCK_IMAGE_KEYS, type StatblockImageKey } from './statblockImageKeys';
 import { t } from '../i18n';
 import { isVaultImage } from '../utils/vaultImage';
+import { statblockImageFile } from '../statblocks/render/shared/statblockImage';
 
 export type StatblockImportStatus = 'ready' | 'imported' | 'missing-image' | 'remote-image' | 'conflict';
 export interface StatblockImportCandidate {
@@ -51,12 +52,10 @@ export function statblockImageField(fields: Readonly<Record<string, unknown>>): 
   return undefined;
 }
 
-/** The vault image a frontmatter reference (wikilink or path) points at, resolved relative to `sourcePath`. */
+/** The vault image a statblock's image reference (wikilink or path) points at, resolved relative to `sourcePath` (`statblockImageFile`). */
 export function localImage(app: App, reference: string, sourcePath: string): TFile | null {
-  const path = reference.replace(/^!?\[\[|\]\]$/g, '').split('|')[0]?.split('#')[0]?.trim();
-  if (!path) return null;
-  const resolved = app.metadataCache.getFirstLinkpathDest(path, sourcePath) ?? app.vault.getAbstractFileByPath(normalizePath(path));
-  return resolved instanceof TFile && isVaultImage(resolved) ? resolved : null;
+  const file = statblockImageFile(app, reference, sourcePath);
+  return file !== null && isVaultImage(file) ? file : null;
 }
 
 /**

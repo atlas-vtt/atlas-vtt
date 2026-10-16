@@ -29,6 +29,17 @@ describe('book messages to a player', () => {
     expect(parseGmMessage({ t: 'book-item', item: ITEM })).toEqual({ t: 'book-item', item: ITEM });
   });
 
+  it('read the world map or the quests alone, as a page that reads parts is sent them, and nothing malformed', () => {
+    expect(parseGmMessage({ t: 'book-map', worldMap: BOOK.worldMap })).toEqual({ t: 'book-map', worldMap: BOOK.worldMap });
+    expect(parseGmMessage({ t: 'book-map', worldMap: null })).toEqual({ t: 'book-map', worldMap: null });
+    expect(parseGmMessage({ t: 'book-quests', quests: [QUEST, { id: 'nope' }] })).toEqual({ t: 'book-quests', quests: [QUEST] });
+    expect(parseGmMessage({ t: 'book-quests', quests: [] })).toEqual({ t: 'book-quests', quests: [] });
+    for (const broken of [{ t: 'book-map' }, { t: 'book-map', worldMap: { width: 0, height: 1, image: ART } }, { t: 'book-quests' }, { t: 'book-quests', quests: {} }, { t: 'book-quests', quests: Array.from({ length: MAX_BOOK_QUESTS + 1 }, () => QUEST) }]) {
+      expect(parseGmMessage(broken), JSON.stringify(broken).slice(0, 80)).toBeNull();
+    }
+    expect(parsePlayerMessage({ t: 'book-parts' })).toEqual({ t: 'book-parts' });
+  });
+
   it('read a book without character, map or entries', () => {
     const empty = { character: null, worldMap: null, items: [], notes: [], pins: [], quests: [], purse: [], slots: { hidden: [], own: [] }, equipped: [] };
     expect(parseGmMessage({ t: 'book', book: empty })).toEqual({ t: 'book', book: empty });
