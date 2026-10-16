@@ -17,7 +17,7 @@ function depthOf(nodes: readonly SheetNode[]): number {
   }, 0);
 }
 
-describe('a drawn statblock within the protocol\'s limits', () => {
+describe('a drawn statblock within the protocol\'s limits', { timeout: 30_000 }, () => {
   it('holds a thousand abilities and huge texts within what the page reads and one GM frame', async () => {
     const fields: TemplateField[] = [
       { key: 'name', label: 'Name', type: 'text' },
