@@ -5,6 +5,10 @@
 3. Run `npx tsc --noEmit`, `npm run lint`, `npm test` and `npm run build`. Lint must be clean; see [`docs/development.md`](docs/development.md#lint).
 4. Open a pull request against `beta` that describes what changed and how you tested it.
 
+## Text and translations
+
+Write every text a user reads or hears with a key: add it to `src/app/i18n/locales/en/` and show it with `t('file.key')`, instead of writing the English into the component. You do not have to translate it; a language that lacks a key shows the English, and translations come as their own pull requests. Keep each sentence one whole text with `{placeholders}`, rather than joining words in code, so it can be worded in languages that decline and order words differently. The rules are in the Translations section of [`CLAUDE.md`](CLAUDE.md#translations).
+
 ## Release notes
 
 Add player-facing changes to `changelog/Unreleased.md` as you work. Use **New**, **Improved**, **Fixed**, and **Important changes**; omit empty categories. Describe the behavior a player or GM will notice and where to find new features. Keep test counts and internal refactoring details in the pull request.
