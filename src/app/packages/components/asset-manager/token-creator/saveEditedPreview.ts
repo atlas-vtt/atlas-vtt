@@ -9,6 +9,7 @@ import { STORED_IMAGE_SCALE } from './cropMath';
 import { prepareSaveImage, type SaveImageContext } from './prepareSaveImages';
 import { overwriteStoredImage, storedImageFile } from './storedTokenImage';
 import type { EditTokenInput, TokenPreview } from './types';
+import { isWebImage } from '../../../../utils/imageSource';
 import { t } from '../../../../i18n';
 import { showNotice } from '../../../../ui/notice';
 
@@ -24,10 +25,11 @@ export interface EditedPreviewSave extends SaveImageContext {
 
 /**
  * An edit without an upload crops the token's stored image when the crop was moved or
- * the ring was just turned on (the stored image is then the whole artwork).
+ * the ring was just turned on (the stored image is then the whole artwork). Web art
+ * has no stored image: it stays as it is, ring or not.
  */
 function cropsStoredImage(preview: TokenPreview, editToken: EditTokenInput): boolean {
-  if (preview.file || preview.showRing === false) return false;
+  if (preview.file || preview.showRing === false || isWebImage(editToken.imagePath)) return false;
   const { imageScale, imagePosition } = preview;
   return editToken.showRing === false || imageScale !== STORED_IMAGE_SCALE || imagePosition.x !== 0 || imagePosition.y !== 0;
 }

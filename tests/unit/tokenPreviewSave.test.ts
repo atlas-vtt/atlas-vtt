@@ -56,6 +56,18 @@ it('retains failed previews for retry and removes only successfully saved previe
   expect((await assetService.getTokenAssets()).map(t => t.name)).toEqual(['Wolf']);
 });
 
+it('saves web art by its address, writing no file and making no thumbnail', async () => {
+  const { app, assetService, options, preview } = setup();
+  const url = 'https://example.com/tokens/orc.webp';
+  const web: TokenPreview = { ...preview, id: 'orc', name: 'Orc', statblockPath: undefined, tags: [], showRing: true, file: null, imageUrl: url, previewUrl: url };
+  expect(await saveTokenPreviews({ ...options, previews: [web, preview] })).toBe(2);
+  const tokens = await assetService.getTokenAssets();
+  expect(tokens.find(t => t.name === 'Orc')).toMatchObject({ imagePath: url, showRing: true });
+  expect(tokens.find(t => t.name === 'Orc')?.thumbnailPath).toBeUndefined();
+  expect(app.vault.createBinary.mock.calls.map(([path]) => path)).toEqual([expect.stringContaining('Custom_Goblin')]);
+  expect(options.onSaved).toHaveBeenCalledWith(['orc', 'goblin']);
+});
+
 it('builds the tiles of a saved map ahead, and of no token', async () => {
   const { app, assetService, options, preview } = setup();
   expect(await saveTokenPreviews(options)).toBe(1);

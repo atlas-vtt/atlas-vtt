@@ -6,6 +6,7 @@ import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerIniti
 import { mapInitiativeRules } from './mapInitiativeRules';
 import { PlayerSceneOverlay, type PlayerSettings } from './PlayerSceneOverlay';
 import type { SettingsService } from './SettingsService';
+import { isImageUrl } from '../utils/imageSource';
 
 /** Separates token ids in `InitiativeScene.visibleTokenIds`. */
 const TOKEN_ID_SEPARATOR = '\n';
@@ -55,7 +56,7 @@ export class PlayerInitiativePanel extends PlayerSceneOverlay<InitiativeScene> {
     );
     renderPlayerInitiative(container, list, {
       showNames: settings.showTokenNameplates,
-      portraitSrc: (imagePath) => (/^(?:https?:|data:|blob:|app:)/.test(imagePath) ? imagePath : this.app.vault.adapter.getResourcePath(imagePath)),
+      portraitSrc: (imagePath) => (isImageUrl(imagePath) ? imagePath : this.app.vault.adapter.getResourcePath(imagePath)),
     });
   }
 }

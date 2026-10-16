@@ -1,4 +1,5 @@
-import { TFile, App as ObsidianApp } from 'obsidian';
+import { App as ObsidianApp } from 'obsidian';
+import { imageSrc } from '../utils/imageSource';
 
 interface ThumbnailToken {
   imagePath?: string;
@@ -34,11 +35,7 @@ export async function generateEncounterThumbnail(
       return;
     }
 
-    const getUrl = (token: ThumbnailToken): string => {
-      const file = app.vault.getAbstractFileByPath(token.imagePath ?? '');
-      if (file instanceof TFile) return app.vault.getResourcePath(file);
-      return token.imagePath || '';
-    };
+    const getUrl = (token: ThumbnailToken): string => imageSrc(app, token.imagePath) || (token.imagePath ?? '');
 
     const drawCircle = (
       img: HTMLImageElement,

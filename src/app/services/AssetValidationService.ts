@@ -2,6 +2,7 @@ import { App, TFile, normalizePath } from 'obsidian';
 import type { MapFile } from './MapPersistence';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { isImageUrl } from '../utils/imageSource';
 
 /** The parts of a map that reference vault images; satisfied by a MapFile and by the live store state. */
 export interface MapAssetReferences {
@@ -50,7 +51,9 @@ export class AssetValidationService {
     
     constructor(private plugin: { app: App }) {}
 
+    /** Whether an image reference can be shown: a URL is loaded when shown, a vault path must name a file. */
     async validateAsset(path: string): Promise<boolean> {
+        if (isImageUrl(path)) return true;
         // Check cache first
         if (this.validationCache.has(path)) {
             return this.validationCache.get(path)!;

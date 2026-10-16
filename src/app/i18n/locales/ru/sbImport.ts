@@ -4,7 +4,6 @@ export const sbImport: Translation = {
   'sbImport.status.ready': 'Готов',
   'sbImport.status.imported': 'Уже импортирован',
   'sbImport.status.missingImage': 'Нет изображения',
-  'sbImport.status.remoteImage': 'Внешнее изображение',
   'sbImport.status.conflict': 'Конфликт',
   'sbImport.scanFailed': 'Не удалось просканировать статблоки.',
   'sbImport.loadFailed': 'Не удалось загрузить изображения статблоков.',

@@ -103,7 +103,9 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
 
-  const isCropEditable = mode === 'token' && preview.showRing !== false;
+  const framed = mode === 'token' && preview.showRing !== false;
+  // Web art is not converted, so there is nothing to crop: a framed one shows whole inside its ring.
+  const isCropEditable = framed && !preview.imageUrl;
   const aspect = useImageAspect(preview.previewUrl);
   const wellSize = useWellSize(artElement);
 
@@ -184,7 +186,7 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
       />
       {/* The card never shows the upload itself: its place is held until the converted image is there. */}
       {preview.isOptimizing && <Skeleton className="atlas-token-card__pending" live />}
-      {isCropEditable && <><div className="atlas-token-card__mask" /><img className="atlas-token-card__ring" src={tokenRingImageUrl} alt="" /></>}
+      {framed && <><div className="atlas-token-card__mask" /><img className="atlas-token-card__ring" src={tokenRingImageUrl} alt="" /></>}
 
       <LabelTooltip label={t('creator.select', { name: preview.name })}>
         <button
@@ -214,7 +216,7 @@ export const TokenPreviewCard = React.memo(function TokenPreviewCard({ preview, 
 
   return (
     <div
-      className={cn('atlas-token-card', `atlas-token-card--${mode}`, preview.isSelected && 'atlas-selected', !isCropEditable && 'atlas-token-card--unframed', entrance === null && 'atlas-token-card--settled')}
+      className={cn('atlas-token-card', `atlas-token-card--${mode}`, preview.isSelected && 'atlas-selected', !framed && 'atlas-token-card--unframed', entrance === null && 'atlas-token-card--settled')}
       style={{ '--atlas-enter-index': Math.min(entrance ?? 0, ENTER_STAGGER_CAP) } as React.CSSProperties}
     >
       {isCropEditable ? <LabelTooltip label={t('creator.cropHint')}>{art}</LabelTooltip> : art}

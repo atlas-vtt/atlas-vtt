@@ -1,18 +1,18 @@
-import { TFile, type App } from 'obsidian';
+import type { App } from 'obsidian';
 import { useEffect, useState } from 'react';
 import { AssetService } from '../../../services/AssetService';
 import { worldMapArtwork } from '../../../services/worldMap';
 import { mapThumbnailPath } from '../../../utils/dataFileMigration';
+import { imageSrc } from '../../../utils/imageSource';
 
 /** A scene's thumbnail as a vault resource URL, or null when it has none yet. */
 export function sceneThumbnailUrl(app: App, mapPath: string): string | null {
   return resourceUrl(app, mapThumbnailPath(mapPath));
 }
 
-/** A vault file as a resource URL, or null when there is no such file. */
+/** An image reference as a URL a picture can show (a web address as it is), or null when the vault holds no such file. */
 export function resourceUrl(app: App, path: string | undefined): string | null {
-  const file = path ? app.vault.getAbstractFileByPath(path) : null;
-  return file instanceof TFile ? app.vault.getResourcePath(file) : null;
+  return imageSrc(app, path) || null;
 }
 
 /** A map or scene of any collection a campaign may take as its world map. */

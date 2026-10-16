@@ -65,6 +65,25 @@ describe('formatServiceAsset thumbnails', () => {
     expect(withThumbnails(next, [{ id: 'goblin', thumbnailPath: made }], app)).toBe(next);
   });
 
+  it('shows web art from its address, without waiting for a thumbnail', () => {
+    const url = 'https://example.com/tokens/goblin.webp';
+    const app = createAppWithFiles([]);
+    const formatted = formatServiceAsset(token('goblin', url), TAB_BASE, app, undefined, () => ({ pending: false }));
+    expect(formatted).toMatchObject({ thumbnailUrl: url, imageUrl: url, imagePath: url, folderId: null });
+    expect(formatted.thumbnailPending).toBeUndefined();
+  });
+
+  it('previews encounter tokens whose art is on the web', () => {
+    const url = 'https://example.com/tokens/wolf.webp';
+    const app = createAppWithFiles([]);
+    const encounter: EncounterAsset = {
+      id: 'enc', type: 'encounter', name: 'Ambush', tags: [], collection: 'default', createdAt: 1, modifiedAt: 1,
+      tokens: [{ id: 'wolf', name: 'wolf', imagePath: url }],
+    };
+    const formatted = formatServiceAsset(encounter, 'atlas-vtt/collections/default/encounters', app, tokenPreviewSources([token('wolf', url)]));
+    expect(formatted.type === 'encounters' && formatted.tokenPreviews).toEqual([{ url }]);
+  });
+
   it('falls back to the image when no thumbnail could be made', () => {
     const app = createAppWithFiles(['atlas-vtt/assets/goblin.png']);
     const assets = [formatServiceAsset(token('goblin', 'atlas-vtt/assets/goblin.png'), TAB_BASE, app, undefined, () => ({ pending: true }))];

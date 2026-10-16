@@ -59,6 +59,22 @@ describe('AssetThumbnailService', () => {
     expect(render).toHaveBeenCalledTimes(1);
   });
 
+  it('makes no thumbnail of web art, which a card shows from its address', async () => {
+    const { app, assets, goblin, render } = await setup();
+    const remote = await assets.addTokenAsset({ name: 'Orc', imagePath: 'https://example.com/orc.webp', tags: [], collection: 'default' });
+    const service = new AssetThumbnailService(app, assets, render);
+    const updates = nextUpdates(service);
+
+    service.ensureThumbnails([remote, goblin]);
+
+    expect(service.stateOf(remote)).toEqual({ pending: false });
+    const announced = await updates;
+    expect(announced.map((update) => update.id)).toEqual([goblin.id]);
+    expect(render).toHaveBeenCalledTimes(1);
+    const stored = await assets.getAssetById(remote.id);
+    expect(stored?.type === 'token' && stored.thumbnailPath).toBeUndefined();
+  });
+
   it('records the tokens that succeeded when another image cannot be read', async () => {
     const { app, assets, goblin, render } = await setup();
     const missing = await assets.addTokenAsset({ name: 'Ghost', imagePath: 'atlas-vtt/assets/missing.png', tags: [], collection: 'default' });

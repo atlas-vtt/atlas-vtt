@@ -3,6 +3,7 @@ import { AssetService, type MapAsset, type TokenAsset } from './AssetService';
 import { ensureFolder } from '../plugin/vaultFolders';
 import { renderThumbnail, type ThumbnailSpec } from '../imageProcessing/imageProcessing';
 import { fnv1a32 } from '../utils/hashing';
+import { isWebImage } from '../utils/imageSource';
 
 export const THUMBNAIL_DIR = 'atlas-vtt/assets/thumbnails';
 /** Longer side of a thumbnail; asset cards are about half this size on a 2x display. */
@@ -159,10 +160,15 @@ export class AssetThumbnailService {
     return () => { this.listeners.delete(listener); };
   }
 
-  /** Queues thumbnails for every asset in `assets` that has none; already queued or failed images are skipped. */
+  /**
+   * Queues thumbnails for every asset in `assets` that has none; already queued
+   * or failed images are skipped. Web art gets none: it is not copied into the
+   * vault, and a card shows it from its address.
+   */
   ensureThumbnails(assets: readonly ThumbnailAsset[]): void {
     for (const asset of assets) {
-      if (this.hasThumbnail(asset) || this.queued.has(asset.id) || this.failedImages.has(sourceImagePath(asset))) continue;
+      const imagePath = sourceImagePath(asset);
+      if (isWebImage(imagePath) || this.hasThumbnail(asset) || this.queued.has(asset.id) || this.failedImages.has(imagePath)) continue;
       this.queued.add(asset.id);
       this.queue.push(asset);
     }

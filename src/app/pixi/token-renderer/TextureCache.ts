@@ -2,6 +2,7 @@ import { Texture, Graphics, type CanvasSource, type ImageSource, type Applicatio
 import { App as ObsidianApp, TFile } from 'obsidian';
 import type { ITextureCache } from './types';
 import { normalizeImagePath } from '../../utils/pathUtils';
+import { isImageUrl } from '../../utils/imageSource';
 import { loadAsset, unloadAsset } from '../utils/assetLifecycle';
 import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from '../decodedImage';
 
@@ -12,9 +13,6 @@ import { decodeImage, decodedSource, imageMimeType, type DecodedImage } from '..
 const MAX_TOKEN_TEXTURE_SIZE = 1024;
 /** Cache key of the placeholder used for tokens without art. */
 const DEFAULT_TOKEN_TEXTURE_KEY = 'default-token';
-
-/** Image paths PIXI's `Assets` loads by URL instead of reading them from the vault. */
-const URL_PREFIXES = ['data:', 'blob:', 'http://', 'https://', 'app://'];
 
 /**
  * Token art, decoded once per image and shared by every token that shows it.
@@ -73,7 +71,8 @@ export class TextureCache implements ITextureCache {
     const cached = this.textures.get(key);
     if (cached) return cached;
     try {
-      return URL_PREFIXES.some((prefix) => key.startsWith(prefix))
+      // A URL (web art, or one Atlas made) is loaded by PIXI's `Assets`; a vault path is read from the vault.
+      return isImageUrl(key)
         ? await this.loadUrl(key)
         : await this.loadVaultImage(key);
     } catch (error) {
