@@ -1,4 +1,4 @@
-import { MASTER, POOLS, audio, jitter, masterGain, voice, whenReady } from './diceSamples';
+import { POOLS, audio, jitter, masterGain, masterLevel, voice, whenReady } from './diceSamples';
 
 /**
  * The teeth of the running wheel, scheduled ahead. A second roll overtaking a
@@ -65,7 +65,8 @@ export function rollStart(expectedSeconds = 1.75): number {
   // the first sample, a click no die makes.
   master.gain.cancelScheduledValues(now);
   master.gain.setValueAtTime(0.0001, now);
-  master.gain.exponentialRampToValueAtTime(MASTER, now + 0.06);
+  // An exponential ramp cannot reach 0; at volume 0 the dice are muted before this anyway
+  master.gain.exponentialRampToValueAtTime(Math.max(masterLevel(), 0.0001), now + 0.06);
 
   // Pitch and strength are drawn once per tooth and shared by both layers.
   // Drawn per layer, their ratio wobbled by a quarter from tooth to tooth, and

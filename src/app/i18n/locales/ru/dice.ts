@@ -21,4 +21,8 @@ export const dice: Translation = {
   'dice.unpin': 'Открепить панель',
   'dice.player': 'Игрок',
   'dice.rollFormula': 'Бросить {formula}',
+  'dice.volume': 'Громкость кубиков',
+  'dice.volumeHint': 'Насколько громко звучат кубики при броске и приземлении. В крайнем левом положении звук выключен.',
+  'dice.volumeOff': 'Выкл.',
+  'dice.volumePercent': '{percent}%',
 };

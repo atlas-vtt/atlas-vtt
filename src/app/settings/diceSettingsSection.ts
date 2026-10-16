@@ -3,6 +3,7 @@ import { DICE_DISPLAY_HINTS, DICE_DISPLAY_OPTIONS, isDiceDisplay } from '../dice
 import { DICE_COLOUR_OPTIONS, DICE_FONT_OPTIONS, isDiceColour, isDiceFont } from '../dice3d/diceLook';
 import type { SettingsService } from '../services/SettingsService';
 import type { AtlasSettingSection } from './settingSections';
+import { t } from '../i18n';
 
 type Options = readonly { value: string; label: string }[];
 
@@ -50,6 +51,21 @@ export function diceSettingsSection(settings: SettingsService): AtlasSettingSect
             dropdown.setValue(display);
             setting.setDesc(DICE_DISPLAY_HINTS[display]);
           });
+        });
+        return unsubscribe;
+      },
+    }, {
+      name: t('dice.volume'),
+      desc: t('dice.volumeHint'),
+      aliases: ['dice', 'sound', 'volume', 'mute', 'audio', 'quiet'],
+      render: (setting) => {
+        let unsubscribe: (() => void) | undefined;
+        setting.addSlider((slider) => {
+          const percent = (): number => Math.round(settings.getDiceVolume() * 100);
+          slider.setLimits(0, 100, 5)
+            .setValue(percent())
+            .onChange((value) => settings.setDiceVolume(value / 100));
+          unsubscribe = settings.onChange(() => { slider.setValue(percent()); });
         });
         return unsubscribe;
       },

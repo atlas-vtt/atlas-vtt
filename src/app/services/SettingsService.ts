@@ -245,6 +245,19 @@ export class SettingsService {
     this.commit();
   }
 
+  /** The stored dice volume, 0 to 1; full volume when the file holds something else. */
+  getDiceVolume(): number {
+    const volume = this.settings.diceVolume;
+    return typeof volume === 'number' && volume >= 0 && volume <= 1 ? volume : 1;
+  }
+
+  setDiceVolume(volume: number): void {
+    const next = Math.min(1, Math.max(0, volume));
+    if (this.settings.diceVolume === next) return;
+    this.settings.diceVolume = next;
+    this.commit();
+  }
+
   /** Whether a new scene looks for the grid of its map: on unless the file says `false`. */
   detectsGridOnNewScenes(): boolean {
     return this.settings.detectGridOnNewScenes !== false;
