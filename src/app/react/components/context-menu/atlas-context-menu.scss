@@ -16,10 +16,13 @@ $ctx-inset: $spacing-xs;
   padding: $ctx-inset;
   // Rows sit close like Obsidian's own menus.
   gap: var(--size-2-1);
-  min-width: 180px;
-  max-width: 280px;
-  max-height: 70vh;
+  box-sizing: border-box;
+  min-width: min(180px, var(--radix-dropdown-menu-content-available-width, 180px));
+  max-width: min(280px, var(--radix-dropdown-menu-content-available-width, 280px));
+  // Collision placement chooses the side; the menu scrolls within that side's room.
+  max-height: min(70vh, var(--radix-dropdown-menu-content-available-height, 70vh));
   overflow-y: auto;
+  overscroll-behavior: contain;
   z-index: $z-atlas-dropdown;
   @include atlas-scrollbar;
 }
