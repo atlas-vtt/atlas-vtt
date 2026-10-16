@@ -106,16 +106,26 @@ async function savePreviews(options: SaveTokenPreviewsOptions): Promise<number> 
     options.onTokensSaved?.(written.flatMap(({ asset }) => (asset.type === 'token' ? [{ name: asset.name, imagePath: asset.imagePath, statblockPath: asset.statblockPath }] : [])));
   };
 
+  /** What a preview saves as its image: its converted file, written to the vault, or its web address as it is. */
+  const writeImage = async (preview: TokenPreview, pending: Promise<ProcessedImage> | undefined): Promise<{ imagePath: string; thumbnailPath?: string } | null> => {
+    if (preview.imageUrl) return { imagePath: preview.imageUrl };
+    if (!pending) return null;
+    const { image, thumbnail } = await pending;
+    if (options.signal?.aborted) return null;
+    const imagePath = await writeAssetImage(app, preview.name, await image.arrayBuffer());
+    const thumbnailPath = await thumbnails.tryThumbnailForImage(imagePath, thumbnail);
+    return { imagePath, ...(thumbnailPath && { thumbnailPath }) };
+  };
+
   /** Writes a preview's files; a failure is reported and leaves nothing behind. */
-  const write = async (preview: TokenPreview, pending: Promise<ProcessedImage>): Promise<WrittenPreview | null> => {
+  const write = async (preview: TokenPreview, pending: Promise<ProcessedImage> | undefined): Promise<WrittenPreview | null> => {
     let imagePath: string | undefined;
     let thumbnailPath: string | undefined;
     try {
       await checkStatblock(app, preview, lookup);
-      const { image, thumbnail } = await pending;
-      if (options.signal?.aborted) return null;
-      imagePath = await writeAssetImage(app, preview.name, await image.arrayBuffer());
-      thumbnailPath = await thumbnails.tryThumbnailForImage(imagePath, thumbnail);
+      const written = await writeImage(preview, pending);
+      if (!written) return null;
+      ({ imagePath, thumbnailPath } = written);
       const metadata = { collection: destination.id, tags: preview.tags ?? tags, ...(thumbnailPath && { thumbnailPath }) };
       const asset: NewAsset = mode === 'map'
         ? { type: 'map', name: preview.name, mapFilePath: imagePath, ...metadata }
@@ -131,18 +141,19 @@ async function savePreviews(options: SaveTokenPreviewsOptions): Promise<number> 
       showNotice(`${preview.name}: ${error instanceof Error ? error.message : t('creator.saveFailed')}`);
       return null;
     } finally {
-      if (!options.signal?.aborted) options.onProgress?.(++done, prepared.size);
+      if (!options.signal?.aborted) options.onProgress?.(++done, total);
     }
   };
 
-  options.onProgress?.(done, prepared.size);
+  // Files are prepared ahead; web art needs no preparation and is saved as it is.
+  const saving = previews.filter((preview) => prepared.has(preview.id) || preview.imageUrl);
+  const total = saving.length;
+  options.onProgress?.(done, total);
   try {
     let batch: WrittenPreview[] = [];
-    for (const preview of previews) {
+    for (const preview of saving) {
       if (options.signal?.aborted) break;
-      const pending = prepared.get(preview.id);
-      if (!pending) continue;
-      const written = await write(preview, pending);
+      const written = await write(preview, prepared.get(preview.id));
       if (written) batch.push(written);
       if (batch.length >= REGISTER_BATCH) {
         await register(batch);

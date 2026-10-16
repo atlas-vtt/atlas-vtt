@@ -5,6 +5,7 @@ import { useOptionalAtlasStore } from '../../ViewStoreContext';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import { AssetService, type TokenAsset } from '../../../services/AssetService';
 import { TokenStatblockLinkService } from '../../../services/TokenStatblockLinkService';
+import { imageSrc } from '../../../utils/imageSource';
 import type { DiceAvatar, RollSourcePresentation } from './diceSourcePresentation';
 
 /**
@@ -50,15 +51,15 @@ export function useDiceAvatar(source: DiceRollResult['source'], presentation?: R
       ? TokenStatblockLinkService.getInstance(app).readStatblockImage(statblockFile)
       : null;
   const imagePath = currentImagePath ?? linkedToken?.imagePath ?? lookup?.tokenImagePath ?? statblockImagePath;
-  const file = imagePath ? app.vault.getAbstractFileByPath(imagePath) : null;
-  const imageFile = file instanceof TFile ? file : null;
+  // Web art shows from its address; a vault path shows only while the file is there.
+  const src = imageSrc(app, imagePath);
   const showRing = currentImagePath !== undefined
     ? mapShowRing !== false
-    : libraryTokenShowsRing(assets, imageFile);
+    : libraryTokenShowsRing(assets, src ? imagePath ?? null : null);
 
   const found = useMemo((): DiceAvatar | null => (
-    imageFile ? { src: app.vault.getResourcePath(imageFile), showRing, ringColor } : null
-  ), [app, imageFile, showRing, ringColor]);
+    src ? { src, showRing, ringColor } : null
+  ), [src, showRing, ringColor]);
   return presentation === undefined ? found : presentation?.avatar ?? null;
 }
 
@@ -68,8 +69,8 @@ function linkedLibraryToken(assets: AssetService, statblockPath: string, recorde
   return linked.find((asset) => asset.imagePath === recordedImagePath) ?? linked[0] ?? null;
 }
 
-function libraryTokenShowsRing(assets: AssetService, imageFile: TFile | null): boolean {
-  if (!imageFile) return false;
-  const asset = assets.findTokenAssetByImagePath(imageFile.path);
+function libraryTokenShowsRing(assets: AssetService, imagePath: string | null): boolean {
+  if (!imagePath) return false;
+  const asset = assets.findTokenAssetByImagePath(imagePath);
   return asset ? asset.showRing !== false : false;
 }

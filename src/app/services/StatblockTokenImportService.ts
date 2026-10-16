@@ -10,6 +10,7 @@ import { vaultImageFile } from '../packages/components/asset-manager/token-creat
 import type { ProcessedImage } from '../imageProcessing/imageProcessing';
 import { convertTokenArt } from '../packages/components/asset-manager/token-creator/tokenImages';
 import { workSlices } from '../utils/workSlices';
+import { isWebImage } from '../utils/imageSource';
 
 export interface StatblockImportItem {
   path: string;
@@ -31,7 +32,14 @@ interface ConvertingImport {
   showRing: boolean;
   converted: Promise<ProcessedImage>;
 }
-type PlannedImport = ConvertingImport | { item: StatblockImportItem };
+/** A note whose art is on the web: the token keeps the address, so there is nothing to convert or write. */
+interface WebImport {
+  path: string;
+  name: string;
+  showRing: boolean;
+  imageUrl: string;
+}
+type PlannedImport = ConvertingImport | WebImport | { item: StatblockImportItem };
 
 export interface StatblockImportOptions {
   signal?: AbortSignal;
@@ -39,7 +47,11 @@ export interface StatblockImportOptions {
   onProgress?: (completed: number, total: number) => void;
 }
 
-/** A user-triggered local import. No network requests or changes to source notes; artwork is converted like the token creator's. */
+/**
+ * A user-triggered local import. No network requests or changes to source
+ * notes; vault artwork is converted like the token creator's, and web art is
+ * kept by its address, loaded only once the token is shown.
+ */
 export class StatblockTokenImportService {
   constructor(private readonly app: App, private readonly assets = AssetService.getInstance(app)) {}
 
@@ -114,6 +126,7 @@ export class StatblockTokenImportService {
       const row = await statblockImportCandidate(this.app, file, lookup);
       if (!row || row.status !== 'ready' || !row.imagePath) return { item: { path, name: row?.name ?? name, status: 'skipped', message: row?.detail ?? t('sbToken.unrecognized') } };
       name = row.name;
+      if (isWebImage(row.imagePath)) return { path, name, showRing, imageUrl: row.imagePath };
       const image = this.app.vault.getAbstractFileByPath(row.imagePath);
       if (!(image instanceof TFile)) return { item: { path, name, status: 'skipped', message: t('sbToken.imageGone') } };
       const converted = convertTokenArt(await vaultImageFile(this.app, image), showRing, signal);
@@ -125,14 +138,19 @@ export class StatblockTokenImportService {
     }
   }
 
-  private async register(entry: ConvertingImport, collection: string): Promise<StatblockImportItem> {
+  /** Registers a token for the note: with its converted art written to the vault, or with its web address as is. */
+  private async register(entry: ConvertingImport | WebImport, collection: string): Promise<StatblockImportItem> {
     const { path, name, showRing } = entry;
     let imagePath: string | undefined;
     let thumbnailPath: string | undefined;
     try {
-      const { image, thumbnail } = await entry.converted;
-      imagePath = await writeAssetImage(this.app, name, await image.arrayBuffer());
-      thumbnailPath = await AssetThumbnailService.getInstance(this.app, this.assets).tryThumbnailForImage(imagePath, thumbnail);
+      if ('imageUrl' in entry) {
+        imagePath = entry.imageUrl;
+      } else {
+        const { image, thumbnail } = await entry.converted;
+        imagePath = await writeAssetImage(this.app, name, await image.arrayBuffer());
+        thumbnailPath = await AssetThumbnailService.getInstance(this.app, this.assets).tryThumbnailForImage(imagePath, thumbnail);
+      }
       const asset = await this.assets.addTokenAsset({
         name, imagePath, statblockPath: path, showRing, tags: [], collection, ...(thumbnailPath && { thumbnailPath }),
       });
@@ -140,7 +158,7 @@ export class StatblockTokenImportService {
     } catch (error) {
       // An unconfirmed write may have committed. Never delete the image in this case.
       if (error instanceof AssetRegistrationUncertainError) return { path, name, status: 'failed', message: error.message, uncertain: true };
-      await discardAssetFiles(this.app, [imagePath, thumbnailPath]);
+      if (!('imageUrl' in entry)) await discardAssetFiles(this.app, [imagePath, thumbnailPath]);
       return { path, name, status: 'failed', message: error instanceof Error ? error.message : t('sbToken.failed') };
     }
   }

@@ -8,7 +8,7 @@ Atlas VTT works offline. Maps, tokens, notes, audio and settings stay in your va
 
 ## Network access
 
-If you set a token or map background to an `http://` or `https://` image URL, or copy an image that a note embeds from an external URL, that image is downloaded from the address in question. Images stored in your vault cause no network traffic.
+If you set a token or map background to an `http://` or `https://` image URL, import a statblock whose image is such a URL, or copy an image that a note embeds from an external URL, that image is downloaded from the address in question whenever it is shown. Images stored in your vault cause no network traffic.
 
 ## Online play (closed beta)
 

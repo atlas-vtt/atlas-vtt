@@ -1,10 +1,11 @@
 import React, { useRef } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { TFile, type App } from 'obsidian';
+import type { App } from 'obsidian';
 import { ImageOff } from 'lucide-react';
 import { TokenPortrait } from '../../shared/TokenPortrait';
 import { LabelTooltip } from '../../primitives/tooltip';
 import type { StatblockImportCandidate, StatblockImportStatus } from '../../../../services/statblockImportCandidates';
+import { imageSrc } from '../../../../utils/imageSource';
 import { t } from '../../../../i18n';
 
 /** A row's height until measured: the 48px portrait, its padding and the border between rows. */
@@ -12,12 +13,12 @@ const ROW_HEIGHT = 73;
 const OVERSCAN_ROWS = 8;
 
 const statusLabels: Record<StatblockImportStatus, string> = {
-  ready: t('sbImport.status.ready'), imported: t('sbImport.status.imported'), 'missing-image': t('sbImport.status.missingImage'), 'remote-image': t('sbImport.status.remoteImage'), conflict: t('sbImport.status.conflict'),
+  ready: t('sbImport.status.ready'), imported: t('sbImport.status.imported'), 'missing-image': t('sbImport.status.missingImage'), conflict: t('sbImport.status.conflict'),
 };
 
+/** The row's portrait: the statblock's art, from the vault or the web. */
 function thumbnail(app: App, row: StatblockImportCandidate): string | undefined {
-  const file = row.imagePath ? app.vault.getAbstractFileByPath(row.imagePath) : null;
-  return file instanceof TFile ? app.vault.getResourcePath(file) : undefined;
+  return imageSrc(app, row.imagePath) || undefined;
 }
 
 interface StatblockListProps {

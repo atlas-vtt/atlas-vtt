@@ -1,4 +1,5 @@
 import { runInBackground } from '../../utils/backgroundTask';
+import { isImageUrl } from '../../utils/imageSource';
 import { Component, type App, type Plugin, type TFile } from 'obsidian';
 import { showNotice } from '../../ui/notice';
 import type { AtlasSettingSection } from '../../settings/settingSections';
@@ -144,7 +145,7 @@ export class OnlineFeature extends Component {
     const docks = new DockMounts(this.app.workspace, {
       api: onlineApi(this.online, () => images.hide()),
       account: this.account,
-      imageSrc: (path) => this.app.vault.adapter.getResourcePath(path),
+      imageSrc: (path) => (isImageUrl(path) ? path : this.app.vault.adapter.getResourcePath(path)),
       feedback: diagnostics,
       opened: (leaf) => logs.close(leaf),
     });
@@ -152,7 +153,7 @@ export class OnlineFeature extends Component {
     // The table's log, where Atlas's dice log opens on the tab players see.
     const logs = new LogMounts({
       table: () => this.online.table,
-      imageSrc: (path) => this.app.vault.adapter.getResourcePath(path),
+      imageSrc: (path) => (isImageUrl(path) ? path : this.app.vault.adapter.getResourcePath(path)),
       opened: (leaf) => docks.dockOf(leaf)?.makeWay(),
       openNote: (link, sourcePath) => runInBackground(this.app.workspace.openLinkText(link, sourcePath, true), `Opening ${link}`, 'Could not open the found note'),
     });

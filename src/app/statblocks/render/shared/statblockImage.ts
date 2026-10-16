@@ -1,8 +1,8 @@
 import { normalizePath, type App, type TFile } from 'obsidian';
 import { AssetService, type TokenAsset } from '../../../services/AssetService';
+import { imageSrc, isWebImage } from '../../../utils/imageSource';
 
 const WIKI_BRACKETS = /(^!?\[\[|\]\]$)/g;
-const WEB_ADDRESS = /^https?:/;
 
 /** A value with a stray `%` is not percent-encoded; it is read as written. */
 function decoded(raw: string): string {
@@ -22,7 +22,7 @@ function decoded(raw: string): string {
 export function statblockImageSrc(app: App | undefined, raw: string, sourcePath: string | undefined): string {
   if (!raw) return '';
   const src = linkTarget(raw);
-  if (WEB_ADDRESS.test(src) || !app) return src;
+  if (isWebImage(src) || !app) return src;
   const file = statblockImageFile(app, raw, sourcePath);
   return file ? app.vault.getResourcePath(file) : '';
 }
@@ -46,7 +46,7 @@ function vaultTargets(raw: string): string[] {
 
 /** The vault file a statblock's image value names: a link from `sourcePath`, else a vault path; null for none, a missing file or a web address. */
 export function statblockImageFile(app: App, raw: string, sourcePath: string | undefined): TFile | null {
-  if (!raw || WEB_ADDRESS.test(linkTarget(raw))) return null;
+  if (!raw || isWebImage(linkTarget(raw))) return null;
   for (const path of vaultTargets(raw)) {
     const file = app.metadataCache.getFirstLinkpathDest(path, sourcePath ?? '') ?? app.vault.getFileByPath(normalizePath(path));
     if (file) return file;
@@ -56,6 +56,8 @@ export function statblockImageFile(app: App, raw: string, sourcePath: string | u
 
 /** The token asset whose art the statblock's image is: its ring is the one the statblock shows. */
 export function statblockImageToken(app: App, raw: string, sourcePath: string | undefined): TokenAsset | null {
+  const src = raw ? linkTarget(raw) : '';
+  if (isWebImage(src)) return AssetService.getInstance(app).findTokenAssetByImagePath(src);
   const file = statblockImageFile(app, raw, sourcePath);
   return file ? AssetService.getInstance(app).findTokenAssetByImagePath(file.path) : null;
 }
@@ -67,17 +69,18 @@ export interface LinkedTokenArt {
 }
 
 /**
- * The art of the first library token linked to the statblock whose image the
- * vault holds (index order, as the link service picks the picture): what a
- * card shows where the note names no picture, or one the vault no longer
- * holds. Null before the asset index is read.
+ * The art of the first library token linked to the statblock whose image can
+ * be shown (index order, as the link service picks the picture): a web
+ * address, or a file the vault holds. What a card shows where the note names
+ * no picture, or one the vault no longer holds. Null before the asset index
+ * is read.
  */
 export function linkedTokenArt(app: App, statblockPath: string | undefined): LinkedTokenArt | null {
   if (!statblockPath) return null;
   for (const token of AssetService.getInstance(app).loadedTokenAssets()) {
-    if (token.statblockPath !== statblockPath || !token.imagePath) continue;
-    const file = app.vault.getFileByPath(token.imagePath);
-    if (file) return { src: app.vault.getResourcePath(file), token };
+    if (token.statblockPath !== statblockPath) continue;
+    const src = imageSrc(app, token.imagePath);
+    if (src) return { src, token };
   }
   return null;
 }
