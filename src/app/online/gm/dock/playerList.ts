@@ -1,6 +1,6 @@
 import { setIcon } from 'obsidian';
 import { createTokenPortrait } from '../../../packages/components/shared/tokenPortraitElement';
-import { openMenuBelow } from './dockMenu.ts';
+import { openMenuBelow, type MenuEntry } from './dockMenu.ts';
 import type { GroupPlayer, OnlinePlayer, PlayerGroup, TokenRow } from './panelModel.ts';
 
 /** What the list's rows and menus do. */
@@ -34,10 +34,22 @@ function hiddenMark(parent: HTMLElement): void {
 }
 
 /**
+ * The release rows of a player's menu. The token a player is shown by has no row of its own, so the
+ * menu releases it alone (their next token then shows them), and all their tokens where they have more.
+ */
+function releaseEntries(face: TokenRow | null, tokens: readonly TokenRow[], actions: ListActions): MenuEntry[] {
+  const releasing = (title: string, owned: readonly TokenRow[]): MenuEntry =>
+    ({ title, icon: 'undo-2', disabled: owned.length === 0, run: () => actions.release(owned.map((token) => token.tokenId)) });
+  if (face === null) return [releasing('Release all', [])];
+  const one = releasing(`Release ${face.label}`, [face]);
+  return tokens.length === 0 ? [one] : [one, releasing('Release all', [face, ...tokens])];
+}
+
+/**
  * A player's row: their picture (its dot says whether they are here), the name they chose, and their
  * menu, a ghost button that shows while the pointer is over the row or focus is in it. A player who
  * plays a token is shown by it (`face`) and has no row for it besides: pressing the picture or the
- * name selects that token on the map, as its own row did.
+ * name selects that token on the map, as its own row did, and their menu releases it alone.
  */
 function playerRow(list: HTMLElement, player: GroupPlayer, face: TokenRow | null, tokens: readonly TokenRow[], actions: ListActions): void {
   const row = list.createDiv({ cls: ['atlas-online-player', ...(player.online ? [] : ['is-away'])] });
@@ -53,10 +65,9 @@ function playerRow(list: HTMLElement, player: GroupPlayer, face: TokenRow | null
   setIcon(more, 'more-horizontal');
   more.addEventListener('click', () => {
     const selected = actions.selected();
-    const owned = [...(face === null ? [] : [face]), ...tokens].map((token) => token.tokenId);
     openMenuBelow([
       { title: 'Assign selected tokens here', icon: 'user-plus', disabled: selected.length === 0, run: () => actions.assign(selected, player.id) },
-      { title: 'Release all', icon: 'undo-2', disabled: owned.length === 0, run: () => actions.release(owned) },
+      ...releaseEntries(face, tokens, actions),
       { title: 'Remove from table', icon: 'user-x', warning: true, apart: true, run: () => actions.kick(player.id) },
     ], more);
   });
