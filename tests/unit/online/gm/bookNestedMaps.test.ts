@@ -16,6 +16,7 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
       return null;
     }
     showPlayers(): void {}
+    showPlayerDrags(): void {}
     showPlayerCursors(): void {}
     dispose(): void {}
   },

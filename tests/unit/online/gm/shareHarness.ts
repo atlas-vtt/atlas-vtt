@@ -10,6 +10,8 @@ import type { DiceSource } from '../../../../src/app/online/gm/atlasDice.ts';
 import type { AtlasPlayerSettings, LightingSource } from '../../../../src/app/online/gm/atlasLighting.ts';
 import type { MapLayerSource } from '../../../../src/app/online/gm/atlasMapLayers.ts';
 import type { TokenRules } from '../../../../src/app/online/gm/tokenUI.ts';
+import type { RemoteDrag } from '../../../../src/app/online/marks/index.ts';
+import type { GmRuler } from '../../../../src/app/online/gm/dragRulers.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 import { GENERIC_SOURCE, LIGHTING_ON } from './gmLighting.ts';
 import { settled } from './settled.ts';
@@ -52,6 +54,10 @@ export interface ShareHarness {
   layers: MapLayerSource | null;
   /** The map's resource and condition definitions, or null while they cannot be read (the default). */
   rules: TokenRules | null;
+  /** What the GM's own drag ruler measures; none by default. */
+  gmRuler: GmRuler | null;
+  /** The rulers of the players' drags the GM's overlay was given, in order. */
+  readonly playerDrags: (readonly RemoteDrag[])[];
   /** The rolls taken into the table's log. */
   readonly logged: LoggedRoll[];
   /** The roll buttons of the table's log, as a player may roll them; none by default. */
@@ -96,6 +102,8 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     dice: null,
     layers: null,
     rules: null,
+    gmRuler: null,
+    playerDrags: [],
     logged: [],
     requests: () => null,
     foundPin: () => null,
@@ -110,6 +118,8 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       showNames: () => harness.settings.showNames,
       tokenRules: () => harness.rules,
       tokenSource: () => (harness.rendered ? source : null),
+      gmDragRuler: () => harness.gmRuler,
+      showPlayerDrags: (drags) => harness.playerDrags.push(drags),
       readImage: (path) => {
         const bytes = images.get(path);
         const mime = imageMimeType(path);

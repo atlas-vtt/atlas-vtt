@@ -10,6 +10,7 @@ import { asTokenSource, call, drawnTokenPlaces, tokenRulesOf, type SceneStore } 
 import { bookSceneOf, type BookScene } from './book/bookScene.ts';
 import { ResourceWrites } from './book/resourceWrites.ts';
 import { companionTimers } from './companionTimers.ts';
+import { dragRulerOf } from './dragRulers.ts';
 import { GmMarks } from './gmMarks.ts';
 import type { GmMessage, RollRequestAnswer } from '../protocol/index.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
@@ -83,6 +84,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
   const store = new PresentedStore(tab.store, presented, () => {
     if (!live()) return;
     marks.showPlayers({ lasers: [], measures: [] });
+    marks.showPlayerDrags([]);
     marks.showPlayerCursors([]);
   });
   const share = new SceneShare(store, {
@@ -91,6 +93,8 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     measurement,
     gmMarks: () => (shown() ? marks.source() : null),
     showPlayerMarks: (marksShown) => shown() && marks.showPlayers(marksShown),
+    showPlayerDrags: (drags) => shown() && marks.showPlayerDrags(drags),
+    gmDragRuler: () => dragRulerOf(shownRenderer()),
     showPlayerCursors: (cursors) => shown() && marks.showPlayerCursors(cursors),
     nameOf: (player) => ports.nameOf(player),
     accent: lastWhileShown(shown, () => accentColour(leaf.view.containerEl.ownerDocument)),

@@ -26,7 +26,7 @@ import { computeTokenPixelSize } from './token-renderer/tokenSizing';
 import { TextureCache } from './token-renderer/TextureCache';
 import { UIManager } from './token-renderer/UIManager';
 import { InteractionController } from './token-renderer/InteractionController';
-import { DragRuler } from './token-renderer/DragRuler';
+import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
 import { DragRulerView } from './token-renderer/DragRulerView';
 import { SyncService } from './token-renderer/SyncService';
 import { TokenGlide, placedAtOnce } from './token-renderer/TokenGlide';
@@ -1355,6 +1355,11 @@ export class TokenRenderer {
   /** How far a selected token's resources reach beyond its bottom, right and top edges, in world units. */
   public barsReach(tokenId: string): number {
     return this.uiManager.barsReach(tokenId);
+  }
+
+  /** What the ruler of the drag under way measures, or null while it shows none. */
+  public dragRulerPath(): DragRulerPath | null {
+    return this.dragRuler.path();
   }
 
   /** Tokens and their bars, nameplates and badges as the GM view shows them, whatever view the canvas is in: for a picture of the scene. */

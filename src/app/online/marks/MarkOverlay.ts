@@ -1,13 +1,15 @@
 import { MARKS_INTERVAL_MS } from '../protocol/index.ts';
 import { Application, Container } from 'pixi.js';
 import { getDomHost } from '../../host/dom';
+import { RemoteDrags, type RemoteDrag } from './RemoteDrags.ts';
 import { RemoteLasers, type RemoteLaser } from './RemoteLasers.ts';
 import { RemoteMeasures, type MeasureRules, type RemoteMeasure } from './RemoteMeasures.ts';
 
-/** Marks to draw: lasers and measurements, each by its sender. */
+/** Marks to draw: lasers and measurements, each by its sender, and the rulers of drags made elsewhere. */
 export interface Marks {
   readonly lasers: readonly RemoteLaser[];
   readonly measures: readonly RemoteMeasure[];
+  readonly drags?: readonly RemoteDrag[];
 }
 
 /** Where Atlas draws a map: its canvas and the viewport's camera (Atlas's own copy of PIXI, read only). */
@@ -40,6 +42,7 @@ export class MarkOverlay {
   private world: Container | null = null;
   private lasers: RemoteLasers | null = null;
   private measures: RemoteMeasures | null = null;
+  private drags: RemoteDrags | null = null;
   private host: OverlayHost | null = null;
   private marks: Marks = { lasers: [], measures: [] };
   private idle = 0;
@@ -51,7 +54,7 @@ export class MarkOverlay {
    * the same display frame, would draw them by the camera of the frame before as often as not.
    */
   private readonly onCamera = (): void => {
-    const shown = this.lasers?.busy === true || this.marks.measures.length > 0;
+    const shown = this.lasers?.busy === true || this.marks.measures.length > 0 || this.drags?.showing === true;
     if (shown && this.followCamera()) this.app?.render();
     this.wake();
   };
@@ -64,7 +67,7 @@ export class MarkOverlay {
   /** Shows the players' marks over `host`'s map. */
   show(marks: Marks, host: OverlayHost): void {
     this.marks = marks;
-    const empty = marks.lasers.length === 0 && marks.measures.length === 0;
+    const empty = marks.lasers.length === 0 && marks.measures.length === 0 && (marks.drags?.length ?? 0) === 0;
     if (this.app === null) {
       if (!empty && this.starting === null) {
         this.start(host).catch((error: unknown) => console.error('Atlas Online: the marks overlay could not start, so players\' marks are not drawn.', error));
@@ -75,6 +78,7 @@ export class MarkOverlay {
     const now = performance.now();
     this.lasers?.update(marks.lasers, now);
     this.measures?.update(marks.measures, now);
+    this.drags?.update(marks.drags ?? []);
     this.wake();
   }
 
@@ -83,6 +87,7 @@ export class MarkOverlay {
     this.detach();
     this.lasers?.destroy();
     this.measures?.destroy();
+    this.drags?.destroy();
     this.app?.destroy({ removeView: true }, { children: true });
     this.app = null;
   }
@@ -101,7 +106,8 @@ export class MarkOverlay {
       app.stage.addChild(world);
       this.lasers = new RemoteLasers(app.renderer, () => this.zoom, MARKS_INTERVAL_MS);
       this.measures = new RemoteMeasures(() => this.zoom, this.rules, MARKS_INTERVAL_MS);
-      world.addChild(this.measures.container, this.lasers.container);
+      this.drags = new RemoteDrags(() => this.zoom, this.rules);
+      world.addChild(this.drags.paths, this.measures.container, this.lasers.container, this.drags.labels);
       app.ticker.add(() => this.tick());
       this.app = app;
       this.world = world;
@@ -143,6 +149,7 @@ export class MarkOverlay {
     if (host.viewport.scale.x !== this.zoom) {
       this.zoom = host.viewport.scale.x;
       this.measures?.rescale();
+      this.drags?.rescale();
     }
     return true;
   }

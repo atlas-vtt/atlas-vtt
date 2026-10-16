@@ -40,6 +40,20 @@ describe('DragRuler', () => {
     ruler.end();
   });
 
+  it('tells what it measures: the token and its start, waypoints and landing, none before it leaves its start', () => {
+    const { ruler } = makeRuler();
+    ruler.begin('t1', center(0, 0));
+    expect(ruler.path()).toBeNull();
+    ruler.update({ x: center(0, 0).x + 20, y: center(0, 0).y });
+    expect(ruler.path()).toBeNull();
+    ruler.update(center(2, 0));
+    pressSpace();
+    ruler.update(center(2, 3));
+    expect(ruler.path()).toEqual({ tokenId: 't1', points: [center(0, 0), center(2, 0), center(2, 3)] });
+    ruler.end();
+    expect(ruler.path()).toBeNull();
+  });
+
   it('shows nothing while the token stays in its cell', () => {
     const { ruler, view } = makeRuler();
     ruler.begin('t1', center(1, 1));
