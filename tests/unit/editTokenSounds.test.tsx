@@ -39,13 +39,19 @@ function open(sounds?: unknown): { app: App; saved: () => TokenEntity; section: 
 
 const save = (): void => act(() => screen.getByRole('button', { name: 'Save' }).click());
 
-/** Opens the picker from Add sound and chooses `path` in it, as Obsidian's prompt would. */
-function addSound(app: App, path: string): void {
+/** The picker Add sound opens, as Obsidian would show it. */
+function openPicker(): AudioFileModal {
   const opened = vi.spyOn(AudioFileModal.prototype, 'open');
   act(() => screen.getByRole('button', { name: 'Add sound' }).click());
   const picker = opened.mock.contexts.at(-1) as AudioFileModal | undefined;
   opened.mockRestore();
   if (!picker) throw new Error('Add sound opened no picker');
+  return picker;
+}
+
+/** Opens the picker from Add sound and chooses `path` in it, as Obsidian's prompt would. */
+function addSound(app: App, path: string): void {
+  const picker = openPicker();
   act(() => picker.onChooseItem(app.vault.getFileByPath(path) as TFile));
 }
 
@@ -86,6 +92,13 @@ describe('the Sounds of Edit Token', () => {
     const { app } = open();
     const paths = new AudioFileModal(app, () => undefined).getItems().map((file) => file.path).sort();
     expect(paths).toEqual(['Sounds/album.mp3', 'Sounds/dragon-roar.mp3', 'Sounds/wings.ogg']);
+  });
+
+  it('offers the sound picked last at the top of the picker the next time, and not a refused one', () => {
+    const { app } = open();
+    addSound(app, 'Sounds/wings.ogg');
+    addSound(app, 'Sounds/album.mp3');
+    expect(openPicker().getItems().map((file) => file.path)).toEqual(['Sounds/wings.ogg', 'Sounds/album.mp3', 'Sounds/dragon-roar.mp3']);
   });
 
   it('refuses a file larger than 20 MB, saying so, and adds nothing', () => {
