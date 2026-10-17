@@ -75,6 +75,13 @@ describe('tokenToFile', () => {
     expect(tokenToFile(plain)).toBe(plain);
   });
 
+  it('writes and reads a token\'s sounds as they are, beside its resources', () => {
+    const sounds = [{ path: 'Sounds/roar.mp3', volume: 0.8 }, { path: 'Sounds/wings.ogg' }];
+    const file = tokenToFile({ ...token, sounds }) as Record<string, unknown>;
+    expect(file.sounds).toEqual([{ path: 'Sounds/roar.mp3', volume: 0.8 }, { path: 'Sounds/wings.ogg' }]);
+    expect(tokenFromFile(file)).toEqual({ ...token, sounds: [{ path: 'Sounds/roar.mp3', volume: 0.8 }, { path: 'Sounds/wings.ogg' }] });
+  });
+
   it('shows an older Atlas what it changed there: its numbers come back', () => {
     const file = tokenToFile(token) as Record<string, unknown>;
     const edited = { ...file, hp: { current: 1, max: 8 }, maxHpOverridden: false, statblockResources: { str: { current: 4, max: 10 } } };
