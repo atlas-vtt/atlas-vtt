@@ -229,7 +229,7 @@ describe('a campaign\'s game system', () => {
   };
 
   it('is read as a collection\'s rules are, field by field, and left unset where it holds none that can be used', () => {
-    expect(readCampaignSystem(SYSTEM)).toMatchObject({ systemPresetId: 'builtin:cairn', conditions: SYSTEM.conditions, dice: SYSTEM.dice, resources: [{ key: 'hp' }] });
+    expect(readCampaignSystem(SYSTEM)).toMatchObject({ systemPresetId: 'builtin:cairn', conditions: [...SYSTEM.conditions, { id: 'cairn-dead', name: 'Dead', effect: 'no-vision' }], dice: SYSTEM.dice, resources: [{ key: 'hp' }] });
     expect(readCampaignSystem({ ...SYSTEM, dice: { defaultRoll: 'banana', crit: 'never' }, senses: 'all', systemPresetId: 7 })).not.toHaveProperty('dice');
     expect(readCampaignSystem({ ...SYSTEM, senses: 'all', systemPresetId: 7 })).not.toHaveProperty('systemPresetId');
     // An empty list is a system without resources; no list reads its preset's.

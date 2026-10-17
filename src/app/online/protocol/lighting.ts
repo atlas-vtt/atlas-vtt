@@ -14,7 +14,7 @@ export const MAX_SENSES = 64;
 export const MAX_SIGHT_TOKENS = 1_000;
 
 /** What a condition does to sight (Atlas's `ConditionEffect`). */
-export const CONDITION_EFFECTS = ['blinded', 'invisible', 'airborne', 'undetected'] as const;
+export const CONDITION_EFFECTS = ['blinded', 'no-vision', 'invisible', 'airborne', 'undetected'] as const;
 export type SharedEffect = (typeof CONDITION_EFFECTS)[number];
 
 /** A JSON object the client reads further with Atlas's own readers (a light's emission, the lighting options, a sense). */

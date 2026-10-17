@@ -15,6 +15,7 @@ import type { AnyWidget } from '../types/widgetTypes';
 import { HP_RESOURCE, sameResourceDefinitions } from '../resources/resourceDefinitions';
 import { barWidgets } from '../resources/sceneVisibility';
 import { conditionEffect } from './conditionEffects';
+import { DEAD_CONDITION, deadConditionId, withDeadCondition } from './deadCondition';
 import { DEFAULT_DICE_RULES, sameDiceRules } from './diceRules';
 import { sameInitiativeRules } from './initiativeRules';
 import { sameLightPresets } from './lightPresetRules';
@@ -39,14 +40,14 @@ export type SystemSettings = Required<Pick<CollectionSettings, 'gridDefaults' | 
 
 /**
  * A collection without a game system: default measurement and dice, HP as its only resource
- * (its bar on for new scenes), no conditions, no default widgets, no default vision, and no
+ * (its bar on for new scenes), Dead, no default widgets, no default vision, and no
  * senses, light presets, initiative rules, statblock roles or item rarities of its own, so it uses
  * the generic ones. Role folders are the collection's own and stay.
  */
 export function vanillaSystemSettings(): SystemSettings {
   return {
     gridDefaults: structuredClone(DEFAULT_GRID_DEFAULTS),
-    conditions: [],
+    conditions: [{ ...DEAD_CONDITION }],
     defaultWidgets: barWidgets([HP_RESOURCE]),
     dice: { ...DEFAULT_DICE_RULES },
     diceSetId: undefined,
@@ -77,7 +78,7 @@ export function rulesOfPreset(
   const vision: TokenVisionDefaults | undefined = preset.rules.defaultTokenVision;
   return {
     gridDefaults: structuredClone(preset.rules.gridDefaults),
-    conditions: structuredClone(preset.rules.conditions),
+    conditions: withDeadCondition(structuredClone(preset.rules.conditions), deadConditionId(preset.id)),
     // The bars new scenes show, which older versions of Atlas read too
     defaultWidgets: { ...barWidgets(preset.rules.resources ?? []), ...preset.rules.defaultWidgets },
     // A preset's set is the collection's dice; only a preset without one gives its dice rules

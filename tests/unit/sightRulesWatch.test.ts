@@ -17,6 +17,7 @@ import { sightSources } from '../../src/app/vision/sight';
 import { creatureVault, type CreatureVault } from '../mocks/creatureVault';
 import { memoryCampaigns } from '../mocks/memoryCampaigns';
 import { memoryPresets } from '../mocks/memoryPresets';
+import { DEAD_CONDITION } from '../../src/app/gameSystems/deadCondition';
 
 const MAP = 'atlas-vtt/collections/dungeon/scenes/cave.atlasmap';
 const BOUNDS = { width: 4000, height: 4000 };
@@ -98,7 +99,7 @@ describe('the watch and an asset index that loads after the map', () => {
     const rebuilt = vi.fn();
     const watch = new SightRulesWatch({ obsApp: current.app, store: { getState: () => state } as unknown as ViewAtlasStore, senses: resolver, frames: () => window, onChange: rebuilt });
     // The view's first build, before the index is there.
-    expect(watch.current().conditions).toEqual([]);
+    expect(watch.current().conditions).toEqual([DEAD_CONDITION]);
     await assets.initialize();
     await nextFrame();
     await nextFrame();
@@ -130,7 +131,7 @@ describe('the watch and the campaign being played', () => {
     play.play('saga');
     await nextFrame();
     expect(rebuilt).toHaveBeenCalledTimes(1);
-    expect(watch.current().conditions).toEqual([blinded]);
+    expect(watch.current().conditions).toEqual([blinded, { ...DEAD_CONDITION, id: 'cairn-dead' }]);
 
     play.stop();
     await nextFrame();

@@ -128,6 +128,12 @@ export function sightSources(
   for (const token of Object.values(tokens)) {
     if (!visionOn(token) || !policy.givesSight(token)) continue;
     const origin = { x: token.x, y: token.y };
+    const effects = tokenEffects(token, rules.conditions);
+    // Retain a source with no reach: no sources at all means the unrestricted picture.
+    if (effects.has('no-vision')) {
+      sources.push({ tokenId: token.id, origin, range: 0, senses: [] });
+      continue;
+    }
     const how = rules.visionOf?.(token) ?? { senses: tokenSenses(token.vision, rules.definitions), ...(token.vision.range !== undefined && { sightRange: token.vision.range }) };
     if (how.pending) {
       sources.push({ tokenId: token.id, origin, range: 0, senses: [] });
@@ -135,7 +141,7 @@ export function sightSources(
     }
     const range = how.sightRange;
     const cone = visionCone(token.rotation, token.vision.angle, computeTokenPixelSize(scale.cellSize, token.size || 1) / 2);
-    const blinded = tokenEffects(token, rules.conditions).has('blinded');
+    const blinded = effects.has('blinded');
     const resolved = resolveSenses(how.senses, rules.definitions);
     const senses = resolved
       .filter(({ definition }) => !definition.grants && (!blinded || definition.worksWhileBlinded))

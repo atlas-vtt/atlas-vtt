@@ -8,6 +8,7 @@ import { SystemPresetService } from '../../src/app/services/SystemPresetService'
 import { BUILT_IN_SYSTEM_PRESETS } from '../../src/app/gameSystems/builtInPresets';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 import { memoryPresets } from '../mocks/memoryPresets';
+import { DEAD_CONDITION } from '../../src/app/gameSystems/deadCondition';
 
 const MAP = 'atlas-vtt/collections/dungeon/scenes/cave.atlasmap';
 const UNKNOWN = 'atlas-vtt/collections/new/scenes/hall.atlasmap';
@@ -27,7 +28,7 @@ afterEach(() => { vi.restoreAllMocks(); });
 
 describe('the rules a map plays by', () => {
   it('are its collection\'s while no campaign system applies', () => {
-    expect(rulesForMap(lookup(), MAP)).toEqual({ source: { kind: 'collection', id: 'dungeon' }, settings: DUNGEON });
+    expect(rulesForMap(lookup(), MAP)).toEqual({ source: { kind: 'collection', id: 'dungeon' }, settings: { ...DUNGEON, conditions: [...DUNGEON.conditions, { ...DEAD_CONDITION, id: 'dnd5e-dead' }] } });
   });
 
   it('are none outside every collection, without a map, or in a collection the index does not know yet', () => {
@@ -39,7 +40,7 @@ describe('the rules a map plays by', () => {
 
   it('are the played campaign\'s system for every map, wherever it lies', () => {
     for (const path of [MAP, LOOSE, UNKNOWN, null]) {
-      expect(rulesForMap(lookup(CAMPAIGN), path)).toEqual({ source: { kind: 'campaign', id: 'saga' }, settings: CAMPAIGN.settings });
+      expect(rulesForMap(lookup(CAMPAIGN), path)).toEqual({ source: { kind: 'campaign', id: 'saga' }, settings: { ...CAMPAIGN.settings, conditions: [{ ...DEAD_CONDITION, id: 'cairn-dead' }] } });
     }
   });
 

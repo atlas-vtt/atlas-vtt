@@ -680,7 +680,8 @@ export class TokenRenderer {
     if (!this.playerSight.hasLighting() || !this.store.getState().lighting?.enabled) return true;
     if (!prevToken) return false;
     const { alwaysSeen } = PLAYER_SIGHT_POLICY;
-    return (!!token.isHidden && !!prevToken.isHidden) || (alwaysSeen(token) && alwaysSeen(prevToken));
+    const conditions = this.collectionSync.conditions();
+    return (!!token.isHidden && !!prevToken.isHidden) || (alwaysSeen(token, conditions) && alwaysSeen(prevToken, conditions));
   }
 
   /** Takes along what stands with a token's sprite as it glides: its UI, its controls and the selection frame. */

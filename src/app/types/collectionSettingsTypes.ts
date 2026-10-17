@@ -43,15 +43,16 @@ export interface ConditionDefinition {
 /**
  * How a condition changes what is seen:
  * - `blinded`: a token with vision keeps only its senses that work while blinded.
+ * - `no-vision`: a token contributes no sight or senses, including its own footprint (Dead).
  * - `invisible`: only senses that see invisible tokens perceive the token.
  * - `airborne`: senses that ignore airborne tokens (tremorsense) do not perceive it.
  * - `undetected`: no sense perceives the token.
  *
- * A token with vision is shown to the players whatever its conditions.
+ * A living token with vision is shown to the players whatever its other conditions.
  */
-export type ConditionEffect = 'blinded' | 'invisible' | 'airborne' | 'undetected';
+export type ConditionEffect = 'blinded' | 'no-vision' | 'invisible' | 'airborne' | 'undetected';
 
-export const CONDITION_EFFECTS: readonly ConditionEffect[] = ['blinded', 'invisible', 'airborne', 'undetected'];
+export const CONDITION_EFFECTS: readonly ConditionEffect[] = ['blinded', 'no-vision', 'invisible', 'airborne', 'undetected'];
 
 export type MeasurementMode = 'metric' | 'abstract';
 export type GridUnitType = 'feet' | 'yards' | 'meters' | 'units' | 'custom';

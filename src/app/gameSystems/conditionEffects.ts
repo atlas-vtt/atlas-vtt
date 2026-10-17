@@ -20,10 +20,10 @@ export function conditionEffect(condition: Pick<ConditionDefinition, 'id' | 'eff
 /**
  * `condition` with `effect` as what it does to sight (`none` for nothing), storing only what
  * `conditionEffect` would not read anyway: nothing where the condition's built-in effect is the
- * one chosen, and `none` only where a built-in effect has to be switched off.
+ * one chosen. An explicit `none` also prevents older Dead definitions gaining their default effect.
  */
 export function withConditionEffect<T extends Pick<ConditionDefinition, 'id' | 'effect'>>(condition: T, effect: ConditionEffect | 'none'): T {
   const { effect: _effect, ...rest } = condition;
   const builtIn = BUILT_IN_EFFECTS.get(condition.id);
-  return (effect === (builtIn ?? 'none') ? rest : { ...rest, effect }) as T;
+  return (effect === builtIn ? rest : { ...rest, effect }) as T;
 }

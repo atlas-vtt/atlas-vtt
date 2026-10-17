@@ -24,6 +24,7 @@ type EffectChoice = ConditionEffect | 'none';
 
 const EFFECT_LABELS: Record<ConditionEffect, string> = {
   blinded: 'Blinded',
+  'no-vision': 'No vision',
   invisible: 'Invisible',
   airborne: 'Airborne',
   undetected: 'Undetected',
@@ -100,7 +101,7 @@ export function ConditionsTab({
         <p className="atlas-csm-hint">
           Effects on sight: Blinded takes a token&apos;s sight; Invisible hides it from
           sight that cannot see the invisible; Airborne hides it from tremorsense;
-          Undetected hides it from the players.
+          Undetected hides it from the players; No vision removes all sight and senses.
         </p>
       )}
 

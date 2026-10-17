@@ -97,7 +97,7 @@ export interface SightInputs {
 /**
  * One token as sight and light read it, or null for one players get nothing of: a hidden token,
  * or an unseen one that neither sees nor shines. An unseen token goes out with its place, size,
- * vision, light and blindness only.
+ * vision, light and conditions that suppress its sight only.
  */
 function sightToken(token: TokenEntity, inputs: SightInputs): SightToken | null {
   if (token.isHidden === true || !finite(token.x) || !finite(token.y)) return null;
@@ -105,7 +105,7 @@ function sightToken(token: TokenEntity, inputs: SightInputs): SightToken | null 
   const vision = token.vision?.enabled === true ? token.vision : undefined;
   const light = readEmission(token.light);
   if (!seen && vision === undefined && light === null) return null;
-  const effects: SharedEffect[] = [...tokenEffects(token, inputs.rules.conditions)].filter((effect) => seen || effect === 'blinded');
+  const effects: SharedEffect[] = [...tokenEffects(token, inputs.rules.conditions)].filter((effect) => seen || effect === 'blinded' || effect === 'no-vision');
   return {
     id: inputs.tokenAlias(token.id),
     x: roundPlace(token.x),

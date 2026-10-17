@@ -50,7 +50,7 @@ describe('collection folders changed outside Atlas', () => {
     expect(result.folderMoves).toEqual([{ from: camp, to: keep }]);
     expect(await vault.service.getCollection('Winter Camp')).toBeNull();
     const collection = await vault.service.getCollection('Frozen Keep');
-    expect(collection).toMatchObject({ uid, name: 'Frozen Keep', settings: { conditions: [{ id: 'cold' }] } });
+    expect(collection).toMatchObject({ uid, name: 'Frozen Keep', settings: { conditions: [{ id: 'cold' }, { id: 'atlas-dead', effect: 'no-vision' }] } });
     const scene = (await vault.service.getAssetById(vault.sceneId)) as SceneAsset;
     expect(scene).toMatchObject({ collection: 'Frozen Keep', tags: ['dark'], data: { mapPath: `${keep}/scenes/Cave.atlasmap` } });
     expect(await vault.service.getAssetById(vault.tokenId)).toMatchObject({ collection: 'Frozen Keep', imagePath: `${keep}/tokens/goblin_1790000000000_abcdef.webp` });

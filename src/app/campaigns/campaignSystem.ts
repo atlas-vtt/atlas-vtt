@@ -1,6 +1,7 @@
 import type { RulesSettings } from '../gameSystems/mapRules';
 import { parseSystemRules } from '../gameSystems/presetValidation';
 import { rulesOfPreset } from '../gameSystems/systemRules';
+import { withDeadConditionSettings } from '../gameSystems/deadCondition';
 import { parseVisionDefaults } from '../gameSystems/visionDefaults';
 import { parseResourceDefinitions } from '../resources/resourceDefinitions';
 import type { SystemPreset } from '../types/systemPresetTypes';
@@ -31,7 +32,7 @@ export function readCampaignSystem(raw: unknown): CampaignSystem | undefined {
   // An empty list is a system without resources, not one that reads its preset's.
   const resources = Array.isArray(raw.resources) ? parseResourceDefinitions(raw.resources) : undefined;
   const defaultTokenVision = parseVisionDefaults(raw.defaultTokenVision);
-  return {
+  return withDeadConditionSettings({
     gridDefaults: rules.gridDefaults,
     conditions: rules.conditions,
     ...(typeof systemPresetId === 'string' && systemPresetId !== '' && systemPresetId.length <= MAX_PRESET_ID && { systemPresetId }),
@@ -42,7 +43,7 @@ export function readCampaignSystem(raw: unknown): CampaignSystem | undefined {
     ...(rules.senses && { senses: rules.senses }),
     ...(rules.lightPresets && { lightPresets: rules.lightPresets }),
     ...(rules.initiative && { initiative: rules.initiative }),
-  };
+  });
 }
 
 /**

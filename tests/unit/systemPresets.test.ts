@@ -120,7 +120,7 @@ describe('built-in presets', () => {
     expect(settings.diagonalRule).toBe('alternating');
     expect(formatDistance(6, settings)).toBe('30ft');
     const names = pf2.rules.conditions.map((c) => c.name);
-    expect(names).toHaveLength(35);
+    expect(names).toHaveLength(36);
     expect(names).toContain('Off-Guard');
     expect(names).not.toContain('Flat-Footed');
   });
@@ -160,7 +160,7 @@ describe('built-in presets', () => {
     expect(settings.diagonalRule).toBe('equidistant');
     // MOVE 6 covers 6 squares, 12 m.
     expect(formatDistance(6, settings)).toBe('12m');
-    expect(describeSystemRules(cyberpunk.rules)).toBe('2 m squares · 9 conditions · 1 sense');
+    expect(describeSystemRules(cyberpunk.rules)).toBe('2 m squares · 10 conditions · 1 sense');
   });
 
   it('measure Call of Cthulhu in yards, one per square, along the exact distance', () => {
@@ -184,7 +184,7 @@ describe('built-in presets', () => {
     expect(settings.diagonalRule).toBe('equidistant');
     // Speed 5 covers 5 squares.
     expect(formatDistance(5, settings)).toBe('5u');
-    expect(describeSystemRules(drawSteel.rules)).toBe('1 unit squares · 9 conditions');
+    expect(describeSystemRules(drawSteel.rules)).toBe('1 unit squares · 10 conditions');
     expect(drawSteel.id).toBe('builtin:drawsteel');
     expect(drawSteel.rules.conditions.map((c) => c.id)).toContain('drawsteel-bleeding');
   });
@@ -201,8 +201,8 @@ describe('built-in presets', () => {
   });
 
   it('carry the core conditions of each system with known icons and unique ids', () => {
-    expect(daggerheart.rules.conditions.map((c) => c.name)).toEqual(['Hidden', 'Restrained', 'Vulnerable']);
-    expect(dnd5e.rules.conditions).toHaveLength(15);
+    expect(daggerheart.rules.conditions.map((c) => c.name)).toEqual(['Hidden', 'Restrained', 'Vulnerable', 'Dead']);
+    expect(dnd5e.rules.conditions).toHaveLength(16);
     for (const preset of BUILT_IN_SYSTEM_PRESETS) {
       const ids = preset.rules.conditions.map((c) => c.id);
       expect(new Set(ids).size).toBe(ids.length);
@@ -216,7 +216,7 @@ describe('built-in presets', () => {
 describe('rulesOfPreset', () => {
   it('copies the preset\'s rules with its own condition ids, so nothing of the previous system carries over', () => {
     const rules = rulesOfPreset(daggerheart);
-    expect(rules.conditions.map((c) => c.id)).toEqual(['daggerheart-hidden', 'daggerheart-restrained', 'daggerheart-vulnerable']);
+    expect(rules.conditions.map((c) => c.id)).toEqual(['daggerheart-hidden', 'daggerheart-restrained', 'daggerheart-vulnerable', 'daggerheart-dead']);
     expect(rules.gridDefaults).toEqual(daggerheart.rules.gridDefaults);
     expect(rules.gridDefaults).not.toBe(daggerheart.rules.gridDefaults);
     expect(rules.conditions[0]).not.toBe(daggerheart.rules.conditions[0]);
@@ -240,8 +240,8 @@ describe('comparing and describing rules', () => {
   });
 
   it('summarises measurement and conditions', () => {
-    expect(describeSystemRules(dnd5e.rules)).toBe('5 ft squares · 15 conditions · 6 senses');
-    expect(describeSystemRules(daggerheart.rules)).toBe('5 range bands · 3 conditions · HP, Stress');
+    expect(describeSystemRules(dnd5e.rules)).toBe('5 ft squares · 16 conditions · 6 senses');
+    expect(describeSystemRules(daggerheart.rules)).toBe('5 range bands · 4 conditions · HP, Stress');
   });
 
   it('finds the recorded preset, or the one whose rules match', () => {
@@ -281,7 +281,7 @@ describe('parseUserPresets', () => {
         gridDefaults: {
           unitType: 'meters', unitDistance: 1.5, measurementMode: 'metric', diagonalRule: 'equidistant', abstractRangeBands: [],
         },
-        conditions: [{ id: 'c1', name: 'Dazed', color: '#123456' }],
+        conditions: [{ id: 'c1', name: 'Dazed', color: '#123456' }, { id: 'atlas-dead', name: 'Dead', color: '#1f2937', icon: 'skull', effect: 'no-vision' }],
         // Saved before resources existed: it tracks HP, as its tokens did
         resources: [expect.objectContaining({ key: 'hp' })],
       },
@@ -312,7 +312,7 @@ describe('preset widgets', () => {
 
   it('gives Shadowdark a shared one-hour torch timer', () => {
     expect(torch).toMatchObject({ type: 'timer', label: 'Torch', icon: 'torch', duration: 3600, value: 3600, scope: 'collection' });
-    expect(describeSystemRules(shadowdark.rules)).toBe('4 range bands · 10 conditions · 1 sense · Torch timer');
+    expect(describeSystemRules(shadowdark.rules)).toBe('4 range bands · 11 conditions · 1 sense · Torch timer');
   });
 
   it('gives a collection exactly its system\'s widgets and keeps the user\'s own', () => {
@@ -454,7 +454,7 @@ describe('senses', () => {
   it('are counted in the preset summary when a system has its own', () => {
     expect(describeSystemRules(withSenses([witchSight]))).toBe('5 ft squares · 0 conditions · 1 sense');
     expect(describeSystemRules(withSenses([]))).toBe('5 ft squares · 0 conditions');
-    expect(describeSystemRules(daggerheart.rules)).toBe('5 range bands · 3 conditions · HP, Stress');
+    expect(describeSystemRules(daggerheart.rules)).toBe('5 range bands · 4 conditions · HP, Stress');
   });
 
   it('mark a preset as edited when they change, and count a preset without senses as having the generic set', () => {
@@ -529,12 +529,21 @@ describe('conditions that change sight', () => {
       'shadowdark-invisible': 'invisible',
       'ose-blinded': 'blinded',
       'ose-invisible': 'invisible',
+      'cairn-dead': 'no-vision',
+      'coc7e-dead': 'no-vision',
+      'cyberpunkred-dead': 'no-vision',
+      'daggerheart-dead': 'no-vision',
+      'dnd5e-dead': 'no-vision',
+      'drawsteel-dead': 'no-vision',
+      'ose-dead': 'no-vision',
+      'pathfinder2e-dead': 'no-vision',
+      'shadowdark-dead': 'no-vision',
     });
   });
 
-  it('are every condition named Blinded, Invisible, Undetected or Unnoticed, and no other; Hidden depends on who looks', () => {
+  it('are every condition named Blinded, Dead, Invisible, Undetected or Unnoticed, and no other; Hidden depends on who looks', () => {
     for (const condition of BUILT_IN_SYSTEM_PRESETS.flatMap((preset) => preset.rules.conditions)) {
-      const expected = { Blinded: 'blinded', Invisible: 'invisible', Undetected: 'undetected', Unnoticed: 'undetected' }[condition.name];
+      const expected = { Blinded: 'blinded', Dead: 'no-vision', Invisible: 'invisible', Undetected: 'undetected', Unnoticed: 'undetected' }[condition.name];
       expect(condition.effect).toBe(expected);
     }
   });
@@ -576,6 +585,7 @@ describe('conditions that change sight', () => {
       { id: 'c4', name: 'Deaf', color: '#123456' },
       { id: 'c5', name: 'Prone', color: '#123456' },
       { id: 'c6', name: 'Gone', color: '#123456', effect: 'undetected' },
+      { id: 'atlas-dead', name: 'Dead', color: '#1f2937', icon: 'skull', effect: 'no-vision' },
     ]);
   });
 

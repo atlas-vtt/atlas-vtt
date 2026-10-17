@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AssetService } from '../../../src/app/services/AssetService';
+import { DEAD_CONDITION } from '../../../src/app/gameSystems/deadCondition';
 import { RECORD_KEY } from '../../../src/app/services/library/recordFile';
 import { COPY_SETTLE_MS, libraryClock } from '../../../src/app/services/library/libraryState';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
@@ -161,7 +162,7 @@ describe('a second device', () => {
 
     expect(await b.assets.getAssetById('token-1')).toMatchObject({ name: 'Bog hag', tags: ['hag'], imagePath: ART });
     expect(await b.assets.getAssetById('encounter-1')).toMatchObject({ name: 'Ambush', data: { description: 'At the ford' } });
-    expect(b.assets.getCollectionSettings('Fen').conditions).toEqual([{ id: 'mired', name: 'Mired' }]);
+    expect(b.assets.getCollectionSettings('Fen').conditions).toEqual([{ id: 'mired', name: 'Mired' }, DEAD_CONDITION]);
     expect(b.assets.getDefaultCollectionId()).toBe('Fen');
     expect(await b.assets.getVaultId()).toBe('vault-a');
     expect(syncedFiles(b)).toEqual(synced);
@@ -178,7 +179,7 @@ describe('a second device', () => {
     await b.assets.refreshMetadata();
 
     expect((await b.assets.getAssetById('token-1'))?.name).toBe('Bog crone');
-    expect(b.assets.getCollectionSettings('Fen').conditions.map((condition) => condition.id)).toEqual(['mired', 'chilled']);
+    expect(b.assets.getCollectionSettings('Fen').conditions.map((condition) => condition.id)).toEqual(['mired', 'chilled', DEAD_CONDITION.id]);
     expect(b.app.workspace.trigger).toHaveBeenCalledWith('atlas-vtt:collection-settings-changed', 'Fen');
   });
 

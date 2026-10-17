@@ -1,4 +1,5 @@
 import { conditionEffect } from '../gameSystems/conditionEffects';
+import { DEAD_CONDITION } from '../gameSystems/deadCondition';
 import { sameSenses } from '../gameSystems/senseRules';
 import { GENERIC_SENSES } from '../gameSystems/senses/generic';
 import type { TokenEntity } from '../types';
@@ -43,8 +44,8 @@ export function sameSightRules(a: SightRules, b: SightRules): boolean {
     && a.visionOf === b.visionOf;
 }
 
-/** A scene without a collection: the generic senses, no conditions. */
-export const GENERIC_SIGHT_RULES: SightRules = { definitions: GENERIC_SENSES, conditions: [] };
+/** A scene without a collection: the generic senses and the universal Dead condition. */
+export const GENERIC_SIGHT_RULES: SightRules = { definitions: GENERIC_SENSES, conditions: [DEAD_CONDITION] };
 
 /** What the conditions a token has do to sight. */
 export function tokenEffects(token: Pick<TokenEntity, 'conditions'>, conditions: readonly ConditionDefinition[]): ReadonlySet<ConditionEffect> {

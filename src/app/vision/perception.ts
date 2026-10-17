@@ -11,7 +11,7 @@ import type { WallSegment } from '../types/wallTypes';
 import { computeTokenPixelSize } from '../pixi/token-renderer/tokenSizing';
 import { lightLevelAt } from './lightLevels';
 import type { AmbientLight, LightReach, Sight, SightRegion } from './sight';
-import { tokenEffects } from './sightRules';
+import { GENERIC_SIGHT_RULES, tokenEffects } from './sightRules';
 import { computeVisibility, pointInPolygon, type Polygon } from './visibility';
 import { coneContains } from './visionCone';
 
@@ -143,14 +143,14 @@ export function seenSpots(
   tokens: Record<string, TokenEntity>,
   cellSize: number,
   walls: readonly WallSegment[],
-  { conditions = [], held = {}, policy = PLAYER_SIGHT_POLICY }: PerceptionOptions = {},
+  { conditions = GENERIC_SIGHT_RULES.conditions, held = {}, policy = PLAYER_SIGHT_POLICY }: PerceptionOptions = {},
 ): SeenSpot[] {
   if (sight.all) return [];
   const withMap: Sight = { all: false, regions: sight.regions.filter(({ sense }) => showsMap(sense)) };
   const seesCreatures = sight.regions.some(({ sense }) => sense.precise && !showsMap(sense));
   const spots: SeenSpot[] = [];
   for (const token of Object.values(tokens)) {
-    const party = policy.alwaysSeen(token);
+    const party = policy.alwaysSeen(token, conditions);
     if (token.isHidden || (!party && !seesCreatures)) continue;
     const at = { x: token.x, y: token.y };
     const level = lightLevelAt(at, ambient, lights);

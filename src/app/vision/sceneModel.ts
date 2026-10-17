@@ -15,7 +15,7 @@ import type { WallSegment } from '../types/wallTypes';
 import { exploredShapes, type ExploredShapes } from './exploredShapes';
 import { quenched, sourcesInDarkness } from './magicalDarkness';
 import { seenSpots, type SeenSpot } from './perception';
-import type { SightRules } from './sightRules';
+import { GENERIC_SIGHT_RULES, type SightRules } from './sightRules';
 import { ambientAt } from './lightLevels';
 import { SightCache, sceneSight, sightOptionsChanged, sightSources, type AmbientLight, type LightReach, type Sight } from './sight';
 import type { MapBounds } from './visibility';
@@ -162,7 +162,7 @@ export class SceneSpots {
     this.inputs = inputs;
     if (last && (Object.keys(inputs) as (keyof SpotInputs)[]).every((key) => last[key] === inputs[key])) return this.spots;
     const { cellSize } = unitScaleOf(measurement(), state.grid);
-    const spots = seenSpots(sight, withZones(state.lighting, model.ambient.zones ?? []), model.reaches, inputs.tokens, cellSize, model.walls, { conditions: inputs.rules?.conditions ?? [], held: inputs.held, policy: this.policy });
+    const spots = seenSpots(sight, withZones(state.lighting, model.ambient.zones ?? []), model.reaches, inputs.tokens, cellSize, model.walls, { conditions: inputs.rules?.conditions ?? GENERIC_SIGHT_RULES.conditions, held: inputs.held, policy: this.policy });
     // The footprints are cut by the walls: with other walls they are other footprints at the same places.
     if (last?.model.walls !== model.walls || !sameSpots(spots, this.spots)) this.spots = spots;
     return this.spots;

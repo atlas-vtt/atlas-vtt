@@ -133,7 +133,7 @@ describe('a collection on a user preset', () => {
 
     await importInto(fan, await release(creator, 2));
     expect(presetPaths(fan)).toEqual([PRESET_PATH]);
-    expect(fileOf(fan, PRESET_PATH)).toMatchObject({ id: PRESET, rules: { conditions: [] } });
+    expect(fileOf(fan, PRESET_PATH)).toMatchObject({ id: PRESET, rules: { conditions: [{ id: 'atlas-dead', effect: 'no-vision' }] } });
     expect(await systemOf(fan)).toBe(PRESET);
   });
 
@@ -149,7 +149,7 @@ describe('a collection on a user preset', () => {
     await importInto(fan, await release(creator, 2));
     expect(fan.vault.files.get(PRESET_PATH)).toBe(mine);
     const copy = fileOf(fan, COPY_PATH);
-    expect(copy).toMatchObject({ name: 'Marsh (Fen)', rules: { conditions: [] } });
+    expect(copy).toMatchObject({ name: 'Marsh (Fen)', rules: { conditions: [{ id: 'atlas-dead', effect: 'no-vision' }] } });
     expect(copy.id).not.toBe(PRESET);
     expect(await systemOf(fan)).toBe(copy.id);
 
@@ -158,7 +158,7 @@ describe('a collection on a user preset', () => {
     await importInto(fan, await release(creator, 3));
     expect(presetPaths(fan)).toEqual([COPY_PATH, PRESET_PATH]);
     expect(fileOf(fan, COPY_PATH)).toMatchObject({ id: copy.id, name: 'Marsh (Fen)' });
-    expect((fileOf(fan, COPY_PATH).rules as { conditions: unknown[] }).conditions).toHaveLength(2);
+    expect((fileOf(fan, COPY_PATH).rules as { conditions: unknown[] }).conditions).toHaveLength(3);
   });
 
   it('gives a preset whose name another preset of the vault has a name of its own', async () => {

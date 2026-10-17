@@ -4,6 +4,7 @@ import type { SystemPreset, SystemRules } from '../types/systemPresetTypes';
 import type { StoredPreset } from './systemPresets/presetFiles';
 import type { RecordStorage } from './vaultRecords/recordFolder';
 import { t } from '../i18n';
+import { withDeadConditionSettings } from '../gameSystems/deadCondition';
 
 /** Where the user's presets are kept: one vault file each (`SystemPresetFiles`), or memory in tests. */
 export type PresetStorage = RecordStorage;
@@ -34,14 +35,14 @@ export class SystemPresetService {
 
   create(name: string, rules: SystemRules): SystemPreset {
     this.assertName(name);
-    const preset: SystemPreset = { id: crypto.randomUUID(), name: name.trim(), builtIn: false, rules: structuredClone(rules) };
+    const preset: SystemPreset = { id: crypto.randomUUID(), name: name.trim(), builtIn: false, rules: withDeadConditionSettings(structuredClone(rules)) };
     this.storage.create({ ...preset });
     return preset;
   }
 
   update(id: string, rules: SystemRules): void {
     this.modify(id, (stored) => {
-      const merged = { ...asRecord(stored.rules), ...structuredClone(rules) };
+      const merged = { ...asRecord(stored.rules), ...withDeadConditionSettings(structuredClone(rules)) };
       // The rules hold no default vision, senses, light presets, initiative rules or statblock roles when the system sets none, so stored ones must not survive.
       if (!rules.defaultTokenVision) delete merged.defaultTokenVision;
       if (!rules.senses) delete merged.senses;

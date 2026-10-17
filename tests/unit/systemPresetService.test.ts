@@ -29,7 +29,7 @@ describe('SystemPresetService', () => {
     const preset = service.create('Homebrew', rules);
     service.rename(preset.id, 'House Rules');
     service.update(preset.id, { ...rules, conditions: [] });
-    expect(service.list().find((p) => p.id === preset.id)).toMatchObject({ name: 'House Rules', rules: { conditions: [] } });
+    expect(service.list().find((p) => p.id === preset.id)).toMatchObject({ name: 'House Rules', rules: { conditions: [{ id: 'atlas-dead', name: 'Dead', effect: 'no-vision' }] } });
     expect(() => service.rename(BUILT_IN_SYSTEM_PRESETS[0]!.id, 'Mine')).toThrow();
     service.delete(BUILT_IN_SYSTEM_PRESETS[0]!.id);
     service.delete(preset.id);
@@ -103,6 +103,6 @@ describe('SystemPresetService', () => {
     const draft = structuredClone(rules);
     const preset = service.create('Snapshot', draft);
     draft.conditions.pop();
-    expect(service.list().find((p) => p.id === preset.id)?.rules.conditions).toHaveLength(15);
+    expect(service.list().find((p) => p.id === preset.id)?.rules.conditions).toHaveLength(16);
   });
 });

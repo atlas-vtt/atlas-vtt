@@ -1,4 +1,5 @@
 import { parseResourceDefinitions } from '../resources/resourceDefinitions';
+import { withDeadConditionSettings } from '../gameSystems/deadCondition';
 import { wasTokenRegistrationSaved } from './assetRegistrationRecovery';
 import { SettingsService } from './SettingsService';
 import { App, TFile, TFolder } from 'obsidian';
@@ -1623,7 +1624,7 @@ export class AssetService {
     await this.ensureLoaded();
     const collection = this.metadata!.collections[collectionId];
     if (!collection) throw new Error(`Collection ${collectionId} not found`);
-    collection.settings = { ...collection.settings, ...settings };
+    collection.settings = withDeadConditionSettings({ ...collection.settings, ...settings });
     collection.modifiedAt = Date.now();
     // Open maps apply the change at once; the write to disk follows
     this.app.workspace.trigger('atlas-vtt:collection-settings-changed', collectionId);
@@ -1633,7 +1634,7 @@ export class AssetService {
   /** Get settings for a collection, returns defaults if none set */
   getCollectionSettings(collectionId: string): CollectionSettings {
     const collection = this.metadata?.collections[collectionId];
-    return collection?.settings ?? { conditions: [] };
+    return withDeadConditionSettings(collection?.settings ?? { conditions: [] });
   }
 
   /** The library token drawn with this artwork, read from the loaded index. */

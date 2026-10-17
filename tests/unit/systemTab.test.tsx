@@ -75,7 +75,7 @@ describe('SystemTab', () => {
     fireEvent.keyDown(input, { key: 'Enter' });
 
     const saved = service.list().find((preset) => preset.name === 'Homebrew');
-    expect(saved?.rules.conditions).toHaveLength(3);
+    expect(saved?.rules.conditions).toHaveLength(4);
     expect(screen.getByTestId('preset-id').textContent).toBe(saved?.id);
   });
 });

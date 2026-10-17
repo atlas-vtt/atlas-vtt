@@ -44,6 +44,8 @@ import { movedPathOf, rewriteMapReferences } from './services/renamedPaths';
 import { conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
+import { mapRules } from './services/mapRules';
+import { DEAD_CONDITION, deadConditionId, deadConditionOf } from './gameSystems/deadCondition';
 
 // Individual store state interface (same as AtlasState but isolated)
 export interface ViewAtlasState extends ViewState {
@@ -102,7 +104,7 @@ export interface ViewAtlasState extends ViewState {
    */
   changeTokensConditionValue: (tokenIds: string[], conditionId: string, delta: number) => void;
   clearTokenConditions: (id: string) => void;
-  /** Spends every resource of `definitions` that defeats a token. */
+  /** Spends every resource of `definitions` that defeats a token and adds the system's Dead condition. */
   killTokens: (ids: string[], definitions: readonly ResourceDefinition[]) => void;
   /** Returns every resource of `definitions` to its start and clears conditions. */
   resetTokens: (ids: string[], definitions: readonly ResourceDefinition[]) => void;
@@ -1349,15 +1351,19 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             delete token.conditionValues;
           }),
 
-          // Kill tokens - set HP to 0
-          killTokens: (ids, definitions) => set((draft) => {
-            for (const id of ids) {
-              const token = draft.objects.tokens[id];
-              if (token?.kind !== 'character') continue;
-              const resources = defeatedResources(token, definitions);
-              if (resources) token.resources = resources;
-            }
-          }),
+          killTokens: (ids, definitions) => {
+            const settings = mapRules(app, get().mapPath).settings;
+            const dead = deadConditionOf(settings?.conditions ?? [DEAD_CONDITION], deadConditionId(settings?.systemPresetId)) ?? DEAD_CONDITION;
+            set((draft) => {
+              for (const id of ids) {
+                const token = draft.objects.tokens[id];
+                if (token?.kind !== 'character') continue;
+                const resources = defeatedResources(token, definitions);
+                if (resources) token.resources = resources;
+                setConditionValue(token, dead.id, 1, false);
+              }
+            });
+          },
 
           // Reset tokens - restore every resource and clear conditions
           resetTokens: (ids, definitions) => set((draft) => {

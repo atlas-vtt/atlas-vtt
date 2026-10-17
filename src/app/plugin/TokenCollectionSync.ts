@@ -7,6 +7,9 @@ import { mapMeasurementSettings } from '../services/mapMeasurementSettings';
 import { onMapRulesChange, rulesLookup } from '../services/mapRules';
 import type { ViewAtlasState } from '../storeFactory';
 import type { ConditionDefinition } from '../types/collectionSettingsTypes';
+import { DEAD_CONDITION } from '../gameSystems/deadCondition';
+
+const DEFAULT_CONDITIONS: ConditionDefinition[] = [DEAD_CONDITION];
 
 interface CollectionCallbacks {
   refreshRules: () => void;
@@ -29,7 +32,7 @@ export class TokenCollectionSync {
     this.fileRef = app.vault.on('modify', (file) => { void callbacks.refreshArt(file.path); });
   }
 
-  readonly conditions = (): ConditionDefinition[] => rulesForMap(rulesLookup(this.app), this.readState().mapPath).settings?.conditions ?? [];
+  readonly conditions = (): ConditionDefinition[] => rulesForMap(rulesLookup(this.app), this.readState().mapPath).settings?.conditions ?? DEFAULT_CONDITIONS;
 
   readonly resources = (): readonly ResourceDefinition[] => mapResources(rulesLookup(this.app), this.readState().mapPath);
 

@@ -6,6 +6,7 @@
 
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
 import type { SystemSettings } from './systemRules';
+import { withDeadConditionSettings } from './deadCondition';
 
 /** The game system part of a collection's settings, which a campaign's system holds too. */
 export type RulesSettings = Pick<CollectionSettings, keyof SystemSettings>;
@@ -53,8 +54,8 @@ export interface MapRules {
  */
 export function rulesForMap(lookup: RulesLookup, mapPath: string | null | undefined): MapRules {
   const played = lookup.playedSystem();
-  if (played) return { source: { kind: 'campaign', id: played.campaignId }, settings: played.settings };
+  if (played) return { source: { kind: 'campaign', id: played.campaignId }, settings: withDeadConditionSettings(played.settings) };
   const collectionId = mapPath ? lookup.getCollectionForMap(mapPath) : null;
-  if (collectionId) return { source: { kind: 'collection', id: collectionId }, settings: lookup.getCollectionSettings(collectionId) };
+  if (collectionId) return { source: { kind: 'collection', id: collectionId }, settings: withDeadConditionSettings(lookup.getCollectionSettings(collectionId)) };
   return { source: { kind: 'none', outsideCollections: !mapPath || !COLLECTION_FOLDER.test(mapPath) }, settings: null };
 }

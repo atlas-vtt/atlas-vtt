@@ -143,7 +143,7 @@ describe('senses, from where they are edited to what sight does', () => {
     save({ conditions: [{ id: 'dnd5e-invisible', name: 'Invisible', color: '#c7d2fe', effect: 'none' }] });
     await nextFrame();
     expect(rebuilt).toHaveBeenCalledTimes(2);
-    expect(watch.current().conditions).toEqual(settings.conditions);
+    expect(watch.current().conditions).toEqual([...settings.conditions, expect.objectContaining({ id: 'dnd5e-dead', effect: 'no-vision' })]);
     // A save that changes nothing sight goes by builds nothing.
     save({ lootCurrency: 'gp' } as Partial<CollectionSettings>);
     await nextFrame();

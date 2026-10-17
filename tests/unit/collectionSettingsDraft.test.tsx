@@ -29,7 +29,7 @@ it('switching systems replaces every condition, even one with the same name', ()
 it('clearing the system leaves the vanilla settings', () => {
   const { result } = draftFor({ ...structuredClone(shadowdark.rules), defaultWidgets: { timer: true }, systemPresetId: shadowdark.id });
   act(() => result.current.clearSystem());
-  expect(result.current.toSettings()).toMatchObject({ conditions: [], defaultWidgets: { hpBar: true, stressBar: false }, systemPresetId: undefined });
+  expect(result.current.toSettings()).toMatchObject({ conditions: [{ id: 'atlas-dead', name: 'Dead', effect: 'no-vision' }], defaultWidgets: { hpBar: true, stressBar: false }, systemPresetId: undefined });
 });
 
 it('loads and saves the collection’s own creature filters and the switched-off ones, whatever the system', () => {

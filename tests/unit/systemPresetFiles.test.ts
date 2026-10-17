@@ -91,7 +91,7 @@ describe('SystemPresetFiles', () => {
     files.set(path, fileText({ id: 'p1', name: 'Homebrew', rules, fromTheLaptop: true }));
     new SystemPresetService(presets).update('p1', { ...rules, conditions: [] });
     await presets.flush();
-    expect(JSON.parse(files.get(path)!)).toMatchObject({ fromTheLaptop: true, rules: { conditions: [] } });
+    expect(JSON.parse(files.get(path)!)).toMatchObject({ fromTheLaptop: true, rules: { conditions: [{ id: 'atlas-dead', name: 'Dead', effect: 'no-vision' }] } });
     expect(presets.entries()[0]).toMatchObject({ fromTheLaptop: true });
   });
 

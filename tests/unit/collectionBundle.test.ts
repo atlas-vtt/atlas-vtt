@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
 import { AssetService } from '../../src/app/services/AssetService';
+import { DEAD_CONDITION } from '../../src/app/gameSystems/deadCondition';
 import { transferAssets } from '../../src/app/services/assetTransfer/assetTransfer';
 import { groupContents } from '../../src/app/services/collectionBundle/bundleContents';
 import type { BundleFile } from '../../src/app/services/collectionBundle/bundleFormat';
@@ -285,7 +286,7 @@ describe('installing', () => {
 
     const collection = await fan.assets.getCollection('source');
     expect(collection).toMatchObject({ name: 'source', version: 1, tags: { 'tokens:dragon': { id: 'dragon', name: 'Dragon', group: 'tokens' } } });
-    expect(collection?.settings.conditions).toEqual([{ id: 'c1', name: 'Poisoned', color: '#0f0' }]);
+    expect(collection?.settings.conditions).toEqual([{ id: 'c1', name: 'Poisoned', color: '#0f0' }, DEAD_CONDITION]);
     const statblocks = 'atlas-vtt/collections/source/statblocks';
     const [token] = await fan.assets.getAssets('source', 'token');
     expect(token).toMatchObject({ imagePath: TOKEN_IMAGE, statblockPath: `${statblocks}/Goblin.md`, showRing: false, size: 1.5 });

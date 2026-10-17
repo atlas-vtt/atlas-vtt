@@ -31,6 +31,7 @@ import { parseSenseDefinitions } from './senseValidation';
 import { parseVisionDefaults } from './visionDefaults';
 import { isHexColor } from '../utils/hexColor';
 import { parseStatblockRoles } from '../statblocks/roles/roleValidation';
+import { withDeadConditionSettings } from './deadCondition';
 
 const UNIT_TYPES: readonly GridUnitType[] = ['feet', 'yards', 'meters', 'units', 'custom'];
 const MEASUREMENT_MODES: readonly MeasurementMode[] = ['metric', 'abstract'];
@@ -187,7 +188,7 @@ export function parseUserPreset(raw: unknown): SystemPreset | null {
   if (!isRecord(raw) || !isNonEmptyString(raw.id) || !isNonEmptyString(raw.name)) return null;
   if (raw.id.startsWith(BUILT_IN_ID_PREFIX)) return null;
   const rules = parseSystemRules(raw.rules);
-  return rules && { id: raw.id, name: raw.name.trim(), builtIn: false, rules };
+  return rules && { id: raw.id, name: raw.name.trim(), builtIn: false, rules: withDeadConditionSettings(rules) };
 }
 
 /** Every usable preset in `raw`, the first one kept when ids repeat. */

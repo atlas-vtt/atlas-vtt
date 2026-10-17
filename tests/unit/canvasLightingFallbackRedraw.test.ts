@@ -8,6 +8,7 @@ import type { SightRules } from '../../src/app/vision/sightRules';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 import { maskCovers, watchSightMasks, type WatchedMasks } from '../helpers/sightMaskWatch';
+import { DEAD_CONDITION } from '../../src/app/gameSystems/deadCondition';
 
 const BLINDED: SightRules = { definitions: [], conditions: [{ id: 'blind', name: 'Blinded', color: '#000000', effect: 'blinded' }] };
 const hero: TokenEntity = { id: 'hero', kind: 'token', imagePath: 'h.png', x: 100, y: 100, vision: { enabled: true, range: 10 } };
@@ -80,6 +81,18 @@ describe('when the line-of-sight fallback composes its black', () => {
     fallback.modeLayer.visible = false;
     fallback.modeLayer.visible = true;
     expect(masks.composed()).toBe(0);
+  });
+
+  it('covers a dead token\'s footprint immediately and restores sight when Dead is removed', () => {
+    const { fallback, store, covers, renders } = open({ hero });
+    fallback.modeLayer.visible = true;
+    expect(covers(100, 100)).toBe(false);
+    store.getState().setTokensCondition(['hero'], DEAD_CONDITION.id, true);
+    expect(fallback.currentSight()).toEqual({ all: false, regions: [] });
+    expect([100, 150, 400].map((x) => covers(x, 100))).toEqual([true, true, true]);
+    expect(renders).toHaveBeenCalled();
+    store.getState().setTokensCondition(['hero'], DEAD_CONDITION.id, false);
+    expect(covers(100, 100)).toBe(false);
   });
 
   it('composes nothing for a token move that leaves sight and footprints as they are', () => {

@@ -503,7 +503,7 @@ describe('tokens in session view', () => {
     const { collectionSettingsChanged, obsApp } = scene();
     const { rules } = lighting.deps as SceneLightingDeps;
     const first = rules?.();
-    expect(first).toMatchObject({ definitions: GENERIC_SIGHT_RULES.definitions, conditions: [] });
+    expect(first).toMatchObject(GENERIC_SIGHT_RULES);
     expect(rules?.()).toBe(first);
     // Another collection's settings are none of this map's business.
     collectionSettingsChanged();
@@ -530,7 +530,7 @@ describe('tokens in session view', () => {
     await nextFrame();
     expect(lighting.refreshBounds).toHaveBeenCalledTimes(1);
     expect(rules?.()).not.toBe(first);
-    expect(rules?.().conditions).toEqual([{ ...prone, effect: 'invisible' }]);
+    expect(rules?.().conditions).toEqual([{ ...prone, effect: 'invisible' }, ...GENERIC_SIGHT_RULES.conditions]);
 
     // So do other senses, and the same senses in a new list do not.
     const senses = [{ ...GENERIC_SIGHT_RULES.definitions[0]!, id: 'own' }];

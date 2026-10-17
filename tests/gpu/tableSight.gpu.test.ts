@@ -4,9 +4,27 @@ import { describe, expect, it } from 'vitest';
 import { playerDoorSight, playerTokenSight } from '../../src/app/pixi/lighting/playerLightingLayers';
 import { heldForSight, holdTokens } from '../../src/app/lighting/sightOnDrop';
 import { byteDifferences, rgb, tableScenes, visionToken } from '../helpers/tableSightScene';
+import { DEAD_CONDITION } from '../../src/app/gameSystems/deadCondition';
+import { HP_RESOURCE } from '../../src/app/resources/resourceDefinitions';
 
 describe('table sight through the lighting renderer', () => {
   const { scene } = tableScenes();
+
+  it.each(['normal', 'blindsight'])('blacks out a killed sole %s source, including its footprint, until Reset', async (sense) => {
+    const party = { ...visionToken('party', 60), kind: 'character' as const, name: 'Hero', resources: { hp: { current: 10, max: 10 } } };
+    if (sense !== 'normal') party.vision = { enabled: true, range: 5, senses: [{ id: sense, range: 5 }] };
+    const rules = { definitions: GENERIC_SENSES, conditions: [DEAD_CONDITION] };
+    const h = await scene({ tokens: { party }, lighting: { ambient: 1, exploredMemory: false }, rules });
+    const before = h.pixels('player');
+    expect(rgb(before, 60, 128)).toEqual([86, 144, 198]);
+    h.store.getState().killTokens(['party'], [HP_RESOURCE]);
+    expect(rgb(h.pixels('player'), 60, 128)).toEqual([0, 0, 0]);
+    expect(rgb(h.pixels('player'), 190, 128)).toEqual([0, 0, 0]);
+    expect(h.lighting.currentSight()).toEqual({ all: false, regions: [] });
+    expect(playerTokenSight(h.lighting, h.store.getState().objects.tokens, { conditions: rules.conditions })?.('party')).toBe('unseen');
+    h.store.getState().resetTokens(['party'], [HP_RESOURCE]);
+    expect(byteDifferences(before, h.pixels('player'))).toBe(0);
+  });
 
   it.each(['normal', 'darkvision', 'blindsight', 'truesight'].flatMap(sense => [false, true].map(mixed => ({ sense, mixed }))))('preserves the exact GM frame for a hidden $sense source (mixed=$mixed)', async ({ sense, mixed }) => {
     const hidden = visionToken('hidden', 190, true);

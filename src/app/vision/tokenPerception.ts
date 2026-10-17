@@ -3,7 +3,7 @@ import { movedWhileHeld } from '../lighting/sightOnDrop';
 import { lightLevelAt } from './lightLevels';
 import { perceive, targetOf, withinReach, type Perception, type PerceptionOptions } from './perception';
 import type { AmbientLight, LightReach, Sight } from './sight';
-import { tokenEffects } from './sightRules';
+import { GENERIC_SIGHT_RULES, tokenEffects } from './sightRules';
 import { PLAYER_SIGHT_POLICY } from './tokenSightPolicy';
 
 /** How the players perceive each token. */
@@ -11,7 +11,7 @@ export type TokenPerception = (tokenId: string) => Perception;
 
 /**
  * How the vision tokens perceive each token, by its centre, the light there and its conditions.
- * A token the policy always shows (`options.policy`, unset the players': a nonhidden token with vision)
+ * A token the policy always shows (`options.policy`, unset the players': a nonhidden, living token with vision)
  * is shown whatever its conditions and the light: the players' window is one shared screen, and they
  * are the party. `tokens` is the record the positions are read from, so a caller may pass tokens at
  * other places than the store's.
@@ -31,13 +31,13 @@ export function tokenPerception(
   options: PerceptionOptions = {},
   memo?: PerceptionMemo,
 ): TokenPerception {
-  const { conditions = [], held = {}, policy = PLAYER_SIGHT_POLICY } = options;
+  const { conditions = GENERIC_SIGHT_RULES.conditions, held = {}, policy = PLAYER_SIGHT_POLICY } = options;
   // Every consumer of a frame asks about every token: each is worked out once, and with a memo once for all frames.
   const known = memo?.of(sight, ambient, lights, options) ?? new WeakMap<TokenEntity, Perception>();
   const perceived = (token: TokenEntity): Perception => {
     const at = { x: token.x, y: token.y };
     if (token.isHidden) return 'unseen';
-    if (policy.alwaysSeen(token)) return !movedWhileHeld(token, held) || withinReach(at, sight) ? 'seen' : 'unseen';
+    if (policy.alwaysSeen(token, conditions)) return !movedWhileHeld(token, held) || withinReach(at, sight) ? 'seen' : 'unseen';
     return perceive(at, sight, () => lightLevelAt(at, ambient, lights), targetOf(tokenEffects(token, conditions)));
   };
   return (tokenId) => {

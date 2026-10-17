@@ -6,6 +6,7 @@ import { AssetService } from '../../src/app/services/AssetService';
 import { mapSenseRules } from '../../src/app/services/mapSenseRules';
 import { mapSightRules } from '../../src/app/services/mapSightRules';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
+import { DEAD_CONDITION } from '../../src/app/gameSystems/deadCondition';
 
 const dnd5e = BUILT_IN_SYSTEM_PRESETS.find((preset) => preset.name === 'D&D 5e')!;
 const MAP = 'atlas-vtt/collections/dungeon/scenes/a.atlasmap';
@@ -27,8 +28,8 @@ const rulesFor = (settings: CollectionSettings | null, mapPath: string | null = 
   withCollection(settings, () => mapSightRules({} as App, { mapPath, grid: null }));
 
 describe('mapSightRules', () => {
-  it('are the generic senses and no conditions for a map without a collection', () => {
-    expect(rulesFor(null)).toEqual({ definitions: GENERIC_SENSES, conditions: [] });
+  it('are the generic senses and Dead for a map without a collection', () => {
+    expect(rulesFor(null)).toEqual({ definitions: GENERIC_SENSES, conditions: [DEAD_CONDITION] });
     expect(rulesFor({ conditions: [] }, null).definitions).toBe(GENERIC_SENSES);
   });
 
