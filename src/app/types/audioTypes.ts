@@ -12,6 +12,15 @@ export interface AudioSource {
   loop: boolean;                // Default true for ambience
 }
 
+/**
+ * A sound a token plays on the GM's command: a vault audio file and its volume from 0 to 1
+ * (unset plays at full volume). Read a token's sounds only through `tokenSounds`.
+ */
+export interface TokenSound {
+  path: string;
+  volume?: number;
+}
+
 /** Input for creating an audio source (without auto-generated id/kind) */
 export type AudioInput = Omit<AudioSource, 'id' | 'kind'>;
 

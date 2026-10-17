@@ -1,4 +1,5 @@
 import { normalizeImagePath } from '../utils/pathUtils';
+import { isRecord } from '../utils/guards';
 
 /** A file that now lives at `to` instead of `from`. */
 export interface PathMove {
@@ -28,6 +29,8 @@ function movedPinTarget(target: string, moved: MovedPath): string | null {
 interface TokenPaths {
   imagePath?: string | undefined;
   statblockPath?: string | null | undefined;
+  /** As the map file holds it, unchecked: see `followSounds`. */
+  sounds?: unknown;
 }
 
 interface PinPaths {
@@ -63,9 +66,23 @@ function follow<K extends string>(record: Partial<Record<K, string | null | unde
   return true;
 }
 
+/** Sets the path of each of a token's sounds that moved; entries that are no sound are passed over. */
+function followSounds(sounds: unknown, moved: MovedPath): boolean {
+  if (!Array.isArray(sounds)) return false;
+  let changed = false;
+  for (const sound of sounds) {
+    if (!isRecord(sound) || typeof sound.path !== 'string') continue;
+    const target = moved(sound.path);
+    if (target === null) continue;
+    sound.path = target;
+    changed = true;
+  }
+  return changed;
+}
+
 /**
  * Points everything a map refers to at the new places of moved files, in
- * place: its own path, its background, token art and statblocks, pin
+ * place: its own path, its background, token art, statblocks and sounds, pin
  * targets, and the portraits and statblocks of initiative entries and dice
  * rolls. Returns whether anything changed.
  */
@@ -77,6 +94,7 @@ export function rewriteMapReferences(map: MapReferences | null | undefined, move
   for (const token of tokenLike) {
     changed = follow(token, 'imagePath', moved) || changed;
     changed = follow(token, 'statblockPath', moved) || changed;
+    changed = followSounds(token.sounds, moved) || changed;
   }
   for (const pin of Object.values(map.objects?.pins ?? {})) {
     const target = pin.notePath ? movedPinTarget(pin.notePath, moved) : null;

@@ -1,0 +1,46 @@
+import type { TokenSound } from '../types/audioTypes';
+import { isFiniteNumber, isRecord } from '../utils/guards';
+import { baseName } from '../utils/pathUtils';
+
+/** How many sounds a token offers in its menu. */
+export const MAX_TOKEN_SOUNDS = 5;
+
+/** The largest sound file a token plays: far longer than any effect, short of what stalls Obsidian while it decodes. */
+export const MAX_TOKEN_SOUND_BYTES = 20 * 1024 * 1024;
+
+/** The audio files Obsidian plays: the files a token may take as its sounds. */
+const SOUND_EXTENSIONS = new Set(['mp3', 'wav', 'm4a', 'ogg', 'oga', 'opus', 'flac', 'webm', '3gp']);
+
+/** Whether the vault file at `path` is one a token may play, by its extension. */
+export function isSoundFile(path: string): boolean {
+  const name = baseName(path);
+  const dot = name.lastIndexOf('.');
+  return dot > 0 && SOUND_EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
+}
+
+/** What the token's menu calls a sound: its file's name, without folder or extension. */
+export function soundName(path: string): string {
+  return baseName(path).replace(/\.[^.]+$/, '');
+}
+
+/** A stored volume read for playing: unset or not a number is full volume, anything else held to 0–1. */
+function volumeOf(raw: unknown): number {
+  return isFiniteNumber(raw) ? Math.min(1, Math.max(0, raw)) : 1;
+}
+
+/**
+ * The sounds a token offers, in its own order: the first `MAX_TOKEN_SOUNDS` entries that name a
+ * vault file, each with the volume it plays at. A map file arrives unchecked (a hand edit, a
+ * newer Atlas), so entries that are no sound are passed over and left in the file as they are.
+ */
+export function tokenSounds(token: { sounds?: TokenSound[] }): Required<TokenSound>[] {
+  const stored: unknown = token.sounds;
+  if (!Array.isArray(stored)) return [];
+  const sounds: Required<TokenSound>[] = [];
+  for (const entry of stored) {
+    if (!isRecord(entry) || typeof entry.path !== 'string' || entry.path === '') continue;
+    sounds.push({ path: entry.path, volume: volumeOf(entry.volume) });
+    if (sounds.length === MAX_TOKEN_SOUNDS) break;
+  }
+  return sounds;
+}

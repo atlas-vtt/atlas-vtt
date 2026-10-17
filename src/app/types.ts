@@ -3,6 +3,7 @@
 
 import type { InitiativeSide } from './types/initiativeRulesTypes';
 import type { LightEmission, TokenVision } from './types/lightingTypes';
+import type { TokenSound } from './types/audioTypes';
 
 /**
  * Note pin object that links to an Obsidian note
@@ -57,6 +58,8 @@ export interface BaseToken {
   vision?: TokenVision;
   /** Light the token carries; it moves with the token. */
   light?: LightEmission;
+  /** Sounds the GM plays from the token's menu; read with `tokenSounds`. */
+  sounds?: TokenSound[];
   /** Whether to show the nameplate (defaults to false) */
   showNameplate?: boolean;
   /** Rotation in degrees (0-360) */
