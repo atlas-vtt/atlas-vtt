@@ -1,11 +1,17 @@
 import type { TokenSound } from '../types/audioTypes';
 import { isFiniteNumber, isRecord } from '../utils/guards';
+import { baseName } from '../utils/pathUtils';
 
 /** How many sounds a token offers in its menu. */
 export const MAX_TOKEN_SOUNDS = 5;
 
 /** The largest sound file a token plays: far longer than any effect, short of what stalls Obsidian while it decodes. */
 export const MAX_TOKEN_SOUND_BYTES = 20 * 1024 * 1024;
+
+/** What the token's menu calls a sound: its file's name, without folder or extension. */
+export function soundName(path: string): string {
+  return baseName(path).replace(/\.[^.]+$/, '');
+}
 
 /** A stored volume read for playing: unset or not a number is full volume, anything else held to 0–1. */
 function volumeOf(raw: unknown): number {

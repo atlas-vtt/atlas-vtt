@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tokenSounds } from '../../src/app/audio/tokenSounds';
+import { soundName, tokenSounds } from '../../src/app/audio/tokenSounds';
 import type { TokenSound } from '../../src/app/types/audioTypes';
 
 /** A token's `sounds` as a hand-edited or newer file may hold them. */
@@ -25,6 +25,12 @@ describe('tokenSounds', () => {
   it('keeps a volume between 0 and 1', () => {
     const sounds = [{ path: 'a.mp3', volume: 0.4 }, { path: 'b.mp3', volume: 3 }, { path: 'c.mp3', volume: -1 }, { path: 'd.mp3', volume: 0 }];
     expect(tokenSounds(fromFile(sounds)).map(({ volume }) => volume)).toEqual([0.4, 1, 0, 0]);
+  });
+
+  it('names a sound by its file name without folder or extension', () => {
+    expect(soundName('Sounds/Dragons/dragon-roar.mp3')).toBe('dragon-roar');
+    expect(soundName('Sounds/war.cry.ogg')).toBe('war.cry');
+    expect(soundName('roar')).toBe('roar');
   });
 
   it('offers the first five usable sounds', () => {
