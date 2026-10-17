@@ -66,11 +66,11 @@ export function optimizeUpload(file: File, mode: CreatorMode, options: UploadOpt
   }));
 }
 
-/** What the preview shows inside the token circle, taken from the full-resolution upload, with its thumbnail. */
-export function cropTokenImage(file: File, scale: number, position: ImagePosition, signal?: AbortSignal, background = false): Promise<ProcessedImage> {
+/** What the preview shows inside the circle or unframed square, with transparency and a thumbnail. */
+export function cropTokenImage(file: File, scale: number, position: ImagePosition, signal?: AbortSignal, background = false, framed = true): Promise<ProcessedImage> {
   const { maxWidth, quality } = IMAGE_PRESETS.token;
-  return shared(file, `crop:${scale}:${position.x}:${position.y}:${background}`, signal, (shareSignal) =>
-    renderFramedImage(file, tokenCropPlacement(scale, position), {
+  return shared(file, `crop:${scale}:${position.x}:${position.y}:${background}:${framed}`, signal, (shareSignal) =>
+    renderFramedImage(file, tokenCropPlacement(scale, position, framed), {
       minSize: MIN_TOKEN_SIZE, maxSize: maxWidth, quality, thumbnail: THUMBNAIL_SPEC, signal: shareSignal, background,
       ...(background && { sourcePreview: TOKEN_CARD_PREVIEW }),
     }));

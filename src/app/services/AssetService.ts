@@ -30,6 +30,7 @@ import { isPayloadUnread, serializeRecord } from './library/recordFile';
 import { libraryClock, parseLibraryState } from './library/libraryState';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { showNotice } from '../ui/notice';
+import type { TokenImageSource } from '../types/tokenImageSource';
 
 export interface BaseAsset {
   id: string;
@@ -47,6 +48,8 @@ export interface TokenAsset extends BaseAsset {
   showRing?: boolean;
   type: 'token';
   imagePath: string;
+  /** Unmodified artwork and the framing used to render imagePath. */
+  imageSource?: TokenImageSource;
   /** Default footprint of spawned tokens as the size multiplier from `tokenSizing.ts`; missing means 1×1. */
   size?: number;
   /** Small preview written by AssetThumbnailService; regenerated when missing. */
@@ -1164,6 +1167,7 @@ export class AssetService {
     if (asset.type === 'token') {
       this.removeTokenReferencesFromGroups(asset.id);
       await this.trashFileIfPresent(asset.thumbnailPath);
+      await this.trashFileIfPresent(asset.imageSource?.path);
     }
 
     // Remove from metadata

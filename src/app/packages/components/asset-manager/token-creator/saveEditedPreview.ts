@@ -1,16 +1,19 @@
 import { type App } from 'obsidian';
 import type { AssetService } from '../../../../services/AssetService';
 import type { AssetThumbnailService } from '../../../../services/AssetThumbnailService';
-import { writeAssetImage } from '../../../../services/assetImageFiles';
+import { discardAssetFiles, writeAssetImage } from '../../../../services/assetImageFiles';
+import { defaultImageSource, writeTokenImageSource } from '../../../../services/tokenImageSources';
+import type { TokenImageSource } from '../../../../types/tokenImageSource';
 import { transferAssets } from '../../../../services/assetTransfer/assetTransfer';
 import type { ProcessedImage } from '../../../../imageProcessing/imageProcessing';
 import { prebuildMapImageAt } from '../../../../pixi/mapImage/prebuildMapImage';
-import { STORED_IMAGE_SCALE } from './cropMath';
+import { cropReset } from './cropMath';
 import { prepareSaveImage, type SaveImageContext } from './prepareSaveImages';
 import { overwriteStoredImage, storedImageFile } from './storedTokenImage';
 import type { EditTokenInput, TokenPreview } from './types';
 import { t } from '../../../../i18n';
 import { showNotice } from '../../../../ui/notice';
+import { imageSourceFor, sameCrop } from './tokenFraming';
 
 export interface EditedPreviewSave extends SaveImageContext {
   app: App;
@@ -23,13 +26,18 @@ export interface EditedPreviewSave extends SaveImageContext {
 }
 
 /**
- * An edit without an upload crops the token's stored image when the crop was moved or
- * the ring was just turned on (the stored image is then the whole artwork).
+ * A preserved source is rendered again when framing or ring mode changes.
+ * Legacy artwork only needs rendering when its existing fit was adjusted.
  */
-function cropsStoredImage(preview: TokenPreview, editToken: EditTokenInput): boolean {
-  if (preview.file || preview.showRing === false) return false;
+function cropsStoredImage(preview: TokenPreview, editToken: EditTokenInput, source: TokenImageSource | undefined): boolean {
+  if (preview.file) return false;
+  if (source) {
+    const saved = editToken.showRing === false ? source.unframed : source.framed;
+    return (preview.showRing !== false) !== (editToken.showRing !== false) || !sameCrop(preview, saved);
+  }
   const { imageScale, imagePosition } = preview;
-  return editToken.showRing === false || imageScale !== STORED_IMAGE_SCALE || imagePosition.x !== 0 || imagePosition.y !== 0;
+  const initial = cropReset(preview);
+  return (preview.showRing !== false && editToken.showRing === false) || imageScale !== initial.imageScale || imagePosition.x !== 0 || imagePosition.y !== 0;
 }
 
 /**
@@ -38,9 +46,13 @@ function cropsStoredImage(preview: TokenPreview, editToken: EditTokenInput): boo
  */
 export async function saveEditedPreview(save: EditedPreviewSave): Promise<number> {
   const { app, assetService, thumbnails, editToken, preview, tags, collectionId, mode } = save;
+  const before = await assetService.getAssetById(editToken.id);
+  const previousSource = before?.type === 'token' ? before.imageSource : undefined;
+  let imageSource = previousSource;
   let imagePath = editToken.imagePath ?? editToken.imageUrl;
   let thumbnailPath: string | undefined;
-  const source = preview.file ?? (cropsStoredImage(preview, editToken) ? await storedImageFile(app, editToken) : null);
+  const source = preview.file ?? (cropsStoredImage(preview, editToken, previousSource)
+    ? await storedImageFile(app, { ...editToken, imagePath: previousSource?.path ?? editToken.imagePath }) : null);
   if (source) {
     let prepared: ProcessedImage;
     try {
@@ -50,17 +62,26 @@ export async function saveEditedPreview(save: EditedPreviewSave): Promise<number
       showNotice(t(`creator.${mode}.optimizeFailed`, { name: preview.name }));
       return 0;
     }
+    if (mode === 'token' && (preview.file || !previousSource)) {
+      const path = await writeTokenImageSource(app, source);
+      imageSource = imageSourceFor(preview, path);
+      if (!previousSource) {
+        // Link the backup before overwriting legacy art. Even an interrupted save retains its pixels.
+        await assetService.updateAsset(editToken.id, { imageSource: defaultImageSource(path, cropReset({ file: null }).imageScale) });
+      }
+    }
     const data = await prepared.image.arrayBuffer();
     imagePath = await overwriteStoredImage(app, editToken.imagePath, data) ?? await writeAssetImage(app, preview.name, data);
     thumbnailPath = await thumbnails.tryThumbnailForImage(imagePath, prepared.thumbnail);
     if (mode === 'map') prebuildMapImageAt(app, imagePath);
   }
-  const before = await assetService.getAssetById(editToken.id);
   const previousThumbnail = before?.type === 'token' || before?.type === 'map' ? before.thumbnailPath : undefined;
   await assetService.updateAsset(editToken.id, {
     name: preview.name, imagePath, showRing: preview.showRing !== false, size: preview.size, tags: preview.tags ?? tags,
     ...(source && { thumbnailPath }),
+    ...(mode === 'token' && imageSource && { imageSource: imageSourceFor(preview, imageSource.path) }),
   });
+  if (previousSource && imageSource && previousSource.path !== imageSource.path) await discardAssetFiles(app, [previousSource.path]);
   // A new image path (an upload, or stored art renamed to .webp) gets a thumbnail of its own
   if (source && previousThumbnail && previousThumbnail !== thumbnailPath) await thumbnails.tryDiscard(previousThumbnail);
   const stored = await assetService.getAssetById(editToken.id);

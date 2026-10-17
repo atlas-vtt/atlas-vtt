@@ -91,6 +91,7 @@ export class CollectionReferenceCollector {
     this.add(this.assets.getAssetFilePath(asset), asset.type === 'token' ? 'token-image' : 'asset-file');
     switch (asset.type) {
       case 'token':
+        this.add(asset.imageSource?.path, 'token-image');
         this.add(asset.thumbnailPath, 'thumbnail');
         this.addStatblockNote(asset.statblockPath);
         break;

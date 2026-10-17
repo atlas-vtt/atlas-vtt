@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
 import { AssetService } from '../../src/app/services/AssetService';
+import { defaultImageSource } from '../../src/app/services/tokenImageSources';
 import { transferAssets } from '../../src/app/services/assetTransfer/assetTransfer';
 import { groupContents } from '../../src/app/services/collectionBundle/bundleContents';
 import type { BundleFile } from '../../src/app/services/collectionBundle/bundleFormat';
@@ -170,6 +171,22 @@ const theirs = (unit: string): ImportDecision => ({ resolutions: new Map([[unit,
 beforeEach(() => { AssetService.resetInstance(); });
 
 describe('exporting', () => {
+  it('carries the unmodified source and saved crops through export and import', async () => {
+    const creator = await creatorVault();
+    const [token] = await creator.assets.getTokenAssets();
+    const path = 'atlas-vtt/assets/token-sources/original.png';
+    await creator.vault.app.vault.create(path, 'ORIGINAL');
+    const imageSource = { ...defaultImageSource(path), framed: { imageScale: 2, imagePosition: { x: 0.1, y: 0 } } };
+    await creator.assets.updateAsset(token!.id, { imageSource });
+    const bundle = await exportFrom(creator);
+    expect((await manifestOf(bundle)).files).toContainEqual(expect.objectContaining({ vaultPath: path, role: 'token-image', owners: [token!.id] }));
+    const target = await emptyVault();
+    await importInto(target, bundle);
+    const [imported] = await target.assets.getTokenAssets();
+    expect(imported!.imageSource).toEqual(imageSource);
+    expect(target.vault.files.get(imported!.imageSource!.path)).toBe('ORIGINAL');
+  });
+
   it('packs every file with its checksum and owners, and reports missing references', async () => {
     const creator = await creatorVault();
     creator.vault.files.delete(BACKGROUND);

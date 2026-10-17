@@ -17,11 +17,15 @@ function isUntouchedCrop(preview: TokenPreview): boolean {
 
 /**
  * The image a preview saves: a framed token cropped as the card shows it, a map
- * or unframed token whole. The background conversion is reused when it made
+ * or untouched unframed token whole. Edited unframed art fills a square at its chosen scale.
+ * The background conversion is reused when it made
  * exactly that (an untouched crop, the whole image), so the upload is decoded
  * once; otherwise the image is converted now.
  */
 export async function prepareSaveImage(file: File, preview: TokenPreview, context: SaveImageContext, signal?: AbortSignal): Promise<ProcessedImage> {
+  if (context.mode === 'token' && preview.showRing === false && !isUntouchedCrop(preview)) {
+    return cropTokenImage(file, preview.imageScale, preview.imagePosition, signal, false, false);
+  }
   if (context.mode === 'token' && preview.showRing !== false) {
     const background = isUntouchedCrop(preview) ? await context.waitForOptimized(preview.id, 'default-crop') : undefined;
     return background ?? cropTokenImage(file, preview.imageScale, preview.imagePosition, signal);

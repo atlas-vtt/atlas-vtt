@@ -63,13 +63,14 @@ export function vectorRasterSize(natural: Size, layout: ImageLayout): Size {
 
 /** Pixel size of a square frame: as many pixels as the source has across it, clamped to the bounds. */
 export function frameSize(source: Size, placement: FramePlacement, minSize: number, maxSize: number): number {
-  const sourcePixels = Math.round(source.width / placement.width);
+  const sourceSide = placement.fit === 'contain' ? Math.max(source.width, source.height) : source.width;
+  const sourcePixels = Math.round(sourceSide / placement.width);
   return Math.min(maxSize, WEBP_MAX_SIDE, Math.max(minSize, sourcePixels));
 }
 
 /** Where the image is drawn in a square frame of `frame` pixels. */
 export function frameImageRect(source: Size, placement: FramePlacement, frame: number): Rect {
-  const width = placement.width * frame;
+  const width = placement.width * frame * (placement.fit === 'contain' ? Math.min(1, source.width / source.height) : 1);
   const height = width * (source.height / source.width);
   return {
     left: placement.centerX * frame - width / 2,

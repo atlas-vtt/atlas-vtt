@@ -97,6 +97,8 @@ export function ModalLayer({
               name: crud.editingToken.name,
               imageUrl: (crud.editingToken as TokenAsset).imageUrl,
               imagePath: (crud.editingToken as TokenAsset).imagePath,
+              imageSource: (crud.editingToken as TokenAsset).imageSource,
+              sourceImageUrl: (crud.editingToken as TokenAsset).sourceImageUrl,
               tags: crud.editingToken.tags || [],
               showRing: (crud.editingToken as TokenAsset).showRing ?? true,
               size: (crud.editingToken as TokenAsset).size,

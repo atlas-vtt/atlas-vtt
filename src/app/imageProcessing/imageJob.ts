@@ -17,7 +17,9 @@ export interface Size {
 export interface FramePlacement {
   centerX: number;
   centerY: number;
+  /** Fraction of the frame occupied by the image's width, or its longer side with `fit: 'contain'`. */
   width: number;
+  fit?: 'contain';
 }
 
 export type ImageLayout =

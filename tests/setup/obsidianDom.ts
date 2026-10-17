@@ -15,6 +15,18 @@ interface ElementOptions {
   href?: string;
 }
 
+// jsdom's Blob/File lack the byte reader supported by Obsidian's Chromium.
+if (typeof Blob !== 'undefined' && !Blob.prototype.arrayBuffer) {
+  Blob.prototype.arrayBuffer = function (): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as ArrayBuffer);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsArrayBuffer(this);
+    });
+  };
+}
+
 type ElementSpec = ElementOptions | string | undefined;
 
 const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';

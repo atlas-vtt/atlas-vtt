@@ -1,4 +1,5 @@
 import type { ScaleDown } from '../../../../imageProcessing/imageJob';
+import type { TokenImageSource } from '../../../../types/tokenImageSource';
 
 export type CreatorMode = 'token' | 'map';
 
@@ -9,6 +10,8 @@ export interface EditTokenInput {
   name: string;
   imageUrl: string;
   imagePath?: string | undefined;
+  imageSource?: TokenImageSource | undefined;
+  sourceImageUrl?: string | undefined;
   tags: string[];
 }
 
@@ -43,6 +46,8 @@ export interface TokenPreview {
   id: string;
   /** Original upload; null when editing an existing asset without replacing its image. */
   file: File | null;
+  /** Preserved source and the last saved framing when editing an existing token. */
+  imageSource?: TokenImageSource;
   /** Percentage by which the background conversion shrank the upload. */
   compressionRatio?: number;
   /** Pixels the conversion took from an upload larger than Atlas keeps. */
@@ -51,6 +56,8 @@ export interface TokenPreview {
   name: string;
   imageScale: number;
   imagePosition: ImagePosition;
+  /** Framing in the other ring mode, saved with the source image. */
+  alternateCrop?: { imageScale: number; imagePosition: ImagePosition };
   isSelected: boolean;
   isOptimizing: boolean;
 }

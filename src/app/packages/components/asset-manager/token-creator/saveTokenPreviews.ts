@@ -13,6 +13,8 @@ import type { ProcessedImage } from '../../../../imageProcessing/imageProcessing
 import type { SavedToken } from './tokenStatblocks';
 import { prebuildMapImageAt } from '../../../../pixi/mapImage/prebuildMapImage';
 import { showNotice } from '../../../../ui/notice';
+import { writeTokenImageSource } from '../../../../services/tokenImageSources';
+import { imageSourceFor } from './tokenFraming';
 
 export interface SaveTokenPreviewsOptions extends SaveImageContext {
   app: App;
@@ -110,10 +112,12 @@ async function savePreviews(options: SaveTokenPreviewsOptions): Promise<number> 
   const write = async (preview: TokenPreview, pending: Promise<ProcessedImage>): Promise<WrittenPreview | null> => {
     let imagePath: string | undefined;
     let thumbnailPath: string | undefined;
+    let sourcePath: string | undefined;
     try {
       await checkStatblock(app, preview, lookup);
       const { image, thumbnail } = await pending;
       if (options.signal?.aborted) return null;
+      if (mode === 'token' && preview.file) sourcePath = await writeTokenImageSource(app, preview.file);
       imagePath = await writeAssetImage(app, preview.name, await image.arrayBuffer());
       thumbnailPath = await thumbnails.tryThumbnailForImage(imagePath, thumbnail);
       const metadata = { collection: destination.id, tags: preview.tags ?? tags, ...(thumbnailPath && { thumbnailPath }) };
@@ -121,13 +125,14 @@ async function savePreviews(options: SaveTokenPreviewsOptions): Promise<number> 
         ? { type: 'map', name: preview.name, mapFilePath: imagePath, ...metadata }
         : {
           type: 'token', showRing: preview.showRing !== false, name: preview.name, imagePath,
+          ...(sourcePath && { imageSource: imageSourceFor(preview, sourcePath) }),
           ...(preview.size !== undefined && { size: preview.size }),
           ...(preview.statblockPath ? { statblockPath: preview.statblockPath } : {}),
           ...(options.playerCharacters && { playerCharacter: true as const }), ...metadata,
         };
-      return { id: preview.id, asset, discard: mode === 'token' ? [imagePath, thumbnailPath] : [thumbnailPath] };
+      return { id: preview.id, asset, discard: mode === 'token' ? [imagePath, thumbnailPath, sourcePath] : [thumbnailPath] };
     } catch (error) {
-      await discardAssetFiles(app, mode === 'token' ? [imagePath, thumbnailPath] : [thumbnailPath]);
+      await discardAssetFiles(app, mode === 'token' ? [imagePath, thumbnailPath, sourcePath] : [thumbnailPath]);
       showNotice(`${preview.name}: ${error instanceof Error ? error.message : t('creator.saveFailed')}`);
       return null;
     } finally {

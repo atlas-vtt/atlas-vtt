@@ -47,6 +47,7 @@ export function tokenArtwork(assets: readonly Asset[]): Set<string> {
   for (const asset of assets) {
     if (asset.type !== 'token') continue;
     artwork.add(asset.imagePath);
+    if (asset.imageSource) artwork.add(asset.imageSource.path);
     if (asset.thumbnailPath) artwork.add(asset.thumbnailPath);
   }
   return artwork;

@@ -191,6 +191,7 @@ export function formatServiceAsset(
         ...cardArt(app, asset, imageUrl, thumbnailOf),
         imageUrl,
         imagePath: asset.imagePath,
+        ...(asset.imageSource && { imageSource: asset.imageSource, sourceImageUrl: resourceUrl(app, asset.imageSource.path) }),
         ...(asset.showRing !== undefined && { showRing: asset.showRing }),
         ...(asset.size !== undefined && { size: asset.size }),
         ...(asset.statblockPath !== undefined && { statblockPath: asset.statblockPath }),

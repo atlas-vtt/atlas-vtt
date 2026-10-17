@@ -3,6 +3,7 @@ import type { Asset, CharacterAsset, EncounterAsset, MapAsset, TokenAsset } from
 import { isPayloadUnread, parseRecordFile, RECORD_KEY, serializeRecord } from '../../../src/app/services/library/recordFile';
 import { parseCollectionFile, serializeCollection } from '../../../src/app/services/library/collectionFile';
 import { recordFilePath } from '../../../src/app/services/library/libraryPaths';
+import { defaultImageSource } from '../../../src/app/services/tokenImageSources';
 
 const DIR = 'atlas-vtt/collections/Fen';
 
@@ -26,6 +27,11 @@ describe('record files', () => {
   it('keep a token whole in tokens/<id>.json', () => {
     expect(recordFilePath(token)).toBe(`${DIR}/tokens/token-1.json`);
     expect(roundTrip(token)).toEqual(token);
+  });
+
+  it('keep the original image reference and both crop modes', () => {
+    const withSource = { ...token, imageSource: defaultImageSource('atlas-vtt/assets/token-sources/hag.png') };
+    expect(roundTrip(withSource)).toEqual(withSource);
   });
 
   it('write the payload at the top level as older versions read it, and the record beside it once', () => {

@@ -68,4 +68,33 @@ it('initializes ring controls from the asset being edited', () => {
   act(() => result.current.reset({ id: 'existing', name: 'Goblin', imageUrl: 'goblin.webp', tags: [], showRing: false }));
   expect(result.current.defaultRing).toBe(false);
   expect(result.current.previews[0]?.showRing).toBe(false);
+  expect(result.current.previews[0]?.imageScale).toBe(1);
+});
+
+it('starts at whole-image fit when turning the ring off and keeps later zoom edits', () => {
+  const { result } = renderHook(() => useTokenPreviews('token'));
+  act(() => result.current.reset({ id: 'existing', name: 'Goblin', imageUrl: 'goblin.webp', tags: [], showRing: true }));
+  act(() => result.current.update('existing', { imageScale: 2, imagePosition: { x: 0.2, y: -0.1 } }));
+  act(() => result.current.update('existing', { showRing: false }));
+  expect(result.current.previews[0]).toMatchObject({ showRing: false, imageScale: 1, imagePosition: { x: 0, y: 0 } });
+  act(() => result.current.updateSelected({ imageScale: 1.8 }));
+  act(() => result.current.setAllRings(false));
+  expect(result.current.previews[0]?.imageScale).toBe(1.8);
+  act(() => result.current.setAllRings(true));
+  expect(result.current.previews[0]).toMatchObject({ showRing: true, imageScale: 2, imagePosition: { x: 0.2, y: -0.1 } });
+  act(() => result.current.update('existing', { showRing: false }));
+  expect(result.current.previews[0]).toMatchObject({ showRing: false, imageScale: 1.8, imagePosition: { x: 0, y: 0 } });
+  act(() => result.current.updateSelected({ showRing: true }));
+  expect(result.current.previews[0]).toMatchObject({ showRing: true, imageScale: 2, imagePosition: { x: 0.2, y: -0.1 } });
+});
+
+it('retains the original stored ringed crop when switching off and back on', () => {
+  const { result } = renderHook(() => useTokenPreviews('token'));
+  act(() => result.current.reset({ id: 'existing', name: 'Goblin', imageUrl: 'goblin.webp', tags: [], showRing: true }));
+  const original = result.current.previews[0]!;
+  expect(original.imageScale).toBe(0.8);
+  act(() => result.current.update('existing', { showRing: false }));
+  expect(result.current.previews[0]?.imageScale).toBe(1);
+  act(() => result.current.update('existing', { showRing: true }));
+  expect(result.current.previews[0]).toMatchObject({ imageScale: original.imageScale, imagePosition: original.imagePosition });
 });

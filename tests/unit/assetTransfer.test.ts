@@ -7,6 +7,7 @@ import { transferAssets, type AssetTransferResult } from '../../src/app/services
 import { createSnapshot } from '../../src/app/snapshots/sceneSnapshotFormat';
 import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
 import { createInMemoryApp, parseFrontmatter, type InMemoryApp } from '../mocks/inMemoryVault';
+import { defaultImageSource } from '../../src/app/services/tokenImageSources';
 
 vi.mock('../../src/app/atlas-view', () => ({
   ATLAS_VIEW_TYPE: 'atlas-vtt',
@@ -230,6 +231,29 @@ describe('statblock artwork after a move', () => {
 });
 
 describe('copying assets to another collection', () => {
+  it('copies the preserved source and framing independently and deletes only the copy’s source', async () => {
+    const vault = await seededVault();
+    const token = await only(vault.assets, 'source', 'token');
+    const path = 'atlas-vtt/assets/token-sources/original.png';
+    await vault.vault.app.vault.create(path, 'ORIGINAL');
+    const imageSource = { ...defaultImageSource(path), unframed: { imageScale: 2, imagePosition: { x: 0.1, y: 0 } } };
+    await vault.assets.updateAsset(token.id, { imageSource });
+    await copy(vault, [token.id]);
+    const copied = await only(vault.assets, 'target', 'token');
+    expect(copied.imageSource!.path).not.toBe(path);
+    expect(copied.imageSource!.unframed).toEqual(imageSource.unframed);
+    expect(vault.vault.files.get(copied.imageSource!.path)).toBe('ORIGINAL');
+    await vault.assets.deleteAsset(copied.id);
+    expect(vault.vault.files.has(copied.imageSource!.path)).toBe(false);
+    expect(vault.vault.files.get(path)).toBe('ORIGINAL');
+    const renamed = 'atlas-vtt/assets/token-sources/renamed.png';
+    await vault.vault.app.fileManager.renameFile(new TFile(path), renamed);
+    await new FileReferenceService(vault.vault.app).handleFilesMoved([{ from: path, to: renamed }]);
+    expect(await vault.assets.getAssetById(token.id)).toMatchObject({ imageSource: { path: renamed } });
+    await move(vault, [token.id]);
+    expect((await only(vault.assets, 'target', 'token')).imageSource!.path).toBe(renamed);
+  });
+
   it('copies a token with its own artwork under a new id and leaves the original alone', async () => {
     const vault = await seededVault();
     const token = await only(vault.assets, 'source', 'token');

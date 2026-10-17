@@ -44,7 +44,7 @@ function hasFiles(e: React.DragEvent): boolean {
 export function TokenCreator({ isOpen, onClose, mode = 'token', selectedCollection = AssetService.defaultCollectionId(), editToken, initialSource = 'images', onImportMaps, playerCharacters = false }: TokenCreatorProps): React.JSX.Element | null {
   const { app } = useAtlasUI();
   const { assetService, collections } = useAssetCatalog(app, isOpen);
-  const previews = useTokenPreviews(mode);
+  const previews = useTokenPreviews(mode, app);
   const [source, setSource] = useState<CreatorSource>(initialSource);
   const [importController, setImportController] = useState(() => new AbortController());
   const [importRunning, setImportRunning] = useState(false);

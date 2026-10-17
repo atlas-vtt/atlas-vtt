@@ -88,6 +88,17 @@ describe('vectorRasterSize', () => {
 });
 
 describe('token frames', () => {
+  it('fits a ringless portrait by its longer side before applying zoom and position', () => {
+    const portrait = { width: 200, height: 400 };
+    const placement = tokenCropPlacement(1, { x: 0, y: 0 }, false);
+    expect(frameSize(portrait, placement, 256, 1024)).toBe(400);
+    expect(frameImageRect(portrait, placement, 400)).toEqual({ left: 100, top: 0, width: 200, height: 400 });
+    expect(frameImageRect(portrait, tokenCropPlacement(0.5, { x: 0, y: 0 }, false), 400))
+      .toEqual({ left: 150, top: 100, width: 100, height: 200 });
+    const moved = frameImageRect(portrait, tokenCropPlacement(2, { x: 0.1, y: -0.1 }, false), 400);
+    expect(moved).toEqual({ left: 40, top: -240, width: 400, height: 800 });
+  });
+
   it('give the frame as many pixels as the source has across it, within the bounds', () => {
     const placement = tokenCropPlacement(1, { x: 0, y: 0 });
     expect(frameSize({ width: 2048, height: 2048 }, placement, 256, 400)).toBe(400);

@@ -31,6 +31,15 @@ it('converts shared art once however many previews crop it alike', async () => {
   expect(render).toHaveBeenCalledTimes(3);
 });
 
+it('keeps framed crops separate from scaled ringless art for the same source', async () => {
+  render.mockImplementation(async () => result('crop'));
+  const art = new File(['art'], 'goblin.png');
+  await cropTokenImage(art, 2, { x: 0, y: 0 });
+  await cropTokenImage(art, 2, { x: 0, y: 0 }, undefined, false, false);
+  expect(render).toHaveBeenCalledTimes(2);
+  expect(render.mock.calls[1]![1]).toEqual({ centerX: 0.5, centerY: 0.5, width: 2, fit: 'contain' });
+});
+
 it('starts a shared conversion again when the caller that started it cancels', async () => {
   render.mockImplementation((_file: File, _placement: unknown, options: { signal?: AbortSignal }) => abortable(options.signal, 'crop'));
   const art = new File(['art'], 'goblin.png');

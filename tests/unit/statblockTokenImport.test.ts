@@ -208,7 +208,8 @@ describe('bulk importing recognized statblock notes', () => {
     expect(result.uncertain).toBe(true);
     expect(result.items).toHaveLength(1);
     expect(result.items[0]?.status).toBe('failed');
-    expect([...files.keys()].filter(p => p.startsWith('atlas-vtt/assets/') && !p.startsWith('atlas-vtt/assets/thumbnails/'))).toHaveLength(1);
+    expect([...files.keys()].filter(p => p.startsWith('atlas-vtt/assets/') && !p.startsWith('atlas-vtt/assets/thumbnails/'))).toHaveLength(2);
+    expect([...files.keys()].filter(p => p.includes('/token-sources/'))).toHaveLength(1);
     expect(files.get(image)).toBe('image-bytes');
   });
 

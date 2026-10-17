@@ -20,7 +20,7 @@ function setup() {
   const { app, files } = createInMemoryApp({ files: { [note]: 'original note', [image]: 'original art' } });
   app.workspace = { trigger: vi.fn() };
   app.vault.cachedRead = app.vault.read;
-  app.vault.createBinary = vi.fn(async (path: string) => { files.set(path, 'token copy'); return new TFile(path); });
+  app.vault.createBinary = vi.fn(async (path: string, bytes: ArrayBuffer) => { files.set(path, new TextDecoder().decode(bytes)); return new TFile(path); });
   app.metadataCache.getFileCache = () => ({ frontmatter: { statblock: true, name: 'Goblin', image } });
   app.metadataCache.getFirstLinkpathDest = (path: string) => files.has(path) ? new TFile(path) : null;
   Object.assign(window, { FantasyStatblocks: { isResolved: () => true, getBestiaryCreatures: () => [] } });
@@ -36,6 +36,9 @@ it('saves queued statblock identity, subset tags and ring choice with an owned i
   const [token] = await assetService.getTokenAssets();
   expect(token).toMatchObject({ name: 'Custom Goblin', statblockPath: note, tags: ['Enemy'], showRing: false, size: 2 });
   expect(token!.imagePath).not.toBe(image);
+  expect(token!.imageSource).toMatchObject({ ringedDefaultScale: 1, unframed: { imageScale: 1 } });
+  expect(files.get(token!.imageSource!.path)).toBe('art');
+  expect(token!.imageSource!.path).not.toBe(token!.imagePath);
   expect(files.get(image)).toBe('original art');
   expect(files.get(note)).toBe('original note');
   expect(options.onSaved).toHaveBeenCalledWith(['goblin']);
@@ -44,16 +47,17 @@ it('saves queued statblock identity, subset tags and ring choice with an owned i
 });
 
 it('retains failed previews for retry and removes only successfully saved previews', async () => {
-  const { app, assetService, options, preview } = setup();
+  const { app, files, assetService, options, preview } = setup();
   options.previews.push({ ...preview, id: 'wolf', statblockPath: undefined, name: 'Wolf', tags: [] });
   const write = app.vault.createBinary.getMockImplementation()!;
-  app.vault.createBinary.mockImplementation(async (path: string) => {
+  app.vault.createBinary.mockImplementation(async (path: string, bytes: ArrayBuffer) => {
     if (path.includes('Custom_Goblin')) throw new Error('Disk full');
-    return write(path);
+    return write(path, bytes);
   });
   expect(await saveTokenPreviews(options)).toBe(1);
   expect(options.onSaved.mock.calls).toEqual([[['wolf']]]);
   expect((await assetService.getTokenAssets()).map(t => t.name)).toEqual(['Wolf']);
+  expect([...app.vault.createBinary.mock.calls].filter(([path]) => files.has(path) && path.includes('/token-sources/'))).toHaveLength(1);
 });
 
 it('builds the tiles of a saved map ahead, and of no token', async () => {

@@ -80,6 +80,7 @@ function deletablePaths(asset: Asset): string[] {
   const record: Record<string, unknown> = { ...asset };
   const data = record.data;
   const paths = DELETABLE_PATH_FIELDS.map((field) => record[field]);
+  if (asset.type === 'token') paths.push(asset.imageSource?.path);
   if (data && typeof data === 'object' && 'mapPath' in data) paths.push(data.mapPath);
   return paths.filter((path): path is string => typeof path === 'string' && path !== '');
 }

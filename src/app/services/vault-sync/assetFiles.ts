@@ -88,7 +88,8 @@ export function sidecarPath(asset: Asset): string | null {
 /** Every vault path an asset record owns. */
 export function ownedPaths(asset: Asset): string[] {
   const record = asset.type === 'token' || asset.type === 'note' ? recordFilePath(asset) : null;
-  return [primaryPath(asset), sidecarPath(asset), record].filter((path): path is string => Boolean(path));
+  const source = asset.type === 'token' ? asset.imageSource?.path : null;
+  return [primaryPath(asset), sidecarPath(asset), record, source].filter((path): path is string => Boolean(path));
 }
 
 /** The paths owned by any asset in the index. */
