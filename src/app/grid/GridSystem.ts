@@ -426,7 +426,7 @@ export class GridSystem implements UnlitGrid {
     };
   }
 
-  /** Snap a token's centre: a cell centre, or where cells meet for an even footprint (`tokenCenterShift`) */
+  /** Snap Tiny to square-cell quarters, Small/Medium to cell centres and even footprints where cells meet. */
   public snapTokenCenter(x: number, y: number, tokenSize: number): { x: number; y: number } {
     const { type, size } = this.options;
     return snapTokenCenter({ x, y }, tokenSize, type, size, (point) => this.snapToCellCenter(point.x, point.y));

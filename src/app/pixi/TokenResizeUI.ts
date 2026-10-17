@@ -3,7 +3,7 @@ import { Viewport } from 'pixi-viewport';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { getTokenRingCenterRadius } from './token-renderer/tokenRingMetrics';
-import { computeTokenPixelSize, computeTokenStrokeWidth, RESIZE_HANDLE_SIZE, tokenUIScale } from './token-renderer/tokenSizing';
+import { computeTokenPixelSize, computeTokenStrokeWidth, RESIZE_HANDLE_SIZE, resizedTokenSize, tokenUIScale } from './token-renderer/tokenSizing';
 import { toError } from '../utils/errors';
 import type { TokenHandleContainer } from './token-renderer/types';
 import { findTokenGroup } from './token-renderer/findTokenGroup';
@@ -360,8 +360,8 @@ export class TokenResizeUI {
     const directionModifier = this.activeHandle === 'left' ? -1 : 1;
     const sizeChange = deltaUnits * directionModifier;
     
-    // Round to nearest 0.5 increment
-    const snappedChange = Math.round(sizeChange * 2) / 2;
+    // Each half-cell of pointer travel advances one size, including Small and Tiny.
+    const steps = Math.round(sizeChange * 2);
     
     // Update all selected tokens WITHOUT creating undo states
     const updates: Array<{ id: string; size: number }> = [];
@@ -369,13 +369,7 @@ export class TokenResizeUI {
     
     for (const tokenId of this.resizingTokenIds) {
       const initialSize = this.initialSizes[tokenId] || 1;
-      // Size represents grid cells covered
-      // Integer sizes: 1 = 1x1, 2 = 3x3, 3 = 5x5, etc.
-      // Half sizes: 1.5 = 2x2, 2.5 = 4x4, 3.5 = 6x6, etc.
-      let newSize = initialSize + snappedChange;
-      
-      // Clamp size between 1 (1x1 grid) and 5 (9x9 grid)
-      newSize = Math.max(1, Math.min(5, newSize));
+      const newSize = resizedTokenSize(initialSize, steps);
       
       const token = this.store.getState().objects.tokens[tokenId];
       const lastTempSize = this.temporarySizes[tokenId];

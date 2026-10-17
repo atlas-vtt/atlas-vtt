@@ -1,4 +1,5 @@
 ## New
+- Tokens: choose Small (75% of Medium's diameter) or Tiny (50%) in the creator, asset library or map's Size menu, or shrink a selected token with its resize handles. Small stays centred in a full cell; Tiny snaps to any quarter of a square cell. Both use hex centres on hex grids. Newly imported statblocks use their creature's size.
 - Statblock templates: a Value, Metric, Table or Labels and values tile can roll its numbers. Switch on Roll as a bonus in its Options, and a click on a number, such as a trait's 2, rolls +2 with the game's own dice.
 - Statblocks: a number value can add to the next roll. Switch on Add to next roll in a value's Options, and the card shows a small switch after the number. Turn it on, and the next roll from that statblock adds the value under its own name, such as "d20 + 3 + 2 Proficiency", then the switch turns off. This works for a list of labels and values, so each Daggerheart Experience can have its own switch.
 
