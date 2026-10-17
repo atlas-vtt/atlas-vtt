@@ -46,11 +46,19 @@ async function open(token: Character, width: number, height: number): Promise<vo
   await expect.poll(() => document.activeElement?.getAttribute('placeholder')).toBe('Token name');
 }
 
-/** Where a part of the dialog lies in it: from the dialog's own corner, so a dialog that moves as a whole leaves it unchanged. */
-function placeInModal(element: Element): number[] {
-  const frame = modal().getBoundingClientRect();
+/** Where an element lies in the window, to the pixel. */
+function placeOnScreen(element: Element): number[] {
   const { left, top, width, height } = element.getBoundingClientRect();
-  return [left - frame.left, top - frame.top, width, height].map(Math.round);
+  return [left, top, width, height].map(Math.round);
+}
+
+/** The dialog's distances from the top and the bottom of the overlay's area that centres it. */
+function marginsInOverlay(): number[] {
+  const overlay = modal().parentElement!;
+  const area = overlay.getBoundingClientRect();
+  const padding = parseFloat(getComputedStyle(overlay).paddingTop);
+  const frame = modal().getBoundingClientRect();
+  return [frame.top - area.top - padding, area.bottom - padding - frame.bottom].map(Math.round);
 }
 
 describe('the layout of the Edit Token dialog', () => {
@@ -67,7 +75,7 @@ describe('the layout of the Edit Token dialog', () => {
     style.remove();
   });
 
-  it('has two equal columns as far apart as they are from its edge: the token on the left, its light on the right', async () => {
+  it('has two equal columns as far apart as they are from its edge: the token on the left, its light and sounds on the right', async () => {
     await open({ ...MIRABEL, light: TORCH }, 1280, 900);
     expect(Math.round(modal().getBoundingClientRect().width)).toBe(880);
     const [left, right] = columns();
@@ -79,7 +87,7 @@ describe('the layout of the Edit Token dialog', () => {
     expect(right!.left - left!.right).toBeCloseTo(padding, 0);
     expect(frame.right - right!.right).toBeCloseTo(padding, 0);
     expect(headings().map((heading) => [heading.textContent, heading.getBoundingClientRect().left < right!.left ? 'left' : 'right']))
-      .toEqual([['Token', 'left'], ['Resources', 'left'], ['Vision', 'left'], ['Carried light', 'right']]);
+      .toEqual([['Token', 'left'], ['Resources', 'left'], ['Vision', 'left'], ['Carried light', 'right'], ['Sounds', 'right']]);
     // Every switch ends at its column's edge.
     for (const toggle of body().querySelectorAll('.atlas-toggle')) {
       const edge = toggle.getBoundingClientRect().right;
@@ -118,22 +126,43 @@ describe('the layout of the Edit Token dialog', () => {
     expect(second!.width).toBeCloseTo(first!.width, 0);
     expect(second!.top).toBeGreaterThan(first!.bottom);
     const tops = headings().map((heading) => heading.getBoundingClientRect().top + body().scrollTop);
-    expect(headings().map((heading) => heading.textContent)).toEqual(['Token', 'Resources', 'Vision', 'Carried light']);
+    expect(headings().map((heading) => heading.textContent)).toEqual(['Token', 'Resources', 'Vision', 'Carried light', 'Sounds']);
     expect([...tops].sort((a, b) => a - b)).toEqual(tops);
   });
 
-  it('fits an ordinary window with a light switched on, and moves nothing in the left column when the light is switched', async () => {
+  it('opens in the middle of the window', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1280, 900);
+    const [above, below] = marginsInOverlay();
+    expect(Math.abs(above! - below!)).toBeLessThanOrEqual(1);
+  });
+
+  it('fits an ordinary window with a light switched on, and moves nothing above what changed when the light is switched', async () => {
     await open({ ...MIRABEL, light: TORCH }, 1280, 900);
     expect(body().scrollHeight).toBe(body().clientHeight);
     const left = modal().querySelector('.atlas-edit-token__column')!;
-    const parts = (): number[][] => [...left.querySelectorAll('h4, input, .atlas-toggle, button')].map(placeInModal);
-    const lit = { parts: parts(), size: placeInModal(modal()) };
+    const parts = (): number[][] => [...left.querySelectorAll('h4, input, .atlas-toggle, button')].map(placeOnScreen);
     const carried = [...modal().querySelectorAll<HTMLElement>('[role="switch"]')].find((toggle) => toggle.getAttribute('aria-checked') === 'true' && !left.contains(toggle))!;
+    const lit = { parts: parts(), carried: placeOnScreen(carried), top: Math.round(modal().getBoundingClientRect().top) };
+    // The dialog keeps the top it opened with and changes its size downward: the switch just
+    // clicked stays under the pointer, and so does the token's own column, off and on again.
     act(() => carried.click());
     expect(modal().querySelector('.atlas-edit-token__light')).toBeNull();
+    expect(Math.round(modal().getBoundingClientRect().top)).toBe(lit.top);
+    expect(placeOnScreen(carried)).toEqual(lit.carried);
     expect(parts()).toEqual(lit.parts);
-    // This token's own column is the longer one: the dialog keeps its size, with the light or without.
-    expect(placeInModal(modal())).toEqual(lit.size);
+    act(() => carried.click());
+    expect(modal().querySelector('.atlas-edit-token__light')).not.toBeNull();
+    expect(placeOnScreen(carried)).toEqual(lit.carried);
+    expect(parts()).toEqual(lit.parts);
+  });
+
+  it('takes the middle of the window again when the window changes size', async () => {
+    await open({ ...MIRABEL, light: TORCH }, 1280, 900);
+    await page.viewport(1280, 760);
+    await expect.poll(() => {
+      const [above, below] = marginsInOverlay();
+      return Math.abs(above! - below!) <= 1;
+    }).toBe(true);
   });
 
   it('scrolls only its body in a window too low for it: the header and the footer stay', async () => {

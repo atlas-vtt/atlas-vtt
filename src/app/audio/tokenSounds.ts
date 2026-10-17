@@ -8,6 +8,16 @@ export const MAX_TOKEN_SOUNDS = 5;
 /** The largest sound file a token plays: far longer than any effect, short of what stalls Obsidian while it decodes. */
 export const MAX_TOKEN_SOUND_BYTES = 20 * 1024 * 1024;
 
+/** The audio files Obsidian plays: the files a token may take as its sounds. */
+const SOUND_EXTENSIONS = new Set(['mp3', 'wav', 'm4a', 'ogg', 'oga', 'opus', 'flac', 'webm', '3gp']);
+
+/** Whether the vault file at `path` is one a token may play, by its extension. */
+export function isSoundFile(path: string): boolean {
+  const name = baseName(path);
+  const dot = name.lastIndexOf('.');
+  return dot > 0 && SOUND_EXTENSIONS.has(name.slice(dot + 1).toLowerCase());
+}
+
 /** What the token's menu calls a sound: its file's name, without folder or extension. */
 export function soundName(path: string): string {
   return baseName(path).replace(/\.[^.]+$/, '');

@@ -7,4 +7,6 @@ export const tokenSound = {
   'tokenSound.tooLarge': 'The sound "{name}" is larger than 20 MB, too large to play.',
   'tokenSound.unreadable': 'The sound "{name}" could not be played: Obsidian cannot read its file as audio.',
   'tokenSound.unavailable': 'Sounds cannot play here: this device offers no audio.',
+  'tokenSound.pickPlaceholder': 'Find a sound file',
+  'tokenSound.noMatch': 'No sound file matches.',
 } as const satisfies Record<string, Message>;

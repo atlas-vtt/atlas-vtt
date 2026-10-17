@@ -9,4 +9,11 @@ export const editToken = {
   'editToken.showNameplate': 'Show nameplate',
   'editToken.resources': 'Resources',
   'editToken.resetStatblock': 'Reset to statblock default',
+  'editToken.sounds': 'Sounds',
+  'editToken.soundsHint': 'Played from the token\'s menu, on this computer only.',
+  'editToken.addSound': 'Add sound',
+  'editToken.soundsFull': 'A token holds up to {max} sounds.',
+  'editToken.soundVolume': 'Volume of {name}',
+  'editToken.playSound': 'Play {name}',
+  'editToken.removeSound': 'Remove {name}',
 } as const satisfies Record<string, Message>;
