@@ -138,4 +138,19 @@ describe('fog coverage reuse', () => {
     expect(first.shape).toEqual(snapshot);
     expect(next).not.toBe(first);
   });
+
+  it('knows the coverage of the current record and the one before, on its map, without working one out', () => {
+    const cache = new FogCoverageCache();
+    const first = { paint: fogRectangle() };
+    const second = { ...first, more: fogRectangle({ id: 'more', timestamp: 2, x: 40 }) };
+    const a = cache.get(first, 'map');
+    const b = cache.get(second, 'map');
+    const build = vi.spyOn(coverage, 'fogCoverage');
+    expect(cache.known(second, 'map')).toBe(b);
+    expect(cache.known(first, 'map')).toBe(a);
+    expect(cache.known(first, 'other')).toBeUndefined();
+    expect(cache.known({ ...first }, 'map')).toBeUndefined();
+    expect(build).not.toHaveBeenCalled();
+  });
 });
+

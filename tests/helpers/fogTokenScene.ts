@@ -52,7 +52,7 @@ export function fogTokenScenes(): { scene: typeof createScene } {
     tokens.setPixiApp(app);
     const fog = new FogOfWarRenderer(viewport, app, events, store, () => null);
     viewport.addChild(fog.getContainer());
-    tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
+    tokens.setFogCoverageProvider(() => fog.getPlayersCoverage());
     const covered: Character = { id: 'covered', x: 64, y: 64, size: 1, imagePath: '', kind: 'character', name: 'Covered token name outside fog', showNameplate: true };
     const clear: Character = { id: 'clear', x: 192, y: 64, size: 1, imagePath: '', kind: 'character', name: 'Clear', showNameplate: true };
     store.getState().addToken(covered);

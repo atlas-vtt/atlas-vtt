@@ -1,4 +1,5 @@
 import type { FogCoverage } from '../fog/fogCoverage';
+import { playersFog } from '../fog/playersFog';
 import { StatblockTokenSync } from '../plugin/StatblockTokenSync';
 import { TokenCollectionSync } from '../plugin/TokenCollectionSync';
 import type { ResourceDefsProvider } from '../resources/resourceTypes';
@@ -331,7 +332,7 @@ export class TokenRenderer {
     // Fog and perspective changes affect presentation even when no token or light changed.
     const gmViewUnsubscribe = this.store.subscribe((state, previous) => {
       if (state.isGMView !== previous.isGMView || state.isPlayerView !== previous.isPlayerView ||
-          state.objects.fog !== previous.objects.fog || state.mapPath !== previous.mapPath ||
+          playersFog(state) !== playersFog(previous) || state.mapPath !== previous.mapPath ||
           state.isMapLoading !== previous.isMapLoading) this.refreshPlayerSight();
     });
     const origUnsubGM = this._unsubscribeFromStore;

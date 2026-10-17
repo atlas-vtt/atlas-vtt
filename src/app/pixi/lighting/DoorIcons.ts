@@ -11,6 +11,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 import { destroyTree } from '../utils/destroyTree';
 import { createGlyphTexture } from '../utils/pinIconTexture';
 import { ValueTransition } from '../utils/ValueTransition';
+import { playersFog } from '../../fog/playersFog';
 
 /** Above the lighting layer and token UI, so the GM finds doors in the dark. */
 export const DOOR_ICONS_Z_INDEX = 1150;
@@ -96,7 +97,7 @@ export class DoorIcons {
     }
     this.unsubscribe = store.subscribe((state, previous) => {
       if (state.objects.walls !== previous.objects.walls || state.grid !== previous.grid) this.draw(state);
-      else if (state.lighting !== previous.lighting || state.objects.fog !== previous.objects.fog || state.mapPath !== previous.mapPath) this.refreshPlayers();
+      else if (state.lighting !== previous.lighting || playersFog(state) !== playersFog(previous) || state.mapPath !== previous.mapPath) this.refreshPlayers();
     });
     this.draw(store.getState());
   }

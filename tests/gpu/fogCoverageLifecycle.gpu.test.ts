@@ -15,7 +15,7 @@ describe('fog renderer lifecycle', () => {
     const s = await scene({ paint: fogRect() }, store => store.subscribe((state, previous) => {
       if (state.mapPath !== previous.mapPath && read) early.push(read());
     }));
-    read = (): FogCoverage | null => s.fog.getCommittedCoverage();
+    read = (): FogCoverage | null => s.fog.getPlayersCoverage();
     const initial = read();
     vi.mocked(fogCoverage).mockClear();
     // The same record can be restored in another map; map identity still resets history.
@@ -33,7 +33,7 @@ describe('fog renderer lifecycle', () => {
 
   it('shares committed coverage with readers and keeps live erase previews separate', async () => {
     const s = await scene({ paint: fogRect() });
-    const committed = s.fog.getCommittedCoverage();
+    const committed = s.fog.getPlayersCoverage();
     vi.mocked(fogCoverage).mockClear();
     expect(committed?.covers({ x: 48, y: 32 })).toBe(true);
     s.store.getState().setActiveTool('eraser');
@@ -41,7 +41,7 @@ describe('fog renderer lifecycle', () => {
     s.pointer('pointerdown', 32, 32);
     s.pointer('pointermove', 64, 32);
     expect(s.read(48, 32)).toBe(255);
-    expect(s.fog.getCommittedCoverage()).toBe(committed);
+    expect(s.fog.getPlayersCoverage()).toBe(committed);
     expect(committed?.covers({ x: 48, y: 32 })).toBe(true);
     expect(fogCoverage).not.toHaveBeenCalled();
   });
@@ -49,10 +49,10 @@ describe('fog renderer lifecycle', () => {
   it('exposes invalid committed coverage explicitly and recovers with valid saved geometry', async () => {
     const s = await scene({ paint: fogRect() });
     s.setFog({ paint: { ...fogRect(), timestamp: Number.NaN } });
-    expect(s.fog.getCommittedCoverage()).toBeNull();
+    expect(s.fog.getPlayersCoverage()).toBeNull();
     expect(s.read(100, 100)).toBe(0);
     s.setFog({});
-    expect(s.fog.getCommittedCoverage()?.shape).toEqual([]);
+    expect(s.fog.getPlayersCoverage()?.shape).toEqual([]);
     expect(s.read(100, 100)).toBe(255);
   });
 

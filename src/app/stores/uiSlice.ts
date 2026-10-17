@@ -49,6 +49,7 @@ export function createInitialUIState(): Pick<
   | 'heldTokens'
   | 'exploredBrush'
   | 'isToolbarEditing'
+  | 'fogHeld'
 > {
   return {
     isGridSettingsOpen: false,
@@ -65,6 +66,7 @@ export function createInitialUIState(): Pick<
     heldTokens: {},
     exploredBrush: DEFAULT_EXPLORED_BRUSH,
     isToolbarEditing: false,
+    fogHeld: null,
   };
 }
 

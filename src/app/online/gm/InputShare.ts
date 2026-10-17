@@ -5,6 +5,7 @@ import { sha256Hex } from './assetServe.ts';
 import { Pacer, type PacerClock } from '../marks/index.ts';
 import { sharedFog, sharedLightingScene, sharedSight } from './sceneInputs.ts';
 import { SequencedList } from './sequencedList.ts';
+import { playersFog } from '../../fog/playersFog';
 
 export interface InputSharePorts extends PacerClock {
   send(body: GmMessage, to?: string): void;
@@ -133,9 +134,10 @@ export class InputShare {
     const scene = this.scene;
     const state = this.store.getState();
     if (scene === null || !state.mapLoaded || state.isMapLoading) return;
-    if (state.objects.fog !== this.fogOf) {
-      this.fogOf = state.objects.fog;
-      this.fog.publish(scene.id, { fog: sharedFog(state.objects.fog, (key) => this.fogAlias(key)) });
+    const fog = playersFog(state);
+    if (fog !== this.fogOf) {
+      this.fogOf = fog;
+      this.fog.publish(scene.id, { fog: sharedFog(fog, (key) => this.fogAlias(key)) });
     }
     if (!scene.lit) return;
     const source = this.ports.lightingSource();

@@ -12,6 +12,7 @@ import { sharedAnnotations, sharedDoors, sharedGrid } from './mapLayerInputs.ts'
 import { ReadablePins, type ListedPin } from './pins/ReadablePins.ts';
 import type { VaultImage } from './TokenShare.ts';
 import { WidgetShare } from './WidgetShare.ts';
+import { playersFog } from '../../fog/playersFog';
 
 export interface MapLayerSharePorts extends PacerClock {
   send(body: GmMessage, to?: string): void;
@@ -119,7 +120,7 @@ export class MapLayerShare {
     if (scene === null || source === null || !state.mapLoaded || state.isMapLoading) return;
     const settings = this.ports.atlasSettings();
     this.publish({ t: 'grid', scene: scene.id, grid: sharedGrid(source.grid()) });
-    const fog = this.fog.get(state.objects.fog, state.mapPath);
+    const fog = this.fog.get(playersFog(state), state.mapPath);
     const annotations = this.annotationsOf(state, fog);
     // Drawings may run to megabytes: they are compared as text only when worked out anew.
     if (annotations !== this.annotationsSent) {
@@ -155,7 +156,7 @@ export class MapLayerShare {
     const source = this.ports.mapLayers();
     const map = state.mapPath;
     if (this.scene?.id !== sceneId || source === null || map === null || !state.mapLoaded || state.isMapLoading) return null;
-    const listed = this.readablePins(state, source, this.fog.get(state.objects.fog, map))?.find((pin) => pin.alias === alias);
+    const listed = this.readablePins(state, source, this.fog.get(playersFog(state), map))?.find((pin) => pin.alias === alias);
     return listed === undefined ? null : { ...listed, map };
   }
 

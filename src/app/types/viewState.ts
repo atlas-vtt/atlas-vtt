@@ -9,6 +9,7 @@ import type { DiceRollResult } from './diceTypes';
 import type { CameraState, GridState } from './gridTypes';
 import type { ViewUIState } from './viewUIState';
 import type { PartyValues } from './partyTypes';
+import type { FogStyle } from '../fog/fogStyle';
 
 /** Data read from a map view, independent of the store and persistence services. */
 export interface ViewState extends ViewUIState {
@@ -61,6 +62,8 @@ export interface ViewState extends ViewUIState {
 
   /** Dynamic lighting of the scene; saved with the map, never undo-tracked. */
   lighting: SceneLighting;
+  /** How the scene shows its fog; saved with the map, never undo-tracked. Read from a file with `readFogStyle`. */
+  fogStyle: FogStyle;
   /** What the players' tokens have explored, as a PNG data URL; saved with the map, never undo-tracked. */
   exploredMask: string | null;
   /**

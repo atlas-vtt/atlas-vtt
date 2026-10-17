@@ -97,7 +97,7 @@ export function playerViewScenes(): { scene: (options?: PlayerViewSceneOptions) 
     tokens.setPixiApp(app);
     const fog = new FogOfWarRenderer(viewport, app, events, store, () => null);
     viewport.addChild(fog.getContainer());
-    tokens.setFogCoverageProvider(() => fog.getCommittedCoverage());
+    tokens.setFogCoverageProvider(() => fog.getPlayersCoverage());
     const lighting: PlayerViewScene['lighting'] = { perception: undefined, peeking: false };
     // As the lighting wires it: its sight while the canvas shows the players' view.
     const showsPlayers = (): boolean => lighting.peeking || !store.getState().isGMView;

@@ -5,6 +5,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { createViewAtlasStore } from '../../src/app/storeFactory';
 import type { StoredToolbarLayout } from '../../src/app/toolbar/toolbarLayout';
 import { DEFAULT_LASER_POINTER_SETTINGS, type LaserPointerSettings } from '../../src/app/tools/laserPointerSettings';
+import { DEFAULT_FOG_STYLE } from '../../src/app/fog/fogStyle';
 
 const setActiveTool = vi.fn();
 const setSelectionMode = vi.fn();
@@ -55,6 +56,8 @@ const storeState = {
   objects: { tokens: {} },
   lighting: { enabled: false, ambient: 0.1 },
   setSceneLighting: vi.fn(),
+  fogStyle: DEFAULT_FOG_STYLE,
+  setFogStyle: vi.fn(),
   setSelection,
   openAssetManager,
   closeAssetManager,

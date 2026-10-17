@@ -5,6 +5,10 @@ import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { DropdownModeSelector } from "../primitives/DropdownModeSelector"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
+import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
+import { DropdownSwatchGrid } from "../primitives/DropdownSwatchGrid"
+import { useAtlasStore } from "src/app/react/ViewStoreContext"
+import { FOG_COLOR_SWATCHES } from "../../../fog/fogStyle"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { fogToolFace } from "./toolFaces"
 import { useEmitViewEvent } from "./useEmitViewEvent"
@@ -12,7 +16,7 @@ import { t } from '../../../i18n'
 
 type FogMode = 'brush' | 'lasso' | 'rectangle'
 
-/** Fog and fog eraser, with the brush shape and size. DM only. */
+/** Fog and fog eraser, with the brush shape and size and the scene's fog style. DM only. */
 export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, closeMenu }: ToolGroupControls): React.ReactElement {
   const hotkeyLabel = useHotkeyLabels()
   const { view } = useAtlasUI()
@@ -20,6 +24,8 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
   const [fogMode, setFogMode] = useState<FogMode>('brush')
   const [brushSize, setBrushSize] = useState(50)
   const face = fogToolFace(activeTool)
+  const fogStyle = useAtlasStore(state => state.fogStyle)
+  const setFogStyle = useAtlasStore(state => state.setFogStyle)
 
   // The fog renderer starts in brush mode, like this menu.
   useEffect(() => {
@@ -78,6 +84,21 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
             }}
           />
         </div>
+      </div>
+
+      <div className="atlas-dropdown-section">
+        <DropdownToggleRow
+          label={t('toolbar.cloudReveal')}
+          value={fogStyle.clouds}
+          onChange={() => setFogStyle({ clouds: !fogStyle.clouds })}
+        />
+        <DropdownSwatchGrid
+          label={t('toolbar.fogColour')}
+          swatches={FOG_COLOR_SWATCHES}
+          value={fogStyle.color}
+          disabled={!fogStyle.clouds}
+          onChange={(color) => setFogStyle({ color })}
+        />
       </div>
 
       <div className="atlas-dropdown-section">

@@ -1,5 +1,6 @@
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { Point } from './visionTypes';
+import type { FogOperation } from './fogTypes';
 
 /** The tokens held at their starting positions. */
 export type HeldTokens = Readonly<Record<string, Point>>;
@@ -27,4 +28,6 @@ export interface ViewUIState {
   exploredBrush: ExploredBrushOptions;
   /** The toolbar editor is open in this view: tray, hide and show, inert tools. Never saved. */
   isToolbarEditing: boolean;
+  /** The fog the players are kept on while the GM edits fog under cloud reveal (`heldFog`); read with `playersFog`. Never saved. */
+  fogHeld: Readonly<Record<string, FogOperation>> | null;
 }

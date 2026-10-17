@@ -43,6 +43,8 @@ import { isPinLabelKind, nextPinLabel } from './tools/pinLabels';
 import { movedPathOf, rewriteMapReferences } from './services/renamedPaths';
 import { conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
+import { DEFAULT_FOG_STYLE, readFogStyle, type FogStyle } from './fog/fogStyle';
+import { heldFog } from './fog/playersFog';
 import { isolateListeners } from './stores/isolatedListeners';
 
 // Individual store state interface (same as AtlasState but isolated)
@@ -137,6 +139,8 @@ export interface ViewAtlasState extends ViewState {
   duplicateFogOperations: (ids: string[]) => void;
   setFogOperations: (fog: Record<string, FogOperation>) => void;
   clearFog: () => void;
+  /** Changes how the scene shows its fog; not an undo step. */
+  setFogStyle: (changes: Partial<FogStyle>) => void;
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
   setExploredMask: (dataUrl: string | null) => void;
@@ -272,8 +276,9 @@ export const DEFAULT_TOKEN_SETTINGS: Readonly<ViewAtlasState['tokenSettings']> =
   tokenRingSize: 1,
 };
 
-const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues'> => ({
+const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'fogStyle' | 'exploredMask' | 'exploredEdits' | 'partyValues'> => ({
   lighting: { ...DEFAULT_SCENE_LIGHTING },
+  fogStyle: DEFAULT_FOG_STYLE,
   exploredMask: null,
   exploredEdits: 0,
   partyValues: {},
@@ -680,6 +685,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             draft.activeTool = tool;
+            draft.fogHeld = heldFog({ ...get(), activeTool: tool });
           }),
 
           setSelectionMode: (mode) => set((draft) => {
@@ -1094,6 +1100,12 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.objects.fog = {};
           }),
 
+          setFogStyle: (changes) => set((draft) => {
+            const fogStyle = { ...get().fogStyle, ...changes };
+            draft.fogStyle = fogStyle;
+            draft.fogHeld = heldFog({ ...get(), fogStyle });
+          }),
+
           setSceneLighting: (changes) => set((draft) => {
             Object.assign(draft.lighting, changes);
             for (const field of Object.keys(changes) as SceneLightingOption[]) {
@@ -1288,6 +1300,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.pinnedNotePreviews = {};
             draft.lootRoller = createInitialLootRollerState();
             draft.lighting = { ...DEFAULT_SCENE_LIGHTING };
+            draft.fogStyle = DEFAULT_FOG_STYLE;
+            draft.fogHeld = null;
             draft.exploredMask = null;
             draft.exploredEdits = 0;
 
@@ -1444,6 +1458,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               pinnedNotePreviews: state.pinnedNotePreviews, // Pinned note preview windows
               lootRoller: state.lootRoller, // Loot roller window, filters and history
               lighting: state.lighting,
+              fogStyle: state.fogStyle,
               exploredMask: state.exploredMask,
             };
           },
@@ -1451,9 +1466,11 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // The map file arrives unchecked; fields that need it are checked here, once per load.
           merge: (persisted, current): ViewAtlasState => {
             const saved: Partial<ViewAtlasState> = isRecord(persisted) ? persisted : {};
+            const loaded: ViewAtlasState = { ...current, ...saved, fogStyle: readFogStyle(saved.fogStyle), fogHeld: null };
             return {
-              ...current,
-              ...saved,
+              ...loaded,
+              // A scene loaded while the fog tools are taken up holds its own fog, never the scene's before
+              fogHeld: heldFog(loaded),
               lootRoller: readLootRollerState(saved.lootRoller),
               lighting: readSceneLighting(saved.lighting),
               exploredMask: readExploredMask(saved.exploredMask),

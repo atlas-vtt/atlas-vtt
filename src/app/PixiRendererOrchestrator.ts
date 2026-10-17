@@ -410,7 +410,7 @@ export class PixiRendererOrchestrator { // Renamed class
         bounds: () => this.getMapRect(),
         albedo: () => this.mapImage?.albedoTexture() ?? null,
         grid: () => this.gridSystem ?? null,
-        fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
+        fogCoverage: () => this.fogRenderer!.getPlayersCoverage(),
         shown: this.shownPlaces,
       });
     }
@@ -906,7 +906,7 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!this.tokenRenderer) return;
 
     if (this.fogRenderer) {
-      this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getCommittedCoverage());
+      this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getPlayersCoverage());
       this.tokenRenderer.setFogHitTestProvider(
         (x, y) => this.fogRenderer!.hitTestFog(x, y)
       );

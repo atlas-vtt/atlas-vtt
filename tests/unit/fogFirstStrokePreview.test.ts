@@ -6,6 +6,7 @@ import type { StoreApi } from 'zustand';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import type { MapRect } from '../../src/app/grid/cellNumbering';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
+import { DEFAULT_FOG_STYLE } from '../../src/app/fog/fogStyle';
 
 const MAP: MapRect = { x: 0, y: 0, width: 1000, height: 800 };
 
@@ -16,7 +17,7 @@ it('shows the first stroke after all fog was deleted while it is drawn', () => {
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(new Proxy({}, { get: () => (): void => undefined }) as never);
   const store = createStore(() => ({
     mapPath: 'scenes/Cave.atlasmap', isMapLoading: false, isPlayerView: false, isGMView: true, activeTool: 'fog',
-    objects: { fog: {} as Record<string, never> },
+    objects: { fog: {} as Record<string, never> }, fogStyle: DEFAULT_FOG_STYLE, fogHeld: null,
   }));
   const viewport = Object.assign(new Container(), { toWorld: (point: { x: number; y: number }) => ({ x: point.x, y: point.y }) });
   const renderer = new FogOfWarRenderer(
