@@ -10,9 +10,10 @@ import { readStatblock } from '../statblocks/resolve/readStatblock';
 import { STATBLOCK_IMAGE_KEYS, type StatblockImageKey } from './statblockImageKeys';
 import { t } from '../i18n';
 import { isVaultImage } from '../utils/vaultImage';
+import { isWebImage } from '../utils/imageSource';
 import { statblockImageFile } from '../statblocks/render/shared/statblockImage';
 
-export type StatblockImportStatus = 'ready' | 'imported' | 'missing-image' | 'remote-image' | 'conflict';
+export type StatblockImportStatus = 'ready' | 'imported' | 'missing-image' | 'conflict';
 export interface StatblockImportCandidate {
   path: string;
   name: string;
@@ -112,9 +113,9 @@ export async function statblockImportCandidate(app: App, file: TFile, lookup: St
   const { fields, meanings } = statblock;
   const image = statblockImageField(fields)?.reference;
   if (!image) return { ...row, status: 'missing-image', detail: t('sbCandidate.noImage') };
-  if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(image)) return { ...row, status: 'remote-image', detail: t('sbCandidate.remote') };
-  const imageFile = localImage(app, image, path);
-  if (!imageFile) return { ...row, status: 'missing-image', detail: t('sbCandidate.missingImage') };
+  // Web art stays on the web: the token keeps the address and loads it when shown.
+  const imagePath = isWebImage(image) ? image : localImage(app, image, path)?.path;
+  if (!imagePath) return { ...row, status: 'missing-image', detail: t('sbCandidate.missingImage') };
   const size = tokenSizeFromStatblock(fields, meanings);
-  return { ...row, status: 'ready', detail: t('sbCandidate.ready'), imagePath: imageFile.path, ...(size !== undefined && { size }) };
+  return { ...row, status: 'ready', detail: t('sbCandidate.ready'), imagePath, ...(size !== undefined && { size }) };
 }

@@ -11,6 +11,7 @@ import { withTemplateFiles } from '../../statblocks/bundles/bundleTemplates';
 import { collectionStatblockRoles } from '../../statblocks/roles/collectionStatblockRoles';
 import type { CollectionSettings } from '../../types/collectionSettingsTypes';
 import { systemPresetsOf } from '../mapCollectionRules';
+import { isWebImage } from '../../utils/imageSource';
 import type { BundleFile, BundleFileRole } from './bundleFormat';
 
 /** The scene thumbnail lives next to its map file. */
@@ -186,9 +187,13 @@ export class CollectionReferenceCollector {
     entry.statblockImage = { key: field.key, path: image.path };
   }
 
-  /** Records `path` for the current asset (or `owners`); returns whether it was newly added. */
+  /**
+   * Records `path` for the current asset (or `owners`); returns whether it was
+   * newly added. Web art is no file: the record keeps its address, and a bundle
+   * carries that.
+   */
   private add(path: string | undefined, role: BundleFileRole, owners: readonly string[] = this.owner ? [this.owner.id] : []): boolean {
-    if (!path) return false;
+    if (!path || isWebImage(path)) return false;
     const existing = this.files.get(path);
     if (existing) {
       // Loot has no owners: it travels with the collection, whichever assets also use it.

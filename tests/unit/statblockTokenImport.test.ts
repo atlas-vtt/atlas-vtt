@@ -80,7 +80,7 @@ describe('statblock token import', () => {
 // The importer exercises real asset persistence; only the Obsidian filesystem is simulated.
 
 describe('bulk importing recognized statblock notes', () => {
-  it('resolves YAML wikilinks, inline statblocks and remote/missing images without guessing from names', async () => {
+  it('resolves YAML wikilinks, inline statblocks and web/missing images without guessing from names', async () => {
     const { app, files, frontmatter, assets } = setup();
     frontmatter[note]!.image = [[image + '|portrait']];
     frontmatter[note]!.size = 'Large';
@@ -92,11 +92,30 @@ describe('bulk importing recognized statblock notes', () => {
     frontmatter['Missing.md'] = { statblock: true, name: 'Missing', image: 'missing.png' };
     const rows = await new StatblockTokenImportService(app, assets).scan();
     expect(rows.map(r => [r.path, r.status])).toEqual(expect.arrayContaining([
-      [note, 'ready'], ['Inline.md', 'ready'], ['Remote.md', 'remote-image'], ['Missing.md', 'missing-image'],
+      [note, 'ready'], ['Inline.md', 'ready'], ['Remote.md', 'ready'], ['Missing.md', 'missing-image'],
     ]));
     expect(rows.find(r => r.path === 'Other/Goblin.md')).toBeUndefined();
     expect(rows.find(r => r.path === note)).toMatchObject({ imagePath: image, size: 1.5 });
     expect(rows.find(r => r.path === 'Inline.md')?.size).toBeUndefined();
+    expect(rows.find(r => r.path === 'Remote.md')).toMatchObject({ imagePath: 'https://example.com/orc.png' });
+  });
+
+  it('keeps web art by its address: no download, no copy in the vault, no thumbnail', async () => {
+    const { app, files, frontmatter, assets } = setup();
+    const url = 'https://example.com/tokens/Orc%20Chief.webp';
+    files.set('Remote.md', 'remote');
+    frontmatter['Remote.md'] = { statblock: true, name: 'Orc Chief', image: url };
+    const importer = new StatblockTokenImportService(app, assets);
+    const result = await importer.import(['Remote.md', note], 'Default');
+    expect(result.items.map(i => i.status)).toEqual(['created', 'created']);
+    const [remote, local] = await assets.getTokenAssets();
+    expect(remote).toMatchObject({ name: 'Orc Chief', imagePath: url, statblockPath: 'Remote.md' });
+    expect(remote?.thumbnailPath).toBeUndefined();
+    expect(local?.imagePath.startsWith('atlas-vtt/assets/')).toBe(true);
+    expect([...files.keys()].filter(p => p.startsWith('atlas-vtt/assets/') && !p.includes('/thumbnails/'))).toHaveLength(1);
+    expect(convert).toHaveBeenCalledTimes(1);
+    expect((await importer.import(['Remote.md'], 'Default')).items[0]?.status).toBe('skipped');
+    expect(files.get('Remote.md')).toBe('remote');
   });
 
   it('finds the artwork in a `token` property, and prefers `image` where a statblock has both', async () => {

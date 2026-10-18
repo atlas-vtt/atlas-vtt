@@ -11,6 +11,7 @@ import { zoomToTokenWithHighlight } from '../../pixi/utils/tokenHighlight';
 import { isModHeld, isModKey } from '../../keyboard/modKey';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { TokenPortrait } from '../../packages/components/shared/TokenPortrait';
+import { isImageUrl } from '../../utils/imageSource';
 import { t } from '../../i18n';
 
 interface InitiativeCardProps {
@@ -72,10 +73,8 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const getImageUrl = useCallback((imagePath: string): string => {
     if (!imagePath || !app) return '';
 
-    // Handle already-resolved URLs
-    if (imagePath.startsWith('http') || imagePath.startsWith('data:') || imagePath.startsWith('blob:')) {
-      return imagePath;
-    }
+    // Web art, and URLs Atlas made, are shown as they are
+    if (isImageUrl(imagePath)) return imagePath;
 
     // Resolve vault path to resource URL
     try {

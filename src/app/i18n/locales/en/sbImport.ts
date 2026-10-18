@@ -4,7 +4,6 @@ export const sbImport = {
   'sbImport.status.ready': 'Ready',
   'sbImport.status.imported': 'Already imported',
   'sbImport.status.missingImage': 'Missing image',
-  'sbImport.status.remoteImage': 'Remote image',
   'sbImport.status.conflict': 'Conflict',
   'sbImport.scanFailed': 'Could not scan statblocks.',
   'sbImport.loadFailed': 'Could not load statblock images.',

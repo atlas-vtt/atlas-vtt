@@ -1,10 +1,12 @@
 ## New
+- Statblocks whose image is a web address can be imported as tokens, from the import dialog and with **Create token from statblock image**. The token keeps the address and loads the picture when it is shown; nothing is downloaded ahead of time or copied into the vault.
 - Statblock templates: a Value, Metric, Table or Labels and values tile can roll its numbers. Switch on Roll as a bonus in its Options, and a click on a number, such as a trait's 2, rolls +2 with the game's own dice.
 - Statblocks: a number value can add to the next roll. Switch on Add to next roll in a value's Options, and the card shows a small switch after the number. Turn it on, and the next roll from that statblock adds the value under its own name, such as "d20 + 3 + 2 Proficiency", then the switch turns off. This works for a list of labels and values, so each Daggerheart Experience can have its own switch.
 
 ## Improved
 - Online play: busy tables send far fewer messages. Cursors, lasers and measurements go out ten times a second and still move smoothly, and a changed quest or world map reaches players without their whole book being sent again.
 - Random tables: rename a table or remove it from the list from its menu (⋯ or right-click) in the Random tables window, and undo a removal from the message that follows. A new name shows only in Atlas and leaves the note as it is; you can also set it in the collection settings. A table whose note was deleted can now be removed too.
+- A token whose art is a web address shows its picture wherever a token's art appears: the asset manager, the token picker, encounter previews, the initiative tracker, the player view, dice rolls and the statblock pane.
 
 ## Fixed
 - Online play: players keep control of their characters when you change scenes. Giving a token to a player gives them the character it was placed from, so every token of that character is theirs on every scene.

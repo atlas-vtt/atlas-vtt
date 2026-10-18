@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
-import { TFile, type App } from 'obsidian';
+import type { App } from 'obsidian';
 import type { TokenVitals } from '../../../services/statblockVitalsSync';
+import { imageSrc } from '../../../utils/imageSource';
 
 /** A token's art as a statblock shows it in place of the statblock's own image. */
 export interface StatblockPortrait {
@@ -23,9 +24,7 @@ export function useTokenPortrait(app: App, tokens: readonly TokenVitals[]): Stat
   const showRing = token?.showRing;
 
   return useMemo((): StatblockPortrait | undefined => {
-    if (!path) return undefined;
-    const file = app.vault.getAbstractFileByPath(path);
-    if (!(file instanceof TFile)) return undefined;
-    return { src: app.vault.getResourcePath(file), ringColor, showRing };
+    const src = imageSrc(app, path);
+    return src ? { src, ringColor, showRing } : undefined;
   }, [app, path, ringColor, showRing]);
 }

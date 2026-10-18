@@ -24,6 +24,7 @@ import type { TokenVision, TokenVisionDefaults } from '../../../../types/lightin
 import { placementVision } from '../../../../creatures/placementVision';
 import { isPlayerCharacter } from '../../../../characters/playerCharacters';
 import { showNotice } from '../../../../ui/notice';
+import { isImageUrl } from '../../../../utils/imageSource';
 
 // ─── Viewport helpers ───────────────────────────────────────────────
 
@@ -236,8 +237,9 @@ function targetResources(ctx: SpawnContext, target: SpawnTarget): ResourceDefini
   return mapResources(rulesLookup(ctx.app, ctx.assetService ?? undefined), target.view.getStore().getState().mapPath);
 }
 
+/** Whether a token's art can be shown: web art is loaded when shown, a vault path must name a file. */
 function imageExists(app: ObsidianApp, imagePath: string): boolean {
-  if (app.vault.getAbstractFileByPath(imagePath)) return true;
+  if (isImageUrl(imagePath) || app.vault.getAbstractFileByPath(imagePath)) return true;
   console.error(`[tokenSpawnService] Token image not found: ${imagePath}`);
   return false;
 }

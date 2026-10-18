@@ -3,6 +3,7 @@ import type { ProcessedImage } from '../../../../imageProcessing/imageProcessing
 import { convertForPreview } from './tokenImages';
 import type { CreatorMode, EditTokenInput, PreviewImage, TokenPreview, TokenPreviewPatch } from './types';
 import { t } from '../../../../i18n';
+import { isWebImage } from '../../../../utils/imageSource';
 import { cropReset } from './cropMath';
 import { useBatchProgress } from './useBatchProgress';
 import type { ProgressCount } from '../../primitives/useLingeringTask';
@@ -59,13 +60,30 @@ function previewFromFile(file: File): TokenPreview {
   };
 }
 
+/** Web art is shown from its address at once: there is nothing to convert. */
+function previewFromUrl(imageUrl: string): TokenPreview {
+  return {
+    id: `token-${Date.now()}-${Math.random().toString(36).slice(2, 11)}`,
+    file: null,
+    imageUrl,
+    previewUrl: imageUrl,
+    name: t('creator.untitled'),
+    ...cropReset({ file: null }),
+    isSelected: true,
+    isOptimizing: false,
+  };
+}
+
 function previewFromEdit(token: EditTokenInput): TokenPreview {
+  // A token of web art keeps it: the card shows it whole, and the save keeps the address.
+  const imageUrl = token.imagePath !== undefined && isWebImage(token.imagePath) ? token.imagePath : undefined;
   return {
     id: token.id,
     tags: token.tags,
     showRing: token.showRing ?? true,
     ...(token.size !== undefined && { size: token.size }),
     file: null,
+    ...(imageUrl !== undefined && { imageUrl }),
     previewUrl: token.imageUrl,
     name: token.name,
     ...cropReset({ file: null }),
@@ -193,14 +211,20 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
     const paths = new Set(previewsRef.current.flatMap(p => sourceOf(p) ?? []));
     const fresh = images.filter(image => {
       const source = sourceOf(image);
-      if (!image.file.type.startsWith('image/') || (source && paths.has(source))) return false;
+      const shown = image.file ? image.file.type.startsWith('image/') : Boolean(image.imageUrl);
+      if (!shown || (source && paths.has(source))) return false;
       if (source) paths.add(source);
       return true;
-    }).map(image => ({ ...previewFromFile(image.file), ...image, tags: image.tags ?? [], showRing: image.showRing ?? defaultRing }));
+    }).map(image => ({
+      ...(image.file ? previewFromFile(image.file) : previewFromUrl(image.imageUrl ?? '')),
+      ...image, tags: image.tags ?? [], showRing: image.showRing ?? defaultRing,
+    }));
     if (fresh.length === 0) return;
     changePreviews((prev) => [...prev, ...fresh]);
-    startOptimizations(fresh.length);
-    for (const preview of fresh) {
+    // Web art is shown as it is; only files are converted.
+    const converting = fresh.filter((preview) => preview.file !== null);
+    startOptimizations(converting.length);
+    for (const preview of converting) {
       const controller = new AbortController();
       const framed = preview.showRing !== false;
       const pending: PendingOptimization = {

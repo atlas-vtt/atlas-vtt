@@ -19,7 +19,10 @@ export interface ImagePosition {
 }
 
 export interface PreviewImage {
-  file: File;
+  /** The upload or vault image to convert; null for web art, which `imageUrl` names. */
+  file: File | null;
+  /** Web art the token keeps as it is: shown and saved by its address, never converted or copied into the vault. */
+  imageUrl?: string;
   tags?: string[];
   showRing?: boolean;
   size?: number | undefined;
@@ -41,8 +44,10 @@ export interface TokenPreview {
   /** Default footprint saved on the asset; undefined keeps 1×1. */
   size?: number | undefined;
   id: string;
-  /** Original upload; null when editing an existing asset without replacing its image. */
+  /** Original upload; null when editing an existing asset without replacing its image, and for web art. */
   file: File | null;
+  /** Web art the token keeps as it is (`PreviewImage.imageUrl`): the card shows it uncropped and the save keeps the address. */
+  imageUrl?: string;
   /** Percentage by which the background conversion shrank the upload. */
   compressionRatio?: number;
   /** Pixels the conversion took from an upload larger than Atlas keeps. */

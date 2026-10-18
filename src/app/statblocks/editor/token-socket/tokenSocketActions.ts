@@ -7,8 +7,9 @@
  * value it edits.
  */
 
-import { TFile, type App } from 'obsidian';
+import type { TFile, App } from 'obsidian';
 import type { TokenAsset } from '../../../services/AssetService';
+import { imageSrc } from '../../../utils/imageSource';
 import { TokenStatblockLinkService } from '../../../services/TokenStatblockLinkService';
 import { setTokenRing } from '../../../services/tokenRingSync';
 import { linkedTokenArt, statblockImageFile, statblockImageSrc, statblockImageToken } from '../../render/shared/statblockImage';
@@ -30,8 +31,7 @@ export function artSrc(pane: PaneEditController, field: TemplateField): string {
 /** Whether the note's art is the token's own: the token marked as the statblock's image. */
 export function isTheArt(app: App, token: CardToken, art: string): boolean {
   if (!art || !token.imagePath) return false;
-  const file = app.vault.getAbstractFileByPath(token.imagePath);
-  return file instanceof TFile && app.vault.getResourcePath(file) === art;
+  return imageSrc(app, token.imagePath) === art;
 }
 
 /** The vault image the note's art names, which a token can be made from; null for none or a web address. */

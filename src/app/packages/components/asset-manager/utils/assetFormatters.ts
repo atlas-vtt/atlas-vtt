@@ -11,6 +11,7 @@ import { assetJsonPath, primaryPath } from '../../../../services/vault-sync/asse
 import { folderIdOf } from './assetFolders';
 import { ENCOUNTER_PREVIEW_COUNT } from './encounterPreviewLayout';
 import { mapThumbnailPath } from '../../../../utils/dataFileMigration';
+import { imageSrc } from '../../../../utils/imageSource';
 import { isPlayerCharacter } from '../../../../characters/playerCharacters';
 
 /** The stored asset types the asset manager shows, one per tab. */
@@ -42,9 +43,9 @@ export type TokenPreviewSources = ReadonlyMap<string, TokenPreviewSource>;
 
 const NO_PREVIEW_SOURCES: TokenPreviewSources = new Map();
 
+/** What a card shows for an image reference: a web address as it is, a vault file as a resource URL, '' for a missing file. */
 export function resourceUrl(app: ObsidianApp, path: string | undefined): string {
-  const file = path ? app.vault.getAbstractFileByPath(path) : null;
-  return file instanceof TFile ? app.vault.getResourcePath(file) : '';
+  return imageSrc(app, path);
 }
 
 function sceneThumbnailUrl(app: ObsidianApp, mapPath: string | undefined): string {
