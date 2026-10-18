@@ -30,6 +30,7 @@ export const dice = {
   'dice.rollAgain': 'Roll again',
   'dice.unknown': 'Unknown',
   'dice.unpin': 'Unpin panel',
+  'dice.modifier': 'Modifier',
   'dice.player': 'Player',
   'dice.rollFormula': 'Roll {formula}',
   'dice.showRollsToPlayers': 'Show my rolls to players',

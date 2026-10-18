@@ -4,6 +4,7 @@ import { cn } from '../../../../utils/cn';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { ObsidianMenuDropdown } from '../ObsidianMenuDropdown';
 import { SettingRow, SettingSliderRow, SettingToggleRow } from './SettingRows';
+import { MapUnitRow } from './MapUnitRow';
 import { SceneUnitDistanceRow } from './SceneUnitDistanceRow';
 import type { AtlasView } from '../../../atlas-view';
 import type { GridType } from '../../../grid/GridSystem';
@@ -139,6 +140,8 @@ export function GridSettingsPanel({
           }}
         />
       </SettingRow>
+
+      <MapUnitRow view={view} />
 
       <SceneUnitDistanceRow view={view} />
 

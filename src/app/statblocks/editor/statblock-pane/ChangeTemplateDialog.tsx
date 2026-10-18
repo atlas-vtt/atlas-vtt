@@ -91,7 +91,7 @@ export function ChangeTemplateDialog(props: ChangeTemplateDialogProps): React.JS
           </div>
           <div className="atlas-sb-change-template__preview">
             {chosen && (
-              <StatblockSheet template={chosen.template} name={chosen.name} fields={record} variant="full" app={app} sourcePath={notePath} />
+              <StatblockSheet template={chosen.template} name={chosen.name} fields={record} variant="full" app={app} sourcePath={notePath} rollBonuses="preview" />
             )}
             {unshown.length > 0 && (
               <p className="atlas-sb-change-template__unshown">Not shown with this template: {unshown.join(', ')}</p>

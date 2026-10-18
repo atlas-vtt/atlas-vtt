@@ -2,15 +2,23 @@ import { parseBookCharacter, parseBookResourceMessage, type BookCharacter, type 
 import { MAX_BOOK_PINS, parseBookPin, type BookPin, type BookQuest } from './bookMap.ts';
 import { isBookPartType, parseBookPart, parseQuests, parseWorldMap, type BookPartMessage, type BookWorldMap } from './bookParts.ts';
 import { DEFAULT_BOOK_SLOTS, parseBookSlots, parseEquipped, parseSlotMessage, settledEquipped, type BookSlots, type Equipped, type SlotMessage } from './bookSlots.ts';
+import { parseBookStatblock, type BookStatblockMessage } from './bookStatblock.ts';
+import { parseBookAbilityMessage, parseBookFieldMessage, type BookAbilityMessage, type BookFieldMessage } from './bookStatblockEdits.ts';
 import { bookLine, bookText, MAX_BOOK_TITLE } from './bookText.ts';
+import { MAX_SCENE_ID } from './moves.ts';
 import { isRecord } from './shape.ts';
+import { TOKEN_ID_PATTERN } from './tokens.ts';
 import { MAX_TOKEN_VALUE } from './tokenUI.ts';
 
+export * from './bookAbilities.ts';
 export * from './bookCharacter.ts';
 export * from './bookLevels.ts';
 export * from './bookMap.ts';
 export * from './bookParts.ts';
+export * from './bookStatblock.ts';
+export * from './bookStatblockEdits.ts';
 export * from './questText.ts';
+export * from './sheetValues.ts';
 
 /** What a player's book holds at most. */
 export const MAX_BOOK_ITEMS = 200;
@@ -75,11 +83,12 @@ export interface PlayerBook {
   readonly equipped: readonly Equipped[];
 }
 
-/** Sent to one player: their book whole, the character alone once only it changed, an item just handed over, or another part alone (`BookPartMessage`). */
+/** Sent to one player: their book whole, the character alone once only it changed, an item just handed over, their character's statblock, or another part alone (`BookPartMessage`). */
 export type BookMessage =
   | { readonly t: 'book'; readonly book: PlayerBook }
   | { readonly t: 'book-sheet'; readonly character: BookCharacter | null }
   | { readonly t: 'book-item'; readonly item: BookItem }
+  | BookStatblockMessage
   | BookPartMessage;
 
 /** What a player writes into their own book. The GM keeps it and answers a refused one with the whole book. */
@@ -90,10 +99,24 @@ export type PlayerBookMessage =
   | { readonly t: 'book-pin-delete'; readonly id: string }
   | { readonly t: 'book-purse'; readonly purse: readonly PurseRow[] }
   | BookResourceMessage
+  | BookFieldMessage
+  | BookAbilityMessage
   | SlotMessage;
 
-const GM_TYPES: readonly unknown[] = ['book', 'book-sheet', 'book-item', 'book-map', 'book-quests'];
-const PLAYER_TYPES: readonly unknown[] = ['book-note', 'book-note-delete', 'book-pin', 'book-pin-delete', 'book-purse', 'book-resource', 'book-equip', 'book-slots'];
+/**
+ * The token a player acts with (the one picked in the token menu or selected on the map): one of
+ * their own in the shared scene, by the id the token list names it by. Their book follows it: the GM
+ * makes that token's character theirs, sheet, items, notes and purse. A choice stays until the next;
+ * a token that is not theirs is passed over, and a GM that does not know the message leaves it unread.
+ */
+export interface BookTokenMessage {
+  readonly t: 'book-token';
+  readonly scene: string;
+  readonly token: string;
+}
+
+const GM_TYPES: readonly unknown[] = ['book', 'book-sheet', 'book-item', 'book-statblock', 'book-map', 'book-quests'];
+const PLAYER_TYPES: readonly unknown[] = ['book-note', 'book-note-delete', 'book-pin', 'book-pin-delete', 'book-purse', 'book-resource', 'book-field', 'book-ability', 'book-equip', 'book-slots'];
 
 export const isBookType = (t: unknown): t is BookMessage['t'] => GM_TYPES.includes(t);
 export const isPlayerBookType = (t: unknown): t is PlayerBookMessage['t'] => PLAYER_TYPES.includes(t);
@@ -193,9 +216,20 @@ export function parseBookMessage(value: Record<string, unknown>): BookMessage | 
     const character = parseBookCharacter(value.character);
     return character === undefined ? null : { t: 'book-sheet', character };
   }
+  if (value.t === 'book-statblock') {
+    const statblock = parseBookStatblock(value.statblock);
+    return statblock === undefined ? null : { t: 'book-statblock', statblock };
+  }
   if (isBookPartType(value.t)) return parseBookPart(value);
   const item = value.t === 'book-item' ? parseBookItem(value.item) : null;
   return item === null ? null : { t: 'book-item', item };
+}
+
+/** The token a player's book follows as the GM reads it, or null when it is malformed. */
+export function parseBookTokenMessage(value: Record<string, unknown>): BookTokenMessage | null {
+  const { scene, token } = value;
+  if (typeof scene !== 'string' || scene.length > MAX_SCENE_ID || typeof token !== 'string' || !TOKEN_ID_PATTERN.test(token)) return null;
+  return { t: 'book-token', scene, token };
 }
 
 /** What a player wrote into their book as the GM reads it, cleaned; null for anything malformed. */
@@ -218,6 +252,10 @@ export function parsePlayerBookMessage(value: Record<string, unknown>): PlayerBo
     }
     case 'book-resource':
       return parseBookResourceMessage(value);
+    case 'book-field':
+      return parseBookFieldMessage(value);
+    case 'book-ability':
+      return parseBookAbilityMessage(value);
     case 'book-equip':
     case 'book-slots':
       return parseSlotMessage(value);

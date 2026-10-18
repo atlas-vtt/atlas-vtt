@@ -69,6 +69,11 @@ const BLOCK_NESTED: NestedWriters = new Map([
 
 const writeEntryShape = objectWriter(ENTRY_SHAPE_KEYS, new Map([['extras', listWriter(objectWriter(ENTRY_EXTRA_KEYS))]]));
 
+/** A record written with its keys in order, so the same settings always write the same file. */
+function writeSortedRecord(value: unknown): unknown {
+  return isRecord(value) ? Object.fromEntries(Object.keys(value).sort().map((key) => [key, value[key]])) : value;
+}
+
 const TEMPLATE_NESTED: NestedWriters = new Map([
   ['derivedFrom', objectWriter(DERIVED_FROM_KEYS)],
   ['source', objectWriter(SOURCE_KEYS)],
@@ -76,6 +81,7 @@ const TEMPLATE_NESTED: NestedWriters = new Map([
   ['fields', listWriter(objectWriter(FIELD_KEYS, new Map([['entry', writeEntryShape]])))],
   ['header', objectWriter(HEADER_KEYS, new Map([['hitPoints', objectWriter(HEADER_TRACK_KEYS)]]))],
   ['layout', objectWriter(LAYOUT_KEYS, new Map([['blocks', listWriter(writeBlock)]]))],
+  ['players', writeSortedRecord],
 ]);
 
 /** The template as the plain JSON object its file holds. */

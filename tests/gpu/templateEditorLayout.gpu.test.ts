@@ -13,7 +13,6 @@ vi.mock('../../src/app/services/statblockDiceLinks', () => ({
   attachDiceRolling: () => () => undefined,
   diceLinkProps: () => ({}),
   linkDiceIn: () => undefined,
-  splitDiceSegments: (text: string) => [{ text, dice: false }],
 }));
 vi.mock('../../src/app/statblocks/render/shared/useStatblockDiceRolling', () => ({ useStatblockDiceRolling: () => [undefined, null] }));
 
@@ -490,8 +489,11 @@ describe('the template editor as the note view', () => {
   });
 
   it('shows every option of a select in the Options, whole and on top: below its trigger, or above it for a tile near the editor\'s foot', async () => {
+    // The last value holds text, whose Options are short enough to stay at its tile near the editor's foot.
+    const long = longTemplate(20);
+    const lastIsText = { ...long, fields: long.fields.map((field) => (field.key === 'f19' ? { ...field, type: 'text' as const } : field)) };
     for (const id of ['value0', 'value19']) {
-      const root = mount(new FakeSession(longTemplate(20)), 1180);
+      const root = mount(new FakeSession(lastIsText), 1180);
       asLeaf(root);
       await frames(3);
       const options = await openOptions(id, 'key');

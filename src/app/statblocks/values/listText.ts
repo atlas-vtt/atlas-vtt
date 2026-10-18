@@ -1,3 +1,7 @@
+import type { FieldValue } from '../model/templateTypes';
+import { isEmptyValue } from './emptyValue';
+import { valueText } from './valueText';
+
 /** Brackets whose commas belong to one item: "resistant (fire, cold)", "[[Note, part]]". */
 const OPENERS: Readonly<Record<string, string>> = { '(': ')', '[': ']', '{': '}' };
 
@@ -26,4 +30,11 @@ export function splitListText(text: string): string[] {
   }
   items.push(current);
   return items.map((item) => item.trim()).filter((item) => item !== '');
+}
+
+/** A list field's items as text; a list written as one line of text is split at its commas. */
+export function listItems(value: FieldValue | undefined): string[] {
+  if (value === undefined || isEmptyValue(value)) return [];
+  if (Array.isArray(value)) return value.map(valueText).filter((text) => text.trim() !== '');
+  return splitListText(valueText(value));
 }

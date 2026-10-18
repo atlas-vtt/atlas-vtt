@@ -25,6 +25,8 @@ export interface ShownTable {
   cells: ShownText[][];
   /** Its worked-out rows, drawn while it holds one row. */
   derived: DerivedRow[];
+  /** Whether a whole number in a cell or worked-out cell rolls as a bonus (`ScoresBlock.rollable`). */
+  rollable?: boolean | undefined;
 }
 
 function shownCell(cell: TableCell, signed: boolean): ShownText {
@@ -69,6 +71,7 @@ export function shownGrid(block: ScoresBlock, field: TemplateField, grid: TableG
     header: field.header !== false,
     cells: grid.rows.map((row) => row.map((cell) => shownCell(cell, signed))),
     derived,
+    ...(block.rollable && { rollable: true }),
   };
 }
 

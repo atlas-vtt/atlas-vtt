@@ -45,12 +45,24 @@ export type RollVerdict = { readonly ok: true; readonly tokenId: string | null }
 
 /**
  * Whether Atlas's dice tool rolls a formula as it stands: it parses, and holds at least one die.
- * Atlas completes a formula without dice with the map's default roll, and tells a formula it cannot
- * parse with a notice on the GM's screen; neither is for a player to cause.
+ * Atlas completes a formula without dice with the map's default roll, which a player causes only
+ * with a bonus from their sheet (`playerFormula`), and tells a formula it cannot parse with a notice
+ * on the GM's screen, which is never for a player to cause.
  */
 export function rollableFormula(formula: string): boolean {
   const parsed = parseFormula(formula);
   return parsed.ok && parsed.terms.some((term) => term.kind === 'dice' && term.count > 0);
+}
+
+/** A bonus as a player's sheet rolls it (`+2`, `-1`): signed, at most four digits, as a formula's constants are. */
+const SHEET_BONUS = /^[+-]\d{1,4}$/;
+
+/**
+ * Whether a player's formula is rolled: one with dice (`rollableFormula`), or a bonus from their sheet,
+ * which the map's dice complete as they complete a bonus clicked on a statblock (`1d20+2`, `2d12+2`).
+ */
+export function playerFormula(formula: string): boolean {
+  return SHEET_BONUS.test(formula) || rollableFormula(formula);
 }
 
 /**
@@ -60,7 +72,7 @@ export function rollableFormula(formula: string): boolean {
  */
 export function checkRoll(from: string, message: PlayerRoll, context: RollContext): RollVerdict {
   if (context.scene === null || context.mapPath === null || message.scene !== context.scene) return { ok: false, reason: 'scene' };
-  if (!rollableFormula(message.formula)) return { ok: false, reason: 'formula' };
+  if (!playerFormula(message.formula)) return { ok: false, reason: 'formula' };
   const tokenId = message.token === null ? undefined : context.listedToken(message.token);
   const token = tokenId === undefined ? undefined : context.tokens[tokenId];
   const named = tokenId !== undefined && token !== undefined && token.isHidden !== true && context.ownerOf(tokenId) === from;

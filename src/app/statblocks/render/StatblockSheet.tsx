@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useId, useMemo } from 'react';
 import type { App } from 'obsidian';
 import { cn } from '../../../utils/cn';
 import type { TokenVitals } from '../../services/statblockVitalsSync';
@@ -10,6 +10,9 @@ import { valueText } from '../values/valueText';
 import { BlockList } from './BlockView';
 import { StatblockHeader } from './StatblockHeader';
 import { useStatblockDiceRolling } from './shared/useStatblockDiceRolling';
+import { armableValues } from '../rollBonuses/armableValues';
+import { ArmedBonuses } from '../rollBonuses/armedBonuses';
+import { RollBonusContext, statblockBonusKey, type RollBonusTarget } from '../rollBonuses/rollBonusContext';
 import { SheetContext, type SheetContextValue } from './sheetContext';
 import { sheetState } from './sheetState';
 import { OpenTabsContext, useOpenTabsState } from './tabs/openTabs';
@@ -52,6 +55,11 @@ export interface StatblockSheetProps {
   folded?: ReadonlySet<string> | undefined;
   /** A block whose tabs open whenever it or the layout changes (the template editor's selection). */
   reveal?: string | null | undefined;
+  /**
+   * `preview` where the card only shows what a template looks like (the template editor, a gallery): its
+   * "Add to next roll" switches are drawn inert. Default `live`: they arm the statblock's values.
+   */
+  rollBonuses?: 'live' | 'preview' | undefined;
 }
 
 /**
@@ -80,6 +88,7 @@ export function StatblockSheet({
   footer,
   folded,
   reveal = null,
+  rollBonuses = 'live',
 }: StatblockSheetProps): React.JSX.Element {
   const state = useMemo(
     () => sheetState({ template, record: fields, lookups, mode, token, folded }),
@@ -87,13 +96,23 @@ export function StatblockSheet({
   );
   const sheet = useMemo((): SheetContextValue => ({ state, app, sourcePath }), [state, app, sourcePath]);
   const openTabs = useOpenTabsState(template.layout, reveal);
+  const statblockName = valueText(state.reader('name')) || undefined;
+  const sheetId = useId();
+  const bonusKey = statblockBonusKey(sourcePath, statblockName, sheetId);
+  const live = rollBonuses === 'live' && app !== undefined;
+  const bonuses = useMemo((): RollBonusTarget => ({
+    key: bonusKey,
+    armable: armableValues(template.layout.blocks, state),
+    store: live ? ArmedBonuses.forApp(app) : null,
+  }), [bonusKey, template, state, live, app]);
   const [diceRef, rollMenu] = useStatblockDiceRolling({
     app,
     notePath: sourcePath,
     tokens: rollTokens ?? (token ? [token] : []),
-    name: valueText(state.reader('name')) || undefined,
+    name: statblockName,
     viewId,
     originContext,
+    bonuses: bonuses.store ? bonuses : undefined,
   });
 
   const slug = slugify(name) || undefined;
@@ -104,25 +123,27 @@ export function StatblockSheet({
 
   return (
     <SheetContext.Provider value={sheet}>
-      <OpenTabsContext.Provider value={openTabs}>
-        <div
-          ref={diceRef}
-          className={cn('atlas-statblock', 'atlas-sb-sheet', `atlas-sb-sheet--${variant}`, mode === 'editing' && 'is-editing')}
-          data-template={slug}
-          data-layout={slug}
-          data-variant={variant}
-        >
-          <div className="atlas-statblock-body">
-            {header}
-            <StatblockHeader template={template} />
-            <div className="atlas-sb-columns" style={columns}>
-              <BlockList blocks={template.layout.blocks} />
+      <RollBonusContext.Provider value={bonuses}>
+        <OpenTabsContext.Provider value={openTabs}>
+          <div
+            ref={diceRef}
+            className={cn('atlas-statblock', 'atlas-sb-sheet', `atlas-sb-sheet--${variant}`, mode === 'editing' && 'is-editing')}
+            data-template={slug}
+            data-layout={slug}
+            data-variant={variant}
+          >
+            <div className="atlas-statblock-body">
+              {header}
+              <StatblockHeader template={template} />
+              <div className="atlas-sb-columns" style={columns}>
+                <BlockList blocks={template.layout.blocks} />
+              </div>
+              {footer}
             </div>
-            {footer}
+            {rollMenu}
           </div>
-          {rollMenu}
-        </div>
-      </OpenTabsContext.Provider>
+        </OpenTabsContext.Provider>
+      </RollBonusContext.Provider>
     </SheetContext.Provider>
   );
 }

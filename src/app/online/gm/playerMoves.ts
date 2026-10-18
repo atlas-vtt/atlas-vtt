@@ -68,6 +68,11 @@ export class PlayerMoves {
     this.drags.receive(from, drag);
   }
 
+  /** Where each token a player drags now was taken from, by GM token id. */
+  dragStarts(): ReadonlyMap<string, { readonly x: number; readonly y: number }> {
+    return this.drags.starts();
+  }
+
   /** The player let go of a drag without a drop: the token goes back, with no undo step. */
   dragCancel(from: string, cancel: PlayerDragCancel): void {
     this.drags.cancel(from, cancel);

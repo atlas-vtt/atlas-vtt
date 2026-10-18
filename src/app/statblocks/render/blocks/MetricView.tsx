@@ -1,6 +1,11 @@
 import React, { useContext } from 'react';
 import { cn } from '../../../../utils/cn';
 import { valuePrompt } from '../blockDisplay';
+import { bonusId } from '../../rollBonuses/armableValues';
+import { BONUS_ID_ATTRIBUTE } from '../../rollBonuses/armedBonuses';
+import { useArmable } from '../../rollBonuses/rollBonusContext';
+import { ArmSwitch } from '../shared/ArmSwitch';
+import { BonusLink } from '../shared/BonusLink';
 import { hitPointsAttribute, namesHitPoints } from '../shared/hitPoints';
 import { useSheet } from '../sheetContext';
 import type { SheetState } from '../sheetState';
@@ -42,11 +47,13 @@ function MetricCell({ block, number }: { block: MetricBlock; number: MetricNumbe
   const field = key ? state.fields.get(key) : undefined;
   const label = key ? (field?.label ?? key) : UNNAMED_NUMBER;
   const shown = metricNumberText(key, state);
+  const id = bonusId(key);
+  const armable = useArmable(id, block.addsToRolls);
   const editing = state.mode === 'editing';
   // In the template editor a number not named yet shows the prompt it will have, worded after its placeholder name.
   const unnamedPrompt = useContext(ValueEditingContext)?.drawsUnnamed ? valuePrompt({ label }, label) : BLANK;
   const value = hasText(shown) || shown.problems.length > 0
-    ? <ValueText shown={shown} />
+    ? <BonusLink text={shown.text} rollable={block.rollable}><ValueText shown={shown} /></BonusLink>
     : editing ? <FieldPrompt prompt={key ? valuePrompt(field, label) : unnamedPrompt} /> : <span className="atlas-sb-value atlas-sb-metric__blank">{BLANK}</span>;
 
   return (
@@ -54,10 +61,15 @@ function MetricCell({ block, number }: { block: MetricBlock; number: MetricNumbe
       className="atlas-sb-metric__number"
       {...{ [METRIC_INDEX_ATTRIBUTE]: index }}
       data-prop={key || undefined}
+      data-roll-name={block.rollable && key ? label : undefined}
+      {...(armable && { [BONUS_ID_ATTRIBUTE]: id })}
       {...hitPointsAttribute(Boolean(key) && (field?.meaning === 'hit-points' || namesHitPoints(key, label)))}
     >
       <span className={cn('atlas-sb-label', !key && 'atlas-sb-prompt')}>{label}</span>
-      <span className="atlas-sb-metric__value">{key ? <ValueSlot block={block} field={key}>{value}</ValueSlot> : value}</span>
+      <span className="atlas-sb-metric__value">
+        {key ? <ValueSlot block={block} field={key}>{value}</ValueSlot> : value}
+        {armable && <ArmSwitch id={id} label={armable.label} />}
+      </span>
     </div>
   );
 }

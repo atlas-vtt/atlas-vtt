@@ -10,6 +10,8 @@ export interface NamedAssets {
   readonly character: PlayedCharacter | null;
   /** The quests the player was last sent. */
   readonly quests: readonly BookQuest[];
+  /** A whole text of the statblock the player was last sent, by hash. */
+  readonly statblockText?: (hash: string) => Uint8Array<ArrayBuffer> | undefined;
 }
 
 /** What a quest's asset is served from, while one of `quests` names it as what it is: its whole text, or an image of its text. */
@@ -23,13 +25,15 @@ function questAssetOf(hash: string, quests: readonly BookQuest[], served: (hash:
 
 /**
  * What an asset only this player's book names is served from, by hash: the world map or a map it
- * leads into, their own character's artwork, or the whole text or an image of a quest they were
- * sent. Nothing else.
+ * leads into, their own character's artwork, a whole text of their own character's statblock as they
+ * were last sent it, or the whole text or an image of a quest they were sent. Nothing else.
  */
 export function bookAssetOf(hash: string, named: NamedAssets, served: (hash: string) => QuestAsset | undefined): QuestAsset | undefined {
   const map = named.worldMap?.paths.get(hash);
   if (map !== undefined) return { path: map };
   if (named.character !== null && named.character.sheet.art?.hash === hash) return { path: named.character.key };
+  const text = named.statblockText?.(hash);
+  if (text !== undefined) return { bytes: text };
   return questAssetOf(hash, named.quests, served);
 }
 

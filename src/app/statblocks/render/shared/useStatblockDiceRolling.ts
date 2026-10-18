@@ -2,7 +2,7 @@ import { createElement, useCallback, useContext, useLayoutEffect, useRef, type R
 import { Platform, type App } from 'obsidian';
 import { attachDiceRolling, type RollChoice, type RollMenuOpener } from '../../../services/statblockDiceLinks';
 import { rollHitPoints } from '../../../services/statblockHitPoints';
-import type { DiceRollSource } from '../../../services/statblockRolls';
+import type { DiceRollSource, StatblockBonuses } from '../../../services/statblockRolls';
 import type { TokenVitals } from '../../../services/statblockVitalsSync';
 import { AtlasUIContext } from '../../../react/root/AtlasUIContext';
 import { useOptionalContextMenu, type ContextMenuController, type ContextMenuEntry } from '../../../react/root/ContextMenuContext';
@@ -23,6 +23,8 @@ export interface StatblockDiceRolling {
   viewId?: string | undefined;
   /** The view, scene and tokens the statblock was opened for; rolls for them name it. */
   originContext?: TokenRollContext | undefined;
+  /** The statblock whose armed values its rolls take, and what the card shows of them; rolled hit points take none. */
+  bonuses?: StatblockBonuses | undefined;
 }
 
 /** A ref callback for the statblock's container; what it returns detaches the listeners. */
@@ -47,11 +49,12 @@ function menuEntries(choices: readonly RollChoice[]): ContextMenuEntry[] {
   });
 }
 
-function rollSource({ notePath, tokens, name, viewId, originContext }: StatblockDiceRolling): DiceRollSource {
+function rollSource({ notePath, tokens, name, viewId, originContext, bonuses }: StatblockDiceRolling): DiceRollSource {
   const [token] = tokens;
   return {
     viewId,
     originContext,
+    bonuses,
     tokenId: token?.id,
     statblockPath: notePath,
     tokenName: token?.name ?? name,

@@ -1,5 +1,6 @@
 import type { BookQuest } from '../../protocol/index.ts';
 import type { PlayedCharacter } from './characters.ts';
+import type { DrawnStatblock } from './statblockSheet.ts';
 import type { WorldMapFile } from './worldMapLevels.ts';
 
 /** What one player was last sent of their book, to compare with what they would be sent now. */
@@ -10,18 +11,27 @@ export interface SentBook {
   /** The quests as the campaign handed them on: the same array while no quest changed, so compared by identity. */
   readonly quests: readonly BookQuest[];
   readonly sheet: string;
+  /** The statblock as sent: '' while none was (not drawn yet), `RESEND` where it is owed again. */
+  readonly statblock: string;
 }
+
+/** What a player's last statblock is marked as once they are owed it again, whatever it reads. */
+export const RESEND = '?';
 
 /** A book without quests: the campaign being played has none, or none is played. */
 export const NO_QUESTS: readonly BookQuest[] = [];
 
-/** What a player is sent now of their book, to compare with what they were sent last. Quests are the party's: every player gets them, with a character or without. */
-export function sentOf(character: PlayedCharacter | null, worldMap: WorldMapFile | null, quests: readonly BookQuest[]): SentBook {
+/**
+ * What a player is sent now of their book, to compare with what they were sent last. Quests are the
+ * party's: every player gets them, with a character or without. A statblock not drawn yet (undefined) is ''.
+ */
+export function sentOf(character: PlayedCharacter | null, worldMap: WorldMapFile | null, quests: readonly BookQuest[], drawn: DrawnStatblock | undefined): SentBook {
   return {
     book: character === null ? '' : `${character.collection}\n${character.key}`,
     map: worldMap === null ? '' : JSON.stringify(worldMap.map),
     quests,
     sheet: JSON.stringify(character?.sheet ?? null),
+    statblock: drawn === undefined ? '' : JSON.stringify(drawn.statblock),
   };
 }
 

@@ -47,7 +47,7 @@ function keyOrder<K extends string>(order: Record<K, true>): KeyOrder<K> {
 
 export const TEMPLATE_KEYS = keyOrder<keyof StatblockTemplate>({
   format: true, version: true, id: true, description: true, suits: true, diceSetId: true, derivedFrom: true, source: true,
-  importedFrom: true, fields: true, header: true, layout: true, lookups: true, sample: true,
+  importedFrom: true, fields: true, header: true, layout: true, players: true, lookups: true, sample: true,
 });
 
 export const HEADER_KEYS = keyOrder<keyof TemplateHeader>({ hidden: true, hitPoints: true });
@@ -82,13 +82,13 @@ const BLOCK_PROPS: { [T in FileBlockType]: Record<OwnBlockKeys<T>, true> } = {
   tabs: { heading: true, blocks: true },
   title: { field: true, level: true, pattern: true },
   line: { fields: true, pattern: true, separator: true },
-  stat: { field: true, label: true, look: true, pattern: true, display: true, rollFrom: true },
-  metric: { heading: true, fields: true },
-  scores: { field: true, orientation: true, perLine: true, display: true, columns: true },
+  stat: { field: true, label: true, look: true, pattern: true, display: true, rollFrom: true, rollable: true, addsToRolls: true },
+  metric: { heading: true, fields: true, rollable: true, addsToRolls: true },
+  scores: { field: true, orientation: true, perLine: true, display: true, columns: true, rollable: true },
   tags: { field: true, label: true, look: true },
   text: { field: true, text: true, heading: true },
   entries: { field: true, heading: true, introField: true, nameStyle: true, addLabel: true },
-  pairs: { field: true, label: true, display: true },
+  pairs: { field: true, label: true, display: true, rollable: true, addsToRolls: true },
   track: { field: true, label: true, resource: true, look: true, counts: true },
   image: { field: true, shape: true },
   spells: { field: true, heading: true, look: true },

@@ -25,7 +25,7 @@ function CardRender({ app, look, name }: { app: App; look: CardLook; name: strin
       </div>
     );
   }
-  return <StatblockSheet template={template} name={name} fields={record} variant="feed" app={app} />;
+  return <StatblockSheet template={template} name={name} fields={record} variant="feed" app={app} rollBonuses="preview" />;
 }
 
 export interface GalleryCardProps {

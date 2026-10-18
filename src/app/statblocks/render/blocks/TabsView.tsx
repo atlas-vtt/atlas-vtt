@@ -7,7 +7,7 @@ import { TabPanelContext, useOpenTab } from '../tabs/openTabs';
 import { TabPanel, TabStrip } from '../tabs/TabStrip';
 import { SheetHeading } from '../values/SheetHeading';
 import type { BlockViewProps } from './blockViewProps';
-import { sectionHeading } from './SectionView';
+import { sectionHeading } from '../values/sectionHeading';
 
 interface TabsViewProps extends BlockViewProps<TabsBlock> {
   /** Draws one tab's Section (the renderer's `BlockView`). */

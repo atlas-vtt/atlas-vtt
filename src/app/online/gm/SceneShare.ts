@@ -4,6 +4,8 @@ import type { RollSceneLookup } from '../../services/playerRollSource';
 import type { DiceSource } from './atlasDice.ts';
 import { isLit, LIGHTING_REFUSAL, type AtlasPlayerSettings, type LightingSource } from './atlasLighting.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
+import type { RemoteDrag } from '../marks/index.ts';
+import { dragRulerPaths, PlayerDragRulers, type GmRuler, type RulerPaths } from './dragRulers.ts';
 import { AssetAnswers } from './assetAnswers.ts';
 import { imageMimeType, REPEAT_REQUEST_MS, sha256Hex } from './assetServe.ts';
 import type { ScaleImage } from './assetVariants.ts';
@@ -27,6 +29,10 @@ export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<
   notice(text: string): void;
   /** Sends a live message (where dragged tokens are now) ahead of other frames, the latest of a key winning; without it drags reach players through the token list only. */
   sendLive?(body: GmMessage, key: string): void;
+  /** What the GM's own drag ruler measures now, or null while it shows none; without it players see none of the GM's. */
+  gmDragRuler?(): GmRuler | null;
+  /** Draws the rulers of the players' drags for the GM. */
+  showPlayerDrags?(drags: readonly RemoteDrag[]): void;
   /** Where the GM's canvas draws these tokens now (the GM's own drag runs ahead of the store there). */
   drawnPlaces?(tokenIds: readonly string[]): ReadonlyMap<string, { readonly x: number; readonly y: number }>;
   /** Who plays and owns which token; without it no player is told which tokens are theirs. */
@@ -77,6 +83,7 @@ export class SceneShare {
   private readonly rules: RulesShare;
   private readonly moves: PlayerMoves;
   private readonly marks: MarkShare;
+  private readonly dragRulers: PlayerDragRulers;
   private unsubscribe: (() => void) | null = null;
   private poll: number | undefined;
 
@@ -88,7 +95,8 @@ export class SceneShare {
     const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => seats.onlinePlayers(), ownerOf }, (body, to) => ports.send(body, to));
     this.mine = mine;
     this.tokens = new TokenShare(store, ports, (listed) => mine?.setList(listed));
-    this.live = ports.sendLive === undefined ? null : new LiveShare(store, { ...ports, sendLive: (body, key) => ports.sendLive?.(body, key) }, () => ({
+    const rulers = (): RulerPaths => dragRulerPaths(store.getState(), ports.gmDragRuler?.() ?? null, this.moves.dragStarts());
+    this.live = ports.sendLive === undefined ? null : new LiveShare(store, { ...ports, sendLive: (body, key) => ports.sendLive?.(body, key), rulers }, () => ({
       scene: this.tokens.listedScene,
       alias: (tokenId) => this.tokens.listedAlias(tokenId),
     }));
@@ -111,6 +119,7 @@ export class SceneShare {
       }),
     });
     this.marks = new MarkShare({ ...ports, cursorsShown }, () => this.mapSize);
+    this.dragRulers = new PlayerDragRulers((drags) => ports.showPlayerDrags?.(drags));
     this.assets = new AssetAnswers({ send: (body, to) => ports.send(body, to), now: () => ports.now(), readImage: (path) => ports.readImage(path), scaleImage: ports.scaleImage }, {
       map: () => {
         const map = this.scene?.map ?? null;
@@ -148,6 +157,7 @@ export class SceneShare {
     this.moves.stop();
     this.dice.stop();
     this.marks.stop();
+    this.dragRulers.clear();
   }
 
   /** The scene, its tokens and its inputs again, to one player or to all; sent to all, assets may be asked for again at once. */
@@ -200,6 +210,11 @@ export class SceneShare {
     if (message.t === 'asset-request') this.assets.answer(from, message);
   }
 
+  /** The GM id of a token by the id players know it by in the list of `scene`, while that is the scene of the last list they were sent. */
+  listedToken(scene: string, alias: string): string | undefined {
+    return scene === this.tokens.listedScene ? this.tokens.listedToken(alias) : undefined;
+  }
+
   /** A token of the scene players were last sent a list of, as their frame shows it now; null when they do not see it. */
   private shownToken(mapPath: string, tokenId: string): ReturnType<RollSceneLookup['shownToken']> {
     const state = this.store.getState();
@@ -239,6 +254,7 @@ export class SceneShare {
       this.marks.update();
       this.tokens.update();
       this.live?.update();
+      this.dragRulers.update(state, this.moves.dragStarts());
       this.layers.update();
       return this.inputs.update();
     }
@@ -269,6 +285,7 @@ export class SceneShare {
     this.mapBytes = bytes;
     this.mapSize = size;
     this.moves.sceneChanged();
+    this.dragRulers.clear();
     this.tokens.setScene(null);
     this.inputs.setScene(null);
     this.layers.setScene(null);

@@ -12,7 +12,6 @@ vi.mock('../../src/app/services/statblockDiceLinks', () => ({
   attachDiceRolling: () => () => undefined,
   diceLinkProps: () => ({}),
   linkDiceIn: () => undefined,
-  splitDiceSegments: (text: string) => [{ text, dice: false }],
 }));
 vi.mock('../../src/app/statblocks/render/shared/useStatblockDiceRolling', () => ({ useStatblockDiceRolling: () => [undefined, null] }));
 

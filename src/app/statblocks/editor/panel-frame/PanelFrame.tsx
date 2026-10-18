@@ -65,14 +65,21 @@ interface FramedSheetProps {
   folded?: ReadonlySet<string> | undefined;
   /** A block whose tabs open (the template editor's selection). */
   reveal?: string | null | undefined;
+  /** `preview` in the template editor: the card's "Add to next roll" switches are inert. */
+  rollBonuses?: 'live' | 'preview' | undefined;
 }
 
 /** The runtime card under a surface's chrome; it renders again only when one of these changes, never on hover. */
-const FramedSheet = memo(function FramedSheet({ chrome, valueEditing, template, name, record, app, sourcePath, folded, reveal }: FramedSheetProps): React.JSX.Element {
+const FramedSheet = memo(function FramedSheet({
+  chrome, valueEditing, template, name, record, app, sourcePath, folded, reveal, rollBonuses,
+}: FramedSheetProps): React.JSX.Element {
   return (
     <BlockChromeContext.Provider value={chrome}>
       <ValueEditingContext.Provider value={valueEditing}>
-        <StatblockSheet template={template} name={name} fields={record} variant="full" mode="editing" app={app} sourcePath={sourcePath} folded={folded} reveal={reveal} />
+        <StatblockSheet
+          template={template} name={name} fields={record} variant="full" mode="editing" app={app} sourcePath={sourcePath}
+          folded={folded} reveal={reveal} rollBonuses={rollBonuses}
+        />
       </ValueEditingContext.Provider>
     </BlockChromeContext.Provider>
   );

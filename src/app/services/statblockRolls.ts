@@ -14,6 +14,9 @@ import { rollOrigin } from '../tools/diceRollOrigins';
 import type { AdvantageSide, RollingDice } from '../types/diceSetTypes';
 import { templateDiceSet } from '../statblocks/resolve/templateDiceSet';
 import type { RollOptions } from '../tools/DiceTool';
+import { ArmedBonuses } from '../statblocks/rollBonuses/armedBonuses';
+import type { ArmableValues } from '../statblocks/rollBonuses/armableValues';
+import { armedValues, withArmedBonuses } from '../statblocks/rollBonuses/bonusFormula';
 
 export interface DiceRollSource {
   /** The view that owns this statblock; used for routing, never saved on the roll. */
@@ -28,6 +31,16 @@ export interface DiceRollSource {
   tokenName?: string | undefined;
   tokenImagePath?: string | undefined;
   abilityName?: string | undefined;
+  /** The statblock whose armed values ("Add to next roll") the roll takes. Unset: none, as for rolled hit points. */
+  bonuses?: StatblockBonuses | undefined;
+  /** The value whose own number is rolled (`bonusId`): armed, it is not added again, and is spent with the others. */
+  rolledBonus?: string | undefined;
+}
+
+/** A statblock's armed values as a roll reads them: its key, and the values its card shows now, by id. */
+export interface StatblockBonuses {
+  key: string;
+  armable: ArmableValues;
 }
 
 /** Shows a statblock's rolls where no map on screen shows them, and rolls them while no map is open. */
@@ -107,10 +120,25 @@ export function statblockRollingDice(app: App, source: DiceRollSource, offMap?: 
  * is not on screen; without a map, by `offMap` alone. A roll for one of the tokens
  * it was opened for carries that token's origin. A bare bonus rolls with the dice
  * set of the statblock's template, else the collection's; `advantage` rolls with
- * that side of the set's rule. Null when nothing could roll it.
+ * that side of the set's rule. The values armed for the statblock (`bonuses`) are
+ * added as labelled terms, as its card shows them now, and disarmed once the roll is made. Null when nothing could roll it.
  */
 export function rollStatblockDice(
   app: App, formula: string, source: DiceRollSource, offMap?: OffMapRolls | null, advantage?: AdvantageSide | null,
+): DiceRollResult | null {
+  if (!source.bonuses) return rollWithSource(app, formula, source, offMap, advantage);
+  const { key, armable } = source.bonuses;
+  const store = ArmedBonuses.forApp(app);
+  const ids = store.armed(key);
+  const armed = armedValues(ids.filter((id) => id !== source.rolledBonus), armable);
+  const result = rollWithSource(app, withArmedBonuses(formula, armed), source, offMap, advantage);
+  // Disarmed once the roll is out; a roll refused (a limit, no dice to roll it) leaves them armed.
+  if (result) store.spend(key, [...armed.map((bonus) => bonus.id), ...(source.rolledBonus === undefined ? [] : [source.rolledBonus])]);
+  return result;
+}
+
+function rollWithSource(
+  app: App, formula: string, source: DiceRollSource, offMap: OffMapRolls | null | undefined, advantage: AdvantageSide | null | undefined,
 ): DiceRollResult | null {
   const rollSource = rollSourceOf(source);
   const set = templateDiceSet(app, source.statblockPath);

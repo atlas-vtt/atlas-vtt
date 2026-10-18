@@ -212,19 +212,34 @@
 
     // The right end holds the widget bar and, below it, the DM's dice rolls
     // (dice-roll.scss). Without widgets it is empty and the rolls start at the
-    // top, as far from the top edge as from the right.
+    // top, as far from the top edge as from the right. When tabs and widgets
+    // do not fit side by side both give way, the widgets three times as much:
+    // the tabs scroll, the widgets wrap into rows, never narrower than a card.
     > .atlas-top-bar-end {
       position: relative;
-      flex: none;
+      flex: 0 3 auto;
       margin-left: auto;
 
       // The row positions the widget bar here; its fixed placement in
       // widget-bar.scss is for the player window.
+      // flow-root keeps the rows' negative margin (below) inside it.
       > .atlas-widget-bar {
         position: relative;
         top: auto;
         right: auto;
         z-index: 100;
+        display: flow-root;
+      }
+
+      // Rows that would reach past half the view scroll instead. The padding
+      // is room for the cards' shadows, taken back by the margin, so the cards
+      // stand where they would without it.
+      > .atlas-widget-bar > .atlas-widget-container {
+        max-height: 50vh;
+        overflow: hidden auto;
+        overscroll-behavior: contain;
+        padding: $spacing-xl;
+        margin: (-$spacing-xl);
       }
     }
   }

@@ -10,9 +10,8 @@ import { LabelledLine } from '../values/LabelledLine';
 import { StandIn, ValueText } from '../values/ValueText';
 import { ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
+import { MAX_TRACK_BOXES } from '../values/trackBoxes';
 
-/** Above this many, a box track would fill the card: it shows as a gauge instead. */
-export const MAX_TRACK_BOXES = 36;
 
 type TrackStyle = React.CSSProperties & Record<`--${string}`, string | number>;
 

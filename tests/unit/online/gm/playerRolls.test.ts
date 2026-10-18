@@ -4,7 +4,7 @@ import type { DiceRules } from '../../../../src/app/types/diceRulesTypes';
 import type { TokenEntity } from '../../../../src/app/types';
 import { describe, expect, it } from 'vitest';
 import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
-import { rollableFormula } from '../../../../src/app/online/gm/PlayerRolls.ts';
+import { playerFormula, rollableFormula } from '../../../../src/app/online/gm/PlayerRolls.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { DICE_TOOL, realDice, type DiceToolClass, type RealDice } from './realDice.ts';
 import { sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
@@ -81,7 +81,7 @@ describe('players\' rolls', () => {
 
   it('refuse a formula Atlas would complete or reject to the sender alone, with no roll and no notice', async () => {
     const gm = await table({ defaultRoll: '1d20', crit: 'natural' }, () => 0.5);
-    for (const formula of ['+3', '3', '', '0d6', '1d6 +', 'd20 + abc', '2d6 ^ 2', '1d1001']) {
+    for (const formula of ['3', '', '+ 3', '0d6', '1d6 +', 'd20 + abc', '2d6 ^ 2', '1d1001']) {
       gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula, token: null });
       await gm.advance(1000);
     }
@@ -145,9 +145,30 @@ describe('players\' private rolls and roll buttons', () => {
   });
 });
 
+describe('a bonus from a player\'s sheet', () => {
+  it('is completed with the map\'s dice, in the open and in private, as a bonus clicked on a statblock is', async () => {
+    const gm = await table({ defaultRoll: '2d12', crit: 'natural' }, () => 0.5);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+2', token: gm.alias(1), flavor: 'Agility' });
+    expect(gm.rolled.map((roll) => roll.formula)).toEqual(['2d12+2']);
+    expect(gm.rolled[0]?.rolls.map((die) => die.max)).toEqual([12, 12]);
+    expect(rollsSent(gm.sent)[0]).toMatchObject({ who: ANA, token: gm.alias(1), result: { formula: '2d12+2' } });
+
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '-1', token: null, mode: 'gm' });
+    expect(gm.logged.at(-1)).toMatchObject({ who: ANA, mode: 'gm', roll: { formula: '2d12-1' } });
+    expect(gm.logged.at(-1)?.roll.rolls.map((die) => die.max)).toEqual([12, 12]);
+    expect(refusals(gm.sent)).toEqual([]);
+    expect(gm.errors).toEqual([]);
+  });
+});
+
 describe('rollable formulas', () => {
   it('are those the tray writes, with dice', () => {
     expect(['1d20', '2d6 + 1d20 + 3', '1d6 - 2', '4d6!', 'd8'].every(rollableFormula)).toBe(true);
     expect(['+3', '0d6', '1d6+', 'x', '1d6'.repeat(30)].some(rollableFormula)).toBe(false);
+  });
+
+  it('take a signed bonus from a player, and no bare number', () => {
+    expect(['+3', '-1', '+0', '1d20'].every(playerFormula)).toBe(true);
+    expect(['3', '+12345', '+ 3', '+3+1', ''].some(playerFormula)).toBe(false);
   });
 });

@@ -5,7 +5,7 @@ import { fieldByKey } from './fieldKeys';
 import { done, parentTypeOf, refuse, spliced, withChildren, type TreeEdit } from './treeEdit';
 import { boundField, findBlock } from './treeQueries';
 import {
-  isContainerBlock, isContainerType, type BlockBase, type ContainerType, type BlockType, type TemplateBlock, type TemplateField, type TemplateLayout,
+  ADDS_TO_ROLLS_TYPES, isContainerBlock, isContainerType, type BlockBase, type ContainerType, type BlockType, type TemplateBlock, type TemplateField, type TemplateLayout,
 } from './templateTypes';
 
 type CommonProps = Partial<Pick<BlockBase, 'showWhen' | 'whenEmpty' | 'fallback' | 'className' | 'size'>>;
@@ -26,6 +26,7 @@ const CARRIED: ReadonlyArray<readonly [key: string, types: readonly BlockType[]]
   ['label', ['stat', 'tags', 'pairs', 'track']],
   ['heading', ['text', 'entries', 'spells']],
   ['display', ['stat', 'pairs', 'scores']],
+  ['addsToRolls', ADDS_TO_ROLLS_TYPES],
 ];
 const PATTERN_TYPES: readonly BlockType[] = ['title', 'line', 'stat'];
 

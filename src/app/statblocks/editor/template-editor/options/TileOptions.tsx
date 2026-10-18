@@ -14,7 +14,10 @@ import { LineFields } from '../inspector/LineFields';
 import type { ChromeStyle } from '../LabelEditor';
 import { readOnlyMessage } from '../sessionEdit';
 import { AbilitiesOptions } from './AbilitiesOptions';
+import { AddsToRollsSetting } from './AddsToRollsSetting';
 import { optionsKindOf } from './optionsKind';
+import { PlayersSetting } from './PlayersSetting';
+import { RollSetting } from './RollSetting';
 import { placeOptions, type OptionsPlacement, type OptionsRoom } from './optionsPlacement';
 import { TableOptions } from './TableOptions';
 import { ValueOptions } from './ValueOptions';
@@ -68,12 +71,14 @@ function focusTarget(root: HTMLElement, focusKey: string | undefined): HTMLEleme
  * A tile's Options: beside the card at the tile's height, where they show
  * whole (`optionsPlacement`), holding only what the tile's kind has: the kind
  * of value and choices of a Value, the parts and tabs of an Abilities list,
- * the columns of a Table, the values of the line under the name. Their width
+ * the columns of a Table, the values of the line under the name, whether a
+ * Metric's numbers roll as a bonus and add to rolls, and, where
+ * switched on, what players may do with the tile. Their width
  * is fixed; they scroll only where they are taller than the editor. Escape or
  * a press outside closes them; every change is one undo step as it is made.
  */
 export function TileOptions({ layer, stage, blockId, revision, focusKey, onClose }: TileOptionsProps): React.JSX.Element | null {
-  const { session, snapshot } = useTemplateEditor();
+  const { session, snapshot, playersRow = false } = useTemplateEditor();
   const ref = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLElement>(null);
@@ -175,7 +180,10 @@ export function TileOptions({ layer, stage, blockId, revision, focusKey, onClose
           {kind === 'value' && <ValueOptions {...props} />}
           {kind === 'abilities' && <AbilitiesOptions {...props} />}
           {kind === 'table' && <TableOptions {...props} />}
+          {kind === 'metric' && <RollSetting {...props} />}
+          {kind === 'metric' && <AddsToRollsSetting {...props} />}
           {kind === 'line' && block.type === 'line' && <LineFields {...props} block={block} template={template} parent={null} />}
+          {playersRow && kind !== 'line' && <PlayersSetting {...props} />}
         </section>
       </motion.div>
     </div>,

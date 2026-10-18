@@ -15,6 +15,8 @@ interface DefaultWidgetsTabProps {
   onInitiativeChange: (initiative: InitiativeRules) => void;
   /** The statblock fields offered for the initiative modifier (`initiativeFieldSuggestions`). */
   initiativeFieldSuggestions: readonly FieldSuggestion[];
+  /** A line above the initiative rules, such as that a played campaign's rules apply in their place. */
+  initiativeNotice?: React.ReactNode;
 }
 
 /** Available widget definitions for the MVP. */
@@ -37,6 +39,7 @@ export function DefaultWidgetsTab({
   initiative,
   onInitiativeChange,
   initiativeFieldSuggestions,
+  initiativeNotice,
 }: DefaultWidgetsTabProps): React.ReactElement {
   const toggle = (key: string): void => {
     onChange({ ...defaultWidgets, [key]: !defaultWidgets[key] });
@@ -63,6 +66,7 @@ export function DefaultWidgetsTab({
           </label>
         </div>
       ))}
+      {initiativeNotice}
       <InitiativeFields initiative={initiative} onChange={onInitiativeChange} fieldSuggestions={initiativeFieldSuggestions} />
     </>
   );

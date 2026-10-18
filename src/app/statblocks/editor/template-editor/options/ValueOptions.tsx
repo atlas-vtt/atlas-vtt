@@ -6,6 +6,8 @@ import { boundFieldOf, editBlock, editField } from '../inspector/blockEdits';
 import { ChoiceSetting, SelectSetting, SettingNote, TextSetting } from '../inspector/InspectorControls';
 import type { EditorSession } from '../sessionTypes';
 import { useTemplateEditor } from '../editorContext';
+import { RollSetting } from './RollSetting';
+import { AddsToRollsSetting } from './AddsToRollsSetting';
 import { VALUE_KINDS, valueKindOf, withValueKind, type ValueKind } from './valueKinds';
 
 type Display = 'plain' | 'signed';
@@ -26,8 +28,8 @@ interface ValueOptionsProps {
 
 /**
  * A Value tile's Options: the kind of value, then only what that kind has:
- * a choice's list and switches, a number's unit and sign, where the label
- * stands, how words are listed.
+ * a choice's list and switches, a number's unit, sign, whether it rolls as a
+ * bonus and whether it adds to rolls, where the label stands, how words are listed.
  */
 export function ValueOptions({ block, session, readOnly }: ValueOptionsProps): React.JSX.Element {
   const { snapshot } = useTemplateEditor();
@@ -53,6 +55,8 @@ export function ValueOptions({ block, session, readOnly }: ValueOptionsProps): R
         <ChoiceSetting<Display> label="Numbers" value={block.display ?? 'plain'} options={DISPLAYS} disabled={readOnly}
           onChange={(display) => editBlock(session, block.id, block.type, { display: display === 'plain' ? undefined : display })} />
       )}
+      {(kind === 'number' || kind === 'pairs') && <RollSetting block={block} session={session} readOnly={readOnly} />}
+      {(kind === 'number' || kind === 'pairs') && <AddsToRollsSetting block={block} session={session} readOnly={readOnly} />}
       {block.type === 'stat' && (
         <ChoiceSetting<StatBlock['look']> label="Label" value={block.look} disabled={readOnly}
           options={[{ value: 'run-in', label: 'Beside' }, { value: 'stacked', label: 'Above' }]}

@@ -32,10 +32,10 @@ const sheet: BookCharacter = {
     { key: 'ac', name: 'Armour', colour: '#0000ff', direction: 'static', current: 14, max: 14, editable: false },
   ],
 };
-const ogre: PlayedCharacter = { collection: 'Cairn', key: 'art/ogre.webp', tokenId: 'ogre', placed: { assetId: 'lib-ogre', imagePath: 'art/ogre.webp' }, sheet };
+const ogre: PlayedCharacter = { collection: 'Cairn', key: 'art/ogre.webp', tokenId: 'ogre', placed: { assetId: 'lib-ogre', imagePath: 'art/ogre.webp' }, sheet, statblockPath: null, drawnWith: { definitions: [], resources: undefined } };
 
 function scene(tokens: readonly TokenEntity[]): BookScene {
-  return { mapPath: 'map', collection: 'Cairn', resources: DEFINITIONS, tokens: Object.fromEntries(tokens.map((entry) => [entry.id, entry])), shown: () => new Map() };
+  return { mapPath: 'map', collection: 'Cairn', resources: DEFINITIONS, tokens: Object.fromEntries(tokens.map((entry) => [entry.id, entry])), shown: () => new Map(), listedToken: () => undefined };
 }
 
 const check = (character: PlayedCharacter | null, at: BookScene | null, key: string, current = 5, from = ANA): ResourceEdit | null =>

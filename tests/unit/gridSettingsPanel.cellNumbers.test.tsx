@@ -1,56 +1,26 @@
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { create } from 'zustand';
-import { GridSettingsPanel } from '../../src/app/react/components/command-palette/GridSettingsPanel';
+import { act, cleanup, fireEvent, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it } from 'vitest';
 import type { GridState } from '../../src/app/types/gridTypes';
-import type { AtlasView } from '../../src/app/atlas-view';
-import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { fakeGridView, renderGridPanel } from '../helpers/gridSettingsPanel';
 
 afterEach(() => cleanup());
 
-function fakeView(grid: GridState | null): AtlasView {
-  const store = create<{ grid: GridState | null; mapPath: string | null; setGrid: (grid: GridState) => void }>((set) => ({
-    grid,
-    mapPath: null,
-    setGrid: (next) => set({ grid: next }),
-  }));
-  return { atlasStore: store, app: createInMemoryApp().app } as unknown as AtlasView;
-}
-
 const baseGrid: GridState = { enabled: true, size: 70, offsetX: 0, offsetY: 0, opacity: 0.7 };
-
-function renderPanel(view: AtlasView): void {
-  render(
-    <GridSettingsPanel
-      view={view}
-      localOpacity={0.7}
-      setLocalOpacity={vi.fn()}
-      localLineWidth={1}
-      setLocalLineWidth={vi.fn()}
-      localGridVisible
-      setLocalGridVisible={vi.fn()}
-      localSnapToGrid
-      setLocalSnapToGrid={vi.fn()}
-      debouncedOpacityUpdate={vi.fn()}
-      debouncedLineWidthUpdate={vi.fn()}
-    />,
-  );
-}
 
 describe('GridSettingsPanel cell numbers', () => {
   it('shows the Cell numbers row on a square grid', () => {
-    renderPanel(fakeView({ ...baseGrid, type: 'square' }));
+    renderGridPanel(fakeGridView({ ...baseGrid, type: 'square' }));
     expect(screen.getByText('Cell numbers')).toBeTruthy();
   });
 
   it('hides the number-opacity row until a format is chosen', () => {
-    renderPanel(fakeView({ ...baseGrid, type: 'square' }));
+    renderGridPanel(fakeGridView({ ...baseGrid, type: 'square' }));
     expect(screen.queryByText('Number opacity')).toBeNull();
   });
 
   it('shows the number-opacity row once a format is chosen', () => {
-    renderPanel(fakeView({ ...baseGrid, type: 'square', cellNumbers: 'column-row' }));
+    renderGridPanel(fakeGridView({ ...baseGrid, type: 'square', cellNumbers: 'column-row' }));
     expect(screen.getByText('Number opacity')).toBeTruthy();
   });
 });
@@ -61,8 +31,8 @@ describe('GridSettingsPanel distance per cell', () => {
   const field = (): HTMLInputElement => screen.getByRole('textbox', { name: 'Distance per cell in ft' });
 
   it('overrides the distance on leaving the field and follows the default again when emptied', () => {
-    const view = fakeView(metricGrid);
-    renderPanel(view);
+    const view = fakeGridView(metricGrid);
+    renderGridPanel(view);
     expect(field().placeholder).toBe('5');
 
     fireEvent.change(field(), { target: { value: '7,5' } });
@@ -75,8 +45,8 @@ describe('GridSettingsPanel distance per cell', () => {
   });
 
   it('puts the stored distance back for text that is no positive number', () => {
-    const view = fakeView({ ...metricGrid, unitDistanceOverride: 50 });
-    renderPanel(view);
+    const view = fakeGridView({ ...metricGrid, unitDistanceOverride: 50 });
+    renderGridPanel(view);
     for (const typed of ['-3', '0', '10 ft', '1 mile', 'abc']) {
       fireEvent.focus(field());
       fireEvent.change(field(), { target: { value: typed } });
@@ -87,8 +57,8 @@ describe('GridSettingsPanel distance per cell', () => {
   });
 
   it('follows the stored distance when it changes elsewhere (undo, another view) while the field is not edited', () => {
-    const view = fakeView({ ...metricGrid, unitDistanceOverride: 50 });
-    renderPanel(view);
+    const view = fakeGridView({ ...metricGrid, unitDistanceOverride: 50 });
+    renderGridPanel(view);
     expect(field().value).toBe('50');
     act(() => view.atlasStore.getState().setGrid(metricGrid));
     expect(field().value).toBe('');
@@ -97,12 +67,36 @@ describe('GridSettingsPanel distance per cell', () => {
   });
 
   it("names the grid's distance, not a collection's, on a map outside every collection", () => {
-    renderPanel(fakeView(metricGrid));
+    renderGridPanel(fakeGridView(metricGrid));
     expect(screen.getByText("Empty uses the grid's 5 ft")).toBeTruthy();
   });
 
   it('is not offered where distances are range bands', () => {
-    renderPanel(fakeView(baseGrid));
+    renderGridPanel(fakeGridView(baseGrid));
     expect(screen.queryByRole('textbox', { name: /Distance per cell/ })).toBeNull();
+  });
+});
+
+// A GM measuring in metres: the unit is set where the map's rules come from, here the map's own grid.
+describe('GridSettingsPanel unit', () => {
+  const metricGrid: GridState = { ...baseGrid, measurementType: 'units', unitType: 'feet', unitDistance: 5 };
+  const unit = (): HTMLElement => screen.getByRole('button', { name: 'Feet' });
+
+  it('sets the unit of a map outside every collection on its grid, and the distance row follows it', async () => {
+    const view = fakeGridView(metricGrid);
+    renderGridPanel(view);
+    expect(screen.getByText('For this scene')).toBeTruthy();
+
+    fireEvent.keyDown(unit(), { key: 'Enter' });
+    expect(screen.queryByRole('menuitemcheckbox', { name: 'Custom' })).toBeNull();
+    fireEvent.click(await screen.findByRole('menuitemcheckbox', { name: 'Meters' }));
+    expect(view.atlasStore.getState().grid?.unitType).toBe('meters');
+    expect(screen.getByRole('button', { name: 'Meters' })).toBeTruthy();
+    expect(screen.getByRole('textbox', { name: 'Distance per cell in m' })).toBeTruthy();
+  });
+
+  it('is not offered where distances are range bands', () => {
+    renderGridPanel(fakeGridView(baseGrid));
+    expect(screen.queryByText('For this scene')).toBeNull();
   });
 });

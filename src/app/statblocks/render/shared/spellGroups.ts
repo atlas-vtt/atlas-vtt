@@ -4,6 +4,16 @@
  * `{ <level>: <spells> }`.
  */
 
+import type { FieldValue } from '../../model/templateTypes';
+
+/** A spells value as Fantasy Statblocks writes it: a list, or a record of level lines, or one line. */
+export function spellEntries(value: FieldValue | undefined): FieldValue[] {
+  if (value === undefined || value === null) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'object') return Object.entries(value).map(([level, spells]): FieldValue => ({ [level]: spells }));
+  return [value];
+}
+
 export interface SpellLine {
   /** "1st level (4 slots)"; absent for a spell line written as plain text. */
   level?: string;

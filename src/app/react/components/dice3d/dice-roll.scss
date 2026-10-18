@@ -276,8 +276,16 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
 
 // A capsule under the panel, like every bar shorter than 48px, aligned with the
 // column: right for the DM, centred in the player window.
-.atlas-dice-roll__chip {
+// The modifiers' chips under the panel, right-aligned, one per step the counter clicks in.
+.atlas-dice-roll__chips {
   align-self: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: $spacing-s;
+}
+
+.atlas-dice-roll__chip {
   display: inline-flex;
   align-items: center;
   gap: $spacing-s;

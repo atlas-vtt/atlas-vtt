@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import {
-  ASSET_CHUNK_BYTES, CLOSE, FINAL_CLOSE_CODES, GATE_CLOSE_CODES, MAX_ASSET_BYTES, MAX_CURSOR_NUMBERS, MAX_LASER_SPAN_MS, MAX_LIVE_TOKENS, MAX_BATCH_SENDS, MAX_PLAYER_NAME, MAX_PLAYERS, MAX_TOKEN_CONDITIONS, MAX_TOKENS, parseClientFrame, parseGmMessage, parsePlayerMessage, parseRelayFrame,
+  ASSET_CHUNK_BYTES, CLOSE, FINAL_CLOSE_CODES, GATE_CLOSE_CODES, MAX_ASSET_BYTES, MAX_CURSOR_NUMBERS, MAX_LASER_SPAN_MS, MAX_LIVE_PATH, MAX_LIVE_TOKENS, MAX_BATCH_SENDS, MAX_PLAYER_NAME, MAX_PLAYERS, MAX_TOKEN_CONDITIONS, MAX_TOKENS, parseClientFrame, parseGmMessage, parsePlayerMessage, parseRelayFrame,
   playerName,
 } from '../../../../src/app/online/protocol/index.ts';
 
@@ -423,5 +423,22 @@ describe('live places of a drag', () => {
       { ...live, tokens: [{ id, x: 2e6, y: 1 }] }, { ...live, tokens: [{ id, x: 1 }] }, { ...live, tokens: [{ id, x: 1, y: 1, end: false }] },
       { ...live, tokens: Array.from({ length: MAX_LIVE_TOKENS + 1 }, () => ({ id, x: 1, y: 1 })) }, { ...live, tokens: {} }, { ...live, scene: 's'.repeat(65) },
     ]) expect(parseGmMessage(bad), JSON.stringify(bad).slice(0, 80)).toBeNull();
+  });
+});
+
+describe('the ruler of a drag', () => {
+  const id = 'a'.repeat(24);
+  const place = { id, x: 105, y: 35 };
+  const live = (path: unknown): unknown => ({ t: 'live', scene: 's1', at: 1, tokens: [{ ...place, path }] });
+
+  it('is read with its place, and a place without one reads as before', () => {
+    expect(parseGmMessage(live([[35, 35], [105, 35], [105.5, -70]]))).toEqual(live([[35, 35], [105, 35], [105.5, -70]]));
+    expect(parseGmMessage({ t: 'live', scene: 's1', at: 1, tokens: [place] })).toEqual({ t: 'live', scene: 's1', at: 1, tokens: [place] });
+  });
+
+  it('refuses a path of fewer than two points, too many, or with a point that is no pair of coordinates', () => {
+    for (const bad of [
+      [], [[1, 1]], Array.from({ length: MAX_LIVE_PATH + 1 }, () => [1, 1]), [[1, 1], [1]], [[1, 1], [1, 2, 3]], [[1, 1], [2e6, 1]], [[1, 1], ['1', 1]], [[1, 1], { x: 1, y: 1 }], {}, null,
+    ]) expect(parseGmMessage(live(bad)), JSON.stringify(bad).slice(0, 80)).toBeNull();
   });
 });

@@ -69,24 +69,34 @@
 
 // The small switch: as tall as a small control, its thumb a disc concentric with the pill
 // (outer radius = thumb radius + the 2px between them), and no icon to read as a button.
-.atlas-toggle--s {
+// The pill sizes: a pill `$width` × `$height` around a disc 2px smaller all round (1px padding, 1px border).
+@mixin atlas-toggle-pill($width, $height) {
   border-radius: $radius-full;
 
   .atlas-toggle__switch {
-    width: 36px;
-    height: 20px;
+    width: $width;
+    height: $height;
     padding: 1px;
     border-radius: $radius-full;
   }
 
   .atlas-toggle__thumb {
-    width: 16px;
-    height: 16px;
+    width: $height - 4px;
+    height: $height - 4px;
     border-radius: $radius-full;
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.16);
   }
 
   .atlas-toggle__thumb--on {
-    transform: translateX(16px);
+    transform: translateX($width - $height);
   }
+}
+
+.atlas-toggle--s {
+  @include atlas-toggle-pill(36px, 20px);
+}
+
+// The smallest, for a switch in a line of text: no taller than the line.
+.atlas-toggle--xs {
+  @include atlas-toggle-pill(28px, 16px);
 }

@@ -158,7 +158,7 @@ export function rollDiceFormula(
     inputs.onFormulaError(helped);
     return null;
   }
-  const { rolls, modifiers, total, linear } = helped
+  const { rolls, modifiers, named, total, linear } = helped
     ? rollFormula(helped.formula, inputs.random, helped.explodeRules, helped.looks)
     : rollFormula(complete.parsed, inputs.random, rolling, looks);
 
@@ -168,6 +168,7 @@ export function rollDiceFormula(
     formula: complete.formula,
     rolls,
     modifiers,
+    ...(named.length > 0 && { namedModifiers: named }),
     total,
     ...(!linear && { linear: false as const }),
     crit: getDiceCrit(rolls, rolling),

@@ -139,6 +139,14 @@ describe('what a player writes into their book', () => {
     expect(fitsPlayerFrame({ t: 'book-resource', key: 'k'.repeat(MAX_RESOURCE_KEY), current: -MAX_TOKEN_VALUE })).toBe(true);
   });
 
+  it('reads the token a book follows, by the scene and the id the token list names it by, and refuses anything else', () => {
+    expect(parsePlayerMessage({ t: 'book-token', scene: 'scene-1', token: ID, extra: true })).toEqual({ t: 'book-token', scene: 'scene-1', token: ID });
+    for (const broken of [{ scene: 'scene-1' }, { token: ID }, { scene: 'scene-1', token: 'tok-brannoch' }, { scene: 'x'.repeat(65), token: ID }, { scene: 1, token: ID }, { scene: 'scene-1', token: null }]) {
+      expect(parsePlayerMessage({ t: 'book-token', ...broken }), JSON.stringify(broken)).toBeNull();
+    }
+    expect(parseGmMessage({ t: 'book-token', scene: 'scene-1', token: ID })).toBeNull();
+  });
+
   it('refuses what is malformed or too long, and never takes a GM kind from a player', () => {
     expect(parsePlayerMessage({ t: 'book-note', note: { id: ID, title: 't', body: 'x'.repeat(MAX_NOTE_BODY + 1) } })).toBeNull();
     expect(parsePlayerMessage({ t: 'book-note', note: { id: ID, title: 'x'.repeat(81), body: '' } })).toBeNull();

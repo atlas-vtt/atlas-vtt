@@ -1,5 +1,6 @@
 import type { DiceScene } from '../../../dice3d/diceScene';
-import { diceList, diceSum, keptRolls, modifierText, namedDiceLine } from '../../../tools/diceLabels';
+import { diceList, diceSum, keptRolls, namedDiceLine } from '../../../tools/diceLabels';
+import { modifiersText } from '../../../tools/namedModifiers';
 import type { DiceRollResult } from '../../../types/diceTypes';
 import { t } from '../../../i18n';
 
@@ -39,7 +40,7 @@ function diceBreakdown(result: DiceRollResult, scene: DiceScene): string | null 
   const thrown = result.rolls.filter((roll) => !roll.rerolled).length;
   if (result.linear === false) return thrown > 6 ? `${thrown} dice` : diceList(result.rolls);
 
-  const suffix = modifierText(result.modifiers);
+  const suffix = modifiersText(result);
   const kept = keptRolls(result.rolls);
   const shown = result.advantage ? kept : result.rolls;
   const diceTotal = result.total - result.modifiers;
@@ -49,7 +50,7 @@ function diceBreakdown(result: DiceRollResult, scene: DiceScene): string | null 
     const value = kept[0]?.value ?? 0;
     return `Tens ${Math.floor((value % 100) / 10) * 10}, units ${value % 10}${suffix}`;
   }
-  const named = namedDiceLine(result.rolls, result.modifiers);
+  const named = namedDiceLine(result.rolls, result);
   if (named !== null && kept.length <= 6) return named;
   if (thrown > 6) return `${thrown} dice, ${diceTotal}${suffix}`;
   if (scene.plan.some((die) => die.fold !== undefined) && (plain || result.advantage)) {
@@ -65,6 +66,6 @@ export function hasBreakdown(result: DiceRollResult, scene: DiceScene): boolean 
     || scene.plan[0]?.role === 'tens'
     || scene.plan.some((die) => die.fold !== undefined)
     || result.rolls.length > 1
-    || result.modifiers !== 0
+    || modifiersText(result) !== ''
     || result.linear === false;
 }

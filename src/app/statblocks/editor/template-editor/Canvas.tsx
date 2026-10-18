@@ -191,6 +191,7 @@ export function Canvas(props: CanvasProps): React.JSX.Element {
       app={props.app}
       sourcePath={props.sourcePath}
       reveal={primary}
+      rollBonuses="preview"
       around={stage}
     />
   );

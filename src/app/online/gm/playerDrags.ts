@@ -71,6 +71,11 @@ export class PlayerDrags {
     return this.live.size > 0 ? state.heldTokens !== this.held : Object.keys(state.heldTokens).length > 0;
   }
 
+  /** Where each token under a drag was taken from, by GM token id. */
+  starts(): Map<string, Point> {
+    return new Map([...this.live.values()].map(({ tokenId, start }) => [tokenId, start]));
+  }
+
   /** A drag message: starts or moves the player's drag, or ends it when the token may no longer be theirs. */
   receive(from: string, drag: PlayerDrag): void {
     const state = this.store.getState();

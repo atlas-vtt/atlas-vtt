@@ -6,19 +6,23 @@
 $widget-value-size: 28px;
 $widget-bar-offset: $spacing-s;
 
-// Top right, where the DM's top row (main.scss) also places it.
+// Top right, where the DM's top row (main.scss) also places it, never wider than the window.
 .atlas-widget-bar {
   position: fixed;
   top: $widget-bar-offset;
   right: $widget-bar-offset;
+  max-width: calc(100vw - 2 * #{$widget-bar-offset});
   z-index: 50; // below the asset manager (100)
   pointer-events: none;
 }
 
 // Lays the cards out without a panel of its own; only the cards catch the pointer,
-// so the gaps between them stay clickable on the map.
+// so the gaps between them stay clickable on the map. Cards that do not fit in one
+// row wrap into more, right-aligned under the first.
 .atlas-widget-container {
   @include atlas-flex-row($spacing-s);
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 // ── Widget card ──────────────────────────────────────────────────────────────

@@ -8,7 +8,8 @@
 
 import type { FieldValue } from '../model/templateTypes';
 import { DEFAULT_ENTRY_TEXT_KEY, entryName } from './entryValues';
-import { parseNumberText } from './numberText';
+import { formatSigned, numericValue, parseNumberText } from './numberText';
+import { valueText } from './valueText';
 
 export interface Pair {
   key: string;
@@ -65,4 +66,18 @@ function findPair(pairs: readonly Pair[], name: string | undefined): Pair | unde
 export function pairValue(pairs: FieldValue | undefined, slotKey: string | undefined, slotLabel?: string): FieldValue | undefined {
   const list = normalisePairs(pairs);
   return (findPair(list, slotKey) ?? findPair(list, slotLabel))?.value;
+}
+
+const FIRST_LETTER = /^\p{Ll}/u;
+
+/** A pair's name as a statblock writes it: "dex" reads "Dex". */
+export function pairName(key: string): string {
+  return key.trim().replace(FIRST_LETTER, (letter) => letter.toUpperCase());
+}
+
+/** One pair as a statblock shows it: "Dex +5", the name alone where it has no value ("Stealth"), or the value alone where it has no name. */
+export function pairText(pair: Pair, signed: boolean): string {
+  const number = signed ? numericValue(pair.value) : null;
+  const value = (number === null ? valueText(pair.value) : formatSigned(number)).trim();
+  return [pairName(pair.key), value].filter((part) => part !== '').join(' ');
 }

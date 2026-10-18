@@ -15,7 +15,7 @@ import type { DiceRules, ExplodeRule } from '../types/diceRulesTypes';
 import type { DiceSetDie, RollingDice } from '../types/diceSetTypes';
 import { MAX_EXPLOSIONS, type Explosion } from './diceExplosion';
 import { evaluateFormula } from './evaluateFormula';
-import type { DiceTerm, FormulaTerm, ParsedFormula } from './formulaTypes';
+import type { ConstantTerm, DiceTerm, FormulaTerm, ParsedFormula } from './formulaTypes';
 import { rollDiceTerm } from './rollDiceTerm';
 
 export interface RolledDie {
@@ -52,10 +52,19 @@ export interface RolledDie {
 /** What a dice set gives the dice of one term: a name and a colour. */
 export type DieLook = Pick<DiceSetDie, 'name' | 'colour'>;
 
+/** A constant written with a label (`2[Proficiency]`), kept apart so a roll can name it: `+ 2 Proficiency`. */
+export interface NamedModifier {
+  label: string;
+  /** Signed: a subtracted constant is negative. */
+  value: number;
+}
+
 export interface RolledFormula {
   rolls: RolledDie[];
   /** The constants added to the dice; 0 unless the formula is `linear`. */
   modifiers: number;
+  /** The labelled constants among `modifiers`, in written order; none unless the formula is `linear`. */
+  named: NamedModifier[];
   /** The whole number the formula comes to. */
   total: number;
   /** The formula is a signed sum of dice and constants (`ParsedFormula.linear`). */
@@ -100,8 +109,9 @@ export function rollFormula(
   }
 
   const total = evaluateFormula(formula.expression, (term) => (term.kind === 'constant' ? term.value : values.get(term) ?? 0));
-  const modifiers = formula.linear
-    ? formula.terms.reduce((sum, term) => sum + (term.kind === 'constant' ? (term.negative ? -term.value : term.value) : 0), 0)
-    : 0;
-  return { rolls, modifiers, total, linear: formula.linear };
+  const constants = formula.linear ? formula.terms.filter((term): term is ConstantTerm => term.kind === 'constant') : [];
+  const signedValue = (term: ConstantTerm): number => (term.negative ? -term.value : term.value);
+  const modifiers = constants.reduce((sum, term) => sum + signedValue(term), 0);
+  const named = constants.flatMap((term) => (term.label === undefined ? [] : [{ label: term.label, value: signedValue(term) }]));
+  return { rolls, modifiers, named, total, linear: formula.linear };
 }

@@ -4,12 +4,8 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../src/app/atlasViewType', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
-import {
-  attachDiceRolling,
-  linkDiceIn,
-  splitDiceSegments,
-  toRollFormula,
-} from '../../src/app/services/statblockDiceLinks';
+import { attachDiceRolling, linkDiceIn } from '../../src/app/services/statblockDiceLinks';
+import { splitDiceSegments, toRollFormula } from '../../src/app/services/statblockDiceText';
 import { rollStatblockDice } from '../../src/app/services/statblockRolls';
 
 interface Roll {
