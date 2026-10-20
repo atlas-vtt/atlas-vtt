@@ -6,6 +6,7 @@ import { beginHistoryTransaction, endHistoryTransaction } from '../stores/histor
 import { hitTestDrawing } from './drawingGeometry';
 import { MAP_ICON_LABELS } from './mapIcons';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/ContextMenuContext';
+import { addonObjectMenuEntries } from '../addons/addonHost';
 import { t } from '../i18n';
 
 /** Screen-space slack around ink, so thin lines stay grabbable at any zoom. */
@@ -32,7 +33,9 @@ export class DrawingInteraction {
 
   /** Topmost drawing under a world-space point, or null. */
   public hitTest(worldX: number, worldY: number): string | null {
-    const drawings = Object.values(this.store.getState().objects?.drawings ?? {});
+    // Drawings an add-on hides cannot be picked
+    const masked = this.store.getState().objectMask.hidden;
+    const drawings = Object.values(this.store.getState().objects?.drawings ?? {}).filter((stroke) => !masked[stroke.id]);
     const tolerance = HIT_TOLERANCE_PX / this.viewport.scale.x;
     const point = { x: worldX, y: worldY };
 
@@ -154,6 +157,7 @@ export class DrawingInteraction {
     }
 
     entries.push(
+      ...addonObjectMenuEntries(this.store, 'drawing', drawingId),
       { type: 'item', label: t('common.duplicate'), icon: 'files', onClick: () => this.store.getState().duplicateMapObjects(ids) },
       { type: 'item', label: t('common.delete'), icon: 'trash', destructive: true, onClick: () => this.store.getState().deleteSelected() },
     );

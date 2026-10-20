@@ -127,11 +127,27 @@ export interface TextElement {
   scale?: number;
 }
 
+/**
+ * Drawing types. Add-ons add theirs from their own folder
+ * (`declare module 'src/app/types' { interface DrawingTypeRegistry { area: true } }`)
+ * and draw them through `drawingShapes`.
+ */
+export interface DrawingTypeRegistry {
+  pen: true;
+  eraser: true;
+  line: true;
+  rectangle: true;
+  circle: true;
+  icon: true;
+}
+
+export type DrawingType = keyof DrawingTypeRegistry;
+
 export interface DrawingStroke {
   id: string;
   kind: 'drawing';
   timestamp: number;
-  type: 'pen' | 'eraser' | 'line' | 'rectangle' | 'circle' | 'icon';
+  type: DrawingType;
   points: Array<{ x: number; y: number }>;
   color: string;
   /** Line width for strokes, footprint size for `icon` stamps */

@@ -42,6 +42,7 @@ import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
 import { placedPlayerCharacterEntry } from '../../react/components/context-menu/playerCharacterMenu';
 import { holdTokens } from '../../lighting/sightOnDrop';
+import { addonObjectMenuEntries } from '../../addons/addonHost';
 import { t } from '../../i18n';
 
 interface DragState {
@@ -736,6 +737,8 @@ export class InteractionController implements ITokenInteractionController {
       });
     }
 
+
+    entries.push(...addonObjectMenuEntries(this.store, 'token', token.id, { app: this.obsApp }));
 
     // Destructive actions row (Kill + Delete side by side)
     entries.push({

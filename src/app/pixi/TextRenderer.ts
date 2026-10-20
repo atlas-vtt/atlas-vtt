@@ -18,6 +18,8 @@ import { TextResizeUI } from './TextResizeUI';
 import { createTextElementView, TEXT_BACKGROUND_LABEL, TEXT_CONTENT_LABEL, updateTextElementView } from './textElementView';
 import { promptForText } from '../ui/textInputDialog';
 import { destroyTree } from './utils/destroyTree';
+import { applyObjectMask } from './objectMaskDisplay';
+import { addonObjectMenuEntries } from '../addons/addonHost';
 import { t } from '../i18n';
 
 export class TextRenderer {
@@ -93,6 +95,11 @@ export class TextRenderer {
       if (state.selectedIds !== prevState.selectedIds) {
         this.updateSelection(state.selectedIds);
       }
+
+      // An add-on changed which texts show
+      if (state.objectMask !== prevState.objectMask) {
+        this.applyMask();
+      }
     });
   }
 
@@ -120,6 +127,20 @@ export class TextRenderer {
         this.updateText(text);
       }
     }
+    this.applyMask();
+  }
+
+  /** Hides texts an add-on masks and fades ghosted ones. */
+  private applyMask(): void {
+    const mask = this.store.getState().objectMask;
+    for (const [id, container] of Object.entries(this.textElements)) {
+      applyObjectMask(container, mask, id);
+    }
+  }
+
+  /** Display object of every text, by id. */
+  getTextContainers(): Readonly<Record<string, Container>> {
+    return this.textElements;
   }
 
   private createText(textElement: TextElement): void {
@@ -359,6 +380,7 @@ export class TextRenderer {
         label: textElement.italic ? `\u2713 ${t('text.italic')}` : t('text.italic'),
         onClick: () => this.store.getState().updateText(textElement.id, { italic: !textElement.italic }),
       },
+      ...addonObjectMenuEntries(this.store, 'text', textElement.id),
       {
         type: 'item',
         label: t('common.delete'),

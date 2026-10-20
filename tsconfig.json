@@ -38,5 +38,9 @@
     "scripts/**/*.js",
     "scripts/**/*.mjs",
     "scripts/**/*.d.ts"
+  ],
+  // Add-on tests are checked like tests/unit: by vitest, with the shared test mocks
+  "exclude": [
+    "src/addons/*/__tests__/**"
   ]
 }

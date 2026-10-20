@@ -8,6 +8,7 @@ import type { ViewAtlasState } from '../../src/app/storeFactory';
 
 const openContextMenuGlobal = vi.hoisted(() => vi.fn());
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({ openContextMenuGlobal }));
+vi.mock('../../src/app/addons/addonRegistry', () => ({ installedAddons: () => [] }));
 
 /** A right press 300 px into the window from where it lies on the canvas, as beside an open sidebar. */
 const rightPress = {

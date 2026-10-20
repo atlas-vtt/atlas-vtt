@@ -15,6 +15,7 @@ import { showCamera, type ViewCamera } from './pixi/viewCamera';
 import { requestRender } from './pixi/RenderScheduler';
 import { prefersReducedMotion } from './utils/motion';
 import type { ViewAtlasStore } from './storeFactory';
+import { addonBackground } from './addons/addonHost';
 
 export interface DisplayedMap {
   mapData: MapFile;
@@ -28,6 +29,9 @@ type MapRenderer = Pick<
 
 /** The store background each map image shows, as the load or the store's change that showed it named it. */
 const shownBackground = new WeakMap<MapImage, string | null>();
+
+/** What `followBackground` reads while a load runs: the load shows its own image. */
+const LOADING = Symbol('loading');
 
 /** The view's map image, made and handed to the renderer on the first load; null without a viewport. */
 function viewMapImage(app: App, renderer: MapRenderer): MapImage | null {
@@ -128,12 +132,16 @@ async function loadAndDisplay(
 /**
  * Shows the store's background whenever it changes outside a load (undo or redo of a background
  * change, a missing image removed): the image loads into the same map image. Returns the unsubscribe.
+ * An add-on may replace the background (e.g. a map variant); it is read once
+ * a load is done too, so a scene that opens with a variant switches to it.
  */
 function followBackground(app: App, store: ViewAtlasStore, mapImage: MapImage): () => void {
-  return store.subscribe((state) => state.background, (background) => {
+  const shown = (state: ReturnType<ViewAtlasStore['getState']>) =>
+    state.mapLoaded && !state.isMapLoading ? addonBackground(state) ?? state.background : LOADING;
+  return store.subscribe(shown, (background) => {
     const state = store.getState();
     // A load sets the background itself and shows the image of its file.
-    if (!state.mapLoaded || state.isMapLoading) return;
+    if (background === LOADING) return;
     if (shownBackground.get(mapImage) === background) return;
     shownBackground.set(mapImage, background);
     void mapImage.load(mapImageSourceFor(app, background, state.grid?.size));

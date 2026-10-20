@@ -50,6 +50,9 @@ import { mapMeasurementSettings } from './services/mapMeasurementSettings';
 import { rulesLookup } from './services/mapRules';
 import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
 import { requestRender } from './pixi/RenderScheduler';
+import { ghostLayers } from './pixi/objectMaskDisplay';
+import { AddonRenderers } from './addons/addonHost';
+import { addonKeepMeasurement } from './addons/drawingAddons';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
 import { shownRollTokens } from './pixi/playerRollTokens';
 import type { ShownRollToken } from './services/playerRollSource';
@@ -94,6 +97,8 @@ export class PixiRendererOrchestrator { // Renamed class
   private soundRegistry?: SoundRegistry;
   private bufferCache?: AudioBufferCache;
   private spatialAudioEngine?: SpatialAudioEngine;
+  /** Canvas parts of the installed add-ons (src/addons/*). */
+  private addonRenderers?: AddonRenderers;
 
   private layerGrid: Container | null = null;
   private layerTemplate: Container | null = null;
@@ -477,7 +482,9 @@ export class PixiRendererOrchestrator { // Renamed class
     if (this.gridSystem && !isPlayerView) {
       this.textTool = new TextTool(viewport, this.store, this.gridSystem, this.eventBus);
     }
-    
+
+    // Add-ons last, so their first object mask reaches every renderer
+    this.addonRenderers = new AddonRenderers({ app: this.obsApp, viewport, store: this.store, isPlayerView });
   }
 
   /** Builds the grid over `mapImage`, or brings the existing grid `options` and the image. */
@@ -734,7 +741,7 @@ export class PixiRendererOrchestrator { // Renamed class
     // The map image at the players' own detail, put back before the DM's render
     const restoreMapImage = this.mapImage?.drawFor(frameView(frame));
     try {
-      captureBeforeRender(this.playerFrameLayers(settings), () => frames.render(app.stage, frame), () => frames.copy(copy), frameCamera(viewport, frame));
+      captureBeforeRender(this.playerFrameLayers(settings, frame.scale), () => frames.render(app.stage, frame), () => frames.copy(copy), frameCamera(viewport, frame));
     } finally {
       restoreMapImage?.();
       if (!renderFollows) app.renderer.render(app.stage);
@@ -754,9 +761,18 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   /** What a players' frame changes on the stage: everything players must not see, hidden for one render. */
-  private playerFrameLayers(settings: AtlasSettings['localPlayerView']): LayerVisibility[] {
+  private playerFrameLayers(settings: AtlasSettings['localPlayerView'], playerZoom: number): LayerVisibility[] {
     // The grid is left as the GM set it: players see it exactly as the GM does, hidden included.
-    const layers = this.markerLayers();
+    // Pins as players see them at their zoom (an add-on may show some); hex links are the GM's
+    const layers: LayerVisibility[] = [...(this.pinRenderer?.getPlayerViewLayers(playerZoom) ?? [])];
+    if (this.hexLinkRenderer) layers.push({ layer: this.hexLinkRenderer.container, visible: false });
+    // Ghosted objects are a GM aid; add-ons hide their own GM-only layers
+    if (this.drawingRenderer || this.textRenderer) {
+      const objectMask = this.store.getState().objectMask;
+      if (this.drawingRenderer) layers.push(...ghostLayers(objectMask, this.drawingRenderer.getNodes()));
+      if (this.textRenderer) layers.push(...ghostLayers(objectMask, this.textRenderer.getTextContainers()));
+    }
+    layers.push(...(this.addonRenderers?.playerViewLayers() ?? []));
     // The lighting's part is the list session view holds on this canvas (`SessionLighting`).
     const sight = this.lighting?.playerSight();
     layers.push(...(this.tokenRenderer?.getPlayerViewLayers(settings, sight) ?? []));
@@ -966,6 +982,8 @@ export class PixiRendererOrchestrator { // Renamed class
     measure.measurementSettingsProvider = () => mapMeasurementSettings(rules, this.store.getState());
     const grid = this.gridSystem;
     if (grid) measure.playersView = measurePlayersView({ store: this.store, grid, tokens: () => this.tokenRenderer, lighting: () => this.lighting?.playerSight() });
+    // An add-on may keep finished measurements as map objects (area templates)
+    measure.keepMeasurement = (measurement) => addonKeepMeasurement(measurement, this.store);
     this.stopMeasuresFollowingPlayers?.();
     this.stopMeasuresFollowingPlayers = this.tokenRenderer?.onPlayersViewChange(() => measure.refreshVisibility());
   }
@@ -1071,6 +1089,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.drawingRenderer?.destroy(); // Destroy DrawingRenderer
     this.drawingInteraction?.destroy();
     this.textRenderer?.destroy(); // Destroy TextRenderer
+    this.addonRenderers?.destroy();
     this.textTool?.destroy(); // Destroy TextTool
     this.lightingFeature?.destroy();
     this.playerFrames?.destroy();

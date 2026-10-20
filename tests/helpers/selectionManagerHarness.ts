@@ -51,6 +51,7 @@ export function selectionHarness({ selectionMode = 'box', tokens, drawings = {},
     activeTool: 'select',
     selectionMode,
     objects: { tokens: tokenRecords, drawings },
+    objectMask: { hidden: {}, ghost: {} }, // add-on object mask
     setSelection(ids: string[]) { store.setState({ selectedIds: ids }); },
   })));
   const manager = new SelectionManager(viewport as never, () => tokens, () => fog, store as never, new EventEmitter());

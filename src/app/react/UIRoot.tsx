@@ -13,6 +13,7 @@ import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
 import DMScreen from './components/DMScreen';
+import { AddonMapOverlays, AddonToolbarBars, hasAddonToolbarBars } from '../addons/AddonToolbarBars';
 import { InitiativeTracker } from './components/InitiativeTracker';
 import { DiceRollLog } from './components/dice-log/DiceRollLog';
 import { DiceRollDisplay } from './components/dice/DiceRollDisplay';
@@ -153,6 +154,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
         )}
         <div className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%' }}>
           {/* Every surface has its own boundary: one that fails must not take the others with it */}
+          {!isPlayerView && !isMapLoading && <PanelBoundary name="add-on overlays"><AddonMapOverlays /></PanelBoundary>}
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}
           <div className="atlas-top-bar-row">
@@ -179,6 +181,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
 
           {/* Bottom row — undo/redo docked left of the main toolbar, view actions (DM only) at the right edge */}
           <BottomToolbarRow
+            above={!isPlayerView && !isMapLoading && hasAddonToolbarBars() && <PanelBoundary name="add-on bars"><AddonToolbarBars /></PanelBoundary>}
             start={!isPlayerView && <PanelBoundary name="undo and redo"><UndoRedoControls viewId={view?.viewId} /></PanelBoundary>}
             end={!isPlayerView && <PanelBoundary name="the view actions"><ViewActionsMenu app={app} filePath={view?.file?.path} /></PanelBoundary>}
           >

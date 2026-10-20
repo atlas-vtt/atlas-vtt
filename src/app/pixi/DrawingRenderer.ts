@@ -7,9 +7,12 @@ import { beginHistoryTransaction, endHistoryTransaction } from '../stores/histor
 import { MAP_ICON_SIZE } from './mapIcons';
 import { DrawingLayer, drawStroke } from './drawingLayer';
 import { splitStrokeByBrush } from './drawingEraseUtils';
+import { hitTestDrawing } from './drawingGeometry';
 import { FogCursorPreview } from './fog/FogCursorPreview';
 import { destroyTree } from './utils/destroyTree';
 import { isHandled } from './utils/handledEvents';
+import { applyObjectMask } from './objectMaskDisplay';
+import { addonDrawingShape } from '../addons/drawingAddons';
 
 export interface DrawingSettings {
   color: string;
@@ -102,16 +105,27 @@ export class DrawingRenderer {
     return this.container;
   }
 
+  /** Display object of every committed drawing, by id. */
+  public getNodes(): ReadonlyMap<string, PIXI.Container> {
+    return this.layer.getNodes();
+  }
+
   // ── Store wiring ────────────────────────────────────────────────────
 
   private subscribeToStore(): void {
     let prevDrawings = this.store.getState().objects?.drawings;
     let prevTool = this.store.getState().activeTool;
+    let prevMask = this.store.getState().objectMask;
 
     this.unsubscribe = this.store.subscribe((state) => {
       if (state.objects?.drawings !== prevDrawings) {
         prevDrawings = state.objects?.drawings;
         if (!this.isDrawing) this.rebuild();
+      }
+
+      if (state.objectMask !== prevMask) {
+        prevMask = state.objectMask;
+        this.applyMask();
       }
 
       if (state.activeTool !== prevTool) {
@@ -137,6 +151,16 @@ export class DrawingRenderer {
 
   private rebuild(): void {
     this.layer.sync(this.store.getState().objects?.drawings ?? {});
+    this.applyMask();
+  }
+
+  /** Hides drawings an add-on masks and fades ghosted ones (icon stamps keep their own opacity). */
+  private applyMask(): void {
+    const { objectMask, objects } = this.store.getState();
+    for (const [id, node] of this.layer.getNodes()) {
+      const stroke = objects?.drawings?.[id];
+      applyObjectMask(node, objectMask, id, stroke?.type === 'icon' ? stroke.opacity : 1);
+    }
   }
 
   // ── Input ───────────────────────────────────────────────────────────
@@ -253,6 +277,11 @@ export class DrawingRenderer {
     const radius = this.settings.eraserWidth / 2;
 
     for (const stroke of Object.values(drawings)) {
+      // Add-on drawings (e.g. area templates) go as a whole once the brush touches them
+      if (addonDrawingShape(stroke.type)) {
+        if (hitTestDrawing(stroke, world, radius + ERASER_SLACK)) state.deleteDrawing(stroke.id);
+        continue;
+      }
       if (stroke.type === 'icon') {
         const center = stroke.points[0];
         const reach = radius + stroke.width / 2 + ERASER_SLACK;

@@ -15,6 +15,11 @@ import { getPinIconDefinition, resolvePinIcon, type PinIconId } from '../types/p
 import { canvasBadgeColors, isDarkTheme } from './utils/canvasBadgeColors';
 import { dispatchPinAction } from './utils/pinActions';
 import { hexLayoutOfGrid, isShownAsHex, pinDisplayPoint } from '../grid/hexLinks';
+import { addonPinScale, addonPinVisible } from '../addons/pinAddons';
+import type { PinViewer } from '../addons/hooks/pinHooks';
+import type { LayerVisibility } from './playerSafeFrame';
+import { GHOST_ALPHA } from './objectMaskDisplay';
+import { addonObjectMenuEntries } from '../addons/addonHost';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { createReadableMark } from './pinReadableMark';
 import { readablePinEntry } from './pinReadableMenu';
@@ -74,16 +79,27 @@ export class PinRenderer {
       (state: ViewAtlasState) => state.grid,
       () => this.repositionPins(),
     );
-    // The player window mirrors this canvas, so pins must vanish with the GM view
+    // The player window mirrors this canvas, so previewing the player view shows only their pins
     const unsubscribeGMView = this.store.subscribe(
       (state: ViewAtlasState) => state.isGMView,
-      () => { this.pinContainer.visible = !this.arePinsHidden(); },
-      { fireImmediately: true }
+      () => this.applyZoom(),
+    );
+    // Add-ons that size or show pins changed a setting they read
+    const unsubscribeAddonRevision = this.store.subscribe(
+      (state: ViewAtlasState) => state.addonRevision,
+      () => this.applyZoom(),
+    );
+    // Add-ons (e.g. world time) hide or ghost pins
+    const unsubscribeObjectMask = this.store.subscribe(
+      (state: ViewAtlasState) => state.objectMask,
+      () => this.applyZoom(),
     );
     this._unsubscribeFromStore = () => {
       unsubscribePins();
       unsubscribeHexGrid();
       unsubscribeGMView();
+      unsubscribeAddonRevision();
+      unsubscribeObjectMask();
     };
     this._notePinToolViewportListener = (e: FederatedPointerEvent) => {
       // Skip if already handled by viewport-level dispatch (e.g. pin click)
@@ -141,7 +157,7 @@ export class PinRenderer {
   private setupViewportListeners(): void {
     // Update pins on viewport zoom for consistent size
     this._viewportZoomHandler = () => {
-      this.updatePinScales();
+      this.applyZoom();
     };
     
     this.viewport.on('zoomed', this._viewportZoomHandler);
@@ -184,25 +200,70 @@ export class PinRenderer {
     this.viewport.on('pointermove', this._viewportPointerMoveHandler);
   }
   
-  private updatePinScales(): void {
-    const scale = this.getPinScale();
-    
+  /** Sizes every pin for the current zoom and shows only those in focus for this viewer. */
+  private applyZoom(): void {
+    const pins = this.store.getState().objects.pins;
     for (const pinId in this.pinSprites) {
       const pinGroup = this.pinSprites[pinId];
-      if (pinGroup) {
-        pinGroup.scale.set(scale);
-      }
+      const pin = pins[pinId];
+      if (pinGroup && pin) this.applyPinZoom(pinGroup, pin);
     }
-    
-    if (this.previewPin) {
-      this.previewPin.scale.set(scale);
-    }
+    this.previewPin?.scale.set(mapMarkerScale(this.zoom()));
   }
 
-  private getPinScale(): number {
-    return mapMarkerScale(this.viewport.scale.x);
+  private applyPinZoom(pinGroup: Container, pin: NotePin): void {
+    const zoom = this.zoom();
+    pinGroup.scale.set(this.scaleOf(pin, zoom));
+    pinGroup.visible = this.isPinVisible(pin);
+    pinGroup.alpha = this.store.getState().objectMask.ghost[pin.id] ? GHOST_ALPHA : 1;
   }
-  
+
+  private zoom(): number {
+    // A renderer built without its viewport (as in tests) reads as zoom 1
+    return (this.viewport as Viewport | undefined)?.scale.x ?? 1;
+  }
+
+  /** Whether this view shows the pin now: the viewer may see it and the zoom lies in its focus range. */
+  private isPinVisible(pin: NotePin): boolean {
+    return this.isShownTo(pin, this.viewer(), this.zoom());
+  }
+
+  /** The pin's world scale at `zoom`: an add-on's choice, else a readable screen size. */
+  private scaleOf(pin: NotePin, zoom: number): number {
+    return addonPinScale(pin, zoom, this.store.getState()) ?? mapMarkerScale(zoom);
+  }
+
+  /** Whether `viewer` sees the pin at `zoom`: never when masked, else an add-on's choice, else the GM only. */
+  private isShownTo(pin: NotePin, viewer: PinViewer, zoom: number): boolean {
+    const state = this.store.getState();
+    if (state.objectMask.hidden[pin.id]) return false;
+    return addonPinVisible(pin, viewer, zoom, state) ?? viewer === 'gm';
+  }
+
+  /**
+   * The pins as the player frame shows them at `zoom` (the player camera's):
+   * only those shown to players and in focus there, sized for that zoom.
+   */
+  public getPlayerViewLayers(zoom: number): LayerVisibility[] {
+    const pins = this.store.getState().objects.pins;
+    const { objectMask } = this.store.getState();
+    const layers: LayerVisibility[] = [];
+    for (const [pinId, pinGroup] of Object.entries(this.pinSprites)) {
+      const pin = pins[pinId];
+      if (!pin) continue;
+      // Ghosted pins are a GM aid; hidden ones exist for nobody
+      const visible = !objectMask.ghost[pinId] && this.isShownTo(pin, 'players', zoom);
+      layers.push({ layer: pinGroup, visible, ...(visible ? { scale: this.scaleOf(pin, zoom) } : {}) });
+    }
+    if (this.previewPin) layers.push({ layer: this.previewPin, visible: false });
+    return layers;
+  }
+
+  /** Player views, and the GM previewing the player perspective, see the pins shown to players. */
+  private viewer(): PinViewer {
+    return this.isPlayerView || !this.store.getState().isGMView ? 'players' : 'gm';
+  }
+
   private pinPosition(pin: NotePin): { x: number; y: number } {
     return pinDisplayPoint(pin, hexLayoutOfGrid(this.store.getState().grid));
   }
@@ -234,22 +295,18 @@ export class PinRenderer {
     return this.pinContainer;
   }
 
-  /** Pins are DM-only: hidden in player views and whenever the DM previews the player perspective. */
-  private arePinsHidden(): boolean {
-    return this.isPlayerView || !this.store.getState().isGMView;
-  }
-
   /** Geometry-based hit test: returns the pinId at (worldX, worldY), or null. */
   public hitTestPins(worldX: number, worldY: number): string | null {
-    if (this.arePinsHidden()) return null;
+    // Players look at pins; only the GM opens, moves and edits them
+    if (this.viewer() === 'players') return null;
 
     const pins = this.store.getState().objects.pins;
     const layout = hexLayoutOfGrid(this.store.getState().grid);
-    const hitRadius = 20 * this.getPinScale();
 
     for (const [id, pin] of Object.entries(pins)) {
       // A linked pin is part of its hex, which handles the pointer
-      if (!pin || isShownAsHex(pin, layout)) continue;
+      if (!pin || isShownAsHex(pin, layout) || !this.isPinVisible(pin)) continue;
+      const hitRadius = 20 * this.scaleOf(pin, this.zoom());
       const dx = worldX - pin.x;
       const dy = worldY - pin.y;
       if (dx * dx + dy * dy <= hitRadius * hitRadius) {
@@ -401,6 +458,7 @@ export class PinRenderer {
         { type: 'item', label: t('pinMenu.open'), icon: 'file-text', onClick: () => dispatchPinAction('open', pin) },
         { type: 'item', label: t('pinMenu.edit'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin) },
         ...[readablePinEntry(this.store, pin)].filter((entry) => entry !== null),
+        ...addonObjectMenuEntries(this.store, 'pin', pin.id, { zoom: this.zoom() }),
         { type: 'item', label: t('common.duplicate'), icon: 'files', onClick: () => this.store.getState().duplicateMapObjects([pin.id]) },
         { type: 'item', label: t('common.delete'), icon: 'trash', destructive: true, onClick: () => this.store.getState().deleteMapObject('pin', pin.id) },
       ],
@@ -415,12 +473,6 @@ export class PinRenderer {
     if (!this.pinContainer) {
         console.error('[PinRenderer] syncPins called but pinContainer is null!');
         return;
-    }
-    
-    // Hide all pins in player view
-    if (this.isPlayerView) {
-      this.pinContainer.visible = false;
-      return;
     }
     
     const container = this.pinContainer;
@@ -447,13 +499,12 @@ export class PinRenderer {
         if (pin === prevPin) continue;
         const position = this.pinPosition(pin);
         pinGroup.position.set(position.x, position.y);
-        pinGroup.visible = true;
         // Dragging only moves the pin; its graphics are rebuilt when what they show changes
         if (!differsBeyondPosition(pin, prevPin)) continue;
 
         this.clearPinGraphics(pinGroup);
         pinGroup.addChild(this.createPinGraphics(pin.icon || 'pin', pin));
-        pinGroup.scale.set(this.getPinScale());
+        this.applyPinZoom(pinGroup, pin);
         continue;
       }
 
@@ -461,7 +512,6 @@ export class PinRenderer {
       pinGroup.label = `pin-${id}`;
       const position = this.pinPosition(pin);
       pinGroup.position.set(position.x, position.y);
-      pinGroup.visible = true; 
       
       // Create pin graphics
       const iconType = pin.icon || 'pin';
@@ -473,7 +523,7 @@ export class PinRenderer {
       pinGroup.eventMode = 'none'; // Viewport-level dispatch handles pin interactions
       pinGroup.hitArea = new Circle(0, 0, 20); // Kept for reference; actual hit-test is geometry-based
       
-      pinGroup.scale.set(this.getPinScale());
+      this.applyPinZoom(pinGroup, pin);
 
       // Pin interactions are handled via viewport-level dispatch (handleViewportPinPointerDown)
 
@@ -494,7 +544,7 @@ export class PinRenderer {
     
     this.previewPin.addChild(this.createPreviewGraphics(icon));
     
-    this.previewPin.scale.set(this.getPinScale());
+    this.previewPin.scale.set(mapMarkerScale(this.zoom()));
     
     // Position at cursor (will be updated by mouse move)
     this.previewPin.position.set(0, 0);

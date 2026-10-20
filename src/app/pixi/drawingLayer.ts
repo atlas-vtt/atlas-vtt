@@ -2,6 +2,7 @@ import { Graphics, Sprite, type Container, type Texture } from 'pixi.js';
 import type { DrawingStroke } from '../types';
 import { MAP_ICON_SVG } from './mapIcons';
 import { createLucideIconTexture } from './utils/lucideIconTexture';
+import { addonDrawingShape } from '../addons/drawingAddons';
 
 /** Draws a pen stroke: a dot for a single point, else a round-capped line through the points. */
 export function drawStroke(
@@ -75,8 +76,15 @@ export class DrawingLayer {
         this.container.addChild(graphics);
         this.nodes.set(stroke.id, graphics);
       }
-      drawStroke(graphics, stroke.points, stroke.color, stroke.width, stroke.opacity);
+      const addonShape = addonDrawingShape(stroke.type);
+      if (addonShape) addonShape.draw(graphics, stroke);
+      else drawStroke(graphics, stroke.points, stroke.color, stroke.width, stroke.opacity);
     }
+  }
+
+  /** Display object of every drawing shown, by id. */
+  getNodes(): ReadonlyMap<string, Container> {
+    return this.nodes;
   }
 
   /** Forgets every node and frees the icon textures; the container is its owner's to destroy. */

@@ -4,6 +4,7 @@ import { App, FileView } from 'obsidian';
 import { getActiveWorkspaceLeaf } from '../../utils/embeddedLeafFocus';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../root/ContextMenuContext';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
+import { addonViewActionEntries } from '../../addons/addonHost';
 import { t } from '../../i18n';
 import { showNotice } from '../../ui/notice';
 
@@ -78,6 +79,7 @@ export const ViewActionsMenu: React.FC<ViewActionsMenuProps> = ({ app, filePath 
     }
 
     entries.push(
+      ...addonViewActionEntries(app),
       { type: 'item', label: t('common.close'), icon: 'x', onClick: () => activeLeaf.detach() },
     );
 

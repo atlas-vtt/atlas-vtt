@@ -4,6 +4,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { AMMO, HP, STRESS } from '../mocks/resourceFixtures';
 
 const definitions = vi.hoisted(() => ({ list: [] as unknown[] }));
+// Plain Atlas: this test fakes the asset service, which add-ons may load parts of that it leaves out
+vi.mock('../../src/app/addons/addonRegistry', () => ({ installedAddons: () => [] }));
 vi.mock('../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => ({}) } }));
 vi.mock('../../src/app/resources/collectionResources', () => ({ mapResources: () => definitions.list }));
 

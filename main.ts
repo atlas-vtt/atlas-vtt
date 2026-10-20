@@ -3,6 +3,8 @@ import { Plugin } from 'obsidian';
 // Tailwind first, so the custom SCSS can override it.
 import './styles/index.css';
 import './styles/main.scss';
+// Add-ons (src/addons/*) next: they load before the rest of Atlas, and their styles follow core's.
+import './src/app/addons/addonRegistry';
 import { AtlasView, ATLAS_VIEW_TYPE } from './src/app/atlas-view';
 import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE } from './src/app/local-player-view';
 import { DashboardView, DASHBOARD_VIEW_TYPE } from './src/app/dashboard-view';
@@ -77,6 +79,7 @@ import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
+import { addonSettingsSections, loadAddons, unloadAddons } from './src/app/addons/addonHost';
 import { TileDecoderClient } from './src/app/pixi/mapImage/TileDecoderClient';
 import { MapImageService } from './src/app/pixi/mapImage/MapImageService';
 
@@ -159,6 +162,8 @@ export default class AtlasVTTPlugin extends Plugin {
     this.register(followTemplateBodies(this.app));
     // The template gallery and the layout import report go with their window, and with Atlas.
     registerHostedDialogRelease(this);
+    // Add-ons (src/addons/*) register their views with Atlas's, so a restored pane finds them
+    loadAddons(this, this.settingsService);
 
     await storageReady;
     await this.settingsService.initialize();
@@ -180,6 +185,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
+      ...addonSettingsSections(this.app, this.settingsService),
       ...lightingSettingsSections(this.settingsService),
       mapImageCacheSettingsSection(() => TileDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
@@ -229,6 +235,7 @@ export default class AtlasVTTPlugin extends Plugin {
   }
 
   onunload(): void {
+    unloadAddons();
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
     SystemPresetFiles.release(this.app);

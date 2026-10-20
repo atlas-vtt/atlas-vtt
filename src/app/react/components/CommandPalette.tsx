@@ -25,6 +25,7 @@ import {
   Palette,
   UserCheck,
   History,
+  Puzzle,
 } from 'lucide-react';
 import { CoinIcon } from './CoinIcon';
 
@@ -50,6 +51,9 @@ import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewS
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
+import { AddonSettingsPanel } from './command-palette/AddonSettingsPanel';
+import { addonSettingsSections } from '../../addons/addonHost';
+import { SettingsService } from '../../services/SettingsService';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
@@ -88,6 +92,7 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
   'dice-settings': { title: 'Dice Settings', icon: <Dices /> },
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
+  'addon-settings': { title: 'Add-on Settings', icon: <Puzzle /> },
 };
 
 export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar }: CommandPaletteProps): React.ReactElement | null {
@@ -110,6 +115,10 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
   const setInitiativeTrackerOpen = useAtlasStore(state => state.setInitiativeTrackerOpen);
   const setDiceLogOpen = useAtlasStore(state => state.setDiceLogOpen);
   const setLootRollerOpen = useAtlasStore(state => state.setLootRollerOpen);
+  const addonSections = useMemo(() => {
+    const settings = SettingsService.forApp(app);
+    return settings ? addonSettingsSections(app, settings) : [];
+  }, [app]);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [focusedOptionIndex, setFocusedOptionIndex] = useState<number>(-1);
@@ -438,6 +447,23 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         },
       ],
     },
+    ...(addonSections.length > 0 ? [{
+      id: "addon-settings",
+      icon: <Puzzle />,
+      label: "Add-on settings",
+      keywords: ["addon", ...addonSections.flatMap(({ heading, rows }) => [heading, ...rows.flatMap(row => [row.name, ...(row.aliases ?? [])])])],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "addon-all-settings",
+          icon: null,
+          label: "Add-on settings",
+          section: "addons",
+          hasSubmenu: false,
+        },
+      ],
+    }] : []),
     ...(onCustomizeToolbar ? [customizeToolbarCommand(() => onCustomizeToolbar(choosingByKeyboard.current), onClose)] : []),
   ];
 
@@ -838,6 +864,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         return <DiceSettingsPanel />;
       case 'experimental-features':
         return <ExperimentalFeaturesPanel />;
+      case 'addon-settings':
+        return <AddonSettingsPanel sections={addonSections} />;
     }
   };
 

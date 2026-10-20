@@ -6,6 +6,7 @@ import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { readablePinEntry } from '../pinReadableMenu';
 import { watchClick } from '../utils/clickRelease';
 import { dispatchPinAction } from '../utils/pinActions';
+import { addonObjectMenuEntries } from '../../addons/addonHost';
 import type { HexLinkRenderer } from './HexLinkRenderer';
 import { t } from '../../i18n';
 
@@ -81,6 +82,7 @@ export class HexLinkInteraction implements HexLinkPointerHandlers {
         { type: 'item', label: t('pinMenu.open'), icon: 'file-text', onClick: () => dispatchPinAction('open', pin) },
         { type: 'item', label: t('hex.changeNote'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin) },
         ...[readablePinEntry(this.options.store, pin)].filter((entry) => entry !== null),
+        ...addonObjectMenuEntries(this.options.store, 'pin', pin.id),
         {
           type: 'item',
           label: t('hex.unlink'),

@@ -58,6 +58,8 @@ export class MeasureRenderer {
   public measurementSettingsProvider: (() => MeasurementSettings) | null = null;
   /** How the players see the tokens a measurement starts on; without it, the players' picture shows every measurement. */
   public playersView: MeasurePlayersView | null = null;
+  /** Keeps a finished measurement some other way (an add-on's area template), saying whether it did; without it, kept rulers stay here. */
+  public keepMeasurement: ((measurement: MeasureRecord) => boolean) | null = null;
   private readonly parts: MeasurePartsVisibility;
 
   private isDrawing: boolean = false;
@@ -281,8 +283,8 @@ export class MeasureRenderer {
     
     // Handle persistence
     if (this.persistMeasurements) {
-      // Create persistent copies of the current measurement
-      this.createPersistentMeasurement();
+      // An add-on may keep it as a map object (area templates); otherwise keep a copy here
+      if (!this.keptByAddon()) this.createPersistentMeasurement();
       // Clear the active measurement graphics
       this.clearMeasurement();
     } else {
@@ -340,6 +342,12 @@ export class MeasureRenderer {
     if (this.current.live) this.setMeasurements({ ...this.current, live: null });
   }
   
+  private keptByAddon(): boolean {
+    const live = this.current.live;
+    if (!live || !this.keepMeasurement) return false;
+    return this.keepMeasurement({ shape: live.shape, start: live.start, end: live.end });
+  }
+
   private createPersistentMeasurement(): void {
     if (!this.current.live || !this.measureText.text) return;
     const record: MeasureRecord = { shape: this.measureShape, start: this.current.live.start, end: this.current.live.end };

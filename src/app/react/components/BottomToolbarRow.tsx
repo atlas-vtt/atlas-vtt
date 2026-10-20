@@ -10,6 +10,8 @@ interface BottomToolbarRowProps {
   end?: React.ReactNode;
   /** The main toolbar, centred on the view. */
   children: React.ReactNode;
+  /** Bars centred above the toolbar (add-ons). */
+  above?: React.ReactNode;
 }
 
 /**
@@ -20,7 +22,7 @@ interface BottomToolbarRowProps {
  * controls or off the view. The toolbar editor's state is shared through the
  * row, since it arranges the undo/redo bar beside the toolbar too.
  */
-export function BottomToolbarRow({ start, end, children }: BottomToolbarRowProps): React.ReactElement {
+export function BottomToolbarRow({ start, end, children, above }: BottomToolbarRowProps): React.ReactElement {
   const rowRef = useRef<HTMLDivElement>(null);
   const startRef = useRef<HTMLDivElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -50,6 +52,7 @@ export function BottomToolbarRow({ start, end, children }: BottomToolbarRowProps
   return (
     <ToolbarRowBridgeContext.Provider value={bridge}>
       <div ref={rowRef} className="atlas-bottom-toolbar-row">
+        {above && <div className="atlas-bottom-toolbar-row__above">{above}</div>}
         <div ref={startRef} className="atlas-bottom-toolbar-row__start">{start}</div>
         <ToolbarSpaceContext.Provider value={space}>{children}</ToolbarSpaceContext.Provider>
         <div ref={endRef} className="atlas-bottom-toolbar-row__end">{end}</div>
