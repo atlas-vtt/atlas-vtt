@@ -18,15 +18,15 @@
 - Change HP of several tokens at once
 - Atlas now shows a notification message when a new update is available
 - DM Screen: Filter to only those statblocks currently in a fight
-- Simplified Chinese Translation
+- Simplified Chinese Translation. Contributed by kun041011
 
 ### Improved/Fixed
 - Statblock numbers can show as boxes or a gauge
-- Many initiative tracker improvements: typing numbers, skipping defeated combatants, tie-breaks, and more
+- Many initiative tracker improvements: typing numbers, skipping defeated combatants, tie-breaks, and more. With a contribution by Jackson98Tomphson
 - Dragging a token no longer selects it
 - Smaller improvements to filters, random tables, HP input, messages and animations
 - Improvements to Dynamic Lighting on integrated graphics
-- Various improvements in initiative, dice, statblocks, menus and online play. With contributions by aecorn and young-george
+- Various improvements in initiative, dice, statblocks, menus and online play. With contributions by aecorn, young-george and ISorokaI (Russian translations)
 
 ### Atlas Online
 - Optimisations to online play performance
