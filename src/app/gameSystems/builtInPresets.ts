@@ -7,6 +7,7 @@
 import type { SystemPreset } from '../types/systemPresetTypes';
 import { CAIRN } from './presets/cairn';
 import { CALL_OF_CTHULHU } from './presets/callOfCthulhu';
+import { COSMERE_RPG } from './presets/cosmereRpg';
 import { CYBERPUNK_RED } from './presets/cyberpunkRed';
 import { DAGGERHEART } from './presets/daggerheart';
 import { DND_5E } from './presets/dnd5e';
@@ -20,6 +21,7 @@ export const BUILT_IN_SYSTEM_PRESETS: readonly SystemPreset[] = [
   DND_5E,
   CAIRN,
   CALL_OF_CTHULHU,
+  COSMERE_RPG,
   CYBERPUNK_RED,
   DRAW_STEEL,
   OLD_SCHOOL_ESSENTIALS,
