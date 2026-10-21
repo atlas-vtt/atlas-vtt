@@ -1,4 +1,5 @@
 import type { FramePlacement } from '../../../../imageProcessing/imageProcessing';
+import { frameImageRect } from '../../../../imageProcessing/imageLayout';
 import type { ImagePosition, TokenPreview, TokenPreviewPatch } from './types';
 
 /** Diameter of the circular token crop as a fraction of the well. Mirrors the 10% mask inset in _card.scss. */
@@ -11,12 +12,11 @@ export const TOKEN_CROP_FRACTION = 0.8;
 export const STORED_IMAGE_SCALE = TOKEN_CROP_FRACTION;
 
 /**
- * The framing a preview starts at and resets to: a new upload fills the well, an edited
- * token's stored image shows as it is. Resetting an edit to any other zoom would count as
- * a new crop and overwrite the token's own image on save.
+ * Fresh uploads fill the well; a stored ringed image fits the crop circle.
+ * Ringless images fit the whole well at their natural aspect ratio.
  */
-export function cropReset(preview: Pick<TokenPreview, 'file'>): Required<Pick<TokenPreviewPatch, 'imageScale' | 'imagePosition'>> {
-  return { imageScale: preview.file ? 1 : STORED_IMAGE_SCALE, imagePosition: { x: 0, y: 0 } };
+export function cropReset(preview: Pick<TokenPreview, 'file' | 'showRing'>): Required<Pick<TokenPreviewPatch, 'imageScale' | 'imagePosition'>> {
+  return { imageScale: preview.showRing === false || preview.file ? 1 : STORED_IMAGE_SCALE, imagePosition: { x: 0, y: 0 } };
 }
 
 export interface ImageAspect {
@@ -37,18 +37,18 @@ function clamp(value: number, limit: number): number {
 }
 
 /** Where the image sits in the well: `scale` wide, natural aspect, centred plus the drag offset. */
-export function renderedImageRect(scale: number, position: ImagePosition, aspect: ImageAspect | null): RenderedImageRect {
-  const width = scale;
-  const height = aspect ? scale * (aspect.height / aspect.width) : scale;
-  return { left: 0.5 + position.x - width / 2, top: 0.5 + position.y - height / 2, width, height };
+export function renderedImageRect(scale: number, position: ImagePosition, aspect: ImageAspect | null, fit?: FramePlacement['fit']): RenderedImageRect {
+  return frameImageRect(aspect ?? { width: 1, height: 1 }, {
+    centerX: 0.5 + position.x, centerY: 0.5 + position.y, width: scale, ...(fit && { fit }),
+  }, 1);
 }
 
 /**
  * Keeps the image covering the centre of the crop: at high zoom every part of
  * it can be dragged into the circle, and at any zoom it can never leave it.
  */
-export function clampImagePosition(position: ImagePosition, scale: number, aspect: ImageAspect | null): ImagePosition {
-  const { width, height } = renderedImageRect(scale, position, aspect);
+export function clampImagePosition(position: ImagePosition, scale: number, aspect: ImageAspect | null, fit?: FramePlacement['fit']): ImagePosition {
+  const { width, height } = renderedImageRect(scale, position, aspect, fit);
   return { x: clamp(position.x, width / 2), y: clamp(position.y, height / 2) };
 }
 
@@ -56,12 +56,14 @@ export function clampImagePosition(position: ImagePosition, scale: number, aspec
  * Where the image sits in the square around the token circle, the area a
  * token image keeps: `renderedImageRect` expressed in units of that square.
  */
-export function tokenCropPlacement(scale: number, position: ImagePosition): FramePlacement {
-  const cropOrigin = (1 - TOKEN_CROP_FRACTION) / 2;
+export function tokenCropPlacement(scale: number, position: ImagePosition, framed = true): FramePlacement {
+  const fraction = framed ? TOKEN_CROP_FRACTION : 1;
+  const cropOrigin = (1 - fraction) / 2;
   const { left, top, width, height } = renderedImageRect(scale, position, null);
   return {
-    centerX: (left + width / 2 - cropOrigin) / TOKEN_CROP_FRACTION,
-    centerY: (top + height / 2 - cropOrigin) / TOKEN_CROP_FRACTION,
-    width: width / TOKEN_CROP_FRACTION,
+    centerX: (left + width / 2 - cropOrigin) / fraction,
+    centerY: (top + height / 2 - cropOrigin) / fraction,
+    width: width / fraction,
+    ...(!framed && { fit: 'contain' as const }),
   };
 }

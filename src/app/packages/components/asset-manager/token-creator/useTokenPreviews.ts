@@ -68,7 +68,7 @@ function previewFromEdit(token: EditTokenInput): TokenPreview {
     file: null,
     previewUrl: token.imageUrl,
     name: token.name,
-    ...cropReset({ file: null }),
+    ...cropReset({ file: null, showRing: token.showRing ?? true }),
     isSelected: true,
     isOptimizing: false,
   };
@@ -79,6 +79,14 @@ interface PendingOptimization {
   kind: PreviewConversionKind;
   controller: AbortController;
   settled: boolean;
+}
+
+/** A change of ring mode starts at that mode's default fit. */
+function updatedPreview(preview: TokenPreview, patch: TokenPreviewPatch): TokenPreview {
+  const next = { ...preview, ...patch };
+  return patch.showRing !== undefined && patch.showRing !== (preview.showRing ?? true)
+    ? { ...next, ...cropReset(next), ...patch }
+    : next;
 }
 
 /**
@@ -160,8 +168,8 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
     previewsRef.current = [];
   }, [cancelAllOptimizations]);
 
-  const patchPreview = useCallback((id: string, patch: Partial<TokenPreview>): void => {
-    changePreviews((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+  const patchPreview = useCallback((id: string, patch: TokenPreviewPatch): void => {
+    changePreviews((prev) => prev.map((p) => (p.id === id ? updatedPreview(p, patch) : p)));
   }, [changePreviews]);
 
   const optimizeOne = useCallback(async (preview: TokenPreview, framed: boolean, signal: AbortSignal): Promise<ProcessedImage | undefined> => {
@@ -248,7 +256,7 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
   }, [changePreviews]);
 
   const updateSelected = useCallback((patch: TokenPreviewPatch): void => {
-    changePreviews((prev) => prev.map((p) => (p.isSelected ? { ...p, ...patch } : p)));
+    changePreviews((prev) => prev.map((p) => (p.isSelected ? updatedPreview(p, patch) : p)));
   }, [changePreviews]);
 
   const waitForOptimized = useCallback(async (id: string, kind: PreviewConversionKind): Promise<ProcessedImage | undefined> => {
@@ -261,7 +269,7 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
   return {
     previews,
     defaultRing,
-    setAllRings: (showRing) => { setDefaultRing(showRing); changePreviews(current => current.map(p => ({ ...p, showRing }))); },
+    setAllRings: (showRing) => { setDefaultRing(showRing); changePreviews(current => current.map(p => updatedPreview(p, { showRing }))); },
     selectedIds,
     addFiles: files => addImages(files.map(file => ({ file }))),
     addImages,

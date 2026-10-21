@@ -2,6 +2,11 @@
   "version": "0.9.1-beta.0",
   "releases": [
     {
+      "version": "0.9.1-beta.0",
+      "title": "Coming in 0.9.1",
+      "markdown": "## Fixed\n- Token creator: zoom and position changes are now saved for tokens without a ring."
+    },
+    {
       "version": "0.9.0",
       "date": "2026-10-20",
       "title": "Encounter builder, recovery actions and a new initiative tracker",
