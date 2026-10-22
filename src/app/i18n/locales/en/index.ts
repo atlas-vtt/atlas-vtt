@@ -59,6 +59,7 @@ import { pin } from './pin';
 import { laser } from './laser';
 import { text } from './text';
 import { audio } from './audio';
+import { tokenSound } from './tokenSound';
 import { drawing } from './drawing';
 import { editToken } from './editToken';
 import { hex } from './hex';
@@ -155,6 +156,7 @@ export const en = {
   ...laser,
   ...text,
   ...audio,
+  ...tokenSound,
   ...drawing,
   ...editToken,
   ...hex,

@@ -329,12 +329,14 @@ export function getFrontMatterInfo(content: string): { exists: boolean; frontmat
 
 export class Modal {
   app: unknown;
+  containerEl: HTMLElement;
   contentEl: HTMLElement;
   modalEl: HTMLElement;
   titleEl: HTMLElement;
 
   constructor(app?: unknown) {
     this.app = app;
+    this.containerEl = document.createElement('div');
     this.contentEl = document.createElement('div');
     this.modalEl = document.createElement('div');
     this.titleEl = document.createElement('div');

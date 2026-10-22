@@ -114,6 +114,27 @@ describe('rewriteMapReferences', () => {
     expect(rewriteMapReferences({ objects }, movedPathOf([{ from: 'Nowhere.md', to: 'Elsewhere.md' }]))).toBe(false);
   });
 
+  it('retargets a token\'s sounds, keeping their volumes and the sounds that did not move', () => {
+    const objects = {
+      tokens: { dragon: { imagePath: 'Art/dragon.webp', sounds: [{ path: 'Sounds/roar.mp3', volume: 0.8 }, { path: 'Sounds/wings.ogg' }] } },
+    };
+
+    expect(rewriteMapReferences({ objects }, movedPathOf([{ from: 'Sounds/roar.mp3', to: 'Sounds/Dragon/roar.mp3' }]))).toBe(true);
+    expect(objects.tokens.dragon.sounds).toEqual([{ path: 'Sounds/Dragon/roar.mp3', volume: 0.8 }, { path: 'Sounds/wings.ogg' }]);
+  });
+
+  it('passes over sounds a file holds in another shape', () => {
+    const objects = {
+      tokens: {
+        a: { imagePath: 'Art/a.webp', sounds: { path: 'Sounds/roar.mp3' } },
+        b: { imagePath: 'Art/b.webp', sounds: [null, 'Sounds/roar.mp3', { path: 7 }] },
+      },
+    };
+
+    expect(rewriteMapReferences({ objects }, movedPathOf([{ from: 'Sounds/roar.mp3', to: 'Sounds/Dragon/roar.mp3' }]))).toBe(false);
+    expect(objects.tokens.a.sounds).toEqual({ path: 'Sounds/roar.mp3' });
+  });
+
   it('retargets the map\'s own path, its background and the portraits of initiative entries and dice rolls', () => {
     const map = {
       mapPath: 'Camp/Cave.atlasmap',

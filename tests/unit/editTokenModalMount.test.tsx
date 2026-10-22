@@ -44,22 +44,23 @@ describe('openEditTokenModal', () => {
     expect(document.body.querySelector('.atlas-vtt-root')).toBeNull();
   });
 
-  it('has its sections and fields in the order they are read and tabbed through, which a dialog of one column keeps: token, resources, vision, carried light', () => {
+  it('has its sections and fields in the order they are read and tabbed through, which a dialog of one column keeps: token, resources, vision, carried light, sounds', () => {
     const app = createInMemoryApp().app;
     const store = createViewAtlasStore(app, `edit-token-order-${Math.random()}`);
     const token: TokenEntity = { id: 't', kind: 'character', name: 'Mirabel', imagePath: 't.png', x: 0, y: 0, vision: { enabled: true }, light: emissionOf(lightPresetsOnMap(GENERIC_LIGHT_PRESETS, { unitType: 'feet', ruleDistance: 5 }, Infinity)[0]!) };
     store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
     act(() => openEditTokenModal(token, store, app, [HP, STR]));
-    expect(screen.getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent)).toEqual(['Token', 'Resources', 'Vision', 'Carried light']);
+    expect(screen.getAllByRole('heading', { level: 4 }).map((heading) => heading.textContent)).toEqual(['Token', 'Resources', 'Vision', 'Carried light', 'Sounds']);
     // Every section is named by its heading, and the columns hold them in this order: the left one, then the right one.
     expect(screen.getAllByRole('region').map((section) => section.getAttribute('aria-labelledby'))).toEqual(screen.getAllByRole('heading', { level: 4 }).map((heading) => heading.id));
     const columns = [...document.querySelectorAll('.atlas-edit-token__column')];
-    expect(columns.map((column) => [...column.querySelectorAll('h4')].map((heading) => heading.textContent))).toEqual([['Token', 'Resources', 'Vision'], ['Carried light']]);
+    expect(columns.map((column) => [...column.querySelectorAll('h4')].map((heading) => heading.textContent))).toEqual([['Token', 'Resources', 'Vision'], ['Carried light', 'Sounds']]);
     const stops = [
       screen.getByLabelText('Name'), screen.getByRole('switch', { name: 'Show nameplate' }), screen.getByLabelText('Max HP'), screen.getByLabelText('Max STR'),
       vision(), screen.getByLabelText(/^Sight range/), screen.getByLabelText(/^Vision angle/), screen.getByRole('button', { name: 'Add sense' }),
       screen.getByRole('switch', { name: 'Carries a light' }), screen.getByRole('button', { name: 'Candle' }), screen.getByLabelText('Bright'), screen.getByRole('slider', { name: 'Intensity' }),
-      screen.getByRole('combobox', { name: 'Flicker' }), screen.getByRole('switch', { name: 'Outshines magical darkness' }), screen.getByRole('button', { name: 'Cancel' }), screen.getByRole('button', { name: 'Save' }),
+      screen.getByRole('combobox', { name: 'Flicker' }), screen.getByRole('switch', { name: 'Outshines magical darkness' }), screen.getByRole('button', { name: 'Add sound' }),
+      screen.getByRole('button', { name: 'Cancel' }), screen.getByRole('button', { name: 'Save' }),
     ];
     for (const [index, stop] of stops.slice(1).entries()) {
       expect(stops[index]!.compareDocumentPosition(stop) & Node.DOCUMENT_POSITION_FOLLOWING, `${stop.textContent || stop.getAttribute('aria-label') || stop.id} comes after the stop before it`).toBeTruthy();

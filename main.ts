@@ -83,6 +83,7 @@ import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
 import { TileDecoderClient } from './src/app/pixi/mapImage/TileDecoderClient';
+import { TokenSoundPlayer } from './src/app/audio/TokenSoundPlayer';
 import { MapImageService } from './src/app/pixi/mapImage/MapImageService';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
@@ -278,6 +279,7 @@ export default class AtlasVTTPlugin extends Plugin {
     TemplateLibrary.release(this.app);
     TileDecoderClient.release(this.app);
     MapImageService.release(this.app);
+    TokenSoundPlayer.release(this.app);
     disposeImageProcessing();
     disposeSpectralEngine();
   }
