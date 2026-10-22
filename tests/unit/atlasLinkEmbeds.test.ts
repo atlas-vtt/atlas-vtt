@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { TFile, type EmbedContext } from 'obsidian';
+import { Menu, TFile, type EmbedContext } from 'obsidian';
 import { AssetService, type EncounterAsset } from '../../src/app/services/AssetService';
 import { SceneSnapshotService } from '../../src/app/snapshots/SceneSnapshotService';
 import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
@@ -97,5 +98,26 @@ describe('encounter embed', () => {
     const ctx = context(vault);
     await new EncounterEmbed(ctx, new TFile('atlas-vtt/collections/c/encounters/gone.json'), '').loadFile();
     expect(textOf(ctx.containerEl, 'atlas-link-embed__meta')).toBe('This encounter is no longer in your library.');
+  });
+
+  it('starts a fight with it, or adds it to initiative without placing it, from its menu', async () => {
+    const { vault, assets } = await vaultWithScene();
+    const file = new TFile(primaryPath(await encounter(assets))!);
+    const ctx = context(vault);
+    await new EncounterEmbed(ctx, file, '').loadFile();
+
+    ctx.containerEl.querySelector<HTMLButtonElement>('.atlas-link-embed__more')!.click();
+    const items = Menu.shown?.items ?? [];
+    expect(items.map((item) => item.title)).toEqual(['Start fight', 'Add to initiative without placing']);
+    for (const item of items) item.handler?.(new MouseEvent('click'));
+    expect(links.placeEncounterFile).toHaveBeenCalledWith(vault.app, file, 'fight');
+    expect(links.placeEncounterFile).toHaveBeenCalledWith(vault.app, file, 'beside');
+  });
+
+  it('offers no menu for a file that is no encounter of the library', async () => {
+    const { vault } = await vaultWithScene();
+    const ctx = context(vault);
+    await new EncounterEmbed(ctx, new TFile('atlas-vtt/collections/c/encounters/gone.json'), '').loadFile();
+    expect(ctx.containerEl.querySelector('.atlas-link-embed__more')).toBeNull();
   });
 });

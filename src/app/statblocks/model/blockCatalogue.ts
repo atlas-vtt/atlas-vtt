@@ -12,7 +12,7 @@ export type FsBlockType =
 /** lucide-react icon names the catalogue uses. */
 export type BlockIcon =
   | 'heading' | 'text' | 'hash' | 'subtitles' | 'list' | 'table' | 'gauge' | 'image' | 'square-stack' | 'columns-3' | 'minus'
-  | 'code' | 'circle-help' | 'panel-top' | 'square-split-horizontal';
+  | 'code' | 'circle-help' | 'panel-top' | 'square-split-horizontal' | 'list-checks';
 
 /** The group of the Add panel a primitive is listed under. */
 export type PaletteGroup = 'basics' | 'lists' | 'layout' | 'media';
@@ -31,7 +31,7 @@ export const PALETTE_GROUPS: ReadonlyArray<{ id: PaletteGroup; label: string }> 
  * people; its kind is a setting, which turns the block into the other type.
  */
 export type PrimitiveId =
-  | 'heading' | 'text' | 'value' | 'metric' | 'line' | 'list' | 'table' | 'track' | 'picture' | 'section' | 'side-by-side' | 'tabs' | 'divider';
+  | 'heading' | 'text' | 'value' | 'metric' | 'line' | 'list' | 'table' | 'track' | 'counters' | 'picture' | 'section' | 'side-by-side' | 'tabs' | 'divider';
 
 type Kinds = readonly [AuthorableBlockType, ...AuthorableBlockType[]];
 
@@ -65,6 +65,7 @@ export const PRIMITIVES: Readonly<Record<PrimitiveId, PrimitiveSpec>> = {
   list: primitive('list', 'List', 'list', 'lists', ['tags', 'pairs', 'entries', 'spells'], 'entries', 'Each item is'),
   table: primitive('table', 'Table', 'table', 'lists', ['scores']),
   track: primitive('track', 'Track', 'gauge', 'lists', ['track']),
+  counters: primitive('counters', 'Counters', 'list-checks', 'lists', ['counters']),
   section: primitive('section', 'Section', 'square-stack', 'layout', ['section']),
   'side-by-side': primitive('side-by-side', 'Side by side', 'columns-3', 'layout', ['row']),
   tabs: primitive('tabs', 'Tabs', 'panel-top', 'layout', ['tabs']),
@@ -120,6 +121,7 @@ export const BLOCK_CATALOGUE: Readonly<Record<BlockType, BlockSpec>> = {
   entries: spec('entries', 'list', ['entries'], 'traits', 'fill', 'A name and text'),
   pairs: spec('pairs', 'list', ['pairs'], 'saves', 'fill', 'A label and a value'),
   track: spec('track', 'track', ['number'], 'property', 'fit'),
+  counters: spec('counters', 'counters', ['counters'], 'property', 'fill'),
   image: spec('image', 'picture', ['image'], 'image', 'fit'),
   spells: spec('spells', 'list', ['spells'], 'spells', 'fill', 'A group with items'),
   heading: spec('heading', 'heading', [], 'text', 'fill', 'Typed'),
@@ -182,6 +184,7 @@ export function tabLabel(position: number): string {
 const NATURAL_BLOCKS: Readonly<Record<FieldType, AuthorableBlockType>> = {
   text: 'stat', number: 'stat', rating: 'stat', dice: 'stat', choice: 'stat',
   markdown: 'text', list: 'tags', scores: 'scores', entries: 'entries', pairs: 'pairs', image: 'image', spells: 'spells',
+  counters: 'counters',
 };
 
 /** The block a field of this type gets when it is dragged onto the canvas or shown by the auto template. */
@@ -216,6 +219,7 @@ export function createBlock(type: AuthorableBlockType, nextId: BlockIdSource, fi
     case 'entries': return { id, type, field };
     case 'pairs': return { id, type, field };
     case 'track': return { id, type, field, look: 'boxes', counts: 'down' };
+    case 'counters': return { id, type, field };
     case 'image': return { id, type, field: fieldKey ?? 'image', shape: 'token' };
     case 'spells': return { id, type, field };
     case 'heading': return { id, type, text: 'Heading', level: 'section' };

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { MAX_DRAWING_POINTS, parseGmMessage, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
 

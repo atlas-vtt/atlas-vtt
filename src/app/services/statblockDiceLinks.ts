@@ -25,7 +25,7 @@ import { advantageSide, advantageSidesFor } from '../tools/diceAdvantage';
 import type { AdvantageSide } from '../types/diceSetTypes';
 import { t } from '../i18n';
 import { BONUS_ID_ATTRIBUTE } from '../statblocks/rollBonuses/armedBonuses';
-import { DICE_PATTERN, toRollFormula } from './statblockDiceText';
+import { splitDiceSegments, toRollFormula } from './statblockDiceText';
 
 const LINK_CLASS = 'atlas-dice-link';
 
@@ -80,20 +80,15 @@ function isSkipped(node: Node): boolean {
 
 function linkTextNode(textNode: Text): void {
   const text = textNode.nodeValue ?? '';
-  DICE_PATTERN.lastIndex = 0;
-  if (!DICE_PATTERN.test(text)) return;
+  const segments = splitDiceSegments(text);
+  if (!segments.some((segment) => segment.dice)) return;
 
-  DICE_PATTERN.lastIndex = 0;
   const fragment = createFragment();
-  let cursor = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = DICE_PATTERN.exec(text)) !== null) {
-    const [matched] = match;
-    if (match.index > cursor) {
-      fragment.append(text.slice(cursor, match.index));
+  for (const { text: matched, dice } of segments) {
+    if (!dice) {
+      fragment.append(matched);
+      continue;
     }
-
     const link = createSpan();
     link.className = LINK_CLASS;
     link.textContent = matched;
@@ -102,12 +97,6 @@ function linkTextNode(textNode: Text): void {
     link.setAttribute('tabindex', '0');
     link.setAttribute('aria-label', t('dice.rollFormula', { formula: link.dataset.formula ?? '' }));
     fragment.append(link);
-
-    cursor = match.index + matched.length;
-  }
-
-  if (cursor < text.length) {
-    fragment.append(text.slice(cursor));
   }
   textNode.replaceWith(fragment);
 }

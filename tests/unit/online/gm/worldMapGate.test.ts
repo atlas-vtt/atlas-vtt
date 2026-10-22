@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { gatedWorldMap, onWorldMapChange, setWorldMapGate, type WorldMapGate } from '../../../../src/app/online/gm/book/worldMapGate.ts';
 

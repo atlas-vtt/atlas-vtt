@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { loadStatblockOverrides } from '../../../../src/app/packages/components/asset-manager/utils/statblockLoader';
 import { buildStatblockLinkUpdates } from '../../../../src/app/pixi/token-renderer/statblockFrontmatter';
@@ -54,6 +55,11 @@ describe('native statblocks reach tokens', () => {
       difficulty: 'Level 3',
       resources: { hp: { current: 40, max: 40 } },
     });
+  });
+
+  it('places a token with hit points written as a sum that names another number of the statblock', async () => {
+    addNote(current, 'Bestiary/Iron Captain.md', { ...IRON_GUARD, name: 'Iron Captain', stamina: '20 + @level' });
+    expect((await loadStatblockOverrides(current.app, 'Bestiary/Iron Captain.md', [HP_RESOURCE]))?.resources).toEqual({ hp: { current: 23, max: 23 } });
   });
 
   it('links a token to a native statblock with the same values, and never writes the note', async () => {

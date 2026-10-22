@@ -1,3 +1,4 @@
+import { parseRollDice, type SharedRollDice } from './dice.ts';
 import { isRecord } from './shape.ts';
 import { MAX_SCENE_ID, parseSnapGrid, type SnapGrid } from './moves.ts';
 import { MAX_COORDINATE } from './tokens.ts';
@@ -25,6 +26,8 @@ export interface SharedMeasurement {
  * What a player's own tools work by in the shared scene: its grid, whether measurements snap to cell
  * centres, how distances are labelled, and the GM's accent colour (`#rrggbb`, null when it cannot be read).
  * `cursors` is set while the GM lets everyone see each other's cursor: only then does a player send theirs.
+ * `dice` are the map's dice a roll naming no token of the player's own set is made with (added later:
+ * an older GM sends none, and a page offers no advantage then).
  */
 export interface SharedRules {
   readonly grid: SnapGrid;
@@ -32,6 +35,7 @@ export interface SharedRules {
   readonly measurement: SharedMeasurement;
   readonly accent: string | null;
   readonly cursors?: true;
+  readonly dice?: SharedRollDice;
 }
 
 export type RulesMessage = { readonly t: 'rules'; readonly scene: string } & SharedRules;
@@ -65,7 +69,7 @@ export function parseMeasurement(value: unknown): SharedMeasurement | null {
   return { mode, unitType, unitDistance, ruleDistance, diagonalRule, rangeBands, coneAngle };
 }
 
-/** A `rules` message as the client reads it, or null for anything malformed. */
+/** A `rules` message as the client reads it, or null for anything malformed; malformed dice are left out. */
 export function parseRules(value: Record<string, unknown>): RulesMessage | null {
   const { scene, snap, accent, cursors } = value;
   const grid = parseSnapGrid(value.grid);
@@ -73,5 +77,6 @@ export function parseRules(value: Record<string, unknown>): RulesMessage | null 
   if (typeof scene !== 'string' || scene.length > MAX_SCENE_ID || typeof snap !== 'boolean' || grid === null || grid === undefined || measurement === null) return null;
   if (accent !== null && (typeof accent !== 'string' || !ACCENT.test(accent))) return null;
   if (cursors !== undefined && cursors !== true) return null;
-  return { t: 'rules', scene, grid, snap, measurement, accent, ...(cursors === true && { cursors }) };
+  const dice = parseRollDice(value.dice);
+  return { t: 'rules', scene, grid, snap, measurement, accent, ...(cursors === true && { cursors }), ...(dice !== undefined && { dice }) };
 }

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { expect, it, vi } from 'vitest';
 import type { DataAdapter } from 'obsidian';
 import { preserveUnreadableMetadata, readStoredMetadata } from '../../src/app/services/assetMetadataFile';

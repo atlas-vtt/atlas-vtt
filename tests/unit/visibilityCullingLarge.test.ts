@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { Tally } from '../helpers/visibilityCompare';
 import { gridMapTrial, wallLinesTrial, wallsInLine } from '../helpers/visibilityMaps';

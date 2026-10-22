@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Notice } from 'obsidian';
 import { createStore, type StoreApi } from 'zustand/vanilla';
@@ -11,7 +12,6 @@ import type { PlayerFrame, Screen } from '../../src/app/types/playerFrame';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { framePiece, sizePlayerWindow } from '../mocks/playerFrameSource';
 
-vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('obsidian', async (importOriginal) => ({ ...(await importOriginal<typeof import('obsidian')>()), Notice: vi.fn() }));
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.restoreAllMocks(); vi.mocked(Notice).mockClear(); });
 

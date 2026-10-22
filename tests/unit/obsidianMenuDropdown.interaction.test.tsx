@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -54,7 +55,8 @@ describe('settings dropdown interactions', () => {
       descriptions={{ natural: 'The highest face is a critical success.', none: 'Rolls are never critical.' }} onChange={vi.fn()} />);
     fireEvent.keyDown(screen.getByRole('button', { name: 'Natural' }), { key: 'Enter' });
     const described = (name: string): string | null => {
-      const id = screen.getByRole('menuitemcheckbox', { name }).getAttribute('aria-describedby');
+      // While its tooltip shows, the row is also described by the tooltip's content.
+      const id = screen.getByRole('menuitemcheckbox', { name }).getAttribute('aria-describedby')?.split(' ')[0];
       return id ? document.getElementById(id)?.textContent ?? null : null;
     };
     await screen.findByRole('menu');

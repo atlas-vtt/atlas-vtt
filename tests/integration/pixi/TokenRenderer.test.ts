@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   Container,
@@ -58,6 +59,8 @@ type TokenInput = Parameters<ReturnType<ViewStore['getState']>['addToken']>[0];
 /** Records ticker callbacks so a test can advance animations frame by frame. */
 class FakeTicker {
   private callbacks = new Set<TickerCallback>();
+  /** Read by Motion's ticker driver as the frame time. */
+  lastTime = 0;
   add(callback: TickerCallback): void {
     this.callbacks.add(callback);
   }
@@ -65,6 +68,7 @@ class FakeTicker {
     this.callbacks.delete(callback);
   }
   advance(deltaMS: number): void {
+    this.lastTime += deltaMS;
     for (const callback of Array.from(this.callbacks)) callback({ deltaMS });
   }
   get size(): number {
@@ -258,7 +262,15 @@ describe('TokenRenderer Integration Tests', () => {
 
       store.getState().deleteToken('token-1');
 
+      // Gone from the renderer at once, still on the canvas while it fades out
       await vi.waitFor(() => expect(tokenRenderer.getTokenSprites()['token-1']).toBeUndefined());
+      expect(group.destroyed).toBe(false);
+      ticker.advance(0);
+      ticker.advance(150);
+      expect(group.alpha).toBeLessThan(1);
+      expect(group.scale.x).toBeLessThan(1);
+
+      ticker.advance(400);
       expect(group.destroyed).toBe(true);
       expect(tokenRenderer.getTokenContainer().children).not.toContain(group);
     });
@@ -433,7 +445,7 @@ describe('TokenRenderer Integration Tests', () => {
       expect(tokenGroup('covered').visible).toBe(true);
     });
 
-    it('retains fog when lighting is removed and applies it during an existing unlit peek', async () => {
+    it('retains fog where no lighting is wired and applies it during an existing unlit peek', async () => {
       wireFog();
       setFog();
       store.getState().addToken(token({ id: 'covered', x: 200 }));
@@ -446,11 +458,12 @@ describe('TokenRenderer Integration Tests', () => {
       tokenRenderer.refreshPlayerSight();
       expect(tokenGroup('covered').visible).toBe(true);
       store.getState().setGMView(false);
-      tokenRenderer.clearLighting();
+      tokenRenderer.setPlayerSightProvider(() => undefined);
+      tokenRenderer.refreshPlayerSight();
       expect(tokenGroup('covered').visible).toBe(false);
     });
 
-    it('hides a held token at its displayed centre before the store catches up, and completes the drag', async () => {
+    it('hides a held token at its displayed centre, and completes the drag', async () => {
       wireFog();
       setFog();
       store.getState().setGMView(false);
@@ -460,7 +473,8 @@ describe('TokenRenderer Integration Tests', () => {
       viewport.emit('pointermove', pointerEvent(120, 105));
       viewport.emit('pointermove', pointerEvent(180, 105));
       expect(tokenGroup('moving').x).toBe(180);
-      expect(store.getState().objects.tokens['moving']?.x).not.toBe(180);
+      // The store follows every move, so sight and footprints never trail the sprite.
+      expect(store.getState().objects.tokens['moving']?.x).toBe(180);
       expect(tokenGroup('moving').visible).toBe(false);
       const rulerLayers = tokenRenderer.getPlayerViewLayers(DEFAULT_SETTINGS.localPlayerView).slice(-2);
       expect(rulerLayers).toHaveLength(2);
@@ -623,7 +637,7 @@ describe('TokenRenderer Integration Tests', () => {
   });
 
   describe('Selection & Drag', () => {
-    it('should select a token on pointer down, drag it and commit the snapped position as one undo step', async () => {
+    it('should drag a token without selecting it and commit the snapped position as one undo step', async () => {
       store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
       await waitForTokens('token-1');
       expect(tokenRenderer.hitTestTokens(105, 105)).toBe('token-1');
@@ -631,13 +645,14 @@ describe('TokenRenderer Integration Tests', () => {
       const undoStepsBefore = getHistoryStore(store)!.getState().pastStates.length;
 
       viewport.emit('pointerdown', pointerEvent(105, 105));
-      expect(store.getState().selectedIds).toEqual(['token-1']);
+      expect(store.getState().selectedIds).toEqual([]);
 
       viewport.emit('pointermove', pointerEvent(180, 105));
       expect(tokenGroup('token-1').position).toMatchObject({ x: 180, y: 105 });
       expect(store.getState().isDragging).toBe(true);
 
       viewport.emit('pointerup', pointerEvent(180, 105));
+      expect(store.getState().selectedIds).toEqual([]);
 
       // 180 lies in the third 70px cell, whose centre is 175.
       expect(store.getState().objects.tokens['token-1']).toMatchObject({ x: 175, y: 105 });
@@ -648,6 +663,31 @@ describe('TokenRenderer Integration Tests', () => {
       expect(store.getState().isDragging).toBe(false);
       expect(selectionOverlayUpdater).toHaveBeenCalled();
       expect(getHistoryStore(store)!.getState().pastStates).toHaveLength(undoStepsBefore + 1);
+    });
+
+    it('should select a clicked token on release, and drag a token from outside the selection without what is selected', async () => {
+      store.getState().addToken(token({ id: 'token-1', x: 105, y: 105 }));
+      store.getState().addToken(token({ id: 'token-2', x: 315, y: 105 }));
+      await waitForTokens('token-1', 'token-2');
+      const drawingDrag = vi.fn();
+      tokenRenderer.setDrawingDragStartHandler(drawingDrag);
+
+      viewport.emit('pointerdown', pointerEvent(315, 105));
+      expect(store.getState().selectedIds).toEqual([]);
+      viewport.emit('pointerup', pointerEvent(315, 105));
+      expect(store.getState().selectedIds).toEqual(['token-2']);
+      expect(drawingDrag).not.toHaveBeenCalled();
+
+      viewport.emit('pointerdown', pointerEvent(105, 105));
+      viewport.emit('pointermove', pointerEvent(180, 105));
+      viewport.emit('pointerup', pointerEvent(180, 105));
+      expect(store.getState().selectedIds).toEqual(['token-2']);
+      expect(drawingDrag).not.toHaveBeenCalled();
+
+      // A selected token's press still takes the selected drawings along
+      viewport.emit('pointerdown', pointerEvent(315, 105));
+      expect(drawingDrag).toHaveBeenCalledTimes(1);
+      viewport.emit('pointerup', pointerEvent(315, 105));
     });
   });
 
@@ -1037,7 +1077,6 @@ describe('TokenRenderer Integration Tests', () => {
           seen = false;
           tokenRenderer.refreshPlayerSight();
           expect(tokenGroup('token-1').visible).toBe(true);
-          expect(store.getState().selectedIds).toEqual(['token-1']);
 
           viewport.emit('pointerup', pointerEvent(180, 105));
           expect(tokenGroup('token-1').visible).toBe(false);
@@ -1280,8 +1319,6 @@ describe('TokenRenderer Integration Tests', () => {
       await waitForTokens('moving');
       const listener = vi.fn();
       tokenRenderer.onPlayersViewChange(listener);
-      // One write of the live positions to the store, at the drag's first step.
-      vi.spyOn(Date, 'now').mockReturnValue(1000);
       viewport.emit('pointerdown', pointerEvent(105, 105));
       viewport.emit('pointermove', pointerEvent(120, 105));
       const calls: number[] = [];
@@ -1290,9 +1327,9 @@ describe('TokenRenderer Integration Tests', () => {
         viewport.emit('pointermove', pointerEvent(x, 105));
         calls.push(listener.mock.calls.length);
       }
-      expect(calls).toEqual([0, 0, 1, 0, 0, 1, 0]);
+      // Every move writes the store, which is one pass over the players' view; entering or leaving their sight tells them once more.
+      expect(calls).toEqual([1, 1, 2, 1, 1, 2, 1]);
       viewport.emit('pointerup', pointerEvent(330, 105));
-      vi.mocked(Date.now).mockRestore();
     });
 
     it('in the GM view, a drag asks nothing of the players\' sight or fog', async () => {
@@ -1353,16 +1390,16 @@ describe('TokenRenderer Integration Tests', () => {
       store.getState().setActiveTool('measure');
       viewport.emit('pointerdown', pointerEvent(105, 105));
       viewport.emit('pointermove', pointerEvent(105, 400));
-      expect(onCanvas()).toEqual([true, true, true]);
-      expect(inFrame()).toEqual([false, false, false]);
+      expect(onCanvas()).toEqual([true, true]);
+      expect(inFrame()).toEqual([false, false]);
       store.getState().setGMView(false);
-      expect(onCanvas()).toEqual([false, false, false]);
+      expect(onCanvas()).toEqual([false, false]);
       const picture = captureSceneFrame({ gmViewLayers: [...tokenRenderer.getGmViewLayers(), ...measure.getGmViewLayers()], markerLayers: [], lighting: undefined },
         {} as never, () => onCanvas());
-      expect(picture).toEqual([true, true, true]);
-      expect(onCanvas()).toEqual([false, false, false]);
+      expect(picture).toEqual([true, true]);
+      expect(onCanvas()).toEqual([false, false]);
       store.getState().setGMView(true);
-      expect(onCanvas()).toEqual([true, true, true]);
+      expect(onCanvas()).toEqual([true, true]);
     });
 
     it('hides a kept ruler during the peek while its token is out of the players\' sight', async () => {
@@ -1370,13 +1407,13 @@ describe('TokenRenderer Integration Tests', () => {
       await waitForTokens('goblin');
       keepRuler(105);
       perception = () => 'unseen';
-      expect(onCanvas()).toEqual([true, false, false, true, true, true]);
+      expect(onCanvas()).toEqual([true, false, true, true]);
       peeking = true;
       tokenRenderer.refreshPlayerSight();
-      expect(onCanvas()).toEqual([true, false, false, false, false, false]);
+      expect(onCanvas()).toEqual([true, false, false, false]);
       perception = () => 'seen';
       tokenRenderer.refreshPlayerSight();
-      expect(onCanvas()).toEqual([true, false, false, true, true, true]);
+      expect(onCanvas()).toEqual([true, false, true, true]);
       peeking = false;
       tokenRenderer.refreshPlayerSight();
     });
@@ -1388,15 +1425,15 @@ describe('TokenRenderer Integration Tests', () => {
       keepRuler(105);
       keepRuler(315);
       store.getState().setGMView(false);
-      expect(onCanvas()).toEqual([true, false, false, true, true, true, true, true, true]);
+      expect(onCanvas()).toEqual([true, false, true, true, true, true]);
       store.getState().deleteToken('goblin');
-      expect(onCanvas()).toEqual([true, false, false, false, false, false, true, true, true]);
+      expect(onCanvas()).toEqual([true, false, false, false, true, true]);
       store.setState((state) => ({ mapPath: 'maps/other.atlasmap', objects: { ...state.objects, tokens: {} } }));
       eventBus.emit('map-loaded');
-      expect(onCanvas()).toEqual([true, false, false, false, false, false, false, false, false]);
-      expect(inFrame()).toEqual([true, false, false, false, false, false, false, false, false]);
+      expect(onCanvas()).toEqual([true, false, false, false, false, false]);
+      expect(inFrame()).toEqual([true, false, false, false, false, false]);
       store.getState().setGMView(true);
-      expect(onCanvas()).toEqual([true, false, false, true, true, true, true, true, true]);
+      expect(onCanvas()).toEqual([true, false, true, true, true, true]);
     });
   });
 
@@ -1553,7 +1590,8 @@ describe('TokenRenderer Integration Tests', () => {
     });
 
     it('holds the window\'s numbers on the canvas in the command palette\'s player mode where no lighting is wired', async () => {
-      tokenRenderer.clearLighting();
+      tokenRenderer.setPlayerSightProvider(() => undefined);
+      tokenRenderer.refreshPlayerSight();
       await goblins({ id: 'A' }, { id: 'B', isHidden: true }, { id: 'C' });
       eventBus.emit('player-mode-changed', true);
       await expectLooks(['A', 'B', 'C'], ['gm 1', 'none', 'players 2']);
@@ -1597,7 +1635,7 @@ describe('TokenRenderer Integration Tests', () => {
 
     /**
      * A lighting that keeps sight of its own, as the view's lighting does: worked out by a store listener that
-     * comes after the token renderer's (dynamic lighting switched on in an open view), from the party's token P,
+     * comes after the token renderer's (an order the canvas must survive as well as the other), from the party's token P,
      * which sees every token within 150 px. A load keeps the sight of the scene before until it ends; while
      * `blocked` (a lost graphics context) nothing is built, and the sight it keeps is no longer the scene's from
      * the first change it cannot take in. New sight is reported as `onSightChange` reports it.
@@ -1764,7 +1802,6 @@ describe('TokenRenderer Integration Tests', () => {
       await goblins({ id: 'moving' }, { id: 'twin', x: 105, y: 245 });
       await expectLooks(['moving', 'twin'], ['gm 1', 'gm 2']);
       const sync = vi.spyOn(playerBadges(), 'syncCanvas');
-      vi.spyOn(Date, 'now').mockReturnValue(1000);
       viewport.emit('pointerdown', pointerEvent(105, 105));
       viewport.emit('pointermove', pointerEvent(120, 105));
       const calls: number[] = [];
@@ -1775,10 +1812,10 @@ describe('TokenRenderer Integration Tests', () => {
         calls.push(sync.mock.calls.length);
         shown.push(looks('twin'));
       }
-      expect(calls).toEqual([0, 0, 1, 0, 0, 1, 0]);
+      // Every move writes the store, which is one pass; entering or leaving the players' sight syncs once more.
+      expect(calls).toEqual([1, 1, 2, 1, 1, 2, 1]);
       expect(shown.flat()).toEqual(['gm 2', 'gm 2', 'none', 'none', 'none', 'gm 2', 'gm 2']);
       viewport.emit('pointerup', pointerEvent(330, 105));
-      vi.mocked(Date.now).mockRestore();
     });
   });
 

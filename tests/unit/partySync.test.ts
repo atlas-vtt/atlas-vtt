@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { TFolder } from 'obsidian';
 import { getHistoryStore } from '../../src/app/stores/history';
@@ -37,6 +38,18 @@ describe('a played campaign\'s character values', () => {
     expect(getHistoryStore(b)!.getState().pastStates).toHaveLength(1);
     await party.sync.flush();
     expect(onDisk(party)).toEqual({ format: 1, campaignId: CAMPAIGN, characters: { 'pc-ayla': { resources: { hp: { current: 7, max: 20 } } } } });
+  });
+
+  it('are one for a character\'s forms: every player character linking its note shares them, under the first made', async () => {
+    const party = device();
+    await party.ready;
+    const a = party.openView();
+    const [ayla, bear] = a.getState().addTokens([placed('pc-ayla', 20), placed('pc-ayla-bear', 9, 70)]);
+    expect(hpIn(a, bear!)).toBe(20);
+    party.setHp(a, bear!, 6);
+    expect(hpIn(a, ayla!)).toBe(6);
+    await party.sync.flush();
+    expect(onDisk(party)).toEqual({ format: 1, campaignId: CAMPAIGN, characters: { 'pc-ayla': { resources: { hp: { current: 6, max: 20 } } } } });
   });
 
   it('carry an undo in one view to the others and to the file', async () => {

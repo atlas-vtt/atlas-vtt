@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { getHistoryStore } from '../../../../src/app/stores/history';
 

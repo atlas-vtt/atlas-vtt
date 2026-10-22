@@ -1,3 +1,4 @@
+import { t } from '../../../../i18n'
 import { namesHotkey } from '../../../../keyboard/mapHotkeys'
 import { UNDO_BAR_ID, type ToolbarUnitId } from '../../../../toolbar/toolbarCatalog'
 
@@ -6,53 +7,55 @@ import { UNDO_BAR_ID, type ToolbarUnitId } from '../../../../toolbar/toolbarCata
  * controls in order, those in "More tools" included and hidden ones not.
  */
 
+/** What the hotkey of a hidden control or bar still does. */
+export type KeyEffect = 'selects' | 'undoes'
+
 export function enteredMessage(): string {
-  return 'Editing the toolbar. Drag a tool to move it, or into the tray to hide it. '
-    + 'With a tool focused, Alt and the arrow keys move it and Delete hides it. Escape or Done finishes.'
+  return t('toolbarEdit.say.entered')
 }
 
 export function finishedMessage(): string {
-  return 'Done editing the toolbar.'
+  return t('toolbarEdit.say.finished')
 }
 
 export function positionMessage(label: string, position: number, count: number): string {
-  return `${label}, position ${position} of ${count}.`
+  return t('toolbarEdit.say.position', { label, position, total: count })
 }
 
 export function movedMessage(label: string, from: number, to: number): string {
-  return `${label} moved from position ${from} to ${to}.`
+  return t('toolbarEdit.say.moved', { label, from, to })
 }
 
 /** `hotkey` as `formatHotkey` writes it; an unassigned key is left out. `effect` is what the key does (the undo/redo bar's undoes). */
-export function hiddenMessage(label: string, hotkey: string, effect = 'selects it'): string {
-  return namesHotkey(hotkey) ? `${label} hidden. ${hotkey} still ${effect}.` : `${label} hidden.`
+export function hiddenMessage(label: string, hotkey: string, effect: KeyEffect = 'selects'): string {
+  if (!namesHotkey(hotkey)) return t('toolbarEdit.say.hidden', { label })
+  return t(effect === 'undoes' ? 'toolbarEdit.say.hiddenUndoes' : 'toolbarEdit.say.hiddenSelects', { label, hotkey })
 }
 
-/** What the hotkey of a hidden control or bar still does. */
-export function keyEffect(id: ToolbarUnitId): string {
-  return id === UNDO_BAR_ID ? 'undoes' : 'selects it'
+export function keyEffect(id: ToolbarUnitId): KeyEffect {
+  return id === UNDO_BAR_ID ? 'undoes' : 'selects'
 }
 
 export function shownMessage(label: string, position: number, count: number): string {
-  return `${label} is back on the toolbar, position ${position} of ${count}.`
+  return t('toolbarEdit.say.shown', { label, position, total: count })
 }
 
 /** The undo/redo bar shown again: it has no position among the bar's controls. */
 export function shownInPlaceMessage(label: string): string {
-  return `${label} is back, left of the toolbar.`
+  return t('toolbarEdit.say.shownInPlace', { label })
 }
 
 /** Alt with the arrow keys on the undo/redo bar, which has no place in the order. */
 export function fixedPlaceMessage(label: string): string {
-  return `${label} always stays left of the toolbar.`
+  return t('toolbarEdit.say.fixedPlace', { label })
 }
 
 export function refusedMessage(): string {
-  return 'The command palette always stays on the toolbar.'
+  return t('toolbarEdit.say.refused')
 }
 
 export function resetMessage(undone: boolean): string {
-  return undone ? 'Reset undone.' : 'Toolbar reset.'
+  return t(undone ? 'toolbarEdit.say.resetUndone' : 'toolbarEdit.say.reset')
 }
 
 /**
@@ -60,6 +63,6 @@ export function resetMessage(undone: boolean): string {
  * null for a tool from the tray, 'own' for the undo/redo bar from its place.
  */
 export function cancelledMessage(label: string, position: number | null | 'own'): string {
-  if (position === null) return `Move cancelled. ${label} is back in hidden tools.`
-  return position === 'own' ? `Move cancelled. ${label} is back in its place.` : `Move cancelled. ${label} is back at position ${position}.`
+  if (position === null) return t('toolbarEdit.say.cancelledTray', { label })
+  return position === 'own' ? t('toolbarEdit.say.cancelledOwn', { label }) : t('toolbarEdit.say.cancelledPosition', { label, position })
 }

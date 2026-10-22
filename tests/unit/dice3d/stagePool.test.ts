@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { borrowStage, releaseStagePool, releaseStagePools, returnStage, warmStages } from '../../../src/app/dice3d/stagePool';
 

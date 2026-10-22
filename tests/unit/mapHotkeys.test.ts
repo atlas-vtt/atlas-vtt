@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { hotkeyFromEvent, formatHotkey, matchesHotkey, canRunMapHotkeys, canShareHotkey, availableHotkeys, MAP_HOTKEYS } from '../../src/app/keyboard/mapHotkeys';
@@ -20,6 +21,12 @@ describe('map hotkeys', () => {
   ] as const)('offers %s only to the GM, with its existing default key', (id, defaultKey) => {
     expect(availableHotkeys(false).find(action => action.id === id)).toMatchObject({ id, defaultKey });
     expect(availableHotkeys(true).some(action => action.id === id)).toBe(false);
+  });
+
+  it('offers the GM the lighting shortcuts', () => {
+    const ids = availableHotkeys(false).map(({ id }) => id);
+    expect(ids).toEqual(expect.arrayContaining(['wall', 'lightingPeek']));
+    expect(availableHotkeys(true).map(({ id }) => id)).not.toContain('wall');
   });
 
   it('formats letter bindings without changing named keys', () => {

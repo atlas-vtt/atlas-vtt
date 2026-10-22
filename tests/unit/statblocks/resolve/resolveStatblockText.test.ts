@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { autoTemplate } from '../../../../src/app/statblocks/model/autoTemplate';
 import { resolveStatblockText, type TextResolveContext } from '../../../../src/app/statblocks/resolve/resolveStatblockText';

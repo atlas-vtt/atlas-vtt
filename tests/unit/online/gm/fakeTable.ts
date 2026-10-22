@@ -197,7 +197,12 @@ export function present(tab: FakeTab): void {
   presentedListeners.forEach((listener) => listener(workspace.presented));
 }
 
+/** The device's local storage of the fake app. */
+export const localStorage = new Map<string, unknown>();
+
 export const app = {
+  loadLocalStorage: (key: string): unknown => localStorage.get(key) ?? null,
+  saveLocalStorage: (key: string, value: unknown): void => void localStorage.set(key, value),
   workspace: {
     getLeavesOfType: (type: string) => workspace.leaves.filter((leaf) => (leaf.view as unknown as FakeView).getViewType() === type),
     getMostRecentLeaf: () => workspace.leaves[0] ?? null,

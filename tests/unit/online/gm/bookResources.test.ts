@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import type { BookCharacter } from '../../../../src/app/online/protocol/index.ts';
 import type { BookScene } from '../../../../src/app/online/gm/book/bookScene.ts';
@@ -32,7 +31,7 @@ const sheet: BookCharacter = {
     { key: 'ac', name: 'Armour', colour: '#0000ff', direction: 'static', current: 14, max: 14, editable: false },
   ],
 };
-const ogre: PlayedCharacter = { collection: 'Cairn', key: 'art/ogre.webp', tokenId: 'ogre', placed: { assetId: 'lib-ogre', imagePath: 'art/ogre.webp' }, sheet, statblockPath: null, drawnWith: { definitions: [], resources: undefined } };
+const ogre: PlayedCharacter = { collection: 'Cairn', key: 'lib-ogre', imagePath: 'art/ogre.webp', tokenId: 'ogre', placed: { assetId: 'lib-ogre', imagePath: 'art/ogre.webp' }, sheet, statblockPath: null, drawnWith: { definitions: [], resources: undefined } };
 
 function scene(tokens: readonly TokenEntity[]): BookScene {
   return { mapPath: 'map', collection: 'Cairn', resources: DEFINITIONS, tokens: Object.fromEntries(tokens.map((entry) => [entry.id, entry])), shown: () => new Map(), listedToken: () => undefined };
@@ -63,9 +62,17 @@ describe('a player\'s edit of a resource, checked', () => {
     expect(check(ogre, { ...cave, resources: DEFINITIONS.map((definition) => ({ ...definition, visibleToPlayers: false })) }, 'hp')).toMatchObject({ kind: 'token' });
   });
 
+  it('gives the token a resource it holds none of from the value its sheet offered (a gauge its template places)', () => {
+    const bare = scene([token('ogre', { resources: { hp: VALUES.hp } })]);
+    const placed: PlayedCharacter = { ...ogre, sheet: { ...sheet, resources: [...sheet.resources, { key: 'doom', name: 'Doom', colour: '#111111', direction: 'fills', current: 0, max: 9, editable: true }] } };
+    expect(check(placed, bare, 'doom', 2)).toEqual({ kind: 'token', from: ANA, tokenId: 'ogre', key: 'doom', current: 2, tracked: { current: 0, max: 9 } });
+    expect(check(placed, bare, 'hp', 2)).toEqual({ kind: 'token', from: ANA, tokenId: 'ogre', key: 'hp', current: 2 });
+  });
+
   it('goes to the character\'s values while the shared scene holds no token of it, or no scene is shared', () => {
     const elsewhere = scene([token('bear', { resources: VALUES })]);
-    expect(check(ogre, elsewhere, 'hp', 3)).toEqual({ kind: 'character', from: ANA, placed: ogre.placed, key: 'hp', current: 3 });
+    // With the value its sheet offered, which the campaign's own value outranks (`writeCharacterValue`)
+    expect(check(ogre, elsewhere, 'hp', 3)).toEqual({ kind: 'character', from: ANA, placed: ogre.placed, key: 'hp', current: 3, tracked: { current: 7, max: 12 } });
     expect(check(ogre, null, 'hp', 3)).toMatchObject({ kind: 'character' });
     expect(check(ogre, elsewhere, 'ac')).toBeNull();
   });

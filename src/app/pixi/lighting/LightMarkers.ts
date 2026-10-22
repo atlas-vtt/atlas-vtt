@@ -7,8 +7,6 @@ import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import type { LightKind, LightSource } from '../../types/lightingTypes';
 import { MOTION_NORMAL_MS, prefersReducedMotion } from '../../utils/motion';
 import { ambientAt } from '../../vision/lightLevels';
-import { canvasBadgeColors } from '../utils/canvasBadgeColors';
-import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { destroyTree } from '../utils/destroyTree';
 import { mapMarkerScale } from '../utils/mapMarkerScale';
 import { createGlyphTexture } from '../utils/pinIconTexture';
@@ -18,6 +16,7 @@ import {
   LIGHT_MARKER_RADIUS,
   lightMarkerAt,
   lightMarkerLook,
+  lightMarkerTheme,
   type LightMarkerLook,
   type LightMarkerTheme,
 } from './lightMarker';
@@ -36,11 +35,6 @@ type MarkerState = Pick<ViewAtlasState, 'lighting' | 'activeTool'>;
 /** Lit scenes show their lights' markers, and the lighting tool shows them in any scene. */
 export function lightMarkersShown({ lighting, activeTool }: MarkerState): boolean {
   return lighting.enabled || activeTool === 'wall';
-}
-
-/** The theme's badge colours and accent, as the pins and the interface use them. */
-export function lightMarkerTheme(): LightMarkerTheme {
-  return { ...canvasBadgeColors(), accent: cssColorToHexNumber(getObsidianAccentColor()) };
 }
 
 interface Marker {

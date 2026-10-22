@@ -1,20 +1,23 @@
 import { CLOSE } from '../protocol/index.ts';
 import { NO_HOSTING_TEXT } from './account/accountView.ts';
+import { OUTDATED_TEXT } from './gmLevel.ts';
 
 /**
  * How the relay closed a table's connection for good: another Obsidian took the table over (it lives
- * on there), its account may not host, its account started another table, or the server closed it
+ * on there), its account may not host, its account started another table, this Atlas is older than
+ * the player page needs (the table waits on the server for an updated Atlas), or the server closed it
  * for any other reason. The relay decides each; the GM's side only says which it was.
  */
-export type TableEnd = 'replaced' | 'no-access' | 'superseded' | 'refused';
+export type TableEnd = 'replaced' | 'no-access' | 'superseded' | 'outdated' | 'refused';
 
 /** The ends after which the table is gone from the server, so the saved table is dropped. */
-export type LostTable = Exclude<TableEnd, 'replaced'>;
+export type LostTable = Exclude<TableEnd, 'replaced' | 'outdated'>;
 
 export function tableEndOf(closeCode: number | null): TableEnd {
   if (closeCode === CLOSE.replaced) return 'replaced';
   if (closeCode === CLOSE.noAccess) return 'no-access';
   if (closeCode === CLOSE.superseded) return 'superseded';
+  if (closeCode === CLOSE.version) return 'outdated';
   return 'refused';
 }
 
@@ -22,6 +25,7 @@ const END_TEXT: Readonly<Record<TableEnd, string>> = {
   replaced: 'Another Obsidian took over the online table.',
   'no-access': `The online table was closed. ${NO_HOSTING_TEXT}`,
   superseded: 'The online table was closed. This account started another table.',
+  outdated: OUTDATED_TEXT,
   refused: 'The server closed the online table.',
 };
 

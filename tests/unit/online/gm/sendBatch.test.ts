@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { MAX_BATCH_SENDS, MAX_GM_FRAME, parseClientFrame } from '../../../../src/app/online/protocol/index.ts';
 import type { Timers } from '../../../../src/app/online/gm/companionTimers.ts';

@@ -35,9 +35,9 @@ export interface MapLayerSource {
 
 const isFunction = (value: unknown): value is (...args: never[]) => unknown => typeof value === 'function';
 
-/** The lighting controller of a renderer while dynamic lighting is on: its view of the scene and the players' sight. */
+/** The lighting controller of a renderer (the GM's view): its view of the scene and the players' sight. */
 function controllerOf(renderer: unknown): { view: SceneLightingView; playerSight: () => TokenPerception | undefined } | null {
-  const controller = field(field(renderer, 'lightingFeature'), 'controller');
+  const controller = field(renderer, 'lighting');
   const view = field(controller, 'renderer');
   const playerSight = field(controller, 'playerSight');
   if (!isFunction(playerSight) || !isFunction(field(view, 'currentSight')) || !isFunction(field(view, 'sightIsCurrent'))) return null;
@@ -57,8 +57,8 @@ function spritePlace(sprite: unknown): SensedMark | null {
 
 /**
  * The map layers' source of an Atlas tab's renderer and view, read anew at each call: the
- * renderer's grid, its lighting controller (`lightingFeature.controller`, private, duck-typed: lit
- * scenes only) and token renderer (`playerFramePerception`, `getTokenSprites`), and the view's
+ * renderer's grid, its lighting controller (`lighting`, private, duck-typed: lit scenes only)
+ * and token renderer (`playerFramePerception`, `getTokenSprites`), and the view's
  * asset service (`serviceManager.getAssetService`).
  */
 export function mapLayerSourceOf(renderer: unknown, view: unknown): MapLayerSource {

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -7,7 +6,8 @@ import type { App, WorkspaceLeaf } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
-import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
+import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
+import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
 import { findPresentedTab, PRESENT_COMMAND, presentedScene, readPresented, showPresentedElsewhere } from '../../../../src/app/online/gm/presentedScene.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
 import { app, atlasTab, FakeSocket, FakeTabs, png, present, switchScene, workspace } from './fakeTable.ts';
@@ -49,7 +49,7 @@ const ANA = 'anaanaanaanaanaanaan';
 const BEN = 'benbenbenbenbenbenbe';
 const CAVE = 'Scenes/Cave.atlasmap';
 const HALL = 'Scenes/Hall.atlasmap';
-const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, mapPath: CAVE, gate: { code: '483912', requireCode: true, askToJoin: true } };
+const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, campaignId: 'c1', mapPath: CAVE, gate: { code: '483912', requireCode: true, askToJoin: true } };
 const character = (id: string, name: string, x: number): TokenEntity => ({ id, kind: 'character', name, imagePath: 'art/ogre.png', x, y: 140 });
 const cave = (x = 140): SceneState => sceneState({ mapPath: CAVE, background: 'maps/cave.png', objects: { ...sceneState().objects, tokens: { 'gm-ogre': character('gm-ogre', 'Ogre', x) } } });
 const hall = (): SceneState => sceneState({ mapPath: HALL, background: 'maps/hall.png', objects: { ...sceneState().objects, tokens: { 'gm-goblin': character('gm-goblin', 'Goblin', 700) } } });
@@ -60,9 +60,10 @@ const scenes = (socket: FakeSocket, to?: string): unknown[] => bodies(socket, to
 const mapHash = (scene: unknown): unknown => (scene as { map?: { hash?: string } } | null)?.map?.hash;
 
 /** A running table restored from `SAVED`, welcomed by the relay with Ana at it. */
-async function running(ownership = new Ownership(readOwnership(undefined), () => undefined)): Promise<{ online: OnlineControl; socket: FakeSocket }> {
-  const online = new OnlineControl(app, ownership);
-  online.resume(SAVED);
+async function running(): Promise<{ online: OnlineControl; socket: FakeSocket }> {
+  const players = [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }];
+  const online = new OnlineControl(app, boundOwnership(players), fakeCampaigns(players));
+  void online.resume(SAVED);
   await advance(0);
   const socket = FakeSocket.all.at(-1);
   if (socket === undefined) throw new Error('no socket');

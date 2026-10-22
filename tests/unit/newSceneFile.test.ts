@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { migrateMapFile, parseSceneFile } from '../../src/app/services/MapPersistence';
 import { newSceneTokenSettings } from '../../src/app/resources/sceneVisibility';

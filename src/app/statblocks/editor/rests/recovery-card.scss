@@ -1,0 +1,195 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Recovery pane: the rule card hanging from a picked metric's row (RuleCardLayer,
+// RuleCard, RuleInputs).
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// One spacing throughout: the card's padding, and the gap between everything in it.
+$gap: $spacing-s;
+$card-width: 368px; // RULE_CARD_WIDTH in RuleCardLayer.tsx
+$control-height: $input-height-s;
+
+// ── Card ───────────────────────────────────────────────────────────────────
+// Placed by its edge that faces the row: its top under the row, its bottom over it, so the
+// height it grows or shrinks by goes away from the row.
+.atlas-rc-card-layer {
+  position: absolute;
+  z-index: 3;
+  width: $card-width;
+  transform-origin: top left;
+  // Scrolled into view with the stage's own room around it
+  scroll-margin: $spacing-l;
+
+  &[data-side='above'] { transform-origin: bottom left; }
+}
+
+// The height follows the chosen kind's fields (RuleCardLayer animates it): what does not fit yet
+// stays inside.
+.atlas-rc-card {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+  overflow: hidden;
+  color: var(--text-normal);
+}
+
+.atlas-rc-card__body {
+  @include atlas-flex-col($gap);
+  padding: $gap;
+}
+
+// ── Head: the metric, the button, Remove in the corner ─────────────────────
+.atlas-rc-card__head {
+  @include atlas-flex-row($gap);
+  min-width: 0;
+  min-height: $control-height;
+  font-size: $font-ui-small;
+}
+
+.atlas-rc-card__dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: $radius-full;
+  background: var(--interactive-accent);
+}
+
+.atlas-rc-card__metric {
+  @include atlas-truncate;
+  font-weight: $font-weight-semibold;
+}
+
+.atlas-rc-card__button {
+  @include atlas-truncate;
+  margin-inline-start: auto;
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+}
+
+// Two classes: above Obsidian's `button:not(.clickable-icon)` look.
+.atlas-rc-card__remove.atlas-rc-card__remove {
+  @include atlas-icon-button;
+  @include atlas-panel-inset-radius($gap);
+  width: $control-height;
+  height: $control-height;
+  padding: 0;
+  flex-shrink: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  transition: color $transition-fast $transition-ease, background-color $transition-fast $transition-ease,
+    transform $transition-press $transition-ease-out;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &:active { transform: scale(0.94); }
+
+  @include atlas-focus-ring;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-rc-card__remove.atlas-rc-card__remove:hover {
+    background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent);
+    color: var(--text-error);
+  }
+}
+
+// ── Kinds: one segmented row, each kind an icon and a word ─────────────────
+.atlas-rc-card .atlas-segmented {
+  width: 100%;
+  @include atlas-panel-inset-radius($gap);
+}
+
+.atlas-rc-card .atlas-segmented__option {
+  @include atlas-panel-inset-radius($gap + $spacing-xs);
+}
+
+.atlas-rc-card__kinds .atlas-segmented__option {
+  height: $control-height;
+  font-size: $font-ui-smaller;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+.atlas-rc-card__glyph {
+  width: 14px;
+  font-weight: $font-weight-semibold;
+  line-height: 1;
+  text-align: center;
+}
+
+// ── Fields: what the chosen kind asks for ──────────────────────────────────
+.atlas-rc-card__fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: $gap;
+  padding-top: $gap;
+  border-top: $border-width-s solid var(--background-modifier-border);
+}
+
+.atlas-rc-card__field {
+  @include atlas-flex-col($spacing-xs);
+  min-width: 0;
+
+  .atlas-csm-input { height: $control-height; }
+}
+
+.atlas-rc-card__field--wide {
+  grid-column: 1 / -1;
+}
+
+// A short number on a line of its own: its label beside it
+.atlas-rc-card__label.atlas-rc-card__field--inline {
+  grid-column: 1 / -1;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+
+  .atlas-csm-input { width: 96px; }
+}
+
+.atlas-rc-card__label {
+  @include atlas-flex-col($spacing-xs);
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-rc-card__formula {
+  font-family: var(--font-monospace);
+}
+
+// Every number field shows: the shared chips scroll past two lines, which hid the last ones here
+.atlas-rc-card .atlas-rc-card__chips {
+  max-height: none;
+}
+
+.atlas-rc-card__source {
+  @include atlas-flex-row($gap);
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.atlas-rc-card__source-name {
+  @include atlas-truncate;
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+}
+
+.atlas-rc-card__change.atlas-rc-card__change {
+  height: $control-height;
+  padding: 0 $spacing-s;
+  border-radius: $radius-l;
+  font-size: $font-ui-smaller;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-rc-card__remove.atlas-rc-card__remove { transition: none; }
+}

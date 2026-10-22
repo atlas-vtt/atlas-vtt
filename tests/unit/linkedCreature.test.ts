@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveLinkedCreature } from '../../src/app/creatures/linkedCreature';
 import { hasCreatureForNotePath } from '../../src/app/services/FantasyStatblocksService';

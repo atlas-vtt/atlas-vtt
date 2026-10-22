@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AssetService, type Asset } from '../../../src/app/services/AssetService';
 import { transferAssets } from '../../../src/app/services/assetTransfer/assetTransfer';

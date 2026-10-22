@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Bounds, Graphics, Text } from 'pixi.js';
 import { RemoteMeasures, type MeasureRules, type RemoteMeasure } from '../../../../src/app/online/marks/RemoteMeasures.ts';
@@ -15,7 +16,10 @@ const measure = (live: SharedMeasure | null, kept: readonly SharedMeasure[] = []
 describe('RemoteMeasures', () => {
   let measures: RemoteMeasures;
   /** The labels drawn, in the order of their measurements: where each stands and what it says. */
-  const labels = (): { x: number; text: string }[] => measures.container.children.filter((child): child is Text => child instanceof Text).map((text) => ({ x: text.position.x, text: text.text }));
+  const labels = (): { x: number; text: string }[] => measures.container.children.flatMap((label) => {
+    const text = label.children.find((child): child is Text => child instanceof Text);
+    return text ? [{ x: label.position.x, text: text.text }] : [];
+  });
   /** Draws a frame every `FRAME` ms from `from` to `to`; returns where the last label stood in each. */
   const run = (from: number, to: number): { x: number; text: string }[] => {
     const seen: { x: number; text: string }[] = [];
@@ -130,9 +134,11 @@ describe('RemoteMeasures', () => {
   it('forgets a sender who has no measurements left or is not named', () => {
     measures.update([measure(line(700))], 0);
     measures.update([measure(null)], 10);
-    expect(measures.container.children).toHaveLength(0);
+    // Only the layer every sender's shapes are composed in stays, empty.
+    const empty = (): boolean => measures.container.children.length === 1 && measures.container.getLocalBounds().width === 0;
+    expect(empty()).toBe(true);
     measures.update([measure(line(700))], 20);
     measures.update([], 30);
-    expect(measures.container.children).toHaveLength(0);
+    expect(empty()).toBe(true);
   });
 });

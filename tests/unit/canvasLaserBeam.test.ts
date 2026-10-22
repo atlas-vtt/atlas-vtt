@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { Graphics } from 'pixi.js';
 import { CanvasLaserBeam } from '../../src/app/pixi/laser/CanvasLaserBeam';

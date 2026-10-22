@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
-import { rollInitiativeDice } from '../../src/app/initiative/turns';
+import { rollInitiativeDice } from '../../src/app/initiative/initiativeDice';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
@@ -152,7 +152,7 @@ describe('rolling initiative', () => {
     store.getState().rollAllInitiative('1d10');
     expect(store.getState().initiative.entries.map((entry) => entry.initiative)).toEqual([10, 10, 10]);
     store.getState().rollEntryInitiative(store.getState().initiative.entries[1]!.id, '1d6');
-    expect(store.getState().initiative.entries.map((entry) => entry.initiative)).toEqual([10, 6, 10]);
+    expect(store.getState().initiative.entries.map((entry) => entry.initiative)).toEqual([10, 10, 6]);
     store.getState().rollAllInitiative();
     expect(store.getState().initiative.entries.map((entry) => entry.initiative)).toEqual([20, 20, 20]);
     random.mockRestore();

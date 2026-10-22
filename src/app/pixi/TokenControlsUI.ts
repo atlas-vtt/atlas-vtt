@@ -10,20 +10,17 @@ import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import { openResourceEditor, type BarAnchor, type ResourceEditor, type ResourceValue } from './tokenValueEditor';
 import { ResourceBarHitArea } from './ResourceBarHitArea';
 import { destroyTree } from './utils/destroyTree';
-import type { ResourceSlot } from './token-renderer/resources/ResourceStack';
+import { BAR_BUTTON_SIZE, type ResourceSlot } from './token-renderer/resources/ResourceStack';
 import { WHEEL_STEPPER } from './token-renderer/resources/ResourceWheels';
-import { wheelAnchor } from './token-renderer/resources/wheelAnchor';
 import { colorNumber } from './token-renderer/resources/ResourceBarView';
 import type { ResourceDefinition, ResourceDefsProvider } from '../resources/resourceTypes';
 import { resourceUpdate, withCurrent } from '../resources/resourceValues';
 import { visibleResources } from '../resources/visibleResources';
+import { mapTokens } from '../tokens/offMap';
 
 type ControlIconType = 'plus' | 'minus';
 
 /** The click-to-edit overlay and the +/- buttons of one resource. */
-/** Diameter of a +/- button, in UI units: a bar's height. */
-const BUTTON_SIZE = 10;
-
 interface ResourceControl {
   hit: ResourceBarHitArea;
   minus: ControlButton;
@@ -58,6 +55,10 @@ export class TokenControlsUI {
   public resourceDefsProvider: ResourceDefsProvider = () => [];
   /** Where a token's resources are drawn, from its `TokenUIRenderer`, so each control sits on its resource. */
   public slotsProvider: (tokenId: string) => readonly ResourceSlot[] = () => [];
+  /** Where a token's right wheels hang from, from its `TokenUIRenderer` (`wheelAnchor`); the left ones hang from the mirror. */
+  public wheelAnchorProvider: (tokenId: string) => { x: number; y: number } | null = () => null;
+  /** Hears which token's bars have their +/- buttons shown, null for none, so its wheels make room for them. */
+  public onBarButtonsChange: ((tokenId: string | null) => void) | null = null;
 
   private readonly DANGER_COLOR = colors.health.critical;
 
@@ -72,7 +73,7 @@ export class TokenControlsUI {
     </svg>`
   };
   
-  /** The token UI's anchors again, scaled like them: below the token for bars, `wheelAnchor` and its mirror on the left for wheels. Controls live in the anchor of what they edit. */
+  /** The token UI's anchors again, scaled and placed like them: below the token for bars, `wheelAnchor` and its mirror on the left for wheels. Controls live in the anchor of what they edit. */
   private readonly below = new Container();
   private readonly beside = new Container();
   private readonly leftOf = new Container();
@@ -226,7 +227,7 @@ export class TokenControlsUI {
     const strokeAlpha = isDarkMode ? 0.4 : 0.3;
     
     // Draw background - circular like status badges
-    const size = BUTTON_SIZE;
+    const size = BAR_BUTTON_SIZE;
     const radius = size / 2;
     
     // Background fill
@@ -265,7 +266,7 @@ export class TokenControlsUI {
   /** Shows the controls of a token whose bars and wheels are drawn at `uiScale`. */
   public show(tokenId: string, worldX: number, worldY: number, tokenSize: number, uiScale: number): void {
     const state = this.store.getState();
-    const token = state.objects.tokens[tokenId] as Character | undefined;
+    const token = mapTokens(state.objects)[tokenId] as Character | undefined;
     
     if (!token || this.slotsProvider(tokenId).length === 0) {
       this.hide();
@@ -277,7 +278,8 @@ export class TokenControlsUI {
     this.setScale(uiScale);
 
     // Update button visibility and handlers
-    this.updateButtons(token);
+    const barButtons = this.updateButtons(token);
+    this.onBarButtonsChange?.(barButtons ? tokenId : null);
     
     // Make container visible (unless hidden during resize or rotation)
     this.container.visible = !this.isHiddenDuringResize && !this.isHiddenDuringRotation;
@@ -288,6 +290,7 @@ export class TokenControlsUI {
     this.container.visible = false;
     this.editor?.close();
     for (const control of this.resourceControls.values()) this.hideControl(control);
+    this.onBarButtonsChange?.(null);
   }
 
   public updatePosition(worldX: number, worldY: number, tokenSize: number): void {
@@ -317,18 +320,24 @@ export class TokenControlsUI {
 
   /** Puts the anchors where the token UI has its own: below the token centred at (`worldX`, `worldY`), and where its wheels hang. */
   private place(worldX: number, worldY: number, tokenSize: number): void {
-    const { grid, tokenSettings } = this.store.getState();
-    const beside = wheelAnchor(tokenSize, grid?.size ?? 70, tokenSettings?.tokenRingSize ?? 1);
     this.container.position.set(worldX, worldY);
     this.below.position.set(0, tokenSize / 2);
-    this.beside.position.set(beside.x, beside.y);
-    this.leftOf.position.set(-beside.x, beside.y);
+    this.placeWheelAnchors();
   }
 
+  /** The wheels' columns move as the UI grows, so they are placed again with every scale. */
   private setScale(uiScale: number): void {
     this.below.scale.set(uiScale);
     this.beside.scale.set(uiScale);
     this.leftOf.scale.set(uiScale);
+    this.placeWheelAnchors();
+  }
+
+  private placeWheelAnchors(): void {
+    const anchor = this.currentTokenId ? this.wheelAnchorProvider(this.currentTokenId) : null;
+    if (!anchor) return;
+    this.beside.position.set(anchor.x, anchor.y);
+    this.leftOf.position.set(-anchor.x, anchor.y);
   }
 
   /** A bar's controls hang from the token's bottom edge, a wheel's from the anchor of its side. */
@@ -336,9 +345,11 @@ export class TokenControlsUI {
     return { bar: this.below, wheel: this.beside, 'wheel-left': this.leftOf }[slot.kind];
   }
 
-  private updateButtons(token: Character): void {
+  /** Binds the controls of every resource `token` shows; whether a bar got +/- buttons. */
+  private updateButtons(token: Character): boolean {
     for (const control of this.resourceControls.values()) this.hideControl(control);
-    if (!this.currentTokenId) return;
+    if (!this.currentTokenId) return false;
+    let barButtons = false;
 
     // Same resources and places as TokenUIRenderer drew them, so each overlay sits on its resource
     const slots = this.slotsProvider(this.currentTokenId);
@@ -350,7 +361,7 @@ export class TokenControlsUI {
       // The token may have changed since the controls were shown (dashboard, Kill, Edit Token), so
       // every edit starts from the stored token: it must not write old values over other resources.
       const edit = (change: (stored: ResourceValue) => ResourceValue): void => {
-        const live = this.currentTokenId ? this.store.getState().objects.tokens[this.currentTokenId] : undefined;
+        const live = this.currentTokenId ? mapTokens(this.store.getState().objects)[this.currentTokenId] : undefined;
         const stored = live?.resources?.[definition.key];
         if (!live || !stored) return;
         const next = change(stored);
@@ -359,7 +370,9 @@ export class TokenControlsUI {
       this.bindResource(this.controlFor(definition), slot, value, definition.name,
         (delta) => edit((stored) => withCurrent(stored, stored.current + delta)),
         (next) => edit(() => next));
+      barButtons ||= slot.kind === 'bar';
     }
+    return barButtons;
   }
 
   /** The controls of `definition`, in its colour; created once per resource key. */
@@ -394,8 +407,8 @@ export class TokenControlsUI {
     const positions = slot.kind !== 'bar'
       ? [[minus, -1, stepperX, centerY + (WHEEL_STEPPER.size + 1) / 2],
         [plus, 1, stepperX, centerY - (WHEEL_STEPPER.size + 1) / 2]] as const
-      : [[minus, -1, slot.left - BUTTON_SIZE / 2 - barDimensions.token.gap, centerY],
-        [plus, 1, right + BUTTON_SIZE / 2 + barDimensions.token.gap, centerY]] as const;
+      : [[minus, -1, slot.left - BAR_BUTTON_SIZE / 2 - barDimensions.token.gap, centerY],
+        [plus, 1, right + BAR_BUTTON_SIZE / 2 + barDimensions.token.gap, centerY]] as const;
     for (const [button, delta, x, y] of positions) {
       button.visible = true;
       this.drawButtonState(button, false);
@@ -419,7 +432,7 @@ export class TokenControlsUI {
   private setTokenValue(updates: TokenUpdates): void {
     if (!this.currentTokenId) return;
     this.store.getState().updateToken(this.currentTokenId, updates);
-    const updatedToken = this.store.getState().objects.tokens[this.currentTokenId] as Character | undefined;
+    const updatedToken = mapTokens(this.store.getState().objects)[this.currentTokenId] as Character | undefined;
     if (updatedToken) {
       this.updateButtons(updatedToken);
     }

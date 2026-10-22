@@ -82,6 +82,21 @@ function sampleMarkdown(field: TemplateField): string {
     : SAMPLE_PARAGRAPH;
 }
 
+/** Uses each sample row gets where its preset gives it none, so the preview shows its pips. */
+const SAMPLE_COUNTER_MAXES = [4, 3, 2];
+
+/** A Counters sample: its preset rows, each that has no uses yet given a few, else two rows of its own. */
+function sampleCounters(field: TemplateField): FieldValue {
+  const presets = field.counterRows ?? [];
+  if (presets.length === 0) return [{ name: 'First', max: 3, used: 1 }, { name: 'Second', max: 2, used: 0 }];
+  return presets.slice(0, SAMPLE_COUNTER_MAXES.length).map((row, index) => ({
+    name: row.name,
+    max: row.max > 0 ? row.max : SAMPLE_COUNTER_MAXES[index] ?? 1,
+    used: index === 0 ? 1 : 0,
+    ...(row.regain && { regain: row.regain }),
+  }));
+}
+
 /** The value the template editor previews a field with while no statblock is picked. */
 export function sampleValueFor(field: TemplateField, numbers = true): FieldValue {
   switch (field.type) {
@@ -98,6 +113,7 @@ export function sampleValueFor(field: TemplateField, numbers = true): FieldValue
     // The renderer shows a neutral silhouette for a missing image.
     case 'image': return null;
     case 'spells': return /spell|magic|cast/i.test(`${field.key} ${field.label}`) ? SAMPLE_SPELLS : SAMPLE_GROUPS;
+    case 'counters': return sampleCounters(field);
   }
 }
 

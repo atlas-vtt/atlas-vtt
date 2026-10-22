@@ -28,7 +28,7 @@ export interface SheetText {
   readonly whole?: AssetRef;
 }
 
-export const SHEET_FIELD_TYPES = ['text', 'markdown', 'number', 'rating', 'dice', 'choice', 'list', 'scores', 'pairs'] as const;
+export const SHEET_FIELD_TYPES = ['text', 'markdown', 'number', 'rating', 'dice', 'choice', 'list', 'scores', 'pairs', 'counters'] as const;
 export type SheetFieldType = (typeof SHEET_FIELD_TYPES)[number];
 
 /** What a player may change of a value: present only where they may. `base` names the value the note holds, which an edit must name back. */
@@ -49,11 +49,16 @@ const CONTROL = /\p{Cc}/u;
 export const SHEET_KEY_PATTERN = /^[0-9a-z]{1,8}~\d{1,4}$/;
 
 export const isSheetKey = (value: unknown): value is string => typeof value === 'string' && SHEET_KEY_PATTERN.test(value);
+/** A key or id as sent: 1 to `max` characters, none a control character. */
+export const isPlainKey = (value: unknown, max: number): value is string => typeof value === 'string' && value.length > 0 && value.length <= max && !CONTROL.test(value);
 /** A key a field is stored under: 1 to `MAX_FIELD_KEY` characters, none a control character. */
-export const isFieldKey = (value: unknown): value is string => typeof value === 'string' && value.length > 0 && value.length <= MAX_FIELD_KEY && !CONTROL.test(value);
+export const isFieldKey = (value: unknown): value is string => isPlainKey(value, MAX_FIELD_KEY);
 
 /** Keys a plain object answers through its prototype: a value naming one is refused, so no reader takes an inherited property for the value's own. */
 const OBJECT_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
+
+/** A pair's label a note can keep as a key of a map: a field key no plain object answers itself. */
+export const isPairLabel = (value: unknown): value is string => isFieldKey(value) && !OBJECT_KEYS.has(value);
 
 /** A stored value as the page or the GM reads it, or undefined when it is malformed or larger than a sheet holds. */
 export function parseSheetRaw(value: unknown, depth = 0): SheetRaw | undefined {

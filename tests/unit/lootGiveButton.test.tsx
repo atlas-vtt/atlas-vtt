@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -8,6 +9,7 @@ vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
 import { setLootRecipientSource, type LootRecipient, type LootRecipientSource } from '../../src/app/loot/lootRecipients';
 import type { LootDraw } from '../../src/app/loot/lootRoller';
 import { LootResultCard } from '../../src/app/react/components/loot/LootResultCard';
+import { MAX_GIVE_QUANTITY } from '../../src/app/react/components/loot/GiveQuantity';
 
 const ROPE: LootDraw = { id: 'rope', notePath: 'Loot/Rope.md', source: ['Items', 'Gear'], name: 'Rope', description: 'Fifty feet of hemp.', properties: [] };
 const ANA: LootRecipient = { id: 'p1', name: 'Ana', character: 'Mira the Bold' };
@@ -90,9 +92,9 @@ describe('handing a rolled item to a player', () => {
     await openMenu();
 
     const rows = screen.getAllByRole('menuitem');
-    expect(rows.map((row) => row.textContent)).toEqual(['AnaMira the Bold', 'BenNo character']);
-    expect(rows[0]!.hasAttribute('data-disabled')).toBe(false);
-    expect(rows[1]!.getAttribute('aria-disabled')).toBe('true');
+    expect(rows.map((row) => row.textContent)).toEqual(['All players', 'AnaMira the Bold', 'BenNo character']);
+    expect(rows[1]!.hasAttribute('data-disabled')).toBe(false);
+    expect(rows[2]!.getAttribute('aria-disabled')).toBe('true');
   });
 
   it('hands nothing to someone who plays no character', async () => {
@@ -127,5 +129,62 @@ describe('handing a rolled item to a player', () => {
 
     expect(source.give).toHaveBeenCalledWith('p1', ROPE);
     expect(showNotice).toHaveBeenCalledExactlyOnceWith('Rope could not be handed to Ana');
+  });
+
+  it('hands as many copies as the quantity says, stepped or typed', async () => {
+    const source = table([ANA]);
+    setLootRecipientSource(source);
+    renderCard();
+    await openMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Give more' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Give more' }));
+    expect((screen.getByRole('textbox', { name: 'Quantity' }) as HTMLInputElement).value).toBe('3');
+    fireEvent.click(screen.getByRole('menuitem', { name: /Ana/ }));
+
+    expect(source.give).toHaveBeenCalledTimes(3);
+    expect(showNotice).toHaveBeenCalledExactlyOnceWith('3 × Rope given to Ana');
+
+    source.give.mockClear();
+    showNotice.mockClear();
+    await openMenu();
+    const field = screen.getByRole('textbox', { name: 'Quantity' }) as HTMLInputElement;
+    expect(field.value).toBe('1');
+    fireEvent.change(field, { target: { value: '5' } });
+    fireEvent.click(screen.getByRole('menuitem', { name: /Ana/ }));
+    expect(source.give).toHaveBeenCalledTimes(5);
+  });
+
+  it('never hands fewer than one or more than the most a book takes at once', async () => {
+    setLootRecipientSource(table([ANA]));
+    renderCard();
+    await openMenu();
+    const field = screen.getByRole('textbox', { name: 'Quantity' }) as HTMLInputElement;
+    expect(screen.getByRole('button', { name: 'Give fewer' }).hasAttribute('disabled')).toBe(true);
+    fireEvent.change(field, { target: { value: '999' } });
+    fireEvent.blur(field);
+    expect(field.value).toBe(String(MAX_GIVE_QUANTITY));
+    expect(screen.getByRole('button', { name: 'Give more' }).hasAttribute('disabled')).toBe(true);
+    fireEvent.change(field, { target: { value: '0' } });
+    fireEvent.blur(field);
+    expect(field.value).toBe('1');
+  });
+
+  it('hands the quantity to every player with a character', async () => {
+    const source = table([ANA, BEN, { id: 'p3', name: 'Cas', character: 'Brannoc' }]);
+    setLootRecipientSource(source);
+    renderCard();
+    await openMenu();
+    fireEvent.click(screen.getByRole('button', { name: 'Give more' }));
+    fireEvent.click(screen.getByRole('menuitem', { name: 'All players' }));
+
+    expect(source.give.mock.calls.map(([id]) => id)).toEqual(['p1', 'p1', 'p3', 'p3']);
+    expect(showNotice).toHaveBeenCalledExactlyOnceWith('2 × Rope given to 2 players');
+  });
+
+  it('offers nobody at once while no one plays a character', async () => {
+    setLootRecipientSource(table([BEN]));
+    renderCard();
+    await openMenu();
+    expect(screen.getByRole('menuitem', { name: 'All players' }).getAttribute('aria-disabled')).toBe('true');
   });
 });

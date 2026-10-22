@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage, type GmMessage, type LogEntry, type SharedRoll } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { viewOf, type GmLogEntry } from '../../../../src/app/online/gm/log/logEntries.ts';

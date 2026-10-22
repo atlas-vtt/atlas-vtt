@@ -1,4 +1,4 @@
-import { FLICKER_INTERVAL_MS, MAX_TEXELS } from './lightingConstants';
+import { FLICKER_INTERVAL_MS, MAX_TEXELS, TILE_RAYS } from './lightingConstants';
 
 /**
  * How much graphics memory and work the lighting may take on this device. Only the picture
@@ -17,6 +17,12 @@ export interface LightingQuality {
   bounceMaxSide: number;
   /** Flickering lights are redrawn at most this often, in milliseconds; null keeps every light steady. */
   flickerMs: number | null;
+  /**
+   * Rays a light's tile traces across its flame where a texel sees only part of it (at most
+   * `TILE_RAYS`): fewer make soft shadow edges coarser and a light's tile that much cheaper to
+   * build. What a wall blocks is the same with any number.
+   */
+  tileRays: number;
 }
 
 export const LIGHTING_QUALITY_LEVELS = ['high', 'balanced', 'saver'] as const;
@@ -24,9 +30,9 @@ export type LightingQualityLevel = (typeof LIGHTING_QUALITY_LEVELS)[number];
 
 /** The levels the GM picks from; `high` is the lighting as it always was. */
 export const LIGHTING_QUALITY: Record<LightingQualityLevel, LightingQuality> = {
-  high: { maxTexels: MAX_TEXELS, bounceMaxSide: Infinity, flickerMs: FLICKER_INTERVAL_MS },
-  balanced: { maxTexels: 2048, bounceMaxSide: 6144, flickerMs: 66 },
-  saver: { maxTexels: 1024, bounceMaxSide: 0, flickerMs: null },
+  high: { maxTexels: MAX_TEXELS, bounceMaxSide: Infinity, flickerMs: FLICKER_INTERVAL_MS, tileRays: TILE_RAYS },
+  balanced: { maxTexels: 2048, bounceMaxSide: 6144, flickerMs: 66, tileRays: 16 },
+  saver: { maxTexels: 1024, bounceMaxSide: 0, flickerMs: null, tileRays: 8 },
 };
 
 export const DEFAULT_LIGHTING_QUALITY: LightingQuality = LIGHTING_QUALITY.high;

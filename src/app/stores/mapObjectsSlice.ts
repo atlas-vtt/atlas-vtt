@@ -8,7 +8,8 @@ import { isPinLabelKind, nextPinLabel } from '../tools/pinLabels';
 import { collectMapObjects, countMapObjects, type CopyableCollections, type MapObjectContent } from '../clipboard/mapObjectContent';
 import { duplicateStep, placeMapObjects } from '../clipboard/mapObjectPlacement';
 import { computeNextInstanceNumber } from './tokenInstanceNumbers';
-import { raiseTokens } from './tokenStacking';
+import { placeTokens, raiseTokens } from './tokenStacking';
+import { isOffMap } from '../tokens/offMap';
 
 export interface MapObjectsSlice {
   /** Adds the objects under fresh ids, selects them and returns the new ids. */
@@ -17,6 +18,8 @@ export interface MapObjectsSlice {
   duplicateMapObjects: (ids: string[]) => string[];
   /** Removes tokens, drawings, texts and pins with the given ids; other ids stay selected. */
   removeMapObjects: (ids: string[]) => void;
+  /** Puts a token kept beside the map (`offMap`) on it at (x, y), on top of every other token, and selects it. */
+  placeOffMapToken: (id: string, x: number, y: number) => void;
 }
 
 interface MapObjectsStoreState {
@@ -82,6 +85,14 @@ export function createMapObjectsActions(set: ImmerSet, get: () => MapObjectsStor
       const content = collectMapObjects(objects, ids);
       return insert(placeMapObjects(content, duplicateStep(grid), grid, objects));
     },
+
+    placeOffMapToken: (id, x, y) => set((draft) => {
+      const token = draft.objects.tokens[id];
+      if (!token || !isOffMap(token)) return;
+      delete token.offMap;
+      placeTokens(draft, [{ id, x, y }]);
+      draft.selectedIds = [id];
+    }),
 
     removeMapObjects: (ids) => set((draft) => {
       const { tokens, drawings, texts, pins } = draft.objects;

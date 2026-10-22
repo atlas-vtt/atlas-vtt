@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Graphics } from 'pixi.js';
 import { SENSED_OUTLINE_Z_INDEX, SensedOutlines } from '../../src/app/pixi/token-renderer/SensedOutlines';

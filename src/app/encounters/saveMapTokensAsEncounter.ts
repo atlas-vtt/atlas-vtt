@@ -17,9 +17,9 @@ function orderByCentroidDistance(tokens: TokenEntity[]): TokenEntity[] {
   return [...tokens].sort((a, b) => Math.hypot(a.x - cx, a.y - cy) - Math.hypot(b.x - cx, b.y - cy));
 }
 
-/** The token's state as the encounter's file holds it. */
+/** The token's state as the encounter's file holds it; where it is put down is the encounter's to say. */
 function snapshotTokenState(token: TokenEntity): TokenStateSnapshot {
-  const { id: _id, x: _x, y: _y, instanceNumber: _instanceNumber, ...state } = token;
+  const { id: _id, x: _x, y: _y, instanceNumber: _instanceNumber, offMap: _offMap, ...state } = token;
   return tokenToFile(state) as TokenStateSnapshot;
 }
 

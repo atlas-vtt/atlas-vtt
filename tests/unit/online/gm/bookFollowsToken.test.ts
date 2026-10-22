@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseGmMessage, type BookStatblock, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 import { PartySync } from '../../../../src/app/campaigns/partyValues/PartySync';

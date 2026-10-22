@@ -10,7 +10,7 @@ import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlas
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
 import { TOKEN_INTERVAL_MS, TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { fakeLayers, gmGridOptions } from './fakeAtlasTab.ts';
-import { GENERIC_SOURCE, LIGHTING_ON } from './gmLighting.ts';
+import { GENERIC_SOURCE, PLAYER_SETTINGS } from './gmLighting.ts';
 import { sceneState, shareHarness, tokenLists, type ShareHarness } from './shareHarness.ts';
 
 /**
@@ -70,7 +70,7 @@ export async function gm(createViewAtlasStore: ControlStoreFactory, tokens: read
     draft.objects.tokens = Object.fromEntries(tokens.map((token) => [token.id, token]));
   }));
   const table = shareHarness(sceneState(), MAP, undefined, store);
-  table.settings = { ...LIGHTING_ON, showNames: false };
+  table.settings = { ...PLAYER_SETTINGS, showNames: false };
   table.rules = { resources: RESOURCES, conditions: CONDITIONS };
   table.layers = fakeLayers({ state: () => store.getState(), source: GENERIC_SOURCE, bounds: BOUNDS, grid: () => gmGridOptions(store.getState()) });
   table.share.start();

@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { Container, Text } from 'pixi.js';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { PlayerInstanceBadges } from '../../src/app/pixi/token-renderer/PlayerInstanceBadges';
 import { badgeParts } from '../../src/app/pixi/token-renderer/instanceBadgeParts';
 import { updateInstanceBadge } from '../../src/app/pixi/token-renderer/InstanceBadge';
@@ -251,5 +252,44 @@ describe('the GM\'s badge drawing', () => {
     updateInstanceBadge(groups.C!, 7, 50, false);
     updateInstanceBadge(groups.C!, 3, 36, true);
     expect([parts.disc.visible, parts.text.visible, parts.playerText?.visible]).toEqual(before);
+  });
+});
+
+describe('the players\' numbers, for their initiative list', () => {
+  it('answers the number each badge shows the players, and none where it shows none', () => {
+    const { badges } = table();
+    badges.pass(seeing('B', 'C', 'O'));
+    expect(['A', 'B', 'C', 'O'].map((id) => badges.numberOf(id))).toEqual([null, 1, 2, null]);
+  });
+
+  it('says when the numbers change, and only then', () => {
+    const { state, badges } = table();
+    const changed = vi.fn();
+    badges.onNumbersChange(changed);
+
+    badges.pass(seeing('B', 'C'));
+    badges.pass(seeing('B', 'C'));
+    expect(changed).toHaveBeenCalledTimes(1);
+
+    state.badgesOn = false;
+    badges.pass(seeing('B', 'C'));
+    expect(changed).toHaveBeenCalledTimes(2);
+    expect(badges.numberOf('B')).toBeNull();
+
+    badges.reset();
+    expect(changed).toHaveBeenCalledTimes(3);
+  });
+
+  it('starts anew on another map, and says so though nothing is numbered there yet', () => {
+    const { state, badges } = table();
+    badges.pass(seeing('A', 'B'));
+    const changed = vi.fn();
+    badges.onNumbersChange(changed);
+
+    state.mapPath = 'maps/b.atlasmap';
+    badges.pass(seeing());
+
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(badges.numberOf('A')).toBeNull();
   });
 });

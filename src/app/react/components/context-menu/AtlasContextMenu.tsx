@@ -57,6 +57,12 @@ export const MENU_SEPARATOR: ContextMenuEntry = {
 type ContextMenuItemEntry = Extract<ContextMenuEntry, { type: 'item' }>;
 type ContextMenuSubmenuEntry = Extract<ContextMenuEntry, { type: 'submenu' }>;
 
+/** Submenus share the document and visible view of the menu that opened them. */
+export interface ContextMenuPlacement {
+  collisionBoundary?: Element | null | undefined;
+  container?: HTMLElement | undefined;
+}
+
 /** Runs an entry's action; a rejected async action is logged rather than left unhandled. */
 function runEntryAction(entry: ContextMenuItemEntry): void {
   const result = entry.onClick();
@@ -88,11 +94,11 @@ function ObsidianIcon({ name }: { name: string }): React.ReactElement {
 }
 
 /** A submenu's entries, rebuilt whenever the submenu reports that they changed. */
-function SubmenuEntries({ entry, onClose }: { entry: ContextMenuSubmenuEntry; onClose: () => void }): React.ReactElement {
+function SubmenuEntries({ entry, onClose, placement }: { entry: ContextMenuSubmenuEntry; onClose: () => void; placement: ContextMenuPlacement }): React.ReactElement {
   const [, refresh] = useReducer((version: number) => version + 1, 0);
   useEffect(() => entry.subscribe?.(refresh), [entry]);
   const children = typeof entry.children === 'function' ? entry.children() : entry.children;
-  return <>{renderEntries(children, onClose)}</>;
+  return <>{renderEntries(children, onClose, placement)}</>;
 }
 
 /** Runs a stepper action from a click inside a menu item without choosing the item. */
@@ -171,6 +177,7 @@ function ItemContent({ entry }: { entry: ContextMenuItemEntry }): React.ReactEle
 export function renderEntries(
   entries: ContextMenuEntry[],
   onClose: () => void,
+  placement: ContextMenuPlacement = {},
 ): React.ReactNode[] {
   return entries.map((entry, idx) => {
     switch (entry.type) {
@@ -195,15 +202,16 @@ export function renderEntries(
                 <ObsidianIcon name="chevron-right" />
               </span>
             </DropdownMenu.SubTrigger>
-            <DropdownMenu.Portal>
+            <DropdownMenu.Portal container={placement.container}>
               <DropdownMenu.SubContent
                 className="atlas-ctx-menu"
                 sideOffset={4}
                 alignOffset={-4}
                 avoidCollisions
+                collisionBoundary={placement.collisionBoundary ?? []}
                 collisionPadding={8}
               >
-                <SubmenuEntries entry={entry} onClose={onClose} />
+                <SubmenuEntries entry={entry} onClose={onClose} placement={placement} />
               </DropdownMenu.SubContent>
             </DropdownMenu.Portal>
           </DropdownMenu.Sub>

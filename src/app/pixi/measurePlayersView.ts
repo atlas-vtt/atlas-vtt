@@ -6,6 +6,7 @@ import type { TokenPerception } from '../vision/tokenPerception';
 import type { MeasurePlayersView } from './measurePartsVisibility';
 import type { TokenRenderer } from './TokenRenderer';
 import { NOTHING_SEEN } from './token-renderer/PlayerSightTokens';
+import { mapTokens } from '../tokens/offMap';
 
 /** What a measurement asks of the tokens. */
 type MeasuredTokens = Pick<TokenRenderer, 'getTokenSprites' | 'playersSeeInFrame' | 'playersSeeOnCanvas'>;
@@ -24,7 +25,7 @@ export function measurePlayersView(deps: {
   return {
     footprints: () => {
       const { objects, tokenSettings } = deps.store.getState();
-      return tokenFootprints(objects.tokens, deps.tokens()?.getTokenSprites() ?? {}, deps.grid.getOptions().size, tokenSettings?.tokenRingSize ?? 1);
+      return tokenFootprints(mapTokens(objects), deps.tokens()?.getTokenSprites() ?? {}, deps.grid.getOptions().size, tokenSettings?.tokenRingSize ?? 1);
     },
     seenAtStart: () => deps.tokens()?.playersSeeInFrame(deps.lighting()) ?? NOTHING_SEEN,
     seenOnCanvas: () => deps.tokens()?.playersSeeOnCanvas() ?? null,

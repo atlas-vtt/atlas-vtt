@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
 import { Container } from 'pixi.js';
 import { GridSystem } from '../../src/app/grid/GridSystem';

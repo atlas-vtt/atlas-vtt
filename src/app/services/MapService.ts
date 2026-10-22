@@ -11,6 +11,7 @@ import { sceneNameOf } from '../utils/sceneName';
 import { settledWithin } from '../utils/settledWithin';
 import { LatestRequestQueue } from './latestRequestQueue';
 import { fillStoreFromMapFile } from './mapFileFallback';
+import { takePlacedCombatants } from '../initiative/offMapCombatants';
 import { t } from '../i18n';
 import type { ViewCamera } from '../pixi/viewCamera';
 import { showNotice } from '../ui/notice';
@@ -164,6 +165,9 @@ export class MapService {
 
         // After rehydration, populate what it did not load from the map file data
         fillStoreFromMapFile(this.store, this.currentMapData);
+        // Combatants an older version moved from beside the map onto it are on the map
+        const worldRect = mapImage?.worldRect;
+        if (worldRect) takePlacedCombatants(this.store, worldRect);
       } else {
         // Failed to load map data, re-enable persistence anyway
         storeState.setPersistenceEnabled(true);
@@ -205,7 +209,7 @@ export class MapService {
         getHistoryStore(this.store)?.getState().resume();
 
         if (detectsGrid && renderer) {
-          this.endGridDetection = detectGridOfNewScene({ app: this.app, store: this.store, renderer, isCurrent: () => !isSuperseded(), refitCamera: camera === null });
+          this.endGridDetection = detectGridOfNewScene({ store: this.store, renderer, isCurrent: () => !isSuperseded(), refitCamera: camera === null });
         }
       };
       const hideLoadingScreen = (): void => {

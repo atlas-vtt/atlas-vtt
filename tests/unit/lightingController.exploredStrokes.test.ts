@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { asked, KEYS, PEEK, setup, teardown, wallCount, type Setup } from './lightingMemoryHarness';
 import type { ExploredEdit } from '../../src/app/lighting/exploredEdits';

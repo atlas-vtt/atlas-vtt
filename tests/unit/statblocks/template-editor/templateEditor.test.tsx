@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
@@ -136,7 +137,7 @@ describe('TemplateEditor', () => {
     act(() => frame('divider1').focus());
     key(frame('divider1'), '/');
     const search = screen.getByRole('combobox', { name: 'Find a kind' });
-    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Value', 'Metric', 'Abilities', 'Table', 'Text', 'Divider']);
+    expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['Value', 'Metric', 'Abilities', 'Table', 'Counters', 'Text', 'Divider']);
     fireEvent.change(search, { target: { value: 'value' } });
     expect(screen.getByRole('option', { selected: true }).textContent).toBe('Value');
     key(search, 'Enter');

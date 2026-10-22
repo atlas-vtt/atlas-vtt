@@ -10,7 +10,17 @@ export interface ListActions {
   assign(tokenIds: readonly string[], playerId: string): void;
   release(tokenIds: readonly string[]): void;
   unmark(tokenIds: readonly string[]): void;
+  /** Takes the player off this table; their code still lets them back. */
   kick(playerId: string): void;
+  /** Copies the player's code as people read it; false while there is none or the clipboard refused. */
+  copyPlayerCode(playerId: string): Promise<boolean>;
+  newPlayerCode(playerId: string): void;
+  /** Asks the GM for the player's new name. */
+  askRename(player: OnlinePlayer): void;
+  /** Asks the GM whether the player leaves the campaign. */
+  askRemoveFromCampaign(player: OnlinePlayer): void;
+  /** Draws the open question about the player into `parent`, where their row would be; false while there is none. */
+  playerPrompt(parent: HTMLElement, playerId: string): boolean;
   /** The tokens selected on the shared map, for "Assign selected tokens here". */
   selected(): readonly string[];
   /** The URL the vault serves an image path at. */
@@ -52,6 +62,7 @@ function releaseEntries(face: TokenRow | null, tokens: readonly TokenRow[], acti
  * name selects that token on the map, as its own row did, and their menu releases it alone.
  */
 function playerRow(list: HTMLElement, player: GroupPlayer, face: TokenRow | null, tokens: readonly TokenRow[], actions: ListActions): void {
+  if (actions.playerPrompt(list, player.id)) return;
   const row = list.createDiv({ cls: ['atlas-online-player', ...(player.online ? [] : ['is-away'])] });
   const main = face === null
     ? row.createDiv({ cls: 'atlas-online-player__main' })
@@ -68,7 +79,11 @@ function playerRow(list: HTMLElement, player: GroupPlayer, face: TokenRow | null
     openMenuBelow([
       { title: 'Assign selected tokens here', icon: 'user-plus', disabled: selected.length === 0, run: () => actions.assign(selected, player.id) },
       ...releaseEntries(face, tokens, actions),
+      { title: 'Copy code', icon: 'copy', apart: true, run: () => void actions.copyPlayerCode(player.id) },
+      { title: 'New code', icon: 'refresh-cw', run: () => actions.newPlayerCode(player.id) },
+      { title: 'Rename…', icon: 'pencil', run: () => actions.askRename(player) },
       { title: 'Remove from table', icon: 'user-x', warning: true, apart: true, run: () => actions.kick(player.id) },
+      { title: 'Remove from campaign', icon: 'user-minus', warning: true, run: () => actions.askRemoveFromCampaign(player) },
     ], more);
   });
 }

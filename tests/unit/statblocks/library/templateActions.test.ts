@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BUILT_IN_SYSTEM_PRESETS } from '../../../../src/app/gameSystems/builtInPresets';
 import { AssetService, type CollectionMetadata } from '../../../../src/app/services/AssetService';
@@ -50,7 +51,11 @@ beforeEach(async () => {
     collection('plain'),
   ];
   updateCollectionSettings = vi.fn(async () => undefined);
-  vi.spyOn(AssetService, 'getInstance').mockReturnValue({ loadedCollections: () => collections, updateCollectionSettings } as unknown as AssetService);
+  vi.spyOn(AssetService, 'getInstance').mockReturnValue({
+    loadedCollections: () => collections,
+    getCollectionSettings: (id: string) => collections.find((entry) => entry.id === id)?.settings ?? { conditions: [] },
+    updateCollectionSettings,
+  } as unknown as AssetService);
   addNote('Bestiary/Bog.md', MARSH_ID);
   addNote('Bestiary/Fen.md', MARSH_ID);
   addNote('Bestiary/Goblin.md', REPLACEMENT);

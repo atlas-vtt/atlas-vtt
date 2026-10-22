@@ -9,8 +9,10 @@ import { patternRefs } from '../expressions/patternRefs';
 import { blockSpec } from '../model/blockCatalogue';
 import { kindName } from '../model/templateGrid';
 import { boundField, fieldsShownBy } from '../model/treeQueries';
-import { isContainerBlock, type ContainerBlock, type FieldKey, type TemplateBlock, type TemplateField } from '../model/templateTypes';
+import { isContainerBlock, type ContainerBlock, type CountersBlock, type FieldKey, type TemplateBlock, type TemplateField } from '../model/templateTypes';
+import { isDrawnCounter, shownCounterRows } from '../values/counterValues';
 import type { SheetState } from './sheetState';
+import { trackedShown } from './values/trackedShown';
 import { blockText, isPatternBlock } from './values/blockText';
 import { hasText, shownPattern, type ShownText } from './values/shownText';
 
@@ -85,8 +87,18 @@ export function isUnboundBlock(block: TemplateBlock): boolean {
 
 function tokenHolds(block: TemplateBlock, sheet: SheetState): boolean {
   if (block.type === 'image') return Boolean(sheet.token?.art);
-  if (block.type === 'track') return Boolean(block.resource && sheet.token?.resources?.[block.resource]);
+  if (block.type === 'track') return Boolean(block.resource && sheet.token?.resources?.[block.resource]) || trackedShown(block.field, sheet) !== null;
+  // A tracked number whose maximum another field holds shows though its own field is empty
+  if (block.type === 'stat') return trackedShown(block.field, sheet) !== null;
+  if (block.type === 'metric') return block.fields.some((key) => key !== '' && trackedShown(key, sheet) !== null);
   return false;
+}
+
+/** Whether a Counters block draws anything: a row with uses, or a value that is no list of counters, which shows as written. */
+function countersShowSomething(block: CountersBlock, sheet: SheetState): boolean {
+  const field = sheet.fields.get(block.field);
+  const rows = field ? shownCounterRows(field, sheet.reader(block.field)) : null;
+  return rows === null || rows.some(isDrawnCounter);
 }
 
 const VIEWED = new WeakMap<SheetState, SheetState>();
@@ -125,6 +137,7 @@ function decide(block: TemplateBlock, sheet: SheetState): BlockDisplay | null {
   if (block.type === 'text' && !block.field) return VALUE;
 
   if (blockVisibility(block, sheet.reader, visibilityFields(block)) !== 'show') return emptyDisplay(block, sheet);
+  if (block.type === 'counters' && !countersShowSomething(block, sheet)) return emptyDisplay(block, sheet);
   if (!isPatternBlock(block)) return VALUE;
 
   const text = blockText(block, sheet);

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { DrawingStroke, NotePin, TextElement, TokenEntity } from '../../../../src/app/types';
 import type { FogOperation } from '../../../../src/app/types/fogTypes';

@@ -3,12 +3,13 @@ import type { AtlasView } from '../atlas-view';
 import { loadAtlasView, openMapInView } from '../plugin/atlasLeaves';
 import { AssetService } from '../services/AssetService';
 import { confirmSnapshotRestore, restoreSnapshotInView } from '../snapshots/snapshotRestore';
-import { spawnEncounterTokens } from '../packages/components/asset-manager/utils/tokenSpawnService';
+import { spawnEncounterTokens, type SpawnPlacement } from '../packages/components/asset-manager/utils/tokenSpawnService';
 import { formatServiceAsset } from '../packages/components/asset-manager/utils/assetFormatters';
 import { encounterOfFile, findSnapshot, snapshotsOfMap } from './atlasLinkAssets';
 import { snapshotNameOfSubpath } from './atlasLinkTargets';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { diceRandom } from '../services/offlineDiceInputs';
 
 /** How long a snapshot link waits for its scene to open before it gives up. */
 const SCENE_OPEN_TIMEOUT_MS = 30_000;
@@ -63,8 +64,8 @@ export async function openSceneLink(app: App, file: TFile, subpath: string): Pro
   await restoreLinkedSnapshot(app, file.path, subpath);
 }
 
-/** Places the encounter whose JSON is `file` on the open map, as its asset manager card does. */
-export async function placeEncounterFile(app: App, file: TFile): Promise<void> {
+/** Brings the encounter whose JSON is `file` into the open scene as its asset manager card does (`placement`: on the map, a fight, beside it). */
+export async function placeEncounterFile(app: App, file: TFile, placement: SpawnPlacement = 'map'): Promise<void> {
   const assets = AssetService.getInstance(app);
   const encounter = await encounterOfFile(assets, file.path);
   if (!encounter) {
@@ -72,5 +73,5 @@ export async function placeEncounterFile(app: App, file: TFile): Promise<void> {
     return;
   }
   const shown = formatServiceAsset(encounter, '', app);
-  if (shown.type === 'encounters') await spawnEncounterTokens({ app, view: null, assetService: assets }, shown);
+  if (shown.type === 'encounters') await spawnEncounterTokens({ app, view: null, assetService: assets, random: diceRandom }, shown, placement);
 }

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { QUIET, qrDrawing, qrMatrix, type QrMatrix } from '../../../../src/app/online/gm/dock/qrDrawing.ts';
 import { qrImageModule } from '../../../../src/app/online/gm/dock/qrImage.ts';

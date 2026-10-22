@@ -30,7 +30,6 @@ import { AssetService } from '../../services/AssetService';
 import { createStatblockEntry, editInStatblockPane, newStatblockOption, type EntryContext, type TokenCreationContext } from '../../statblocks/editor/create/entryPoints';
 import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
-import { dynamicLightingOn } from '../../experimental/experimentalFeatures';
 import { saveMapTokensAsEncounter } from '../../encounters/saveMapTokensAsEncounter';
 import { copyMapObjects } from '../../clipboard/mapClipboardActions';
 import { copyDragSelection } from './dragCopy';
@@ -42,9 +41,12 @@ import { tokenSoundsSubmenu } from '../../react/components/context-menu/tokenSou
 import { TokenSoundPlayer } from '../../audio/TokenSoundPlayer';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
+import { selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
+import { SelectionResourceEditing } from '../selectionResourceEditor';
 import { placedPlayerCharacterEntry } from '../../react/components/context-menu/playerCharacterMenu';
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { t } from '../../i18n';
+import { mapTokens } from '../../tokens/offMap';
 
 interface DragState {
   isDragging: boolean;
@@ -57,6 +59,8 @@ interface DragState {
   pendingUpdate: boolean;
   hasMoved: boolean;
   clickToken?: TokenEntity;
+  /** The press grabbed a token outside the selection: it is selected on release if it never moved, and a drag leaves the selection as it was. */
+  selectsOnRelease?: boolean;
   /** Alt/Option was held at pointer down: the drag moves copies and leaves the originals. */
   copyOnDrag?: boolean;
   /** The token the pointer grabbed; the drag ruler measures its path. */
@@ -85,7 +89,6 @@ export class InteractionController implements ITokenInteractionController {
     pendingUpdate: false,
     hasMoved: false
   };
-  private lastDragStreamSentAt = 0;
   
   // Hover handlers
   private hoverHandlers: Record<string, { over: (e?: FederatedPointerEvent) => void; out: () => void }> = {};
@@ -103,6 +106,8 @@ export class InteractionController implements ITokenInteractionController {
   private dragRuler?: DragRuler;
   /** Where a lost pointer is heard while the pointer is down (`watchLostPointer`). */
   private lostPointerTargets: { canvas: HTMLElement; win: Window | null } | null = null;
+  /** The popover of a change for the selection's tokens, made with the first one (`selectionResourceEntry`). */
+  private selectionEditing: SelectionResourceEditing | null = null;
 
   constructor(
     viewport: Viewport,
@@ -148,14 +153,14 @@ export class InteractionController implements ITokenInteractionController {
     e.stopPropagation();
 
     if (e.button === 2) {
-      const token = this.store.getState().objects.tokens[tokenId];
+      const token = mapTokens(this.store.getState().objects)[tokenId];
       if (token && !this.isPlayerView) {
         this.showContextMenu(token, e);
       }
       return;
     }
 
-    const token = this.store.getState().objects.tokens[tokenId];
+    const token = mapTokens(this.store.getState().objects)[tokenId];
     if (!token) return;
     if (this.isPlayerView) {
       return;
@@ -178,7 +183,7 @@ export class InteractionController implements ITokenInteractionController {
     }
 
     // Use the first token as the reference for prepareInteraction (it will detect the multi-selection)
-    const firstToken = this.store.getState().objects.tokens[tokenIds[0]!];
+    const firstToken = mapTokens(this.store.getState().objects)[tokenIds[0]!];
     if (!firstToken) return;
 
     this.prepareInteraction(firstToken, e);
@@ -193,7 +198,7 @@ export class InteractionController implements ITokenInteractionController {
     if (prevId) {
       this.handleHoverEnd(prevId);
       // Emit hide preview for previous token
-      const prevToken = this.store.getState().objects.tokens[prevId];
+      const prevToken = mapTokens(this.store.getState().objects)[prevId];
       if (prevToken?.kind === 'character' && prevToken.statblockPath?.trim()) {
         this.eventBus.emit('pin-hide-preview', {
           pin: { id: prevToken.id, notePath: prevToken.statblockPath, x: prevToken.x, y: prevToken.y, type: 'token' },
@@ -206,7 +211,7 @@ export class InteractionController implements ITokenInteractionController {
     if (tokenId) {
       this.handleHoverStart(tokenId);
       // Emit hover preview for new token
-      const token = this.store.getState().objects.tokens[tokenId];
+      const token = mapTokens(this.store.getState().objects)[tokenId];
       if (token?.kind === 'character' && e && token.statblockPath?.trim()) {
         this.eventBus.emit('pin-hover-preview', {
           pin: {
@@ -259,6 +264,7 @@ export class InteractionController implements ITokenInteractionController {
     this.dragState.clickToken = token;
     this.dragState.hasMoved = false;
     this.dragState.copyOnDrag = e.altKey;
+    this.dragState.selectsOnRelease = false;
     
     // Determine which tokens to potentially drag
     if (e.shiftKey) {
@@ -268,9 +274,7 @@ export class InteractionController implements ITokenInteractionController {
       this.dragState.dragIds = [...selectedIds];
     } else {
       this.dragState.dragIds = [token.id];
-      // Always select the clicked token immediately
-      // This ensures clicking on a different token switches selection
-      setSelection(this.dragState.dragIds);
+      this.dragState.selectsOnRelease = !isTokenSelected;
     }
 
     // Initialize drag state
@@ -287,7 +291,7 @@ export class InteractionController implements ITokenInteractionController {
     }
     
     this.dragState.isDragging = true;
-    // Tokens this press selects stay at rest until release, so a drag never grows their UI first
+    // Tokens outside the selection stay at rest until release, so a drag never grows their UI
     this.reportHeld(this.dragState.dragIds.filter((id) => !selectedIds.includes(id)));
     
     // Don't set isDragging in store yet - wait for actual movement
@@ -324,7 +328,6 @@ export class InteractionController implements ITokenInteractionController {
     this.dragState.lastPointer = { x: worldPos.x, y: worldPos.y };
     const dx = worldPos.x - this.dragState.dragStartPointer.x;
     const dy = worldPos.y - this.dragState.dragStartPointer.y;
-    const currentTime = Date.now();
     
     // Check if we've moved enough to consider it a drag (5 pixel threshold)
     const moveDistance = Math.sqrt(dx * dx + dy * dy);
@@ -361,22 +364,19 @@ export class InteractionController implements ITokenInteractionController {
     const rulerStart = this.dragState.rulerTokenId ? this.dragState.initialPositions[this.dragState.rulerTokenId] : undefined;
     if (rulerStart) this.dragRuler?.update({ x: rulerStart.x + dx, y: rulerStart.y + dy });
 
-    // Push live positions to the store at a bounded cadence.
-    if (currentTime - this.lastDragStreamSentAt >= 50) {
-      // Positions come from the pointer, not the sprites: an Alt-drag copy may still be loading its sprite.
-      const updates = this.dragState.dragIds.flatMap((id) => {
-        const initPos = this.dragState.initialPositions[id];
-        return initPos ? [{ id, x: initPos.x + dx, y: initPos.y + dy }] : [];
-      });
-
-      if (updates.length > 0) {
-        // The store follows the drag, so everything that reads positions does. Sight waits for
-        // the drop unless the scene has sight on drop off (`SightTokens`).
-        // Persistence is debounced (1000ms) so these intermediate updates won't save,
-        // and the open history transaction keeps them out of the undo stack.
-        this.store.getState().setTokenPositions(updates);
-        this.lastDragStreamSentAt = currentTime;
-      }
+    // The store follows the sprites on every move, so sight and a token's footprint in the dark
+    // move with the token in the same frame (as Foundry ties a token's vision to where it is drawn);
+    // a throttled store left the footprint trailing the sprite. Chromium sends one pointermove per
+    // frame, so this is one write per frame.
+    // Positions come from the pointer, not the sprites: an Alt-drag copy may still be loading its sprite.
+    const updates = this.dragState.dragIds.flatMap((id) => {
+      const initPos = this.dragState.initialPositions[id];
+      return initPos ? [{ id, x: initPos.x + dx, y: initPos.y + dy }] : [];
+    });
+    if (updates.length > 0) {
+      // Sight waits for the drop when the scene has sight on drop on (`SightTokens`). Persistence
+      // is debounced, and the open history transaction keeps these writes out of the undo stack.
+      this.store.getState().setTokenPositions(updates);
     }
     
     // Schedule UI update
@@ -388,7 +388,7 @@ export class InteractionController implements ITokenInteractionController {
 
   /** Swaps the drag over to fresh copies of the dragged tokens, which then become the selection. */
   private dragCopiesInstead(): void {
-    const copies = copyDragSelection(this.store, this.dragState.dragIds, this.dragState.initialPositions);
+    const copies = copyDragSelection(this.store, this.dragState.dragIds, this.dragState.initialPositions, !this.dragState.selectsOnRelease);
     if (!copies) return;
     this.dragState.dragIds = copies.ids;
     this.dragState.initialPositions = copies.initialPositions;
@@ -452,10 +452,8 @@ export class InteractionController implements ITokenInteractionController {
       
       // Check if this was a click (no significant movement)
       if (!this.dragState.hasMoved && this.dragState.clickToken) {
-        // This was a click, not a drag
-        // Selection was already handled in prepareInteraction
-        
-        // Clean up and exit early - no drag occurred
+        // A click selects a token the press found outside the selection
+        if (this.dragState.selectsOnRelease) this.store.getState().setSelection([this.dragState.clickToken.id]);
         this.cleanupDragListeners();
         this.viewport.plugins.resume('drag');
         delete this.dragState.clickToken;
@@ -481,7 +479,7 @@ export class InteractionController implements ITokenInteractionController {
       
       const tokenUpdates: Array<{id: string, x: number, y: number}> = [];
       const snapToGrid = this.store.getState().grid?.snapToGrid ?? true;
-      const tokens = this.store.getState().objects.tokens;
+      const tokens = mapTokens(this.store.getState().objects);
       
       for (const id of this.dragState.dragIds) {
         const initPos = this.dragState.initialPositions[id];
@@ -525,8 +523,8 @@ export class InteractionController implements ITokenInteractionController {
       // Reset drag state
       this.dragState.pendingUpdate = false;
       this.dragState.hasMoved = false;
-      this.lastDragStreamSentAt = 0;
       delete this.dragState.clickToken;
+      this.dragState.selectsOnRelease = false;
       this.reportHeld([]);
     }
   }
@@ -545,7 +543,7 @@ export class InteractionController implements ITokenInteractionController {
   private contextMenuTargets(tokenId: string): string[] {
     const { selectedIds, objects } = this.store.getState();
     if (!selectedIds.includes(tokenId)) return [tokenId];
-    return selectedIds.filter((id) => objects.tokens[id] !== undefined);
+    return selectedIds.filter((id) => mapTokens(objects)[id] !== undefined);
   }
 
   private showContextMenu(token: TokenEntity, e: FederatedPointerEvent): void {
@@ -560,14 +558,14 @@ export class InteractionController implements ITokenInteractionController {
     // Size
     entries.push(tokenSizeSubmenu(token.size, size => {
       const { grid, objects, updateToken } = this.store.getState();
-      const current = objects.tokens[token.id];
+      const current = mapTokens(objects)[token.id];
       if (!current) return;
       const center = resizedTokenCenter(current, current.size || 1, size, grid);
       updateToken(token.id, { size, x: center.x, y: center.y });
     }));
 
     // Hide/Show the selection in one undo step; the clicked token decides which way
-    const currentToken = this.store.getState().objects.tokens[token.id];
+    const currentToken = mapTokens(this.store.getState().objects)[token.id];
     const isHidden = currentToken?.isHidden || false;
     const hideTargets = this.contextMenuTargets(token.id);
     entries.push({
@@ -580,7 +578,7 @@ export class InteractionController implements ITokenInteractionController {
     });
 
     // Vision and carried light, for the selection the token belongs to
-    if (!this.isPlayerView && dynamicLightingOn(this.obsApp)) {
+    if (!this.isPlayerView) {
       const lightPresets = mapLightPresets(this.obsApp, this.store.getState());
       entries.push(...tokenLightingEntries(this.store, token.id, this.contextMenuTargets(token.id), lightPresets));
     }
@@ -732,6 +730,16 @@ export class InteractionController implements ITokenInteractionController {
       })),
     });
 
+    // One change of a resource for every selected token that holds it (an area's damage), DM only
+    const selectionChange = this.isPlayerView ? null : selectionResourceEntry(
+      this.store, this.contextMenuTargets(token.id), this.resourceDefsProvider(),
+      (definition, count, apply) => {
+        this.selectionEditing ??= new SelectionResourceEditing(this.viewport.options.events.domElement);
+        this.selectionEditing.open({ at: { x: e.clientX, y: e.clientY }, resourceName: definition.name, count, onCommit: apply });
+      },
+    );
+    if (selectionChange) entries.push(selectionChange);
+
     // Reset (only if the token tracks resources)
     if (this.hasResources(character)) {
       entries.push({
@@ -843,7 +851,7 @@ export class InteractionController implements ITokenInteractionController {
     for (const tokenId of tokenIds) {
       const { initiative, objects, addToInitiative, removeFromInitiative } = this.store.getState();
       const entry = initiative.entries.find((e) => e.tokenId === tokenId);
-      const token = objects.tokens[tokenId];
+      const token = mapTokens(objects)[tokenId];
       if (remove && entry) removeFromInitiative(entry.id);
       else if (!remove && !entry && token) addToInitiative(initiativeEntryForToken(token));
     }
@@ -871,6 +879,7 @@ export class InteractionController implements ITokenInteractionController {
     if (this.dragState.hasMoved) endHistoryTransaction(this.store);
     holdTokens(this.store, []);
     this.dragRuler?.end();
+    this.selectionEditing?.close();
 
     // Remove any active viewport listeners using the same cleanup method
     this.cleanupDragListeners();

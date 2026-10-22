@@ -152,10 +152,10 @@ export function markHarness(map: MapSize | null = { width: 2000, height: 2000 })
         harness.onSend?.(body);
         harness.sent.push({ body, to });
       },
-      sendLive: (body: GmMessage, key: string) => {
+      sendLive: (body: GmMessage, key: string, to?: string) => {
         if (body.t !== 'marks') return;
         harness.onSend?.(body);
-        harness.sent.push({ body, to: undefined });
+        harness.sent.push({ body, to });
         harness.live.push(key);
       },
       gmMarks: () => source,

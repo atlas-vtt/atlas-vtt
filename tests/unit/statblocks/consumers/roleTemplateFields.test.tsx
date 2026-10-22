@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React, { useState } from 'react';
 import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -70,18 +71,20 @@ describe('the Creature Filters tab\'s suggestions', () => {
     expect(fields.find((field) => field.field === 'ev')?.label).toBeUndefined();
   });
 
-  it('adds a suggested template field as a filter named as the template names it, also before any statblock is linked', () => {
-    let latest: CreatureFilterDefinition[] = [];
+  it('lists the template\'s fields as filters of their own, each switched off by itself, also before any statblock is linked', () => {
+    let hidden: string[] = [];
     function Harness(): React.JSX.Element {
-      const [custom, setCustom] = useState<CreatureFilterDefinition[]>([]);
-      latest = custom;
-      return <CreatureFiltersTab hidden={[]} onHiddenChange={() => undefined} custom={custom} onCustomChange={setCustom} creatures={[]} pending={false} templates={[GENERIC_CREATURE.template]} />;
+      const [off, setOff] = useState<string[]>([]);
+      hidden = off;
+      return <CreatureFiltersTab hidden={off} onHiddenChange={setOff} custom={[]} onCustomChange={() => undefined} creatures={[]} pending={false} templates={[GENERIC_CREATURE.template]} />;
     }
     render(<Harness />);
-    const list = screen.getByRole('list', { name: 'Statblock fields' });
+    const list = screen.getByRole('list', { name: 'From the statblock templates' });
     expect(within(list).getAllByRole('listitem').map((item) => item.querySelector('code')?.textContent)).toEqual(['size', 'ac', 'hp']);
-    fireEvent.click(screen.getByRole('button', { name: 'Filter by Hit Points' }));
-    expect(latest).toEqual([{ id: 'hp', label: 'Hit Points', kind: 'range', field: 'hp' }]);
+    // Filters by themselves, so they are no suggestions any more.
+    expect(screen.queryByRole('list', { name: 'Statblock fields' })).toBeNull();
+    fireEvent.click(within(list).getByRole('checkbox', { name: 'Filter by hit points' }));
+    expect(hidden).toEqual(['hp']);
   });
 });
 

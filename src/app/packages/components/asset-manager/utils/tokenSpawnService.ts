@@ -1,125 +1,23 @@
-import { mapResources } from '../../../../resources/collectionResources';
-import type { ResourceDefinition } from '../../../../resources/resourceTypes';
-import { App as ObsidianApp } from 'obsidian';
 import type { TokenAsset, AnyAsset, EncounterAsset } from '../types';
-import { loadStatblockOverrides, type StatblockOverrides } from './statblockLoader';
-import type { AssetService } from '../../../../services/AssetService';
-import {
-  FALLBACK_PITCH,
-  cellPitch,
-  formationGridFromOptions,
-  placeFormation,
-  type FormationGrid,
-  type FormationSlot,
-} from '../../../../encounters/encounterFormation';
-import type { AtlasView } from '../../../../atlas-view';
+import { placeFormation, type FormationSlot } from '../../../../encounters/encounterFormation';
 import type { TokenInput } from '../../../../types/viewState';
-import { loadAtlasView } from '../../../../plugin/atlasLeaves';
 import { tokenFromFile } from '../../../../resources/resourceFileFormat';
+import { addOffMapCombatants, joinInitiative } from '../../../../initiative/offMapCombatants';
 import { t } from '../../../../i18n';
-import { mapVisionDefaults } from '../../../../gameSystems/visionDefaults';
-import { systemPresetsOf } from '../../../../services/mapCollectionRules';
-import { rulesLookup } from '../../../../services/mapRules';
-import type { TokenVision, TokenVisionDefaults } from '../../../../types/lightingTypes';
-import { placementVision } from '../../../../creatures/placementVision';
-import { isPlayerCharacter } from '../../../../characters/playerCharacters';
 import { showNotice } from '../../../../ui/notice';
+import { getSpawnTarget, getViewportCenter, gridPosition, type SpawnContext, type SpawnTarget } from './spawnTarget';
+import { buildTokenData, imageExists, joiningSavedToken, resolveTokenSource, spawnRules } from './tokenSpawnData';
+import { tokenDiameterInCells } from '../../../../pixi/token-renderer/tokenSizing';
+import type { ViewAtlasStore } from '../../../../storeFactory';
 
-// ─── Viewport helpers ───────────────────────────────────────────────
-
-interface ViewportLike {
-  screenWidth: number;
-  screenHeight: number;
-  toWorld(point: { x: number; y: number }): { x: number; y: number };
-  x?: number;
-  y?: number;
-  scale: { x: number };
-  getVisibleBounds?(): { left: number; right: number; top: number; bottom: number };
-  animate?(opts: { position: { x: number; y: number }; scale: number; time: number }): void;
-}
-
-interface GridSystemLike {
-  getOptions(): { type?: string; size: number; offsetX?: number; offsetY?: number; enabled?: boolean };
-  snapTokenCenter(x: number, y: number, tokenSize: number): { x: number; y: number };
-}
-
-export interface SpawnContext {
-  app: ObsidianApp;
-  /** The view the asset manager belongs to; null for the global asset manager. */
-  view: AtlasView | null;
-  assetService: AssetService | null;
-}
-
-interface SpawnTarget {
-  view: AtlasView;
-  viewport: ViewportLike;
-  gridSystem: GridSystemLike | null;
-  /** Grid geometry for formation placement; null when the grid is off or unusable. */
-  grid: FormationGrid | null;
-  /** Spacing between spawned tokens. */
-  pitch: number;
-}
+export type { SpawnContext } from './spawnTarget';
 
 /**
- * The scene spawned tokens go to: the asset manager's own view or, for the global
- * asset manager, the open Atlas view, looked up now since the scene may have changed
- * since the manager opened. Null, after telling the user, while no scene is ready.
+ * Where spawned tokens go: onto the map (`map`), onto it and into the initiative tracker (`fight`),
+ * or into the tracker beside the map (`beside`, `tokens/offMap.ts`), where they wait in a column
+ * left of the map image.
  */
-async function getSpawnTarget(ctx: SpawnContext): Promise<SpawnTarget | null> {
-  const view = ctx.view ?? await loadAtlasView(ctx.app);
-  if (!view) {
-    showNotice('No scene is open. Open a scene to add tokens to it.');
-    return null;
-  }
-  if (view !== ctx.view) void ctx.app.workspace.revealLeaf(view.leaf);
-  const rendererService = view.serviceManager.getRendererService();
-  const viewport = rendererService.getViewport() as ViewportLike | null;
-  const { mapPath, isMapLoading } = view.getStore().getState();
-  if (!viewport || !mapPath || isMapLoading) {
-    showNotice('The scene is still loading. Add the tokens once it is open.');
-    return null;
-  }
-  const gridSystem = rendererService.getGridSystem() as GridSystemLike | null;
-  const grid = formationGridFromOptions(gridSystem?.getOptions());
-  return { view, viewport, gridSystem, grid, pitch: grid ? cellPitch(grid) : FALLBACK_PITCH };
-}
-
-function getViewportCenter(viewport: ViewportLike): { x: number; y: number } {
-  try {
-    const centerScreen = { x: viewport.screenWidth / 2, y: viewport.screenHeight / 2 };
-    return viewport.toWorld(centerScreen);
-  } catch {
-    return { x: viewport.x || 0, y: viewport.y || 0 };
-  }
-}
-
-// ─── Grid layout helper ─────────────────────────────────────────────
-
-function gridPosition(
-  index: number,
-  total: number,
-  centerX: number,
-  centerY: number,
-  cellSize: number,
-  gridSystem: GridSystemLike | null,
-  tokenSize: number
-): { x: number; y: number } {
-  const tokensPerRow = Math.ceil(Math.sqrt(total));
-  const totalRows = Math.ceil(total / tokensPerRow);
-  const row = Math.floor(index / tokensPerRow);
-  const col = index % tokensPerRow;
-
-  let x = centerX + (col - (tokensPerRow - 1) / 2) * cellSize;
-  let y = centerY + (row - (totalRows - 1) / 2) * cellSize;
-
-  if (gridSystem) {
-    const snapped = gridSystem.snapTokenCenter(x, y, tokenSize);
-    x = snapped.x;
-    y = snapped.y;
-  }
-
-  return { x, y };
-}
+export type SpawnPlacement = 'map' | 'fight' | 'beside';
 
 /** Formation slots for an encounter, or null if any token lacks captured layout data. */
 function encounterSlots(encounter: EncounterAsset): FormationSlot[] | null {
@@ -132,157 +30,89 @@ function encounterSlots(encounter: EncounterAsset): FormationSlot[] | null {
   return slots;
 }
 
-// ─── Build token data ───────────────────────────────────────────────
-
-interface TokenSpawnData extends StatblockOverrides {
-  x: number;
-  y: number;
-  imagePath: string;
-  /** The library token it was placed from (`libraryTokenOf`). */
-  assetId?: string;
-  kind: 'character';
-  name: string;
-  statblockPath?: string;
-  size?: number;
-  showRing?: boolean;
-  vision?: TokenVision;
-}
-
-/** What a spawned token inherits from its asset. */
-interface TokenSource {
-  /** The library token record the source was resolved from; unset when none was found. */
-  assetId?: string | undefined;
-  imagePath: string;
-  name: string;
-  statblockPath: string | null;
-  size?: number | undefined;
-  showRing?: boolean | undefined;
-  /** Placed from one of the players' characters (`isPlayerCharacter`): its token sees by default. */
-  playerCharacter: boolean;
-}
-
-/** Fields an asset-manager view model or stored token reference may carry. */
-interface TokenSourceRef {
-  id?: string;
-  name?: string;
-  imagePath?: string;
-  imageUrl?: string;
-  statblockPath?: string;
-  size?: number;
-  showRing?: boolean;
-}
-
-/** Latest service record for the asset layered over the reference, so spawns use current paths and defaults. */
-async function resolveTokenSource(ctx: SpawnContext, ref: TokenSourceRef): Promise<TokenSource | null> {
-  const latest = ctx.assetService && ref.id ? await ctx.assetService.getAssetById(ref.id) : null;
-  const record = latest?.type === 'token' ? latest : null;
-  const imagePath = record?.imagePath ?? ref.imagePath ?? ref.imageUrl;
-  if (!imagePath) {
-    console.error('[tokenSpawnService] Token asset missing imagePath:', ref);
-    return null;
-  }
-  return {
-    ...(record && { assetId: record.id }),
-    imagePath,
-    name: ref.name || t('initiative.token'),
-    statblockPath: record?.statblockPath ?? ref.statblockPath ?? null,
-    size: record?.size ?? ref.size,
-    showRing: record?.showRing ?? ref.showRing,
-    playerCharacter: record !== null && isPlayerCharacter(record),
-  };
-}
-
-/** What new tokens start with in the scene they are spawned into, from its collection. */
-function spawnVisionDefaults(ctx: SpawnContext, target: SpawnTarget): TokenVisionDefaults | undefined {
-  return ctx.assetService
-    ? mapVisionDefaults(rulesLookup(ctx.app, ctx.assetService), target.view.getStore().getState().mapPath, systemPresetsOf(ctx.app))
-    : undefined;
-}
-
-/** Builds a token from its asset; `visionDefaults` (the placing collection's) start vision off but for a player character (`placementVision`). */
-async function buildTokenData(
-  app: ObsidianApp,
-  pos: { x: number; y: number },
-  { assetId, imagePath, name, statblockPath, size, showRing, playerCharacter }: TokenSource,
-  definitions: readonly ResourceDefinition[],
-  visionDefaults: TokenVisionDefaults | undefined,
-): Promise<TokenSpawnData> {
-  const data: TokenSpawnData = {
-    x: pos.x,
-    y: pos.y,
-    imagePath,
-    kind: 'character',
-    name,
-  };
-
-  if (assetId !== undefined) data.assetId = assetId;
-  if (size !== undefined) data.size = size;
-  if (showRing !== undefined) data.showRing = showRing;
-
-  if (statblockPath) {
-    data.statblockPath = statblockPath;
-    const overrides = await loadStatblockOverrides(app, statblockPath, definitions);
-    Object.assign(data, overrides);
-  }
-
-  const vision = placementVision(visionDefaults, Boolean(statblockPath), playerCharacter);
-  if (vision) data.vision = vision;
-
-  return data;
-}
-
-/** The resources of the rules the target map plays by. */
-function targetResources(ctx: SpawnContext, target: SpawnTarget): ResourceDefinition[] {
-  return mapResources(rulesLookup(ctx.app, ctx.assetService ?? undefined), target.view.getStore().getState().mapPath);
-}
-
-function imageExists(app: ObsidianApp, imagePath: string): boolean {
-  if (app.vault.getAbstractFileByPath(imagePath)) return true;
-  console.error(`[tokenSpawnService] Token image not found: ${imagePath}`);
-  return false;
-}
-
-/** Adds the tokens to the target's scene in one store write (a single undo step) and selects them. */
-function addSpawnedTokens(target: SpawnTarget, tokens: TokenInput[]): string[] {
-  const { addTokens, setSelection } = target.view.getStore().getState();
-  const ids = addTokens(tokens);
-  if (ids.length > 0) setSelection(ids);
+/** Adds tokens to the map in one store write (a single undo step) and, for a fight, puts them in the tracker. */
+function addToMap(store: ViewAtlasStore, tokens: TokenInput[], placement: SpawnPlacement): string[] {
+  const ids = store.getState().addTokens(tokens);
+  if (placement === 'fight') joinInitiative(store, ids);
   return ids;
+}
+
+/**
+ * Brings the tokens into the target's scene. Beside the map they go straight into the tracker. On
+ * it the GM places them by hand where the map can (`TokenPlacer`): they wait in the GM's hand,
+ * laid out as given, and each is added as it is put down, the selection left as it was; elsewhere
+ * they are added as laid out and selected, so the GM finds them. Resolves with the ids of the tokens added.
+ */
+async function addSpawnedTokens(ctx: SpawnContext, target: SpawnTarget, tokens: TokenInput[], placement: SpawnPlacement): Promise<string[]> {
+  const store = target.view.getStore();
+  if (placement === 'beside') return addOffMapCombatants(store, tokens);
+  if (tokens.length === 0) return [];
+  if (target.placer) {
+    const placing = target.placer.place({ tokens, commit: (placed) => addToMap(store, placed, placement) });
+    ctx.onPlacing?.();
+    ctx.app.workspace.setActiveLeaf(target.view.leaf, { focus: true });
+    return placing;
+  }
+  const ids = addToMap(store, tokens, placement);
+  if (ids.length > 0) store.getState().setSelection(ids);
+  return ids;
+}
+
+/** Spacing for tokens laid out together: the widest footprint among them, so none overlap. */
+function layoutPitch(target: SpawnTarget, sizes: ReadonlyArray<number | undefined>): number {
+  return target.pitch * Math.max(1, ...sizes.map((size) => tokenDiameterInCells(size || 1)));
 }
 
 // ─── Public spawn functions ─────────────────────────────────────────
 
-/**
- * Spawn one or more copies of a single token asset on the map.
- */
-export async function spawnTokenAsset(
-  ctx: SpawnContext,
-  asset: TokenAsset,
-  count: number
-): Promise<string[]> {
-  const target = await getSpawnTarget(ctx);
-  if (!target) return [];
-  const { viewport, grid, pitch } = target;
-  const gridSystem = grid ? target.gridSystem : null;
-  const center = getViewportCenter(viewport);
-  const source = await resolveTokenSource(ctx, asset);
-  if (!source) return [];
-
-  // The statblock is read once; every copy shares that data at its own position.
-  const template = await buildTokenData(ctx.app, center, source, targetResources(ctx, target), spawnVisionDefaults(ctx, target));
-  const tokens = Array.from({ length: count }, (_, i): TokenInput => ({
-    ...structuredClone(template),
-    ...gridPosition(i, count, center.x, center.y, pitch, gridSystem, template.size || 1),
-  }));
-  return addSpawnedTokens(target, tokens);
+/** Copies of one token asset to spawn together. */
+export interface TokenGroup {
+  asset: TokenAsset;
+  count: number;
 }
 
 /**
- * Spawn all tokens from an encounter asset and report how many made it onto the map.
+ * Spawn copies of token assets in one store write (one undo step): on the map around its view's
+ * centre, or beside it into the tracker (`placement`). Each asset's statblock is read once; each
+ * copy rolls its own hit points where the rules say so.
+ */
+export async function spawnTokenGroups(ctx: SpawnContext, groups: readonly TokenGroup[], placement: SpawnPlacement = 'map'): Promise<string[]> {
+  const target = await getSpawnTarget(ctx);
+  if (!target) return [];
+  const { viewport, grid } = target;
+  const gridSystem = grid ? target.gridSystem : null;
+  const center = getViewportCenter(viewport);
+  const rules = spawnRules(ctx, target);
+
+  const built = [];
+  for (const { asset, count } of groups) {
+    const source = await resolveTokenSource(ctx, asset);
+    if (source) built.push({ token: await buildTokenData(ctx.app, center, source, rules), count });
+  }
+  const total = built.reduce((sum, { count }) => sum + count, 0);
+  const pitch = layoutPitch(target, built.map(({ token }) => token.data.size));
+  const tokens: TokenInput[] = [];
+  for (const { token, count } of built) {
+    for (let copy = 0; copy < count; copy++) {
+      tokens.push({ ...token.joined(), ...gridPosition(tokens.length, total, center.x, center.y, pitch, gridSystem, token.data.size || 1) });
+    }
+  }
+  return addSpawnedTokens(ctx, target, tokens, placement);
+}
+
+/** Spawn `count` copies of a single token asset (`spawnTokenGroups`). */
+export function spawnTokenAsset(ctx: SpawnContext, asset: TokenAsset, count: number, placement: SpawnPlacement = 'map'): Promise<string[]> {
+  return spawnTokenGroups(ctx, [{ asset, count }], placement);
+}
+
+/**
+ * Spawn all tokens from an encounter asset (`placement`: on the map in its formation, on it and
+ * into the tracker for a fight, or beside it into the tracker) and report how many it added.
  */
 export async function spawnEncounterTokens(
   ctx: SpawnContext,
-  encounter: EncounterAsset
+  encounter: EncounterAsset,
+  placement: SpawnPlacement = 'map',
 ): Promise<string[]> {
   const target = await getSpawnTarget(ctx);
   if (!target) return [];
@@ -296,8 +126,7 @@ export async function spawnEncounterTokens(
     ? placeFormation(slots, encounter.formation, center, grid, tokensToSpawn.map((token) => token.size))
     : null;
 
-  const definitions = targetResources(ctx, target);
-  const visionDefaults = spawnVisionDefaults(ctx, target);
+  const rules = spawnRules(ctx, target);
   const tokens: TokenInput[] = [];
   for (let i = 0; i < tokensToSpawn.length; i++) {
     const token = tokensToSpawn[i];
@@ -325,49 +154,68 @@ export async function spawnEncounterTokens(
     // assets rebuild from the asset, so they follow its current image, size and ring.
     if (token.state) {
       if (imageExists(ctx.app, token.imagePath)) {
-        tokens.push({ ...tokenFromFile(token.state), imagePath: token.imagePath, x: pos.x, y: pos.y });
+        tokens.push(await joiningSavedToken(ctx, { ...tokenFromFile(token.state), imagePath: token.imagePath, x: pos.x, y: pos.y }, rules));
       }
       continue;
     }
     const source = await resolveTokenSource(ctx, token);
     if (source && imageExists(ctx.app, source.imagePath)) {
-      tokens.push(await buildTokenData(ctx.app, pos, source, definitions, visionDefaults));
+      tokens.push((await buildTokenData(ctx.app, pos, source, rules)).joined());
     }
   }
 
-  const ids = addSpawnedTokens(target, tokens);
+  const ids = await addSpawnedTokens(ctx, target, tokens, placement);
+  // Placed by hand, the GM may have put every token away again
+  if (ids.length === 0 && tokens.length > 0 && placement !== 'beside') return ids;
   showNotice(ids.length < tokensToSpawn.length
-    ? t('am.spawnedPartial', { count: ids.length, expected: tokensToSpawn.length, name: encounter.name })
-    : t('am.spawned', { count: ids.length, name: encounter.name }));
+    ? t(placement === 'beside' ? 'am.besidePartial' : 'am.spawnedPartial', { count: ids.length, expected: tokensToSpawn.length, name: encounter.name })
+    : t(placement === 'beside' ? 'am.beside' : 'am.spawned', { count: ids.length, name: encounter.name }));
   return ids;
 }
 
 /**
- * Spawn multiple selected token assets (from context menu "Spawn N tokens on map").
+ * Spawn multiple selected token assets (from context menu "Spawn N tokens on map", or beside the map into the tracker).
  */
 export async function spawnSelectedTokens(
   ctx: SpawnContext,
-  selectedAssets: AnyAsset[]
+  selectedAssets: AnyAsset[],
+  placement: SpawnPlacement = 'map',
 ): Promise<string[]> {
   const target = await getSpawnTarget(ctx);
   if (!target) return [];
-  const { viewport, grid, pitch } = target;
+  const { viewport, grid } = target;
   const gridSystem = grid ? target.gridSystem : null;
   const center = getViewportCenter(viewport);
   const tokensToSpawn = selectedAssets.filter(a => a.type === 'tokens');
 
-  const definitions = targetResources(ctx, target);
-  const visionDefaults = spawnVisionDefaults(ctx, target);
-  const tokens: TokenInput[] = [];
-  for (let i = 0; i < tokensToSpawn.length; i++) {
-    const tokenAsset = tokensToSpawn[i];
-    if (!tokenAsset) continue;
-
+  const rules = spawnRules(ctx, target);
+  const sources = [];
+  for (const tokenAsset of tokensToSpawn) {
     const source = await resolveTokenSource(ctx, tokenAsset);
-    if (!source) continue;
-    const pos = gridPosition(i, tokensToSpawn.length, center.x, center.y, pitch, gridSystem, source.size || 1);
-    tokens.push(await buildTokenData(ctx.app, pos, source, definitions, visionDefaults));
+    if (source) sources.push(source);
+  }
+  const pitch = layoutPitch(target, sources.map((source) => source.size));
+  const tokens: TokenInput[] = [];
+  for (const [i, source] of sources.entries()) {
+    const pos = gridPosition(i, sources.length, center.x, center.y, pitch, gridSystem, source.size || 1);
+    tokens.push((await buildTokenData(ctx.app, pos, source, rules)).joined());
   }
 
-  return addSpawnedTokens(target, tokens);
+  return addSpawnedTokens(ctx, target, tokens, placement);
+}
+
+/**
+ * Runs `spawn` and calls `onClose` once: as soon as the tokens are in the GM's hand to be placed,
+ * or once they were added, so the asset manager gets out of the way of the map.
+ */
+export async function spawnAndClose(ctx: SpawnContext, onClose: () => void, spawn: (ctx: SpawnContext) => Promise<string[]>): Promise<string[]> {
+  let closed = false;
+  const close = (): void => {
+    if (closed) return;
+    closed = true;
+    onClose();
+  };
+  const ids = await spawn({ ...ctx, onPlacing: close });
+  if (ids.length > 0) close();
+  return ids;
 }

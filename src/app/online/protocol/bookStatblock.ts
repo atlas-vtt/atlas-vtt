@@ -1,12 +1,16 @@
 import { MAX_ABILITY_COMPONENTS, MAX_ABILITY_TABS, parseComponent, type AbilityComponent } from './bookAbilities.ts';
 import { isResourceKey } from './bookCharacter.ts';
-import { MAX_FORMULA } from './dice.ts';
+import { parseStatblockRest, type StatblockRest } from './bookRest.ts';
+import { MAX_COUNTERS, parseCounter, parseRefills, type CounterRefill, type SheetCounter } from './sheetCounters.ts';
 import { bookLine, MAX_BOOK_TITLE } from './bookText.ts';
 import { isRecord } from './shape.ts';
 import {
   MAX_SHEET_LIST, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, newSheetBudget, optionalSheetLine, parseLines, parseSheetField, parseSheetText, spendText,
   type SheetBudget, type SheetField, type SheetText,
 } from './sheetValues.ts';
+import { parseSheetCard, parseSheetFrame, type SheetCard, type SheetFrame } from './sheetLayout.ts';
+import { parseSheetReferences, type SheetReferences } from './sheetReferences.ts';
+import { parseCellRolls, parseRoll } from './sheetRolls.ts';
 import { MAX_TOKEN_VALUE } from './tokenUI.ts';
 
 /** What a drawn statblock holds at most. */
@@ -43,8 +47,13 @@ export interface SheetValue {
   readonly roll?: string;
 }
 
+/** What every node may carry: how the GM's card lays out the block it was drawn from (`SheetFrame`). */
+interface Framed {
+  readonly frame?: SheetFrame;
+}
+
 /** The blocks of the sheet beside the character, in the template's order; abilities are never among them. */
-export type SheetNode =
+export type SheetNode = Framed & (
   | { readonly k: 'section'; readonly heading: string | null; readonly nodes: readonly SheetNode[] }
   | { readonly k: 'row'; readonly nodes: readonly SheetNode[] }
   | { readonly k: 'tabs'; readonly heading: string | null; readonly tabs: readonly { readonly label: string; readonly nodes: readonly SheetNode[] }[] }
@@ -54,7 +63,9 @@ export type SheetNode =
   /** `worked`: a table's worked-out rows (a modifier under each score), each labelled by `workedLabels` where the GM names them. */
   | { readonly k: 'table'; readonly label: string | null; readonly columns: readonly string[]; readonly rows: readonly (readonly (string | null)[])[]; readonly worked: readonly (readonly (string | null)[])[]; readonly workedLabels?: readonly string[]; readonly rolls?: readonly (readonly (string | null)[])[]; readonly workedRolls?: readonly (readonly (string | null)[])[]; readonly field: SheetField | null }
   | { readonly k: 'track'; readonly label: string | null; readonly look: 'boxes' | 'gauge'; readonly counts: 'down' | 'up'; readonly current: number; readonly max: number; readonly resource: string | null; readonly field: SheetField | null }
-  | { readonly k: 'divider' };
+  | { readonly k: 'counters'; readonly label: string | null; readonly counters: readonly SheetCounter[]; readonly field: SheetField | null }
+  | { readonly k: 'divider' }
+);
 
 /** The parts of the header the sheet draws as sigils and plates beside the portrait. */
 export interface SheetSigils {
@@ -67,14 +78,31 @@ export interface SheetSigils {
 /**
  * The player's own character's statblock as the GM's Atlas draws it for them: only what the
  * template lets players see, every text worked out. `editable` is false where the template cannot
- * be read as it was written (missing, of a newer Atlas): then nothing of it may be changed.
+ * be read as it was written (missing, of a newer Atlas): then nothing of it may be changed. A player
+ * character's has its recovery buttons (`StatblockRest`).
  */
-export interface BookStatblock {
+export interface BookStatblock extends StatblockRest {
   readonly editable: boolean;
   readonly displayName: string | null;
   readonly sigils: SheetSigils;
   readonly blocks: readonly SheetNode[];
   readonly abilities: readonly AbilityComponent[];
+  /**
+   * The refills the template names for the whole sheet ("Short rest", "Long rest", "Dawn"), each a
+   * button that gives back the uses of every counter on the sheet naming it (`book-refill`). Only a
+   * statblock the player may change has any. A GM's Atlas that has recovery buttons sends none.
+   */
+  readonly refills?: readonly CounterRefill[];
+  /** The GM's card the sheet is laid out on; an older GM's Atlas sends none. */
+  readonly card?: SheetCard;
+  /** The header's hit points where the template draws them as a track (`sigils.hp` says them as a number for an older page). */
+  readonly hitPoints?: SheetNode;
+  /**
+   * The numbers the player's `@` references name (`SheetReferences`), for what the player writes
+   * into the sheet before the GM's Atlas has drawn it; an older GM's Atlas sends none, and then
+   * what they write is filled in once the GM's next statblock comes.
+   */
+  readonly references?: SheetReferences;
 }
 
 /** Sent to one player after every `book` and whenever it changes; null: their character has no statblock they get. */
@@ -86,25 +114,6 @@ export interface BookStatblockMessage {
 const isCount = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= MAX_TOKEN_VALUE;
 const optionalResource = (value: unknown): string | null | undefined => (value === null || value === undefined ? null : isResourceKey(value) ? value : undefined);
 const LOOKS: readonly unknown[] = ['plain', 'markdown', 'words', 'pairs'];
-
-/** A roll a value offers: undefined for none, null when it is malformed. */
-function parseRoll(value: unknown): string | null | undefined {
-  return value === undefined ? undefined : bookLine(value, MAX_FORMULA);
-}
-
-/** The rolls of a table's cells, shaped as its cells (null for a cell that rolls nothing); undefined for none, null when malformed. */
-function parseCellRolls(value: unknown, cells: readonly (readonly unknown[])[]): (string | null)[][] | null | undefined {
-  if (value === undefined) return undefined;
-  if (!Array.isArray(value) || value.length !== cells.length) return null;
-  const rows: (string | null)[][] = [];
-  for (const [index, row] of value.entries()) {
-    if (!Array.isArray(row) || row.length !== cells[index]?.length) return null;
-    const rolls = row.map((roll) => (roll === null ? null : parseRoll(roll) ?? undefined));
-    if (rolls.some((roll) => roll === undefined)) return null;
-    rows.push(rolls as (string | null)[]);
-  }
-  return rows;
-}
 
 function parsePair(value: unknown): SheetPair | null {
   if (!isRecord(value)) return null;
@@ -161,8 +170,9 @@ function parseNodes(value: unknown, depth: number, budget: SheetBudget): SheetNo
   for (const entry of value) {
     budget.nodes += 1;
     const node = budget.nodes <= MAX_SHEET_NODES ? parseNode(entry, depth, budget) : null;
-    if (node === null) return null;
-    nodes.push(node);
+    const frame = isRecord(entry) ? parseSheetFrame(entry.frame) : null;
+    if (node === null || frame === null) return null;
+    nodes.push(frame === undefined ? node : { ...node, frame });
   }
   return nodes;
 }
@@ -230,6 +240,14 @@ function parseNode(value: unknown, depth: number, budget: SheetBudget): SheetNod
       if (label === undefined || resource === undefined || field === undefined || !looks || !isCount(value.current) || !isCount(value.max)) return null;
       return { k: 'track', label, look: value.look as 'boxes' | 'gauge', counts: value.counts as 'down' | 'up', current: value.current, max: value.max, resource, field };
     }
+    case 'counters': {
+      const label = optionalSheetLine(value.label);
+      const field = parseSheetField(value.field);
+      const counters = Array.isArray(value.counters) && value.counters.length <= MAX_COUNTERS ? value.counters.map(parseCounter) : null;
+      if (label === undefined || field === undefined || counters === null || counters.some((row) => row === null)) return null;
+      const rows = counters as SheetCounter[];
+      return spendText(budget, rows.map((row) => row.name + (row.reset ?? '') + (row.regain ?? '')).join('')) ? { k: 'counters', label, counters: rows, field } : null;
+    }
     case 'divider':
       return { k: 'divider' };
     default:
@@ -261,6 +279,15 @@ export function parseBookStatblock(value: unknown): BookStatblock | null | undef
   if (displayName === undefined || sigils === null || blocks === null || components === null || components.some((entry) => entry === null)) return undefined;
   const abilities = components as AbilityComponent[];
   if (new Set(abilities.map((entry) => entry.id)).size !== abilities.length) return undefined;
-  return { editable: value.editable, displayName, sigils, blocks, abilities };
+  const refills = parseRefills(value.refills, budget);
+  const card = parseSheetCard(value.card);
+  const hitPoints = value.hitPoints === undefined ? undefined : parseNodes([value.hitPoints], 0, budget)?.[0] ?? null;
+  const references = parseSheetReferences(value.references);
+  if (refills === null || card === null || hitPoints === null || references === null) return undefined;
+  return {
+    editable: value.editable, displayName, sigils, blocks, abilities, ...(value.refills !== undefined && { refills }), ...(card !== undefined && { card }), ...(hitPoints !== undefined && { hitPoints }),
+    ...(references !== undefined && { references }),
+    ...parseStatblockRest(value, budget),
+  };
 }
 

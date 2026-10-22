@@ -360,7 +360,7 @@ describe('the template editor as the note view', () => {
     expect(root.querySelector('.atlas-te-dock')).toBeNull();
     expect(card().width).toBeGreaterThanOrEqual(320);
     const rows = (await openCapsuleMenu()).map((row) => row.textContent);
-    expect(rows.slice(0, 6)).toEqual(['Add value', 'Add metric', 'Add abilities', 'Add table', 'Add text', 'Add divider']);
+    expect(rows.slice(0, 7)).toEqual(['Add value', 'Add metric', 'Add abilities', 'Add table', 'Add counters', 'Add text', 'Add divider']);
   });
 
   it('keeps the block toolbar on its block when a conflict bar opens above the card and when it goes', async () => {

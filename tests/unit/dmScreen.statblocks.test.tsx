@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -6,7 +7,6 @@ import { TFile } from 'obsidian';
 vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighlight: vi.fn(), addTokenHighlight: vi.fn() }));
 import { zoomToTokenWithHighlight } from '../../src/app/pixi/utils/tokenHighlight';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../src/app/react/components/LinkedNotePicker', () => ({ default: () => null }));
 vi.mock('../../src/app/resources/useMapResources', async () => {
   const definitions = [(await import('../../src/app/resources/resourceDefinitions')).HP_RESOURCE];
@@ -72,6 +72,7 @@ const app = {
 };
 const state = {
   objects: { tokens: {} as Record<string, { id: string; name: string; statblockPath: string }> },
+  initiative: { entries: [] as Array<{ id: string; tokenId: string; order: number }>, isActive: false, round: 0 },
   dmNotePath: null,
   setDMNotePath: vi.fn(),
   updateToken: vi.fn(),
@@ -96,6 +97,7 @@ function showDMScreen(paths: string[], onClose = vi.fn()) {
 
 afterEach(() => {
   cleanup();
+  state.initiative = { entries: [], isActive: false, round: 0 };
   bestiaryEvents.clear();
   vi.restoreAllMocks();
   delete (window as Window & { FantasyStatblocks?: unknown }).FantasyStatblocks;
@@ -233,5 +235,44 @@ describe('DM screen token actions', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Locate Acid Burrower #2 on map' }));
     expect(zoomToTokenWithHighlight).toHaveBeenCalledWith(view, '2', { x: 200, y: 50 });
     await waitFor(() => expect(onClose).toHaveBeenCalled());
+  });
+});
+
+describe('the DM screen during a fight', () => {
+  /** The headings of the statblocks shown, in their order. */
+  const shownNames = (container: HTMLElement): string[] =>
+    [...container.querySelectorAll('.atlas-dm-statblock-feed-item')].map((item) => item.textContent ?? '');
+
+  it('shows the fight\'s combatants\' statblocks alone, with a switch to every creature on the map, the fight\'s first', async () => {
+    state.initiative = { entries: [{ id: 'e', tokenId: '1', order: 0 }], isActive: true, round: 1 };
+    const { container } = showDMScreen([creaturePath, fencePath]);
+    await waitFor(() => expect(container.textContent).toContain('Inline Creature'));
+    expect(shownNames(container)).toHaveLength(1);
+    expect(screen.getByRole('radio', { name: 'In this fight (1)' }).getAttribute('aria-checked')).toBe('true');
+
+    fireEvent.click(screen.getByRole('radio', { name: 'All (2)' }));
+    await waitFor(() => expect(shownNames(container)).toHaveLength(2));
+    expect(shownNames(container)[0]).toContain('Inline Creature');
+  });
+
+  it('starts every fight with the fight\'s statblocks, whatever the last one was switched to', async () => {
+    state.initiative = { entries: [{ id: 'e', tokenId: '1', order: 0 }], isActive: true, round: 1 };
+    const { container, rerender } = showDMScreen([creaturePath, fencePath]);
+    await waitFor(() => expect(container.textContent).toContain('Inline Creature'));
+    fireEvent.click(screen.getByRole('radio', { name: 'All (2)' }));
+    await waitFor(() => expect(shownNames(container)).toHaveLength(2));
+
+    state.initiative = { ...state.initiative, isActive: false };
+    rerender(<DMScreen isOpen onClose={vi.fn()} />);
+    state.initiative = { ...state.initiative, isActive: true };
+    rerender(<DMScreen isOpen onClose={vi.fn()} />);
+    await waitFor(() => expect(shownNames(container)).toHaveLength(1));
+    expect(screen.getByRole('radio', { name: 'In this fight (1)' }).getAttribute('aria-checked')).toBe('true');
+  });
+
+  it('shows every statblock and no switch without a fight, or where the fight uses every creature', async () => {
+    const { container } = showDMScreen([creaturePath, fencePath]);
+    await waitFor(() => expect(shownNames(container)).toHaveLength(2));
+    expect(screen.queryByRole('radio', { name: /In this fight/ })).toBeNull();
   });
 });

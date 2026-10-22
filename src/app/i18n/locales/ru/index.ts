@@ -1,5 +1,6 @@
 import type { Translation } from '../../types';
 import { align } from './align';
+import { atlasLinks } from './atlasLinks';
 import { am } from './am';
 import { bundle } from './bundle';
 import { cleanup } from './cleanup';
@@ -16,6 +17,9 @@ import { creator } from './creator';
 import { csm } from './csm';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
+import { diceLab } from './diceLab';
+import { diceRoll } from './diceRoll';
+import { diceSettings } from './diceSettings';
 import { exportDialog } from './exportDialog';
 import { grid } from './grid';
 import { gridModal } from './gridModal';
@@ -43,8 +47,10 @@ import { sbImport } from './sbImport';
 import { vaultImages } from './vaultImages';
 import { filters } from './filters';
 import { search } from './search';
+import { senses } from './senses';
 import { sort } from './sort';
 import { toolbar } from './toolbar';
+import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
@@ -83,6 +89,7 @@ import { vision } from './vision';
 
 export const ru: Translation = {
   ...align,
+  ...atlasLinks,
   ...am,
   ...bundle,
   ...cleanup,
@@ -99,6 +106,9 @@ export const ru: Translation = {
   ...csm,
   ...dashboard,
   ...dice,
+  ...diceLab,
+  ...diceRoll,
+  ...diceSettings,
   ...exportDialog,
   ...grid,
   ...gridModal,
@@ -126,8 +136,10 @@ export const ru: Translation = {
   ...vaultImages,
   ...filters,
   ...search,
+  ...senses,
   ...sort,
   ...toolbar,
+  ...toolbarEdit,
   ...hotkey,
   ...pin,
   ...laser,

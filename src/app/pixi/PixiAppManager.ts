@@ -7,6 +7,7 @@ import { usesCanvasRenderer } from "./utils/rendererType";
 import { webglAvailable } from "./utils/webglAvailable";
 import { showSoftwareRenderingNotice } from "./softwareRenderingNotice";
 import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
+import { bindPopoutCanvas } from "./popout/bindPopoutCanvas";
 
 type RendererPreference = 'webgl' | 'canvas';
 
@@ -19,16 +20,10 @@ export class PixiAppManager {
   private height: number;
   private canvasEl: HTMLCanvasElement;
   private _canvasContextMenuPreventer: ((e: Event) => void) | null = null;
+  private unbindPopout: (() => void) | null = null;
   public onRecoverCallback?: () => void;
 
-  /**
-   * `throughBackBuffer`: WebGL draws through a multisampled back buffer and the canvas gets no
-   * samples. For a view that will light its scenes: dynamic lighting needs the back buffer anyway
-   * and from resolution 2 draws it plain (`BackBufferHold`), so samples on the canvas were 190 to
-   * 250 MB of graphics memory nothing drew into. Unlit, the back buffer costs about 80 MB more
-   * than samples on the canvas, so a view without dynamic lighting keeps those.
-   */
-  constructor(initialWidth: number, initialHeight: number, private readonly throughBackBuffer = false) {
+  constructor(initialWidth: number, initialHeight: number) {
     this.width = initialWidth;
     this.height = initialHeight;
     this.canvasEl = createEl('canvas');
@@ -41,7 +36,7 @@ export class PixiAppManager {
       return;
     }
     try {
-      await this.initRenderer();
+      await this.initRenderer(containerEl.win.devicePixelRatio || 1);
       if (usesCanvasRenderer(this.app.renderer)) showSoftwareRenderingNotice();
 
       this.app.stage.eventMode = 'static'; // Or 'passive'. 'static' means it can be an event target.
@@ -88,6 +83,7 @@ export class PixiAppManager {
       this.canvasEl.id = 'atlas-pixi-canvas-debug'; // For debugging
 
       this.initViewport(); // Initialize viewport and add to stage
+      this.unbindPopout = bindPopoutCanvas(this.app, containerEl);
       
       // Force a single render AFTER viewport is part of the stage
       if(this.app.renderer && this.app.stage) {
@@ -111,21 +107,22 @@ export class PixiAppManager {
    * reference to the renderer whose start threw, so that one cannot be destroyed: its
    * scheduler stays on PIXI's system ticker, with nothing to do.
    */
-  private async initRenderer(): Promise<void> {
+  private async initRenderer(resolution: number): Promise<void> {
     if (!webglAvailable()) {
-      await this.app.init(this.rendererOptions(['canvas']));
+      await this.app.init(this.rendererOptions(['canvas'], resolution));
       return;
     }
     try {
-      await this.app.init(this.rendererOptions(['webgl', 'canvas']));
+      await this.app.init(this.rendererOptions(['webgl', 'canvas'], resolution));
     } catch (error) {
       console.error('[PixiAppManager] WebGL could not start, drawing with Canvas 2D instead:', error);
       this.canvasEl = createEl('canvas');
-      await this.app.init(this.rendererOptions(['canvas']));
+      await this.app.init(this.rendererOptions(['canvas'], resolution));
     }
   }
 
-  private rendererOptions(preference: RendererPreference[]): Partial<ApplicationOptions> {
+  /** `resolution`: the device pixel ratio of the window the map opens in, which may be a popout's. */
+  private rendererOptions(preference: RendererPreference[], resolution: number): Partial<ApplicationOptions> {
     return {
       preference,
       canvas: this.canvasEl,
@@ -134,9 +131,16 @@ export class PixiAppManager {
       backgroundColor: 0xf4e8d0, // Default parchment color
       backgroundAlpha: 1,
       antialias: true,
-      useBackBuffer: this.throughBackBuffer,
+      // WebGL draws through a multisampled back buffer and the canvas gets no samples: dynamic
+      // lighting needs the back buffer anyway and from resolution 2 draws it plain
+      // (`BackBufferHold`), so samples on the canvas were 190 to 250 MB of graphics memory nothing
+      // drew into. A scene that is not lit pays about 80 MB more than samples on the canvas would.
+      useBackBuffer: true,
       autoDensity: true,
-      resolution: window.devicePixelRatio || 1,
+      resolution,
+      // The map has no accessible display objects; since PIXI 8.22 Tab would otherwise
+      // switch on its accessibility layer, which walks the whole stage after every render.
+      accessibilityOptions: { activateOnTab: false },
     };
   }
 
@@ -245,6 +249,8 @@ export class PixiAppManager {
       return;
     }
     this._isDestroyed = true;
+    this.unbindPopout?.();
+    this.unbindPopout = null;
     if (this._canvasContextMenuPreventer && this.canvasEl) {
       this.canvasEl.removeEventListener('contextmenu', this._canvasContextMenuPreventer);
       this._canvasContextMenuPreventer = null;

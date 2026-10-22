@@ -14,7 +14,7 @@ import type { PlanItemInput } from './importPlan';
 import { planImportPaths, remapPaths } from './pathRemap';
 import { isHiddenVaultPath, listHiddenFiles, readVaultBinary } from '../../utils/hiddenVaultFiles';
 import { systemPresetsOf } from '../mapCollectionRules';
-import { templateIdMap, withRoleTemplates, type PlannedTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
+import { templateIdMap, withSettingsTemplates, type PlannedTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
 import { presetsAfterImport } from '../systemPresets/bundlePresets';
 import { recordIdMap, type PlannedRecord } from '../vaultRecords/bundleRecords';
 
@@ -300,7 +300,7 @@ export async function gatherImportInputs(
   // The bundle's settings are read with the presets as the import leaves them, the vault's with those it has.
   const presetsAfter = presetsAfterImport(presets, targets.presets);
   // Like a note, the settings' roles follow a template that comes in as a copy, and their system and dice a preset and a set that do.
-  const theirsHereCollection = { ...manifest.collection, settings: withRecordIds(withRoleTemplates(manifest.collection.settings, targets.templateIds), targets) };
+  const theirsHereCollection = { ...manifest.collection, settings: withRecordIds(withSettingsTemplates(manifest.collection.settings, targets.templateIds), targets) };
   for (const field of COLLECTION_FIELDS) {
     const theirs = await fieldFingerprint(theirsHereCollection, field, presetsAfter);
     items.push({

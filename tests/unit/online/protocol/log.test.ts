@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { chatText, inlineMarks, MAX_CHAT_LINES, MAX_CHAT_TEXT, MAX_LOG_ENTRIES, MAX_REPLY_PREVIEW, parseGmMessage, parseLogEntry, parseLogMessage, parsePlayerLog, parsePlayerMessage, quoting, replyPreview, rolledFormulas, type ChatEntry, type LogEntry, type SharedRoll } from '../../../../src/app/online/protocol/index.ts';
 

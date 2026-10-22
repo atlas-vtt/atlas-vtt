@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, render, type RenderResult } from '@testing-library/react';
 import { MarkdownRenderer, type App } from 'obsidian';

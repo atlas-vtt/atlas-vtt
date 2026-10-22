@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { blockAccess, playerAccess } from '../../../../src/app/online/gm/book/playerAccess';
 import { renameFieldKey } from '../../../../src/app/statblocks/model/fieldOps';

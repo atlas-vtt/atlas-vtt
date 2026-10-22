@@ -5,6 +5,9 @@
 @use '../../../../styles/tokens' as *;
 @use '../../../../styles/mixins' as *;
 
+// The widest a form tab's page grows in the fullscreen dialog: its lines stay readable.
+$settings-page-width: 760px;
+
 // ── Overlay / Backdrop ─────────────────────────────────────────────────────
 // Portaled to document.body, so the overlay itself carries .atlas-vtt-plugin.
 &.atlas-collection-settings-overlay {
@@ -30,6 +33,13 @@
   height: 760px;
   max-height: 100%;
   overflow: hidden;
+}
+
+// Fills the Obsidian window but for the overlay's margin ($spacing-2xl), so the Resources tab has
+// room for the template's card beside the token.
+.atlas-collection-settings-modal--fullscreen {
+  width: 100%;
+  height: 100%;
 }
 
 // ── Header ─────────────────────────────────────────────────────────────────
@@ -112,6 +122,16 @@
   @include atlas-scroll-padding($spacing-l);
   @include atlas-scrollbar;
   @include atlas-flex-col($spacing-l);
+}
+
+// A tab's page: a form keeps a readable width, centred in the window; the Resources tab beside its
+// recovery pane takes all of it. Container queries in a tab ask the page's width.
+.atlas-collection-settings-page {
+  @include atlas-flex-col($spacing-l);
+  container: atlas-settings-page / inline-size;
+  width: 100%;
+  max-width: $settings-page-width;
+  margin-inline: auto;
 }
 
 // ── Played campaign notice ─────────────────────────────────────────────────

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { MAX_SOURCE_PIXELS } from '../../../src/app/pixi/mapImage/decodedLevels';
 import { MemoryTileBackend } from '../../../src/app/pixi/mapImage/memoryTileBackend';

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { DeltaReader, parseGmMessage, type GmMessage, type SharedSight, type SharedToken, type SightToken } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { SequencedList } from '../../../../src/app/online/gm/sequencedList.ts';

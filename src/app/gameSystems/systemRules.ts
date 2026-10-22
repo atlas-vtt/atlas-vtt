@@ -40,8 +40,8 @@ export type SystemSettings = Required<Pick<CollectionSettings, 'gridDefaults' | 
 /**
  * A collection without a game system: default measurement and dice, HP as its only resource
  * (its bar on for new scenes), no conditions, no default widgets, no default vision, and no
- * senses, light presets, initiative rules, statblock roles or item rarities of its own, so it uses
- * the generic ones. Role folders are the collection's own and stay.
+ * senses, light presets, initiative rules, statblock roles or item rarities of its
+ * own, so it uses the generic ones. Role folders are the collection's own and stay.
  */
 export function vanillaSystemSettings(): SystemSettings {
   return {
@@ -127,8 +127,8 @@ function sameDiceChoice(a: Pick<SystemRules, 'dice' | 'diceSetId'>, b: Pick<Syst
 
 /**
  * Whether a collection's `rules` play as `preset` does; condition ids do not matter. Rules
- * without senses, light presets, initiative rules, statblock roles or item rarities of their own
- * read the preset's, so they are the same in that. Role folders are no part of the rules.
+ * without senses, light presets, initiative rules, statblock roles or item rarities of their
+ * own read the preset's, so they are the same in that. Role folders are no part of the rules.
  */
 export function sameSystemRules(preset: SystemRules, rules: SystemRules): boolean {
   return sameGridDefaults(preset.gridDefaults, rules.gridDefaults)

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { cleanup, fireEvent, renderHook, screen, within } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
 import type { App } from 'obsidian';

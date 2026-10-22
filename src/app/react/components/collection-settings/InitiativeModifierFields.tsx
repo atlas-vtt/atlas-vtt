@@ -8,6 +8,7 @@ import { X } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { FieldSuggestion } from '../../../resources/resourceFieldSuggestions';
+import { modifierPreview, type NamedModifierStatblock } from '../../../initiative/modifierPreview';
 import type { InitiativeModifierSource, InitiativeRules } from '../../../types/initiativeRulesTypes';
 import { t } from '../../../i18n';
 import { StatblockFieldChips } from './StatblockFieldChips';
@@ -16,18 +17,20 @@ interface InitiativeModifierFieldsProps {
   initiative: InitiativeRules;
   onChange: (initiative: InitiativeRules) => void;
   fieldSuggestions: readonly FieldSuggestion[];
+  /** The collection's statblocks: the line under the field says what the rules read in them. */
+  statblocks?: readonly NamedModifierStatblock[] | undefined;
 }
 
 /** The rules with `modifier` and `fallback` as their sources, each absent where it is none. */
 function withSources(
-  { mode, roll, firstSide }: InitiativeRules,
+  { modifier: _modifier, modifierFallback: _fallback, ...rules }: InitiativeRules,
   modifier: InitiativeModifierSource | undefined,
   fallback: InitiativeModifierSource | undefined,
 ): InitiativeRules {
-  return { mode, roll, firstSide, ...(modifier?.field && { modifier }), ...(fallback && { modifierFallback: fallback }) };
+  return { ...rules, ...(modifier?.field && { modifier }), ...(fallback && { modifierFallback: fallback }) };
 }
 
-export function InitiativeModifierFields({ initiative, onChange, fieldSuggestions }: InitiativeModifierFieldsProps): React.ReactElement {
+export function InitiativeModifierFields({ initiative, onChange, fieldSuggestions, statblocks }: InitiativeModifierFieldsProps): React.ReactElement {
   const field = initiative.modifier?.field ?? '';
   const abilityScore = initiative.modifier?.abilityScore === true;
   const fallback = initiative.modifierFallback;
@@ -49,8 +52,11 @@ export function InitiativeModifierFields({ initiative, onChange, fieldSuggestion
         value={field}
         onChange={(e) => setModifier({ field: e.target.value })}
       />
-      <StatblockFieldChips suggestions={fieldSuggestions} value={field} onPick={(path) => setModifier({ field: path })} />
+      {/* A score's slot is picked as a score: DEX 16 adds +3, never +16 */}
+      <StatblockFieldChips suggestions={fieldSuggestions} value={field}
+        onPick={(path, suggestion) => setModifier({ field: path, abilityScore: suggestion?.score === true })} />
       <p id="atlas-csm-initiative-modifier-hint" className="atlas-csm-hint">{t('initiative.modifierHint')}</p>
+      {statblocks && statblocks.length > 0 && <ModifierPreviewLine statblocks={statblocks} initiative={initiative} />}
       <div className="atlas-csm-toggle-row">
         <div>
           <div className="atlas-csm-toggle-label">{t('initiative.abilityScore')}</div>
@@ -82,3 +88,14 @@ export function InitiativeModifierFields({ initiative, onChange, fieldSuggestion
     </div>
   );
 }
+
+/** How the rules read the collection's statblocks as they stand in the draft, with an example. */
+function ModifierPreviewLine({ statblocks, initiative }: { statblocks: readonly NamedModifierStatblock[]; initiative: InitiativeRules }): React.ReactElement {
+  const { total, read, example } = modifierPreview(statblocks, initiative);
+  const text = example
+    ? t('initiative.previewRead', { count: total, read, name: example.name, modifier: signedModifier(example.modifier) })
+    : t('initiative.previewNone', { count: total });
+  return <p className={example ? 'atlas-csm-hint' : 'atlas-csm-hint atlas-csm-hint--error'} aria-live="polite">{text}</p>;
+}
+
+const signedModifier = (modifier: number): string => (modifier < 0 ? `−${-modifier}` : `+${modifier}`);

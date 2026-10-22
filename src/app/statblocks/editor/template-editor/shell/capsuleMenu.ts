@@ -16,6 +16,8 @@ export interface CapsuleMenuInput {
   add?: readonly MenuAddEntry[] | undefined;
   /** The template as JSON in the note's column, and back to the note. */
   json?: { open: boolean; toggle: () => void } | undefined;
+  /** The template's recovery buttons where the card stands, and back to the card; unset while read-only. */
+  rests?: { open: boolean; toggle: () => void } | undefined;
   /** Which dice its statblocks roll a bare bonus with (`TemplateDiceDialog`). */
   diceRolls?: (() => void) | undefined;
   /** Copies a note's text in as the text new statblocks start with ("Start from a note…"); unset while read-only. */
@@ -28,6 +30,7 @@ export function capsuleMenuEntries(input: CapsuleMenuInput): ContextMenuEntry[] 
   const entries: ContextMenuEntry[] = (input.add ?? []).map((entry) => ({ type: 'item', label: entry.label, icon: entry.icon, onClick: entry.onClick }));
   if (input.startFromNote) entries.push({ type: 'item', label: START_FROM_NOTE, icon: 'file-text', onClick: input.startFromNote });
   if (input.diceRolls) entries.push({ type: 'item', label: 'Dice rolls…', icon: 'dices', onClick: input.diceRolls });
+  if (input.rests) entries.push({ type: 'item', label: input.rests.open ? 'Back to the card' : 'Recovery actions', icon: 'bed', onClick: input.rests.toggle });
   if (input.json) entries.push({ type: 'item', label: input.json.open ? 'Close JSON' : 'Edit as JSON', icon: 'braces', onClick: input.json.toggle });
   entries.push({
     type: 'item',

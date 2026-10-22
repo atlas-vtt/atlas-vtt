@@ -3,6 +3,7 @@ import type { TokenEntity } from '../types';
 import type { LightEmission, LightSource } from '../types/lightingTypes';
 import { isLightOn } from '../lighting/lightActivity';
 import { beamOf } from '../lighting/lightBeam';
+import { tokenFacing } from './visionCone';
 import { gameUnitsToWorld, type UnitScale } from '../lighting/lightingUnits';
 import { MIN_SOFTNESS, TINT_TO_WHITE, softEdge } from '../lighting/lightingConstants';
 import { srgbToLinear } from '../lighting/srgb';
@@ -18,7 +19,7 @@ export interface ActiveLight {
   x: number;
   y: number;
   emission: LightEmission;
-  /** Where a light that shines one way faces: the placed light's rotation, or that of the token carrying it. */
+  /** Where a light that shines one way faces: the placed light's rotation, or where the token carrying it looks (`tokenFacing`). */
   rotation?: number;
 }
 
@@ -35,7 +36,7 @@ export function activeLights(lights: Record<string, LightSource>, tokens: Record
   }
   for (const token of Object.values(tokens)) {
     const carried = readEmission(token.light);
-    if (carried) active.push({ key: `token:${token.id}`, x: token.x, y: token.y, emission: carried, ...turned(token.rotation) });
+    if (carried) active.push({ key: `token:${token.id}`, x: token.x, y: token.y, emission: carried, rotation: tokenFacing(token.rotation) });
   }
   return active;
 }

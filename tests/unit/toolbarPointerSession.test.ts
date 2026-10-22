@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from 'vitest';
 import {
   dragThreshold, ToolbarPointerSession, type ClientPoint, type PointerSessionHandlers,

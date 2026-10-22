@@ -1,4 +1,3 @@
-// @vitest-environment node
 // JSZip needs Node's ArrayBuffer realm; jsdom's differs and its Blob support is absent.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
@@ -9,10 +8,6 @@ import type { CoverChoice } from '../../src/app/services/collectionBundle/collec
 import { exportCollectionBundle, prepareCollectionExport, type ExportChoice, type ExportedBundle } from '../../src/app/services/collectionBundle/collectionExport';
 import { createInMemoryApp, interceptWrites, type InMemoryApp } from '../mocks/inMemoryVault';
 
-vi.mock('../../src/app/atlas-view', () => ({
-  ATLAS_VIEW_TYPE: 'atlas-vtt',
-  AtlasView: class { async saveMap(): Promise<void> {} },
-}));
 
 // The encoders need a canvas, which Node lacks; `tests/gpu/webpNamedImages.gpu.test.ts` runs the real ones.
 vi.mock('../../src/app/imageProcessing/imageProcessing', () => ({ optimizeImage: vi.fn(), renderThumbnail: vi.fn() }));

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -23,12 +24,11 @@ describe('the collection settings\' initiative fields', () => {
     expect(screen.getByLabelText('Initiative Roll').getAttribute('aria-invalid')).toBe('true');
   });
 
-  it('offers the side that acts first, and no roll, by sides', () => {
-    render(<InitiativeFields fieldSuggestions={[]} initiative={{ ...TURN_ORDER, mode: 'sides' }} onChange={vi.fn()} />);
+  it('lists the sides in the order they act, and no combatant\'s roll, by sides', () => {
+    render(<InitiativeFields fieldSuggestions={[]} initiative={{ ...TURN_ORDER, mode: 'sides', firstSide: 'opponents' }} onChange={vi.fn()} />);
 
     expect(screen.queryByLabelText('Initiative Roll')).toBeNull();
-    expect(screen.getByText('Acts First')).toBeDefined();
-    expect(screen.getByText(/Nothing is rolled/)).toBeDefined();
+    expect([...document.querySelectorAll('.atlas-csm-side__name')].map((name) => name.textContent)).toEqual(['Opponents', 'Players']);
   });
 
   it('passes on the statblock field typed for the modifier, and no field once it is cleared', () => {
@@ -84,5 +84,33 @@ describe('the collection settings\' initiative fields', () => {
     render(<InitiativeFields fieldSuggestions={[]} initiative={rules} onChange={onChange} />);
     fireEvent.change(screen.getByLabelText('Modifier field'), { target: { value: 'init' } });
     expect(onChange).toHaveBeenLastCalledWith({ ...rules, modifier: { field: 'init' } });
+  });
+
+  it('picks a score\'s slot as an ability score, and another field as a modifier again', () => {
+    const onChange = vi.fn();
+    const suggestions = [{ path: 'stats.1', label: 'Dex', score: true, sample: '+3' }, { path: 'perception', label: 'Perception', sample: '+5' }];
+    const { rerender } = render(<InitiativeFields fieldSuggestions={suggestions} initiative={TURN_ORDER} onChange={onChange} />);
+    fireEvent.click(screen.getByRole('button', { name: /Dex/ }));
+    expect(onChange).toHaveBeenLastCalledWith({ ...TURN_ORDER, modifier: { field: 'stats.1', abilityScore: true } });
+
+    rerender(<InitiativeFields fieldSuggestions={suggestions} initiative={{ ...TURN_ORDER, modifier: { field: 'stats.1', abilityScore: true } }} onChange={onChange} />);
+    expect(screen.getByRole('button', { name: /Perception/ }).textContent).toContain('+5');
+    fireEvent.click(screen.getByRole('button', { name: /Perception/ }));
+    expect(onChange).toHaveBeenLastCalledWith({ ...TURN_ORDER, modifier: { field: 'perception' } });
+  });
+
+  it('says how many of the collection\'s statblocks the field reads a modifier from, with one of them', () => {
+    const statblocks = [
+      { name: 'Goblin', fields: { perception: [{ name: 'Perception', desc: '+5' }] } },
+      { name: 'Wolf', fields: { perception: '+7' } },
+      { name: 'Commoner', fields: { hp: 4 } },
+    ];
+    const { rerender } = render(<InitiativeFields fieldSuggestions={[]} modifierStatblocks={statblocks}
+      initiative={{ ...TURN_ORDER, modifier: { field: 'Perception' } }} onChange={vi.fn()} />);
+    expect(screen.getByText('Reads a modifier from 2 of 3 statblocks, such as Goblin +5')).toBeDefined();
+
+    rerender(<InitiativeFields fieldSuggestions={[]} modifierStatblocks={statblocks}
+      initiative={{ ...TURN_ORDER, modifier: { field: 'dex' } }} onChange={vi.fn()} />);
+    expect(screen.getByText('None of the collection\'s 3 statblocks has a number there')).toBeDefined();
   });
 });

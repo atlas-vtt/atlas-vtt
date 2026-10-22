@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { useTokenPreviews } from '../../src/app/packages/components/asset-manager/token-creator/useTokenPreviews';
 import React from 'react';
 import { act, cleanup, render, renderHook } from '@testing-library/react';

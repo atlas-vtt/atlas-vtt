@@ -119,7 +119,7 @@ describe('a directional light in the picture', () => {
   });
 
   it('turns without tracing its tile again', async () => {
-    const trace = vi.spyOn(TileTracer.prototype, 'trace');
+    const trace = vi.spyOn(TileTracer.prototype, 'begin');
     const { at, update } = await setup();
     expect(trace).toHaveBeenCalledTimes(1);
     const right = at();

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { MotionGlobalConfig } from 'framer-motion';
 import { act, cleanup, screen, waitFor } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';

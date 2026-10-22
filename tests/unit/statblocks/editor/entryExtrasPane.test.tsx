@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, cleanup, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
@@ -153,3 +154,19 @@ describe('an ability\'s parts in the inline editor', () => {
     ]);
   });
 });
+
+describe('an ability that names another number', () => {
+  it('shows the number on the card, and its editor the reference as the note holds it, so an edit keeps it', async () => {
+    const harness = await renderPane({
+      frontmatter: { ...values([{ name: 'Slam', desc: 'Hit: 1d6 + @ac bludgeoning.' }]), ac: 3 },
+      files: { [NOTE_PATH]: '---\nstatblock: true\n---\n', [MARSH_PATH]: marshText({ fields }) },
+    });
+    apps.push(harness.app);
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 0)); });
+    const actions = blockOf(harness.result.container, ACTIONS_BLOCK);
+    expect(actions.textContent).toContain('Hit: 1d6 + 3 bludgeoning.');
+    openFirstAction(harness);
+    expect(text().textContent).toBe('Hit: 1d6 + @ac bludgeoning.');
+  });
+});
+

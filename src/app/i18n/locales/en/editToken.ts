@@ -8,6 +8,7 @@ export const editToken = {
   'editToken.namePlaceholder': 'Token name',
   'editToken.showNameplate': 'Show nameplate',
   'editToken.resources': 'Resources',
+  'editToken.token': 'Token',
   'editToken.resetStatblock': 'Reset to statblock default',
   'editToken.sounds': 'Sounds',
   'editToken.soundsHint': 'Played from the token\'s menu, on this computer only.',

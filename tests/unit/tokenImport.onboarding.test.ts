@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, expect, it } from 'vitest';
 import { AssetService } from '../../src/app/services/AssetService';
 import { SettingsService } from '../../src/app/services/SettingsService';

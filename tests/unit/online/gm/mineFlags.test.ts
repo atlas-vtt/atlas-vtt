@@ -1,7 +1,7 @@
-// @vitest-environment node
 import type { GmMessage } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
-import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
+import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
+import { boundOwnership } from './fakeSeats.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
 
@@ -21,7 +21,7 @@ function aliasAt(table: ShareHarness, x: number): string | undefined {
 }
 
 async function table(initial = withTokens(token('f', { x: 1 }), token('r', { x: 2 }), token('x', { x: 3, isHidden: true }))): Promise<{ readonly share: ShareHarness; readonly owners: Ownership }> {
-  const owners = new Ownership(readOwnership(undefined), () => undefined);
+  const owners = boundOwnership([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   owners.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   const share = shareHarness(initial, ART, owners);
   owners.onChange(() => share.share.ownersChanged());
@@ -66,7 +66,7 @@ describe('mine flags', () => {
     expect(share.sent.slice(-4).map(({ body, to }) => [body.t, to])).toEqual([['scene', ANA], ['tokens', ANA], ['fog', ANA], ['mine', ANA]]);
   });
 
-  it('are taken back when the GM gives a token to nobody or removes its player', async () => {
+  it('are taken back when the GM gives a token to nobody, and are sent to nobody kicked from the table', async () => {
     const { share, owners } = await table();
     owners.give(['f', 'r'], {}, ANA);
     expect(mineTo(share, ANA).at(-1)?.tokens).toHaveLength(2);

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { FileReferenceService } from '../../src/app/services/FileReferenceService';
 import { TokenStatblockLinkService } from '../../src/app/services/TokenStatblockLinkService';

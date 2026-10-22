@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { MAX_SERVES_PER_ASSET, REPEAT_REQUEST_MS, ServedAssets } from '../../../../src/app/online/gm/assetServe.ts';
 

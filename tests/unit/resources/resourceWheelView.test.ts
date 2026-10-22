@@ -1,8 +1,10 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Graphics, Text } from 'pixi.js';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { BAR_LOOK } from '../../../src/app/pixi/token-renderer/resources/ResourceBarView';
-import { ResourceWheelView, WHEEL_SIZE } from '../../../src/app/pixi/token-renderer/resources/ResourceWheelView';
+import { ResourceWheelView } from '../../../src/app/pixi/token-renderer/resources/ResourceWheelView';
+import { WHEEL_SIZE } from '../../../src/app/pixi/token-renderer/resources/wheelGeometry';
 import { RESOURCE_NUMBER_STYLE } from '../../../src/app/pixi/ResourceBarLabel';
 import { AMMO, ARMOR } from '../../mocks/resourceFixtures';
 

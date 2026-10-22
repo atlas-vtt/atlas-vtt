@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { StatblockSheets, WRITTEN_MS } from '../../../../src/app/online/gm/book/statblockSheets.ts';
 import type { ResolvedStatblock } from '../../../../src/app/statblocks/model/resolvedTypes';

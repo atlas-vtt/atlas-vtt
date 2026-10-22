@@ -96,17 +96,20 @@ export function useCollectionSettingsDraft(
     itemRarities, setItemRarities,
     statblockRoles, setStatblockRoles,
     statblockRoleFolders, setStatblockRoleFolders,
-    toSettings: () => ({
-      ...rules.toSettings(),
-      // Trimmed, with the field as label where none was typed.
-      customCreatureFilters: parseCreatureFilters(customCreatureFilters),
-      hiddenCreatureFilters,
-      lootBases,
-      lootCurrency: lootCurrency.trim() || undefined,
-      randomTables: randomTables.length > 0 ? [...randomTables] : undefined,
-      itemRarities,
-      statblockRoles: statblockRoles?.length ? savedStatblockRoles(statblockRoles) : undefined,
-      statblockRoleFolders: savedRoleFolders(statblockRoleFolders, statblockRoles),
-    }),
+    toSettings: () => {
+      const system = rules.toSettings();
+      return {
+        ...system,
+        // Trimmed, with the field as label where none was typed.
+        customCreatureFilters: parseCreatureFilters(customCreatureFilters),
+        hiddenCreatureFilters,
+        lootBases,
+        lootCurrency: lootCurrency.trim() || undefined,
+        randomTables: randomTables.length > 0 ? [...randomTables] : undefined,
+        itemRarities,
+        statblockRoles: statblockRoles?.length ? savedStatblockRoles(statblockRoles) : undefined,
+        statblockRoleFolders: savedRoleFolders(statblockRoleFolders, statblockRoles),
+      };
+    },
   };
 }

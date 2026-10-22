@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
 import { discoverWorkbookTables } from '../../../../src/app/randomTables/import/workbookTables';

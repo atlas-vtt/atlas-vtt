@@ -9,6 +9,7 @@ import type { FieldRecord } from '../values/fieldValues';
 import { valueText } from '../values/valueText';
 import { BlockList } from './BlockView';
 import { StatblockHeader } from './StatblockHeader';
+import { SheetRecoverySlot } from './shared/SheetRecoverySlot';
 import { useStatblockDiceRolling } from './shared/useStatblockDiceRolling';
 import { armableValues } from '../rollBonuses/armableValues';
 import { ArmedBonuses } from '../rollBonuses/armedBonuses';
@@ -113,6 +114,7 @@ export function StatblockSheet({
     viewId,
     originContext,
     bonuses: bonuses.store ? bonuses : undefined,
+    namedRolls: state.namedRolls,
   });
 
   const slug = slugify(name) || undefined;
@@ -135,6 +137,7 @@ export function StatblockSheet({
             <div className="atlas-statblock-body">
               {header}
               <StatblockHeader template={template} />
+              <SheetRecoverySlot />
               <div className="atlas-sb-columns" style={columns}>
                 <BlockList blocks={template.layout.blocks} />
               </div>

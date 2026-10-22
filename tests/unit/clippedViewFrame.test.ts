@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { clippedViewFrame } from '../../src/app/packages/components/primitives/useKeepInView';
 

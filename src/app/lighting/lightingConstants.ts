@@ -11,8 +11,18 @@ export const MAX_TEXELS = 4096;
  * resolution. A light's tile is cut to the map, so the engine never traces more than this.
  */
 export const MAX_LIGHT_REACH = MAX_TEXELS * BASE_TEXEL;
-/** Rays traced across a light's flame per tile texel in its penumbra. */
+/**
+ * Rays traced across a light's flame per tile texel in its penumbra, at most: the lower lighting
+ * qualities trace fewer (`LightingQuality.tileRays`).
+ */
 export const TILE_RAYS = 32;
+/**
+ * Most tile texels one draw traces. A light's tile is traced in bands of rows within this, each
+ * handed to the driver on its own: Windows resets a graphics device whose draw runs for about two
+ * seconds, and a torch's whole tile in one draw came close to that on integrated graphics, losing
+ * every WebGL context of the window.
+ */
+export const TILE_BAND_TEXELS = 1 << 17;
 /**
  * Largest radius, in texels, over which a traced tile is smoothed: it melts the steps between
  * ray counts into a ramp. Each texel smooths only within its wall clearance, so less near walls.

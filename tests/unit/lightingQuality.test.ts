@@ -1,10 +1,11 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App, Setting } from 'obsidian';
 import { LIGHTING_QUALITY, bouncesOn, isLightingQualityLevel } from '../../src/app/lighting/lightingQuality';
-import { worldTexel } from '../../src/app/lighting/lightingConstants';
+import { TILE_RAYS, worldTexel } from '../../src/app/lighting/lightingConstants';
 import { LIGHTING_QUALITY_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
-import { lightingSettingsSections } from '../../src/app/settings/lightingSettingsSection';
+import { lightingSettingsSection } from '../../src/app/settings/lightingSettingsSection';
 import { memoryPluginData } from '../mocks/pluginData';
 
 async function settingsOn(app: App, stored: unknown = {}): Promise<{ settings: SettingsService; write: ReturnType<typeof vi.fn> }> {
@@ -32,6 +33,12 @@ describe('lighting quality levels', () => {
     expect(bouncesOn(LIGHTING_QUALITY.balanced, map(6144))).toBe(true);
     expect(bouncesOn(LIGHTING_QUALITY.balanced, map(8192))).toBe(false);
     expect(bouncesOn(LIGHTING_QUALITY.saver, map(512))).toBe(false);
+  });
+
+  it('trace every ray at high and fewer across a flame at the lower levels', () => {
+    expect(LIGHTING_QUALITY.high.tileRays).toBe(TILE_RAYS);
+    expect(LIGHTING_QUALITY.balanced.tileRays).toBe(16);
+    expect(LIGHTING_QUALITY.saver.tileRays).toBe(8);
   });
 
   it('reads only the levels it knows', () => {
@@ -68,13 +75,11 @@ describe('the lighting quality setting', () => {
     expect((await settingsOn(app)).settings.getLightingQuality()).toBe('high');
   });
 
-  it('is offered only while dynamic lighting is switched on', async () => {
+  it('is offered in Atlas\' settings', async () => {
     const { settings } = await settingsOn(new App());
-    expect(lightingSettingsSections(settings)).toEqual([]);
-    settings.setExperimental('dynamicLighting', true);
-    const [section] = lightingSettingsSections(settings);
-    expect(section!.rows.map((row) => row.name)).toEqual(['Lighting quality']);
-    expect(section!.rows[0]!.desc).toContain('Full detail');
-    expect(() => section!.rows[0]!.render(new Setting(document.createElement('div')))).not.toThrow();
+    const section = lightingSettingsSection(settings);
+    expect(section.rows.map((row) => row.name)).toEqual(['Lighting quality']);
+    expect(section.rows[0]!.desc).toContain('Full detail');
+    expect(() => section.rows[0]!.render(new Setting(document.createElement('div')))).not.toThrow();
   });
 });

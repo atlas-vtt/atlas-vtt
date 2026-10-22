@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import {
   Plus, ChevronLeft, ChevronRight, FolderPlus, PanelLeft,
-  Map as MapIcon, FolderOpen,
+  Map as MapIcon, FolderOpen, Swords,
 } from 'lucide-react';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
@@ -28,6 +28,7 @@ export interface HeaderProps {
   assetCounts: Record<Tab, number> | null;
   onCreateTokens?: () => void;
   onCreateMap?: () => void;
+  onCreateEncounter?: () => void;
   onCreateCollection?: () => void;
   onCreateFolder: () => void;
   sidebarToggleLabel: string;
@@ -54,6 +55,7 @@ export function Header({
   assetCounts,
   onCreateTokens,
   onCreateMap,
+  onCreateEncounter,
   onCreateCollection,
   onCreateFolder,
   sidebarToggleLabel,
@@ -117,6 +119,7 @@ export function Header({
             items={[
               { key: 'token', label: t('am.header.createToken'), icon: <TokenIcon />, onSelect: onCreateTokens },
               { key: 'map', label: t('am.header.addMap'), icon: <MapIcon />, onSelect: onCreateMap },
+              { key: 'encounter', label: t('am.header.createEncounter'), icon: <Swords />, onSelect: onCreateEncounter },
               { key: 'folder', label: t('am.header.newFolder'), icon: <FolderPlus />, disabled: !tabHasFolders(activeTab), onSelect: onCreateFolder },
               { key: 'collection', label: t('am.header.createCollection'), icon: <FolderOpen />, separated: true, onSelect: onCreateCollection },
             ]}

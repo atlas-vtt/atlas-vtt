@@ -14,7 +14,7 @@ const SAMPLE_COUNT = 3;
 const CATEGORY_MEANINGS: ReadonlySet<FieldMeaning> = new Set(['creature-type', 'size', 'traits']);
 
 /** How a template field filters: a scale for ratings and numbers, options for choices, lists and categories; null for the rest. */
-function filterKind(field: TemplateField): CreatureFilterKind | null {
+export function filterKind(field: TemplateField): CreatureFilterKind | null {
   if (field.type === 'rating' || field.type === 'number') return 'range';
   if (field.type === 'choice' || field.type === 'list') return 'options';
   return field.type === 'text' && field.meaning && CATEGORY_MEANINGS.has(field.meaning) ? 'options' : null;

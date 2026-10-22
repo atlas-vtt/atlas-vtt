@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Notice } from 'obsidian';
 import { spawnEncounterTokens, spawnSelectedTokens, spawnTokenAsset, type SpawnContext } from '../../src/app/packages/components/asset-manager/utils/tokenSpawnService';
@@ -27,7 +28,7 @@ function mapView(mapPath: string | null = 'maps/cave.atlasmap', isMapLoading = f
   const setSelection = vi.fn();
   const view = {
     leaf: {},
-    serviceManager: { getRendererService: () => ({ getViewport: () => viewport, getGridSystem: () => null }) },
+    serviceManager: { getRendererService: () => ({ getViewport: () => viewport, getGridSystem: () => null, getRenderer: () => null }) },
     getStore: () => ({ getState: () => ({ mapPath, isMapLoading, addTokens, setSelection }) }),
   } as unknown as AtlasView;
   return { view, spawned, addTokens, setSelection };
@@ -40,6 +41,7 @@ function setup(records: Record<string, Partial<TokenAsset>> = {}, defaultTokenVi
   const ctx: SpawnContext = {
     app,
     view,
+    random: Math.random,
     assetService: {
       getAssetById: vi.fn(async (id: string) => (id in records ? { id, type: 'token', name: id, imagePath: `tokens/${id}.png`, ...records[id] } : null)),
       getCollectionForMap: vi.fn((path: string) => (path === 'maps/cave.atlasmap' ? 'dungeon' : null)),

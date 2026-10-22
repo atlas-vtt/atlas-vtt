@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage } from '../../../../src/app/online/protocol/index.ts';
 import { slottedResources } from '../../../../src/app/resources/resourceSlots';
 import type { ResourceDefinition, ResourceValue } from '../../../../src/app/resources/resourceTypes';

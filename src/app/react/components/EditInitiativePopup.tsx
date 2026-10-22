@@ -17,6 +17,8 @@ interface EditInitiativePopupProps {
   onModifierChange: (modifier: string) => void;
   onConfirm: () => void;
   onCancel: () => void;
+  /** The side of the card it opens on: away from the edge the tracker stands at. */
+  side?: 'left' | 'right';
 }
 
 export function EditInitiativePopup({
@@ -28,6 +30,7 @@ export function EditInitiativePopup({
   onModifierChange,
   onConfirm,
   onCancel,
+  side = 'left',
 }: EditInitiativePopupProps): React.ReactElement {
   const inputRef = useRef<HTMLInputElement>(null);
   const popupRef = useRef<HTMLDivElement>(null);
@@ -58,7 +61,7 @@ export function EditInitiativePopup({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onConfirm, onCancel]);
 
-  // Calculate position (to the left of anchor, centered vertically)
+  // Beside the card, centred on it vertically, on the side away from the tracker's edge
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   const anchorCenterY = anchorRect.top + anchorRect.height / 2;
@@ -67,7 +70,7 @@ export function EditInitiativePopup({
   let top = anchorCenterY - popupHeight / 2;
   top = Math.max(padding, Math.min(viewportHeight - popupHeight - padding, top));
 
-  const right = viewportWidth - anchorRect.left + padding;
+  const horizontal = side === 'left' ? { right: viewportWidth - anchorRect.left + padding } : { left: anchorRect.right + padding };
 
   return (
     <>
@@ -78,11 +81,11 @@ export function EditInitiativePopup({
       />
       <div
         ref={popupRef}
-        className="atlas-initiative-edit-popup"
+        className={`atlas-initiative-edit-popup atlas-initiative-edit-popup--${side}`}
         style={{
           position: 'fixed',
           top,
-          right,
+          ...horizontal,
         }}
         onClick={(e) => e.stopPropagation()}
       >

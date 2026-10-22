@@ -37,6 +37,8 @@
   }
 
   .atlas-sb-metric__number {
+    // Holds what the editors lay over one number; changes no box
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -84,6 +86,25 @@
 
   .atlas-sb-metric__blank {
     color: var(--text-faint);
+  }
+
+  // A tracked number's maximum steps back behind its current value ("2 / 3")
+  .atlas-sb-tracked__max {
+    color: var(--text-muted);
+    font-size: 0.75em;
+    font-weight: $font-weight-normal;
+  }
+
+  // Beside a character's note: − and + around it step the current value, as a Counters row's do
+  .atlas-sb-tracked__stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+  }
+
+  button.atlas-sb-tracked__step[aria-disabled='true'] {
+    cursor: default;
+    opacity: 0.4;
   }
 
   // Side by side, a Metric's share of the row grows with its numbers: two take twice the room of one.

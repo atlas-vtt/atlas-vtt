@@ -22,9 +22,11 @@ import { followTemplateBodies } from './src/app/statblocks/library/templateBodyN
 import { registerHostedDialogRelease } from './src/app/statblocks/editor/hostedDialog';
 import { editInStatblockPane } from './src/app/statblocks/editor/create/entryPoints';
 import { registerStatblockFileMenu } from './src/app/statblocks/editor/create/statblockCommands';
+import { registerStatblockInitiativeMenu } from './src/app/initiative/statblockCombatant';
 import { disposeImageProcessing } from './src/app/imageProcessing/imageProcessing';
 import { disposeSpectralEngine } from './src/app/pixi/spectralEngine/spectralEngineService';
 import { registerLootQueryView } from './src/app/loot/lootQueryView';
+import { registerBaseGiveButtons } from './src/app/loot/baseGiveButtons';
 import { GlobalAssetManagerService } from './src/app/services/GlobalAssetManagerService';
 import { releaseOverlayBodyClass } from './src/app/packages/components/asset-manager/hooks/useOverlayBodyClass';
 import { ImageDisplayService } from './src/app/services/ImageDisplayService';
@@ -43,7 +45,7 @@ import { changelogSettingsSection } from './src/app/settings/changelogSettingsSe
 import { hotkeySettingsSection, onboardingSettingsSection } from './src/app/settings/hotkeySettingsSection';
 import { navigationSettingsSection } from './src/app/settings/navigationSettingsSection';
 import { diceSettingsSection } from './src/app/settings/diceSettingsSection';
-import { lightingSettingsSections } from './src/app/settings/lightingSettingsSection';
+import { lightingSettingsSection } from './src/app/settings/lightingSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
@@ -56,6 +58,8 @@ import { HeaderAutocompleteSuggest } from './src/app/plugin/HeaderAutocompleteSu
 import { registerAtlasLinks } from './src/app/links/registerAtlasLinks';
 import { registerCommands } from './src/app/plugin/registerCommands';
 import { CampaignFiles } from './src/app/campaigns/CampaignFiles';
+import { CampaignBooks } from './src/app/campaigns/players/CampaignBooks';
+import { CampaignPlayers } from './src/app/campaigns/players/CampaignPlayers';
 import { releaseMapPictures } from './src/app/react/components/dashboard/mapPicture';
 import { PlayedRules } from './src/app/campaigns/playedRules';
 import { QuestIndex } from './src/app/campaigns/quests/QuestIndex';
@@ -74,6 +78,7 @@ import { DiceSetFiles } from './src/app/services/diceSets/DiceSetFiles';
 import { registerStatusBarVisibility } from './src/app/plugin/statusBarVisibility';
 import { registerVaultSync } from './src/app/plugin/vaultSync';
 import { ChangelogService } from './src/app/changelog/ChangelogService';
+import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
@@ -105,6 +110,13 @@ export default class AtlasVTTPlugin extends Plugin {
   }
 
   private onlinePlay: OnlinePlay | null = null;
+  /**
+   * Obsidian may unload Atlas while `onload` still awaits (a reload during startup, such as two
+   * builds landing at once): it then cleans up only what was registered so far. Whatever `onload`
+   * registered after its await would live on, unseen (a second statblock beside every note), so
+   * it stops there once this is set.
+   */
+  private unloaded = false;
 
   async onload(): Promise<void> {
     // Record errors from the very start so startup problems can be reported too.
@@ -129,6 +141,12 @@ export default class AtlasVTTPlugin extends Plugin {
     this.register(nameQuestCampaigns(this.app, campaignFiles, QuestIndex.open(this.app)));
     const campaignsRead = storageReady.catch(() => undefined).then(() => campaignFiles.load());
     void campaignsRead.catch((error: unknown) => console.error('[Atlas] Reading the campaigns failed:', error));
+    // Who plays a campaign online is its players file, read once the campaigns are.
+    const campaignPlayers = CampaignPlayers.open(this.app);
+    void campaignsRead.then(() => campaignPlayers.whenLoaded()).catch((error: unknown) => console.error('[Atlas] Reading the campaigns\' players failed:', error));
+    // The books of their characters are a campaign file too.
+    const campaignBooks = CampaignBooks.open(this.app);
+    void campaignsRead.then(() => campaignBooks.whenLoaded()).catch((error: unknown) => console.error('[Atlas] Reading the campaigns\' books failed:', error));
     // The campaign this device plays records the scenes its map views open.
     this.register(recordCampaignPlay(this.app, campaignFiles, campaignsRead));
     // And keeps one set of values for each of its player characters, shared by every map view.
@@ -163,15 +181,19 @@ export default class AtlasVTTPlugin extends Plugin {
 
     await storageReady;
     await this.settingsService.initialize();
+    if (this.unloaded) return;
     registerDiceLookSync(this, this.settingsService);
     this.registerStatblockPanels();
+    const installed = await existingInstallation;
+    if (this.unloaded) return;
     const changelogService = new ChangelogService(this.app, this.settingsService, {
       installedVersion: this.manifest.version,
-      existingInstallation: await existingInstallation,
+      existingInstallation: installed,
       releaseBuild: __ATLAS_RELEASE_BUILD__,
     });
     this.changelogService = changelogService;
     this.addCommand({ id: 'view-changelog', name: t('command.viewChangelog'), callback: () => changelogService.open() });
+    const updateWatch = registerUpdateWatch(this, this.settingsService);
 
     this.globalAssetManager = new GlobalAssetManagerService(this.app);
     this.imageDisplayService = new ImageDisplayService(this.app);
@@ -181,11 +203,11 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
-      ...lightingSettingsSections(this.settingsService),
+      lightingSettingsSection(this.settingsService),
       mapImageCacheSettingsSection(() => TileDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
-      changelogSettingsSection(this.settingsService, changelogService, this.manifest.version),
+      changelogSettingsSection(this.settingsService, changelogService, this.manifest.version, updateWatch),
       ...onlinePlay.settingsSections(),
       supportSettingsSection(issueReporter),
     ]));
@@ -199,8 +221,10 @@ export default class AtlasVTTPlugin extends Plugin {
       assetManager: this.globalAssetManager,
     });
     registerStatblockFileMenu(this);
+    registerStatblockInitiativeMenu(this);
 
     this.app.workspace.onLayoutReady(() => {
+      if (this.unloaded) return;
       registerColorSwatchIcons();
       this.imageDisplayService.registerContextMenu();
       registerStatusBarVisibility(this);
@@ -230,10 +254,13 @@ export default class AtlasVTTPlugin extends Plugin {
   }
 
   onunload(): void {
+    this.unloaded = true;
     this.changelogService?.destroy();
     void this.settingsService?.saveSettingsNow();
     SystemPresetFiles.release(this.app);
     PlayedRules.release(this.app);
+    CampaignBooks.release(this.app);
+    CampaignPlayers.release(this.app);
     CampaignFiles.release(this.app);
     QuestIndex.release(this.app);
     DiceSetFiles.release(this.app);
@@ -276,6 +303,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
     registerLootQueryView(this);
+    registerBaseGiveButtons(this);
     this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf));
     this.registerExtensions([TEMPLATE_EXTENSION], TEMPLATE_EDITOR_VIEW_TYPE);
   }

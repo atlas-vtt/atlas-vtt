@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
@@ -45,7 +46,8 @@ const state = {
   updateInitiativeEntry: vi.fn(),
 };
 
-vi.mock('../../src/app/react/root/AtlasUIContext', () => ({
+vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
+  AtlasUIContext: (await import('react')).createContext(null),
   useAtlasUI: () => ({
     app: {},
     view: {},
@@ -56,6 +58,8 @@ vi.mock('../../src/app/react/ViewStoreContext', () => ({
   useAtlasStore: (selector: (storeState: typeof state) => unknown) => selector(state),
   useViewStoreHook: () => ({ getState: () => state }),
 }));
+
+vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 
 vi.mock('../../src/app/initiative/useMapInitiativeRules', () => ({
   useMapInitiativeRules: () => ({ mode: 'turn-order', roll: '1d20', firstSide: 'players' }),

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { formatMessage, getLocale, resolveLocale, setLocale, t, TRANSLATIONS } from '../../src/app/i18n';
+import { formatMessage, getLocale, resolveLocale, setLocale, t } from '../../src/app/i18n';
+import { TRANSLATIONS } from '../../src/app/i18n/languages';
 import { en } from '../../src/app/i18n/locales/en';
 import type { Message, MessageKey } from '../../src/app/i18n/types';
 
@@ -10,21 +11,28 @@ function placeholders(message: Message): string[] {
 }
 
 describe('i18n', () => {
-  afterEach(() => setLocale('en'));
+  afterEach(() => setLocale('en', TRANSLATIONS));
 
   it('resolves Obsidian language codes to a supported language', () => {
-    expect(resolveLocale('ru')).toBe('ru');
-    expect(resolveLocale('RU')).toBe('ru');
-    expect(resolveLocale('ru-RU')).toBe('ru');
-    expect(resolveLocale('pt-BR')).toBe('en');
-    expect(resolveLocale('')).toBe('en');
+    expect(resolveLocale('ru', TRANSLATIONS)).toBe('ru');
+    expect(resolveLocale('RU', TRANSLATIONS)).toBe('ru');
+    expect(resolveLocale('ru-RU', TRANSLATIONS)).toBe('ru');
+    expect(resolveLocale('zh', TRANSLATIONS)).toBe('zh');
+    expect(resolveLocale('zh-CN', TRANSLATIONS)).toBe('zh');
+    expect(resolveLocale('zh-TW', TRANSLATIONS)).toBe('zh');
+    expect(resolveLocale('pt-BR', TRANSLATIONS)).toBe('en');
+    expect(resolveLocale('', TRANSLATIONS)).toBe('en');
   });
 
   it('translates into the active language and falls back to English', () => {
-    setLocale('ru');
+    setLocale('ru', TRANSLATIONS);
     expect(getLocale()).toBe('ru');
     expect(t('command.openDashboard')).toBe('Открыть панель');
-    setLocale('fr');
+    setLocale('zh', TRANSLATIONS);
+    expect(getLocale()).toBe('zh');
+    expect(t('command.openDashboard')).toBe('打开仪表盘');
+    expect(t('count.files', { count: 1 })).toBe('1 个文件');
+    setLocale('fr', TRANSLATIONS);
     expect(t('command.openDashboard')).toBe('Open dashboard');
   });
 

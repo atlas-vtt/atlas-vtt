@@ -171,9 +171,9 @@ export class LogState {
     if (id !== undefined) this.unread.delete(id);
   }
 
-  /** Whether an entry that arrives now is unread: a message or roll (a private one too) of someone else, with the panel closed. */
+  /** Whether an entry that arrives now is unread: a message, roll (a private one too) or rest of someone else, with the panel closed. */
   private counts(entry: ShownEntry): boolean {
-    return !this.open && (entry.kind === 'chat' || entry.kind === 'roll' || entry.kind === 'secret' || entry.kind === 'image' || entry.kind === 'loot' || entry.kind === 'found') && entry.who !== this.self();
+    return !this.open && (entry.kind === 'chat' || entry.kind === 'roll' || entry.kind === 'secret' || entry.kind === 'image' || entry.kind === 'loot' || entry.kind === 'found' || entry.kind === 'rest') && entry.who !== this.self();
   }
 
   private set(change: Partial<Pick<LogView, 'entries' | 'refusal' | 'people'>>): void {

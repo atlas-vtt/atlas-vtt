@@ -23,7 +23,7 @@ function commonProps(block: TemplateBlock): CommonProps {
 
 /** Settings that read alike in several block types, and the types that have them. */
 const CARRIED: ReadonlyArray<readonly [key: string, types: readonly BlockType[]]> = [
-  ['label', ['stat', 'tags', 'pairs', 'track']],
+  ['label', ['stat', 'tags', 'pairs', 'track', 'counters']],
   ['heading', ['text', 'entries', 'spells']],
   ['display', ['stat', 'pairs', 'scores']],
   ['addsToRolls', ADDS_TO_ROLLS_TYPES],

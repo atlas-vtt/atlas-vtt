@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage, type BookQuest, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
@@ -6,7 +5,7 @@ import { applyBookMessage, EMPTY_BOOK, readBooks } from '../../../../src/app/onl
 import { setQuestGate, type QuestAsset } from '../../../../src/app/online/gm/book/questGate.ts';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
 import { FakeSocket, png, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH_ART, CAL, delivered, MIRA_ART, nameWorldMap, nameWorldMapTree, ofType, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
+import { ANA, BEN, BRANNOCH_BOOK, CAL, delivered, keptBooks, MIRA_BOOK, nameWorldMap, nameWorldMapTree, ofType, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
 import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -155,32 +154,34 @@ describe('quests at a running table', () => {
 
   it('keeps a player\'s notes on a quest, answers a note on a quest they are not sent with their book, and takes no quest text from a player', async () => {
     quests = [quest(1, { title: 'The crown under the root' })];
-    const shelf = new BookShelf();
+    const source = keptBooks();
+    const shelf = new BookShelf(source);
     const table = await openTable(shelf, [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
     table.from(ANA, { t: 'book-note', note: { id: id(60), title: '', body: 'Ask the abbot.', quest: id(1) } });
     await advance(100);
-    expect(shelf.of('Cairn', BRANNOCH_ART).notes).toMatchObject([{ id: id(60), quest: id(1), body: 'Ask the abbot.' }]);
+    expect(shelf.of(BRANNOCH_BOOK).notes).toMatchObject([{ id: id(60), quest: id(1), body: 'Ask the abbot.' }]);
 
     const before = ofType(delivered(table.socket), 'book').filter(({ to }) => to === ANA).length;
     table.from(ANA, { t: 'book-note', note: { id: id(61), title: '', body: 'Not mine.', quest: id(9) } });
     // Answered with the whole book, at most one in five seconds.
     await advance(6_000);
-    expect(shelf.of('Cairn', BRANNOCH_ART).notes.map((note) => note.id)).toEqual([id(60)]);
+    expect(shelf.of(BRANNOCH_BOOK).notes.map((note) => note.id)).toEqual([id(60)]);
     expect(ofType(delivered(table.socket), 'book').filter(({ to }) => to === ANA).length).toBe(before + 1);
-    expect(shelf.of('Cairn', MIRA_ART).notes).toEqual([]);
+    expect(shelf.of(MIRA_BOOK).notes).toEqual([]);
 
     // A quest written by a player, in any shape, changes nothing.
     for (const body of [{ t: 'book-quest', quest: quest(1, { body: 'Rewritten.' }) }, { t: 'book-note', note: { ...quest(1, { body: 'Rewritten.' }), quest: id(1) } }]) table.from(BEN, body);
     await advance(6_000);
     expect(lastBook(table, ANA)?.quests).toEqual(quests);
     expect(lastBook(table, BEN)?.quests).toEqual(quests);
-    expect(shelf.toData().Cairn?.[MIRA_ART]).not.toHaveProperty('quests');
+    expect(shelf.of(MIRA_BOOK)).not.toHaveProperty('quests');
     table.online.stop();
   });
 
   it('sends the quests to a player without a character too, and takes no note on one from them', async () => {
     quests = [quest(1, { title: 'The crown under the root' })];
-    const shelf = new BookShelf();
+    const source = keptBooks();
+    const shelf = new BookShelf(source);
     const table = await openTable(shelf, [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }, { id: CAL, name: 'Cal' }]);
     expect(lastBook(table, CAL)?.character).toBeNull();
     expect(lastBook(table, CAL)?.quests).toEqual(quests);
@@ -194,7 +195,7 @@ describe('quests at a running table', () => {
     await advance(6_000);
     expect(ofType(delivered(table.socket), 'book').filter(({ to }) => to === CAL).length).toBe(before + 1);
     expect(lastBook(table, CAL)?.notes).toEqual([]);
-    expect(JSON.stringify(shelf.toData())).not.toContain('Mine?');
+    expect(source.dump()).not.toContain('Mine?');
     table.online.stop();
   });
 

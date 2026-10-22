@@ -29,7 +29,8 @@ describe('LightingRenderer: ambient zones', () => {
   });
 
   async function setup(objects: Record<string, unknown>): Promise<Harness> {
-    harness = await createHarness({ patch: { lighting: { enabled: true, ambient: 1 }, objects: { walls: {}, lights: {}, tokens: {}, ...objects } } });
+    // No explored memory, so the picture is what the viewer sees now.
+    harness = await createHarness({ patch: { exploredMask: null, lighting: { enabled: true, ambient: 1 }, objects: { walls: {}, lights: {}, tokens: {}, ...objects } } });
     await harness.settle();
     return harness;
   }

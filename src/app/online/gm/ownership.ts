@@ -1,20 +1,26 @@
-import { PLAYER_ID_PATTERN, playerName, type Claim, type PlayerInfo } from '../protocol/index.ts';
+import type { Claim, PlayerInfo } from '../protocol/index.ts';
 import { sideOf } from '../../initiative/sides';
 import type { TokenEntity } from '../../types';
+import type { CampaignPlayer } from '../../campaigns/players/playersFile';
+import type { TokenAssignments } from '../../campaigns/players/tokenAssignments';
 
-/** Who plays at the table, which tokens are theirs, and which tokens are player tokens, as saved in the companion's data. */
-export interface OwnershipData {
-  /** Every player who joined the table, by id. */
-  readonly players: Readonly<Record<string, { readonly name: string }>>;
-  /** The owner of each character, by the id of the library token its tokens were placed from (`TokenEntity.assetId`). */
-  readonly characters: Readonly<Record<string, string>>;
-  /** The owner of each token placed from no library token, by token id. */
-  readonly owners: Readonly<Record<string, string>>;
-  /**
-   * Per scene (its map path), the tokens the GM made player tokens (true) or the GM's own (false);
-   * every other token is a player token when it is on the players' side (`sideOf`: it sees).
-   */
-  readonly playerTokens: Readonly<Record<string, Readonly<Record<string, boolean>>>>;
+/**
+ * The played campaign's players as the table sees them. The players, the characters they play and
+ * the tokens the GM assigns are the campaign's, kept in its players file, so they outlive any one
+ * table and follow the GM to every device.
+ */
+export interface CampaignSeats {
+  players(): readonly CampaignPlayer[];
+  /** Gives a character (a library token's id) to a player of the campaign, or to nobody with null. */
+  setOwner(characterId: string, playerId: string | null): void;
+  /** The tokens the campaign assigns: owners of tokens placed from no library token, and the GM's player tokens per scene. */
+  assignments(): TokenAssignments;
+  /** Gives tokens placed from no library token to a player of the campaign, or to nobody with null. */
+  setTokenOwners(tokenIds: readonly string[], playerId: string | null): void;
+  /** Makes tokens of the scene at `mapPath` player tokens, or the GM's own; false where they cannot be kept. */
+  markPlayerTokens(mapPath: string, tokenIds: readonly string[], player: boolean): boolean;
+  /** Calls the listener after every change of the players; returns the way to stop. */
+  onChange(listener: () => void): () => void;
 }
 
 /** A player token of a scene, or a token a player was given, with its owner if it has one. */
@@ -31,76 +37,32 @@ export interface KnownPlayer extends PlayerInfo {
   readonly online: boolean;
 }
 
-const MAX_TOKEN_ID = 200;
-const MAX_MAP_PATH = 1000;
-
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** Ownership read from saved data: players with a valid id and name, and owners that are among them. */
-export function readOwnership(data: unknown): OwnershipData {
-  const record = isRecord(data) ? data : {};
-  const players: Record<string, { name: string }> = {};
-  for (const [id, entry] of Object.entries(isRecord(record.players) ? record.players : {})) {
-    const name = isRecord(entry) ? playerName(entry.name) : null;
-    if (PLAYER_ID_PATTERN.test(id) && name !== null) players[id] = { name };
-  }
-  const playerTokens: Record<string, Record<string, boolean>> = {};
-  for (const [mapPath, marks] of Object.entries(isRecord(record.playerTokens) ? record.playerTokens : {})) {
-    if (mapPath.length > MAX_MAP_PATH || !isRecord(marks)) continue;
-    const kept = Object.entries(marks).filter((entry): entry is [string, boolean] => entry[0].length <= MAX_TOKEN_ID && typeof entry[1] === 'boolean');
-    if (kept.length > 0) playerTokens[mapPath] = Object.fromEntries(kept);
-  }
-  return { players, characters: ownersIn(record.characters, players), owners: ownersIn(record.owners, players), playerTokens };
-}
-
-/** Saved owners by key (a library token or token id) whose owner is one of `players`. */
-function ownersIn(field: unknown, players: Readonly<Record<string, unknown>>): Record<string, string> {
-  const owners: Record<string, string> = {};
-  for (const [key, owner] of Object.entries(isRecord(field) ? field : {})) {
-    if (key.length <= MAX_TOKEN_ID && typeof owner === 'string' && owner in players) owners[key] = owner;
-  }
-  return owners;
-}
-
 /** Whether a token is a player token by default: it is on the players' side, as Atlas's initiative and lighting take it (`sideOf`). */
 export const isPlayerSide = (token: TokenEntity): boolean => sideOf(token) === 'players';
 
 /**
- * The table's players, token owners and player tokens. A token has at most one owner: the player the
- * GM gave it to; players take none themselves. As Foundry's actors do, a character is owned and not
- * one placed token: giving a token placed from a library token gives every token placed from it, on
- * every scene, so a player keeps their character when the GM moves to another scene. Which tokens
- * are player tokens the GM decides per scene, and the rest follow the players' side. Everything but
- * who is online is saved through `save` whenever it changes; player tokens outlive a table.
+ * The table's players, token owners and player tokens. The players and their characters are the
+ * played campaign's (`CampaignSeats`, bound when a table starts) and stay when a table ends; this
+ * tracks who is online. A token has at most one owner: the player the GM gave it to; players take
+ * none themselves. As Foundry's actors do, a character is owned and not one placed token: giving a
+ * token placed from a library token gives every token placed from it, on every scene, so a player
+ * keeps their character when the GM moves to another scene. Which tokens are player tokens the GM
+ * decides per scene, and the rest follow the players' side. The owners of tokens placed from no
+ * library token and the player tokens are the campaign's too: the table's while one runs, else the
+ * played campaign's (`idle`).
  */
 export class Ownership {
-  private readonly players = new Map<string, string>();
-  /** Owners by library token id. */
-  private readonly characters = new Map<string, string>();
-  /** Owners of tokens placed from no library token, by token id. */
-  private readonly owners = new Map<string, string>();
-  /** The GM's marks by map path, then token id: true for a player token, false for the GM's own. */
-  private readonly marks = new Map<string, Map<string, boolean>>();
+  private campaign: CampaignSeats | null = null;
+  private stopSeats: () => void = () => undefined;
+  /** The campaign's characters by library token id with their owner, read from the seats until they change. */
+  private characters: ReadonlyMap<string, string> | null = null;
+  /** The campaign's players' names by id, read from the seats until they change. */
+  private names: ReadonlyMap<string, string> | null = null;
   private readonly online = new Set<string>();
   private readonly listeners = new Set<() => void>();
-  private readonly save: (data: OwnershipData) => void;
 
-  constructor(data: OwnershipData, save: (data: OwnershipData) => void) {
-    this.save = save;
-    for (const [id, { name }] of Object.entries(data.players)) this.players.set(id, name);
-    for (const [assetId, owner] of Object.entries(data.characters)) this.characters.set(assetId, owner);
-    for (const [tokenId, owner] of Object.entries(data.owners)) this.owners.set(tokenId, owner);
-    for (const [mapPath, marks] of Object.entries(data.playerTokens)) this.marks.set(mapPath, new Map(Object.entries(marks)));
-  }
-
-  toData(): OwnershipData {
-    return {
-      players: Object.fromEntries([...this.players].map(([id, name]) => [id, { name }])),
-      characters: Object.fromEntries(this.characters),
-      owners: Object.fromEntries(this.owners),
-      playerTokens: Object.fromEntries([...this.marks].map(([mapPath, marks]) => [mapPath, Object.fromEntries(marks)])),
-    };
-  }
+  /** `idle`: the played campaign, whose tokens are marked while no table runs; null while none is played. */
+  constructor(private readonly idle: () => CampaignSeats | null = () => null) {}
 
   /** Calls the listener after every change; returns the way to stop. */
   onChange(listener: () => void): () => void {
@@ -108,76 +70,80 @@ export class Ownership {
     return () => this.listeners.delete(listener);
   }
 
-  /** A new table: its players are new, so nobody is known and nothing is owned; player tokens stay. */
-  reset(): void {
-    this.players.clear();
-    this.characters.clear();
-    this.owners.clear();
-    this.online.clear();
-    this.changed(true);
+  /** Reads the players and characters from the played campaign's seats, or from none (null): then nobody plays and nothing can be given. */
+  bind(seats: CampaignSeats | null): void {
+    this.stopSeats();
+    this.campaign = seats;
+    this.forgetSeats();
+    this.stopSeats = seats?.onChange(() => this.seatsChanged()) ?? ((): void => undefined);
+    this.changed();
   }
 
   /** The relay's welcome: exactly these players are connected. */
   welcome(players: readonly PlayerInfo[]): void {
     this.online.clear();
-    let named = false;
-    for (const player of players) {
-      named = this.name(player) || named;
-      this.online.add(player.id);
-    }
-    this.changed(named);
+    for (const player of players) this.online.add(player.id);
+    this.changed();
   }
 
   joined(player: PlayerInfo): void {
-    const named = this.name(player);
     this.online.add(player.id);
-    this.changed(named);
+    this.changed();
   }
 
   left(id: string): void {
-    if (this.online.delete(id)) this.changed(false);
+    if (this.online.delete(id)) this.changed();
   }
 
-  /** Forgets a player the GM removed, and gives their tokens back to nobody. */
+  /** Forgets that a player the GM removed from the table is online; they stay in the campaign with their characters. */
   remove(id: string): void {
-    this.online.delete(id);
-    this.players.delete(id);
-    for (const owners of [this.characters, this.owners]) for (const [key, owner] of owners) if (owner === id) owners.delete(key);
-    this.changed(true);
+    if (this.online.delete(id)) this.changed();
   }
 
   /**
-   * Gives the tokens `tokenIds` of a scene's `tokens` to a known player, or to nobody with null. A
-   * token placed from a library token gives its character, so every token placed from it follows.
+   * Gives the tokens `tokenIds` of a scene's `tokens` to a player of the campaign, or to nobody with
+   * null. A token placed from a library token gives its character, so every token placed from it
+   * follows. Without a campaign nothing is given.
    */
   give(tokenIds: readonly string[], tokens: Readonly<Record<string, OwnedToken>>, playerId: string | null): void {
-    if (playerId !== null && !this.players.has(playerId)) return;
-    for (const tokenId of tokenIds) this.setOwner(tokenId, tokens[tokenId], playerId);
-    this.changed(true);
+    if (this.campaign === null || (playerId !== null && this.nameOf(playerId) === null)) return;
+    this.setOwners(tokenIds, tokens, playerId);
+    this.changed();
   }
 
   /** The owner of a token: its character's, else (a token placed from no library token) its own. */
   ownerOf(tokenId: string, token: OwnedToken | undefined): string | undefined {
     const assetId = token?.assetId;
-    return (assetId === undefined ? undefined : this.characters.get(assetId)) ?? this.owners.get(tokenId);
+    const owner = (assetId === undefined ? undefined : this.characterOwners().get(assetId)) ?? this.tokens()?.assignments().owners[tokenId];
+    return owner === undefined || this.nameOf(owner) === null ? undefined : owner;
+  }
+
+  /** The player of the campaign a character (a library token's id) was given to, if any. */
+  ownerOfCharacter(characterId: string): string | undefined {
+    const owner = this.characterOwners().get(characterId);
+    return owner === undefined || this.nameOf(owner) === null ? undefined : owner;
   }
 
   /** Whether a token of the scene at `mapPath` is a player token: as the GM marked it, else by its side. */
   isPlayerToken(mapPath: string, tokenId: string, token: TokenEntity): boolean {
-    return this.marks.get(mapPath)?.get(tokenId) ?? isPlayerSide(token);
+    return this.tokens()?.assignments().playerTokens[mapPath]?.[tokenId] ?? isPlayerSide(token);
   }
 
-  /** Makes tokens of a scene player tokens, or the GM's own (`false`), which also takes them back from their owners. */
-  markPlayerTokens(mapPath: string, tokenIds: readonly string[], tokens: Readonly<Record<string, OwnedToken>>, player: boolean): void {
-    if (mapPath.length > MAX_MAP_PATH) return;
-    const marks = this.marks.get(mapPath) ?? new Map<string, boolean>();
-    for (const tokenId of tokenIds) {
-      if (tokenId.length > MAX_TOKEN_ID) continue;
-      marks.set(tokenId, player);
-      if (!player) this.setOwner(tokenId, tokens[tokenId], null);
-    }
-    if (marks.size > 0) this.marks.set(mapPath, marks);
-    this.changed(true);
+  /** Whether a campaign keeps player tokens now: a table runs, or a campaign is played and its players file was read. */
+  canMark(): boolean {
+    return this.tokens() !== null;
+  }
+
+  /**
+   * Makes tokens of a scene player tokens, or the GM's own (`false`), which also takes them back from
+   * their owners. False where no campaign keeps them (none is played) or its file cannot be written.
+   */
+  markPlayerTokens(mapPath: string, tokenIds: readonly string[], tokens: Readonly<Record<string, OwnedToken>>, player: boolean): boolean {
+    const seats = this.tokens();
+    if (seats === null || !seats.markPlayerTokens(mapPath, tokenIds, player)) return false;
+    if (!player) this.setOwners(tokenIds, tokens, null);
+    this.changed();
+    return true;
   }
 
   /**
@@ -203,44 +169,66 @@ export class Ownership {
     return [...this.online];
   }
 
-  /** The name a known player goes by, or null for anyone else. */
+  /** The name a player of the campaign goes by, or null for anyone else. */
   nameOf(playerId: string): string | null {
-    return this.players.get(playerId) ?? null;
+    this.names ??= new Map((this.campaign?.players() ?? []).map((player) => [player.id, player.name]));
+    return this.names.get(playerId) ?? null;
   }
 
-  /** Every known player: those online first, then by name. */
+  /** Every player of the campaign: those online first, then by name. */
   list(): KnownPlayer[] {
-    return [...this.players]
-      .map(([id, name]) => ({ id, name, online: this.online.has(id) }))
+    return (this.campaign?.players() ?? [])
+      .map(({ id, name }) => ({ id, name, online: this.online.has(id) }))
       .sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
   }
 
-  /** Records a player's name; true when it is new or changed. */
-  private name(player: PlayerInfo): boolean {
-    if (this.players.get(player.id) === player.name) return false;
-    this.players.set(player.id, player.name);
-    return true;
+  /** The campaign whose tokens are assigned: the table's while one runs, else the played one. */
+  private tokens(): CampaignSeats | null {
+    return this.campaign ?? this.idle();
   }
 
-  /** Sets or (null) clears the owner of one token: its character's, else its own; an owner the token had by its own id goes. */
-  private setOwner(tokenId: string, token: OwnedToken | undefined, playerId: string | null): void {
-    const assetId = token?.assetId;
-    if (assetId === undefined) {
-      setIn(this.owners, tokenId, playerId);
-      return;
+  private characterOwners(): ReadonlyMap<string, string> {
+    this.characters ??= new Map((this.campaign?.players() ?? []).flatMap((player) => player.characters.map((characterId): [string, string] => [characterId, player.id])));
+    return this.characters;
+  }
+
+  private seatsChanged(): void {
+    this.forgetSeats();
+    this.changed();
+  }
+
+  private forgetSeats(): void {
+    this.characters = null;
+    this.names = null;
+  }
+
+  /**
+   * Sets or (null) clears the owner of tokens: their character's, else their own; an owner a token
+   * had by its own id goes. Each character is written once, however many of the tokens it placed.
+   */
+  private setOwners(tokenIds: readonly string[], tokens: Readonly<Record<string, OwnedToken>>, playerId: string | null): void {
+    const seats = this.tokens();
+    if (seats === null) return;
+    const characters = new Set<string>();
+    const owned = seats.assignments().owners;
+    const placed: string[] = [];
+    const released: string[] = [];
+    for (const tokenId of tokenIds) {
+      const assetId = tokens[tokenId]?.assetId;
+      if (assetId === undefined) placed.push(tokenId);
+      else {
+        characters.add(assetId);
+        // A token placed from a library token loses any owner it had by its own id.
+        if (tokenId in owned) released.push(tokenId);
+      }
     }
-    this.owners.delete(tokenId);
-    setIn(this.characters, assetId, playerId);
+    if (placed.length > 0) seats.setTokenOwners(placed, playerId);
+    if (released.length > 0) seats.setTokenOwners(released, null);
+    for (const assetId of characters) seats.setOwner(assetId, playerId);
+    if (characters.size > 0) this.characters = null;
   }
 
-  private changed(persist: boolean): void {
-    if (persist) this.save(this.toData());
+  private changed(): void {
     for (const listener of this.listeners) listener();
   }
-}
-
-/** Sets or (null) clears the owner under `key`; a key too long to save is never set. */
-function setIn(owners: Map<string, string>, key: string, playerId: string | null): void {
-  if (playerId === null) owners.delete(key);
-  else if (key.length <= MAX_TOKEN_ID) owners.set(key, playerId);
 }

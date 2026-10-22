@@ -113,7 +113,7 @@ export class LightingRenderer implements SceneLightingView {
   constructor(private readonly deps: LightingRendererDeps) {
     const { renderer } = deps.app;
     this.quality = deps.quality?.current() ?? DEFAULT_LIGHTING_QUALITY;
-    this.engine = new LightingEngine(renderer, this.quality);
+    this.engine = new LightingEngine(renderer, this.quality, { paced: true });
     this.layer = this.engine.layer;
     this.memory = new ExploredMemory({
       renderer,

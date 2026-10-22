@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import {
   MAX_ASSET_BYTES, MAX_EMBED_TARGET, MAX_QUEST_IMAGES, parseAsset, parseBookQuest, parseTextAsset, questEmbeds, readQuestText, TEXT_MIME_TYPE, type BookQuest,

@@ -8,7 +8,7 @@ import { t } from '../../../../i18n';
 
 /** A keyword of the asset search and what it filters. */
 export type FilterKeyword = QueryKeyword & (
-  | { kind: 'name' | 'tag' | 'statblock' | 'template' }
+  | { kind: 'name' | 'tag' | 'statblock' | 'template' | 'text' }
   | { kind: 'range' | 'options'; filterId: string }
 );
 
@@ -69,14 +69,15 @@ export function filterKeywords(tab: Tab, definitions: readonly CreatureFilterDef
   ];
   if (!isCharacterTab(tab)) return keywords;
   keywords.push({ kind: 'statblock', prefix: 'statblock', aliases: ['sb'], numeric: false, description: t('filters.keyword.statblock'), accepts: (value) => statblockValue(value) !== null });
-  // Last, so a typed "t" offers the type before it; `layout:` is its name from before native templates
+  // Last, so a typed "t" offers the type before them; `layout:` is the template's name from before native templates
   const template: FilterKeyword = { kind: 'template', prefix: 'template', aliases: ['layout'], numeric: false, negatable: true, description: t('filters.keyword.template') };
-  const taken = new Set([...keywords, template].flatMap((keyword) => [keyword.prefix, ...keyword.aliases]));
+  const text: FilterKeyword = { kind: 'text', prefix: 'text', aliases: ['has'], numeric: false, negatable: true, phrase: true, description: t('filters.keyword.text') };
+  const taken = new Set([...keywords, template, text].flatMap((keyword) => [keyword.prefix, ...keyword.aliases]));
   for (const definition of definitions) {
     const keyword = creatureKeyword(definition, taken);
     if (keyword) keywords.push(keyword);
   }
-  keywords.push(template);
+  keywords.push(template, text);
   return keywords;
 }
 
@@ -86,6 +87,7 @@ export function suggestedKeywords(keywords: readonly FilterKeyword[], facets: Cr
     switch (keyword.kind) {
       case 'tag': return hasTags;
       case 'template': return (facets?.layouts.length ?? 0) > 1;
+      case 'text': return (facets?.statblock.linked ?? 0) > 0;
       case 'range': return facets?.ranges.some((facet) => facet.definition.id === keyword.filterId && facet.values.length > 0) ?? false;
       case 'options': return facets?.options.some((facet) => facet.definition.id === keyword.filterId && facet.options.length > 0) ?? false;
       default: return true;

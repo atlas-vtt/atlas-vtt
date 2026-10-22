@@ -1,9 +1,9 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { cleanup, render, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TFile, WorkspaceLeaf } from 'obsidian';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../src/app/react/components/LinkedNotePicker', () => ({ default: () => null }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [] }));
 vi.mock('../../src/app/react/root/AtlasUIContext', async (importOriginal) => ({
@@ -34,6 +34,7 @@ const app = {
 };
 const state = {
   objects: { tokens: {} },
+  initiative: { entries: [], isActive: false, round: 0 },
   dmNotePath: NOTE,
   setDMNotePath: vi.fn(),
   updateToken: vi.fn(),

@@ -32,6 +32,7 @@ export const toolbar: Translation = {
   'toolbar.rollDice': 'Бросить кубики',
   'toolbar.size': 'Размер',
   'toolbar.textOptions': 'Настройки текста',
+  'toolbar.optionsOf': '{label}: настройки',
   'toolbar.textTool': 'Текст',
   'toolbar.moveSelect': 'Перемещение/выбор',
   'toolbar.drawTool': 'Рисование',

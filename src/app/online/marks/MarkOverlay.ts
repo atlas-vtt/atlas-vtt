@@ -97,7 +97,7 @@ export class MarkOverlay {
       const app = new Application();
       const canvas = getDomHost().createCanvas(host.canvas.ownerDocument);
       canvas.classList.add('atlas-online-marks');
-      await app.init({ canvas, backgroundAlpha: 0, antialias: true, autoDensity: true, resolution: window.devicePixelRatio || 1, autoStart: false, width: 1, height: 1 });
+      await app.init({ canvas, backgroundAlpha: 0, antialias: true, autoDensity: true, resolution: window.devicePixelRatio || 1, autoStart: false, width: 1, height: 1, accessibilityOptions: { activateOnTab: false } });
       if (this.disposed) {
         app.destroy({ removeView: true });
         return;

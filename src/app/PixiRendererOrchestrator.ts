@@ -25,6 +25,7 @@ import { PlayerFrameTexture } from "./pixi/PlayerFrameTexture";
 import type { FramePiece, PlayerFrame } from "./types/playerFrame";
 import { contextLost } from "./pixi/lighting/engine/gpu";
 import { SelectionManager } from "./pixi/SelectionManager"; // Import SelectionManager
+import { NO_BARS } from "./pixi/selection/selectionTargets";
 import { FogOfWarRenderer } from "./pixi/fog/FogOfWarRenderer";
 import { MeasureRenderer } from "./pixi/MeasureRenderer"; // Import MeasureRenderer
 import { measurePlayersView } from './pixi/measurePlayersView';
@@ -35,8 +36,8 @@ import { DrawingRenderer } from "./pixi/DrawingRenderer"; // Import DrawingRende
 import { DrawingInteraction } from "./pixi/DrawingInteraction";
 import { TextRenderer } from "./pixi/TextRenderer"; // Import TextRenderer
 import { TextTool } from "./tools/TextTool"; // Import TextTool
-import type { LightingController } from './pixi/lighting/LightingController';
-import { LightingFeature } from './pixi/lighting/LightingFeature';
+import { LightingController } from './pixi/lighting/LightingController';
+import { settingsLightingQuality } from './pixi/lighting/settingsLightingQuality';
 import { ShownPlaces } from './lighting/shownPlaces';
 import type { SceneFrame } from './pixi/lighting/engine/types';
 import { captureSceneFrame } from './pixi/sceneFrameCapture';
@@ -52,6 +53,7 @@ import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
 import { requestRender } from './pixi/RenderScheduler';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
 import { shownRollTokens } from './pixi/playerRollTokens';
+import type { PlayerBadgeNumbers } from './pixi/token-renderer/PlayerInstanceBadges';
 import type { ShownRollToken } from './services/playerRollSource';
 import { t } from './i18n';
 import type { MapImage } from './pixi/mapImage/MapImage';
@@ -62,6 +64,9 @@ import { MapController } from './MapController';
 import { NO_STRETCH, readMapStretch, sameStretch, type MapStretch } from './grid/mapStretch';
 import { fitZoomRange } from './pixi/fitMapRect';
 import { viewCentreInClient, worldToClient, type ClientPoint } from './pixi/utils/worldToClient';
+import { mapTokens } from './tokens/offMap';
+import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
+import { followWindow } from './utils/followWindow';
 
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
@@ -69,6 +74,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private tokenRenderer?: TokenRenderer; // Add TokenRenderer instance
   private pinRenderer?: PinRenderer; // Add PinRenderer instance
   private hexLinkRenderer?: HexLinkRenderer;
+  private tokenPlacer?: TokenPlacer;
   private hexLinkInteraction?: HexLinkInteraction;
   private selectionManager?: SelectionManager; // Add SelectionManager instance
   private fogRenderer?: FogOfWarRenderer; // Add FogRenderer instance
@@ -80,15 +86,12 @@ export class PixiRendererOrchestrator { // Renamed class
   private drawingInteraction?: DrawingInteraction;
   private textRenderer?: TextRenderer; // Add TextRenderer instance
   private textTool?: TextTool; // Add TextTool instance
-  /** The view's lighting, built and removed as the GM switches dynamic lighting on and off. */
-  private lightingFeature?: LightingFeature;
+  /** The GM view's walls, lights and sight; the player view has none. */
+  private lighting?: LightingController;
   /** Where gliding tokens are drawn: the token renderer notes them, the lighting reads its tokens there. */
   private readonly shownPlaces = new ShownPlaces();
   /** The players' frame, rendered at the player window's size; made when this view is first presented. */
   private playerFrames?: Pick<PlayerFrameTexture, 'canRender' | 'render' | 'copy' | 'release' | 'destroy'>;
-  private get lighting(): LightingController | undefined {
-    return this.lightingFeature?.controller;
-  }
   private audioRenderer?: AudioRenderer;
   private audioTool?: AudioTool;
   private soundRegistry?: SoundRegistry;
@@ -116,7 +119,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private _unsubscribeFromToolChanges?: () => void; // Add tool subscription cleanup
   private _unsubscribeFromGridVisibility?: () => void; // Add grid visibility subscription cleanup
   private viewId: string;
-  private keyboardHandler: ((e: KeyboardEvent) => void) | null = null;
+  private unbindKeyboard: (() => void) | null = null;
   private getViewportPositionHandler: ((e: WindowEventMap['get-viewport-position']) => void) | null = null;
   private eventBusUnsubscribers: Array<() => void> = [];
   /** Screen-space overlays that exist only for the DM, such as tool previews. */
@@ -387,7 +390,7 @@ export class PixiRendererOrchestrator { // Renamed class
         this.store,
         this.eventBus
     );
-    this.selectionManager.barsReachProvider = (tokenId) => this.tokenRenderer?.barsReach(tokenId) ?? 0;
+    this.selectionManager.barsProvider = (tokenId) => this.tokenRenderer?.bars(tokenId) ?? NO_BARS;
 
     // Initialize FogOfWarRenderer after pins so it can be on top when active
     this.fogRenderer = new FogOfWarRenderer(viewport, this.app, this.eventBus, this.store, () => this.getMapRect());
@@ -400,7 +403,8 @@ export class PixiRendererOrchestrator { // Renamed class
     fogContainer.zIndex = 1000;
 
     if (!isPlayerView) {
-      this.lightingFeature = new LightingFeature({
+      const quality = settingsLightingQuality(SettingsService.forApp(this.obsApp));
+      this.lighting = new LightingController({
         viewport,
         app: this.pixiAppManager.app,
         store: this.store,
@@ -412,6 +416,7 @@ export class PixiRendererOrchestrator { // Renamed class
         grid: () => this.gridSystem ?? null,
         fogCoverage: () => this.fogRenderer!.getCommittedCoverage(),
         shown: this.shownPlaces,
+        ...(quality && { quality }),
       });
     }
 
@@ -763,7 +768,6 @@ export class PixiRendererOrchestrator { // Renamed class
     if (this.measureRenderer) layers.push(...this.measureRenderer.getPlayerViewLayers(this.playersSeeInFrame(sight)));
     layers.push(...(this.lighting?.playerLayers() ?? []));
     layers.push(...(this.fogRenderer?.getPlayerViewLayers() ?? []));
-    layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
     for (const overlay of this.dmScreenOverlays) layers.push({ layer: overlay, visible: false });
     return layers;
   }
@@ -779,16 +783,28 @@ export class PixiRendererOrchestrator { // Renamed class
     return shownRollTokens(this.store.getState(), mapPath, tokens.getTokenSprites(), () => tokens.playerFramePerception(this.lighting?.playerSight()), tokenIds);
   }
 
+  /** Whether the canvas shows the token, so it may be selected; none is shown while there is no token renderer. */
+  public canvasShowsToken(tokenId: string): boolean {
+    return this.tokenRenderer?.showsToken(tokenId) ?? false;
+  }
+
+  /** The numbers the players' instance badges show; null while there is no token renderer. */
+  public playerBadgeNumbers(): PlayerBadgeNumbers | null {
+    return this.tokenRenderer?.playerBadgeNumbers() ?? null;
+  }
+
   /** Which tokens a players' frame shows, by the scene's `sight` with committed fog; none while there is no token renderer. */
   private playersSeeInFrame(sight: TokenPerception | undefined): (tokenId: string) => boolean {
     return this.tokenRenderer?.playersSeeInFrame(sight) ?? NOTHING_SEEN;
   }
 
-  /** The GM's markers on the map: neither the players nor a picture of the scene show them. */
+  /** The GM's markers on the map and the selection: neither the players nor a picture of the scene show them. */
   private markerLayers(): LayerVisibility[] {
     const layers: LayerVisibility[] = [];
     if (this.pinRenderer) layers.push({ layer: this.pinRenderer.getPinContainer(), visible: false });
     if (this.hexLinkRenderer) layers.push({ layer: this.hexLinkRenderer.container, visible: false });
+    for (const layer of this.tokenPlacer?.layers ?? []) layers.push({ layer, visible: false });
+    layers.push(...(this.selectionManager?.getPlayerViewLayers() ?? []));
     return layers;
   }
 
@@ -820,6 +836,25 @@ export class PixiRendererOrchestrator { // Renamed class
   getGridSystem(): GridSystem | null { return this.gridSystem || null; }
   getTokenRenderer(): TokenRenderer | null { return this.tokenRenderer || null; }
 
+  /** Places spawned tokens by hand on this view's map; null until the map's tokens can be drawn. */
+  getTokenPlacer(): TokenPlacer | null {
+    if (this._isDestroyed) return null;
+    const tokens = this.tokenRenderer;
+    const viewport = this.pixiAppManager.getViewport();
+    if (!tokens || !viewport) return null;
+    this.tokenPlacer ??= new TokenPlacer({
+      app: this.pixiAppManager.app,
+      viewport,
+      canvas: this.pixiAppManager.getCanvasElement(),
+      viewId: this.viewId,
+      settings: () => SettingsService.forApp(this.obsApp),
+      store: this.store,
+      grid: () => this.gridSystem ?? null,
+      previewToken: (token) => tokens.previewToken(token),
+    });
+    return this.tokenPlacer;
+  }
+
   /**
    * Reinitialize viewport plugins after map switch to restore interactions
    * @deprecated Use full renderer recreation instead
@@ -833,16 +868,18 @@ export class PixiRendererOrchestrator { // Renamed class
   }
   
   private setupKeyboardHandlers(): void {
-    if (this.keyboardHandler) {
-      document.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardHandler = null;
-    }
+    this.unbindKeyboard?.();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!canRunMapHotkeys(e, this.viewId)) return;
       const settings = SettingsService.forApp(this.obsApp);
       // Escape key
       if (matchesMapHotkey(e, 'cancel', settings)) {
+        // A group being turned is put back; the selection stays
+        if (this.selectionManager?.handleEscape()) {
+          e.preventDefault();
+          return;
+        }
         if (this.lighting?.handleEscape()) {
           e.preventDefault();
           return;
@@ -878,8 +915,11 @@ export class PixiRendererOrchestrator { // Renamed class
       }
     };
     
-    this.keyboardHandler = handleKeyDown;
-    document.addEventListener('keydown', handleKeyDown);
+    // On the canvas' own window, which follows the view into a popout
+    this.unbindKeyboard = followWindow(this.pixiAppManager.getCanvasElement(), (win: Window): (() => void) => {
+      win.document.addEventListener('keydown', handleKeyDown);
+      return (): void => win.document.removeEventListener('keydown', handleKeyDown);
+    });
   }
   
 
@@ -904,6 +944,8 @@ export class PixiRendererOrchestrator { // Renamed class
    *  Must be called after TokenRenderer is available (either from setupRenderersAndManagers or initGrid). */
   private wireViewportDispatchProviders(): void {
     if (!this.tokenRenderer) return;
+
+    this.tokenRenderer.setPlacementGuard(() => this.tokenPlacer?.active ?? false);
 
     if (this.fogRenderer) {
       this.tokenRenderer.setFogCoverageProvider(() => this.fogRenderer!.getCommittedCoverage());
@@ -943,9 +985,11 @@ export class PixiRendererOrchestrator { // Renamed class
       this.selectionManager.setHitTestTokensProvider(
         (x, y) => this.tokenRenderer!.hitTestTokens(x, y)
       );
+      this.tokenRenderer.setGroupFrameHitTest((x, y) => this.selectionManager?.groupFrameContains(x, y) ?? false);
+      this.selectionManager.setGroupTurnHost(this.tokenRenderer.groupTurnHost());
     }
 
-    this.lightingFeature?.wire(this.tokenRenderer);
+    this.lighting?.wire(this.tokenRenderer);
 
     // Wire audio tool viewport handlers
     if (this.audioRenderer && this.audioTool) {
@@ -1051,15 +1095,13 @@ export class PixiRendererOrchestrator { // Renamed class
     delete this._unsubscribeFromGridVisibility;
     
 
-    // Remove keyboard handler
-    if (this.keyboardHandler) {
-      document.removeEventListener('keydown', this.keyboardHandler);
-      this.keyboardHandler = null;
-    }
+    this.unbindKeyboard?.();
+    this.unbindKeyboard = null;
 
     
     // Remove drawing tool handlers
 
+    this.tokenPlacer?.destroy();
     this.tokenRenderer?.destroy(); // Destroy TokenRenderer
     this.pinRenderer?.destroy(); // Destroy PinRenderer
     this.hexLinkInteraction?.destroy();
@@ -1072,7 +1114,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this.drawingInteraction?.destroy();
     this.textRenderer?.destroy(); // Destroy TextRenderer
     this.textTool?.destroy(); // Destroy TextTool
-    this.lightingFeature?.destroy();
+    this.lighting?.destroy();
     this.playerFrames?.destroy();
     delete this.playerFrames;
     this.audioRenderer?.destroy();
@@ -1127,7 +1169,7 @@ export class PixiRendererOrchestrator { // Renamed class
     if (!snapToGrid) return;
     
     // Handle position snapping
-    const tokens = state.objects?.tokens || {};
+    const tokens = mapTokens(state.objects);
     const tokenUpdates: Array<{id: string, x: number, y: number}> = [];
     
     for (const [id, token] of Object.entries(tokens)) {

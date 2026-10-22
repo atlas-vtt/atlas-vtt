@@ -125,6 +125,11 @@ $embed-caption-height: calc(2 * #{$spacing-m} + 2.6em);
   }
 }
 
+// A menu of the other ways to hand the file to Atlas: the button's own height, square
+.atlas-link-embed__more {
+  justify-content: center;
+}
+
 .atlas-link-embed__action-icon {
   display: flex;
   --icon-size: var(--icon-s);

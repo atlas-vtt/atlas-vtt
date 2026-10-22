@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TextureCache } from '../../src/app/pixi/token-renderer/TextureCache';
 import { createInMemoryApp } from '../mocks/inMemoryVault';

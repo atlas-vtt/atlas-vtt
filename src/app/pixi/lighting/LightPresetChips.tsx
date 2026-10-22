@@ -8,8 +8,7 @@ import { useExclusiveDropdown } from '../../packages/components/primitives/useEx
 import { renderEntries, type ContextMenuEntry } from '../../react/components/context-menu/AtlasContextMenu';
 import type { LightPresetDefinition } from '../../types/lightPresetTypes';
 import type { LightEmission, LightKind } from '../../types/lightingTypes';
-import { lightMarkerLook } from './lightMarker';
-import { lightMarkerTheme } from './LightMarkers';
+import { lightMarkerLook, lightMarkerTheme } from './lightMarker';
 
 const CUSTOM_LIGHT = 'Custom light';
 const AT_REST = { hovered: false, selected: false, dragging: false };

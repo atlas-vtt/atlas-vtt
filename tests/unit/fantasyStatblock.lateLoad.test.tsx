@@ -1,8 +1,8 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import FantasyStatblock from '../../src/app/react/components/FantasyStatblock';
 

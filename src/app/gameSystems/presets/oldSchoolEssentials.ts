@@ -27,6 +27,8 @@ export const OLD_SCHOOL_ESSENTIALS: SystemPreset = {
     },
     dice: { defaultRoll: '1d20', crit: 'natural' },
     diceSetId: D20_DICE_SET_ID,
+    // Group initiative: every round each side rolls 1d6, the higher acts first, and equal rolls act at once.
+    initiative: { mode: 'sides', roll: '1d20', firstSide: 'players', sideRoll: '1d6' },
     conditions: conditionsOf('ose', [
       { name: 'Paralysed', color: '#38bdf8', icon: 'frozen-body' },
       { name: 'Petrified', color: '#78716c', icon: 'stoned-skull' },

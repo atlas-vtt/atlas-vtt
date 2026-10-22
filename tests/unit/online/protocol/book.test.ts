@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import {
   bookLine, bookText, fitsPlayerFrame, isQuestDone, MAX_BOOK_NOTES, MAX_RESOURCE_KEY, MAX_TOKEN_VALUE, MAX_BOOK_QUESTS, MAX_NOTE_BODY, MAX_QUEST_REWARDS, parseGmMessage, parsePlayerMessage, type BookItem, type BookQuest, type PlayerBook,
@@ -11,7 +10,7 @@ const ITEM: BookItem = { id: ID, name: 'Rope', type: 'Gear', rarity: 'Common', t
 const QUEST_ID = 'fedcba9876543210fedcba98';
 const QUEST: BookQuest = { id: QUEST_ID, kind: 'main', state: 'active', title: 'The crown under the root', body: 'The Horned King wants it back.', place: { x: 0.25, y: 0.5 }, xp: 1200, rewards: ['Favour of the King'] };
 const BOOK: PlayerBook = {
-  character: { name: 'Ana', art: ART, ring: '#ffffff', resources: [{ key: 'hp', name: 'HP', colour: '#aa0000', direction: 'drains', current: 3, max: 8, editable: true }] },
+  character: { name: 'Ana', art: ART, ring: '#ffffff', resources: [{ key: 'hp', name: 'HP', colour: '#aa0000', direction: 'drains', current: 3, max: 8, editable: true, maxEditable: false }] },
   worldMap: { image: ART, width: 4000, height: 3000 },
   items: [ITEM],
   notes: [{ id: ID, title: 'Lead', body: 'Ask the miller.', at: 5 }],
@@ -65,9 +64,18 @@ describe('book messages to a player', () => {
     expect(read([{ ...resource, key: null, editable: true }])).toMatchObject({ character: { resources: [{ key: null, editable: false }] } });
     expect(read([{ ...resource, direction: 'static', key: 'ac', editable: true }])).toMatchObject({ character: { resources: [{ key: 'ac', editable: false }] } });
     expect(read([{ ...resource, key: 'k'.repeat(MAX_RESOURCE_KEY), editable: true }])).toMatchObject({ character: { resources: [{ editable: true }] } });
-    for (const broken of [{ key: '' }, { key: 'k'.repeat(MAX_RESOURCE_KEY + 1) }, { key: 'h\u0000p' }, { key: 7 }, { key: 'hp', editable: 'yes' }]) {
+    for (const broken of [{ key: '' }, { key: 'k'.repeat(MAX_RESOURCE_KEY + 1) }, { key: 'h\u0000p' }, { key: 7 }, { key: 'hp', editable: 'yes' }, { key: 'hp', maxEditable: 1 }]) {
       expect(read([{ ...resource, ...broken }]), JSON.stringify(broken)).toBeNull();
     }
+  });
+
+  it('read a maximum the player may set as such, a fixed value\'s too, and never one of a resource without a key', () => {
+    const resource = { name: 'HP', colour: '#aa0000', direction: 'drains', current: 3, max: 8 };
+    const read = (resources: unknown[]): unknown => parseGmMessage({ t: 'book-sheet', character: { ...BOOK.character, resources } });
+    expect(read([{ ...resource, key: 'hp' }])).toMatchObject({ character: { resources: [{ maxEditable: false }] } });
+    expect(read([{ ...resource, key: 'hp', maxEditable: true }])).toMatchObject({ character: { resources: [{ maxEditable: true }] } });
+    expect(read([{ ...resource, direction: 'static', key: 'ac', maxEditable: true }])).toMatchObject({ character: { resources: [{ editable: false, maxEditable: true }] } });
+    expect(read([{ ...resource, key: null, maxEditable: true }])).toMatchObject({ character: { resources: [{ maxEditable: false }] } });
   });
 
   it('read a quest that names no place, experience or rewards as one without them', () => {
@@ -129,6 +137,8 @@ describe('what a player writes into their book', () => {
     expect(parsePlayerMessage({ t: 'book-purse', purse: BOOK.purse })).toEqual({ t: 'book-purse', purse: BOOK.purse });
     expect(parsePlayerMessage({ t: 'book-resource', key: 'hp', current: 5, extra: true })).toEqual({ t: 'book-resource', key: 'hp', current: 5 });
     expect(parsePlayerMessage({ t: 'book-resource', key: 'hp', current: -MAX_TOKEN_VALUE })).toEqual({ t: 'book-resource', key: 'hp', current: -MAX_TOKEN_VALUE });
+    expect(parsePlayerMessage({ t: 'book-resource', key: 'hp', current: 5, max: 12 })).toEqual({ t: 'book-resource', key: 'hp', current: 5, max: 12 });
+    expect(parsePlayerMessage({ t: 'book-resource', key: 'ac', current: 0, max: 0 })).toEqual({ t: 'book-resource', key: 'ac', current: 0, max: 0 });
   });
 
   it('refuses an edit of a resource that names no key, or no finite value within the limits', () => {
@@ -136,6 +146,9 @@ describe('what a player writes into their book', () => {
       expect(parsePlayerMessage({ t: 'book-resource', ...broken }), JSON.stringify(broken)).toBeNull();
     }
     expect(parseGmMessage({ t: 'book-resource', key: 'hp', current: 1 })).toBeNull();
+    for (const max of [1.5, -1, MAX_TOKEN_VALUE + 1, Number.NaN, '5', null]) {
+      expect(parsePlayerMessage({ t: 'book-resource', key: 'hp', current: 1, max }), String(max)).toBeNull();
+    }
     expect(fitsPlayerFrame({ t: 'book-resource', key: 'k'.repeat(MAX_RESOURCE_KEY), current: -MAX_TOKEN_VALUE })).toBe(true);
   });
 

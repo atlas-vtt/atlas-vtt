@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isPlayerCharacter, libraryTokenOf } from '../../src/app/characters/playerCharacters';
+import { isPlayerCharacter, libraryTokenOf, playerCharactersLinking } from '../../src/app/characters/playerCharacters';
 import { tokenFromFile, tokenToFile } from '../../src/app/resources/resourceFileFormat';
 import type { TokenAsset } from '../../src/app/services/AssetService';
 import type { Character } from '../../src/app/types';
@@ -28,5 +28,20 @@ describe('the library token of a placed token', () => {
     const file = tokenToFile(placed);
     expect(file).toMatchObject({ assetId: 'ranger', hp: { current: 3, max: 9 } });
     expect(tokenFromFile(file)).toMatchObject({ assetId: 'ranger' });
+  });
+});
+
+describe('the player characters of a statblock note', () => {
+  const linked = (id: string, name: string, statblockPath: string, playerCharacter?: true): TokenAsset => ({ ...record(id, `${id}.webp`, playerCharacter), name, statblockPath });
+
+  it('are the player characters linking the note, by name', () => {
+    const tokens = [
+      linked('z', 'Zed', 'Mira.md', true),
+      linked('m', 'Mira', 'Mira.md', true),
+      linked('wolf', 'Wolf', 'Mira.md'),
+      linked('o', 'Other', 'Other.md', true),
+    ];
+    expect(playerCharactersLinking(tokens, 'Mira.md').map((token) => token.id)).toEqual(['m', 'z']);
+    expect(playerCharactersLinking(tokens, 'Nobody.md')).toEqual([]);
   });
 });

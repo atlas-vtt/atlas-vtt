@@ -132,6 +132,7 @@ export function TemplateList(props: TemplateListProps): React.JSX.Element {
           templateId={deleting.entry.template.id}
           usage={deleting.usage}
           templates={library?.templates ?? []}
+          lostButtons={(deleting.entry.template.recovery ?? []).map((button) => button.name)}
           onDelete={remove}
           onClose={() => setDeleting(null)}
         />

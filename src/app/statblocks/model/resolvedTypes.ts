@@ -41,4 +41,15 @@ export interface ResolvedStatblock {
   lookName: string | null;
   /** Keys of the template's fields that carry a meaning. */
   meanings: Readonly<Partial<Record<FieldMeaning, FieldKey>>>;
+  /**
+   * A native note's fields as its card shows them, where they differ from `fields`: `@` references
+   * filled in, a Number field written as a sum its total. Read numbers through `shownFieldsOf`;
+   * whatever writes the note, or names a base for a write, reads `fields`.
+   */
+  shownFields?: Readonly<Record<string, unknown>>;
+}
+
+/** The fields to read numbers and words from: as the card shows them (`shownFields`), else as written. */
+export function shownFieldsOf(statblock: Pick<ResolvedStatblock, 'fields' | 'shownFields'>): Readonly<Record<string, unknown>> {
+  return statblock.shownFields ?? statblock.fields;
 }

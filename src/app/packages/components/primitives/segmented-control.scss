@@ -32,3 +32,27 @@
   padding: $spacing-xs;
   white-space: nowrap;
 }
+
+// An option with an icon: the icon before the word
+.atlas-segmented__option--icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-xs;
+}
+
+.atlas-segmented__icon {
+  display: inline-flex;
+  flex-shrink: 0;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+}
+
+// Shown, but not to be chosen: its hint says why
+.atlas-segmented__option[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: default;
+}

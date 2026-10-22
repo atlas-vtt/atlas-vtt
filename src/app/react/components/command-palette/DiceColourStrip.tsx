@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from '../../../../utils/cn';
+import { t } from '../../../i18n';
 import { DICE_COLOUR_OPTIONS, type DiceColour } from '../../../dice3d/diceLook';
 
 interface DiceColourStripProps {
@@ -12,7 +13,7 @@ interface DiceColourStripProps {
 /** The dice colours side by side, each as the d20 it gives, to click. */
 export function DiceColourStrip({ value, previews, onChange }: DiceColourStripProps): React.ReactElement {
   return (
-    <div className="atlas-dice-colour-strip" role="radiogroup" aria-label="Dice colour">
+    <div className="atlas-dice-colour-strip" role="radiogroup" aria-label={t('diceSettings.colour')}>
       {DICE_COLOUR_OPTIONS.map((option) => {
         const preview = previews[option.value];
         const active = option.value === value;

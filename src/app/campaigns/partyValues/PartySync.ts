@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { isPlayerCharacter, libraryTokenOf, type PlacedTokenSource } from '../../characters/playerCharacters';
+import { characterOf, libraryTokenOf, type PlacedTokenSource } from '../../characters/playerCharacters';
 import type { TokenAsset } from '../../services/AssetService';
 import type { ViewAtlasStore } from '../../storeFactory';
 import { runUntracked } from '../../stores/history';
@@ -66,6 +66,7 @@ export class PartySync {
   }
 
   private readonly views = new Map<string, ViewLink>();
+  private readonly listeners = new Set<() => void>();
   private readonly stops: (() => void)[] = [];
   private readonly characterIds = new Map<string, string | null>();
   private readonly pending: PartyChangeMap = new Map();
@@ -112,19 +113,30 @@ export class PartySync {
     for (const { reconciler } of this.views.values()) reconciler.settle();
   }
 
+  /** Calls `listener` whenever the kept values may have changed (an edit, the file, another campaign); answers how to stop. */
+  onChange(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private changed(): void {
+    for (const listener of [...this.listeners]) listener();
+  }
+
   /** The value a campaign keeps of a character's resource, or undefined. */
   value(campaignId: string, characterId: string, key: string): PartyValue | undefined {
     const values = campaignId === this.campaignId ? this.values : this.fileValues(campaignId);
     return values[partyKey(campaignId, characterId, key)];
   }
 
-  /** The library token id of the player character a token was placed from, remembered until the library changes; null for a token of no player character. */
+  /** The player character a token was placed from (`characterOf`: one of its forms names it), by its library token id, remembered until the library changes; null for a token of no player character. */
   characterOf(token: PlacedTokenSource): string | null {
     const key = `${token.assetId ?? ''}\u0000${token.imagePath}`;
     let id = this.characterIds.get(key);
     if (id === undefined) {
-      const record = libraryTokenOf(token, this.deps.tokens());
-      id = record && isPlayerCharacter(record) ? record.id : null;
+      const tokens = this.deps.tokens();
+      const record = libraryTokenOf(token, tokens);
+      id = record ? characterOf(record, tokens)?.id ?? null : null;
       this.characterIds.set(key, id);
     }
     return id;
@@ -155,6 +167,7 @@ export class PartySync {
   destroy(): void {
     void this.flush();
     this.destroyed = true;
+    this.listeners.clear();
     for (const stop of this.stops.splice(0)) stop();
     for (const viewId of [...this.views.keys()]) this.unregisterStore(viewId);
     this.campaignId = null;
@@ -193,6 +206,7 @@ export class PartySync {
       this.mirrorInto(store, this.values);
       reconciler.setContext(context);
     }
+    this.changed();
   }
 
   private stop(): void {
@@ -202,6 +216,7 @@ export class PartySync {
     this.values = {};
     for (const { reconciler } of this.views.values()) reconciler.setContext(null);
     this.writePending(campaignId);
+    this.changed();
   }
 
   /** Hands what waits to the campaign's file now. */
@@ -222,6 +237,7 @@ export class PartySync {
     if (changes.size === 0) return;
     this.values = withChanges(this.values, changes);
     for (const { store } of this.views.values()) this.mirrorChanges(store, changes);
+    this.changed();
   }
 
   /** A store's values changed by anything but this sync: they are the campaign's now. */
@@ -237,6 +253,7 @@ export class PartySync {
     for (const [key, value] of changes) this.pending.set(key, value);
     this.schedule();
     for (const [viewId, { store }] of this.views) if (viewId !== from) this.mirrorChanges(store, changes);
+    this.changed();
   }
 
   private schedule(): void {

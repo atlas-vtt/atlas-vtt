@@ -74,28 +74,36 @@ const QR_LABEL = 'QR code';
 
 /**
  * "Copy invite link": the link itself is never shown. At the row's end a ghost button opens the link
- * as a QR code; it shows with the row's hover or focus, while its card is open, and always where
- * nothing hovers. Returns the row's element.
+ * as a QR code, and beside it "…" opens the link's menu (`linkEntries`); the menu's button shows with
+ * the row's hover or focus, while its menu is open, and always where nothing hovers. Returns the row's element.
  */
-export function inviteRow(parent: HTMLElement, copy: () => Promise<boolean>, qr: QrToggle): HTMLElement {
+export function inviteRow(parent: HTMLElement, copy: () => Promise<boolean>, qr: QrToggle, linkEntries: readonly MenuEntry[]): HTMLElement {
   const row = parent.createDiv({ cls: 'atlas-online-invite-row' });
   copyRow(row, { icon: 'link', text: 'Copy invite link', copied: 'Link copied', focusKey: 'copy' }, copy);
   const button = row.createEl('button', { cls: ['atlas-online-icon-button', 'atlas-online-invite__qr', ...(qr.open ? ['is-open'] : [])], attr: { type: 'button', 'aria-label': QR_LABEL, 'aria-expanded': String(qr.open), 'data-focus-key': 'qr' } });
   setIcon(button, 'qr-code');
   button.addEventListener('click', () => qr.toggle());
+  const more = row.createEl('button', { cls: 'atlas-online-icon-button atlas-online-invite__more', attr: { type: 'button', 'aria-label': 'Link options', 'aria-haspopup': 'menu', 'data-focus-key': 'link-more' } });
+  setIcon(more, 'more-horizontal');
+  more.addEventListener('click', () => openMenuBelow(linkEntries, more));
   return row;
 }
 
-/** The surface's header: its title, the status as a dot (in words only while it needs attention), "…" and, where given, Close. */
-export function surfaceHeader(layer: HTMLElement, title: string, status: { readonly text: string; readonly tone: Tone }, statusInWords: string | null, entries: readonly MenuEntry[], close: (() => void) | null): HTMLElement {
+/** The surface's header: its title, the status as a dot (in words only while it needs attention), "…" where it holds something, Stop and, where given, Close. */
+export function surfaceHeader(layer: HTMLElement, title: string, status: { readonly text: string; readonly tone: Tone }, statusInWords: string | null, entries: readonly MenuEntry[], stop: () => void, close: (() => void) | null): HTMLElement {
   const header = layer.createDiv({ cls: 'atlas-online-header' });
   header.createDiv({ cls: 'atlas-online-title', text: title, attr: { id: `${layer.id}-title` } });
   const line = header.createDiv({ cls: `atlas-online-header__status atlas-online-tone--${status.tone}` });
   line.createSpan({ cls: 'atlas-online-status__dot', attr: { 'aria-hidden': 'true' } });
   line.createSpan({ cls: statusInWords === null ? 'atlas-online-sr-only' : 'atlas-online-status__text', text: statusInWords ?? status.text });
-  const more = header.createEl('button', { cls: 'atlas-online-icon-button atlas-online-header__more', attr: { type: 'button', 'aria-label': 'More', 'aria-haspopup': 'menu', 'data-focus-key': 'more' } });
-  setIcon(more, 'more-horizontal');
-  more.addEventListener('click', () => openMenuBelow(entries, more));
+  if (entries.length > 0) {
+    const more = header.createEl('button', { cls: 'atlas-online-icon-button atlas-online-header__more', attr: { type: 'button', 'aria-label': 'More', 'aria-haspopup': 'menu', 'data-focus-key': 'more' } });
+    setIcon(more, 'more-horizontal');
+    more.addEventListener('click', () => openMenuBelow(entries, more));
+  }
+  const stopButton = header.createEl('button', { cls: 'atlas-online-icon-button atlas-online-header__stop', attr: { type: 'button', 'aria-label': 'Stop table', 'data-focus-key': 'stop' } });
+  setIcon(stopButton, 'power');
+  stopButton.addEventListener('click', stop);
   if (close !== null) {
     const button = header.createEl('button', { cls: 'atlas-online-close', attr: { type: 'button', 'aria-label': 'Close', 'data-focus-key': 'close' } });
     setIcon(button, 'x');

@@ -16,10 +16,12 @@ interface InitiativeStatblockPreviewProps {
   app: App | null;
   state: StatblockHoverPreviewState<PreviewedEntry>;
   tokens: Record<string, TokenEntity>;
+  /** The side of the card the preview opens on: away from the edge the tracker stands at. */
+  side: 'left' | 'right';
 }
 
 /** The statblock of the hovered combatant, beside the tracker. */
-export function InitiativeStatblockPreview({ app, state, tokens }: InitiativeStatblockPreviewProps): React.ReactElement {
+export function InitiativeStatblockPreview({ app, state, tokens, side }: InitiativeStatblockPreviewProps): React.ReactElement {
   const hovered = state.hoveredEntry;
   const token = hovered ? tokens[hovered.entry.tokenId] : undefined;
   return (
@@ -43,7 +45,7 @@ export function InitiativeStatblockPreview({ app, state, tokens }: InitiativeSta
       isClosing={state.isClosing}
       position={state.position}
       anchorRect={state.anchorRect}
-      preferredSide="left"
+      preferredSide={side}
     />
   );
 }

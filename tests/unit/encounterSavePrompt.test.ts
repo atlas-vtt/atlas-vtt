@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
 import { saveEncounter, type EncounterTokenDraft } from '../../src/app/encounters/encounterSaveService';
 import type { AssetService } from '../../src/app/services/AssetService';

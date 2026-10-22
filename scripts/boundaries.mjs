@@ -78,6 +78,7 @@ export const BOUNDARIES = {
       "src/app/stores/history/**/*.ts",
       "src/app/stores/exploredEditHistory.ts",
       "src/app/stores/tokenStacking.ts",
+      "src/app/tokens/offMap.ts",
       "src/app/pixi/lighting/LightingRenderer.ts",
       "src/app/pixi/lighting/ExploredMemory.ts",
       "src/app/pixi/lighting/ExploredSaveScheduler.ts",
@@ -126,7 +127,10 @@ export const BOUNDARIES = {
       "src/app/statblocks/model/asciiFold.ts",
       "src/app/statblocks/format/jsonValues.ts",
       "src/app/statblocks/roles/roleValidation.ts",
-      "src/app/statblocks/roles/collectionStatblockRoles.ts"
+      "src/app/statblocks/roles/collectionStatblockRoles.ts",
+      "src/app/recovery/recoveryTypes.ts",
+      "src/app/recovery/parseRecovery.ts",
+      "src/app/recovery/collectionRecovery.ts"
     ],
     "exclude": [
       "src/app/grid/GridController.ts",

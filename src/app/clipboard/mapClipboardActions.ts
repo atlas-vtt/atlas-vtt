@@ -4,6 +4,7 @@ import { mayLinkFromScene } from '../services/sceneLinks';
 import { readMapClipboard, writeMapClipboard } from './mapClipboard';
 import { collectMapObjects, countMapObjects, type MapObjectContent, type Point } from './mapObjectContent';
 import { pasteOffset, placeMapObjects } from './mapObjectPlacement';
+import { withoutOffMap } from '../tokens/offMap';
 
 type ClipboardStore = Pick<StoreApi<ViewAtlasState>, 'getState'>;
 
@@ -13,8 +14,9 @@ function canEditMapObjects(state: ViewAtlasState): boolean {
 }
 
 /** Ids that copy, cut and duplicate act on. */
+/** The selection a copy or cut takes: never a combatant beside the map, which a cut would delete unseen. */
 function editableSelection(state: ViewAtlasState): string[] {
-  return canEditMapObjects(state) ? state.selectedIds : [];
+  return canEditMapObjects(state) ? withoutOffMap(state.objects, state.selectedIds) : [];
 }
 
 function copyableContent(state: ViewAtlasState, ids: readonly string[]): MapObjectContent | null {

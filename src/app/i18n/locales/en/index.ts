@@ -19,12 +19,15 @@ import { quest } from './quest';
 import { dashboard } from './dashboard';
 import { dice } from './dice';
 import { diceLab } from './diceLab';
+import { diceRoll } from './diceRoll';
+import { diceSettings } from './diceSettings';
 import { exportDialog } from './exportDialog';
 import { grid } from './grid';
 import { gridModal } from './gridModal';
 import { history } from './history';
 import { importReview } from './importReview';
 import { initiative } from './initiative';
+import { initRules } from './initRules';
 import { loot } from './loot';
 import { tables } from './tables';
 import { lpv } from './lpv';
@@ -47,8 +50,10 @@ import { sbImport } from './sbImport';
 import { vaultImages } from './vaultImages';
 import { filters } from './filters';
 import { search } from './search';
+import { senses } from './senses';
 import { sort } from './sort';
 import { toolbar } from './toolbar';
+import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
 import { pin } from './pin';
 import { laser } from './laser';
@@ -72,6 +77,8 @@ import { playerInit } from './playerInit';
 import { present } from './present';
 import { preview } from './preview';
 import { recovery } from './recovery';
+import { recoveryEditor } from './recoveryEditor';
+import { rest } from './rest';
 import { review } from './review';
 import { sbCandidate } from './sbCandidate';
 import { sbToken } from './sbToken';
@@ -109,12 +116,15 @@ export const en = {
   ...dashboard,
   ...dice,
   ...diceLab,
+  ...diceRoll,
+  ...diceSettings,
   ...exportDialog,
   ...grid,
   ...gridModal,
   ...history,
   ...importReview,
   ...initiative,
+  ...initRules,
   ...loot,
   ...tables,
   ...lpv,
@@ -137,8 +147,10 @@ export const en = {
   ...vaultImages,
   ...filters,
   ...search,
+  ...senses,
   ...sort,
   ...toolbar,
+  ...toolbarEdit,
   ...hotkey,
   ...pin,
   ...laser,
@@ -164,6 +176,8 @@ export const en = {
   ...present,
   ...preview,
   ...recovery,
+  ...recoveryEditor,
+  ...rest,
   ...review,
   ...sbCandidate,
   ...sbToken,

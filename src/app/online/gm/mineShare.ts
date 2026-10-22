@@ -1,11 +1,13 @@
-import type { GmMessage } from '../protocol/index.ts';
+import type { GmMessage, SharedRollDice } from '../protocol/index.ts';
 
-/** Who is connected and who owns which token. */
+/** Who is connected, who owns which token, and the dice a token rolls with. */
 export interface MineSource {
   /** The ids of the players connected now. */
   onlinePlayers(): readonly string[];
   /** The owner of a token of the GM's scene, by its GM id. */
   ownerOf(tokenId: string): string | undefined;
+  /** The dice of a token's own set (its character's template's), by its GM id; undefined where it rolls with the map's. */
+  diceOf?(tokenId: string): SharedRollDice | undefined;
 }
 
 /** The token list players were last sent: its scene, and the random id players know each token by, by GM id. */
@@ -14,15 +16,15 @@ export interface ListedTokens {
   readonly aliases: ReadonlyMap<string, string>;
 }
 
-/** The ids, as players know them, of the listed tokens that are the player's, sorted. */
-export function mineOf(player: string, listed: ListedTokens, ownerOf: (tokenId: string) => string | undefined): string[] {
-  return [...listed.aliases].filter(([tokenId]) => ownerOf(tokenId) === player).map(([, alias]) => alias).sort();
+/** The listed tokens that are the player's, as GM id and the id players know it by, sorted by the latter. */
+function ownedBy(player: string, listed: ListedTokens, ownerOf: (tokenId: string) => string | undefined): [string, string][] {
+  return [...listed.aliases].filter(([tokenId]) => ownerOf(tokenId) === player).sort(([, a], [, b]) => (a < b ? -1 : a > b ? 1 : 0));
 }
 
 /**
- * Tells each connected player which tokens of the last list are theirs: a `mine` message to that
- * player alone, whenever their share changes. Only tokens in the list are named, so a hidden token
- * a player owns stays unknown to them.
+ * Tells each connected player which tokens of the last list are theirs, and the dice of those that
+ * roll with a set of their own: a `mine` message to that player alone, whenever their share changes.
+ * Only tokens in the list are named, so a hidden token a player owns stays unknown to them.
  */
 export class MineShare {
   private readonly source: MineSource;
@@ -49,11 +51,16 @@ export class MineShare {
     const online = new Set(this.source.onlinePlayers());
     for (const player of this.sent.keys()) if (!online.has(player)) this.sent.delete(player);
     for (const player of online) {
-      const tokens = mineOf(player, listed, (tokenId) => this.source.ownerOf(tokenId));
-      const key = JSON.stringify([listed.scene, tokens]);
+      const owned = ownedBy(player, listed, (tokenId) => this.source.ownerOf(tokenId));
+      const dice = Object.fromEntries(owned.flatMap(([tokenId, alias]) => {
+        const own = this.source.diceOf?.(tokenId);
+        return own === undefined ? [] : [[alias, own] as const];
+      }));
+      const body: GmMessage = { t: 'mine', scene: listed.scene, tokens: owned.map(([, alias]) => alias), ...(Object.keys(dice).length > 0 && { dice }) };
+      const key = JSON.stringify(body);
       if (this.sent.get(player) === key) continue;
       this.sent.set(player, key);
-      this.send({ t: 'mine', scene: listed.scene, tokens }, player);
+      this.send(body, player);
     }
   }
 

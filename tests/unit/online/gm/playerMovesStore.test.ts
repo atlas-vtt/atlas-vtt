@@ -1,4 +1,3 @@
-// @vitest-environment node
 import type { PlayerMove } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { holdTokens } from '../../../../src/app/lighting/sightOnDrop';

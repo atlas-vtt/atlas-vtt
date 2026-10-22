@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React, { useContext, useId } from 'react';
 import type { ResourceValue } from '../../../resources/resourceTypes';
 import type { TrackBlock } from '../../model/templateTypes';
 import { numericValue } from '../../values/numberText';
@@ -8,57 +8,48 @@ import { useSheet } from '../sheetContext';
 import type { SheetState } from '../sheetState';
 import { LabelledLine } from '../values/LabelledLine';
 import { StandIn, ValueText } from '../values/ValueText';
-import { ValueSlot } from '../valueSlot';
+import { ValueEditingContext, ValueSlot } from '../valueSlot';
 import type { BlockViewProps } from './blockViewProps';
-import { MAX_TRACK_BOXES } from '../values/trackBoxes';
-
-
-type TrackStyle = React.CSSProperties & Record<`--${string}`, string | number>;
+import { TrackMeter } from '../shared/TrackMeter';
+import { trackedShown } from '../values/trackedShown';
 
 /**
  * The value the track shows: the token's, where the statblock is shown for a
- * token that holds the resource; else where it starts, full when it counts
- * down and empty when it counts up. It is drawn in the theme's accent, as the
- * rest of the card is, never in the resource's colour on the map.
+ * token that holds the resource or the tracked number; else where it starts,
+ * full when it counts down and empty when it counts up. It is drawn in the
+ * theme's accent, as the rest of the card is, never in the resource's colour
+ * on the map.
  */
 function trackValue(block: TrackBlock, sheet: SheetState): ResourceValue | null {
   const held = block.resource ? sheet.token?.resources?.[block.resource] : undefined;
   if (held && held.max > 0) return held;
+  const tracked = trackedShown(block.field, sheet);
+  if (tracked) return { ...tracked, current: block.counts === sheet.tracked.get(block.field)?.counts ? tracked.current : tracked.max - tracked.current };
   const max = numericValue(sheet.reader(block.field));
   if (max === null || max <= 0) return null;
   const whole = Math.floor(max);
   return { current: block.counts === 'down' ? whole : 0, max: whole };
 }
 
-function Boxes({ value, labelId }: { value: ResourceValue; labelId: string }): React.JSX.Element {
-  const marked = Math.max(0, Math.min(value.current, value.max));
-  return (
-    <span className="atlas-sb-track-boxes" role="meter" aria-labelledby={labelId}
-      aria-valuemin={0} aria-valuemax={value.max} aria-valuenow={marked}>
-      {Array.from({ length: value.max }, (_, index) => (
-        <span key={index} className={index < marked ? 'atlas-sb-track-box is-marked' : 'atlas-sb-track-box'} />
-      ))}
-    </span>
-  );
+/**
+ * The resource the track shows the token's value of, which the surface may set (`ValueEditing.track`): the
+ * resource it is bound to, where the token holds it, else its tracked number, where it counts the way the number
+ * counts. Null where it shows only where it starts.
+ */
+function ownKey(block: TrackBlock, sheet: SheetState): string | null {
+  if (block.resource && sheet.token?.resources?.[block.resource]) return block.resource;
+  const tracked = sheet.tracked.get(block.field);
+  return tracked && trackedShown(block.field, sheet) !== null && block.counts === tracked.counts ? tracked.key : null;
 }
 
-function Gauge({ value, labelId }: { value: ResourceValue; labelId: string }): React.JSX.Element {
-  const share = value.max > 0 ? Math.max(0, Math.min(1, value.current / value.max)) : 0;
-  const style: TrackStyle = { '--atlas-sb-gauge-share': share };
-  return (
-    <span className="atlas-sb-gauge">
-      <span className="atlas-sb-gauge-track" role="meter" aria-labelledby={labelId}
-        aria-valuemin={0} aria-valuemax={value.max} aria-valuenow={value.current}>
-        <span className="atlas-sb-gauge-fill" style={style} />
-      </span>
-      <span className="atlas-sb-gauge-value">{value.current} / {value.max}</span>
-    </span>
-  );
-}
-
-/** A count of boxes or a gauge: the statblock's maximum, and with a token its current value. */
+/**
+ * A count of boxes or a gauge: the statblock's maximum, and with a token its current value. Where the surface sets
+ * the token's value (beside a player character's note), the maximum stands before the track as a value of its own,
+ * edited as any value is, and the track sets the current value.
+ */
 export function TrackView({ block, display }: BlockViewProps<TrackBlock>): React.JSX.Element | null {
   const { state } = useSheet();
+  const editing = useContext(ValueEditingContext);
   const labelId = useId();
   const label = block.label ?? state.fields.get(block.field)?.label ?? block.field;
   const track = display.state === 'value' ? trackValue(block, state) : null;
@@ -68,13 +59,28 @@ export function TrackView({ block, display }: BlockViewProps<TrackBlock>): React
   const raw = display.state === 'value' && !track && field !== undefined && valueMisfit(field, value) !== null;
   if (display.state === 'value' && !track && !raw) return null;
 
-  const boxes = block.look === 'boxes' && (track?.max ?? 0) <= MAX_TRACK_BOXES;
+  const own = track ? ownKey(block, state) : null;
+  if (track && own !== null && editing?.track) {
+    // A tracked number whose maximum another field holds is filled in there
+    const tracked = state.tracked.get(block.field);
+    const maxHere = !tracked || tracked.maxField === block.field;
+    return (
+      <LabelledLine label={label} className="atlas-sb-track" labelId={labelId}>
+        {maxHere && (
+          <ValueSlot block={block}>
+            <span className="atlas-sb-value atlas-sb-track-max">{valueText(value) || track.max}</span>
+          </ValueSlot>
+        )}
+        <span className="atlas-sb-track-value">{editing.track(own, label, track, block.look, labelId)}</span>
+      </LabelledLine>
+    );
+  }
   return (
     <LabelledLine label={label} className="atlas-sb-track" labelId={labelId}>
       <ValueSlot block={block}>
         {track && (
           <span className="atlas-sb-track-value">
-            {boxes ? <Boxes value={track} labelId={labelId} /> : <Gauge value={track} labelId={labelId} />}
+            <TrackMeter value={track} look={block.look} label={label} labelId={labelId} />
           </span>
         )}
         {raw && <ValueText shown={{ text: valueText(value), problems: [] }} />}

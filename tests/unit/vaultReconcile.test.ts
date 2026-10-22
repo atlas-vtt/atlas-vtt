@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AssetService, type SceneAsset } from '../../src/app/services/AssetService';
 import { FileReferenceService } from '../../src/app/services/FileReferenceService';

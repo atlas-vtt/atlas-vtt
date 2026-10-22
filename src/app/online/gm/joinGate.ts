@@ -1,8 +1,11 @@
+import { newJoinCode } from '../../utils/joinCode.ts';
 import { JOIN_CODE_PATTERN, type PlayerInfo } from '../protocol/index.ts';
+import type { ArmedCards } from './armedCards.ts';
 import type { Timers } from './companionTimers.ts';
 import { ARM_MS, WaitingKnocks, type WaitingPlayer } from './waitingKnocks.ts';
 
 export { ARM_MS, FULL_NOTE_MS, type WaitingPlayer } from './waitingKnocks.ts';
+export { newJoinCode };
 
 /**
  * A table's gates as the companion keeps them with the table: the join code players are told apart
@@ -26,21 +29,11 @@ const MAX_PAUSE_MS = 10 * 60_000;
 /** What the GM reads while too many wrong codes keep newcomers out. */
 export const PAUSED_TEXT = 'Joins paused: too many wrong codes';
 
-function randomUint32(): number {
-  return crypto.getRandomValues(new Uint32Array(1))[0] ?? 0;
-}
+/** A new table's gates: a fresh code that is none of `taken` (the players' own codes), and both switches on. */
+export const newGate = (random?: () => number, taken?: ReadonlySet<string>): GateSettings => ({ code: newJoinCode(random, taken), requireCode: true, askToJoin: true });
 
-/** A join code: six digits, each code as likely as any other (numbers past the last whole million are drawn again). */
-export function newJoinCode(random: () => number = randomUint32): string {
-  const span = 1_000_000;
-  const limit = Math.floor(2 ** 32 / span) * span;
-  let value = random();
-  while (value >= limit) value = random();
-  return String(value % span).padStart(6, '0');
-}
-
-/** A new table's gates: a fresh code, and both switches on. */
-export const newGate = (random?: () => number): GateSettings => ({ code: newJoinCode(random), requireCode: true, askToJoin: true });
+/** The gates with a new code where theirs is one of `taken` (a player's own code now: they share the page's one field); else these very gates. */
+export const freeGate = (gate: GateSettings, taken: ReadonlySet<string>, random?: () => number): GateSettings => (taken.has(gate.code) ? { ...gate, code: newJoinCode(random, taken) } : gate);
 
 /** The gates from the plugin's data, each field checked; a table saved before it had gates gets new ones. */
 export function readGate(data: unknown, random?: () => number): GateSettings {
@@ -98,6 +91,10 @@ export interface GatePorts {
   paused?(): void;
   readonly timers: Timers;
   readonly random?: () => number;
+  /** The campaign's players' own codes, which a new join code never is: they share the page's one field. */
+  taken?(): ReadonlySet<string>;
+  /** The arming clock the knocks share with the other cards over the control; one of their own without it. */
+  readonly cards?: ArmedCards;
 }
 
 /**
@@ -116,7 +113,7 @@ export class TableGate implements GateActions {
   constructor(settings: GateSettings, ports: GatePorts) {
     this.current = settings;
     this.ports = ports;
-    this.knocks = new WaitingKnocks(ports.timers, () => ports.changed());
+    this.knocks = new WaitingKnocks(ports.timers, () => ports.changed(), ports.cards);
   }
 
   get settings(): GateSettings {
@@ -135,7 +132,7 @@ export class TableGate implements GateActions {
 
   /** A new code, at once: the old one stops working, and a pause is over. */
   newCode(): void {
-    this.set({ ...this.current, code: newJoinCode(this.ports.random) });
+    this.set({ ...this.current, code: newJoinCode(this.ports.random, this.ports.taken?.()) });
   }
 
   setRequireCode(on: boolean): void {

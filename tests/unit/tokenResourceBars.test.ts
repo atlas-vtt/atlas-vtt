@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import 'pixi.js/events';
 import { Container, EventBoundary, FederatedPointerEvent, Graphics, Point, Text } from 'pixi.js';

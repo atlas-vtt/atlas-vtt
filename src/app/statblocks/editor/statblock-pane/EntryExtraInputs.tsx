@@ -39,17 +39,33 @@ function PartTextInput({ extra, labelId, text, onChange }: PartInputProps): Reac
 /** A dropdown that opens with its input, as the pane's choice Values do; nothing is typed into it. */
 function usePartList(labelText: string, options: readonly ChoiceOption[], onPick: (value: string) => void): {
   list: ReturnType<typeof useOptionList>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   inputProps: React.InputHTMLAttributes<HTMLInputElement>;
+  /** For the box around the input: a press anywhere on it (its chevron, its padding, a chip's gap) opens the list from the input. */
+  boxProps: React.HTMLAttributes<HTMLSpanElement>;
 } {
   const list = useOptionList(labelText, options, onPick);
+  const inputRef = useRef<HTMLInputElement>(null);
   return {
     list,
+    inputRef,
     inputProps: {
       ...list.inputProps,
       readOnly: true,
       onMouseDown: () => { if (!list.open) list.show(); },
       onFocus: list.show,
       onBlur: () => list.setOpen(false),
+    },
+    boxProps: {
+      onMouseDown: (event) => {
+        const input = inputRef.current;
+        // The input and the box's own controls (a chip's cross) take their press themselves
+        if (input === null || event.button !== 0 || (event.target as Partial<Element>).closest?.('input, button') != null) return;
+        // A press that lands on no control would take focus out of the ability and close it
+        event.preventDefault();
+        input.focus();
+        list.show();
+      },
     },
   };
 }
@@ -69,11 +85,12 @@ function onListKey(list: ReturnType<typeof useOptionList>, event: React.Keyboard
 /** One of the template's options, or none. A value of the note's that is no option shows as written and stays until another is picked. */
 function PartChoiceInput({ extra, labelId, text, onChange }: PartInputProps): React.JSX.Element {
   const options = [NONE, ...(extra.options ?? []).map((option) => ({ value: option, label: option }))];
-  const { list, inputProps } = usePartList(extra.label, options, onChange);
+  const { list, inputRef, inputProps, boxProps } = usePartList(extra.label, options, onChange);
   return (
-    <span className="atlas-sb-pane-field atlas-sb-pane-choice atlas-sb-pane-entry__control">
+    <span className="atlas-sb-pane-field atlas-sb-pane-choice atlas-sb-pane-entry__control" {...boxProps}>
       <input
         {...CONTROL}
+        ref={inputRef}
         type="text"
         className="atlas-sb-pane-input"
         value={text}
@@ -92,9 +109,8 @@ function PartChoiceInput({ extra, labelId, text, onChange }: PartInputProps): Re
 function PartPicksInput({ extra, labelId, text, onChange }: PartInputProps): React.JSX.Element {
   const shape: ChoiceShape = { options: extra.options ?? [], several: true };
   const read = readChoice(shape, text);
-  const inputRef = useRef<HTMLInputElement>(null);
   const left = optionsLeft(shape, read.picks).map((option) => ({ value: option, label: option }));
-  const { list, inputProps } = usePartList(extra.label, left, (option) => {
+  const { list, inputRef, inputProps, boxProps } = usePartList(extra.label, left, (option) => {
     onChange(choiceText(shape, { ...read, picks: [...read.picks, newPick(shape, option)] }));
   });
   const removePick = (index: number): void => {
@@ -107,7 +123,7 @@ function PartPicksInput({ extra, labelId, text, onChange }: PartInputProps): Rea
   };
   const empty = read.picks.length + read.unread.length === 0;
   return (
-    <span className="atlas-sb-pane-field atlas-sb-pane-choice atlas-sb-pane-chips atlas-sb-pane-entry__control">
+    <span className="atlas-sb-pane-field atlas-sb-pane-choice atlas-sb-pane-chips atlas-sb-pane-entry__control" {...boxProps}>
       {read.picks.map((pick, index) => (
         <span key={`${pick.option}-${index}`} className="atlas-sb-pane-chip atlas-sb-pane-pick">
           <span className="atlas-sb-pane-chip__text">{pick.option}</span>

@@ -208,10 +208,11 @@ export class CollectionReferenceCollector {
 
 /**
  * `files` with the statblock templates the collection needs: those its roles start from (its
- * own roles, or its system's) and those its notes name, once every note is known
- * (`withLinkedFiles` first). Built-in templates never travel.
+ * own roles, or its system's), and those its notes name, once
+ * every note is known (`withLinkedFiles` first). Built-in templates never travel.
  */
 export function withStatblockTemplates(app: App, files: readonly BundleFile[], settings: CollectionSettings): Promise<BundleFile[]> {
-  const roles = collectionStatblockRoles(settings, systemPresetsOf(app));
-  return withTemplateFiles(app, files, roles.map((role) => role.templateId));
+  const presets = systemPresetsOf(app);
+  const roles = collectionStatblockRoles(settings, presets).map((role) => role.templateId);
+  return withTemplateFiles(app, files, [...new Set(roles)]);
 }

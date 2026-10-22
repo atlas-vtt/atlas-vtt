@@ -3,6 +3,8 @@ import { beamOf } from '../../lighting/lightBeam';
 import { lightKindOf } from '../../lighting/lightPresets';
 import type { LightKind, LightSource } from '../../types/lightingTypes';
 import type { Point } from '../../types/visionTypes';
+import { canvasBadgeColors } from '../utils/canvasBadgeColors';
+import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
 import { mapMarkerScale } from '../utils/mapMarkerScale';
 
 /** Screen pixels at marker scale 1. A light's badge is smaller than a note pin's (20). */
@@ -29,6 +31,11 @@ export interface LightMarkerTheme {
   background: number;
   stroke: number;
   accent: number;
+}
+
+/** The theme's badge colours and accent, as the pins and the interface use them. */
+export function lightMarkerTheme(): LightMarkerTheme {
+  return { ...canvasBadgeColors(), accent: cssColorToHexNumber(getObsidianAccentColor()) };
 }
 
 /** How one light's marker is drawn. */

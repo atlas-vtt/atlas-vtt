@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import { cn } from '../../../../../utils/cn';
+import { t } from '../../../../i18n';
 import type { ResourceDefinition } from '../../../../resources/resourceTypes';
 import { isComplete, SOCKET_SIZE, type SocketPlace } from './resourceSockets';
 
@@ -42,7 +43,7 @@ function WheelRing({ color, fill }: { color: string; fill: number }): React.Reac
  */
 export function ResourceSocket({ place, resource, selected, lifted, dropTarget, onSelect, onPress, onEnter }: ResourceSocketProps): React.ReactElement {
   const { width, height } = SOCKET_SIZE[place.shape];
-  const name = resource ? resource.name.trim() || 'Unnamed resource' : 'Empty socket';
+  const name = resource ? resource.name.trim() || t('resource.socket.unnamedResource') : t('resource.socket.empty');
   return (
     <button
       type="button"
@@ -52,7 +53,7 @@ export function ResourceSocket({ place, resource, selected, lifted, dropTarget, 
         selected && 'atlas-selected', lifted && 'atlas-lifted', dropTarget && 'atlas-drop-target',
       )}
       style={{ left: place.x - width / 2, top: place.y - height / 2, width, height }}
-      aria-label={`${name}: ${place.where}`}
+      aria-label={t('resource.socket.named', { name, where: place.where })}
       aria-pressed={selected}
       aria-invalid={resource && !isComplete(resource) ? true : undefined}
       onClick={onSelect}
@@ -67,7 +68,7 @@ export function ResourceSocket({ place, resource, selected, lifted, dropTarget, 
         {resource && place.shape === 'wheel' && <WheelRing color={resource.color} fill={sampleFill(resource)} />}
       </span>
       {resource
-        ? <span className="atlas-csm-socket__label">{resource.name.trim() || 'Unnamed'}</span>
+        ? <span className="atlas-csm-socket__label">{resource.name.trim() || t('resource.socket.unnamed')}</span>
         : <Plus className="atlas-csm-socket__plus" aria-hidden="true" />}
     </button>
   );

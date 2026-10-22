@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Rectangle, Ticker, type Application, type ApplicationOptions } from 'pixi.js';
 import { PixiAppManager } from '../../src/app/pixi/PixiAppManager';

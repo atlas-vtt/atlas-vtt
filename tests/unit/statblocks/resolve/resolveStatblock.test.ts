@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { bestiaryLookup } from '../../../../src/app/creatures/linkedCreature';
 import { autoTemplate } from '../../../../src/app/statblocks/model/autoTemplate';

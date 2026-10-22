@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { MAX_ASSET_BYTES, parseGmMessage } from '../../../../src/app/online/protocol/index.ts';
 

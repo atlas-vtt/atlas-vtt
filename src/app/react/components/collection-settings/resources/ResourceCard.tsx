@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { t } from '../../../../i18n';
 import { DropdownSwatchGrid } from '../../../../packages/components/primitives/DropdownSwatchGrid';
 import { RESOURCE_COLORS } from '../../../../resources/resourceColors';
 import type { FieldSuggestion } from '../../../../resources/resourceFieldSuggestions';
@@ -16,9 +17,6 @@ interface ResourceCardProps {
   onChange: (partial: Partial<ResourceDefinition>) => void;
 }
 
-/** "bar below the token" as the card's heading. */
-const heading = (where: string): string => where.replace(/^./, (first) => first.toUpperCase());
-
 /**
  * The name, statblock field and colour of the selected socket's resource. The fields of the
  * collection's role templates and statblocks are offered to click; typing in the field narrows them.
@@ -34,23 +32,23 @@ export function ResourceCard({ place, resource, fieldSuggestions, focusName, onC
     <div className="atlas-csm-resource-card">
       <div className="atlas-csm-resource-card__head">
         <span className="atlas-csm-resource-card__dot" style={{ backgroundColor: resource.color }} />
-        <span>{heading(place.where)} · {place.shape === 'bar' ? 'always shown' : 'shown on hover'}</span>
+        <span>{place.heading}</span>
       </div>
       <div className="atlas-csm-resource-card__fields">
         <label className="atlas-csm-resource-card__field">
-          Name
-          <input ref={nameRef} type="text" className="atlas-csm-input" placeholder="e.g. Ammo"
+          {t('resource.card.name')}
+          <input ref={nameRef} type="text" className="atlas-csm-input" placeholder={t('resource.card.namePlaceholder')}
             aria-invalid={resource.name.trim() === '' ? true : undefined}
             value={resource.name} onChange={(event) => onChange({ name: event.target.value })} />
         </label>
         <label className="atlas-csm-resource-card__field">
-          Statblock field
-          <input type="text" className="atlas-csm-input" placeholder="e.g. hp" spellCheck={false}
+          {t('resource.card.field')}
+          <input type="text" className="atlas-csm-input" placeholder={t('resource.card.fieldPlaceholder')} spellCheck={false}
             aria-invalid={resource.field.trim() === '' ? true : undefined}
             value={resource.field} onChange={(event) => onChange({ field: event.target.value })} />
         </label>
       </div>
-      <DropdownSwatchGrid label="Colour" swatches={RESOURCE_COLORS} value={resource.color} onChange={(color) => onChange({ color })} />
+      <DropdownSwatchGrid label={t('common.colour')} swatches={RESOURCE_COLORS} value={resource.color} onChange={(color) => onChange({ color })} />
       <StatblockFieldChips suggestions={fieldSuggestions} value={resource.field} onPick={(field) => onChange({ field })} />
     </div>
   );

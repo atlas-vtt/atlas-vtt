@@ -1,7 +1,6 @@
-// @vitest-environment node
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseGmMessage, sheetBase, sheetItemKeys, type BookStatblock, type SheetRaw } from '../../../../src/app/online/protocol/index.ts';
-import { BOOK_POLL_MS, REFUSAL_BOOK_MS } from '../../../../src/app/online/gm/book/BookShare.ts';
+import { BOOK_POLL_MS, BookShare, REFUSAL_BOOK_MS } from '../../../../src/app/online/gm/book/BookShare.ts';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGate.ts';
 import type { StatblockTemplate, TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
@@ -31,11 +30,12 @@ const FIELDS: TemplateField[] = [
   { key: 'name', label: 'Name', type: 'text' },
   { key: 'image', label: 'Token art', type: 'image' },
   { key: 'speed', label: 'Speed', type: 'text' },
+  { key: 'tags', label: 'Tags', type: 'list' },
   { key: 'actions', label: 'Actions', type: 'entries', entry: { extras: [{ key: 'cost', label: 'Cost', type: 'choice', options: ['Action', 'Bonus action'] }] } },
 ];
-const BLOCKS: TemplateBlock[] = [{ id: 'speed001', type: 'stat', field: 'speed', look: 'run-in' }, { id: 'list0001', type: 'entries', field: 'actions' }];
+const BLOCKS: TemplateBlock[] = [{ id: 'speed001', type: 'stat', field: 'speed', look: 'run-in' }, { id: 'tags0001', type: 'tags', field: 'tags', look: 'chips' }, { id: 'list0001', type: 'entries', field: 'actions' }];
 const TEMPLATE: StatblockTemplate = templateOf(FIELDS, BLOCKS);
-const NOTE = `---\nstatblock: true\natlas-template: ${TEMPLATE.id}\nname: Brannoch\nspeed: 30 ft.\nactions:\n  - name: Cleave\n    desc: Hits twice.\n---\n${BODY}`;
+const NOTE = `---\nstatblock: true\natlas-template: ${TEMPLATE.id}\nname: Brannoch\nspeed: 30 ft.\ntags:\n  - Brave\nactions:\n  - name: Cleave\n    desc: Hits twice.\n---\n${BODY}`;
 
 /** The statblocks a player was sent, as the page reads them. */
 function statblocks(messages: readonly Delivered[], player: string): (BookStatblock | null)[] {
@@ -49,6 +49,11 @@ function statblocks(messages: readonly Delivered[], player: string): (BookStatbl
 const speedOf = (statblock: BookStatblock | null | undefined): string | undefined => {
   const node = statblock?.blocks.find((block) => block.k === 'value' && block.value.label === 'Speed');
   return node?.k === 'value' ? node.value.text.opening : undefined;
+};
+
+const wordsOf = (statblock: BookStatblock | null | undefined): readonly string[] | undefined => {
+  const node = statblock?.blocks.find((block) => block.k === 'value' && block.value.field?.key === 'tags');
+  return node?.k === 'value' ? node.value.words : undefined;
 };
 
 const kinds = (messages: readonly Delivered[], player: string): string[] => ofType(messages, 'book', 'book-statblock').filter(({ to }) => to === player).map(({ body }) => String(body.t));
@@ -96,6 +101,29 @@ describe('a player changing their own character\'s statblock at a running table'
     online.stop();
   });
 
+  it('sends no statblock again for an edit that sets a value to what the player was sent', async () => {
+    const { online, socket, from } = await table();
+    const since = delivered(socket).length;
+    from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('30 ft.'), value: '30 ft.' });
+    await advance(BOOK_POLL_MS);
+    expect(kinds(delivered(socket).slice(since), ANA)).toEqual([]);
+    online.stop();
+  });
+
+  it('looks again at the editing player\'s book alone, however many players sit at the table', async () => {
+    const sync = vi.spyOn(BookShare.prototype as unknown as { sync(player: string): void }, 'sync');
+    const { online, from } = await table();
+    sync.mockClear();
+    from(ANA, { t: 'book-field', key: 'speed', base: sheetBase('30 ft.'), value: '40 ft.' });
+    await advance(BOOK_POLL_MS);
+    const of = (player: string): number => sync.mock.calls.filter(([to]) => to === player).length;
+    // Ben's book is looked at by the poll alone; Ana's by the poll and the passes her edit asked for.
+    expect(of(BEN)).toBeGreaterThan(0);
+    expect(of(ANA)).toBeGreaterThan(of(BEN));
+    sync.mockRestore();
+    online.stop();
+  });
+
   it('takes two quick edits of one value, and an ability edited at once after it was added, before the note reads either back', async () => {
     const { online, socket, from } = await table();
     notes.lagging = true;
@@ -119,6 +147,31 @@ describe('a player changing their own character\'s statblock at a running table'
     notes.settle();
     await advance(BOOK_POLL_MS);
     expect(speedOf(statblocks(delivered(socket), ANA).at(-1))).toBe('50 ft.');
+    online.stop();
+  });
+
+  it('adds and takes out words of a list, keeping what the GM wrote into it meanwhile', async () => {
+    const { online, socket, from } = await table();
+    // The GM adds a word where the cache has not read it yet; the player's word goes after the one they saw last.
+    notes.corrupt(PATH, NOTE.replace('  - Brave\n', '  - Brave\n  - Scarred\n'));
+    from(ANA, { t: 'book-list', op: 'add', key: 'tags', item: 'Lantern-bearer' });
+    await advance(BOOK_POLL_MS);
+    expect(propertiesOf(notes.text(PATH))?.tags).toEqual(['Brave', 'Lantern-bearer', 'Scarred']);
+    // Read back, the note holds the player's word and the GM's: the statblock that follows shows both.
+    expect(wordsOf(statblocks(delivered(socket), ANA).at(-1))).toEqual(['Brave', 'Lantern-bearer', 'Scarred']);
+
+    from(ANA, { t: 'book-list', op: 'remove', key: 'tags', item: 'Brave' });
+    await advance(BOOK_POLL_MS);
+    expect(propertiesOf(notes.text(PATH))?.tags).toEqual(['Lantern-bearer', 'Scarred']);
+    expect(notes.text(PATH).endsWith(`---\n${BODY}`)).toBe(true);
+
+    // A word the list does not hold is refused with the whole book, and Ben, without a statblock, changes nothing.
+    const since = delivered(socket).length;
+    from(ANA, { t: 'book-list', op: 'remove', key: 'tags', item: 'Brave' });
+    from(BEN, { t: 'book-list', op: 'add', key: 'tags', item: 'Ben was here' });
+    await advance(REFUSAL_BOOK_MS);
+    expect(kinds(delivered(socket).slice(since), ANA)).toEqual(['book', 'book-statblock']);
+    expect(propertiesOf(notes.text(PATH))?.tags).toEqual(['Lantern-bearer', 'Scarred']);
     online.stop();
   });
 

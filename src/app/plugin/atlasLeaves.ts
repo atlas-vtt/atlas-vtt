@@ -1,5 +1,6 @@
 import { App, Plugin, TFile, WorkspaceLeaf } from 'obsidian';
-import { AtlasView, ATLAS_VIEW_TYPE } from '../atlas-view';
+import type { AtlasView } from '../atlas-view';
+import { ATLAS_VIEW_TYPE, isAtlasView } from '../atlasViewType';
 
 function getExistingAtlasLeaf(app: App): WorkspaceLeaf | null {
   return app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE)[0] ?? null;
@@ -8,7 +9,7 @@ function getExistingAtlasLeaf(app: App): WorkspaceLeaf | null {
 /** The loaded Atlas view, or null when none is open (or it is still deferred). */
 export function getLoadedAtlasView(app: App): AtlasView | null {
   const view = getExistingAtlasLeaf(app)?.view;
-  return view instanceof AtlasView ? view : null;
+  return isAtlasView(view) ? view : null;
 }
 
 /** The Atlas view, first loading its leaf if Obsidian deferred it (background tabs after a restart). */
@@ -16,7 +17,7 @@ export async function loadAtlasView(app: App): Promise<AtlasView | null> {
   const leaf = getExistingAtlasLeaf(app);
   if (!leaf) return null;
   await leaf.loadIfDeferred();
-  return leaf.view instanceof AtlasView ? leaf.view : null;
+  return isAtlasView(leaf.view) ? leaf.view : null;
 }
 
 /**
@@ -29,7 +30,7 @@ export async function openMapInView(app: App, mapFile: TFile): Promise<void> {
   if (existingLeaf) {
     await app.workspace.revealLeaf(existingLeaf);
     const atlasView = existingLeaf.view;
-    if (!(atlasView instanceof AtlasView)) return;
+    if (!isAtlasView(atlasView)) return;
 
     const existingTab = atlasView.tabMetaStore.getState().getTabByFilePath(mapFile.path);
     if (existingTab) {
@@ -60,10 +61,10 @@ function mergeDuplicateAtlasLeaves(app: App): void {
 
   for (const extraLeaf of extraLeaves) {
     const extraView = extraLeaf.view;
-    const file = extraView instanceof AtlasView ? extraView.file : null;
+    const file = isAtlasView(extraView) ? extraView.file : null;
     extraLeaf.detach();
 
-    if (file && primaryLeaf.view instanceof AtlasView) {
+    if (file && isAtlasView(primaryLeaf.view)) {
       void primaryLeaf.view.onLoadFile(file);
     }
   }

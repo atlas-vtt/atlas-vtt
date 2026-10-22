@@ -4,6 +4,8 @@ import { normalizedKey, parseResourceValue } from './resourceFields';
 import { quantityKey, type QuantityLook } from './quantityLooks';
 import type { ResourceDefinition, ResourceHolder, ResourceValue } from './resourceTypes';
 import { visibleResources } from './visibleResources';
+import { trackedMax, trackedValue } from '../statblocks/values/trackedNumbers';
+import { isCollectionResource } from './trackedResources';
 
 /** One row of a token in the DM screen. */
 export interface TokenQuantity {
@@ -26,6 +28,8 @@ const COUNTING_UP = new Set(['stress', 'strain', 'wounds']);
 const KEPT = ['hp', 'stress', 'hope'];
 
 const labelOf = (name: string): string => (quantityKey(name) === 'hp' ? 'HP' : name.replace(/[_-]/g, ' ').replace(/^./, (first) => first.toUpperCase()));
+/** A statblock value as a tracked number's maximum reads it: a number or its text. */
+const fieldNumber = (raw: unknown): number | string | undefined => (typeof raw === 'number' || typeof raw === 'string' ? raw : undefined);
 const fitsBoxes = (max: number): boolean => Number.isInteger(max) && max <= MAX_BOXES;
 
 function isBounded(value: unknown): boolean {
@@ -61,6 +65,19 @@ export function tokenQuantities(
 
   const isDefined = (key: string, field: string): boolean =>
     definitions.some((definition) => definition.key === key || normalizedKey(definition.field) === normalizedKey(field));
+
+  for (const tracked of look.tracked ?? []) {
+    if (quantities.has(tracked.key) || isCollectionResource(definitions, tracked.key, tracked.field.key)) continue;
+    const max = trackedMax(tracked, (key) => fieldNumber(monster[key]));
+    if (max === null) continue;
+    quantities.set(tracked.key, {
+      key: tracked.key,
+      label: look.labels.get(tracked.field.key) || tracked.field.label || labelOf(tracked.field.key),
+      value: trackedValue(tracked, max, token.resources?.[tracked.key]),
+      fills: tracked.counts === 'up',
+      boxes: look.tracks.has(tracked.key) && fitsBoxes(max),
+    });
+  }
 
   const add = (key: string, field: string, raw: unknown, label: string, boxes = look.tracks.has(key)): void => {
     if (quantities.has(key) || isDefined(key, field)) return;

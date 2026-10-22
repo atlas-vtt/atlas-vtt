@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { claimWorkspaceLeafFocus } from '../../src/app/utils/activeLeafGuard';
 

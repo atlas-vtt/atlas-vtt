@@ -57,6 +57,8 @@ function quotedText(entry: GmLogEntry): string {
       return replyPreview(`${entry.roll.formula} = ${entry.roll.total}`);
     case 'loot':
       return replyPreview(entry.item.name);
+    case 'rest':
+      return replyPreview(`${entry.character} · ${entry.button}`);
     case 'image':
       return 'An image';
     default:

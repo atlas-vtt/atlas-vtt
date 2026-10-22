@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage, parseLogEntry, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { CreatureIndex } from '../../../../src/app/creatures/CreatureIndex';

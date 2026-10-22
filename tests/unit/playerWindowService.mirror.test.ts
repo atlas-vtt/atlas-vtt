@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStore } from 'zustand/vanilla';
 import { SettingsService } from '../../src/app/services/SettingsService';
@@ -5,7 +6,6 @@ import type { BeforeRenderCapture, PlayerFrameSource } from '../../src/app/servi
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
 import { frameSource, framePiece, sizePlayerWindow } from '../mocks/playerFrameSource';
 
-vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 const app = {
   vault: { adapter: { exists: async () => true, write: async () => {} } },

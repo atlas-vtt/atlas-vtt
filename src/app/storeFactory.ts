@@ -16,12 +16,12 @@ import type { AudioSource, AudioInput } from './types/audioTypes';
 import type { AnyWidget, WidgetSettings } from './types/widgetTypes';
 import type { InitiativeEntry, InitiativeConfig } from './types/initiativeTypes';
 import { createDefaultInitiativeState } from './types/initiativeTypes';
-import type { InitiativeRules } from './types/initiativeRulesTypes';
 import { createAtlasStorage, ATLAS_SCHEMA, ATLAS_VERSION } from './services/MapPersistence';
 import type { CameraState, GridState } from './types/gridTypes';
 import type { AtlasPersistStorage } from './services/MapPersistence';
 import { normalizeImagePath } from './utils/pathUtils';
 import { createInitiativeActions } from './stores/initiativeSlice';
+import type { InitiativeTurnActions } from './stores/initiativeTurnActions';
 import { createInitialUIState, createUIActions, type UISlice } from './stores/uiSlice';
 import { createPinnedNotePreviewActions, type PinnedNotePreviewSlice } from './stores/pinnedNotePreviewSlice';
 import { createInitialLootRollerState, createLootRollerActions, readLootRollerState, type LootRollerSlice } from './stores/lootRollerSlice';
@@ -31,6 +31,8 @@ import { withoutCollectionWidgets } from './utils/collectionWidgets';
 import { withWidgetOff } from './utils/widgetActivation';
 import type { TimerState } from './utils/timerWidget';
 import { createMapObjectsActions, type MapObjectsSlice } from './stores/mapObjectsSlice';
+import { withoutOffMap } from './tokens/offMap';
+import { diceRandom } from './services/offlineDiceInputs';
 import type { MapMove } from './grid/mapStretch';
 import { objectsMovedWithMap } from './grid/mapStretchObjects';
 import { computeNextInstanceNumber } from './stores/tokenInstanceNumbers';
@@ -101,6 +103,11 @@ export interface ViewAtlasState extends ViewState {
    * a token without it gains it at `delta`, one that falls to 0 loses it.
    */
   changeTokensConditionValue: (tokenIds: string[], conditionId: string, delta: number) => void;
+  /**
+   * Sets a valued condition to `value` on every token in one store write: a token without it gains
+   * it, and a value of 0 or less, or null, takes it off.
+   */
+  setTokensConditionValue: (tokenIds: string[], conditionId: string, value: number | null) => void;
   clearTokenConditions: (id: string) => void;
   /** Spends every resource of `definitions` that defeats a token. */
   killTokens: (ids: string[], definitions: readonly ResourceDefinition[]) => void;
@@ -125,6 +132,8 @@ export interface ViewAtlasState extends ViewState {
   // Drawing actions
   addDrawing: (data: Omit<DrawingStroke, 'id' | 'kind' | 'timestamp'>) => string;
   moveDrawings: (ids: string[], dx: number, dy: number) => void;
+  /** Gives each listed drawing these points (a group turned as one); others keep theirs. */
+  placeDrawings: (points: Readonly<Record<string, ReadonlyArray<{ x: number; y: number }>>>) => void;
   updateDrawings: (ids: string[], updates: Partial<Pick<DrawingStroke, 'color' | 'icon'>>) => void;
   deleteDrawing: (id: string) => void;
   clearDrawings: () => void;
@@ -197,6 +206,7 @@ export interface ViewAtlasState extends ViewState {
   insertMapObjects: MapObjectsSlice['insertMapObjects'];
   duplicateMapObjects: MapObjectsSlice['duplicateMapObjects'];
   removeMapObjects: MapObjectsSlice['removeMapObjects'];
+  placeOffMapToken: MapObjectsSlice['placeOffMapToken'];
 
   // Map state management
   deleteMapObject: (type: 'token' | 'fog' | 'pin' | 'text' | 'drawing' | 'wall' | 'light' | 'audio', id: string) => void;
@@ -205,18 +215,21 @@ export interface ViewAtlasState extends ViewState {
   setTokenSettings: (settings: ViewAtlasState['tokenSettings']) => void;
   setInitiativeTrackerOpen: (open: boolean) => void;
   addToInitiative: (entry: Omit<InitiativeEntry, 'id' | 'order' | 'isActive'>) => string;
-  removeFromInitiative: (id: string) => void;
+  removeFromInitiative: (id: string, defeated?: ReadonlySet<string>) => void;
   updateInitiativeEntry: (id: string, updates: Partial<InitiativeEntry>) => void;
   rollAllInitiative: (roll?: string, fromStatblocks?: ReadonlyMap<string, number>) => void;
   rollEntryInitiative: (id: string, roll?: string, fromStatblock?: number | null) => void;
-  nextTurn: () => void;
-  previousTurn: () => void;
+  nextTurn: InitiativeTurnActions['nextTurn'];
+  previousTurn: InitiativeTurnActions['previousTurn'];
   reorderInitiative: (fromIndex: number, toIndex: number) => void;
   moveToFront: (id: string) => void;
   moveToBack: (id: string) => void;
-  startCombat: (rules?: InitiativeRules) => void;
+  startCombat: InitiativeTurnActions['startCombat'];
   endCombat: () => void;
   setInitiativeSitsOut: (id: string, sitsOut: boolean) => void;
+  delayInitiativeTurn: InitiativeTurnActions['delayInitiativeTurn'];
+  actNowInInitiative: InitiativeTurnActions['actNowInInitiative'];
+  swapInitiativeCards: InitiativeTurnActions['swapInitiativeCards'];
   resetInitiative: () => void;
   setInitiativeConfig: (config: Partial<InitiativeConfig>) => void;
   addDiceLogEntry: (entry: DiceRollResult) => void;
@@ -811,7 +824,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.selectedIds = draft.selectedIds.filter(selectedId => !ids.includes(selectedId));
           }),
 
-          deleteSelected: () => get().removeMapObjects(get().selectedIds),
+          // A combatant beside the map is never deleted by what the map has selected
+          deleteSelected: () => get().removeMapObjects(withoutOffMap(get().objects, get().selectedIds)),
 
           // --- Copy, paste and duplicate (from mapObjectsSlice.ts) ---
           ...createMapObjectsActions(set, get),
@@ -1010,6 +1024,13 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
                 point.x += dx;
                 point.y += dy;
               }
+            }
+          }),
+
+          placeDrawings: (points) => set((draft) => {
+            for (const [id, placed] of Object.entries(points)) {
+              const drawing = draft.objects.drawings[id];
+              if (drawing) drawing.points = placed.map(({ x, y }) => ({ x, y }));
             }
           }),
 
@@ -1338,6 +1359,13 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             }
           }),
 
+          setTokensConditionValue: (tokenIds, conditionId, value) => set((draft) => {
+            for (const tokenId of tokenIds) {
+              const token = draft.objects.tokens[tokenId];
+              if (token) setConditionValue(token, conditionId, value ?? 0, true);
+            }
+          }),
+
           clearTokenConditions: (id) => set((draft) => {
             const token = draft.objects.tokens[id];
             if (!token) {
@@ -1374,7 +1402,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           // --- Initiative Tracker State & Actions (from initiativeSlice.ts) ---
           initiative: createDefaultInitiativeState(),
           initiativeTrackerOpen: false,
-          ...createInitiativeActions(set, viewId, get, () => Math.random()),
+          ...createInitiativeActions(set, viewId, get, diceRandom),
 
           // --- Dice Roll Log (persisted per map) ---
           diceLog: [],

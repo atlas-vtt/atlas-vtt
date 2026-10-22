@@ -15,10 +15,9 @@ const LEVEL_HINTS: Record<LightingQualityLevel, string> = {
   saver: t('settings.lighting.saverHint'),
 };
 
-/** How much dynamic lighting asks of this device's graphics; only while dynamic lighting is switched on. */
-export function lightingSettingsSections(settings: SettingsService): AtlasSettingSection[] {
-  if (!settings.isExperimentalOn('dynamicLighting')) return [];
-  return [{
+/** How much dynamic lighting asks of this device's graphics. */
+export function lightingSettingsSection(settings: SettingsService): AtlasSettingSection {
+  return {
     heading: t('settings.lighting.heading'),
     rows: [{
       name: t('settings.lighting.quality'),
@@ -37,5 +36,5 @@ export function lightingSettingsSections(settings: SettingsService): AtlasSettin
         });
       },
     }],
-  }];
+  };
 }

@@ -1,3 +1,4 @@
+import type { FieldRecord } from '../../../statblocks/values/fieldValues';
 import { isExpressionError } from '../../../statblocks/expressions/errors';
 import { parsePatternCached } from '../../../statblocks/expressions/patternParse';
 import { abilityFieldKeys } from '../../../statblocks/model/abilityParts';
@@ -123,4 +124,14 @@ export function blockAccess(template: StatblockTemplate, block: TemplateBlock): 
     case 'text': return block.field === undefined ? 'read' : playerAccess(template, block.field);
     default: return playerAccess(template, block.field);
   }
+}
+
+/**
+ * The note's values a player may see: those of the template's fields (by their key or one they had
+ * before a rename) that are not hidden from players. Everything else the note holds (its other
+ * keys, tags, aliases, the template it names) is never read for them.
+ */
+export function shownRecord(record: FieldRecord, template: StatblockTemplate, fields: readonly TemplateField[]): FieldRecord {
+  const keys = fields.filter((field) => playerAccess(template, field.key) !== 'hidden').flatMap((field) => [field.key, ...(field.formerKeys ?? [])]);
+  return Object.fromEntries(keys.filter((key) => Object.hasOwn(record, key)).map((key) => [key, record[key]]));
 }

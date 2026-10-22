@@ -1,11 +1,10 @@
-// @vitest-environment node
-import { CLOSE } from '../../../../src/app/online/protocol/index.ts';
+import { CLOSE, GM_LEVEL } from '../../../../src/app/online/protocol/index.ts';
 import type { TokenEntity } from '../../../../src/app/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { ARM_MS } from '../../../../src/app/online/gm/joinGate.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
-import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
+import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
 import { readSavedTable, type SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
 import { closingText } from '../../../../src/app/online/gm/tableEnd.ts';
 import { app, atlasTab, FakeSocket, png, present, switchScene, workspace } from './fakeTable.ts';
@@ -62,7 +61,7 @@ vi.mock('../../../../src/app/online/gm/atlasLighting.ts', async (original) => ({
 
 const ANA = 'anaanaanaanaanaanaan';
 const MAP = 'Scenes/Cave.atlasmap';
-const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, mapPath: MAP, gate: { code: '483912', requireCode: true, askToJoin: true } };
+const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, campaignId: 'c1', mapPath: MAP, gate: { code: '483912', requireCode: true, askToJoin: true } };
 const ogre = (x: number): TokenEntity => ({ id: 'gm-ogre', kind: 'character', name: 'Ogre', imagePath: 'art/ogre.png', x, y: 140 });
 
 workspace.files = new Map<string, Uint8Array>([['maps/cave.png', png(700, 700)], ['maps/cave2.png', png(350, 350)], ['art/ogre.png', png(4, 4)]]);
@@ -75,8 +74,8 @@ describe('the online table', () => {
   let saves: (SavedTable | null)[] = [];
   /** A signed-in GM: tables are asked for with the account's token, and nothing else. */
   const signedIn = { token: (): string | null => 'account-token', signedOutByServer: vi.fn(), refresh: vi.fn(() => Promise.resolve()) };
-  const control = (ownership = new Ownership(readOwnership(undefined), () => undefined)): OnlineControl =>
-    new OnlineControl(app, ownership, (table) => saves.push(table), signedIn);
+  const control = (ownership = boundOwnership([]), players: Parameters<typeof fakeCampaigns>[0] = [], campaigns = fakeCampaigns(players)): OnlineControl =>
+    new OnlineControl(app, ownership, campaigns, (table) => saves.push(table), signedIn);
 
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
@@ -103,7 +102,7 @@ describe('the online table', () => {
     workspace.leaves = [first.leaf];
     present(first);
     const online = control();
-    online.resume(SAVED);
+    void online.resume(SAVED);
     await advance(0);
     const socket = FakeSocket.all[0];
     if (socket === undefined) throw new Error('no socket');
@@ -167,12 +166,14 @@ describe('the online table', () => {
     const tab = atlasTab(caveScene());
     workspace.leaves = [tab.leaf];
     present(tab);
-    const ownership = new Ownership(readOwnership(undefined), () => undefined);
-    const online = control(ownership);
-    await online.start(tab.leaf);
+    const ownership = boundOwnership([{ id: ANA, name: 'Ana' }]);
+    // The campaign's players file, which the token owners live in, is the same before and after the reload.
+    const campaigns = fakeCampaigns([{ id: ANA, name: 'Ana' }]);
+    const online = control(ownership, [{ id: ANA, name: 'Ana' }], campaigns);
+    await online.start(tab.leaf, 'c1');
     await advance(0);
     const created = saves.at(-1);
-    expect(created).toEqual({ code: 'b'.repeat(26), secret: 'n'.repeat(43), maxPlayers: 12, mapPath: MAP, gate: { code: expect.stringMatching(/^\d{6}$/) as string, requireCode: true, askToJoin: true } });
+    expect(created).toEqual({ code: 'b'.repeat(26), secret: 'n'.repeat(43), maxPlayers: 12, campaignId: 'c1', mapPath: MAP, gate: { code: expect.stringMatching(/^\d{6}$/) as string, requireCode: true, askToJoin: true } });
     const link = online.link();
     const socket = FakeSocket.all[0];
     if (socket === undefined || created === null || created === undefined) throw new Error('no table');
@@ -194,15 +195,15 @@ describe('the online table', () => {
     expect(socket.readyState).toBe(3);
     expect(socket.frames().some((frame) => frame.t === 'end')).toBe(false);
     expect(saves.length).toBe(savesBefore);
-    const data: unknown = JSON.parse(JSON.stringify({ ownership: ownership.toData(), table: saves.at(-1) }));
+    const data: unknown = JSON.parse(JSON.stringify({ table: saves.at(-1) }));
 
-    // It loads again from that data: same link and secret, Ana keeps her id and her ogre.
-    const record = data as { ownership: unknown; table: unknown };
+    // It loads again from that data and the campaign: same link and secret, Ana keeps her id and her ogre.
+    const record = data as { table: unknown };
     const restored = readSavedTable(record.table);
     if (restored === null) throw new Error('the saved table was not read');
-    const kept = new Ownership(readOwnership(record.ownership), () => undefined);
-    const again = control(kept);
-    again.resume(restored);
+    const kept = boundOwnership([{ id: ANA, name: 'Ana' }]);
+    const again = control(kept, [{ id: ANA, name: 'Ana' }], campaigns);
+    void again.resume(restored);
     await advance(0);
     expect(again.link()).toBe(link);
     const resumed = FakeSocket.all[1];
@@ -224,14 +225,14 @@ describe('the online table', () => {
   it('forgets a table the server ended or expired, and keeps one another Obsidian took over', async () => {
     workspace.leaves = [atlasTab(caveScene()).leaf];
     const online = control();
-    online.resume(SAVED);
+    void online.resume(SAVED);
     await advance(0);
     FakeSocket.all[0]?.closeWith(CLOSE.replaced);
     expect(online.table).toBeNull();
     expect(saves.at(-1)).toEqual(SAVED);
     expect(online.lost()).toBeNull();
 
-    online.resume(SAVED);
+    void online.resume(SAVED);
     await advance(0);
     FakeSocket.all[1]?.closeWith(CLOSE.ended);
     expect(online.table).toBeNull();
@@ -244,7 +245,7 @@ describe('the online table', () => {
   it('drops a table whose account may not host, says so, asks what the account may do now, and never tries again', async () => {
     workspace.leaves = [atlasTab(caveScene()).leaf];
     const online = control();
-    online.resume(SAVED);
+    void online.resume(SAVED);
     await advance(0);
     FakeSocket.all[0]?.relay({ t: 'welcome', role: 'gm', players: [] });
     FakeSocket.all[0]?.closeWith(CLOSE.noAccess);
@@ -260,7 +261,7 @@ describe('the online table', () => {
   it('drops a table that ended because its account started another, says so, and never tries again', async () => {
     workspace.leaves = [atlasTab(caveScene()).leaf];
     const online = control();
-    online.resume(SAVED);
+    void online.resume(SAVED);
     await advance(0);
     FakeSocket.all[0]?.closeWith(CLOSE.superseded);
     expect(online.table).toBeNull();
@@ -274,7 +275,7 @@ describe('the online table', () => {
     // The next table starts clean: what the last one ended by is forgotten.
     const tab = atlasTab(caveScene());
     workspace.leaves = [tab.leaf];
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     expect(online.lost()).toBeNull();
     online.stop();
   });
@@ -284,7 +285,7 @@ describe('the online table', () => {
     const online = control();
     let changes = 0;
     online.onChange(() => (changes += 1));
-    online.resume(SAVED);
+    void online.resume(SAVED);
     await advance(0);
     const socket = FakeSocket.all[0];
     if (socket === undefined) throw new Error('no socket');
@@ -316,15 +317,15 @@ describe('the online table', () => {
     workspace.leaves = [tab.leaf];
     let token: string | null = 'account-token';
     const account = { token: () => token, signedOutByServer: vi.fn(() => (token = null)), refresh: vi.fn(() => Promise.resolve()) };
-    const online = new OnlineControl(app, new Ownership(readOwnership(undefined), () => undefined), (table) => saves.push(table), account);
+    const online = new OnlineControl(app, boundOwnership([]), fakeCampaigns(), (table) => saves.push(table), account);
 
     seen.created = { status: 403, json: { error: 'no-access' } };
-    expect(await online.start(tab.leaf)).toBeNull();
+    expect(await online.start(tab.leaf, 'c1')).toBeNull();
     expect(account.refresh).toHaveBeenCalledWith(true);
     expect(seen.notices.at(-1)).toBe('Online play is in early access. Redeem an invite key on your account page.');
 
     seen.created = { status: 201, json: { code: 'b'.repeat(26), secret: 'n'.repeat(43), maxPlayers: 2 } };
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     await advance(0);
     expect(seen.requests.map((request) => request.headers?.Authorization)).toEqual(['Bearer account-token', 'Bearer account-token']);
     expect(online.seats()).toBe(2);
@@ -333,17 +334,17 @@ describe('the online table', () => {
     await advance(0);
 
     seen.created = { status: 401, json: { error: 'signed-out' } };
-    expect(await online.start(tab.leaf)).toBeNull();
+    expect(await online.start(tab.leaf, 'c1')).toBeNull();
     expect(account.signedOutByServer).toHaveBeenCalledTimes(1);
-    expect(await online.start(tab.leaf)).toBeNull();
+    expect(await online.start(tab.leaf, 'c1')).toBeNull();
     expect(seen.notices.at(-1)).toBe('Sign in to host first.');
     expect(seen.requests).toHaveLength(3);
   });
 
   it('comes back to a saved table on Atlas\'s table server, with its secret alone', async () => {
     workspace.leaves = [atlasTab(caveScene()).leaf];
-    const online = new OnlineControl(app, new Ownership(readOwnership(undefined), () => undefined), (table) => saves.push(table), signedIn);
-    online.resume(SAVED);
+    const online = new OnlineControl(app, boundOwnership([]), fakeCampaigns(), (table) => saves.push(table), signedIn);
+    void online.resume(SAVED);
     await advance(0);
     expect(FakeSocket.all.map((socket) => socket.url)).toEqual([`wss://play.atlas-vtt.dev/api/tables/${SAVED.code}/socket`]);
     expect(FakeSocket.all[0]?.frames()[0]).toMatchObject({ t: 'hello', secret: SAVED.secret });
@@ -355,8 +356,8 @@ describe('the online table', () => {
   it('makes tables on Atlas\'s table server', async () => {
     const tab = atlasTab(caveScene());
     workspace.leaves = [tab.leaf];
-    const online = new OnlineControl(app, new Ownership(readOwnership(undefined), () => undefined), (table) => saves.push(table), signedIn);
-    await online.start(tab.leaf);
+    const online = new OnlineControl(app, boundOwnership([]), fakeCampaigns(), (table) => saves.push(table), signedIn);
+    await online.start(tab.leaf, 'c1');
     expect(seen.requests[0]?.url).toBe('https://play.atlas-vtt.dev/api/tables');
     expect(online.link()).toBe(`https://play.atlas-vtt.dev/#${'b'.repeat(26)}`);
     online.stop();
@@ -369,7 +370,7 @@ describe('the online table', () => {
     const online = control();
     let changes = 0;
     online.onChange(() => (changes += 1));
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     await advance(0);
     const started = saves.at(-1);
     expect(started?.gate).toMatchObject({ requireCode: true, askToJoin: true });
@@ -382,7 +383,7 @@ describe('the online table', () => {
     socket.relay({ t: 'welcome', role: 'gm', players: [], waiting: [{ id: ANA, name: 'Ana' }] });
     await advance(0);
     // Hello, then the gates, ahead of every game message.
-    expect(socket.frames().slice(0, 2)).toEqual([{ v: 1, t: 'hello', role: 'gm', secret: 'n'.repeat(43) }, { v: 1, t: 'gate', code, ask: true }]);
+    expect(socket.frames().slice(0, 2)).toEqual([{ v: 1, t: 'hello', role: 'gm', secret: 'n'.repeat(43), level: GM_LEVEL }, { v: 1, t: 'gate', code, ask: true }]);
     expect(online.table?.gate.view().waiting).toEqual([{ id: ANA, name: 'Ana', answered: false, full: false, armed: false }]);
 
     const before = changes;
@@ -419,7 +420,7 @@ describe('the online table', () => {
     const again = control();
     const saved = readSavedTable(JSON.parse(JSON.stringify(saves.at(-1))));
     if (saved === null) throw new Error('no saved table');
-    again.resume(saved);
+    void again.resume(saved);
     await advance(0);
     const second = FakeSocket.all.at(-1);
     if (second === undefined || second === socket) throw new Error('no second socket');
@@ -438,7 +439,8 @@ describe('the online table', () => {
     // A table saved before plans seats as many as any table did.
     expect(readSavedTable({ ...SAVED, maxPlayers: undefined })).toEqual(SAVED);
     expect(readSavedTable({ ...SAVED, maxPlayers: 2 })).toEqual({ ...SAVED, maxPlayers: 2 });
-    for (const broken of [undefined, null, 'x', { ...SAVED, code: 'short' }, { ...SAVED, secret: 'a b' }]) {
+    // A table saved before tables belonged to a campaign is dropped: the GM starts a new one.
+    for (const broken of [undefined, null, 'x', { ...SAVED, code: 'short' }, { ...SAVED, secret: 'a b' }, { ...SAVED, campaignId: undefined }, { ...SAVED, campaignId: '' }]) {
       expect(readSavedTable(broken)).toBeNull();
     }
   });

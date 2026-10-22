@@ -1,8 +1,8 @@
-// @vitest-environment node
 import type { SharedToken } from '../../../../src/app/online/protocol/index.ts';
 import type { TokenEntity } from '../../../../src/app/types';
 import { describe, expect, it } from 'vitest';
-import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
+import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
+import { boundOwnership } from './fakeSeats.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
 
@@ -21,7 +21,7 @@ const mineTo = (table: ShareHarness, player: string): readonly string[] | undefi
 const listed = (table: ShareHarness, id: string): SharedToken | undefined => tokenLists(table.sent).at(-1)?.tokens.find((entry) => entry.x === TOKENS.find((gm) => gm.id === id)?.x);
 
 async function table(showNames = false): Promise<{ readonly share: ShareHarness; readonly owners: Ownership; readonly scene: string; readonly send: (from: string, t: 'claim' | 'release', id: string | undefined) => Promise<void> }> {
-  const owners = new Ownership(readOwnership(undefined), () => undefined);
+  const owners = boundOwnership([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   owners.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
   const share = shareHarness(withTokens(), ART, owners);
   share.settings = { ...share.settings, showNames };
@@ -53,7 +53,7 @@ describe('player tokens', () => {
     const before = share.sent.length;
     await send(ANA, 'claim', hero);
     await send(BEN, 'claim', listed(share, 'ogre')?.id);
-    expect([owners.toData().characters, owners.toData().owners]).toEqual([{}, {}]);
+    expect([owners.ownerOf('hero', undefined), owners.ownerOf('ogre', undefined)]).toEqual([undefined, undefined]);
     expect(share.sent.slice(before)).toEqual([]);
     owners.give(['hero'], {}, ANA);
     await share.advance(TOKEN_INTERVAL_MS);

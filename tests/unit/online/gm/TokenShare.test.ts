@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage, TOKEN_ID_PATTERN } from '../../../../src/app/online/protocol/index.ts';
 import { computeTokenPixelSize } from '../../../../src/app/pixi/token-renderer/tokenSizing';
 import { describe, expect, it } from 'vitest';

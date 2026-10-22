@@ -64,7 +64,8 @@ function parseGlyph(value: unknown): SharedCondition['glyph'] | null {
   return null;
 }
 
-function parseCondition(value: unknown): SharedCondition | null {
+/** A condition badge, or null when it is malformed. */
+export function parseCondition(value: unknown): SharedCondition | null {
   if (!isRecord(value) || typeof value.colour !== 'string' || !HEX_COLOUR.test(value.colour)) return null;
   const glyph = parseGlyph(value.glyph);
   if (glyph === null || (value.value !== null && !isValue(value.value))) return null;

@@ -8,6 +8,7 @@ import { completeFormula } from './completeFormula';
 import { withAdvantage } from './diceAdvantage';
 import { getDiceCrit } from './diceCrit';
 import { rollFormula } from './diceFormula';
+import { dressSetDice } from './diceAppearance';
 import type { FormulaError } from './parseFormula';
 
 /** How a roll is made besides its formula. */
@@ -16,6 +17,8 @@ export interface RollOptions {
   set?: DiceSet | undefined;
   /** Rolls with advantage or disadvantage, as the set's rule for that side says. */
   advantage?: AdvantageSide | undefined;
+  /** Gives an explicit matching pool the set’s names and colours; never changes its dice. */
+  setAppearance?: boolean | undefined;
 }
 
 export interface DiceToolState {
@@ -83,7 +86,7 @@ export class DiceTool {
   /** Rolls the formula; one without dice (`+3`) is added to the dice of the set. */
   private parseAndRoll(formula: string, options: RollOptions | undefined): DiceRollResult | null {
     const { rules, shown } = rollingWith(this.getDiceRules(), options?.set);
-    return rollDiceFormula(formula, rules, this.inputs, shown, options?.advantage);
+    return rollDiceFormula(formula, rules, this.inputs, shown, options?.advantage, options?.setAppearance);
   }
 
   /** The dice a roll of `set` (else the collection's) is made with, and their rules: what advantage can do. */
@@ -144,7 +147,7 @@ export function rollingWith(
  * collection's own.
  */
 export function rollDiceFormula(
-  formula: string, rules: DiceRules | RollingDice, inputs: DiceRollInputs, shown?: RolledWithSet, advantage?: AdvantageSide,
+  formula: string, rules: DiceRules | RollingDice, inputs: DiceRollInputs, shown?: RolledWithSet, advantage?: AdvantageSide, setAppearance = false,
 ): DiceRollResult | null {
   const rolling = rollingRules(rules);
   const complete = completeFormula(formula, rules);
@@ -166,7 +169,7 @@ export function rollDiceFormula(
     id: inputs.rollId(),
     timestamp: Date.now(),
     formula: complete.formula,
-    rolls,
+    rolls: complete.written && setAppearance ? dressSetDice(rolls, rolling) : rolls,
     modifiers,
     ...(named.length > 0 && { namedModifiers: named }),
     total,

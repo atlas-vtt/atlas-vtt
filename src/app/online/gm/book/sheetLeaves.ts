@@ -1,9 +1,13 @@
-import { isResourceKey, MAX_BOOK_TITLE, MAX_SHEET_LIST, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS, type SheetField, type SheetNode, type SheetPair, type SheetValue } from '../../protocol/index.ts';
+import {
+  bookLine, isResourceKey, MAX_BOOK_TITLE, MAX_COUNTER, MAX_COUNTERS, MAX_FORMULA, MAX_SHEET_LIST, MAX_TABLE_COLUMNS, MAX_TABLE_ROWS,
+  type SheetCounter, type SheetField, type SheetNode, type SheetPair, type SheetValue,
+} from '../../protocol/index.ts';
 import { valuePrompt, type BlockDisplay } from '../../../statblocks/render/blockDisplay';
 import { MAX_TRACK_BOXES } from '../../../statblocks/render/values/trackBoxes';
 import { metricNumberText } from '../../../statblocks/render/values/blockText';
 import { shownTable } from '../../../statblocks/render/values/shownTable';
-import type { FieldKey, MetricBlock, ScoresBlock, TemplateBlock, TrackBlock } from '../../../statblocks/model/templateTypes';
+import type { CountersBlock, FieldKey, MetricBlock, ScoresBlock, TemplateBlock, TrackBlock } from '../../../statblocks/model/templateTypes';
+import { shownCounterRows, type CounterRow } from '../../../statblocks/values/counterValues';
 import { listItems } from '../../../statblocks/values/listText';
 import { numericValue } from '../../../statblocks/values/numberText';
 import { normalisePairs, pairText } from '../../../statblocks/values/pairValues';
@@ -27,7 +31,7 @@ type ValueExtra = Partial<Pick<SheetValue, 'words' | 'pairs' | 'resource'>> & { 
  * carries what a click on it rolls, where the card's link rolls the whole value (`sheetRoll`).
  */
 export function sheetValue(build: SheetBuild, label: string | null | undefined, text: string, look: Look, field: SheetField | null, prompt: string | null, { rollable = false, ...extra }: ValueExtra = {}): SheetValue {
-  const roll = look === 'plain' ? sheetRoll(text, rollable) : null;
+  const roll = look === 'plain' ? sheetRoll(text, rollable, build.shown.namedRolls) : null;
   return {
     label: clippedLine(label, MAX_BOOK_TITLE),
     look,
@@ -53,6 +57,12 @@ export function plainValue(build: SheetBuild, label: string | null, display: Blo
 }
 
 const plainNode = (build: SheetBuild, label: string | null, display: BlockDisplay, field: SheetField | null, rollable = false): SheetNode => ({ k: 'value', value: plainValue(build, label, display, field, rollable) });
+
+/** The resource key a tracked number's value carries, where the sheet holds a value of it; else nothing. */
+function trackedResource(build: SheetBuild, key: FieldKey): Pick<SheetValue, 'resource'> {
+  const tracked = build.shown.tracked.get(key);
+  return tracked && isResourceKey(tracked.key) && build.resources[tracked.key] ? { resource: tracked.key } : {};
+}
 
 /** The label a block shows its value under: its own, else its field's, else its key. */
 export function labelOf(build: SheetBuild, block: { label?: string | undefined; field: string }): string {
@@ -84,7 +94,7 @@ function pairsNode(build: SheetBuild, block: Extract<TemplateBlock, { type: 'pai
   const pairs = found.slice(0, MAX_SHEET_LIST).flatMap((pair): SheetPair[] => {
     const name = clippedLine(pairText({ key: pair.key, value: '' }, false), MAX_BOOK_TITLE) ?? '';
     const shown = clippedLine(pairText({ key: '', value: pair.value }, signed), MAX_BOOK_TITLE) ?? '';
-    const roll = sheetRoll(shown, rollable);
+    const roll = sheetRoll(shown, rollable, build.shown.namedRolls);
     return name === '' && shown === '' ? [] : [{ label: name, value: shown, ...(roll !== null && { roll }) }];
   });
   return { k: 'value', value: sheetValue(build, label, found.map((pair) => pairText(pair, signed)).join(', '), 'pairs', field, null, { pairs }) };
@@ -99,7 +109,7 @@ function metricNode(build: SheetBuild, block: MetricBlock, display: BlockDisplay
     const text = metricNumberText(key, build.shown).text;
     const known = build.shown.fields.get(key);
     const label = known?.label ?? key;
-    return sheetValue(build, label, text, 'plain', field, text.trim() === '' && field ? valuePrompt(known, label) : null, { rollable: rollableBlock(block) });
+    return sheetValue(build, label, text, 'plain', field, text.trim() === '' && field ? valuePrompt(known, label) : null, { rollable: rollableBlock(block), ...trackedResource(build, key) });
   });
   return values.length > 0 ? { k: 'metric', heading, values } : null;
 }
@@ -119,8 +129,8 @@ function tableNode(build: SheetBuild, block: ScoresBlock, display: BlockDisplay,
   const rows = cells(rowTexts);
   const worked = cells(workedTexts);
   const rollable = rollableBlock(block);
-  const rolls = cellRolls(rowTexts, rows, rollable);
-  const workedRolls = cellRolls(workedTexts, worked, rollable);
+  const rolls = cellRolls(rowTexts, rows, rollable, build.shown.namedRolls);
+  const workedRolls = cellRolls(workedTexts, worked, rollable, build.shown.namedRolls);
   const labels = shown.derived.slice(0, MAX_TABLE_ROWS).map((row) => clippedLine(row.label, MAX_BOOK_TITLE) ?? '');
   return {
     // The card names a Table by its columns alone.
@@ -139,17 +149,51 @@ function tableNode(build: SheetBuild, block: ScoresBlock, display: BlockDisplay,
 function trackNode(build: SheetBuild, block: TrackBlock, display: BlockDisplay, field: SheetField | null): SheetNode | null {
   const label = clippedLine(labelOf(build, block), MAX_BOOK_TITLE);
   if (display.state !== 'value') return plainNode(build, label, display, field);
-  const held = block.resource !== undefined && isResourceKey(block.resource) ? build.resources[block.resource] : undefined;
+  const resource = block.resource ?? trackedResource(build, block.field).resource;
+  const held = resource !== undefined && isResourceKey(resource) ? build.resources[resource] : undefined;
   const max = numericValue(build.shown.reader(block.field));
-  if (held && held.max > 0) return track(block, label, held.current, held.max, block.resource ?? null, null);
-  if (max !== null && max > 0) return track(block, label, block.counts === 'down' ? Math.floor(max) : 0, Math.floor(max), null, field);
+  if (held && held.max > 0) {
+    // A tracked number counts the way its field says, which its value follows
+    const counts = block.resource === undefined ? build.shown.tracked.get(block.field)?.counts ?? block.counts : block.counts;
+    return track(block, label, held.current, held.max, resource ?? null, null, counts);
+  }
+  // The note holds a tracked number's maximum, which its boxes must never write
+  const writes = build.shown.tracked.has(block.field) ? null : field;
+  if (max !== null && max > 0) return track(block, label, block.counts === 'down' ? Math.floor(max) : 0, Math.floor(max), null, writes);
   const text = misfitText(build, block.field);
   return text === null ? null : { k: 'value', value: sheetValue(build, label, text, 'plain', field, null) };
 }
 
-function track(block: TrackBlock, label: string | null, current: number, max: number, resource: string | null, field: SheetField | null): SheetNode {
+function track(block: TrackBlock, label: string | null, current: number, max: number, resource: string | null, field: SheetField | null, counts = block.counts): SheetNode {
   const look = block.look === 'boxes' && max <= MAX_TRACK_BOXES ? 'boxes' : 'gauge';
-  return { k: 'track', label, look, counts: block.counts, current: Math.max(0, Math.min(current, max)), max, resource, field };
+  return { k: 'track', label, look, counts, current: Math.max(0, Math.min(current, max)), max, resource, field };
+}
+
+/** Whether the protocol carries a line exactly as it is written. */
+export const carriedLine = (text: string, max: number = MAX_BOOK_TITLE): boolean => bookLine(text, max) === text;
+
+/** A row as the page takes it; null where the protocol cannot carry it as it is (a name, recovery button or formula it would change, too many uses). */
+function sheetCounter(row: CounterRow): SheetCounter | null {
+  if (!carriedLine(row.name) || (row.reset !== null && !carriedLine(row.reset)) || (row.regain !== null && !carriedLine(row.regain, MAX_FORMULA)) || row.max > MAX_COUNTER) return null;
+  return { name: row.name, max: row.max, used: row.used, reset: row.reset, regain: row.regain };
+}
+
+/**
+ * A Counters block: every row as the note holds it (or the template's preset rows, where it holds
+ * none), rows without uses included, so the page writes back the whole list in the note's order.
+ * Where the protocol cannot carry the rows exactly (too many, a name it would clean), or the value
+ * is no list of counters, the value is shown as written and never changed.
+ */
+function countersNode(build: SheetBuild, block: CountersBlock, display: BlockDisplay, field: SheetField | null): SheetNode | null {
+  const label = clippedLine(labelOf(build, block), MAX_BOOK_TITLE);
+  if (display.state === 'fallback') return plainNode(build, label, display, null);
+  if (display.state !== 'value') return null;
+  const known = build.shown.fields.get(block.field);
+  const value = build.shown.reader(block.field);
+  const rows = known ? shownCounterRows(known, value) : null;
+  const counters = rows && rows.length <= MAX_COUNTERS ? rows.map(sheetCounter) : null;
+  if (!counters?.every((row): row is SheetCounter => row !== null)) return { k: 'value', value: sheetValue(build, label, valueText(value), 'plain', null, null) };
+  return { k: 'counters', label, counters, field };
 }
 
 /** What a player may change of the field a block shows: nothing where its fallback stands in for the field's value. */
@@ -169,12 +213,16 @@ export function leafNode(build: SheetBuild, block: TemplateBlock, display: Block
       const field = key === undefined ? null : shownFieldOf(build, key, block, display);
       return plainNode(build, null, display, field);
     }
-    case 'stat': return plainNode(build, labelOf(build, block), display, shownFieldOf(build, block.field, block, display), rollableBlock(block));
+    case 'stat': {
+      const value = plainValue(build, labelOf(build, block), display, shownFieldOf(build, block.field, block, display), rollableBlock(block));
+      return { k: 'value', value: { ...value, ...trackedResource(build, block.field) } };
+    }
     case 'tags': return wordsNode(build, block, display, shownFieldOf(build, block.field, block, display));
     case 'pairs': return pairsNode(build, block, display, shownFieldOf(build, block.field, block, display));
     case 'metric': return metricNode(build, block, display);
     case 'scores': return tableNode(build, block, display, shownFieldOf(build, block.field, block, display));
     case 'track': return trackNode(build, block, display, shownFieldOf(build, block.field, block, display));
+    case 'counters': return countersNode(build, block, display, shownFieldOf(build, block.field, block, display));
     case 'text': {
       const field = block.field === undefined ? null : shownFieldOf(build, block.field, block, display);
       const text = display.state === 'value' ? (block.field ? valueText(build.shown.reader(block.field)) : block.text ?? '') : displayText(display);

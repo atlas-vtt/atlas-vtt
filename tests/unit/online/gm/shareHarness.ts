@@ -13,7 +13,7 @@ import type { TokenRules } from '../../../../src/app/online/gm/tokenUI.ts';
 import type { RemoteDrag } from '../../../../src/app/online/marks/index.ts';
 import type { GmRuler } from '../../../../src/app/online/gm/dragRulers.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
-import { GENERIC_SOURCE, LIGHTING_ON } from './gmLighting.ts';
+import { GENERIC_SOURCE, PLAYER_SETTINGS } from './gmLighting.ts';
 import { settled } from './settled.ts';
 
 export const GRID_SIZE = 70;
@@ -98,7 +98,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     perception: undefined,
     rendered: true,
     lighting: GENERIC_SOURCE,
-    settings: LIGHTING_ON,
+    settings: PLAYER_SETTINGS,
     dice: null,
     layers: null,
     rules: null,

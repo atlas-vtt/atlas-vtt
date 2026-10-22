@@ -1,4 +1,5 @@
 import { Notice } from 'obsidian';
+import { animateNotice } from './noticeMotion';
 
 /** Marks a notice as Atlas' own: `styles/_notices.scss` gives it the look of Atlas' floating surfaces. */
 export const ATLAS_NOTICE_CLASS = 'atlas-notice';
@@ -12,6 +13,10 @@ export const ATLAS_NOTICE_CLASS = 'atlas-notice';
 export function showNotice(message: string | DocumentFragment, duration?: number): Notice {
   const notice = duration === undefined ? new Notice(message) : new Notice(message, duration);
   // Absent only where Obsidian itself is stood in for.
-  (notice.containerEl as HTMLElement | undefined)?.classList.add(ATLAS_NOTICE_CLASS);
+  const el = notice.containerEl as HTMLElement | undefined;
+  if (el) {
+    el.classList.add(ATLAS_NOTICE_CLASS);
+    animateNotice(notice);
+  }
   return notice;
 }

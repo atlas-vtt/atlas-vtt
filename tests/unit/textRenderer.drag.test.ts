@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, it, expect } from 'vitest';
 import type { EventSystem, FederatedPointerEvent } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';

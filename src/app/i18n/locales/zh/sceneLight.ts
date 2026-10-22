@@ -1,0 +1,25 @@
+import type { Translation } from '../../types';
+
+export const sceneLight: Translation = {
+  'sceneLight.day': '白天',
+  'sceneLight.dusk': '黄昏',
+  'sceneLight.night': '夜晚',
+  'sceneLight.dark': '漆黑',
+  'sceneLight.dynamic': '动态光照',
+  'sceneLight.timeOfDay': '时段',
+  'sceneLight.ambient': '环境光',
+  'sceneLight.ambientColour': '环境光颜色',
+  'sceneLight.forgetExplored': '忘记已探索区域',
+  'sceneLight.openSettings': '光照设置…',
+  'sceneLight.settings': '光照设置',
+  'sceneLight.closeSettings': '关闭光照设置',
+  'sceneLight.tokenVision': '棋子视野',
+  'sceneLight.tokenVisionOn': '玩家只能看到自己棋子所见',
+  'sceneLight.tokenVisionOff': '玩家能看到光照照到的一切',
+  'sceneLight.memory': '记住已探索区域',
+  'sceneLight.memoryOn': '棋子曾经看到的地方会留在玩家地图上',
+  'sceneLight.memoryOff': '玩家只能看到棋子现在看到的地方',
+  'sceneLight.exploredColour': '已探索颜色',
+  'sceneLight.unexploredColour': '未探索颜色',
+  'sceneLight.litFrom': '视为从此处起被照亮',
+};

@@ -1,11 +1,11 @@
 import { sha256Hex } from '../assetServe.ts';
 import type { VaultImage } from '../TokenShare.ts';
 import { AskedAnswer } from './askedAnswer.ts';
-import { MapImages, type FileStat, type MapImage } from './mapImages.ts';
+import { MapImages, type FileStat, type MapImage, type MapImageProblem } from './mapImages.ts';
 import type { WorldMapTree } from './worldMapGate.ts';
 import { worldMapOf, type WorldMapFile } from './worldMapLevels.ts';
 
-export type { FileStat } from './mapImages.ts';
+export type { FileStat, MapImageProblem } from './mapImages.ts';
 export type { WorldMapFile } from './worldMapLevels.ts';
 export type { WorldMapTree } from './worldMapGate.ts';
 
@@ -19,6 +19,13 @@ export interface WorldMapPorts {
   /** A map that was being looked up or read is known now. */
   read(): void;
 }
+
+/** What the GM is told when the world map's image cannot be sent to players. */
+export const WORLD_MAP_PROBLEM_TEXT: Readonly<Record<MapImageProblem, string>> = {
+  missing: 'Atlas Online cannot send the world map: its image file is missing.',
+  'too-large': 'Atlas Online cannot send the world map: its image is larger than 64 MB.',
+  unreadable: 'Atlas Online cannot send the world map: its image is not a PNG, JPEG, WebP, GIF or AVIF that players can open.',
+};
 
 /** The tree Atlas answered, with the id players know each of its maps by. */
 interface NamedTree {
@@ -66,6 +73,16 @@ export class WorldMaps {
       else images.set(path, image);
     }
     return reading ? undefined : worldMapOf(asked.tree, asked.ids, images);
+  }
+
+  /**
+   * Why the world map's own image cannot be sent, or null where it can, none is chosen, or it is
+   * still being read: the maps it leads into are left out without a word, the world map never.
+   */
+  problem(): MapImageProblem | null {
+    const asked = this.tree.get();
+    const root = asked?.tree.levels.find((level) => level.key === asked.tree.root);
+    return root === undefined ? null : this.images.problemOf(root.image);
   }
 
   /** Asks again which maps are shown: the campaign, its world map, a scene's pins or a map's artwork may be another now. A file already read is not read again. */

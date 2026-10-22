@@ -4,7 +4,7 @@ import { DEFAULT_DICE_RULES } from '../../gameSystems/diceRules';
 import { rollDiceFormula, type DiceRollInputs } from '../DiceTool';
 import { namedDiceLine, rollLine } from '../diceLabels';
 import {
-  formulaWithNamedTerms, keptModifiersText, labelledConstant, modifierSteps, modifiersText, namedModifiersOf, plainModifier,
+  formulaWithNamedTerms, keptModifiersText, labelledConstant, modifierSteps, modifiersText, namedModifiersOf, plainModifier, withoutConstantLabels,
 } from '../namedModifiers';
 import { rollTestFormula as rollFormula } from './rollTestFormula';
 
@@ -94,5 +94,12 @@ describe('how a roll writes its modifiers', () => {
     const damaged = { modifiers: 4, namedModifiers: [{ label: 'Ok', value: 1 }, { label: '', value: 2 }, { label: 'NaN', value: Number.NaN }, null] };
     expect(namedModifiersOf(damaged as never)).toEqual([{ label: 'Ok', value: 1 }]);
     expect(modifiersText(damaged as never)).toBe(' + 3 + 1 Ok');
+  });
+});
+
+describe('a formula without the labels of its constants', () => {
+  it('drops a constant\'s label and keeps a label of dice', () => {
+    expect(withoutConstantLabels('2[Agi]+1d20+3[Str mod]-1[Bane]')).toBe('2+1d20+3-1');
+    expect(withoutConstantLabels('2d6[fire]+1d20cs>=8[hits]+(4[Prof])')).toBe('2d6[fire]+1d20cs>=8[hits]+(4)');
   });
 });

@@ -174,7 +174,7 @@ $paste-padding: $spacing-l;
   font-size: $font-ui-smaller;
 }
 
-// ── The window's sidebar: search and New table side by side ───────────────
+// ── The window's sidebar: search and the ways to add a table side by side ──
 .atlas-tables-sidebar__head {
   @include atlas-flex-row($spacing-xs);
 
@@ -184,7 +184,7 @@ $paste-padding: $spacing-l;
   }
 }
 
-.atlas-tables-sidebar__new.btn--icon {
+.atlas-tables-sidebar__action.btn--icon {
   width: var(--input-height);
   height: var(--input-height);
   flex-shrink: 0;

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { App } from 'obsidian';
 import { createTokenStatblocks } from '../../../../src/app/packages/components/asset-manager/token-creator/tokenStatblocks';

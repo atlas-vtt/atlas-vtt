@@ -19,13 +19,31 @@ export interface AbilityPart {
   readonly several?: boolean;
 }
 
-/** An ability as the note holds it: `key` names it among the list's items (content hash and occurrence). */
+/**
+ * An ability as the note writes it, `@` references and all, where that differs from what shows:
+ * only the name, text and parts that differ. An ability's form starts from it, so saving keeps the
+ * references; an older GM's Atlas sends none, and the form starts from what shows.
+ */
+export interface AbilityWritten {
+  readonly name?: string;
+  readonly text?: SheetText;
+  readonly parts?: Readonly<Record<string, SheetRaw>>;
+}
+
+/**
+ * An ability as the note holds it, references filled in as the card shows it: `key` names it among
+ * the list's items (content hash and occurrence). `written` comes only with a list the player edits.
+ */
 export interface AbilityEntry {
   readonly key: string;
   readonly name: string;
   readonly text: SheetText;
   readonly parts: Readonly<Record<string, SheetRaw>>;
+  readonly written?: AbilityWritten;
 }
+
+/** What an ability's `written` spends of the budget beside its text: its name and parts, as `takeAbility` counts them. */
+export const writtenChars = (written: AbilityWritten): string => (written.name ?? '') + (written.parts === undefined ? '' : JSON.stringify(written.parts));
 
 /**
  * One list of a component: a tab of it (with its label) or the component's one list (label null). `list` is the field the
@@ -53,6 +71,13 @@ export interface AbilityComponent {
   /** The keys an ability of the note keeps its name and text under; unset, `name` and `desc`. An ability written from the page is `{ [nameKey]: name, [textKey]: text, ...parts }`, without empty values. */
   readonly nameKey?: string;
   readonly textKey?: string;
+  /**
+   * Where the GM's card shows the component: `heading` is the heading over the component itself and
+   * `section` that of the Section it stands in, null where the card shows none. An older GM's Atlas
+   * sends neither, and `name` stands for both.
+   */
+  readonly heading?: string | null;
+  readonly section?: string | null;
 }
 
 function parsePart(value: unknown): AbilityPart | null {
@@ -64,15 +89,27 @@ function parsePart(value: unknown): AbilityPart | null {
   return { key: value.key, label, type: value.type as AbilityPart['type'], ...(options !== undefined && { options }), ...(value.several === true && { several: true }) };
 }
 
+/** An ability as written, or undefined where none came or it is malformed: the form then starts from what shows. */
+function parseWritten(value: unknown): AbilityWritten | undefined {
+  if (!isRecord(value)) return undefined;
+  const name = value.name === undefined ? undefined : bookLine(value.name, MAX_BOOK_TITLE, true);
+  const text = value.text === undefined ? undefined : parseSheetText(value.text);
+  const parts = value.parts === undefined || !isRecord(value.parts) ? undefined : parseSheetRaw(value.parts);
+  if (name === null || text === null || (value.parts !== undefined && parts === undefined)) return undefined;
+  return { ...(name !== undefined && { name }), ...(text !== undefined && { text }), ...(parts !== undefined && { parts: parts as Record<string, SheetRaw> }) };
+}
+
 function parseEntry(value: unknown, budget: SheetBudget): AbilityEntry | null {
   if (!isRecord(value) || !isSheetKey(value.key) || !isRecord(value.parts)) return null;
   const name = bookLine(value.name, MAX_BOOK_TITLE, true);
   const text = parseSheetText(value.text);
   const parts = parseSheetRaw(value.parts);
+  const written = parseWritten(value.written);
   budget.abilities += 1;
   if (name === null || text === null || parts === undefined || budget.abilities > MAX_ABILITIES) return null;
   if (!spendText(budget, text) || !spendText(budget, name + JSON.stringify(parts))) return null;
-  return { key: value.key, name, text, parts: parts as Record<string, SheetRaw> };
+  if (written !== undefined && (!spendText(budget, written.text ?? '') || !spendText(budget, writtenChars(written)))) return null;
+  return { key: value.key, name, text, parts: parts as Record<string, SheetRaw>, ...(written !== undefined && { written }) };
 }
 
 function parseTab(value: unknown, budget: SheetBudget): AbilityTab | null {
@@ -93,10 +130,14 @@ export function parseComponent(value: unknown, budget: SheetBudget): AbilityComp
   if (name === null || parts === null || tabs === null || parts.some((part) => part === null) || tabs.some((tab) => tab === null)) return null;
   const spells = value.spells === true;
   const keyOk = (key: unknown): boolean => key === undefined || isFieldKey(key);
-  if (!keyOk(value.nameKey) || !keyOk(value.textKey)) return null;
+  const heading = value.heading === undefined ? undefined : optionalSheetLine(value.heading);
+  const section = value.section === undefined ? undefined : optionalSheetLine(value.section);
+  if (!keyOk(value.nameKey) || !keyOk(value.textKey) || (value.heading !== undefined && heading === undefined) || (value.section !== undefined && section === undefined)) return null;
+  if (!spendText(budget, (heading ?? '') + (section ?? ''))) return null;
   return {
     id: value.id, name, access: spells ? 'read' : value.access, parts: parts as AbilityPart[], tabs: tabs as AbilityTab[], ...(spells && { spells: true }),
     ...(isFieldKey(value.nameKey) && { nameKey: value.nameKey }), ...(isFieldKey(value.textKey) && { textKey: value.textKey }),
+    ...(heading !== undefined && { heading }), ...(section !== undefined && { section }),
   };
 }
 

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { canRunMapHotkeys, matchesMapHotkey } from '../../src/app/keyboard/mapHotkeys';
@@ -134,7 +135,7 @@ describe('the tray', () => {
   });
 
   it('leaves Hidden tools out of the bar where the view does not offer them', () => {
-    const harness = renderToolbar({ stored: { hidden: ['wall', 'fog'] } });
+    const harness = renderToolbar({ stored: { hidden: ['audio', 'fog'] } });
     startEditing(harness);
     expect(trayIds(harness.container)).toEqual(['fog']);
   });
@@ -163,7 +164,7 @@ describe('the editor menu', () => {
     fireEvent.contextMenu(handle(harness.container, 'fog', 'tray'), { clientX: 10, clientY: 10 });
     fireEvent.click(await screen.findByRole('menuitem', { name: 'Show on toolbar' }));
     expect(harness.settings.getToolbarLayout()).toEqual({});
-    expect(liveRegion(harness.container)).toBe('Fog of war is back on the toolbar, position 2 of 10.');
+    expect(liveRegion(harness.container)).toBe('Fog of war is back on the toolbar, position 2 of 11.');
   });
 
   it('opens Hide from a row of "More tools" instead of running the control', async () => {

@@ -6,6 +6,7 @@ import { ImageOverlayControls } from './imageOverlayControls';
 import './image-display.scss';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { statblockImageAt } from './statblockImageTarget';
 
 /** An image overlay in the player window. */
 interface ImageDisplay {
@@ -102,9 +103,10 @@ export class ImageDisplayService {
    * Handles rendered embeds (![[image.png]]) and direct IMG clicks.
    */
   private resolveImageFromTarget(target: HTMLElement): { file: TFile; imgElement: HTMLImageElement } | null {
-    if (target.closest('[class*="atlas-"]') || target.closest('.modal-container')) return null;
-
-    let imgElement: HTMLImageElement | null = null;
+    if (target.closest('.modal-container')) return null;
+    // Atlas' own UI keeps its images to itself, but a statblock's pictures are content.
+    let imgElement = statblockImageAt(target);
+    if (!imgElement && target.closest('[class*="atlas-"]')) return null;
 
     if (target.tagName === 'IMG') {
       imgElement = target as HTMLImageElement;
@@ -146,13 +148,23 @@ export class ImageDisplayService {
   private handleContextMenu(event: MouseEvent): void {
     const target = event.target as HTMLElement;
 
-    if (target.closest('[class*="atlas-"]') || target.closest('.modal-container')) return;
+    if (target.closest('.modal-container')) return;
 
     // In markdown views, the editor-menu handler adds items to Obsidian's native menu
     const isInMarkdownView = target.closest('.markdown-preview-view') ||
                             target.closest('.markdown-source-view') ||
                             target.closest('.markdown-reading-view');
     if (isInMarkdownView) return;
+
+    // A statblock's picture in a statblock preview or the DM screen, unless a menu of its own took the click
+    const statblockImage = this.statblockImageFileAt(target);
+    if (statblockImage) {
+      if (!event.defaultPrevented) this.openImageMenu(event, statblockImage.file, statblockImage.imgElement);
+      return;
+    }
+
+    // Atlas' own UI keeps its images to itself
+    if (target.closest('[class*="atlas-"]')) return;
 
     // Only handle direct image viewing (e.g. clicking an image file in a tab)
     const viewContent = target.closest('.view-content');
@@ -164,13 +176,7 @@ export class ImageDisplayService {
     if (!imgElement) return;
 
     // Try to resolve the image file
-    let imageFile: TFile | null = null;
-
-    const filePath = this.extractFilePathFromSrc(imgElement.src);
-    if (filePath) {
-      const file = this.app.vault.getAbstractFileByPath(filePath);
-      if (file instanceof TFile) imageFile = file;
-    }
+    let imageFile = this.imageFileOf(imgElement);
 
     if (!imageFile) {
       const activeFile = this.app.workspace.getActiveFile();
@@ -181,19 +187,39 @@ export class ImageDisplayService {
       }
     }
 
-    if (imageFile) {
-      event.preventDefault();
-      event.stopPropagation();
+    if (imageFile) this.openImageMenu(event, imageFile, imgElement);
+  }
 
-      const file = imageFile;
-      const entries: ContextMenuEntry[] = [
-        { type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) },
-        { type: 'item', label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) },
-        { type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) },
-      ];
+  /**
+   * The vault image of a statblock's picture under a right-click, which this
+   * service's menu offers to show to the players; null for anything else, a
+   * picture from the web included.
+   */
+  public statblockImageFileAt(target: Element): { file: TFile; imgElement: HTMLImageElement } | null {
+    const imgElement = statblockImageAt(target);
+    const file = imgElement ? this.imageFileOf(imgElement) : null;
+    return imgElement && file ? { file, imgElement } : null;
+  }
 
-      openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
-    }
+  /** The vault image an `<img>` shows, or null for one from elsewhere. */
+  private imageFileOf(imgElement: HTMLImageElement): TFile | null {
+    const filePath = this.extractFilePathFromSrc(imgElement.src);
+    const file = filePath ? this.app.vault.getAbstractFileByPath(filePath) : null;
+    return file instanceof TFile && this.isImageFile(file) ? file : null;
+  }
+
+  /** Atlas' menu for an image: show it to the players, copy it, open it outside Obsidian. */
+  private openImageMenu(event: MouseEvent, file: TFile, imgElement: HTMLImageElement): void {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const entries: ContextMenuEntry[] = [
+      { type: 'item', label: t('image.display'), icon: 'monitor', onClick: () => this.displayImageOnPlayerView(file) },
+      { type: 'item', label: t('image.copy'), icon: 'copy', onClick: () => this.copyImageToClipboard(imgElement) },
+      { type: 'item', label: t('image.openDefaultMenu'), icon: 'external-link', onClick: () => this.app.openWithDefaultApp(file.path) },
+    ];
+
+    openContextMenuGlobal(entries, { x: event.clientX, y: event.clientY });
   }
   
   /**

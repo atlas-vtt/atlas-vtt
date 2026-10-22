@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DM_CAMERA, MIRRORED, SETTINGS, mirroring, setupMirror } from '../mocks/mirrorHarness';
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import { useStore } from 'zustand';
 import { useAtlasSettings, useHotkeyLabels } from '../../keyboard/useMapHotkeys';
 import { canRunMapHotkeys, matchesMapHotkey, type HeldWidgetHotkeyId } from '../../keyboard/mapHotkeys';
@@ -10,6 +10,8 @@ import { CounterWidgetDisplay } from './CounterWidgetDisplay';
 import { ClockWidgetDisplay } from './ClockWidgetDisplay';
 import { isSteppedWidget, stepCounter } from '../../utils/counterWidget';
 import { isWidgetOn } from '../../utils/widgetActivation';
+import { AtlasUIContext } from '../root/AtlasUIContext';
+import { useViewWindow } from '../useViewWindow';
 
 interface ResponsiveWidgetBarProps {
   isPlayerView?: boolean;
@@ -204,6 +206,7 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
     return unsubscribe;
   }, [componentId, widgetSyncService]);
   
+  const viewWindow = useViewWindow(useContext(AtlasUIContext)?.view?.containerEl);
   // Keyboard shortcut tracking. Listens in the capture phase so a held widget's
   // keys (e.g. Space) win over the map shortcuts that share them.
   useEffect(() => {
@@ -247,16 +250,16 @@ export function ResponsiveWidgetBar({ isPlayerView = false, store, viewId, widge
       setHeldNumberKeys(new Set());
     };
     
-    window.addEventListener('keydown', handleKeyDown, true);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', handleBlur);
+    viewWindow.addEventListener('keydown', handleKeyDown, true);
+    viewWindow.addEventListener('keyup', handleKeyUp);
+    viewWindow.addEventListener('blur', handleBlur);
     
     return () => {
-      window.removeEventListener('keydown', handleKeyDown, true);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('blur', handleBlur);
+      viewWindow.removeEventListener('keydown', handleKeyDown, true);
+      viewWindow.removeEventListener('keyup', handleKeyUp);
+      viewWindow.removeEventListener('blur', handleBlur);
     };
-  }, [handleInteraction, broadcastAnimation, settings, viewId]);
+  }, [handleInteraction, broadcastAnimation, settings, viewId, viewWindow]);
   
   const visibleWidgets: AnyWidget[] = Object.values<AnyWidget>(storedWidgetSettings?.widgets ?? {})
     .filter((widget) => isWidgetOn(storedWidgetSettings, widget) && (!isPlayerView || widget.visibleToPlayers))

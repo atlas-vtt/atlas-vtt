@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, expect, it, vi } from 'vitest';
 import { Text } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';

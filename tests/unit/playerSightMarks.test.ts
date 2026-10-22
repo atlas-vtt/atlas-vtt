@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Graphics, Sprite, Texture, type Container } from 'pixi.js';
 import { PlayerSightMarks } from '../../src/app/pixi/lighting/PlayerSightMarks';

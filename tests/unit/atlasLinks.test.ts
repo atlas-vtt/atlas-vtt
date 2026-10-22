@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TFile, type EditorSuggestContext, type EmbedContext, type EmbedCreator, type Plugin } from 'obsidian';
 import { findByLinkName, isEncounterPath, linkSafeName, snapshotNameOfSubpath } from '../../src/app/links/atlasLinkTargets';

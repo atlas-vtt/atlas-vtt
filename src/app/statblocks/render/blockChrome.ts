@@ -1,5 +1,5 @@
 import { createContext, useContext, type DOMAttributes, type ReactNode } from 'react';
-import type { TemplateBlock } from '../model/templateTypes';
+import type { FieldKey, MetricBlock, TemplateBlock } from '../model/templateTypes';
 import type { BlockDisplay } from './blockDisplay';
 
 type FrameHandlers = Pick<
@@ -28,6 +28,8 @@ export interface BlockDecoration {
  */
 export interface BlockChrome {
   decorate(block: TemplateBlock, display: BlockDisplay): BlockDecoration | null;
+  /** Laid absolutely over one number of a Metric, which is its own target (the recovery editor's spots). */
+  decorateNumber?(block: MetricBlock, key: FieldKey): ReactNode;
 }
 
 export const BlockChromeContext = createContext<BlockChrome | null>(null);

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { GlProgram, Shader } from 'pixi.js';
 import { LaserBeam } from '../../src/app/pixi/laser/LaserBeam';

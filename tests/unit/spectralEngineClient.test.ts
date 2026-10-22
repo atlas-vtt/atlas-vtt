@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MapGray } from '../../src/app/pixi/spectralEngine/detectGrid';
 import type { DetectionOutcome } from '../../src/app/pixi/spectralEngine/detectionJob';

@@ -31,7 +31,7 @@ function questAssetOf(hash: string, quests: readonly BookQuest[], served: (hash:
 export function bookAssetOf(hash: string, named: NamedAssets, served: (hash: string) => QuestAsset | undefined): QuestAsset | undefined {
   const map = named.worldMap?.paths.get(hash);
   if (map !== undefined) return { path: map };
-  if (named.character !== null && named.character.sheet.art?.hash === hash) return { path: named.character.key };
+  if (named.character !== null && named.character.sheet.art?.hash === hash) return { path: named.character.imagePath };
   const text = named.statblockText?.(hash);
   if (text !== undefined) return { bytes: text };
   return questAssetOf(hash, named.quests, served);

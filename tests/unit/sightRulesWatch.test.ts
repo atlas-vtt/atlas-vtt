@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CampaignPlay } from '../../src/app/campaigns/campaignPlay';
 import { PlayedRules } from '../../src/app/campaigns/playedRules';

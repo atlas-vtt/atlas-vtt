@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage, type BookItem, type PlayerBook, type PlayerBookMessage } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { giveLoot } from '../../../../src/app/loot/lootRecipients';
@@ -7,7 +6,7 @@ import { BOOK_BURST } from '../../../../src/app/online/gm/book/BookShare.ts';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { applyBookMessage, EMPTY_BOOK, readBooks, withItem, type StoredBook } from '../../../../src/app/online/gm/book/bookStore.ts';
 import { FakeSocket, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH_ART, delivered, MIRA_ART, ofType, openTable, traffic } from './bookTableHarness.ts';
+import { ANA, BEN, BRANNOCH_BOOK, delivered, MIRA_BOOK, ofType, openTable, traffic } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
@@ -68,8 +67,8 @@ describe('a book\'s slots as the GM keeps them', () => {
     expect(book.equipped).toEqual([]);
 
     const shelf = new BookShelf();
-    shelf.keep('Cairn', 'art/a.png', written([{ t: 'book-slots', slots: { hidden: ['ammunition'], own: [] } }], EMPTY_BOOK));
-    expect(shelf.of('Cairn', 'art/a.png').slots.hidden).toEqual(['ammunition']);
+    shelf.keep('token:a', written([{ t: 'book-slots', slots: { hidden: ['ammunition'], own: [] } }], EMPTY_BOOK));
+    expect(shelf.of('token:a').slots.hidden).toEqual(['ammunition']);
   });
 
   it('drops what an item handed over pushes out of the book from its slot', () => {
@@ -79,11 +78,9 @@ describe('a book\'s slots as the GM keeps them', () => {
   });
 
   it('reads slots back as kept, and malformed ones as the defaults with nothing equipped where it cannot lie', () => {
-    const shelf = new BookShelf();
     const book = written([{ t: 'book-slots', slots: { hidden: ['cloak'], own: [{ id: BAG, name: 'Saddlebag' }] } }, { t: 'book-equip', item: id(3), slot: BAG }], held);
-    shelf.keep('Cairn', 'art/a.png', book);
-    const saved = JSON.parse(JSON.stringify(shelf.toData())) as Record<string, Record<string, Record<string, unknown>>>;
-    expect(readBooks(saved)).toEqual(shelf.toData());
+    const saved = JSON.parse(JSON.stringify({ Cairn: { 'art/a.png': book } })) as Record<string, Record<string, Record<string, unknown>>>;
+    expect(readBooks(saved)).toEqual({ Cairn: { 'art/a.png': book } });
 
     const kept = saved.Cairn?.['art/a.png'];
     if (kept === undefined) throw new Error('no book saved');
@@ -123,16 +120,16 @@ describe('slots at a running table', () => {
   it('keeps a player\'s slots in their own character\'s book only, and answers what it refuses with that player\'s book alone', async () => {
     const shelf = new BookShelf();
     const { online, socket, from } = await openTable(shelf, [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
-    expect(giveLoot(ANA, DRAW)).toBe(true);
-    expect(giveLoot(BEN, DRAW)).toBe(true);
-    const blade = shelf.of('Cairn', BRANNOCH_ART).items[0]?.id ?? '';
-    const bens = shelf.of('Cairn', MIRA_ART).items[0]?.id ?? '';
+    expect(giveLoot(ANA, DRAW)).toBe(1);
+    expect(giveLoot(BEN, DRAW)).toBe(1);
+    const blade = shelf.of(BRANNOCH_BOOK).items[0]?.id ?? '';
+    const bens = shelf.of(MIRA_BOOK).items[0]?.id ?? '';
     expect(lastBook(socket, ANA)).toMatchObject({ slots: { hidden: [], own: [] }, equipped: [] });
 
     from(ANA, { t: 'book-slots', slots: { hidden: ['ammunition'], own: [{ id: BAG, name: 'Scabbard' }] } });
     from(ANA, { t: 'book-equip', item: blade, slot: BAG });
     await advance(100);
-    expect(shelf.of('Cairn', BRANNOCH_ART)).toMatchObject({ slots: { hidden: ['ammunition'], own: [{ id: BAG, name: 'Scabbard' }] }, equipped: [{ slot: BAG, item: blade }] });
+    expect(shelf.of(BRANNOCH_BOOK)).toMatchObject({ slots: { hidden: ['ammunition'], own: [{ id: BAG, name: 'Scabbard' }] }, equipped: [{ slot: BAG, item: blade }] });
 
     // Ben's item is not in Ana's book, and a hidden slot takes nothing: refused, Ana alone is sent her book.
     let since = delivered(socket).length;
@@ -144,13 +141,13 @@ describe('slots at a running table', () => {
     expect(answers.length).toBeGreaterThan(0);
     expect(answers.every(({ to }) => to === ANA)).toBe(true);
     expect(lastBook(socket, ANA)).toMatchObject({ equipped: [{ slot: BAG, item: blade }], slots: { own: [{ name: 'Scabbard' }] } });
-    expect(shelf.of('Cairn', MIRA_ART)).toMatchObject({ equipped: [], slots: { hidden: [], own: [] } });
+    expect(shelf.of(MIRA_BOOK)).toMatchObject({ equipped: [], slots: { hidden: [], own: [] } });
 
     // A flood is cut at the book's rate like any other write.
     since = delivered(socket).length;
     for (let count = 0; count < BOOK_BURST + 10; count += 1) from(BEN, { t: 'book-equip', item: bens, slot: count < BOOK_BURST ? 'head' : null });
     await advance(100);
-    expect(shelf.of('Cairn', MIRA_ART).equipped).toEqual([{ slot: 'head', item: bens }]);
+    expect(shelf.of(MIRA_BOOK).equipped).toEqual([{ slot: 'head', item: bens }]);
     expect(ofType(delivered(socket).slice(since), 'book').map(({ to }) => to)).toEqual([BEN]);
 
     // Ana's slots come back with her, and nothing of them ever reached Ben.

@@ -129,6 +129,7 @@ const BODY_READERS: { [T in FileBlockType]: BodyRead<T> } = {
     ...r.opt('label', asString, TEXT),
     ...r.opt('resource', asString, TEXT),
   })),
+  counters: (r) => withField(r, (field) => ({ type: 'counters', field, ...r.opt('label', asString, TEXT) })),
   image: (r) => withField(r, (field) => ({ type: 'image', field, shape: oneOf(r, 'shape', IMAGE_SHAPES) })),
   spells: (r) => withField(r, (field) => ({
     type: 'spells', field, ...r.opt('heading', asString, TEXT), ...optionalOneOf(r, 'look', SPELL_LOOKS),

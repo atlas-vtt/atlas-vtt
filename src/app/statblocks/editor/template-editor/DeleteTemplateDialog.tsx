@@ -6,6 +6,7 @@ import { Button } from '../../../packages/components/primitives/button';
 import { CloseButton } from '../../../packages/components/primitives/CloseButton';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../../packages/components/primitives/dialogMotion';
 import { Select, type SelectOption } from '../../../packages/components/primitives/Select';
+import { formatList, t } from '../../../i18n';
 import type { TemplateUsage } from '../../library/templateUsage';
 import type { LibraryTemplate } from '../../model/resolvedTypes';
 import type { TemplateId } from '../../model/templateTypes';
@@ -20,6 +21,8 @@ export interface DeleteTemplateDialogProps {
   templateId: TemplateId;
   usage: TemplateUsage;
   templates: readonly LibraryTemplate[];
+  /** The names of the template's recovery buttons, which go with it: a replacement offers its own. */
+  lostButtons: readonly string[];
   onDelete: (replacement: TemplateId | null) => Promise<void>;
   onClose: () => void;
 }
@@ -41,7 +44,7 @@ function usageText(usage: TemplateUsage): string | null {
  * template. The file goes to the trash.
  */
 export function DeleteTemplateDialog(props: DeleteTemplateDialogProps): React.JSX.Element {
-  const { anchor, name, templateId, usage, templates, onDelete, onClose } = props;
+  const { anchor, name, templateId, usage, templates, lostButtons, onDelete, onClose } = props;
   const windowVariants = useDialogWindowVariants();
   const titleId = useId();
   const selectId = useId();
@@ -49,6 +52,7 @@ export function DeleteTemplateDialog(props: DeleteTemplateDialogProps): React.JS
   const [busy, setBusy] = useState(false);
   const windowRef = useRef<HTMLDivElement>(null);
   const used = usageText(usage);
+  const lost = lostButtons;
   const options: SelectOption<string>[] = [
     { value: KEEP, label: 'Leave them as they are' },
     ...templates.filter((entry) => entry.template.id !== templateId)
@@ -89,6 +93,9 @@ export function DeleteTemplateDialog(props: DeleteTemplateDialogProps): React.JS
         </div>
         <div className="atlas-te-dialog__body">
           <p className="atlas-te-dialog__text">The template goes to the trash. Statblocks keep their values.</p>
+          {lost.length > 0 && (
+            <p className="atlas-te-dialog__text">{t('rest.lostWithTemplate', { count: lost.length, list: formatList(lost) })}</p>
+          )}
           {used && (
             <div className="atlas-te-dialog__field">
               <p className="atlas-te-dialog__text">{used}</p>

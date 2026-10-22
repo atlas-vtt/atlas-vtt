@@ -16,14 +16,17 @@ export interface SocketPlacement {
   key: string;
 }
 
+/** Which edge of the panel lines up with the same edge of its anchor. */
+export type SocketAlign = 'start' | 'end';
+
 /**
- * Where the token panel hangs: under the socket (above where the leaf has no
- * room below), its end edge aligned with the socket's, in the socket's
- * window. Followed while the panel is open, as the card scrolls, the window
- * resizes or the socket changes size (art linked or taken away), once per
- * frame. Null while closed.
+ * Where a panel hangs from the card: under its anchor (the token socket, a
+ * recovery button; above where the leaf has no room below), its `align` edge
+ * lined up with the anchor's, in the anchor's window. Followed while the panel
+ * is open, as the card scrolls, the window resizes or the anchor changes size
+ * (art linked or taken away), once per frame. Null while closed.
  */
-export function useSocketPlacement(socket: HTMLElement | null, open: boolean): SocketPlacement | null {
+export function useSocketPlacement(socket: HTMLElement | null, open: boolean, align: SocketAlign = 'end'): SocketPlacement | null {
   const [placement, setPlacement] = useState<SocketPlacement | null>(null);
 
   useLayoutEffect(() => {
@@ -39,14 +42,15 @@ export function useSocketPlacement(socket: HTMLElement | null, open: boolean): S
       const frameBox = (socket.closest('.workspace-leaf') ?? socket.doc.body).getBoundingClientRect();
       const below = frameBox.bottom - box.bottom;
       const above = below < ROOM_BELOW && box.top - frameBox.top > below;
-      const right = Math.round(win.innerWidth - box.right);
+      const side = Math.round(align === 'end' ? win.innerWidth - box.right : box.left);
       const edge = Math.round(above ? win.innerHeight - box.top + GAP : box.bottom + GAP);
       setPlacement((previous) => {
-        const key = `${above ? 'a' : 'b'}${right},${edge}`;
+        const key = `${above ? 'a' : 'b'}${align}${side},${edge}`;
         if (previous?.key === key) return previous;
+        const sideVar = align === 'end' ? '--atlas-sb-socket-right' : '--atlas-sb-socket-left';
         const style: SocketPlacement['style'] = above
-          ? { '--atlas-sb-socket-right': `${right}px`, '--atlas-sb-socket-bottom': `${edge}px` }
-          : { '--atlas-sb-socket-right': `${right}px`, '--atlas-sb-socket-top': `${edge}px` };
+          ? { [sideVar]: `${side}px`, '--atlas-sb-socket-bottom': `${edge}px` }
+          : { [sideVar]: `${side}px`, '--atlas-sb-socket-top': `${edge}px` };
         return { above, style, key };
       });
     };
@@ -63,7 +67,7 @@ export function useSocketPlacement(socket: HTMLElement | null, open: boolean): S
       socket.doc.removeEventListener('scroll', schedule, true);
       win.removeEventListener('resize', schedule);
     };
-  }, [socket, open]);
+  }, [socket, open, align]);
 
   return placement;
 }

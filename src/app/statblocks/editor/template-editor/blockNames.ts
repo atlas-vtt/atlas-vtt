@@ -16,7 +16,7 @@ export function blockTitle(block: TemplateBlock, fields: readonly TemplateField[
   switch (block.type) {
     case 'heading': return block.text.trim();
     case 'section': return (block.heading ?? '').trim() || (fieldLabel(fields, block.headingField) ?? '');
-    case 'stat': case 'tags': case 'pairs': case 'track':
+    case 'stat': case 'tags': case 'pairs': case 'track': case 'counters':
       return (block.label ?? '').trim() || (fieldLabel(fields, block.field) ?? '');
     case 'entries': case 'spells': return (block.heading ?? '').trim() || (fieldLabel(fields, block.field) ?? '');
     case 'tabs': return (block.heading ?? '').trim();

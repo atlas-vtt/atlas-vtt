@@ -1,8 +1,8 @@
-// @vitest-environment node
 import type { GmMessage, PlayerMove } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { checkMove, MOVE_BURST, MOVES_PER_SECOND, MoveRate, type MoveContext } from '../../../../src/app/online/gm/moveCheck.ts';
-import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
+import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
+import { boundOwnership } from './fakeSeats.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { sceneState, shareHarness, token, tokenLists } from './shareHarness.ts';
 
@@ -63,7 +63,7 @@ describe('moves through the shared scene', () => {
       background: 'maps/cave.png',
       objects: { ...sceneState().objects, tokens: { ogre: token('ogre', { x: 105 }), bear: token('bear', { x: 315 }), ghost: token('ghost', { x: 525, isHidden: true }) } },
     });
-    const owners = new Ownership(readOwnership(undefined), () => undefined);
+    const owners = boundOwnership([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
     owners.welcome([{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
     owners.give(['ogre', 'ghost'], {}, ANA);
     const share = shareHarness(initial, new Map([['maps/cave.png', PNG_1000x800]]), owners);

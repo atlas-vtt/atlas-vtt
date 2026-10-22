@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import type { SceneState, SceneStore } from '../../../../src/app/online/gm/atlasView.ts';
 import { openThroughAtlas, takeOverDiceLog } from '../../../../src/app/online/gm/log/diceLogTakeover.ts';

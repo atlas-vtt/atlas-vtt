@@ -12,6 +12,7 @@ import type { DiscoveredField } from '../../../creatures/creatureFieldDiscovery'
 import { filterFields, filterForField, newCreatureFilterId } from '../../../creatures/creatureFilterDefinitions';
 import type { IndexedCreature } from '../../../creatures/CreatureIndex';
 import { suggestedFilterFields } from '../../../creatures/templateFilterFields';
+import { templateCreatureFilters } from '../../../creatures/templateCreatureFilters';
 import type { StatblockTemplate } from '../../../statblocks/model/templateTypes';
 import type { CreatureFilterDefinition } from '../../../types/creatureFilterTypes';
 import { CatalogFilterList } from './CatalogFilterList';
@@ -38,10 +39,12 @@ const NO_TEMPLATES: readonly StatblockTemplate[] = [];
 
 export function CreatureFiltersTab({ hidden, onHiddenChange, custom, onCustomChange, creatures, pending, templates = NO_TEMPLATES }: CreatureFiltersTabProps): React.ReactElement {
   const discovered = useMemo(() => suggestedFilterFields(templates, creatures), [templates, creatures]);
+  // The templates' fields filter by themselves, so only those the collection does not filter yet are suggested.
+  const fromTemplates = useMemo(() => templateCreatureFilters(templates, [...CATALOG_CREATURE_FILTERS, ...custom]), [templates, custom]);
   const unused = useMemo(() => {
-    const used = new Set([...CATALOG_CREATURE_FILTERS, ...custom].flatMap(filterFields));
+    const used = new Set([...CATALOG_CREATURE_FILTERS, ...custom, ...fromTemplates].flatMap(filterFields));
     return discovered.filter((field) => !used.has(field.field));
-  }, [discovered, custom]);
+  }, [discovered, custom, fromTemplates]);
   // Custom ids never take one of Atlas' own.
   const taken = useMemo(() => [...CATALOG_CREATURE_FILTERS, ...custom], [custom]);
 
@@ -75,6 +78,21 @@ export function CreatureFiltersTab({ hidden, onHiddenChange, custom, onCustomCha
         <div className="atlas-csm-label">{t('csm.filters.atlasFilters')}</div>
         <CatalogFilterList hidden={hidden} onHiddenChange={onHiddenChange} creatures={creatures} pending={pending} />
       </div>
+
+      {fromTemplates.length > 0 && (
+        <div className="atlas-csm-field">
+          <div className="atlas-csm-label">{t('csm.filters.templateFilters')}</div>
+          <p className="atlas-csm-hint">{t('csm.filters.templateFiltersHint')}</p>
+          <CatalogFilterList
+            hidden={hidden}
+            onHiddenChange={onHiddenChange}
+            creatures={creatures}
+            pending={pending}
+            filters={fromTemplates}
+            label={t('csm.filters.templateFilters')}
+          />
+        </div>
+      )}
 
       <div className="atlas-csm-field">
         <div className="atlas-csm-label">{t('csm.filters.yours')}</div>

@@ -1,6 +1,4 @@
-import type { App } from 'obsidian';
 import type { PixiRendererOrchestrator } from '../PixiRendererOrchestrator';
-import { dynamicLightingOn } from '../experimental/experimentalFeatures';
 import { GridScanLayer } from '../pixi/gridAlignment/GridScanLayer';
 import type { ViewAtlasState } from '../storeFactory';
 import { prefersReducedMotion } from '../utils/motion';
@@ -19,7 +17,7 @@ function somethingOnMap({ objects }: Pick<ViewAtlasState, 'objects'>): boolean {
  * anything on it, the tokens and drawings under it would vanish while the swell passes. So it
  * bends only a bare, unlit map, which a new scene's is; elsewhere a swell only shines.
  */
-export function createGridScan(app: App | undefined, state: () => Pick<ViewAtlasState, 'objects' | 'lighting'> | undefined, renderer: PixiRendererOrchestrator): GridScanLayer | null {
+export function createGridScan(state: () => Pick<ViewAtlasState, 'objects' | 'lighting'> | undefined, renderer: PixiRendererOrchestrator): GridScanLayer | null {
   const map = renderer.getMapImage();
   const viewport = renderer.getViewportInstance();
   const canvas = renderer.getCanvasElement();
@@ -31,7 +29,7 @@ export function createGridScan(app: App | undefined, state: () => Pick<ViewAtlas
     addOverlay: (overlay) => renderer.addDmScreenOverlay(overlay),
     bendsMap: () => {
       const scene = state();
-      return scene !== undefined && !somethingOnMap(scene) && !(dynamicLightingOn(app) && scene.lighting?.enabled);
+      return scene !== undefined && !somethingOnMap(scene) && !scene.lighting?.enabled;
     },
   });
 }

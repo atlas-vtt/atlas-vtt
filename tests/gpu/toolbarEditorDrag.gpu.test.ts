@@ -8,7 +8,7 @@ import {
 import type { StoredToolbarLayout } from '../../src/app/toolbar/toolbarLayout';
 
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: {} }));
-vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentActiveTab: vi.fn() }));
+vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ openPlayerWindow: vi.fn(), presentActiveTab: vi.fn() }));
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
@@ -123,7 +123,7 @@ describe('dragging in the toolbar editor', () => {
     expect(slot('fog').hidden).toBe(true);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
 
-    // Back onto the bar, between Measure and Note pin.
+    // Back onto the bar, between Measure and Lighting.
     const pickup = centreOf(handle('fog', 'tray'));
     await mouse.down(pickup.x, pickup.y);
     const bar = rectOf(query('.atlas-main-toolbar'));
@@ -137,7 +137,7 @@ describe('dragging in the toolbar editor', () => {
     await mouse.up(stop.x, stop.y);
     await eachFrame(SETTLE_FRAMES, watch);
     expect(harness.settings.getToolbarLayout().hidden).toEqual(['loot']);
-    expect(barIds()).toEqual(['move', 'draw', 'text', 'measure', 'fog', 'pin', 'dice', 'assets', 'palette']);
+    expect(barIds()).toEqual(['move', 'draw', 'text', 'measure', 'fog', 'wall', 'pin', 'dice', 'assets', 'palette']);
     expect(document.querySelector('.atlas-toolbar-ghost')).toBeNull();
     if (!lastGhost) throw new Error('no ghost settled');
     expectSameBox(rectOf(query('.atlas-main-toolbar > [data-toolbar-item="fog"] > .atlas-toolbar-item__content')), lastGhost);

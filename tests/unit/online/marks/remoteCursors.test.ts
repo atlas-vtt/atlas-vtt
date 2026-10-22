@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { CURSOR_FADE_MS, CURSOR_STALE_MS, RemoteCursors } from '../../../../src/app/online/marks/RemoteCursors.ts';
 import { GM_MARKS, MARKS_INTERVAL_MS, playerTone, type SharedCursor } from '../../../../src/app/online/protocol/index.ts';

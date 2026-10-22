@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { partyKey, readPartyKey, type PartyValues } from '../../src/app/campaigns/partyValues/partyKeys';
 import { partyValuesOf } from '../../src/app/campaigns/partyValues/charactersFile';

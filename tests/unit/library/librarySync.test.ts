@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest';
 import { AssetService } from '../../../src/app/services/AssetService';
 import { RECORD_KEY } from '../../../src/app/services/library/recordFile';

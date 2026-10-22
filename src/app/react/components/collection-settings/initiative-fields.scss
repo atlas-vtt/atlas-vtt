@@ -1,0 +1,16 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Collection Settings: the sides of a fight by sides (InitiativeSideFields.tsx)
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../styles/tokens' as *;
+
+// A built-in side's name stands where a named side's input does, at the input's height.
+.atlas-csm-side__name {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  min-height: $input-height-s;
+  padding-inline: $spacing-s;
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+}

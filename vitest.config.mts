@@ -1,10 +1,14 @@
 import { defineConfig } from 'vitest/config';
 import { playwright } from '@vitest/browser-playwright';
+import { fileURLToPath } from 'node:url';
 
 const alias = {
   '@': '/src',
   src: '/src',
   obsidian: '/tests/mocks/obsidian.ts',
+  // Its `main` is a UMD bundle that Node loads with a second, CommonJS copy of pixi.js; the ESM build shares the app's.
+  // A path on disk: the browser project's dependency optimizer reads it as one, and finds no `/node_modules` at the disk's root.
+  'pixi-viewport': fileURLToPath(new URL('./node_modules/pixi-viewport/dist/pixi_viewport.js', import.meta.url)),
 };
 
 export default defineConfig({
@@ -19,10 +23,14 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          environment: 'jsdom',
+          // A test that needs a DOM says so on its first line: `// @vitest-environment jsdom`. jsdom costs a file about 0.4 s.
+          environment: 'node',
+          // Threads hand modules to the workers over a MessagePort, much cheaper than forks' IPC; most of a run is imports.
+          pool: 'threads',
           globals: true,
           setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
-          exclude: ['**/node_modules/**', '**/*.gpu.test.ts'],
+          // Agents' worktrees in `.claude/` hold whole copies of the repository.
+          exclude: ['**/node_modules/**', '**/.claude/**', '**/*.gpu.test.ts'],
         },
       },
       {
@@ -32,7 +40,8 @@ export default defineConfig({
         optimizeDeps: { include: ['yaml', 'pixi-viewport', 'eventemitter3', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime'] },
         test: {
           name: 'gpu',
-          setupFiles: ['./tests/setup/domHost.ts'],
+          // Obsidian's helpers on the DOM (`createEl`, `el.win`, `onWindowMigrated`), which map views use as in Obsidian.
+          setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
           include: ['src/**/*.gpu.test.ts', 'tests/**/*.gpu.test.ts'],
           testTimeout: 600_000,
           browser: {

@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import { DEFAULT_DICE_RULES } from '../../src/app/gameSystems/diceRules';
 import { rollStatblockDice, type OffMapRolls } from '../../src/app/services/statblockRolls';

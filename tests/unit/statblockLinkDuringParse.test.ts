@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { TFile } from 'obsidian';
 import { AssetService } from '../../src/app/services/AssetService';

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { LocalPlayerSession, LocalPlayerView } from '../../src/app/local-player-view';
@@ -16,7 +17,6 @@ vi.mock('../../src/app/pixi/sceneTransition', () => ({
     return transition;
   }),
 }));
-vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 import type { PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';

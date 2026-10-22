@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { PointerTap, thinTrail, type TapEvent, type TapViewport } from '../../../../src/app/online/marks/PointerTap.ts';
 import { MAX_LASER_SPAN_MS } from '../../../../src/app/online/protocol/index.ts';

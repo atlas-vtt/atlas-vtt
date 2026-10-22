@@ -12,6 +12,8 @@
 @use 'pane-lists';
 @use 'pane-tray';
 @use 'change-template';
+@use 'pane-recovery';
+@use 'rest-chooser';
 
 // The header's end controls are capsules: the bar is shorter than 48 px.
 $header-control-radius: atlas-panel-inset-radius-value($spacing-s, calc(var(--input-height) / 2));

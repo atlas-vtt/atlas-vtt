@@ -9,7 +9,7 @@ import { t } from '../../../i18n';
  * Never who rolled it: the creature's portrait beside the label says that.
  */
 export function rollLabel(result: DiceRollResult): string {
-  return result.source?.abilityName || 'Roll';
+  return result.source?.abilityName || t('diceRoll.label');
 }
 
 /** "Advantage" or "Disadvantage", where the roll was made with it. */
@@ -48,14 +48,14 @@ function diceBreakdown(result: DiceRollResult, scene: DiceScene): string | null 
 
   if (scene.plan[0]?.role === 'tens') {
     const value = kept[0]?.value ?? 0;
-    return `Tens ${Math.floor((value % 100) / 10) * 10}, units ${value % 10}${suffix}`;
+    return t('diceRoll.tensUnits', { tens: String(Math.floor((value % 100) / 10) * 10), units: String(value % 10) }) + suffix;
   }
   const named = namedDiceLine(result.rolls, result);
   if (named !== null && kept.length <= 6) return named;
-  if (thrown > 6) return `${thrown} dice, ${diceTotal}${suffix}`;
+  if (thrown > 6) return t('diceRoll.manyDice', { number: String(thrown), total: String(diceTotal) }) + suffix;
   if (scene.plan.some((die) => die.fold !== undefined) && (plain || result.advantage)) {
     const faces = scene.faces.filter((_, i) => !scene.plan[i]?.dropped);
-    return `${faces.join(' + ')} on the d${scene.plan[0]!.sides} counts ${kept.map((roll) => roll.value).join(' + ')}${suffix}`;
+    return t('diceRoll.folded', { faces: faces.join(' + '), sides: String(scene.plan[0]!.sides), values: kept.map((roll) => roll.value).join(' + ') }) + suffix;
   }
   return shown.length > 1 || suffix !== '' ? `${diceSum(shown)}${suffix}` : null;
 }

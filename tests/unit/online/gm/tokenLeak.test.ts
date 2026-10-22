@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage } from '../../../../src/app/online/protocol/index.ts';
 import type { TokenEntity } from '../../../../src/app/types';
 import type { Perception } from '../../../../src/app/vision/perception';

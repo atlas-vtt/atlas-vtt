@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CreatureIndex } from '../../src/app/creatures/CreatureIndex';
 import { inheritedSensesOf } from '../../src/app/creatures/creatureSenses';

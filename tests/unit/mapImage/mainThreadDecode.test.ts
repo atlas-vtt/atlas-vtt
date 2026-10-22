@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { pyramidOf } from '../../../src/app/pixi/mapImage/pyramid';
 import { TileDecoderClient } from '../../../src/app/pixi/mapImage/TileDecoderClient';

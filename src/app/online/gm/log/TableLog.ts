@@ -6,12 +6,13 @@ import { entriesWithin, imageFileIn, isRemovable, readSavedLog, requoted, seesWh
 import { publishEntry, retractEntry, sendLog } from './logFanout.ts';
 import { LEAVE_GRACE_MS, LogPresence } from './LogPresence.ts';
 import { reacted } from './logReactions.ts';
+import type { RestRecord } from './restEntry.ts';
 
 export { CHAT_BURST, CHATS_PER_SECOND, GM_NAME, LEAVE_GRACE_MS, LOG_SNAPSHOT_BYTES, REACT_BURST, REACTS_PER_SECOND, REFUSAL_BURST, REFUSALS_PER_SECOND };
 export type { ChatDraft, LoggedRoll, RollRequest, SpokenAs, TableLogPorts };
 
 /**
- * The table's log, kept by the GM: chat, rolls, who came and went, what the GM showed or handed out and the notes players found.
+ * The table's log, kept by the GM: chat, rolls, who came and went, what the GM showed or handed out, the rests the GM's Atlas took and the notes players found.
  * Players' messages are taken only as checked (shape and text by the protocol's parser, the sender as the relay stamped it,
  * their rate, whom they whisper and as whom they speak, and that what they edit or delete is their own). Every change goes to
  * each player as they may see it (`viewOf`): whispers only to their audience, a private roll whole to the people shown it and
@@ -81,6 +82,21 @@ export class TableLog {
     void this.add({ ...this.stamp(GM_AUTHOR, GM_NAME), kind: 'loot', item });
   }
 
+  /**
+   * The GM's Atlas took a rest of a player character (a player's request the GM approved, or the
+   * GM's own). Everyone reads who rested, how and the actions picked; all it changed only the
+   * character's `players`, and a change made to another character also that character's players
+   * (`changePlayers`, beside each change; none for a change to the character resting).
+   */
+  rested(rest: RestRecord, players: readonly string[], changePlayers: readonly (readonly string[])[] = []): void {
+    const others = changePlayers.some((list) => list.length > 0) && changePlayers.length === (rest.changes?.length ?? 0);
+    void this.add({
+      ...this.stamp(GM_AUTHOR, GM_NAME), kind: 'rest', ...rest,
+      ...(players.length > 0 && { restPlayers: [...players] }),
+      ...(others && { changePlayers: changePlayers.map((list) => [...list]) }),
+    });
+  }
+
   /** A player at the table found a readable pin: everyone reads its note. Its entry's id, or null where it could not be logged. */
   pinFound(who: string, note: FoundNote, pin: FoundPin): string | null {
     const name = this.presence.nameOf(who);
@@ -131,7 +147,7 @@ export class TableLog {
     return this.changeText(GM_AUTHOR, id, text);
   }
 
-  /** The GM deletes a chat message, their own or a player's, an image, an item or a found note, of those the GM sees. */
+  /** The GM deletes a chat message, their own or a player's, an image, an item, a rest or a found note, of those the GM sees. */
   remove(id: string): void {
     const entry = this.visible(id, GM_AUTHOR);
     if (entry !== undefined && isRemovable(entry)) this.drop(entry);

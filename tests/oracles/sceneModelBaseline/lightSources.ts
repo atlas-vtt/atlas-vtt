@@ -1,4 +1,4 @@
-// Frozen from c246011fe636672a3865b52bf6f43a9138355085 src/app/pixi/lighting/lightSources.ts. Only import paths are adapted.
+// Frozen from c246011fe636672a3865b52bf6f43a9138355085 src/app/pixi/lighting/lightSources.ts. Only import paths and a carried light's facing are adapted.
 // Reads colours through the installed pixi.js (8.21.0 when frozen): a PIXI release that changes Color changes this side, not the code under test.
 import { lightList, readEmission } from '../../../src/app/lighting/lightingObjects';
 import { Color } from 'pixi.js';
@@ -6,6 +6,8 @@ import type { TokenEntity } from '../../../src/app/types';
 import type { LightEmission, LightSource } from '../../../src/app/types/lightingTypes';
 import { isLightOn } from '../../../src/app/lighting/lightActivity';
 import { beamOf } from '../../../src/app/lighting/lightBeam';
+// A carried light looks where its token does (`tokenFacing`, its art's bottom), a rule that came after this baseline.
+import { tokenFacing } from '../../../src/app/vision/visionCone';
 import { gameUnitsToWorld, type UnitScale } from '../../../src/app/lighting/lightingUnits';
 import { MIN_SOFTNESS, TINT_TO_WHITE, softEdge } from '../../../src/app/lighting/lightingConstants';
 import { srgbToLinear } from '../../../src/app/lighting/srgb';
@@ -38,7 +40,7 @@ export function activeLights(lights: Record<string, LightSource>, tokens: Record
   }
   for (const token of Object.values(tokens)) {
     const carried = readEmission(token.light);
-    if (carried) active.push({ key: `token:${token.id}`, x: token.x, y: token.y, emission: carried, ...turned(token.rotation) });
+    if (carried) active.push({ key: `token:${token.id}`, x: token.x, y: token.y, emission: carried, rotation: tokenFacing(token.rotation) });
   }
   return active;
 }

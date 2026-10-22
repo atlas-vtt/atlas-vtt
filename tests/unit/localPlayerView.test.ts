@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WorkspaceLeaf } from 'obsidian';
 import { LocalPlayerView } from '../../src/app/local-player-view';

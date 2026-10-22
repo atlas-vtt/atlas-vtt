@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it } from 'vitest';
 import { PREVIEW_GAP_BLOCK, PREVIEW_GAP_INLINE, previewEdgeGaps } from '../../src/app/react/components/statblock/previewEdgeGap';
 

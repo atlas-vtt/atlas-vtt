@@ -1,6 +1,8 @@
 import React from 'react';
 import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait';
-import type { EntriesBlock, ImageBlock, TemplateBlock } from '../../model/templateTypes';
+import type { CountersBlock, EntriesBlock, ImageBlock, TemplateBlock } from '../../model/templateTypes';
+import type { ShownCounters } from '../../render/blocks/CountersView';
+import { CountersGrid } from '../../render/shared/CountersGrid';
 import { useSheet } from '../../render/sheetContext';
 import { AddEntryRow } from '../../render/shared/AddEntryRow';
 import { statblockImageSrc } from '../../render/shared/statblockImage';
@@ -27,14 +29,19 @@ function addEntry(_block: EntriesBlock, label: string, iconOnly: boolean): React
   return <AddEntryRow label={label} iconOnly={iconOnly} />;
 }
 
+/** A Counters block as the note view draws it, its pips inert. */
+function counters(_block: CountersBlock, shown: ShownCounters): React.ReactNode {
+  return <CountersGrid {...shown} controls={{}} />;
+}
+
 /**
  * The template editor's values (§2.1): drawn as the note view draws them, so
  * the card is the same; the Image block shows the note view's token socket,
- * a list of abilities the note view's "Add ability" control, inert, and a
+ * a list of abilities the note view's "Add ability" control, Counters their pips, inert, and a
  * Table its starting table, typed and shaped in place (`TemplateTable`). A
  * tile just placed is drawn as it will be once named.
  */
-export const EDITOR_VALUE_EDITING: ValueEditing = { slot, addEntry, table: renderTemplateTable, drawsUnnamed: true };
+export const EDITOR_VALUE_EDITING: ValueEditing = { slot, addEntry, counters, table: renderTemplateTable, drawsUnnamed: true };
 
 /** A tile drawn beside the card (a drag's copy, the insert menu's preview): as on the card, its table drawn and never typed. */
-export const PREVIEW_VALUE_EDITING: ValueEditing = { slot, addEntry, drawsUnnamed: true };
+export const PREVIEW_VALUE_EDITING: ValueEditing = { slot, addEntry, counters, drawsUnnamed: true };

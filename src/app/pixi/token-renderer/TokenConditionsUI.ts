@@ -1,12 +1,10 @@
 import { Container } from 'pixi.js';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
-import { conditionGlyph } from '../../utils/conditionGlyph';
-import { conditionLabel, conditionValue, type TokenConditionState } from '../../utils/conditionValues';
+import { resolveActiveConditions, type ActiveCondition } from '../../utils/activeConditions';
+import type { TokenConditionState } from '../../utils/conditionValues';
 import { prefersReducedMotion } from '../../utils/motion';
-import { ConditionBadgeRing, type ActiveCondition } from './ConditionBadgeRing';
+import { ConditionBadgeRing } from './ConditionBadgeRing';
 import { ConditionHoverPanel } from './ConditionHoverPanel';
-
-const UNKNOWN_COLOR = 0x808080;
 
 export interface TokenConditionsLayout {
   /** Radius of the token's ring band, in world units from the token centre. */
@@ -65,28 +63,4 @@ export class TokenConditionsUI {
   private canAnimate(): boolean {
     return !prefersReducedMotion(document.body);
   }
-}
-
-/**
- * The token's conditions in the order it gained them, skipping any its collection no
- * longer defines. Valued conditions carry their number ("Frightened 2").
- */
-export function resolveActiveConditions(
-  token: TokenConditionState,
-  definitions: readonly ConditionDefinition[],
-): ActiveCondition[] {
-  const byId = new Map(definitions.map((definition) => [definition.id, definition]));
-  return (token.conditions ?? []).flatMap((id) => {
-    const definition = byId.get(id);
-    if (!definition) return [];
-    const color = Number.parseInt(definition.color.replace('#', ''), 16);
-    const value = conditionValue(token, id);
-    return [{
-      id,
-      name: conditionLabel(definition, value),
-      color: Number.isNaN(color) ? UNKNOWN_COLOR : color,
-      glyph: conditionGlyph(definition),
-      ...(definition.valued && { value }),
-    }];
-  });
 }

@@ -13,6 +13,7 @@ import type { VisionCone } from '../../vision/visionCone';
 import { canvasBadgeColors } from '../utils/canvasBadgeColors';
 import { destroyTree } from '../utils/destroyTree';
 import { senseRings, type SenseRing, type SenseRings } from './senseRings';
+import { mapTokens } from '../../tokens/offMap';
 
 /** Screen pixels. */
 const LINE_WIDTH = 1.25;
@@ -89,7 +90,7 @@ export class SenseRangeRings {
     const map = bounds();
     if (!shown() || !map) return [];
     const tokens = state.selectedIds.flatMap((id) => {
-      const token = state.objects.tokens[id];
+      const token = mapTokens(state.objects)[id];
       return token && GM_SIGHT_POLICY.givesSight(token) ? [token] : [];
     });
     if (tokens.length === 0 || tokens.length > MAX_TOKENS) return [];

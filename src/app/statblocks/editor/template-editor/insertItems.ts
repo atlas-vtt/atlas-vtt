@@ -1,7 +1,7 @@
 /**
- * What the Add bar and the insert menu offer: the six kinds a statblock is
+ * What the Add bar and the insert menu offer: the seven kinds a statblock is
  * built from in the grid (a value, a metric of key numbers, a list of
- * abilities, a table, text and a divider), each with one line saying what it makes, and the small template
+ * abilities, a table, counters of limited uses, text and a divider), each with one line saying what it makes, and the small template
  * each one is previewed with: the tile it places, as it looks before it is named.
  */
 
@@ -24,6 +24,7 @@ const ITEMS: readonly InsertItem[] = [
   { type: 'metric', label: 'Metric', example: 'Key numbers in a box: Major 8 | Severe 15', keywords: ['numbers', 'thresholds', 'attributes', 'boxed', 'strip', 'stat'] },
   { type: 'entries', label: 'Abilities', example: 'Names with text: actions, traits, spells', keywords: ['actions', 'traits', 'features', 'list', 'spells'] },
   { type: 'scores', label: 'Table', example: 'Rows and columns, as a note\'s table', keywords: ['ability scores', 'scores', 'attributes', 'stats', 'columns', 'rows', 'grid'] },
+  { type: 'counters', label: 'Counters', example: 'Limited uses as pips: spell slots, ki', keywords: ['spell slots', 'slots', 'uses', 'charges', 'ki', 'points', 'rest', 'pips', 'resources'] },
   { type: 'text', label: 'Text', example: 'A paragraph', keywords: ['description', 'notes', 'paragraph'] },
   { type: 'divider', label: 'Divider', example: 'A line across', keywords: ['rule', 'separator'] },
 ];
@@ -37,7 +38,7 @@ export function itemKey(item: InsertItem): string {
   return `block:${item.type}`;
 }
 
-/** The six kinds, in the order the Add bar shows them. */
+/** The seven kinds, in the order the Add bar shows them. */
 export function insertItems(): readonly InsertItem[] {
   return ITEMS;
 }

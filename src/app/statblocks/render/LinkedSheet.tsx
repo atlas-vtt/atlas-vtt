@@ -4,6 +4,7 @@ import { Button } from '../../packages/components/primitives/button';
 import { StatblockTokenResources, type StatblockTokenActions } from '../../react/components/statblock/StatblockTokenResources';
 import type { StatblockMonster } from '../../react/components/statblock/statblockTypes';
 import { templateQuantityLook } from '../../resources/quantityLooks';
+import type { ResourceDefinition } from '../../resources/resourceTypes';
 import type { TokenVitals } from '../../services/statblockVitalsSync';
 import type { TokenRollContext } from '../../types/diceRollOrigin';
 import { cn } from '../../../utils/cn';
@@ -74,7 +75,7 @@ function TemplateNotice({ statblock, onChooseTemplate }: Pick<LinkedSheetProps, 
  * token its resource values for Track blocks. A card that stands for several
  * tokens shows the statblock's own values; the DM screen lists each token's.
  */
-function useTokenContext(app: App, tokens: TokenVitals[]): StatblockTokenContext | undefined {
+function useTokenContext(app: App, tokens: TokenVitals[], definitions: readonly ResourceDefinition[] | undefined): StatblockTokenContext | undefined {
   const art = useTokenPortrait(app, tokens);
   // Most mounts pass new token objects on every render: the context follows their values, not them.
   const single = tokens.length === 1 ? tokens[0] : undefined;
@@ -82,13 +83,13 @@ function useTokenContext(app: App, tokens: TokenVitals[]): StatblockTokenContext
   const { id, name, imagePath, resources } = single ?? {};
   return useMemo((): StatblockTokenContext | undefined => {
     if (!art && !isSingle) return undefined;
-    return { id, name, imagePath, resources, art };
-  }, [art, isSingle, id, name, imagePath, resources]);
+    return { id, name, imagePath, resources, art, definitions };
+  }, [art, isSingle, id, name, imagePath, resources, definitions]);
 }
 
 /** A statblock drawn with its template (or the auto template) through `StatblockSheet`. */
 export function LinkedSheet({ app, statblock, variant, tokens, viewId, originContext, tokenActions, onChooseTemplate, className }: LinkedSheetProps): React.JSX.Element {
-  const token = useTokenContext(app, tokens);
+  const token = useTokenContext(app, tokens, tokenActions?.definitions);
   // The DM screen draws as boxes and names what the template's Track blocks and Scores slots do.
   const look = useMemo(() => templateQuantityLook(statblock.template), [statblock.template]);
   const footer = tokenActions && tokens.length > 0

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { Setting } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import { AccountControl } from '../../../../src/app/online/gm/account/AccountControl.ts';

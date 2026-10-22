@@ -19,7 +19,7 @@ describe('activeLights', () => {
     };
     expect(activeLights(lights, tokens)).toEqual([
       { key: 'light:a', x: 1, y: 2, emission: torch },
-      { key: 'token:t', x: 5, y: 6, emission: torch },
+      { key: 'token:t', x: 5, y: 6, emission: torch, rotation: 180 },
     ]);
   });
 
@@ -36,12 +36,12 @@ describe('activeLights', () => {
     expect(activeLights(lights, tokens).map((light) => light.key)).toEqual(['light:lamp', 'light:torch', 'token:t']);
   });
 
-  it('turns a placed light as it was turned, and a carried one with its token', () => {
+  it('turns a placed light as it was turned, and a carried one where its token looks', () => {
     const lights: Record<string, LightSource> = { a: { id: 'a', kind: 'light', x: 1, y: 2, emission: torch, rotation: 45 } };
     const tokens: Record<string, TokenEntity> = { t: { id: 't', kind: 'token', imagePath: 't.png', x: 5, y: 6, rotation: 180, light: torch } };
     expect(activeLights(lights, tokens)).toEqual([
       { key: 'light:a', x: 1, y: 2, emission: torch, rotation: 45 },
-      { key: 'token:t', x: 5, y: 6, emission: torch, rotation: 180 },
+      { key: 'token:t', x: 5, y: 6, emission: torch, rotation: 0 },
     ]);
   });
 });

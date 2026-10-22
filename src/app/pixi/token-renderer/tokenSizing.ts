@@ -70,8 +70,38 @@ export function tokenUIScale(spriteSize: number): number {
 /** Diameter of a resize or rotate handle before `tokenUIScale`; what sits beside the token must clear it. */
 export const RESIZE_HANDLE_SIZE = 20;
 
+/** The label of a resize or rotate handle in its token's group, by which the selection highlight finds it. */
+export const TOKEN_HANDLE_LABEL = 'tokenHandle';
+
 /** Height of the nameplate, which lies on the token's bottom edge, in UI units. */
 export const NAMEPLATE_HEIGHT = 14;
+
+/**
+ * How a nameplate writes, in UI units: drawn at `fontSize` and scaled by `textScale` (8 units
+ * tall), `padding` from the badge's ends. What should read as one family with it (a measurement's
+ * distance) takes the same.
+ */
+export const NAMEPLATE_TEXT = {
+  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial',
+  fontSize: 24,
+  fontWeight: '600',
+  textScale: 0.333,
+  alpha: 0.85,
+  padding: 6,
+} as const;
+
+/**
+ * Text is drawn at scale 0.333 and the viewport zooms to at most 5x, so a resolution of 3 keeps
+ * glyphs crisp on HiDPI screens for a medium token without rasterising every nameplate at eight
+ * times its size. Larger grids scale the UI up, so its text resolution grows with it.
+ */
+export const TOKEN_TEXT_RESOLUTION = 3;
+const MAX_TOKEN_TEXT_RESOLUTION = 12;
+
+/** Resolution of token UI text at UI scale `uiScale`. */
+export function tokenTextResolution(uiScale: number): number {
+  return Math.min(TOKEN_TEXT_RESOLUTION * Math.max(1, uiScale), MAX_TOKEN_TEXT_RESOLUTION);
+}
 
 /**
  * Scale of a token's bars, nameplate and condition markers while it is not selected or
@@ -83,7 +113,7 @@ export function restingTokenUIScale(gridSize: number): number {
 }
 
 /** Screen pixels per UI unit of a selected token's bars, whatever the zoom or token size. */
-const SELECTED_TOKEN_UI_SCREEN_SCALE = 2.25;
+export const SELECTED_TOKEN_UI_SCREEN_SCALE = 2.25;
 
 /**
  * World scale of a selected token's bars at viewport `zoom`: a constant size on screen,

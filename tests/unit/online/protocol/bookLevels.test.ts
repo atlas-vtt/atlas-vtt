@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { MAX_BOOK_MAPS, MAX_MAP_ENTRANCES, parseGmMessage, parsePlayerMessage, type BookWorldMap, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 

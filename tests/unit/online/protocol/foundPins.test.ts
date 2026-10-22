@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { MAX_SHARED_PINS, parseGmMessage, parseLogEntry, parsePlayerMessage, TEXT_MIME_TYPE } from '../../../../src/app/online/protocol/index.ts';
 

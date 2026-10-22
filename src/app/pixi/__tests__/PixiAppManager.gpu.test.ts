@@ -49,16 +49,7 @@ describe('PixiAppManager.init with real renderers', () => {
     expect(error).not.toHaveBeenCalled();
   });
 
-  it('gives the canvas the antialiasing of a view that does not light its scenes', async () => {
-    await manager.init(container);
-    const renderer = manager.app.renderer as WebGLRenderer;
-    expect(renderer.gl.getContextAttributes()?.antialias).toBe(true);
-    expect(renderer.backBuffer.useBackBuffer).toBe(false);
-  });
-
-  it('draws a view that lights its scenes through an antialiased back buffer, the canvas without samples', async () => {
-    manager.destroy();
-    manager = new PixiAppManager(320, 240, true);
+  it('draws through an antialiased back buffer, the canvas without samples', async () => {
     await manager.init(container);
     const renderer = manager.app.renderer as WebGLRenderer;
     expect(renderer.gl.getContextAttributes()?.antialias).toBe(false);

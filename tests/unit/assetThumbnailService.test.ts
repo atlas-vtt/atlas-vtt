@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AssetService, type MapAsset, type TokenAsset } from '../../src/app/services/AssetService';

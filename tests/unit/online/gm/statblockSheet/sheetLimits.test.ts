@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { drawnStatblock, statblockSheet } from '../../../../../src/app/online/gm/book/statblockSheet';
 import { MAX_ABILITIES, MAX_GM_FRAME, MAX_SHEET_DEPTH, MAX_SHEET_NODES, MAX_SHEET_TEXT, parseBookStatblock, type SheetNode } from '../../../../../src/app/online/protocol/index.ts';

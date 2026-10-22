@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { environmentOf, errorId, parseErrorReport, parseFeedback, tableTag, type ErrorReport } from '../../../../src/app/online/protocol/diagnostics.ts';
 import { ErrorReporter } from '../../../../src/app/online/protocol/errorReporter.ts';

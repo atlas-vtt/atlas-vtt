@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 const collection = vi.hoisted(() => ({ resources: undefined as unknown }));
 vi.mock('../../src/app/services/AssetService', () => ({ AssetService: { getInstance: () => ({
   getCollectionForMap: () => 'collection',

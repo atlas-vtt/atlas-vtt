@@ -174,16 +174,17 @@ export function noteTemplateId(app: App, path: string): TemplateId | null {
 }
 
 /**
- * `files` with the template files the collection's roles (`roleTemplates`) and its notes name.
- * A template a role names travels with the collection; one only notes name travels with those
+ * `files` with the template files the collection names (`collectionTemplates`: those its roles
+ * start from) and its notes name. A template the collection
+ * names travels with the collection; one only notes name travels with those
  * notes (`linkedFrom`), so it stays behind with them. Built-ins never travel: every Atlas has
  * them. A template the vault lacks stays behind too: what names it shows the auto template.
  * The note beside a template (`templateBodyPath`) goes with it, so new statblocks of the
  * template start with its text in the importing vault too.
  */
-export async function withTemplateFiles(app: App, files: readonly BundleFile[], roleTemplates: readonly TemplateId[]): Promise<BundleFile[]> {
-  // Notes per template; null for a template a role names.
-  const namedBy = new Map<TemplateId, string[] | null>(roleTemplates.map((id) => [id, null]));
+export async function withTemplateFiles(app: App, files: readonly BundleFile[], collectionTemplates: readonly TemplateId[]): Promise<BundleFile[]> {
+  // Notes per template; null for a template the collection names.
+  const namedBy = new Map<TemplateId, string[] | null>(collectionTemplates.map((id) => [id, null]));
   for (const file of files) {
     const id = NOTE_FILE_ROLES.has(file.role) ? noteTemplateId(app, file.vaultPath) : null;
     const notes = id === null ? null : namedBy.get(id);

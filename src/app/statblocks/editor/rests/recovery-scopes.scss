@@ -1,0 +1,153 @@
+// ═══════════════════════════════════════════════════════════════════════════
+// Recovery pane: what the selected button does (RecoveryScopes, RecoveryStep,
+// ActionFields): Always and its steps, each step's actions as capsules of the
+// rail's look (recovery-pane.scss).
+// ═══════════════════════════════════════════════════════════════════════════
+
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+$capsule-height: 30px;
+$control-height: $input-height-s;
+
+.atlas-rc-scopes {
+  @include atlas-flex-col($spacing-s);
+}
+
+.atlas-rc-scopes__top {
+  @include atlas-flex-row($spacing-s);
+  flex-wrap: wrap;
+}
+
+// Add a step: as quiet as the rail's Add, with its word beside the plus
+.atlas-rc-scopes__add.atlas-rc-scopes__add {
+  @include atlas-flex-row($spacing-xs);
+  height: $capsule-height;
+  padding: 0 $spacing-m;
+  border: $border-width-s solid transparent;
+  border-radius: $radius-full;
+  corner-shape: round;
+  background: var(--background-modifier-hover);
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: color $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &:active:not([aria-disabled='true']) { transform: scale(0.97); }
+
+  &[aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  @include atlas-focus-ring;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-rc-scopes__add.atlas-rc-scopes__add:not([aria-disabled='true']):hover {
+    background: var(--background-modifier-active-hover);
+    color: var(--text-accent);
+  }
+}
+
+// ── A step: one spacing, its padding and the gap between its rows ─────────
+.atlas-rc-step {
+  @include atlas-inset-surface;
+  @include atlas-flex-col($spacing-s);
+  padding: $spacing-s;
+
+  // Inside the step's corner: one step down the radius scale
+  .atlas-csm-input {
+    height: $control-height;
+    border-radius: $radius-m;
+  }
+}
+
+.atlas-rc-step__row,
+.atlas-rc-action__row {
+  @include atlas-flex-row($spacing-s);
+}
+
+.atlas-rc-step__row--wrap {
+  flex-wrap: wrap;
+}
+
+.atlas-rc-step__prompt,
+.atlas-rc-action__name {
+  flex: 1;
+  min-width: 0;
+}
+
+.atlas-rc-step__count {
+  width: 64px;
+  flex-shrink: 0;
+}
+
+.atlas-rc-step__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-s;
+}
+
+.atlas-rc-action {
+  @include atlas-flex-col($spacing-s);
+}
+
+// A switch named by the words before it
+.atlas-rc-switch {
+  @include atlas-flex-row($spacing-s);
+
+  .atlas-csm-toggle-label {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    white-space: nowrap;
+  }
+}
+
+// Remove a step or an action: as tall as the fields beside it, red on hover
+.atlas-rc-scopes__remove.atlas-rc-scopes__remove {
+  @include atlas-icon-button;
+  width: $control-height;
+  height: $control-height;
+  padding: 0;
+  flex-shrink: 0;
+  border-radius: $radius-m;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+  transition: color $transition-fast $transition-ease, background-color $transition-fast $transition-ease,
+    transform $transition-press $transition-ease-out;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+
+  &:active:not([aria-disabled='true']) { transform: scale(0.94); }
+
+  &[aria-disabled='true'] {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  @include atlas-focus-ring;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .atlas-rc-scopes__remove.atlas-rc-scopes__remove:not([aria-disabled='true']):hover {
+    background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent);
+    color: var(--text-error);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-rc-scopes__add,
+  .atlas-rc-scopes__remove { transition: none; }
+}

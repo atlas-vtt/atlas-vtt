@@ -61,7 +61,7 @@ export function labelTargetOf(block: TemplateBlock, fields: readonly TemplateFie
   if (block.type === 'heading') return { kind: 'text', text: block.text };
   if (block.type === 'section') return block.headingField ? null : { kind: 'heading', text: block.heading ?? '' };
   if (block.type === 'tabs' || block.type === 'entries' || block.type === 'spells' || block.type === 'text') return { kind: 'heading', text: block.heading ?? '' };
-  if (block.type === 'stat' || block.type === 'tags' || block.type === 'pairs' || block.type === 'track') {
+  if (block.type === 'stat' || block.type === 'tags' || block.type === 'pairs' || block.type === 'track' || block.type === 'counters') {
     const key = boundField(block);
     const field = key ? fieldByKey(fields, key) : undefined;
     return { kind: 'label', text: block.label ?? field?.label ?? key ?? '' };

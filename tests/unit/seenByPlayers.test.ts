@@ -68,7 +68,7 @@ describe('PlayerSightTokens.sharesFrameSight', () => {
     players.active = true;
     expect(sight.sharesFrameSight()).toBe(true);
     players.active = false;
-    // The lighting taken off the map (`clearLighting`).
+    // No lighting wired (the player view's tab).
     sight.setProvider(() => undefined);
     expect(sight.sharesFrameSight()).toBe(true);
   });

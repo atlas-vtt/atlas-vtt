@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import { SettingsService } from '../../src/app/services/SettingsService';
@@ -7,7 +8,6 @@ import type { ViewAtlasState } from '../../src/app/storeFactory';
 import { attachFakePlayerWindow } from '../mocks/playerPopout';
 import { frameSource, sizePlayerWindow } from '../mocks/playerFrameSource';
 
-vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 const app = { vault: { adapter: { exists: async () => true, write: async () => {} } } } as any;
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });

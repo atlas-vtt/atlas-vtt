@@ -1,5 +1,6 @@
 // What the GM showed or handed out: an image to look at again, and a loot card as the players'
-// loot window shows it; and a note players found, its title and first words, which opens to read.
+// loot window shows it; a note players found, its title and first words, which opens to read; and
+// what a rest changed.
 @use '../../../../../styles/tokens' as *;
 @use '../../../../../styles/mixins' as *;
 @use 'log-base' as *;
@@ -99,5 +100,32 @@
       width: 14px;
       height: 14px;
     }
+  }
+
+  .atlas-online-log__rest {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-xs;
+    width: 100%;
+    margin-top: $spacing-xs;
+    padding: $spacing-s;
+    border-radius: $radius-l;
+    background: var(--background-secondary);
+    white-space: normal;
+  }
+
+  .atlas-online-log__rest-picks {
+    color: var(--text-normal);
+    font-style: italic;
+  }
+
+  .atlas-online-log__rest-changes {
+    color: var(--text-normal);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .atlas-online-log__rest-quiet {
+    color: var(--text-muted);
+    font-size: var(--font-ui-small);
   }
 }

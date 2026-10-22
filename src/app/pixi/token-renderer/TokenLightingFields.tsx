@@ -77,7 +77,7 @@ export function TokenVisionSection({ vision, onChange, context }: TokenVisionSec
             onChange={(next) => onChange({ ...vision, senses: next })}
             definitions={context.senses}
             unit={unit}
-            emptyText="Sees by light only."
+            emptyText={t('senses.emptyToken')}
             {...(inherited && { inheritedSenses: inherited.senses, notRecognised: inherited.notRecognised })}
           />
         </>

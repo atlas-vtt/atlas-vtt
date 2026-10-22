@@ -9,6 +9,8 @@ import { isLightingQualityLevel, type LightingQualityLevel } from '../lighting/l
 export const INPUT_MODE_STORAGE_KEY = 'atlas-vtt:input-mode';
 /** How much the lighting may ask of this device's graphics (`LightingQualityLevel`). */
 export const LIGHTING_QUALITY_STORAGE_KEY = 'atlas-vtt:lighting-quality';
+/** Whether the initiative tracker is collapsed on this device: `collapsed` or `expanded`, never a falsy value Obsidian would drop. */
+export const INITIATIVE_COLLAPSED_STORAGE_KEY = 'atlas-vtt:initiative-tracker';
 
 type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
 
@@ -49,5 +51,23 @@ export function saveLightingQuality(storage: DeviceStorage, level: LightingQuali
     storage.saveLocalStorage(LIGHTING_QUALITY_STORAGE_KEY, level);
   } catch (error) {
     console.error('[Atlas] Could not save the lighting quality of this device', error);
+  }
+}
+
+/** Whether the GM collapsed the initiative tracker on this device; expanded until chosen. */
+export function loadInitiativeCollapsed(storage: DeviceStorage): boolean {
+  try {
+    return storage.loadLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY) === 'collapsed';
+  } catch (error) {
+    console.error('[Atlas] Could not read how this device shows the initiative tracker', error);
+    return false;
+  }
+}
+
+export function saveInitiativeCollapsed(storage: DeviceStorage, collapsed: boolean): void {
+  try {
+    storage.saveLocalStorage(INITIATIVE_COLLAPSED_STORAGE_KEY, collapsed ? 'collapsed' : 'expanded');
+  } catch (error) {
+    console.error('[Atlas] Could not save how this device shows the initiative tracker', error);
   }
 }

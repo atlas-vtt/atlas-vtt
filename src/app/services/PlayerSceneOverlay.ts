@@ -4,6 +4,7 @@ import { shallow } from 'zustand/vanilla/shallow';
 import type { ViewAtlasState } from '../storeFactory';
 import type { AtlasSettings, SettingsService } from './SettingsService';
 import type { PlayerRollSources } from './playerRollSource';
+import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerInstanceBadges';
 
 export type PlayerSettings = AtlasSettings['localPlayerView'];
 
@@ -11,8 +12,8 @@ export type PlayerSettings = AtlasSettings['localPlayerView'];
 export interface PlayerOverlay {
   /** Draw into `parent`, the popout's content. */
   mount(parent: HTMLElement): void;
-  /** Bind to the store of the presented scene, its view's dice events and what its picture shows. */
-  present(store: StoreApi<ViewAtlasState>, diceEvents?: EventEmitter, rollSources?: PlayerRollSources): void;
+  /** Bind to the presented scene: its store, its view's dice events, which tokens its picture shows and the numbers their badges show. */
+  present(store: StoreApi<ViewAtlasState>, diceEvents?: EventEmitter, rollSources?: PlayerRollSources, badgeNumbers?: PlayerBadgeNumbers): void;
   /** Drop live subscriptions when the presented view closes. */
   releaseSource?(): void;
   /** Keep the presented scene while the DM browses other scene tabs. */

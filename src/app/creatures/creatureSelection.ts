@@ -12,6 +12,7 @@ import type {
 /** The facet ids of the filters every collection has; filter ids are slugs, so they never clash. */
 export const STATBLOCK_FACET = '@statblock';
 export const LAYOUT_FACET = '@layouts';
+export const TEXT_FACET = '@text';
 
 const NO_PICKS: OptionPicks = { include: [], exclude: [] };
 
@@ -27,13 +28,16 @@ export function hasPicks(picks: OptionPicks | undefined): boolean {
   return Boolean(picks && (picks.include.length > 0 || picks.exclude.length > 0));
 }
 
-/** The picks of the layout facet or of an options filter. */
+/** The picks of the layout facet, the text facet or an options filter. */
 export function picksOf(selection: CreatureFilterSelection, facet: string): OptionPicks {
-  return facet === LAYOUT_FACET ? selection.layouts : selection.options[facet] ?? NO_PICKS;
+  if (facet === LAYOUT_FACET) return selection.layouts;
+  if (facet === TEXT_FACET) return selection.text;
+  return selection.options[facet] ?? NO_PICKS;
 }
 
 function withPicks(selection: CreatureFilterSelection, facet: string, picks: OptionPicks): CreatureFilterSelection {
   if (facet === LAYOUT_FACET) return { ...selection, layouts: picks };
+  if (facet === TEXT_FACET) return { ...selection, text: picks };
   return { ...selection, options: withEntry(selection.options, facet, hasPicks(picks) ? picks : null) };
 }
 
@@ -80,16 +84,17 @@ export function withRange(
   return { ...selection, ranges: withEntry(selection.ranges, filterId, spansDomain ? null : range) };
 }
 
-/** Clears the filters of one facet: `STATBLOCK_FACET`, `LAYOUT_FACET`, or a filter id. */
+/** Clears the filters of one facet: `STATBLOCK_FACET`, `LAYOUT_FACET`, `TEXT_FACET`, or a filter id. */
 export function clearFacet(selection: CreatureFilterSelection, facet: string): CreatureFilterSelection {
   if (facet === STATBLOCK_FACET) return { ...selection, statblock: 'any' };
   if (facet === LAYOUT_FACET) return { ...selection, layouts: NO_PICKS };
+  if (facet === TEXT_FACET) return { ...selection, text: NO_PICKS };
   return { ...selection, ranges: withEntry(selection.ranges, facet, null), options: withEntry(selection.options, facet, null) };
 }
 
 /** How many filters narrow the list: one per facet with something picked. */
 export function activeFilterCount(selection: CreatureFilterSelection, definitions: readonly CreatureFilterDefinition[]): number {
-  let count = (selection.statblock === 'any' ? 0 : 1) + (hasPicks(selection.layouts) ? 1 : 0);
+  let count = (selection.statblock === 'any' ? 0 : 1) + (hasPicks(selection.layouts) ? 1 : 0) + (hasPicks(selection.text) ? 1 : 0);
   for (const definition of definitions) {
     if (definition.kind === 'range' ? selection.ranges[definition.id] : hasPicks(selection.options[definition.id])) count++;
   }

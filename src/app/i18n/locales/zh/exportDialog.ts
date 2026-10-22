@@ -1,0 +1,26 @@
+import type { Translation } from '../../types';
+
+export const exportDialog: Translation = {
+  'exportDialog.author': '作者',
+  'exportDialog.authorPlaceholder': '显示给安装它的人',
+  'exportDialog.closeHint': '关闭且不导出',
+  'exportDialog.enterName': '为合集输入一个名称。',
+  'exportDialog.exportCollection': '导出合集',
+  'exportDialog.exportNamed': '导出 {name}',
+  'exportDialog.exportVersion': '导出 v{version}',
+  'exportDialog.forkIntro': '你安装了这个合集{from}。发布后，你的副本连同你的修改会变成你自己的合集，从 v1 开始，不再接收原合集的更新。',
+  'exportDialog.fromAuthor': '，来自 {author}',
+  'exportDialog.includeHint': '至少包含一项才能导出',
+  'exportDialog.includeOne': '至少包含一项。',
+  'exportDialog.missing': { other: '有 {count} 个被引用的文件缺失，将不会包含：' },
+  'exportDialog.name': '名称',
+  'exportDialog.notes': '版本说明',
+  'exportDialog.notesPlaceholder': '这一版有什么新内容',
+  'exportDialog.publish': '发布',
+  'exportDialog.publishNamed': '把 {name} 作为你自己的合集发布',
+  'exportDialog.publishOwn': '作为自己的合集发布',
+  'exportDialog.sameVersion': '与上次发布的版本号相同。已安装 v{version} 的人会看到一份已改动的副本。',
+  'exportDialog.version': '版本',
+  'exportDialog.versionInvalid': '版本必须是不小于 {min} 的整数。',
+  'exportDialog.zipHint': '把合集存成可以交给别人的 .zip 文件',
+};

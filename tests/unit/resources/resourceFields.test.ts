@@ -36,6 +36,14 @@ describe('resource fields', () => {
     expect(parseResourceValue(-1)).toBeNull();
   });
 
+  it('reads a number followed by a note in brackets as that number', () => {
+    expect(parseResourceValue('15 (natural armor)')).toEqual({ current: 15, max: 15 });
+    expect(parseResourceValue('18 (plate armor, shield)')).toEqual({ current: 18, max: 18 });
+    expect(parseResourceValue('45 (6d10 + 12)')).toEqual({ current: 45, max: 45 });
+    expect(parseResourceValue('plate armor')).toBeNull();
+    expect(parseResourceValue('(natural armor) 15')).toBeNull();
+  });
+
   it('discovers quantity fields for autocomplete', () => {
     expect(discoverResourceFields([{ name: 'Troll', hp: 14, stats: [14, 12, 4], attacks: 'bite (d10)' }, { hp: 3, stress: '2/6' }]))
       .toEqual(['hp', 'stats.0', 'stats.1', 'stats.2', 'stress']);

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { build } from 'vite';
 import { runInNewContext } from 'node:vm';

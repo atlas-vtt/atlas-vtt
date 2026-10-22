@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';

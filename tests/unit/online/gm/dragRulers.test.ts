@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { parseGmMessage, type LivePlace } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { dragRulerPaths } from '../../../../src/app/online/gm/dragRulers.ts';

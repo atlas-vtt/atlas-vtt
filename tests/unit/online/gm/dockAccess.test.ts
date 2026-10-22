@@ -1,10 +1,12 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { AccountView } from '../../../../src/app/online/gm/account/accountView.ts';
 import { ACCESS_REFUSALS } from '../../../../src/app/online/gm/account/relayAccount.ts';
-import { renderClosingRow } from '../../../../src/app/online/gm/dock/closingRow.ts';
+import { renderClosingRow, renderUpdateRow } from '../../../../src/app/online/gm/dock/closingRow.ts';
 import { renderMenu, type MenuActions } from '../../../../src/app/online/gm/dock/ConnectionMenu.ts';
 import { panelView } from '../../../../src/app/online/gm/dock/OnlinePanel.ts';
-import { menuModel, type OnlineSnapshot, type SceneFacts } from '../../../../src/app/online/gm/dock/panelModel.ts';
+import type { CampaignPick } from '../../../../src/app/online/gm/dock/campaignPicker.ts';
+import { menuModel, NO_CAMPAIGNS, type OnlineSnapshot, type SceneFacts } from '../../../../src/app/online/gm/dock/panelModel.ts';
 import { closingText, type LostTable } from '../../../../src/app/online/gm/tableEnd.ts';
 
 const MARA = { id: 'acc_mara', handle: 'mara', name: 'Mara' };
@@ -12,27 +14,27 @@ const CAN_HOST: AccountView = { kind: 'can-host', account: MARA, access: { plan:
 const SCENE: SceneFacts = { isShared: true, tokens: {}, selected: [] };
 const CLOSES_AT = Date.UTC(2026, 9, 12, 14, 30);
 
-const snapshot = (over: Partial<OnlineSnapshot> = {}): OnlineSnapshot => ({ status: 'idle', link: null, sharedLeaf: null, sharedName: null, sharedTokens: {}, players: [], playerTokens: [], seats: null, gate: null, ...over });
+const snapshot = (over: Partial<OnlineSnapshot> = {}): OnlineSnapshot => ({ status: 'idle', link: null, campaignId: null, sharedLeaf: null, sharedName: null, sharedTokens: {}, players: [], playerTokens: [], seats: null, gate: null, rests: [], cardOrder: [], ...over });
 
 function actions(): MenuActions & { openAccountPage: ReturnType<typeof vi.fn<() => void>> } {
   return {
-    start: vi.fn(), signIn: vi.fn(), cancelSignIn: vi.fn(), reopenSignIn: vi.fn(), signOut: vi.fn(), retry: vi.fn(), openAccountPage: vi.fn<() => void>(),
+    start: vi.fn(), choose: vi.fn(), search: vi.fn(), openCampaigns: vi.fn(), signIn: vi.fn(), cancelSignIn: vi.fn(), reopenSignIn: vi.fn(), signOut: vi.fn(), retry: vi.fn(), openAccountPage: vi.fn<() => void>(), update: vi.fn(),
     newCode: vi.fn(), setRequireCode: vi.fn(), setAskToJoin: vi.fn(), copyCode: () => Promise.resolve(true), hideImage: vi.fn(),
     stop: vi.fn(), share: vi.fn(), copy: () => Promise.resolve(true), toggleQr: vi.fn(),
   };
 }
 
 /** The menu as the GM reads it: its lines of text, and its buttons by their words. */
-function menu(over: Partial<OnlineSnapshot>, account: AccountView): { lines: string[]; buttons: string[]; press(text: string): void; layer: HTMLElement; does: ReturnType<typeof actions> } {
+function menu(over: Partial<OnlineSnapshot>, account: AccountView, campaigns: CampaignPick = NO_CAMPAIGNS): { lines: string[]; buttons: string[]; press(text: string): void; layer: HTMLElement; does: ReturnType<typeof actions> } {
   const layer = document.body.createDiv();
   const does = actions();
-  renderMenu(layer, menuModel(snapshot(over), SCENE, account), does);
+  renderMenu(layer, menuModel(snapshot(over), SCENE, account, false, campaigns), does);
   const buttons = [...layer.querySelectorAll('button')];
   return {
     layer,
     does,
-    lines: [...layer.querySelectorAll('.atlas-online-title, .atlas-online-help, .atlas-online-status__text, .atlas-online-closing__text')].map((line) => line.textContent ?? ''),
-    buttons: buttons.map((button) => button.textContent ?? '').filter((text) => text !== ''),
+    lines: [...layer.querySelectorAll('.atlas-online-title, .atlas-online-help:not(.atlas-online-campaigns__note, [hidden]), .atlas-online-status__text, .atlas-online-closing__text')].map((line) => line.textContent ?? ''),
+    buttons: buttons.filter((button) => button.getAttribute('role') !== 'radio').map((button) => button.textContent ?? '').filter((text) => text !== ''),
     press: (text) => buttons.find((button) => button.textContent === text)?.click(),
   };
 }
@@ -68,7 +70,7 @@ describe('the online menu before a table runs', () => {
   });
 
   it('offers Start to an account the relay says may host, with its handle beside the title and no more words', () => {
-    const shown = menu({}, CAN_HOST);
+    const shown = menu({}, CAN_HOST, { list: [{ id: 'c1', name: 'Strahd', activity: 'Played 3d ago', players: 2, art: null, hue: 40 }], chosen: 'c1', query: '' });
     expect(shown.lines).toEqual(['Online play']);
     expect(shown.layer.querySelector('.atlas-online-title-row .atlas-online-handle')?.textContent).toBe('@mara');
     expect(shown.buttons).toEqual(['Sign out', 'Start online table']);
@@ -131,12 +133,37 @@ describe('a running table whose account may no longer host', () => {
     expect(panelView(snapshot(RUNNING), SCENE, feedback).closing).toBeNull();
     const layer = document.body.createDiv();
     const open = vi.fn();
-    renderClosingRow(layer, closingText(CLOSES_AT, 'en-GB', 'UTC'), { openAccountPage: open });
+    renderClosingRow(layer, closingText(CLOSES_AT, 'en-GB', 'UTC'), { openAccountPage: open, update: vi.fn() });
     expect(layer.textContent).toBe('This table closes on 12 October 2026 at 14:30. Your account’s access to online play ended.Account page');
     layer.querySelector('button')?.click();
     expect(open).toHaveBeenCalledTimes(1);
     layer.empty();
-    renderClosingRow(layer, null, { openAccountPage: open });
+    renderClosingRow(layer, null, { openAccountPage: open, update: vi.fn() });
     expect(layer.childElementCount).toBe(0);
+  });
+});
+
+describe('the online menu while the relay needs a newer Atlas', () => {
+  it('stands Update in for Start, with the reason, and Update opens Atlas\'s page', () => {
+    const shown = menu({ outdated: true }, CAN_HOST);
+    expect(shown.lines).toContain('Online play needs a newer Atlas.');
+    expect(shown.buttons).toContain('Update');
+    expect(shown.buttons).not.toContain('Start online table');
+    shown.press('Update');
+    expect(shown.does.update).toHaveBeenCalledTimes(1);
+    expect(menu({}, CAN_HOST).buttons).toContain('Start online table');
+  });
+
+  it('asks a GM let in where players sit to update after the session, in the menu and the panel', () => {
+    const running = { status: 'online', link: 'https://play.atlas-vtt.dev/#code' } as const;
+    expect(menu({ ...running, updateAfter: true }, CAN_HOST).lines).toContain('Update Atlas after this session');
+    expect(menu(running, CAN_HOST).lines).not.toContain('Update Atlas after this session');
+    const feedback = { open: false, diagnostics: false, state: 'idle', errorReports: false } as const;
+    expect(panelView(snapshot({ ...running, updateAfter: true }), SCENE, feedback).updateAfter).toBe(true);
+    const layer = document.body.createDiv();
+    const update = vi.fn();
+    renderUpdateRow(layer, true, { openAccountPage: vi.fn(), update });
+    layer.querySelector('button')?.click();
+    expect(update).toHaveBeenCalledTimes(1);
   });
 });

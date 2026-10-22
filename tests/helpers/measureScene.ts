@@ -1,5 +1,6 @@
 import { EventEmitter } from 'events';
-import { EventBoundary, FederatedPointerEvent, type Container, type EventSystem } from 'pixi.js';
+import { EventBoundary, FederatedPointerEvent, type EventSystem } from 'pixi.js';
+import type { HideableLayer } from '../../src/app/pixi/playerSafeFrame';
 import { Viewport } from 'pixi-viewport';
 import { MeasureRenderer, type MeasureGrid } from '../../src/app/pixi/MeasureRenderer';
 import { createViewAtlasStore } from '../../src/app/storeFactory';
@@ -18,8 +19,8 @@ export interface MeasureScene {
   bus: EventEmitter;
   store: ReturnType<typeof createViewAtlasStore>;
   pointer(type: 'pointerdown' | 'pointermove' | 'pointerup', x: number, y: number): void;
-  /** Every measurement part on the viewport, the live ones first. */
-  parts(): Container[];
+  /** Every measurement's shape and label, the live ones first. */
+  parts(): HideableLayer[];
   visible(): boolean[];
   destroy(): void;
 }
@@ -34,7 +35,7 @@ export function measureScene(grid: MeasureGrid = SQUARE_GRID): MeasureScene {
   const bus = new EventEmitter();
   const measure = new MeasureRenderer(viewport, bus, store, grid);
   const boundary = new EventBoundary(viewport);
-  const parts = (): Container[] => viewport.children.slice();
+  const parts = (): HideableLayer[] => measure.getGmViewLayers().map(({ layer }) => layer);
   return {
     measure, viewport, bus, store, parts,
     visible: () => parts().map((part) => part.visible),

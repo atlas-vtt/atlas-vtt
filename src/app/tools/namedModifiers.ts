@@ -63,6 +63,11 @@ export function labelledConstant({ label, value }: NamedModifier): string {
   return `${value < 0 ? '-' : '+'}${Math.abs(value)}${label ? `[${label}]` : ''}`;
 }
 
+/** A formula without the labels of its constants (`1d20+3+2[Stealth]` reads `1d20+3+2`); a label of dice stays (`2d6[fire]`). */
+export function withoutConstantLabels(formula: string): string {
+  return formula.replace(/(^|[+\-*/(\s])(\d+)\[[^\]]*\]/g, '$1$2');
+}
+
 /**
  * A formula whose labelled constants close it (`1d20+3+2[Stealth]`, as a statblock adds its armed values)
  * with them written as terms of their own: `1d20+3 + 2 Stealth`, each breaking only before its sign. The

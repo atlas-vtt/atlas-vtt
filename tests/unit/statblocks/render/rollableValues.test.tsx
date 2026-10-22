@@ -1,10 +1,10 @@
+// @vitest-environment jsdom
 import { act, cleanup } from '@testing-library/react';
 import { MarkdownRenderer } from 'obsidian';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { blockEl, fakeApp, renderSheet, templateOf } from './sheetTestKit';
 
-vi.mock('../../../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../../../src/app/atlasViewType', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 
 const FIELDS: TemplateField[] = [
@@ -58,11 +58,11 @@ describe('a block that rolls as a bonus', () => {
     expect(plain.querySelector('[data-roll-name]')).toBeNull();
   });
 
-  it('rolls a click on a Metric\'s number as that bonus, named after the number', () => {
+  it('rolls a click on a Metric\'s number as that bonus, named after the number, the bonus too', () => {
     const rolls: { formula: string; source: unknown }[] = [];
     const block = blockEl(renderSheet(templateOf(FIELDS, [metric(true)]), VALUES, { app: fakeApp(rolls) }).container, 'traits01')!;
     act(() => { block.querySelector<HTMLElement>('.atlas-dice-link')?.click(); });
-    expect(rolls).toEqual([{ formula: '+2', source: expect.objectContaining({ abilityName: 'Agility' }) }]);
+    expect(rolls).toEqual([{ formula: '+2[Agility]', source: expect.objectContaining({ abilityName: 'Agility' }) }]);
   });
 
   it('rolls a Value\'s number, each pair\'s value and every number of a Table and its worked-out row', () => {

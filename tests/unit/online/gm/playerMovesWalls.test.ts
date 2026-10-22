@@ -1,4 +1,3 @@
-// @vitest-environment node
 import type { PlayerDrag, PlayerMove } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runUntracked } from '../../../../src/app/stores/history';

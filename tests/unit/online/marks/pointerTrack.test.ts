@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { PointerTrack, TRACK_MAX_DELAY_MS, type TrackPoint } from '../../../../src/app/online/marks/PointerTrack.ts';
 

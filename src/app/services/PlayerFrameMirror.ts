@@ -7,6 +7,7 @@ import type { FramePiece, PlayerFrame, Screen } from '../types/playerFrame';
 import { playerFrame, viewOf } from './playerFrame';
 import type { PlayerRollSources } from './playerRollSource';
 import { PlayerFrameDemand, type DemandRegions } from './playerFrameDemand';
+import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerInstanceBadges';
 
 type PlayerViewSettings = AtlasSettings['localPlayerView'];
 
@@ -51,6 +52,8 @@ export interface PlayerFrameSource extends DemandRegions {
   diceEvents?: EventEmitter;
   /** Which tokens the scene this canvas shows lets players see, for rolls to name. Without it rolls name nobody. */
   rollSources?: PlayerRollSources;
+  /** The numbers the players' instance badges show, for their initiative list. Without it the list shows none. */
+  badgeNumbers?: PlayerBadgeNumbers;
   /** The DM's camera, with the world rectangle the DM's screen shows through it. */
   getCamera?(): PlayerCameraState | undefined;
   /** The DM's screen: what a camera without a rectangle of its own is centred in, and the pixels the players' picture never has fewer of. */

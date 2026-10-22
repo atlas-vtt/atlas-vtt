@@ -54,6 +54,27 @@
     white-space: pre;
   }
 
+  // A line with more behind it (what a rest will do) shows it as a tooltip on hover or keyboard focus.
+  .atlas-online-knock__text--about {
+    border-radius: $radius-l;
+    cursor: default;
+    @include atlas-focus-ring;
+
+    // Inside the card, which clips: the ring is drawn within the line.
+    &:focus-visible {
+      outline-offset: -2px;
+    }
+  }
+
+  // That tooltip stands above the cards at their left edge, so it covers no card and moves none.
+  .atlas-online-tooltip--cards {
+    position: absolute;
+    left: 0;
+    bottom: calc(100% + #{$border-width-m} + 2 * #{$spacing-s} + var(--atlas-online-above, 0px) + var(--atlas-online-knocks-height, 0px));
+    z-index: 3;
+    pointer-events: none;
+  }
+
   // Not yet armed, or answered: it takes no press, and looks it.
   .atlas-online-knock .atlas-online-button,
   .atlas-online-paused > .atlas-online-button {

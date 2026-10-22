@@ -4,11 +4,8 @@ import { destroyTree } from '../utils/destroyTree';
 import { ValueTransition } from '../utils/ValueTransition';
 import { CONDITION_BADGE_RADIUS, createConditionBadge, type ConditionBadgeSpec } from './ConditionBadge';
 
-/** A condition active on a token, resolved from its collection's definitions. */
-export interface ActiveCondition extends ConditionBadgeSpec {
-  id: string;
-  name: string;
-}
+import type { ActiveCondition } from '../../utils/activeConditions';
+export type { ActiveCondition };
 
 /** The badges fan out around the token's upper left, clear of the instance number at the upper right. */
 const ARC_CENTRE = -0.75 * Math.PI;

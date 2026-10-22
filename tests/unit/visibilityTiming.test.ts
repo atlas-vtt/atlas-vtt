@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import { computeVisibility } from '../../src/app/vision/visibility';
 import { buildWallGrid } from '../../src/app/vision/wallGrid';

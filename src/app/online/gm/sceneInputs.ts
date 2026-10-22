@@ -16,6 +16,7 @@ import { tokenSenses } from '../../vision/tokenSenses';
 import { wallList } from '../../vision/wallList';
 import type { SceneState } from './atlasView.ts';
 import { roundPlace } from './scenePicture.ts';
+import { mapTokens } from '../../tokens/offMap';
 
 const finite = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
 
@@ -121,7 +122,7 @@ function sightToken(token: TokenEntity, inputs: SightInputs): SightToken | null 
 /** The parts of a lit scene that change while it is played: its lighting, its lights that are switched on, its tokens and the held ones. */
 export function sharedSight(inputs: SightInputs): SharedSight {
   const { state } = inputs;
-  const every = Object.values(state.objects.tokens).flatMap((token) => {
+  const every = Object.values(mapTokens(state.objects)).flatMap((token) => {
     const entry = sightToken(token, inputs);
     return entry === null ? [] : [{ entry, id: token.id }];
   });
@@ -138,6 +139,6 @@ export function sharedSight(inputs: SightInputs): SharedSight {
     tokens: tokens.map(({ entry }) => entry),
     held,
     // Every vision token hidden: the players' sight is none, not all (`selectSight`).
-    ...(!every.some(({ entry }) => entry.vision) && Object.values(state.objects.tokens).some((token) => token.vision?.enabled === true) && { blind: true as const }),
+    ...(!every.some(({ entry }) => entry.vision) && Object.values(mapTokens(state.objects)).some((token) => token.vision?.enabled === true) && { blind: true as const }),
   };
 }

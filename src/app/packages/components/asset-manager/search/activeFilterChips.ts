@@ -1,5 +1,5 @@
 import type { CreatureFacets, FacetOption } from '../../../../creatures/creatureFilterEngine';
-import { clearFacet, LAYOUT_FACET, STATBLOCK_FACET, withOptionState } from '../../../../creatures/creatureSelection';
+import { clearFacet, LAYOUT_FACET, STATBLOCK_FACET, TEXT_FACET, withOptionState } from '../../../../creatures/creatureSelection';
 import { formatRange } from '../../../../creatures/creatureValues';
 import type { CreatureFilterDefinition, CreatureFilterSelection, OptionPicks } from '../../../../types/creatureFilterTypes';
 import type { Tag } from '../types';
@@ -78,6 +78,7 @@ export function activeFilterChips({ selection, definitions, facets, tagIds, tags
     addGroup(definition.id, definition.label, pickChips(definition.id, picks, options, setSelection));
   }
   addGroup(LAYOUT_FACET, t('filters.template'), pickChips(LAYOUT_FACET, selection.layouts, facets?.layouts, setSelection));
+  addGroup(TEXT_FACET, t('filters.text'), pickChips(TEXT_FACET, selection.text, undefined, setSelection));
   if (tagIds.length > 0) {
     groups.push({
       key: 'tags',

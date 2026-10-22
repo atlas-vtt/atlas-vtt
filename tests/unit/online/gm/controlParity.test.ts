@@ -1,4 +1,3 @@
-// @vitest-environment node
 import fs from 'node:fs';
 import type { ResourceDefinition } from '../../../../src/app/resources/resourceTypes';
 import { shapeOf, visibleResources } from '../../../../src/app/resources/visibleResources';

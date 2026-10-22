@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { Sprite, Ticker, type Container } from 'pixi.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { MapImageLayer, viewportCamera, type TileSource } from '../../../src/app/pixi/mapImage/MapImageLayer';

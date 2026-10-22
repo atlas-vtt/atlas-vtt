@@ -1,16 +1,24 @@
+// @vitest-environment jsdom
 import React from 'react';
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 import { AMMO, HP, STR } from '../mocks/resourceFixtures';
 
 const state = vi.hoisted(() => ({
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  selectedIds: [] as string[],
+  setSelection: vi.fn(),
+  updateToken: vi.fn(),
 }));
 
-vi.mock('../../src/app/react/root/AtlasUIContext', () => ({ useAtlasUI: () => ({ app: null, view: null }) }));
-vi.mock('../../src/app/react/ViewStoreContext', () => ({ useAtlasStore: (selector: (s: typeof state) => unknown) => selector(state) }));
+vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
+  AtlasUIContext: (await import('react')).createContext(null), useAtlasUI: () => ({ app: null, view: null }) }));
+vi.mock('../../src/app/react/ViewStoreContext', () => ({
+  useAtlasStore: (selector: (s: typeof state) => unknown) => selector(state),
+  useViewStoreHook: () => ({ getState: () => state }),
+}));
 vi.mock('../../src/app/pixi/utils/tokenHighlight', () => ({ zoomToTokenWithHighlight: vi.fn() }));
 vi.mock('../../src/app/resources/useMapResources', () => ({ useMapResources: () => [HP, STR, AMMO] }));
 
@@ -28,6 +36,8 @@ function renderCard(resources: Record<string, { current: number; max: number }>)
       onDragStart={vi.fn()} onDragOver={vi.fn()} onDragEnd={vi.fn()} onContextMenu={vi.fn()} onHover={vi.fn()} />,
   );
 }
+
+afterEach(() => vi.clearAllMocks());
 
 describe('InitiativeCard resources', () => {
   it('shows the hit points of its token live, and no other resource, as the card always did', () => {
@@ -57,5 +67,30 @@ describe('InitiativeCard resources', () => {
   it('shows no bar for a token without resources', () => {
     renderCard({});
     expect(screen.queryAllByRole('meter')).toEqual([]);
+  });
+
+  it('opens the editor a bar on the map opens, and changes the token as the map does', () => {
+    renderCard({ hp: { current: 8, max: 10 }, str: { current: 12, max: 14 } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit HP' }));
+    const editor = document.body.querySelector('.atlas-token-value-editor')!;
+    const [current] = editor.querySelectorAll('input');
+    fireEvent.input(current!, { target: { value: '-3' } });
+    fireEvent.keyDown(current!, { key: 'Enter' });
+
+    expect(state.updateToken.mock.calls).toEqual([['t1', { resources: { hp: { current: 5, max: 10 }, str: { current: 12, max: 14 } } }]]);
+    expect(state.setSelection).not.toHaveBeenCalled();
+    expect(document.body.querySelector('.atlas-token-value-editor')).toBeNull();
+  });
+
+  it('counts a maximum typed there as set by hand, as the map does', () => {
+    renderCard({ hp: { current: 8, max: 10 } });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Edit HP' }));
+    const [, max] = document.body.querySelectorAll('.atlas-token-value-editor input');
+    fireEvent.input(max!, { target: { value: '20' } });
+    fireEvent.keyDown(max!, { key: 'Enter' });
+
+    expect(state.updateToken.mock.calls).toEqual([['t1', { resources: { hp: { current: 8, max: 20 } }, overriddenMax: ['hp'] }]]);
   });
 });

@@ -3,6 +3,7 @@ import type { Point } from '../movement/index.ts';
 import { cellToWorld, formationGridFromOptions, worldToCell, type FormationGrid } from '../../encounters/encounterFormation';
 import { snapTokenCenter } from '../../grid/gridPlacement';
 import { call, type SceneState } from './atlasView.ts';
+import { mapTokens } from '../../tokens/offMap';
 
 /** The rulers of the drags under way, by GM token id: the points each runs through. */
 export type RulerPaths = ReadonlyMap<string, readonly Point[]>;
@@ -32,10 +33,10 @@ function snapGrid(grid: RulerState['grid']): FormationGrid | null {
  */
 export function dragRulerPaths(state: RulerState, gm: GmRuler | null, starts: ReadonlyMap<string, Point>): Map<string, readonly Point[]> {
   const paths = new Map<string, readonly Point[]>();
-  if (gm !== null && state.objects.tokens[gm.tokenId] !== undefined) paths.set(gm.tokenId, gm.points);
+  if (gm !== null && mapTokens(state.objects)[gm.tokenId] !== undefined) paths.set(gm.tokenId, gm.points);
   const grid = snapGrid(state.grid);
   for (const [tokenId, start] of starts) {
-    const token = state.objects.tokens[tokenId];
+    const token = mapTokens(state.objects)[tokenId];
     if (token === undefined || paths.has(tokenId)) continue;
     const snap = (point: Point): Point => (grid === null ? { x: point.x, y: point.y } : snapTokenCenter(point, token.size || 1, grid.type, grid.size, (at) => cellToWorld(grid, worldToCell(grid, at))));
     const from = snap(start);
@@ -49,7 +50,7 @@ export function dragRulerPaths(state: RulerState, gm: GmRuler | null, starts: Re
 export function rulersToDraw(state: RulerState, paths: RulerPaths): RemoteDrag[] {
   const snaps = state.grid?.snapToGrid ?? true;
   return [...paths].flatMap(([tokenId, path]) => {
-    const token = state.objects.tokens[tokenId];
+    const token = mapTokens(state.objects)[tokenId];
     return token === undefined ? [] : [{ key: tokenId, path, cells: token.size || 1, snaps }];
   });
 }

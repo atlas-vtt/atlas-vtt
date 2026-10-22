@@ -1,35 +1,47 @@
-import { EMPTY_BOOK, isEmptyBook, type BookData, type StoredBook } from './bookStore.ts';
+import { EMPTY_BOOK, isEmptyBook, type StoredBook } from './bookStore.ts';
+
+/** What names a character whose token was placed from no library token: its book lives in memory only. */
+export const UNPLACED_PREFIX = 'token:';
+
+/** Where the books of a campaign's characters are kept, by the character's library token id. */
+export interface BookSource {
+  /** A character's book as it is kept; undefined for none. */
+  read(characterId: string): StoredBook | undefined;
+  /** Keeps a character's book (an empty one takes it away). False when it cannot be kept, as when no campaign is played or its file is of a later format. */
+  write(characterId: string, book: StoredBook): boolean;
+}
 
 /**
- * The books the GM keeps, one per character of a collection. They outlive tables and players: a
- * book is its character's, so whoever plays that character next finds it again. `save` hears of
- * every change; the books are written with the rest of the companion's data.
+ * The books the GM keeps, one per character. A book is its character's, so whoever plays that
+ * character next finds it again. They are kept by the source (the campaign's books file); a book
+ * that cannot be kept there, and one of a token that is no library token's, stays in memory for
+ * as long as the shelf lives.
  */
 export class BookShelf {
-  private readonly books = new Map<string, Map<string, StoredBook>>();
-  private readonly save: () => void;
+  private readonly memory = new Map<string, StoredBook>();
 
-  constructor(data: BookData = {}, save: () => void = () => undefined) {
-    this.save = save;
-    for (const [collection, characters] of Object.entries(data)) this.books.set(collection, new Map(Object.entries(characters)));
-  }
+  constructor(private readonly source: BookSource = { read: () => undefined, write: () => false }) {}
 
   /** A character's book; an empty one while nothing was written into it. */
-  of(collection: string, character: string): StoredBook {
-    return this.books.get(collection)?.get(character) ?? EMPTY_BOOK;
+  of(characterId: string): StoredBook {
+    return this.memory.get(characterId) ?? this.source.read(characterId) ?? EMPTY_BOOK;
+  }
+
+  /**
+   * Forgets the books held in memory for want of a source, but those of tokens that are no library
+   * token's: from now on the source (a campaign's books file just bound) holds each character's.
+   */
+  forgetKept(): void {
+    for (const characterId of [...this.memory.keys()]) if (!characterId.startsWith(UNPLACED_PREFIX)) this.memory.delete(characterId);
   }
 
   /** Keeps a character's book as it is now. */
-  keep(collection: string, character: string, book: StoredBook): void {
-    const characters = this.books.get(collection) ?? new Map<string, StoredBook>();
-    if (isEmptyBook(book)) characters.delete(character);
-    else characters.set(character, book);
-    if (characters.size > 0) this.books.set(collection, characters);
-    else this.books.delete(collection);
-    this.save();
-  }
-
-  toData(): BookData {
-    return Object.fromEntries([...this.books].map(([collection, characters]) => [collection, Object.fromEntries(characters)]));
+  keep(characterId: string, book: StoredBook): void {
+    if (!characterId.startsWith(UNPLACED_PREFIX) && this.source.write(characterId, book)) {
+      this.memory.delete(characterId);
+      return;
+    }
+    if (isEmptyBook(book)) this.memory.delete(characterId);
+    else this.memory.set(characterId, book);
   }
 }

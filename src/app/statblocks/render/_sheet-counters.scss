@@ -1,0 +1,136 @@
+@use '../../../../styles/tokens' as *;
+
+// Counters in the native card: a small cell per row of limited uses, its name
+// over its pips (filled: left, hollow: used), cells wrapping three or four to
+// a line of a column.
+
+$pip: 9px;
+$pip-hit: 18px;
+$step: 20px;
+$cell-min: 5.5em;
+
+.atlas-sb-sheet {
+  .atlas-sb-counters__body {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-s;
+  }
+
+  .atlas-sb-counters__cells {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(#{$cell-min}, 100%), 1fr));
+    gap: $spacing-s;
+  }
+
+  .atlas-sb-counter {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+
+  // A long name wraps rather than losing its end: it may be what tells two rows apart.
+  .atlas-sb-counter__name {
+    color: var(--text-muted);
+    font-size: $font-ui-smaller;
+    overflow-wrap: anywhere;
+  }
+
+  .atlas-sb-counter__pips {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: $spacing-xs;
+    min-height: $pip-hit;
+  }
+
+  // A diamond: a square turned a quarter, hollow while used.
+  .atlas-sb-counter__pip {
+    display: block;
+    flex: none;
+    width: $pip;
+    height: $pip;
+    box-sizing: border-box;
+    border: $border-width-m solid var(--text-accent);
+    border-radius: 1px;
+    rotate: 45deg;
+    transition: background-color $transition-fast $transition-ease;
+
+    &.is-left {
+      background: var(--text-accent);
+    }
+  }
+
+  .atlas-sb-counter__count {
+    font-size: $font-ui-small;
+    font-variant-numeric: tabular-nums;
+    font-weight: $font-weight-semibold;
+  }
+
+  .atlas-sb-counter__stepper {
+    display: inline-flex;
+    align-items: center;
+    gap: $spacing-xs;
+    min-height: $pip-hit;
+  }
+}
+
+// Buttons in the card take none of the theme's button look: the pips are the control.
+.atlas-vtt-plugin .atlas-sb-sheet {
+  button.atlas-sb-counter__pip-button,
+  button.atlas-sb-counter__step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: auto;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: $radius-s;
+    background: transparent;
+    box-shadow: none;
+    color: var(--text-muted);
+    font: inherit;
+    cursor: pointer;
+    transition-property: color, background-color, scale;
+    transition-duration: $transition-fast;
+    transition-timing-function: $transition-ease;
+
+    &:hover:not(:disabled) {
+      background: var(--background-modifier-hover);
+      color: var(--text-normal);
+    }
+
+    &:active:not(:disabled) {
+      scale: 0.96;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--background-modifier-border-focus);
+      outline-offset: 0;
+    }
+
+    &:disabled {
+      cursor: default;
+      opacity: 1;
+    }
+
+    svg {
+      width: $icon-xs;
+      height: $icon-xs;
+    }
+  }
+
+  // Each pip's place to hit takes half the gap on either side, so the pips stand as a read-only card draws them
+  // and neighbouring places touch without overlapping.
+  button.atlas-sb-counter__pip-button {
+    width: $pip + $spacing-xs;
+    height: $pip-hit;
+    margin: (-($pip-hit - $pip) * 0.5) (-$spacing-xs * 0.5);
+  }
+
+  button.atlas-sb-counter__step {
+    width: $step;
+    height: $step;
+  }
+}

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Container, EventBoundary, FederatedPointerEvent, Rectangle, Text, loadEnvironmentExtensions, updateRenderGroupTransforms } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
@@ -77,6 +78,21 @@ describe('resource bar controls', () => {
       commit('4');
       expect(stored().resources).toEqual({ hp: { current: 80, max: 100 }, stress: { current: 4, max: 10 } });
       expect(stored().overriddenMax).toBeUndefined();
+    } finally { controls.destroy(); viewport.destroy(); }
+  });
+
+  it('takes damage typed as a sum, halved damage rounded down (issues #495, #396)', () => {
+    const { controls, viewport, hits, press, commit, stored } = mount({ hp: { current: 30, max: 30 } });
+    try {
+      press(hits[0]!);
+      commit('-10-5');
+      expect(stored().resources?.hp).toEqual({ current: 15, max: 30 });
+      press(hits[0]!);
+      commit('-9/2');
+      expect(stored().resources?.hp).toEqual({ current: 11, max: 30 });
+      press(hits[0]!);
+      commit('-2*3');
+      expect(stored().resources?.hp).toEqual({ current: 5, max: 30 });
     } finally { controls.destroy(); viewport.destroy(); }
   });
 

@@ -5,6 +5,7 @@ import type { DiceDisplay } from '../dice3d/diceDisplay';
 import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
+import type { InitiativeDock } from '../initiative/initiativeLayout';
 
 /**
  * How wheel events drive the map viewport.
@@ -24,6 +25,8 @@ export type TutorialId = typeof TUTORIAL_IDS[number];
 export interface AtlasSettings {
   showChangelogOnUpdate: boolean;
   changelogMajorUpdatesOnly: boolean;
+  /** Whether Atlas looks for a newer version of itself at start and hourly (`registerUpdateWatch`). */
+  checkForUpdates: boolean;
   /** Only the bindings the user changed; read the effective ones with `getHotkeys`. */
   hotkeys: HotkeyOverrides;
   onboarding: { enabled: boolean; completed: Partial<Record<TutorialId, boolean>>; tokenImported: boolean };
@@ -40,6 +43,18 @@ export interface AtlasSettings {
   diceColour: DiceColour;
   /** Face of the dice numerals and roll totals. Read with `getDiceLook`. */
   diceFont: DiceFont;
+  /** Whether the GM's initiative cards show each combatant's name. Read with `showsInitiativeNames`. */
+  initiativeNames: boolean;
+  /** Whether the initiative lists start at the turn during a fight. Read with `initiativeLayout`. */
+  initiativeFromTurn: boolean;
+  /** The edge of the map the initiative lists stand at. Read with `initiativeLayout`. */
+  initiativeDock: InitiativeDock;
+  /** Whether a turn change shows the turn banner. Read with `initiativeTurnOptions`. */
+  initiativeBanner: boolean;
+  /** Whether the GM's view pans to the combatant whose turn begins. Read with `initiativeTurnOptions`. */
+  initiativeFollowTurn: boolean;
+  /** Whether online players move their tokens in a fight only on their turn. Read with `initiativeTurnOptions`. */
+  initiativeMovesOnTurn: boolean;
   /** Experimental features the GM switched on. Read with `isExperimentalOn`. */
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
   /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
@@ -65,6 +80,7 @@ export const defaultInputMode = (): NavigationInputMode => (Platform.isMacOS ? '
 export const DEFAULT_SETTINGS: AtlasSettings = {
   showChangelogOnUpdate: true,
   changelogMajorUpdatesOnly: false,
+  checkForUpdates: true,
   hotkeys: {},
   onboarding: { enabled: true, completed: {}, tokenImported: false },
   starterTokensAdded: false,
@@ -74,6 +90,12 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   detectGridOnNewScenes: true,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,
+  initiativeNames: false,
+  initiativeFromTurn: true,
+  initiativeDock: 'right',
+  initiativeBanner: true,
+  initiativeFollowTurn: false,
+  initiativeMovesOnTurn: false,
   experimental: {},
   toolbar: {},
   localPlayerView: {

@@ -12,6 +12,10 @@ export const MAX_CHAT_TEXT = 500;
 export const MAX_CHAT_LINES = 12;
 /** The entries the GM keeps and a log message holds. */
 export const MAX_LOG_ENTRIES = 200;
+/** The most values a rest entry lists as changed or skipped, the longest label or name in it, and its longest roll. */
+export const MAX_REST_CHANGES = 16;
+export const MAX_REST_TEXT = 80;
+export const MAX_REST_ROLL = 160;
 /** The longest quote a reply carries of what it answers. */
 export const MAX_REPLY_PREVIEW = 120;
 /** An entry's id: made by the GM, 96 random bits in hex. */
@@ -111,7 +115,37 @@ export interface FoundEntry extends EntryBase, FoundNote {
   readonly reactions?: readonly LogReaction[];
 }
 
-export type LogEntry = ChatEntry | RollEntry | SecretEntry | PresenceEntry | ImageEntry | LootEntry | FoundEntry;
+/**
+ * One value a rest changed: its label, what it was and became, and the roll that decided it ("2d8+2 = 9").
+ * `character` names another character than the one resting, whom an action picked in the rest was taken for.
+ */
+export interface RestChange {
+  readonly label: string;
+  readonly from: number;
+  readonly to: number;
+  readonly roll?: string;
+  readonly character?: string;
+}
+
+/**
+ * A rest the GM's Atlas applied (a player's request the GM approved, or the GM's own): the character
+ * by name, the button by name, the actions picked in its steps by name (`picks`), what it changed,
+ * and the labels of what it could not change (`skipped`). Only the GM logs it. What changed is the
+ * character's player's and the GM's alone, and a change made to another character also that
+ * character's player's: everyone else gets the entry without `changes` and `skipped`, which reads
+ * as the rest's title and its picks only.
+ */
+export interface RestEntry extends EntryBase {
+  readonly kind: 'rest';
+  readonly character: string;
+  readonly button: string;
+  readonly picks?: readonly string[];
+  readonly changes?: readonly RestChange[];
+  readonly skipped?: readonly string[];
+  readonly reactions?: readonly LogReaction[];
+}
+
+export type LogEntry = ChatEntry | RollEntry | SecretEntry | PresenceEntry | ImageEntry | LootEntry | FoundEntry | RestEntry;
 
 /**
  * Why the GM did not take a player's chat message, edit, deletion or reaction: too fast, no text,

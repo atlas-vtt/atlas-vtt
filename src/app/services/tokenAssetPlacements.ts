@@ -1,5 +1,5 @@
 import { App, TFile } from 'obsidian';
-import { AtlasView, ATLAS_VIEW_TYPE } from '../atlas-view';
+import { ATLAS_VIEW_TYPE, isAtlasView } from '../atlasViewType';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { runHistoryTransaction } from '../stores/history';
 import { normalizeImagePath } from '../utils/pathUtils';
@@ -44,7 +44,7 @@ export async function removeTokenPlacements(app: App, mapFiles: readonly TFile[]
   const images = new Set(imagePaths.map(normalizeImagePath));
   const openViews = app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE)
     .map((leaf) => leaf.view)
-    .filter((view): view is AtlasView => view instanceof AtlasView);
+    .filter(isAtlasView);
 
   for (const mapFile of mapFiles) {
     const view = openViews.find((v) => v.file?.path === mapFile.path);

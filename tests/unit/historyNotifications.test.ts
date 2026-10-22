@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import { forgetExploredEdits } from '../../src/app/stores/exploredEditHistory';

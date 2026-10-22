@@ -1,14 +1,13 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Bounds, Graphics, Text, type FillInstruction } from 'pixi.js';
 import { contrast } from '../../src/app/pixi/lighting/lightMarker';
-import { createMeasureLabelText, drawMeasureLabel, watchMeasureLabelTheme } from '../../src/app/pixi/utils/measureDrawing';
+import { MeasureLabel, watchMeasureLabelTheme } from '../../src/app/pixi/utils/measureLabel';
 import { forgetObsidianAccentColor } from '../../src/app/pixi/utils/colorUtils';
 
 /** WCAG AA for normal text. */
 const AA = 4.5;
 const ACCENTS = ['#7b6cd9', '#e93147', '#ffd60a', '#00c7be', '#ffffff', '#000000'];
-/** The map under the pill: its lightest and darkest. */
-const MAPS = [0xffffff, 0x000000];
 
 function setTheme(dark: boolean): void {
   document.body.classList.toggle('theme-dark', dark);
@@ -25,15 +24,20 @@ function over(color: number, alpha: number, below: number): number {
   return (channel(16) << 16) | (channel(8) << 8) | channel(0);
 }
 
-/** The label as drawn: its text colour and its pill's fill. */
-function drawnLabel(): { ink: number; pill: number; alpha: number } {
-  const pill = new Graphics();
-  const text = createMeasureLabelText();
-  text.text = '35 ft';
-  drawMeasureLabel(pill, text, { x: 0, y: 0 }, 1);
-  const fill = pill.context.instructions.find((instruction): instruction is FillInstruction => instruction.action === 'fill');
-  if (!fill) throw new Error('the pill has no fill');
-  return { ink: Number(text.style.fill), pill: fill.data.style.color, alpha: fill.data.style.alpha };
+/** The label as drawn: its text colour, its pill's colour and the colour of the pill's rim. */
+function drawnLabel(): { ink: number; pill: number; border: number } {
+  const label = new MeasureLabel();
+  label.show('35 ft', { beside: [{ x: 0, y: 0 }, { x: 100, y: 0 }] }, 1, 70);
+  const pill = label.view.children.find((child): child is Graphics => child instanceof Graphics);
+  const fills = pill?.context.instructions.filter((instruction): instruction is FillInstruction => instruction.action === 'fill') ?? [];
+  const [rim, body] = fills.map((fill) => fill.data.style.color);
+  if (rim === undefined || body === undefined) throw new Error('the pill has no fill');
+  // The pill is opaque: whatever map lies under it, the text reads against it alone.
+  expect(fills.every((fill) => fill.data.style.alpha === 1)).toBe(true);
+  // The text lies on the pill at the nameplate's opacity.
+  const ink = over(Number(label.text.style.fill), label.text.alpha, body);
+  label.destroy();
+  return { ink, pill: body, border: rim };
 }
 
 beforeEach(() => {
@@ -54,15 +58,18 @@ describe('measure label contrast', () => {
       it(`reads at AA in the ${dark ? 'dark' : 'light'} theme with accent ${accent}`, () => {
         setTheme(dark);
         setAccent(accent);
-        const { ink, pill, alpha } = drawnLabel();
-        for (const map of MAPS) expect(contrast(ink, over(pill, alpha, map))).toBeGreaterThanOrEqual(AA);
+        const { ink, pill } = drawnLabel();
+        expect(contrast(ink, pill)).toBeGreaterThanOrEqual(AA);
       });
     }
   }
 
-  it('keeps the dark theme as it was: white on the dark badge grey', () => {
+  it('reads as the nameplate in the dark theme: white at its opacity on the dark badge grey, with a rim a little lighter', () => {
     setTheme(true);
-    expect(drawnLabel()).toEqual({ ink: 0xffffff, pill: 0x2a2a2a, alpha: 0.95 });
+    const { ink, pill, border } = drawnLabel();
+    expect(pill).toBe(0x2a2a2a);
+    expect(ink).toBe(over(0xffffff, 0.85, 0x2a2a2a));
+    expect(border).toBeGreaterThan(pill);
   });
 
   it('redraws when the theme switches', async () => {

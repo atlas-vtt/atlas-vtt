@@ -38,6 +38,19 @@ $qr-light: #fff;
     }
   }
 
+  // The link's menu, left of the QR button: it waits for the pointer, the keyboard or its open menu.
+  .atlas-online-invite__more {
+    position: absolute;
+    top: $online-inset;
+    right: calc(#{$online-inset} + #{$online-control} + #{$spacing-xs});
+    @include online-on-row-hover;
+  }
+
+  .atlas-online-invite-row:hover .atlas-online-invite__more,
+  .atlas-online-invite-row:focus-within .atlas-online-invite__more {
+    opacity: 1;
+  }
+
   // The card: a panel of its own to the right of the menu or panel it opened from, a bar's gap from
   // it, their bottom edges level (`--atlas-online-wider`, dockSurface.ts). It hangs outside their
   // flow and clear of the newcomers' cards.

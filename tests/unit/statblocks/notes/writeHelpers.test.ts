@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NOTE_YAML_LIMITS } from '../../../../src/app/services/noteYaml';
 import { applyWrites } from '../../../../src/app/statblocks/notes/applyWrites';

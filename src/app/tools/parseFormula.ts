@@ -133,9 +133,13 @@ function isLinear(node: FormulaNode): boolean {
   }
 }
 
-/** Validates the whole expression before the caller can consume any randomness. */
-export function parseFormula(formula: string): ParsedFormula | FormulaError {
-  if (formula.length > FORMULA_LIMITS.characters) return { ok: false, code: 'length' };
+/**
+ * Validates the whole expression before the caller can consume any randomness. A formula is at most
+ * `characters` long: one written (`FORMULA_LIMITS.characters`) unless a bonus completed with the
+ * set's dice is read (`completeFormula`).
+ */
+export function parseFormula(formula: string, characters: number = FORMULA_LIMITS.characters): ParsedFormula | FormulaError {
+  if (formula.length > characters) return { ok: false, code: 'length' };
   let draft: DraftNode;
   try {
     draft = new FormulaReader(formula).read();

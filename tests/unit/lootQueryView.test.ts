@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { App, MarkdownRenderer, type Plugin } from 'obsidian';
 import { LOOT_QUERY_VIEW } from '../../src/app/loot/lootBaseQuery';

@@ -10,7 +10,8 @@ import { templateKeyPatch } from './templateKeyPatch';
  * "Duplicate template" (§5.5, §9.1): a copy of the note's template that this
  * statblock then uses, for a variant such as a Colossus; the copy opens in the
  * template editor to be changed. Atlas never makes such a copy on
- * its own. Resolves with the copy, or null when it could not be made or used.
+ * its own. The copy offers the original's recovery buttons, which its file
+ * holds. Resolves with the copy, or null when it could not be made or used.
  */
 export async function duplicateTemplate(
   app: App, writer: PaneServices['writer'], notePath: string, record: FieldRecord, templateId: TemplateId,

@@ -58,7 +58,7 @@ function InsertList({ id, items, current, onHover, onChoose }: InsertListProps):
 }
 
 /**
- * The insert menu (§7.6), opened by `/` or the `+` line: the six kinds,
+ * The insert menu (§7.6), opened by `/` or the `+` line: the seven kinds,
  * filtered by what is typed, with a preview of the row under the pointer or
  * the keys. Enter inserts, Escape closes.
  */

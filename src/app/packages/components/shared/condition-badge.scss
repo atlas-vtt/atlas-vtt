@@ -1,0 +1,62 @@
+// Condition badge as tokens show it, for the DOM (`ConditionBadge`, `createConditionBadge`).
+// Not scoped under `.atlas-vtt-plugin`: context menus render it in a portal on the body,
+// and the player window draws it in its own document.
+
+@use '../../../../../styles/tokens' as *;
+
+// Mirrors the canvas badge (ConditionBadge.ts): lit disc in the condition's colour, dark bezel
+.atlas-condition-badge {
+  position: relative;
+  box-sizing: border-box;
+  width: var(--atlas-condition-size, 16px);
+  height: var(--atlas-condition-size, 16px);
+  font-size: calc(var(--atlas-condition-size, 16px) * 0.5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  color: #fff;
+  font-weight: $font-weight-bold;
+  line-height: 1;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--atlas-condition-color), #fff 18%),
+    var(--atlas-condition-color) 55%,
+    color-mix(in srgb, var(--atlas-condition-color), #000 20%)
+  );
+  box-shadow:
+    0 0 0 1px #111114,
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+
+  &--light {
+    color: #16161a;
+  }
+
+  svg {
+    width: 62%;
+    height: 62%;
+  }
+}
+
+// A valued condition's number, in a small dark disc over the badge's lower right, as on the map
+.atlas-condition-badge__value {
+  position: absolute;
+  // Overhangs the disc by less than the gap between badges, so it never touches the next one
+  right: -12%;
+  bottom: -12%;
+  box-sizing: border-box;
+  min-width: 66%;
+  height: 66%;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #1c1c22;
+  box-shadow: 0 0 0 1px #111114;
+  color: #fff;
+  font-size: max(8px, calc(var(--atlas-condition-size, 16px) * 0.44));
+  font-variant-numeric: tabular-nums;
+}

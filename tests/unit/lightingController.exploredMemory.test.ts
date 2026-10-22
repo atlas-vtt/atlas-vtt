@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { asked, overlay, PEEK, setup, told } from './lightingMemoryHarness';
 import { captureSceneFrame } from '../../src/app/pixi/sceneFrameCapture';

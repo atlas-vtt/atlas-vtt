@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { MemoryTileBackend } from '../../../src/app/pixi/mapImage/memoryTileBackend';
 import { MapClosedError, TileDecoderClient, TileOpenError } from '../../../src/app/pixi/mapImage/TileDecoderClient';

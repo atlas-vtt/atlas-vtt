@@ -22,6 +22,8 @@ export function StatblockFeeds({ children }: StatblockFeedsProps): React.JSX.Ele
 
   const items = React.Children.toArray(children);
   const itemCount = items.length;
+  // Which statblocks are drawn, not only how many: a search can swap every one for others of other heights.
+  const itemKeys = items.map((item, index) => (React.isValidElement(item) ? String(item.key) : `#${index}`)).join('\n');
   const { count, width } = feedLayout(paneWidth, itemCount);
   const { placements, height } = placeInFeeds(items.map((_, index) => heights?.[index] ?? 0), count);
 
@@ -32,13 +34,13 @@ export function StatblockFeeds({ children }: StatblockFeedsProps): React.JSX.Ele
     const measure = (): void => {
       // Layout sizes ignore the DM screen's entrance animation, which scales the whole panel.
       setPaneWidth(pane.clientWidth);
-      const feedItems = pane.querySelectorAll<HTMLElement>(':scope > .atlas-dm-statblock-feed-item');
-      const next = Array.from(feedItems, (item) => item.offsetHeight);
+      const feedItems = Array.from(pane.children).filter((item): item is HTMLElement => item.classList.contains('atlas-dm-statblock-feed-item'));
+      const next = feedItems.map((item) => item.offsetHeight);
       setHeights((current) => (current && sameNumbers(current, next) ? current : next));
     };
     measure();
     return observeResize([pane, ...pane.children], measure);
-  }, [itemCount]);
+  }, [itemKeys]);
 
   return (
     <div

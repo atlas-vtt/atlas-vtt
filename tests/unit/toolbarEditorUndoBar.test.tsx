@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { getHistoryStore } from '../../src/app/stores/history';

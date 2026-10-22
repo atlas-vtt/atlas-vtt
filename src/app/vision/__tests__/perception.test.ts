@@ -252,7 +252,7 @@ describe('regionContains', () => {
 
   it('cuts the disc of a sense of the eyes to the token\'s cone', () => {
     const smell = { ...findSense(ALL_SENSES, 'pathfinder2e-scent')!, id: 'eyes', worksWhileBlinded: false };
-    const viewer = { ...token('viewer', VIEWER, { vision: { enabled: true, angle: 90, senses: [{ id: 'eyes', range: 100 }] } }), rotation: 90 };
+    const viewer = { ...token('viewer', VIEWER, { vision: { enabled: true, angle: 90, senses: [{ id: 'eyes', range: 100 }] } }), rotation: 270 };
     const region = computeSight(sightSources({ viewer }, scale, bounds, { definitions: [smell], conditions }), []).regions[1]!;
     expect(regionContains(region, { x: 150, y: 100 })).toBe(true);
     expect(regionContains(region, { x: 50, y: 100 })).toBe(false);

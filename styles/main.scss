@@ -83,6 +83,7 @@
   @import '../src/app/react/components/icon-selector.scss';
   @import '../src/app/packages/components/asset-manager/asset-manager.scss';
   @import '../src/app/packages/components/asset-manager/token-creator/token-creator.scss';
+  @import '../src/app/packages/components/asset-manager/encounter-builder/encounter-builder.scss';
   @import '../src/app/packages/components/primitives/context-menu.scss';
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
@@ -141,6 +142,10 @@
   @import '../src/app/react/components/senses/senses-editor.scss';
   @import '../src/app/react/components/collection-settings/fan/radial-fan.scss';
   @import '../src/app/react/components/collection-settings/resources-tab.scss';
+  @import '../src/app/statblocks/editor/rests/recovery-pane.scss';
+  @import '../src/app/statblocks/editor/rests/recovery-stage.scss';
+  @import '../src/app/statblocks/editor/rests/recovery-scopes.scss';
+  @import '../src/app/statblocks/editor/rests/recovery-card.scss';
   @import '../src/app/react/components/collection-settings/random-tables/random-tables-tab.scss';
   @import '../src/app/react/components/collection-settings/random-tables/item-rarities.scss';
   @import '../src/app/react/components/collection-settings/statblock-field-chips.scss';
@@ -187,8 +192,18 @@
     }
   }
 
-  .atlas-token-value-editor__separator {
+  .atlas-token-value-editor__separator,
+  .atlas-token-value-editor__label {
     color: var(--text-muted);
+  }
+
+  .atlas-token-value-editor__label {
+    white-space: nowrap;
+  }
+
+  // A change typed for a selection may be a sum (`-9/2`), wider than a value
+  .atlas-token-value-editor__input--wide {
+    width: 96px;
   }
 
   // Scene tabs and widgets share one row so they can never overlap:
@@ -234,13 +249,18 @@
 
       // Rows that would reach past half the view scroll instead. The padding
       // is room for the cards' shadows, taken back by the margin, so the cards
-      // stand where they would without it.
+      // stand where they would without it. A scroller clips its shadows at the
+      // padding, and `--shadow-l` reaches 120px down and 90px aside (Obsidian's
+      // `0 30px 90px`), so below and left get all of it; above and right the
+      // view's edge is closer than that anyway.
       > .atlas-widget-bar > .atlas-widget-container {
+        $shadow-room: 120px;
+
         max-height: 50vh;
         overflow: hidden auto;
         overscroll-behavior: contain;
-        padding: $spacing-xl;
-        margin: (-$spacing-xl);
+        padding: $spacing-xl $spacing-xl $shadow-room $shadow-room;
+        margin: (-$spacing-xl) (-$spacing-xl) (-$shadow-room) (-$shadow-room);
       }
     }
   }

@@ -1,6 +1,6 @@
 import {
   DEFAULT_BOOK_SLOTS, isRecord, MAX_BOOK_ITEMS, MAX_BOOK_NOTES, MAX_BOOK_PINS, mayEquip, parseBookItem, parseBookNoteDraft, parseBookPin, parseBookSlots, parseEquipped, parsePurse, settledEquipped, withEquipped,
-  type BookAbilityMessage, type BookFieldMessage, type BookItem, type BookNote, type BookPin, type BookResourceMessage, type BookSlots, type Equipped, type PlayerBookMessage, type PurseRow,
+  type BookAbilityMessage, type BookFieldMessage, type BookItem, type BookListMessage, type BookNote, type BookPin, type BookRefillMessage, type BookResourceMessage, type BookSlots, type Equipped, type PlayerBookMessage, type PurseRow,
 } from '../../protocol/index.ts';
 
 /**
@@ -18,8 +18,9 @@ export interface StoredBook {
 }
 
 /**
- * The books as kept in the companion's data: by collection id (`NO_COLLECTION` for a scene outside
- * every collection), then by character, which is its token's artwork path.
+ * The books as an older Atlas kept them in the companion's data: by collection id (`NO_COLLECTION`
+ * for a scene outside every collection), then by character, which was its token's artwork path.
+ * They are carried over into the campaign's books file (`bookMigration.ts`).
  */
 export type BookData = Readonly<Record<string, Readonly<Record<string, StoredBook>>>>;
 
@@ -49,15 +50,23 @@ function mayNameQuest(book: StoredBook, quests: ReadonlySet<string>, note: { rea
   return quests.has(note.quest) || book.notes.some((held) => held.id === note.id && held.quest === note.quest);
 }
 
+/** A message added to the protocol and not handled here: refused, never written (and a type error until it is handled). */
+function unhandled(_message: never): null {
+  return null;
+}
+
+/** What a player writes into the book itself; their resources and their statblock are written elsewhere. */
+export type ShelfMessage = Exclude<PlayerBookMessage, BookResourceMessage | BookFieldMessage | BookAbilityMessage | BookListMessage | BookRefillMessage>;
+
 /**
  * A book after what its player wrote, as the protocol's parser cleaned it: a note or pin is put in
  * place of the one of its id or added (a note on a quest only on a quest in `quests`, the ids of
  * those the book is sent), a deletion
  * takes one away (none is no error), the purse is replaced whole. A note is stamped with `now`, the GM's clock. An item goes into a slot only where
  * the book holds it and shows the slot; slots are replaced whole, and an item whose slot went is back
- * in the bag. Null when the book takes no more, or not this.
+ * in the bag. Null when the book takes no more, or not this, and for any message it does not know.
  */
-export function applyBookMessage(book: StoredBook, message: Exclude<PlayerBookMessage, BookResourceMessage | BookFieldMessage | BookAbilityMessage>, now: number, quests: ReadonlySet<string>): StoredBook | null {
+export function applyBookMessage(book: StoredBook, message: ShelfMessage, now: number, quests: ReadonlySet<string>): StoredBook | null {
   switch (message.t) {
     case 'book-note': {
       if (!mayNameQuest(book, quests, message.note)) return null;
@@ -78,6 +87,8 @@ export function applyBookMessage(book: StoredBook, message: Exclude<PlayerBookMe
       return mayEquip(book, message.item, message.slot) ? { ...book, equipped: withEquipped(book.equipped, message.item, message.slot) } : null;
     case 'book-slots':
       return { ...book, slots: message.slots, equipped: settledEquipped(book.equipped, message.slots, book.items) };
+    default:
+      return unhandled(message);
   }
 }
 
@@ -107,7 +118,8 @@ function readNote(value: unknown): BookNote | null {
   return draft === null || typeof at !== 'number' || !Number.isFinite(at) || at < 0 ? null : { ...draft, at };
 }
 
-function readBook(value: unknown): StoredBook | null {
+/** A stored book, each part read through the protocol's parsers; null for a value that is no book. */
+export function readStoredBook(value: unknown): StoredBook | null {
   if (!isRecord(value)) return null;
   const items = readList(value.items, MAX_BOOK_ITEMS, parseBookItem);
   const slots = parseBookSlots(value.slots) ?? DEFAULT_BOOK_SLOTS;
@@ -132,7 +144,7 @@ export function readBooks(data: unknown): BookData {
   for (const [collection, characters] of Object.entries(isRecord(data) ? data : {})) {
     if (collection.length > MAX_KEY || !isRecord(characters)) continue;
     const books = Object.entries(characters).flatMap(([key, value]): [string, StoredBook][] => {
-      const book = key === '' || key.length > MAX_KEY ? null : readBook(value);
+      const book = key === '' || key.length > MAX_KEY ? null : readStoredBook(value);
       return book === null || isEmptyBook(book) ? [] : [[key, book]];
     });
     if (books.length > 0) collections.push([collection, Object.fromEntries(books)]);

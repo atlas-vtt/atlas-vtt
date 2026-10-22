@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { vi, describe, expect, it } from 'vitest';
 import type { TFile } from 'obsidian';
 import { parseGmMessage, type GmMessage, type SharedPin } from '../../../../src/app/online/protocol/index.ts';

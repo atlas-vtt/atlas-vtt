@@ -41,6 +41,8 @@ export function valueKindLabel(kind: ValueKind): string {
 export function valueKindOf(block: TemplateBlock, field: TemplateField | undefined): ValueKind | null {
   if (block.type === 'tags') return 'words';
   if (block.type === 'pairs') return 'pairs';
+  // A number shown as a track (`numberLooks`)
+  if (block.type === 'track') return field?.type === 'number' ? 'number' : null;
   if (block.type !== 'stat' || !field) return null;
   const kind = VALUE_KINDS.find((entry) => FIELD_TYPES[entry.kind] === field.type)?.kind;
   return kind && BLOCK_TYPES[kind] === 'stat' ? kind : null;
@@ -55,6 +57,8 @@ export function withValueKind(template: StatblockTemplate, blockId: string, kind
   const block = findBlock(template.layout.blocks, blockId)?.block;
   const key = block ? boundField(block) : undefined;
   if (!block || !key || !fieldByKey(template.fields, key)) return template;
+  // A track is how a number shows, which Show as changes
+  if (block.type === 'track' && kind === 'number') return template;
   const typed = updateField(template, key, { type: FIELD_TYPES[kind] });
   const turned = turnInto(typed.layout, blockId, BLOCK_TYPES[kind], typed.fields);
   if (!turned.ok) return template;

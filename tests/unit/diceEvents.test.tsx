@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { EventEmitter } from 'events';
 import { act, cleanup, render, renderHook } from '@testing-library/react';
@@ -13,7 +14,6 @@ import { DiceToastObserver } from '../../src/app/services/DiceToastObserver';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
-vi.mock('../../src/app/atlas-view', () => ({ AtlasView: class {}, ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 const observers: DiceToastObserver[] = [];
 afterEach(() => { cleanup(); observers.splice(0).forEach(observer => observer.destroy()); vi.restoreAllMocks(); });
 

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';

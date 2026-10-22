@@ -35,7 +35,7 @@ export interface FakeTabOptions {
 
 /**
  * An Atlas map tab's renderer and view as the companion's duck-typed readers find them (`view.serviceManager`, the
- * renderer's `lightingFeature.controller` and token renderer), answering with Atlas's own rules: the
+ * renderer's `lighting` controller and token renderer), answering with Atlas's own rules: the
  * players' sight, ambient light and light reaches of the scene model, the token perception with
  * committed fog of `gmPerception`, and token sprites where the tokens stand.
  */
@@ -65,7 +65,7 @@ export function fakeAtlasTab(options: FakeTabOptions): { readonly renderer: obje
     getTokenSprites: () => Object.fromEntries(Object.values(options.state().objects.tokens).map((token) => [token.id, { x: token.x, y: token.y, tokenSize: options.tokenSize ?? 70 }])),
   };
   const renderer = {
-    lightingFeature: { controller },
+    lighting: controller,
     getTokenRenderer: () => tokenRenderer,
     getGridOptions: () => options.grid?.() ?? null,
   };

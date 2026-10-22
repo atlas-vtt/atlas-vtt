@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React, { useState } from 'react';
 import { act, cleanup, render } from '@testing-library/react';
 import { App, Scope, TFile } from 'obsidian';

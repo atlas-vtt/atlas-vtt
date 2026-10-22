@@ -98,6 +98,44 @@ $track-boxes-per-line: 12;
     }
   }
 
+  // Beside a player character's note a press on a box sets the current value: the box keeps its look, and
+  // Obsidian's button look stays off it.
+  button.atlas-sb-track-box {
+    display: block;
+    height: $track-box;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    cursor: pointer;
+    transition-property: border-color, background-color, scale;
+    transition-duration: $transition-fast;
+    transition-timing-function: $transition-ease;
+
+    &:hover {
+      border-color: var(--text-accent);
+    }
+
+    &.is-marked {
+      background: var(--text-accent);
+    }
+
+    &:active {
+      scale: 0.9;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--background-modifier-border-focus);
+      outline-offset: 1px;
+    }
+  }
+
+  // The maximum stands before a track whose boxes set the current value, edited as a value of its own
+  .atlas-sb-track-max {
+    margin-inline-end: $spacing-s;
+    font-variant-numeric: tabular-nums;
+  }
+
   .atlas-sb-gauge {
     display: inline-flex;
     align-items: center;

@@ -72,3 +72,10 @@
   --metadata-display-editing: none;
   --metadata-display-reading: none;
 }
+
+// What `@` offers in a value (`ReferenceSuggest`): Obsidian's suggestion rows, each name with the
+// number it reads at the row's end, in figures that line up.
+.suggestion-item.atlas-sb-reference-option .atlas-sb-reference-option__value {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}

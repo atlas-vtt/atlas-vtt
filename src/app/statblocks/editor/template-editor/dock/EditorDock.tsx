@@ -31,7 +31,7 @@ function AddButton({ item, onAdd }: { item: InsertItem; onAdd: EditorDockProps['
 /**
  * The template editor's dock: a vertical capsule in the note column, beside the
  * line between the note and the card and halfway down it,
- * edge with the six kinds a statblock is built from, each added by a click
+ * edge with the seven kinds a statblock is built from, each added by a click
  * or dragged onto the card, and the session's undo and redo. While a tile
  * just placed asks for its name, Undo takes that tile away.
  */

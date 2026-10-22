@@ -1,6 +1,7 @@
 import { statblockResourceValue } from './statblockResourceValues';
 import { clampValue } from './resourceValues';
 import type { ResourceDefinition, ResourceHolder, ResourceValue } from './resourceTypes';
+import { shownFieldsOf } from '../statblocks/model/resolvedTypes';
 import { NO_MEANINGS, type FieldMeanings } from '../statblocks/resolve/fieldMeanings';
 
 /** A statblock's fields with the meanings of its template, as the resolver gives them. */
@@ -68,7 +69,7 @@ export async function fillMissingResources(
     if (!statblock) continue;
     const resources = { ...token.resources };
     for (const definition of definitions) {
-      const value = resources[definition.key] ? null : statblockResourceValue(statblock.fields, definition, statblock.meanings);
+      const value = resources[definition.key] ? null : statblockResourceValue(shownFieldsOf(statblock), definition, statblock.meanings);
       if (value) resources[definition.key] = value;
     }
     if (Object.keys(resources).length > Object.keys(token.resources ?? {}).length) entries.push({ id, changes: { resources } });

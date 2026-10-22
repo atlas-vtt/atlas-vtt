@@ -1,8 +1,7 @@
-// @vitest-environment node
 import type { WorkspaceLeaf } from 'obsidian';
 import { describe, expect, it } from 'vitest';
 import {
-  badgeOf, closingOf, groupsOf, menuModel, onlineApi, playerColour, seatsNoteOf, selectionBarOf, tooltipOf,
+  badgeOf, closingOf, groupsOf, menuModel, NO_CAMPAIGNS, onlineApi, playerColour, seatsNoteOf, selectionBarOf, tooltipOf,
   type ControlSource, type OnlineSnapshot, type SceneFacts,
 } from '../../../../src/app/online/gm/dock/panelModel.ts';
 import { closingText, type LostTable } from '../../../../src/app/online/gm/tableEnd.ts';
@@ -12,7 +11,7 @@ const ANA = { id: 'a'.repeat(20), name: 'Ana', online: true };
 const BEN = { id: 'b'.repeat(20), name: 'Ben', online: false };
 const CLEM = { id: 'c'.repeat(20), name: 'clem', online: true };
 
-const snapshot = (over: Partial<OnlineSnapshot> = {}): OnlineSnapshot => ({ status: 'online', link: 'https://play.atlas-vtt.dev/#code', sharedLeaf: null, sharedName: null, sharedTokens: {}, players: [], playerTokens: [], seats: null, gate: null, ...over });
+const snapshot = (over: Partial<OnlineSnapshot> = {}): OnlineSnapshot => ({ status: 'online', link: 'https://play.atlas-vtt.dev/#code', campaignId: null, sharedLeaf: null, sharedName: null, sharedTokens: {}, players: [], playerTokens: [], seats: null, gate: null, ...over });
 
 const CAN_HOST = { kind: 'can-host', account: { id: 'acc_mara', handle: 'mara', name: 'Mara' }, access: { plan: 'beta', maxPlayers: 12, endsAt: null } } as const;
 
@@ -60,13 +59,13 @@ describe('the badge', () => {
 
 describe('the menu', () => {
   it('offers Start without a table, with what the account may do', () => {
-    expect(menuModel(snapshot({ status: 'idle' }), scene(), SIGNED_OUT)).toEqual({ kind: 'start', account: SIGNED_OUT, starting: false, lost: null });
-    expect(menuModel(snapshot({ status: 'starting' }), scene(), CAN_HOST)).toEqual({ kind: 'start', account: CAN_HOST, starting: true, lost: null });
+    expect(menuModel(snapshot({ status: 'idle' }), scene(), SIGNED_OUT)).toEqual({ kind: 'start', account: SIGNED_OUT, starting: false, lost: null, outdated: false, campaigns: NO_CAMPAIGNS });
+    expect(menuModel(snapshot({ status: 'starting' }), scene(), CAN_HOST)).toEqual({ kind: 'start', account: CAN_HOST, starting: true, lost: null, outdated: false, campaigns: NO_CAMPAIGNS });
   });
 
   it('says how the last table ended when the server ended it, until the next one starts', () => {
     for (const lost of ['refused', 'no-access', 'superseded'] as const) {
-      expect(menuModel(snapshot({ status: 'refused', lost }), scene(), CAN_HOST)).toEqual({ kind: 'start', account: CAN_HOST, starting: false, lost });
+      expect(menuModel(snapshot({ status: 'refused', lost }), scene(), CAN_HOST)).toEqual({ kind: 'start', account: CAN_HOST, starting: false, lost, outdated: false, campaigns: NO_CAMPAIGNS });
     }
     // A table that is starting, or one the GM stopped, was lost by nothing.
     expect(menuModel(snapshot({ status: 'starting', lost: 'no-access' }), scene(), CAN_HOST)).toMatchObject({ lost: null });
@@ -92,13 +91,13 @@ describe('the menu', () => {
 
   it('shows the link, the status and the shared map while players are awaited', () => {
     expect(menuModel(snapshot({ status: 'connecting' }), scene({ isShared: false }), CAN_HOST)).toEqual({
-      kind: 'waiting', link: 'https://play.atlas-vtt.dev/#code', status: { text: 'Connecting…', tone: 'amber' }, isShared: false, gate: null, qr: false, imageShown: false, closing: null,
+      kind: 'waiting', title: 'Online table', link: 'https://play.atlas-vtt.dev/#code', status: { text: 'Connecting…', tone: 'amber' }, isShared: false, gate: null, qr: false, imageShown: false, closing: null, updateAfter: false,
     });
     // The gates come along: the GM needs the code before the first player can join.
     // Who waits is not among it: a knock must not draw the menu anew under the GM's pointer.
     const gate = { code: '483912', requireCode: true, askToJoin: true, paused: false, pauseArmed: false };
     const waiting = [{ id: 'm'.repeat(20), name: 'Mira', answered: false, full: false, armed: false }];
-    expect(menuModel(snapshot({ gate: { ...gate, waiting } }), scene(), CAN_HOST)).toEqual({ kind: 'waiting', link: 'https://play.atlas-vtt.dev/#code', status: { text: 'Online, waiting for players', tone: 'green' }, isShared: true, gate, qr: false, imageShown: false, closing: null });
+    expect(menuModel(snapshot({ gate: { ...gate, waiting } }), scene(), CAN_HOST)).toEqual({ kind: 'waiting', title: 'Online table', link: 'https://play.atlas-vtt.dev/#code', status: { text: 'Online, waiting for players', tone: 'green' }, isShared: true, gate, qr: false, imageShown: false, closing: null, updateAfter: false });
     // The QR card's state is part of the menu, whose button says whether it is open.
     expect(menuModel(snapshot(), scene(), CAN_HOST, true)).toMatchObject({ kind: 'waiting', qr: true });
     // An image shown before anyone joined has its line here too.
@@ -169,6 +168,8 @@ describe('the selection bar', () => {
 
 /** A table that shows players no image. */
 const NO_IMAGE = { isShown: false };
+const NO_RESTS = { cards: () => [], approve: () => undefined, decline: () => undefined };
+const noCards = (): readonly string[] => [];
 const hideNothing = (): void => undefined;
 
 describe('the view of OnlineControl', () => {
@@ -182,9 +183,12 @@ describe('the view of OnlineControl', () => {
       onChange: () => () => undefined,
       status: () => state.status,
       link: () => state.link,
+      campaignId: () => null,
       seats: () => null,
       isStarting: () => state.starting,
       lost: () => state.lost,
+      outdated: () => false,
+      updateAfterSession: () => false,
       start: (leaf) => {
         calls.push(['start', leaf]);
         return Promise.resolve(null);
@@ -196,6 +200,18 @@ describe('the view of OnlineControl', () => {
       playerTokens: () => [{ tokenId: 'ogre', label: 'Ogre', owner: ANA }, { tokenId: 'bear', label: 'Bear', owner: null }],
       markPlayerTokens: (ids, player) => void calls.push(['mark', ids, player]),
       give: (ids, player) => void calls.push(['give', ids, player]),
+      playerCode: (id) => (id === ANA.id ? '482193' : null),
+      newPlayerCode: (id) => void calls.push(['newPlayerCode', id]),
+      addPlayer: (name) => {
+        calls.push(['addPlayer', name]);
+        return name === 'Dora' ? { id: 'd'.repeat(20), name, code: '731904', characters: [] } : null;
+      },
+      renamePlayer: (id, name) => void calls.push(['renamePlayer', id, name]),
+      removeFromCampaign: (id) => void calls.push(['removeFromCampaign', id]),
+      newLink: () => {
+        calls.push(['newLink']);
+        return Promise.resolve();
+      },
     };
   }
 
@@ -224,7 +240,7 @@ describe('the view of OnlineControl', () => {
   });
 
   it('reads when the running table closes for want of access, and nothing while it does not', () => {
-    const table = { sharedTab: null, sharedStore: null, presentedName: null, gate: fakeGate(), image: NO_IMAGE, closesAt: null as number | null };
+    const table = { sharedTab: null, sharedStore: null, presentedName: null, gate: fakeGate(), image: NO_IMAGE, rests: NO_RESTS, cardOrder: noCards, closesAt: null as number | null };
     const api = onlineApi({ ...control(), table }, hideNothing);
     expect(api.snapshot()).not.toHaveProperty('closesAt');
     table.closesAt = 1760000000000;
@@ -247,7 +263,7 @@ describe('the view of OnlineControl', () => {
   it('names the scene players see and its tokens from the table\'s shared store, and none while nothing is shared', () => {
     const tokens = { ogre: { imagePath: 'art/ogre.webp' } };
     const shared = { getState: () => ({ objects: { tokens } }) };
-    const table = { sharedTab: null, sharedStore: shared as typeof shared | null, presentedName: 'Kings Inn' as string | null, gate: fakeGate(), image: NO_IMAGE, closesAt: null };
+    const table = { sharedTab: null, sharedStore: shared as typeof shared | null, presentedName: 'Kings Inn' as string | null, gate: fakeGate(), image: NO_IMAGE, rests: NO_RESTS, cardOrder: noCards, closesAt: null };
     const source = { ...control(), table };
     const api = onlineApi(source, hideNothing);
     expect(api.snapshot()).toMatchObject({ sharedLeaf: null, sharedName: 'Kings Inn', sharedTokens: tokens });
@@ -255,9 +271,23 @@ describe('the view of OnlineControl', () => {
     expect(api.snapshot()).toMatchObject({ sharedName: null, sharedTokens: {} });
   });
 
+  it('passes the campaign\'s player choices on: codes, adding, renaming, removing and a new link', async () => {
+    const source = control();
+    const api = onlineApi(source, hideNothing);
+    expect(api.playerCode(ANA.id)).toBe('482193');
+    expect(api.playerCode(BEN.id)).toBeNull();
+    api.newPlayerCode(BEN.id);
+    expect(api.addPlayer('Dora')).toEqual({ id: 'd'.repeat(20), name: 'Dora', code: '731904' });
+    expect(api.addPlayer('Nobody')).toBeNull();
+    api.renamePlayer(BEN.id, 'Benno');
+    api.removeFromCampaign(BEN.id);
+    await api.newLink();
+    expect(source.calls).toEqual([['newPlayerCode', BEN.id], ['addPlayer', 'Dora'], ['addPlayer', 'Nobody'], ['renamePlayer', BEN.id, 'Benno'], ['removeFromCampaign', BEN.id], ['newLink']]);
+  });
+
   it('reads the running table\'s gates and passes the GM\'s choices on; without a table there are none and nothing happens', () => {
     const gate = fakeGate();
-    const api = onlineApi({ ...control(), table: { sharedTab: null, sharedStore: null, presentedName: null, gate, image: NO_IMAGE, closesAt: null } }, hideNothing);
+    const api = onlineApi({ ...control(), table: { sharedTab: null, sharedStore: null, presentedName: null, gate, image: NO_IMAGE, rests: NO_RESTS, cardOrder: noCards, closesAt: null } }, hideNothing);
     expect(api.snapshot().gate).toEqual(gate.view());
     api.gate.newCode();
     api.gate.setRequireCode(false);
@@ -274,7 +304,7 @@ describe('the view of OnlineControl', () => {
   it('says that players are shown an image only while they are, and hides it by the way it is given', () => {
     const image = { isShown: false };
     let hidden = 0;
-    const api = onlineApi({ ...control(), table: { sharedTab: null, sharedStore: null, presentedName: null, gate: fakeGate(), image, closesAt: null } }, () => void (hidden += 1));
+    const api = onlineApi({ ...control(), table: { sharedTab: null, sharedStore: null, presentedName: null, gate: fakeGate(), image, rests: NO_RESTS, cardOrder: noCards, closesAt: null } }, () => void (hidden += 1));
     expect(api.snapshot()).not.toHaveProperty('imageShown');
     image.isShown = true;
     expect(api.snapshot().imageShown).toBe(true);

@@ -108,6 +108,7 @@ describe('TokenRenderer and the collection of its map', () => {
   const harness = (isDestroyed: boolean) => ({
     isDestroyed,
     uiManager: { refreshConditions: vi.fn(), refreshResources: vi.fn() },
+    turnMarkers: { refresh: vi.fn() },
     fillMissingResources: vi.fn(),
   });
 
@@ -117,6 +118,8 @@ describe('TokenRenderer and the collection of its map', () => {
     expect(renderer.uiManager.refreshConditions).toHaveBeenCalledOnce();
     expect(renderer.uiManager.refreshResources).toHaveBeenCalledOnce();
     expect(renderer.fillMissingResources).toHaveBeenCalledOnce();
+    // Who is defeated follows the resources, and so who holds a side's turn
+    expect(renderer.turnMarkers.refresh).toHaveBeenCalledOnce();
   });
 
   it('does nothing after the view closed', () => {

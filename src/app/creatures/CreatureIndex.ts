@@ -1,6 +1,6 @@
 import { TAbstractFile, type App, type EventRef, type Events } from 'obsidian';
 import { TemplateLibrary } from '../statblocks/library/TemplateLibrary';
-import type { LibraryTemplate, TemplateLookup } from '../statblocks/model/resolvedTypes';
+import { shownFieldsOf, type LibraryTemplate, type TemplateLookup } from '../statblocks/model/resolvedTypes';
 import type { TemplateId } from '../statblocks/model/templateTypes';
 import type { FieldMeanings } from '../statblocks/resolve/fieldMeanings';
 import { resolveStatblock } from '../statblocks/resolve/resolveStatblock';
@@ -229,8 +229,9 @@ export class CreatureIndex {
     try {
       const resolved = await resolveStatblock(this.app, path, { templates, bestiary });
       if (!resolved) return null;
-      const { fields, meanings, lookName, source } = resolved;
-      return { path, fields, templateId: source.kind === 'atlas' ? source.templateId : null, meanings, lookName };
+      const { meanings, lookName, source } = resolved;
+      // Filters, ratings and token defaults read numbers as the card shows them
+      return { path, fields: shownFieldsOf(resolved), templateId: source.kind === 'atlas' ? source.templateId : null, meanings, lookName };
     } catch (error) {
       console.error(`[CreatureIndex] Could not read the statblock in ${path}:`, error);
       return null;

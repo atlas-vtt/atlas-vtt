@@ -1,5 +1,12 @@
 @use '../react/components/statblock/statblock-preview-surface' as *;
 @use '../../../styles/tokens' as *;
+@use '../../../styles/mixins' as *;
+
+// The controls of a map's preview: a capsule of $controls-inset around its controls.
+$control: 28px;
+$controls-inset: $spacing-xs;
+$controls-radius: ($control + 2 * $controls-inset) * 0.5 + $border-width-m;
+$controls-end-radius: atlas-panel-inset-radius-value($controls-inset, $control * 0.5);
 
 // Imperative CMD+hover preview window for tokens on the map, in the asset
 // manager and in the collection export and import dialogs (StatblockPreviewWindow.ts).
@@ -20,5 +27,103 @@
 
   &--closing {
     @include atlas-statblock-preview-closing;
+  }
+
+  // The statblock's React root: the card stays a flex item of the window, which caps its height.
+  &__content {
+    display: contents;
+  }
+
+  &.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  // A map's preview also moves by its card's top (StatblockPreviewWindow.ts).
+  &--movable:not(.is-dragging) :is(.atlas-sb-header, .atlas-sb-heading-row) {
+    cursor: grab;
+  }
+}
+
+// A map's preview: pin, close and the grip that moves the window, in a capsule hanging above
+// the card's top right edge, so the card keeps its look and its corner. It also moves the
+// window from its own padding. It shows while the pointer or focus is in the window and while
+// the window is pinned or dragged; always on touch screens.
+.atlas-statblock-preview-window__controls {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($controls-radius);
+  @include atlas-flex-row($controls-inset);
+  position: absolute;
+  right: $spacing-s;
+  bottom: calc(100% - #{$spacing-s} + #{$spacing-xs});
+  padding: $controls-inset;
+  cursor: grab;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity $transition-fast $transition-ease;
+
+  @media (hover: none) {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+
+  .atlas-statblock-preview-window:is(:hover, :focus-within, .is-pinned, .is-dragging) > & {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .atlas-statblock-preview-window.is-dragging > & {
+    cursor: grabbing;
+  }
+}
+
+.atlas-statblock-preview-window__grip {
+  display: grid;
+  place-items: center;
+  width: $control * 0.5;
+  height: $control;
+  color: var(--text-faint);
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-statblock-preview-window__controls .atlas-statblock-preview-window__button {
+  @include atlas-corner-shape;
+  @include atlas-ghost-button;
+  display: grid;
+  place-items: center;
+  width: $control;
+  height: $control;
+  padding: 0;
+  border: none;
+  border-radius: $radius-m;
+  box-shadow: none;
+  cursor: pointer;
+
+  &:last-child {
+    border-start-end-radius: $controls-end-radius;
+    border-end-end-radius: $controls-end-radius;
+  }
+
+  &.is-pinned,
+  &.is-pinned:hover {
+    color: var(--interactive-accent);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: -2px;
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
   }
 }

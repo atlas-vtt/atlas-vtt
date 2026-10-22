@@ -13,6 +13,8 @@ import { metricNumberText } from '../values/blockText';
 import { hasText } from '../values/shownText';
 import { FieldPrompt, StandIn, ValueText } from '../values/ValueText';
 import { ValueEditingContext, ValueSlot } from '../valueSlot';
+import { useBlockChrome } from '../blockChrome';
+import { TrackedText, trackedShown } from '../values/trackedShown';
 import type { FieldKey, MetricBlock } from '../../model/templateTypes';
 import type { BlockViewProps } from './blockViewProps';
 
@@ -43,6 +45,7 @@ export function shownMetricNumbers(block: MetricBlock, sheet: Pick<SheetState, '
 /** One number: its name small over its value, or what stands in for an empty one. */
 function MetricCell({ block, number }: { block: MetricBlock; number: MetricNumber }): React.JSX.Element {
   const { state } = useSheet();
+  const chrome = useBlockChrome();
   const { key, index } = number;
   const field = key ? state.fields.get(key) : undefined;
   const label = key ? (field?.label ?? key) : UNNAMED_NUMBER;
@@ -52,9 +55,13 @@ function MetricCell({ block, number }: { block: MetricBlock; number: MetricNumbe
   const editing = state.mode === 'editing';
   // In the template editor a number not named yet shows the prompt it will have, worded after its placeholder name.
   const unnamedPrompt = useContext(ValueEditingContext)?.drawsUnnamed ? valuePrompt({ label }, label) : BLANK;
-  const value = hasText(shown) || shown.problems.length > 0
+  const tracked = key ? trackedShown(key, state) : null;
+  // A tracked number whose maximum another field holds is filled in there
+  const maxElsewhere = tracked !== null && state.tracked.get(key)?.maxField !== key;
+  const untracked = hasText(shown) || shown.problems.length > 0
     ? <BonusLink text={shown.text} rollable={block.rollable}><ValueText shown={shown} /></BonusLink>
     : editing ? <FieldPrompt prompt={key ? valuePrompt(field, label) : unnamedPrompt} /> : <span className="atlas-sb-value atlas-sb-metric__blank">{BLANK}</span>;
+  const value = tracked ? <TrackedText field={key} value={tracked} /> : untracked;
 
   return (
     <div
@@ -67,9 +74,10 @@ function MetricCell({ block, number }: { block: MetricBlock; number: MetricNumbe
     >
       <span className={cn('atlas-sb-label', !key && 'atlas-sb-prompt')}>{label}</span>
       <span className="atlas-sb-metric__value">
-        {key ? <ValueSlot block={block} field={key}>{value}</ValueSlot> : value}
+        {key && !maxElsewhere ? <ValueSlot block={block} field={key}>{value}</ValueSlot> : value}
         {armable && <ArmSwitch id={id} label={armable.label} />}
       </span>
+      {key && chrome?.decorateNumber?.(block, key)}
     </div>
   );
 }

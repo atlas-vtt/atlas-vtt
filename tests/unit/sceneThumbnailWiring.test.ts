@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { EventEmitter } from 'events';
 import { Container, Sprite, Texture, type Rectangle } from 'pixi.js';
@@ -69,7 +70,7 @@ function setup(contextLost = false) {
     hexLinkRenderer: { container: hexLinks },
     tokenRenderer: { getGmViewLayers: () => [{ layer: hiddenToken, visible: true, alpha: 0.5 }] },
     fogRenderer: { getGmViewLayers: () => [{ layer: fog, visible: true, alpha: 0.5 }] },
-    lightingFeature: { controller: {
+    lighting: {
       gmOverlays: () => gmOverlays,
       renderer: {
         renderForFrame: <T,>(frame: SceneFrame, render: () => T): T => {
@@ -78,7 +79,7 @@ function setup(contextLost = false) {
           try { return render(); } finally { lighting = false; }
         },
       },
-    } },
+    },
   });
   // Session view shows the fog opaque
   fog.alpha = 1;

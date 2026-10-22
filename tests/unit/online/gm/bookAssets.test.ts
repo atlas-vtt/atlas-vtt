@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { MAX_BOOK_ITEMS, MAX_ITEM_TEXT, parseGmMessage, type BookItem } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
@@ -6,7 +5,7 @@ import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { BOOK_BURST, REFUSAL_BOOK_MS } from '../../../../src/app/online/gm/book/BookShare.ts';
 import { EMPTY_BOOK, withItem } from '../../../../src/app/online/gm/book/bookStore.ts';
 import { FakeSocket, png, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH_ART, CAL, cave, delivered, MIRA_ART, nameWorldMap, ofType, openTable, vaultFiles, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
+import { ANA, BEN, BRANNOCH_BOOK, BRANNOCH_ART, CAL, cave, delivered, keptBooks, MIRA_ART, nameWorldMap, ofType, openTable, vaultFiles, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
@@ -25,6 +24,8 @@ vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
 vi.mock('../../../../src/app/online/gm/atlasLighting.ts', async (original) => ({ ...(await original<typeof import('../../../../src/app/online/gm/atlasLighting.ts')>()), accentColour: () => '#112233' }));
 
 const PLAYERS = [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }];
+/** The campaign also has Cal, who joins the table later. */
+const WITH_CAL = [...PLAYERS, { id: CAL, name: 'Cal' }];
 const id = (count: number): string => count.toString(16).padStart(24, '0');
 const hashOf = (path: string): Promise<string> => sha256Hex(vaultFiles().get(path) as Uint8Array<ArrayBuffer>);
 
@@ -51,7 +52,7 @@ describe('what a player\'s book lets them ask for and write', () => {
   });
 
   it('serves a character\'s artwork to its own player while the scene hides it, the world map to everyone, and nobody another character\'s', async () => {
-    const { online, socket, tab, from } = await openTable(new BookShelf(), PLAYERS);
+    const { online, socket, tab, from } = await openTable(new BookShelf(), PLAYERS, undefined, WITH_CAL);
     const [brannoch, mira, world] = await Promise.all([hashOf(BRANNOCH_ART), hashOf(MIRA_ART), hashOf(WORLD_MAP)]);
 
     // The GM hides Brannoch: no picture shows the token any more, and its sheet stays Ana's.
@@ -96,15 +97,16 @@ describe('what a player\'s book lets them ask for and write', () => {
   });
 
   it('refuses a flood of writes, a write that is malformed and one of a player without a character, each answered with the whole book', async () => {
-    const shelf = new BookShelf();
-    const { online, socket, from } = await openTable(shelf, PLAYERS);
+    const source = keptBooks();
+    const shelf = new BookShelf(source);
+    const { online, socket, from } = await openTable(shelf, PLAYERS, undefined, WITH_CAL);
     socket.relay({ t: 'player-joined', id: CAL, name: 'Cal' });
     await advance(REFUSAL_BOOK_MS);
 
     let since = delivered(socket).length;
     for (let count = 0; count < 500; count += 1) from(ANA, { t: 'book-note', note: { id: id(count), title: `Note ${count}`, body: '' } });
     await advance(REFUSAL_BOOK_MS + 500);
-    expect(shelf.of('Cairn', BRANNOCH_ART).notes.map((note) => note.id)).toEqual(Array.from({ length: BOOK_BURST }, (_, count) => id(count)));
+    expect(shelf.of(BRANNOCH_BOOK).notes.map((note) => note.id)).toEqual(Array.from({ length: BOOK_BURST }, (_, count) => id(count)));
     // Two books for the whole flood, at its first refusal and once it is over, holding what was kept; the other players hear nothing.
     let books = ofType(delivered(socket).slice(since), 'book');
     expect(books.map(({ to }) => to)).toEqual([ANA, ANA]);
@@ -118,7 +120,7 @@ describe('what a player\'s book lets them ask for and write', () => {
     from(ANA, { t: 'book-purse', purse: [{ name: 'Gold', amount: 1.5 }] });
     from(ANA, { t: 'book-note', note: { id: id(901), title: 'Good', body: 'Kept' } });
     await advance(REFUSAL_BOOK_MS + 500);
-    const kept = shelf.of('Cairn', BRANNOCH_ART);
+    const kept = shelf.of(BRANNOCH_BOOK);
     expect(kept.notes).toHaveLength(BOOK_BURST + 1);
     expect(kept.pins).toEqual([]);
     expect(kept.purse).toEqual([]);
@@ -132,7 +134,7 @@ describe('what a player\'s book lets them ask for and write', () => {
     since = delivered(socket).length;
     from(CAL, { t: 'book-note', note: { id: id(950), title: 'Mine', body: 'Nobody keeps this' } });
     await advance(REFUSAL_BOOK_MS + 500);
-    expect(JSON.stringify(shelf.toData())).not.toContain('Nobody keeps this');
+    expect(source.dump()).not.toContain('Nobody keeps this');
     expect(ofType(delivered(socket).slice(since), 'book')).toMatchObject([{ to: CAL, body: { book: { character: null, notes: [] } } }]);
     online.stop();
   });
@@ -140,7 +142,7 @@ describe('what a player\'s book lets them ask for and write', () => {
   it('sends a book too large for one frame in parts, to its player alone', async () => {
     const shelf = new BookShelf();
     const item = (count: number): BookItem => ({ id: id(count), name: `Item ${count}`, type: null, rarity: null, tone: null, price: null, description: 'ß'.repeat(MAX_ITEM_TEXT), properties: [], at: count });
-    shelf.keep('Cairn', BRANNOCH_ART, Array.from({ length: MAX_BOOK_ITEMS }, (_, count) => item(count)).reduce(withItem, EMPTY_BOOK));
+    shelf.keep(BRANNOCH_BOOK, Array.from({ length: MAX_BOOK_ITEMS }, (_, count) => item(count)).reduce(withItem, EMPTY_BOOK));
     const { online, socket } = await openTable(shelf, PLAYERS);
     await advance(5_000);
     const parts = socket.frames().filter((frame) => frame.body?.t === 'part');

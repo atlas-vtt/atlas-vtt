@@ -40,7 +40,13 @@ export function desktopDependencies(): Plugin {
       if (!/\/react-dom\/cjs\/react-dom-client\.(production|development)\.js$/.test(file ?? '')) return;
 
       const createScript = /\b\w+\.createElement\("script"\)/g;
-      const inertScript = /case "script":\s+\w+ = \w+\.createElement\("div"\);\s+\w+\.innerHTML = "<script>\\x3c\/script>";\s+\w+ = \w+\.removeChild\(\w+\.firstChild\);\s+break;/g;
+      // React DOM's development build warns about the tag between the two statements.
+      const scriptWarning = String.raw`(?:didWarnScriptTags \|\|\s+isScriptDataBlock\(\w+\) \|\|\s+\(console\.error\(\s+"Encountered a script tag[^"]*"\s+\),\s+\(didWarnScriptTags = !0\)\);\s+)?`;
+      const inertScript = new RegExp(
+        String.raw`case "script":\s+(\w+) = \w+\.createElement\("div"\);\s+` + scriptWarning +
+          String.raw`\1\.innerHTML = "<script>\\x3c\/script>";\s+\1 = \1\.removeChild\(\s*\1\.firstChild\s*\);\s+break;`,
+        'g',
+      );
       if ([...code.matchAll(createScript)].length !== 3 || [...code.matchAll(inertScript)].length !== 1) {
         throw new Error('React DOM script handling changed; review the desktop dependency adapter');
       }

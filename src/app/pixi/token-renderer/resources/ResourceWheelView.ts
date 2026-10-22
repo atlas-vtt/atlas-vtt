@@ -4,10 +4,8 @@ import type { VisibleResource } from '../../../resources/resourceTypes';
 import { RESOURCE_NUMBER_SCALE, RESOURCE_NUMBER_STYLE } from '../../ResourceBarLabel';
 import { destroyTree } from '../../utils/destroyTree';
 import { BAR_LOOK, colorNumber } from './ResourceBarView';
-import { WHEEL_START, wheelGauge, type WheelGauge } from './wheelGeometry';
+import { WHEEL_SIZE, WHEEL_START, wheelGauge, type WheelGauge } from './wheelGeometry';
 
-/** Diameter of the wheel, in UI units: two bar heights. */
-export const WHEEL_SIZE = 20.4;
 /** Width of the ring gauge, in UI units. */
 const RING_WIDTH = 3;
 /** The ring is set in from the border as a bar's fill is. */

@@ -1,6 +1,7 @@
 import React, { useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { motion } from 'framer-motion';
+import { cn } from '../../../../utils/cn';
 import { Button } from '../../../packages/components/primitives/button';
 import { CloseButton } from '../../../packages/components/primitives/CloseButton';
 import { dialogOverlayMotion, useDialogWindowVariants } from '../../../packages/components/primitives/dialogMotion';
@@ -15,6 +16,8 @@ interface SettingsDialogProps {
   canSave: boolean;
   onSave: () => void;
   onClose: () => void;
+  /** `fullscreen` fills the Obsidian window but for the overlay's margin; unset, a window of its own size. */
+  size?: 'fullscreen';
   /** The dialog's body: its tabs and their content (`RulesSettingsTabs`). */
   children: React.ReactNode;
 }
@@ -24,7 +27,7 @@ interface SettingsDialogProps {
  * system): its heading and close button, the body, and Cancel and Save. Escape no control used and
  * a press beside it close it without saving.
  */
-export function SettingsDialog({ title, subtitle, closeLabel, canSave, onSave, onClose, children }: SettingsDialogProps): React.ReactElement {
+export function SettingsDialog({ title, subtitle, closeLabel, canSave, onSave, onClose, size, children }: SettingsDialogProps): React.ReactElement {
   const windowVariants = useDialogWindowVariants();
   const titleId = useId();
 
@@ -44,7 +47,7 @@ export function SettingsDialog({ title, subtitle, closeLabel, canSave, onSave, o
       <div className="atlas-collection-settings-backdrop" onClick={onClose} />
 
       <motion.div
-        className="atlas-vtt-plugin atlas-collection-settings-modal"
+        className={cn('atlas-vtt-plugin atlas-collection-settings-modal', size === 'fullscreen' && 'atlas-collection-settings-modal--fullscreen')}
         variants={windowVariants}
         role="dialog"
         aria-modal="true"

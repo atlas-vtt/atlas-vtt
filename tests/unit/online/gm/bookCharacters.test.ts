@@ -1,4 +1,3 @@
-// @vitest-environment node
 import type { BookCharacter } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import type { ShownRollToken } from '../../../../src/app/services/playerRollSource';
@@ -54,16 +53,16 @@ function table(owners: Readonly<Record<string, string>>): Table {
   return held;
 }
 
-const knight = token('knight');
-const squire = token('squire');
-const wolf = token('wolf');
+const knight = token('knight', { assetId: 'lib-knight' });
+const squire = token('squire', { assetId: 'lib-squire' });
+const wolf = token('wolf', { assetId: 'lib-wolf' });
 
 describe('which character a player plays', () => {
   it('is the first token they own in the scene\'s order, as the players\' frame shows it', () => {
     const seats = table({ squire: ANA, knight: ANA, wolf: BEN });
     seats.read([wolf, knight, squire]);
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
-    expect(seats.played(BEN)).toBe('Cairn:art/wolf.webp:wolf');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
+    expect(seats.played(BEN)).toBe('Cairn:lib-wolf:wolf');
     // A token nobody owns, and one of a player the table does not know, is nobody's character.
     seats.owners.set('wolf', 'stranger');
     seats.read([wolf, knight, squire]);
@@ -77,19 +76,19 @@ describe('which character a player plays', () => {
     seats.read([knight], ['knight']);
     expect(seats.played(ANA)).toBeNull();
     seats.read([knight]);
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
     // Hidden again, another scene, a scene of another collection: it stays as it last was.
     seats.read([{ ...knight, imagePath: 'art/changed.webp' }], ['knight']);
     seats.read([wolf]);
     seats.read([wolf], [], 'Dolmenwood');
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
     // While her character's token is only hidden, a second token of hers does not take its place.
     seats.owners.set('squire', ANA);
     seats.read([knight, squire], ['knight']);
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
     // Without her character's token in the scene, the token she has there is her character.
     seats.read([squire]);
-    expect(seats.played(ANA)).toBe('Cairn:art/squire.webp:squire');
+    expect(seats.played(ANA)).toBe('Cairn:lib-squire:squire');
   });
 
   it('is the token they chose, while it is theirs and shown, and stays until they choose another', () => {
@@ -98,25 +97,25 @@ describe('which character a player plays', () => {
     expect(seats.characters.choose(ANA, 'squire')).toBe(true);
     expect(seats.characters.choose(ANA, 'squire')).toBe(false);
     seats.read([knight, squire, wolf]);
-    expect(seats.played(ANA)).toBe('Cairn:art/squire.webp:squire');
+    expect(seats.played(ANA)).toBe('Cairn:lib-squire:squire');
     // Hidden, the chosen token stays her character; in a scene without it, the first of hers is.
     seats.read([knight, squire, wolf], ['squire']);
-    expect(seats.played(ANA)).toBe('Cairn:art/squire.webp:squire');
+    expect(seats.played(ANA)).toBe('Cairn:lib-squire:squire');
     seats.read([knight, wolf]);
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
     seats.read([knight, squire, wolf]);
-    expect(seats.played(ANA)).toBe('Cairn:art/squire.webp:squire');
+    expect(seats.played(ANA)).toBe('Cairn:lib-squire:squire');
     seats.characters.choose(ANA, 'knight');
     seats.read([knight, squire, wolf]);
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
     // A token that is not hers, or that players do not see, is passed over.
     seats.characters.choose(ANA, 'wolf');
     seats.read([knight, squire, wolf]);
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
-    expect(seats.played(BEN)).toBe('Cairn:art/wolf.webp:wolf');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
+    expect(seats.played(BEN)).toBe('Cairn:lib-wolf:wolf');
     seats.characters.choose(ANA, 'squire');
     seats.read([knight, squire, wolf], ['squire']);
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
   });
 
   it('ends at once when its token is in the scene and no longer theirs, or the table forgets the player', () => {
@@ -125,7 +124,7 @@ describe('which character a player plays', () => {
     seats.owners.set('knight', BEN);
     seats.read([knight]);
     expect(seats.played(ANA)).toBeNull();
-    expect(seats.played(BEN)).toBe('Cairn:art/knight.webp:knight');
+    expect(seats.played(BEN)).toBe('Cairn:lib-knight:knight');
     // Taken back by the GM while the token is hidden: gone all the same.
     seats.owners.delete('knight');
     seats.read([knight], ['knight']);
@@ -139,26 +138,41 @@ describe('which character a player plays', () => {
     expect(seats.played(ANA)).toBeNull();
   });
 
+  it('gives two tokens with the same artwork but different library tokens two books, and a token of no library token one of its own', () => {
+    const sameArt = { ...token('squire2', { assetId: 'lib-squire2' }), imagePath: squire.imagePath };
+    const loose = token('loose');
+    const seats = table({ squire: ANA, squire2: BEN, loose: 'cal' });
+    seats.known.add('cal');
+    seats.read([squire, sameArt, loose]);
+    expect(seats.played(ANA)).toBe('Cairn:lib-squire:squire');
+    expect(seats.played(BEN)).toBe('Cairn:lib-squire2:squire2');
+    expect(seats.played('cal')).toBe('Cairn:token:loose:loose');
+  });
+
+  it('a renamed artwork keeps the book', () => {
+    const seats = table({ knight: ANA });
+    seats.read([knight]);
+    seats.read([{ ...knight, imagePath: 'art/renamed.webp' }]);
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
+  });
+
   it('never opens one book to two players: a look-alike of a character someone plays is passed over', () => {
-    const twin = { ...token('twin'), imagePath: knight.imagePath };
+    const twin = { ...token('twin'), assetId: 'lib-knight' };
     const seats = table({ knight: ANA, twin: BEN, wolf: BEN });
     seats.read([knight, twin, wolf]);
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
-    expect(seats.played(BEN)).toBe('Cairn:art/wolf.webp:wolf');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
+    expect(seats.played(BEN)).toBe('Cairn:lib-wolf:wolf');
     // Ana's knight hidden or in no scene: the book stays hers, the twin still opens none.
     seats.read([knight, twin], ['knight']);
     seats.read([twin]);
-    expect(seats.played(ANA)).toBe('Cairn:art/knight.webp:knight');
-    expect(seats.played(BEN)).toBe('Cairn:art/wolf.webp:wolf');
-    // The same artwork in another collection is another character.
-    seats.read([twin], [], 'Dolmenwood');
-    expect(seats.played(BEN)).toBe('Dolmenwood:art/knight.webp:twin');
+    expect(seats.played(ANA)).toBe('Cairn:lib-knight:knight');
+    expect(seats.played(BEN)).toBe('Cairn:lib-wolf:wolf');
     // Once Ana plays someone else, the book is free.
     seats.owners.set('squire', ANA);
     seats.read([squire, twin]);
     seats.read([squire, twin]);
-    expect(seats.played(ANA)).toBe('Cairn:art/squire.webp:squire');
-    expect(seats.played(BEN)).toBe('Cairn:art/knight.webp:twin');
+    expect(seats.played(ANA)).toBe('Cairn:lib-squire:squire');
+    expect(seats.played(BEN)).toBe('Cairn:lib-knight:twin');
   });
 });
 
@@ -218,9 +232,9 @@ describe('a character\'s sheet', () => {
     expect(sheet).toEqual({
       name: 'Sir Brannoch', art, ring: null,
       resources: [
-        { key: 'hp', name: 'Hit Points', colour: '#cc3333', direction: 'drains', current: 3, max: 9, editable: true },
-        { key: 'doom', name: 'Doom', colour: '#111111', direction: 'fills', current: 5, max: 6, editable: true },
-        { key: 'ac', name: 'Armour', colour: '#0000ff', direction: 'static', current: 14, max: 14, editable: false },
+        { key: 'hp', name: 'Hit Points', colour: '#cc3333', direction: 'drains', current: 3, max: 9, editable: true, maxEditable: false },
+        { key: 'doom', name: 'Doom', colour: '#111111', direction: 'fills', current: 5, max: 6, editable: true, maxEditable: false },
+        { key: 'ac', name: 'Armour', colour: '#0000ff', direction: 'static', current: 14, max: 14, editable: false, maxEditable: false },
       ],
     });
   });
@@ -231,8 +245,8 @@ describe('a character\'s sheet', () => {
     expect(definitions.every(({ visibleToPlayers }) => !visibleToPlayers)).toBe(true);
     const sheet = sheetOf(shown, { resources: { hp: { current: 4, max: 6 }, stress: { current: 1, max: 6 } } }, definitions, () => art);
     expect(sheet?.resources).toEqual([
-      { key: 'hp', name: 'HP', colour: '#22c55e', direction: 'drains', current: 4, max: 6, editable: true },
-      { key: 'stress', name: 'Stress', colour: '#a855f7', direction: 'fills', current: 1, max: 6, editable: true },
+      { key: 'hp', name: 'HP', colour: '#22c55e', direction: 'drains', current: 4, max: 6, editable: true, maxEditable: false },
+      { key: 'stress', name: 'Stress', colour: '#a855f7', direction: 'fills', current: 1, max: 6, editable: true, maxEditable: false },
     ]);
   });
 

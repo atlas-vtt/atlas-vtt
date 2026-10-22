@@ -2,9 +2,10 @@ import type { PlayerInfo } from '../../../../src/app/online/protocol/index.ts';
 import type { ResourceDefinition } from '../../../../src/app/resources/resourceTypes';
 import type { TokenEntity } from '../../../../src/app/types';
 import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
-import type { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
+import type { BookShelf, BookSource } from '../../../../src/app/online/gm/book/BookShelf.ts';
+import { isEmptyBook, type StoredBook } from '../../../../src/app/online/gm/book/bookStore.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
-import { Ownership, readOwnership } from '../../../../src/app/online/gm/ownership.ts';
+import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
 import { app, atlasTab, FakeSocket, png, present, workspace, type FakeTab } from './fakeTable.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
@@ -63,11 +64,36 @@ export const BRANNOCH = 'tok-brannoch';
 export const MIRA = 'tok-mira';
 export const BRANNOCH_ART = 'atlas-vtt/collections/Cairn/tokens/brannoch.png';
 export const MIRA_ART = 'atlas-vtt/collections/Cairn/tokens/mira.png';
+/** The keys of the two heroes' books: their tokens were placed from no library token. */
+export const BRANNOCH_BOOK = `token:${BRANNOCH}`;
+export const MIRA_BOOK = `token:${MIRA}`;
+/** A source that keeps books in a map, as the campaign's file does: what was written is everything `dump` reads. */
+export interface KeptBooks extends BookSource {
+  /** How many times a book was handed to the source to keep. */
+  writes: number;
+  dump(): string;
+}
+
+export function keptBooks(): KeptBooks {
+  const kept = new Map<string, StoredBook>();
+  return {
+    writes: 0,
+    read: (characterId) => kept.get(characterId),
+    write(characterId, book) {
+      this.writes += 1;
+      if (isEmptyBook(book)) kept.delete(characterId);
+      else kept.set(characterId, book);
+      return true;
+    },
+    dump: () => JSON.stringify([...kept]),
+  };
+}
+
 /** A value of the resource players never see: found in what was sent, it leaked. */
 export const DOOM = 31337;
 export const MIRA_DOOM = 27182;
 
-const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, mapPath: MAP, gate: { code: '483912', requireCode: false, askToJoin: false } };
+const SAVED: SavedTable = { code: 'a'.repeat(26), secret: 's'.repeat(43), maxPlayers: 12, campaignId: 'c1', mapPath: MAP, gate: { code: '483912', requireCode: false, askToJoin: false } };
 
 /** The collection's resources: hit points players see, and a doom track hidden from players: only a character's own player sees theirs. */
 const RESOURCES: readonly ResourceDefinition[] = [
@@ -132,9 +158,11 @@ export interface OpenTable {
 
 /**
  * A table that came back with the cave presented, welcomed with these players: Ana plays Brannoch
- * and Ben plays Mira unless `owners` says otherwise. The campaign being played names the world map.
+ * and Ben plays Mira unless `owners` says otherwise. The campaign being played names the world map
+ * and has these players unless `campaign` names others (a player may join who it has not met).
+ * The heroes' tokens are placed from no library token unless `heroes` gives them an `assetId`.
  */
-export async function openTable(shelf: BookShelf, players: readonly PlayerInfo[], owners: Readonly<Record<string, string>> = { [BRANNOCH]: ANA, [MIRA]: BEN }): Promise<OpenTable> {
+export async function openTable(shelf: BookShelf, players: readonly PlayerInfo[], owners: Readonly<Record<string, string>> = { [BRANNOCH]: ANA, [MIRA]: BEN }, campaign: readonly PlayerInfo[] = players, heroes: Parameters<typeof cave>[0] = {}): Promise<OpenTable> {
   workspace.files = vaultFiles();
   named = WORLD_MAP;
   tree = null;
@@ -149,16 +177,16 @@ export async function openTable(shelf: BookShelf, players: readonly PlayerInfo[]
     getCollectionForMap: (path: string) => (path.includes('collections/Cairn/') ? 'Cairn' : null),
     getCollectionSettings: () => ({ conditions: [] }),
   };
-  const tab = atlasTab(cave());
+  const tab = atlasTab(cave(heroes));
   tab.view.renderer = {
     ...fakeTokenSource(() => tab.store.getState(), () => undefined, () => 70),
     getTokenRenderer: () => ({ collectionSync: { resources: () => RESOURCES, conditions: () => [] } }),
   };
   workspace.leaves = [tab.leaf];
   present(tab);
-  const ownership = new Ownership(readOwnership({ players: Object.fromEntries(players.map(({ id, name }) => [id, { name }])), owners }), () => undefined);
-  const online = new OnlineControl(app, ownership, undefined, undefined, undefined, shelf);
-  online.resume(SAVED);
+  const ownership = boundOwnership(campaign, { owners, playerTokens: {} });
+  const online = new OnlineControl(app, ownership, fakeCampaigns(campaign, { owners, playerTokens: {} }), undefined, undefined, undefined, shelf);
+  void online.resume(SAVED);
   await advanceSettled(0);
   const socket = FakeSocket.all.at(-1);
   if (socket === undefined) throw new Error('no socket');

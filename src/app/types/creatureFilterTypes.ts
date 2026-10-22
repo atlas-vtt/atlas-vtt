@@ -14,6 +14,8 @@ interface CreatureFilterBase {
   id: string;
   /** Shown in the asset manager, e.g. "CR" or "Role". */
   label: string;
+  /** Worked out from a field of the collection's statblock templates (`templateCreatureFilters`), never stored. */
+  origin?: 'template';
 }
 
 /**
@@ -62,6 +64,8 @@ export interface CreatureFilterSelection {
   ranges: Record<string, NumericRange>;
   /** Picked option keys by options filter id. */
   options: Record<string, OptionPicks>;
+  /** Phrases (lowercase) every statblock's text must hold, or must not (`text:`). */
+  text: OptionPicks;
 }
 
 /** Whether an option is picked to be required, excluded, or not at all. */
@@ -74,5 +78,5 @@ export interface NumericRange {
 
 /** A selection that filters nothing. */
 export function emptyCreatureSelection(): CreatureFilterSelection {
-  return { statblock: 'any', layouts: { include: [], exclude: [] }, ranges: {}, options: {} };
+  return { statblock: 'any', layouts: { include: [], exclude: [] }, ranges: {}, options: {}, text: { include: [], exclude: [] } };
 }

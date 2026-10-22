@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { NoteFieldWriter } from '../../../../src/app/statblocks/notes/NoteFieldWriter';
 import { templateBodyPath } from '../../../../src/app/statblocks/library/templatePaths';

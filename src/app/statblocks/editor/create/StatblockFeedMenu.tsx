@@ -6,6 +6,7 @@ import { useMapCollectionId } from '../../../react/hooks/useMapCollectionId';
 import { SettingsService } from '../../../services/SettingsService';
 import { runInBackground } from '../../../utils/backgroundTask';
 import { editInStatblockPane } from './entryPoints';
+import { ImageDisplayService } from '../../../services/ImageDisplayService';
 import './create-statblock.scss';
 
 interface StatblockFeedMenuProps {
@@ -35,8 +36,8 @@ export function StatblockFeedMenu({ app, path, onOpened, children }: StatblockFe
     onOpened();
   };
   const onContextMenu = (event: React.MouseEvent): void => {
-    // A link inside the statblock keeps its own menu.
-    if (event.defaultPrevented) return;
+    // A link inside the statblock keeps its own menu, and so does a vault picture, which can be shown to players.
+    if (event.defaultPrevented || ImageDisplayService.getInstance()?.statblockImageFileAt(event.target as Element)) return;
     event.preventDefault();
     openContextMenuGlobal([{ type: 'item', label: 'Edit statblock', icon: 'pencil', onClick: edit }], { x: event.clientX, y: event.clientY });
   };

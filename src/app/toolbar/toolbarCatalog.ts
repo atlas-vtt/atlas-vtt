@@ -1,7 +1,6 @@
-// Type-only: that module imports SettingsService at runtime, which imports this catalog.
-import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import type { MapHotkeyId } from '../keyboard/mapHotkeys';
 import { AMBIENT_AUDIO_ENABLED } from '../featureFlags';
+import { t } from '../i18n';
 
 /** One control of the main toolbar, as the settings and the toolbar editor know it. */
 export interface ToolbarControlDefinition {
@@ -15,8 +14,6 @@ export interface ToolbarControlDefinition {
   dmOnly: boolean;
   /** Build gate, as `MAP_HOTKEYS` writes it. */
   enabled?: boolean;
-  /** Runtime gate: on only while the GM has the feature switched on. */
-  experimental?: ExperimentalFeatureId;
   /** Every control can be hidden except the way into the editor. */
   hideable: boolean;
 }
@@ -24,52 +21,52 @@ export interface ToolbarControlDefinition {
 /** The main toolbar's controls in their default order. Never rename an id: stored layouts use them. */
 export const TOOLBAR_CONTROLS = [
   {
-    id: 'move', label: 'Move and select', hotkey: 'move', dmOnly: false, hideable: true,
-    description: 'Select and move tokens, or point at the map with the laser pointer.',
+    id: 'move', label: t('toolbarEdit.move.label'), hotkey: 'move', dmOnly: false, hideable: true,
+    description: t('toolbarEdit.move.description'),
   },
   {
-    id: 'fog', label: 'Fog of war', hotkey: 'fog', dmOnly: true, hideable: true,
-    description: 'Hide parts of the map from your players and reveal them as they explore.',
+    id: 'fog', label: t('toolbarEdit.fog.label'), hotkey: 'fog', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.fog.description'),
   },
   {
-    id: 'draw', label: 'Draw', hotkey: 'draw', dmOnly: true, hideable: true,
-    description: 'Draw lines and place icons on the map, and erase them again.',
+    id: 'draw', label: t('toolbarEdit.draw.label'), hotkey: 'draw', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.draw.description'),
   },
   {
-    id: 'text', label: 'Text', hotkey: 'text', dmOnly: true, hideable: true,
-    description: 'Write labels and short notes straight onto the map.',
+    id: 'text', label: t('toolbarEdit.text.label'), hotkey: 'text', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.text.description'),
   },
   {
-    id: 'measure', label: 'Measure', hotkey: 'measure', dmOnly: false, hideable: true,
-    description: "Measure a distance, or the reach of a circle or cone, in your grid's units.",
+    id: 'measure', label: t('toolbarEdit.measure.label'), hotkey: 'measure', dmOnly: false, hideable: true,
+    description: t('toolbarEdit.measure.description'),
   },
   {
-    id: 'wall', label: 'Lighting', hotkey: 'wall', dmOnly: true, hideable: true, experimental: 'dynamicLighting',
-    description: 'Draw walls and doors, place lights, and decide what each token can see.',
+    id: 'wall', label: t('toolbarEdit.wall.label'), hotkey: 'wall', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.wall.description'),
   },
   {
-    id: 'pin', label: 'Note pin', hotkey: 'pin', dmOnly: true, hideable: true,
-    description: 'Pin a note or a link to another scene onto a spot on the map.',
+    id: 'pin', label: t('toolbarEdit.pin.label'), hotkey: 'pin', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.pin.description'),
   },
   {
-    id: 'audio', label: 'Ambient sound', hotkey: 'audio', dmOnly: true, hideable: true, enabled: AMBIENT_AUDIO_ENABLED,
-    description: 'Place sounds on the map that grow louder as tokens come near.',
+    id: 'audio', label: t('toolbarEdit.audio.label'), hotkey: 'audio', dmOnly: true, hideable: true, enabled: AMBIENT_AUDIO_ENABLED,
+    description: t('toolbarEdit.audio.description'),
   },
   {
-    id: 'dice', label: 'Dice', hotkey: 'diceTray', dmOnly: false, hideable: true,
-    description: 'Roll any mix of dice and show the result to everyone at the table.',
+    id: 'dice', label: t('toolbarEdit.dice.label'), hotkey: 'diceTray', dmOnly: false, hideable: true,
+    description: t('toolbarEdit.dice.description'),
   },
   {
     id: 'loot', label: 'Random tables', hotkey: 'lootRoller', dmOnly: true, hideable: true,
     description: 'Roll on the random tables in your notes and loot bases.',
   },
   {
-    id: 'assets', label: 'Asset manager', hotkey: 'assets', dmOnly: true, hideable: true,
-    description: 'Find and place your maps, tokens, scenes and encounters.',
+    id: 'assets', label: t('toolbarEdit.assets.label'), hotkey: 'assets', dmOnly: true, hideable: true,
+    description: t('toolbarEdit.assets.description'),
   },
   {
-    id: 'palette', label: 'Command palette', hotkey: 'palette', dmOnly: true, hideable: false,
-    description: 'Find any Atlas command or setting by typing its name.',
+    id: 'palette', label: t('toolbarEdit.palette.label'), hotkey: 'palette', dmOnly: true, hideable: false,
+    description: t('toolbarEdit.palette.description'),
   },
 ] as const satisfies readonly ToolbarControlDefinition[];
 
@@ -81,8 +78,8 @@ export type ToolbarControlId = (typeof TOOLBAR_CONTROLS)[number]['id'];
  * main bar's order. Never rename its id: stored layouts use it.
  */
 export const UNDO_BAR = {
-  id: 'undo', label: 'Undo and redo', hotkey: 'undo', dmOnly: true, hideable: true,
-  description: 'Step back through your changes on the map, or forward again.',
+  id: 'undo', label: t('toolbarEdit.undo.label'), hotkey: 'undo', dmOnly: true, hideable: true,
+  description: t('toolbarEdit.undo.description'),
 } as const satisfies ToolbarControlDefinition;
 
 export const UNDO_BAR_ID = UNDO_BAR.id;
@@ -125,10 +122,8 @@ export function isHideableToolbarControl(id: string): boolean {
 }
 
 /** The controls a view offers, gated like its hotkeys (`availableHotkeys`). */
-export function availableToolbarControls(player: boolean, isOn: (feature: ExperimentalFeatureId) => boolean): ReadonlySet<ToolbarControlId> {
+export function availableToolbarControls(player: boolean): ReadonlySet<ToolbarControlId> {
   const offered = TOOLBAR_CONTROLS.filter((control: ToolbarControlDefinition) =>
-    control.enabled !== false
-    && (control.experimental === undefined || isOn(control.experimental))
-    && !(player && control.dmOnly));
+    control.enabled !== false && !(player && control.dmOnly));
   return new Set(offered.map(control => control.id));
 }

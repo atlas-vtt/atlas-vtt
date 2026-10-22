@@ -2,7 +2,7 @@ import { BUILT_IN_SYSTEM_PRESETS } from '../../gameSystems/builtInPresets';
 import { legacyCollectionResources } from '../../resources/collectionResources';
 import { sameResourceDefinitions } from '../../resources/resourceDefinitions';
 import { collectionStatblockRoles, sameStatblockRoles } from '../../statblocks/roles/collectionStatblockRoles';
-import { withRoleTemplates, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
+import { withSettingsTemplates, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
 import type { CollectionSettings } from '../../types/collectionSettingsTypes';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import type { CollectionMetadata } from '../AssetService';
@@ -83,8 +83,9 @@ export interface BundledPaths {
 }
 
 /**
- * The settings an export carries: only the loot bases that travel, roles read from a user
- * preset written out (`withPresetRoles`), and role folders inside the collection's folder.
+ * The settings an export carries: only the loot bases that travel, roles read from a user preset
+ * written out (`withPresetRoles`), and role folders
+ * inside the collection's folder.
  * A role folder outside it is left out: the recipient's vault may not have it, and new
  * statblocks of that role then go where Obsidian puts new notes.
  */
@@ -124,7 +125,7 @@ export function withRecordIds<T extends { systemPresetId?: string | undefined; d
 
 /**
  * The bundle's settings as the import stores them: its loot bases at the paths they get in this
- * vault, its roles starting from the templates' ids here, its game system and dice set the ids
+ * vault, its roles on the templates' ids here, its game system and dice set the ids
  * the preset and the set have here, its role folders in the collection's folder here (a folder
  * outside the collection is left out).
  */
@@ -132,5 +133,5 @@ export function importedSettings(collection: CollectionMetadata, places: Importe
   const withPaths = withRecordIds(withLootBases(collection.settings, (path) => places.paths.get(path) ?? path), places);
   const from = collectionFolderPath(collection.id);
   const to = collectionFolderPath(places.collectionId);
-  return withRoleFolders(withRoleTemplates(withPaths, places.templateIds), (folder) => folderBelow(folder, from, to));
+  return withRoleFolders(withSettingsTemplates(withPaths, places.templateIds), (folder) => folderBelow(folder, from, to));
 }

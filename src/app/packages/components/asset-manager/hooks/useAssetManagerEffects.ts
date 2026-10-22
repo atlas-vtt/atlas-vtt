@@ -33,7 +33,7 @@ export function useAssetManagerEffects({
   data, sel, crud, tags, statblock,
 }: EffectDeps): void {
   const isAnySubModalOpen =
-    crud.isTokenCreatorOpen || crud.isMapCreatorOpen ||
+    crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isMapCreatorOpen ||
     crud.isCreateSceneModalOpen || crud.inputModalState.isOpen ||
     crud.isMoveModalOpen || crud.settingsModalCollectionId !== null || crud.isCreateCollectionModalOpen ||
     tags.isTagManagerOpen ||

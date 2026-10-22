@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 
 vi.mock('../../src/app/react/root/ContextMenuContext', () => ({

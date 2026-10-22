@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/images/atlas-vtt-icon.webp" alt="AtlasVTT icon" width="160" height="160">
+  <img src=".github/images/atlas-vtt-icon.webp" alt="AtlasVTT icon" width="160" height="160">
 </p>
 
 # AtlasVTT
@@ -18,7 +18,7 @@ AtlasVTT is desktop only for now
 
 Documentation at: [atlas-vtt.dev](https://atlas-vtt.dev/)
 
-![Atlas VTT showing a battle map, character tokens, a linked statblock, and the initiative tracker](docs/images/atlas-overview.webp)
+![Atlas VTT showing a battle map, character tokens, a linked statblock, and the initiative tracker](.github/images/atlas-overview.webp)
 
 ## At the table
 
@@ -34,19 +34,19 @@ Documentation at: [atlas-vtt.dev](https://atlas-vtt.dev/)
 
 Pin an Obsidian markdown note or even another Atlas map to a location, then read and edit it in a floating panel without leaving the map. Keep room descriptions, session prep, and character details close at hand, with Obsidian's familiar note linking built in.
 
-![Atlas VTT showing the note picker beside a linked note open on the map, with editing and Obsidian link suggestions](docs/images/note-linking-preview.webp)
+![Atlas VTT showing the note picker beside a linked note open on the map, with editing and Obsidian link suggestions](.github/images/note-linking-preview.webp)
 
 ## Organise your campaign
 
 Keep scenes, maps, encounters, and characters together in collections. Use folders and tags to find what you need, then bring it onto the map.
 
-![Atlas VTT collection manager with character tokens, folders, tags, and actions for spawning tokens and linking statblocks](docs/images/collection-manager.webp)
+![Atlas VTT collection manager with character tokens, folders, tags, and actions for spawning tokens and linking statblocks](.github/images/collection-manager.webp)
 
 ## Atlas Sidebar
 
 [Atlas Sidebar](https://github.com/atlas-vtt/atlas-sidebar) is an optional companion plugin. It turns Obsidian's tabs into a vertical list with pinned tabs, folders, essentials and spaces, and keeps a pin at the top that takes you back to your scene in one click.
 
-[![Atlas Sidebar, vertical tabs for Atlas VTT. The sidebar with the Atlas pin and the open notes beside a world map in Atlas.](docs/images/atlas-sidebar.webp)](https://github.com/atlas-vtt/atlas-sidebar)
+[![Atlas Sidebar, vertical tabs for Atlas VTT. The sidebar with the Atlas pin and the open notes beside a world map in Atlas.](.github/images/atlas-sidebar.webp)](https://github.com/atlas-vtt/atlas-sidebar)
 
 ## Install
 
@@ -60,7 +60,7 @@ Check for updates under **Settings → Community plugins**.
 
 New to Atlas? [Start here](https://atlas-vtt.dev/docs/start/install) takes you from installing it to showing your first map to your players.
 
-Want to try upcoming features early? Beta builds are available through BRAT, see [docs/beta-testing.md](docs/beta-testing.md).
+Want to try upcoming features early? Beta builds are available through BRAT, see [.github/beta-testing.md](.github/beta-testing.md).
 
 In the beta, **Random tables → New table** turns pasted text into a Markdown table in your collection. Copy a table from a PDF, spreadsheet, website or Markdown note, enter its name and review the preview before choosing **Save and roll**.
 
@@ -85,11 +85,11 @@ Download `main.js`, `manifest.json`, and `styles.css` from a [GitHub release](ht
 
 Atlas works offline with files in your vault. It has no telemetry or ads, and you need no account to use it. Scenes are saved as `.atlasmap` files, and the rest of your library (tokens, encounters, collection settings, game system presets) as JSON files in the `atlas-vtt` folder, so it syncs with your vault. With Obsidian Sync, turn on "Sync all other types".
 
-If you use an external image URL for a token or map background, or copy an externally hosted image from a note, Atlas downloads that image from the supplied address. Vault images require no network access. When you explicitly submit an issue report, Atlas sends it to `https://srv1871379.hstgr.cloud/atlas/reports`, which creates a public GitHub issue. Online play (closed beta) is off until you turn it on in the command palette's **Experimental features** page. Hosting a table needs an Atlas account: you sign in at `https://api.atlas-vtt.dev`, and a running table connects to `https://play.atlas-vtt.dev`, which passes the scene your players may see on to their browsers and keeps none of it. Players need no account. See [PRIVACY.md](PRIVACY.md) for details.
+If you use an external image URL for a token or map background, or copy an externally hosted image from a note, Atlas downloads that image from the supplied address. To tell you when an update is out, Atlas reads the version number of its newest release from GitHub (`raw.githubusercontent.com`) once when Obsidian starts and then every hour. Nothing about you or your vault is sent, and you can switch this off in **Settings → Atlas VTT → Updates**. Vault images require no network access. When you explicitly submit an issue report, Atlas sends it to `https://srv1871379.hstgr.cloud/atlas/reports`, which creates a public GitHub issue. Online play (closed beta) is off until you turn it on in the command palette's **Experimental features** page. Hosting a table needs an Atlas account: you sign in at `https://api.atlas-vtt.dev`, and a running table connects to `https://play.atlas-vtt.dev`, which passes the scene your players may see on to their browsers and keeps none of it. Players need no account. See [PRIVACY.md](PRIVACY.md) for details.
 
 ## Help and contributing
 
-Found a bug or have an idea? Run the **Report an issue** command inside Obsidian or use **Settings → Atlas VTT → Help and feedback**. Atlas fills in your versions and submits your report directly, without a GitHub account or a second form; see [docs/reporting-issues.md](docs/reporting-issues.md). To contribute code, see [CONTRIBUTING.md](CONTRIBUTING.md).
+Found a bug or have an idea? Run the **Report an issue** command inside Obsidian or use **Settings → Atlas VTT → Help and feedback**. Atlas fills in your versions and submits your report directly, without a GitHub account or a second form; see [.github/reporting-issues.md](.github/reporting-issues.md). To contribute code, see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 <details>
 <summary>Build from source</summary>

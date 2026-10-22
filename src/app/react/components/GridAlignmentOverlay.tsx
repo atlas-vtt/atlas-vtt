@@ -78,7 +78,7 @@ export function GridAlignmentOverlay({ onClose }: GridAlignmentOverlayProps): Re
     if (!renderer || !viewport || !gridSystem || !canvasEl) return;
     const mapImage = renderer.getMapImage?.() ?? null;
 
-    const scanLayer = createGridScan(view?.app, () => store?.getState(), renderer);
+    const scanLayer = createGridScan(() => store?.getState(), renderer);
     controllerRef.current = new GridAlignmentController(viewport, gridSystem, canvasEl, mapImage, scanLayer);
     controllerRef.current.onScan = setScan;
     setControllerVersion(v => v + 1);

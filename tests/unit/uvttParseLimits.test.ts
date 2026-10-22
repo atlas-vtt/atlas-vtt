@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { parseUvtt } from '../../src/app/import/uvtt/parseUvtt';
 import { readPoint } from '../../src/app/import/uvtt/uvttFields';

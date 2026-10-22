@@ -4,7 +4,7 @@ import { zoneHandlePoint } from '../../lighting/lightZones';
 import type { LightZone } from '../../types/lightingTypes';
 import type { Point } from '../../types/visionTypes';
 import { destroyTree } from '../utils/destroyTree';
-import { lightMarkerTheme } from './LightMarkers';
+import { lightMarkerTheme } from './lightMarker';
 import { ZONE_CORNER_RADIUS, ZONE_HANDLE_RADIUS, zoneLightColor, type ZoneCorner } from './lightZoneGeometry';
 
 /** Above the wall editor's lines, below the light markers (95). */

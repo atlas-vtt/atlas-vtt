@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { headerParts, setHeaderPartHidden } from '../../../../src/app/statblocks/model/templateHeader';
 import type { StatblockTemplate, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';

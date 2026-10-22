@@ -97,8 +97,20 @@ describe('encounter links', () => {
 
     await placeEncounterFile(vault.app as never, new TFile(primaryPath(encounter)!));
     expect(spawning.spawnEncounterTokens).toHaveBeenCalledWith(
-      { app: vault.app, view: null, assetService: assets },
+      { app: vault.app, view: null, assetService: assets, random: expect.any(Function) },
       expect.objectContaining({ type: 'encounters', id: encounter.id, tokens: [goblin] }),
+      'map',
     );
+  });
+
+  it('starts a fight with it, or adds it to initiative beside the map', async () => {
+    const vault = createInMemoryApp({ files: {} });
+    const assets = AssetService.getInstance(vault.app);
+    await assets.initialize();
+    const encounter = await assets.createEncounter({ name: 'Goblin ambush', collection: 'c', tags: [], tokens: [{ id: 'g', name: 'Goblin', imagePath: 'goblin.webp' }] });
+
+    await placeEncounterFile(vault.app as never, new TFile(primaryPath(encounter)!), 'fight');
+    await placeEncounterFile(vault.app as never, new TFile(primaryPath(encounter)!), 'beside');
+    expect(vi.mocked(spawning.spawnEncounterTokens).mock.calls.slice(-2).map((call) => call[2])).toEqual(['fight', 'beside']);
   });
 });

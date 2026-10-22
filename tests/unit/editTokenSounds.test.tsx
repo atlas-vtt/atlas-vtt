@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, fireEvent, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { App, TFile } from 'obsidian';

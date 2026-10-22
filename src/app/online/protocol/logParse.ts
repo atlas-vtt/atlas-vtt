@@ -1,10 +1,15 @@
 import { GM_AUTHOR, inlineMarks, isAuthor, MAX_FLAVOR, parseAudience, parsePeople, parseSpeaker, shownLine, type ChatStyle, type LogSpeaker } from './chat.ts';
 import { parseSharedRoll, type SharedRoll } from './dice.ts';
-import { chatText, isLogId, isLogReaction, isTime, LOG_REACTIONS, LOG_REFUSALS, MAX_LOG_ENTRIES, MAX_REPLY_PREVIEW, type ChatRefusal, type LogEntry, type LogMessage, type LogReaction, type LogReply, type PlayerChat, type PlayerLogMessage, type RollRequestRef } from './log.ts';
+import {
+  chatText, isLogId, isLogReaction, isTime, LOG_REACTIONS, LOG_REFUSALS, MAX_LOG_ENTRIES, MAX_REPLY_PREVIEW, MAX_REST_CHANGES, MAX_REST_ROLL, MAX_REST_TEXT,
+  type ChatRefusal, type LogEntry, type LogMessage, type LogReaction, type LogReply, type PlayerChat, type PlayerLogMessage, type RestChange, type RollRequestRef,
+} from './log.ts';
+import { MAX_REST_PICKS } from './bookRest.ts';
 import { parseFoundNote, parseLootCard, parseShownImageRef } from './logShown.ts';
 import { MAX_PLAYERS, playerName, UNSEEN, UNSHOWN } from './relay.ts';
 import { isRecord } from './shape.ts';
 import { TOKEN_ID_PATTERN } from './tokens.ts';
+import { MAX_TOKEN_VALUE } from './tokenUI.ts';
 
 function parseReactions(value: unknown): readonly LogReaction[] | null | undefined {
   if (value === undefined) return undefined;
@@ -38,10 +43,12 @@ function optional<T>(value: unknown, parse: (value: unknown) => T | null): T | n
 
 const parseStyle = (value: unknown): ChatStyle | null => (value === 'ic' || value === 'emote' ? value : null);
 const parsePrivateMode = (value: unknown): 'gm' | 'blind' | 'self' | null => (value === 'gm' || value === 'blind' || value === 'self' ? value : null);
-const parseFlavor = (value: unknown): string | null => {
-  const flavor = shownLine(value, MAX_FLAVOR);
-  return flavor !== null && flavor === value ? flavor : null;
+/** A line taken only as it is shown: one the sender had not cleaned is refused. */
+const exactLine = (value: unknown, max: number): string | null => {
+  const line = shownLine(value, max);
+  return line !== null && line === value ? line : null;
 };
+const parseFlavor = (value: unknown): string | null => exactLine(value, MAX_FLAVOR);
 
 function parseRequestRef(value: unknown): RollRequestRef | null {
   if (!isRecord(value) || !isLogId(value.id)) return null;
@@ -103,6 +110,37 @@ function parseRollEntry(value: Record<string, unknown>, base: Pick<LogEntry, 'id
   };
 }
 
+const isRestValue = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value) && Math.abs(value) <= MAX_TOKEN_VALUE;
+
+function parseRestChange(value: unknown): RestChange | null {
+  if (!isRecord(value) || !isRestValue(value.from) || !isRestValue(value.to)) return null;
+  const label = exactLine(value.label, MAX_REST_TEXT);
+  const roll = optional(value.roll, (held) => exactLine(held, MAX_REST_ROLL));
+  const character = optional(value.character, (held) => exactLine(held, MAX_REST_TEXT));
+  if (label === null || roll === null || character === null) return null;
+  return { label, from: value.from, to: value.to, ...(roll !== undefined && { roll }), ...(character !== undefined && { character }) };
+}
+
+function parseRestEntry(value: Record<string, unknown>, base: Pick<LogEntry, 'id' | 'at' | 'who' | 'name'>, reactions: readonly LogReaction[] | undefined): LogEntry | null {
+  // A rest is the GM's to apply, and so to log.
+  if (value.who !== GM_AUTHOR) return null;
+  const character = exactLine(value.character, MAX_REST_TEXT);
+  const button = exactLine(value.button, MAX_REST_TEXT);
+  // Without changes the entry is for someone who may not see what the rest changed.
+  const changes = optional(value.changes, (list) => (Array.isArray(list) && list.length <= MAX_REST_CHANGES ? list.map(parseRestChange) : null));
+  const skipped = optional(value.skipped, (list) => (Array.isArray(list) && list.length > 0 && list.length <= MAX_REST_CHANGES ? list.map((label) => exactLine(label, MAX_REST_TEXT)) : null));
+  const picks = optional(value.picks, (list) => (Array.isArray(list) && list.length > 0 && list.length <= MAX_REST_PICKS ? list.map((name) => exactLine(name, MAX_REST_TEXT)) : null));
+  if (character === null || button === null || changes === null || changes?.some((change) => change === null) || skipped === null || skipped?.some((label) => label === null)) return null;
+  if (picks === null || picks?.some((name) => name === null)) return null;
+  return {
+    ...base, kind: 'rest', character, button,
+    ...(picks !== undefined && { picks: picks as string[] }),
+    ...(changes !== undefined && { changes: changes as RestChange[] }),
+    ...(skipped !== undefined && { skipped: skipped as string[] }),
+    ...(reactions !== undefined && { reactions }),
+  };
+}
+
 /** A log entry as the client reads it, or null for anything malformed: nothing else reaches the panel. */
 export function parseLogEntry(value: unknown): LogEntry | null {
   if (!isRecord(value) || !isLogId(value.id) || !isTime(value.at) || !isAuthor(value.who)) return null;
@@ -118,6 +156,7 @@ export function parseLogEntry(value: unknown): LogEntry | null {
   const reactions = parseReactions(value.reactions);
   if (reactions === null) return null;
   if (value.kind === 'roll') return parseRollEntry(value, base, reactions);
+  if (value.kind === 'rest') return parseRestEntry(value, base, reactions);
   // What the GM showed or handed out is the GM's alone to log.
   if ((value.kind === 'image' || value.kind === 'loot') && value.who !== GM_AUTHOR) return null;
   if (value.kind === 'image') {

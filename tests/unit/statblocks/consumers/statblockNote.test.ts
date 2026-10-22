@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { TFile } from 'obsidian';
 import { isStatblockNote, statblockNoteKnown, unparsedFrontmatterStatblock } from '../../../../src/app/statblocks/resolve/statblockNote';

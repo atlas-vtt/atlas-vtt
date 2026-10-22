@@ -9,10 +9,12 @@ import type { MapBounds, Polygon } from '../../../vision/visibility';
 import { sameCone } from '../../../vision/visionCone';
 import { LightFlicker, STEADY, type FlickerSample } from '../lightFlicker';
 import type { CapsuleField } from './CapsuleField';
+import { glOf } from './gpu';
+import { GpuPacer } from './GpuPacer';
 import { DarknessMap, type DrawnDarkness, type PierceShape } from './DarknessMap';
 import { LightMap, type DrawnLight } from './LightMap';
 import { RadianceCascades } from './RadianceCascades';
-import { TileCache } from './TileCache';
+import { TileCache, type TilePacer } from './TileCache';
 import type { EngineLight, EngineZone } from './types';
 import { WallFields } from './WallFields';
 import { ZoneMap, sameZoneLook, type ZoneLook } from './ZoneMap';
@@ -22,10 +24,14 @@ import { ZoneMap, sameZoneLook, type ZoneLook } from './ZoneMap';
  * the light map, the bounce and, once the map has a darkness source, the darkness map.
  * Independent of any camera; rebuilt only for what changed. Its texel and whether light
  * bounces come from the lighting quality it is made with (`LightingQuality`).
- * Constructing it draws nothing: the first `update` builds every texture.
+ * Constructing it draws nothing: the first `update` builds every texture. A paced world
+ * (`paced`) sends its heavy work, light tiles, bounce and flicker, only as fast as the graphics
+ * device runs it (`GpuPacer`), so a slow device builds a scene's lights over several frames.
  */
 export class LightingWorld {
   readonly texel: number;
+  /** Rays each light's tile traces across its flame (`LightingQuality.tileRays`). */
+  readonly tileRays: number;
   /** The walls as light and sight each read them (`WallFields`). */
   readonly fields: WallFields;
   readonly lightMap: LightMap;
@@ -45,6 +51,7 @@ export class LightingWorld {
   /** The walls changed since the zones were drawn: their soft edges end at walls. */
   private zonesStale = false;
   private readonly tiles: TileCache;
+  private readonly pacer: GpuPacer;
   private readonly flicker = new LightFlicker();
   private walls: readonly WallSegment[] | null = null;
   private lights: readonly EngineLight[] = [];
@@ -54,13 +61,16 @@ export class LightingWorld {
   /** When the light map last took its flicker; -Infinity while it holds the steady lights. */
   private lastFlicker = -Infinity;
 
-  constructor(private readonly renderer: Renderer, readonly bounds: MapBounds, quality: LightingQuality = DEFAULT_LIGHTING_QUALITY) {
+  constructor(private readonly renderer: Renderer, readonly bounds: MapBounds, quality: LightingQuality = DEFAULT_LIGHTING_QUALITY, paced = false) {
     this.texel = worldTexel(bounds, quality.maxTexels);
+    this.tileRays = quality.tileRays;
     this.flickerMs = quality.flickerMs;
     this.fields = new WallFields(renderer, bounds, this.texel);
     this.lightMap = new LightMap(renderer, bounds, this.texel);
     this.cascades = bouncesOn(quality, bounds) ? new RadianceCascades(renderer, bounds, this.fields.tiles) : null;
-    this.tiles = new TileCache(renderer, this.fields.tiles, bounds);
+    this.tiles = new TileCache(renderer, this.fields.tiles, bounds, { rays: quality.tileRays });
+    const gl = paced ? glOf(renderer) : null;
+    this.pacer = new GpuPacer(gl && 'fenceSync' in gl ? gl : null);
   }
 
   /** Lights that stop flickering are drawn steady at once; the world's textures stay. */
@@ -71,9 +81,9 @@ export class LightingWorld {
     if (ms === null && flickered) this.drawSteady();
   }
 
-  /** Whether this world was made as `quality` makes one for its map: else it is built anew. */
+  /** Whether this world was made as `quality` makes one for its map (texel, bounce, tile rays): else it is built anew. */
   fits(quality: LightingQuality): boolean {
-    return this.texel === worldTexel(this.bounds, quality.maxTexels) && !!this.cascades === bouncesOn(quality, this.bounds);
+    return this.texel === worldTexel(this.bounds, quality.maxTexels) && !!this.cascades === bouncesOn(quality, this.bounds) && this.tileRays === quality.tileRays;
   }
 
   /** Every wall that blocks light, one-way walls too, which bounce treats as blocking both ways. */
@@ -105,7 +115,7 @@ export class LightingWorld {
       }
     }
     // A darkness has no tile: its area is the rule's polygon, which changes with any wall.
-    const tilesChanged = this.tiles.sync(lights.filter((light) => !light.darkness), walls, changed);
+    const tilesChanged = this.tiles.sync(lights.filter((light) => !light.darkness), walls, changed, this.pacer);
     const lightsChanged = !sameLights(this.lights, lights);
     const areasChanged = changed !== 'all' && changed.length === 0 ? false : lights.some((light) => light.darkness);
     if (lightsChanged) this.forgetRemoved(lights);
@@ -123,23 +133,27 @@ export class LightingWorld {
   }
 
   /**
-   * Throttled flicker and bounce; true when a world texture changed. A light map drawn steady
-   * (a light moved, the bounce was built) takes its flicker back at once, so a dragged light
-   * never blinks between the two.
+   * Tiles still to build, throttled flicker and bounce, each as the pacer lets it through; true
+   * when a world texture changed. A light map drawn steady (a light moved, the bounce was built)
+   * takes its flicker back at once, so a dragged light never blinks between the two. Bounce
+   * waits for the last tile: it reads the light map they make. `buildBounce` builds a pending
+   * bounce whatever the pacer says (`flush`).
    */
-  animate(now: number): boolean {
-    let drew = false;
-    if (this.bounceDirty && this.cascades && now - this.lastBounce >= BOUNCE.throttleMs) {
+  animate(now: number, buildBounce = false): boolean {
+    let drew = this.buildTiles(this.pacer);
+    if (this.bounceDirty && this.cascades && !this.tiles.busy() && now - this.lastBounce >= BOUNCE.throttleMs && (buildBounce || this.pacer.allowance() > 0)) {
       // Bounce uses steady intensity, so flicker never rebuilds it.
       this.drawSteady();
       this.cascades.build(this.lightMap, this.albedo, this.fieldAll());
+      this.pacer.submitted();
       this.bounceDirty = false;
       this.lastBounce = now;
       drew = true;
     }
     const flicker = this.flickerMs;
-    if (flicker !== null && this.animated() && now - this.lastFlicker >= flicker) {
+    if (flicker !== null && this.animated() && now - this.lastFlicker >= flicker && this.pacer.allowance() > 0) {
       this.drawLightMap((light) => this.flicker.sample(light.key, light.animation, now));
+      this.pacer.submitted();
       this.lastFlicker = now;
       drew = true;
     }
@@ -189,24 +203,34 @@ export class LightingWorld {
     this.fields.trim();
   }
 
-  /** Animated lights or bounce still to build: keep calling `animate`. */
+  /** Tiles or bounce still to build, or animated lights: keep calling `animate`. */
   busy(): boolean {
-    return (this.bounceDirty && !!this.cascades) || this.animated();
+    return (this.bounceDirty && !!this.cascades) || this.animated() || this.tiles.busy();
   }
 
-  /** Builds the bounce now (map load finished, tests). */
+  /** Builds every tile and the bounce now, whatever the pacer says (a thumbnail, tests). */
   flush(): void {
+    this.buildTiles();
     this.lastBounce = -Infinity;
-    this.animate(performance.now());
+    this.animate(performance.now(), true);
   }
 
   destroy(): void {
+    this.pacer.destroy();
     this.tiles.destroy();
     this.cascades?.destroy();
     this.lightMap.destroy();
     this.darkness?.destroy();
     this.zoneTexture?.destroy();
     this.fields.destroy();
+  }
+
+  /** Builds tiles as `pacer` lets through (by default all of them); a finished one is drawn steady and the bounce is built anew. True when one finished. */
+  private buildTiles(pacer?: TilePacer): boolean {
+    if (!this.tiles.pump(pacer)) return false;
+    this.drawSteady();
+    this.bounceDirty = true;
+    return true;
   }
 
   /** Lights that flicker, while the quality lets them. */

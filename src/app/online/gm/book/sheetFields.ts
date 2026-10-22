@@ -33,6 +33,7 @@ export interface SheetBuild {
 /** The types a value a player may change has on their page; lists of abilities, pictures and spells have none. */
 const FIELD_TYPES: Readonly<Partial<Record<TemplateField['type'], SheetFieldType>>> = {
   text: 'text', markdown: 'markdown', number: 'number', rating: 'rating', dice: 'dice', choice: 'choice', list: 'list', scores: 'scores', pairs: 'pairs',
+  counters: 'counters',
 };
 
 /** The most bytes a value may take for a player to change it: their edit sends it back whole, within one player frame. */

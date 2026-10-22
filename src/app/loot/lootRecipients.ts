@@ -40,8 +40,11 @@ export function lootRecipients(): readonly LootRecipient[] {
   return current;
 }
 
-export function giveLoot(recipientId: string, draw: LootDraw): boolean {
-  return source?.give(recipientId, draw) ?? false;
+/** Hands `quantity` copies of the item over, each its own item in the book; says how many arrived. */
+export function giveLoot(recipientId: string, draw: LootDraw, quantity = 1): number {
+  let given = 0;
+  while (given < quantity && source?.give(recipientId, draw)) given++;
+  return given;
 }
 
 export function subscribeLootRecipients(listener: () => void): () => void {

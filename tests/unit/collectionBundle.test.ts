@@ -1,8 +1,7 @@
-// @vitest-environment node
 // JSZip needs Node's ArrayBuffer realm; jsdom's differs and its Blob support is absent.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
-import { AtlasView } from '../../src/app/atlas-view';
+import { ATLAS_VIEW_TYPE } from '../../src/app/atlasViewType';
 import { AssetService } from '../../src/app/services/AssetService';
 import { transferAssets } from '../../src/app/services/assetTransfer/assetTransfer';
 import { groupContents } from '../../src/app/services/collectionBundle/bundleContents';
@@ -15,11 +14,6 @@ import { noteTree } from '../../src/app/services/collectionBundle/noteTree';
 import { createSnapshot } from '../../src/app/snapshots/sceneSnapshotFormat';
 import { sceneSnapshotFolder } from '../../src/app/snapshots/snapshotPaths';
 import { createInMemoryApp, parseFrontmatter, type InMemoryApp } from '../mocks/inMemoryVault';
-
-vi.mock('../../src/app/atlas-view', () => ({
-  ATLAS_VIEW_TYPE: 'atlas-vtt',
-  AtlasView: class { async saveMap(): Promise<void> {} },
-}));
 
 // Covers are drawn on a canvas, which Node lacks.
 vi.mock('../../src/app/imageProcessing/imageProcessing', () => ({
@@ -552,10 +546,12 @@ describe('updating', () => {
     const { creator, fan } = await installedV1();
     creator.vault.files.set(MAP_PATH, mapFile(12));
     const steps: string[] = [];
-    const view = Object.assign(Object.create(AtlasView.prototype) as AtlasView, {
+    const view = {
+      getViewType: () => ATLAS_VIEW_TYPE,
+      atlasStore: {},
       getState: () => ({ file: MAP_PATH }),
       saveMap: vi.fn(async () => { steps.push('save'); }),
-    });
+    };
     const leaf = { view, detach: vi.fn(() => { steps.push('detach'); }) };
     fan.vault.app.workspace.getLeavesOfType = vi.fn(() => [leaf]);
     const modifyBinary = fan.vault.app.vault.modifyBinary.bind(fan.vault.app.vault);

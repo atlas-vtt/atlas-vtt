@@ -1,10 +1,10 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { templateHasCode } from '../../../../src/app/statblocks/format/templateCode';
+import { templateToJson } from '../../../../src/app/statblocks/format/templateFormat';
 import { fsLayoutToTemplate, isFsLayout } from '../../../../src/app/statblocks/fs/fsLayoutToTemplate';
 import type { FsLayout, FsLayoutResolver } from '../../../../src/app/statblocks/fs/fsLayoutTypes';
-import { stripCode } from '../../../../src/app/statblocks/model/fsCodeKeys';
+import { findCode, stripCode } from '../../../../src/app/statblocks/model/fsCodeKeys';
 import { expectParses, lostCode } from './fsCodeKit';
 import { fieldOutline, outline } from './fsOutline';
 import { BEAST_LAYOUT, FOOTER_LAYOUT, LOOP_LAYOUTS, RAN_MARKER, fanOutLayouts } from './fixtures/syntheticLayouts';
@@ -140,7 +140,7 @@ describe('fsLayoutToTemplate on a synthetic layout', () => {
     const { template } = convertBeast();
     expectParses(template);
     expect(lostCode(BEAST_LAYOUT, template)).toEqual([]);
-    expect(templateHasCode(template)).toBe(true);
+    expect(findCode(templateToJson(template))).not.toEqual([]);
     expectParses(stripCode(template));
     expect(Reflect.has(globalThis, RAN_MARKER)).toBe(false);
   });

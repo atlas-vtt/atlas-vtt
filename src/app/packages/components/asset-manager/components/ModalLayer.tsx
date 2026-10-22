@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { TokenCreator } from '../TokenCreator';
+import { EncounterBuilder } from '../encounter-builder/EncounterBuilder';
 import TagManager from '../TagManager';
 import CreateSceneModal from '../CreateSceneModal';
 import StatblockLinkModal from '../StatblockLinkModal';
@@ -43,7 +44,7 @@ export function ModalLayer({
     isOpen,
     isMapCreatorOpen: crud.isMapCreatorOpen,
     // Every dialog of this layer but the map creator, which says for itself whether it stays
-    isBusy: crud.isTokenCreatorOpen || crud.isCreateSceneModalOpen || crud.isMoveModalOpen || crud.isCreateFolderModalOpen
+    isBusy: crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isCreateSceneModalOpen || crud.isMoveModalOpen || crud.isCreateFolderModalOpen
       || crud.inputModalState.isOpen || crud.isCreateCollectionModalOpen || crud.settingsModalCollectionId !== null
       || crud.transfer !== null || tags.isTagManagerOpen || statblock.linkingStatblockAsset !== null,
     collectionId: selectedCollection,
@@ -117,6 +118,21 @@ export function ModalLayer({
               crud.setIsMapCreatorOpen(false);
               if (activeTab === 'maps') void reloadAfterCreator();
             }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Encounter Builder */}
+      <AnimatePresence>
+        {isOpen && crud.isEncounterBuilderOpen && (
+          <EncounterBuilder
+            key={crud.editingEncounter?.id ?? 'new'}
+            app={data.app}
+            assetService={data.assetService}
+            collectionId={selectedCollection}
+            editEncounter={crud.editingEncounter}
+            onClose={crud.closeEncounterBuilder}
+            onSaved={() => { if (activeTab === 'encounters') void reloadAfterCreator(); }}
           />
         )}
       </AnimatePresence>

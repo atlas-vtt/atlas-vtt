@@ -220,3 +220,8 @@
     display: none !important;
   }
 }
+
+// While a fight runs: the fight's statblocks or every creature's, above the feeds
+.atlas-dm-statblock-scope {
+  margin-bottom: $spacing-s;
+}

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { EventEmitter } from 'events';
 import type { App } from 'obsidian';
 import type { LocalPlayerView } from '../../src/app/local-player-view';
@@ -14,10 +15,6 @@ import { fakeApp, fakeGroup } from '../mocks/schedulerApp';
 import { FRAME } from '../mocks/playerFrameSource';
 
 vi.mock('obsidian', async (importOriginal) => ({ ...await importOriginal<typeof import('obsidian')>(), Notice: vi.fn() }));
-vi.mock('../../src/app/atlas-view', () => ({
-  AtlasView: class AtlasView {},
-  ATLAS_VIEW_TYPE: 'atlas-vtt',
-}));
 
 const serviceMock = vi.hoisted(() => ({
   isWindowOpen: vi.fn(() => false),
@@ -59,7 +56,7 @@ vi.mock('../../src/app/services/PlayerWindowService', async () => {
 import { openPlayerWindow, restorePlayerWindow, presentTab } from '../../src/app/services/PlayerWindowPresenter';
 import { presentedSceneOf, PRESENTED_SCENE_KEY } from '../../src/app/services/presentedScene';
 
-import { AtlasView } from '../../src/app/atlas-view';
+import { ATLAS_VIEW_TYPE } from '../../src/app/atlasViewType';
 
 interface SceneState { isMapLoading: boolean; mapLoaded: boolean; mapPath: string | null }
 
@@ -83,8 +80,9 @@ function createFakeView(app?: Application): FakeView {
   const diceEvents = new EventEmitter();
   const canRenderPlayerFrame = vi.fn(() => true);
   const releasePlayerFrame = vi.fn();
-  const renderer = { getAppInstance: () => (app ? Object.assign(app, { canvas }) : { canvas }), withPlayerSafeFrame, playerRollTokens, canRenderPlayerFrame, releasePlayerFrame };
+  const renderer = { getAppInstance: () => (app ? Object.assign(app, { canvas }) : { canvas }), withPlayerSafeFrame, playerRollTokens, playerBadgeNumbers: () => null, canRenderPlayerFrame, releasePlayerFrame };
   const view = {
+    getViewType: () => ATLAS_VIEW_TYPE,
     viewId: 'view-1',
     tabMetaStore,
     atlasStore,
@@ -94,7 +92,6 @@ function createFakeView(app?: Application): FakeView {
     }),
     register: vi.fn(),
   };
-  Object.setPrototypeOf(view, AtlasView.prototype);
   return { view, canvas, withPlayerSafeFrame, playerRollTokens, atlasStore, canRenderPlayerFrame, releasePlayerFrame };
 }
 

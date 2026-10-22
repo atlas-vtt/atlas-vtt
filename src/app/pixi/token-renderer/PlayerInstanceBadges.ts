@@ -4,6 +4,7 @@ import { NO_INSTANCE_NUMBERS, badgeNumberInView, numberTokensInView, type Instan
 import type { TokenSeen } from '../../vision/measureOrigin';
 import { setLayerVisibility, type LayerVisibility } from '../playerSafeFrame';
 import { PLAYER_BADGE_TEXT_LABEL, badgeParts, type InstanceBadgeParts } from './instanceBadgeParts';
+import { isOffMap, sceneTokens } from '../../tokens/offMap';
 
 /** What the players' instance badges read of the view's state: its tokens, its map and whether it shows badges. */
 export type PlayerBadgeState = Pick<ViewState, 'mapPath'> & {
@@ -15,6 +16,14 @@ export type PlayerBadgeState = Pick<ViewState, 'mapPath'> & {
 export interface PlayerBadgeHost {
   state: () => PlayerBadgeState;
   sprites: () => Readonly<Record<string, Container | null>>;
+}
+
+/** The numbers the players' badges show, for what else shows a token to them (their initiative list). */
+export interface PlayerBadgeNumbers {
+  /** The number the players' badge of `tokenId` shows after the last pass: none where it shows none. */
+  numberOf(tokenId: string): number | null;
+  /** Calls `listener` whenever a pass or a reset changes what `numberOf` answers; returns the unsubscribe. */
+  onNumbersChange(listener: () => void): () => void;
 }
 
 /** What a token's badge shows the players: nothing, their own number, or the GM's (the same number). */
@@ -57,13 +66,15 @@ function withPlayersNumber(parts: InstanceBadgeParts, shown: string): InstanceBa
 
 /**
  * Instance badges as the players' picture shows them: counted and numbered among the tokens the
- * players see (`numberTokensInView`), so a look-alike they do not see neither counts nor takes a
- * number. Their number is a second text in the token's own badge, and the disc and both texts are
+ * players see (`numberTokensInView`) and the combatants beside the map their initiative list shows,
+ * so a look-alike they do not see neither counts nor takes a number. Their number is a second text in the token's own badge, and the disc and both texts are
  * swapped by `visible`: for one capture (`layers`), and held on the canvas while it shows the players'
  * view (`syncCanvas`). The GM's drawing writes only the badge itself, never these three.
  */
-export class PlayerInstanceBadges {
+export class PlayerInstanceBadges implements PlayerBadgeNumbers {
   private numbers: InstanceNumbers = NO_INSTANCE_NUMBERS;
+  private badgesOn = true;
+  private readonly listeners = new Set<() => void>();
   private numberedMap: string | null = null;
   /** Every badge as the last pass found it. */
   private passed: ReadonlyMap<string, PassedBadge> = new Map();
@@ -75,22 +86,39 @@ export class PlayerInstanceBadges {
   /** Numbers the tokens `seen` answers for and works out what each badge shows; writes only a players' number that changed. */
   pass(seen: TokenSeen): void {
     const { mapPath, objects, tokenSettings } = this.host.state();
+    const before = { numbers: this.numbers, badgesOn: this.badgesOn };
     if (mapPath !== this.numberedMap) {
       this.numbers = NO_INSTANCE_NUMBERS;
       this.numberedMap = mapPath;
     }
     const inView: TokenInView[] = [];
-    for (const [id, token] of Object.entries(objects.tokens)) {
-      if (seen(id)) inView.push({ id, art: token.imagePath, rank: token.instanceNumber ?? 1 });
+    // A combatant kept beside the map is shown to the players by their initiative list alone, unless hidden
+    for (const [id, token] of Object.entries(sceneTokens(objects))) {
+      if (isOffMap(token) ? token.isHidden !== true : seen(id)) inView.push({ id, art: token.imagePath, rank: token.instanceNumber ?? 1 });
     }
     this.numbers = numberTokensInView(this.numbers, inView);
     const badgesOn = tokenSettings?.showInstanceBadges ?? true;
+    this.badgesOn = badgesOn;
     const passed = new Map<string, PassedBadge>();
     for (const [id, group] of Object.entries(this.host.sprites())) {
       const parts = group && badgeParts(group);
       if (parts) passed.set(id, this.passedBadge(parts, badgeNumberInView(this.numbers, id, badgesOn)));
     }
     this.passed = passed;
+    if (before.numbers !== this.numbers || before.badgesOn !== badgesOn) this.announce();
+  }
+
+  numberOf(tokenId: string): number | null {
+    return badgeNumberInView(this.numbers, tokenId, this.badgesOn);
+  }
+
+  onNumbersChange(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
+  }
+
+  private announce(): void {
+    for (const listener of this.listeners) listener();
   }
 
   /** Fewer badges than the GM's, never more: none where the GM's drawing shows none. */
@@ -154,9 +182,11 @@ export class PlayerInstanceBadges {
 
   /** Starts anew, for a map whose token groups were all made anew. */
   reset(): void {
+    const numbered = this.numbers !== NO_INSTANCE_NUMBERS;
     this.numbers = NO_INSTANCE_NUMBERS;
     this.numberedMap = null;
     this.passed = new Map();
     this.held = new Map();
+    if (numbered) this.announce();
   }
 }

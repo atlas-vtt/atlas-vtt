@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { POOLS, warmDiceSounds } from '../../../src/app/dice3d/audio/diceSamples';
 import { bank, ratchet, rattle, reveal, rollEnd, rollStart } from '../../../src/app/dice3d/audio/diceSounds';

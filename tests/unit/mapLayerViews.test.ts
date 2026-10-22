@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Container, Graphics, Text } from 'pixi.js';
 import { createStore } from 'zustand/vanilla';
@@ -7,6 +8,7 @@ import { createTextElementView, TEXT_CONTENT_LABEL, updateTextElementView } from
 import { entryTokenOf, listedForPlayers, playerInitiativeList, renderPlayerInitiative, type PlayerInitiativeEntry } from '../../src/app/services/playerInitiativeList';
 import type { DrawingStroke, TextElement, TokenEntity } from '../../src/app/types';
 import type { InitiativeRules } from '../../src/app/types/initiativeRulesTypes';
+import { HP_RESOURCE } from '../../src/app/resources/resourceDefinitions';
 import { DEFAULT_SCENE_LIGHTING } from '../../src/app/types/lightingTypes';
 import type { WallSegment } from '../../src/app/types/wallTypes';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
@@ -94,7 +96,7 @@ describe("the players' initiative list", () => {
   };
   const entries = [entry('ogre', 1, 12), entry('spy', 2, 9), entry('hero', 0, 18)];
   const tokenOf = (listed: PlayerInitiativeEntry): ReturnType<typeof entryTokenOf> | null =>
-    (listedForPlayers(tokens[listed.tokenId]) ? entryTokenOf(tokens[listed.tokenId]) : null);
+    (listedForPlayers(tokens[listed.tokenId]) ? entryTokenOf(tokens[listed.tokenId], [{ ...HP_RESOURCE }]) : null);
 
   it('lists every combatant whose token is not hidden, in turn order, with hit points only where shown', () => {
     const fight = { entries, isActive: true, round: 3 };
@@ -123,5 +125,23 @@ describe("the players' initiative list", () => {
     const empty = createDiv();
     renderPlayerInitiative(empty, { ...list, combatants: [] }, { showNames: true, portraitSrc: () => null });
     expect(empty.childElementCount).toBe(0);
+  });
+
+  it('marks defeated combatants and keeps delayed ones below the order, listing both', () => {
+    const fallen = { ...tokens, ogre: { ...tokens.ogre!, resources: { hp: { current: 0, max: 30 } } } };
+    const fallenOf = (listed: PlayerInitiativeEntry): ReturnType<typeof entryTokenOf> | null =>
+      (listedForPlayers(fallen[listed.tokenId]) ? entryTokenOf(fallen[listed.tokenId], [{ ...HP_RESOURCE }]) : null);
+    const waiting = [{ ...entry('ogre', 1, 12), imagePath: 'ogre.png' }, { ...entry('hero', 0, 18), isActive: false, delayed: true as const }];
+    const list = playerInitiativeList({ entries: waiting, isActive: true, round: 1 }, fallenOf, TURN_ORDER, false);
+    expect(list.combatants.map(({ token }) => token.defeated)).toEqual([false, true]);
+
+    const container = createDiv();
+    renderPlayerInitiative(container, list, { showNames: true, portraitSrc: () => 'art.png' });
+    const cards = [...container.querySelectorAll('.atlas-player-initiative__card')];
+    expect(cards.map((card) => card.textContent)).toEqual(['12ogre', '18hero']);
+    expect(cards[0]!.classList.contains('atlas-player-initiative__card--defeated')).toBe(true);
+    expect(cards[0]!.querySelector('.atlas-player-initiative__defeated--over')?.getAttribute('aria-label')).toBe('Defeated');
+    expect(cards[1]!.classList.contains('atlas-player-initiative__card--delayed')).toBe(true);
+    expect(cards[1]!.parentElement?.getAttribute('aria-label')).toBe('Delayed');
   });
 });

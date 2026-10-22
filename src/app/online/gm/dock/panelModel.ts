@@ -1,10 +1,12 @@
 import { playerTone } from '../../protocol/index.ts';
 import type { WorkspaceLeaf } from 'obsidian';
 import type { AccountView } from '../account/accountView.ts';
+import type { RestCard } from '../book/restRequests.ts';
 import type { GateActions, GateView } from '../joinGate.ts';
 import { gateRowsOf, type GateRows } from './gateRows.ts';
 import type { OnlineControl } from '../OnlineControl.ts';
 import { closingText, type LostTable } from '../tableEnd.ts';
+import type { CampaignPick } from './campaignPicker.ts';
 
 /**
  * What the control on the map reads of online play, and what it shows from that. The control reads
@@ -31,6 +33,8 @@ export interface PlayerTokenClaim {
 export interface OnlineSnapshot {
   readonly status: OnlineStatus;
   readonly link: string | null;
+  /** The id of the campaign the running table plays; null while none runs. */
+  readonly campaignId: string | null;
   /** The Atlas tab players see live: it shows the scene Atlas presents to its player view now. */
   readonly sharedLeaf: WorkspaceLeaf | null;
   /** The name of the scene players see, or null while they see none. */
@@ -44,17 +48,39 @@ export interface OnlineSnapshot {
   readonly seats: number | null;
   /** The running table's gates: the join code, the two switches, who waits for an answer; null while none runs. */
   readonly gate: GateView | null;
+  /** Players' rest requests waiting for the GM, in the order they came; none while no table runs. */
+  readonly rests: readonly RestCard[];
+  /** The keys of every card over the control (`knockKey`, `restKey`), in the order they came. */
+  readonly cardOrder: readonly string[];
   /** Players are shown an image over the map ("Display on player view"); absent while they are shown none. */
   readonly imageShown?: boolean;
   /** How the last table ended, when the server ended it; absent once another was started. */
   readonly lost?: LostTable;
   /** When the relay closes the running table because its account may no longer host; absent while it does not. */
   readonly closesAt?: number;
+  /** The relay needs a newer Atlas: no table starts until Atlas is updated. */
+  readonly outdated?: true;
+  /** The running table's relay needs a newer Atlas, and let this one in because players sit at the table. */
+  readonly updateAfter?: true;
+}
+
+/** A player the GM added to the campaign, with the code they join by. */
+export interface AddedPlayer {
+  readonly id: string;
+  readonly name: string;
+  readonly code: string;
+}
+
+/** What the GM does with a player's rest request: nothing while its card has not stood long enough to be meant. */
+export interface RestActions {
+  approve(key: string): void;
+  decline(key: string): void;
 }
 
 export interface OnlineApi {
   snapshot(): OnlineSnapshot;
-  start(leaf: WorkspaceLeaf): void;
+  /** Starts a table of the campaign `campaignId` (the played one where it is null) from the tab `leaf`. */
+  start(leaf: WorkspaceLeaf, campaignId: string | null): void;
   stop(): void;
   share(leaf: WorkspaceLeaf): void;
   mark(tokenIds: readonly string[]): void;
@@ -62,21 +88,37 @@ export interface OnlineApi {
   /** Gives tokens to a player, and makes them player tokens. */
   assign(tokenIds: readonly string[], playerId: string): void;
   release(tokenIds: readonly string[]): void;
+  /** Takes a player off the running table; they come back with their own code. */
   kick(playerId: string): void;
+  /** A player's own code, or null while no table runs. */
+  playerCode(playerId: string): string | null;
+  /** Gives a player a new code; the old one stops working. */
+  newPlayerCode(playerId: string): void;
+  /** Adds a player to the campaign; null where it cannot (the GM is told why). */
+  addPlayer(name: string): AddedPlayer | null;
+  renamePlayer(playerId: string, name: string): void;
+  /** Removes a player from the campaign: they can no longer join. */
+  removeFromCampaign(playerId: string): void;
+  /** Gives the campaign a new link, so the old one stops working. */
+  newLink(): Promise<void>;
   /** Takes the shown image away from every player, online and at Atlas's own player window. */
   hideImage(): void;
   /** The running table's gates; nothing happens while none runs. */
   readonly gate: GateActions;
+  /** The GM's answers to players' rest requests, by card key; nothing happens while no table runs. */
+  readonly rests: RestActions;
   onChange(listener: () => void): () => void;
 }
 
 /** The part of `OnlineControl` the control uses. */
-export type ControlSource = Pick<OnlineControl, 'onChange' | 'status' | 'link' | 'seats' | 'isStarting' | 'lost' | 'start' | 'stop' | 'share' | 'players' | 'kick' | 'playerTokens' | 'markPlayerTokens' | 'give'> & {
+export type ControlSource = Pick<OnlineControl, 'onChange' | 'status' | 'link' | 'campaignId' | 'seats' | 'isStarting' | 'lost' | 'outdated' | 'updateAfterSession' | 'start' | 'stop' | 'share' | 'players' | 'kick' | 'playerCode' | 'newPlayerCode' | 'addPlayer' | 'renamePlayer' | 'removeFromCampaign' | 'newLink' | 'playerTokens' | 'markPlayerTokens' | 'give'> & {
   readonly table: {
     readonly sharedTab: WorkspaceLeaf | null;
     readonly sharedStore: { getState(): { readonly objects: { readonly tokens: Readonly<Record<string, SceneToken>> } } } | null;
     readonly presentedName: string | null;
     readonly gate: GateActions & { view(): GateView };
+    readonly rests: RestActions & { cards(): readonly RestCard[] };
+    cardOrder(): readonly string[];
     readonly image: { readonly isShown: boolean };
     readonly closesAt: number | null;
   } | null;
@@ -101,6 +143,7 @@ export function onlineApi(control: ControlSource, hideImage: () => void): Online
       ...lostOf(control),
       status: status(),
       link: control.link(),
+      campaignId: control.campaignId(),
       sharedLeaf: control.table?.sharedTab ?? null,
       sharedName: control.table?.sharedStore === null ? null : control.table?.presentedName ?? null,
       sharedTokens: control.table?.sharedStore?.getState().objects.tokens ?? {},
@@ -108,9 +151,11 @@ export function onlineApi(control: ControlSource, hideImage: () => void): Online
       playerTokens: control.playerTokens().map(({ tokenId, label, owner }) => ({ tokenId, label, ownerId: owner?.id ?? null })),
       seats: control.seats(),
       gate: control.table?.gate.view() ?? null,
+      rests: control.table?.rests.cards() ?? [],
+      cardOrder: control.table?.cardOrder() ?? [],
       ...(control.table?.image.isShown === true && { imageShown: true }),
     }),
-    start: (leaf) => void control.start(leaf),
+    start: (leaf, campaignId) => void control.start(leaf, campaignId),
     stop: () => control.stop(),
     share: (leaf) => control.share(leaf),
     mark: (ids) => control.markPlayerTokens(ids, true),
@@ -121,6 +166,15 @@ export function onlineApi(control: ControlSource, hideImage: () => void): Online
     },
     release: (ids) => control.give(ids, null),
     kick: (playerId) => control.kick(playerId),
+    playerCode: (playerId) => control.playerCode(playerId),
+    newPlayerCode: (playerId) => control.newPlayerCode(playerId),
+    addPlayer: (name) => {
+      const added = control.addPlayer(name);
+      return added === null ? null : { id: added.id, name: added.name, code: added.code };
+    },
+    renamePlayer: (playerId, name) => control.renamePlayer(playerId, name),
+    removeFromCampaign: (playerId) => control.removeFromCampaign(playerId),
+    newLink: () => control.newLink(),
     hideImage,
     gate: {
       newCode: () => control.table?.gate.newCode(),
@@ -130,15 +184,22 @@ export function onlineApi(control: ControlSource, hideImage: () => void): Online
       decline: (id) => control.table?.gate.decline(id),
       moved: () => control.table?.gate.moved(),
     },
+    rests: {
+      approve: (key) => control.table?.rests.approve(key),
+      decline: (key) => control.table?.rests.decline(key),
+    },
     onChange: (listener) => control.onChange(listener),
   };
 }
 
-/** How the last table ended and when the running one closes, as the snapshot carries them: only what there is. */
-function lostOf(control: ControlSource): Pick<OnlineSnapshot, 'lost' | 'closesAt'> {
+/** How the last table ended, when the running one closes and whether Atlas needs an update, as the snapshot carries them: only what there is. */
+function lostOf(control: ControlSource): Pick<OnlineSnapshot, 'lost' | 'closesAt' | 'outdated' | 'updateAfter'> {
   const lost = control.lost();
   const closesAt = control.table?.closesAt ?? null;
-  return { ...(lost !== null && { lost }), ...(closesAt !== null && { closesAt }) };
+  return {
+    ...(lost !== null && { lost }), ...(closesAt !== null && { closesAt }),
+    ...(control.outdated() && { outdated: true as const }), ...(control.updateAfterSession() && { updateAfter: true as const }),
+  };
 }
 
 /** Whether a table runs or is being created. */
@@ -213,13 +274,26 @@ export interface SceneFacts {
 }
 
 export type MenuModel =
-  | { readonly kind: 'start'; readonly account: AccountView; readonly starting: boolean; readonly lost: LostTable | null }
-  | { readonly kind: 'waiting'; readonly link: string | null; readonly status: { readonly text: string; readonly tone: Tone }; readonly isShared: boolean; readonly gate: GateRows | null; readonly qr: boolean; readonly imageShown: boolean; readonly closing: string | null };
+  | { readonly kind: 'start'; readonly account: AccountView; readonly starting: boolean; readonly lost: LostTable | null; readonly outdated: boolean; readonly campaigns: CampaignPick }
+  | { readonly kind: 'waiting'; readonly title: string; readonly link: string | null; readonly status: { readonly text: string; readonly tone: Tone }; readonly isShared: boolean; readonly gate: GateRows | null; readonly qr: boolean; readonly imageShown: boolean; readonly closing: string | null; readonly updateAfter: boolean };
 
-/** The connection menu: sign in and start a table (after one the server ended: how it ended), or the running table's link while players are awaited (`qr`: its QR card is open). */
-export function menuModel(snapshot: OnlineSnapshot, scene: SceneFacts, account: AccountView, qr = false): MenuModel {
-  if (!isRunning(snapshot.status) || snapshot.status === 'starting') return { kind: 'start', account, starting: snapshot.status === 'starting', lost: snapshot.status === 'refused' ? snapshot.lost ?? 'refused' : null };
-  return { kind: 'waiting', link: snapshot.link, status: statusOf(snapshot), isShared: scene.isShared, gate: gateRowsOf(snapshot.gate), qr, imageShown: snapshot.imageShown === true, closing: closingOf(snapshot) };
+/** No campaigns read yet. */
+export const NO_CAMPAIGNS: CampaignPick = { list: null, chosen: null, query: '' };
+
+/** What a running table's surface is titled: the name of the campaign it plays, where it is known. */
+export function tableTitle(snapshot: OnlineSnapshot, campaigns: CampaignPick): string {
+  return campaigns.list?.find((campaign) => campaign.id === snapshot.campaignId)?.name ?? 'Online table';
+}
+
+/**
+ * The connection menu: sign in, choose a campaign and start a table (after one the server ended: how
+ * it ended), or the running table's link while players are awaited (`qr`: its QR card is open).
+ */
+export function menuModel(snapshot: OnlineSnapshot, scene: SceneFacts, account: AccountView, qr = false, campaigns: CampaignPick = NO_CAMPAIGNS): MenuModel {
+  if (!isRunning(snapshot.status) || snapshot.status === 'starting') {
+    return { kind: 'start', account, starting: snapshot.status === 'starting', lost: snapshot.status === 'refused' ? snapshot.lost ?? 'refused' : null, outdated: snapshot.outdated === true, campaigns };
+  }
+  return { kind: 'waiting', title: tableTitle(snapshot, campaigns), link: snapshot.link, status: statusOf(snapshot), isShared: scene.isShared, gate: gateRowsOf(snapshot.gate), qr, imageShown: snapshot.imageShown === true, closing: closingOf(snapshot), updateAfter: snapshot.updateAfter === true };
 }
 
 export interface GroupPlayer extends OnlinePlayer {

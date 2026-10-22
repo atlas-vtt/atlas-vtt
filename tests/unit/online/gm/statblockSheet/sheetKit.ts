@@ -22,6 +22,7 @@ function nodeTexts(node: SheetNode): string[] {
     case 'metric': return [node.heading ?? '', ...node.values.flatMap(valueTexts)];
     case 'table': return [node.label ?? '', ...node.columns, ...node.rows.flat(), ...node.worked.flat(), ...(node.workedLabels ?? [])].map((cell) => cell ?? '');
     case 'track': return [node.label ?? '', `${node.current}`, `${node.max}`];
+    case 'counters': return [node.label ?? '', ...node.counters.map((row) => row.name)];
     case 'divider': return [];
   }
 }

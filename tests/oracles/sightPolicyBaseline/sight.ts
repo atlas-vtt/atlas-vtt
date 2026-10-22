@@ -1,4 +1,4 @@
-// Frozen from 8b3ddf049d7ad45e70beac62500d80e8bead30fd src/app/vision/sight.ts. Only import paths are adapted.
+// Frozen from 8b3ddf049d7ad45e70beac62500d80e8bead30fd src/app/vision/sight.ts. Only import paths and a token's facing are adapted.
 import type { TokenEntity } from '../../../src/app/types';
 import type { LightZone, SceneLighting } from '../../../src/app/types/lightingTypes';
 import type { SenseDefinition } from '../../../src/app/types/senseTypes';
@@ -12,7 +12,8 @@ import { ambientLevel } from '../../../src/app/vision/lightLevels';
 import { GENERIC_SIGHT_RULES, tokenEffects, type SightRules } from '../../../src/app/vision/sightRules';
 import { resolveSenses, tokenSenses } from '../../../src/app/vision/tokenSenses';
 import { computeVisibility, type MapBounds, type Polygon } from '../../../src/app/vision/visibility';
-import { visionCone, type VisionCone } from '../../../src/app/vision/visionCone';
+// A token looks towards its art's bottom (`tokenFacing`), a rule that came after this baseline.
+import { tokenFacing, visionCone, type VisionCone } from '../../../src/app/vision/visionCone';
 import { computeTokenPixelSize } from '../../../src/app/pixi/token-renderer/tokenSizing';
 
 /**
@@ -135,7 +136,7 @@ export function sightSources(
       continue;
     }
     const range = how.sightRange;
-    const cone = visionCone(token.rotation, token.vision.angle, computeTokenPixelSize(scale.cellSize, token.size || 1) / 2);
+    const cone = visionCone(tokenFacing(token.rotation), token.vision.angle, computeTokenPixelSize(scale.cellSize, token.size || 1) / 2);
     const blinded = tokenEffects(token, rules.conditions).has('blinded');
     const resolved = resolveSenses(how.senses, rules.definitions);
     const senses = resolved

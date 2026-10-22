@@ -54,8 +54,11 @@ export class LightingEngine {
   };
 
   private readonly backBuffer: BackBufferHold;
+  private readonly paced: boolean;
 
-  constructor(private readonly renderer: Renderer, private quality: LightingQuality = DEFAULT_LIGHTING_QUALITY) {
+  /** `paced`: heavy work goes to the graphics device only as fast as it runs it (`GpuPacer`); off, every update builds everything at once. */
+  constructor(private readonly renderer: Renderer, private quality: LightingQuality = DEFAULT_LIGHTING_QUALITY, options: { paced?: boolean } = {}) {
+    this.paced = options.paced ?? false;
     this.backBuffer = new BackBufferHold(renderer);
     this.layer.eventMode = 'none';
     this.layer.addChild(this.boundsRect, this.sightLayers.view);
@@ -86,9 +89,9 @@ export class LightingEngine {
   }
 
   /**
-   * A new quality takes effect at once: flicker on the world as it is, a texel or bounce of its
-   * own in a world built anew from the last scene (the old one's textures go once the composite
-   * has the new ones).
+   * A new quality takes effect at once: flicker on the world as it is, a texel, bounce or tile
+   * rays of its own in a world built anew from the last scene (the old one's textures go once the
+   * composite has the new ones).
    */
   setQuality(quality: LightingQuality): void {
     this.quality = quality;
@@ -100,7 +103,7 @@ export class LightingEngine {
   private build(scene: EngineScene): void {
     const { bounds } = scene;
     if (!this.world || this.world.bounds.width !== bounds.width || this.world.bounds.height !== bounds.height || !this.world.fits(this.quality)) {
-      this.replaceWorld(new LightingWorld(this.renderer, bounds, this.quality));
+      this.replaceWorld(new LightingWorld(this.renderer, bounds, this.quality, this.paced));
     }
     const world = this.world!;
     const composite = this.composite!;

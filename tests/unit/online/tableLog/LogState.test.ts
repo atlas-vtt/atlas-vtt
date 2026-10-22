@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { MAX_LOG_ENTRIES, type ChatEntry, type LogEntry, type PresenceEntry, type RollEntry } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { LogState, type ShownEntry } from '../../../../src/app/online/tableLog/index.ts';

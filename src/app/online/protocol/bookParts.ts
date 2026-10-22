@@ -31,6 +31,21 @@ export interface PlayerBookParts {
   readonly t: 'book-parts';
 }
 
+/**
+ * A page tells the GM whether its book covers the map now (sent when that changes, and on every
+ * reach of the GM). The GM may leave the table's activity out of what it sends a covered page
+ * (pointers, lasers and measurements, the places of drags under way) and sends the latest once it
+ * is uncovered; everything the map shows when it stops moving still comes. A GM that does not know
+ * the message leaves it unread.
+ */
+export interface PlayerBookCover {
+  readonly t: 'book-cover';
+  readonly covered: boolean;
+}
+
+/** A page's cover message as the GM reads it, or null for anything malformed. */
+export const parseBookCover = (value: Record<string, unknown>): PlayerBookCover | null => (typeof value.covered === 'boolean' ? { t: 'book-cover', covered: value.covered } : null);
+
 export const isBookPartType = (t: unknown): t is BookPartMessage['t'] => t === 'book-map' || t === 'book-quests';
 
 /** A world map as sent: null for none, undefined when it is malformed. */

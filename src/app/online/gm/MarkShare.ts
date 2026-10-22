@@ -30,7 +30,7 @@ export interface MarkSharePorts extends PacerClock, Partial<Pick<CursorSharePort
    * a newer `marks` takes the place of one not sent yet, so nothing queues for a slow uplink. Without
    * it marks go in order with the rest.
    */
-  sendLive?(body: GmMessage, key: string): void;
+  sendLive?(body: GmMessage, key: string, to?: string): void;
   /** The GM's measurements and laser on the shared tab, the same object while its renderer is the same; null while it has none, and without it players see none of the GM's marks. */
   gmMarks?(): GmMarkSource | null;
   /** The GM's accent colour as `#rrggbb`, which the GM's measurements are drawn in; null while it cannot be read. */
@@ -194,6 +194,16 @@ export class MarkShare {
   /** The last marks again, to one player or to all. */
   resend(to?: string): void {
     if (this.last !== null && !isEmpty(this.last.body)) this.ports.send(this.last.body, to);
+  }
+
+  /**
+   * The last marks to a player whose map shows again, also where there are none (so marks they held
+   * from before go): through the live lane under a key of that player's, where a newer one replaces it.
+   */
+  catchUp(to: string): void {
+    if (this.last === null) return;
+    if (this.ports.sendLive === undefined) this.ports.send(this.last.body, to);
+    else this.ports.sendLive(this.last.body, MARKS_KEY, to);
   }
 
   stop(): void {

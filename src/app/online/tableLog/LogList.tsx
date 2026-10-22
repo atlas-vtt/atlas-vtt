@@ -10,6 +10,7 @@ import type { ShownEntry } from './LogState.ts';
 import type { ThreadStat } from './logThreads.ts';
 import { dayLabel, relativeTime, sameDay } from './logTime.ts';
 import type { Portrait, RollFace, RowApi } from './panelTypes.ts';
+import { RestRow } from './RestRow.tsx';
 import { RollRow } from './RollRow.tsx';
 import { SecretRow } from './SecretRow.tsx';
 import { ImageRow, LootRow } from './ShownRows.tsx';
@@ -47,7 +48,7 @@ export interface LogListProps {
   readonly onTabStop: (id: string) => void;
 }
 
-const hasTools = (entry: ShownEntry): boolean => entry.kind === 'chat' || entry.kind === 'roll' || entry.kind === 'image' || entry.kind === 'loot' || entry.kind === 'found';
+const hasTools = (entry: ShownEntry): boolean => entry.kind === 'chat' || entry.kind === 'roll' || entry.kind === 'image' || entry.kind === 'loot' || entry.kind === 'found' || entry.kind === 'rest';
 
 /** The way down, over the list's lower edge: what arrived below, or just the way where nothing did. */
 function JumpPill({ scroll }: { readonly scroll: LogScroll }): ReactElement {
@@ -62,7 +63,7 @@ function JumpPill({ scroll }: { readonly scroll: LogScroll }): ReactElement {
 
 /**
  * The log, oldest at the top: chat messages (those of one author close together as one block),
- * rolls, private rolls the viewer is not shown, lines about who came and left, and a line between
+ * rolls, private rolls the viewer is not shown, rests, lines about who came and left, and a line between
  * two days. The Tab key reaches one row; the arrow keys move between rows. A thread stands under
  * its root, which is ruled off from the answers.
  */
@@ -117,6 +118,7 @@ export function LogList({ entries, stats, selected, ui, api, scroll, rollFace, s
                 {entry.kind === 'secret' && <SecretRow entry={entry} self={api.self} time={time} />}
                 {entry.kind === 'image' && <ImageRow entry={entry} src={imageSrc?.(entry) ?? null} onOpen={openImage === undefined ? undefined : () => openImage(entry)} time={time} thread={thread} api={api} {...flags} />}
                 {entry.kind === 'loot' && <LootRow entry={entry} time={time} thread={thread} api={api} {...flags} />}
+                {entry.kind === 'rest' && <RestRow entry={entry} time={time} thread={thread} api={api} {...flags} />}
                 {entry.kind === 'found' && <FoundRow entry={entry} onOpen={openFound === undefined ? undefined : () => openFound(entry)} time={time} thread={thread} api={api} {...flags} />}
                 {(entry.kind === 'joined' || entry.kind === 'left') && (
                   <div className="atlas-online-log__presence">

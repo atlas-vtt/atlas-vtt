@@ -15,7 +15,7 @@ export function withReaction(reactions: readonly LogReaction[], emoji: LogReacti
 }
 
 /** An entry that takes reactions with `who`'s `emoji` given or taken back; the same entry when nothing changes. */
-export function reacted(entry: Extract<GmLogEntry, { readonly kind: 'chat' | 'roll' | 'image' | 'loot' | 'found' }>, emoji: LogReactionEmoji, who: string, on: boolean): GmLogEntry {
+export function reacted(entry: Extract<GmLogEntry, { readonly kind: 'chat' | 'roll' | 'image' | 'loot' | 'rest' | 'found' }>, emoji: LogReactionEmoji, who: string, on: boolean): GmLogEntry {
   const reactions = withReaction(entry.reactions ?? [], emoji, who, on);
   if (reactions === null) return entry;
   const { reactions: _before, ...rest } = entry;

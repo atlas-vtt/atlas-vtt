@@ -1,5 +1,5 @@
 import { MAX_CONDITION_TEXT, MAX_TOKEN_CONDITIONS, MAX_TOKEN_VALUE, type SharedBar, type SharedCondition, type SharedTokenUI } from '../protocol/index.ts';
-import { resolveActiveConditions } from '../../pixi/token-renderer/TokenConditionsUI';
+import { resolveActiveConditions, type ActiveCondition } from '../../utils/activeConditions';
 import { isTokenDowned } from '../../pixi/token-renderer/isTokenDowned';
 import type { ResourceDefinition } from '../../resources/resourceTypes';
 import { shapeOf, visibleResources } from '../../resources/visibleResources';
@@ -34,13 +34,18 @@ function barsOf(token: TokenEntity, rules: TokenRules): SharedBar[] {
   });
 }
 
-/** The condition badges on a token's ring, as Atlas resolves them (`resolveActiveConditions`): those its collection defines, in order. */
-function conditionsOf(token: TokenEntity, rules: TokenRules): SharedCondition[] {
-  return resolveActiveConditions(token, rules.conditions).slice(0, MAX_TOKEN_CONDITIONS).map(({ color, glyph, value }) => ({
+/** Condition badges as players are sent them, within the protocol's bounds. */
+export function sharedConditions(conditions: readonly ActiveCondition[]): SharedCondition[] {
+  return conditions.slice(0, MAX_TOKEN_CONDITIONS).map(({ color, glyph, value }) => ({
     colour: hexColour(color),
     glyph: glyph.kind === 'icon' ? { kind: 'icon', icon: glyph.icon } : { kind: 'text', text: glyph.text.slice(0, MAX_CONDITION_TEXT) || '?' },
     value: value !== undefined && finiteValue(value) ? value : null,
   }));
+}
+
+/** The condition badges on a token's ring, as Atlas resolves them (`resolveActiveConditions`): those its collection defines, in order. */
+function conditionsOf(token: TokenEntity, rules: TokenRules): SharedCondition[] {
+  return sharedConditions(resolveActiveConditions(token, rules.conditions));
 }
 
 /**

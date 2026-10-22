@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { PLAYER_MIRROR_FPS } from '../../src/app/services/PlayerFrameMirror';
 import { MIRRORED, mirroring } from '../mocks/mirrorHarness';

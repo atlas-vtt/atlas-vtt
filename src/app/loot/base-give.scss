@@ -1,0 +1,31 @@
+@use '../../../styles/tokens' as *;
+
+// The give button stands at the end of a loot base's name cell; the name makes room for it.
+.atlas-base-give-cell .bases-table-cell {
+  padding-inline-end: $button-height-s + $spacing-xs;
+}
+
+.atlas-base-give {
+  position: absolute;
+  inset-inline-end: $spacing-xs;
+  top: 50%;
+  translate: 0 -50%;
+  display: flex;
+}
+
+.atlas-base-give .atlas-base-give__button.btn--icon {
+  width: $button-height-s;
+  height: $button-height-s;
+  margin: 0;
+  color: var(--text-faint);
+
+  &:hover,
+  &[aria-expanded='true'] {
+    color: var(--text-normal);
+  }
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}

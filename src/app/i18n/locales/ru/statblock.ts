@@ -4,6 +4,7 @@ export const statblock: Translation = {
   'statblock.assignToken': 'Назначить токен',
   'statblock.assignTokenHint': 'Назначить токен статблоку',
   'statblock.changeToken': 'Сменить токен статблока',
+  'statblock.counterLeft': '{name}: осталось {n} из {max}',
   'statblock.creature': 'Существо',
   'statblock.decrease': 'Уменьшить: {label}',
   'statblock.editNamed': 'Изменить: {name}',

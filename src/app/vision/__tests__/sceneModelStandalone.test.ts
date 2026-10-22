@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import { SceneModelBuilder, SceneSpots, type SceneState } from '../sceneModel';

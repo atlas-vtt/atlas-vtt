@@ -1,3 +1,4 @@
+import type { DiceSet } from '../../../types/diceSetTypes';
 import type { PlacedTokenSource } from '../../../characters/playerCharacters';
 import type { ResolvedStatblock } from '../../../statblocks/model/resolvedTypes';
 import type { NotePatch } from '../../../statblocks/notes/patchTypes';
@@ -13,10 +14,14 @@ export interface StatblockWriteOutcome {
 export interface StatblockGate {
   /** The statblock note the library token a placed token came from links, or null for none. */
   libraryStatblock(placed: PlacedTokenSource): string | null;
+  /** The note template's default dice; undefined means the campaign's dice. */
+  diceSet?(path: string | undefined): DiceSet | undefined;
   /** A note's statblock as Atlas's resolver reads it now, or null where it defines none. */
   read(path: string): Promise<ResolvedStatblock | null>;
   /** Writes checked patches into a note, as every statblock edit in Atlas is written. */
   write(path: string, patches: readonly NotePatch[]): Promise<StatblockWriteOutcome>;
+  /** The width of the statblock panel beside a note on this device now, which the players' cards are laid out at (`shownPanelWidth`; while no note shows, the width last measured beside one). */
+  panelWidth?(): number | undefined;
   /** Calls `listener` with a note's path when its properties may read otherwise, and with null when every note may (a template changed); returns what stops it. */
   onChange(listener: (path: string | null) => void): () => void;
 }
@@ -46,6 +51,8 @@ export function setStatblockGate(next: StatblockGate | null): void {
 /** The ports the books read statblocks through, answered by the gate set now. */
 export const gatedStatblocks: StatblockGate = {
   libraryStatblock: (placed) => gate?.libraryStatblock(placed) ?? null,
+  diceSet: (path) => gate?.diceSet?.(path),
+  panelWidth: () => gate?.panelWidth?.(),
   read: async (path) => (gate === null ? null : gate.read(path)),
   write: async (path, patches) => (gate === null ? { ...REFUSED, conflicts: patches } : gate.write(path, patches)),
   onChange: (listener) => {

@@ -2,6 +2,83 @@
 
 <!-- Generated from changelog/*.md. Run npm run changelog:generate. -->
 
+## 0.9.1 — Dynamic lighting for everyone and a richer player sheet online
+
+2026-10-22
+
+### New
+- Turn several selected tokens at once with the button above their selection
+- Dynamic lighting is no longer experimental
+### Improved
+- Improved UI for selected tokens, rulers, templates and drag rulers, sharp at any zoom
+- Turn spotlight of the initiative tracker now only flashes temporarily instead of always showing
+- Improved behaviour of resource wheels on zoomed out tokens
+
+### Fixed
+- Maps work in a scene moved to its own window
+- Dice in statblock tables roll, and so does any formula or bonus such as +4+1
+- An tracked value written in a note, such as 15 (natural armor), shows on its token
+- Holding Backspace in a statblock's Abilities component no longer erases the entry above it
+- Random tables from notes can be added when a collection already has tables
+- Statblock previews can be moved, pinned and shown to players again, and can no longer be dragged out of reach
+- @ references also find a value by its label, such as @str for Strength
+- Fixed issue where sometimes dice rolls triggered from within the encounter builder would show twice
+
+### Atlas Online
+- The played campaign auto stops when a stable goes offline
+- Aligned character sheet sidebar with statblock layout
+- Typing @ in a statblock field suggests values to reference like 2d8+@strength
+- Rolls name the values they use: 2d8 + @agility shows Agility, and so does a click on Agility in a table of traits
+- Players can change every value on their sheet, even max values etc.
+- Players roll with advantage or disadvantage: right-click or long-press a die
+- Players can click a combatant in the initiative list to find its token
+- Better error logging for world map issues
+- Performance improvements for Notes, Abilities and Inventory panels
+
+
+Thanks to my Patreon supporters @ekorngutt  , @theandrew93, @giodude  , @imhkr , @ionazh  , @menacingspade  , @m0eb1us  , @.orlon  , @.samdark  , @scaradeus  , @sero_sen  , @xethgnur  , @_zlf__21340  and @zookus  . You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
+## 0.9.0 — Encounter builder, recovery actions and a new initiative tracker
+
+2026-10-20
+
+### New
+- Smarter Token Placement: A preview now shows where tokens land before you accept their position and orientation
+- New Encounter Builder feature: Access through the plus button in the Asset Manager
+- Send specific items to players right from a Table or Base while an online session is active
+- Statblock templates: recovery actions such as Short rest and Long rest can now be configured
+- Statblock templates: counters, tracked numbers, clickable bonuses and `@` references such as `1d8 + @str.mod`
+- Initiative by cards, more sides, and sides that roll their order each round
+- Initiative: add combatants without placing them, start a fight from an encounter, and roll hit points
+- Initiative: delay turns, a turn banner, a ring on the active token, and many new tracker options
+- Change HP of several tokens at once
+- Atlas now shows a notification message when a new update is available
+- DM Screen: Filter to only those statblocks currently in a fight
+- Simplified Chinese Translation. Contributed by kun041011
+
+### Improved/Fixed
+- Statblock numbers can show as boxes or a gauge
+- Many initiative tracker improvements: typing numbers, skipping defeated combatants, tie-breaks, and more. With a contribution by Jackson98Tomphson
+- Dragging a token no longer selects it
+- Smaller improvements to filters, random tables, HP input, messages and animations
+- Improvements to Dynamic Lighting on integrated graphics
+- Various improvements in initiative, dice, statblocks, menus and online play. With contributions by aecorn, young-george and ISorokaI (Russian translations)
+
+### Atlas Online
+- Optimisations to online play performance
+- Tokens of the same player character share their hit points
+- Statblocks assigned to player tokens now show in the online character sheet
+- New Abilities tab which allows players to input their character's abilities
+- Let players move only on their turn
+- Atlas Dice Chrome Extension - Rolls on DnDBeyond or for Daggerheart on Demiplane  
+  sync with Atlas Online: https://github.com/atlas-vtt/atlas-dice
+
+Thanks to my Patreon supporters @ekorngutt  , @theandrew93, @giodude  , @imhkr , @ionazh  , @menacingspade  , @m0eb1us  , @.orlon  , @.samdark  , @scaradeus  , @sero_sen  , @xethgnur  , @_zlf__21340  and @zookus  . You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
+
 ## 0.8.0 — Online play and native statblocks
 
 2026-10-14

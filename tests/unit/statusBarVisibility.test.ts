@@ -1,7 +1,7 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Plugin } from 'obsidian';
 
-vi.mock('../../src/app/atlas-view', () => ({ ATLAS_VIEW_TYPE: 'atlas-vtt' }));
 vi.mock('../../src/app/player-view', () => ({ PLAYER_VIEW_TYPE: 'atlas-vtt-player' }));
 vi.mock('../../src/app/dashboard-view', () => ({ DASHBOARD_VIEW_TYPE: 'atlas-vtt-dashboard' }));
 

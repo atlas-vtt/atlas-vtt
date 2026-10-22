@@ -12,8 +12,6 @@ import AssetManager from "./asset-manager/AssetManager"
 import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { Toggle } from "./primitives/Toggle"
 import { isAtlasToolAvailable } from "../../tools/toolAvailability"
-import { useExperimentalFeature } from "../../react/hooks/useExperimentalFeature"
-import type { ExperimentalFeatureId } from "../../experimental/experimentalFeatures"
 import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER } from "../../toolbar/toolbarCatalog"
 import { ResponsiveToolbar } from "./toolbar/ResponsiveToolbar"
 import { useToolbarHotkeys } from "./toolbar/useToolbarHotkeys"
@@ -42,11 +40,6 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   const isGMView = useAtlasStore(state => state.isGMView)
   const setGMView = useAtlasStore(state => state.setGMView)
   const hotkeyLabel = useHotkeyLabels()
-  const experimentalOn: Record<ExperimentalFeatureId, boolean> = {
-    dynamicLighting: useExperimentalFeature('dynamicLighting'),
-    statblockEditor: useExperimentalFeature('statblockEditor'),
-    onlinePlay: useExperimentalFeature('onlinePlay'),
-  }
   const liveLayout = useToolbarLayout()
   // During a drag the bar keeps the layout it began with; changes made elsewhere wait for the drop.
   // The bottom row shares the drag state with the undo/redo bar, which the editor arranges too.
@@ -159,7 +152,7 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
   }
 
   // The player view's bar ignores the GM's layout.
-  const available = availableToolbarControls(!dm, (feature) => experimentalOn[feature])
+  const available = availableToolbarControls(!dm)
   const order = (dm ? layout.order : DEFAULT_TOOLBAR_ORDER).filter((id) => available.has(id))
   const items: ResponsiveToolbarItem[] = order.map((id) => ({ id, ...TOOLBAR_CONTROL_ITEMS[id](ctx) }))
   const editor = useToolbarEditor({ access: layoutAccess, store: editStore, items, available, hotkeyLabel, editing, stop: stopEditing })

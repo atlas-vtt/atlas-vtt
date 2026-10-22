@@ -25,11 +25,19 @@ export interface VisionCone {
 }
 
 /**
- * The cone of a token with `rotation` (degrees) seeing `angle` degrees wide, or none when it
- * sees all around. Rotation follows the token renderer (`SpriteFactory` sets the art sprite's
- * `rotation` to these degrees in radians): 0 faces the art's up, which is up on the map, and
- * positive turns clockwise on screen, so 90 faces right. On the y-down map that is the world
- * angle `rotation - 90°`.
+ * Where a token with `rotation` (degrees, as the token renderer turns its art: `SpriteFactory`)
+ * looks, in the degrees `visionCone` takes: towards its art's bottom. Token art faces the viewer,
+ * so a token that is not turned looks down the map.
+ */
+export function tokenFacing(rotation: number | undefined): number {
+  return ((rotation ?? 0) + 180) % 360;
+}
+
+/**
+ * The cone of something facing `rotation` (degrees) seeing `angle` degrees wide, or none when it
+ * sees all around: 0 faces up on the map and positive turns clockwise on screen, so 90 faces
+ * right. On the y-down map that is the world angle `rotation - 90°`. A token's facing is
+ * `tokenFacing` of its rotation.
  */
 export function visionCone(rotation: number | undefined, angle: number | undefined, apex = 0): VisionCone | undefined {
   const degrees = coneAngle(angle);

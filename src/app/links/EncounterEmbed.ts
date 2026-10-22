@@ -58,6 +58,10 @@ export class EncounterEmbed extends AtlasLinkEmbed {
         run: () => placeEncounterFile(app, this.file),
         failure: t('atlasLinks.placeFailed'),
       },
+      more: encounter === null ? [] : [
+        { label: t('atlasLinks.startFight'), icon: 'swords', run: () => placeEncounterFile(app, this.file, 'fight'), failure: t('atlasLinks.placeFailed') },
+        { label: t('atlasLinks.addBeside'), icon: 'list-plus', run: () => placeEncounterFile(app, this.file, 'beside'), failure: t('atlasLinks.placeFailed') },
+      ],
     };
   }
 }

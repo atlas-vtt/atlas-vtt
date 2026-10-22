@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { Texture, Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { afterEach, describe, expect, it, vi } from 'vitest';

@@ -11,7 +11,7 @@ import { ambientLevel } from './lightLevels';
 import { GENERIC_SIGHT_RULES, tokenEffects, type SightRules } from './sightRules';
 import { resolveSenses, tokenSenses } from './tokenSenses';
 import { computeVisibility, type MapBounds, type Polygon } from './visibility';
-import { visionCone, type VisionCone } from './visionCone';
+import { tokenFacing, visionCone, type VisionCone } from './visionCone';
 import { computeTokenPixelSize } from '../pixi/token-renderer/tokenSizing';
 
 /**
@@ -134,7 +134,7 @@ export function sightSources(
       continue;
     }
     const range = how.sightRange;
-    const cone = visionCone(token.rotation, token.vision.angle, computeTokenPixelSize(scale.cellSize, token.size || 1) / 2);
+    const cone = visionCone(tokenFacing(token.rotation), token.vision.angle, computeTokenPixelSize(scale.cellSize, token.size || 1) / 2);
     const blinded = tokenEffects(token, rules.conditions).has('blinded');
     const resolved = resolveSenses(how.senses, rules.definitions);
     const senses = resolved

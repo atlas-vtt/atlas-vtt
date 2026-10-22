@@ -10,7 +10,7 @@ import { FIELD_TYPES, type BlockType } from '../../../../src/app/statblocks/mode
 import { idsFrom } from './treeFixtures';
 
 const ALL_TYPES: BlockType[] = [
-  'section', 'row', 'tabs', 'title', 'line', 'stat', 'metric', 'scores', 'tags', 'text', 'entries', 'pairs', 'track', 'image',
+  'section', 'row', 'tabs', 'title', 'line', 'stat', 'metric', 'scores', 'tags', 'text', 'entries', 'pairs', 'track', 'counters', 'image',
   'spells', 'heading', 'divider', 'script', 'opaque',
 ];
 
@@ -39,7 +39,7 @@ describe('block catalogue', () => {
   it('names every authorable block by the primitive it is, and its kind where the primitive has several', () => {
     expect(Object.fromEntries(AUTHORABLE_BLOCK_TYPES.map((type) => [type, blockSpec(type).label]))).toEqual({
       section: 'Section', row: 'Side by side', tabs: 'Tabs', title: 'Heading', line: 'Line', stat: 'Value', metric: 'Metric', scores: 'Table', tags: 'List',
-      text: 'Text', entries: 'List', pairs: 'List', track: 'Track', image: 'Picture', spells: 'List', heading: 'Heading', divider: 'Divider',
+      text: 'Text', entries: 'List', pairs: 'List', track: 'Track', counters: 'Counters', image: 'Picture', spells: 'List', heading: 'Heading', divider: 'Divider',
     });
     expect(PRIMITIVES.list.kinds.map((type) => blockSpec(type).kind)).toEqual(['A word', 'A label and a value', 'A name and text', 'A group with items']);
     expect(PRIMITIVES.heading.kinds.map((type) => blockSpec(type).kind)).toEqual(['Typed', 'From a property']);
@@ -71,7 +71,7 @@ describe('block catalogue', () => {
   it('names the FS block type each block exports to', () => {
     expect(Object.fromEntries(ALL_TYPES.map((type) => [type, blockSpec(type).fsType]))).toEqual({
       section: 'group', row: 'inline', tabs: 'group', title: 'heading', line: 'subheading', stat: 'property', metric: 'table', scores: 'table',
-      tags: 'property', text: 'text', entries: 'traits', pairs: 'saves', track: 'property', image: 'image',
+      tags: 'property', text: 'text', entries: 'traits', pairs: 'saves', track: 'property', counters: 'property', image: 'image',
       spells: 'spells', heading: 'text', divider: null, script: 'javascript', opaque: null,
     });
   });
@@ -107,7 +107,7 @@ describe('block catalogue', () => {
     for (const fieldType of FIELD_TYPES) expect(bindsFieldType(naturalBlockFor(fieldType), fieldType), fieldType).toBe(true);
     expect(Object.fromEntries(FIELD_TYPES.map((type) => [type, naturalBlockFor(type)]))).toEqual({
       text: 'stat', markdown: 'text', number: 'stat', rating: 'stat', dice: 'stat', choice: 'stat', list: 'tags',
-      scores: 'scores', entries: 'entries', pairs: 'pairs', image: 'image', spells: 'spells',
+      scores: 'scores', entries: 'entries', pairs: 'pairs', image: 'image', spells: 'spells', counters: 'counters',
     });
   });
 });

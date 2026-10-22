@@ -8,6 +8,7 @@ import { tokenFootprints, type TokenFootprint } from '../../vision/measureOrigin
 import { atlasLaserLook, field } from './atlasLighting.ts';
 import { asTokenSource, call, type SceneState, type SceneStore } from './atlasView.ts';
 import type { GmMarkSource, PlayerMarks } from './MarkShare.ts';
+import { mapTokens } from '../../tokens/offMap';
 
 type Viewport = TapViewport & CursorViewport & OverlayHost['viewport'];
 
@@ -128,6 +129,6 @@ export class GmMarks {
     const sprites = call(tokens, 'getTokenSprites');
     const displayed = typeof sprites === 'object' && sprites !== null ? (sprites as Record<string, { x: number; y: number } | null>) : {};
     const size = asTokenSource(this.renderer())?.getGridOptions()?.size ?? state.grid?.size ?? 0;
-    return tokenFootprints(state.objects.tokens, displayed, size, state.tokenSettings?.tokenRingSize ?? 1);
+    return tokenFootprints(mapTokens(state.objects), displayed, size, state.tokenSettings?.tokenRingSize ?? 1);
   }
 }

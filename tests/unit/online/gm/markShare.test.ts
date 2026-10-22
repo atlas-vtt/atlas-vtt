@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { MARKS_INTERVAL_MS, MAX_LASER_SPAN_MS, type PlayerLaser, type PlayerMeasure } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
 import { checkLaser, checkMeasure, MARKS_PER_SECOND, nearMap, swatchColour } from '../../../../src/app/online/gm/markCheck.ts';
@@ -263,5 +262,26 @@ describe('MarkShare', () => {
     harness.share.resend(ANA);
     expect(harness.live).toHaveLength(1);
     expect(harness.sent.at(-1)?.to).toBe(ANA);
+  });
+});
+
+describe('marks for a page whose map shows again', () => {
+  it('sends it the last marks through the lane under its own key, also when they are empty, so no mark it held from before stays', () => {
+    const harness = markHarness();
+    harness.share.setScene('s1');
+    harness.share.catchUp(ANA);
+    // Nobody made a mark yet: there is nothing for it to hold.
+    expect(harness.sent).toEqual([]);
+    harness.share.receive(BEN, laser());
+    harness.advance(MARKS_INTERVAL_MS);
+    harness.advance(LASER_SILENCE_MS + MARKS_INTERVAL_MS);
+    harness.share.update();
+    harness.advance(MARKS_INTERVAL_MS);
+    const last = lastMarks(harness);
+    expect(last?.lasers).toEqual([]);
+    const before = harness.sent.length;
+    harness.share.catchUp(ANA);
+    expect(harness.sent.slice(before)).toEqual([{ body: last, to: ANA }]);
+    expect(harness.live.at(-1)).toBe('marks');
   });
 });

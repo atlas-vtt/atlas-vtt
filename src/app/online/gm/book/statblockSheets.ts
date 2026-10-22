@@ -5,18 +5,26 @@ import { deepEqual } from '../../../statblocks/notes/listIdentity';
 import { readField, type FieldRead, type KeyedField } from '../../../statblocks/values/fieldValues';
 import { drawnStatblock, type DrawnStatblock } from './statblockSheet.ts';
 
-/** A value this GM side wrote into a note: the key it stands under now, the keys it was taken from, and the value (undefined: deleted). */
+/**
+ * A value this GM side wrote into a note: the key it stands under now, the keys it was taken from,
+ * and the value (undefined: deleted). `readsBack` says whether the note, as read, holds the write
+ * where it may hold more than this side knew of (an entry added to a list the GM changed meanwhile);
+ * unset, it holds the write where it reads exactly `value`.
+ */
 export interface WrittenValue {
   readonly key: string;
   readonly cleared: readonly string[];
   readonly value: FieldValue | undefined;
+  readonly readsBack?: (stored: FieldValue | undefined) => boolean;
 }
 
 export interface StatblockSheetPorts {
   read(path: string): Promise<ResolvedStatblock | null>;
   now(): number;
-  /** A note was read or a statblock drawn anew: the books are looked at again. */
-  changed(): void;
+  /** The width of the GM's statblock panel, which the cards are laid out at; unset, a default. */
+  panelWidth?(): number | undefined;
+  /** The note at `path` was read or its statblock drawn anew: the books of its characters are looked at again. */
+  changed(path: string): void;
 }
 
 /** How long a written value counts after its write was taken, should the note never read it back (someone else changed it since). */
@@ -85,15 +93,16 @@ export class StatblockSheets {
     const source = this.source(entry);
     if (source === undefined) return undefined;
     if (source === null) return NO_STATBLOCK;
-    const inputs = JSON.stringify([definitions, resources ?? null]);
+    const panelWidth = this.ports.panelWidth?.();
+    const inputs = JSON.stringify([definitions, resources ?? null, panelWidth ?? null]);
     if (entry.asked?.source === source && entry.asked.inputs === inputs) return entry.drawn;
     const asked: Drawing = { source, inputs };
     entry.asked = asked;
     entry.drawn = undefined;
-    void drawnStatblock({ resolved: source, definitions, resources }).then((drawn) => {
+    void drawnStatblock({ resolved: source, definitions, resources, ...(panelWidth !== undefined && { panelWidth }) }).then((drawn) => {
       if (entry.asked !== asked || this.entries.get(path) !== entry) return;
       entry.drawn = drawn;
-      this.ports.changed();
+      this.ports.changed(path);
     }, (error: unknown) => console.error('[Atlas] Drawing a player\'s statblock failed:', error));
     return entry.drawn;
   }
@@ -189,7 +198,7 @@ export class StatblockSheets {
       entry.trusted = doubted;
       entry.source = undefined;
       this.readBack(entry);
-      this.ports.changed();
+      this.ports.changed(path);
     });
   }
 
@@ -198,7 +207,8 @@ export class StatblockSheets {
     const fields = entry.resolved?.fields;
     if (fields === undefined) return;
     for (const [key, held] of [...entry.written]) {
-      if (deepEqual(storedRead(fields, { key }).value, held.value)) entry.written.delete(key);
+      const stored = storedRead(fields, { key }).value;
+      if (held.readsBack === undefined ? deepEqual(stored, held.value) : held.readsBack(stored)) entry.written.delete(key);
     }
   }
 

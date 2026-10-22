@@ -1,0 +1,532 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Encounter builder: a sidebar with the search and every filter, and beside it
+// the DM screen's statblock feeds with the encounter's tray below them, all
+// floating on the blurred backdrop over the asset manager.
+// ═══════════════════════════════════════════════════════════════════════════
+
+$sidebar-width: 320px;
+
+.atlas-encounter-builder {
+  @include atlas-modal-overlay($z-atlas-modal);
+}
+
+.atlas-encounter-builder__window {
+  // Anchors the dice rolls (`.atlas-sb-pane-rolls`), which hang from its top right.
+  position: relative;
+  display: flex;
+  gap: $spacing-m;
+  width: 100%;
+  height: 100%;
+  // The sidebar and four feeds at their widest (dm-screen/feedLayout.ts).
+  max-width: calc(#{$sidebar-width} + #{$spacing-m} + 4 * 540px + 3 * 12px);
+  outline: none;
+}
+
+// ── Sidebar: title, search and the filters, always open ─────────────────────
+
+.atlas-encounter-builder__sidebar,
+.atlas-encounter-tray {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+}
+
+.atlas-encounter-builder__sidebar {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  width: $sidebar-width;
+  // Not clipped: the search's suggestions reach out over the feed. The filters scroll inside.
+  min-height: 0;
+}
+
+.atlas-encounter-builder__sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  @include atlas-close-header;
+  flex-shrink: 0;
+}
+
+.atlas-encounter-builder__title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  color: var(--text-normal);
+  font-size: $font-ui-medium;
+  font-weight: var(--font-semibold);
+}
+
+.atlas-encounter-builder__search {
+  flex-shrink: 0;
+  padding: 0 $spacing-l $spacing-l;
+
+  .atlas-asset-manager-search {
+    width: 100%;
+  }
+
+  // The field starts at the sidebar's left edge, so its suggestions open from there, over the feed.
+  .atlas-search-suggestions {
+    right: auto;
+    left: 0;
+    transform-origin: top left;
+  }
+}
+
+.atlas-encounter-builder__filters-frame {
+  flex: 1;
+}
+
+.atlas-encounter-builder__filters {
+  padding-bottom: $spacing-l;
+}
+
+// The scrollbar lies over the filters' padding and takes no room (`OverlayScroll`); here it
+// shows only while the filters scroll or it is dragged, not merely under the pointer.
+.atlas-encounter-builder__filters-frame.atlas-overlay-scroll:hover:not(:has(> [data-scrolling])) > .atlas-overlay-scroll__track:not([data-dragging]) > .atlas-overlay-scroll__thumb {
+  opacity: 0;
+  transition-duration: $transition-slow;
+}
+
+// ── Main: the count and chips, the feed, the tray floating over its foot ────
+
+.atlas-encounter-builder__main {
+  // Anchors the tray.
+  position: relative;
+  @include atlas-flex-col($spacing-s);
+  flex: 1;
+  min-width: 0;
+}
+
+.atlas-encounter-tray {
+  padding: $spacing-s;
+  gap: $spacing-s;
+}
+
+// ── Status: how many creatures show, and the active filters ─────────────────
+// One chip row tall whether filters are active or not; chips that need more rows
+// wrap over the top of the feed instead of pushing it down.
+
+$chip-height: 24px;
+
+.atlas-encounter-builder__status {
+  position: relative;
+  z-index: 3;
+  flex-shrink: 0;
+  height: $chip-height;
+}
+
+.atlas-encounter-builder__status-row {
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $spacing-s;
+  min-height: $chip-height;
+  padding-inline: $spacing-l;
+
+  .atlas-active-filters {
+    flex: 1;
+    min-width: 0;
+    padding: 0;
+  }
+
+  // Over the feed's cards the chips need a ground of their own.
+  .atlas-active-filters .atlas-active-filter.btn {
+    background: var(--background-primary);
+  }
+}
+
+.atlas-encounter-builder__total {
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+  line-height: $chip-height;
+  white-space: nowrap;
+}
+
+// Room above the first row for the cards' notches and their shadow (the feed clips what scrolls),
+// and below the last for the tray floating over it.
+$notch-height: 28px;
+$notch-shadow-reach: 16px;
+$tray-room: 72px;
+
+.atlas-encounter-builder__feed {
+  flex: 1;
+  min-height: 0;
+  // The shadow's room takes the window's gap above the feed, so the cards hardly move down.
+  margin-top: -$spacing-s;
+  padding: calc(#{$notch-height} / 2 + #{$notch-shadow-reach}) 0 $tray-room;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.atlas-encounter-builder__notice {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: $font-ui-small;
+  text-align: center;
+}
+
+// ── A creature in the feed ───────────────────────────────────────────────────
+// Clicked like a card in a deck builder. Its notch rides on the middle of its top
+// edge, in the gap between feeds' cards: Add while the pointer is on the card,
+// the count once picked, with − and + while the pointer is on it.
+
+.atlas-encounter-card {
+  position: relative;
+  cursor: pointer;
+
+  .atlas-statblock {
+    transition: border-color $transition-fast $transition-ease, box-shadow $transition-fast $transition-ease;
+  }
+
+  &:hover .atlas-statblock {
+    border-color: color-mix(in oklch, var(--interactive-accent) 35%, var(--background-modifier-border));
+  }
+
+  &[data-picked='true'] .atlas-statblock {
+    border-color: var(--interactive-accent);
+    box-shadow: 0 0 0 1px var(--interactive-accent), 0 0 24px -6px color-mix(in oklch, var(--interactive-accent) 60%, transparent);
+  }
+
+  // Pressed, and for a moment after a click adds it or the tray asks for it: a ring that fades.
+  &:active .atlas-statblock {
+    border-color: var(--interactive-accent);
+  }
+
+  &[data-flash] .atlas-statblock {
+    animation: atlas-encounter-card-flash 700ms $transition-ease-out;
+  }
+}
+
+@keyframes atlas-encounter-card-flash {
+  from {
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--interactive-accent) 55%, transparent);
+  }
+
+  to {
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+
+.atlas-encounter-card__notch {
+  position: absolute;
+  top: calc(-#{$notch-height} / 2);
+  left: 50%;
+  z-index: 1;
+  display: flex;
+  height: $notch-height;
+  translate: -50% 0;
+  @include atlas-elevated-surface;
+  // A control on the card's edge, not a panel: the menu shadow, which the feed's top padding holds.
+  box-shadow: $shadow-md;
+  border-radius: $radius-full;
+  cursor: default;
+  opacity: 0;
+  scale: 0.96;
+  transition: opacity $transition-fast $transition-ease, scale $transition-fast $transition-ease;
+}
+
+// Touch has no hover: the notch always shows there.
+.atlas-encounter-card:is(:hover, :focus-within, [data-picked='true']) .atlas-encounter-card__notch {
+  opacity: 1;
+  scale: 1;
+}
+
+@media (hover: none) {
+  .atlas-encounter-card .atlas-encounter-card__notch {
+    opacity: 1;
+    scale: 1;
+  }
+}
+
+.atlas-encounter-card[data-picked='true'] .atlas-encounter-card__notch {
+  border-color: var(--interactive-accent);
+}
+
+.atlas-encounter-card__add.btn {
+  gap: $spacing-xs;
+  height: 100%;
+  padding: 0 $spacing-m 0 $spacing-s;
+  border-radius: $radius-full;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    color: var(--text-normal);
+  }
+}
+
+// ── Count stepper ──────────────────────────────────────────────────────────
+// On a card it shows the count alone until the pointer is on the card.
+
+.atlas-encounter-stepper {
+  display: inline-flex;
+  align-items: center;
+  height: 100%;
+  padding: 2px;
+}
+
+.atlas-encounter-stepper__count {
+  min-width: 3ch;
+  font-size: $font-ui-smaller;
+  font-weight: var(--font-semibold);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.atlas-encounter-stepper__button.btn {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: $radius-full;
+  color: var(--text-muted);
+  transition: background-color $transition-fast $transition-ease, color $transition-fast $transition-ease, scale $transition-fast $transition-ease;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    color: var(--text-normal);
+    background: var(--background-modifier-active-hover);
+  }
+
+  &:active {
+    color: var(--text-accent);
+    background: color-mix(in oklch, var(--interactive-accent) 22%, transparent);
+    scale: 0.96;
+  }
+}
+
+.atlas-encounter-card .atlas-encounter-stepper__button.btn {
+  width: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: width $transition-fast $transition-ease, opacity $transition-fast $transition-ease;
+}
+
+.atlas-encounter-card:is(:hover, :focus-within) .atlas-encounter-stepper__button.btn {
+  width: 24px;
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .atlas-encounter-card .atlas-encounter-stepper__button.btn {
+    width: 24px;
+    opacity: 1;
+  }
+}
+
+// ── Tray ────────────────────────────────────────────────────────────────────
+// Every control in it is one height, so the tray's padding is the same on all
+// sides of all of them, and its chips hold their parts as evenly.
+
+$tray-control: 32px;
+$chip-inset: $spacing-xs;
+// Floats over the bottom of the feed once a creature is picked, as wide as the bar above it
+// whatever it holds: its picks scroll and its numbers keep their room.
+
+.atlas-encounter-tray {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+}
+
+// The encounter's name, first in the tray: its start sits in the tray's corner, concentric with it.
+input.atlas-encounter-tray__name-input {
+  flex: 0 0 14rem;
+  min-width: 0;
+  height: $tray-control;
+  padding: 0 $spacing-m;
+  @include atlas-panel-inset-radius($spacing-s);
+  font-size: $font-ui-small;
+}
+
+.atlas-encounter-tray__picks-wrap {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: $spacing-xs;
+  min-width: 0;
+}
+
+// As many chips as fit; the rest are hidden (`TrayPicks`) and listed under "+N".
+.atlas-encounter-tray__picks {
+  display: flex;
+  flex: 1;
+  gap: $spacing-xs;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  list-style: none;
+}
+
+.atlas-encounter-tray__pick {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: $spacing-xs;
+  height: $tray-control;
+  padding: $chip-inset;
+  @include atlas-panel-inset-radius($spacing-s);
+  background: var(--background-modifier-hover);
+  transition: background-color $transition-fast $transition-ease;
+
+  &[hidden] {
+    display: none;
+  }
+
+  // Its face shows the creature's statblock: the chip lights up under the pointer, and more when pressed.
+  &:has(> .atlas-encounter-tray__pick-face:hover) {
+    background: var(--background-modifier-active-hover);
+  }
+
+  &:has(> .atlas-encounter-tray__pick-face:active) {
+    background: color-mix(in oklch, var(--interactive-accent) 22%, var(--background-modifier-hover));
+  }
+}
+
+.atlas-encounter-tray__pick-face {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  height: 100%;
+  padding: 0 $spacing-xs 0 0;
+  border: none;
+  border-radius: $radius-full;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+
+  &:is(button) {
+    cursor: pointer;
+  }
+
+  &:is(button):hover,
+  &:is(button):active {
+    background: none;
+    box-shadow: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--interactive-accent);
+    outline-offset: 2px;
+  }
+}
+
+.atlas-encounter-tray__overflow.btn {
+  flex-shrink: 0;
+  height: $tray-control;
+  padding: 0 $spacing-m;
+  @include atlas-panel-inset-radius($spacing-s);
+  background: var(--background-modifier-hover);
+  font-size: $font-ui-small;
+  font-variant-numeric: tabular-nums;
+
+  &:hover,
+  &[aria-expanded='true'] {
+    background: var(--background-modifier-active-hover);
+  }
+}
+
+.atlas-encounter-tray__overflow-menu {
+  max-height: min(50vh, 420px);
+  padding: $spacing-xs;
+  overflow-y: auto;
+}
+
+.atlas-encounter-tray__overflow-list {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  .atlas-encounter-tray__pick {
+    justify-content: space-between;
+  }
+}
+
+.atlas-encounter-tray__portrait {
+  width: calc(#{$tray-control} - 2 * #{$chip-inset});
+  height: calc(#{$tray-control} - 2 * #{$chip-inset});
+}
+
+// The chip's stepper sits $chip-inset inside it, its buttons filling the chip's height.
+.atlas-encounter-tray__pick .atlas-encounter-stepper {
+  padding: 0;
+}
+
+.atlas-encounter-tray__name {
+  max-width: 12em;
+  overflow: hidden;
+  font-size: $font-ui-small;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-encounter-tray__summary {
+  @include atlas-flex-row($spacing-m);
+  flex-shrink: 0;
+  padding-inline-start: $spacing-s;
+  border-inline-start: $border-width-s solid var(--background-modifier-border);
+}
+
+.atlas-encounter-tray__count,
+.atlas-encounter-tray__metric {
+  font-size: $font-ui-small;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.atlas-encounter-tray__metric {
+  display: inline-flex;
+  gap: $spacing-xs;
+  border-radius: $radius-s;
+}
+
+.atlas-encounter-tray__count {
+  min-width: 11ch;
+  text-align: end;
+}
+
+.atlas-encounter-tray__metric-label {
+  color: var(--text-muted);
+}
+
+.atlas-encounter-tray__metric-value {
+  min-width: 4ch;
+}
+
+.atlas-encounter-tray__actions {
+  @include atlas-flex-row($spacing-xs);
+
+  // Its end control sits in the tray's corner, concentric with it.
+  .btn {
+    height: $tray-control;
+    @include atlas-panel-inset-radius($spacing-s);
+  }
+}

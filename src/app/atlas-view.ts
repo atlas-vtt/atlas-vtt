@@ -245,6 +245,7 @@ export class AtlasView extends FileView {
       if (this.isViewClosing) {
         return;
       }
+      this._serviceManager.getNotePreviewUIManager().followView(containerEl);
 
       // Mount UI overlay once the renderer is initialized
       const uiOverlay = this._serviceManager.getUIOverlay();

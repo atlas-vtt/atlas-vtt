@@ -21,8 +21,11 @@ import { describeValue, isRecord, own, parseJsonText } from './jsonValues';
 import { ObjectReader } from './objectReader';
 import { parseLayout, type BlockContext } from './parseBlocks';
 import { parseField } from './parseFields';
+import { counterProblems } from './counterProblems';
 import { readDerivedFrom, readHeader, readImportedFrom, readLookups, readPlayers, readSource } from './parseTemplateMeta';
 import { JSON_OBJECT, asJsonRecord, asKey, asPositiveInteger, asString } from './valueReads';
+import { parseRecoveryButtons } from '../../recovery/parseRecovery';
+import type { RecoveryButton } from '../../recovery/recoveryTypes';
 
 export type TemplateParseStatus = 'ok' | 'invalid' | 'newer' | 'reserved';
 
@@ -83,6 +86,13 @@ function readTemplate(input: unknown, allowBuiltIn: boolean, problems: string[])
   return { template, status: version > TEMPLATE_VERSION ? 'newer' : 'ok', problems };
 }
 
+/** The buttons that read whole (`parseRecoveryButtons` leaves out the rest); none is no list. */
+function asRecovery(value: unknown): RecoveryButton[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const buttons = parseRecoveryButtons(value);
+  return buttons.length > 0 ? buttons : undefined;
+}
+
 function emptyLayout(): TemplateLayout {
   return { maxColumns: 2, blocks: [] };
 }
@@ -114,7 +124,8 @@ function readBody(file: Record<string, unknown>, version: number, id: string, pr
     ...readPlayers(r),
     ...readLookups(r),
     ...r.opt('sample', asJsonRecord, JSON_OBJECT),
+    ...r.opt('recovery', asRecovery, 'a list of recovery buttons'),
   });
-  problems.push(...danglingFieldProblems(template));
+  problems.push(...danglingFieldProblems(template), ...counterProblems(template));
   return template;
 }

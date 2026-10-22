@@ -6,8 +6,13 @@ import { AccountControl } from './account/AccountControl.ts';
 import { obsidianHttp } from './account/obsidianHttp.ts';
 import { secretTokenStore } from './account/tokenStore.ts';
 import { activeAtlasLeaf } from './atlasView.ts';
+import { AssetService } from '../../services/AssetService';
+import { CampaignBooks } from '../../campaigns/players/CampaignBooks';
+import { CampaignPlayers } from '../../campaigns/players/CampaignPlayers';
 import { BookShelf } from './book/BookShelf.ts';
-import { readBooks } from './book/bookStore.ts';
+import { BoundBookSource, campaignBookSource } from './book/campaignBookSource.ts';
+import { readBooks, type BookData } from './book/bookStore.ts';
+import { carryBooksOver } from './book/legacyBooks.ts';
 import { CompanionDiagnostics } from './companionDiagnostics.ts';
 import { companionTimers, every, stopCompanionTimers } from './companionTimers.ts';
 import { DockMounts } from './dock/DockMounts.ts';
@@ -23,11 +28,16 @@ import type { OnlineCommandId } from './onlineCommands.ts';
 import { OnlineControl } from './OnlineControl.ts';
 import type { OnlineDataFile } from './onlineData.ts';
 import type { OnlineTable } from './OnlineTable.ts';
-import { Ownership, readOwnership } from './ownership.ts';
+import { Ownership } from './ownership.ts';
 import { readSavedTable, type SavedTable } from './savedTable.ts';
+import { appCampaigns, playedSeats, playSavedTable, type TableCampaigns } from './tableCampaigns.ts';
+import { carryAssignmentsOver, readLegacyAssignments } from './legacyAssignments.ts';
+import { NO_ASSIGNMENTS, type TokenAssignments } from '../../campaigns/players/tokenAssignments';
+import { appCampaignChoices } from './campaignChoices.ts';
+import { DASHBOARD_VIEW_TYPE } from '../../dashboard-view';
 import { DEFAULT_SETTINGS, onlineSettingsSections, readSettings, type OnlineSettings } from './settings.ts';
 
-/** How long a change of the table's log or of a player's book waits before the data file is written. */
+/** How long a change of the table's log waits before the data file is written. */
 const LOG_SAVE_MS = 10_000;
 /** How often the tab the table's log stands on and Atlas's image display are looked for. */
 const SYNC_MS = 1_000;
@@ -50,8 +60,14 @@ export class OnlineFeature extends Component {
   /** The running table's log as saved with it; undefined while there is none. */
   private savedLog: unknown = undefined;
   private logSave: number | null = null;
-  /** The players' books kept on this device; they outlive tables. */
-  private books = new BookShelf();
+  /** Where the shelf keeps books: the campaign's books file once a table is bound to one, else nowhere (they stay in memory). */
+  private readonly bookSource = new BoundBookSource();
+  /** The players' books; they outlive tables. */
+  private readonly books = new BookShelf(this.bookSource);
+  /** The books an older Atlas kept in this device's data, until a campaign's file has taken them over. */
+  private legacyBooks: BookData = {};
+  /** The token owners and player tokens an older Atlas kept in this device's data, until a campaign's players file has taken them over. */
+  private legacyAssignments: TokenAssignments = NO_ASSIGNMENTS;
   private docks: DockMounts | null = null;
   private logs: LogMounts | null = null;
   /** The table's log for other plugins (`TableChat`). */
@@ -65,7 +81,8 @@ export class OnlineFeature extends Component {
   constructor(private readonly plugin: Plugin, private readonly data: OnlineDataFile) {
     super();
     this.app = plugin.app;
-    this.online = new OnlineControl(this.app, new Ownership(readOwnership(undefined), () => undefined));
+    const campaigns = this.campaigns();
+    this.online = new OnlineControl(this.app, new Ownership(playedSeats(campaigns)), campaigns);
     this.account = new AccountControl({
       http: obsidianHttp,
       timers: companionTimers(),
@@ -115,11 +132,18 @@ export class OnlineFeature extends Component {
     this.settings = readSettings(data);
     this.ready = true;
     const record = typeof data === 'object' && data !== null ? (data as Record<string, unknown>) : {};
-    const ownership = new Ownership(readOwnership(record.ownership), () => void this.saveSettings());
+    const campaigns = this.campaigns();
+    const ownership = new Ownership(playedSeats(campaigns));
+    this.legacyAssignments = readLegacyAssignments(record.ownership);
     this.savedTable = readSavedTable(record.table);
     this.savedLog = this.savedTable === null ? undefined : record.tableLog;
-    this.books = new BookShelf(readBooks(record.books), () => this.saveSoon());
-    this.online = new OnlineControl(this.app, ownership, (table) => {
+    this.legacyBooks = readBooks(record.books);
+    // A campaign is played only while its table runs: the saved table's comes back with it.
+    playSavedTable(campaigns, this.savedTable);
+    // Player tokens are marked on the played campaign, so it takes over the old ones now.
+    const played = campaigns.playing();
+    if (played !== null) void this.migrateAssignmentsInto(played).catch((error: unknown) => console.error('[Atlas] Carrying the player tokens into the campaign failed:', error));
+    this.online = new OnlineControl(this.app, ownership, campaigns, (table) => {
       this.savedTable = table;
       void this.saveSettings();
     }, this.account, { read: () => this.savedLog, write: (entries) => this.keepLog(entries) }, this.books);
@@ -144,6 +168,8 @@ export class OnlineFeature extends Component {
     const docks = new DockMounts(this.app.workspace, {
       api: onlineApi(this.online, () => images.hide()),
       account: this.account,
+      campaigns: appCampaignChoices(this.app),
+      openCampaigns: () => void this.app.workspace.getLeaf(true).setViewState({ type: DASHBOARD_VIEW_TYPE, active: true }),
       imageSrc: (path) => this.app.vault.adapter.getResourcePath(path),
       feedback: diagnostics,
       opened: (leaf) => logs.close(leaf),
@@ -165,7 +191,7 @@ export class OnlineFeature extends Component {
     this.app.workspace.onLayoutReady(() => {
       if (!this.live) return;
       // A table that ran when Obsidian or Atlas was last unloaded comes back with the same link.
-      if (this.savedTable !== null) this.online.resume(this.savedTable);
+      if (this.savedTable !== null) void this.online.resume(this.savedTable);
       // A signed-in GM's session is renewed, and the dock learns what it may host.
       void this.account.refresh(true);
       docks.sync();
@@ -174,10 +200,8 @@ export class OnlineFeature extends Component {
     this.command('start-online-table', (checking) => {
       const leaf = activeAtlasLeaf(this.app);
       if (!this.online.canStart() || leaf === null) return false;
-      if (!checking) {
-        docks.dockOf(leaf)?.open();
-        void this.online.start(leaf);
-      }
+      // Opens the start menu, where the GM picks the campaign the table plays.
+      if (!checking) docks.dockOf(leaf)?.open();
       return true;
     });
     this.command('toggle-online-panel', (checking) => {
@@ -213,18 +237,77 @@ export class OnlineFeature extends Component {
     this.docks = null;
     this.logs?.dispose();
     this.logs = null;
-    // A change of the log or of a book that still waits to be saved is saved now.
+    // A change of the log that still waits to be saved is saved now, and so are the books still waiting for the campaign's file.
     if (this.logSave !== null) void this.saveSettings();
+    this.bookSource.flush();
     // Unloading closes the connection only: the table stays on the server and comes back on the next load.
     this.online.close();
     stopCompanionTimers();
   }
 
-  /** Saves the settings with the table's players, token owners and player tokens, its log and the players' books. */
+  /** Saves the settings with the running table, its log, and the books, token owners and player tokens not carried over yet. */
   async saveSettings(): Promise<void> {
     if (this.logSave !== null) companionTimers().clearTimer(this.logSave);
     this.logSave = null;
-    await this.data.write({ ...this.settings, ownership: this.online.ownership.toData(), table: this.savedTable, ...(this.savedLog !== undefined && { tableLog: this.savedLog }), books: this.books.toData() });
+    await this.data.write({
+      ...this.settings,
+      table: this.savedTable,
+      ...(this.savedLog !== undefined && { tableLog: this.savedLog }),
+      ...(Object.keys(this.legacyBooks).length > 0 && { books: this.legacyBooks }),
+      ...(this.legacyAssignments !== NO_ASSIGNMENTS && { ownership: this.legacyAssignments }),
+    });
+  }
+
+  /**
+   * From now on the players' books are kept in the books file of this campaign, or in memory only for
+   * null; what the shelf held in memory of library tokens' books is forgotten, so it never hides the file's.
+   */
+  bindBooks(campaignId: string | null): void {
+    const books = CampaignBooks.forApp(this.app);
+    this.bookSource.bind(campaignId === null || books === undefined ? null : campaignBookSource(books, campaignId));
+    if (campaignId !== null) this.books.forgetKept();
+  }
+
+  /**
+   * Carries the books an older Atlas kept in this device's data into the campaign's books file,
+   * once: the data file loses the books it carried over only after the campaign's file was read back with them, and keeps those no library token takes over.
+   */
+  async migrateBooksInto(campaignId: string): Promise<void> {
+    const books = CampaignBooks.forApp(this.app);
+    if (books === undefined || Object.keys(this.legacyBooks).length === 0) return;
+    await books.whenLoaded();
+    const assets = await AssetService.getInstance(this.app).getTokenAssets();
+    const tokens = assets.map(({ id, collection, imagePath }) => ({ id, collection, imagePath }));
+    const left = await carryBooksOver(this.legacyBooks, tokens, books, campaignId);
+    // Nothing was carried over: the data file stays as it is.
+    if (left === null || JSON.stringify(left) === JSON.stringify(this.legacyBooks)) return;
+    this.legacyBooks = left;
+    await this.saveSettings();
+  }
+
+  /**
+   * Carries the token owners and player tokens an older Atlas kept in this device's data into the
+   * campaign's players file, once: the data file loses them only after the campaign's file was read back with them.
+   */
+  async migrateAssignmentsInto(campaignId: string): Promise<void> {
+    const players = CampaignPlayers.forApp(this.app);
+    if (players === undefined || this.legacyAssignments === NO_ASSIGNMENTS) return;
+    await players.whenLoaded();
+    if (!(await carryAssignmentsOver(this.legacyAssignments, players, campaignId))) return;
+    this.legacyAssignments = NO_ASSIGNMENTS;
+    await this.saveSettings();
+  }
+
+  /**
+   * The campaigns tables run on: what an older Atlas kept in this device's data (books, token owners,
+   * player tokens) is carried into a campaign before a table of it runs (a player's book written
+   * meanwhile would otherwise replace the carried one), and a table binds its campaign's books.
+   */
+  private campaigns(): TableCampaigns {
+    return appCampaigns(this.app, (campaignId) => this.bindBooks(campaignId), async (campaignId) => {
+      await this.migrateBooksInto(campaignId);
+      await this.migrateAssignmentsInto(campaignId);
+    });
   }
 
   /** What one of online play's commands does; the plugin registers the commands once (`registerOnlinePlay`). */
@@ -251,6 +334,7 @@ export class OnlineFeature extends Component {
     if (activeAtlasLeaf(this.app) === null) return false;
     if (checking) return true;
     const count = this.online.markSelected(player);
+    if (count === null) return true;
     if (count === 0) showNotice('Select tokens on the map first.');
     else showNotice(player ? `Player tokens: ${tokensText(count)}. Assign each to a player in the online panel.` : `${tokensText(count)} now belong to the GM.`);
     return true;

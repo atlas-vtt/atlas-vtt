@@ -22,3 +22,14 @@ export function crossesFeatureRelease(previous: string, current: string): boolea
   const [currentMajor, currentMinor] = current.split('.').map(Number);
   return currentMajor! > previousMajor! || (currentMajor === previousMajor && currentMinor! > previousMinor!);
 }
+
+/**
+ * Whether `candidate` is a release newer than `installed`. A beta of `x.y.z` counts as just below
+ * `x.y.z`, so a tester on `0.8.1-beta.0` hears of `0.8.1`; a beta is never a candidate.
+ */
+export function isNewerRelease(candidate: string, installed: string): boolean {
+  const base = releaseBaseVersion(installed);
+  if (!isReleaseVersion(candidate) || base === null) return false;
+  const difference = compareVersions(candidate, base);
+  return difference > 0 || (difference === 0 && base !== installed);
+}

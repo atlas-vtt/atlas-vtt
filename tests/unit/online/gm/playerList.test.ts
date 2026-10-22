@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import type { MenuEntry } from '../../../../src/app/online/gm/dock/dockMenu.ts';
 import { groupsOf, type OnlineSnapshot, type SceneFacts } from '../../../../src/app/online/gm/dock/panelModel.ts';
@@ -19,10 +20,10 @@ const SCENE: SceneFacts = {
   } as unknown as SceneFacts['tokens'],
 };
 
-const snapshot = (over: Partial<OnlineSnapshot>): OnlineSnapshot => ({ status: 'online', link: null, sharedLeaf: null, sharedName: null, sharedTokens: {}, players: [], playerTokens: [], seats: null, gate: null, ...over });
+const snapshot = (over: Partial<OnlineSnapshot>): OnlineSnapshot => ({ status: 'online', link: null, campaignId: null, sharedLeaf: null, sharedName: null, sharedTokens: {}, players: [], playerTokens: [], seats: null, gate: null, rests: [], cardOrder: [], ...over });
 
 function actions(): ListActions & { selectToken: ReturnType<typeof vi.fn<(id: string) => void>> } {
-  return { selectToken: vi.fn<(id: string) => void>(), assign: vi.fn(), release: vi.fn(), unmark: vi.fn(), kick: vi.fn(), selected: () => [], imageSrc: (path) => `app://vault/${path}` };
+  return { selectToken: vi.fn<(id: string) => void>(), assign: vi.fn(), release: vi.fn(), unmark: vi.fn(), kick: vi.fn(), copyPlayerCode: vi.fn(() => Promise.resolve(true)), newPlayerCode: vi.fn(), askRename: vi.fn(), askRemoveFromCampaign: vi.fn(), playerPrompt: () => false, selected: () => [], imageSrc: (path) => `app://vault/${path}` };
 }
 
 function list(over: Partial<OnlineSnapshot>): { el: HTMLElement; does: ReturnType<typeof actions> } {
@@ -89,7 +90,7 @@ describe('the players of an online table', () => {
     it('releases the token the player is shown by alone, and keeps their other tokens', () => {
       const { el, does } = list({ players: [ANA], playerTokens: [{ tokenId: 'cleric', label: 'Cleric', ownerId: ANA.id }, { tokenId: 'wolf', label: 'Wolf', ownerId: ANA.id }] });
       const entries = menuOf(el);
-      expect(titles(entries)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Release all', 'Remove from table']);
+      expect(titles(entries)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Release all', 'Copy code', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
       run(entries, 'Release Cleric');
       expect(does.release).toHaveBeenCalledWith(['cleric']);
       run(entries, 'Release all');
@@ -98,10 +99,47 @@ describe('the players of an online table', () => {
 
     it('offers one release for a player with one token, and none to run for a player without', () => {
       const one = menuOf(list({ players: [ANA], playerTokens: [{ tokenId: 'cleric', label: 'Cleric', ownerId: ANA.id }] }).el);
-      expect(titles(one)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Remove from table']);
+      expect(titles(one)).toEqual(['Assign selected tokens here', 'Release Cleric', 'Copy code', 'New code', 'Rename…', 'Remove from table', 'Remove from campaign']);
       const none = menuOf(list({ players: [BEN], playerTokens: [] }).el);
       expect(none.find((entry) => entry.title === 'Release all')?.disabled).toBe(true);
     });
+  });
+});
+
+describe('a player of the campaign', () => {
+  const menuOf = (el: HTMLElement): readonly MenuEntry[] => {
+    menus.opened.length = 0;
+    el.querySelector<HTMLButtonElement>('.atlas-online-player__more')?.click();
+    return menus.opened.at(-1) ?? [];
+  };
+  const run = (entries: readonly MenuEntry[], title: string): void => entries.find((entry) => entry.title === title)?.run();
+
+  it('has a menu that copies the code, makes a new one, renames and removes, each for that player', () => {
+    const { el, does } = list({ players: [ANA, BEN] });
+    const entries = menuOf(el);
+    run(entries, 'Copy code');
+    run(entries, 'New code');
+    run(entries, 'Rename…');
+    run(entries, 'Remove from table');
+    run(entries, 'Remove from campaign');
+    expect(does.copyPlayerCode).toHaveBeenCalledWith(ANA.id);
+    expect(does.newPlayerCode).toHaveBeenCalledWith(ANA.id);
+    expect(does.askRename).toHaveBeenCalledWith(expect.objectContaining({ id: ANA.id, name: 'Ana' }));
+    expect(does.kick).toHaveBeenCalledWith(ANA.id);
+    expect(does.askRemoveFromCampaign).toHaveBeenCalledWith(expect.objectContaining({ id: ANA.id, name: 'Ana' }));
+  });
+
+  it('ends the menu with the rows that take the player away, each apart from what comes before', () => {
+    const entries = menuOf(list({ players: [ANA] }).el);
+    expect(entries.slice(-2).map((entry) => [entry.title, entry.warning])).toEqual([['Remove from table', true], ['Remove from campaign', true]]);
+    expect(entries.find((entry) => entry.title === 'Remove from table')?.apart).toBe(true);
+    expect(entries.find((entry) => entry.title === 'Copy code')?.apart).toBe(true);
+  });
+
+  it('never has a code in the list: no digits, no field', () => {
+    const { el } = list({ players: [ANA, BEN], playerTokens: [{ tokenId: 'cleric', label: 'Cleric', ownerId: ANA.id }] });
+    expect(el.textContent).not.toMatch(/\d/);
+    expect(el.querySelector('input')).toBeNull();
   });
 });
 

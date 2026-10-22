@@ -19,9 +19,11 @@ export const CHARACTERS_PATH = `${CAMPAIGN_FOLDER}/characters.json`;
 export const campaignFile = (extra: Record<string, unknown> = {}): string =>
   `${JSON.stringify({ format: 1, id: CAMPAIGN, name: 'Witherwild', createdAt: 1, ...extra }, null, 2)}\n`;
 
-/** Library tokens: two player characters and a monster. */
+/** Library tokens: two player characters (Ayla with a second form) and a monster. */
 export const LIBRARY = [
-  { id: 'pc-ayla', type: 'token', name: 'Ayla', imagePath: 'tokens/ayla.png', playerCharacter: true },
+  { id: 'pc-ayla', type: 'token', name: 'Ayla', imagePath: 'tokens/ayla.png', playerCharacter: true, statblockPath: 'Party/Ayla.md', createdAt: 1 },
+  // Another form of Ayla: a player character linking her note, made later
+  { id: 'pc-ayla-bear', type: 'token', name: 'Ayla (bear)', imagePath: 'tokens/ayla-bear.png', playerCharacter: true, statblockPath: 'Party/Ayla.md', createdAt: 2 },
   { id: 'pc-bram', type: 'token', name: 'Bram', imagePath: 'tokens/bram.png', playerCharacter: true },
   { id: 'goblin', type: 'token', name: 'Goblin', imagePath: 'tokens/goblin.png' },
 ] as unknown as TokenAsset[];

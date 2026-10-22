@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { parseFeedback } from '../../../../src/app/online/protocol/diagnostics.ts';
 import { CLOSE, MAX_GM_FRAME } from '../../../../src/app/online/protocol/relay.ts';

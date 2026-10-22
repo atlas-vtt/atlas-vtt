@@ -1,9 +1,12 @@
 import { parseBookCharacter, parseBookResourceMessage, type BookCharacter, type BookResourceMessage } from './bookCharacter.ts';
 import { MAX_BOOK_PINS, parseBookPin, type BookPin, type BookQuest } from './bookMap.ts';
 import { isBookPartType, parseBookPart, parseQuests, parseWorldMap, type BookPartMessage, type BookWorldMap } from './bookParts.ts';
+import { parseBookRestAnswer, type BookRestAnswer } from './bookRest.ts';
 import { DEFAULT_BOOK_SLOTS, parseBookSlots, parseEquipped, parseSlotMessage, settledEquipped, type BookSlots, type Equipped, type SlotMessage } from './bookSlots.ts';
 import { parseBookStatblock, type BookStatblockMessage } from './bookStatblock.ts';
-import { parseBookAbilityMessage, parseBookFieldMessage, type BookAbilityMessage, type BookFieldMessage } from './bookStatblockEdits.ts';
+import {
+  parseBookAbilityMessage, parseBookFieldMessage, parseBookListMessage, parseBookRefillMessage, type BookAbilityMessage, type BookFieldMessage, type BookListMessage, type BookRefillMessage,
+} from './bookStatblockEdits.ts';
 import { bookLine, bookText, MAX_BOOK_TITLE } from './bookText.ts';
 import { MAX_SCENE_ID } from './moves.ts';
 import { isRecord } from './shape.ts';
@@ -15,9 +18,13 @@ export * from './bookCharacter.ts';
 export * from './bookLevels.ts';
 export * from './bookMap.ts';
 export * from './bookParts.ts';
+export * from './bookRest.ts';
 export * from './bookStatblock.ts';
 export * from './bookStatblockEdits.ts';
 export * from './questText.ts';
+export * from './sheetCounters.ts';
+export * from './sheetLayout.ts';
+export * from './sheetReferences.ts';
 export * from './sheetValues.ts';
 
 /** What a player's book holds at most. */
@@ -83,13 +90,18 @@ export interface PlayerBook {
   readonly equipped: readonly Equipped[];
 }
 
-/** Sent to one player: their book whole, the character alone once only it changed, an item just handed over, their character's statblock, or another part alone (`BookPartMessage`). */
+/**
+ * Sent to one player: their book whole, the character alone once only it changed, an item just
+ * handed over, their character's statblock, another part alone (`BookPartMessage`), or the GM's
+ * answer to their rest request.
+ */
 export type BookMessage =
   | { readonly t: 'book'; readonly book: PlayerBook }
   | { readonly t: 'book-sheet'; readonly character: BookCharacter | null }
   | { readonly t: 'book-item'; readonly item: BookItem }
   | BookStatblockMessage
-  | BookPartMessage;
+  | BookPartMessage
+  | BookRestAnswer;
 
 /** What a player writes into their own book. The GM keeps it and answers a refused one with the whole book. */
 export type PlayerBookMessage =
@@ -101,6 +113,8 @@ export type PlayerBookMessage =
   | BookResourceMessage
   | BookFieldMessage
   | BookAbilityMessage
+  | BookListMessage
+  | BookRefillMessage
   | SlotMessage;
 
 /**
@@ -115,8 +129,8 @@ export interface BookTokenMessage {
   readonly token: string;
 }
 
-const GM_TYPES: readonly unknown[] = ['book', 'book-sheet', 'book-item', 'book-statblock', 'book-map', 'book-quests'];
-const PLAYER_TYPES: readonly unknown[] = ['book-note', 'book-note-delete', 'book-pin', 'book-pin-delete', 'book-purse', 'book-resource', 'book-field', 'book-ability', 'book-equip', 'book-slots'];
+const GM_TYPES: readonly unknown[] = ['book', 'book-sheet', 'book-item', 'book-statblock', 'book-map', 'book-quests', 'book-rest-answer'];
+const PLAYER_TYPES: readonly unknown[] = ['book-note', 'book-note-delete', 'book-pin', 'book-pin-delete', 'book-purse', 'book-resource', 'book-field', 'book-ability', 'book-list', 'book-refill', 'book-equip', 'book-slots'];
 
 export const isBookType = (t: unknown): t is BookMessage['t'] => GM_TYPES.includes(t);
 export const isPlayerBookType = (t: unknown): t is PlayerBookMessage['t'] => PLAYER_TYPES.includes(t);
@@ -221,6 +235,7 @@ export function parseBookMessage(value: Record<string, unknown>): BookMessage | 
     return statblock === undefined ? null : { t: 'book-statblock', statblock };
   }
   if (isBookPartType(value.t)) return parseBookPart(value);
+  if (value.t === 'book-rest-answer') return parseBookRestAnswer(value);
   const item = value.t === 'book-item' ? parseBookItem(value.item) : null;
   return item === null ? null : { t: 'book-item', item };
 }
@@ -256,6 +271,10 @@ export function parsePlayerBookMessage(value: Record<string, unknown>): PlayerBo
       return parseBookFieldMessage(value);
     case 'book-ability':
       return parseBookAbilityMessage(value);
+    case 'book-list':
+      return parseBookListMessage(value);
+    case 'book-refill':
+      return parseBookRefillMessage(value);
     case 'book-equip':
     case 'book-slots':
       return parseSlotMessage(value);

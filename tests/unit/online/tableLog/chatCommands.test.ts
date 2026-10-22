@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import type { TablePerson } from '../../../../src/app/online/protocol/index.ts';
 import { chosenSpeaker, parseComposerInput, type CommandContext } from '../../../../src/app/online/tableLog/chatCommands.ts';

@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -167,6 +168,14 @@ describe('the Random tables window', () => {
     await mount([]);
     expect(await screen.findByText('No random tables yet')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Use a table from a note' })).toBeTruthy();
+  });
+
+  it('still offers a table from a note once the collection has tables, opening its Random tables settings', async () => {
+    await mount([RUMOURS]);
+    const sidebar = await screen.findByRole('complementary');
+    await act(async () => { fireEvent.click(within(sidebar).getByRole('button', { name: 'Use a table from a note' })); });
+    const settings = await screen.findByRole('dialog');
+    expect(within(settings).getByRole('button', { name: 'Random tables' }).classList.contains('atlas-active')).toBe(true);
   });
 
   it('renames a table from its menu without touching the note, and its own name comes back when cleared', async () => {

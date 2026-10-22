@@ -1,17 +1,27 @@
 import { useMapResources } from '../../resources/useMapResources';
-import { isDefeated } from '../../resources/resourceValues';
-import { resourceColor } from '../../resources/resourceColors';
+import { combatantDefeated } from '../../initiative/defeated';
 import { visibleResources } from '../../resources/visibleResources';
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { EyeOff, GripVertical, Skull, User, Bot } from 'lucide-react';
 import type { InitiativeEntry } from '../../types/initiativeTypes';
 import { useAtlasUI } from '../root/AtlasUIContext';
-import { useAtlasStore } from '../ViewStoreContext';
-import { zoomToTokenWithHighlight } from '../../pixi/utils/tokenHighlight';
-import { isModHeld, isModKey } from '../../keyboard/modKey';
+import { useAtlasStore, useViewStoreHook } from '../ViewStoreContext';
+import { focusCombatant } from '../../initiative/focusCombatant';
+import { cardInstanceNumber } from '../../initiative/cardInstanceNumber';
+import { hasInitiative } from '../../initiative/awaitingInitiative';
+import { tokenDisplayName } from '../../pixi/token-renderer/tokenDisplayName';
+import { isOffMap } from '../../tokens/offMap';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { TokenPortrait } from '../../packages/components/shared/TokenPortrait';
+import { InitiativeNumber, type NumberStep } from './InitiativeNumber';
+import { CardResourceBars } from './CardResourceBars';
+import { OffMapIcon } from './OffMapIcon';
+import { CardConditions } from './CardConditions';
+import { useMapConditions } from '../hooks/useMapConditions';
+import { combatantConditions } from '../../utils/activeConditions';
+import { useCardPreviewHover } from './useCardPreviewHover';
 import { t } from '../../i18n';
+import { DealtCard } from './DealtCard';
 
 interface InitiativeCardProps {
   entry: InitiativeEntry;
@@ -19,12 +29,25 @@ interface InitiativeCardProps {
   isHoveredForPreview: boolean;
   /** The fight runs by sides: a combatant has no number there and never the turn by itself. */
   bySides?: boolean;
+  /** The fight runs by cards: the card dealt stands where the number does. */
+  byCards?: boolean;
+  /** The GM chose to see names on the cards. */
+  showName?: boolean;
+  /** The side tooltips open on: away from the edge the tracker stands at. */
+  tooltipSide?: 'left' | 'right';
+  /** The card's number is being typed in place. */
+  isEditingNumber?: boolean;
+  onStartNumberEdit?: (entry: InitiativeEntry) => void;
+  onCommitNumber?: (entry: InitiativeEntry, text: string, step: NumberStep) => void;
+  onCancelNumberEdit?: () => void;
   onDragStart: (index: number) => void;
   onDragOver: (index: number) => void;
   onDragEnd: () => void;
   onContextMenu: (e: React.MouseEvent, entry: InitiativeEntry, cardElement: HTMLElement) => void;
   onHover: (entry: InitiativeEntry | null, cardElement?: HTMLElement) => void;
 }
+
+const NOTHING = (): void => undefined;
 
 /**
  * Individual initiative tracker card
@@ -35,6 +58,13 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   index,
   isHoveredForPreview,
   bySides = false,
+  byCards = false,
+  showName = false,
+  tooltipSide = 'left',
+  isEditingNumber = false,
+  onStartNumberEdit = NOTHING,
+  onCommitNumber = NOTHING,
+  onCancelNumberEdit = NOTHING,
   onDragStart,
   onDragOver,
   onDragEnd,
@@ -42,31 +72,28 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   onHover,
 }) => {
   const { app, view } = useAtlasUI();
+  const store = useViewStoreHook();
   const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
-  const tokenSettings = useAtlasStore((s) => s.tokenSettings);
+  const badgesOn = useAtlasStore((s) => s.tokenSettings?.showInstanceBadges ?? true);
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
-  const isPointerInsideRef = useRef(false);
-  const isModifierKeyDownRef = useRef(false);
+  const hover = useCardPreviewHover(cardRef, entry, isHoveredForPreview, onHover);
 
-  // Instance badge: show when 2+ tokens share the same imagePath
-  const instanceBadge = useMemo((): number | null => {
-    if (!(tokenSettings?.showInstanceBadges ?? true)) return null;
-    const token = tokens[entry.tokenId];
-    if (!token?.instanceNumber) return null;
-    const sameImageCount = Object.values(tokens).filter(
-      (t) => t.imagePath === token.imagePath,
-    ).length;
-    return sameImageCount >= 2 ? token.instanceNumber : null;
-  }, [tokens, entry.tokenId, tokenSettings?.showInstanceBadges]);
+  // The number its token's badge shows on the map, where look-alikes are told apart
+  const instanceBadge = cardInstanceNumber(tokens, entry.tokenId, badgesOn);
 
   // Read live from the token: the resources that defeat it (hit points), and whether one of them has
   const definitions = useMapResources();
+  const conditionDefinitions = useMapConditions();
   const token = tokens[entry.tokenId];
   const bars = token ? visibleResources(token, definitions, 'dm').filter(({ definition }) => definition.defeatedWhenSpent) : [];
-  const defeated = token !== undefined && isDefeated(token, definitions);
+  const defeated = combatantDefeated(token, definitions);
+  const conditions = combatantConditions(token, conditionDefinitions);
   // A hidden token's entry is left out of the players' list (`PlayerInitiativePanel`)
   const hiddenFromPlayers = token?.isHidden === true;
+  // Kept beside the map: in the tracker only, until the GM places it
+  const offMap = isOffMap(token);
+  const name = (token && tokenDisplayName(token)) || entry.name;
 
   // Get image URL from vault path
   const getImageUrl = useCallback((imagePath: string): string => {
@@ -84,51 +111,6 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
       return '';
     }
   }, [app]);
-
-  const triggerPreviewIfEligible = useCallback((): void => {
-    if (!isModifierKeyDownRef.current || !entry.statblockPath || !cardRef.current || isHoveredForPreview) {
-      return;
-    }
-
-    onHover(entry, cardRef.current);
-  }, [entry, isHoveredForPreview, onHover]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent): void => {
-      if (!isModKey(event)) {
-        return;
-      }
-
-      isModifierKeyDownRef.current = true;
-
-      // A card hidden with its map view (another tab took over) never got its mouseleave.
-      if (isPointerInsideRef.current && cardRef.current?.checkVisibility()) {
-        triggerPreviewIfEligible();
-      }
-    };
-
-    const handleKeyUp = (event: KeyboardEvent): void => {
-      if (!isModKey(event)) {
-        return;
-      }
-
-      isModifierKeyDownRef.current = false;
-    };
-
-    const handleWindowBlur = (): void => {
-      isModifierKeyDownRef.current = false;
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', handleWindowBlur);
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('blur', handleWindowBlur);
-    };
-  }, [triggerPreviewIfEligible]);
 
   // Handle drag start
   const handleDragStart = (e: React.DragEvent): void => {
@@ -172,31 +154,10 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     }
   };
 
-  // Handle hover for statblock preview (CMD+hover)
-  // Preview stays open while CMD is held - only closes on CMD release
-  const handleMouseEnter = (e: React.MouseEvent): void => {
-    isPointerInsideRef.current = true;
-    isModifierKeyDownRef.current = isModHeld(e) || isModifierKeyDownRef.current;
-    triggerPreviewIfEligible();
+  // A click selects the token as a click on the map does (Shift adds) and brings it into view
+  const handleClick = (e: React.MouseEvent): void => {
+    focusCombatant(view, store.getState(), entry.tokenId, e.shiftKey);
   };
-
-  const handleMouseMove = (e: React.MouseEvent): void => {
-    isModifierKeyDownRef.current = isModHeld(e) || isModifierKeyDownRef.current;
-    triggerPreviewIfEligible();
-  };
-
-  // Don't close on mouse leave - CMD release handles closing
-  const handleMouseLeave = (): void => {
-    isPointerInsideRef.current = false;
-  };
-
-  // Handle click to zoom to token
-  const handleClick = useCallback((): void => {
-    const token = tokens[entry.tokenId];
-    if (!token || !view) return;
-
-    zoomToTokenWithHighlight(view, entry.tokenId, { x: token.x, y: token.y });
-  }, [entry.tokenId, tokens, view]);
 
   // Build class names
   const cardClasses = [
@@ -205,6 +166,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     defeated && 'atlas-initiative-card--defeated',
     hiddenFromPlayers && 'atlas-initiative-card--hidden',
     entry.sitsOut && 'atlas-initiative-card--sitting-out',
+    entry.delayed && 'atlas-initiative-card--delayed',
     isHoveredForPreview && 'atlas-initiative-card--preview-hover',
     dropPosition === 'above' && 'atlas-initiative-card--drop-above',
     dropPosition === 'below' && 'atlas-initiative-card--drop-below',
@@ -214,18 +176,18 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
     <div
       ref={cardRef}
       className={cardClasses}
-      draggable
+      // A field being typed in keeps its text selection to itself
+      draggable={!isEditingNumber}
       onClick={handleClick}
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onContextMenu={handleContextMenu}
-      onMouseEnter={handleMouseEnter}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      {...hover}
       role="listitem"
       aria-roledescription={t('initiative.card')}
+      aria-label={name}
     >
       {/* Drag Handle */}
       <div className="atlas-initiative-card__drag-handle">
@@ -238,7 +200,7 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
           <TokenPortrait
             className="atlas-initiative-card__portrait"
             src={getImageUrl(entry.imagePath)}
-            alt={entry.name}
+            alt={name}
             showRing={token?.showRing !== false}
             ringColor={token?.ringColor}
           />
@@ -260,40 +222,35 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
         )}
 
         {hiddenFromPlayers && (
-          <LabelTooltip label="Hidden from players" side="left">
+          <LabelTooltip label={t('initiative.hiddenFromPlayers')} side={tooltipSide}>
             <span className="atlas-initiative-card__hidden-badge"><EyeOff /></span>
+          </LabelTooltip>
+        )}
+
+        {offMap && (
+          <LabelTooltip label={t('initiative.offMap')} side={tooltipSide}>
+            <span className="atlas-initiative-card__off-map-badge"><OffMapIcon /></span>
           </LabelTooltip>
         )}
       </div>
 
-      {/* Initiative number */}
-      {!bySides && (
-        <span className="atlas-initiative-card__initiative">
-          {entry.initiative}
-        </span>
-      )}
+      {showName && <span className="atlas-initiative-card__name" aria-hidden="true">{name}</span>}
 
-      {/* Resource bars */}
-      {bars.length > 0 && (
-        <div className="atlas-initiative-card__resources">
-          {bars.map(({ definition, value }) => (
-            <div
-              key={definition.key}
-              className="atlas-initiative-card__hp-bar"
-              role="meter"
-              aria-label={definition.name}
-              aria-valuemin={0}
-              aria-valuenow={value.current}
-              aria-valuemax={value.max}
-            >
-              <div
-                className="atlas-initiative-card__hp-fill"
-                style={{ width: `${Math.max(0, Math.min(100, (value.current / value.max) * 100))}%`, '--atlas-resource-color': resourceColor(definition, value) } as React.CSSProperties}
-              />
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Initiative number, typed in place; in a fight by cards the card dealt, which nothing edits */}
+      {!bySides && (byCards ? <DealtCard card={entry.card} /> : (
+        <InitiativeNumber
+          value={entry.initiative}
+          empty={!hasInitiative(entry)}
+          editing={isEditingNumber}
+          onStartEdit={() => onStartNumberEdit(entry)}
+          onCommit={(text, step) => onCommitNumber(entry, text, step)}
+          onCancel={onCancelNumberEdit}
+        />
+      ))}
+
+      {bars.length > 0 && <CardResourceBars tokenId={entry.tokenId} bars={bars} />}
+
+      <CardConditions conditions={conditions} tooltipSide={tooltipSide} />
     </div>
   );
 };

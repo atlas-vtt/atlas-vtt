@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Setting } from 'obsidian';
 import { mapImageCacheSettingsSection, type MapImageCache } from '../../src/app/settings/mapImageCacheSettingsSection';

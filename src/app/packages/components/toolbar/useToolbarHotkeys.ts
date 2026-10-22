@@ -4,6 +4,7 @@ import { useMapHotkeys } from "../../../keyboard/useMapHotkeys"
 import { AMBIENT_AUDIO_ENABLED } from "../../../featureFlags"
 import { MEASURE_SHAPES, MEASURE_TOOLS, isMeasureTool, type Tool } from "./toolFaces"
 import { useEmitViewEvent } from "./useEmitViewEvent"
+import { mapTokens } from "../../../tokens/offMap"
 
 const MOVE_TOOLS: readonly Tool[] = ["move", "laser-pointer"]
 const FOG_TOOLS: readonly Tool[] = ["fog", "eraser"]
@@ -49,7 +50,7 @@ export function useToolbarHotkeys(viewId: string | undefined, isPlayerView: bool
     gmView: dmOnly(toggleGMView),
     selectAll: dmOnly(() => {
       // Only what the canvas shows: session view hides tokens, which must not be selected unseen.
-      const tokenIds = renderer?.getTokenRenderer()?.visibleTokenIds() ?? Object.keys(store.getState().objects.tokens)
+      const tokenIds = renderer?.getTokenRenderer()?.visibleTokenIds() ?? Object.keys(mapTokens(store.getState().objects))
       if (tokenIds.length > 0) store.getState().setSelection(tokenIds)
     }),
     assets: dmOnly(toggleAssetManager),

@@ -1,4 +1,3 @@
-// @vitest-environment node
 import type { ResourceDefinition } from '../../../../src/app/resources/resourceTypes';
 import type { TokenEntity } from '../../../../src/app/types';
 import { describe, expect, it } from 'vitest';

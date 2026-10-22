@@ -1,3 +1,4 @@
+import type { AdvantageSide, DiceSet } from '../../types/diceSetTypes';
 import type { PlayerRoll, SharedRoll } from '../protocol/index.ts';
 import type { RollSceneLookup } from '../../services/playerRollSource';
 import type { DiceSource } from './atlasDice.ts';
@@ -55,7 +56,7 @@ export class SceneDice {
       }),
       dice: () => ports.dice?.() ?? null,
       rollAs: (who, run, notes) => this.share.rollAs(who, run, notes),
-      quietRoll: (formula) => this.quietRoll(formula),
+      quietRoll: (formula, set, setAppearance, advantage) => this.quietRoll(formula, set, setAppearance, advantage),
       request: (from, answer) => ports.rollRequest?.(from, answer) ?? null,
       logged: (roll) => ports.logRoll?.(roll),
       alias: (id) => tokens.alias(id),
@@ -90,9 +91,9 @@ export class SceneDice {
   }
 
   /** A formula rolled by the shared map's rules without a throw; null where it does not roll or the tab has no dice now. */
-  quietRoll(formula: string): SharedRoll | null {
+  quietRoll(formula: string, set?: DiceSet, setAppearance?: true, advantage?: AdvantageSide): SharedRoll | null {
     const dice = this.ports.dice?.() ?? null;
-    return dice === null ? null : quietRoll(formula, dice.rules(), this.ports.randomId(), Date.now());
+    return dice === null ? null : quietRoll(formula, set ?? dice.rules(), this.ports.randomId(), Date.now(), undefined, setAppearance, advantage);
   }
 
   /** Runs a GM's roll on the shared tab's dice, carrying `notes` into the log; false where the tab has no dice or nothing was rolled. */

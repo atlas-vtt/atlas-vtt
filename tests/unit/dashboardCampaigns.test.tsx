@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
@@ -269,41 +270,35 @@ describe('searching campaigns on the dashboard', () => {
   });
 });
 
-describe('playing a campaign', () => {
-  it('plays the campaign from its page on this device, marks it on the dashboard, and stops', async () => {
+describe('a played campaign', () => {
+  it('is played only from its online table: its page has no Play, and the page and card mark it while its table is open', async () => {
     const { app } = await renderDashboard([{ id: 'a', name: 'Cairn', createdAt: 1 }, { id: 'b', name: 'Dolmenwood', createdAt: 2 }]);
     const play = CampaignPlay.forApp(app);
     fireEvent.click(screen.getByRole('button', { name: /Cairn/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Play' }));
-    expect(play.playing()).toBe('a');
-    expect(screen.getByText('Playing')).toBeTruthy();
-    expect(app.loadLocalStorage('atlas-vtt:playing-campaign')).toBe('a');
+    await screen.findByRole('button', { name: 'Delete campaign' });
+    expect(screen.queryByRole('button', { name: 'Play' })).toBeNull();
+    expect(screen.queryByText('Playing')).toBeNull();
 
+    act(() => play.play('a'));
+    expect(screen.getByText('Playing')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Dashboard' }));
     expect(screen.getByRole('button', { name: /Cairn/ }).textContent).toContain('Playing');
     expect(screen.getByRole('button', { name: /Dolmenwood/ }).textContent).not.toContain('Playing');
 
-    fireEvent.click(screen.getByRole('button', { name: /Cairn/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Stop' }));
-    expect(play.playing()).toBeNull();
-    expect(screen.getByRole('button', { name: 'Play' })).toBeTruthy();
+    act(() => play.stop());
+    expect(screen.getByRole('button', { name: /Cairn/ }).textContent).not.toContain('Playing');
   });
 
   it('ends the play at once when the GM deletes the campaign being played', async () => {
     const { app, storage } = await renderDashboard([{ id: 'a', name: 'Cairn', createdAt: 1 }]);
     const play = CampaignPlay.forApp(app);
+    act(() => play.play('a'));
     fireEvent.click(screen.getByRole('button', { name: /Cairn/ }));
-    fireEvent.click(await screen.findByRole('button', { name: 'Play' }));
     dialogs.confirmAction.mockResolvedValueOnce(true);
-    fireEvent.click(screen.getByRole('button', { name: 'Delete campaign' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete campaign' }));
     await waitFor(() => expect(storage.current()).toHaveLength(0));
     expect(play.playing()).toBeNull();
-  });
-
-  it('cannot play a campaign a newer Atlas saved', async () => {
-    await renderDashboard([{ id: 'a', name: 'Cairn', createdAt: 1, format: 2 }]);
-    fireEvent.click(screen.getByRole('button', { name: /Cairn/ }));
-    expect(((await screen.findByRole('button', { name: 'Play' })) as HTMLButtonElement).disabled).toBe(true);
   });
 });
 

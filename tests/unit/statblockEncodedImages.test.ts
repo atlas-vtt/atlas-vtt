@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { localImage, statblockImportCandidate, statblockLookup } from '../../src/app/services/statblockImportCandidates';

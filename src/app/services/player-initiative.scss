@@ -24,6 +24,12 @@
   font-variant-numeric: tabular-nums;
   -webkit-app-region: no-drag;
 
+  // The GM docked the lists at the left edge
+  &--left {
+    right: auto;
+    left: $spacing-m;
+  }
+
   &__list {
     display: flex;
     flex-direction: column;
@@ -40,11 +46,49 @@
     gap: $spacing-s;
   }
 
+  // Where the list runs on into the next round: the round's name between two hairlines
+  &__next-round {
+    display: flex;
+    align-items: center;
+    gap: $spacing-xs;
+    color: var(--text-muted);
+
+    &::before,
+    &::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--background-modifier-border);
+    }
+  }
+
+  &__next-round-label {
+    font-size: $font-ui-smaller;
+    font-weight: $font-weight-semibold;
+    white-space: nowrap;
+  }
+
   &__side-label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: $spacing-xs;
     text-align: center;
     color: var(--text-muted);
     font-size: $font-ui-smaller;
     font-weight: $font-weight-semibold;
+    overflow-wrap: anywhere;
+  }
+
+  // This round's roll of a side, where the sides roll for their order
+  &__side-roll {
+    min-width: 16px;
+    padding-inline: $spacing-xs;
+    border-radius: $radius-s;
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+    font-variant-numeric: tabular-nums;
   }
 
   // The side whose turn it is: its name and its combatants take the accent
@@ -58,9 +102,11 @@
   }
 
   &__card {
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
+    flex-shrink: 0;
     gap: $spacing-s;
     padding: $spacing-s;
     background: var(--background-modifier-hover);
@@ -81,6 +127,40 @@
     &--sitting-out {
       opacity: 0.45;
     }
+
+    // Delayed its turn: waits below the order, without the card's fill until it acts
+    &--delayed {
+      background: transparent;
+    }
+
+    // Defeated, as the GM's card shows it: dimmed, with the skull over the portrait
+    &--defeated {
+      opacity: 0.45;
+      filter: grayscale(70%);
+    }
+  }
+
+  &__defeated {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-muted);
+
+    svg {
+      width: $icon-l;
+      height: $icon-l;
+    }
+
+    // Over the portrait, which fills the card's width inside its padding
+    &--over {
+      position: absolute;
+      top: $spacing-s;
+      left: $spacing-s;
+      right: $spacing-s;
+      aspect-ratio: 1;
+      border-radius: 50%;
+      background: rgba(0, 0, 0, 0.6);
+    }
   }
 
   // A token portrait (`createTokenPortrait`): square, with the token's ring
@@ -90,6 +170,46 @@
 
   &__value {
     font-weight: $font-weight-semibold;
+  }
+
+  // The card dealt in a fight by cards: a small playing card where the number stands otherwise
+  &__card-dealt {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 26px;
+    border: $border-width-s solid var(--background-modifier-border);
+    border-radius: $radius-s;
+    background: var(--background-primary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  // The number the token's badge shows the players, in the same place and look as on the GM's card
+  &__badge {
+    position: absolute;
+    bottom: -2px;
+    left: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 $spacing-xs;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9px;
+    background: #000;
+    border: 1.5px solid #555;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1;
+    z-index: 2;
+  }
+
+  // Without a portrait it stands in the card's column, above the number
+  &__card > &__badge {
+    position: static;
   }
 
   &__name {
@@ -103,6 +223,19 @@
     width: 100%;
     height: $spacing-xs;
     accent-color: var(--color-green);
+  }
+
+  // The conditions the map shows players on the token, as the GM's card draws them
+  &__conditions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: $spacing-xs;
+    width: 100%;
+  }
+
+  &__condition {
+    display: flex;
   }
 
   &__round {

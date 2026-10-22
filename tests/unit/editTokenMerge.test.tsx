@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { CreatureIndex } from '../../src/app/creatures/CreatureIndex';
@@ -10,7 +11,6 @@ import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFa
 import type { Character } from '../../src/app/types';
 import { creatureVault, type CreatureVault } from '../mocks/creatureVault';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
-import { withDynamicLighting } from '../mocks/experimentalFeatures';
 import { AMMO, HP } from '../mocks/resourceFixtures';
 
 const darkvision = senseWithRole(GENERIC_SENSES, 'darkvision');
@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 function open(overrides: Partial<Character> = {}): { store: ViewAtlasStore; saved: () => Character; input: (label: string) => HTMLInputElement } {
-  const app = withDynamicLighting(createInMemoryApp({ files: {} }).app);
+  const { app } = createInMemoryApp({ files: {} });
   const store = createViewAtlasStore(app, `edit-token-merge-${Math.random()}`);
   const token: Character = { id: 't', kind: 'character', name: 'Gunner', imagePath: 't.png', x: 0, y: 0, ...overrides };
   store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
@@ -159,7 +159,6 @@ describe('Edit Token for a token that follows its statblock', () => {
 
   function openLinked(overrides: Partial<Character> = {}): { saved: () => Character; input: (label: string) => HTMLInputElement } {
     current = creatureVault();
-    withDynamicLighting(current.app);
     Object.assign(current.frontmatter[GOBLIN]!, { senses: 'darkvision 60 ft., passive Perception 9', hp: 7 });
     const store = createViewAtlasStore(current.app, `edit-token-linked-${Math.random()}`);
     const token: Character = { id: 't', kind: 'character', name: 'Goblin', imagePath: 't.png', x: 0, y: 0, statblockPath: GOBLIN, vision: { enabled: true }, resources: { hp: { current: 3, max: 7 } }, ...overrides };

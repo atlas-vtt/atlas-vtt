@@ -41,6 +41,7 @@ import type { LightingQualitySource } from '../../lighting/lightingQuality';
 import { glideWayIsClear } from '../../lighting/glideWay';
 import type { ShownPlaces } from '../../lighting/shownPlaces';
 import { followShownPlaces } from '../../lighting/shownTokens';
+import { mapTokens } from '../../tokens/offMap';
 
 export interface LightingControllerDeps {
   viewport: Viewport;
@@ -90,7 +91,7 @@ export class LightingController {
   private readonly rules: SightRulesWatch;
   /**
    * Every part exists. The lighting view builds a scene that is already loaded while it is
-   * constructed (lighting switched on for an open map) and reports its sight then, before the
+   * constructed (the view's renderer started on a loaded map) and reports its sight then, before the
    * door badges and the sight aids are there: that report is made up for once they are.
    */
   private constructed = false;
@@ -196,7 +197,7 @@ export class LightingController {
   /** How the players perceive each token, for their frame and for session view; sight hides nothing in an unlit scene. */
   playerSight(): TokenPerception | undefined {
     const state = this.deps.store.getState();
-    return playerTokenSight(this.renderer, state.objects.tokens, { conditions: this.sightRules().conditions, held: heldForSight(state) }, this.perceptions);
+    return playerTokenSight(this.renderer, mapTokens(state.objects), { conditions: this.sightRules().conditions, held: heldForSight(state) }, this.perceptions);
   }
 
   /** The senses and conditions of the map's collection, and how each token perceives. */
@@ -278,7 +279,7 @@ export class LightingController {
   private listen(): void {
     const { eventBus, store, obsApp, viewId } = this.deps;
     this.cleanups.push(() => this.rules.destroy(), ...listenToLightingSceneEvents({
-      eventBus, obsApp, viewId,
+      eventBus, obsApp, viewId, canvas: this.deps.app.canvas,
       resetExplored: () => this.renderer.resetExplored(),
       revealExplored: () => this.renderer.editExplored({ mode: 'reveal', area: 'everything' }),
       peek: (held) => {
@@ -300,14 +301,6 @@ export class LightingController {
   private beforeMapUnload(): void {
     this.editor.cancelDrawing();
     this.renderer.beforeMapUnload();
-  }
-
-  /** Taken off a map that stays open: what is being edited ends and what is pending is saved, as before an unload. */
-  remove(): void {
-    this.stopEditing();
-    this.beforeMapUnload();
-    this.destroy();
-    this.tokens?.clearLighting();
   }
 
   destroy(): void {

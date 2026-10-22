@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { Container, Point, type PointData } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { expect, it } from 'vitest';

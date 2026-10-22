@@ -23,6 +23,7 @@ import { isRecord } from '../utils/guards';
 import { groupLegacyTags, hasAssetTag, tagGroupOf, tagKey, type TagGroup } from './tagGroups';
 import { t } from '../i18n';
 import { trashVaultItem } from '../utils/trashVaultItem';
+import { encounterThumbnailFile } from '../encounters/encounterThumbnailFile';
 import { LibrarySync } from './library/LibrarySync';
 import type { LibraryMergeResult } from './library/mergeLibraryChanges';
 import { LEGACY_INDEX_FILE, LIBRARY_FILE, recordFilePath } from './library/libraryPaths';
@@ -1165,12 +1166,28 @@ export class AssetService {
       this.removeTokenReferencesFromGroups(asset.id);
       await this.trashFileIfPresent(asset.thumbnailPath);
     }
+    if (asset.type === 'encounter') await this.trashEncounterThumbnail(asset);
 
     // Remove from metadata
     delete this.metadata!.assets[id];
     await this.saveMetadata();
 
     await this.deleteEmptiedGroups(emptiedGroups);
+  }
+
+  /** An encounter's thumbnail goes with it, unless another encounter (a copy) still shows the same file. */
+  private async trashEncounterThumbnail(encounter: EncounterAsset): Promise<void> {
+    const url = encounter.thumbnailUrl;
+    if (!url) return;
+    const shared = Object.values(this.metadata!.assets)
+      .some((other) => other.id !== encounter.id && other.type === 'encounter' && other.thumbnailUrl === url);
+    const file = shared ? null : encounterThumbnailFile(this.app, url);
+    if (!file) return;
+    try {
+      await trashVaultItem(this.app, file);
+    } catch (error) {
+      console.error('[AssetService] Error deleting encounter thumbnail:', error);
+    }
   }
 
   private async trashFileIfPresent(path: string | undefined): Promise<void> {

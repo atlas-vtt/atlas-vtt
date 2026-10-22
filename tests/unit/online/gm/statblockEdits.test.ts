@@ -1,4 +1,3 @@
-// @vitest-environment node
 import { describe, expect, it } from 'vitest';
 import { checkAbilityEdit } from '../../../../src/app/online/gm/book/abilityEdit.ts';
 import { checkFieldEdit } from '../../../../src/app/online/gm/book/fieldEdit.ts';

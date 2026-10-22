@@ -38,7 +38,7 @@ export interface SceneBindingPorts {
   readonly seats: SeatSource;
   send(body: GmMessage, to?: string): void;
   /** Sends a live message to all ahead of other frames; a newer one of the same key replaces it while it waits. */
-  sendLive(body: GmMessage, key: string): void;
+  sendLive(body: GmMessage, key: string, to?: string): void;
   readImage(path: string): Promise<VaultImage | null>;
   /** Whether the binding is still the table's and its tab the same objects. */
   isLive(binding: SceneBinding): boolean;
@@ -106,7 +106,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     readImage: (path) => ports.readImage(path),
     scaleImage: scaleInWindow,
     send: (body, to) => live() && ports.send(body, to),
-    sendLive: (body, key) => live() && ports.sendLive(body, key),
+    sendLive: (body, key, to) => live() && ports.sendLive(body, key, to),
     drawnPlaces: (tokenIds) => drawnTokenPlaces(shownRenderer(), tokenIds),
     notice: (text) => live() && showNotice(text),
     seats: ports.seats,

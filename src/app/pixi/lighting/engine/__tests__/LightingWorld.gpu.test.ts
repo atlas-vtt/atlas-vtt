@@ -5,7 +5,7 @@ import { LightingWorld } from '../LightingWorld';
 import { LIGHTING_QUALITY } from '../../../../lighting/lightingQuality';
 import type { DrawnLight } from '../LightMap';
 import type { EngineLight } from '../types';
-import { createTestRenderer } from './gpuTestUtils';
+import { createTestRenderer, readFloats } from './gpuTestUtils';
 
 const torch: EngineLight = { key: 'torch', x: 300, y: 300, bright: 60, dim: 120, flame: 10, color: [1, 0.8, 0.6], intensity: 1, animation: 'torch' };
 const START = 10_000;
@@ -128,7 +128,38 @@ describe('LightingWorld.animate', () => {
     cleanup.push(() => balanced.destroy());
     expect(balanced.cascades).not.toBeNull();
     expect(balanced.fits(LIGHTING_QUALITY.balanced)).toBe(true);
-    expect(balanced.fits(LIGHTING_QUALITY.high)).toBe(true);
+    expect(balanced.fits({ ...LIGHTING_QUALITY.high, tileRays: LIGHTING_QUALITY.balanced.tileRays })).toBe(true);
+    // The same texel and bounce, but its tiles were traced with fewer rays.
+    expect(balanced.fits(LIGHTING_QUALITY.high)).toBe(false);
     expect(balanced.fits(LIGHTING_QUALITY.saver)).toBe(false);
   });
+});
+
+describe('a paced LightingWorld', () => {
+  it('builds a scene too large for one batch over several frames, to the light map built at once', async () => {
+    const renderer = await createTestRenderer(64);
+    const bounds = { width: 4096, height: 4096 };
+    const paced = new LightingWorld(renderer, bounds, LIGHTING_QUALITY.saver, true);
+    const atOnce = new LightingWorld(renderer, bounds, LIGHTING_QUALITY.saver);
+    try {
+      const walls = [{ id: 'w', kind: 'wall' as const, type: 'solid' as const, p1: { x: 1000, y: 600 }, p2: { x: 1000, y: 3400 } }];
+      const lights = Array.from({ length: 12 }, (_, i): EngineLight => ({ ...torch, key: `l${i}`, x: 500 + (i % 4) * 1000, y: 700 + Math.floor(i / 4) * 1200, bright: 300, dim: 600, flame: 70, animation: 'none' }));
+      paced.update(walls, lights, null);
+      expect(paced.busy()).toBe(true);
+      let frames = 0;
+      while (paced.busy() && frames < 2000) {
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        paced.animate(performance.now());
+        frames++;
+      }
+      expect(paced.busy()).toBe(false);
+      expect(frames).toBeGreaterThan(1);
+      atOnce.update(walls, lights, null);
+      expect(Array.from(readFloats(renderer, paced.lightMap.texture))).toEqual(Array.from(readFloats(renderer, atOnce.lightMap.texture)));
+    } finally {
+      atOnce.destroy();
+      paced.destroy();
+      renderer.destroy();
+    }
+  }, 120_000);
 });

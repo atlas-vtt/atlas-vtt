@@ -46,8 +46,8 @@ class ModeLayer implements HideableLayer {
  * The engine's view is replaced when it reports itself unavailable: `failed` (its shaders do
  * not compile here, or a pass threw) for the rest of this view's life, `unfinished` (its last
  * attempt on this map never drew a frame, so it may have crashed the graphics process) until
- * the GM switches dynamic lighting off, which forgets that attempt and brings the engine back.
- * A map load brings the engine back too, but forgets nothing: every load passes through
+ * the GM switches the scene's dynamic lighting off, which forgets that attempt and brings the
+ * engine back. A map load brings the engine back too, but forgets nothing: every load passes through
  * lighting off, and the engine's attempt on the map that arrives decides again.
  */
 export class LightingViewHost implements SceneLightingView {
