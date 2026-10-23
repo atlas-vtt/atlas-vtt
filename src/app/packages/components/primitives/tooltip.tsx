@@ -62,8 +62,14 @@ interface LabelTooltipProps {
 function LabelTooltip({ label, side = "top", describe = false, multiline = false, suppressed = false, children }: LabelTooltipProps): React.ReactElement {
   const labelId = React.useId()
   const hasProvider = React.useContext(ProviderMounted)
+  const [open, setOpen] = React.useState(false)
+  React.useEffect(() => {
+    if (suppressed) setOpen(false)
+  }, [suppressed])
   const tooltip = (
-    <Tooltip {...(suppressed ? { open: false } : {})}>
+    <Tooltip open={open && !suppressed} onOpenChange={(nextOpen) => {
+      if (!suppressed) setOpen(nextOpen)
+    }}>
       <TooltipTrigger asChild {...(describe ? { "aria-describedby": labelId } : { "aria-labelledby": labelId })}>{children}</TooltipTrigger>
       <span id={labelId} hidden>{label}</span>
       <TooltipContent side={side} sideOffset={10}>

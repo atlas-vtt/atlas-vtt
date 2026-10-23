@@ -8,6 +8,7 @@ import type { SceneTab } from '../../types/sceneTabTypes';
 import { LabelTooltip, TooltipProvider } from '../../packages/components/primitives/tooltip';
 import './scene-tab-bar.scss';
 import { t } from '../../i18n';
+import { useSceneTabReorder } from './scene-tabs/useSceneTabReorder';
 
 interface SceneTabBarProps {
   onSwitchTab: (tabId: string) => void;
@@ -27,12 +28,13 @@ interface TabActionButtonProps {
   /** When defined the button is a toggle and stays visible while active. */
   isActive?: boolean;
   onClick: () => void;
+  suppressed?: boolean;
 }
 
 /** Icon button inside a tab; keeps its events from activating or closing the tab. */
-function TabActionButton({ icon: Icon, label, isActive, onClick }: TabActionButtonProps): React.ReactElement {
+function TabActionButton({ icon: Icon, label, isActive, onClick, suppressed = false }: TabActionButtonProps): React.ReactElement {
   return (
-    <LabelTooltip side="bottom" label={label}>
+    <LabelTooltip side="bottom" label={label} suppressed={suppressed}>
       <button
         type="button"
         className={cn('atlas-scene-tab__action', isActive && 'atlas-scene-tab__action--active')}
@@ -78,6 +80,7 @@ export function SceneTabBar({ onSwitchTab, onMoveTab, onCloseTab, onAddTab, onPr
     announce(t('tabs.moved', { name: current[position]!.displayName, position: position + 1, total: current.length }));
     return true;
   };
+  const reorder = useSceneTabReorder({ strip, store, onMoveTab: moveTab, announce });
 
   if (tabs.length === 0) return null;
 
@@ -88,6 +91,7 @@ export function SceneTabBar({ onSwitchTab, onMoveTab, onCloseTab, onAddTab, onPr
         <span className="atlas-scene-tab-bar__sr" role="status" aria-live="polite" aria-atomic="true">{announcement}</span>
         <div
           ref={setStrip}
+          onClickCapture={reorder.onClickCapture}
           role="tablist"
           aria-label={t('tabs.openMaps')}
           className={cn(
@@ -113,7 +117,8 @@ export function SceneTabBar({ onSwitchTab, onMoveTab, onCloseTab, onAddTab, onPr
                 aria-selected={isActive}
                 aria-describedby={instructionsId}
                 tabIndex={0}
-                className={`atlas-scene-tab ${stateClass}`}
+                className={cn('atlas-scene-tab', stateClass, reorder.draggedId === tab.id && 'atlas-scene-tab--dragging')}
+                onPointerDown={(e) => reorder.press(e, tab.id)}
                 onClick={() => onSwitchTab(tab.id)}
                 onKeyDown={(e) => {
                   if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
@@ -139,18 +144,22 @@ export function SceneTabBar({ onSwitchTab, onMoveTab, onCloseTab, onAddTab, onPr
                 {/* Show and close sit at opposite ends, so one is never clicked for the other */}
                 <TabActionButton
                   icon={Eye}
+                  suppressed={!!reorder.draggedId}
                   label={t(isPresented ? 'tabs.shown' : 'tabs.show', { name: tab.displayName })}
                   isActive={isPresented}
                   onClick={() => onPresentTab(tab.id)}
                 />
-                <LabelTooltip side="bottom" label={tab.filePath}>
+                <LabelTooltip side="bottom" label={tab.filePath} suppressed={!!reorder.draggedId}>
                   <span className="atlas-scene-tab__name">{tab.displayName}</span>
                 </LabelTooltip>
                 {tab.isDirty && <span className="atlas-scene-tab__dirty" />}
-                <TabActionButton icon={X} label={t('tabs.close', { name: tab.displayName })} onClick={() => onCloseTab(tab.id)} />
+                <TabActionButton icon={X} suppressed={!!reorder.draggedId} label={t('tabs.close', { name: tab.displayName })} onClick={() => onCloseTab(tab.id)} />
               </div>
             );
           })}
+          {reorder.indicatorLeft !== null && (
+            <div className="atlas-scene-tab-bar__insertion" aria-hidden="true" style={{ left: reorder.indicatorLeft }} />
+          )}
         </div>
         {overflows && (
           <LabelTooltip side="bottom" label={t('tabs.allOpen')}>

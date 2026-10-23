@@ -39,6 +39,8 @@ $tab-fade: 24px;
   --atlas-tab-fade-start: 0px;
   --atlas-tab-fade-end: 0px;
 
+  position: relative;
+
   flex: 0 1 auto;
   min-width: 0;
   display: flex;
@@ -75,6 +77,22 @@ $tab-fade: 24px;
   }
 }
 
+.atlas-scene-tab-bar__insertion {
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  width: 2px;
+  transform: translateX(-1px);
+  background: var(--text-accent);
+  pointer-events: none;
+}
+
+body.atlas-toolbar-grabbing .atlas-scene-tab {
+  &, & * {
+    cursor: grabbing;
+  }
+}
+
 .atlas-scene-tab {
   display: flex;
   align-items: center;
@@ -85,6 +103,8 @@ $tab-fade: 24px;
   @include atlas-corner-shape;
   border: none;
   cursor: pointer;
+  // Labels are controls: text selection can otherwise become a native HTML drag.
+  user-select: none;
   background: transparent;
   color: var(--text-muted);
   font-size: 12px;
@@ -112,6 +132,10 @@ $tab-fade: 24px;
 
   &--sleeping {
     opacity: 0.5;
+  }
+
+  &--dragging {
+    opacity: 0.35;
   }
 
   &__name {

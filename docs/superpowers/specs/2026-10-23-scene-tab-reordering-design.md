@@ -1,6 +1,6 @@
 # Scene tab reordering
 
-Status: the user approved the implementation plan and authorized execution on 2026-10-23.
+Status: implemented and automatically verified on 2026-10-23; native Obsidian test-vault acceptance remains pending.
 
 ## Intent and boundaries
 
@@ -41,7 +41,7 @@ This is a bounded UI change with two implementation tasks: persistent ordering a
 
 - `tabMetaStore.ts`: the move action; `atlas-view.ts`: the save-layout wrapper; `UIRoot.tsx`: wire it to a new required `SceneTabBar.onMoveTab` callback.
 - `SceneTabBar.tsx` and `scene-tab-bar.scss`: keyboard reordering, accessible feedback, tab-ID attributes, drag appearance and an absolutely positioned insertion line that does not affect flex sizing.
-- `react/hooks/useSceneTabReorder.ts`: own the pointer session, current target, cancellation, incidental-click guard, and bounded edge-scroll loop. Use the tab strip's owner document/window for popouts, never the global document/window.
+- `react/components/scene-tabs/useSceneTabReorder.ts` and `sceneTabDragClick.ts`: own the pointer session, current target, cancellation, incidental-click guard, and bounded edge-scroll loop. Use the tab strip's owner document/window for popouts, never the global document/window.
 - `react/components/scene-tabs/sceneTabDropTarget.ts`: compute the ID-based insertion target and content-coordinate line position from the current resting tab rectangles, excluding the source. Treat coordinates outside the visible strip or a missing source as invalid.
 - English UI copy goes through the existing translation catalog; other locales fall back normally. Keep new implementation files under roughly 300 lines and reuse existing geometry/motion conventions where appropriate.
 
