@@ -310,6 +310,13 @@ export class AtlasView extends FileView {
 
   // --- Tab Management ---
 
+  /** Changes only workspace tab order; the active and presented scenes stay put. */
+  public moveSceneTab(tabId: string, beforeTabId: string | null): boolean {
+    if (!this.tabMetaStore.getState().moveTab(tabId, beforeTabId)) return false;
+    this.app.workspace.requestSaveLayout();
+    return true;
+  }
+
   /**
    * Switch to a specific tab by ID.
    * Flushes pending saves, resolves the file, and loads the scene.
