@@ -9,6 +9,16 @@ $tab-min-width: 112px;
 // Fades the strip's edges where tabs are cut off.
 $tab-fade: 24px;
 
+.atlas-scene-tab-bar__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .atlas-scene-tab-bar {
   flex: 0 1 auto;
   min-width: 0;

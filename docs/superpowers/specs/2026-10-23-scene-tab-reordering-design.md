@@ -1,6 +1,6 @@
 # Scene tab reordering
 
-Status: scoped with the user on 2026-10-23; the user confirmed persistence and requested an implementation plan. The precise implementation defaults below are proposed engineering choices for review.
+Status: the user approved the implementation plan and authorized execution on 2026-10-23.
 
 ## Intent and boundaries
 

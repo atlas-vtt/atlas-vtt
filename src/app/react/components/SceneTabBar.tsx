@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useId, useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown, Eye, Plus, X } from 'lucide-react';
 import { useStore } from 'zustand';
 import { cn } from '../../../utils/cn';
@@ -11,6 +11,7 @@ import { t } from '../../i18n';
 
 interface SceneTabBarProps {
   onSwitchTab: (tabId: string) => void;
+  onMoveTab: (tabId: string, beforeTabId: string | null) => boolean;
   onCloseTab: (tabId: string) => void;
   onAddTab: () => void;
   onPresentTab: (tabId: string) => void;
@@ -49,19 +50,42 @@ function TabActionButton({ icon: Icon, label, isActive, onClick }: TabActionButt
   );
 }
 
-export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, presentedTabId = null, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
+export function SceneTabBar({ onSwitchTab, onMoveTab, onCloseTab, onAddTab, onPresentTab, presentedTabId = null, onShowAllTabs }: SceneTabBarProps): React.ReactElement | null {
   const store = useSceneTabStore();
 
   const tabs = useStore(store, (s) => s.tabs);
   const activeTabId = useStore(store, (s) => s.activeTabId);
   const [strip, setStrip] = useState<HTMLDivElement | null>(null);
+  const instructionsId = useId();
+  const [announcement, announce] = useState('');
+  const pendingFocus = useRef<string | null>(null);
   const { overflows, hiddenBefore, hiddenAfter } = useTabStripOverflow(strip, activeTabId);
+
+  useLayoutEffect(() => {
+    const id = pendingFocus.current;
+    pendingFocus.current = null;
+    if (!id || !strip) return;
+    const element = Array.from(strip.querySelectorAll<HTMLElement>('[data-scene-tab-id]')).find((tab) => tab.dataset.sceneTabId === id);
+    element?.focus({ preventScroll: true });
+    element?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'auto' });
+  }, [tabs, strip]);
+
+  const moveTab = (tabId: string, beforeTabId: string | null): boolean => {
+    pendingFocus.current = tabId;
+    if (!onMoveTab(tabId, beforeTabId)) { pendingFocus.current = null; return false; }
+    const current = store.getState().tabs;
+    const position = current.findIndex((tab) => tab.id === tabId);
+    announce(t('tabs.moved', { name: current[position]!.displayName, position: position + 1, total: current.length }));
+    return true;
+  };
 
   if (tabs.length === 0) return null;
 
   return (
     <TooltipProvider delayDuration={300}>
       <div className="atlas-scene-tab-bar">
+        <span className="atlas-scene-tab-bar__sr" id={instructionsId}>{t('tabs.reorderInstructions')}</span>
+        <span className="atlas-scene-tab-bar__sr" role="status" aria-live="polite" aria-atomic="true">{announcement}</span>
         <div
           ref={setStrip}
           role="tablist"
@@ -84,12 +108,22 @@ export function SceneTabBar({ onSwitchTab, onCloseTab, onAddTab, onPresentTab, p
             return (
               <div
                 key={tab.id}
+                data-scene-tab-id={tab.id}
                 role="tab"
                 aria-selected={isActive}
+                aria-describedby={instructionsId}
                 tabIndex={0}
                 className={`atlas-scene-tab ${stateClass}`}
                 onClick={() => onSwitchTab(tab.id)}
                 onKeyDown={(e) => {
+                  if (e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const index = tabs.findIndex((entry) => entry.id === tab.id);
+                    const target = index + (e.key === 'ArrowLeft' ? -1 : 1);
+                    if (target >= 0 && target < tabs.length) moveTab(tab.id, e.key === 'ArrowLeft' ? tabs[target]!.id : tabs[target + 1]?.id ?? null);
+                    return;
+                  }
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     onSwitchTab(tab.id);

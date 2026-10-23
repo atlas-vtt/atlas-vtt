@@ -27,7 +27,7 @@ function setup() {
   const onShowAllTabs = vi.fn();
   const value = { app: {}, view: { viewId: 'map', tabMetaStore }, pixiApp: null, renderer: null } as never;
   render(<AtlasUIContext.Provider value={value}>
-    <SceneTabBar onSwitchTab={vi.fn()} onCloseTab={vi.fn()} onAddTab={vi.fn()} onPresentTab={vi.fn()} onShowAllTabs={onShowAllTabs} />
+    <SceneTabBar onMoveTab={(id, before) => tabMetaStore.getState().moveTab(id, before)} onSwitchTab={vi.fn()} onCloseTab={vi.fn()} onAddTab={vi.fn()} onPresentTab={vi.fn()} onShowAllTabs={onShowAllTabs} />
   </AtlasUIContext.Provider>);
   const strip = screen.getByRole('tablist');
   /** Gives the strip the layout jsdom lacks and lets the bar measure it. */

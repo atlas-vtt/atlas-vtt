@@ -30,7 +30,7 @@ function setup() {
     fireEvent.keyDown(window, { key: 'g' });
     return screen.getByRole('combobox') as HTMLInputElement;
   };
-  return { ids, onSwitchTab, onPresentTab, open };
+  return { ids, tabMetaStore, onSwitchTab, onPresentTab, open };
 }
 
 it('opens on the hotkey and switches by number', () => {
@@ -40,6 +40,19 @@ it('opens on the hotkey and switches by number', () => {
   expect(screen.getAllByRole('option').map(o => o.textContent)).toEqual(['1TavernCurrent', '2Crystal Caves', '3Cave Entrance']);
   fireEvent.keyDown(input, { key: '2' });
   expect(onSwitchTab).toHaveBeenCalledWith(ids[1]);
+  expect(screen.queryByRole('dialog')).toBeNull();
+});
+
+it('uses the reordered tabs for an empty query and its digit shortcuts', () => {
+  const { ids, tabMetaStore, onSwitchTab, open } = setup();
+  act(() => { tabMetaStore.getState().moveTab(ids[2]!, ids[0]!); });
+  const input = open();
+  expect(screen.getAllByRole('option').map((option) => option.textContent)).toEqual(['1Cave Entrance', '2TavernCurrent', '3Crystal Caves']);
+
+  fireEvent.keyDown(input, { key: '1' });
+
+  expect(onSwitchTab).toHaveBeenCalledExactlyOnceWith(ids[2]);
+  expect(tabMetaStore.getState().activeTabId).toBe(ids[0]);
   expect(screen.queryByRole('dialog')).toBeNull();
 });
 
