@@ -1,7 +1,7 @@
 import { Graphics, RenderTexture, type WebGLRenderer } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { WallSegment } from '../../../../types/wallTypes';
-import { computeSight } from '../../../../vision/sight';
+import { computeSight, SEES_ALL } from '../../../../vision/sight';
 import { LightingEngine } from '../LightingEngine';
 import type { LightingMode } from '../compositeFilter';
 import type { EngineLight, EngineScene } from '../types';
@@ -49,6 +49,10 @@ const DEFAULTS: MemoryOptions = { exploredMemory: true, exploredColor: '#ffffff'
 const REMEMBERED = [25, 25] as const;
 const UNEXPLORED = [225, 225] as const;
 const SEEN = [195, 75] as const;
+/** Screen point at the centre of light a (world 250, 750). */
+const LIT = [62, 187] as const;
+/** Screen point in light a's dim range (world 250, 850): the map lies darker there than the fog map. */
+const LIT_DIM = [62, 212] as const;
 
 /** FNV-1a over every channel of the render. */
 function hashOf(at: PixelReader): string {
@@ -59,6 +63,18 @@ function hashOf(at: PixelReader): string {
     }
   }
   return (hash >>> 0).toString(16).padStart(8, '0');
+}
+
+/** The largest difference of a channel between two renders. */
+function largestDifference(a: PixelReader, b: PixelReader): number {
+  let largest = 0;
+  for (let y = 0; y < SIZE; y++) {
+    for (let x = 0; x < SIZE; x++) {
+      const other = b(x, y);
+      a(x, y).forEach((channel, i) => { largest = Math.max(largest, Math.abs(channel - other[i]!)); });
+    }
+  }
+  return largest;
 }
 
 function expectColour(pixel: readonly [number, number, number], hex: number): void {
@@ -137,6 +153,84 @@ describe('explored memory in the composite', () => {
     const at = await render('player', { exploredMemory: false, unexploredColor: '#336699' });
     expectColour(at(...REMEMBERED), 0x336699);
     expectColour((await render('player', { exploredMemory: false }))(...REMEMBERED), 0x000000);
+  });
+
+  /** A fog map over the whole map: `color` where it is drawn, transparent elsewhere. */
+  async function renderWithFogMap(mode: LightingMode, draw: (g: Graphics) => Graphics, options: MemoryOptions & Partial<EngineScene> = {}): Promise<PixelReader> {
+    const renderer = await createTestRenderer(SIZE);
+    cleanup.push(() => renderer.destroy());
+    const fog = RenderTexture.create({ width: MAP / 4, height: MAP / 4 });
+    const g = draw(new Graphics());
+    renderer.render({ container: g, target: fog, clear: true, clearColor: [0, 0, 0, 0] });
+    g.destroy();
+    cleanup.push(() => fog.destroy(true));
+    const explored = exploredLeftHalf(renderer);
+    cleanup.push(() => explored.destroy(true));
+    const engine = new LightingEngine(renderer);
+    cleanup.push(() => engine.destroy());
+    engine.setEnabled(true);
+    engine.setMode(mode);
+    engine.setExplored(explored);
+    engine.update(scene({ ...options, unexploredTexture: fog }));
+    engine.flush();
+    return renderThroughEngine(engine, renderer, camera);
+  }
+
+  it('shows the fog map over never-seen areas, and the unexplored colour where it is transparent', async () => {
+    // The fog map's right half is drawn, its left half is transparent.
+    const rightHalf = (g: Graphics): Graphics => g.rect(MAP / 8, 0, MAP / 8, MAP / 4).fill({ color: 0xcc6633 });
+    const at = await renderWithFogMap('player', rightHalf, { exploredMemory: false, unexploredColor: '#336699' });
+    expectColour(at(...UNEXPLORED), 0xcc6633);
+    expectColour(at(...REMEMBERED), 0x336699);
+  });
+
+  it('fills the dark with the fog map where no token has vision, and leaves lit places and the GM view as they were', async () => {
+    const whole = (g: Graphics): Graphics => g.rect(0, 0, MAP / 4, MAP / 4).fill({ color: 0xeeeeee });
+    const noVision: Partial<EngineScene> = { sight: SEES_ALL, ambient: 0 };
+    const fogged = await renderWithFogMap('player', whole, noVision);
+    const plain = await render('player', noVision);
+    // Far from both lights: pitch dark without the fog map, the fog map with it.
+    expectColour(plain(...UNEXPLORED), 0x000000);
+    expectColour(fogged(...UNEXPLORED), 0xeeeeee);
+    // Wherever a light shows the map, it shows as the light shows it: no pale fog shines through.
+    expect(fogged(...LIT)).toEqual(plain(...LIT));
+    expect(fogged(...LIT_DIM)).toEqual(plain(...LIT_DIM));
+    expect(hashOf(await renderWithFogMap('gm', whole, noVision))).toBe(hashOf(await render('gm', noVision)));
+  });
+
+  it('shows the unexplored colour, not the edge of the fog map drawn out, beyond the map', async () => {
+    const whole = (g: Graphics): Graphics => g.rect(0, 0, MAP / 4, MAP / 4).fill({ color: 0xeeeeee });
+    // The camera shows the map's right half and as much again beyond its edge.
+    const beyond = { ...camera, x: -MAP / 2 * camera.scale };
+    const renderer = await createTestRenderer(SIZE);
+    cleanup.push(() => renderer.destroy());
+    const fog = RenderTexture.create({ width: MAP / 4, height: MAP / 4 });
+    const g = whole(new Graphics());
+    renderer.render({ container: g, target: fog, clear: true, clearColor: [0, 0, 0, 0] });
+    g.destroy();
+    cleanup.push(() => fog.destroy(true));
+    const engine = new LightingEngine(renderer);
+    cleanup.push(() => engine.destroy());
+    engine.setEnabled(true);
+    engine.setMode('player');
+    engine.update(scene({ exploredMemory: false, unexploredColor: '#336699', unexploredTexture: fog, sight: SEES_ALL, ambient: 0, lights: [] }));
+    engine.flush();
+    const at = await renderThroughEngine(engine, renderer, beyond);
+    expectColour(at(SIZE / 4, SIZE / 2), 0xeeeeee);
+    // Where the composite reaches past the map (its sight layers may), never the fog map's edge.
+    const [r, g2, b] = at(SIZE * 3 / 4, SIZE / 2);
+    expect(r + g2 + b).toBeLessThan(3 * 0xee - 60);
+  });
+
+  it('fades the map a light reveals into the fog map inside its edge, and leaves its centre as it was', async () => {
+    const whole = (g: Graphics): Graphics => g.rect(0, 0, MAP / 4, MAP / 4).fill({ color: 0xeeeeee });
+    const noVision: Partial<EngineScene> = { sight: SEES_ALL, ambient: 0 };
+    const hard = await renderWithFogMap('player', whole, noVision);
+    const soft = await renderWithFogMap('player', whole, { ...noVision, unexploredSoftness: 60 });
+    expect(soft(...LIT)).toEqual(hard(...LIT));
+    // Near the dim edge (world 250, 900, 10 px inside it) the soft fade shows more of the pale fog map.
+    const sum = (pixel: readonly number[]): number => pixel.reduce((total, channel) => total + channel, 0);
+    expect(sum(soft(62, 225))).toBeGreaterThan(sum(hard(62, 225)) + 30);
   });
 
   it('leaves what tokens see and the GM view as they were', async () => {

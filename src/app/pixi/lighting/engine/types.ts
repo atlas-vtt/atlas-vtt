@@ -52,6 +52,10 @@ export interface EngineScene extends Pick<SceneLighting, 'ambientColor' | 'explo
   bounds: MapBounds;
   /** The map image; bounce reads its colours (mid grey without one). */
   albedo: Texture | null;
+  /** The fog map the players see over never-seen areas (`SceneLighting.unexploredImage`), covering the map like the albedo; none shows the unexplored colour. */
+  unexploredTexture?: Texture | null;
+  /** Width in world pixels of the fade from the map a light reveals into the fog map; unset is none. */
+  unexploredSoftness?: number;
   /** Sealed walls: the drawn walls followed by the bridges that close their joints (`sealedWalls`). */
   walls: readonly WallSegment[];
   lights: readonly EngineLight[];

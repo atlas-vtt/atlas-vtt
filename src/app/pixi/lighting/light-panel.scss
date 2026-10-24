@@ -88,6 +88,14 @@
   @include atlas-field-label;
 }
 
+// The button naming a scene's fog map takes the row's room; a long file name is cut short.
+.atlas-light-panel__image {
+  @include atlas-truncate;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-start;
+}
+
 // A label with its control at the row's end: a colour and the button that unsets it.
 .atlas-light-panel__choice {
   @include atlas-flex-row($spacing-s);

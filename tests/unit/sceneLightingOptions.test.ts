@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { brightThresholdOf, clampLitThreshold, darkSightLookOf, gmPictureDiffers, darkSightTintOf, exploredMemoryOn, litThresholdOf, readSceneLighting, sceneLook, sightOnDropOn, tokenVisionOn } from '../../src/app/lighting/sceneLightingOptions';
+import { brightThresholdOf, clampLitThreshold, darkSightLookOf, gmPictureDiffers, darkSightTintOf, exploredMemoryOn, litThresholdOf, readSceneLighting, sceneLook, sightOnDropOn, tokenVisionOn, unexploredImageOf, unexploredSoftnessOf } from '../../src/app/lighting/sceneLightingOptions';
 import type { SceneLighting } from '../../src/app/types/lightingTypes';
 import { DEFAULT_SCENE_LIGHTING } from '../../src/app/types/lightingTypes';
 
@@ -51,6 +51,24 @@ describe('scene lighting options', () => {
     expect(readSceneLighting(undefined)).toEqual(DEFAULT_SCENE_LIGHTING);
     expect(readSceneLighting({ enabled: true, ambientColor: '#AABBCC', exploredColor: 'red', unexploredColor: '#12345' }))
       .toEqual({ ...DEFAULT_SCENE_LIGHTING, enabled: true, ambientColor: '#AABBCC' });
+  });
+
+  it('reads a fog map for never-seen areas only where it names a path, and drops any other when loaded', () => {
+    expect(unexploredImageOf(DEFAULT_SCENE_LIGHTING)).toBeNull();
+    expect(unexploredImageOf({ unexploredImage: '  ' })).toBeNull();
+    expect(unexploredImageOf({ unexploredImage: 'Maps/fog.png' })).toBe('Maps/fog.png');
+    expect(readSceneLighting({ enabled: true, unexploredImage: 'Maps/fog.png' })).toEqual({ ...DEFAULT_SCENE_LIGHTING, enabled: true, unexploredImage: 'Maps/fog.png' });
+    expect(readSceneLighting({ enabled: true, unexploredImage: 42 })).toEqual({ ...DEFAULT_SCENE_LIGHTING, enabled: true });
+    // Not a look option: the renderer hands the engine its texture.
+    expect(sceneLook({ ...DEFAULT_SCENE_LIGHTING, unexploredImage: 'Maps/fog.png' })).toEqual({ ambient: DEFAULT_SCENE_LIGHTING.ambient });
+  });
+
+  it('fades into the fog map over 1.5 cells unless the scene sets a width within 0..6, and drops one that is not a number', () => {
+    expect(unexploredSoftnessOf(DEFAULT_SCENE_LIGHTING)).toBe(1.5);
+    expect(unexploredSoftnessOf({ unexploredSoftness: 3 })).toBe(3);
+    expect(unexploredSoftnessOf({ unexploredSoftness: -1 })).toBe(0);
+    expect(unexploredSoftnessOf({ unexploredSoftness: 40 })).toBe(6);
+    expect(readSceneLighting({ enabled: true, unexploredSoftness: 'wide' })).toEqual({ ...DEFAULT_SCENE_LIGHTING, enabled: true });
   });
 
   it('passes the composite only the options it draws, and only those that are set', () => {

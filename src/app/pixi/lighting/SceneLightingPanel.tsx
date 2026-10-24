@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import type { App } from 'obsidian';
 import { AnimatePresence, motion } from 'framer-motion';
 import { GripHorizontal, SlidersHorizontal } from 'lucide-react';
 import { CloseButton } from '../../packages/components/primitives/CloseButton';
@@ -15,10 +16,14 @@ import {
   litThresholdOf,
   sightOnDropOn,
   tokenVisionOn,
+  unexploredImageOf,
+  unexploredSoftnessOf,
+  MAX_UNEXPLORED_SOFTNESS,
 } from '../../lighting/sceneLightingOptions';
 import type { DarkSightLook } from '../../types/lightingTypes';
 import type { SegmentedOption } from '../../packages/components/primitives/SegmentedControl';
-import { ChoiceField, ColorField, SliderField, TintField, ToggleField } from './lightingPanelFields';
+import { ChoiceField, ColorField, ImageField, SliderField, TintField, ToggleField } from './lightingPanelFields';
+import { pickUnexploredImage } from './UnexploredImageModal';
 import { t } from '../../i18n';
 
 const MARGIN = 16;
@@ -34,19 +39,19 @@ const topRight = (area: PanelArea, panel: PanelArea): PanelPosition => ({ x: are
 
 /**
  * The scene lighting settings panel, while it is open. `UIRoot` mounts it outside the toolbar's
- * tooltip provider, and its switches' tooltips need one.
+ * tooltip provider, and its switches' tooltips need one. `app` is the vault the fog map is picked from.
  */
-export function SceneLightingPanelHost(): React.ReactElement {
+export function SceneLightingPanelHost({ app }: { app: App }): React.ReactElement {
   const open = useAtlasStore((state) => state.isSceneLightingPanelOpen);
   return (
     <TooltipProvider delayDuration={300}>
-      <AnimatePresence>{open && <SceneLightingPanel key="scene-lighting" />}</AnimatePresence>
+      <AnimatePresence>{open && <SceneLightingPanel key="scene-lighting" app={app} />}</AnimatePresence>
     </TooltipProvider>
   );
 }
 
 /** How the scene's lighting treats sight and memory. Changes apply at once and are never undo steps. */
-function SceneLightingPanel(): React.ReactElement {
+function SceneLightingPanel({ app }: { app: App }): React.ReactElement {
   const lighting = useAtlasStore((state) => state.lighting);
   const setSceneLighting = useAtlasStore((state) => state.setSceneLighting);
   const setOpen = useAtlasStore((state) => state.setSceneLightingPanelOpen);
@@ -57,6 +62,8 @@ function SceneLightingPanel(): React.ReactElement {
   // everything in sight for good.
   const [dragged, setDragged] = useState<number | null>(null);
   const threshold = dragged ?? Math.round(litThresholdOf(lighting) * 100);
+  const [draggedSoftness, setDraggedSoftness] = useState<number | null>(null);
+  const softness = draggedSoftness ?? unexploredSoftnessOf(lighting);
 
   return (
     <motion.section
@@ -104,6 +111,19 @@ function SceneLightingPanel(): React.ReactElement {
           <ColorField label={t('sceneLight.unexploredColour')} value={lighting.unexploredColor ?? DEFAULT_UNEXPLORED_COLOR}
             onChange={(unexploredColor) => setSceneLighting({ unexploredColor })} />
         </div>
+        {/* A fog map over never-seen areas in place of the colour, which shows where it is transparent. No image is stored as unset. */}
+        <ImageField label={t('sceneLight.unexploredImage')} value={unexploredImageOf(lighting)}
+          chooseLabel={t('sceneLight.unexploredImageChoose')} clearLabel={t('sceneLight.unexploredImageClear')}
+          onChoose={() => pickUnexploredImage(app, (unexploredImage) => setSceneLighting({ unexploredImage }))}
+          onClear={() => setSceneLighting({ unexploredImage: undefined })} />
+        {/* Shown while there is no fog map too, disabled, so the panel keeps its shape. Set on release: each step redraws the composite only, but stays one change. */}
+        <SliderField label={t('sceneLight.unexploredSoftness')} value={softness} min={0} max={MAX_UNEXPLORED_SOFTNESS} step={0.5}
+          display={t('sceneLight.unexploredSoftnessCells', { count: softness })} disabled={unexploredImageOf(lighting) === null}
+          onChange={setDraggedSoftness}
+          onCommit={(cells) => {
+            setDraggedSoftness(null);
+            setSceneLighting({ unexploredSoftness: cells });
+          }} />
         <SliderField label={t('sceneLight.litFrom')} value={threshold} min={0} max={100} step={1} display={`${threshold} %`}
           onChange={setDragged}
           onCommit={(percent) => {

@@ -44,6 +44,36 @@ export function TintField({ label, value, clearLabel, onChange }: TintFieldProps
   );
 }
 
+interface ImageFieldProps {
+  label: string;
+  /** Vault path of the image, or null without one. */
+  value: string | null;
+  /** What the button that picks an image says while there is none. */
+  chooseLabel: string;
+  /** What the button that takes the image back says: it is named by this text alone. */
+  clearLabel: string;
+  onChoose: () => void;
+  onClear: () => void;
+}
+
+/** An image from the vault the scene may also leave unset: a button naming it that picks another, and one to take it back. */
+export function ImageField({ label, value, chooseLabel, clearLabel, onChoose, onClear }: ImageFieldProps): React.ReactElement {
+  const labelId = useId();
+  const buttonId = useId();
+  const name = value?.split('/').pop() ?? null;
+  return (
+    <div className="atlas-light-panel__field">
+      <span id={labelId}>{label}</span>
+      <div className="atlas-light-panel__choice">
+        <Button id={buttonId} variant="secondary" size="sm" className="atlas-light-panel__image" aria-labelledby={`${labelId} ${buttonId}`} onClick={onChoose}>
+          {name ?? chooseLabel}
+        </Button>
+        <Button variant="ghost" size="sm" disabled={value === null} onClick={onClear}>{clearLabel}</Button>
+      </div>
+    </div>
+  );
+}
+
 interface ChoiceFieldProps<T extends string> {
   label: string;
   value: T;

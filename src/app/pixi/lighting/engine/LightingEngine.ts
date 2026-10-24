@@ -123,6 +123,7 @@ export class LightingEngine {
     composite.setAmbient(scene.ambient, scene.ambientColor, ambientLift(scene));
     composite.setMemoryShown(exploredMemoryOn(scene));
     composite.setMemoryColours(scene.exploredColor, scene.unexploredColor);
+    composite.setUnexploredImage(scene.unexploredTexture ?? null, scene.unexploredSoftness ?? 0);
   }
 
   /**

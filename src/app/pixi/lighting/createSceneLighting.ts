@@ -1,4 +1,4 @@
-import type { App } from 'obsidian';
+import { normalizePath, type App } from 'obsidian';
 import type { Application, Texture } from 'pixi.js';
 import type { UnlitGrid } from '../../grid/gridLightingMark';
 import type { Viewport } from 'pixi-viewport';
@@ -8,6 +8,7 @@ import type { SceneStore } from '../../lighting/shownTokens';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import type { SightRules } from '../../vision/sightRules';
 import type { MapBounds } from '../../vision/visibility';
+import { decodeImage, imageMimeType } from '../decodedImage';
 import { requestRender } from '../RenderScheduler';
 import { usesCanvasRenderer } from '../utils/rendererType';
 import { CanvasLightingFallback } from './CanvasLightingFallback';
@@ -16,6 +17,7 @@ import { LightingRenderer } from './LightingRenderer';
 import { showLightingUnavailableNotice } from './lightingNotices';
 import { LightingViewHost } from './LightingViewHost';
 import type { ExploredMemoryWatcher } from './sceneLightingView';
+import type { ReadUnexploredImage } from './UnexploredImage';
 
 export interface SceneLightingDeps {
   viewport: Viewport;
@@ -51,10 +53,19 @@ export function createSceneLighting({ viewport, app, store, obsApp, measurement,
   return new LightingViewHost({
     store,
     canvasRenderer: usesCanvasRenderer(app.renderer),
-    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store: scene, measurement, bounds, albedo, attempt, onUnavailable, ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }) }),
+    createEngineView: (onUnavailable) => new LightingRenderer({ viewport, app, store: scene, measurement, bounds, albedo, readUnexploredImage: vaultImageReader(obsApp), attempt, onUnavailable, ...view, ...(grid && { grid }), ...(exploredWatcher && { exploredWatcher }), ...(quality && { quality }) }),
     createFallback: () => new CanvasLightingFallback({ viewport, store: scene, measurement, bounds, requestRender: () => requestRender(app), ...view }),
     forgetAttempt: () => attempt.forget(),
     notify: showLightingUnavailableNotice,
     ...sight,
   });
+}
+
+/** Decodes a vault image for the scene's fog map (`UnexploredImage`); null when the file is not there. */
+function vaultImageReader(app: App): ReadUnexploredImage {
+  return async (path, maxSide) => {
+    const file = app.vault.getFileByPath(normalizePath(path));
+    if (!file) return null;
+    return decodeImage(await app.vault.readBinary(file), imageMimeType(file.extension), maxSide);
+  };
 }

@@ -228,7 +228,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {/* Loot Roller - floating window, DM only */}
           {!isPlayerView && <PanelBoundary name="the random tables"><RandomTables /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /></PanelBoundary>}
-          {!isPlayerView && <PanelBoundary name="the scene lighting"><SceneLightingPanelHost /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the scene lighting"><SceneLightingPanelHost app={app} /></PanelBoundary>}
 
           {/* Player Character Sheet - REMOVED: Players should only edit via their character sheet file */}
           

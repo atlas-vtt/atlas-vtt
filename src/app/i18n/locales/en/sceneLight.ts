@@ -21,5 +21,11 @@ export const sceneLight = {
   'sceneLight.memoryOff': 'Players see only what their tokens see now',
   'sceneLight.exploredColour': 'Explored colour',
   'sceneLight.unexploredColour': 'Unexplored colour',
+  'sceneLight.unexploredImage': 'Unexplored image',
+  'sceneLight.unexploredImageChoose': 'Choose image…',
+  'sceneLight.unexploredImageClear': 'No image',
+  'sceneLight.unexploredImagePlaceholder': 'Pick an image the players see where they have seen nothing…',
+  'sceneLight.unexploredSoftness': 'Fade into the image',
+  'sceneLight.unexploredSoftnessCells': { one: '{count} cell', other: '{count} cells' },
   'sceneLight.litFrom': 'Counts as lit from',
 } as const satisfies Record<string, Message>;

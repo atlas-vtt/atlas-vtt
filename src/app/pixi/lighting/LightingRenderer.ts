@@ -4,7 +4,7 @@ import type { StoreApi } from 'zustand/vanilla';
 import type { MeasurementSettings } from '../../grid/measurementFormat';
 import type { ExploredEdit } from '../../lighting/exploredEdits';
 import { DEFAULT_LIGHTING_QUALITY, type LightingQuality, type LightingQualitySource } from '../../lighting/lightingQuality';
-import { sceneLook, type SceneLook } from '../../lighting/sceneLightingOptions';
+import { sceneLook, unexploredImageOf, unexploredSoftnessOf, type SceneLook } from '../../lighting/sceneLightingOptions';
 import type { SceneLighting } from '../../types/lightingTypes';
 import type { ViewState } from '../../types/viewState';
 import { SEES_ALL, type AmbientLight, type AmbientZone, type LightReach, type Sight } from '../../vision/sight';
@@ -22,6 +22,7 @@ import type { LightingAttempt } from './lightingAttempts';
 import { PlayerView } from './PlayerView';
 import { SceneModelBuilder, SceneSpots, type SceneModel, type SceneState } from '../../vision/sceneModel';
 import type { ExploredMemoryWatcher, SceneLightingView } from './sceneLightingView';
+import { UnexploredImage, type ReadUnexploredImage } from './UnexploredImage';
 
 /** Above tokens, below their nameplates and bars (100): the GM keeps readable labels in the dark. */
 export const LIGHTING_Z_INDEX = 90;
@@ -47,6 +48,8 @@ export interface LightingRendererDeps {
    * reads them. Null while they are not ready (mid grey meanwhile); the view follows when they arrive.
    */
   albedo: () => Texture | null;
+  /** Decodes the scene's fog map for never-seen areas (`SceneLighting.unexploredImage`); without it the players see the unexplored colour. */
+  readUnexploredImage?: ReadUnexploredImage;
   /** The grid the composite draws unlit, while there is one (`UnlitGrid`). */
   grid?: () => UnlitGrid | null;
   /** The senses and conditions of the map's collection; the generic ones without it. */
@@ -63,7 +66,7 @@ export interface LightingRendererDeps {
   quality?: LightingQualitySource;
 }
 
-type SceneWithoutLook = Omit<EngineScene, keyof SceneLook | 'albedo'>;
+type SceneWithoutLook = Omit<EngineScene, keyof SceneLook | 'albedo' | 'unexploredTexture' | 'unexploredSoftness'>;
 /**
  * From the build that begins an attempt, over the first lit frame and the tick that waits for
  * the graphics process to execute it, to the tick after that one.
@@ -99,6 +102,10 @@ export class LightingRenderer implements SceneLightingView {
   private lastScene: SceneWithoutLook | null = null;
   /** The albedo the engine was last given. */
   private albedo: Texture | null = null;
+  /** The scene's fog map for never-seen areas, decoded once asked for. */
+  private readonly unexploredImage: UnexploredImage | null;
+  /** The fog map texture the engine was last given. */
+  private unexploredTexture: Texture | null = null;
   private attemptState: AttemptState = 'none';
   private stopped = false;
   /** A scene build worked out new sight; reported once the guarded work is over. */
@@ -115,6 +122,7 @@ export class LightingRenderer implements SceneLightingView {
     this.quality = deps.quality?.current() ?? DEFAULT_LIGHTING_QUALITY;
     this.engine = new LightingEngine(renderer, this.quality, { paced: true });
     this.layer = this.engine.layer;
+    this.unexploredImage = deps.readUnexploredImage ? new UnexploredImage(deps.readUnexploredImage, () => this.run(() => this.followTextures())) : null;
     this.memory = new ExploredMemory({
       renderer,
       store: deps.store,
@@ -155,7 +163,7 @@ export class LightingRenderer implements SceneLightingView {
   renderForFrame<T>(frame: SceneFrame, render: () => T): T {
     // Bounce still to build after an edit belongs in the picture; so does a world a restored context took.
     this.run(() => {
-      this.followAlbedo();
+      this.followTextures();
       this.engine.flush();
     });
     return this.engine.renderFrame(frame, render);
@@ -237,6 +245,7 @@ export class LightingRenderer implements SceneLightingView {
     if (!bounds) {
       // Nothing is drawn while off; the next update after switching on rebuilds everything.
       this.engine.setEnabled(false);
+      this.unexploredImage?.release();
       this.model.reset();
       this.lastScene = null;
       this.endAttempt();
@@ -256,7 +265,14 @@ export class LightingRenderer implements SceneLightingView {
     // Both pictures always show the same tokens (`GM_SIGHT_POLICY`), so the same sight gives the same footprints.
     const gmSpots = gmSight === model.sight ? spots : this.gmSpots.update(model, state, this.deps.measurement, this.deps.rules, gmSight);
     this.albedo = this.deps.albedo();
-    this.engine.update({ ...base, albedo: this.albedo, spots: gmSpots, ...(gmSight !== model.sight && { playerSight: model.sight, playerSpots: spots }), ...sceneLook(lighting) });
+    this.unexploredTexture = this.unexploredImage?.textureOf(unexploredImageOf(lighting)) ?? null;
+    this.engine.update({
+      ...base, albedo: this.albedo, unexploredTexture: this.unexploredTexture, spots: gmSpots,
+      unexploredSoftness: unexploredSoftnessOf(lighting) * (state.grid?.size ?? DEFAULT_CELL_SIZE),
+      ...(gmSight !== model.sight && { playerSight: model.sight, playerSpots: spots }), ...sceneLook(lighting),
+    });
+    // The engine holds the current fog map: the one it replaced can go.
+    this.unexploredImage?.release();
     requestRender(this.deps.app);
   }
 
@@ -328,14 +344,17 @@ export class LightingRenderer implements SceneLightingView {
   /**
    * The map image's albedo is made after the image (from its overview, once asked for) and goes
    * with it: a lit scene hands the engine the one there is now, which rebuilds only the bounce.
+   * The fog map for never-seen areas is decoded after its path is set, and followed the same way.
    */
-  private followAlbedo(): void {
-    if (this.lastScene && this.deps.albedo() !== this.albedo) this.update(this.deps.store.getState());
+  private followTextures(): void {
+    if (!this.lastScene) return;
+    const unexplored = this.unexploredImage?.textureOf(unexploredImageOf(this.deps.store.getState().lighting)) ?? null;
+    if (this.deps.albedo() !== this.albedo || unexplored !== this.unexploredTexture) this.update(this.deps.store.getState());
   }
 
   private animate(): void {
     this.settleAttempt();
-    this.followAlbedo();
+    this.followTextures();
     if (!this.layer.visible || !this.engine.busy()) return;
     // ponytail: animated lights redraw the whole light map even while off-screen; cull to the viewport if that gets slow.
     if (this.engine.animate(performance.now())) requestRender(this.deps.app);
@@ -350,6 +369,7 @@ export class LightingRenderer implements SceneLightingView {
     this.endAttempt();
     // The composite reads the memory's texture: it goes first.
     this.engine.destroy();
+    this.unexploredImage?.destroy();
     this.memory.destroy();
   }
 }

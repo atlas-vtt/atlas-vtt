@@ -15,6 +15,14 @@ export interface SceneLighting {
   exploredColor?: string;
   /** Fill of never-seen areas in the players' view; unset is black. */
   unexploredColor?: string;
+  /**
+   * Vault path of an image the players see where they perceive nothing and remember nothing,
+   * in place of the unexplored colour: a fog map that hints at what lies there. It is stretched
+   * over the whole map; unset is none.
+   */
+  unexploredImage?: string;
+  /** Width in grid cells of the fade from the map a light reveals into that image; unset is 1.5. Read with `unexploredSoftnessOf`. */
+  unexploredSoftness?: number;
   /** Ambient light (0–1) from which everything in sight counts as lit, dimly at least; below it the scene is dark. Unset is 0.25. */
   litThreshold?: number;
   /** A dragged token sees and shines from where its drag began until it is dropped; unset is off: sight and light follow the drag. */
