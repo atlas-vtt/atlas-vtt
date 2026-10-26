@@ -33,6 +33,8 @@ interface CollectedFiles {
 /** What names a loot base in a report of missing files: the collection's settings refer to it, no asset does. */
 const LOOT_TABLE = 'loot table';
 const UNREADABLE_LOOT_TABLE = 'loot table, needs the Bases core plugin';
+/** What names a random table's note in a report of missing files, for the same reason. */
+const RANDOM_TABLE = 'random table';
 
 /** Previews are regenerated when missing, so their absence is not worth a warning. */
 const OPTIONAL_ROLES = new Set<BundleFileRole>(['thumbnail', 'scene-thumbnail']);
@@ -42,8 +44,9 @@ const OPTIONAL_ROLES = new Set<BundleFileRole>(['thumbnail', 'scene-thumbnail'])
  * whole collection: asset records and images, scene maps and their snapshots
  * with the backgrounds and artwork of tokens placed on them, the notes their
  * pins and characters open, the statblock notes tokens link to together
- * with their artwork, and the loot bases the collection's settings pick with
- * the item notes they hold. Every file lists the assets that use it; the first
+ * with their artwork, the loot bases the collection's settings pick with
+ * the item notes they hold, and the notes its random tables are read from with
+ * the bases they draw from. Every file lists the assets that use it; the first
  * role claimed for a path wins. Referenced files that are gone are reported
  * instead of packed.
  */
@@ -55,9 +58,10 @@ export class CollectionReferenceCollector {
 
   constructor(private readonly app: App, private readonly assets: AssetService) {}
 
-  async collect(assets: readonly Asset[], lootBases: readonly string[] = []): Promise<CollectedFiles> {
-    // Loot comes first: an item note a pin also opens must still travel with its base.
+  async collect(assets: readonly Asset[], lootBases: readonly string[] = [], tableNotes: readonly string[] = []): Promise<CollectedFiles> {
+    // Loot and tables come first: an item or table note a pin also opens must still travel with the collection.
     for (const path of lootBases) await this.collectLootBase(path);
+    for (const path of tableNotes) await this.collectTableNote(path);
     for (const asset of assets) {
       this.owner = asset;
       await this.collectAsset(asset);
@@ -72,19 +76,40 @@ export class CollectionReferenceCollector {
    * an asset, so they list no owners. A base Obsidian cannot run stays behind:
    * without its items it would arrive empty.
    */
-  private async collectLootBase(path: string): Promise<void> {
-    if (this.files.has(path) || this.missing.has(path)) return;
+  private async collectLootBase(path: string, linkedFrom?: string): Promise<void> {
+    const known = this.files.get(path);
+    // A base another table draws from too travels with either; one the settings pick travels anyway.
+    if (known && linkedFrom && known.linkedFrom) known.linkedFrom.push(linkedFrom);
+    if (known || this.missing.has(path)) return;
     const exists = this.app.vault.getAbstractFileByPath(path) instanceof TFile;
     const items = exists ? await readLootBaseItems(this.app, path) : null;
     if (!items) {
       this.missing.set(path, { path, role: 'loot-base', assetName: exists ? UNREADABLE_LOOT_TABLE : LOOT_TABLE });
       return;
     }
-    this.files.set(path, { vaultPath: path, role: 'loot-base' });
+    // A base only a table draws from travels with that table's note.
+    this.files.set(path, { vaultPath: path, role: 'loot-base', ...(linkedFrom && { linkedFrom: [linkedFrom] }) });
     for (const item of items) {
       const entry = this.files.get(item);
       if (entry) entry.linkedFrom?.push(path);
       else if (this.app.vault.getAbstractFileByPath(item) instanceof TFile) this.files.set(item, { vaultPath: item, role: 'loot-item', linkedFrom: [path] });
+    }
+  }
+
+  /**
+   * A note the collection's random tables are read from, which travels with the collection like
+   * a loot base, and the bases its rows draw from (`[[Loot.base#View]]`). The notes and images it
+   * links to follow as any linked note's do (`withLinkedFiles`).
+   */
+  private async collectTableNote(path: string): Promise<void> {
+    if (this.files.has(path) || this.missing.has(path)) return;
+    if (!(this.app.vault.getAbstractFileByPath(path) instanceof TFile)) {
+      this.missing.set(path, { path, role: 'linked-note', assetName: RANDOM_TABLE });
+      return;
+    }
+    this.files.set(path, { vaultPath: path, role: 'linked-note' });
+    for (const target of Object.keys(this.app.metadataCache.resolvedLinks[path] ?? {})) {
+      if (target.toLowerCase().endsWith('.base')) await this.collectLootBase(target, path);
     }
   }
 
