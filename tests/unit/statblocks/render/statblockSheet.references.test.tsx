@@ -47,3 +47,20 @@ describe('StatblockSheet: references', () => {
     expect(texts).not.toContain('plus 4 cold');
   });
 });
+
+describe('StatblockSheet: dice with references', () => {
+  const fields: TemplateField[] = [...FIELDS, { key: 'dmg', label: 'Damage', type: 'dice' }];
+  const template: StatblockTemplate = { ...TEMPLATE, fields, layout: { ...TEMPLATE.layout, blocks: [...TEMPLATE.layout.blocks, { id: 'dmg00001', type: 'stat', field: 'dmg', look: 'run-in' }] } };
+  const misfit = (dmg: string): string | null => {
+    const { container } = renderSheet(template, { ...NOTE, dmg }, { mode: 'editing' });
+    return blockEl(container, 'dmg00001')?.querySelector('.atlas-sb-misfit')?.textContent ?? null;
+  };
+
+  it('fit a Dice field where every reference names a number, as a roll or a bonus', () => {
+    for (const dmg of ['1d8+@str', '2d8 + @str.mod', '+4+@dex.mod']) expect(misfit(dmg), dmg).toBeNull();
+  });
+
+  it('are flagged where a reference names nothing', () => {
+    expect(misfit('1d8+@nope')).toBe('Unknown reference');
+  });
+});

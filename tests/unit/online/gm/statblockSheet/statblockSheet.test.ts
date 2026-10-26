@@ -69,27 +69,26 @@ describe('a player\'s own statblock', () => {
     }
   });
 
-  it('draws the header as sigils, hit points from the character\'s resource, and the armour once', () => {
+  it('draws the header as sigils, hit points from the character\'s resource, and the armour where the layout has it', () => {
     const statblock = statblockSheet(input())!;
     expect(statblock.displayName).toBe('Ana');
-    expect(statblock.sigils).toMatchObject({
-      hp: { label: 'Hit points', text: { opening: '12' }, resource: 'hp', field: { key: 'hp', type: 'number', value: 12 } },
-      armor: { label: 'Armour', text: { opening: '15' } },
-      level: { label: 'Level', text: { opening: '3' } },
-      type: { label: 'Kind', text: { opening: 'Humanoid' } },
+    expect(statblock.sigils).toEqual({
+      hp: expect.objectContaining({ label: 'Hit points', text: { opening: '12' }, resource: 'hp', field: expect.objectContaining({ key: 'hp', type: 'number', value: 12 }) }),
+      level: expect.objectContaining({ label: 'Level', text: { opening: '3' } }),
+      type: expect.objectContaining({ label: 'Kind', text: { opening: 'Humanoid' } }),
     });
-    expect(JSON.stringify(statblock.blocks)).not.toContain('Armour');
+    expect(statblock.blocks[0]).toMatchObject({ k: 'value', value: { label: 'Armour', text: { opening: '15' } }, frame: { block: 'stat', look: 'run-in' } });
     expect(statblockSheet(input({ resources: {} }))!.sigils.hp?.resource).toBeUndefined();
   });
 
   it('offers each value the player may change with its stored value and its base, and an empty one with its prompt', () => {
     const statblock = statblockSheet(input())!;
-    const [speed, size] = statblock.blocks as Extract<SheetNode, { k: 'value' }>[];
+    const [, speed, size] = statblock.blocks as Extract<SheetNode, { k: 'value' }>[];
     expect(speed?.value).toMatchObject({ label: 'Speed', text: { opening: '' }, prompt: 'Add speed', field: { key: 'speed', value: null, base: entryItemKeys([undefined as never])[0] } });
     expect(size?.value).toMatchObject({ label: 'Size', text: { opening: 'Small' }, field: { key: 'size', type: 'choice', options: ['Small', 'Medium'], value: 'Small', base: entryItemKeys(['Small'])[0] } });
     const read = statblockSheet(input({}, { ...TEMPLATE, players: { size: 'read', speed: 'read' } }))!;
-    expect(read.blocks).toHaveLength(1);
-    expect(read.blocks[0]).toMatchObject({ k: 'value', value: { label: 'Size', field: null } });
+    expect(read.blocks).toHaveLength(2);
+    expect(read.blocks[1]).toMatchObject({ k: 'value', value: { label: 'Size', field: null } });
   });
 
   it('never offers the name or the token art', () => {

@@ -97,4 +97,15 @@ describe('the rolls a player\'s sheet names', () => {
     expect(parseBookStatblock(drawn)).toEqual(drawn);
     expect(parseBookStatblock(plain)).toEqual(plain);
   });
+
+  it('name the references a value\'s roll was filled in from, which its text shows as numbers', () => {
+    const template: StatblockTemplate = { ...templateOf(FIELDS, BLOCKS), players: { secret: 'hidden' } };
+    const values = { ...VALUES, damage: '2d8 + @agility', attack: '+4+@strength', gear: [['Sword', '1d8 + @agility'], ['Rope', '50 ft.']] };
+    const drawn = statblockSheet({ resolved: resolvedOf(template, values), definitions: [], resources: undefined })!;
+    const [damage, attack] = [1, 2].map((index) => nodeOf(drawn, 'value', index).value);
+    expect(damage).toMatchObject({ text: { opening: '2d8 + 2' }, roll: '2d8+2[Agility]' });
+    expect(attack).toMatchObject({ text: { opening: '+4-1' }, roll: '+4-1[Strength]' });
+    expect(nodeOf(drawn, 'table', 0).rolls).toEqual([[null, '1d8+2[Agility]'], [null, null]]);
+    expect(parseBookStatblock(drawn)).toEqual(drawn);
+  });
 });

@@ -99,7 +99,7 @@ describe('MeasureRenderer records', () => {
     };
     s.pointer('pointerdown', 100, 100);
     s.pointer('pointermove', 300, 100);
-    expect(s.measure.getPlayerViewLayers(() => false).map((entry) => entry.visible)).toEqual([false, false, false]);
+    expect(s.measure.getPlayerViewLayers(() => false).map((entry) => entry.visible)).toEqual([false, false]);
     expect(s.measure.measurements.get().live).toEqual({ shape: 'line', start: { x: 105, y: 105 }, end: { x: 315, y: 105 } });
   });
 });

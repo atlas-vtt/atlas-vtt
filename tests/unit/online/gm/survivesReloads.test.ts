@@ -170,7 +170,7 @@ describe('the online table', () => {
     // The campaign's players file, which the token owners live in, is the same before and after the reload.
     const campaigns = fakeCampaigns([{ id: ANA, name: 'Ana' }]);
     const online = control(ownership, [{ id: ANA, name: 'Ana' }], campaigns);
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     await advance(0);
     const created = saves.at(-1);
     expect(created).toEqual({ code: 'b'.repeat(26), secret: 'n'.repeat(43), maxPlayers: 12, campaignId: 'c1', mapPath: MAP, gate: { code: expect.stringMatching(/^\d{6}$/) as string, requireCode: true, askToJoin: true } });
@@ -275,7 +275,7 @@ describe('the online table', () => {
     // The next table starts clean: what the last one ended by is forgotten.
     const tab = atlasTab(caveScene());
     workspace.leaves = [tab.leaf];
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     expect(online.lost()).toBeNull();
     online.stop();
   });
@@ -320,12 +320,12 @@ describe('the online table', () => {
     const online = new OnlineControl(app, boundOwnership([]), fakeCampaigns(), (table) => saves.push(table), account);
 
     seen.created = { status: 403, json: { error: 'no-access' } };
-    expect(await online.start(tab.leaf)).toBeNull();
+    expect(await online.start(tab.leaf, 'c1')).toBeNull();
     expect(account.refresh).toHaveBeenCalledWith(true);
     expect(seen.notices.at(-1)).toBe('Online play is in early access. Redeem an invite key on your account page.');
 
     seen.created = { status: 201, json: { code: 'b'.repeat(26), secret: 'n'.repeat(43), maxPlayers: 2 } };
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     await advance(0);
     expect(seen.requests.map((request) => request.headers?.Authorization)).toEqual(['Bearer account-token', 'Bearer account-token']);
     expect(online.seats()).toBe(2);
@@ -334,9 +334,9 @@ describe('the online table', () => {
     await advance(0);
 
     seen.created = { status: 401, json: { error: 'signed-out' } };
-    expect(await online.start(tab.leaf)).toBeNull();
+    expect(await online.start(tab.leaf, 'c1')).toBeNull();
     expect(account.signedOutByServer).toHaveBeenCalledTimes(1);
-    expect(await online.start(tab.leaf)).toBeNull();
+    expect(await online.start(tab.leaf, 'c1')).toBeNull();
     expect(seen.notices.at(-1)).toBe('Sign in to host first.');
     expect(seen.requests).toHaveLength(3);
   });
@@ -357,7 +357,7 @@ describe('the online table', () => {
     const tab = atlasTab(caveScene());
     workspace.leaves = [tab.leaf];
     const online = new OnlineControl(app, boundOwnership([]), fakeCampaigns(), (table) => saves.push(table), signedIn);
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     expect(seen.requests[0]?.url).toBe('https://play.atlas-vtt.dev/api/tables');
     expect(online.link()).toBe(`https://play.atlas-vtt.dev/#${'b'.repeat(26)}`);
     online.stop();
@@ -370,7 +370,7 @@ describe('the online table', () => {
     const online = control();
     let changes = 0;
     online.onChange(() => (changes += 1));
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     await advance(0);
     const started = saves.at(-1);
     expect(started?.gate).toMatchObject({ requireCode: true, askToJoin: true });

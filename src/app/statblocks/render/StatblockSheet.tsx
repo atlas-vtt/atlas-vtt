@@ -114,6 +114,7 @@ export function StatblockSheet({
     viewId,
     originContext,
     bonuses: bonuses.store ? bonuses : undefined,
+    namedRolls: state.namedRolls,
   });
 
   const slug = slugify(name) || undefined;

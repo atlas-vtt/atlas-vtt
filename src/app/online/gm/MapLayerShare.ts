@@ -26,6 +26,8 @@ export interface MapLayerSharePorts extends PacerClock {
   foundPin?(mapPath: string, pinId: string): string | null;
   /** The number a token's look-alike badge shows the players (`TokenShare.badgeOf`); none without. */
   badgeOf?(tokenId: string): number | null;
+  /** The id players know a token by in their token list (`TokenShare.listedAlias`); none for a token they are not sent. */
+  tokenAlias?(tokenId: string): string | undefined;
 }
 
 /** The shortest time between two sends of the map's layers, as for the token list. */
@@ -134,6 +136,7 @@ export class MapLayerShare {
       state, shown: settings.showInitiative, showNames: settings.showNames, fromTurn: settings.initiativeFromTurn === true, rules: source.rules(),
       bannerOff: settings.turnBanner === false, movesOnTurn: settings.movesOnTurn === true, dock: settings.initiativeDock ?? 'right',
       badge: (tokenId) => this.ports.badgeOf?.(tokenId) ?? null,
+      tokenAlias: (tokenId) => this.ports.tokenAlias?.(tokenId),
       art: (path) => {
         const ref = this.art.get(path);
         if (ref !== null) art.set(ref.hash, path);

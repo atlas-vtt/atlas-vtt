@@ -13,7 +13,7 @@ export function HotkeyHelp({ settings: explicit, onClose, isPlayerView = false }
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
   useDialogFocus(ref, onClose);
-  const actions = availableHotkeys(isPlayerView, feature => settings?.isExperimentalOn(feature) ?? false);
+  const actions = availableHotkeys(isPlayerView);
   return createPortal(<div className="atlas-vtt-plugin atlas-vtt-root atlas-hotkey-help" onClick={onClose}>
     <div ref={ref} className="atlas-hotkey-help-card" role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={e => e.stopPropagation()}>
       <div className="atlas-hotkey-help-header">

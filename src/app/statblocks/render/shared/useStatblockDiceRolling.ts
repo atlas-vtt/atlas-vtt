@@ -25,6 +25,8 @@ export interface StatblockDiceRolling {
   originContext?: TokenRollContext | undefined;
   /** The statblock whose armed values its rolls take, and what the card shows of them; rolled hit points take none. */
   bonuses?: StatblockBonuses | undefined;
+  /** What its roll links roll, to the same rolls naming the `@` references they were filled in from. */
+  namedRolls?: ReadonlyMap<string, string> | undefined;
 }
 
 /** A ref callback for the statblock's container; what it returns detaches the listeners. */
@@ -49,12 +51,13 @@ function menuEntries(choices: readonly RollChoice[]): ContextMenuEntry[] {
   });
 }
 
-function rollSource({ notePath, tokens, name, viewId, originContext, bonuses }: StatblockDiceRolling): DiceRollSource {
+function rollSource({ notePath, tokens, name, viewId, originContext, bonuses, namedRolls }: StatblockDiceRolling): DiceRollSource {
   const [token] = tokens;
   return {
     viewId,
     originContext,
     bonuses,
+    namedRolls,
     tokenId: token?.id,
     statblockPath: notePath,
     tokenName: token?.name ?? name,

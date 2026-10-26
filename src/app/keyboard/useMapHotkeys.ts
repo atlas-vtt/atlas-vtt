@@ -1,5 +1,6 @@
 import { useContext, useEffect, useRef, useState } from 'react';
 import { AtlasUIContext } from '../react/root/AtlasUIContext';
+import { useViewWindow } from '../react/useViewWindow';
 import { SettingsService } from '../services/SettingsService';
 import { availableHotkeys, canRunMapHotkeys, DEFAULT_MAP_HOTKEYS, formatHotkey, matchesMapHotkey, type HeldWidgetHotkeyId, type MapHotkeyId } from './mapHotkeys';
 
@@ -30,15 +31,16 @@ export function useMapHotkeys(handlers: Partial<Record<Exclude<MapHotkeyId, Held
   current.current = handlers;
   const view = context?.view as { viewId?: string } | null | undefined;
   const id = viewId ?? view?.viewId;
+  const win = useViewWindow(context?.view?.containerEl);
   useEffect(() => {
     const handle = (event: KeyboardEvent): void => {
       if (!canRunMapHotkeys(event, id)) return;
-      const action = availableHotkeys(false, feature => settings?.isExperimentalOn(feature) ?? false).find(action => current.current[action.id] && matchesMapHotkey(event, action.id, settings));
+      const action = availableHotkeys().find(action => current.current[action.id] && matchesMapHotkey(event, action.id, settings));
       if (!action || ('yieldsToTextSelection' in action && hasTextSelection(event))) return;
       event.preventDefault();
       current.current[action.id]?.(event);
     };
-    window.addEventListener('keydown', handle);
-    return () => window.removeEventListener('keydown', handle);
-  }, [id, settings]);
+    win.addEventListener('keydown', handle);
+    return () => win.removeEventListener('keydown', handle);
+  }, [id, settings, win]);
 }

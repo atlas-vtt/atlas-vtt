@@ -13,7 +13,7 @@ import type { PartyFace } from './useCampaignParties';
 import { GameIcon } from '../GameIcon';
 import { WIDGET_ICON_PATHS } from '../../../types/widgetIcons';
 
-/** Says that this device plays the campaign. */
+/** Says that this device plays the campaign: its online table is open. */
 export function PlayingMark(): React.JSX.Element {
   return <span className="campaign-playing">{t('campaign.playing')}</span>;
 }

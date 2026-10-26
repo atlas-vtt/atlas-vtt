@@ -52,7 +52,7 @@ describe('a GM whose Atlas is older than the player page needs', () => {
     workspace.leaves = [tab.leaf];
     const online = control();
     expect(online.outdated()).toBe(false);
-    expect(await online.start(tab.leaf)).toBeNull();
+    expect(await online.start(tab.leaf, 'c1')).toBeNull();
     expect(seen.notices).toEqual([OUTDATED_TEXT]);
     expect(knownMinLevel(app as never)).toBe(GM_LEVEL + 2);
     expect(online.outdated()).toBe(true);

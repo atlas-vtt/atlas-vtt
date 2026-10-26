@@ -134,6 +134,29 @@ describe('one ability typed at a time (spec §6.3)', () => {
     expect(editedAt(document.activeElement)).toBe('0');
     expect(document.activeElement?.getAttribute('data-entry-part')).toBe('text');
   });
+
+  it('stops a held Backspace at the emptied ability, and never lets it erase the one before', async () => {
+    const { harness, note } = await pane();
+    fireEvent.click(blockOf(harness.result.container, 'gcaction').querySelectorAll('.atlas-sb-trait')[1]!);
+    const name = document.activeElement as HTMLInputElement;
+    fireEvent.focus(name);
+    fireEvent.change(name, { target: { value: '' } });
+    name.closest('.atlas-sb-pane-entry-editor')!.querySelector<HTMLElement>('[data-entry-part="text"]')!.textContent = '';
+    await act(async () => { fireEvent.keyDown(name, { key: 'Backspace', repeat: true }); });
+    expect(harness.writer.patches()).toEqual([]);
+    expect(editedAt(document.activeElement)).toBe('1');
+
+    await act(async () => { fireEvent.keyDown(name, { key: 'Backspace' }); });
+    expect(harness.writer.patches()).toEqual([{ op: 'remove', list: 'actions', item: LASH }]);
+    note.tell();
+    const previous = document.activeElement as HTMLElement;
+    expect(previous.getAttribute('data-entry-part')).toBe('text');
+    // The key still held reaches the ability before as repeats: none of them may erase its text.
+    expect(fireEvent.keyDown(previous, { key: 'Backspace', repeat: true })).toBe(false);
+    // A fresh press there is the user's own and edits as ever.
+    expect(fireEvent.keyDown(previous, { key: 'Backspace' })).toBe(true);
+    expect(fireEvent.keyDown(previous, { key: 'Backspace', repeat: true })).toBe(true);
+  });
 });
 
 describe('entries moved or copied with the keyboard', () => {

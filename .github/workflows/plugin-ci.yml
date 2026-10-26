@@ -1,5 +1,10 @@
 name: Plugin CI
 
+# Tests and builds every commit once. A push run on `beta` publishes its own
+# build as a pre-release when the version is new (`publish-beta`), and
+# **Prepare Plugin Release** attaches the build of the push run on `main` to
+# the draft release, so nothing that is released is ever built twice.
+
 on:
   pull_request:
   push:
@@ -12,13 +17,14 @@ permissions:
 
 concurrency:
   group: plugin-ci-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # A newer commit replaces a pull request's run. Push runs always finish: the
+  # releases are built from them, and a cancelled beta bump would never publish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  build-plugin:
+  static-checks:
     runs-on: ubuntu-latest
-    # Lint, the directory scan and the unit suite alone take 15 to 20 minutes on a hosted runner.
-    timeout-minutes: 40
+    timeout-minutes: 15
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -42,13 +48,10 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # Obsidian's directory review lints the whole repository with its own
-      # config; a file it cannot parse is a fatal review error.
-      - name: Lint like the community directory scan
-        run: npm run lint:scan
-
       - name: Verify release channel (main = stable x.y.z, beta = x.y.z-beta.N)
-        run: node scripts/release-channel.js --branch "${{ github.base_ref || github.ref_name }}"
+        env:
+          TARGET_BRANCH: ${{ github.base_ref || github.ref_name }}
+        run: node scripts/release-channel.js --branch "$TARGET_BRANCH"
 
       - name: Check release notes
         run: npm run changelog:check
@@ -56,11 +59,89 @@ jobs:
       - name: Test reporting service
         run: python3 -m unittest discover -s services/issue-reporter
 
-      - name: Test
-        run: npx vitest run --project unit
-
       - name: Check code dependencies
         run: npm run check:boundaries
+
+  # Obsidian's directory review lints the whole repository with its own
+  # config; a file it cannot parse is a fatal review error.
+  directory-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint like the community directory scan
+        run: npm run lint:scan
+
+  # The suite is CPU-bound and a hosted runner has four cores, so its files are
+  # split over parallel runners.
+  unit-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Test
+        env:
+          SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: npx vitest run --project unit --shard="$SHARD"
+
+  # The required check. It runs even when a check above failed, so that a
+  # failure reads as a failed `build-plugin` and never as a skipped one.
+  build-plugin:
+    needs: [static-checks, directory-scan, unit-tests]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require every check to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          echo "$RESULTS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          echo "$RESULTS" | jq -e 'all(.[]; .result == "success")' > /dev/null || { echo "::error::A check failed; see the jobs above."; exit 1; }
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build plugin
         run: npm run build:ci
@@ -71,16 +152,119 @@ jobs:
       - name: Preflight (community directory review checks)
         run: npm run preflight
 
-      - name: Prepare installable test build
+      - name: Prepare release assets and notes
         run: npm run release:prepare
 
-      - name: Upload plugin test build
+      # Push runs keep their build longer: releases are made from it.
+      - name: Upload plugin build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: atlas-vtt-${{ github.event.pull_request.head.sha || github.sha }}
           path: release/
           if-no-files-found: error
-          retention-days: 14
+          retention-days: ${{ github.event_name == 'push' && 90 || 14 }}
+
+  # Every push to `beta` whose manifest carries a new x.y.z-beta.N version is
+  # published as a GitHub pre-release for BRAT testers, from the build above.
+  # Pre-releases are never marked "latest", so Obsidian's community directory
+  # and stable installs cannot see them.
+  publish-beta:
+    needs: build-plugin
+    if: github.event_name == 'push' && github.ref == 'refs/heads/beta'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    concurrency:
+      group: plugin-beta-release
+      cancel-in-progress: false
+    permissions:
+      contents: write # create the pre-release
+      id-token: write # sign the provenance attestation
+      attestations: write # store the provenance attestation
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+
+      - name: Verify beta version
+        run: |
+          node scripts/release-channel.js --expect beta
+          echo "RELEASE_VERSION=$(node -p "require('./manifest.json').version")" >> "$GITHUB_ENV"
+
+      - name: Check whether this beta is already published
+        id: existing
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          skip=false
+          if git ls-remote --exit-code --tags origin "refs/tags/$RELEASE_VERSION" > /dev/null; then
+            git fetch --force origin "refs/tags/$RELEASE_VERSION:refs/tags/$RELEASE_VERSION"
+            if [ "$(git rev-list -n 1 "$RELEASE_VERSION")" != "$GITHUB_SHA" ]; then
+              # An ordinary merge leaves the version alone: nothing to publish.
+              # Only a push that sets the version to an already-used tag is a mistake.
+              previous_version=""
+              if [ -n "$BEFORE_SHA" ] && git fetch --quiet --depth=1 origin "$BEFORE_SHA" 2>/dev/null; then
+                previous_version="$(git show "$BEFORE_SHA:manifest.json" | node -p "JSON.parse(require('fs').readFileSync(0, 'utf8')).version")"
+              fi
+              if [ "$previous_version" = "$RELEASE_VERSION" ]; then
+                echo "Version $RELEASE_VERSION was not bumped by this push; nothing to publish." >> "$GITHUB_STEP_SUMMARY"
+                echo "skip=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              echo "::error::Tag $RELEASE_VERSION already points at another commit. Bump to the next beta number (npm version prerelease)."
+              exit 1
+            fi
+            if gh release view "$RELEASE_VERSION" --json isPrerelease --jq '.isPrerelease' 2>/dev/null | grep -q true; then
+              skip=true
+              echo "Beta $RELEASE_VERSION is already published from this commit; nothing to do." >> "$GITHUB_STEP_SUMMARY"
+            fi
+          fi
+          echo "skip=$skip" >> "$GITHUB_OUTPUT"
+
+      - name: Download the tested build
+        if: steps.existing.outputs.skip != 'true'
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: atlas-vtt-${{ github.sha }}
+          path: release/
+
+      - name: Verify the build belongs to this commit
+        if: steps.existing.outputs.skip != 'true'
+        run: |
+          cmp release/manifest.json manifest.json || { echo "::error::The build's manifest.json differs from the commit's."; exit 1; }
+          for file in main.js styles.css release-notes.md; do
+            test -s "release/$file" || { echo "::error::The build lacks $file."; exit 1; }
+          done
+
+      - name: Attest build provenance
+        if: steps.existing.outputs.skip != 'true'
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: |
+            release/main.js
+            release/styles.css
+
+      - name: Publish pre-release
+        if: steps.existing.outputs.skip != 'true'
+        run: |
+          gh release create "$RELEASE_VERSION" \
+            --prerelease --latest=false \
+            --target "$GITHUB_SHA" \
+            --title "Atlas VTT $RELEASE_VERSION (beta)" \
+            --notes-file release/release-notes.md \
+            release/main.js release/manifest.json release/styles.css
+          gh release view "$RELEASE_VERSION" --json assets,isPrerelease,isDraft \
+            --jq '{assets: ([.assets[].name] | sort), isPrerelease, isDraft}' > published.json
+          jq -e '.isPrerelease == true and .isDraft == false and .assets == ["main.js", "manifest.json", "styles.css"]' published.json
+          echo "Published beta $RELEASE_VERSION as a pre-release. BRAT testers receive it on their next update check." >> "$GITHUB_STEP_SUMMARY"
 
   dependency-review:
     if: github.event_name == 'pull_request'

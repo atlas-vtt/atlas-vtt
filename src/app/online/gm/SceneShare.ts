@@ -1,4 +1,4 @@
-import { MAX_ASSET_BYTES, parsePlayerMessage, type AssetRef, type GmMessage, type RollRequestAnswer, type SharedScene } from '../protocol/index.ts';
+import { MAX_ASSET_BYTES, parsePlayerMessage, type AssetRef, type GmMessage, type RollRequestAnswer, type SharedRollDice, type SharedScene } from '../protocol/index.ts';
 import { imageDimensions } from '../../imageProcessing/imageDimensions';
 import type { RollSceneLookup } from '../../services/playerRollSource';
 import type { DiceSource } from './atlasDice.ts';
@@ -10,6 +10,7 @@ import { AssetAnswers } from './assetAnswers.ts';
 import { imageMimeType, REPEAT_REQUEST_MS, sha256Hex } from './assetServe.ts';
 import type { ScaleImage } from './assetVariants.ts';
 import { MineShare } from './mineShare.ts';
+import { mapRollDice, tokenRollDice } from './rollAdvantage.ts';
 import { InputShare } from './InputShare.ts';
 import { LiveShare } from './LiveShare.ts';
 import type { LoggedRoll, RollRequest } from './log/TableLog.ts';
@@ -29,7 +30,7 @@ export { imageMimeType, isLit, LIGHTING_REFUSAL, REPEAT_REQUEST_MS };
 export interface SceneSharePorts extends TokenSharePorts, RulesSharePorts, Pick<MarkSharePorts, 'gmMarks' | 'showPlayerMarks' | 'showPlayerCursors' | 'nameOf'> {
   notice(text: string): void;
   /** Sends a live message (where dragged tokens are now) ahead of other frames, the latest of a key winning; without it drags reach players through the token list only. */
-  sendLive?(body: GmMessage, key: string): void;
+  sendLive?(body: GmMessage, key: string, to?: string): void;
   /** What the GM's own drag ruler measures now, or null while it shows none; without it players see none of the GM's. */
   gmDragRuler?(): GmRuler | null;
   /** Draws the rulers of the players' drags for the GM. */
@@ -93,10 +94,11 @@ export class SceneShare {
     this.ports = ports;
     const seats = ports.seats;
     const ownerOf = ownerIn(seats, store);
-    const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => seats.onlinePlayers(), ownerOf }, (body, to) => ports.send(body, to));
+    const diceOf = (tokenId: string): SharedRollDice | undefined => tokenRollDice(ports.dice?.() ?? null, store.getState().objects.tokens[tokenId]);
+    const mine = seats === undefined ? null : new MineShare({ onlinePlayers: () => seats.onlinePlayers(), ownerOf, diceOf }, (body, to) => ports.send(body, to));
     this.mine = mine;
     // The initiative list shows the players' look-alike numbers too: it follows them as they change
-    this.tokens = new TokenShare(store, { ...ports, numbersChanged: () => this.layers.update() }, (listed) => mine?.setList(listed));
+    this.tokens = new TokenShare(store, { ...ports, numbersChanged: () => this.layers.update(), liveCarriedUntil: (alias) => this.live?.carriedUntil(alias) }, (listed) => mine?.setList(listed));
     const rulers = (): RulerPaths => dragRulerPaths(store.getState(), ports.gmDragRuler?.() ?? null, this.moves.dragStarts());
     this.live = ports.sendLive === undefined ? null : new LiveShare(store, { ...ports, sendLive: (body, key) => ports.sendLive?.(body, key), rulers }, () => ({
       scene: this.tokens.listedScene,
@@ -107,9 +109,9 @@ export class SceneShare {
       shownTokens: () => this.tokens.shownIds(),
       tokenAlias: (id) => this.tokens.alias(id),
     });
-    this.layers = new MapLayerShare(store, { ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => this.tokens.badgeOf(tokenId) });
+    this.layers = new MapLayerShare(store, { ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => this.tokens.badgeOf(tokenId), tokenAlias: (tokenId) => this.tokens.listedAlias(tokenId) });
     const cursorsShown = (): boolean => ports.atlasSettings().showCursors;
-    this.rules = new RulesShare(store, { ...ports, cursorsShown });
+    this.rules = new RulesShare(store, { ...ports, cursorsShown, rollDice: () => mapRollDice(ports.dice?.() ?? null) });
     this.moves = new PlayerMoves(store, {
       ...ports,
       context: () => ({
@@ -178,6 +180,11 @@ export class SceneShare {
     this.marks.resend(to);
   }
 
+  /** A player's map shows again: they are sent the marks as they are now, also where there are none, so none they held stays. */
+  catchUpMarks(to: string): void {
+    this.marks.catchUp(to);
+  }
+
   /** Who owns which token, which tokens are player tokens, or who is connected changed: players hear which tokens are player tokens and which are theirs now. */
   ownersChanged(): void {
     this.tokens.update();
@@ -233,12 +240,14 @@ export class SceneShare {
     return this.tokens.artPath(hash) ?? this.layers.artPath(hash) ?? this.ports.logArt?.(hash);
   }
 
-  /** Looks again every `TOKEN_POLL_MS`: Atlas's dynamic lighting and the map's measurement may change without a store change. */
+  /** Looks again every `TOKEN_POLL_MS`: the map's measurement may change without a store change. */
   private schedulePoll(): void {
     this.poll = this.ports.setTimer(() => {
       this.poll = undefined;
       void this.update(this.store.getState());
       this.rules.update();
+      // A character's template may name another dice set at any time
+      this.mine?.update();
       this.marks.update();
       this.schedulePoll();
     }, TOKEN_POLL_MS);
@@ -246,7 +255,7 @@ export class SceneShare {
 
   private async update(state: SceneState): Promise<void> {
     if (!state.mapLoaded || state.isMapLoading) return;
-    const lit = isLit(state, this.ports.atlasSettings());
+    const lit = isLit(state);
     const refusal = lit && this.ports.lightingSource() === null ? LIGHTING_REFUSAL : null;
     if (refusal !== null) {
       if (refusal !== this.refusal) this.ports.notice(refusal);

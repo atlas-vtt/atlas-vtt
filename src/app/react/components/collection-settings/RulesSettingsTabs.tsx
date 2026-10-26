@@ -44,7 +44,7 @@ const TAB_LABELS: Record<SettingsTab, { label: string; icon: React.ReactNode }> 
 };
 
 interface RulesSettingsTabsProps {
-  /** The tabs offered, in order; Vision only while dynamic lighting is on (`lightingOn`). */
+  /** The tabs offered, in order. */
   tabs: readonly SettingsTab[];
   activeTab: SettingsTab;
   onTabChange: (tab: SettingsTab) => void;
@@ -57,7 +57,6 @@ interface RulesSettingsTabsProps {
   onDeletePreset: (preset: SystemPreset) => Promise<void>;
   /** A choice of no game system at all, for rules that may have none. */
   none?: NoSystemChoice;
-  lightingOn: boolean;
   /** The statblock fields the Resources tab offers as chips (`resourceFieldSuggestions`). */
   fieldSuggestions: readonly FieldSuggestion[];
   /** The statblock fields the initiative modifier is offered (`initiativeFieldSuggestions`). */
@@ -76,10 +75,8 @@ interface RulesSettingsTabsProps {
  * kept; any other tab is the caller's (`renderOther`).
  */
 export function RulesSettingsTabs({
-  tabs, activeTab, onTabChange, draft, view, presets, diceSets, onDeletePreset, none, lightingOn, fieldSuggestions, initiativeFieldSuggestions, modifierStatblocks, renderOther, rulesNotice,
+  tabs, activeTab, onTabChange, draft, view, presets, diceSets, onDeletePreset, none, fieldSuggestions, initiativeFieldSuggestions, modifierStatblocks, renderOther, rulesNotice,
 }: RulesSettingsTabsProps): React.ReactElement {
-  const shown = tabs.filter((tab) => tab !== 'vision' || lightingOn);
-
   const content = (): React.ReactNode => {
     switch (activeTab) {
       case 'system':
@@ -106,7 +103,7 @@ export function RulesSettingsTabs({
           />
         );
       case 'vision':
-        return lightingOn && (
+        return (
           <VisionTab
             gridDefaults={draft.gridDefaults}
             vision={draft.defaultTokenVision}
@@ -129,7 +126,7 @@ export function RulesSettingsTabs({
   return (
     <div className="atlas-collection-settings-body">
       <nav className="atlas-collection-settings-sidebar">
-        {shown.map((tab) => (
+        {tabs.map((tab) => (
           <Button
             key={tab}
             variant="ghost"

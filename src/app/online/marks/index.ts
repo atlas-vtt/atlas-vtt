@@ -9,4 +9,3 @@ export * from './RemoteCursors.ts';
 export * from './RemoteDrags.ts';
 export * from './RemoteMeasures.ts';
 export * from './Pacer.ts';
-export * from './labelSize.ts';

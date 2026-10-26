@@ -189,6 +189,13 @@ export class TFile extends TAbstractFile {
   }
 }
 
+/** The desktop adapter; tests' vaults are in memory, so none is one. */
+export class FileSystemAdapter {
+  getBasePath(): string {
+    return '';
+  }
+}
+
 export class TFolder extends TAbstractFile {
   children: TAbstractFile[];
 

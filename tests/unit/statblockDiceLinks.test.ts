@@ -109,7 +109,7 @@ describe('linkDiceIn + attachDiceRolling', () => {
 
     el.querySelector<HTMLElement>('.atlas-dice-link')!.click();
 
-    expect(rolls[0]).toEqual({ formula: '+3', source: { type: 'statblock', abilityName: 'STR' } });
+    expect(rolls[0]).toEqual({ formula: '+3[STR]', source: { type: 'statblock', abilityName: 'STR' } });
 
     dispose();
   });

@@ -89,6 +89,8 @@ export class TableConnection {
   private reconnects = 0;
   /** The players connected now, as the relay last told. */
   private readonly players = new Set<string>();
+  /** Whether the relay said in its last welcome that it takes `sends` frames. */
+  private batching = false;
   /** The campaign's players the relay is told on every welcome, as JSON; null while the table names none. */
   private roster: string | null = null;
 
@@ -153,6 +155,16 @@ export class TableConnection {
       const entry = JSON.stringify({ to, body: part });
       this.queue.push(sendFrame(entry), to, entry);
     }
+  }
+
+  /** Whether the relay takes `sends` frames, as its last welcome said. */
+  get batches(): boolean {
+    return this.batching;
+  }
+
+  /** The players connected now. */
+  get connected(): ReadonlySet<string> {
+    return this.players;
   }
 
   /**
@@ -256,7 +268,8 @@ export class TableConnection {
       // The gates and the players first, ahead of whatever waits in the queue: the relay keeps them, and a restarted companion's are the same.
       if (this.gate !== null) socket.send(JSON.stringify({ v: PROTOCOL_VERSION, t: 'gate', ...this.gate.frame() }));
       if (this.roster !== null) socket.send(this.playersFrame(this.roster));
-      this.queue.attach(this.pulse.start(socket), frame.batch === true);
+      this.batching = frame.batch === true;
+      this.queue.attach(this.pulse.start(socket), this.batching);
       this.setStatus('online');
       // A table that still closes for want of access says so again after its welcome.
       this.events.access(null);

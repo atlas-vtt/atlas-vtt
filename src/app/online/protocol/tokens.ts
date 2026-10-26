@@ -50,7 +50,7 @@ export interface SharedToken {
   readonly ui: SharedTokenUI | null;
   /**
    * The token holds the turn of the fight (by sides: it acts on the side with the turn): the page
-   * draws the turn marker on it. Sent only while the players' initiative list is shown. Absent from older GMs.
+   * flashes the turn's spotlight on it as the turn begins. Sent only while the players' initiative list is shown. Absent from older GMs.
    */
   readonly turn?: true;
   /**

@@ -16,9 +16,11 @@ import { Sprite, Container, Graphics, Application, FederatedPointerEvent } from 
 import { Viewport } from "pixi-viewport";
 import { App as ObsidianApp } from 'obsidian';
 import type { TokenEntity } from "../types";
+import type { GroupTurnHost } from "./selection/GroupRotation";
+import { gridPivot } from "./selection/groupTurn";
+import { isHexGridType } from "../grid/hexGeometry";
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import type { GridSystem } from "../grid/GridSystem";
-import { getDrawingBounds } from "./drawingGeometry";
 import type { ViewAtlasStore } from '../storeFactory';
 import { EventEmitter } from 'events';
 import { AssetValidationService } from '../services/AssetValidationService';
@@ -45,10 +47,11 @@ import { requestRender } from './RenderScheduler';
 import { normalizeImagePath } from '../utils/pathUtils';
 import { prefersReducedMotion } from '../utils/motion';
 import { destroyTree } from './utils/destroyTree';
-import type { TokenGroupContainer } from './token-renderer/types';
+import type { BarsSpan, TokenGroupContainer } from './token-renderer/types';
 import type { TokenPreview } from './tokenPlacement/PlacementGhost';
 import type { TokenInput } from '../types/viewState';
 import { setCanvasCursor } from './utils/canvasCursor';
+import { usesCanvasRenderer } from './utils/rendererType';
 import { markHandled, resetHandled } from './utils/handledEvents';
 import { watchClick } from './utils/clickRelease';
 import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
@@ -71,6 +74,8 @@ export class TokenRenderer {
   private gridSystem: GridSystem;
   private tokenContainer: Container;
   private tokenSprites: Record<string, TokenGroupContainer | null> = {};
+  /** The ways the tokens of a group being turned face until it is put down (`showFacings`). */
+  private groupFacings: ReadonlyMap<string, number> | null = null;
   private tokenRings: Record<string, Graphics | Sprite> = {};
   private _unsubscribeFromStore?: () => void;
   private _unsubscribeFromViewport?: () => void;
@@ -135,6 +140,8 @@ export class TokenRenderer {
   private fogHitTestProvider?: (worldX: number, worldY: number) => string | null;
   private fogClickHandler?: (fogId: string, e: FederatedPointerEvent) => void;
   private drawingHitTestProvider?: (worldX: number, worldY: number) => string | null;
+  /** Whether a world point lies inside the frame drawn around a selection of two or more. */
+  private groupFrameHitTest?: (worldX: number, worldY: number) => boolean;
   private drawingClickHandler?: (drawingId: string, e: FederatedPointerEvent) => void;
   private drawingDragStartHandler?: (e: FederatedPointerEvent) => void;
 
@@ -219,6 +226,7 @@ export class TokenRenderer {
     
     // Provide token sprite access to UI manager
     this.uiManager.setTokenSpriteProvider((tokenId: string) => this.tokenSprites[tokenId] || null);
+    this.uiManager.onSelectionUIChange = () => this.selectionOverlayUpdater();
     
     // Initialize interaction controller
     this.interactionController = new InteractionController(
@@ -255,7 +263,7 @@ export class TokenRenderer {
       }
     });
     
-    // Before the collection's rules arrive: their refresh works the markers out again
+    // Before the collection's rules arrive: their refresh works the turn out again
     this.turnMarkers = new TurnMarkers({
       parent: this.viewport,
       getState: () => this.store.getState(),
@@ -264,6 +272,7 @@ export class TokenRenderer {
       ticker: () => this.pixiApp?.ticker ?? null,
       reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
       defeated: (state) => defeatedCombatants(state.initiative.entries, sceneTokens(state.objects), this.resourceDefsProvider()),
+      canMask: () => !this.pixiApp?.renderer || !usesCanvasRenderer(this.pixiApp.renderer),
     });
     this.collectionSync = new TokenCollectionSync(obsApp, store.getState, {
       refreshRules: () => this.refreshCollectionRules(),
@@ -436,6 +445,8 @@ export class TokenRenderer {
           this.uiManager.updateHandlePositions();
         }
       }
+      // Art shown without a ring is outlined as it turns
+      this.selectionOverlayUpdater();
     };
 
     window.addEventListener('atlas-tokens-rotation-update', this._handleRotationUpdate);
@@ -450,6 +461,7 @@ export class TokenRenderer {
         // Show resize handles for all selected tokens
         this.uiManager.getResizeUI()?.showHandles(selectedIds, this.getTokenSprites());
       }
+      this.selectionOverlayUpdater();
     });
 
     // Listen for resize end events to re-show rotation handles
@@ -462,6 +474,7 @@ export class TokenRenderer {
         // Show rotation handles for all selected tokens
         this.uiManager.getRotationUI()?.showHandles(selectedIds, this.getTokenSprites());
       }
+      this.selectionOverlayUpdater();
     });
 
     window.addEventListener('atlas-token-rotation-ended', this._handleRotationEnded);
@@ -716,6 +729,38 @@ export class TokenRenderer {
     return (!!token.isHidden && !!prevToken.isHidden) || (alwaysSeen(token) && alwaysSeen(prevToken));
   }
 
+  /** The way a token faces on the canvas: as a turn under way shows it, else as the store has it. */
+  private shownRotation(token: TokenEntity): number {
+    return this.uiManager.getRotationUI()?.getTemporaryRotation(token.id) ?? this.groupFacings?.get(token.id) ?? token.rotation ?? 0;
+  }
+
+  /** What a group turned from the button above its selection frame asks of the tokens (`GroupRotation`). */
+  public groupTurnHost(): GroupTurnHost {
+    return {
+      pivot: (middle) => {
+        if (!(this.store.getState().grid?.snapToGrid ?? true)) return middle;
+        const hex = isHexGridType(this.gridSystem.getOptions().type);
+        return gridPivot(middle, hex, (point, size) => this.gridSystem.snapTokenCenter(point.x, point.y, size));
+      },
+      showFacings: (facings) => this.showFacings(facings),
+    };
+  }
+
+  /** Shows the tokens of a group being turned facing these ways until it is put down; null shows them as the store has them. */
+  private showFacings(facings: ReadonlyMap<string, number> | null): void {
+    const turned = facings ?? this.groupFacings;
+    this.groupFacings = facings;
+    if (!turned) return;
+    const tokens = mapTokens(this.store.getState().objects);
+    for (const id of turned.keys()) {
+      const group = this.tokenSprites[id];
+      const token = tokens[id];
+      if (group && token) this.spriteFactory.updateTokenRotation(group, this.shownRotation(token));
+    }
+    // Art shown without a ring is outlined as it turns
+    this.selectionOverlayUpdater();
+  }
+
   /** Takes along what stands with a token's sprite as it glides: its UI, its controls and the selection frame. */
   private followToken(tokenId: string, x: number, y: number): void {
     this.uiManager.syncUIPosition(tokenId, x, y);
@@ -773,7 +818,7 @@ export class TokenRenderer {
   }
 
   /**
-   * The turn markers on the canvas: while it shows the players' view (session view, the peek, the
+   * The turn flashes on the canvas: while it shows the players' view (session view, the peek, the
    * palette's player mode) only where the players are shown their initiative list, as their frame.
    */
   private syncCanvasTurn(): void {
@@ -782,7 +827,7 @@ export class TokenRenderer {
     this.turnMarkers.showOnCanvas(!showsPlayers || ((view?.showInitiative ?? false) && this.store.getState().initiativeTrackerOpen));
   }
 
-  /** Keeps the canvas's turn markers in step with the players' view, the player view's settings and the tracker. */
+  /** Keeps the canvas's turn flashes in step with the players' view, the player view's settings and the tracker. */
   private watchCanvasTurn(): void {
     const stopView = this.playersView.listen(() => this.syncCanvasTurn());
     const stopSettings = SettingsService.forApp(this.obsApp)?.onChange(() => this.syncCanvasTurn());
@@ -900,8 +945,7 @@ export class TokenRenderer {
         
         // Update rotation if it changed or if there's a temporary rotation
         const tempRotation = this.uiManager.getRotationUI()?.getTemporaryRotation(token.id);
-        const displayRotation = tempRotation !== undefined ? tempRotation : (token.rotation || 0);
-        this.spriteFactory.updateTokenRotation(existingTokenGroup, displayRotation);
+        this.spriteFactory.updateTokenRotation(existingTokenGroup, this.shownRotation(token));
         
         // Update rotation handle positions when token rotates
         if (!prevToken || prevToken.rotation !== token.rotation || tempRotation !== undefined) {
@@ -1336,7 +1380,6 @@ export class TokenRenderer {
           // Theme changed, update rotation and resize handles
           this.uiManager.getRotationUI()?.updateTheme();
           this.uiManager.getResizeUI()?.updateTheme();
-          this.turnMarkers.refreshTheme();
         }
       }
     });
@@ -1446,9 +1489,9 @@ export class TokenRenderer {
       ...this.turnMarkers.playerLayers(seenByPlayers(mapTokens(state.objects), perception), turnShown)];
   }
 
-  /** How far a selected token's resources reach beyond its bottom, right and top edges, in world units. */
-  public barsReach(tokenId: string): number {
-    return this.uiManager.barsReach(tokenId);
+  /** How far a selected token's bars stand out from it, in world units. */
+  public bars(tokenId: string): BarsSpan {
+    return this.uiManager.bars(tokenId);
   }
 
   /** What the ruler of the drag under way measures, or null while it shows none. */
@@ -1479,6 +1522,10 @@ export class TokenRenderer {
 
   public setFogClickHandler(fn: (fogId: string, e: FederatedPointerEvent) => void): void {
     this.fogClickHandler = fn;
+  }
+
+  public setGroupFrameHitTest(fn: (worldX: number, worldY: number) => boolean): void {
+    this.groupFrameHitTest = fn;
   }
 
   public setDrawingHitTestProvider(fn: (worldX: number, worldY: number) => string | null): void {
@@ -1583,22 +1630,6 @@ export class TokenRenderer {
     this.glideWay = clearWay;
   }
 
-  /** The view's lighting is gone: nothing takes the pointer for lights, walls and doors any more, no sight hides tokens, and tokens glide on any way. */
-  public clearLighting(): void {
-    delete this.glideWay;
-    delete this.lightHandlers;
-    delete this.doorClickHandler;
-    delete this.doorMenuHandlers;
-    delete this.wallPointerDownHandler;
-    delete this.wallPointerMoveHandler;
-    delete this.wallPointerUpHandler;
-    delete this.wallDoubleClickHandler;
-    delete this.wallContextMenuHandler;
-    delete this.wallCursorProvider;
-    this.playerSight.setProvider(() => undefined);
-    this.refreshPlayerSight();
-  }
-
   public setAudioPointerDownHandler(fn: (worldX: number, worldY: number, e: FederatedPointerEvent) => boolean): void {
     this.audioPointerDownHandler = fn;
   }
@@ -1640,7 +1671,6 @@ export class TokenRenderer {
     return topId;
   }
 
-  /** Returns true if (worldX, worldY) is within the bounding box of the given selected tokens. */
   /** Drag the selected tokens; a no-op when the selection holds none. */
   private startTokenGroupDrag(e: FederatedPointerEvent): void {
     const { selectedIds, objects } = this.store.getState();
@@ -1653,51 +1683,6 @@ export class TokenRenderer {
     e.stopPropagation();
     this.startTokenGroupDrag(e);
     this.drawingDragStartHandler?.(e);
-  }
-
-  private isPointInSelectionBounds(worldX: number, worldY: number, selectedIds: string[]): boolean {
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    let found = false;
-    const drawings = this.store.getState().objects.drawings;
-
-    for (const id of selectedIds) {
-      const drawing = drawings[id];
-      const drawingBounds = drawing && getDrawingBounds(drawing);
-      if (drawingBounds) {
-        minX = Math.min(minX, drawingBounds.x);
-        minY = Math.min(minY, drawingBounds.y);
-        maxX = Math.max(maxX, drawingBounds.x + drawingBounds.width);
-        maxY = Math.max(maxY, drawingBounds.y + drawingBounds.height);
-        found = true;
-        continue;
-      }
-
-      const tokenGroup = this.tokenSprites[id];
-      if (!tokenGroup || !tokenGroup.visible) continue;
-
-      // Match SelectionManager.updateSelectionOverlay bounds calculation:
-      // use actual sprite dimensions, not grid size
-      const sprite = tokenGroup.children[0];
-      if (!sprite || !('width' in sprite)) continue;
-
-      const halfW = sprite.width / 2;
-      const halfH = sprite.height / 2;
-      const x = tokenGroup.position.x;
-      const y = tokenGroup.position.y;
-
-      if (x - halfW < minX) minX = x - halfW;
-      if (y - halfH < minY) minY = y - halfH;
-      if (x + halfW > maxX) maxX = x + halfW;
-      if (y + halfH > maxY) maxY = y + halfH;
-      found = true;
-    }
-
-    if (!found) return false;
-
-    // Same 12px padding as the selection overlay
-    const pad = 12;
-    return worldX >= minX - pad && worldX <= maxX + pad &&
-           worldY >= minY - pad && worldY <= maxY + pad;
   }
 
   /** Set up viewport-level pointer handlers. Called once during init. */
@@ -1834,14 +1819,11 @@ export class TokenRenderer {
       return;
     }
 
-    // 2. Hit-test selection bounding box (drag from within the selected group; shift is picking, not dragging)
-    if (e.button === 0 && !e.shiftKey) {
-      const selectedIds = this.store.getState().selectedIds;
-      if (selectedIds.length > 1 && this.isPointInSelectionBounds(worldPos.x, worldPos.y, selectedIds)) {
-        markHandled(e);
-        this.startGroupDrag(e);
-        return;
-      }
+    // 2. Hit-test the frame drawn around a selection of two or more (drag the group; shift is picking, not dragging)
+    if (e.button === 0 && !e.shiftKey && this.groupFrameHitTest?.(worldPos.x, worldPos.y)) {
+      markHandled(e);
+      this.startGroupDrag(e);
+      return;
     }
 
     // 3. Hit-test drawings (select + drag, or context menu; tokens selected alongside follow a drag)

@@ -3,7 +3,8 @@
  * offers, its collection's resources and conditions, and where each of
  * its values is held now. A resource is read from the character's token on an open map (one on
  * screen first), else from the values the played campaign keeps of it; a condition from its token
- * on an open map; counters and `@` references from the note (`statblockLookup`: `@level`, `@str.mod`). The template's tracked numbers are
+ * on an open map; counters and `@` references from the note (`statblockLookup`: `@level`, `@str.mod`), where
+ * the references a value itself names read only what the character's player may see. The template's tracked numbers are
  * resources too (`trackedResources`), whose maximum is always the note's and which start full or
  * empty where nothing holds them yet.
  */
@@ -13,19 +14,21 @@ import { CampaignPlay } from '../campaigns/campaignPlay';
 import { PartySync } from '../campaigns/partyValues/PartySync';
 import { characterOf, libraryTokenOf } from '../characters/playerCharacters';
 import { playerCharacterOfNote } from '../characters/noteCharacter';
+import { shownRecord } from '../online/gm/book/playerAccess.ts';
 import { collectionResources } from '../resources/collectionResources';
 import { resourceOfField, trackedResources } from '../resources/trackedResources';
 import type { ResourceValue } from '../resources/resourceTypes';
 import { AssetService, type TokenAsset } from '../services/AssetService';
 import { openMapViews } from '../services/collectionScenes';
 import type { ViewAtlasStore } from '../storeFactory';
+import { withHeaderFields } from '../statblocks/model/templateHeader';
 import type { StatblockTemplate, TemplateId } from '../statblocks/model/templateTypes';
 import { NoteSource } from '../statblocks/notes/noteSource';
 import { frontmatterSource } from '../statblocks/notes/statblockSource';
 import { libraryTemplates } from '../statblocks/resolve/readStatblock';
 import { resolveNative } from '../statblocks/resolve/resolveStatblock';
 import { readField, type FieldRecord } from '../statblocks/values/fieldValues';
-import { statblockLookup } from '../statblocks/values/statblockLookup';
+import { statblockLookup, statblockLookupWith } from '../statblocks/values/statblockLookup';
 import { withReferencesFilled } from '../statblocks/values/fillReferences';
 import { trackedMax, trackedValue } from '../statblocks/values/trackedNumbers';
 import { conditionValue } from '../utils/conditionValues';
@@ -107,7 +110,11 @@ export function characterRestOf(app: App, asset: TokenAsset, note: RestNote): Ch
   const holds = characterHolds(app, asset);
   const sync = PartySync.forApp(app);
   const campaignId = CampaignPlay.forApp(app).playing();
-  const lookup = statblockLookup(note.template, note.record);
+  // What a player wrote into a value names only what they may see, here as on their sheet: a rest
+  // that reads it must not fill it from a field hidden from them, since its player is shown the rest
+  const shownFields = withHeaderFields(note.template).fields;
+  const playerSees = statblockLookup(note.template, shownRecord(note.record, note.template, shownFields), shownFields);
+  const lookup = statblockLookupWith(note.template, note.record, note.template.fields, playerSees);
   const fields = new Map(note.template.fields.map((field) => [field.key, field]));
 
   const collection = collectionResources(settings);
@@ -119,7 +126,7 @@ export function characterRestOf(app: App, asset: TokenAsset, note: RestNote): Ch
   // What the note holds, which counter writes take as their base
   const read = readIn(note.record);
   // Numbers as the card shows them: a maximum written `@level` or `10 + @con.mod` is a number
-  const readShown = readIn(withReferencesFilled(note.record, note.template.fields, lookup));
+  const readShown = readIn(withReferencesFilled(note.record, note.template.fields, playerSees));
 
   const partyValue = (key: string): ResourceValue | undefined => {
     const party = sync && campaignId !== null ? sync.value(campaignId, asset.id, key) : undefined;

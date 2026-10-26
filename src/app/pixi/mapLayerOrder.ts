@@ -22,6 +22,8 @@ export const MAP_LAYER_Z = {
   textHandles: 99,
   /** The grid alignment tool's points, edges and cursor. */
   gridAlignment: 99,
+  /** The button above a group selection that turns it: above the tokens' bars, which must not cover it. */
+  groupRotate: 101,
   /** Text objects and the preview of the one being placed. */
   text: 500,
   /** Tokens being placed by hand (GM only): above everything on the map but the laser. */

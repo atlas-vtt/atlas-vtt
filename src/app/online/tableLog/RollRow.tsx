@@ -9,7 +9,7 @@ import type { ThreadStat } from './logThreads.ts';
 import type { ShownEntry } from './LogState.ts';
 import type { Portrait, RollFace, RowApi, RowFlags } from './panelTypes.ts';
 import { ReactionChips } from './ReactionChips.tsx';
-import { critClass, RollDice } from './rollDice.tsx';
+import { critClass, formulaLine, RollDice } from './rollDice.tsx';
 import { ROLL_MODE_INFO } from './rollModes.ts';
 import { RowShell } from './RowShell.tsx';
 import { SpeakerFace } from './SpeakerFace.tsx';
@@ -73,7 +73,7 @@ export const RollRow = memo(function RollRow({ entry, face, portrait, time, thre
           {ability !== undefined && ability !== '' && <span className="atlas-online-log__roll-ability atlas-dice-toast__ability">{ability}</span>}
           {flavor !== undefined && flavor !== request?.label && <span className="atlas-online-log__roll-flavor atlas-dice-toast__ability">{flavor}</span>}
           <div className="atlas-online-log__roll-summary">
-            <span className="atlas-online-log__roll-formula">{roll.formula}</span>
+            <span className="atlas-online-log__roll-formula">{formulaLine(roll)}</span>
             <span className="atlas-online-log__roll-equals" aria-hidden="true">=</span>
             <span className="atlas-online-log__roll-total">{roll.total}</span>
           </div>

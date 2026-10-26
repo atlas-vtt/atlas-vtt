@@ -133,16 +133,10 @@ describe('note previews during a drag', () => {
 });
 
 describe('Lighting in the editor', () => {
-  it('is in the tray while hidden with dynamic lighting on, and leaves it when the switch goes off', () => {
+  it('is in the tray while hidden', () => {
     const harness = renderToolbar({ stored: { hidden: ['wall'] } });
-    act(() => harness.settings.setExperimental('dynamicLighting', true));
     startEditing(harness);
     expect(trayIds(harness.container)).toEqual(['wall']);
-
-    act(() => harness.settings.setExperimental('dynamicLighting', false));
-    expect(trayIds(harness.container)).toEqual([]);
-    expect(harness.container.querySelector('.atlas-main-toolbar [data-toolbar-item="wall"]')).toBeNull();
-    expect(harness.store.getState().isToolbarEditing).toBe(true);
   });
 });
 

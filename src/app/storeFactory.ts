@@ -132,6 +132,8 @@ export interface ViewAtlasState extends ViewState {
   // Drawing actions
   addDrawing: (data: Omit<DrawingStroke, 'id' | 'kind' | 'timestamp'>) => string;
   moveDrawings: (ids: string[], dx: number, dy: number) => void;
+  /** Gives each listed drawing these points (a group turned as one); others keep theirs. */
+  placeDrawings: (points: Readonly<Record<string, ReadonlyArray<{ x: number; y: number }>>>) => void;
   updateDrawings: (ids: string[], updates: Partial<Pick<DrawingStroke, 'color' | 'icon'>>) => void;
   deleteDrawing: (id: string) => void;
   clearDrawings: () => void;
@@ -1022,6 +1024,13 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
                 point.x += dx;
                 point.y += dy;
               }
+            }
+          }),
+
+          placeDrawings: (points) => set((draft) => {
+            for (const [id, placed] of Object.entries(points)) {
+              const drawing = draft.objects.drawings[id];
+              if (drawing) drawing.points = placed.map(({ x, y }) => ({ x, y }));
             }
           }),
 

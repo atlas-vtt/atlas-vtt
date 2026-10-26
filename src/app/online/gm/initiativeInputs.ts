@@ -29,6 +29,8 @@ export interface InitiativeInputs {
   readonly dock?: 'left' | 'right';
   /** The number a combatant's look-alike badge shows the players, or null without one; none are sent without it. */
   badge?(tokenId: string): number | null;
+  /** The id players know a token by while it is in their token list (`TokenShare.listedAlias`); none for any other. */
+  tokenAlias?(tokenId: string): string | undefined;
   /** Where the map's rules are looked up; without it the default rules and no hit points. */
   readonly rules: RulesLookup | null;
   /** A portrait's artwork as players are sent it, by vault path; null while unknown. */
@@ -41,6 +43,11 @@ const finite = (value: unknown): value is number => typeof value === 'number' &&
 /** A look-alike number as players are sent it: a whole number within the protocol's bound, else none. */
 function instanceOf(badge: number | null): { instance?: number } {
   return badge !== null && Number.isInteger(badge) && badge >= 1 && badge <= MAX_INSTANCE_NUMBER ? { instance: badge } : {};
+}
+
+/** The token a card brings into view, where the players know it. */
+function aliasOf(alias: string | undefined): { token?: string } {
+  return alias === undefined ? {} : { token: alias };
 }
 
 /** The side older pages group a combatant under: the players', or the opponents' for every other side. */
@@ -121,6 +128,7 @@ export function sharedInitiative(inputs: InitiativeInputs): SharedInitiative | n
       ...(nextRound.has(combatant) ? { nextRound: true } : {}),
       ...(token.conditions?.length ? { conditions: sharedConditions(token.conditions) } : {}),
       ...instanceOf(inputs.badge?.(entry.tokenId) ?? null),
+      ...aliasOf(inputs.tokenAlias?.(entry.tokenId)),
     };
   });
   return {

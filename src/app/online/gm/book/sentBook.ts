@@ -21,6 +21,19 @@ export const RESEND = '?';
 /** A book without quests: the campaign being played has none, or none is played. */
 export const NO_QUESTS: readonly BookQuest[] = [];
 
+/** The text of each drawn statblock and world map, by the object that holds it: both keep their object while they read the same. */
+const texts = new WeakMap<object, string>();
+
+/** `value` as JSON, written once for as long as `holder` lives: every book update compares every player's statblock. */
+function textOf(holder: object, value: unknown): string {
+  let text = texts.get(holder);
+  if (text === undefined) {
+    text = JSON.stringify(value);
+    texts.set(holder, text);
+  }
+  return text;
+}
+
 /**
  * What a player is sent now of their book, to compare with what they were sent last. Quests are the
  * party's: every player gets them, with a character or without. A statblock not drawn yet (undefined) is ''.
@@ -28,10 +41,10 @@ export const NO_QUESTS: readonly BookQuest[] = [];
 export function sentOf(character: PlayedCharacter | null, worldMap: WorldMapFile | null, quests: readonly BookQuest[], drawn: DrawnStatblock | undefined): SentBook {
   return {
     book: character === null ? '' : character.key,
-    map: worldMap === null ? '' : JSON.stringify(worldMap.map),
+    map: worldMap === null ? '' : textOf(worldMap, worldMap.map),
     quests,
     sheet: JSON.stringify(character?.sheet ?? null),
-    statblock: drawn === undefined ? '' : JSON.stringify(drawn.statblock),
+    statblock: drawn === undefined ? '' : textOf(drawn, drawn.statblock),
   };
 }
 

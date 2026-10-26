@@ -1,32 +1,31 @@
 import { BAR_SLOTS, type ResourceValue } from '../../../resources/resourceTypes';
-import { NAMEPLATE_HEIGHT } from '../tokenSizing';
+import { barDimensions } from '../../../styles/designTokens';
 import type { ResourceSlot } from './ResourceStack';
 
 /** Diameter of the wheel, in UI units: two bar heights. */
 export const WHEEL_SIZE = 20.4;
 /** Space between the two wheels of a side, in UI units. */
 const WHEEL_GAP = 1.6;
-/** Space between an anchor and its wheels, in UI units. */
-const WHEEL_MARGIN = 1.5;
-/** Bottom of the lower wheel above the anchor: clear of the nameplate, which lies on the token's bottom edge. */
-const WHEEL_BASE = NAMEPLATE_HEIGHT + 1;
+/** Space between an anchor and its wheels, in UI units: as wide as between a bar and its buttons. */
+const WHEEL_MARGIN = barDimensions.token.gap;
 /** Wheels on each side of the token. */
 const WHEELS_PER_SIDE = 2;
 
 /**
- * Where the wheel of `slot` sits, in the units of its side's anchor: the first two wheel
- * slots on the token's right, the next two on its left, as a mirror. The first of a side is
- * the upper one. A wheel keeps its own place even when the other slots are empty.
+ * Where the wheel of `slot` sits, in the units of its side's anchor (`wheelAnchor`): the
+ * first two wheel slots on the token's right, the next two on its left, as a mirror. A
+ * side's two wheels form a column centred on its anchor, the first of the side the upper
+ * one. A wheel keeps its own place even when the other slot is empty.
  */
 export function wheelSlot(key: string, slot: number): ResourceSlot {
   const index = slot - BAR_SLOTS;
   const onLeft = index >= WHEELS_PER_SIDE;
-  const row = index % WHEELS_PER_SIDE === 0 ? 1 : 0;
+  const upper = index % WHEELS_PER_SIDE === 0;
   return {
     key,
     kind: onLeft ? 'wheel-left' : 'wheel',
     left: onLeft ? -WHEEL_MARGIN - WHEEL_SIZE : WHEEL_MARGIN,
-    top: -WHEEL_BASE - WHEEL_SIZE - row * (WHEEL_GAP + WHEEL_SIZE),
+    top: upper ? -WHEEL_GAP / 2 - WHEEL_SIZE : WHEEL_GAP / 2,
     width: WHEEL_SIZE,
     height: WHEEL_SIZE,
   };

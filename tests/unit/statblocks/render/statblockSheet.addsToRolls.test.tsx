@@ -75,12 +75,12 @@ describe('values that add to rolls', () => {
     expect(toggles(other)).toEqual(['false', 'false', 'false', 'false', 'false']);
 
     act(() => { attackLink(second).click(); });
-    expect(rolls.map((roll) => roll.formula)).toEqual(['+5+2[Proficiency]+1[Stealth]']);
+    expect(rolls.map((roll) => roll.formula)).toEqual(['+5[Attack]+2[Proficiency]+1[Stealth]']);
     expect(toggles(first)).toEqual(['false', 'false', 'false', 'false', 'false']);
     expect(toggles(second)).toEqual(toggles(first));
 
     act(() => { attackLink(first).click(); });
-    expect(rolls.map((roll) => roll.formula).at(-1)).toBe('+5');
+    expect(rolls.map((roll) => roll.formula).at(-1)).toBe('+5[Attack]');
   });
 
   it('never roll anything when armed or disarmed', () => {
@@ -100,7 +100,7 @@ describe('values that add to rolls', () => {
     act(() => { fireEvent.click(screen.getAllByRole('switch')[0]!); });
     rerender(<StatblockSheet template={TEMPLATE} fields={{ ...VALUES, proficiency: 3 }} name="Test template" variant="full" app={app} sourcePath="Changed.md" />);
     act(() => { attackLink(container).click(); });
-    expect(rolls.map((roll) => roll.formula)).toEqual(['+5+3[Proficiency]']);
+    expect(rolls.map((roll) => roll.formula)).toEqual(['+5[Attack]+3[Proficiency]']);
   });
 
   it('are drawn inert where the card previews its template (the template editor), and arm nothing there', () => {
@@ -124,10 +124,10 @@ describe('values that add to rolls', () => {
     act(() => { fireEvent.click(armProficiency!); });
     act(() => { fireEvent.click(armStealth!); });
     act(() => { proficiency.querySelector<HTMLElement>('.atlas-dice-link')!.click(); });
-    expect(rolls.map((roll) => roll.formula)).toEqual(['+2+1[Stealth]']);
+    expect(rolls.map((roll) => roll.formula)).toEqual(['+2[Proficiency]+1[Stealth]']);
     expect(screen.getAllByRole('switch').map((toggle) => toggle.getAttribute('aria-checked'))).toEqual(['false', 'false', 'false', 'false', 'false']);
     const survival = blockEl(container, 'exper001')!.querySelector<HTMLElement>('[data-roll-name="Survival"] .atlas-dice-link')!;
     act(() => { survival.click(); });
-    expect(rolls.at(-1)?.formula).toBe('+2');
+    expect(rolls.at(-1)?.formula).toBe('+2[Survival]');
   });
 });

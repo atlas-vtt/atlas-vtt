@@ -48,7 +48,7 @@ const FULL: BookStatblock = sheet({
       parts: [{ key: 'cost', label: 'Cost', type: 'choice', options: ['Action', 'Bonus action'] }, { key: 'tags', label: 'Tags', type: 'list' }, { key: 'dmg', label: 'Damage', type: 'dice' }],
       tabs: [
         { label: 'Cantrips', list: 'cantrips', intro: { opening: 'Known by heart.', whole: TEXT_REF }, entries: [entry('Light', { text: { opening: 'A torch', whole: TEXT_REF }, parts: { cost: 'Action', tags: ['evocation'] } })] },
-        { label: '1st level', list: 'spells1', entries: [entry('Healing Word', { parts: { cost: 'Bonus action', dmg: '1d4' } })] },
+        { label: '1st level', list: 'spells1', entries: [entry('Healing Word', { parts: { cost: 'Bonus action', dmg: '1d4+3' }, written: { name: 'Healing Word', text: { opening: 'Heals @wis.mod', whole: TEXT_REF }, parts: { dmg: '1d4+@wis.mod' } } })] },
       ],
     }),
     component({ id: 'spl2', name: 'Spells', access: 'read', spells: true, tabs: [{ label: '1st', list: 'spells', entries: [entry('Shield')] }] }),
@@ -177,6 +177,13 @@ describe('the limits of a statblock', () => {
     }
     for (const broken of [{ key: 'Light' }, { name: 'x'.repeat(81) }, { name: 7 }, { parts: 'none' }, { text: { opening: 'x'.repeat(MAX_SHEET_TEXT + 1) } }]) {
       expect(parseBookStatblock(sheet({ abilities: [component({ tabs: [{ label: null, list: 'a', entries: [{ ...entry('Light'), ...broken } as AbilityEntry] }] })] })), JSON.stringify(broken)).toBeUndefined();
+    }
+  });
+
+  it('drops an ability\'s malformed as-written values and keeps the ability', () => {
+    for (const written of ['1d4', { name: 7 }, { text: 'x' }, { parts: ['1d4'] }, { name: 'x'.repeat(81) }]) {
+      const read = parseBookStatblock(sheet({ abilities: [component({ tabs: [{ label: null, list: 'a', entries: [{ ...entry('Light'), written } as AbilityEntry] }] })] }));
+      expect(read?.abilities[0]?.tabs[0]?.entries[0], JSON.stringify(written)).toEqual(entry('Light'));
     }
   });
 

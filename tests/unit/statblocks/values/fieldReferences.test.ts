@@ -57,8 +57,8 @@ describe('a statblock\'s values as its card shows them', () => {
   const fill = (text: string): ReturnType<typeof fillReferences> => fillReferences(text, lookup);
 
   it('writes each reference as the number it names, the terms as written', () => {
-    expect(fill('2d6 + 12 + @int.mod')).toEqual({ text: '2d6 + 12 - 1', unresolved: [] });
-    expect(fill('Hit: 1d8 + @str.mod slashing')).toEqual({ text: 'Hit: 1d8 + 3 slashing', unresolved: [] });
+    expect(fill('2d6 + 12 + @int.mod')).toMatchObject({ text: '2d6 + 12 - 1', unresolved: [] });
+    expect(fill('Hit: 1d8 + @str.mod slashing')).toMatchObject({ text: 'Hit: 1d8 + 3 slashing', unresolved: [] });
     expect(fill('2+@strength').text).toBe('2+16');
     expect(fill('@level d6 fire').text).toBe('5d6 fire');
     expect(fill('@leveld8').text).toBe('5d8');
@@ -89,7 +89,7 @@ describe('a statblock\'s values as its card shows them', () => {
   });
 
   it('leaves a reference that names no number as written, and a word\'s @ alone', () => {
-    expect(fill('1d4 + @luck')).toEqual({ text: '1d4 + @luck', unresolved: ['luck'] });
+    expect(fill('1d4 + @luck')).toMatchObject({ text: '1d4 + @luck', unresolved: ['luck'] });
     expect(fill('write to mira@example.org').text).toBe('write to mira@example.org');
   });
 

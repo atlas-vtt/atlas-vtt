@@ -33,6 +33,8 @@ export interface TokenSharePorts {
   atlasSettings?(): Pick<AtlasPlayerSettings, 'showInitiative' | 'movesOnTurn'>;
   /** The players' look-alike numbers changed (`badgeOf`): what shows them besides the token list is worked out again. */
   numbersChanged?(): void;
+  /** Until when the live lane carries a held token's place, by the id players know it by (`LiveShare.carriedUntil`); without it every place goes in the list. */
+  liveCarriedUntil?(alias: string): number | undefined;
   randomId(): string;
   now(): number;
   setTimer(run: () => void, ms: number): number;
@@ -77,6 +79,12 @@ export class TokenShare {
   private numbers: InstanceNumbers = NO_INSTANCE_NUMBERS;
   /** Whether the scene shows look-alike badges, as the last list read it. */
   private badgesOn = true;
+  /** Where the last list put each token, by the id players know it by. */
+  private listedPlaces: ReadonlyMap<string, { readonly x: number; readonly y: number }> = new Map();
+  /** The GM ids of the dragged tokens the last list kept where they were listed (`heldWhereListed`). */
+  private kept: ReadonlySet<string> = new Set();
+  /** Looks again once the lane stops carrying a kept token. */
+  private recheck: number | undefined;
 
   /** `listed` hears of each list sent with the ids players know its tokens by, and of null when none is shared. */
   constructor(store: SceneStore, ports: TokenSharePorts, listed: (listed: ListedTokens | null) => void = () => undefined) {
@@ -96,20 +104,31 @@ export class TokenShare {
     this.shownArt = new Map();
     this.listedIds = new Map();
     this.listedAliases = new Map();
+    this.listedPlaces = new Map();
+    this.kept = new Set();
     this.numbers = NO_INSTANCE_NUMBERS;
     this.badgesOn = true;
     this.art.clear();
     this.cancel();
     this.cancelPoll();
+    this.cancelRecheck();
     this.listed(null);
     if (scene === null) return;
     this.update();
     this.schedulePoll();
   }
 
-  /** Works the list out again; it goes out now, or once `TOKEN_INTERVAL_MS` has passed since the last. */
+  /**
+   * Works the list out again; it goes out now, or once `TOKEN_INTERVAL_MS` has passed since the last.
+   * A drop of a token the list kept where it was listed goes out at once: the lane ends that drag now.
+   */
   update(): void {
-    if (this.scene === null || this.timer !== undefined) return;
+    if (this.scene === null) return;
+    if (this.dropped()) {
+      this.cancel();
+      return this.flush();
+    }
+    if (this.timer !== undefined) return;
     const wait = this.lastAt + TOKEN_INTERVAL_MS - this.ports.now();
     if (wait > 0) {
       this.timer = this.ports.setTimer(() => {
@@ -194,6 +213,7 @@ export class TokenShare {
     this.shownArt = art;
     this.listedIds = new Map([...aliases].map(([id, alias]) => [alias, id]));
     this.listedAliases = aliases;
+    this.listedPlaces = new Map(tokens.map((token) => [token.id, { x: token.x, y: token.y }]));
     this.list.publish(scene, { tokens, cell, snap });
     this.listed({ scene, aliases });
   }
@@ -255,7 +275,49 @@ export class TokenShare {
       const id = gmIds.get(token.id);
       return id === undefined ? [] : [[id, token.id]];
     }));
-    return { tokens, cell: gridSize, snap: snapGridOf(state.grid), art, aliases };
+    return { tokens: this.heldWhereListed(tokens, state.heldTokens), cell: gridSize, snap: snapGridOf(state.grid), art, aliases };
+  }
+
+  /**
+   * The tokens with each one being dragged at the place the last list gave it while the live lane
+   * carries it: players follow the drag there, and the list lands it with the drop, not as many
+   * times again as the drag moves.
+   */
+  private heldWhereListed(tokens: SharedToken[], held: Readonly<Record<string, unknown>>): SharedToken[] {
+    const now = this.ports.now();
+    const kept = new Set<string>();
+    let until = Number.POSITIVE_INFINITY;
+    const shown = tokens.map((token) => {
+      const listed = this.listedPlaces.get(token.id);
+      const id = this.listedIds.get(token.id);
+      const carried = id !== undefined && Object.hasOwn(held, id) ? this.ports.liveCarriedUntil?.(token.id) : undefined;
+      if (listed === undefined || id === undefined || carried === undefined || carried <= now) return token;
+      kept.add(id);
+      until = Math.min(until, carried);
+      return listed.x === token.x && listed.y === token.y ? token : { ...token, x: listed.x, y: listed.y };
+    });
+    this.kept = kept;
+    this.cancelRecheck();
+    // A drag that rests lands its place once the lane has said nothing of it for a while
+    if (kept.size > 0) {
+      this.recheck = this.ports.setTimer(() => {
+        this.recheck = undefined;
+        this.update();
+      }, until - now + 1);
+    }
+    return shown;
+  }
+
+  /** Whether a token the last list kept where it was listed is no longer held. */
+  private dropped(): boolean {
+    if (this.kept.size === 0) return false;
+    const held = this.store.getState().heldTokens;
+    return [...this.kept].some((id) => !Object.hasOwn(held, id));
+  }
+
+  private cancelRecheck(): void {
+    if (this.recheck !== undefined) this.ports.clearTimer(this.recheck);
+    this.recheck = undefined;
   }
 
   private schedulePoll(): void {

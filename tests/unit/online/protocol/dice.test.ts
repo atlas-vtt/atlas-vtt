@@ -95,3 +95,51 @@ describe('shared dice of the full notation', () => {
     expect(parseSharedRoll(roll([], { linear: true }))).toBeNull();
   });
 });
+
+describe('the named constants of a shared roll', () => {
+  const named = { ...ROLL, formula: '1d20+4-1[Str mod]', modifiers: 3, total: 15, rolls: [{ die: 'd20', value: 12, max: 20 }] };
+
+  it('are read in written order, a name the dice notation writes with a whole number each', () => {
+    const terms = [{ label: 'Str mod', value: -1 }, { label: 'Proficiency', value: 2 }, { label: 'Proficiency', value: 2 }];
+    expect(parseSharedRoll({ ...named, modifiers: 7, namedModifiers: terms })?.namedModifiers).toEqual(terms);
+    expect(parseSharedRoll({ ...named, namedModifiers: [{ label: 'Str mod', value: -1, extra: true }] })?.namedModifiers).toEqual([{ label: 'Str mod', value: -1 }]);
+    expect(parseSharedRoll(named)).not.toHaveProperty('namedModifiers');
+  });
+
+  it('are dropped, the roll kept, where they are malformed or cannot be part of its constants', () => {
+    for (const namedModifiers of [
+      'Str mod', [], [{ label: '', value: 1 }], [{ label: ' ', value: 1 }], [{ label: 'Str[mod]', value: 1 }], [{ label: 'A'.repeat(25), value: 1 }],
+      [{ label: 'Str', value: 1.5 }], [{ label: 'Str', value: 2_000_000_000 }], [{ label: 'Str' }], [null],
+      Array.from({ length: 21 }, () => ({ label: 'Str', value: 0 })),
+      [{ label: 'A', value: -1_000_000_000 }, { label: 'B', value: -1_000_000_000 }],
+    ]) {
+      const read = parseSharedRoll({ ...named, namedModifiers });
+      expect(read, JSON.stringify(namedModifiers)).toMatchObject({ formula: named.formula, total: 15 });
+      expect(read, JSON.stringify(namedModifiers)).not.toHaveProperty('namedModifiers');
+    }
+    expect(parseSharedRoll({ ...named, linear: false, modifiers: 0, namedModifiers: [{ label: 'Str', value: 3 }] })).not.toHaveProperty('namedModifiers');
+  });
+});
+
+describe('advantage', () => {
+  const roll = { t: 'roll', scene: 's1', formula: '+3', token: null };
+  const d20 = { dice: [{ count: 1, sides: 20 }], sides: ['advantage', 'disadvantage'] };
+
+  it('is asked for with a side the GM rolls by; a side it does not know leaves the roll plain', () => {
+    expect(parsePlayerMessage({ ...roll, advantage: 'disadvantage' })).toEqual({ ...roll, advantage: 'disadvantage' });
+    for (const advantage of ['heroic', 1, null, ['advantage']]) expect(parsePlayerMessage({ ...roll, advantage }), String(advantage)).toEqual(roll);
+  });
+
+  it('is offered by the dice the rules and a player\'s tokens name; malformed dice are left out, the message kept', () => {
+    const rules = { t: 'rules', scene: 's1', grid: { type: 'square', size: 70, offsetX: 0, offsetY: 0 }, snap: true, accent: null,
+      measurement: { mode: 'metric', unitType: 'feet', unitDistance: 5, ruleDistance: 5, diagonalRule: 'equidistant', rangeBands: [], coneAngle: 53 } };
+    expect(parseGmMessage({ ...rules, dice: d20 })).toEqual({ ...rules, dice: d20 });
+    expect(parseGmMessage({ ...rules, dice: { ...d20, sides: ['heroic', 'advantage'] } })).toEqual({ ...rules, dice: { ...d20, sides: ['advantage'] } });
+    for (const dice of [{ dice: [{ count: 0, sides: 20 }], sides: [] }, { dice: [{ count: 1, sides: 1001 }], sides: [] }, { dice: [], sides: 'advantage' }, 'd20']) {
+      expect(parseGmMessage({ ...rules, dice }), JSON.stringify(dice)).toEqual(rules);
+    }
+    const mine = { t: 'mine', scene: 's1', tokens: [ALIAS] };
+    expect(parseGmMessage({ ...mine, dice: { [ALIAS]: d20 } })).toEqual({ ...mine, dice: { [ALIAS]: d20 } });
+    expect(parseGmMessage({ ...mine, dice: { ['f'.repeat(24)]: d20, [ALIAS]: 'd20' } })).toEqual(mine);
+  });
+});

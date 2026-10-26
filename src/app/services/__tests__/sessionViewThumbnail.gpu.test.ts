@@ -26,8 +26,7 @@ describe('thumbnail of a scene while the canvas shows the players\' view', () =>
 
   beforeEach(() => {
     vi.stubGlobal('createEl', (tag: string): HTMLElement => document.createElement(tag));
-    // Obsidian's `node.win`, and reduced motion, so the rings and marker lifts settle at once.
-    Object.defineProperty(Node.prototype, 'win', { configurable: true, get: () => window });
+    // Reduced motion, so the rings and marker lifts settle at once.
     vi.stubGlobal('matchMedia', () => ({ matches: true }));
   });
 
@@ -37,7 +36,6 @@ describe('thumbnail of a scene while the canvas shows the players\' view', () =>
     scene?.dispose();
     scene = null;
     vi.unstubAllGlobals();
-    delete (Node.prototype as { win?: Window }).win;
   });
 
   async function setup(): Promise<{ gmOverlays: GmOverlays; session: SessionLighting; thumbnail: (capture?: SceneFrameCapture) => Promise<Pixels> }> {

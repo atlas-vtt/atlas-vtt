@@ -52,7 +52,8 @@ describe('LightingRenderer: objects it cannot read', () => {
 
   it('builds and draws the scene with what it can read, and does not stop for the rest', async () => {
     const errors = vi.spyOn(console, 'error');
-    harness = await createHarness({ patch: { lighting: { enabled: true, ambient: 0 }, objects: BROKEN as never } });
+    // No explored memory, so the picture is what the viewer sees now.
+    harness = await createHarness({ patch: { exploredMask: null, lighting: { enabled: true, ambient: 0 }, objects: BROKEN as never } });
     await harness.settle();
     const { lighting, renderer } = harness;
     const engine = (lighting as unknown as { engine: LightingEngine }).engine;
@@ -65,7 +66,7 @@ describe('LightingRenderer: objects it cannot read', () => {
     expect(luminance(at(140, 128))).toBeLessThan(4);
     expect(lighting.lightReaches()).toHaveLength(1);
     expect(engine.failed).toBe(false);
-    // Nothing was reported about the lighting (the harness's explored mask is no image, which is another matter).
+    // Nothing was reported about the lighting.
     expect(errors.mock.calls.filter(([message]) => String(message).includes('lighting'))).toEqual([]);
     // And goes on working: a change to the store is drawn.
     harness.change({ objects: { ...harness.state.objects, lights: { ...BROKEN.lights, good: { ...BROKEN.lights.good, x: 90 } } } as never });

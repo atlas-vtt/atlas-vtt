@@ -19,8 +19,6 @@ export interface LightingSource {
 
 /** The Atlas settings the companion follows. */
 export interface AtlasPlayerSettings {
-  /** Whether dynamic lighting is switched on; null when Atlas's settings cannot be read. */
-  readonly dynamicLighting: boolean | null;
   /** Whether players see token names (the player view's nameplate setting); false when it cannot be read. */
   readonly showNames: boolean;
   /** Whether players see the GM's dice rolls (the player view's setting); false when it cannot be read. */
@@ -48,12 +46,11 @@ export function field(target: unknown, name: string): unknown {
 
 /**
  * The lighting source of an Atlas tab's renderer (`PixiRendererOrchestrator`): its lighting
- * controller's sight aids read the rules and measurement its lighting is built with. That
- * controller exists only while dynamic lighting is switched on. Null when the path is not there
- * (lighting off, or another Atlas version): a lit scene is then not shared at all.
+ * controller's sight aids read the rules and measurement its lighting is built with. Null when
+ * the path is not there (another Atlas version): a lit scene is then not shared at all.
  */
 export function lightingSourceOf(renderer: unknown): LightingSource | null {
-  const controller = field(field(renderer, 'lightingFeature'), 'controller');
+  const controller = field(renderer, 'lighting');
   const deps = field(field(controller, 'sightAids'), 'deps');
   const rules = field(deps, 'rules');
   const measurement = field(deps, 'measurement');
@@ -65,16 +62,13 @@ export function lightingSourceOf(renderer: unknown): LightingSource | null {
 export function atlasPlayerSettings(app: App): AtlasPlayerSettings {
   // Obsidian keeps the loaded plugins by id in `app.plugins.plugins`.
   const settings = field(field(field(field(app, 'plugins'), 'plugins'), ATLAS_PLUGIN_ID), 'settingsService');
-  const isOn = field(settings, 'isExperimentalOn');
   const playerView = field(settings, 'getLocalPlayerViewSettings');
-  const dynamicLighting = typeof isOn === 'function' ? (isOn as (id: string) => unknown).call(settings, 'dynamicLighting') : undefined;
   const view: unknown = typeof playerView === 'function' ? (playerView as () => unknown).call(settings) : undefined;
   const readLayout = field(settings, 'initiativeLayout');
   const layout: unknown = typeof readLayout === 'function' ? (readLayout as () => unknown).call(settings) : undefined;
   const readTurn = field(settings, 'initiativeTurnOptions');
   const turn: unknown = typeof readTurn === 'function' ? (readTurn as () => unknown).call(settings) : undefined;
   return {
-    dynamicLighting: typeof dynamicLighting === 'boolean' ? dynamicLighting : null,
     showNames: field(view, 'showTokenNameplates') === true,
     showDiceRolls: field(view, 'showDiceRolls') === true,
     showInitiative: field(view, 'showInitiative') === true,
@@ -123,13 +117,9 @@ export function accentColour(doc: Document): string | null {
 /** Why a lit scene cannot be shared: the GM's lighting cannot be read, so players would see the map unlit. */
 export const LIGHTING_REFUSAL = 'Atlas Online cannot read this scene\'s lighting, so players see nothing of it.';
 
-/**
- * Whether players see the scene lit: its lighting is on and so is Atlas's dynamic lighting (with it
- * off, Atlas shows every scene unlit). A switch that cannot be read counts as on: the scene is then
- * shared lit or not at all.
- */
-export function isLit(state: SceneState, settings: AtlasPlayerSettings): boolean {
-  return state.lighting.enabled && settings.dynamicLighting !== false;
+/** Whether players see the scene lit: its dynamic lighting is on. */
+export function isLit(state: SceneState): boolean {
+  return state.lighting.enabled;
 }
 
 /** The version of the Atlas plugin loaded now, or null. */

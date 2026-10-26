@@ -1,6 +1,6 @@
 import { parseAsset, type AssetRef } from './asset.ts';
 import { isRecord } from './shape.ts';
-import { COLOUR_PATTERN, MAX_NAME } from './tokens.ts';
+import { COLOUR_PATTERN, MAX_NAME, TOKEN_ID_PATTERN } from './tokens.ts';
 import { MAX_INSTANCE_NUMBER, MAX_TOKEN_CONDITIONS, parseCondition, type SharedCondition } from './tokenUI.ts';
 
 /** Combatants one `initiative` message may list. */
@@ -47,6 +47,11 @@ export interface SharedCombatant {
    * look-alikes they see (and those beside the map their list shows); absent without a badge. Absent from older GMs.
    */
   readonly instance?: number;
+  /**
+   * The id the players know the combatant's token by in their token list, which a click on the card
+   * brings into view; absent for a token they are not sent (beside the map, out of sight). Absent from older GMs.
+   */
+  readonly token?: string;
 }
 
 /** A side of a fight by sides as the players' list heads its group. */
@@ -126,6 +131,7 @@ function parseCombatant(value: unknown): SharedCombatant | null {
     ...conditionsOf(value.conditions),
     ...(isSideId(value.sideId) ? { sideId: value.sideId } : {}),
     ...(isInstance(value.instance) ? { instance: value.instance } : {}),
+    ...(typeof value.token === 'string' && TOKEN_ID_PATTERN.test(value.token) ? { token: value.token } : {}),
   };
 }
 

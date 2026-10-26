@@ -11,6 +11,7 @@ import {
 } from './statblockUtils';
 import { StatblockMarkdown } from '../../../statblocks/render/shared/StatblockMarkdown';
 import { EditableField } from '../../../statblocks/render/shared/EditableField';
+import { DiceText } from '../../../statblocks/render/shared/DiceText';
 import { hitPointsAttribute, namesHitPoints } from '../../../statblocks/render/shared/hitPoints';
 import { statblockImageSrc } from '../../../statblocks/render/shared/statblockImage';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
@@ -163,7 +164,10 @@ export function TextBlock({ item, monster, app, sourcePath }: BlockProps): React
   );
 }
 
-/** `table` — ability scores and similar grids, with derived modifiers. */
+/**
+ * `table` — ability scores and similar grids, with derived modifiers. A text
+ * cell's dice roll ("4d6+3"); a number rolls only through its modifier.
+ */
 export function TableBlock({ item, monster }: BlockProps): React.JSX.Element | null {
   const raw = monster[item.properties?.[0] ?? ''];
   const values = Array.isArray(raw) ? raw : [];
@@ -190,7 +194,7 @@ export function TableBlock({ item, monster }: BlockProps): React.JSX.Element | n
                 editable={isEditableScalar(value)}
                 label={headers[index] ?? t('statblock.valueN', { n: index + 1 })}
               >
-                {stringify(value)}
+                {typeof value === 'string' ? <DiceText text={value} /> : stringify(value)}
               </EditableField>
               {item.calculate && typeof value === 'number' && (
                 <span className="atlas-sb-modifier">

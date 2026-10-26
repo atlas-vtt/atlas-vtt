@@ -1,6 +1,7 @@
 import { bookLine, MAX_BOOK_TITLE } from './bookText.ts';
 import { MAX_FORMULA } from './dice.ts';
 import { isRecord } from './shape.ts';
+import { spendText, type SheetBudget } from './sheetValues.ts';
 
 /** The most rows one Counters block holds, the largest maximum of a row, and the most refills a block names. */
 export const MAX_COUNTERS = 24;
@@ -55,4 +56,14 @@ export function parseRefill(value: unknown): CounterRefill | null {
 /** The rows a refill gives uses back to: those whose `reset` is its name or one it includes. */
 export function refilledBy(refill: CounterRefill, row: SheetCounter): boolean {
   return row.reset !== null && (row.reset === refill.name || refill.includes.includes(row.reset));
+}
+
+/** The refills of a statblock, each name once; null when they are malformed. */
+export function parseRefills(value: unknown, budget: SheetBudget): CounterRefill[] | null {
+  if (value === undefined) return [];
+  const refills = Array.isArray(value) && value.length <= MAX_REFILLS ? value.map(parseRefill) : null;
+  if (refills === null || refills.some((refill) => refill === null)) return null;
+  const named = refills as CounterRefill[];
+  if (new Set(named.map((refill) => refill.name)).size !== named.length) return null;
+  return spendText(budget, named.map((refill) => refill.name + refill.includes.join('')).join('')) ? named : null;
 }

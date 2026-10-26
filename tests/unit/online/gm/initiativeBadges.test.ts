@@ -89,4 +89,13 @@ describe('reading the new fields', () => {
     expect(sharedInitiative({ ...inputs, badge: () => 4 })?.combatants[0]?.instance).toBe(4);
     for (const badge of [null, 0, 2.5, 20_000]) expect(sharedInitiative({ ...inputs, badge: () => badge })?.combatants[0]).not.toHaveProperty('instance');
   });
+
+  it('names the token a card brings into view only where the players know it, by the id they know', () => {
+    const inputs = { state: fight({ g1: goblin('g1', 1) }), shown: true, showNames: false, rules: null, art: () => null };
+    expect(sharedInitiative({ ...inputs, tokenAlias: (id) => (id === 'g1' ? 'a1b2c3d4e5f6a7b8c9d0e1f2' : undefined) })?.combatants[0]?.token).toBe('a1b2c3d4e5f6a7b8c9d0e1f2');
+    expect(sharedInitiative({ ...inputs, tokenAlias: () => undefined })?.combatants[0]).not.toHaveProperty('token');
+    const read = (token: unknown): unknown => parseInitiative({ ...base, combatants: [{ ...combatant, token }] })?.combatants[0];
+    expect(read('a1b2c3d4e5f6a7b8c9d0e1f2')).toMatchObject({ token: 'a1b2c3d4e5f6a7b8c9d0e1f2' });
+    for (const token of ['', 'has space', 1, null]) expect(read(token), String(token)).not.toHaveProperty('token');
+  });
 });

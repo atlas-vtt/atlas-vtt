@@ -24,16 +24,20 @@ describe('shared source enforcement', () => {
     },
   );
 
-  it.each(['plugin-ci.yml', 'plugin-beta-release.yml', 'plugin-release.yml'])(
-    'checks dependencies before building in %s', workflow => {
-      const source = readFileSync(`.github/workflows/${workflow}`, 'utf8');
-      const check = source.indexOf('run: npm run check:boundaries');
-      expect(check).toBeGreaterThan(-1);
-      expect(check).toBeLessThan(source.indexOf('run: npm run build:ci'));
-      if (workflow === 'plugin-beta-release.yml') {
-        const step = source.slice(source.lastIndexOf('- name:', check), check);
-        expect(step).toContain("if: steps.existing.outputs.skip != 'true'");
-      }
-    },
-  );
+  it('checks dependencies before Plugin CI builds what is released', () => {
+    const source = readFileSync('.github/workflows/plugin-ci.yml', 'utf8');
+    const build = source.indexOf('\n  build-plugin:');
+    const check = source.indexOf('run: npm run check:boundaries');
+    expect(check).toBeGreaterThan(-1);
+    expect(check).toBeLessThan(build);
+    const needs = /^ {4}needs: \[(.*)\]$/m.exec(source.slice(build));
+    expect(needs?.[1].split(',').map(job => job.trim())).toContain('static-checks');
+    expect(source.indexOf('run: npm run build:ci', build)).toBeGreaterThan(build);
+  });
+
+  it('releases the build Plugin CI tested instead of building again', () => {
+    const source = readFileSync('.github/workflows/plugin-release.yml', 'utf8');
+    expect(source).not.toContain('npm run build:ci');
+    expect(source).toContain('actions/workflows/plugin-ci.yml/runs');
+  });
 });

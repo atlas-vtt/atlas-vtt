@@ -8,11 +8,10 @@ import { WHEEL_SIZE, wheelSlot } from './wheelGeometry';
 export const WHEEL_STEPPER = { gap: 2, size: 10 } as const;
 
 /**
- * A token's wheels beside it: `right` in the units of an anchor past the right resize
- * button on the token's bottom edge (`wheelAnchor`), `left` in those of its mirror on the
- * left. Each stack stands on the nameplate's top line and grows upward with its anchor's
- * scale, as the bars grow downward: at no size can it meet the nameplate or the bars. They
- * show only while revealed (`setAlpha`), on hover and selection.
+ * A token's wheels beside it: `right` in the units of the anchor `wheelAnchor` gives, `left`
+ * in those of its mirror. Each side is a column centred on its anchor, which stands outside
+ * everything beside the token. They show only while revealed (`setAlpha`), on hover and
+ * selection.
  */
 export class ResourceWheels {
   readonly right = new Container({ eventMode: 'none', interactiveChildren: false });

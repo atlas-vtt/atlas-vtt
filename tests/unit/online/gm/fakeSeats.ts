@@ -142,5 +142,5 @@ export function fakeCampaigns(players: ConstructorParameters<typeof FakeSeats>[0
   const files = new MemoryPlayers();
   files.change('c1', (stored) => players.reduce((file, player, index) => withPlayer(file, { id: player.id, name: player.name, code: String(100000 + index), characters: player.characters ?? [] }, 0), withCarriedAssignments(withLink(stored, FAKE_LINK), assignments)));
   const seats = new TableSeats(files, 'c1');
-  return { seats, files, playing: () => 'c1', play: () => undefined, open: () => Promise.resolve(seats), known: () => seats, bound: () => undefined };
+  return { seats, files, playing: () => 'c1', play: () => undefined, stop: () => undefined, onChange: () => () => undefined, open: () => Promise.resolve(seats), known: () => seats, bound: () => undefined };
 }

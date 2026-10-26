@@ -25,11 +25,6 @@ function withFeature<T>(app: T, feature: ExperimentalFeatureId): T {
   return app;
 }
 
-/** An app whose GM switched dynamic lighting on. */
-export function withDynamicLighting<T>(app: T): T {
-  return withFeature(app, 'dynamicLighting');
-}
-
 /** An app whose GM switched the statblock editor on. */
 export function withStatblockEditor<T>(app: T): T {
   return withFeature(app, 'statblockEditor');

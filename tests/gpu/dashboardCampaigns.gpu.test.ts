@@ -4,12 +4,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import type { App } from 'obsidian';
 import css from '../../styles/main.scss?inline';
+import { CampaignPlay } from '../../src/app/campaigns/campaignPlay';
 import type { StoredCampaign } from '../../src/app/campaigns/campaignTypes';
 import { AssetService } from '../../src/app/services/AssetService';
 import { SystemPresetFiles } from '../../src/app/services/systemPresets/SystemPresetFiles';
 import { memoryPresets } from '../mocks/memoryPresets';
 import { DASHBOARD_THEME as THEME } from './dashboardTheme';
-import { buttonNamed, DAY, mountDashboard, paintedMap, query, queryAll, settle, shot } from './dashboardHarness';
+import { DAY, mountDashboard, paintedMap, query, queryAll, settle, shot } from './dashboardHarness';
 
 // The campaign's game system dialog can delete a preset, which reaches the map views' services.
 vi.mock('events', async () => import('eventemitter3'));
@@ -134,10 +135,8 @@ describe('the dashboard', () => {
     it(`shows the campaign played on this device, and a card's hover and press (${theme})`, async () => {
       const mounted = await mountDashboard(theme, campaignsOf, { size: { width: 1280, height: 860 } });
       await loaded();
-      fireEvent.click(query('.campaign-card'));
-      await expect.poll(() => document.querySelector('.campaign-page')).not.toBeNull();
-      fireEvent.click(buttonNamed('Play'));
-      fireEvent.click(query('.campaign-page__back'));
+      // Its online table is open.
+      act(() => CampaignPlay.forApp(mounted.app).play('a'));
       await expect.poll(() => document.querySelector('.campaign-card .campaign-playing')).not.toBeNull();
       expect(mounted.storage.current()).toHaveLength(3);
 
@@ -152,8 +151,8 @@ describe('the dashboard', () => {
       expect(getComputedStyle(card).borderTopColor).not.toBe(resting.border);
       await shot(`home-hover-${theme}`, query('.campaign-grid'));
       fireEvent.click(query('.campaign-card'));
-      await expect.poll(() => document.querySelector('.campaign-hero__stop')).not.toBeNull();
-      fireEvent.click(query('.campaign-hero__stop'));
+      await expect.poll(() => document.querySelector('.campaign-hero__playing .campaign-playing')).not.toBeNull();
+      act(() => CampaignPlay.forApp(mounted.app).stop());
     });
   }
 
@@ -218,7 +217,7 @@ describe('the dashboard', () => {
       await settle(300);
       const modal = query('.atlas-collection-settings-modal');
       const tabs = [...modal.querySelectorAll('.atlas-collection-settings-tab')].map((tab) => tab.textContent);
-      expect(tabs).toEqual(['Game System', 'Dice', 'Grid & Measure', 'Conditions', 'Resources', 'Initiative']);
+      expect(tabs).toEqual(['Game System', 'Dice', 'Grid & Measure', 'Vision', 'Conditions', 'Resources', 'Initiative']);
       // The campaign's rules open fullscreen, as a collection's settings do: the window less the overlay's margin
       const window = box(modal);
       expect(window.left).toBeCloseTo(32, 0);

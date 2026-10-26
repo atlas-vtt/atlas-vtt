@@ -14,9 +14,11 @@ import { rollOrigin } from '../tools/diceRollOrigins';
 import type { AdvantageSide, RollingDice } from '../types/diceSetTypes';
 import { templateDiceSet } from '../statblocks/resolve/templateDiceSet';
 import type { RollOptions } from '../tools/DiceTool';
-import { ArmedBonuses } from '../statblocks/rollBonuses/armedBonuses';
+import { ArmedBonuses, type ArmedBonus } from '../statblocks/rollBonuses/armedBonuses';
 import type { ArmableValues } from '../statblocks/rollBonuses/armableValues';
-import { armedValues, withArmedBonuses } from '../statblocks/rollBonuses/bonusFormula';
+import { armedValues, namedBareBonus, withArmedBonuses } from '../statblocks/rollBonuses/bonusFormula';
+import { completeFormula } from '../tools/completeFormula';
+import { parseFormula } from '../tools/parseFormula';
 
 export interface DiceRollSource {
   /** The view that owns this statblock; used for routing, never saved on the roll. */
@@ -35,6 +37,8 @@ export interface DiceRollSource {
   bonuses?: StatblockBonuses | undefined;
   /** The value whose own number is rolled (`bonusId`): armed, it is not added again, and is spent with the others. */
   rolledBonus?: string | undefined;
+  /** What the statblock's roll links roll, to the same rolls naming the `@` references they were filled in from (`SheetState.namedRolls`). */
+  namedRolls?: ReadonlyMap<string, string> | undefined;
 }
 
 /** A statblock's armed values as a roll reads them: its key, and the values its card shows now, by id. */
@@ -54,8 +58,12 @@ export interface OffMapRolls {
   show(result: DiceRollResult, muted: boolean): void;
   /** The dice a roll is made with, by `set` where one is given, else the collection's: what advantage can do. */
   rollingDice?(set?: RollOptions['set']): RollingDice;
-  /** The surface lies over every map (the encounter builder), so a map's roll is shown here as well. */
-  coversMaps?: boolean;
+  /**
+   * Whether the surface lies over the map whose view is `mapEl`, hiding that map's own display of
+   * its rolls, so a roll made there is shown here as well (the encounter builder, unless it is drawn
+   * inside that map's view, where the map's display stands above it). Unset: never.
+   */
+  covers?(mapEl: HTMLElement): boolean;
 }
 
 interface DiceToolLike {
@@ -68,11 +76,13 @@ interface MapDice {
   /** Whether the map's view is on screen, where its rolls are seen. */
   onScreen: boolean;
   viewId: string | undefined;
+  /** The map view's element, where its rolls are shown. */
+  containerEl: HTMLElement | undefined;
 }
 
 interface MapViewLike {
   viewId?: string;
-  containerEl?: { isShown?: () => boolean };
+  containerEl?: HTMLElement & { isShown?: () => boolean };
   serviceManager?: { getToolController?: () => { getDiceTool?: () => DiceToolLike } };
 }
 
@@ -84,11 +94,12 @@ function mapDice(app: App, viewId: string | undefined): MapDice | null {
     if (viewId && view?.viewId !== viewId) continue;
     const tool = view?.serviceManager?.getToolController?.()?.getDiceTool?.();
     if (!tool) continue;
-    const isShown = view.containerEl?.isShown;
+    const element = view.containerEl;
     // An element without Obsidian's `isShown` (a bare test double) counts as shown.
-    const onScreen = typeof isShown === 'function' ? isShown.call(view.containerEl) : true;
-    if (onScreen) return { tool, onScreen, viewId: view.viewId };
-    hidden ??= { tool, onScreen, viewId: view.viewId };
+    const onScreen = typeof element?.isShown === 'function' ? element.isShown() : true;
+    const found = { tool, onScreen, viewId: view.viewId, containerEl: element };
+    if (onScreen) return found;
+    hidden ??= found;
   }
   return hidden;
 }
@@ -117,23 +128,40 @@ export function statblockRollingDice(app: App, source: DiceRollSource, offMap?: 
 }
 
 /**
+ * The formula a statblock's roll throws: `formula` with the values armed for it after it, naming the
+ * `@` references it was filled in from where its card knows them (`namedRolls`), else a bare bonus by
+ * what the roll is for (`abilityName`: `+4` rolled for Agility throws `+4[Agility]`). Where the names
+ * would take it past what the dice roll (a limit, once a bonus is completed with the game's dice), it
+ * is thrown plain, as it would be without them.
+ */
+function thrownFormula(app: App, formula: string, armed: readonly ArmedBonus[], source: DiceRollSource, offMap: OffMapRolls | null | undefined): string {
+  const plain = withArmedBonuses(formula, armed);
+  const named = source.namedRolls?.get(formula) ?? namedBareBonus(formula, source.abilityName);
+  if (named === null) return plain;
+  const withNames = withArmedBonuses(named, armed);
+  const rules = statblockRollingDice(app, source, offMap);
+  return (rules ? completeFormula(withNames, rules) : parseFormula(withNames)).ok ? withNames : plain;
+}
+
+/**
  * Rolls a statblock's dice, tagged with its source: through the dice tool of the
  * map it was opened in (else of an open map), shown on `offMap` too while that map
  * is not on screen; without a map, by `offMap` alone. A roll for one of the tokens
  * it was opened for carries that token's origin. A bare bonus rolls with the dice
  * set of the statblock's template, else the collection's; `advantage` rolls with
  * that side of the set's rule. The values armed for the statblock (`bonuses`) are
- * added as labelled terms, as its card shows them now, and disarmed once the roll is made. Null when nothing could roll it.
+ * added as labelled terms, as its card shows them now, and disarmed once the roll is made,
+ * and the references the roll was filled in from are named (`thrownFormula`). Null when nothing could roll it.
  */
 export function rollStatblockDice(
   app: App, formula: string, source: DiceRollSource, offMap?: OffMapRolls | null, advantage?: AdvantageSide | null,
 ): DiceRollResult | null {
-  if (!source.bonuses) return rollWithSource(app, formula, source, offMap, advantage);
+  if (!source.bonuses) return rollWithSource(app, thrownFormula(app, formula, [], source, offMap), source, offMap, advantage);
   const { key, armable } = source.bonuses;
   const store = ArmedBonuses.forApp(app);
   const ids = store.armed(key);
   const armed = armedValues(ids.filter((id) => id !== source.rolledBonus), armable);
-  const result = rollWithSource(app, withArmedBonuses(formula, armed), source, offMap, advantage);
+  const result = rollWithSource(app, thrownFormula(app, formula, armed, source, offMap), source, offMap, advantage);
   // Disarmed once the roll is out; a roll refused (a limit, no dice to roll it) leaves them armed.
   if (result) store.spend(key, [...armed.map((bonus) => bonus.id), ...(source.rolledBonus === undefined ? [] : [source.rolledBonus])]);
   return result;
@@ -153,7 +181,8 @@ function rollWithSource(
     const origin = sameView ? rollOrigin(context, source.tokenId) : undefined;
     const result = options ? map.tool.rollDice(formula, rollSource, origin, options)
       : origin ? map.tool.rollDice(formula, rollSource, origin) : map.tool.rollDice(formula, rollSource);
-    if (result && (!map.onScreen || offMap?.coversMaps)) offMap?.show(result, true);
+    const covered = map.containerEl !== undefined && offMap?.covers?.(map.containerEl) === true;
+    if (result && (!map.onScreen || covered)) offMap?.show(result, true);
     return result;
   }
   if (!offMap) return null;

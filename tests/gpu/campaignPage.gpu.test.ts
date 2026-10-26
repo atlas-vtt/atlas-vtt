@@ -114,9 +114,12 @@ describe('a campaign\'s page', () => {
       let release = await forceState(open, ['hover']);
       await settle(700);
       expect(ring()).toContain('2px');
-      // What a press does turns the accent of Play.
+      // What a press does turns the theme's accent.
+      const accent = query('.campaign-page').createDiv();
+      accent.style.backgroundColor = 'var(--interactive-accent)';
       expect(getComputedStyle(query('.world-map-card__action')).backgroundColor).not.toBe(restingAction);
-      expect(getComputedStyle(query('.world-map-card__action')).backgroundColor).toBe(getComputedStyle(query('.campaign-hero__play')).backgroundColor);
+      expect(getComputedStyle(query('.world-map-card__action')).backgroundColor).toBe(getComputedStyle(accent).backgroundColor);
+      accent.remove();
       expect(getComputedStyle(query('.world-map-card__art img')).transform).not.toBe('none');
       await shot(`world-map-card-hover-${theme}`, query('.world-map-card'));
       await release();

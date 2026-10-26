@@ -11,7 +11,7 @@ import { AssetService } from '../../../../src/app/services/AssetService';
 import { SystemPresetService } from '../../../../src/app/services/SystemPresetService';
 import { TemplateLibrary } from '../../../../src/app/statblocks/library/TemplateLibrary';
 import type { CollectionSettings } from '../../../../src/app/types/collectionSettingsTypes';
-import { withDynamicLighting, withStatblockEditor } from '../../../mocks/experimentalFeatures';
+import { withStatblockEditor } from '../../../mocks/experimentalFeatures';
 import { createInMemoryApp } from '../../../mocks/inMemoryVault';
 import { memoryPresets } from '../../../mocks/memoryPresets';
 
@@ -36,15 +36,13 @@ interface Opened {
   onClose: ReturnType<typeof vi.fn>;
 }
 
-function open({ editor = true, lighting = false, onEditTemplate }: {
+function open({ editor = true, onEditTemplate }: {
   editor?: boolean;
-  lighting?: boolean;
   onEditTemplate?: (templateId: string, collectionId: string) => void;
 } = {}): Opened {
   const { app } = createInMemoryApp({ files: {}, folders: ['Bestiary', 'Bestiary/Hags'] });
   apps.push(app);
   if (editor) withStatblockEditor(app);
-  if (lighting) withDynamicLighting(app);
   const settings = fresh();
   let written: Partial<CollectionSettings> | undefined;
   const assets = {
@@ -76,7 +74,7 @@ const save = async (): Promise<void> => {
 
 describe('the collection settings\' Statblocks tab', () => {
   it('is not offered while the statblock editor is switched off', () => {
-    open({ editor: false, lighting: true });
+    open({ editor: false });
     expect(screen.queryByRole('button', { name: 'Statblocks' })).toBeNull();
     expect(tabNames()).toContain('Vision');
   });
@@ -86,7 +84,6 @@ describe('the collection settings\' Statblocks tab', () => {
     const tabs = tabNames();
     expect(tabs.indexOf('Statblocks')).toBe(tabs.indexOf('Resources') + 1);
     expect(tabs.indexOf('Creature Filters')).toBe(tabs.indexOf('Statblocks') + 1);
-    expect(tabs).not.toContain('Vision');
   });
 
   it('saves an edited name as the collection\'s own roles', async () => {

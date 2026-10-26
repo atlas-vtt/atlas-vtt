@@ -6,7 +6,7 @@ import type { TokenEntity } from '../../../../src/app/types';
 import { describe, expect, it } from 'vitest';
 import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
 import { boundOwnership } from './fakeSeats.ts';
-import { playerFormula, rollableFormula } from '../../../../src/app/online/gm/PlayerRolls.ts';
+import { playerFormula, rollableFormula, rolledFormula } from '../../../../src/app/online/gm/PlayerRolls.ts';
 import { TOKEN_INTERVAL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
 import { DICE_TOOL, realDice, type DiceToolClass, type RealDice } from './realDice.ts';
 import { sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
@@ -147,6 +147,8 @@ describe('players\' private rolls and roll buttons', () => {
   });
 });
 
+const HOPE_FEAR: RollingDice = { dice: [{ count: 1, sides: 12, name: 'Hope' }, { count: 1, sides: 12, name: 'Fear' }], crit: 'none' };
+
 describe('a bonus from a player\'s sheet', () => {
   const campaign = { dice: [{ count: 1, sides: 10, name: 'Campaign', colour: '#8844cc' }], crit: 'natural' as const };
   const character: DiceSet = { id: 'personal', name: 'Personal dice', builtIn: false, dice: [
@@ -165,6 +167,16 @@ describe('a bonus from a player\'s sheet', () => {
     gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '-1', token: gm.alias(1), mode: 'gm' });
     expect(gm.logged.at(-1)?.roll.formula).toBe('1d12+1d12-1');
     expect(parseSharedRoll(gm.logged.at(-1)?.roll)?.rolls).toMatchObject(want);
+  });
+
+  it('rolls a sum of numbers as one bonus with the set\'s dice, in public and private', async () => {
+    const gm = await table(campaign, () => 0.5);
+    Object.assign(gm.dice, { setFor: () => character });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+4+1', token: gm.alias(1) });
+    expect(gm.rolled[0]).toMatchObject({ formula: '1d12+1d12+4+1', modifiers: 5 });
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '-1+2', token: gm.alias(1), mode: 'gm' });
+    expect(gm.logged.at(-1)?.roll.formula).toBe('1d12+1d12-1+2');
+    expect(refusals(gm.sent)).toEqual([]);
   });
 
   it('gives explicit sheet pools the owned character appearance in public and private', async () => {
@@ -227,6 +239,39 @@ describe('a bonus from a player\'s sheet', () => {
     expect(refusals(gm.sent)).toEqual([]);
     expect(gm.errors).toEqual([]);
   });
+
+  it('keeps the names of its numbers, a bonus filling a formula\'s length with them too', async () => {
+    const gm = await table({ defaultRoll: '2d12', crit: 'natural' }, () => 0.5);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+4+3[Str mod]', token: gm.alias(1) });
+    expect(gm.rolled[0]).toMatchObject({ formula: '2d12+4+3[Str mod]', modifiers: 7, namedModifiers: [{ label: 'Str mod', value: 3 }] });
+    expect(parseSharedRoll(rollsSent(gm.sent)[0]?.result)?.namedModifiers).toEqual([{ label: 'Str mod', value: 3 }]);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '1d6-1[Bane]', token: gm.alias(1), mode: 'gm' });
+    expect(parseSharedRoll(gm.logged.at(-1)?.roll)?.namedModifiers).toEqual([{ label: 'Bane', value: -1 }]);
+    const long = `+1[${'A'.repeat(24)}]`.repeat(3) + '+1'.repeat(7);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: long, token: gm.alias(1), mode: 'gm' });
+    expect(gm.logged.at(-1)?.roll.formula).toBe(`2d12${long}`);
+    expect(refusals(gm.sent)).toEqual([]);
+    expect(gm.errors).toEqual([]);
+  });
+
+  it('rolls a bonus named by what it is for with the set\'s dice, the name a term of its own', async () => {
+    const gm = await table(HOPE_FEAR, () => 0.5);
+    gm.share.receive(ANA, { t: 'roll', scene: gm.scene, formula: '+4[Agility]', token: gm.alias(1), flavor: 'Agility' });
+    expect(gm.rolled[0]).toMatchObject({ formula: '1d12+1d12+4[Agility]', modifiers: 4, namedModifiers: [{ label: 'Agility', value: 4 }] });
+    expect(gm.rolled[0]?.rolls.map((die) => die.name)).toEqual(['Hope', 'Fear']);
+    expect(parseSharedRoll(rollsSent(gm.sent)[0]?.result)?.namedModifiers).toEqual([{ label: 'Agility', value: 4 }]);
+    expect(refusals(gm.sent)).toEqual([]);
+  });
+});
+
+describe('a player\'s formula as it is rolled', () => {
+  it('drops the names of its numbers only where a default roll too long to complete them leaves no room', () => {
+    const long = `+1[${'A'.repeat(24)}]`.repeat(3);
+    expect(rolledFormula(long, { defaultRoll: '2d12', crit: 'natural' })).toBe(long);
+    // A hand-written default roll of 77 characters: completed, the named bonus would be 161.
+    const crowded = { defaultRoll: Array.from({ length: 13 }, () => '1d999').join('+'), crit: 'natural' as const };
+    expect(rolledFormula(long, crowded)).toBe('+1+1+1');
+  });
 });
 
 describe('rollable formulas', () => {
@@ -235,8 +280,10 @@ describe('rollable formulas', () => {
     expect(['+3', '0d6', '1d6+', 'x', '1d6'.repeat(30)].some(rollableFormula)).toBe(false);
   });
 
-  it('take a signed bonus from a player, and no bare number', () => {
-    expect(['+3', '-1', '+0', '1d20'].every(playerFormula)).toBe(true);
-    expect(['3', '+12345', '+ 3', '+3+1', ''].some(playerFormula)).toBe(false);
+  it('take a signed bonus from a player, a sum of numbers too, and no bare number or unsigned sum', () => {
+    expect(['+3', '-1', '+0', '1d20', '+3+1', '+4+1', '-1+2', '+2*3'].every(playerFormula)).toBe(true);
+    expect(['3', '4+1', '+ 3', '+12345', '*2', '+3+', '', '1d0'].some(playerFormula)).toBe(false);
+    expect(['+4+3[Str mod]', '-1[Bane]'].every(playerFormula)).toBe(true);
+    expect(['+4 +3[Str mod]', '+3[Str mod] '].some(playerFormula)).toBe(false);
   });
 });

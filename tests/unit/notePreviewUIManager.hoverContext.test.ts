@@ -30,8 +30,8 @@ function createHarness(): ManagerHarness {
   const ownLeaf = createLeaf('atlas-vtt', VIEW_ID);
   Object.assign(app.workspace, {
     getLeavesOfType: vi.fn((type: string) => (type === 'atlas-vtt' ? [ownLeaf] : [])),
-    on: vi.fn((_name: string, handler: LeafChangeHandler) => {
-      leafChangeHandler = handler;
+    on: vi.fn((name: string, handler: LeafChangeHandler) => {
+      if (name === 'active-leaf-change') leafChangeHandler = handler;
       return {};
     }),
   });

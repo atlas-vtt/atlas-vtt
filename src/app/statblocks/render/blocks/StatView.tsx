@@ -2,7 +2,7 @@ import React from 'react';
 import { diceLinkProps } from '../../../services/statblockDiceLinks';
 import { splitDiceSegments } from '../../../services/statblockDiceText';
 import type { StatBlock } from '../../model/templateTypes';
-import { isDiceNotation } from '../../values/diceNotation';
+import { isDiceValue } from '../../values/diceValues';
 import type { BlockDisplay } from '../blockDisplay';
 import { bonusId } from '../../rollBonuses/armableValues';
 import { BONUS_ID_ATTRIBUTE } from '../../rollBonuses/armedBonuses';
@@ -26,7 +26,7 @@ import type { BlockViewProps } from './blockViewProps';
 function rollFromDice(block: StatBlock, sheet: SheetState, display: BlockDisplay): string | null {
   if (!block.rollFrom || display.state !== 'value') return null;
   const dice = shownField(block.rollFrom, sheet).text.trim();
-  if (!isDiceNotation(dice)) return null;
+  if (!isDiceValue(dice)) return null;
   const shown = display.text?.text ?? '';
   return splitDiceSegments(shown).some((segment) => segment.dice) ? null : dice;
 }

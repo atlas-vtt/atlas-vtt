@@ -1,6 +1,6 @@
 import '../setup/obsidianDom';
 import { createElement } from 'react';
-import { cleanup, fireEvent, render, within } from '@testing-library/react';
+import { cleanup, render } from '@testing-library/react';
 import { MotionGlobalConfig } from 'framer-motion';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
@@ -30,7 +30,7 @@ async function open(tab: CollectionSettingsTab, statblockEditor: boolean): Promi
   await expect.poll(() => modal()).not.toBeNull();
 }
 
-/** The collection settings dialog fills the window, forms keep a readable width, the Resources tab takes all of it. */
+/** The collection settings dialog fills the window, its tabs keep a readable width. */
 describe('the collection settings dialog, fullscreen', () => {
   const style = document.createElement('style');
   style.textContent = TABLES_THEME + css;
@@ -62,26 +62,13 @@ describe('the collection settings dialog, fullscreen', () => {
     expect(form.left - content.left).toBeCloseTo(content.right - form.right, -1);
   });
 
-  it('gives the Resources tab the whole width, the recovery pane beside the sockets, with the statblock editor on', async () => {
-    await open('resources', true);
-    await expect.poll(() => modal().querySelector('.atlas-rc-pane')).not.toBeNull();
-    const content = box(modal().querySelector('.atlas-collection-settings-content')!);
-    const page = box(modal().querySelector('.atlas-collection-settings-page')!);
-    expect(page.width).toBeGreaterThan(760);
-    expect(box(modal().querySelector('.atlas-csm-token-stage')!).right).toBeLessThan(box(modal().querySelector('.atlas-rc-pane')!).left);
-    expect(page.right).toBeLessThanOrEqual(content.right);
-    // No roles of its own: the generic pair, a tab each, the card drawn for the first
-    const tabs = within(modal()).getAllByRole('tab').map((tab) => tab.textContent);
-    expect(tabs).toEqual(['Creature', 'NPC']);
-    await expect.poll(() => modal().querySelector('.atlas-rc-stage .atlas-statblock')).not.toBeNull();
-    fireEvent.click(within(modal()).getByRole('tab', { name: 'NPC' }));
-    expect(within(modal()).getByRole('tab', { name: 'NPC' }).getAttribute('aria-selected')).toBe('true');
-  });
-
-  it('keeps the Resources tab as it was without the statblock editor', async () => {
-    await open('resources', false);
-    expect(modal().querySelector('.atlas-csm-token-stage')).not.toBeNull();
-    expect(modal().querySelector('.atlas-rc-pane')).toBeNull();
-    expect(box(modal().querySelector('.atlas-collection-settings-page')!).width).toBeLessThanOrEqual(760);
-  });
+  // Recovery buttons belong to the statblock template and are set up in the template editor.
+  for (const statblockEditor of [true, false]) {
+    it(`keeps the Resources tab a form at a readable width, with no recovery pane (statblock editor ${statblockEditor ? 'on' : 'off'})`, async () => {
+      await open('resources', statblockEditor);
+      expect(modal().querySelector('.atlas-csm-token-stage')).not.toBeNull();
+      expect(modal().querySelector('.atlas-rc-pane')).toBeNull();
+      expect(box(modal().querySelector('.atlas-collection-settings-page')!).width).toBeLessThanOrEqual(760);
+    });
+  }
 });

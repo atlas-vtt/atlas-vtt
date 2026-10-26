@@ -3,7 +3,7 @@ import { checkFieldEdit } from '../../../../src/app/online/gm/book/fieldEdit.ts'
 import type { CheckedEdit, EditInputs } from '../../../../src/app/online/gm/book/statblockChecks.ts';
 import { statblockSheet } from '../../../../src/app/online/gm/book/statblockSheet.ts';
 import { storedRead } from '../../../../src/app/online/gm/book/statblockSheets.ts';
-import { sheetBase, type BookFieldMessage, type SheetRaw } from '../../../../src/app/online/protocol/index.ts';
+import { MAX_COUNTER, sheetBase, type BookFieldMessage, type SheetRaw } from '../../../../src/app/online/protocol/index.ts';
 import type { ResolvedStatblock } from '../../../../src/app/statblocks/model/resolvedTypes';
 import type { StatblockTemplate } from '../../../../src/app/statblocks/model/templateTypes';
 import { applyFrontmatterPatches } from '../../../../src/app/statblocks/notes/frontmatterPatch';
@@ -75,6 +75,11 @@ describe('a player\'s change of their Counters', () => {
     expect(slotsAfter(NOTE, checkFieldEdit(inputs, edit(withUsed([0, 0]))))).toEqual([{ ...ROWS[0], used: 0 }, { ...ROWS[1], used: 0 }]);
   });
 
+  it('writes a row\'s new maximum with its uses, every other key of the row kept', () => {
+    expect(slotsAfter(NOTE, checkFieldEdit(inputs, edit([{ ...SENT[0]!, max: 6 }, { ...SENT[1]!, max: 2, used: 2 }]))))
+      .toEqual([{ ...ROWS[0], max: 6 }, { ...ROWS[1], max: 2, used: 2 }]);
+  });
+
   it('gives a note that showed its preset rows rows of its own', () => {
     const bare = NOTE.replace(/slots:[\s\S]*?(?=---\n# Ana)/, '');
     const fresh = inputsOf(bare);
@@ -82,9 +87,12 @@ describe('a player\'s change of their Counters', () => {
       .toEqual([{ name: '1st level', max: 2, used: 1 }]);
   });
 
-  it('refuses a changed maximum, name, recovery button or formula, another order or number of rows, and uses that are no whole number up to the maximum', () => {
+  it('refuses a changed name, recovery button or formula, another order or number of rows, and uses that are no whole number up to the maximum', () => {
     const refused: SheetRaw[] = [
-      [{ ...SENT[0]!, max: 5 }, SENT[1]!],
+      [{ ...SENT[0]!, max: 0, used: 0 }, SENT[1]!],
+      [{ ...SENT[0]!, max: MAX_COUNTER + 1 }, SENT[1]!],
+      [{ ...SENT[0]!, max: 2.5 }, SENT[1]!],
+      [{ ...SENT[0]!, max: 2, used: 3 }, SENT[1]!],
       [{ ...SENT[0]!, name: '1st' }, SENT[1]!],
       [{ ...SENT[0]!, reset: 'Short rest' }, SENT[1]!],
       [{ ...SENT[0]!, reset: 'long rest' }, SENT[1]!],

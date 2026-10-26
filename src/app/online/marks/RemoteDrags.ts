@@ -1,4 +1,4 @@
-import { Container, Graphics, type Text } from 'pixi.js';
+import { Container } from 'pixi.js';
 import { pathLengthInCells } from '../../grid/gridDistance';
 import { tokenCenterShift } from '../../grid/gridPlacement';
 import { formatDistance } from '../../grid/measurementFormat';
@@ -6,8 +6,9 @@ import { cssColorToHexNumber, getObsidianAccentColor } from '../../pixi/utils/co
 import { destroyTree } from '../../pixi/utils/destroyTree';
 import { MAP_LAYER_Z } from '../../pixi/mapLayerOrder';
 import { computeTokenPixelSize } from '../../pixi/token-renderer/tokenSizing';
-import { createMeasureLabelText, drawMeasureLabel, drawMeasurePath, drawMeasurePoint, pathMidpoint, shortenPathEnd } from '../../pixi/utils/measureDrawing';
-import { readableLabelFontSize } from './labelSize.ts';
+import { drawMeasurePath, drawMeasurePoint, shortenPathEnd } from '../../pixi/utils/measureDrawing';
+import { MeasureInk, MeasureInkLayer } from '../../pixi/utils/measureInk';
+import { MeasureLabel } from '../../pixi/utils/measureLabel';
 import type { MeasureRules } from './RemoteMeasures.ts';
 
 type Point = { readonly x: number; readonly y: number };
@@ -34,11 +35,9 @@ function measures(path: readonly Point[]): boolean {
 }
 
 interface Drawn {
-  readonly path: Graphics;
-  readonly pill: Graphics;
-  readonly text: Text;
+  readonly path: MeasureInk;
+  readonly label: MeasureLabel;
   key: string;
-  middle: Point | null;
 }
 
 /**
@@ -53,12 +52,14 @@ export function dragPathCells({ grid, measurement }: MeasureRules, path: readonl
 
 /**
  * Drags made elsewhere, drawn as Atlas draws its own drag ruler: the path in the accent colour with
- * its start and waypoints marked, and the distance on a pill at its middle, worked out here by the
+ * its start and waypoints marked, and the distance beside its middle, worked out here by the
  * scene's rules. `paths` stand above the lighting, so the dark never covers them, and stop at the
  * dragged token's rim; `labels` above the tokens' bars and nameplates.
  */
 export class RemoteDrags {
-  readonly paths = new Container({ label: 'remote-drag-paths', zIndex: MAP_LAYER_Z.measure, eventMode: 'none', interactiveChildren: false });
+  /** Every drag's path, composed in one pass. */
+  private readonly layer = new MeasureInkLayer('remote-drag-paths');
+  readonly paths: Container = this.layer.view;
   readonly labels = new Container({ label: 'remote-drag-labels', zIndex: LABEL_Z_INDEX, eventMode: 'none', interactiveChildren: false });
   private readonly zoom: () => number;
   private readonly rules: () => MeasureRules | null;
@@ -68,6 +69,7 @@ export class RemoteDrags {
   constructor(zoom: () => number, rules: () => MeasureRules | null) {
     this.zoom = zoom;
     this.rules = rules;
+    this.paths.zIndex = MAP_LAYER_Z.measure;
   }
 
   /** Whether any ruler shows. */
@@ -98,9 +100,9 @@ export class RemoteDrags {
     this.update(this.drags);
   }
 
-  /** The zoom changed: labels keep their size on screen. */
+  /** The zoom changed: paths and labels keep their size on screen. */
   rescale(): void {
-    for (const drawn of this.drawn.values()) this.place(drawn);
+    this.redraw();
   }
 
   clear(): void {
@@ -110,41 +112,32 @@ export class RemoteDrags {
 
   destroy(): void {
     this.clear();
-    destroyTree(this.paths);
+    this.layer.destroy();
     destroyTree(this.labels);
   }
 
   private add(key: string): Drawn {
-    const drawn: Drawn = { path: new Graphics(), pill: new Graphics(), text: createMeasureLabelText(), key: '', middle: null };
-    this.paths.addChild(drawn.path);
-    this.labels.addChild(drawn.pill, drawn.text);
+    const drawn: Drawn = { path: new MeasureInk(this.layer), label: new MeasureLabel(), key: '' };
+    this.labels.addChild(drawn.label.view);
     this.drawn.set(key, drawn);
     return drawn;
   }
 
   private draw(drawn: Drawn, { path, cells, snaps }: RemoteDrag, key: string, colour: number, rules: MeasureRules): void {
-    drawn.key = key;
-    drawn.path.clear();
-    drawMeasurePath(drawn.path, colour, shortenPathEnd(path, computeTokenPixelSize(rules.grid.size, cells) / 2));
-    // The start and the waypoints stay marked.
-    for (const point of path.slice(0, -1)) drawMeasurePoint(drawn.path, colour, point);
-    const distance = formatDistance(dragPathCells(rules, path, cells, snaps), rules.measurement);
-    if (drawn.text.text !== distance) drawn.text.text = distance;
-    drawn.middle = pathMidpoint(path);
-    this.place(drawn);
-  }
-
-  private place(drawn: Drawn): void {
-    if (drawn.middle === null) return;
     const zoom = this.zoom() || 1;
-    drawn.text.style.fontSize = readableLabelFontSize(zoom);
-    drawMeasureLabel(drawn.pill, drawn.text, drawn.middle, zoom);
+    const tokenRadius = computeTokenPixelSize(rules.grid.size, cells) / 2;
+    drawn.key = key;
+    drawn.path.begin(zoom);
+    drawMeasurePath(drawn.path, colour, shortenPathEnd(path, tokenRadius));
+    // The start and the waypoints stay marked.
+    path.slice(0, -1).forEach((point, index) => drawMeasurePoint(drawn.path, colour, point, index === 0));
+    const landing = path[path.length - 1]!;
+    drawn.label.show(formatDistance(dragPathCells(rules, path, cells, snaps), rules.measurement), { beside: path, avoid: { ...landing, radius: tokenRadius } }, zoom, rules.grid.size);
   }
 
   private remove(key: string, drawn: Drawn): void {
     this.drawn.delete(key);
-    destroyTree(drawn.path);
-    destroyTree(drawn.pill);
-    destroyTree(drawn.text);
+    drawn.path.destroy();
+    drawn.label.destroy();
   }
 }

@@ -10,7 +10,6 @@ import { AssetService } from '../../src/app/services/AssetService';
 import { SystemPresetService } from '../../src/app/services/SystemPresetService';
 import type { CollectionSettings } from '../../src/app/types/collectionSettingsTypes';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
-import { withDynamicLighting } from '../mocks/experimentalFeatures';
 import { memoryPresets } from '../mocks/memoryPresets';
 import { AMMO, HP } from '../mocks/resourceFixtures';
 
@@ -32,9 +31,8 @@ const fresh = (): CollectionSettings => ({ ...rulesOfPreset(dnd5e), systemPreset
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
-function open(settings: CollectionSettings, lighting = true): { saved: () => Partial<CollectionSettings> | undefined } {
+function open(settings: CollectionSettings): { saved: () => Partial<CollectionSettings> | undefined } {
   const { app } = createInMemoryApp({ files: {} });
-  if (lighting) withDynamicLighting(app);
   let written: Partial<CollectionSettings> | undefined;
   const assets = {
     getCollectionSettings: () => settings,
@@ -94,16 +92,6 @@ describe('the collection settings modal and what a collection has of its own', (
     await save();
     expect(saved()).toMatchObject(all);
     expect(saved()!.defaultWidgets).toMatchObject({ hpBar: true });
-  });
-
-  it('has no Vision tab while dynamic lighting is switched off, and a save keeps what the collection has of its own', async () => {
-    const all = Object.assign({}, ...Object.values(edits)) as Partial<CollectionSettings>;
-    const { saved } = open({ ...fresh(), ...all }, false);
-    await waitFor(() => expect(within(activeRow()).getByText('Edited')).toBeTruthy());
-    expect(screen.queryByRole('button', { name: 'Vision' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Conditions' })).toBeTruthy();
-    await save();
-    expect(saved()).toMatchObject(all);
   });
 
   it('applying the system again drops own senses, lights, default vision and roles, takes the system\'s resources, and is not edited', async () => {

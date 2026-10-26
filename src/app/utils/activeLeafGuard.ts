@@ -8,9 +8,12 @@ import { getActiveWorkspaceLeaf } from './embeddedLeafFocus';
  * When `viewId` is provided, checks that the **specific** view's
  * container lives inside the active leaf — this is essential when
  * multiple Atlas views are open side-by-side.
+ *
+ * The active leaf is looked for in the focused window's document (`activeDocument`): a leaf in a
+ * popout lies in the popout's, and the main window's then holds no active leaf.
  */
 export function isActiveAtlasLeaf(viewId?: string): boolean {
-  const activeLeaf = document.querySelector('.workspace-leaf.mod-active');
+  const activeLeaf = activeDocument.querySelector('.workspace-leaf.mod-active');
   if (!activeLeaf) return false;
 
   // Scoped check: does THIS view live inside the active leaf?
@@ -40,8 +43,8 @@ export function isShortcutScopeActive(scope: Element | null, viewId?: string): b
       return workspaceLeaf.classList.contains('mod-active');
     }
 
-    const activeElement = document.activeElement;
-    if (activeElement instanceof Node && scope.contains(activeElement)) {
+    const activeElement = scope.doc.activeElement;
+    if (activeElement !== null && scope.contains(activeElement)) {
       return true;
     }
   }

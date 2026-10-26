@@ -165,7 +165,6 @@ export class SettingsService {
 
   setHotkey(id: MapHotkeyId, key: string): void {
     const bindings = this.getHotkeys();
-    // The shortcuts of an experimental feature keep their keys while it is off.
     const conflict = key && availableHotkeys().find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
     if (conflict) throw new Error(`Already assigned to ${conflict.label}. Clear that shortcut first.`);
     this.settings.hotkeys = withHotkey(this.settings.hotkeys, id, key);

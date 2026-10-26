@@ -10,8 +10,6 @@ import {
   toolbarControl,
 } from '../../src/app/toolbar/toolbarCatalog';
 
-const lightingOn = (on: boolean) => (): boolean => on;
-
 describe('toolbar catalog', () => {
   it('has unique ids', () => {
     const ids = TOOLBAR_CONTROLS.map(control => control.id);
@@ -31,17 +29,14 @@ describe('toolbar catalog', () => {
   });
 
   it('offers the player view move, measure and dice', () => {
-    expect([...availableToolbarControls(true, lightingOn(true))]).toEqual(['move', 'measure', 'dice']);
+    expect([...availableToolbarControls(true)]).toEqual(['move', 'measure', 'dice']);
   });
 
-  it('offers the GM everything but Lighting while it is switched off and the controls of unshipped features', () => {
-    const off = availableToolbarControls(false, lightingOn(false));
-    const on = availableToolbarControls(false, lightingOn(true));
-    expect(off.has('wall')).toBe(false);
-    expect(on.has('wall')).toBe(true);
-    expect(on.has('audio')).toBe(AMBIENT_AUDIO_ENABLED);
-    const expected = DEFAULT_TOOLBAR_ORDER.filter(id => id !== 'wall' && (AMBIENT_AUDIO_ENABLED || id !== 'audio'));
-    expect([...off]).toEqual(expected);
+  it('offers the GM every control but those of unshipped features', () => {
+    const offered = availableToolbarControls(false);
+    expect(offered.has('wall')).toBe(true);
+    expect(offered.has('audio')).toBe(AMBIENT_AUDIO_ENABLED);
+    expect([...offered]).toEqual(DEFAULT_TOOLBAR_ORDER.filter(id => AMBIENT_AUDIO_ENABLED || id !== 'audio'));
   });
 
   it('describes each control in one sentence of at most 90 characters', () => {

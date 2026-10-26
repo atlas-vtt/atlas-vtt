@@ -5,6 +5,11 @@ import type { Explosion } from './diceExplosion';
 
 export const FORMULA_LIMITS = {
   characters: 100,
+  /**
+   * A bonus completed with the dice set's dice: what was written (at most `characters`) and the dice
+   * put before it. A shared roll's formula is read up to as many (`MAX_ROLL_FORMULA`).
+   */
+  completed: 160,
   /** Dice terms and constants. */
   terms: 20,
   /** Dice before rerolls and explosions, which each die caps for itself. */

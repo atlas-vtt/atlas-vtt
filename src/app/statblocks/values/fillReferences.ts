@@ -17,6 +17,8 @@ const SPACES = /^[ \t]*/;
 /** An operator the number comes after, with the spaces after it: `+ ` in `1d8 + @str`, a typeset minus too. */
 const OPERATOR_BEFORE = /([+\-−–*/×÷])([ \t]*)$/;
 const MINUS = /[-−–]/;
+/** A sign with the spaces after it, at the end of what was written so far. */
+const SIGN_BEFORE = /[+\-−–][ \t]*$/;
 /** A sum of numbers and nothing else, as a Number field's value comes out once its references are in. */
 export const NUMBER_SUM = /^[+-]?\s*\d+(?:\.\d+)?(?:\s*[+-]\s*\d+(?:\.\d+)?)*$/;
 
@@ -29,10 +31,15 @@ function numberOf(value: unknown): number | null {
 /** A number as the card writes it. */
 const numberText = (value: number): string => String(value);
 
+/** Whether a number written after `before` is added or subtracted: it follows a sign, or no operator at all (it opens the formula). */
+function addedAfter(before: string): boolean {
+  const operator = OPERATOR_BEFORE.exec(before)?.[1];
+  return operator === undefined || operator === '+' || MINUS.test(operator);
+}
+
 /** A negative number after a multiplication or division stands in parentheses, so the formula still reads: `3 * (-2)`. */
 function signedAfter(before: string, value: number): string {
-  const operator = value < 0 ? OPERATOR_BEFORE.exec(before)?.[1] : undefined;
-  return operator !== undefined && operator !== '+' && !MINUS.test(operator) ? `(${numberText(value)})` : numberText(value);
+  return value < 0 && !addedAfter(before) ? `(${numberText(value)})` : numberText(value);
 }
 
 /** `+ -1` reads `- 1` and `- -1` reads `+ 1`: a negative number written after a sign takes it over. */
@@ -40,11 +47,35 @@ function mergedSigns(text: string): string {
   return text.replace(/([+\-−–])([ \t]*)-(\d+(?:\.\d+)?)$/, (_, sign: string, spaces: string, digits: string) => `${MINUS.test(sign) ? '+' : '-'}${spaces}${digits}`);
 }
 
+/**
+ * Where a reference stood in the written text (`from`, `to`) and where its number stands in the
+ * filled one (`at`, `end`). A negative number whose sign took over the one before it (`+ @x` reading
+ * `- 1`) takes in that sign on both sides. `path` is the path read, as written; `added` says the
+ * number is a term of a sum (after a sign, or opening the text), not a dice count or a factor.
+ */
+export interface FilledReference {
+  readonly from: number;
+  readonly to: number;
+  readonly at: number;
+  readonly end: number;
+  readonly path: string;
+  readonly added: boolean;
+}
+
+export interface Filled {
+  readonly text: string;
+  /** The paths of the references that name no number, as written. */
+  readonly unresolved: string[];
+  /** The references written as their numbers, in order. */
+  readonly filled: FilledReference[];
+}
+
 /** `text` with every reference that names a number written as it; `unresolved` lists those that name none. */
-export function fillReferences(text: string, lookup: FieldLookup): { text: string; unresolved: string[] } {
-  if (!namesReference(text)) return { text, unresolved: [] };
+export function fillReferences(text: string, lookup: FieldLookup): Filled {
+  if (!namesReference(text)) return { text, unresolved: [], filled: [] };
   let out = '';
   const unresolved: string[] = [];
+  const filled: FilledReference[] = [];
   let cursor = 0;
   while (cursor < text.length) {
     const at = text.indexOf('@', cursor);
@@ -57,24 +88,32 @@ export function fillReferences(text: string, lookup: FieldLookup): { text: strin
     }
     out += text.slice(cursor, at);
     const value = 'missing' in reference ? null : numberOf(reference.value);
-    if (value === null) {
+    if (value === null || 'missing' in reference) {
       unresolved.push('missing' in reference ? reference.missing : reference.field);
       out += text.slice(at, reference.end);
       cursor = reference.end;
       continue;
     }
+    const start = out.length;
+    const path = reference.field;
     const rest = text.slice(reference.end);
     if (DICE_AFTER.test(rest)) {
       // A dice count stands against its die: `@level d6` reads `3d6`
       out += numberText(value);
       cursor = reference.end + SPACES.exec(rest)![0].length;
+      filled.push({ from: at, to: cursor, at: start, end: out.length, path, added: false });
       continue;
     }
+    const added = addedAfter(out);
     out += signedAfter(out, value);
-    if (value < 0) out = mergedSigns(out);
     cursor = reference.end;
+    // The sign before a negative number takes over its minus: that sign is then part of what the reference filled in
+    const merged = value < 0 ? mergedSigns(out) : out;
+    const sign = merged === out ? 0 : SIGN_BEFORE.exec(out.slice(0, start))![0].length;
+    out = merged;
+    filled.push({ from: at - sign, to: cursor, at: start - sign, end: out.length, path, added });
   }
-  return { text: out + text.slice(cursor), unresolved };
+  return { text: out + text.slice(cursor), unresolved, filled };
 }
 
 /** A value with its references filled in, strings at any depth; the same value where nothing changes. */
@@ -100,7 +139,7 @@ export function numberValue(value: unknown): unknown {
 }
 
 /** Every string inside a value, at any depth, in order. */
-function stringsIn(value: unknown): string[] {
+export function stringsIn(value: unknown): string[] {
   if (typeof value === 'string') return [value];
   if (Array.isArray(value)) return value.flatMap(stringsIn);
   return value !== null && typeof value === 'object' ? Object.values(value).flatMap(stringsIn) : [];

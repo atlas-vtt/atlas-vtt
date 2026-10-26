@@ -4,7 +4,6 @@ import { Container, Text } from 'pixi.js';
 import { stubJsdomGraphics } from '../../mocks/jsdomGraphics';
 import { ResourceWheels } from '../../../src/app/pixi/token-renderer/resources/ResourceWheels';
 import { WHEEL_SIZE } from '../../../src/app/pixi/token-renderer/resources/wheelGeometry';
-import { NAMEPLATE_HEIGHT } from '../../../src/app/pixi/token-renderer/tokenSizing';
 import { HP_RESOURCE } from '../../../src/app/resources/resourceDefinitions';
 
 const AMMO = { ...HP_RESOURCE, key: 'ammo', name: 'Ammo', color: '#f59e0b', defeatedWhenSpent: false };
@@ -18,13 +17,13 @@ describe('ResourceWheels', () => {
   beforeEach(() => { restoreGraphics = stubJsdomGraphics(); });
   afterEach(() => restoreGraphics());
 
-  it('stacks slot 3 above slot 4, both above the nameplate, whatever the scale of their anchor', () => {
+  it('stacks slot 3 above slot 4 in a column centred on their anchor, whatever its scale', () => {
     const wheels = new ResourceWheels();
     wheels.update([{ definition: AMMO, value: { current: 4, max: 6 }, slot: 2 }, { definition: LUCK, value: { current: 2, max: 5 }, slot: 3 }]);
     const [upper, lower] = wheels.layout();
     expect([upper!.key, upper!.kind, lower!.key]).toEqual(['ammo', 'wheel', 'luck']);
-    // The anchor lies on the token's bottom edge, where the nameplate sits: the wheels start above it
-    expect(lower!.top + lower!.height).toBeLessThanOrEqual(-NAMEPLATE_HEIGHT);
+    // `wheelAnchor` puts the anchor midway along the token and its bars; the column is centred there
+    expect(upper!.top + lower!.top + lower!.height).toBeCloseTo(0);
     expect(upper!.top + upper!.height).toBeLessThan(lower!.top);
     expect(upper!.left).toBe(lower!.left);
     expect(upper!.width).toBe(WHEEL_SIZE);

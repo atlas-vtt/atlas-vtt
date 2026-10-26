@@ -14,6 +14,7 @@ import { formatDistance, type MeasurementSettings } from '../../grid/measurement
 import type { ViewAtlasState } from '../../storeFactory';
 import type { LayerVisibility } from '../playerSafeFrame';
 import type { DragRulerView } from './DragRulerView';
+import { computeTokenPixelSize } from './tokenSizing';
 import { mapTokens } from '../../tokens/offMap';
 
 /** What a drag ruler measures: the token and the points it runs through (its start, each waypoint, its landing). */
@@ -114,7 +115,7 @@ export class DragRuler {
     const settings = this.settingsProvider();
     const cells = pathLengthInCells(grid, this.cellPath(points, grid), settings.diagonalRule);
     const drawn = this.tip ? [...points.slice(0, -1), this.tip] : points;
-    this.view.draw(drawn, formatDistance(cells, settings));
+    this.view.draw(drawn, formatDistance(cells, settings), computeTokenPixelSize(grid.size, this.tokenSize()) / 2, grid.size);
     this.refreshVisibility();
   }
 

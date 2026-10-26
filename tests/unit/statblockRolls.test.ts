@@ -66,6 +66,17 @@ describe('where a statblock\'s roll goes', () => {
     expect(note.shown).toEqual([['18d10+36', true]]);
   });
 
+  it('shows a map\'s roll on a surface over that map, and not on one the map\'s own display stands above', () => {
+    const map = mapView(true);
+    const over = { ...offMap(), covers: (mapEl: HTMLElement) => mapEl === (map.view.containerEl as unknown) };
+    rollStatblockDice(appWith(map.view), '1d6', {}, over);
+    expect(over.shown).toEqual([['1d6', true]]);
+    const inside = { ...offMap(), covers: () => false };
+    rollStatblockDice(appWith(map.view), '1d6', {}, inside);
+    expect(inside.shown).toEqual([]);
+    expect(map.rolls).toHaveLength(2);
+  });
+
   it('is rolled and shown by the note, with sound, while no map is open', () => {
     const note = offMap();
     const roll = rollStatblockDice(appWith(), '+6', { statblockPath: 'Aboleth.md' }, note);

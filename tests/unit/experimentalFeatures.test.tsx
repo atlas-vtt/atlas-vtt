@@ -2,8 +2,7 @@
 import React from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dynamicLightingOn, EXPERIMENTAL_FEATURES } from '../../src/app/experimental/experimentalFeatures';
-import { availableHotkeys } from '../../src/app/keyboard/mapHotkeys';
+import { EXPERIMENTAL_FEATURES, experimentalFeatureOn } from '../../src/app/experimental/experimentalFeatures';
 import { ExperimentalFeaturesPanel } from '../../src/app/react/components/command-palette/ExperimentalFeaturesPanel';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { SettingsService } from '../../src/app/services/SettingsService';
@@ -29,48 +28,39 @@ describe('experimental features in the settings', () => {
   });
 
   it('are off in a vault whose settings cannot be reached', () => {
-    expect(dynamicLightingOn(undefined)).toBe(false);
-    expect(dynamicLightingOn(createInMemoryApp({ files: {} }).app)).toBe(false);
+    expect(experimentalFeatureOn(undefined, 'statblockEditor')).toBe(false);
+    expect(experimentalFeatureOn(createInMemoryApp({ files: {} }).app, 'statblockEditor')).toBe(false);
   });
 
   it('are on where the file says so, and off for anything else it holds', async () => {
-    expect((await settingsFrom({ experimental: { dynamicLighting: true } })).isExperimentalOn('dynamicLighting')).toBe(true);
-    for (const experimental of [null, 'all', [], { dynamicLighting: 'yes' }, { dynamicLighting: 1 }]) {
-      expect((await settingsFrom({ experimental })).isExperimentalOn('dynamicLighting')).toBe(false);
+    expect((await settingsFrom({ experimental: { statblockEditor: true } })).isExperimentalOn('statblockEditor')).toBe(true);
+    for (const experimental of [null, 'all', [], { statblockEditor: 'yes' }, { statblockEditor: 1 }]) {
+      expect((await settingsFrom({ experimental })).isExperimentalOn('statblockEditor')).toBe(false);
     }
+  });
+
+  it('read the switch of a feature that is no longer experimental as nothing, and keep it in the file', async () => {
+    const settings = await settingsFrom({ experimental: { dynamicLighting: true, statblockEditor: true } });
+    expect(EXPERIMENTAL_FEATURES.map(({ id }) => id)).not.toContain('dynamicLighting');
+    expect(settings.isExperimentalOn('statblockEditor')).toBe(true);
+    expect(settings.getAllSettings().experimental).toEqual({ dynamicLighting: true, statblockEditor: true });
   });
 
   it('tell their listeners when one is switched, and only then', async () => {
     const settings = await settingsFrom({});
     const heard = vi.fn();
     settings.onChange(heard);
-    settings.setExperimental('dynamicLighting', false);
+    settings.setExperimental('statblockEditor', false);
     expect(heard).not.toHaveBeenCalled();
-    settings.setExperimental('dynamicLighting', true);
+    settings.setExperimental('statblockEditor', true);
     expect(heard).toHaveBeenCalledOnce();
-    expect(settings.isExperimentalOn('dynamicLighting')).toBe(true);
-    expect(settings.getAllSettings().experimental).toEqual({ dynamicLighting: true });
-  });
-});
-
-describe('the shortcuts of dynamic lighting', () => {
-  const ids = (isOn?: () => boolean): string[] => availableHotkeys(false, isOn).map(({ id }) => id);
-
-  it('are on offer only while the feature is on', () => {
-    expect(ids(() => true)).toEqual(expect.arrayContaining(['wall', 'lightingPeek']));
-    expect(ids(() => false)).not.toContain('wall');
-    expect(ids(() => false)).not.toContain('lightingPeek');
-    expect(ids(() => false)).toContain('pin');
-  });
-
-  it('keep their keys while it is off: another shortcut cannot take them', async () => {
-    const settings = await settingsFrom({});
-    expect(() => settings.setHotkey('pin', 'w')).toThrow(/Lighting/);
+    expect(settings.isExperimentalOn('statblockEditor')).toBe(true);
+    expect(settings.getAllSettings().experimental).toEqual({ statblockEditor: true });
   });
 });
 
 describe('the command palette\'s Experimental features page', () => {
-  it('switches dynamic lighting on and off', async () => {
+  it('switches a feature on and off, and has no switch for dynamic lighting', async () => {
     const { app } = createInMemoryApp({ files: {} });
     const settings = new SettingsService(app);
     await settings.initialize();
@@ -79,12 +69,13 @@ describe('the command palette\'s Experimental features page', () => {
         <ExperimentalFeaturesPanel />
       </AtlasUIContext.Provider>,
     );
-    const toggle = screen.getByRole('switch', { name: 'Dynamic lighting' });
+    expect(screen.queryByRole('switch', { name: 'Dynamic lighting' })).toBeNull();
+    const toggle = screen.getByRole('switch', { name: 'Statblock editor' });
     expect(toggle.getAttribute('aria-checked')).toBe('false');
     fireEvent.click(toggle);
-    expect(settings.isExperimentalOn('dynamicLighting')).toBe(true);
-    expect(screen.getByRole('switch', { name: 'Dynamic lighting' }).getAttribute('aria-checked')).toBe('true');
-    fireEvent.click(screen.getByRole('switch', { name: 'Dynamic lighting' }));
-    expect(settings.isExperimentalOn('dynamicLighting')).toBe(false);
+    expect(settings.isExperimentalOn('statblockEditor')).toBe(true);
+    expect(screen.getByRole('switch', { name: 'Statblock editor' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(screen.getByRole('switch', { name: 'Statblock editor' }));
+    expect(settings.isExperimentalOn('statblockEditor')).toBe(false);
   });
 });

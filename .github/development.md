@@ -79,24 +79,30 @@ severity or higher.
 
 ## Test builds
 
-Successful Plugin CI runs attach an `atlas-vtt-<commit>` artifact containing
-`main.js`, `manifest.json` and `styles.css`, retained for 14 days. For pull
-requests, `<commit>` is the PR head commit, but the build itself is that commit
-merged into the current base branch, so it may include base changes that are not
-in the branch. Install these files in an isolated test vault's
+Plugin CI tests and builds every commit once. Its checks run as parallel jobs
+(static checks, the directory scan, the unit suite split over four runners), and
+`build-plugin`, the required check, fails when any of them failed and otherwise
+builds the plugin. Successful runs attach an `atlas-vtt-<commit>` artifact
+containing `main.js`, `manifest.json`, `styles.css` and the release notes,
+retained for 14 days for pull requests and 90 days for pushes to `beta` and
+`main`, whose builds are the ones released. For pull requests, `<commit>` is the
+PR head commit, but the build itself is that commit merged into the current base
+branch, so it may include base changes that are not in the branch. Install these files in an isolated test vault's
 `.obsidian/plugins/atlas-vtt/` directory and reload the plugin. Include practical
 Obsidian test steps for interaction changes. These artifacts do not publish a
 release or bump the version.
 
 ## Beta builds
 
-Every push to `beta` runs **Publish Beta Build**. When the manifest carries a
-beta version that has not been published yet, the workflow runs the full check
-suite, attests build provenance and publishes a GitHub **pre-release** tagged
-with that version, with `changelog/Unreleased.md` as its notes. Pushes that do
-not bump the version publish nothing and the run stays green. A push that sets
-the version to one already tagged on another commit fails the run, as does a
-manual run for such a version.
+Every push to `beta` runs Plugin CI to the end (pushes are never cancelled by
+a later push). When all its checks pass and the manifest carries a beta version
+that has not been published yet, its `publish-beta` job takes that run's build,
+attests its provenance and publishes it as a GitHub **pre-release** tagged with
+that version, with `changelog/Unreleased.md` as its notes. Nothing is built
+again for the release. Pushes that do not bump the version publish nothing and
+the job stays green. A push that sets the version to one already tagged on
+another commit fails the job. To publish again after a failure, re-run the
+failed jobs of that Plugin CI run.
 
 To cut a new beta after merging into `beta`:
 
@@ -117,8 +123,9 @@ install and update through BRAT as described in [beta-testing.md](beta-testing.m
    `changelog/0.2.0.md`, run `npm run changelog:generate` and commit.
 3. `npm version 0.2.0` (this also updates `versions.json`) and push the branch.
 4. Open a pull request against `main`. CI verifies the stable version.
-5. After merging, run **Prepare Plugin Release** on `main`, review the draft and
-   publish it. See [releasing-obsidian-plugin.md](releasing-obsidian-plugin.md).
+5. After merging, wait for Plugin CI on the `main` push to pass, then run
+   **Prepare Plugin Release** on `main`, review the draft and publish it. See
+   [releasing-obsidian-plugin.md](releasing-obsidian-plugin.md).
 6. Merge `main` back into `beta` and start the next beta cycle with
    `npm version preminor --preid beta`.
 

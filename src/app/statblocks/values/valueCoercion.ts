@@ -8,7 +8,8 @@
 import { parseRating } from '../../creatures/creatureValues';
 import type { FieldType, FieldValue } from '../model/templateTypes';
 import { choiceText, readChoice, unreadProblem, type ChoiceShape } from './choicePicks';
-import { isDiceNotation, parseDiceNotation } from './diceNotation';
+import { parseDiceNotation } from './diceNotation';
+import { isDiceValue } from './diceValues';
 import { isWholeNumberText, parseNumberText } from './numberText';
 import { splitListText } from './listText';
 import { parsePairText } from './pairValues';
@@ -51,7 +52,7 @@ function coerceRating(text: string, input: string): CoercionResult {
 
 function coerceDice(text: string, input: string): CoercionResult {
   // `2d6 + @str` is kept as written: the card shows and rolls it with the number in
-  if (isDiceNotation(namesReference(text) ? withReferencesAsOne(text) : text)) return kept(text);
+  if (isDiceValue(namesReference(text) ? withReferencesAsOne(text) : text)) return kept(text);
   const problem = parseDiceNotation(text) ? `${quoted(text)} rolls no dice, ${DICE_EXAMPLE}.` : `${quoted(text)} isn't dice, ${DICE_EXAMPLE}.`;
   return refused(input, problem);
 }

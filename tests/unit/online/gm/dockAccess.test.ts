@@ -70,7 +70,7 @@ describe('the online menu before a table runs', () => {
   });
 
   it('offers Start to an account the relay says may host, with its handle beside the title and no more words', () => {
-    const shown = menu({}, CAN_HOST, { list: [{ id: 'c1', name: 'Strahd', activity: 'Played 3d ago', players: 2, art: null, hue: 40, playing: true }], chosen: 'c1', query: '' });
+    const shown = menu({}, CAN_HOST, { list: [{ id: 'c1', name: 'Strahd', activity: 'Played 3d ago', players: 2, art: null, hue: 40 }], chosen: 'c1', query: '' });
     expect(shown.lines).toEqual(['Online play']);
     expect(shown.layer.querySelector('.atlas-online-title-row .atlas-online-handle')?.textContent).toBe('@mara');
     expect(shown.buttons).toEqual(['Sign out', 'Start online table']);

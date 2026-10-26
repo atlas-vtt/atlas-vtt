@@ -34,21 +34,28 @@ describe('the campaign this device plays', () => {
     play.play('c1');
     play.play('c1');
     expect(heard).toHaveBeenCalledTimes(1);
-    expect(localStorage.get('atlas-vtt:playing-campaign')).toBe('c1');
+    expect(localStorage.get('atlas-vtt:table-campaign')).toBe('c1');
     play.play('c2');
     play.stop();
     expect(heard).toHaveBeenCalledTimes(3);
-    expect(localStorage.has('atlas-vtt:playing-campaign')).toBe(false);
+    expect(localStorage.has('atlas-vtt:table-campaign')).toBe(false);
     unsubscribe();
     play.play('c3');
     expect(heard).toHaveBeenCalledTimes(3);
     expect(CampaignPlay.forApp(app)).toBe(play);
   });
 
+  it('never takes up a campaign Atlas 0.9.0 left played, and removes it', () => {
+    const { app, localStorage } = createInMemoryApp();
+    app.saveLocalStorage('atlas-vtt:playing-campaign', 'c1');
+    expect(CampaignPlay.forApp(app).playing()).toBeNull();
+    expect(localStorage.has('atlas-vtt:playing-campaign')).toBe(false);
+  });
+
   it('reads only an id from local storage', () => {
     for (const [stored, expected] of [['c1', 'c1'], [42, null], [{ id: 'c1' }, null], ['', null]] as const) {
       const { app } = createInMemoryApp();
-      app.saveLocalStorage('atlas-vtt:playing-campaign', stored);
+      app.saveLocalStorage('atlas-vtt:table-campaign', stored);
       expect(CampaignPlay.forApp(app).playing()).toBe(expected);
     }
   });

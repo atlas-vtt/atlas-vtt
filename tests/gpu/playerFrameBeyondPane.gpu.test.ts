@@ -154,8 +154,10 @@ describe('what the players\' frame shows beside the DM\'s pane', () => {
     const players = mirrored(narrow);
     try {
       const gm = wide.canvas();
-      // The DM sees hidden tokens (translucent) and through the fog, at both ends of the frame; the players do not
-      for (const column of [4, 6, 9]) expect(at(gm, px(centre(column)), py(centre(6)))).not.toEqual(at(players.pixels, px(centre(column)), py(centre(6))));
+      // The DM sees hidden tokens (translucent) and through the fog, at both ends of the frame; the players do not.
+      // Each hidden token is read a little right of its centre: a measurement players see is drawn over the middle one's centre.
+      const onHidden = (pixels: Uint8ClampedArray, column: number): number[] => at(pixels, px(centre(column) + 6), py(centre(6) + 2));
+      for (const column of [4, 6, 9]) expect(onHidden(gm, column)).not.toEqual(onHidden(players.pixels, column));
       for (const column of [4, 9]) expect(at(gm, px(centre(column)), py(centre(7)))).not.toEqual([0, 0, 0]);
     } finally {
       players.dispose();

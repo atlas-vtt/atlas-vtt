@@ -23,6 +23,12 @@ describe('map hotkeys', () => {
     expect(availableHotkeys(true).some(action => action.id === id)).toBe(false);
   });
 
+  it('offers the GM the lighting shortcuts', () => {
+    const ids = availableHotkeys(false).map(({ id }) => id);
+    expect(ids).toEqual(expect.arrayContaining(['wall', 'lightingPeek']));
+    expect(availableHotkeys(true).map(({ id }) => id)).not.toContain('wall');
+  });
+
   it('formats letter bindings without changing named keys', () => {
     expect(formatHotkey('Enter')).toBe('Enter');
     expect(formatHotkey('Space')).toBe('Space');

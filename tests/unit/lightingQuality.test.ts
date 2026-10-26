@@ -5,7 +5,7 @@ import { LIGHTING_QUALITY, bouncesOn, isLightingQualityLevel } from '../../src/a
 import { TILE_RAYS, worldTexel } from '../../src/app/lighting/lightingConstants';
 import { LIGHTING_QUALITY_STORAGE_KEY } from '../../src/app/services/deviceSettings';
 import { SettingsService } from '../../src/app/services/SettingsService';
-import { lightingSettingsSections } from '../../src/app/settings/lightingSettingsSection';
+import { lightingSettingsSection } from '../../src/app/settings/lightingSettingsSection';
 import { memoryPluginData } from '../mocks/pluginData';
 
 async function settingsOn(app: App, stored: unknown = {}): Promise<{ settings: SettingsService; write: ReturnType<typeof vi.fn> }> {
@@ -75,13 +75,11 @@ describe('the lighting quality setting', () => {
     expect((await settingsOn(app)).settings.getLightingQuality()).toBe('high');
   });
 
-  it('is offered only while dynamic lighting is switched on', async () => {
+  it('is offered in Atlas\' settings', async () => {
     const { settings } = await settingsOn(new App());
-    expect(lightingSettingsSections(settings)).toEqual([]);
-    settings.setExperimental('dynamicLighting', true);
-    const [section] = lightingSettingsSections(settings);
-    expect(section!.rows.map((row) => row.name)).toEqual(['Lighting quality']);
-    expect(section!.rows[0]!.desc).toContain('Full detail');
-    expect(() => section!.rows[0]!.render(new Setting(document.createElement('div')))).not.toThrow();
+    const section = lightingSettingsSection(settings);
+    expect(section.rows.map((row) => row.name)).toEqual(['Lighting quality']);
+    expect(section.rows[0]!.desc).toContain('Full detail');
+    expect(() => section.rows[0]!.render(new Setting(document.createElement('div')))).not.toThrow();
   });
 });

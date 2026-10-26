@@ -31,7 +31,7 @@ type ValueExtra = Partial<Pick<SheetValue, 'words' | 'pairs' | 'resource'>> & { 
  * carries what a click on it rolls, where the card's link rolls the whole value (`sheetRoll`).
  */
 export function sheetValue(build: SheetBuild, label: string | null | undefined, text: string, look: Look, field: SheetField | null, prompt: string | null, { rollable = false, ...extra }: ValueExtra = {}): SheetValue {
-  const roll = look === 'plain' ? sheetRoll(text, rollable) : null;
+  const roll = look === 'plain' ? sheetRoll(text, rollable, build.shown.namedRolls) : null;
   return {
     label: clippedLine(label, MAX_BOOK_TITLE),
     look,
@@ -94,7 +94,7 @@ function pairsNode(build: SheetBuild, block: Extract<TemplateBlock, { type: 'pai
   const pairs = found.slice(0, MAX_SHEET_LIST).flatMap((pair): SheetPair[] => {
     const name = clippedLine(pairText({ key: pair.key, value: '' }, false), MAX_BOOK_TITLE) ?? '';
     const shown = clippedLine(pairText({ key: '', value: pair.value }, signed), MAX_BOOK_TITLE) ?? '';
-    const roll = sheetRoll(shown, rollable);
+    const roll = sheetRoll(shown, rollable, build.shown.namedRolls);
     return name === '' && shown === '' ? [] : [{ label: name, value: shown, ...(roll !== null && { roll }) }];
   });
   return { k: 'value', value: sheetValue(build, label, found.map((pair) => pairText(pair, signed)).join(', '), 'pairs', field, null, { pairs }) };
@@ -129,8 +129,8 @@ function tableNode(build: SheetBuild, block: ScoresBlock, display: BlockDisplay,
   const rows = cells(rowTexts);
   const worked = cells(workedTexts);
   const rollable = rollableBlock(block);
-  const rolls = cellRolls(rowTexts, rows, rollable);
-  const workedRolls = cellRolls(workedTexts, worked, rollable);
+  const rolls = cellRolls(rowTexts, rows, rollable, build.shown.namedRolls);
+  const workedRolls = cellRolls(workedTexts, worked, rollable, build.shown.namedRolls);
   const labels = shown.derived.slice(0, MAX_TABLE_ROWS).map((row) => clippedLine(row.label, MAX_BOOK_TITLE) ?? '');
   return {
     // The card names a Table by its columns alone.

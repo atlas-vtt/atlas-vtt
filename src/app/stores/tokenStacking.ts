@@ -23,11 +23,12 @@ export function raiseTokens(tokens: Record<string, TokenEntity>, ids: readonly s
   });
 }
 
-/** Where a token is put down. */
+/** Where a token is put down, and which way it faces once it is (a group turned as one); unset keeps its facing. */
 export interface TokenPlace {
   id: string;
   x: number;
   y: number;
+  rotation?: number;
 }
 
 /** What putting tokens down writes: the tokens, and the flag that tells spatial audio a token moved. */
@@ -37,7 +38,7 @@ export interface PlacedTokensState {
 }
 
 /**
- * Puts tokens down: each at its place, all of them on top of every other token (`raiseTokens`),
+ * Puts tokens down: each at its place (facing the way it is given, if it is), all of them on top of every other token (`raiseTokens`),
  * and flags the move for spatial audio. Changes only what the scene saves and undoes (the
  * tokens' places and order) and the audio flag; letting go of held tokens is pointer state,
  * which `dropTokens` does. Tokens not listed keep their objects. Changes `state` in place
@@ -45,11 +46,12 @@ export interface PlacedTokensState {
  */
 export function placeTokens(state: PlacedTokensState, positions: readonly TokenPlace[]): void {
   const { tokens } = state.objects;
-  for (const { id, x, y } of positions) {
+  for (const { id, x, y, rotation } of positions) {
     const token = tokens[id];
     if (token) {
       token.x = x;
       token.y = y;
+      if (rotation !== undefined) token.rotation = rotation;
     }
   }
   raiseTokens(tokens, positions.map(({ id }) => id));

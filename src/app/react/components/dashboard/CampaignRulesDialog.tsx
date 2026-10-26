@@ -9,7 +9,6 @@ import { resourceFieldSuggestions } from '../../../resources/resourceFieldSugges
 import { useModifierFieldOffer } from '../collection-settings/useModifierFieldOffer';
 import type { StatblockTemplate } from '../../../statblocks/model/templateTypes';
 import { AssetService } from '../../../services/AssetService';
-import { SettingsService } from '../../../services/SettingsService';
 import { deleteSystemPreset } from '../../../services/systemPresetDeletion';
 import type { SystemPreset } from '../../../types/systemPresetTypes';
 import { t } from '../../../i18n';
@@ -17,7 +16,6 @@ import { RULES_TABS, RulesSettingsTabs, type SettingsTab } from '../collection-s
 import { SettingsDialog } from '../collection-settings/SettingsDialog';
 import { useCollectionCreatures } from '../collection-settings/useCollectionCreatures';
 import { useRulesDraft } from '../collection-settings/useRulesDraft';
-import { useExperimentalFeature } from '../../hooks/useExperimentalFeature';
 import { useSystemPresets } from '../../hooks/useSystemPresets';
 import { useDiceSets } from '../../hooks/useDiceSets';
 import { usePlayedCollections } from './usePlayedCollections';
@@ -47,7 +45,6 @@ interface CampaignRulesDialogProps {
 export function CampaignRulesDialog({ app, campaign, service, onClose, initialTab = 'system' }: CampaignRulesDialogProps): React.ReactElement {
   const systemPresets = useSystemPresets(app);
   const diceSets = useDiceSets(app);
-  const lightingOn = useExperimentalFeature('dynamicLighting', SettingsService.forApp(app));
   const draft = useRulesDraft();
   const [hasSystem, setHasSystem] = useState(campaign.system !== undefined);
   const [activeTab, setActiveTab] = useState<SettingsTab>(RULES_TABS.includes(initialTab) ? initialTab : 'system');
@@ -112,7 +109,6 @@ export function CampaignRulesDialog({ app, campaign, service, onClose, initialTa
         diceSets={diceSets}
         onDeletePreset={deletePreset}
         none={{ summary: t('campaign.systemNoneSummary'), isActive: !hasSystem, onSelect: () => setHasSystem(false) }}
-        lightingOn={lightingOn}
         fieldSuggestions={resourceFieldSuggestions([], statblockRecords)}
         initiativeFieldSuggestions={modifierFields.suggestions}
         modifierStatblocks={modifierFields.statblocks}

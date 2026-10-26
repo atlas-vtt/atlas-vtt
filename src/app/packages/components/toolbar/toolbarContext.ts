@@ -9,8 +9,7 @@ export type ToolMenu = 'move' | 'fog' | 'draw' | 'text' | 'measure' | 'wall'
 
 /**
  * What MainToolbar hands every control's item builder. Gates (player view,
- * experimental features, build flags) live in the catalog and are applied
- * before a builder is asked.
+ * build flags) live in the catalog and are applied before a builder is asked.
  */
 export interface ToolbarContext {
   activeTool: Tool

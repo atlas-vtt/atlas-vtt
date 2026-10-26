@@ -1,11 +1,12 @@
 import type { MarkPoint, MeasureState, SharedMeasure } from '../protocol/index.ts';
-import { Container, Graphics, type Text } from 'pixi.js';
+import { Container } from 'pixi.js';
 import { pathLengthInCells, type GridGeometry } from '../../grid/gridDistance';
 import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
 import { MAP_LAYER_Z } from '../../pixi/mapLayerOrder';
-import { createMeasureLabelText, drawMeasureLabel, drawMeasurement, type MeasureRecord } from '../../pixi/utils/measureDrawing';
+import { drawMeasurement, measureLabelTarget, type MeasureRecord } from '../../pixi/utils/measureDrawing';
+import { MeasureInk, MeasureInkLayer } from '../../pixi/utils/measureInk';
+import { MeasureLabel } from '../../pixi/utils/measureLabel';
 import { destroyTree } from '../../pixi/utils/destroyTree';
-import { readableLabelFontSize } from './labelSize.ts';
 import { PointerTrack } from './PointerTrack.ts';
 
 /** One sender's measurements as they arrive. */
@@ -17,14 +18,6 @@ export interface MeasureRules {
   readonly measurement: MeasurementSettings;
 }
 
-/** How far a label stands above its measurement's middle, in screen pixels (as Atlas's ruler). */
-const LABEL_LIFT_PX = 30;
-
-interface Label {
-  readonly pill: Graphics;
-  readonly text: Text;
-}
-
 /** A measurement being drawn: as its sender last told it, and its end as it is drawn, a moment behind. */
 interface Live {
   told: SharedMeasure;
@@ -34,10 +27,10 @@ interface Live {
 
 interface Drawn {
   /** The kept measurements and the one being drawn, each in a drawing of its own: only the second changes with every frame. */
-  readonly keptGraphics: Graphics;
-  readonly liveGraphics: Graphics;
+  readonly keptShapes: MeasureInk;
+  readonly liveShape: MeasureInk;
   /** A label for every kept measurement in order, then one for the measurement being drawn. */
-  readonly labels: Label[];
+  readonly labels: MeasureLabel[];
   kept: readonly MeasureRecord[];
   live: Live | null;
   colour: number;
@@ -55,13 +48,15 @@ const liveRecord = ({ told, end }: Live): MeasureRecord => ({ shape: told.shape,
 
 /**
  * Other people's measurements, drawn as Atlas draws its own (`drawMeasurement`) in the sender's
- * colour, each with its distance on a pill, worked out here by the scene's rules. The end of a
+ * colour, each with its distance on a `MeasureLabel`, worked out here by the scene's rules. The end of a
  * measurement being drawn moves through a `PointerTrack`, timed by the span its messages tell, so it
  * glides between two messages, and its label says the distance to the end as drawn; kept
  * measurements stand as they arrive.
  */
 export class RemoteMeasures {
   readonly container = new Container({ label: 'remote-measures', zIndex: MAP_LAYER_Z.measure, eventMode: 'none', interactiveChildren: false });
+  /** Every sender's shapes, composed in one pass; their labels follow in the container, above them all. */
+  private readonly shapes = new MeasureInkLayer('remote-measure-shapes');
   private readonly drawn = new Map<string, Drawn>();
   private readonly zoom: () => number;
   private readonly rules: () => MeasureRules | null;
@@ -73,6 +68,7 @@ export class RemoteMeasures {
     this.zoom = zoom;
     this.rules = rules;
     this.interval = interval;
+    this.container.addChild(this.shapes.view);
   }
 
   /** Every sender's measurements as they are now (`now` in ms, the clock `tick` runs on); a sender missing from them has none. */
@@ -96,9 +92,8 @@ export class RemoteMeasures {
       if (!keptChanged && drawn.live === before) continue;
       if (keptChanged) this.drawKept(drawn, kept, colour, rules);
       this.fitLabels(drawn);
-      kept.forEach((record, index) => this.write(drawn.labels[index], record, rules));
+      kept.forEach((record, index) => this.label(drawn.labels[index], record, rules));
       this.drawLive(drawn, rules);
-      this.placeLabels(drawn);
     }
     this.moving = [...this.drawn.values()].some((drawn) => drawn.live?.track.busy(now) === true);
   }
@@ -120,13 +115,18 @@ export class RemoteMeasures {
       if (rules === null || end === null || samePoint(end, live.end)) continue;
       live.end = { x: end.x, y: end.y };
       this.drawLive(drawn, rules);
-      this.placeLabels(drawn);
     }
   }
 
-  /** The zoom changed: labels keep their size on screen. */
+  /** The zoom changed: shapes and labels keep their size on screen. */
   rescale(): void {
-    for (const drawn of this.drawn.values()) this.placeLabels(drawn);
+    const rules = this.rules();
+    if (rules === null) return;
+    for (const drawn of this.drawn.values()) {
+      this.drawKept(drawn, drawn.kept, drawn.colour, rules);
+      drawn.kept.forEach((record, index) => this.label(drawn.labels[index], record, rules));
+      this.drawLive(drawn, rules);
+    }
   }
 
   clear(): void {
@@ -135,21 +135,21 @@ export class RemoteMeasures {
 
   destroy(): void {
     this.clear();
+    this.shapes.destroy();
     destroyTree(this.container);
   }
 
   private add(who: string): Drawn {
-    const drawn: Drawn = { keptGraphics: new Graphics(), liveGraphics: new Graphics(), labels: [], kept: [], live: null, colour: 0 };
-    this.container.addChild(drawn.keptGraphics, drawn.liveGraphics);
+    const drawn: Drawn = { keptShapes: new MeasureInk(this.shapes), liveShape: new MeasureInk(this.shapes), labels: [], kept: [], live: null, colour: 0 };
     this.drawn.set(who, drawn);
     return drawn;
   }
 
   private remove(who: string, drawn: Drawn): void {
     this.drawn.delete(who);
-    destroyTree(drawn.keptGraphics);
-    destroyTree(drawn.liveGraphics);
-    for (const label of drawn.labels) this.dropLabel(label);
+    drawn.keptShapes.destroy();
+    drawn.liveShape.destroy();
+    for (const label of drawn.labels) label.destroy();
   }
 
   /**
@@ -173,16 +173,16 @@ export class RemoteMeasures {
   private drawKept(drawn: Drawn, kept: readonly MeasureRecord[], colour: number, { measurement }: MeasureRules): void {
     drawn.kept = kept;
     drawn.colour = colour;
-    drawn.keptGraphics.clear();
-    for (const record of kept) drawMeasurement(drawn.keptGraphics, colour, record, measurement.coneAngle);
+    drawn.keptShapes.begin(this.zoom());
+    for (const record of kept) drawMeasurement(drawn.keptShapes, colour, record, measurement.coneAngle);
   }
 
   private drawLive(drawn: Drawn, rules: MeasureRules): void {
-    drawn.liveGraphics.clear();
+    drawn.liveShape.begin(this.zoom());
     if (drawn.live === null) return;
     const record = liveRecord(drawn.live);
-    drawMeasurement(drawn.liveGraphics, drawn.colour, record, rules.measurement.coneAngle);
-    this.write(drawn.labels[drawn.kept.length], record, rules);
+    drawMeasurement(drawn.liveShape, drawn.colour, record, rules.measurement.coneAngle);
+    this.label(drawn.labels[drawn.kept.length], record, rules);
   }
 
   /** As many labels as measurements. */
@@ -190,34 +190,19 @@ export class RemoteMeasures {
     const count = drawn.kept.length + (drawn.live === null ? 0 : 1);
     while (drawn.labels.length > count) {
       const label = drawn.labels.pop();
-      if (label !== undefined) this.dropLabel(label);
+      label?.destroy();
     }
     while (drawn.labels.length < count) {
-      const label = { pill: new Graphics(), text: createMeasureLabelText() };
-      this.container.addChild(label.pill, label.text);
+      const label = new MeasureLabel();
+      this.container.addChild(label.view);
       drawn.labels.push(label);
     }
   }
 
-  private write(label: Label | undefined, record: MeasureRecord, { grid, measurement }: MeasureRules): void {
+  /** Shows `record`'s distance on `label`, beside it. */
+  private label(label: MeasureLabel | undefined, record: MeasureRecord, { grid, measurement }: MeasureRules): void {
     if (label === undefined) return;
     const distance = formatDistance(pathLengthInCells(grid, [record.start, record.end], measurement.diagonalRule), measurement);
-    if (label.text.text !== distance) label.text.text = distance;
-  }
-
-  private placeLabels(drawn: Drawn): void {
-    const zoom = this.zoom() || 1;
-    const records = drawn.live === null ? drawn.kept : [...drawn.kept, liveRecord(drawn.live)];
-    records.forEach(({ start, end }, index) => {
-      const label = drawn.labels[index];
-      if (label === undefined) return;
-      label.text.style.fontSize = readableLabelFontSize(zoom);
-      drawMeasureLabel(label.pill, label.text, { x: (start.x + end.x) / 2, y: (start.y + end.y) / 2 - LABEL_LIFT_PX / zoom }, zoom);
-    });
-  }
-
-  private dropLabel(label: Label): void {
-    destroyTree(label.pill);
-    destroyTree(label.text);
+    label.show(distance, measureLabelTarget(record), this.zoom(), grid.size);
   }
 }

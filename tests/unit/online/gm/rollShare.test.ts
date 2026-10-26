@@ -54,6 +54,15 @@ describe('the GM\'s rolls', () => {
     }]);
   });
 
+  it('name the constants the roll names, so players see each as its own term', async () => {
+    const gm = await table(true);
+    const named: DiceRollResult = { ...gmRoll('hero'), formula: '1d20+4-1[Str mod]', modifiers: 3, total: 16, namedModifiers: [{ label: 'Str mod', value: -1 }] };
+    gm.bus.emit('dice-rolled', named, origin('hero'));
+    expect(rollsSent(gm.sent)[0]?.result).toMatchObject({ formula: '1d20+4-1[Str mod]', modifiers: 3, namedModifiers: [{ label: 'Str mod', value: -1 }] });
+    gm.bus.emit('dice-rolled', gmRoll('hero'), origin('hero'));
+    expect(rollsSent(gm.sent)[1]?.result).not.toHaveProperty('namedModifiers');
+  });
+
   it('never name a hidden token, nor what it rolled, nor a token of another view', async () => {
     const gm = await table(true);
     gm.bus.emit('dice-rolled', gmRoll('spy'), origin('spy'));

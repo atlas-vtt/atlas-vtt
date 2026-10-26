@@ -1,10 +1,12 @@
 import { App, WorkspaceLeaf, TFile, ItemView, MarkdownRenderer, MarkdownView, Component, setIcon } from 'obsidian';
+import { createPinButton, showPinState, startPreviewWindowDrag, type PreviewWindowReach } from './previewWindowControls';
 import { getActiveWorkspaceLeaf, suppressActiveLeaf } from '../utils/embeddedLeafFocus';
 import { runInBackground } from '../utils/backgroundTask';
 import { openDetachedNoteLeaf } from './detachedNoteLeaf';
 import type { NotePreviewUIManager, PreviewAnchorRef } from './NotePreviewUIManager';
 import type { NoteViewState, PinnedNotePreview } from '../stores/pinnedNotePreviewSlice';
-import { PreviewWindowPlacement } from './previewWindowLayout';
+import { PreviewWindowPlacement, previewReach } from './previewWindowLayout';
+import { viewFrame } from '../packages/components/primitives/useKeepInView';
 import { NOTE_PREVIEW_LAYER_CLASS } from './uiLayers';
 import { applyNoteScroll, readNoteViewState, toOpenViewState } from './noteViewState';
 import { t } from '../i18n';
@@ -31,11 +33,8 @@ export class NotePreviewWindow {
   private isPinned: boolean = false;
   private pinButton: HTMLButtonElement | null = null;
   public originatingPin: PreviewAnchorRef | null = null;
-  private isDragging: boolean = false;
-  private dragStartX: number = 0;
-  private dragStartY: number = 0;
-  private dragStartLeft: number = 0;
-  private dragStartTop: number = 0;
+  /** Stops a drag still under way. */
+  private stopDrag: (() => void) | null = null;
   private leaf: WorkspaceLeaf | null = null;
   public static openWindows: Map<string, NotePreviewWindow> = new Map();
   private manager: NotePreviewUIManager;
@@ -127,14 +126,15 @@ export class NotePreviewWindow {
     this.parentComponent.register(() => placement.destroy());
 
     const header = this.element.createDiv({ cls: 'atlas-note-preview-header' });
-    header.addEventListener('mousedown', this.onDragStart.bind(this));
     this.titleElement = header.createSpan({ cls: 'atlas-note-preview-title', text: t('preview.loading') });
     const controlsDiv = header.createDiv({ cls: 'atlas-note-preview-controls' });
-    // Pin Button
-    this.pinButton = controlsDiv.createEl('button', { cls: 'atlas-note-preview-pin-btn' });
-    setIcon(this.pinButton, 'pin');
-    this.pinButton.setAttribute('aria-label', t('preview.pin'));
-    this.pinButton.onclick = () => this.togglePin();
+    const element = this.element;
+    const reach: PreviewWindowReach = {
+      reach: () => previewReach(controlsDiv.getBoundingClientRect(), header.getBoundingClientRect()),
+      frame: () => viewFrame(element),
+    };
+    header.addEventListener('mousedown', (e) => this.onDragStart(e, reach));
+    this.pinButton = createPinButton(controlsDiv, 'atlas-note-preview-pin-btn', () => this.togglePin());
     
     // Open File Button
     const openFileBtn = controlsDiv.createEl('button', { cls: 'atlas-note-preview-open-btn' });
@@ -459,32 +459,13 @@ export class NotePreviewWindow {
     this.placement?.placeNearPointer(x, y);
   }
 
-  private onDragStart(e: MouseEvent) {
-    if ((e.target as HTMLElement)?.closest('button')) return;
-    this.isDragging = true;
-    this.dragStartX = e.clientX;
-    this.dragStartY = e.clientY;
-    this.dragStartLeft = this.element?.offsetLeft ?? 0;
-    this.dragStartTop = this.element?.offsetTop ?? 0;
-    this.element?.classList.add('is-dragging');
-    document.addEventListener('mousemove', this.onDragMove);
-    document.addEventListener('mouseup', this.onDragEnd);
-  }
-  private onDragMove = (e: MouseEvent) => {
-    if (!this.isDragging || !this.element) return;
-    const dx = e.clientX - this.dragStartX;
-    const dy = e.clientY - this.dragStartY;
-    this.element.style.left = `${this.dragStartLeft + dx}px`;
-    this.element.style.top = `${this.dragStartTop + dy}px`;
-  }
-  private onDragEnd = () => {
-    if (!this.isDragging) return;
-    this.isDragging = false;
-    this.element?.classList.remove('is-dragging');
-    document.removeEventListener('mousemove', this.onDragMove);
-    document.removeEventListener('mouseup', this.onDragEnd);
-    this.placement?.recordMove();
-    this.saveStateNow();
+  private onDragStart(e: MouseEvent, reach: PreviewWindowReach): void {
+    if (!this.element) return;
+    this.stopDrag = startPreviewWindowDrag(this.element, e, reach, () => {
+      this.stopDrag = null;
+      this.placement?.recordMove();
+      this.saveStateNow();
+    });
   }
 
   // Placeholder for resize methods
@@ -634,33 +615,8 @@ export class NotePreviewWindow {
     };
   }
   
-  private updatePinButtonState() {
-    if (this.pinButton) {
-      // Clear the button first
-      this.pinButton.empty();
-      
-      // Set the appropriate icon
-      setIcon(this.pinButton, this.isPinned ? 'pin-off' : 'pin');
-      
-      // Update label and class
-      this.pinButton.setAttribute('aria-label', this.isPinned ? t('preview.unpin') : t('preview.pin'));
-      
-      // Toggle the pinned class
-      if (this.isPinned) {
-        this.pinButton.classList.add('is-pinned');
-        // Also add the lucide classes that might be expected
-        const svgIcon = this.pinButton.querySelector('svg');
-        if (svgIcon) {
-          svgIcon.classList.add('svg-icon', 'lucide-pin-off');
-        }
-      } else {
-        this.pinButton.classList.remove('is-pinned');
-        const svgIcon = this.pinButton.querySelector('svg');
-        if (svgIcon) {
-          svgIcon.classList.add('svg-icon', 'lucide-pin');
-        }
-      }
-    }
+  private updatePinButtonState(): void {
+    if (this.pinButton) showPinState(this.pinButton, this.isPinned);
   }
   hide(force?: boolean): void {
     if (!force && this.isPinned) return;
@@ -675,8 +631,8 @@ export class NotePreviewWindow {
   private _forceHide() {
     this.cancelStateSave();
     if (this.element) {
-      document.removeEventListener('mousemove', this.onDragMove);
-      document.removeEventListener('mouseup', this.onDragEnd);
+      this.stopDrag?.();
+      this.stopDrag = null;
       // Remove resize listeners if any
       document.removeEventListener('mousemove', this.onResizeMove);
       document.removeEventListener('mouseup', this.onResizeEnd);

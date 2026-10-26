@@ -10,7 +10,7 @@ vi.mock('events', async () => import('eventemitter3'));
 /** A player's rest request among the cards over the online control, laid out by the plugin's stylesheet. */
 
 const KNOCK = { id: 'm'.repeat(20), name: 'Mira', answered: false, full: false, armed: true };
-const REST = { key: `rest:${'c'.repeat(24)}`, character: 'Brannoch the Unbowed of the Northern Reaches', button: 'Long rest', rules: ['Hit Points to full', '2 Hit Dice', 'Exhaustion −1', 'Spell slots to full'], armed: true, answered: false };
+const REST = { key: `rest:${'c'.repeat(24)}`, character: 'Brannoch the Unbowed of the Northern Reaches', button: 'Long rest', picks: [], rules: ['Hit Points to full', '2 Hit Dice', 'Exhaustion −1', 'Spell slots to full'], armed: true, answered: false };
 
 /** The control at the bottom of a map, with its stack of cards over it, as `KnockStack` lays them out. */
 function stack(): { dock: HTMLElement; cards: HTMLElement } {

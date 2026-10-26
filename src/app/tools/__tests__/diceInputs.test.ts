@@ -2,6 +2,7 @@
 import { EventEmitter } from 'events';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DiceTool } from '../DiceTool';
+import { FORMULA_LIMITS } from '../parseFormula';
 import { DEFAULT_DICE_RULES } from '../../gameSystems/diceRules';
 
 function setup(defaultRoll = '1d20') {
@@ -45,7 +46,7 @@ describe('DiceTool roll inputs', () => {
   });
 
   it.each([
-    ['d20' + ' '.repeat(97), '+1', 'length'],
+    ['d20' + ' '.repeat(FORMULA_LIMITS.completed - 4), '+1', 'length'],
     [Array(20).fill('d6').join('+'), '+1', 'terms'],
   ])('rejects default-roll completion beyond the %s budget', (defaultRoll, bonus, code) => {
     const { tool, inputs } = setup(defaultRoll);

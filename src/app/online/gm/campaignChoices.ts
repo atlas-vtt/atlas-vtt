@@ -1,6 +1,5 @@
 import type { App } from 'obsidian';
 import { CampaignFiles } from '../../campaigns/CampaignFiles';
-import { CampaignPlay } from '../../campaigns/campaignPlay';
 import { CampaignService } from '../../campaigns/CampaignService';
 import type { Campaign } from '../../campaigns/campaignTypes';
 import { CampaignPlayers } from '../../campaigns/players/CampaignPlayers';
@@ -21,8 +20,6 @@ export interface CampaignChoice {
   readonly art: string | null;
   /** A hue of its own (0–359) for a campaign without a world map, as the dashboard tints it. */
   readonly hue: number;
-  /** This device plays it. */
-  readonly playing: boolean;
 }
 
 /** The campaigns tables can be started on, and their changes. */
@@ -41,9 +38,8 @@ async function thumbnailOf(app: App, assetId: string): Promise<string | null> {
 }
 
 /**
- * The vault's campaigns for the start menu: read from the campaigns and players files and this
- * device's played campaign, with each world map's thumbnail looked up once (again when the asset
- * index or a scene's thumbnail changes).
+ * The vault's campaigns for the start menu: read from the campaigns and players files, with each
+ * world map's thumbnail looked up once (again when the asset index or a scene's thumbnail changes).
  */
 export function appCampaignChoices(app: App): CampaignChoices {
   /** Thumbnails by world map asset id; absent while looked up. */
@@ -70,22 +66,20 @@ export function appCampaignChoices(app: App): CampaignChoices {
       });
     return null;
   };
-  const choiceOf = (campaign: Campaign, playing: string | null, players: CampaignPlayers | undefined): CampaignChoice => ({
+  const choiceOf = (campaign: Campaign, players: CampaignPlayers | undefined): CampaignChoice => ({
     id: campaign.id,
     name: campaign.name,
     activity: campaignActivity(campaign),
     players: players?.of(campaign.id).players.length ?? 0,
     art: artOf(campaign.worldMap),
     hue: fnv1a32(campaign.id) % 360,
-    playing: campaign.id === playing,
   });
   return {
     list: () => {
       const files = CampaignFiles.forApp(app);
       if (files === undefined || !files.isLoaded()) return null;
-      const playing = CampaignPlay.forApp(app).playing();
       const players = CampaignPlayers.forApp(app);
-      return new CampaignService(files).list().map((campaign) => choiceOf(campaign, playing, players));
+      return new CampaignService(files).list().map((campaign) => choiceOf(campaign, players));
     },
     onChange: (listener) => {
       listeners.add(listener);
@@ -97,7 +91,6 @@ export function appCampaignChoices(app: App): CampaignChoices {
       const stops = [
         CampaignFiles.forApp(app)?.onChange(listener),
         CampaignPlayers.forApp(app)?.onChange(listener),
-        CampaignPlay.forApp(app).onChange(listener),
       ];
       return () => {
         listeners.delete(listener);

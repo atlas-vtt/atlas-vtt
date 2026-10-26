@@ -12,7 +12,7 @@ import { isRecord } from '../utils/guards';
 import { AssetService, type Asset } from './AssetService';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { linkedMapPath, sceneLinkTarget } from './sceneLinks';
-import { inAtlasFolders, worldMapArtwork } from './worldMap';
+import { worldMapArtwork } from './worldMap';
 
 /** The world map's maps as read, and the scene files and notes they were read from, whose changes may change them. */
 export interface WorldMapTreeRead {
@@ -76,10 +76,10 @@ class TreeReader {
     return asset?.type === 'scene' && asset.data?.mapPath !== undefined ? asset : null;
   }
 
-  /** One map of the tree and the maps its pins open; null when it has no image in Atlas's own folders. */
+  /** One map of the tree and the maps its pins open; null when it has no artwork. */
   async read(asset: Asset): Promise<{ level: WorldMapLevel; leadsTo: Asset[] } | null> {
     const image = await worldMapArtwork(this.app, asset);
-    if (image === null || !inAtlasFolders(image, asset.collection)) return null;
+    if (image === null) return null;
     const key = asset.id;
     const title = asset.name;
     const mapPath = asset.type === 'scene' ? asset.data?.mapPath : undefined;

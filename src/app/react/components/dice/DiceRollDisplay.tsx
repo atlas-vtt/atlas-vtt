@@ -20,6 +20,7 @@ import { DiceToast } from './DiceToast';
 import { DICE_TOAST_KNOT_PATHS, DICE_TOAST_KNOT_SYMBOL_ID } from './diceToastOrnament';
 import { useDiceToasts } from './useDiceToasts';
 import { useDiceAvatar } from './useDiceAvatar';
+import { useViewWindow } from '../../useViewWindow';
 
 /** What comes with a roll to show: `muted` where another display plays its sounds, `origin` the token and scene it was made for. */
 export interface RollOptions {
@@ -102,9 +103,9 @@ export function DiceRollDisplay({ container, prepare, muted = false, eventBus: s
   // takes it (a modal, the palette, the dashboard) or someone is typing. The
   // player window takes no keyboard input, so only the map view listens.
   const showing = rolls.some((roll) => !roll.leaving) || toasts.some((toast) => toast.phase !== 'exiting');
+  const win = useViewWindow(view?.containerEl);
   useEffect(() => {
     if (container || !showing) return;
-    const win = view?.containerEl.win ?? window;
     const handler = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape' || !canRunMapHotkeys(e, view?.viewId)) return;
       e.preventDefault();
@@ -114,7 +115,7 @@ export function DiceRollDisplay({ container, prepare, muted = false, eventBus: s
     };
     win.addEventListener('keydown', handler, true);
     return (): void => win.removeEventListener('keydown', handler, true);
-  }, [container, showing, view, dismissAllToasts]);
+  }, [container, showing, view, win, dismissAllToasts]);
 
   const close = useCallback((id: string): void => setRolls((prev) => closeRoll(prev, id)), []);
   const dismiss = useCallback((id: string): void => setRolls((prev) => dismissRoll(prev, id)), []);

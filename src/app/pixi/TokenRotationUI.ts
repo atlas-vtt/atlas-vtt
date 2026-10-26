@@ -3,8 +3,8 @@ import { Viewport } from 'pixi-viewport';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { getTokenRingCenterRadius } from './token-renderer/tokenRingMetrics';
-import { computeTokenPixelSize, computeTokenStrokeWidth, tokenUIScale } from './token-renderer/tokenSizing';
-import { toError } from '../utils/errors';
+import { computeTokenPixelSize, computeTokenStrokeWidth, TOKEN_HANDLE_LABEL, tokenUIScale } from './token-renderer/tokenSizing';
+import { paintRotateHandle, rotateIconTexture, ROTATE_ICON_SHARE } from './rotateHandleLook';
 import type { TokenGestureEventDetail } from '../types/atlasWindowEvents';
 import type { TokenHandleContainer } from './token-renderer/types';
 import { findTokenGroup } from './token-renderer/findTokenGroup';
@@ -36,12 +36,6 @@ export class TokenRotationUI {
   // Icon textures
   private iconTextures: Map<string, Texture> = new Map();
   private texturesInitialized: boolean = false;
-  
-  // Lucide React RotateCw icon SVG
-  private readonly ROTATE_ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/>
-    <path d="M21 3v5h-5"/>
-  </svg>`;
   
   constructor(viewport: Viewport, store: StoreApi<ViewAtlasState>) {
     this.viewport = viewport;
@@ -88,50 +82,9 @@ export class TokenRotationUI {
    */
   private async initializeTextures(): Promise<void> {
     if (this.texturesInitialized) return;
-    
-    // Use DPR-aware canvas size for crisp icons on retina displays
-    const baseSvgSize = 24;
-    const dpr = Math.min(window.devicePixelRatio || 1, 4); // cap at 4x
-    const canvasSize = Math.round(baseSvgSize * dpr * 2); // 2x headroom beyond DPR
-    const themes = ['light', 'dark'] as const;
-    
-    for (const theme of themes) {
-      const isDark = theme === 'dark';
-      const color = isDark ? '#ffffff' : '#000000';
-      const coloredSvg = this.ROTATE_ICON_SVG
-        .replace(/stroke="currentColor"/g, `stroke="${color}"`)
-        .replace(/width="\d+"/, `width="${canvasSize}"`)
-        .replace(/height="\d+"/, `height="${canvasSize}"`);
-      const key = `rotate-${theme}`;
-      
-      const canvas = createEl('canvas');
-      canvas.width = canvasSize;
-      canvas.height = canvasSize;
-      const ctx = canvas.getContext('2d');
-      
-      if (ctx) {
-        const img = new Image();
-        await new Promise<void>((resolve, reject) => {
-          img.onload = (): void => {
-            try {
-              ctx.drawImage(img, 0, 0, canvasSize, canvasSize);
-              const texture = Texture.from(canvas);
-              this.iconTextures.set(key, texture);
-              resolve();
-            } catch (err) {
-              console.error(`[TokenRotationUI] Failed to create texture for ${key}:`, err);
-              reject(toError(err, 'Failed to build icon texture'));
-            }
-          };
-          img.onerror = (err): void => {
-            console.error(`[TokenRotationUI] Failed to load SVG for ${key}:`, err);
-            reject(toError(err, 'Failed to build icon texture'));
-          };
-          img.src = `data:image/svg+xml,${encodeURIComponent(coloredSvg)}`;
-        });
-      }
+    for (const theme of ['light', 'dark'] as const) {
+      this.iconTextures.set(`rotate-${theme}`, await rotateIconTexture(theme === 'dark'));
     }
-    
     this.texturesInitialized = true;
   }
   
@@ -238,21 +191,15 @@ export class TokenRotationUI {
     // Get theme colors - matching status badges
     const isDarkMode = document.body.classList.contains('theme-dark');
     const bg = new Graphics();
-    const handle: TokenHandleContainer = Object.assign(new Container(), { bg, isDarkMode });
+    const handle: TokenHandleContainer = Object.assign(new Container({ label: TOKEN_HANDLE_LABEL }), { bg, isDarkMode });
     handle.eventMode = 'static';
     handle.interactive = true;
     handle.cursor = 'grab';
+    const radius = this.HANDLE_SIZE / 2;
     // Set a circular hit area for the handle - this should be precise to avoid blocking token
-    handle.hitArea = new Circle(0, 0, this.HANDLE_SIZE / 2);
-    
-    const bgColor = isDarkMode ? 0x2a2a2a : 0xe3e3e3;
-    const strokeColor = isDarkMode ? 0xffffff : 0x000000;
-    const strokeAlpha = isDarkMode ? 0.4 : 0.3;
-    
-    // Create background circle - matching status badge style
-    bg.circle(0, 0, this.HANDLE_SIZE / 2);
-    bg.fill({ color: bgColor, alpha: 0.95 });
-    bg.stroke({ width: 0.5, color: strokeColor, alpha: strokeAlpha });
+    handle.hitArea = new Circle(0, 0, radius);
+
+    paintRotateHandle(bg, radius, false);
     handle.addChild(bg);
     
     // Add icon if texture is available
@@ -263,29 +210,14 @@ export class TokenRotationUI {
       const iconSprite = new Sprite(iconTexture);
       iconSprite.anchor.set(0.5);
       const canvasSize = iconTexture.width;
-      iconSprite.scale.set(this.HANDLE_SIZE * 0.6 / canvasSize); // 60% of badge size
+      iconSprite.scale.set(this.HANDLE_SIZE * ROTATE_ICON_SHARE / canvasSize);
       iconSprite.position.set(0, 0);
       handle.addChild(iconSprite);
     }
     
-    // Add hover effects - subtle like status badges
-    handle.on('pointerover', () => {
-      handle.cursor = 'grab';
-      // Just increase alpha slightly on hover
-      bg.clear();
-      bg.circle(0, 0, this.HANDLE_SIZE / 2);
-      bg.fill({ color: bgColor, alpha: 1 });
-      bg.stroke({ width: 0.5, color: strokeColor, alpha: strokeAlpha * 1.5 });
-    });
-    
+    handle.on('pointerover', () => paintRotateHandle(bg, radius, true));
     handle.on('pointerout', () => {
-      if (!this.isRotating) {
-        handle.cursor = 'grab';
-        bg.clear();
-        bg.circle(0, 0, this.HANDLE_SIZE / 2);
-        bg.fill({ color: bgColor, alpha: 0.95 });
-        bg.stroke({ width: 0.5, color: strokeColor, alpha: strokeAlpha });
-      }
+      if (!this.isRotating) paintRotateHandle(bg, radius, false);
     });
     
     // Add rotation interaction
@@ -486,18 +418,7 @@ export class TokenRotationUI {
     this.viewport.cursor = 'default';
     for (const handle of this.rotationHandles.values()) {
       handle.cursor = 'grab';
-      
-      // Reset handle appearance
-      const { bg } = handle;
-      const isDarkMode = handle.isDarkMode || document.body.classList.contains('theme-dark');
-      const bgColor = isDarkMode ? 0x2a2a2a : 0xe3e3e3;
-      const strokeColor = isDarkMode ? 0xffffff : 0x000000;
-      const strokeAlpha = isDarkMode ? 0.4 : 0.3;
-      
-      bg.clear();
-      bg.circle(0, 0, this.HANDLE_SIZE / 2);
-      bg.fill({ color: bgColor, alpha: 0.95 });
-      bg.stroke({ width: 0.5, color: strokeColor, alpha: strokeAlpha });
+      paintRotateHandle(handle.bg, this.HANDLE_SIZE / 2, false);
     }
     
     // Remove event listeners

@@ -14,6 +14,7 @@ import { gatedQuestAsset, gatedQuests, onQuestsChange } from './questGate.ts';
 import { gatedRests } from './restGate.ts';
 import { gatedStatblocks } from './statblockGate.ts';
 import { gatedWorldMap, onWorldMapChange } from './worldMapGate.ts';
+import { showNotice } from '../../../ui/notice';
 import type { BookShelf } from './BookShelf.ts';
 
 export interface TableBookPorts {
@@ -68,10 +69,14 @@ export function tableBook(ports: TableBookPorts): TableBook {
       return file === null ? null : { mtime: file.stat.mtime, size: file.stat.size };
     },
     worldMap: () => gatedWorldMap(),
+    notice: (text) => showNotice(text),
     quests: () => gatedQuests(),
     questAsset: (hash) => gatedQuestAsset(hash),
     editResource: (edit, answer) => {
-      if (edit.kind === 'character') return answer(writeCharacterValue(app, edit));
+      if (edit.kind === 'character') {
+        const taken = writeCharacterValue(app, edit);
+        return taken === null ? answer(null) : answer(taken.current, edit.max === undefined ? undefined : taken.max);
+      }
       const writes = ports.tokenWrites();
       if (writes === null) answer(null);
       else writes.write(edit, answer);
@@ -79,6 +84,7 @@ export function tableBook(ports: TableBookPorts): TableBook {
     libraryStatblock: (placed) => gatedStatblocks.libraryStatblock(placed),
     readStatblock: (path) => gatedStatblocks.read(path),
     writeStatblock: (path, patches) => gatedStatblocks.write(path, patches),
+    statblockPanelWidth: () => gatedStatblocks.panelWidth?.(),
     rests: gatedRests,
     cards: ports.cards,
     cardsChanged: () => ports.cardsChanged(),

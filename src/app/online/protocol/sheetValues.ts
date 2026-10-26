@@ -57,6 +57,9 @@ export const isFieldKey = (value: unknown): value is string => isPlainKey(value,
 /** Keys a plain object answers through its prototype: a value naming one is refused, so no reader takes an inherited property for the value's own. */
 const OBJECT_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
 
+/** A pair's label a note can keep as a key of a map: a field key no plain object answers itself. */
+export const isPairLabel = (value: unknown): value is string => isFieldKey(value) && !OBJECT_KEYS.has(value);
+
 /** A stored value as the page or the GM reads it, or undefined when it is malformed or larger than a sheet holds. */
 export function parseSheetRaw(value: unknown, depth = 0): SheetRaw | undefined {
   if (value === null || typeof value === 'boolean') return value;

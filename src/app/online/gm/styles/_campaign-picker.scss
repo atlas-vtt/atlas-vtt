@@ -248,18 +248,6 @@ $campaigns-shown: 5;
     }
   }
 
-  // This device plays it: a small tag beside the name.
-  .atlas-online-campaign__playing {
-    flex: none;
-    padding: 0 $spacing-xs;
-    border-radius: $radius-full;
-    background: color-mix(in oklch, var(--interactive-accent) 16%, transparent);
-    color: var(--text-accent);
-    font-size: $font-ui-smaller;
-    font-weight: $font-weight-medium;
-    line-height: 1.5;
-  }
-
   .atlas-online-campaign__meta {
     color: var(--text-muted);
     font-size: $font-ui-smaller;

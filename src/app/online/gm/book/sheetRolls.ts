@@ -9,19 +9,22 @@ export function rollableBlock(block: TemplateBlock): boolean {
 
 /**
  * What a click on a value of the sheet rolls: the formula the Atlas card's link on the same text
- * rolls (`valueRoll`), where the whole value is one roll; null where it rolls nothing, or where the
- * formula is no line a page takes as a roll.
+ * rolls (`valueRoll`), where the whole value is one roll, naming the `@` references it was filled in
+ * from where `named` knows them (`SheetState.namedRolls`) and the named formula is a line a page
+ * takes; null where it rolls nothing, or where the formula is no line a page takes as a roll.
  */
-export function sheetRoll(text: string, rollable: boolean): string | null {
+export function sheetRoll(text: string, rollable: boolean, named?: ReadonlyMap<string, string>): string | null {
   const roll = valueRoll(text, rollable);
-  return roll === null ? null : bookLine(roll, MAX_FORMULA);
+  if (roll === null) return null;
+  const withNames = named?.get(roll);
+  return (withNames === undefined ? null : bookLine(withNames, MAX_FORMULA)) ?? bookLine(roll, MAX_FORMULA);
 }
 
 /**
  * The rolls of a table's cells, shaped as the cells the sheet sends (`shown`, null for a cell it
  * leaves empty) and read from the texts the card shows in them; undefined where no cell rolls.
  */
-export function cellRolls(texts: readonly (readonly string[])[], shown: readonly (readonly (string | null)[])[], rollable: boolean): (string | null)[][] | undefined {
-  const rolls = shown.map((row, r) => row.map((cell, c) => (cell === null ? null : sheetRoll(texts[r]?.[c] ?? '', rollable))));
+export function cellRolls(texts: readonly (readonly string[])[], shown: readonly (readonly (string | null)[])[], rollable: boolean, named?: ReadonlyMap<string, string>): (string | null)[][] | undefined {
+  const rolls = shown.map((row, r) => row.map((cell, c) => (cell === null ? null : sheetRoll(texts[r]?.[c] ?? '', rollable, named))));
   return rolls.some((row) => row.some((roll) => roll !== null)) ? rolls : undefined;
 }

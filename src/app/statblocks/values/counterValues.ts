@@ -133,7 +133,18 @@ export function withCounterUsed(field: Pick<TemplateField, 'counterRows'>, value
 export function withCountersUsed(field: Pick<TemplateField, 'counterRows'>, value: FieldValue | undefined, uses: readonly number[]): FieldValue | null {
   const rows = shownCounterRows(field, value);
   if (!rows || rows.length !== uses.length) return null;
-  return changedRows(field, value, (row, index) => ({ ...row, used: uses[index] ?? row.used }));
+  return withCountersSet(field, value, rows.map((row, index) => ({ max: row.max, used: uses[index] ?? row.used })));
+}
+
+/**
+ * The value with each row at the maximum and uses `counts` names for it, in the stored order; null
+ * where the value is no list of counters or `counts` names another number of rows. Taken as given:
+ * the caller checks them.
+ */
+export function withCountersSet(field: Pick<TemplateField, 'counterRows'>, value: FieldValue | undefined, counts: readonly Pick<CounterRow, 'max' | 'used'>[]): FieldValue | null {
+  const rows = shownCounterRows(field, value);
+  if (!rows || rows.length !== counts.length) return null;
+  return changedRows(field, value, (row, index) => ({ ...row, ...counts[index] }));
 }
 
 /** The value with row `index` given back its uses by the recovery button `reset` (null: by none); null where nothing changes. */

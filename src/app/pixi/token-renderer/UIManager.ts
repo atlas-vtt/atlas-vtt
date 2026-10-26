@@ -10,7 +10,7 @@ import type { LayerVisibility } from '../playerSafeFrame';
 
 import { Container } from 'pixi.js';
 import { Viewport } from 'pixi-viewport';
-import type { ITokenUIManager, TokenGroupContainer } from './types';
+import type { BarsSpan, ITokenUIManager, TokenGroupContainer } from './types';
 import type { TokenEntity } from '../../types';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
 import { TokenUIRenderer } from '../TokenUIRenderer';
@@ -36,6 +36,8 @@ export class UIManager implements ITokenUIManager {
   /** The canvas shows the players' view (session view, the peek): token UIs draw what players see. */
   private playersView = false;
   private tokenControlsUI?: TokenControlsUI;
+  /** The token whose bars show their +/- buttons, whose wheels make room for them. */
+  private barButtonsTokenId: string | null = null;
   private tokenRotationUI?: TokenRotationUI;
   private tokenResizeUI?: TokenResizeUI;
   
@@ -43,6 +45,8 @@ export class UIManager implements ITokenUIManager {
   public conditionDefsProvider: (() => ConditionDefinition[]) | null = null;
   /** The resources of the map's collection; read on every draw, so set it before tokens are created. */
   public resourceDefsProvider: ResourceDefsProvider = () => [];
+  /** Called once the handles and controls of a new selection stand: the selection highlight passes behind them. */
+  public onSelectionUIChange: (() => void) | null = null;
 
   // Hover handlers for UI elements
   private uiHoverHandlers: Record<string, { over: () => void; out: () => void }> = {};
@@ -82,6 +86,8 @@ export class UIManager implements ITokenUIManager {
       this.tokenControlsUI = new TokenControlsUI(this.viewport, this.store);
       this.tokenControlsUI.resourceDefsProvider = () => this.resourceDefsProvider();
       this.tokenControlsUI.slotsProvider = (tokenId) => this.tokenUIs[tokenId]?.getResourceSlots() ?? [];
+      this.tokenControlsUI.wheelAnchorProvider = (tokenId) => this.tokenUIs[tokenId]?.getWheelAnchor() ?? null;
+      this.tokenControlsUI.onBarButtonsChange = (tokenId) => this.setBarButtonsToken(tokenId);
       this.tokenRotationUI = new TokenRotationUI(this.viewport, this.store);
       this.tokenResizeUI = new TokenResizeUI(this.viewport, this.store);
       
@@ -233,6 +239,7 @@ export class UIManager implements ITokenUIManager {
         ui.setSelectionState(isSelected);
       }
     }
+    this.onSelectionUIChange?.();
   }
 
   /** Re-trigger selection UI to reposition controls/handles after grid changes. */
@@ -366,6 +373,13 @@ export class UIManager implements ITokenUIManager {
   }
 
   /** Scale of `tokenId`'s bars, which its +/- controls match. */
+  private setBarButtonsToken(tokenId: string | null): void {
+    if (tokenId === this.barButtonsTokenId) return;
+    if (this.barButtonsTokenId) this.tokenUIs[this.barButtonsTokenId]?.setBarButtonsShown(false);
+    this.barButtonsTokenId = tokenId;
+    if (tokenId) this.tokenUIs[tokenId]?.setBarButtonsShown(true);
+  }
+
   private barScale(tokenId: string): number {
     return this.tokenUIs[tokenId]?.getUIScale() ?? restingTokenUIScale(this.store.getState().grid?.size ?? 70);
   }
@@ -444,9 +458,10 @@ export class UIManager implements ITokenUIManager {
     this.updateAllTokenSettings();
   }
 
-  /** How far a selected token's resources reach beyond its bottom, right and top edges, in world units. */
-  public barsReach(tokenId: string): number {
-    return this.tokenUIs[tokenId]?.getBarsReach() ?? 0;
+  /** How far a selected token's bars stand out from it, in world units. */
+  public bars(tokenId: string): BarsSpan {
+    const ui = this.tokenUIs[tokenId];
+    return { halfWidth: ui?.getBarsHalfWidth() ?? 0, reach: ui?.getBarsReach() ?? 0 };
   }
 
   private updateAllTokenSettings(): void {

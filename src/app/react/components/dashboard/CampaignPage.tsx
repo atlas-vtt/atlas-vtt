@@ -1,6 +1,6 @@
 import React from 'react';
 import type { App } from 'obsidian';
-import { ArrowLeft, Play, Square } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import type { Campaign } from '../../../campaigns/campaignTypes';
 import type { CampaignService } from '../../../campaigns/CampaignService';
 import { Button } from '../../../packages/components/primitives/button';
@@ -31,9 +31,9 @@ interface CampaignPageProps {
   service: CampaignService;
   worldMaps: WorldMapChoices;
   presets: readonly SystemPreset[];
-  /** Whether this device plays the campaign. */
+  /** Whether this device plays the campaign: its online table is open. */
   isPlaying: boolean;
-  onPlay: () => void;
+  /** Ends the play of the campaign, once it was deleted while played. */
   onStop: () => void;
   /** The player characters on its last scene. */
   party: readonly PartyFace[];
@@ -42,10 +42,10 @@ interface CampaignPageProps {
 
 /**
  * One campaign, around its world: the world map behind the page's head, fading into the page, the
- * name and Play over it, then the world map to open for its pins, the game system, the description
- * and the quests, edited where they stand.
+ * name and its party over it (and whether its online table is open), then the world map to open
+ * for its pins, the game system, the description and the quests, edited where they stand.
  */
-export function CampaignPage({ app, campaign, campaigns, service, worldMaps, presets, isPlaying, onPlay, onStop, party, onBack }: CampaignPageProps): React.JSX.Element {
+export function CampaignPage({ app, campaign, campaigns, service, worldMaps, presets, isPlaying, onStop, party, onBack }: CampaignPageProps): React.JSX.Element {
   const locked = campaign.readOnly === true;
   const artwork = useWorldMapArtwork(app, service, campaign);
   const { sets } = useDiceSets(app);
@@ -90,19 +90,10 @@ export function CampaignPage({ app, campaign, campaigns, service, worldMaps, pre
           <CampaignNameField campaign={campaign} service={service} disabled={locked} />
           {locked && <p className="campaign-page__locked">{t('campaign.newerVersion')}</p>}
           <div className="campaign-hero__actions">
-            {isPlaying ? (
+            {isPlaying && (
               <span className="campaign-hero__playing">
                 <PlayingMark />
-                <Button variant="ghost" className="campaign-hero__stop" onClick={onStop}>
-                  <Square aria-hidden="true" />
-                  <span>{t('campaign.stop')}</span>
-                </Button>
               </span>
-            ) : (
-              <Button className="campaign-hero__play" disabled={locked} onClick={onPlay}>
-                <Play aria-hidden="true" />
-                <span>{t('campaign.play')}</span>
-              </Button>
             )}
             <PartyFaces faces={party} size="page" />
           </div>

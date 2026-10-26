@@ -4,11 +4,14 @@ import { bindHoldHotkey } from '../../keyboard/holdHotkey';
 import { DEFAULT_MAP_HOTKEYS } from '../../keyboard/mapHotkeys';
 import { SettingsService } from '../../services/SettingsService';
 import { findAtlasLeafByViewId } from '../../utils/atlasLeafLookup';
+import { followWindow } from '../../utils/followWindow';
 
 export interface LightingSceneEvents {
   eventBus: EventEmitter;
   obsApp: App;
   viewId: string;
+  /** The map's canvas: the peek key is heard on its window, which a popout has of its own. */
+  canvas: HTMLElement;
   /** The GM asked to forget the explored memory. */
   resetExplored: () => void;
   /** The GM asked to mark the whole map as explored. */
@@ -27,9 +30,9 @@ export interface LightingSceneEvents {
  * the scene unloading, and another Obsidian tab coming to the front (by a key, without a press
  * that would close a popover). Returns what stops listening.
  */
-export function listenToLightingSceneEvents({ eventBus, obsApp, viewId, resetExplored, revealExplored, peek, stopEditing, beforeMapUnload }: LightingSceneEvents): Array<() => void> {
+export function listenToLightingSceneEvents({ eventBus, obsApp, viewId, canvas, resetExplored, revealExplored, peek, stopEditing, beforeMapUnload }: LightingSceneEvents): Array<() => void> {
   const peekKey = (): string => (SettingsService.forApp(obsApp)?.getHotkeys() ?? DEFAULT_MAP_HOTKEYS).lightingPeek;
-  const cleanups: Array<() => void> = [bindHoldHotkey(window, peekKey, viewId, peek)];
+  const cleanups: Array<() => void> = [followWindow(canvas, (win) => bindHoldHotkey(win, peekKey, viewId, peek))];
   const on = (event: string, handler: () => void): void => {
     eventBus.on(event, handler);
     cleanups.push(() => eventBus.off(event, handler));

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Plus, Search } from 'lucide-react';
+import { FolderInput, Plus, Search } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { lootBaseItemCount, needsBases, type LootBase } from '../../../loot/LootBaseReader';
@@ -34,6 +34,8 @@ interface TablesSidebarProps {
   onDisabledViewsChange: (disabled: string[]) => void;
   /** Opens New table, which writes a table pasted from elsewhere as a note. */
   onNewTable: () => void;
+  /** Opens the collection's Random tables settings, to take tables from notes and bases. */
+  onUseNote: () => void;
   /** Gives a table the name the window shows; an empty name shows its own again. */
   onRename: (table: CollectionTable, name: string) => void;
   /** Takes a table or a base off the list; the note or base stays. */
@@ -47,7 +49,7 @@ interface TablesSidebarProps {
  * bases, the selected one with its views to tick, then the Items tables of notes) and Text.
  */
 export function TablesSidebar(props: TablesSidebarProps): React.ReactElement {
-  const { library, selectedId, onSelect, disabledViews, onDisabledViewsChange, onNewTable, onRename, onRemove, onOpen } = props;
+  const { library, selectedId, onSelect, disabledViews, onDisabledViewsChange, onNewTable, onUseNote, onRename, onRemove, onOpen } = props;
   const [search, setSearch] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -120,8 +122,13 @@ export function TablesSidebar(props: TablesSidebarProps): React.ReactElement {
           />
         </label>
         <LabelTooltip label={t('tables.newTable')}>
-          <Button variant="ghost" size="icon" className="atlas-tables-sidebar__new" onClick={onNewTable}>
+          <Button variant="ghost" size="icon" className="atlas-tables-sidebar__action" onClick={onNewTable}>
             <Plus />
+          </Button>
+        </LabelTooltip>
+        <LabelTooltip label={t('tables.fromNote')}>
+          <Button variant="ghost" size="icon" className="atlas-tables-sidebar__action" onClick={onUseNote}>
+            <FolderInput />
           </Button>
         </LabelTooltip>
       </div>

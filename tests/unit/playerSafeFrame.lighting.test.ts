@@ -27,10 +27,10 @@ function harness(lighting: boolean): Harness {
     playerFrames: fakePlayerFrames(render),
     tokenRenderer: { getPlayerViewLayers },
     dmScreenOverlays: new Set(),
-    lightingFeature: lighting ? { controller: {
+    lighting: lighting ? {
       playerSight: () => isSeen,
       playerLayers: (): LayerVisibility[] => [{ layer: modeLayer, visible: true }, { layer: overlay, visible: false }],
-    } } : undefined,
+    } : undefined,
   });
   return { renderer, overlay, modeLayer, isSeen, getPlayerViewLayers, render };
 }

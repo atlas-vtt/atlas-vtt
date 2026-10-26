@@ -1,9 +1,13 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vitest';
-import { Container, Graphics } from 'pixi.js';
+import { describe, expect, it, vi } from 'vitest';
+import { Bounds, Container, Graphics, Text } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { DragRulerView } from '../../src/app/pixi/token-renderer/DragRulerView';
-import { pathMidpoint, shortenPathEnd } from '../../src/app/pixi/utils/measureDrawing';
+import { shortenPathEnd } from '../../src/app/pixi/utils/measureDrawing';
+import { labelScale, pathMiddle } from '../../src/app/pixi/utils/measureLabelLayout';
+import { NAMEPLATE_HEIGHT } from '../../src/app/pixi/token-renderer/tokenSizing';
+
+const pathMidpoint = (points: { x: number; y: number }[]): { x: number; y: number } | null => pathMiddle(points)?.point ?? null;
 
 function makeScene(): { viewport: Container; background: Graphics; tokens: Container; view: DragRulerView } {
   const viewport = new Container();
@@ -26,6 +30,25 @@ describe('DragRulerView', () => {
     expect(label!.zIndex).toBeGreaterThan(tokens.zIndex);
   });
 
+  it('keeps its label beside the path and off the dragged token, at its size on screen as the zoom changes', () => {
+    vi.spyOn(Text.prototype, 'getLocalBounds').mockReturnValue(new Bounds(0, 0, 40, 16));
+    const { viewport, view } = makeScene();
+    const [, label] = view.layers as Container[];
+    view.draw([{ x: 0, y: 0 }, { x: 70, y: 0 }], '5 ft', 35, 70);
+    const clearOfToken = (): number => {
+      const { x, y } = label!.position;
+      // A pill of the nameplate's height, a mocked text 40 wide at the nameplate's text scale and its padding.
+      const half = { w: label!.scale.x * (40 * 0.333 + 12) / 2, h: label!.scale.x * NAMEPLATE_HEIGHT / 2 };
+      return Math.hypot(Math.max(Math.abs(x - 70) - half.w, 0), Math.max(Math.abs(y) - half.h, 0));
+    };
+    expect(clearOfToken()).toBeGreaterThan(35);
+    viewport.scale.set(4);
+    viewport.emit('zoomed', {});
+    expect(label!.scale.x).toBe(labelScale(70, 4));
+    expect(clearOfToken()).toBeGreaterThan(35);
+    vi.restoreAllMocks();
+  });
+
   it('stays hidden until a drag draws it', () => {
     const { view } = makeScene();
     expect(view.layers.every(layer => !layer.visible)).toBe(true);
@@ -42,7 +65,7 @@ describe('shortenPathEnd', () => {
   });
 });
 
-describe('pathMidpoint', () => {
+describe('pathMiddle', () => {
   it('is the middle of a straight line', () => {
     expect(pathMidpoint([{ x: 0, y: 0 }, { x: 200, y: 100 }])).toEqual({ x: 100, y: 50 });
   });

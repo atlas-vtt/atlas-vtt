@@ -56,7 +56,7 @@ describe('a new link', () => {
     workspace.leaves = [tab.leaf];
     const campaigns = fakeCampaigns();
     const online = new OnlineControl(app, boundOwnership([]), campaigns, () => undefined, signedIn);
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     await online.newLink();
     // The players file's write lands.
     campaigns.files.flush();
@@ -65,7 +65,7 @@ describe('a new link', () => {
     expect(link).not.toBe(FAKE_LINK);
     expect(online.link()).toContain(link);
     online.stop();
-    await online.start(tab.leaf);
+    await online.start(tab.leaf, 'c1');
     expect(seen.asked).toEqual([FAKE_LINK, link, link]);
     expect(online.link()).toContain(link);
     expect(seen.notices).toEqual([]);

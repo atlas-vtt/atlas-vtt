@@ -8,8 +8,11 @@ import type { CampaignSeats } from './ownership.ts';
 /** What a table needs of the campaigns' players files: `CampaignPlayers`, or memory in tests. */
 export type PlayersFiles = Pick<CampaignPlayers, 'of' | 'assignments' | 'change' | 'blocked' | 'onChange'>;
 
-/** What the GM reads where a table needs a played campaign. */
-export const NO_CAMPAIGN_TEXT = 'Play a campaign first.';
+/** What the GM reads where a table is started without a campaign. */
+export const NO_CAMPAIGN_TEXT = 'Choose a campaign first.';
+
+/** What the GM reads where something needs the played campaign, which only a running table plays. */
+export const NO_TABLE_TEXT = 'Start an online table first.';
 
 /** What the GM reads where a campaign's players file cannot be written. */
 export const NEWER_PLAYERS_TEXT = 'This campaign\'s players file is from a newer Atlas.';

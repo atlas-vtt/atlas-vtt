@@ -7,6 +7,7 @@ import { startCountersValue } from '../values/counterValues';
 import { fieldLabels, readField, readerFor, type FieldRecord, type ValueReader } from '../values/fieldValues';
 import { startTableValue } from '../values/tableValues';
 import { withReferencesFilled } from '../values/fillReferences';
+import { namedReferenceRolls } from '../values/referenceRolls';
 import { statblockLookup } from '../values/statblockLookup';
 import type { SheetMode, StatblockTokenContext } from './sheetTypes';
 import type { ResourceDefinition } from '../../resources/resourceTypes';
@@ -33,6 +34,8 @@ export interface SheetState {
   provisional?: TemplateField | undefined;
   /** For each script block, by id, the values it reads, each in its block, with the blocks that show it too (`scriptReads`). */
   scriptReads: ReadonlyMap<string, readonly ScriptRead[]>;
+  /** What a roll link on a value rolls, to the same roll naming the `@` references it was filled in from (`namedReferenceRolls`). */
+  namedRolls: ReadonlyMap<string, string>;
 }
 
 export interface SheetStateInput {
@@ -81,7 +84,8 @@ export function sheetState({ template, record: stored, lookups, mode, token, fol
   const { fields } = withHeaderFields(template);
   const record = withStartingValues(stored, fields);
   // What the card shows reads `@` references as the numbers they name; the record keeps what was written
-  const shown = withReferencesFilled(record, fields, statblockLookup(template, record, fields));
+  const lookup = statblockLookup(template, record, fields);
+  const shown = withReferencesFilled(record, fields, lookup);
   return {
     record,
     reader: readerFor(shown, fields),
@@ -95,5 +99,6 @@ export function sheetState({ template, record: stored, lookups, mode, token, fol
     tracked: trackedByField({ ...template, fields }, resources ?? token?.definitions),
     folded: folded ?? NONE_FOLDED,
     scriptReads: scriptReads(template),
+    namedRolls: namedReferenceRolls(fields.map((field) => readField(record, field).value), lookup),
   };
 }

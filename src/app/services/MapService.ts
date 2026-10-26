@@ -209,7 +209,7 @@ export class MapService {
         getHistoryStore(this.store)?.getState().resume();
 
         if (detectsGrid && renderer) {
-          this.endGridDetection = detectGridOfNewScene({ app: this.app, store: this.store, renderer, isCurrent: () => !isSuperseded(), refitCamera: camera === null });
+          this.endGridDetection = detectGridOfNewScene({ store: this.store, renderer, isCurrent: () => !isSuperseded(), refitCamera: camera === null });
         }
       };
       const hideLoadingScreen = (): void => {

@@ -20,18 +20,15 @@ const setInitiativeTrackerOpen = vi.fn();
 let capturedShortcuts: Record<string, (event: KeyboardEvent) => void> = {};
 /** The tokens the canvas shows; session view hides some of the store's. */
 let visibleTokenIds: string[] = [];
-/** Whether the GM switched dynamic lighting on. */
-let dynamicLighting = false;
 /** Atlas' settings as the toolbar reads them; undefined where they cannot be reached. */
 let settings: {
-  isExperimentalOn: () => boolean;
   getToolbarLayout: () => StoredToolbarLayout;
   getLaserPointerSettings: () => LaserPointerSettings;
 } | undefined;
 let viewType = 'atlas-vtt';
 
 function settingsWithLayout(layout: StoredToolbarLayout): typeof settings {
-  return { isExperimentalOn: () => dynamicLighting, getToolbarLayout: () => layout, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS };
+  return { getToolbarLayout: () => layout, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS };
 }
 
 const storeState = {
@@ -93,10 +90,6 @@ vi.mock('../../src/app/keyboard/useMapHotkeys', () => ({
   useMapHotkeys: (shortcuts: Record<string, (event: KeyboardEvent) => void>) => {
     capturedShortcuts = shortcuts;
   },
-}));
-
-vi.mock('../../src/app/react/hooks/useExperimentalFeature', () => ({
-  useExperimentalFeature: () => dynamicLighting,
 }));
 
 vi.mock('../../src/app/utils/activeLeafGuard', () => ({
@@ -163,7 +156,6 @@ const shownControls = (container: HTMLElement): string[] =>
 describe('MainToolbar text tool', () => {
   beforeEach(() => {
     capturedShortcuts = {};
-    dynamicLighting = false;
     settings = undefined;
     viewType = 'atlas-vtt';
     setActiveTool.mockReset();
@@ -201,12 +193,7 @@ describe('MainToolbar text tool', () => {
     expect(button.disabled).toBe(false);
   });
 
-  it('has the Lighting tool only while dynamic lighting is switched on, to the left of the note pin', () => {
-    const { unmount } = render(<MainToolbar viewId="view-1" />);
-    expect(screen.queryByRole('button', { name: 'Lighting' })).toBeNull();
-    unmount();
-
-    dynamicLighting = true;
+  it('has the Lighting tool to the left of the note pin', () => {
     render(<MainToolbar viewId="view-1" />);
     const labels = screen.getAllByRole('button').map((button) => button.textContent);
     expect(labels.indexOf('Lighting')).toBeGreaterThan(-1);
@@ -215,7 +202,7 @@ describe('MainToolbar text tool', () => {
 
   it('shows the default layout where Atlas\' settings cannot be reached', () => {
     const { container } = render(<MainToolbar viewId="view-1" />);
-    expect(shownControls(container)).toEqual(['move', 'fog', 'draw', 'text', 'measure', 'pin', 'dice', 'loot', 'assets', 'palette']);
+    expect(shownControls(container)).toEqual(['move', 'fog', 'draw', 'text', 'measure', 'wall', 'pin', 'dice', 'loot', 'assets', 'palette']);
   });
 
   it('arranges the GM\'s bar by the stored layout and keeps hidden controls mounted', () => {
@@ -224,7 +211,7 @@ describe('MainToolbar text tool', () => {
       hidden: ['fog'],
     });
     const { container } = render(<MainToolbar viewId="view-1" />);
-    expect(shownControls(container)).toEqual(['palette', 'dice', 'move', 'draw', 'text', 'measure', 'pin', 'loot', 'assets']);
+    expect(shownControls(container)).toEqual(['palette', 'dice', 'move', 'draw', 'text', 'measure', 'wall', 'pin', 'loot', 'assets']);
     expect(container.querySelector('[data-toolbar-item="fog"]')?.hasAttribute('hidden')).toBe(true);
   });
 
@@ -235,15 +222,10 @@ describe('MainToolbar text tool', () => {
     expect(shownControls(container)).toEqual(['move', 'measure', 'dice']);
   });
 
-  it('leaves a hidden Lighting tool out while dynamic lighting is off, and keeps it mounted but hidden while on', () => {
+  it('keeps a hidden Lighting tool mounted but hidden', () => {
     settings = settingsWithLayout({ hidden: ['wall'] });
-    const { container, unmount } = render(<MainToolbar viewId="view-1" />);
-    expect(container.querySelector('[data-toolbar-item="wall"]')).toBeNull();
-    unmount();
-
-    dynamicLighting = true;
-    const view = render(<MainToolbar viewId="view-1" />);
-    expect(view.container.querySelector('[data-toolbar-item="wall"]')?.hasAttribute('hidden')).toBe(true);
+    const { container } = render(<MainToolbar viewId="view-1" />);
+    expect(container.querySelector('[data-toolbar-item="wall"]')?.hasAttribute('hidden')).toBe(true);
   });
 
   it('accepts the text tool in the store', () => {

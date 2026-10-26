@@ -155,7 +155,7 @@ export function onlineApi(control: ControlSource, hideImage: () => void): Online
       cardOrder: control.table?.cardOrder() ?? [],
       ...(control.table?.image.isShown === true && { imageShown: true }),
     }),
-    start: (leaf, campaignId) => void control.start(leaf, campaignId ?? undefined),
+    start: (leaf, campaignId) => void control.start(leaf, campaignId),
     stop: () => control.stop(),
     share: (leaf) => control.share(leaf),
     mark: (ids) => control.markPlayerTokens(ids, true),

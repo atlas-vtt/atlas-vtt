@@ -1,5 +1,3 @@
-// Type-only: that module imports SettingsService at runtime, which imports this catalog.
-import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import type { MapHotkeyId } from '../keyboard/mapHotkeys';
 import { AMBIENT_AUDIO_ENABLED } from '../featureFlags';
 import { t } from '../i18n';
@@ -16,8 +14,6 @@ export interface ToolbarControlDefinition {
   dmOnly: boolean;
   /** Build gate, as `MAP_HOTKEYS` writes it. */
   enabled?: boolean;
-  /** Runtime gate: on only while the GM has the feature switched on. */
-  experimental?: ExperimentalFeatureId;
   /** Every control can be hidden except the way into the editor. */
   hideable: boolean;
 }
@@ -45,7 +41,7 @@ export const TOOLBAR_CONTROLS = [
     description: t('toolbarEdit.measure.description'),
   },
   {
-    id: 'wall', label: t('toolbarEdit.wall.label'), hotkey: 'wall', dmOnly: true, hideable: true, experimental: 'dynamicLighting',
+    id: 'wall', label: t('toolbarEdit.wall.label'), hotkey: 'wall', dmOnly: true, hideable: true,
     description: t('toolbarEdit.wall.description'),
   },
   {
@@ -126,10 +122,8 @@ export function isHideableToolbarControl(id: string): boolean {
 }
 
 /** The controls a view offers, gated like its hotkeys (`availableHotkeys`). */
-export function availableToolbarControls(player: boolean, isOn: (feature: ExperimentalFeatureId) => boolean): ReadonlySet<ToolbarControlId> {
+export function availableToolbarControls(player: boolean): ReadonlySet<ToolbarControlId> {
   const offered = TOOLBAR_CONTROLS.filter((control: ToolbarControlDefinition) =>
-    control.enabled !== false
-    && (control.experimental === undefined || isOn(control.experimental))
-    && !(player && control.dmOnly));
+    control.enabled !== false && !(player && control.dmOnly));
   return new Set(offered.map(control => control.id));
 }

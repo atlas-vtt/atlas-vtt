@@ -7,6 +7,7 @@ import { withReferencesFilled } from '../../../statblocks/values/fillReferences'
 import { statblockLookup } from '../../../statblocks/values/statblockLookup';
 import { trackedMax, trackedValue } from '../../../statblocks/values/trackedNumbers';
 import { playerAccess, shownRecord } from './playerAccess.ts';
+import { trackedMaxRoute } from './resourceMax.ts';
 
 /** A tracked number of a character's statblock, as its sheet holds it. */
 export interface TrackedSheetValue {
@@ -14,6 +15,8 @@ export interface TrackedSheetValue {
   readonly value: ResourceValue;
   /** Whether its player may step it: only where the template lets them change its field. */
   readonly editable: boolean;
+  /** Whether its player may set its maximum: only where it is a plain number of a field the template lets them change (`trackedMaxRoute`). */
+  readonly maxEditable: boolean;
 }
 
 /**
@@ -23,7 +26,7 @@ export interface TrackedSheetValue {
  * statblock not read yet or of no native template.
  */
 export function trackedSheetValues(
-  resolved: Pick<ResolvedStatblock, 'source' | 'template' | 'fields'> | null | undefined,
+  resolved: ResolvedStatblock | null | undefined,
   definitions: readonly ResourceDefinition[],
   held: Readonly<Record<string, ResourceValue>> | undefined,
 ): TrackedSheetValue[] {
@@ -38,6 +41,7 @@ export function trackedSheetValues(
     if (playerAccess(template, tracked.field.key) === 'hidden' || playerAccess(template, tracked.maxField) === 'hidden') return [];
     const max = trackedMax(tracked, reader);
     const editable = playerAccess(template, tracked.field.key) === 'edit';
-    return max === null ? [] : [{ definition, value: trackedValue(tracked, max, held?.[definition.key]), editable }];
+    const maxEditable = trackedMaxRoute(resolved, tracked) !== null;
+    return max === null ? [] : [{ definition, value: trackedValue(tracked, max, held?.[definition.key]), editable, maxEditable }];
   });
 }

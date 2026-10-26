@@ -1,13 +1,19 @@
 import type { App } from 'obsidian';
 import { isAssetId } from './campaignValues';
 
-const STORAGE_KEY = 'atlas-vtt:playing-campaign';
+const STORAGE_KEY = 'atlas-vtt:table-campaign';
+/** Where Atlas 0.9.0 kept a campaign the GM played with or without a table: never read, only removed. */
+const LEGACY_KEY = 'atlas-vtt:playing-campaign';
 
 type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
 
 /**
- * The campaign this device is playing, or none. Which campaign a table plays is a fact about this
- * device, never about the vault, so it is kept in the vault's local storage and never synced.
+ * The campaign this device is playing, or none: the campaign of the online table this device runs.
+ * Only online play sets it (`OnlineControl`), when the table runs; it is cleared when the table ends,
+ * or when the campaign is deleted, which ends its table too, so no campaign is played without its
+ * table. Which campaign a table plays is a fact about this device, never about the vault, so it is
+ * kept in the vault's local storage, where a table that comes back after a reload finds it, and
+ * never synced.
  */
 export class CampaignPlay {
   private static readonly instances = new WeakMap<DeviceStorage, CampaignPlay>();
@@ -28,6 +34,8 @@ export class CampaignPlay {
     // Trust boundary: local storage may hold another version's value, or nothing.
     const stored: unknown = storage.loadLocalStorage(STORAGE_KEY);
     this.id = isAssetId(stored) ? stored : null;
+    // A campaign 0.9.0 left played, perhaps without a table, is never taken up.
+    if (storage.loadLocalStorage(LEGACY_KEY) !== null) storage.saveLocalStorage(LEGACY_KEY, null);
   }
 
   /** The id of the campaign being played, or null. */

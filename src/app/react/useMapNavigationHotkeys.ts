@@ -8,9 +8,11 @@ import { addTokenHighlight } from '../pixi/utils/tokenHighlight';
 import type { SettingsService } from '../services/SettingsService';
 import type { ViewAtlasStore } from '../storeFactory';
 import { mapTokens } from '../tokens/offMap';
+import { useViewWindow } from './useViewWindow';
 
 /** Map navigation keyboard shortcuts (Shift+1: fit map, Shift+2: zoom to selected token). */
 export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlasStore, settings: SettingsService | undefined): void {
+  const win = useViewWindow(view?.containerEl);
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent): void => {
       if (!canRunMapHotkeys(e, view?.viewId)) return;
@@ -51,7 +53,7 @@ export function useMapNavigationHotkeys(view: AtlasView | null, store: ViewAtlas
       }
     };
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [view, store, settings]);
+    win.addEventListener('keydown', handleKeyDown);
+    return () => win.removeEventListener('keydown', handleKeyDown);
+  }, [view, store, settings, win]);
 }

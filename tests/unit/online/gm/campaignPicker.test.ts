@@ -4,16 +4,17 @@ import type { CampaignChoice } from '../../../../src/app/online/gm/campaignChoic
 import { campaignPick, matchesQuery, renderCampaignPicker, type CampaignPickerActions } from '../../../../src/app/online/gm/dock/campaignPicker.ts';
 import { tableTitle, type OnlineSnapshot } from '../../../../src/app/online/gm/dock/panelModel.ts';
 
-const choice = (id: string, over: Partial<CampaignChoice> = {}): CampaignChoice => ({ id, name: id.toUpperCase(), activity: 'Played 3d ago', players: 0, art: null, hue: 120, playing: false, ...over });
+const choice = (id: string, over: Partial<CampaignChoice> = {}): CampaignChoice => ({ id, name: id.toUpperCase(), activity: 'Played 3d ago', players: 0, art: null, hue: 120, ...over });
 const STRAHD = choice('strahd', { name: 'Curse of Strahd', players: 4 });
-const CAVES = choice('caves', { name: 'Blue Mouth Caves', players: 1, playing: true });
+const CAVES = choice('caves', { name: 'Blue Mouth Caves', players: 1 });
 const LIST = [STRAHD, CAVES];
 
 function actions(): CampaignPickerActions & { [K in keyof CampaignPickerActions]: ReturnType<typeof vi.fn> } {
   return { choose: vi.fn(), search: vi.fn(), start: vi.fn(), openCampaigns: vi.fn() };
 }
 
-function picker(list: readonly CampaignChoice[] | null, picked: string | null = null, query = ''): { layer: HTMLElement; rows: HTMLButtonElement[]; field: HTMLInputElement | null; does: ReturnType<typeof actions> } {
+/** The picker with the caves picked, unless a test picks another. */
+function picker(list: readonly CampaignChoice[] | null, picked: string | null = 'caves', query = ''): { layer: HTMLElement; rows: HTMLButtonElement[]; field: HTMLInputElement | null; does: ReturnType<typeof actions> } {
   const layer = document.body.createDiv();
   const does = actions();
   renderCampaignPicker(layer, campaignPick(list, picked, query), does);
@@ -29,10 +30,10 @@ function type(field: HTMLInputElement | null, text: string): void {
 const key = (target: Element | null | undefined, name: string): void => void target?.dispatchEvent(new KeyboardEvent('keydown', { key: name, bubbles: true }));
 
 describe('the campaign a table starts on', () => {
-  it('is the one the GM picked while it is there, else the played one, else the one played last', () => {
-    expect(campaignPick(LIST, 'strahd').chosen).toBe('strahd');
-    expect(campaignPick(LIST, 'gone').chosen).toBe('caves');
-    expect(campaignPick(LIST, null).chosen).toBe('caves');
+  it('is the one the GM picked while it is there, else the one played last', () => {
+    expect(campaignPick(LIST, 'caves').chosen).toBe('caves');
+    expect(campaignPick(LIST, 'gone').chosen).toBe('strahd');
+    expect(campaignPick(LIST, null).chosen).toBe('strahd');
     expect(campaignPick([STRAHD, choice('other')], null).chosen).toBe('strahd');
     expect(campaignPick([], null).chosen).toBeNull();
     expect(campaignPick(null, 'strahd').chosen).toBeNull();
@@ -45,7 +46,6 @@ describe('the campaign a table starts on', () => {
     expect(rows.map((row) => row.getAttribute('aria-checked'))).toEqual(['false', 'true']);
     // One tab stop, as a radio group has.
     expect(rows.map((row) => row.tabIndex)).toEqual([-1, 0]);
-    expect(rows[1]?.querySelector('.atlas-online-campaign__playing')?.textContent).toBe('Playing');
   });
 
   it('shows the world map, or the campaign\'s own tint where it has none', () => {

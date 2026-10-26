@@ -541,7 +541,6 @@ describe('the notice of an import', () => {
 
   it('counts what arrived', () => {
     expect(uvttImportSummary(imported)).toBe('Imported "Crypt": 412 walls, 9 doors, 14 lights.');
-    expect(uvttImportSummary(imported, false)).toBe('Imported "Crypt": 412 walls, 9 doors, 14 lights. They show once you switch on dynamic lighting under Experimental features in the command palette.');
     expect(uvttImportSummary({ ...imported, counts: { walls: 1, doors: 1, lights: 1 } })).toBe('Imported "Crypt": 1 wall, 1 door, 1 light.');
     expect(uvttImportSummary({ ...imported, counts: { walls: 20000, doors: 0, lights: 0 } })).toBe('Imported "Crypt": 20,000 walls, 0 doors, 0 lights.');
   });

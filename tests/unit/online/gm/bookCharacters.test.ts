@@ -232,9 +232,9 @@ describe('a character\'s sheet', () => {
     expect(sheet).toEqual({
       name: 'Sir Brannoch', art, ring: null,
       resources: [
-        { key: 'hp', name: 'Hit Points', colour: '#cc3333', direction: 'drains', current: 3, max: 9, editable: true },
-        { key: 'doom', name: 'Doom', colour: '#111111', direction: 'fills', current: 5, max: 6, editable: true },
-        { key: 'ac', name: 'Armour', colour: '#0000ff', direction: 'static', current: 14, max: 14, editable: false },
+        { key: 'hp', name: 'Hit Points', colour: '#cc3333', direction: 'drains', current: 3, max: 9, editable: true, maxEditable: false },
+        { key: 'doom', name: 'Doom', colour: '#111111', direction: 'fills', current: 5, max: 6, editable: true, maxEditable: false },
+        { key: 'ac', name: 'Armour', colour: '#0000ff', direction: 'static', current: 14, max: 14, editable: false, maxEditable: false },
       ],
     });
   });
@@ -245,8 +245,8 @@ describe('a character\'s sheet', () => {
     expect(definitions.every(({ visibleToPlayers }) => !visibleToPlayers)).toBe(true);
     const sheet = sheetOf(shown, { resources: { hp: { current: 4, max: 6 }, stress: { current: 1, max: 6 } } }, definitions, () => art);
     expect(sheet?.resources).toEqual([
-      { key: 'hp', name: 'HP', colour: '#22c55e', direction: 'drains', current: 4, max: 6, editable: true },
-      { key: 'stress', name: 'Stress', colour: '#a855f7', direction: 'fills', current: 1, max: 6, editable: true },
+      { key: 'hp', name: 'HP', colour: '#22c55e', direction: 'drains', current: 4, max: 6, editable: true, maxEditable: false },
+      { key: 'stress', name: 'Stress', colour: '#a855f7', direction: 'fills', current: 1, max: 6, editable: true, maxEditable: false },
     ]);
   });
 

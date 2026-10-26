@@ -52,7 +52,7 @@ interface CollectionSettingsModalProps {
 
 export type CollectionSettingsTab = Exclude<SettingsTab, 'initiative'>;
 
-/** The tabs in order; Vision only while dynamic lighting is on, Statblocks only while the statblock editor is. */
+/** The tabs in order; Statblocks only while the statblock editor is switched on. */
 function collectionTabs(statblockEditorOn: boolean): readonly CollectionSettingsTab[] {
   return [
     'system', 'dice', 'grid', 'vision', 'widgets', 'conditions', 'resources',
@@ -69,7 +69,6 @@ export function CollectionSettingsModal({
   onEditTemplate,
 }: CollectionSettingsModalProps): React.ReactElement | null {
   const { app } = useAtlasUI();
-  const lightingOn = useExperimentalFeature('dynamicLighting');
   const statblockEditorOn = useExperimentalFeature('statblockEditor');
   const assetService = app ? AssetService.getInstance(app) : null;
   const systemPresets = useSystemPresets(app);
@@ -231,7 +230,6 @@ export function CollectionSettingsModal({
         presets={systemPresets}
         diceSets={diceSets}
         onDeletePreset={handleDeletePreset}
-        lightingOn={lightingOn}
         fieldSuggestions={resourceFieldSuggestions(roleTemplates, statblockRecords)}
         initiativeFieldSuggestions={modifierFields.suggestions}
         modifierStatblocks={modifierFields.statblocks}

@@ -22,7 +22,6 @@ import type { ResourceDefinition, ResourceValue } from '../../resources/resource
 import { handledByAnotherControl } from '../../keyboard/tooltipEscape';
 import { TokenIdentitySection, TokenResourcesSection } from './EditTokenSections';
 import { TokenLightSection, TokenVisionSection, type TokenLightingContext } from './TokenLightingFields';
-import { dynamicLightingOn } from '../../experimental/experimentalFeatures';
 import { unitLabelFor } from '../../grid/measurementFormat';
 import { unitScaleOf } from '../../lighting/lightingUnits';
 import { maxLightRange } from '../../lighting/lightRanges';
@@ -45,8 +44,6 @@ interface EditTokenModalProps {
   /** The resources of the map's collection, in the order they show. */
   definitions: readonly ResourceDefinition[];
   lighting: TokenLightingContext;
-  /** Whether the token's vision and light can be edited: only with dynamic lighting switched on. */
-  showLighting: boolean;
   /** The statblock the token links, whose senses it follows while it has none of its own. */
   statblock: StatblockLink | null;
   /** Saves the form; `resourceDefaults` is what the linked statblock gives each resource. */
@@ -59,7 +56,7 @@ interface EditTokenModalProps {
  * vision) and the light it carries on the right, so the fields are read and tabbed through
  * column by column. A dialog too narrow for two columns stacks them in the same order.
  */
-function EditTokenModalInner({ initial, definitions, lighting, showLighting, statblock, onSave, onClose }: EditTokenModalProps): React.ReactElement {
+function EditTokenModalInner({ initial, definitions, lighting, statblock, onSave, onClose }: EditTokenModalProps): React.ReactElement {
   const inherited = useStatblockSenses(statblock);
   const resourceDefaults = useStatblockResourceDefaults(statblock, definitions);
   const [name, setName] = useState(initial.name);
@@ -125,13 +122,11 @@ function EditTokenModalInner({ initial, definitions, lighting, showLighting, sta
                 defaults={resourceDefaults}
               />
             )}
-            {showLighting && <TokenVisionSection vision={vision} onChange={setVision} context={context} />}
+            <TokenVisionSection vision={vision} onChange={setVision} context={context} />
           </div>
-          {showLighting && (
-            <div className="atlas-edit-token__column">
-              <TokenLightSection light={light} onChange={setLight} context={context} />
-            </div>
-          )}
+          <div className="atlas-edit-token__column">
+            <TokenLightSection light={light} onChange={setLight} context={context} />
+          </div>
         </div>
 
         <div className="atlas-modal-footer">
@@ -224,7 +219,6 @@ export function openEditTokenModal(
       <EditTokenModalInner
         initial={initial}
         lighting={lighting}
-        showLighting={dynamicLightingOn(app)}
         statblock={statblock}
         definitions={definitions}
         onSave={handleSave}

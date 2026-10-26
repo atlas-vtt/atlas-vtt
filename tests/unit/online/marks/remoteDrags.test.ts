@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { Bounds, Text, type Graphics } from 'pixi.js';
+import { Bounds, Text } from 'pixi.js';
 import { dragPathCells, RemoteDrags, type RemoteDrag } from '../../../../src/app/online/marks/RemoteDrags.ts';
 import type { MeasureRules } from '../../../../src/app/online/marks/RemoteMeasures.ts';
 import { cellToWorld, worldToCell, type FormationGrid } from '../../../../src/app/encounters/encounterFormation';
@@ -13,6 +13,8 @@ import type { ViewAtlasState } from '../../../../src/app/storeFactory';
 import { LIGHTING_Z_INDEX } from '../../../../src/app/pixi/lighting/LightingRenderer';
 import { computeTokenPixelSize } from '../../../../src/app/pixi/token-renderer/tokenSizing';
 import type { DiagonalRule } from '../../../../src/app/types/collectionSettingsTypes';
+import { CANVAS_INK } from '../../../../src/app/pixi/utils/canvasInk';
+import { darkBands } from '../../../../src/app/pixi/utils/measureInk';
 
 const GRID = { type: 'square', size: 70, offsetX: 0, offsetY: 0 } as const;
 const RULES: MeasureRules = { grid: GRID, measurement: resolveMeasurementSettings(undefined, null) };
@@ -64,7 +66,7 @@ describe('a drag measured elsewhere', () => {
 
 describe('RemoteDrags', () => {
   let drags: RemoteDrags;
-  const labels = (): string[] => drags.labels.children.filter((child): child is Text => child instanceof Text).map((text) => text.text);
+  const labels = (): string[] => drags.labels.children.flatMap((label) => label.children.filter((child): child is Text => child instanceof Text)).map((text) => text.text);
 
   beforeEach(() => {
     // jsdom cannot measure text; a label's size plays no part in where it stands.
@@ -80,13 +82,14 @@ describe('RemoteDrags', () => {
   it('draws a path and its distance for each drag, and takes them away when they end', () => {
     drags.update([drag([[35, 35], [245, 35]]), drag([[35, 105], [35, 245], [105, 245]], { key: 'bear' })]);
     expect(labels()).toEqual([cells(3), cells(3)]);
-    expect(drags.paths.children).toHaveLength(2);
+    expect(drags.labels.children).toHaveLength(2);
     drags.update([drag([[35, 35], [315, 35]])]);
     expect(labels()).toEqual([cells(4)]);
     expect(drags.showing).toBe(true);
     drags.update([]);
     expect(labels()).toEqual([]);
-    expect(drags.paths.children).toHaveLength(0);
+    expect(drags.labels.children).toHaveLength(0);
+    expect(drags.paths.getLocalBounds().width).toBe(0);
     expect(drags.showing).toBe(false);
   });
 
@@ -105,8 +108,8 @@ describe('RemoteDrags', () => {
     expect(drags.paths.zIndex).toBeGreaterThan(LIGHTING_Z_INDEX);
     drags.update([drag([[35, 35], [245, 35]])]);
     const rim = computeTokenPixelSize(GRID.size, 1) / 2;
-    // Half the widest stroke of a measure path lies past its end.
-    expect((drags.paths.children[0] as Graphics).getLocalBounds().maxX).toBeCloseTo(245 - rim + 3, 0);
+    // Half the widest band of a measure path's ink lies past its end.
+    expect(drags.paths.getLocalBounds().maxX).toBeCloseTo(245 - rim + darkBands(CANVAS_INK.stroke)[0]!.width / 2, 0);
   });
 
   it('shows nothing before the scene\'s rules are known', () => {

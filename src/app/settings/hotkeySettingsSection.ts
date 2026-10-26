@@ -84,7 +84,7 @@ export function hotkeySettingsSection(settings: SettingsService): AtlasSettingSe
           setting.addButton(button => button.setButtonText(t('settings.hotkeys.resetAll')).onClick(() => settings.resetHotkeys()));
         },
       },
-      ...availableHotkeys(false, feature => settings.isExperimentalOn(feature)).map(hotkeyRow),
+      ...availableHotkeys().map(hotkeyRow),
     ],
   };
 }

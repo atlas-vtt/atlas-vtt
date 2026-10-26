@@ -33,6 +33,7 @@ export function sharedRoll(result: DiceRollResult): SharedRoll {
     })),
     ...(crit !== undefined && { crit }),
     ...(result.linear === false && { linear: false as const }),
+    ...(result.namedModifiers !== undefined && result.namedModifiers.length > 0 && { namedModifiers: result.namedModifiers.map(({ label, value }) => ({ label, value })) }),
     ...(source !== undefined && { source: source.abilityName === undefined ? { type: source.type } : { type: source.type, abilityName: source.abilityName.slice(0, MAX_ABILITY_NAME) } }),
   };
 }

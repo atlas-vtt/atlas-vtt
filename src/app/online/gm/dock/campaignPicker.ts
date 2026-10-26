@@ -27,12 +27,11 @@ export interface CampaignPickerActions {
 
 /**
  * The campaign a table would start on: the one the GM picked while it is still there, else the one
- * this device plays, else the one played most recently.
+ * played most recently.
  */
 export function campaignPick(list: readonly CampaignChoice[] | null, picked: string | null, query = ''): CampaignPick {
   const has = (id: string | null): id is string => id !== null && list?.some((campaign) => campaign.id === id) === true;
-  const playing = list?.find((campaign) => campaign.playing)?.id ?? null;
-  const chosen = has(picked) ? picked : playing ?? list?.[0]?.id ?? null;
+  const chosen = has(picked) ? picked : list?.[0]?.id ?? null;
   return { list, chosen, query };
 }
 
@@ -108,7 +107,6 @@ function row(group: HTMLElement, choice: CampaignChoice, chosen: boolean, field:
   const text = button.createSpan({ cls: 'atlas-online-campaign__text' });
   const name = text.createSpan({ cls: 'atlas-online-campaign__name' });
   name.createEl('bdi', { text: choice.name });
-  if (choice.playing) name.createSpan({ cls: 'atlas-online-campaign__playing', text: 'Playing' });
   text.createSpan({ cls: 'atlas-online-campaign__meta', text: `${choice.activity} · ${playersText(choice.players)}` });
   const tick = button.createSpan({ cls: 'atlas-online-campaign__tick', attr: { 'aria-hidden': 'true' } });
   setIcon(tick, 'check');

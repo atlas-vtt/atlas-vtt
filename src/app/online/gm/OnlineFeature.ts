@@ -30,7 +30,7 @@ import type { OnlineDataFile } from './onlineData.ts';
 import type { OnlineTable } from './OnlineTable.ts';
 import { Ownership } from './ownership.ts';
 import { readSavedTable, type SavedTable } from './savedTable.ts';
-import { appCampaigns, playedSeats, type TableCampaigns } from './tableCampaigns.ts';
+import { appCampaigns, playedSeats, playSavedTable, type TableCampaigns } from './tableCampaigns.ts';
 import { carryAssignmentsOver, readLegacyAssignments } from './legacyAssignments.ts';
 import { NO_ASSIGNMENTS, type TokenAssignments } from '../../campaigns/players/tokenAssignments';
 import { appCampaignChoices } from './campaignChoices.ts';
@@ -138,7 +138,9 @@ export class OnlineFeature extends Component {
     this.savedTable = readSavedTable(record.table);
     this.savedLog = this.savedTable === null ? undefined : record.tableLog;
     this.legacyBooks = readBooks(record.books);
-    // Player tokens are marked on the played campaign while no table runs, so it takes over the old ones now.
+    // A campaign is played only while its table runs: the saved table's comes back with it.
+    playSavedTable(campaigns, this.savedTable);
+    // Player tokens are marked on the played campaign, so it takes over the old ones now.
     const played = campaigns.playing();
     if (played !== null) void this.migrateAssignmentsInto(played).catch((error: unknown) => console.error('[Atlas] Carrying the player tokens into the campaign failed:', error));
     this.online = new OnlineControl(this.app, ownership, campaigns, (table) => {

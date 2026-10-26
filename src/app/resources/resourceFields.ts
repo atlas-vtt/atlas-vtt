@@ -6,7 +6,8 @@ import type { ResourceValue } from './resourceTypes';
 /** A statblock key without case, spaces, underscores and hyphens: `Max Stress` and `max_stress` are one field. */
 export const normalizedKey = (key: string): string => key.toLowerCase().replace(/[\s_-]/g, '');
 
-const HIT_POINT_KEYS = ['hp', 'health', 'hitpoints'];
+/** The usual names of hit points, without case or separators. */
+export const HIT_POINT_KEYS: readonly string[] = ['hp', 'health', 'hitpoints'];
 
 /** Whether a statblock key or label ("hp", "Hit Points:", "Health") names hit points. */
 export function isHitPointsKey(key: string): boolean {
@@ -20,16 +21,21 @@ function hitPointsKey(keys: readonly string[], meanings: FieldMeanings): string 
 }
 
 /**
- * The value under `key`: the exact key, else one spelled differently
+ * The key of `record` that `key` reads: the exact key, else one spelled differently
  * (`Max Stress` for `max_stress`), else, for hit points, the field the
  * statblock's template means as its hit points or any of their usual names.
  */
-function lookup(record: Record<string, unknown>, key: string, meanings: FieldMeanings): unknown {
-  if (key in record) return record[key];
+export function matchingKey(record: Readonly<Record<string, unknown>>, key: string, meanings: FieldMeanings = NO_MEANINGS): string | undefined {
+  if (key in record) return key;
   const wanted = normalizedKey(key);
   const keys = Object.keys(record);
-  const match = keys.find((candidate) => normalizedKey(candidate) === wanted)
+  return keys.find((candidate) => normalizedKey(candidate) === wanted)
     ?? (isHitPointsKey(key) ? hitPointsKey(keys, meanings) : undefined);
+}
+
+/** The value under the key `key` reads (`matchingKey`). */
+function lookup(record: Record<string, unknown>, key: string, meanings: FieldMeanings): unknown {
+  const match = matchingKey(record, key, meanings);
   return match === undefined ? undefined : record[match];
 }
 
@@ -66,9 +72,9 @@ export function parseResourceValue(value: unknown, spent = false): ResourceValue
   if (typeof value === 'string') {
     const fraction = value.trim().match(/^(\d+(?:\.\d+)?)\s*\/\s*(\d+(?:\.\d+)?)$/);
     if (fraction) return parseResourceValue({ current: fraction[1], max: fraction[2] });
-    // Common HP notation: average followed by its hit-dice formula.
-    const average = value.trim().match(/^(\d+)\s*\(\s*\d+d\d+(?:\s*[+-]\s*\d+)?\s*\)$/i);
-    if (average) value = average[1];
+    // A number with a note in brackets: hit points and their hit dice ("45 (6d10+12)"), an armour class and its armour ("15 (natural armor)").
+    const noted = value.trim().match(/^(\d+(?:\.\d+)?)\s*\([^()]*\)$/);
+    if (noted) value = noted[1];
   }
   const max = numeric(value);
   return max === null ? null : { current: spent ? 0 : max, max };

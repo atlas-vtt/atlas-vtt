@@ -21,6 +21,7 @@ import type { Ownership } from './ownership.ts';
 import { presentedScene, presentedSceneSource } from './presentedScene.ts';
 import { bindScene, type SceneBinding } from './sceneBinding.ts';
 import { TabWatch } from './sharedTab.ts';
+import { CoveredPages } from './coveredPages.ts';
 import { TableConnection, type TableStatus } from './TableConnection.ts';
 import { TableRoster } from './tableRoster.ts';
 import { closingText, tableEndOf, tableEndText, type TableEnd } from './tableEnd.ts';
@@ -67,6 +68,8 @@ export class OnlineTable {
   private readonly books: TableBook;
   /** The readable pins players find, and the notes they found. */
   private readonly found: FoundShare;
+  /** The pages whose book covers their map, which the table's activity leaves out. */
+  private readonly covers: CoveredPages;
   /** The join link players open. */
   readonly link: string;
   private readonly stopOwnership: () => void;
@@ -123,6 +126,16 @@ export class OnlineTable {
       cards: this.cards,
       cardsChanged: () => events.changed(),
     });
+    this.covers = new CoveredPages({
+      // Each method by itself: the timers are a class, whose methods a spread leaves behind
+      now: () => timers.now(),
+      setTimer: (run, ms) => timers.setTimer(run, ms),
+      clearTimer: (timer) => timers.clearTimer(timer),
+      sendLive: (body, key, to) => this.connection.sendLive(body, key, to),
+      batches: () => this.connection.batches,
+      connected: () => this.connection.connected,
+      uncovered: (player) => this.bound()?.share.catchUpMarks(player),
+    });
     this.watch = new TabWatch<SceneBinding>({
       leaves: () => app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE),
       presented: () => presentedScene(app),
@@ -130,7 +143,7 @@ export class OnlineTable {
         app,
         seats: ownership,
         send: (body, to) => this.connection.send(body, to),
-        sendLive: (body, key) => this.connection.sendLive(body, key),
+        sendLive: (body, key, to) => this.covers.sendLive(body, key, to),
         readImage: (path) => readVaultImage(app, path),
         isLive: (binding) => this.watch.isLive(binding),
         randomId: () => randomHex(12),
@@ -154,6 +167,8 @@ export class OnlineTable {
         // Who joined while the GM was away is seated as one who joins now; who came or went is in the log before it goes out again.
         const players = connected.filter((player) => this.roster.joined(player));
         this.log.welcome(players);
+        // Pages say again with the books that follow whether theirs covers the map.
+        this.covers.reset();
         this.resend();
         ownership.welcome(players);
       },
@@ -165,6 +180,7 @@ export class OnlineTable {
         this.log.joined(player);
       },
       left: (player) => {
+        this.covers.playerLeft(player);
         this.bound()?.share.playerLeft(player);
         this.image.playerLeft(player);
         this.books.share.playerLeft(player);
@@ -173,7 +189,7 @@ export class OnlineTable {
         this.log.left(player);
       },
       // The log, the shown image and the books are the table's, so they hear players while no scene is shared too.
-      message: (from, body) => void (this.log.receive(from, body) || this.image.receive(from, body) || this.found.receive(from, body) || this.books.share.receive(from, body) || this.bound()?.share.receive(from, body)),
+      message: (from, body) => void (this.covers.receive(from, body) || this.log.receive(from, body) || this.image.receive(from, body) || this.found.receive(from, body) || this.books.share.receive(from, body) || this.bound()?.share.receive(from, body)),
       access: (closesAt) => this.setClosing(closesAt),
     }, this.gate);
     this.roster = new TableRoster(seats, this.connection, { kick: (player) => this.kick(player), turnAway: (player) => this.connection.kick(player), joinCode: () => this.gate.settings.code });
@@ -297,6 +313,7 @@ export class OnlineTable {
     this.log.dispose();
     this.books.stop();
     this.cards.dispose();
+    this.covers.reset();
     this.closing = null;
     this.events.ended(end);
   }

@@ -27,14 +27,12 @@ describe('the shared scene', () => {
     expect(scenes(table.sent)).toHaveLength(1);
   });
 
-  it('is lit while its lighting and Atlas\'s dynamic lighting are on, and withdrawn with a notice while the GM\'s lighting cannot be read', async () => {
+  it('is lit while its lighting is on, and withdrawn with a notice while the GM\'s lighting cannot be read', async () => {
     const table = harness();
     table.share.start();
     const lit = state({ lighting: { enabled: true, ambient: 0 } });
     await table.set(lit);
-    table.settings = { dynamicLighting: false, showNames: true, showDiceRolls: false, showInitiative: true, showWidgets: true, showCursors: false };
-    await table.set(state({ lighting: { enabled: true, ambient: 0.5 } }));
-    table.settings = { dynamicLighting: null, showNames: true, showDiceRolls: false, showInitiative: true, showWidgets: true, showCursors: false };
+    await table.set(state({ lighting: { enabled: false, ambient: 0.5 } }));
     table.lighting = null;
     await table.set(lit);
     table.lighting = GENERIC_SOURCE;

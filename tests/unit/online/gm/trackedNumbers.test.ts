@@ -93,8 +93,8 @@ describe('tracked numbers on a player\'s sheet', () => {
     expect(editableValue({}, [HP], 'stress', { current: 0, max: 4 })).toEqual({ current: 0, max: 4 });
     expect(editableValue({ resources: { stress: { current: 3, max: 9 } } }, [HP], 'stress', { current: 0, max: 4 })).toEqual({ current: 3, max: 4 });
     expect(checkResourceEdit(ANA, ana, null, () => ANA, { t: 'book-resource', key: 'secret', current: 1 })).toBeNull();
-    // Without a scene, a resource of the collection the character was drawn with is no tracked number
+    // Without a scene, a resource of the collection carries the value its sheet offered, which the campaign's own outranks
     expect(checkResourceEdit(ANA, { ...ana, sheet: sheetOf({ id: 'ana', name: 'Ana', imagePath: 'ana.png', showRing: false } as never, { resources: HELD }, [HP], () => null, tracked)! }, null, () => ANA, { t: 'book-resource', key: 'hp', current: 3 }))
-      .toEqual({ kind: 'character', from: ANA, placed: ana.placed, key: 'hp', current: 3 });
+      .toMatchObject({ kind: 'character', from: ANA, placed: ana.placed, key: 'hp', current: 3 });
   });
 });

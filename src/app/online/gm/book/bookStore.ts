@@ -1,6 +1,6 @@
 import {
   DEFAULT_BOOK_SLOTS, isRecord, MAX_BOOK_ITEMS, MAX_BOOK_NOTES, MAX_BOOK_PINS, mayEquip, parseBookItem, parseBookNoteDraft, parseBookPin, parseBookSlots, parseEquipped, parsePurse, settledEquipped, withEquipped,
-  type BookAbilityMessage, type BookFieldMessage, type BookItem, type BookNote, type BookPin, type BookRefillMessage, type BookResourceMessage, type BookSlots, type Equipped, type PlayerBookMessage, type PurseRow,
+  type BookAbilityMessage, type BookFieldMessage, type BookItem, type BookListMessage, type BookNote, type BookPin, type BookRefillMessage, type BookResourceMessage, type BookSlots, type Equipped, type PlayerBookMessage, type PurseRow,
 } from '../../protocol/index.ts';
 
 /**
@@ -56,7 +56,7 @@ function unhandled(_message: never): null {
 }
 
 /** What a player writes into the book itself; their resources and their statblock are written elsewhere. */
-export type ShelfMessage = Exclude<PlayerBookMessage, BookResourceMessage | BookFieldMessage | BookAbilityMessage | BookRefillMessage>;
+export type ShelfMessage = Exclude<PlayerBookMessage, BookResourceMessage | BookFieldMessage | BookAbilityMessage | BookListMessage | BookRefillMessage>;
 
 /**
  * A book after what its player wrote, as the protocol's parser cleaned it: a note or pin is put in
