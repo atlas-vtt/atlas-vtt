@@ -9,6 +9,7 @@ import { physicsProblems } from './themeTerrainInvariants';
 import { holeProblems } from './holeInvariants';
 import { blockedCells, bridgeProblems, cellProblems, clearanceProblems, isHazard, routeProblems, stairClearanceProblems } from './terrainInvariants';
 import { coverProblems } from './coverInvariants';
+import { timeBound } from '../../helpers/timeBound';
 
 /**
  * Every rule of the generator, held over many dungeons of one floor count: 1,000 seeds, each with
@@ -258,9 +259,9 @@ export function describeInvariants(floors: number): void {
         const times = list.map((run) => run.ms).sort((a, b) => a - b);
         return times[Math.floor(times.length * 0.95)] ?? 0;
       };
-      expect(p95(runs.filter((run) => run.model.theme !== 'cavern'))).toBeLessThan(25 * floors);
+      expect(p95(runs.filter((run) => run.model.theme !== 'cavern'))).toBeLessThan(timeBound(25 * floors));
       // A cave also shapes its chambers and tunnels, and grows a floor anew until its main path fits two cells wide.
-      expect(p95(caverns)).toBeLessThan(75 * floors);
+      expect(p95(caverns)).toBeLessThan(timeBound(75 * floors));
     });
   });
 }

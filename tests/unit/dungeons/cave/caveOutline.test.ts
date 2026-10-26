@@ -5,6 +5,7 @@ import { type Rng, rngFrom } from '../../../../src/app/dungeons/rng';
 import { caveOutline, type PinnedEdge } from '../../../../src/app/dungeons/render/cave/caveOutline';
 import { type FloorShape, type Vec, pointInPolygon } from '../../../../src/app/dungeons/render/geometry';
 import type { CellGrid } from '../../../../src/app/dungeons/water/wetGrid';
+import { timeBound } from '../../../helpers/timeBound';
 
 type Mask = Set<string>;
 
@@ -201,6 +202,6 @@ describe('a cave outline', () => {
       times.push(performance.now() - start);
     }
     times.sort((a, b) => a - b);
-    expect(times[2]).toBeLessThan(40);
+    expect(times[2]).toBeLessThan(timeBound(40));
   });
 });

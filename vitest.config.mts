@@ -27,6 +27,8 @@ export default defineConfig({
           environment: 'node',
           // Threads hand modules to the workers over a MessagePort, much cheaper than forks' IPC; most of a run is imports.
           pool: 'threads',
+          // A CI runner is several times slower than a developer's machine; the dungeon suites take seconds a test there.
+          testTimeout: process.env.CI ? 30_000 : 5_000,
           globals: true,
           setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
           // Agents' worktrees in `.claude/` hold whole copies of the repository.

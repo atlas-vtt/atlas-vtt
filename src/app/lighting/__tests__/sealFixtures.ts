@@ -23,9 +23,6 @@ export function random(seed: number): () => number {
 
 export const key = (p: XY): string => `${p.x},${p.y}`;
 
-/** A time bound in ms. The bounds are set on a developer's machine; a CI runner is several times slower and runs the whole suite beside the test. */
-export const timeBound = (ms: number): number => (process.env.CI ? ms * 4 : ms);
-
 function bridge(id: string, p1: XY, p2: XY): WallSegment {
   return { id, kind: 'wall', type: 'solid', p1: { ...p1 }, p2: { ...p2 } };
 }

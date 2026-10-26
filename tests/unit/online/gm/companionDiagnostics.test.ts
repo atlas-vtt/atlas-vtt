@@ -62,8 +62,7 @@ describe('the companion\'s error reports', () => {
   it('go to the table\'s server for its own errors, without its secret, code, an account token or player names, and are named in the console', async () => {
     const { win } = companion();
     throwIn(win, ownError(`Alice Liddell lost ${CODE} with ${SECRET} and ${ACCOUNT_TOKEN}`));
-    await settle();
-    expect(sent).toHaveLength(1);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(sent[0]?.url).toBe('https://play.atlas-vtt.dev/api/reports');
     expect(sent[0]?.body).toMatchObject({ source: 'companion', kind: 'error', browser: 'Obsidian 1.14.4', build: '0.0.1+dev atlas 0.6.1', os: 'macOS' });
     expect(sent[0]?.body.table).toMatch(/^[0-9a-f]{12}$/);
@@ -77,8 +76,7 @@ describe('the companion\'s error reports', () => {
     const error = ownError(`gate ${JOIN_CODE} refused, shown as 483 912`);
     error.stack = `${error.stack ?? ''}\n    at gate (plugin:atlas-online:1:${JOIN_CODE})`;
     throwIn(win, error);
-    await settle();
-    expect(sent).toHaveLength(1);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
     const text = JSON.stringify(sent);
     expect(text).not.toContain(JOIN_CODE);
     expect(text).not.toContain('483 912');
