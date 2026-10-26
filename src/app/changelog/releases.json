@@ -4,7 +4,7 @@
     {
       "version": "0.10.2-beta.0",
       "title": "Coming in 0.10.2",
-      "markdown": "## Atlas Online\n- Players see animated maps move, and the water, lava and acid of generated dungeons\n- Maps that grid alignment stretched or turned line up with tokens and walls for players"
+      "markdown": "## Fixed\n- Exported collections carry their random tables, with the notes they are read from\n- Pins that roll a folder of encounters keep working after an import under another collection name\n\n## Atlas Online\n- Players see animated maps move, and the water, lava and acid of generated dungeons\n- Maps that grid alignment stretched or turned line up with tokens and walls for players"
     },
     {
       "version": "0.10.1",

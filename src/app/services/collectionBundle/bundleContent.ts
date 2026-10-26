@@ -1,5 +1,6 @@
 import { NOTE_FILE_ROLES, type BundleFile, type BundleFileRole } from './bundleFormat';
 import { movedFolders, remapPaths, type PathMap } from './pathRemap';
+import { COLLECTIONS_DIR } from '../assetPaths';
 import { NO_TEMPLATE_IDS, rewriteNoteTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
 import { sha256 } from '../../utils/hashing';
 
@@ -23,10 +24,29 @@ function indentationOf(text: string): string | undefined {
   return /^[[{]\r?\n([ \t]+)\S/.exec(text)?.[1];
 }
 
+const withFoldersOf = new WeakMap<PathMap, PathMap>();
+
+/**
+ * `rewrites` with the collection folders that moved along with their files: a pin that rolls a
+ * folder of encounters names the folder (`…/encounters/Forest`), which follows its encounters into
+ * the collection's folder under another name. Only folders inside `atlas-vtt/collections/`: a
+ * folder elsewhere has a plain name (`NPCs`) that a label or tag may hold as well. Worked out once
+ * per map, since every JSON file asks.
+ */
+function withMovedFolders(rewrites: PathMap): PathMap {
+  let map = withFoldersOf.get(rewrites);
+  if (!map) {
+    const folders = [...movedFolders(rewrites)].filter(([folder]) => folder.startsWith(`${COLLECTIONS_DIR}/`));
+    map = new Map([...folders, ...rewrites]);
+    withFoldersOf.set(rewrites, map);
+  }
+  return map;
+}
+
 function rewriteJson(text: string, rewrites: PathMap): string {
   try {
     const parsed: unknown = JSON.parse(text);
-    const remapped = remapPaths(parsed, rewrites);
+    const remapped = remapPaths(parsed, withMovedFolders(rewrites));
     if (JSON.stringify(remapped) === JSON.stringify(parsed)) return text;
     return JSON.stringify(remapped, null, indentationOf(text)) + (text.endsWith('\n') ? '\n' : '');
   } catch {

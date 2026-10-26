@@ -1423,3 +1423,81 @@ describe('record files of an installed collection', () => {
     expect((await reviewImport(fan, v1)).review).toMatchObject({ relation: 'same', upToDate: true, canRestore: false, conflicts: [] });
   });
 });
+
+describe('random tables and encounter folders', () => {
+  const OWN_TABLE = 'atlas-vtt/collections/source/tables/Weather.md';
+  const TABLE = 'Tables/Encounters.md';
+  const SUB_TABLE = 'Tables/Wolves.md';
+  const TABLE_BASE = 'Loot/Hoard.base';
+
+  /** The creator's collection rolling on a table note of its own and one elsewhere, which links a sub-table and a base view. */
+  async function tableVault(): Promise<Vault> {
+    const creator = await creatorVault();
+    const { vault, assets } = creator;
+    await vault.app.vault.create(OWN_TABLE, '| d4 | Weather |\n| - | - |\n| 1 | Rain |');
+    await vault.app.vault.create(TABLE, '| d6 | Encounter |\n| - | - |\n| 1 | [[Wolves]] |\n| 2 | [[Hoard.base#Gold]] |');
+    await vault.app.vault.create(SUB_TABLE, '| d4 | Wolves |\n| - | - |\n| 1 | Two |');
+    await vault.app.vault.create(TABLE_BASE, 'views: []');
+    lootItems.set(TABLE_BASE, []);
+    await assets.updateCollectionSettings('source', { randomTables: [
+      { path: OWN_TABLE, index: 0, kind: 'text', saveFolder: 'atlas-vtt/collections/source/Generated' },
+      { path: TABLE, index: 0, kind: 'text', label: 'Wilds', saveFolder: 'Elsewhere/Generated' },
+    ] });
+    return creator;
+  }
+
+  it('carries the notes the collection\'s tables are read from, what they link to, and points the installed tables at them', async () => {
+    const creator = await tableVault();
+    const blob = await exportFrom(creator);
+    const files = (await manifestOf(blob)).files;
+    for (const path of [OWN_TABLE, TABLE, SUB_TABLE]) expect(files).toContainEqual(expect.objectContaining({ vaultPath: path, role: 'linked-note' }));
+    expect(files).toContainEqual(expect.objectContaining({ vaultPath: TABLE_BASE, role: 'loot-base' }));
+
+    const fan = await emptyVault();
+    await fan.assets.createCollection('source');
+    // The name is taken: the review suggests "source (2)". Another name is that folder renamed afterwards, which the vault follows.
+    await importInto(fan, blob, { name: 'source (2)' });
+    const [installed] = (await fan.assets.getCollections()).filter((collection) => collection.name === 'source (2)');
+    const ownTable = 'atlas-vtt/collections/source (2)/tables/Weather.md';
+    const table = 'atlas-vtt/collections/source (2)/notes/Tables/Encounters.md';
+    expect(installed!.settings.randomTables).toEqual([
+      { path: ownTable, index: 0, kind: 'text', saveFolder: 'atlas-vtt/collections/source (2)/Generated' },
+      { path: table, index: 0, kind: 'text', label: 'Wilds' },
+    ]);
+    expect(fan.vault.files.get(ownTable)).toContain('Rain');
+    expect(fan.vault.app.metadataCache.resolvedLinks[table]).toEqual({
+      'atlas-vtt/collections/source (2)/notes/Tables/Wolves.md': 1,
+      'atlas-vtt/collections/source (2)/loot/Loot/Hoard.base': 1,
+    });
+  });
+
+  it('keeps a table whose note another kept note links to, and leaves out the table of a note the user excluded with the base it drew from', async () => {
+    const creator = await tableVault();
+    await pinNote(creator, 'Lore/Road.md', 'Roll on [[Encounters]].');
+    const preview = await prepareCollectionExport(creator.vault.app, creator.assets, 'source');
+    expect(preview.files.find((file) => file.vaultPath === TABLE)).toEqual({ vaultPath: TABLE, role: 'linked-note' });
+
+    const bundle = await exportCollectionBundle(creator.vault.app, creator.assets, preview, { kind: 'release', version: 2, excluded: new Set([`file:${TABLE}`]) });
+    const manifest = await manifestOf(bundle.blob);
+    expect(manifest.files.map((file) => file.vaultPath)).not.toContain(TABLE);
+    // The base only that table drew from stays behind with it.
+    expect(manifest.files.map((file) => file.vaultPath)).not.toContain(TABLE_BASE);
+    expect((manifest.collection.settings as { randomTables: Array<{ path: string }> }).randomTables.map((source) => source.path)).toEqual([OWN_TABLE]);
+  });
+
+  it('points a pin that rolls a folder of encounters at that folder in the collection it is installed as, under another name', async () => {
+    const creator = await creatorVault();
+    const [encounter] = await creator.assets.getAssets('source', 'encounter');
+    const encounters = creator.assets.getAssetFilePath(encounter!).replace(/\/[^/]+$/, '');
+    expect(encounters).toBe('atlas-vtt/collections/source/encounters');
+    const map = JSON.parse(creator.vault.files.get(MAP_PATH)!) as { state: { objects: { pins: Record<string, unknown> } } };
+    map.state.objects.pins = { p1: { id: 'p1', kind: 'pin', x: 0, y: 0, notePath: encounters } };
+    creator.vault.files.set(MAP_PATH, JSON.stringify(map));
+
+    const fan = await emptyVault();
+    await fan.assets.createCollection('source');
+    await importInto(fan, await exportFrom(creator), { name: 'source (2)' });
+    const installed = JSON.parse(fan.vault.files.get('atlas-vtt/collections/source (2)/scenes/Cave.atlasmap')!) as { state: { objects: { pins: Record<string, { notePath: string }> } } };
+    expect(installed.state.objects.pins.p1!.notePath).toBe('atlas-vtt/collections/source (2)/encounters');
+  });
+});
