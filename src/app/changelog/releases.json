@@ -2,8 +2,9 @@
   "version": "0.10.2-beta.0",
   "releases": [
     {
-      "version": "0.10.2-beta.0",
-      "title": "Coming in 0.10.2",
+      "version": "0.10.2",
+      "date": "2026-10-28",
+      "title": "Token numbers, dark maps and the main window",
       "markdown": "## Atlas Online\n- Players see animated maps move, and the water, lava and acid of generated dungeons\n- Maps whose grid alignment stretched or turned them now line up correctly for players\n- Players can remove items from their inventory\n- Ticking the boxes of a Track on a player's sheet no longer overwrites the resource's maximum\n\n## Important changes\n- Atlas runs in your main Obsidian window: moved into another window, it moves back. To use two screens, move your notes into a new window\n- Players see the same token numbers as the GM in the player view and Atlas Online, and hidden tokens still count\n\n## Fixed\n- \"Kill\" no longer disappears from the token menu after switching an HP resource to static and back\n- Dark maps no longer look darker and purple with dynamic lighting in daylight\n- A small light that outshines magical darkness no longer gives the token next to it sight on some grids"
     },
     {
