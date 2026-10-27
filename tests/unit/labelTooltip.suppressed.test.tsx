@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { act, cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { LabelTooltip, TooltipProvider } from '../../src/app/packages/components/primitives/tooltip';
 
@@ -23,6 +23,15 @@ function pointer(target: Element, type: string): void {
 const advanceHover = async (): Promise<void> => {
   await act(async () => { await vi.advanceTimersByTimeAsync(100); });
 };
+
+it('closes an ordinary tooltip when focus and click happen in the same action', () => {
+  render(<LabelTooltip label="Show Roof"><button>Roof</button></LabelTooltip>);
+  const button = screen.getByRole('button', { name: 'Show Roof' });
+
+  act(() => { button.focus(); fireEvent.click(button); });
+
+  expect(screen.queryByRole('tooltip')).toBeNull();
+});
 
 it('closes an open tooltip, rejects pointer and focus while suppressed, and waits for fresh focus to reopen', async () => {
   const { rerender } = render(labeledButton(false));

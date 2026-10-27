@@ -59,7 +59,7 @@ interface LabelTooltipProps {
  * `aria-label` on `children`. Never give `children` a `title`: it adds the browser's
  * tooltip. Obsidian's `aria-label` tooltip is off throughout Atlas (styles/_native-tooltips.scss).
  */
-function LabelTooltip({ label, side = "top", describe = false, multiline = false, suppressed = false, children }: LabelTooltipProps): React.ReactElement {
+function LabelTooltip({ label, side = "top", describe = false, multiline = false, suppressed, children }: LabelTooltipProps): React.ReactElement {
   const labelId = React.useId()
   const hasProvider = React.useContext(ProviderMounted)
   const [open, setOpen] = React.useState(false)
@@ -67,9 +67,12 @@ function LabelTooltip({ label, side = "top", describe = false, multiline = false
     if (suppressed) setOpen(false)
   }, [suppressed])
   const tooltip = (
-    <Tooltip open={open && !suppressed} onOpenChange={(nextOpen) => {
-      if (!suppressed) setOpen(nextOpen)
-    }}>
+    <Tooltip {...(suppressed === undefined ? {} : {
+      open: open && !suppressed,
+      onOpenChange: (nextOpen: boolean): void => {
+        if (!suppressed) setOpen(nextOpen)
+      },
+    })}>
       <TooltipTrigger asChild {...(describe ? { "aria-describedby": labelId } : { "aria-labelledby": labelId })}>{children}</TooltipTrigger>
       <span id={labelId} hidden>{label}</span>
       <TooltipContent side={side} sideOffset={10}>
