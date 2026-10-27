@@ -63,7 +63,7 @@ export async function openLitView({ preference, pane, map, floor = 0x8899aa, gri
   controller.wire({
     setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
     setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
   } as unknown as TokenRenderer);
   let time = 1000;
   return {

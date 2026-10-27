@@ -14,6 +14,9 @@ type MapState = NonNullable<PersistedMapEnvelope['state']>;
  */
 const SESSION_KEYS = ['mapPath', 'camera', 'diceLog', 'lootRoller'] as const;
 
+/** The scene's floors and their explored memories, which a snapshot that has none takes away on restoring. */
+const LEVEL_KEYS = ['levels', 'exploredMasks'] as const;
+
 /**
  * One named state of a scene. It is the scene's persisted map envelope
  * (`{ state, version }`) plus a name, so every reader and migration of map
@@ -63,8 +66,11 @@ export function createSnapshot(envelope: PersistedMapEnvelope, id: string, name:
  */
 export function restoreSnapshot(current: PersistedMapEnvelope, snapshot: SceneSnapshot, mapPath: string): PersistedMapEnvelope {
   const version = snapshot.version ?? current.version;
+  const state: MapState = { ...current.state, ...snapshot.state, mapPath };
+  // The floors are the scene's, not the session's: a snapshot taken with one floor brings back a scene of one floor.
+  for (const key of LEVEL_KEYS) if (!(key in snapshot.state)) Reflect.deleteProperty(state, key);
   return {
     ...(version !== undefined ? { version } : {}),
-    state: { ...current.state, ...snapshot.state, mapPath },
+    state,
   };
 }

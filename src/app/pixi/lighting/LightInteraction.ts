@@ -2,6 +2,7 @@ import { readLight } from '../../lighting/lightingObjects';
 import type { FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import { directionTo, snapDirection } from '../../lighting/lightBeam';
+import { lightMovedTo } from '../../lighting/lightArea';
 import { worldToGameUnits } from '../../lighting/lightingUnits';
 import { dragRange, maxLightRange, type RangeField } from '../../lighting/lightRanges';
 import type { ViewAtlasStore } from '../../storeFactory';
@@ -9,7 +10,8 @@ import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransacti
 import type { Point } from '../../types/visionTypes';
 import type { LightMarkers } from './LightMarkers';
 import type { LightRangeRings } from './LightRangeRings';
-import { ringHandleCursor } from './lightRingGeometry';
+import { ringHandleCursor, ringRadiusAt } from './lightRingGeometry';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** Screen pixels the pointer may move before a press on a marker is a drag, not a click. */
 export const LIGHT_DRAG_THRESHOLD = 5;
@@ -33,8 +35,10 @@ export interface LightInteractionDeps {
   store: ViewAtlasStore;
   markers: LightMarkers;
   rings: LightRangeRings;
-  /** The lighting tool is in use: a press selects the light, and a drag moves it. */
+  /** The lighting tool is in use: a press selects the light (and with the select or move tool too, a drag moves it). */
   canMove: () => boolean;
+  /** A tool that moves things is in use (select or move): a drag moves a light, without selecting it for the lighting tool. */
+  movesThings: () => boolean;
   /** Selects the light for the lighting tool; `add` toggles it in the selection. */
   select: (lightId: string, add: boolean) => void;
 }
@@ -51,7 +55,8 @@ interface Gesture {
 
 /**
  * The pointer on placed lights: a click on a marker opens the light's popover with any tool,
- * a drag moves the light with the lighting tool, and the handles of the open light's range
+ * a drag moves the light with the lighting, select or move tool (a light glowing from an area, which
+ * the generator lays over its lava or acid, stays where its surface is), and the handles of the open light's range
  * rings resize its ranges and turn its beam. A drag is one undo step, opened only once it starts. Only the
  * pointer's release commits a drag: Escape, a pointer cancel, the window losing focus, the
  * popover leaving the light or the canvas showing the players' view cancel it, which puts back
@@ -128,14 +133,15 @@ export class LightInteraction {
 
   private pressMarker(lightId: string, event: Press): void {
     const { viewport, store, markers } = this.deps;
-    const light = readLight(store.getState().objects.lights[lightId]);
+    const light = readLight(levelObjects(store.getState()).lights[lightId]);
     if (!light) return;
     const start = { x: event.global.x, y: event.global.y };
     const grabbed = viewport.toWorld(start.x, start.y);
     const origin = { x: light.x, y: light.y };
     const add = event.ctrlKey || event.metaKey;
-    const canMove = this.deps.canMove();
-    if (canMove) this.deps.select(lightId, add);
+    const editing = this.deps.canMove();
+    if (editing) this.deps.select(lightId, add);
+    const canMove = (editing || this.deps.movesThings()) && !light.area;
     let dragging = false;
     let moved = false;
 
@@ -149,7 +155,8 @@ export class LightInteraction {
         markers.setDragging(lightId);
       }
       const at = viewport.toWorld(move.global.x, move.global.y);
-      store.getState().updateLight(lightId, { x: origin.x + at.x - grabbed.x, y: origin.y + at.y - grabbed.y });
+      // An area light's area moves along, from where it lay when the drag began.
+      store.getState().updateLight(lightId, lightMovedTo(light, origin.x + at.x - grabbed.x, origin.y + at.y - grabbed.y));
     };
     this.track({
       ring: null,
@@ -158,7 +165,7 @@ export class LightInteraction {
       end: (commit) => {
         if (dragging) {
           markers.setDragging(null);
-          this.settle(commit, () => store.getState().updateLight(lightId, origin), lightId);
+          this.settle(commit, () => store.getState().updateLight(lightId, lightMovedTo(light, origin.x, origin.y)), lightId);
         }
         if (commit && !moved && !add) store.getState().openLightPopover(lightId);
       },
@@ -169,18 +176,18 @@ export class LightInteraction {
     const { viewport, store, rings } = this.deps;
     const lightId = store.getState().lightPopover;
     const geometry = rings.geometry();
-    const emission = lightId ? readLight(store.getState().objects.lights[lightId])?.emission : undefined;
+    const emission = lightId ? readLight(levelObjects(store.getState()).lights[lightId])?.emission : undefined;
     if (!lightId || !geometry || !emission) return;
     // The handle keeps its distance to the pointer, so it does not jump when grabbed off-centre.
-    const offset = Math.hypot(grabbedAt.x - geometry.center.x, grabbedAt.y - geometry.center.y) - geometry.radius[field];
+    const offset = ringRadiusAt(geometry, field, grabbedAt) - geometry.radius[field];
     beginHistoryTransaction(store);
     rings.setDragging(field);
 
     const onMove = (move: FederatedPointerEvent): void => {
-      const light = readLight(store.getState().objects.lights[lightId]);
+      const light = readLight(levelObjects(store.getState()).lights[lightId]);
       if (!light) return;
       const at = viewport.toWorld(move.global.x, move.global.y);
-      const radius = Math.max(0, Math.hypot(at.x - light.x, at.y - light.y) - offset);
+      const radius = Math.max(0, ringRadiusAt(rings.geometry() ?? geometry, field, at) - offset);
       const scale = rings.unitScale();
       const next = dragRange(light.emission, field, worldToGameUnits(radius, scale), move.altKey, maxLightRange(scale));
       if (next !== light.emission) store.getState().updateLight(lightId, { emission: next });
@@ -200,7 +207,7 @@ export class LightInteraction {
   private turn(grabbedAt: Point): void {
     const { viewport, store, rings } = this.deps;
     const lightId = store.getState().lightPopover;
-    const grabbed = lightId ? readLight(store.getState().objects.lights[lightId]) : undefined;
+    const grabbed = lightId ? readLight(levelObjects(store.getState()).lights[lightId]) : undefined;
     if (!lightId || !grabbed) return;
     // A light that was never turned has no rotation, and faces up as with 0; a cancelled turn leaves it without one.
     const rotation = grabbed.rotation;
@@ -210,7 +217,7 @@ export class LightInteraction {
     rings.setDragging('rotation');
 
     const onMove = (move: FederatedPointerEvent): void => {
-      const light = readLight(store.getState().objects.lights[lightId]);
+      const light = readLight(levelObjects(store.getState()).lights[lightId]);
       if (!light) return;
       const next = snapDirection(directionTo(light, viewport.toWorld(move.global.x, move.global.y)) + offset, move.altKey);
       if (next !== (light.rotation ?? 0)) store.getState().updateLight(lightId, { rotation: next });
@@ -233,7 +240,7 @@ export class LightInteraction {
       endHistoryTransaction(store);
       return;
     }
-    if (readLight(store.getState().objects.lights[lightId])) restore();
+    if (readLight(levelObjects(store.getState()).lights[lightId])) restore();
     // The history looks at a write once its listeners are done: closed inside one, the step
     // would be left for the write that cancelled the drag, with the drag's state as its past.
     if (this.inStoreWrite) queueMicrotask(() => abandonHistoryTransaction(store));

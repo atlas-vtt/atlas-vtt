@@ -1,17 +1,24 @@
 import { App, TFile, normalizePath } from 'obsidian';
 import type { MapFile } from './MapPersistence';
+import type { SceneLevel } from '../types/sceneLevelTypes';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
 
 /** The parts of a map that reference vault images; satisfied by a MapFile and by the live store state. */
 export interface MapAssetReferences {
     background: MapFile['background'];
+    /** The scene's levels; the first one's map is `background`. Each may draw a roof (`foreground`). */
+    levels?: readonly Pick<SceneLevel, 'id' | 'background' | 'foreground'>[] | undefined;
     objects: Pick<MapFile['objects'], 'tokens'>;
 }
 
+/** The `objectId` of a missing map image that is the scene's own background, the first level's; another level's is that level's id. */
+export const SCENE_BACKGROUND = 'background';
+
 export interface MissingAsset {
     id: string;
-    type: 'token' | 'map';
+    /** A token's art, a level's map (`objectId`: the level, or `SCENE_BACKGROUND`), or a level's roof (`objectId`: the level). */
+    type: 'token' | 'map' | 'roof';
     path: string;
     objectId: string;
     objectName?: string;
@@ -76,11 +83,35 @@ export class AssetValidationService {
         if (mapData.background && !(await this.validateAsset(mapData.background))) {
             result.valid = false;
             result.missingAssets.push({
-                id: 'background',
+                id: SCENE_BACKGROUND,
                 type: 'map',
                 path: mapData.background,
-                objectId: 'background',
+                objectId: SCENE_BACKGROUND,
                 objectName: t('validation.mapBackground')
+            });
+        }
+
+        for (const level of mapData.levels?.slice(1) ?? []) {
+            if (!level.background || (await this.validateAsset(level.background))) continue;
+            result.valid = false;
+            result.missingAssets.push({
+                id: `${SCENE_BACKGROUND}:${level.id}`,
+                type: 'map',
+                path: level.background,
+                objectId: level.id,
+                objectName: t('validation.mapBackground')
+            });
+        }
+
+        for (const level of mapData.levels ?? []) {
+            if (typeof level.foreground !== 'string' || !level.foreground || (await this.validateAsset(level.foreground))) continue;
+            result.valid = false;
+            result.missingAssets.push({
+                id: `roof:${level.id}`,
+                type: 'roof',
+                path: level.foreground,
+                objectId: level.id,
+                objectName: t('validation.roof')
             });
         }
 
@@ -105,10 +136,12 @@ export class AssetValidationService {
 
         const tokenCount = missingAssets.filter(a => a.type === 'token').length;
         const mapCount = missingAssets.filter(a => a.type === 'map').length;
+        const roofCount = missingAssets.filter(a => a.type === 'roof').length;
 
         let message = `${t('validation.missing')}\n`;
         if (tokenCount > 0) message += `- ${t('validation.tokenImages', { count: tokenCount })}\n`;
         if (mapCount > 0) message += `- ${t('validation.backgrounds', { count: mapCount })}\n`;
+        if (roofCount > 0) message += `- ${t('validation.roofs', { count: roofCount })}\n`;
         
         message += `\n${t('validation.placeholders')}`;
 

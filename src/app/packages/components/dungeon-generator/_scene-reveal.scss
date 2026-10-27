@@ -1,0 +1,10 @@
+// A new dungeon scene growing into being over its map, the first time it is shown
+// (`services/dungeonSceneReveal.ts`): laid on the map's place above the map's canvas,
+// moved there by a transform every frame.
+.atlas-dungeon-scene-reveal {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}

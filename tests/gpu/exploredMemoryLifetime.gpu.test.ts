@@ -187,7 +187,7 @@ describe('forgetting explored areas while the saved memory is not in yet', () =>
     try {
       expect(lighting.editExplored(reveal(RIGHT_ROOM))).toBe(false);
       lighting.resetExplored();
-      expect(setExploredMask).toHaveBeenCalledWith(null);
+      expect(setExploredMask).toHaveBeenCalledWith(null, null);
       expect(state.exploredEdits).toBe(0);
       releaseFirstDecode();
       await settle();

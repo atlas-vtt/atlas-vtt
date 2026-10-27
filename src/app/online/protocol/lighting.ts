@@ -84,8 +84,8 @@ export interface SharedSight {
   /** Where the tokens the GM holds were taken from, while sight waits for the drop. */
   readonly held: readonly { readonly id: string; readonly x: number; readonly y: number }[];
   /**
-   * Players have no sight although no token they get sees: every vision token is hidden. Without
-   * a vision token, Atlas's players would otherwise see everything the light shows.
+   * Players have no sight although no token they get sees: every vision token is hidden or on
+   * another level of the scene. Only a scene without any vision token shows players everything the light shows.
    */
   readonly blind?: true;
 }

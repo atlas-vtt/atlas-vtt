@@ -5,9 +5,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile, type App } from 'obsidian';
 import type { UvttImported } from '../../src/app/import/uvtt/importUvttFile';
 import { runUvttImport } from '../../src/app/import/uvtt/runUvttImport';
+import { runVideoMapImport } from '../../src/app/import/videoMaps/runVideoMapImport';
 import { TokenCreator } from '../../src/app/packages/components/asset-manager/TokenCreator';
 import { FolderGridItem } from '../../src/app/packages/components/asset-manager/components/FolderGridItem';
-import { mayCarryMapFile, useUvttImport, uvttFilesAmong, type ImportMaps } from '../../src/app/packages/components/asset-manager/hooks/useUvttImport';
+import { mapFilesAmong, mayCarryMapFile, useUvttImport, type ImportMaps } from '../../src/app/packages/components/asset-manager/hooks/useUvttImport';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { AssetService } from '../../src/app/services/AssetService';
 
@@ -24,6 +25,7 @@ vi.mock('obsidian', async (importOriginal) => {
   return { ...await importOriginal<typeof import('obsidian')>(), Notice };
 });
 vi.mock('../../src/app/import/uvtt/runUvttImport', () => ({ runUvttImport: vi.fn() }));
+vi.mock('../../src/app/import/videoMaps/runVideoMapImport', () => ({ runVideoMapImport: vi.fn() }));
 vi.mock('../../src/app/packages/components/asset-manager/token-creator/TokenPreviewCard', () => ({ TokenPreviewCard: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/token-creator/tokenImages', () => {
   const converted = { image: new Blob(), thumbnail: null, preview: null, sourcePreview: null };
@@ -33,6 +35,7 @@ vi.mock('../../src/app/packages/components/asset-manager/token-creator/tokenImag
 const crypt = new File(['{}'], 'Crypt.dd2vtt');
 const keep = new File(['{}'], 'Keep.UVTT');
 const cave = new File(['art'], 'Cave.png', { type: 'image/png' });
+const river = new File(['video'], 'River.webm', { type: 'video/webm' });
 
 const imported = (name: string): UvttImported => ({
   ok: true, name, scenePath: `atlas-vtt/collections/Dungeons/scenes/${name}.atlasmap`, counts: { walls: 1, doors: 0, lights: 0 }, lightsOff: false,
@@ -53,6 +56,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   notices.shown.length = 0;
   vi.mocked(runUvttImport).mockResolvedValue([]);
+  vi.mocked(runVideoMapImport).mockResolvedValue(1);
   vi.stubGlobal('ResizeObserver', class { observe(): void {} unobserve(): void {} disconnect(): void {} });
   URL.createObjectURL = vi.fn(() => 'blob:art');
   URL.revokeObjectURL = vi.fn();
@@ -61,15 +65,18 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
 describe('telling map files from other files', () => {
-  it('picks the Universal VTT files by their names', () => {
-    expect(uvttFilesAmong([cave, crypt, keep])).toEqual([crypt, keep]);
-    expect(uvttFilesAmong([cave])).toEqual([]);
+  it('picks the Universal VTT files and the videos by their names', () => {
+    expect(mapFilesAmong([cave, crypt, keep, river])).toEqual([crypt, keep, river]);
+    expect(mapFilesAmong([cave])).toEqual([]);
   });
 
   it.each([
     ['a file of a type the browser does not know, as a map file is', [{ kind: 'file', type: '' }], true],
     ['a map file among images', [{ kind: 'file', type: 'image/png' }, { kind: 'file', type: '' }], true],
     ['only images', [{ kind: 'file', type: 'image/png' }, { kind: 'file', type: 'image/webp' }], false],
+    ['a WebM video', [{ kind: 'file', type: 'video/webm' }], true],
+    ['an MP4 video', [{ kind: 'file', type: 'video/mp4' }], true],
+    ['a QuickTime video', [{ kind: 'file', type: 'video/quicktime' }], false],
     ['a PDF', [{ kind: 'file', type: 'application/pdf' }], false],
     ['a note', [{ kind: 'file', type: 'text/markdown' }], false],
     ['a JSON file', [{ kind: 'file', type: 'application/json' }], false],
@@ -120,6 +127,16 @@ describe('importing maps in the asset manager', () => {
     return (result) => finish(result);
   }
 
+  it('adds dropped videos to the collection as animated maps, opening no scene', async () => {
+    const { onSceneOpened } = manager();
+
+    expect(drag('drop', container, [river, cave]).taken).toBe(true);
+
+    await waitFor(() => expect(runVideoMapImport).toHaveBeenCalledWith(app, assets, [river], 'Dungeons'));
+    expect(runUvttImport).not.toHaveBeenCalled();
+    expect(onSceneOpened).not.toHaveBeenCalled();
+  });
+
   it('takes a dragged map file as a copy and lets every other file pass', () => {
     manager();
 
@@ -159,7 +176,7 @@ describe('importing maps in the asset manager', () => {
     expect(drag('drop', container, [stranger]).taken).toBe(true);
 
     expect(runUvttImport).not.toHaveBeenCalled();
-    expect(notices.shown.map((notice) => notice.message)).toEqual(['Crypt.dd2vtt.bak is not a map Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file.']);
+    expect(notices.shown.map((notice) => notice.message)).toEqual(['Crypt.dd2vtt.bak is not a map Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file, or a WebM or MP4 video.']);
   });
 
   it('imports the map files of a drop and names the files it cannot take', () => {
@@ -168,7 +185,7 @@ describe('importing maps in the asset manager', () => {
     drag('drop', container, [stranger, crypt, new File(['x'], 'README')]);
 
     expect(runUvttImport).toHaveBeenCalledWith(app, assets, [crypt], 'Dungeons');
-    expect(notices.shown.map((notice) => notice.message)).toEqual(['Crypt.dd2vtt.bak and README are not maps Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file.']);
+    expect(notices.shown.map((notice) => notice.message)).toEqual(['Crypt.dd2vtt.bak and README are not maps Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file, or a WebM or MP4 video.']);
   });
 
   it('leaves drops outside its window alone, and every drop once it is closed', () => {
@@ -304,11 +321,11 @@ describe('adding maps with the map creator', () => {
   const picker = (): HTMLInputElement => document.querySelector<HTMLInputElement>('input[type=file]')!;
   const pick = (files: File[]): void => { fireEvent.change(picker(), { target: { files } }); };
 
-  it('offers Universal VTT files beside images', () => {
+  it('offers Universal VTT files and videos beside images', () => {
     mount(<TokenCreator isOpen onClose={() => {}} mode="map" selectedCollection="Dungeons" onImportMaps={vi.fn<ImportMaps>()} />);
 
-    expect(picker().accept).toBe('image/*,.dd2vtt,.uvtt,.df2vtt');
-    expect(screen.getByText('PNG · JPG · WebP · Universal VTT')).toBeTruthy();
+    expect(picker().accept).toBe('image/*,.dd2vtt,.uvtt,.df2vtt,.webm,.mp4,.m4v');
+    expect(screen.getByText('PNG · JPG · WebP · Universal VTT · WebM · MP4')).toBeTruthy();
   });
 
   it('offers only images for tokens', () => {

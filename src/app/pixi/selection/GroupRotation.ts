@@ -4,6 +4,7 @@ import type { ViewAtlasStore } from '../../storeFactory';
 import { abandonHistoryTransaction, beginHistoryTransaction, endHistoryTransaction } from '../../stores/history';
 import { holdTokens } from '../../lighting/sightOnDrop';
 import { mapTokens } from '../../tokens/offMap';
+import { levelObjects } from '../../levels/levelObjects';
 import { getDrawingBounds } from '../drawingGeometry';
 import { tokenDiameterInCells } from '../token-renderer/tokenSizing';
 import { GroupRotateButton } from './GroupRotateButton';
@@ -152,7 +153,9 @@ export class GroupRotation {
     const host = this.deps.host();
     const frame = this.deps.frame();
     if (this.turn || !host || !frame) return;
-    const { selectedIds, objects, grid } = store.getState();
+    const state = store.getState();
+    const { selectedIds, grid } = state;
+    const objects = levelObjects(state);
     const tokens = mapTokens(objects);
     const footprints: Footprint[] = [];
     const starts = selectedIds.flatMap((id) => {

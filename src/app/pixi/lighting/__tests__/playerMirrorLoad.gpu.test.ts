@@ -56,7 +56,7 @@ describe('the player window while a lit scene loads', () => {
       camera: () => ({ centerX: SIZE / 2, centerY: SIZE / 2, scale: 1, width: SIZE, height: SIZE }),
       screen: () => WINDOW,
       store,
-      layers: () => playerLightingLayers({ enabled: host.isEnabled(), modeLayer: host.modeLayer, gmOverlays: { wallEditor: gmOverlay, lightZones: gmOverlay, exploredMemory: gmOverlay, doorBadges: gmOverlay, lightMarkers: gmOverlay, rangeRings: gmOverlay, sightAids: gmOverlay } }),
+      layers: () => playerLightingLayers({ enabled: host.isEnabled(), modeLayer: host.modeLayer, gmOverlays: { wallEditor: gmOverlay, lightZones: gmOverlay, levelSurfaces: gmOverlay, exploredMemory: gmOverlay, doorBadges: gmOverlay, lightMarkers: gmOverlay, rangeRings: gmOverlay, sightAids: gmOverlay } }),
       onRendered: () => {
         const layer = engineLayer(viewport);
         // The composite lit the frame in its texture: the layer is on, with its filter

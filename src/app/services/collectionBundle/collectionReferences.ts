@@ -11,6 +11,7 @@ import { withTemplateFiles } from '../../statblocks/bundles/bundleTemplates';
 import { collectionStatblockRoles } from '../../statblocks/roles/collectionStatblockRoles';
 import type { CollectionSettings } from '../../types/collectionSettingsTypes';
 import { systemPresetsOf } from '../mapCollectionRules';
+import { sceneImagePaths } from '../../levels/levelFile';
 import type { BundleFile, BundleFileRole } from './bundleFormat';
 
 /** The scene thumbnail lives next to its map file. */
@@ -151,10 +152,10 @@ export class CollectionReferenceCollector {
     }
   }
 
-  /** The background, token artwork, character statblocks and linked notes a saved map state shows. */
+  /** The backgrounds of every level, token artwork, character statblocks and linked notes a saved map state shows. */
   private collectMapState({ state }: PersistedMapEnvelope): void {
     if (!state) return;
-    this.add(state.background ?? undefined, 'background');
+    for (const image of sceneImagePaths(state)) this.add(image, 'background');
     for (const token of Object.values(state.objects?.tokens ?? {})) {
       this.add(token.imagePath, 'token-image');
       if (token.kind !== 'character') continue;

@@ -16,7 +16,7 @@ import { FogCursorPreview } from './FogCursorPreview';
 import { FogOperationCanvas } from './FogOperationCanvas';
 import { calculateOperationBounds } from './fogRenderUtils';
 import { hitTestFogOp, findConnectedFogOps } from './fogHitTest';
-import { extractConnectedComponentRects } from './fogComponentDelete';
+import { extractConnectedComponentRects, fogWithErasers } from './fogComponentDelete';
 import { canInteractWithFog, resolveFogPreviewAlpha } from './fogVisibilityPolicy';
 import type { LayerVisibility } from '../playerSafeFrame';
 import type { MapRect } from '../../grid/cellNumbering';
@@ -27,6 +27,8 @@ import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { STROKE_COLORS, ShapeStroke, type StrokeMode } from '../../tools/shapeStroke';
 import { drawStrokeArea } from '../utils/strokePreview';
 import { t } from '../../i18n';
+import { everyLevelObjects, levelObjects } from '../../levels/levelObjects';
+import { levelMapKey, placedOnViewedLevel } from '../../levels/sceneLevels';
 
 const DEFAULT_BOUNDS: FogBounds = { x: -2000, y: -2000, width: 4000, height: 4000 };
 const BOUNDS_PADDING = 200;
@@ -102,7 +104,7 @@ export class FogOfWarRenderer {
 
     // ── Coverage compositor + texture ────────────────────────────────
     const bounds = this.calculateFogBounds();
-    this.compositor = new FogCanvasCompositor(bounds, 0.5, this.coverageCache, () => this.store.getState().mapPath);
+    this.compositor = new FogCanvasCompositor(bounds, 0.5, this.coverageCache, () => levelMapKey(this.store.getState().mapPath, this.store.getState()));
 
     this.previewTexture = PIXI.Texture.from(this.compositor.getCanvas());
     this.previewSprite = new PIXI.Sprite(this.previewTexture);
@@ -163,7 +165,7 @@ export class FogOfWarRenderer {
   /** The committed shape drawn by the compositor; null means invalid geometry. */
   getCommittedCoverage(): FogCoverage | null {
     const state = this.store.getState();
-    return this.coverageCache.get(state.objects?.fog ?? EMPTY_FOG, state.mapPath);
+    return this.coverageCache.get(levelObjects(state)?.fog ?? EMPTY_FOG, levelMapKey(state.mapPath, state));
   }
 
   /** Local player captures share the DM renderer but must not share its fog preview opacity. */
@@ -196,7 +198,7 @@ export class FogOfWarRenderer {
     if (!canInteractWithFog({ isPlayerView: this.store.getState().isPlayerView })) {
       return null;
     }
-    const fogOps = this.store.getState().objects?.fog;
+    const fogOps = levelObjects(this.store.getState())?.fog;
     if (!fogOps) return null;
 
     const allOps = Object.values(fogOps);
@@ -212,7 +214,7 @@ export class FogOfWarRenderer {
 
   /** Returns all fog op IDs that are part of the same visual region as `fogId`. */
   public findMergedFogGroup(fogId: string): string[] {
-    const fogOps = this.store.getState().objects?.fog;
+    const fogOps = levelObjects(this.store.getState())?.fog;
     if (!fogOps) return [fogId];
     const allOps = Object.values(fogOps);
     const paintOps = allOps.filter((op) => !op.isErasing);
@@ -271,7 +273,7 @@ export class FogOfWarRenderer {
     this.setFogSpritesInteractive(false);
 
     // Update container visibility
-    const fogOps = this.store.getState().objects?.fog;
+    const fogOps = levelObjects(this.store.getState())?.fog;
     if (!fogOps || Object.keys(fogOps).length === 0) {
       this.container.visible = false;
     } else {
@@ -364,7 +366,7 @@ export class FogOfWarRenderer {
 
   private setupStoreSubscriptions(): void {
     let prevTool = this.store.getState().activeTool;
-    let prevFog = this.store.getState().objects?.fog;
+    let prevFog = levelObjects(this.store.getState())?.fog;
     let prevLoading = this.store.getState().isMapLoading;
     let prevMapPath = this.store.getState().mapPath;
     let prevGMView = this.store.getState().isGMView;
@@ -394,8 +396,8 @@ export class FogOfWarRenderer {
       // Fog data changes (undo/redo, map load, drag commit) → rebuild sprites
       // Skip while a stroke is under way: its preview is on the canvas
       // and during map loading (the isMapLoading→false handler rebuilds instead)
-      if (state.objects?.fog !== prevFog || mapChanged) {
-        prevFog = state.objects?.fog;
+      if (levelObjects(state)?.fog !== prevFog || mapChanged) {
+        prevFog = levelObjects(state)?.fog;
         if (!this.stroke.active && !state.isMapLoading) {
           this.refreshBounds();
           this.rebuildFogSprites();
@@ -448,7 +450,7 @@ export class FogOfWarRenderer {
   /** Rebuild all per-operation sprites from store. */
   private rebuildFogSprites(): void {
     try {
-      const fogOps = this.store.getState().objects?.fog;
+      const fogOps = levelObjects(this.store.getState())?.fog;
       const allOps = fogOps ? Object.values(fogOps) : [];
       // Prepare the committed picture before an editing proxy can fail.
       const rendered = this.renderPreviewFromStore();
@@ -591,32 +593,8 @@ export class FogOfWarRenderer {
     }
 
     const state = this.store.getState();
-    const currentFog = state.objects?.fog ?? {};
-    const nextFog: Record<string, FogOperation> = { ...currentFog };
-    const timestampBase = Date.now();
-    let added = 0;
-
-    for (let i = 0; i < eraseRects.length; i++) {
-      const rect = eraseRects[i]!;
-      if (rect.width <= 0 || rect.height <= 0) {
-        continue;
-      }
-      const id = `fog_${timestampBase}_${Math.random().toString(36).slice(2, 9)}_${i}`;
-      nextFog[id] = {
-        id,
-        kind: 'fog',
-        timestamp: timestampBase + i,
-        type: 'rectangle',
-        isErasing: true,
-        x: rect.x,
-        y: rect.y,
-        width: rect.width,
-        height: rect.height,
-      };
-      added += 1;
-    }
-
-    if (added === 0) {
+    const nextFog = fogWithErasers(everyLevelObjects(state).fog, eraseRects, Date.now(), placedOnViewedLevel(state));
+    if (nextFog === null) {
       return false;
     }
     state.setFogOperations(nextFog);
@@ -785,7 +763,7 @@ export class FogOfWarRenderer {
     const shape = this.stroke.shape();
     if (shape?.type === 'brush') {
       const tempOp: FogOperation = { id: '__preview__', kind: 'fog', timestamp: Date.now(), isErasing: erasing, ...shape };
-      const committed = this.store.getState().objects?.fog ?? EMPTY_FOG;
+      const committed = levelObjects(this.store.getState())?.fog ?? EMPTY_FOG;
       this.compositor.composite(committed, tempOp);
       this.updatePreviewTexture();
       return;
@@ -794,7 +772,7 @@ export class FogOfWarRenderer {
   }
 
   private renderPreviewFromStore(): boolean {
-    const ops = this.store.getState().objects?.fog ?? EMPTY_FOG;
+    const ops = levelObjects(this.store.getState())?.fog ?? EMPTY_FOG;
     const rendered = this.compositor.composite(ops);
     this.updatePreviewTexture();
     return rendered;
@@ -841,7 +819,7 @@ export class FogOfWarRenderer {
         source: string;
       }
     | null {
-    const fog = this.store.getState().objects?.fog;
+    const fog = levelObjects(this.store.getState())?.fog;
     if (!fog) {
       return null;
     }

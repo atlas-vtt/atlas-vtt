@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { LightPopoverHost } from '../pixi/lighting/LightPopover';
 import { LightZonePopoverHost } from '../pixi/lighting/LightZonePopover';
+import { LevelSurfacePopoverHost } from '../pixi/levelSurfaces/LevelSurfacePopover';
 import { SceneLightingPanelHost } from '../pixi/lighting/SceneLightingPanel';
 import { App } from 'obsidian';
 import { Application } from 'pixi.js';
@@ -13,6 +14,7 @@ import { ViewActionsMenu } from './components/ViewActionsMenu';
 import { UndoRedoControls } from './components/UndoRedoControls';
 import { BottomToolbarRow } from './components/BottomToolbarRow';
 import DMScreen from './components/DMScreen';
+import { DungeonGeneratorOverlay } from '../packages/components/dungeon-generator/DungeonGeneratorOverlay';
 import { InitiativeTracker } from './components/InitiativeTracker';
 import { DiceRollLog } from './components/dice-log/DiceRollLog';
 import { DiceRollDisplay } from './components/dice/DiceRollDisplay';
@@ -20,6 +22,8 @@ import { TurnAnnouncer } from './components/TurnAnnouncer';
 import { RandomTables } from './components/randomTables/RandomTablesPanel';
 import { MapLoadingOverlay } from './components/MapLoadingOverlay';
 import { SceneTabBar } from './components/SceneTabBar';
+import { LevelSwitcher } from './components/levels/LevelSwitcher';
+import { LevelLinkPopoverHost } from './components/levels/LevelLinkPopover';
 import { SceneSwitcher } from './components/scene-switcher/SceneSwitcher';
 import { presentTab as presentSceneTab } from '../services/PlayerWindowPresenter';
 import { usePresentedScene } from './hooks/usePresentedScene';
@@ -190,6 +194,10 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           </BottomToolbarRow>
 
           {!isPlayerView && !isMapLoading && (
+            <PanelBoundary name="the level switcher"><LevelSwitcher /><LevelLinkPopoverHost /></PanelBoundary>
+          )}
+
+          {!isPlayerView && !isMapLoading && (
             <PanelBoundary name="the scene switcher">
               <SceneSwitcher isOpen={isSceneSwitcherOpen} onOpenChange={setSceneSwitcherOpen} onSwitchTab={switchTab} onPresentTab={presentTab} />
             </PanelBoundary>
@@ -220,6 +228,8 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
             </PanelBoundary>
           )}
 
+          {!isPlayerView && <PanelBoundary name="the dungeon generator"><DungeonGeneratorOverlay /></PanelBoundary>}
+
           {/* Dice Roll Log - left side panel */}
           <PanelBoundary name="the dice log"><DiceRollLog isOpen={isDiceLogOpen} onClose={() => setDiceLogOpen(false)} /></PanelBoundary>
 
@@ -228,7 +238,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
 
           {/* Loot Roller - floating window, DM only */}
           {!isPlayerView && <PanelBoundary name="the random tables"><RandomTables /></PanelBoundary>}
-          {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /><LevelSurfacePopoverHost /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the scene lighting"><SceneLightingPanelHost /></PanelBoundary>}
 
           {/* Player Character Sheet - REMOVED: Players should only edit via their character sheet file */}

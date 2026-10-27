@@ -11,7 +11,7 @@ export const LOCAL_PLAYER_VIEW_TYPE = 'atlas-vtt-local-player';
 
 /** The part of an Atlas map tab's store the companion reads. */
 export type SceneState = Pick<ViewState, 'mapPath' | 'mapLoaded' | 'isMapLoading' | 'background' | 'lighting' | 'objects' | 'grid' | 'heldTokens' | 'exploredMask' | 'isDragging' | '_audioDirty'>
-  & Partial<Pick<ViewState, 'tokenSettings'>>;
+  & Partial<Pick<ViewState, 'tokenSettings' | 'levels' | 'viewedLevel' | 'exploredMasks' | 'levelAlignments'>>;
 
 /**
  * What the companion asks of an Atlas tab's renderer (`PixiRendererOrchestrator`): the tokens the

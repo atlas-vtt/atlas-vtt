@@ -4,6 +4,7 @@ import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { AudioSource } from '../../types/audioTypes';
 import { destroyTree } from '../utils/destroyTree';
+import { levelObjects } from '../../levels/levelObjects';
 
 const ICON_RADIUS = 10;
 const HIT_TOLERANCE = 12;
@@ -56,7 +57,7 @@ export class AudioRenderer {
 
     const unsub = this.store.subscribe((state) => {
       const toolChanged = state.activeTool !== prevTool;
-      const audiosChanged = state.objects.audios !== prevAudios;
+      const audiosChanged = levelObjects(state).audios !== prevAudios;
 
       if (toolChanged) {
         prevTool = state.activeTool;
@@ -69,7 +70,7 @@ export class AudioRenderer {
       }
 
       if (audiosChanged && this.visible) {
-        prevAudios = state.objects.audios;
+        prevAudios = levelObjects(state).audios;
         this.redraw();
       }
     });
@@ -85,7 +86,7 @@ export class AudioRenderer {
     this.iconGraphics.clear();
     this.ringGraphics.clear();
 
-    const audios = this.store.getState().objects.audios;
+    const audios = levelObjects(this.store.getState()).audios;
 
     for (const source of Object.values(audios)) {
       this.drawIcon(source);
@@ -145,7 +146,7 @@ export class AudioRenderer {
 
   /** Hit-test world coordinates against all audio source icons. */
   hitTestAudioSources(worldX: number, worldY: number): string | null {
-    const audios = this.store.getState().objects.audios;
+    const audios = levelObjects(this.store.getState()).audios;
     const tolSq = HIT_TOLERANCE * HIT_TOLERANCE;
 
     for (const source of Object.values(audios)) {

@@ -19,4 +19,5 @@ export const atlasLinks = {
   'atlasLinks.snapshotMissing': 'This scene has no snapshot named "{name}".',
   'atlasLinks.snapshotOf': 'Snapshot of {scene}',
   'atlasLinks.tokenCount': { one: '{count} token', other: '{count} tokens' },
+  'atlasLinks.tokenRange': { one: '{range} token', other: '{range} tokens' },
 } as const satisfies Record<string, Message>;

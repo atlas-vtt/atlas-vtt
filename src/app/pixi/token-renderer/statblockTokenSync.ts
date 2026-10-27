@@ -6,6 +6,7 @@
  */
 
 import { difficultyLabel, statblockDisplayName } from '../../creatures/statblockRating';
+import { everyLevelObjects } from '../../levels/levelObjects';
 import type { ResourceDefinition } from '../../resources/resourceTypes';
 import type { LinkChangeEvent } from '../../services/TokenStatblockLinkService';
 import { syncedResources, type StatblockFields } from '../../resources/statblockResourceSync';
@@ -56,7 +57,7 @@ export function syncLinkedTokens(
   definitions: readonly ResourceDefinition[],
   image: string | null,
 ): void {
-  const entries = statblockTokenChanges(sceneTokens(store.getState().objects), statblockPath, statblock, definitions, image);
+  const entries = statblockTokenChanges(sceneTokens(everyLevelObjects(store.getState())), statblockPath, statblock, definitions, image);
   if (entries.length > 0) runUntracked(store, () => store.getState().updateTokens(entries));
 }
 
@@ -70,7 +71,7 @@ export type LinkUpdates = (token: TokenEntity, statblockPath: string) => TokenUp
  */
 export function applyLinkChange(store: ViewAtlasStore, event: LinkChangeEvent, linkUpdates: LinkUpdates): void {
   const entries: TokenChanges = [];
-  for (const [id, token] of Object.entries(sceneTokens(store.getState().objects))) {
+  for (const [id, token] of Object.entries(sceneTokens(everyLevelObjects(store.getState())))) {
     if (token.imagePath !== event.tokenImagePath) continue;
     const changes = event.type === 'unlinked'
       ? STATBLOCK_UNLINK_UPDATES

@@ -14,6 +14,7 @@ import { WallRenderer } from '../vision/WallRenderer';
 import { WallDrawingSession } from './WallDrawingSession';
 import { splitWall } from './wallEdits';
 import { chainEndingAt, wallEndNear } from './wallEnds';
+import { levelObjects } from '../../levels/levelObjects';
 
 interface SegmentEvent { p1: Point; p2: Point; type: WallType; chainId: string }
 
@@ -201,7 +202,7 @@ export class WallEditor {
 
   /** Starts a chain at a wall end; it continues the chain of the one wall ending there. */
   private startChainAt(point: Point): void {
-    this.tool.continueFromEndpoint(point.x, point.y, chainEndingAt(point, this.store.getState().objects.walls));
+    this.tool.continueFromEndpoint(point.x, point.y, chainEndingAt(point, levelObjects(this.store.getState()).walls));
   }
 
   /** Ends the stroke being drawn, on a wall end close to where it stopped (or its own start) unless Alt was held. */
@@ -234,17 +235,17 @@ export class WallEditor {
   }
 
   private wallEndNear(point: Point, also: readonly Point[] = []): Point | null {
-    return wallEndNear(point, this.store.getState().objects.walls, this.renderer.zoom, { also });
+    return wallEndNear(point, levelObjects(this.store.getState()).walls, this.renderer.zoom, { also });
   }
 
   private vertexAt(point: Point): Point | null {
     const hit = this.renderer.hitTestVertices(point.x, point.y);
-    return hit ? this.store.getState().objects.walls[hit.wallId]?.[hit.vertex] ?? null : null;
+    return hit ? levelObjects(this.store.getState()).walls[hit.wallId]?.[hit.vertex] ?? null : null;
   }
 
   private split(wallId: string, at: Point): void {
     const state = this.store.getState();
-    const wall = state.objects.walls[wallId];
+    const wall = levelObjects(state).walls[wallId];
     const halves = wall ? splitWall(wall, at) : null;
     if (!halves) return;
     runHistoryTransaction(this.store, () => {

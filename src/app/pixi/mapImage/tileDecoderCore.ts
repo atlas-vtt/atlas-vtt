@@ -1,3 +1,5 @@
+import type { ArtAlpha } from '../../levels/artRaster';
+import { roofPieces, type RoofPieces } from '../../levels/roofs';
 import { OpenError } from './decodedLevels';
 import { MapEntries, NeedBytes, type HeldBitmap, type MapEntry } from './mapEntries';
 import type { TileRef } from './pyramid';
@@ -91,6 +93,28 @@ export class TileDecoderCore {
 
   async overview(id: number, handle: number, maxSide: number): Promise<ImageBitmap | null> {
     return this.server.overview(id, handle, this.entryOf(handle), maxSide);
+  }
+
+  /** Which pixels of the overview fit within `maxSide` hold art (`opaquePixels`), or null when the request was cancelled meanwhile. */
+  async alphaRaster(id: number, handle: number, maxSide: number, threshold: number): Promise<ArtAlpha | null> {
+    const overview = await this.overview(id, handle, maxSide);
+    if (!overview) return null;
+    try {
+      return { width: overview.width, height: overview.height, opaque: this.deps.graphics.opaquePixels(overview, threshold) };
+    } finally {
+      overview.close();
+    }
+  }
+
+  /** The pieces of a roof image (`roofPieces`) over its overview fit within `maxSide`, or null when the request was cancelled meanwhile. */
+  async roofPieces(id: number, handle: number, maxSide: number): Promise<RoofPieces | null> {
+    const overview = await this.overview(id, handle, maxSide);
+    if (!overview) return null;
+    try {
+      return roofPieces(this.deps.graphics.alphaBytes(overview), overview.width, overview.height);
+    } finally {
+      overview.close();
+    }
   }
 
   cancel(id: number): void {

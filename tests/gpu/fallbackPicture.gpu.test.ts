@@ -95,6 +95,35 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
     }
   });
 
+  it('keeps the viewed level\'s openings black, which it draws nothing below, art and all', () => {
+    const pictures = custom({ width: 320, height: 320 }, { tokens: [token('scout', 60, 60, { enabled: true })] });
+    try {
+      const { store } = pictures;
+      const levels = [
+        { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: null },
+        { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: null },
+      ];
+      const square = (x: number, y: number, side: number): Point[] => [{ x, y }, { x: x + side, y }, { x: x + side, y: y + side }, { x, y: y + side }];
+      store.setState((state) => ({
+        levels,
+        viewedLevel: 'upper',
+        objects: {
+          ...state.objects,
+          tokens: { scout: { ...token('scout', 60, 60, { enabled: true }), level: 'upper' }, below: { ...token('below', 200, 200, { enabled: false }), level: 'ground' } },
+          levelSurfaces: { hole: { id: 'hole', kind: 'level-surface', level: 'upper', open: true, polygon: square(150, 150, 120) } },
+        },
+      }));
+      const whole = { scale: 1, centre: { x: 160, y: 160 } };
+      // The scout sees the whole room: its floor shows, the opening in it is black.
+      expect(pictures.shownAt(whole, 100, 100)).toEqual({ canvas: 'floor', webgl: 'floor' });
+      for (const [x, y] of [[160, 160], [210, 210], [265, 265]] as const) expect(pictures.shownAt(whole, x, y)).toEqual({ canvas: 'black', webgl: 'black' });
+      // Off the opening by more than the black's own reach, the floor shows.
+      expect(pictures.shownAt(whole, 140, 200)).toEqual({ canvas: 'floor', webgl: 'floor' });
+    } finally {
+      pictures.close();
+    }
+  });
+
   it('shows what two, three and four tokens see together, and nothing else', () => {
     // Four tokens around a pillar, each seeing 30 ft: where exactly two saw the floor it was black, where three saw it it showed.
     const pillar = [{ x: 150, y: 150 }, { x: 170, y: 150 }, { x: 170, y: 170 }, { x: 150, y: 170 }];

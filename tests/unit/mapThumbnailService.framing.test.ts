@@ -95,7 +95,8 @@ describe('scene thumbnail framing', () => {
     expect(frames[0]!.x).toBeCloseTo(expected.x);
     expect(frames[0]!).toMatchObject({ y: expected.y, resolution: expected.resolution });
     const rendered = generateTexture.mock.calls[0]![0];
-    expect(frames[0]).toEqual({ x: frame().x, y: frame().y, resolution: rendered.resolution });
+    // The frame names its size too, so the levels below are drawn for it.
+    expect(frames[0]).toEqual({ x: frame().x, y: frame().y, resolution: rendered.resolution, width: frame().width, height: frame().height });
   });
 
   test('asks for a canvas render even when the map view fails to capture the frame', async () => {

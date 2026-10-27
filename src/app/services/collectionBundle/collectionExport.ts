@@ -27,8 +27,8 @@ import { t } from '../../i18n';
  */
 const EXPORTED_TYPES: ReadonlySet<Asset['type']> = new Set<Asset['type']>(['token', 'map', 'scene', 'encounter']);
 
-/** Images and audio are already compressed; deflating them only costs time. */
-const STORED_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|mp3|ogg|wav|m4a|zip)$/i;
+/** Images, audio and video are already compressed; deflating them only costs time. */
+const STORED_EXTENSIONS = /\.(png|jpe?g|webp|gif|avif|mp3|ogg|wav|m4a|webm|mp4|m4v|zip)$/i;
 
 /** What an export would pack, shown before the user decides how to export. */
 export interface ExportPreview {

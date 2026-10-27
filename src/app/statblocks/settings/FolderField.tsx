@@ -46,6 +46,8 @@ interface FolderFieldProps {
   onChange: (folder: string) => void;
   /** Names the field for screen readers. */
   label: string;
+  /** What an empty field means; Obsidian's location for new notes where not given. */
+  placeholder?: string;
 }
 
 /**
@@ -53,7 +55,7 @@ interface FolderFieldProps {
  * not exist yet may be typed. The suggestions are the field's own list: arrow keys move through
  * them, Enter picks, Escape closes them.
  */
-export function FolderField({ app, value, onChange, label }: FolderFieldProps): React.JSX.Element {
+export function FolderField({ app, value, onChange, label, placeholder = 'Default location for new notes' }: FolderFieldProps): React.JSX.Element {
   const listId = useId();
   const listRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -115,7 +117,7 @@ export function FolderField({ app, value, onChange, label }: FolderFieldProps): 
         aria-expanded={showing}
         aria-controls={showing ? listId : undefined}
         aria-activedescendant={showing ? optionId(active) : undefined}
-        placeholder="Default location for new notes"
+        placeholder={placeholder}
         spellCheck={false}
         value={value}
         onChange={(event) => type(event.target.value)}

@@ -3,7 +3,7 @@ import type { Point } from '../types/visionTypes';
 import { isRecord } from '../utils/guards';
 import { isHexColor } from '../utils/hexColor';
 import type { AmbientLight, AmbientZone } from '../vision/sight';
-import { pointInPolygon } from '../vision/visibility';
+import { hasArea } from '../vision/polygonArea';
 
 /** The corners a zone may have: the engine reads its outline from a list of this length. */
 export const MAX_ZONE_CORNERS = 64;
@@ -19,17 +19,6 @@ const lists = new WeakMap<object, LightZone[]>();
 
 function isPoint(value: unknown): value is Point {
   return isRecord(value) && typeof value.x === 'number' && typeof value.y === 'number' && Number.isFinite(value.x) && Number.isFinite(value.y);
-}
-
-/** Whether corners enclose an area: three on one line, or all in one place, enclose none. */
-export function hasArea(polygon: readonly Point[]): boolean {
-  let twice = 0;
-  for (let i = 0; i < polygon.length; i++) {
-    const a = polygon[i]!;
-    const b = polygon[(i + 1) % polygon.length]!;
-    twice += a.x * b.y - b.x * a.y;
-  }
-  return Math.abs(twice) > 1e-6;
 }
 
 /** A zone as it is read: `id` is its place in the record, which is how the store finds it. */
@@ -80,28 +69,4 @@ const NONE: LightZone[] = [];
 /** A scene's lighting as the rules read it: itself, or with its zones when it has any. */
 export function withZones<Lighting extends SceneLighting>(lighting: Lighting, zones: readonly AmbientZone[]): Lighting & AmbientLight {
   return zones.length > 0 ? { ...lighting, zones } : lighting;
-}
-
-/** Where a zone's handle sits: at its centroid, or at a point inside it when the zone bends around its centroid. */
-export function zoneHandlePoint(polygon: readonly Point[]): Point {
-  let area = 0;
-  let x = 0;
-  let y = 0;
-  for (let i = 0; i < polygon.length; i++) {
-    const a = polygon[i]!;
-    const b = polygon[(i + 1) % polygon.length]!;
-    const cross = a.x * b.y - b.x * a.y;
-    area += cross;
-    x += (a.x + b.x) * cross;
-    y += (a.y + b.y) * cross;
-  }
-  const centroid = Math.abs(area) > 1e-6 ? { x: x / (3 * area), y: y / (3 * area) } : polygon[0]!;
-  if (pointInPolygon(centroid, polygon as Point[])) return centroid;
-  // ponytail: the middle of the first corner's ear; a pole of inaccessibility if zones get shapes this misses.
-  for (let i = 0; i < polygon.length; i++) {
-    const [a, b, c] = [polygon[i]!, polygon[(i + 1) % polygon.length]!, polygon[(i + 2) % polygon.length]!];
-    const ear = { x: (a.x + b.x + c.x) / 3, y: (a.y + b.y + c.y) / 3 };
-    if (pointInPolygon(ear, polygon as Point[])) return ear;
-  }
-  return polygon[0]!;
 }

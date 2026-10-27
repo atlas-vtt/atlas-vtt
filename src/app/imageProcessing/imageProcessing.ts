@@ -164,6 +164,24 @@ export function optimizeImage(source: Blob, preset: ImagePreset, options: Proces
   return process(source, { layout: { kind: 'fit', maxWidth, maxHeight, maxPixels }, quality }, options);
 }
 
+/**
+ * A picture drawn off the main thread (a generated map), encoded as WebP like `optimizeImage`
+ * encodes an upload, without a PNG between: the bitmap moves to an image worker, which encodes it
+ * as it is where it fits the preset. The bitmap is taken over.
+ */
+export function optimizeBitmap(source: ImageBitmap, preset: ImagePreset, options: Pick<ProcessOptions, 'signal' | 'thumbnail' | 'background'> = {}): Promise<ImageJobResult> {
+  const { maxWidth, maxHeight, maxPixels, quality } = preset;
+  const job: ImageJob = { source, layout: { kind: 'fit', maxWidth, maxHeight, maxPixels }, quality, thumbnail: options.thumbnail, webpOnly: true };
+  let workers: ImageWorkerPool;
+  try {
+    workers = workerPool();
+  } catch (error) {
+    source.close();
+    throw error;
+  }
+  return workers.run(job, { signal: options.signal, background: options.background ?? false, cost: jobCost(source), transfer: [source] });
+}
+
 export interface FrameOptions extends ProcessOptions {
   minSize: number;
   maxSize: number;

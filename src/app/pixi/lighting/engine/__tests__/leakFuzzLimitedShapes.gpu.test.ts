@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { RenderTexture } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
-import { limitedMargin, sealTolerance, wallBand, worldTexel } from '../../../../lighting/lightingConstants';
+import { lightFade, limitedMargin, sealTolerance, wallBand, worldTexel } from '../../../../lighting/lightingConstants';
 import { sealWalls } from '../../../../lighting/sealWalls';
 import type { WallSegment } from '../../../../types/wallTypes';
 import { crossedByHand, distanceToSegment, grazes, turningPoints } from '../../../../vision/__tests__/byHand';
@@ -103,9 +103,9 @@ async function fuzz(name: ShapeName, seed: number, trials: number, lie = false):
           if (crossedByHand(from, point, walls, 'light').limited === 0 || grazes(from, point, turning, 1)) continue;
           report.texels++;
           if (stopped && isLit) report[way.limited > 1 ? 'pastSecond' : 'shadowBehindOne']++;
-          // The rule's light, clear of every wall's own width and of the soft edge of a solid wall's shadow.
+          // The rule's light where the picture's fade leaves a fifth of it, clear of every wall's own width and of the soft edge of a solid wall's shadow.
           const clear = wallBand(texel) + limitedMargin(texel) + texel;
-          if (stopped || Math.hypot(point.x - from.x, point.y - from.y) > light.dim || walls.some((wall) => distanceToSegment(point, wall.p1, wall.p2) < clear)) continue;
+          if (stopped || lightFade(light.bright, light.dim, Math.hypot(point.x - from.x, point.y - from.y)) < 0.2 || walls.some((wall) => distanceToSegment(point, wall.p1, wall.p2) < clear)) continue;
           if (grazes(from, point, turning, light.flame + clear) || solid.some((wall) => distanceToSegment(from, wall.p1, wall.p2) < clear)) continue;
           report.ruleLit++;
           if (!isLit) report.lightWrong++;

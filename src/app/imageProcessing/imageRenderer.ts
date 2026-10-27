@@ -140,10 +140,7 @@ async function renderCopies(output: Drawable, job: ImageJob): Promise<Pick<Image
  * and so is everything but a WebP where the job's result must be one.
  */
 async function keepsSource(job: ImageJob, source: Blob, bitmap: ImageBitmap): Promise<boolean> {
-  const { layout } = job;
-  if (layout.kind !== 'fit') return false;
-  const fitted = fitSize(bitmap, layout);
-  if (fitted.width !== bitmap.width || fitted.height !== bitmap.height) return false;
+  if (!fitsAsItIs(bitmap, job.layout)) return false;
   const format = (await imageHeader(source))?.format;
   return job.webpOnly ? format === 'webp' : format !== undefined && KEPT_FORMATS.has(format);
 }
@@ -167,9 +164,30 @@ function render(bitmap: ImageBitmap, source: Size, layout: ImageLayout): Offscre
   return layout.kind === 'fit' ? renderFit(bitmap, fitSize(source, layout)) : renderFrame(bitmap, layout);
 }
 
+/**
+ * A bitmap that needs no scaling (a generated map), encoded as it is: handed to a canvas instead of
+ * drawn onto one, so its pixels are neither copied nor held twice.
+ */
+async function encodeAsItIs(bitmap: ImageBitmap, job: ImageJob): Promise<ImageJobResult> {
+  const sourcePreview = await renderCopy(bitmap, job.sourcePreview);
+  const copies = await renderCopies(bitmap, job);
+  const canvas = new OffscreenCanvas(bitmap.width, bitmap.height);
+  const renderer = canvas.getContext('bitmaprenderer');
+  if (!renderer) throw new Error('Could not create a drawing surface for the image.');
+  renderer.transferFromImageBitmap(bitmap);
+  return { image: await encode(canvas, job.quality), sourcePreview, ...copies };
+}
+
+function fitsAsItIs(bitmap: ImageBitmap, layout: ImageLayout): boolean {
+  if (layout.kind !== 'fit') return false;
+  const fitted = fitSize(bitmap, layout);
+  return fitted.width === bitmap.width && fitted.height === bitmap.height;
+}
+
 export async function renderImageJob(job: ImageJob): Promise<ImageJobResult> {
   const bitmap = await decode(job);
   try {
+    if (job.source instanceof ImageBitmap && fitsAsItIs(bitmap, job.layout)) return await encodeAsItIs(bitmap, job);
     const source = shownSource(bitmap, job.scaledDecode);
     const sourcePreview = await renderCopy(bitmap, job.sourcePreview);
     if (job.source instanceof Blob && !job.scaledDecode && await keepsSource(job, job.source, bitmap)) {

@@ -43,7 +43,8 @@ function isViewCamera(value: unknown): value is ViewCamera {
   return isRecord(value)
     && typeof value.centerX === 'number'
     && typeof value.centerY === 'number'
-    && typeof value.scale === 'number';
+    && typeof value.scale === 'number'
+    && (value.level === undefined || typeof value.level === 'string');
 }
 
 /**
@@ -69,6 +70,11 @@ export class AtlasView extends FileView {
    * by MapService. Nothing is held while waiting, so a stalled load cannot block the tabs.
    */
   private sceneRequests = 0;
+  /**
+   * The level the scene being opened shows first, where its opening asked for one (Obsidian's
+   * view state `level`: a generated dungeon opens on its entry floor); taken by the next load.
+   */
+  private openingLevel: string | null = null;
   private plugin: AtlasVTTPlugin | undefined;
   private resizeObserver: ResizeObserver | null = null;
   private lastContainerWidth: number = 0;
@@ -108,6 +114,7 @@ export class AtlasView extends FileView {
     // Workspace state comes from workspace.json, so every field is validated before use
     const persisted = isRecord(state) ? state : {};
     const stateFilePath = typeof persisted.file === 'string' ? persisted.file : null;
+    this.openingLevel = typeof persisted.level === 'string' ? persisted.level : null;
 
     // Restore tabs from persisted state if present
     const persistedTabs = Array.isArray(persisted.tabs) ? persisted.tabs.filter(isSceneTab) : [];
@@ -438,10 +445,12 @@ export class AtlasView extends FileView {
   private saveViewportState(tabId: string): void {
     const viewport = this._serviceManager.getRendererService().getViewport();
     if (!viewport) return;
+    const { viewedLevel } = this.store.getState();
     this.viewportCache.set(tabId, {
       centerX: viewport.center.x,
       centerY: viewport.center.y,
       scale: viewport.scale.x,
+      ...(viewedLevel ? { level: viewedLevel } : {}),
     });
   }
 
@@ -512,6 +521,11 @@ export class AtlasView extends FileView {
     }
   }
 
+  /** Points what the scene names at or below a renamed folder at its new place, untracked like a renamed file. */
+  public handleFolderRenamed(oldPath: string, newPath: string): void {
+    runUntracked(this.store, () => this.store.getState().retargetRenamedFolder(oldPath, newPath));
+  }
+
   /**
    * Lets `rewrite` replace the file of the scene the store holds, then loads the scene again
    * from it, keeping the camera where it is. Pending changes are saved first
@@ -564,6 +578,8 @@ export class AtlasView extends FileView {
    * @param camera where the file's tab opens when it is the active tab; without one the map is fitted
    */
   public async onLoadFile(file: TFile, camera?: ViewCamera): Promise<void> {
+    const level = this.openingLevel ?? undefined;
+    this.openingLevel = null;
     if (!isScenePath(file.path)) {
       showNotice(`"${file.name}" is not an Atlas scene. To play on a map image, create a scene from it in the asset manager.`, 5000);
       // onOpen shows the loading overlay before it gets here; nothing else will hide it
@@ -577,7 +593,7 @@ export class AtlasView extends FileView {
       // File is already a tab
       if (tabState.activeTabId === existingTab.id) {
         this.sceneRequests++;
-        if (await this.performSceneLoad(file, camera)) {
+        if (await this.performSceneLoad(file, camera, level)) {
           this.tabMetaStore.getState().markTabLoaded(existingTab.id);
           this.rememberOpened(file);
         }
@@ -598,7 +614,7 @@ export class AtlasView extends FileView {
       this.file = file;
 
       // Perform the scene load (single store — loadMap handles clear + rehydrate)
-      if (await this.performSceneLoad(file)) {
+      if (await this.performSceneLoad(file, undefined, level)) {
         this.tabMetaStore.getState().markTabLoaded(tabId);
         this.rememberOpened(file);
       } else if (request === this.sceneRequests) this.showLoadedTab();
@@ -612,9 +628,10 @@ export class AtlasView extends FileView {
    * Loads a scene into the existing renderer and UI. Every renderer follows the
    * store, so switching maps never rebuilds the PIXI application.
    * @param camera where the scene is shown; the loading screen waits for its tiles. Without one the map is fitted.
+   * @param level the level shown first, over the camera's; unset, the camera's, else the first
    * @returns whether the view now shows the scene: false when loading failed or a later request replaced this one
    */
-  private async performSceneLoad(file: TFile, camera?: ViewCamera): Promise<boolean> {
+  private async performSceneLoad(file: TFile, camera?: ViewCamera, level?: string): Promise<boolean> {
     // The renderer still shows the previous scene; its pending thumbnail is taken now or never
     this._serviceManager.flushSceneThumbnail();
     this.store.getState().setMapLoading(true, 0, t('view.preparing'));
@@ -628,7 +645,7 @@ export class AtlasView extends FileView {
     }
 
     const mapService = this._serviceManager.getMapService();
-    return (await mapService.loadMapFromFile(rendererService, file, camera ?? null)) !== null;
+    return (await mapService.loadMapFromFile(rendererService, file, camera ?? null, level)) !== null;
   }
 
   /** Remembers the scene the GM opened, for the dashboard's "Continue your adventure". Never fails the load. */

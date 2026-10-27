@@ -111,6 +111,21 @@ describe('encounter spawning', () => {
     expect(spawned.map(t => [t.name, t.showRing])).toEqual([['Goblin', false], ['Knight', true]]);
   });
 
+  it('rolls a creature\'s dice into that many tokens on every spawn, laid out in the grid', async () => {
+    const { ctx, spawned } = setup();
+    const random = vi.spyOn(Math, 'random').mockReturnValue(0.999);
+    try {
+      await spawnEncounterTokens(ctx, {
+        ...encounter([{ id: 'goblin', name: 'Goblin', imagePath: 'tokens/goblin.png', size: 1, quantity: '1d3', cell: { q: 0, r: 0 }, offset: { x: 0, y: 0 } }]),
+        formation: { gridType: 'square', pitch: 70 },
+      });
+    } finally {
+      random.mockRestore();
+    }
+    expect(spawned.map((token) => token.name)).toEqual(['Goblin', 'Goblin', 'Goblin']);
+    expect(new Set(spawned.map((token) => `${String(token.x)},${String(token.y)}`)).size).toBe(3);
+  });
+
   it('restores the ring saved with a token captured from a map', async () => {
     const { ctx, spawned } = setup({ goblin: { showRing: true } });
     await spawnEncounterTokens(ctx, encounter([

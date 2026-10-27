@@ -41,10 +41,15 @@ export function keptByParts(wall: WallSegment): Pick<WallSegment, 'chainId' | 'd
   };
 }
 
-/** Open doors and walls shrunk to a point block nothing. */
-export function blocksNothing(wall: WallSegment): boolean {
+/** Open doors and walls shrunk to a point stop nothing, not even a token. */
+export function stopsNothing(wall: WallSegment): boolean {
   const openDoor = (wall.type === 'door' || wall.type === 'secret-door') && !(wall.closed ?? true);
   return openDoor || (wall.p1.x === wall.p2.x && wall.p1.y === wall.p2.y);
+}
+
+/** Walls that block neither sight nor light: open doors, walls shrunk to a point, and windows (`blocks: 'movement'`), which stop a token alone. */
+export function blocksNothing(wall: WallSegment): boolean {
+  return wall.blocks === 'movement' || stopsNothing(wall);
 }
 
 export interface BlockingWalls {

@@ -2,6 +2,8 @@
 export interface DomHost {
   createCanvas(doc?: Document, size?: { width: number; height: number }): HTMLCanvasElement;
   createDiv(parent: HTMLElement, cls: string): HTMLDivElement;
+  /** A video element of `doc` that is never attached: PIXI draws its frames. */
+  createVideo(doc: Document): HTMLVideoElement;
   ownerWindow(node: Node): Window;
   activeDocument(): Document;
 }

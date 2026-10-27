@@ -1,0 +1,91 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Dungeon generator – picture cards (themes, styles)
+// ═══════════════════════════════════════════════════════════════════════════
+// The card is its picture: the name lies on it over a soft fade, the chosen one is ringed in the
+// accent a little outside its edge, so the picture keeps its whole size.
+
+.atlas-dungeon-theme,
+.atlas-dungeon-style-card {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  border-radius: $radius-xl;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  @include atlas-corner-shape;
+  transition: box-shadow $transition-fast $transition-ease, transform $transition-press $transition-ease-out;
+
+  &:hover {
+    box-shadow: 0 0 0 $border-width-l var(--background-primary), 0 0 0 calc(2 * #{$border-width-l}) var(--background-modifier-border-hover);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &.atlas-active,
+  &.atlas-active:hover {
+    box-shadow: 0 0 0 $border-width-l var(--background-primary), 0 0 0 calc(2 * #{$border-width-l}) var(--interactive-accent);
+  }
+
+  @include atlas-focus-ring;
+}
+
+.atlas-dungeon-theme__art,
+.atlas-dungeon-style-card__art {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--background-secondary);
+  @include atlas-corner-shape;
+
+  // A hairline over the picture, so a white or black look keeps its edge on any theme.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 $border-width-s var(--background-modifier-border);
+    pointer-events: none;
+  }
+}
+
+// The name on the picture's foot, over a fade that keeps it legible on paper as on ink.
+.atlas-dungeon-card-name {
+  position: absolute;
+  inset: auto 0 0;
+  z-index: 1;
+  @include atlas-truncate;
+  padding: $spacing-l $spacing-s $spacing-s;
+  background: linear-gradient(to bottom, transparent, rgb(0 0 0 / 0.62));
+  color: #fff;
+  font-size: $font-ui-small;
+  font-weight: $font-weight-medium;
+  line-height: 1.2;
+  text-align: left;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.5);
+}
+
+// A card's first picture fades in where its skeleton was; a gallery's cards arrive together.
+.atlas-dungeon-theme__picture > canvas,
+.atlas-dungeon-style-card__picture {
+  animation: atlas-dungeon-card-reveal $transition-normal $transition-ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes atlas-dungeon-card-reveal {
+  from { opacity: 0; }
+}

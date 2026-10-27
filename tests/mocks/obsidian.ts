@@ -41,8 +41,9 @@ export class App {
   loadLocalStorage(key: string): unknown {
     return this.localStorage.get(key) ?? null;
   }
+  /** As Obsidian does: any falsy value (`false`, `0`, `''`, null) clears the key instead of storing it. */
   saveLocalStorage(key: string, data: unknown): void {
-    if (data === null) this.localStorage.delete(key);
+    if (!data) this.localStorage.delete(key);
     else this.localStorage.set(key, data);
   }
 }

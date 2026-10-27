@@ -9,13 +9,18 @@ import type { FogOperation } from '../types/fogTypes';
 import type { Point } from './hexGeometry';
 import type { MapMove } from './mapStretch';
 import { isOffMap, sceneTokens } from '../tokens/offMap';
+import { liquidMovedWithMap } from '../liquids/liquids';
 
 type SceneObjects = ViewState['objects'];
 
-/** A record a scene from an older version lacks stays missing. */
-function mapRecord<T>(record: Record<string, T>, change: (value: T) => T): Record<string, T> {
+/** Which objects move with the map; without one, all of them. */
+export type MovesWithMap = (object: object) => boolean;
+
+/** A record a scene from an older version lacks stays missing; an entry `moves` leaves out (or that is no object) stays as it is. */
+function mapRecord<T>(record: Record<string, T>, change: (value: T) => T, moves?: MovesWithMap): Record<string, T> {
   if (!record) return record;
-  return Object.fromEntries(Object.entries(record).map(([id, value]) => [id, change(value)]));
+  const moved = (value: T): T => (!moves || (typeof value === 'object' && value !== null && moves(value)) ? change(value) : value);
+  return Object.fromEntries(Object.entries(record).map(([id, value]) => [id, moved(value)]));
 }
 
 function placed<T extends Point>(move: MapMove): (value: T) => T {
@@ -38,18 +43,27 @@ function movedFog(operation: FogOperation, move: MapMove): FogOperation {
   return { ...rest, x: centre.x - width / 2, y: centre.y - height / 2, width, height };
 }
 
-export function objectsMovedWithMap(objects: SceneObjects, move: MapMove): SceneObjects {
+/**
+ * `objects` as they lie once the map under them is drawn another way. With `moves`, only the
+ * objects it names follow the map: in a scene with levels, those on the level whose image changed.
+ */
+export function objectsMovedWithMap(objects: SceneObjects, move: MapMove, moves?: MovesWithMap): SceneObjects {
   return {
     ...objects,
     // A combatant kept beside the map has no place on its image and stays where it waits
-    tokens: mapRecord(sceneTokens(objects), (token) => (isOffMap(token) ? token : placed<typeof token>(move)(token))),
-    pins: mapRecord(objects.pins, placed(move)),
-    texts: mapRecord(objects.texts, placed(move)),
-    lights: mapRecord(objects.lights, placed(move)),
-    audios: mapRecord(objects.audios, placed(move)),
-    drawings: mapRecord(objects.drawings, (drawing) => ({ ...drawing, points: drawing.points.map(move) })),
-    walls: mapRecord(objects.walls, (wall) => ({ ...wall, p1: move(wall.p1), p2: move(wall.p2) })),
-    fog: mapRecord(objects.fog, (operation) => movedFog(operation, move)),
-    ...(objects.lightZones ? { lightZones: mapRecord(objects.lightZones, (zone) => ({ ...zone, polygon: zone.polygon.map(move) })) } : {}),
+    tokens: mapRecord(sceneTokens(objects), (token) => (isOffMap(token) ? token : placed<typeof token>(move)(token)), moves),
+    pins: mapRecord(objects.pins, placed(move), moves),
+    texts: mapRecord(objects.texts, placed(move), moves),
+    // An area light's area follows the map with its middle.
+    lights: mapRecord(objects.lights, (light) => ({ ...placed<typeof light>(move)(light), ...(Array.isArray(light.area) && { area: light.area.map(move) }) }), moves),
+    audios: mapRecord(objects.audios, placed(move), moves),
+    drawings: mapRecord(objects.drawings, (drawing) => ({ ...drawing, points: drawing.points.map(move) }), moves),
+    walls: mapRecord(objects.walls, (wall) => ({ ...wall, p1: move(wall.p1), p2: move(wall.p2) }), moves),
+    fog: mapRecord(objects.fog, (operation) => movedFog(operation, move), moves),
+    ...(objects.lightZones ? { lightZones: mapRecord(objects.lightZones, (zone) => ({ ...zone, polygon: zone.polygon.map(move) }), moves) } : {}),
+    ...(objects.levelLinks ? { levelLinks: mapRecord(objects.levelLinks, (link) => (Array.isArray(link.polygon) ? { ...link, polygon: link.polygon.map(move) } : link), moves) } : {}),
+    ...(objects.levelSurfaces ? { levelSurfaces: mapRecord(objects.levelSurfaces, (surface) => (Array.isArray(surface.polygon) ? { ...surface, polygon: surface.polygon.map(move) } : surface), moves) } : {}),
+    ...(objects.mapFeatures ? { mapFeatures: mapRecord(objects.mapFeatures, (feature) => (Array.isArray(feature.polygon) ? { ...feature, polygon: feature.polygon.map(move) } : feature), moves) } : {}),
+    ...(objects.liquids ? { liquids: mapRecord(objects.liquids, (surface) => liquidMovedWithMap(surface, move), moves) } : {}),
   };
 }

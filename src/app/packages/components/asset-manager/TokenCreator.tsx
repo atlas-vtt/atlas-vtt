@@ -20,7 +20,8 @@ import { useTokenPreviews } from './token-creator/useTokenPreviews';
 import { useStatblockRow } from './token-creator/useStatblockRow';
 import type { SavedToken } from './token-creator/tokenStatblocks';
 import { useFrameProgress } from '../primitives/useFrameProgress';
-import { uvttFilesAmong, type ImportMaps } from './hooks/useUvttImport';
+import { mapFilesAmong, type ImportMaps } from './hooks/useUvttImport';
+import { useFileDrop } from './token-creator/useFileDrop';
 import type { CreatorMode, CreatorSource, EditTokenInput, PreviewImage } from './token-creator/types';
 import { t } from '../../../i18n';
 
@@ -33,12 +34,8 @@ interface TokenCreatorProps {
   initialSource?: CreatorSource;
   /** New tokens are player characters: the creator was opened from the Player characters tab. */
   playerCharacters?: boolean;
-  /** Given to the map creator: takes the Universal VTT files among the added files, which become scenes at once. */
+  /** Given to the map creator: takes the map files among the added files, which are imported at once (Universal VTT maps become scenes, videos animated maps). */
   onImportMaps?: ImportMaps;
-}
-
-function hasFiles(e: React.DragEvent): boolean {
-  return Array.from(e.dataTransfer.types).includes('Files');
 }
 
 export function TokenCreator({ isOpen, onClose, mode = 'token', selectedCollection = AssetService.defaultCollectionId(), editToken, initialSource = 'images', onImportMaps, playerCharacters = false }: TokenCreatorProps): React.JSX.Element | null {
@@ -66,9 +63,7 @@ export function TokenCreator({ isOpen, onClose, mode = 'token', selectedCollecti
   const [isSubmitting, setIsSubmitting] = useState(false);
   // Saving reports every preview; the footer shows it at most once a frame
   const { progress: saveProgress, report: reportSaveProgress, clear: clearSaveProgress } = useFrameProgress();
-  const [isDragging, setIsDragging] = useState(false);
   const [previewPane, setPreviewPane] = useState<HTMLDivElement | null>(null);
-  const dragDepthRef = useRef(0);
   const titleId = useId();
   const windowRef = useRef<HTMLDivElement>(null);
   const windowVariants = useDialogWindowVariants();
@@ -110,12 +105,14 @@ export function TokenCreator({ isOpen, onClose, mode = 'token', selectedCollecti
       previews.addImages([{ file, tags, showRing, size }]);
       return;
     }
-    const maps = onImportMaps ? uvttFilesAmong(files) : [];
+    const maps = onImportMaps ? mapFilesAmong(files) : [];
     const images = files.filter(file => !maps.includes(file));
     // The imported scene opens and the creator closes, unless images wait here to be created by then
     if (maps.length > 0) void onImportMaps?.(maps, collection, () => previewCountRef.current > 0);
     if (images.length > 0) previews.addFiles(images);
   }, [editToken, previews, onImportMaps, collection]);
+  const drop = useFileDrop(handleFiles, !choosingImages);
+  const { isDragging } = drop;
 
   const canSubmit = previews.previews.length > 0 && !isSubmitting && !saveBlocked && !isCreatingTag && assetService !== null;
 
@@ -161,6 +158,8 @@ export function TokenCreator({ isOpen, onClose, mode = 'token', selectedCollecti
       if (!isShortcutScopeActive(windowRef.current)) return;
       // Let an open menu consume Escape before the importer handles it.
       if (e.key === 'Escape' && windowRef.current?.querySelector('[aria-haspopup="menu"][aria-expanded="true"]')) return;
+      // A dialog or list inside the window (a note being edited) takes its own Escape.
+      if (e.key === 'Escape' && e.target instanceof Element && e.target.closest('[role="dialog"] [role="dialog"], [role="listbox"], .atlas-ctx-menu')) return;
       if (e.key === 'Escape' && !isSubmitting) {
         e.preventDefault();
         e.stopPropagation();
@@ -173,28 +172,6 @@ export function TokenCreator({ isOpen, onClose, mode = 'token', selectedCollecti
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen, onClose, handleSubmit, isSubmitting]);
-
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>): void => {
-    if (!hasFiles(e)) return;
-    e.preventDefault();
-    dragDepthRef.current += 1;
-    setIsDragging(true);
-  };
-  const handleDragLeave = (): void => {
-    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
-    if (dragDepthRef.current === 0) setIsDragging(false);
-  };
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>): void => {
-    if (!hasFiles(e)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'copy';
-  };
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>): void => {
-    e.preventDefault();
-    dragDepthRef.current = 0;
-    setIsDragging(false);
-    if (!choosingImages) handleFiles(Array.from(e.dataTransfer.files));
-  };
 
   const addChosen = (images: PreviewImage[]): void => { previews.addImages(images); setSource('images'); };
   const closeChooser = (): void => { importController.abort(); setImportController(new AbortController()); setSource('images'); };
@@ -215,10 +192,7 @@ export function TokenCreator({ isOpen, onClose, mode = 'token', selectedCollecti
         aria-modal="true"
         aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
-        onDragEnter={handleDragEnter}
-        onDragLeave={handleDragLeave}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
+        {...drop.handlers}
       >
         <TokenCreatorRail
           source={source}

@@ -3,6 +3,8 @@ import { AssetService, type MapAsset, type TokenAsset } from './AssetService';
 import { ensureFolder } from '../plugin/vaultFolders';
 import { renderThumbnail, type ThumbnailSpec } from '../imageProcessing/imageProcessing';
 import { fnv1a32 } from '../utils/hashing';
+import { isVideoMapPath, videoMimeType } from '../pixi/mapImage/video/videoMapFiles';
+import { videoPosterBlob } from '../pixi/mapImage/video/videoPoster';
 
 export const THUMBNAIL_DIR = 'atlas-vtt/assets/thumbnails';
 /** Longer side of a thumbnail; asset cards are about half this size on a 2x display. */
@@ -90,11 +92,12 @@ export class AssetThumbnailService {
       && this.app.vault.getAbstractFileByPath(asset.thumbnailPath) instanceof TFile;
   }
 
-  /** Renders and writes the thumbnail of the image at `imagePath`, returning the thumbnail's path. */
+  /** Renders and writes the thumbnail of the image at `imagePath` (of an animated map: of its poster), returning the thumbnail's path. */
   async createForImage(imagePath: string): Promise<string> {
     const image = this.app.vault.getAbstractFileByPath(imagePath);
     if (!(image instanceof TFile)) throw new Error(`Image not found: ${imagePath}`);
-    const source = new Blob([await this.app.vault.readBinary(image)]);
+    const bytes = await this.app.vault.readBinary(image);
+    const source = isVideoMapPath(imagePath) ? await videoPosterBlob(bytes, videoMimeType(imagePath)) : new Blob([bytes]);
     return this.storeForImage(imagePath, await this.render(source, THUMBNAIL_SIZE));
   }
 

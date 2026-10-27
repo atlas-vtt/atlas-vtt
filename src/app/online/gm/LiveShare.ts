@@ -4,6 +4,7 @@ import { sightOnDropOn } from '../../lighting/sceneLightingOptions';
 import type { PlayerTokenSource, SceneStore } from './atlasView.ts';
 import type { RulerPaths } from './dragRulers.ts';
 import { roundPlace } from './scenePicture.ts';
+import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 
 export interface LiveSharePorts extends PacerClock {
@@ -130,7 +131,7 @@ export class LiveShare {
     const rulers = this.ports.rulers?.() ?? NO_RULERS;
     const places = new Map<string, SentPlace>();
     for (const id of held) {
-      const token = mapTokens(state.objects)[id];
+      const token = mapTokens(levelObjects(state))[id];
       const alias = listed.alias(id);
       if (token === undefined || alias === undefined || token.isHidden === true || !shown.has(id)) continue;
       // The GM's own drag runs ahead of the store on the canvas. Its drawn place is what players' sight

@@ -5,6 +5,9 @@ import type { HideableLayer } from '../playerSafeFrame';
 import type { SceneFrame } from './engine/types';
 import type { LightingUnavailable } from './LightingRenderer';
 import type { SceneLightingView } from './sceneLightingView';
+import type { TokenPerception } from '../../vision/tokenPerception';
+import type { BelowRender } from './levels/LevelsBelow';
+import type { ArtFloors } from '../../levels/levelSurfaces';
 
 export interface LightingViewHostDeps {
   store: ViewAtlasStore;
@@ -83,6 +86,10 @@ export class LightingViewHost implements SceneLightingView {
   resetExplored(): void { this.view.resetExplored(); }
   editExplored(edit: ExploredEdit): boolean { return this.view.editExplored(edit); }
   beforeMapUnload(): void { this.view.beforeMapUnload(); }
+  prepareBelow(picture?: BelowRender): void { this.view.prepareBelow?.(picture); }
+  releaseBelowPicture(): void { this.view.releaseBelowPicture?.(); }
+  belowTokenPerception(): TokenPerception { return this.view.belowTokenPerception?.() ?? ((): 'unseen' => 'unseen'); }
+  artFloors(): ArtFloors | undefined { return this.view.artFloors?.(); }
 
   /** An engine that fails while it prepares the frame is replaced during the call: the picture is then the fallback's. */
   renderForFrame<T>(frame: SceneFrame, render: () => T): T {

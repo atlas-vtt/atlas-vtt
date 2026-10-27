@@ -281,12 +281,37 @@ $tray-room: 72px;
   padding: 2px;
 }
 
-.atlas-encounter-stepper__count {
+// A field, typed into for a number or dice; it looks like the count until it is edited.
+input.atlas-encounter-stepper__count {
+  field-sizing: content;
   min-width: 3ch;
+  max-width: 10ch;
+  height: 24px;
+  padding: 0 $spacing-xs;
+  border: none;
+  border-radius: $radius-full;
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-normal);
   font-size: $font-ui-smaller;
   font-weight: var(--font-semibold);
   font-variant-numeric: tabular-nums;
   text-align: center;
+  cursor: text;
+
+  &:hover {
+    background-color: var(--background-modifier-hover);
+  }
+
+  &:focus,
+  &:focus-visible {
+    background-color: var(--background-modifier-form-field);
+    box-shadow: 0 0 0 1px var(--background-modifier-border-focus);
+  }
+
+  &[aria-invalid='true'] {
+    color: var(--text-error);
+  }
 }
 
 .atlas-encounter-stepper__button.btn {

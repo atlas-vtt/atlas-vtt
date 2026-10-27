@@ -23,7 +23,7 @@ export interface FoundSharePorts {
   readImage(path: string): Promise<VaultImage | null>;
   scaleImage?: ScaleImage;
   /** The shared scene's map layers, while one is shared; null otherwise. */
-  layers(): MapLayerShare | null;
+  layers(): Pick<MapLayerShare, 'readablePin' | 'update'> | null;
 }
 
 /**

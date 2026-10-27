@@ -8,7 +8,7 @@ import type { SceneState } from '../../../../src/app/online/gm/atlasView.ts';
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
 import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
-import { findPresentedTab, PRESENT_COMMAND, presentedScene, readPresented, showPresentedElsewhere } from '../../../../src/app/online/gm/presentedScene.ts';
+import { findPresentedTab, PRESENT_COMMAND, presentedScene, readPresented, showPresentedElsewhere, showsPresented } from '../../../../src/app/online/gm/presentedScene.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
 import { app, atlasTab, FakeSocket, FakeTabs, png, present, switchScene, workspace } from './fakeTable.ts';
 import { sceneState } from './shareHarness.ts';
@@ -250,6 +250,21 @@ describe('what Atlas presents', () => {
     expect(findPresentedTab(leaves, { tabId: 'gone', filePath: CAVE })).toMatchObject({ leaf: leaves[1], tabId: FakeTabs.idOf(CAVE) });
     expect(findPresentedTab(leaves, null)).toBeNull();
     expect(findPresentedTab(leaves, { tabId: 'gone', filePath: 'Scenes/None.atlasmap' })).toBeNull();
+  });
+
+  it('names the presented level of a scene with several, and shows the scene whichever level the GM looks at: players see their own floors', () => {
+    const levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: 'maps/cave.png' },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: 'maps/hall.png' },
+    ];
+    expect(readPresented({ tabId: 't1', filePath: CAVE, levelId: 'upper' })).toEqual({ tabId: 't1', filePath: CAVE, levelId: 'upper' });
+    const leaves = [tabsLeaf(new FakeTabs(CAVE))];
+    const tab = findPresentedTab(leaves, { tabId: FakeTabs.idOf(CAVE), filePath: CAVE, levelId: 'upper' });
+    if (tab === null) throw new Error('no tab');
+    expect(tab.levelId).toBe('upper');
+    expect(showsPresented(cave(), tab)).toBe(true);
+    expect(showsPresented({ ...cave(), levels, viewedLevel: 'upper' }, tab)).toBe(true);
+    expect(showsPresented({ ...cave(), levels, viewedLevel: 'ground' }, tab)).toBe(true);
   });
 
   it('tells Atlas it shows the presented scene, and tells nothing to an Atlas without the call', () => {

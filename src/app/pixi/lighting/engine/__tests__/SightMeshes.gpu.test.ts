@@ -9,6 +9,9 @@ import type { VisionCone } from '../../../../vision/visionCone';
 import { createTestRenderer, readRgba } from './gpuTestUtils';
 import { darkvision, senseSource } from '../../../../vision/__tests__/senseSources';
 
+/** Every range counts as the whole map's (`SightMeshes.draw`'s `unlimited`): the channels drawn whole, without the fade towards a range's edge. */
+const NO_FADE = 0;
+
 const spot = (x: number, y: number): SeenSpot => ({ x, y, radius: 12, polygon: computeVisibility({ x, y }, 12, []) });
 
 describe('SightMeshes', () => {
@@ -20,7 +23,7 @@ describe('SightMeshes', () => {
     const stage = new Container();
     const target = RenderTexture.create({ width: 256, height: 256 });
     try {
-      meshes.draw(sight, 20);
+      meshes.draw(sight, 20, NO_FADE);
       stage.addChild(new Graphics().rect(0, 0, 256, 256).fill({ color: 0, alpha: 0 }), meshes.view);
       renderer.render({ container: stage, target, clear: true, clearColor: [0, 0, 0, 0] });
       const px = readRgba(renderer, target);
@@ -52,7 +55,7 @@ describe('SightMeshes', () => {
     const stage = new Container();
     const target = RenderTexture.create({ width: 256, height: 256 });
     const render = (cone?: VisionCone): Uint8ClampedArray => {
-      meshes.draw(computeSight([{ tokenId: 't', origin: { x: 128, y: 128 }, range: 400, senses: [], ...(cone && { cone }) }], [wall]), 20);
+      meshes.draw(computeSight([{ tokenId: 't', origin: { x: 128, y: 128 }, range: 400, senses: [], ...(cone && { cone }) }], [wall]), 20, NO_FADE);
       renderer.render({ container: stage, target, clear: true, clearColor: [0, 0, 0, 0] });
       return readRgba(renderer, target);
     };
@@ -102,7 +105,7 @@ describe('SightMeshes', () => {
         { tokenId: 'a', origin: { x: 60, y: 128 }, range: 60, senses: [] },
         { tokenId: 'b', origin: { x: 100, y: 128 }, range: 60, senses: [darkvision(30)] },
       ];
-      meshes.draw(computeSight(sources, []), 20);
+      meshes.draw(computeSight(sources, []), 20, NO_FADE);
       const px = render();
       const at = (x: number, y: number, channel: number): number => px[(y * 256 + x) * 4 + channel]!;
       expect(at(100, 128, 0)).toBe(255);
@@ -113,7 +116,7 @@ describe('SightMeshes', () => {
       expect(at(180, 128, 0)).toBe(0);
       expect(meshes.view.children).toHaveLength(3);
 
-      meshes.draw(computeSight([], []), 20);
+      meshes.draw(computeSight([], []), 20, NO_FADE);
       expect(meshes.view.children).toHaveLength(0);
       const cleared = render();
       expect(cleared[(128 * 256 + 100) * 4]).toBe(0);
@@ -134,7 +137,7 @@ describe('SightMeshes', () => {
       stage.addChild(new Graphics().rect(0, 0, 256, 256).fill({ color: 0, alpha: 0 }), meshes.view);
       // Sight to 100 px, low-light vision as far, blindsight to 40 px.
       const source = { tokenId: 'a', origin: { x: 100, y: 128 }, range: 100, senses: [senseSource('low-light-vision', 4000), senseSource('blindsight', 40)] };
-      meshes.draw(computeSight([source], []), 20);
+      meshes.draw(computeSight([source], []), 20, NO_FADE);
       meshes.drawSpots([spot(230, 30)]);
       renderer.render({ container: stage, target, clear: true, clearColor: [0, 0, 0, 0] });
       const px = readRgba(renderer, target);
@@ -155,7 +158,7 @@ describe('SightMeshes', () => {
       const moved = readRgba(renderer, target);
       expect(Array.from(moved.slice((30 * 256 + 230) * 4, (30 * 256 + 230) * 4 + 4))).toEqual([0, 0, 0, 0]);
       expect(Array.from(moved.slice((230 * 256 + 30) * 4, (230 * 256 + 30) * 4 + 4))).toEqual([255, 0, 255, 0]);
-      meshes.draw(computeSight([source], []), 20);
+      meshes.draw(computeSight([source], []), 20, NO_FADE);
       expect(meshes.view.children).toHaveLength(3);
     } finally {
       meshes.destroy();
@@ -176,7 +179,7 @@ describe('SightMeshes', () => {
     const still = { tokenId: 'still', origin: { x: 60, y: 128 }, range: 50, senses: [darkvision(30)] };
     const mover = (x: number, senses = [senseSource('low-light-vision', 4000)]): SightSource => ({ tokenId: 'mover', origin: { x, y: 128 }, range: 40, senses });
     const draw = (source: SightSource): Uint8ClampedArray => {
-      meshes.draw(computeSight([still, source], NO_WALLS, cache), 20);
+      meshes.draw(computeSight([still, source], NO_WALLS, cache), 20, NO_FADE);
       renderer.render({ container: stage, target, clear: true, clearColor: [0, 0, 0, 0] });
       return readRgba(renderer, target);
     };
@@ -204,9 +207,39 @@ describe('SightMeshes', () => {
       expect(at(plain, 230, 128)).toEqual([255, 0, 0, 0]);
 
       // Another footprint radius softens every edge anew.
-      meshes.draw(computeSight([still, mover(200, [])], NO_WALLS, cache), 35);
+      meshes.draw(computeSight([still, mover(200, [])], NO_WALLS, cache), 35, NO_FADE);
       expect(meshes.view.children).toHaveLength(3);
       expect(meshes.view.children.some((mesh) => kept.includes(mesh))).toBe(false);
+    } finally {
+      meshes.destroy();
+      target.destroy(true);
+      stage.destroy({ children: true });
+      renderer.destroy();
+    }
+  });
+
+  it('fades a sense with a range towards its edge, to nothing on it, and one that reaches the whole map not at all', async () => {
+    const renderer = await createTestRenderer(256);
+    const meshes = new SightMeshes();
+    const stage = new Container();
+    const target = RenderTexture.create({ width: 256, height: 256 });
+    try {
+      stage.addChild(new Graphics().rect(0, 0, 256, 256).fill({ color: 0, alpha: 0 }), meshes.view);
+      // Darkvision to 100 px from (28, 128); sight that reaches the whole 256 px map.
+      const whole = Math.hypot(256, 256);
+      meshes.draw(computeSight([{ tokenId: 't', origin: { x: 28, y: 128 }, range: whole, senses: [darkvision(100)] }], []), 20, whole);
+      renderer.render({ container: stage, target, clear: true, clearColor: [0, 0, 0, 0] });
+      const px = readRgba(renderer, target);
+      const green = (d: number): number => px[(128 * 256 + 28 + d) * 4 + 1]!;
+      const red = (d: number): number => px[(128 * 256 + 28 + d) * 4]!;
+      // Whole up to the last `SENSE_FADE` (40 %) of its range, then falling, steadily, to nothing at its edge.
+      expect(green(50)).toBe(255);
+      expect(green(80)).toBeGreaterThan(30);
+      expect(green(80)).toBeLessThan(255);
+      expect(green(97)).toBeLessThan(5);
+      for (let d = 60; d < 100; d++) expect(green(d + 1)).toBeLessThanOrEqual(green(d));
+      // Sight that reaches the whole map does not fade.
+      expect(red(220)).toBe(255);
     } finally {
       meshes.destroy();
       target.destroy(true);

@@ -17,6 +17,7 @@ export interface CommandOption {
 /** Pages the palette expands into in place of its command list. */
 export const SETTINGS_PANEL_IDS = [
   'scene-snapshots',
+  'scene-levels',
   'grid-settings',
   'token-settings',
   'widget-settings',

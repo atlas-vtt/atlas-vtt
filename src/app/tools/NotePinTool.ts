@@ -7,19 +7,29 @@ import { runInBackground } from '../utils/backgroundTask';
 import { resolvePinIcon } from '../types/pinIcons';
 import { createPinIconPalette, type PinIconPalette } from './pinIconPalette';
 import { createPinNoteSearch } from './pinNoteSearch';
+import { dungeonCreateEntry, noteCreateEntry, type PinCreateEntry } from './pinCreateEntries';
 import type { PinActionEventDetail } from '../types/atlasWindowEvents';
 import { animatePanelIn, animatePanelOutAndRemove } from '../ui/panelMotion';
 import { NotePinPreview } from './notePinPreview';
 import { nearestHexCenter, type HexLayout } from '../grid/hexGeometry';
 import { hexLinkAt } from '../grid/hexLinks';
 import { linkedSceneFile, mayLinkFromScene } from '../services/sceneLinks';
+import { pinSceneLevel } from '../levels/pinSceneLevel';
+import { showPinnedLevel } from '../links/openAtlasLink';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
+import { levelObjects } from '../levels/levelObjects';
+import { isEncounterFolderLink } from '../links/atlasLinkTargets';
+import { linkedEncounterFolder } from '../encounters/encounterFolders';
+import { rollEncounterFolder } from '../encounters/encounterFolderRoll';
+import { atlasViewOfStore } from '../plugin/atlasLeaves';
 
 interface NotePinDropdownResult {
   accepted: boolean;
   notePath?: string;
   icon?: string;
+  /** The floor a scene made for the pin opens on. */
+  sceneLevel?: string;
 }
 
 /**
@@ -91,8 +101,10 @@ export class NotePinTool {
     
     // Listen for pin action events from the PixiRenderer
     this.pinActionHandler = (e): void => {
-      const { action, pin } = e.detail;
-      
+      const { action, pin, store: source } = e.detail;
+      // Every view's tool hears the window's event: only the one whose map holds the pin acts.
+      if (source !== this.store) return;
+
       if (action === 'open') {
         // Explicitly tell NotePreviewUIManager to hide any preview for this pin's notePath
         this.eventBus.emit('close-active-preview', pin.notePath);
@@ -170,12 +182,14 @@ export class NotePinTool {
       });
 
       // ── Search, results and key hints ──
+      const mapPath = this.store.getState().mapPath;
       const noteSearch = createPinNoteSearch(dropdown, {
         app: this.obsidianApp,
-        mapPath: this.store.getState().mapPath,
-        onPick: (notePath) => {
+        mapPath,
+        createEntries: this.createEntries(mapPath),
+        onPick: (notePath, sceneLevel) => {
           this.closeDropdown();
-          resolve({ accepted: true, notePath, icon: selectedIcon });
+          resolve({ accepted: true, notePath, icon: selectedIcon, ...(sceneLevel && { sceneLevel }) });
         },
         onCancel: () => {
           this.closeDropdown();
@@ -229,7 +243,7 @@ export class NotePinTool {
 
       // Outside click handler
       const handleOutsideClick = (e: MouseEvent): void => {
-        if (dropdown && !dropdown.contains(e.target as Node)) {
+        if (dropdown && !dropdown.contains(e.target as Node) && !noteSearch.isCreating()) {
           this.closeDropdown();
           resolve({ accepted: false });
         }
@@ -250,6 +264,12 @@ export class NotePinTool {
     });
   }
   
+  /** What the search offers to create for a name no file carries, in the order listed. */
+  private createEntries(mapPath: string | null): PinCreateEntry[] {
+    const dungeon = dungeonCreateEntry(this.store, mapPath);
+    return [noteCreateEntry(this.obsidianApp, mapPath), ...(dungeon ? [dungeon] : [])];
+  }
+
   /**
    * Closes the note pin dropdown if it's open
    */
@@ -274,17 +294,27 @@ export class NotePinTool {
   }
   
   /**
-   * Opens the note or scene a pin links to. A scene opens in the Atlas view;
-   * one of another collection opens only where this collection has it too.
+   * Opens the note or scene a pin links to, or rolls from its folder of encounters. A scene opens
+   * in the Atlas view; one of another collection opens only where this collection has it too.
    */
   public openLinkedNote(pin: NotePin): void {
     if (!pin.notePath) return;
+    if (isEncounterFolderLink(pin.notePath)) {
+      this.rollEncounters(pin.notePath);
+      return;
+    }
 
-    const mapPath = this.store.getState().mapPath;
+    const state = this.store.getState();
+    const { mapPath } = state;
     const scene = linkedSceneFile(this.obsidianApp, mapPath, pin.notePath);
-    if (scene) {
+    // A pin that leads to another level of the scene it stands on only shows that level.
+    const ownLevel = scene?.path === mapPath ? pinSceneLevel(pin, state.levels) : null;
+    if (ownLevel !== null) {
+      state.setViewedLevel(ownLevel);
+    } else if (scene) {
       const leaf = this.obsidianApp.workspace.getLeavesOfType('atlas-vtt')[0] ?? this.obsidianApp.workspace.getLeaf(true);
       this.openMapInLeaf(leaf, scene.path);
+      runInBackground(showPinnedLevel(this.obsidianApp, scene.path, pin), `Showing the level of ${scene.path} a pin opens`);
     } else if (!mayLinkFromScene(mapPath, pin.notePath)) {
       showNotice(t('pin.crossCollection'));
     } else {
@@ -293,13 +323,27 @@ export class NotePinTool {
     }
   }
   
+  /** Rolls an encounter of the pin's folder into the GM's hand on this map. */
+  private rollEncounters(link: string): void {
+    const folder = linkedEncounterFolder(this.store.getState().mapPath, link);
+    if (!folder) {
+      showNotice(t('pin.crossCollection'));
+      return;
+    }
+    runInBackground(
+      rollEncounterFolder(this.obsidianApp, atlasViewOfStore(this.obsidianApp, this.store), folder),
+      `Rolling an encounter from ${folder}`,
+      t('pin.encounters.failed'),
+    );
+  }
+
   /** Asks which note to link and drops a pin for it at the clicked world position. */
   private async placePinAt(worldX: number, worldY: number): Promise<void> {
     this.preview.hold();
     const result = await this.showNotePinDropdown(worldX, worldY);
 
     if (result.accepted && result.notePath) {
-      this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon);
+      this.store.getState().addNotePin(worldX, worldY, result.notePath, result.icon, { ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
     }
     this.releasePreviewAfterDropdown();
   }
@@ -313,13 +357,13 @@ export class NotePinTool {
     this.preview.hold();
     this.preview.showLinkedHex(center);
 
-    const existing = hexLinkAt(this.store.getState().objects.pins, layout, center);
+    const existing = hexLinkAt(levelObjects(this.store.getState()).pins, layout, center);
     if (existing) {
       await this.showNotePinDropdownForExistingPin(existing);
     } else {
       const result = await this.showNotePinDropdown(center.x, center.y);
       if (result.accepted && result.notePath) {
-        this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true });
+        this.store.getState().addNotePin(center.x, center.y, result.notePath, result.icon, { hex: true, ...(result.sceneLevel && { sceneLevel: result.sceneLevel }) });
       }
     }
     this.releasePreviewAfterDropdown();

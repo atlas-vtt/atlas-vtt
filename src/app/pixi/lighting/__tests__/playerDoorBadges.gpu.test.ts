@@ -95,7 +95,7 @@ describe('door badges in the players\' frame', () => {
       playerLightingLayers({
         enabled: host.isEnabled(),
         modeLayer: host.modeLayer,
-        gmOverlays: { wallEditor: gmOverlay, lightZones: gmOverlay, exploredMemory: gmOverlay, doorBadges: doors.view, lightMarkers: gmOverlay, rangeRings: gmOverlay, sightAids: gmOverlay },
+        gmOverlays: { wallEditor: gmOverlay, lightZones: gmOverlay, levelSurfaces: gmOverlay, exploredMemory: gmOverlay, doorBadges: doors.view, lightMarkers: gmOverlay, rangeRings: gmOverlay, sightAids: gmOverlay },
         playerDoorBadges: doors.playerView,
       }),
       () => renderer.render({ container: viewport }),

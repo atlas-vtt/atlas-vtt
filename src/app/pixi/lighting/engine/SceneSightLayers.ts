@@ -15,6 +15,11 @@ interface FrameSight {
   pierce: readonly PierceShape[];
 }
 
+/** What a sense without a range is given on a map of `bounds`: its diagonal (`sightSources`). */
+function unlimitedOn(bounds: EngineScene['bounds']): number {
+  return Math.hypot(bounds.width, bounds.height);
+}
+
 /** Keeps both current frame pictures ready, so mirroring switches no geometry. */
 export class SceneSightLayers {
   readonly view = new Container({ label: 'frameSight' });
@@ -22,14 +27,15 @@ export class SceneSightLayers {
   private player: FrameSight | null = null;
 
   update(scene: EngineScene): void {
-    this.gm = this.updateFrame(this.gm, scene.sight, scene.spots, scene.sightRadius);
+    const unlimited = unlimitedOn(scene.bounds);
+    this.gm = this.updateFrame(this.gm, scene.sight, scene.spots, scene.sightRadius, unlimited);
     const sight = scene.playerSight ?? scene.sight;
     const spots = scene.playerSpots ?? scene.spots;
     if (sight === scene.sight && spots === scene.spots) {
       this.player?.meshes.destroy();
       this.player = null;
     } else {
-      this.player = this.updateFrame(this.player, sight, spots, scene.sightRadius);
+      this.player = this.updateFrame(this.player, sight, spots, scene.sightRadius, unlimited);
     }
   }
 
@@ -53,17 +59,17 @@ export class SceneSightLayers {
     destroyTree(this.view);
   }
 
-  private updateFrame(frame: FrameSight | null, sight: Sight, spots: EngineScene['spots'], radius: number): FrameSight {
+  private updateFrame(frame: FrameSight | null, sight: Sight, spots: EngineScene['spots'], radius: number, unlimited: number): FrameSight {
     if (!frame) {
       const meshes = new SightMeshes();
       this.view.addChild(meshes.view);
-      meshes.draw(sight, radius);
+      meshes.draw(sight, radius, unlimited);
       meshes.drawSpots(sight.all ? [] : spots ?? []);
       return { meshes, sight, spots, radius, pierce: pierceShapes(sight, sight.all ? [] : spots) };
     }
     const sightChanged = sight !== frame.sight;
     const spotsChanged = spots !== frame.spots;
-    if (sightChanged || radius !== frame.radius) frame.meshes.draw(sight, radius);
+    if (sightChanged || radius !== frame.radius) frame.meshes.draw(sight, radius, unlimited);
     if (spotsChanged || sight.all !== frame.sight.all) frame.meshes.drawSpots(sight.all ? [] : spots ?? []);
     if (sightChanged || spotsChanged) frame.pierce = pierceShapes(sight, sight.all ? [] : spots);
     frame.sight = sight;

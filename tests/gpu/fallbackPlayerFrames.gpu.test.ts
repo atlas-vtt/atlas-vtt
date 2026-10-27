@@ -69,7 +69,7 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
     controller.wire({
       setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
       setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-      setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+      setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
     } as unknown as TokenRenderer);
     // As the player window is shown a view that renders on change: a frame of the window's own size, right before the view's renders.
     const { source, frames: frameTexture } = playerFrameSource({
@@ -162,6 +162,27 @@ describe('the player window behind the line-of-sight fallback, in GM view', () =
     displayFrames(60);
     frames.length = 0;
     store.getState().setSceneLighting({ enabled: false });
+    displayFrames(60);
+    expect(frames).toHaveLength(1);
+    expect(shown(frames[0]!).black).toBe(0);
+  });
+
+  it('captures a black frame of a floor the party is not on, and opens it once no token on any floor has vision', async () => {
+    const { store, frames, displayFrames, shown } = await open({});
+    const floor = (id: string, bottom: number): NonNullable<ReturnType<ViewAtlasStore['getState']>['levels']>[number] => ({ id, name: id, elevation: { bottom, top: bottom + 10 }, background: null });
+    // The party stands on the ground floor, which every object without a level is on.
+    store.setState({ levels: [floor('ground', 0), floor('upper', 10)] });
+    displayFrames(5);
+    frames.length = 0;
+
+    store.getState().setViewedLevel('upper');
+    displayFrames(60);
+    expect(frames).toHaveLength(1);
+    const sampled = ((SIZE - 8) / 2) ** 2;
+    expect(shown(frames[0]!)).toEqual({ outsideSight: 0, hiddenInSight: 0, black: sampled });
+
+    frames.length = 0;
+    for (const id of ['ada', 'bo']) store.getState().updateToken(id, { vision: { enabled: false } });
     displayFrames(60);
     expect(frames).toHaveLength(1);
     expect(shown(frames[0]!).black).toBe(0);

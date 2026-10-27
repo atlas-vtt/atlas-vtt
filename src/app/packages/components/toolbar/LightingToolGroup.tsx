@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from "react"
-import { BrickWall, Flame, FlameKindling, Footprints, Lamp, Lightbulb, Moon, MousePointer2, Pencil, Sparkles, SunMoon } from "lucide-react"
+import { ArrowDownToDot, BrickWall, Flame, FlameKindling, Footprints, Lamp, Lightbulb, Moon, MousePointer2, Pencil, Sparkles, SunMoon } from "lucide-react"
 import { t } from '../../../i18n';
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
 import { chosenLightPreset } from "../../../lighting/lightPresetChoice"
 import { exploredMemoryEditable } from "../../../lighting/sceneLightingOptions"
+import { hasLevels } from "../../../levels/sceneLevels"
+import { LabelTooltip } from "../primitives/tooltip"
 import { useMapLightPresets } from "../../../react/hooks/useMapLightPresets"
 import type { LightKind } from "../../../types/lightingTypes"
 import type { WallToolMode, WallToolSubMode } from "../../../tools/WallTool"
@@ -22,6 +24,7 @@ const SUB_MODES: readonly { value: WallToolSubMode; icon: RowIcon; label: string
   { value: 'draw', icon: BrickWall, label: t('toolbar.drawWalls') },
   { value: 'place-light', icon: Lightbulb, label: t('toolbar.placeLights') },
   { value: 'light-zone', icon: SunMoon, label: 'Light zones' },
+  { value: 'level-surface', icon: ArrowDownToDot, label: t('openings.mode') },
   { value: 'explored-memory', icon: Footprints, label: 'Explored memory' },
 ]
 
@@ -69,6 +72,13 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
     setSubMode('draw')
     emit('wall-submode-changed', 'draw')
   }, [memoryEditable, subMode, emit])
+  // Openings look down to another level: in a scene of one level the row is disabled, and the tool leaves the mode.
+  const levelled = useAtlasStore((state) => hasLevels(state.levels))
+  useEffect(() => {
+    if (levelled || subMode !== 'level-surface') return
+    setSubMode('draw')
+    emit('wall-submode-changed', 'draw')
+  }, [levelled, subMode, emit])
 
   return (
     <ToolGroup
@@ -80,22 +90,27 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
       onMenuToggle={toggleMenu}
     >
       <div className="atlas-dropdown-section">
-        {SUB_MODES.map(({ value, icon, label }) => (
-          <DropdownMenuItem
-            key={value}
-            icon={icon}
-            label={label}
-            // The tool's key selects it with what it did last.
-            {...(value === subMode && { shortcut: hotkeyLabel('wall') })}
-            isActive={face.isActive && value === subMode}
-            disabled={value === 'explored-memory' && !memoryEditable}
-            onClick={() => {
-              setSubMode(value)
-              emit('wall-submode-changed', value)
-              selectTool('wall')
-            }}
-          />
-        ))}
+        {SUB_MODES.map(({ value, icon, label }) => {
+          const row = (
+            <DropdownMenuItem
+              key={value}
+              icon={icon}
+              label={label}
+              // The tool's key selects it with what it did last.
+              {...(value === subMode && { shortcut: hotkeyLabel('wall') })}
+              isActive={face.isActive && value === subMode}
+              disabled={(value === 'explored-memory' && !memoryEditable) || (value === 'level-surface' && !levelled)}
+              onClick={() => {
+                setSubMode(value)
+                emit('wall-submode-changed', value)
+                selectTool('wall')
+              }}
+            />
+          )
+          return value === 'level-surface' && !levelled
+            ? <LabelTooltip key={value} side="right" label={t('openings.needsLevels')}><div>{row}</div></LabelTooltip>
+            : row
+        })}
       </div>
 
       {subMode === 'explored-memory' && (

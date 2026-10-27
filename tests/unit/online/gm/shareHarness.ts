@@ -15,6 +15,7 @@ import type { GmRuler } from '../../../../src/app/online/gm/dragRulers.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 import { GENERIC_SOURCE, PLAYER_SETTINGS } from './gmLighting.ts';
 import { settled } from './settled.ts';
+import { isVideoMapPath, videoMimeType } from '../../../../src/app/pixi/mapImage/video/videoMapFiles';
 
 export const GRID_SIZE = 70;
 
@@ -64,7 +65,15 @@ export interface ShareHarness {
   requests: (from: string, answer: RollRequestAnswer) => RollRequest | null;
   /** The log entry of whoever found a readable pin; nobody by default. */
   foundPin: (mapPath: string, pinId: string) => string | null;
+  /** The level of a scene with several Atlas presents to its player view; unset is the first. */
+  presented: string | undefined;
+  /** The vault's animated maps by path, whose posters are their entries in the images; none by default. */
+  videos: Map<string, Uint8Array<ArrayBuffer>>;
+  /** How often a video was read. */
+  videoReads: number;
   set(next: SceneState): Promise<void>;
+  /** The store's state now, as the share's own writes (players' moves) leave it. */
+  state(): SceneState;
   /** Moves the clock on, running the timers that fall due, and lets reads settle. */
   advance(ms: number): Promise<void>;
   settle(): Promise<void>;
@@ -107,7 +116,11 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
     logged: [],
     requests: () => null,
     foundPin: () => null,
+    presented: undefined,
+    videos: new Map(),
+    videoReads: 0,
     share: new SceneShare(store, {
+      presentedLevel: () => harness.presented,
       logRoll: (roll) => harness.logged.push(roll),
       rollRequest: (from, answer) => harness.requests(from, answer),
       foundPin: (mapPath, pinId) => harness.foundPin(mapPath, pinId),
@@ -122,8 +135,14 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       showPlayerDrags: (drags) => harness.playerDrags.push(drags),
       readImage: (path) => {
         const bytes = images.get(path);
-        const mime = imageMimeType(path);
+        // An animated map is read as its poster, as `readVaultImage` takes it
+        const mime = isVideoMapPath(path) ? 'image/png' : imageMimeType(path);
         return Promise.resolve(bytes === undefined || mime === null ? null : { bytes, mime });
+      },
+      readVideo: (path) => {
+        const bytes = harness.videos.get(path);
+        if (bytes !== undefined) harness.videoReads += 1;
+        return Promise.resolve(bytes === undefined || !isVideoMapPath(path) ? null : { bytes, mime: videoMimeType(path) });
       },
       send: (body, to) => harness.sent.push({ body, to }),
       sendLive: (body) => harness.sent.push({ body, to: undefined }),
@@ -138,6 +157,7 @@ export function shareHarness(initial: SceneState, images: ReadonlyMap<string, Ui
       clearTimer: (timer) => void timers.delete(timer),
       seats,
     }),
+    state: () => store.getState(),
     set: async (next) => {
       current = next;
       for (const listener of listeners) listener(next);

@@ -1,10 +1,10 @@
 import { lightList } from '../../lighting/lightingObjects';
 import { Container, Graphics, Sprite, type Texture } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
-import { LIGHT_GLYPH_PATHS } from '../../lighting/lightGlyphs';
+import { LIGHT_GLYPH_PATHS, type LightGlyph } from '../../lighting/lightGlyphs';
 import { lightZoneList, withZones } from '../../lighting/lightZones';
 import type { ViewAtlasState, ViewAtlasStore } from '../../storeFactory';
-import type { LightKind, LightSource } from '../../types/lightingTypes';
+import type { LightSource } from '../../types/lightingTypes';
 import { MOTION_NORMAL_MS, prefersReducedMotion } from '../../utils/motion';
 import { ambientAt } from '../../vision/lightLevels';
 import { destroyTree } from '../utils/destroyTree';
@@ -20,6 +20,7 @@ import {
   type LightMarkerLook,
   type LightMarkerTheme,
 } from './lightMarker';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** Above the lighting layer (90), so the GM finds lights in the dark; below token UI (100). */
 export const LIGHT_MARKERS_Z_INDEX = 95;
@@ -91,7 +92,7 @@ function sameLook(a: LightMarkerLook, b: LightMarkerLook): boolean {
 export class LightMarkers {
   readonly view = new Container({ label: 'light-markers', zIndex: LIGHT_MARKERS_Z_INDEX, eventMode: 'none', interactiveChildren: false });
   private readonly markers = new Map<string, Marker>();
-  private readonly textures = new Map<LightKind, Texture | null>();
+  private readonly textures = new Map<LightGlyph, Texture | null>();
   private readonly unsubscribe: () => void;
   private readonly themeObserver: MutationObserver;
   private theme: LightMarkerTheme;
@@ -111,8 +112,8 @@ export class LightMarkers {
     viewport.on('zoomed-end', this.rescale);
     this.unsubscribe = store.subscribe((state, previous) => {
       if (
-        state.objects.lights !== previous.objects.lights
-        || state.objects.lightZones !== previous.objects.lightZones
+        levelObjects(state).lights !== levelObjects(previous).lights
+        || levelObjects(state).lightZones !== levelObjects(previous).lightZones
         || state.lighting.enabled !== previous.lighting.enabled
         || state.lighting.ambient !== previous.lighting.ambient
         || state.activeTool !== previous.activeTool
@@ -158,10 +159,10 @@ export class LightMarkers {
   /** The light whose marker is at the world point, while the markers show. */
   hitTest(x: number, y: number): string | null {
     if (!this.view.visible) return null;
-    return lightMarkerAt(lightList(this.store.getState().objects.lights), { x, y }, this.viewport.scale.x);
+    return lightMarkerAt(lightList(levelObjects(this.store.getState()).lights), { x, y }, this.viewport.scale.x);
   }
 
-  private glyphTexture(kind: LightKind): Texture | null {
+  private glyphTexture(kind: LightGlyph): Texture | null {
     if (!this.textures.has(kind)) this.textures.set(kind, createGlyphTexture(LIGHT_GLYPH_PATHS[kind]));
     return this.textures.get(kind) ?? null;
   }
@@ -176,10 +177,10 @@ export class LightMarkers {
     this.view.visible = shown;
     if (!shown) return;
     // The lights that can be read: what else the record holds has no marker.
-    const lights = lightList(state.objects.lights);
+    const lights = lightList(levelObjects(state).lights);
     const ids = new Set(lights.map((light) => light.id));
     // A lamp that follows the ambient light goes by the light where it stands, as the rule does (`activeLights`).
-    const ambient = withZones(state.lighting, lightZoneList(state.objects.lightZones));
+    const ambient = withZones(state.lighting, lightZoneList(levelObjects(state).lightZones));
     for (const [id, marker] of this.markers) {
       if (ids.has(id)) continue;
       marker.lift?.cancel();

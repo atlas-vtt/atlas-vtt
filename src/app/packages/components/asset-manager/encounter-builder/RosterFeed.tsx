@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { App } from 'obsidian';
 import { StatblockFeeds } from '../../../../react/components/dm-screen/StatblockFeeds';
 import { observeResize } from '../../../../utils/observeResize';
+import type { Quantity } from '../../../../encounters/encounterQuantity';
 import type { TokenAsset } from '../types';
 import { CreatureCard } from './CreatureCard';
 import { flashCard } from './flashCard';
@@ -11,8 +12,8 @@ interface RosterFeedProps {
   creatures: readonly TokenAsset[];
   /** Changes whenever the search or a filter does. */
   refinement: string;
-  countOf: (tokenId: string) => number;
-  onCountChange: (token: TokenAsset, count: number) => void;
+  countOf: (tokenId: string) => Quantity;
+  onCountChange: (token: TokenAsset, count: Quantity) => void;
   /** A creature whose statblock to scroll into view and mark; a new `nonce` asks again for the same one. */
   reveal: { id: string; nonce: number } | null;
 }

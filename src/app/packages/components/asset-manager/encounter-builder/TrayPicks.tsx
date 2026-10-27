@@ -5,13 +5,14 @@ import { DropdownMenu } from '../../primitives/DropdownMenu';
 import { LabelTooltip } from '../../primitives/tooltip';
 import { observeResize } from '../../../../utils/observeResize';
 import { t } from '../../../../i18n';
+import type { Quantity } from '../../../../encounters/encounterQuantity';
 import type { TokenAsset } from '../types';
 import { CountStepper } from './CountStepper';
 import type { EncounterPick } from './encounterPicks';
 
 interface TrayPicksProps {
   picks: readonly EncounterPick[];
-  onCountChange: (token: TokenAsset, count: number) => void;
+  onCountChange: (token: TokenAsset, count: Quantity) => void;
   /** Shows the creature's statblock in the feed; null for a creature the feed cannot show. */
   revealOf: (token: TokenAsset) => (() => void) | null;
 }

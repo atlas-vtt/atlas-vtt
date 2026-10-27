@@ -36,6 +36,7 @@ import { copyDragSelection } from './dragCopy';
 import type { DragRuler } from './DragRuler';
 import { runInBackground } from '../../utils/backgroundTask';
 import { tokenSizeSubmenu } from '../../react/components/context-menu/tokenSizeMenu';
+import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLevelMenu';
 import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
@@ -43,7 +44,11 @@ import { selectionResourceEntry } from '../../react/components/context-menu/sele
 import { SelectionResourceEditing } from '../selectionResourceEditor';
 import { placedPlayerCharacterEntry } from '../../react/components/context-menu/playerCharacterMenu';
 import { holdTokens } from '../../lighting/sightOnDrop';
+import { dropTokensOnStairs, type StairsMenuPlace } from './stairsDrop';
+import type { TokenPreviewAnchor } from '../../services/NotePreviewUIManager';
+import type { ArtFloors } from '../../levels/levelSurfaces';
 import { t } from '../../i18n';
+import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 
 interface DragState {
@@ -91,6 +96,8 @@ export class InteractionController implements ITokenInteractionController {
   // Hover handlers
   private hoverHandlers: Record<string, { over: (e?: FederatedPointerEvent) => void; out: () => void }> = {};
   private _currentHoverId: string | null = null;
+  /** The statblock preview the hover armed, hidden by itself: the token may have left the level shown since. */
+  private hoverPreview: TokenPreviewAnchor | null = null;
   
   // Callbacks for external systems
   private onSelectionUpdate?: () => void;
@@ -98,6 +105,8 @@ export class InteractionController implements ITokenInteractionController {
   private getTokenSprite?: (tokenId: string) => TokenGroupContainer | null;
   private updateUIPosition?: (tokenId: string, x: number, y: number) => void;
   private settleToken?: (tokenId: string, x: number, y: number) => void;
+  /** What the view draws of the levels' maps, through which a dropped token falls; none without lighting. */
+  private artFloors: (() => ArtFloors | undefined) | undefined;
   private updateControlsPosition?: (x: number, y: number, tokenSize: number) => void;
   private onTokensHeldChange?: (tokenIds: string[]) => void;
   private updateHandlePositions?: () => void;
@@ -151,14 +160,14 @@ export class InteractionController implements ITokenInteractionController {
     e.stopPropagation();
 
     if (e.button === 2) {
-      const token = mapTokens(this.store.getState().objects)[tokenId];
+      const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
       if (token && !this.isPlayerView) {
         this.showContextMenu(token, e);
       }
       return;
     }
 
-    const token = mapTokens(this.store.getState().objects)[tokenId];
+    const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
     if (!token) return;
     if (this.isPlayerView) {
       return;
@@ -181,7 +190,7 @@ export class InteractionController implements ITokenInteractionController {
     }
 
     // Use the first token as the reference for prepareInteraction (it will detect the multi-selection)
-    const firstToken = mapTokens(this.store.getState().objects)[tokenIds[0]!];
+    const firstToken = mapTokens(levelObjects(this.store.getState()))[tokenIds[0]!];
     if (!firstToken) return;
 
     this.prepareInteraction(firstToken, e);
@@ -195,13 +204,8 @@ export class InteractionController implements ITokenInteractionController {
 
     if (prevId) {
       this.handleHoverEnd(prevId);
-      // Emit hide preview for previous token
-      const prevToken = mapTokens(this.store.getState().objects)[prevId];
-      if (prevToken?.kind === 'character' && prevToken.statblockPath?.trim()) {
-        this.eventBus.emit('pin-hide-preview', {
-          pin: { id: prevToken.id, notePath: prevToken.statblockPath, x: prevToken.x, y: prevToken.y, type: 'token' },
-        });
-      }
+      if (this.hoverPreview) this.eventBus.emit('pin-hide-preview', { pin: this.hoverPreview });
+      this.hoverPreview = null;
     }
 
     this._currentHoverId = tokenId;
@@ -209,22 +213,23 @@ export class InteractionController implements ITokenInteractionController {
     if (tokenId) {
       this.handleHoverStart(tokenId);
       // Emit hover preview for new token
-      const token = mapTokens(this.store.getState().objects)[tokenId];
+      const token = mapTokens(levelObjects(this.store.getState()))[tokenId];
       if (token?.kind === 'character' && e && token.statblockPath?.trim()) {
+        this.hoverPreview = {
+          id: token.id,
+          notePath: token.statblockPath,
+          x: token.x,
+          y: token.y,
+          type: 'token',
+          // Vitals travel with the pin so the preview can mirror them.
+          name: token.name,
+          resources: token.resources,
+          imagePath: token.imagePath,
+          ringColor: token.ringColor,
+          showRing: token.showRing,
+        };
         this.eventBus.emit('pin-hover-preview', {
-          pin: {
-            id: token.id,
-            notePath: token.statblockPath,
-            x: token.x,
-            y: token.y,
-            type: 'token',
-            // Vitals travel with the pin so the preview can mirror them.
-            name: token.name,
-            resources: token.resources,
-            imagePath: token.imagePath,
-            ringColor: token.ringColor,
-            showRing: token.showRing,
-          },
+          pin: this.hoverPreview,
           screenX: e.clientX,
           screenY: e.clientY,
           pixiEvent: e,
@@ -437,13 +442,18 @@ export class InteractionController implements ITokenInteractionController {
   }
 
   private onPointerUp = (e: FederatedPointerEvent): void => {
-    this.endDrag(this.viewport.toWorld(e.global));
+    this.endDrag(this.viewport.toWorld(e.global), { x: e.clientX, y: e.clientY, doc: this.viewport.options?.events?.domElement?.ownerDocument });
   };
 
-  /** Ends the press or drag with the pointer at `worldPos`: a drag drops its tokens there, as one undo step. */
-  private endDrag(worldPos: { x: number; y: number }): void {
+  /**
+   * Ends the press or drag with the pointer at `worldPos`: a drag drops its tokens there, as one undo
+   * step. `menuAt` is where a choice of levels opens for tokens dropped into an elevator (none for a
+   * pointer that was lost), whose pick joins that step.
+   */
+  private endDrag(worldPos: { x: number; y: number }, menuAt: StairsMenuPlace | null = null): void {
     if (!this.dragState.isDragging) return;
     const wasDrag = this.dragState.hasMoved;
+    let stepHeld = false;
 
     try {
       this.dragState.isDragging = false;
@@ -477,7 +487,7 @@ export class InteractionController implements ITokenInteractionController {
       
       const tokenUpdates: Array<{id: string, x: number, y: number}> = [];
       const snapToGrid = this.store.getState().grid?.snapToGrid ?? true;
-      const tokens = mapTokens(this.store.getState().objects);
+      const tokens = mapTokens(levelObjects(this.store.getState()));
       
       for (const id of this.dragState.dragIds) {
         const initPos = this.dragState.initialPositions[id];
@@ -497,7 +507,7 @@ export class InteractionController implements ITokenInteractionController {
         tokenUpdates.push({id, x: finalPos.x, y: finalPos.y});
       }
       
-      if (tokenUpdates.length > 0) this.store.getState().dropTokens(tokenUpdates);
+      if (tokenUpdates.length > 0) stepHeld = dropTokensOnStairs(this.store, tokenUpdates, menuAt, this.artFloors?.());
       
       // Update UI
       this.onSelectionUpdate?.();
@@ -508,7 +518,7 @@ export class InteractionController implements ITokenInteractionController {
     } catch (error) {
       console.error('[InteractionController] Error in onPointerUp handler:', error);
     } finally {
-      if (wasDrag) endHistoryTransaction(this.store);
+      if (wasDrag && !stepHeld) endHistoryTransaction(this.store);
       this.dragRuler?.end();
       delete this.dragState.rulerTokenId;
 
@@ -539,9 +549,10 @@ export class InteractionController implements ITokenInteractionController {
 
   /** The selected tokens when the right-clicked token is one of them, otherwise that token alone. */
   private contextMenuTargets(tokenId: string): string[] {
-    const { selectedIds, objects } = this.store.getState();
-    if (!selectedIds.includes(tokenId)) return [tokenId];
-    return selectedIds.filter((id) => mapTokens(objects)[id] !== undefined);
+    const state = this.store.getState();
+    const objects = levelObjects(state);
+    if (!state.selectedIds.includes(tokenId)) return [tokenId];
+    return state.selectedIds.filter((id) => mapTokens(objects)[id] !== undefined);
   }
 
   private showContextMenu(token: TokenEntity, e: FederatedPointerEvent): void {
@@ -555,15 +566,20 @@ export class InteractionController implements ITokenInteractionController {
 
     // Size
     entries.push(tokenSizeSubmenu(token.size, size => {
-      const { grid, objects, updateToken } = this.store.getState();
-      const current = mapTokens(objects)[token.id];
+      const state = this.store.getState();
+      const { grid, updateToken } = state;
+      const current = mapTokens(levelObjects(state))[token.id];
       if (!current) return;
       const center = resizedTokenCenter(current, current.size || 1, size, grid);
       updateToken(token.id, { size, x: center.x, y: center.y });
     }));
 
+    // Move to another level of the scene, the selection in one undo step
+    const levelMenu = tokenLevelSubmenu(this.store, this.contextMenuTargets(token.id));
+    if (levelMenu) entries.push(levelMenu);
+
     // Hide/Show the selection in one undo step; the clicked token decides which way
-    const currentToken = mapTokens(this.store.getState().objects)[token.id];
+    const currentToken = mapTokens(levelObjects(this.store.getState()))[token.id];
     const isHidden = currentToken?.isHidden || false;
     const hideTargets = this.contextMenuTargets(token.id);
     entries.push({
@@ -783,6 +799,11 @@ export class InteractionController implements ITokenInteractionController {
     this.updateUIPosition = updater;
   }
 
+  /** What the view draws of the levels' maps (`ArtFloors`): a token dropped where a level below shows falls to it. */
+  setArtFloors(provider: (() => ArtFloors | undefined) | undefined): void {
+    this.artFloors = provider;
+  }
+
   /** How a dropped token gets from where the pointer left it to its place. */
   setTokenSettler(settler: (tokenId: string, x: number, y: number) => void): void {
     this.settleToken = settler;
@@ -843,9 +864,10 @@ export class InteractionController implements ITokenInteractionController {
     }
 
     for (const tokenId of tokenIds) {
-      const { initiative, objects, addToInitiative, removeFromInitiative } = this.store.getState();
+      const state = this.store.getState();
+      const { initiative, addToInitiative, removeFromInitiative } = state;
       const entry = initiative.entries.find((e) => e.tokenId === tokenId);
-      const token = mapTokens(objects)[tokenId];
+      const token = mapTokens(levelObjects(state))[tokenId];
       if (remove && entry) removeFromInitiative(entry.id);
       else if (!remove && !entry && token) addToInitiative(initiativeEntryForToken(token));
     }

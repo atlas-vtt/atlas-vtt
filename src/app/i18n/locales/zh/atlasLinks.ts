@@ -16,4 +16,5 @@ export const atlasLinks: Translation = {
   'atlasLinks.snapshotMissing': '此场景没有名为「{name}」的快照。',
   'atlasLinks.snapshotOf': '{scene} 的快照',
   'atlasLinks.tokenCount': { other: '{count} 个棋子' },
+  'atlasLinks.tokenRange': { other: '{range} 个棋子' },
 };

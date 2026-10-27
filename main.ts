@@ -6,6 +6,7 @@ import './styles/main.scss';
 import { AtlasView, ATLAS_VIEW_TYPE } from './src/app/atlas-view';
 import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE } from './src/app/local-player-view';
 import { DashboardView, DASHBOARD_VIEW_TYPE } from './src/app/dashboard-view';
+import { DungeonGeneratorView, DUNGEON_GENERATOR_VIEW_TYPE } from './src/app/dungeon-generator-view';
 import { initializeAtlasStorage } from './src/app/atlasStorageInit';
 import { t } from './src/app/i18n';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
@@ -46,6 +47,7 @@ import { hotkeySettingsSection, onboardingSettingsSection } from './src/app/sett
 import { navigationSettingsSection } from './src/app/settings/navigationSettingsSection';
 import { diceSettingsSection } from './src/app/settings/diceSettingsSection';
 import { lightingSettingsSection } from './src/app/settings/lightingSettingsSection';
+import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
@@ -83,6 +85,7 @@ import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
 import { TileDecoderClient } from './src/app/pixi/mapImage/TileDecoderClient';
+import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
 import { MapImageService } from './src/app/pixi/mapImage/MapImageService';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
@@ -202,6 +205,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
+      mapsSettingsSection(this.settingsService),
       lightingSettingsSection(this.settingsService),
       mapImageCacheSettingsSection(() => TileDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
@@ -277,6 +281,7 @@ export default class AtlasVTTPlugin extends Plugin {
     CreatureIndex.release(this.app);
     TemplateLibrary.release(this.app);
     TileDecoderClient.release(this.app);
+    DungeonWorkerClient.release(this.app);
     MapImageService.release(this.app);
     disposeImageProcessing();
     disposeSpectralEngine();
@@ -300,6 +305,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerView(ATLAS_VIEW_TYPE, (leaf) => new AtlasView(leaf, this));
     this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
+    this.registerView(DUNGEON_GENERATOR_VIEW_TYPE, (leaf) => new DungeonGeneratorView(leaf));
     registerLootQueryView(this);
     registerBaseGiveButtons(this);
     this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf));

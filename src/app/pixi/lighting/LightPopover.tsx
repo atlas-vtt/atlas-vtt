@@ -20,6 +20,7 @@ import { useMapLightPresets } from '../../react/hooks/useMapLightPresets';
 import { LightEmissionFields } from './LightEmissionFields';
 import { useGestureTransactions } from './useGestureTransactions';
 import { useLightPopoverPosition } from './useLightPopoverPosition';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** Keys the popover's controls use themselves; they must not reach the map's shortcuts (Tab, Space, arrows). */
 const OWN_KEYS = new Set([' ', 'Enter', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']);
@@ -45,7 +46,7 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
   const unitType = useAtlasStore((state) => mapMeasurementSettings(rules, state).unitType);
   const unitDistance = useAtlasStore((state) => mapMeasurementSettings(rules, state).unitDistance);
   const maxRange = useAtlasStore((state) => maxLightRange(unitScaleOf({ unitDistance }, state.grid)));
-  const current = useAtlasStore((state) => readLight(state.objects.lights[lightId]));
+  const current = useAtlasStore((state) => readLight(levelObjects(state).lights[lightId]));
   // While it leaves, the popover still shows the light it had, also when that light was deleted.
   const shown = useRef(current);
   if (current) shown.current = current;
@@ -95,6 +96,7 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
         unit={unitLabelFor(unitType)}
         unitDistance={unitDistance}
         maxRange={maxRange}
+        surface={!!light.area}
         more={<ShinesRow light={light} onChange={(activeBelowAmbient) => store.getState().updateLight(light.id, { activeBelowAmbient })} />}
         onBeamCommit={makeWay}
         direction={{ degrees: light.rotation ?? 0, onChange: (rotation) => store.getState().updateLight(light.id, { rotation }) }}

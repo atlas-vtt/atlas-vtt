@@ -19,6 +19,7 @@ const RANGES: Record<Exclude<LightAnimation, 'none'>, { intensity: [number, numb
   candle: { intensity: [0.8, 1.05], radius: [0.98, 1.02] },
   pulse: { intensity: [0.85, 1.15], radius: [1, 1] },
   magic: { intensity: [0.85, 1.15], radius: [0.96, 1.04] },
+  smoulder: { intensity: [0.91, 1.09], radius: [0.97, 1.03] },
 };
 
 describe('LightFlicker', () => {
@@ -42,6 +43,20 @@ describe('LightFlicker', () => {
   it('actually flickers', () => {
     const values = new Set(samples(new LightFlicker(seeded(5)), 'torch', 100).map((s) => s.intensity.toFixed(4)));
     expect(values.size).toBeGreaterThan(20);
+  });
+
+  it('lets a smouldering surface swell slowly, each light from its own point of the swell', () => {
+    const flicker = new LightFlicker(seeded(1));
+    const swell = (id: string, at: number): number => flicker.sample(id, 'smoulder', at).intensity;
+    // Slow: a tenth of a second moves it by little more than a hundredth.
+    for (let t = 0; t < 20_000; t += 100) expect(Math.abs(swell('lava', t + 100) - swell('lava', t))).toBeLessThan(0.015);
+    const range = samples(flicker, 'smoulder').map((s) => s.intensity);
+    expect(Math.max(...range) - Math.min(...range)).toBeGreaterThan(0.1);
+    expect(swell('lava-a', 0)).not.toBeCloseTo(swell('lava-b', 0), 3);
+  });
+
+  it('keeps an animation it does not know steady', () => {
+    expect(new LightFlicker(seeded(1)).sample('a', 'aurora' as LightAnimation, 500)).toEqual({ intensity: 1, radiusScale: 1 });
   });
 
   it('keeps separate state per instance', () => {

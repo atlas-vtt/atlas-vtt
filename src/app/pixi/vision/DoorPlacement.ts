@@ -6,6 +6,7 @@ import type { WallSegment } from '../../types/wallTypes';
 import { placeDoor } from '../lighting/wallEdits';
 import type { WallInteraction } from './WallInteraction';
 import type { WallRenderer } from './WallRenderer';
+import { levelObjects } from '../../levels/levelObjects';
 
 type DoorType = 'door' | 'secret-door';
 
@@ -78,7 +79,7 @@ export class DoorPlacement {
   }
 
   private wall(wallId: string): WallSegment | undefined {
-    return this.store.getState().objects.walls[wallId];
+    return levelObjects(this.store.getState()).walls[wallId];
   }
 
   /** A door is one grid cell wide. */

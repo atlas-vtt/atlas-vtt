@@ -3,6 +3,7 @@ import { isRecord } from '../utils/guards';
 import type { LightEmission, LightSource } from '../types/lightingTypes';
 import type { WallSegment } from '../types/wallTypes';
 import { isHexColor } from '../utils/hexColor';
+import { readArea } from './lightArea';
 
 /**
  * Lights and walls as lighting and sight read them. A map file arrives unchecked (a hand edit,
@@ -46,7 +47,11 @@ function emissionOf(value: Record<string, unknown>): LightEmission | null {
   } as unknown as LightEmission;
 }
 
-/** A placed light: none without a place and an emission; a rotation that is no number reads as unset. */
+/**
+ * A placed light: none without a place and an emission; a rotation that is no number reads as
+ * unset, and an `area` that is no area (`readArea`), or one on a source of magical darkness, which
+ * has no surface to glow from, as none: the light shines from its place.
+ */
 export function readLight(value: unknown): LightSource | null {
   if (!isRecord(value)) return null;
   if (!lights.has(value)) lights.set(value, lightOf(value));
@@ -56,9 +61,10 @@ export function readLight(value: unknown): LightSource | null {
 function lightOf(value: Record<string, unknown>): LightSource | null {
   const emission = readEmission(value.emission);
   if (typeof value.id !== 'string' || !finite(value.x) || !finite(value.y) || !emission) return null;
-  const { rotation, ...rest } = value;
-  if (emission === value.emission && (rotation === undefined || finite(rotation))) return value as unknown as LightSource;
-  return { ...rest, ...(finite(rotation) && { rotation }), emission } as unknown as LightSource;
+  const { rotation, area, ...rest } = value;
+  const surface = area === undefined || emission.darkness ? null : readArea(area);
+  if (emission === value.emission && (rotation === undefined || finite(rotation)) && (area === undefined || surface)) return value as unknown as LightSource;
+  return { ...rest, ...(finite(rotation) && { rotation }), ...(surface && { area: surface }), emission } as unknown as LightSource;
 }
 
 /** The lights of a store's `objects.lights` that can be read, the same list for as long as the record is unchanged. */
@@ -76,8 +82,8 @@ const NO_LIGHTS: readonly LightSource[] = [];
 
 /**
  * A wall: none without two ends that are numbers; a door is locked only where its `locked` is
- * `true`, a wall blocks one thing only where `blocks` names sight or light (anything else
- * reads as a wall for both), and it is limited only where `limited` is `true` and limited
+ * `true`, a wall blocks one thing only where `blocks` names sight or light, and is a window that
+ * stops a token alone where it names `movement` (anything else reads as a wall for both), and it is limited only where `limited` is `true` and limited
  * walls are switched on (`LIMITED_WALLS`): this is the one place that decides it, for sight,
  * light, the sealing, the engine's fields and masks, the wall editor's look and its menu.
  */
@@ -94,6 +100,7 @@ function wallOf(value: Record<string, unknown>): WallSegment | null {
   const flag = (it: unknown): boolean => it === undefined || it === true;
   // With limited walls switched off, a wall that says it is limited reads as a wall like any other: it blocks.
   const isLimited = LIMITED_WALLS && limited === true;
-  if (flag(locked) && (limited === undefined || isLimited) && (blocks === undefined || blocks === 'sight' || blocks === 'light')) return value as unknown as WallSegment;
-  return { ...rest, ...(locked === true && { locked }), ...(isLimited ? { limited: true } : {}), ...((blocks === 'sight' || blocks === 'light') && { blocks }) } as unknown as WallSegment;
+  const known = blocks === 'sight' || blocks === 'light' || blocks === 'movement';
+  if (flag(locked) && (limited === undefined || isLimited) && (blocks === undefined || known)) return value as unknown as WallSegment;
+  return { ...rest, ...(locked === true && { locked }), ...(isLimited ? { limited: true } : {}), ...(known && { blocks }) } as unknown as WallSegment;
 }

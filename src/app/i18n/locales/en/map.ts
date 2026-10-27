@@ -16,4 +16,6 @@ export const map = {
   'map.noGridFound': 'No grid was found on this map, so none is shown.',
   'map.openFailed': 'Atlas VTT could not open the scene {name} ({reason}).',
   'map.imageUnshown': 'Atlas VTT could not show the map image {file}. {reason}',
+  'map.videoTooLarge': 'The animated map {file} is {width} × {height} px, larger than this device can play ({side} px a side). It shows its first frame.',
+  'map.videoUnplayable': 'The animated map {file} cannot play here, so it shows its first frame. {reason}',
 } as const satisfies Record<string, Message>;

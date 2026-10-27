@@ -2,6 +2,7 @@ import { TokenCreatorModal } from '../packages/components/asset-manager/token-cr
 import { Plugin, TFile } from 'obsidian';
 import { AtlasView } from '../atlas-view';
 import { DASHBOARD_VIEW_TYPE } from '../dashboard-view';
+import { showDungeonGenerator } from '../packages/components/dungeon-generator/openDungeonGenerator';
 import { t } from '../i18n';
 import type { GlobalAssetManagerService } from '../services/GlobalAssetManagerService';
 import type { ImageDisplayService } from '../services/ImageDisplayService';
@@ -96,6 +97,12 @@ function registerMapCommands(plugin: Plugin, deps: CommandDependencies): void {
     id: 'open-dashboard',
     name: t('command.openDashboard'),
     callback: () => void openDashboard(plugin),
+  });
+
+  plugin.addCommand({
+    id: 'generate-dungeon',
+    name: t('command.generateDungeon'),
+    callback: () => runInBackground(showDungeonGenerator(plugin.app), 'Opening the dungeon generator'),
   });
 
   plugin.addCommand({

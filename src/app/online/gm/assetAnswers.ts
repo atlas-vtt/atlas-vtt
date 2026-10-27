@@ -1,6 +1,7 @@
 import type { GmMessage, PlayerAssetRequest } from '../protocol/index.ts';
 import { assetChunks, ServedAssets, sha256Hex } from './assetServe.ts';
 import { AssetVariants, type ScaleImage } from './assetVariants.ts';
+import type { SharedVideo } from './floorVideo.ts';
 import type { VaultImage } from './TokenShare.ts';
 
 export interface AssetAnswerPorts {
@@ -9,6 +10,15 @@ export interface AssetAnswerPorts {
   readImage(path: string): Promise<VaultImage | null>;
   /** Scales an image for a player who asks for a longest side; without it players get originals only. */
   scaleImage?: ScaleImage | undefined;
+  /** An animated map's video at a vault path; without it no video is served. */
+  readVideo?: ((path: string) => Promise<VaultImage | null>) | undefined;
+}
+
+/** An image of the picture held in memory: the map. */
+export interface PictureImage {
+  readonly hash: string;
+  readonly bytes: Uint8Array;
+  readonly mime: string;
 }
 
 /**
@@ -17,7 +27,9 @@ export interface AssetAnswerPorts {
  */
 export interface PictureAssets {
   /** The shared map's image, while one is shared. */
-  map(player: string): { readonly hash: string; readonly bytes: Uint8Array; readonly mime: string } | null;
+  map(player: string): PictureImage | null;
+  /** The shared map's video, while the map is an animated one players may play. */
+  video?(player: string): SharedVideo | null;
   /** The explored memory by hash, while it is the one players were sent. */
   explored(hash: string, player: string): Uint8Array | undefined;
   /** The vault path of artwork the picture shows (a token's or an initiative portrait's, an image of a quest's text), by hash. */
@@ -27,7 +39,7 @@ export interface PictureAssets {
 }
 
 /**
- * Answers players' asset requests: only for the map, the explored memory, artwork or a text of their
+ * Answers players' asset requests: only for the map, its video, the explored memory, artwork or a text of their
  * current picture, from the chunk they ask for on, and an image larger than a longest side they ask for as a
  * scaled copy (`AssetVariants`) announced by an `asset-variant` message. Anything else is refused.
  */
@@ -42,8 +54,14 @@ export class AssetAnswers {
   answer(from: string, request: PlayerAssetRequest): void {
     const { hash, maxSide } = request;
     const first = request.from ?? 0;
-    const map = this.picture.map(from);
-    const isMap = map?.hash === hash;
+    const video = this.mapVideo(hash, from);
+    // A video is never scaled: whatever side is asked for, it is the same asset
+    if (video !== null) {
+      if (this.served.take(from, hash, first, this.ports.now())) void this.serveVideo(hash, video.path, from, first);
+      return;
+    }
+    const map = this.mapImage(hash, from);
+    const isMap = map !== null;
     const explored = isMap ? undefined : this.picture.explored(hash, from);
     const art = isMap || explored !== undefined ? undefined : this.picture.artPath(hash, from);
     const bytes = explored ?? (isMap || art !== undefined ? undefined : this.picture.text?.(hash, from));
@@ -67,6 +85,13 @@ export class AssetAnswers {
     await this.serveImage(hash, image.bytes, image.mime, to, first, maxSide);
   }
 
+  /** Reads the map's video again and serves it while it still has the hash the player's picture names. */
+  private async serveVideo(hash: string, path: string, to: string, first: number): Promise<void> {
+    const video = (await this.ports.readVideo?.(path).catch(() => null)) ?? null;
+    if (video === null || this.mapVideo(hash, to)?.path !== path || (await sha256Hex(video.bytes)) !== hash) return this.refuse(hash, to);
+    this.serve(hash, video.bytes, to, first);
+  }
+
   /** The image itself, or its scaled copy for `maxSide`, while it is still in the picture once the copy is made. */
   private async serveImage(hash: string, bytes: Uint8Array, mime: string, to: string, first: number, maxSide: number | undefined): Promise<void> {
     if (maxSide === undefined || this.variants === null) return this.serve(hash, bytes, to, first);
@@ -78,7 +103,19 @@ export class AssetAnswers {
   }
 
   private inPicture(hash: string, player: string): boolean {
-    return this.picture.map(player)?.hash === hash || this.picture.artPath(hash, player) !== undefined;
+    return this.mapImage(hash, player) !== null || this.picture.artPath(hash, player) !== undefined;
+  }
+
+  /** The map by hash, while the player's picture shows it. */
+  private mapImage(hash: string, player: string): PictureImage | null {
+    const map = this.picture.map(player);
+    return map?.hash === hash ? map : null;
+  }
+
+  /** The map's video by hash, while the player's picture shows it. */
+  private mapVideo(hash: string, player: string): SharedVideo | null {
+    const video = this.picture.video?.(player) ?? null;
+    return video?.ref.hash === hash ? video : null;
   }
 
   private serve(hash: string, bytes: Uint8Array, to: string, first: number): void {

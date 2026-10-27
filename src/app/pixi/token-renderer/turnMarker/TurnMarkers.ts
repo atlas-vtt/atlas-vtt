@@ -5,6 +5,8 @@ import type { GridState } from '../../../types/gridTypes';
 import type { InitiativeState } from '../../../types/initiativeTypes';
 import type { TokenSeen } from '../../../vision/measureOrigin';
 import { mapTokens, sceneTokens, type TokenHolder } from '../../../tokens/offMap';
+import { everyLevelObjects, levelObjects } from '../../../levels/levelObjects';
+import type { LevelView } from '../../../levels/sceneLevels';
 import { MAP_LAYER_Z } from '../../mapLayerOrder';
 import type { LayerVisibility } from '../../playerSafeFrame';
 import { destroyTree } from '../../utils/destroyTree';
@@ -16,7 +18,8 @@ import { FLASH } from './turnMarkerShape';
 import { TurnTextures } from './turnTextures';
 
 /** What the markers read of a view's store. */
-export interface TurnMarkerState {
+/** What the flashes read of a view's state; of a scene with levels, only the tokens on the level shown flash. */
+export interface TurnMarkerState extends LevelView {
   readonly initiative: Pick<InitiativeState, 'isActive' | 'round' | 'entries' | 'sides'>;
   readonly objects: TokenHolder<TokenEntity>;
   readonly grid?: Pick<GridState, 'size'> | null | undefined;
@@ -123,12 +126,13 @@ export class TurnMarkers {
   private sync(state: TurnMarkerState, animate = true): void {
     const previous = this.last;
     this.last = state;
-    if (previous && previous.initiative === state.initiative && sceneTokens(previous.objects) === sceneTokens(state.objects) && previous.grid === state.grid) return;
+    const scene = sceneTokens(everyLevelObjects(state));
+    const onMap = mapTokens(levelObjects(state));
+    if (previous && previous.initiative === state.initiative && sceneTokens(everyLevelObjects(previous)) === scene && mapTokens(levelObjects(previous)) === onMap && previous.grid === state.grid) return;
     const turn = currentTurn(state.initiative);
     const key = turn ? turnKey(turn) : null;
-    // Sides are read off every combatant's token; only those on the map flash
-    const onMap = mapTokens(state.objects);
-    const ids = new Set(turnTokenIds(state.initiative, sceneTokens(state.objects), this.deps.defeated?.(state)).filter((tokenId) => onMap[tokenId] !== undefined));
+    // Sides are read off every combatant's token; only those on the map, on the level shown, flash
+    const ids = new Set(turnTokenIds(state.initiative, scene, this.deps.defeated?.(state)).filter((tokenId) => onMap[tokenId] !== undefined));
     const began = key !== null && key !== this.shownKey && animate && !state.isMapLoading;
     this.shownKey = key;
     for (const [tokenId, marker] of this.markers) {
@@ -162,7 +166,7 @@ export class TurnMarkers {
     const sprite = this.deps.spriteOf(tokenId);
     const state = this.deps.getState();
     const gridSize = state.grid?.size ?? 70;
-    const token = mapTokens(state.objects)[tokenId];
+    const token = mapTokens(levelObjects(state))[tokenId];
     const size = sprite?.tokenSize ?? 0;
     if (sprite && token && size > 0) {
       // The ring as drawn, which the scene's ring size may have scaled: the selection reads it so too

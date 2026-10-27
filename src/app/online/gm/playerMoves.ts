@@ -145,8 +145,9 @@ export class PlayerMoves {
   private apply(from: string, tokenId: string, move: PlayerMove): void {
     const state = this.store.getState();
     const token = mapTokens(state.objects)[tokenId];
-    const at = token === undefined ? move : landing(this.context(state), token, move);
+    const at = token === undefined ? move : landing(this.context(state), state, tokenId, token, move);
     const stopped = at.x !== move.x || at.y !== move.y;
+    // A token put down on stairs goes to the level they lead to, and its player's picture follows it there
     if (!stopped || at.x !== token?.x || at.y !== token.y) this.store.setState((draft) => placeTokens(draft, [{ id: tokenId, x: at.x, y: at.y }]));
     if (stopped) this.refuse(from, move);
   }

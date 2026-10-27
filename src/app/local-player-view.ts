@@ -37,6 +37,8 @@ export interface LocalPlayerSession extends Record<string, unknown> {
   frozen: boolean;
   /** The camera players saw the scene of `tabId` through last; null once another scene is presented, until a frame of it was shown. */
   camera?: PlayerCameraState | null;
+  /** The level of that scene players saw, whose camera `camera` is; unset for a scene without levels. */
+  levelId?: string | undefined;
 }
 
 /** A real workspace leaf lets Obsidian restore the presentation and window geometry. */
@@ -66,6 +68,7 @@ export class LocalPlayerView extends ItemView {
     this.session = { tabId: state.tabId, filePath: state.filePath, frozen: 'frozen' in state && state.frozen === true };
     const camera = 'camera' in state ? readPlayerCamera(state.camera) : null;
     if (camera) this.session.camera = camera;
+    if ('levelId' in state && typeof state.levelId === 'string' && state.levelId !== '') this.session.levelId = state.levelId;
     this.app.workspace.onLayoutReady(() => {
       if (this.isClosed) return;
       if (this.restoreTimer !== null) window.clearTimeout(this.restoreTimer);

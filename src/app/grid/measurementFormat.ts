@@ -8,6 +8,7 @@ import type { GridState } from '../types/gridTypes';
 import type {
   CollectionGridDefaults,
   DiagonalRule,
+  DifficultTerrainRule,
   GridUnitType,
   MeasurementMode,
   RangeBand,
@@ -24,6 +25,8 @@ export interface MeasurementSettings {
    */
   ruleDistance: number;
   diagonalRule: DiagonalRule;
+  /** What a cell of difficult terrain costs a token's movement (`movementCostInCells`); unset is nothing extra. Plain distances never pay it. */
+  difficultTerrain?: DifficultTerrainRule;
   rangeBands: readonly RangeBand[];
   /** Full opening of the cone measurement in degrees. */
   coneAngle: number;
@@ -63,6 +66,7 @@ function collectionMeasurement(collection: CollectionGridDefaults): Omit<Measure
     unitType: collection.unitType,
     ruleDistance: collection.unitDistance,
     diagonalRule: collection.diagonalRule ?? 'equidistant',
+    difficultTerrain: collection.difficultTerrain ?? 'none',
     rangeBands: collection.abstractRangeBands ?? [],
     coneAngle: collection.coneAngle ?? DEFAULT_CONE_ANGLE,
   };
@@ -75,6 +79,7 @@ function gridMeasurement(grid: GridState | null | undefined): Omit<MeasurementSe
     unitType: grid?.unitType ?? 'feet',
     ruleDistance: grid?.unitDistance ?? 5,
     diagonalRule: 'equidistant',
+    difficultTerrain: 'none',
     rangeBands: [],
     coneAngle: DEFAULT_CONE_ANGLE,
   };

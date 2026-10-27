@@ -3,20 +3,28 @@ import { mayLinkFromScene } from '../services/sceneLinks';
 import { t } from '../i18n';
 import { baseName, parentPath } from '../utils/pathUtils';
 import { STANDING_LIST } from '../keyboard/tooltipEscape';
+import { runInBackground } from '../utils/backgroundTask';
+import type { PinCreateEntry, PinLinkTarget } from './pinCreateEntries';
+import { encounterFoldersOf, type EncounterFolder } from '../encounters/encounterFolders';
 
 const RESULT_LIMIT = 30;
+const BY_NAME = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
 
 export interface PinNoteSearchOptions {
   app: App;
   /** The map the pin goes on; it may only link to scenes of its own collection. */
   mapPath: string | null;
-  /** A note (optionally `path#heading`) was chosen. */
-  onPick: (notePath: string) => void;
+  /** A note (optionally `path#heading`), a scene or a folder of encounters was chosen; a scene made for the pin names the floor it opens on. */
+  onPick: (notePath: string, sceneLevel?: string) => void;
   onCancel: () => void;
+  /** Ways to make what a typed name names, offered first while no file carries that name. */
+  createEntries?: readonly PinCreateEntry[];
 }
 
 export interface PinNoteSearch {
   focus: () => void;
+  /** A create entry is at work (in a tab of its own, perhaps): presses outside the dropdown belong to it. */
+  isCreating: () => boolean;
 }
 
 interface ResultEntry {
@@ -27,7 +35,8 @@ interface ResultEntry {
 let listCount = 0;
 
 /**
- * Search field, result list and key hints of the note pin dropdown. Picking a
+ * Search field, result list and key hints of the note pin dropdown, offering notes, the scenes of
+ * the map's collection and its folders of encounters. Picking a
  * note with headings, or typing `note#`, lists its headings. One result is
  * always active (the first after every change), so Enter picks it and the
  * arrow keys move through the list.
@@ -65,6 +74,9 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
     f instanceof TFile && (f.extension === 'md' || (f.extension === 'atlasmap' && mayLinkFromScene(options.mapPath, f.path)))
   );
 
+  // The scene's own folders of encounters, which a pin rolls from
+  const encounterFolders = encounterFoldersOf(app, options.mapPath);
+
   const nameCounts = new Map<string, number>();
   files.forEach((file) => {
     const name = file.basename.toLowerCase();
@@ -83,6 +95,8 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
   let activeIndex = -1;
   /** The note picked from the results, whose headings are listed; names only typed are looked up. */
   let pickedNote: TFile | null = null;
+  /** A create entry is under way; nothing else is picked until it ends. */
+  let creating = false;
 
   const setActive = (index: number): void => {
     entries[activeIndex]?.element.removeClass('is-active');
@@ -113,6 +127,40 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
     return element;
   };
 
+  const pick = (notePath: string): void => {
+    if (!creating) options.onPick(notePath);
+  };
+
+  const createAndPick = async (entry: PinCreateEntry, name: string): Promise<void> => {
+    creating = true;
+    if (entry.away) container.addClass('atlas-away');
+    let target: PinLinkTarget | null;
+    try {
+      target = await entry.create(name, container);
+    } finally {
+      creating = false;
+      container.removeClass('atlas-away');
+    }
+    if (target !== null) options.onPick(target.path, target.sceneLevel);
+  };
+
+  /** The create entries for a typed name no file carries; one whose name is unusable shows why, and is skipped by the keys. */
+  const renderCreateEntries = (name: string): void => {
+    for (const entry of options.createEntries ?? []) {
+      const problem = entry.problem?.(name) ?? null;
+      const item = problem === null
+        ? addEntry(() => {
+          if (!creating) runInBackground(createAndPick(entry, name), `Creating ${name} for a pin`, t('pin.search.createFailed', { name }));
+        })
+        : results.createDiv({ cls: 'pin-result-item is-disabled', attr: { role: 'option', 'aria-disabled': 'true' } });
+      item.addClass('pin-create-item');
+      setIcon(item.createDiv({ cls: 'pin-result-icon' }), entry.icon);
+      const text = item.createDiv({ cls: 'pin-result-text' });
+      text.createSpan({ cls: 'pin-result-name', text: entry.label(name) });
+      if (problem !== null) text.createSpan({ cls: 'pin-result-reason', text: problem });
+    }
+  };
+
   const hasHeadings = (file: TFile): boolean => (app.metadataCache.getFileCache(file)?.headings?.length ?? 0) > 0;
 
   /** Lists the headings of `file`, keeping a heading query already typed. */
@@ -125,7 +173,7 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
   };
 
   const addWholeNoteEntry = (file: TFile, text: string): void => {
-    const item = addEntry(() => options.onPick(file.path));
+    const item = addEntry(() => pick(file.path));
     item.addClass('pin-header-item');
     setIcon(item.createDiv({ cls: 'pin-result-icon' }), 'file');
     item.createSpan({ cls: 'pin-result-name', text });
@@ -137,13 +185,21 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
     const isMap = file.extension === 'atlasmap';
     const item = addEntry(choose ?? (() => {
       if (hasHeadings(file)) showHeadings(file);
-      else options.onPick(file.path);
+      else pick(file.path);
     }));
     setIcon(item.createDiv({ cls: 'pin-result-icon' }), isMap ? 'map' : 'file');
     item.createSpan({ cls: 'pin-result-name', text: file.basename });
     const folder = sharedNameFolder(file);
     if (folder !== null) item.createSpan({ cls: 'pin-header-file', text: folder });
     if (isMap) item.createSpan({ cls: 'pin-result-badge is-map', text: t('pin.search.map') });
+  };
+
+  const addEncounterFolderEntry = (folder: EncounterFolder): void => {
+    const item = addEntry(() => options.onPick(folder.path));
+    setIcon(item.createDiv({ cls: 'pin-result-icon' }), 'swords');
+    item.createSpan({ cls: 'pin-result-name', text: folder.name });
+    if (folder.trail) item.createSpan({ cls: 'pin-header-file', text: folder.trail });
+    item.createSpan({ cls: 'pin-result-badge is-encounters', text: t('pin.search.encounters', { count: folder.count }) });
   };
 
   /** The notes whose headings `note#` lists: the picked one, else every note of that name, else every note containing it. */
@@ -183,7 +239,7 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
       return;
     }
     matching.forEach((header) => {
-      const item = addEntry(() => options.onPick(`${targetFile.path}#${header.heading}`));
+      const item = addEntry(() => pick(`${targetFile.path}#${header.heading}`));
       item.addClass('pin-header-item');
       item.createSpan({ cls: 'pin-header-level', text: `H${header.level}` });
       item.createSpan({ cls: 'pin-result-name', text: header.heading });
@@ -191,14 +247,28 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
     });
   };
 
+  /** Notes, scenes and folders of encounters in one list, by name. */
   const renderFiles = (query: string): void => {
     const needle = query.toLowerCase();
-    const matching = files.filter((f) => f.basename.toLowerCase().includes(needle));
+    const name = query.trim();
+    if (name !== '' && !files.some((f) => f.basename.toLowerCase() === name.toLowerCase())) renderCreateEntries(name);
+    const matching: Array<{ name: string; add: () => void }> = [
+      ...encounterFolders
+        .filter((folder) => `${folder.trail} ${folder.name}`.toLowerCase().includes(needle))
+        .map((folder) => ({ name: folder.name, add: () => addEncounterFolderEntry(folder) })),
+      ...files
+        .filter((f) => f.basename.toLowerCase().includes(needle))
+        .map((file) => ({ name: file.basename, add: () => addFileEntry(file) })),
+    ];
     if (matching.length === 0) {
+      if (results.childElementCount > 0) return;
       results.createDiv({ cls: 'pin-empty-state', text: t('pin.search.noNotes') });
       return;
     }
-    matching.slice(0, RESULT_LIMIT).forEach((file) => addFileEntry(file));
+    matching
+      .sort((a, b) => BY_NAME.compare(a.name, b.name))
+      .slice(0, RESULT_LIMIT)
+      .forEach((result) => result.add());
   };
 
   function render(): void {
@@ -236,5 +306,5 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
 
   render();
 
-  return { focus: () => search.focus() };
+  return { focus: () => search.focus(), isCreating: () => creating };
 }

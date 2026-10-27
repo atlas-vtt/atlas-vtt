@@ -1,9 +1,10 @@
-import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY, type SightPolicy } from './tokenSightPolicy';
+import { GM_SIGHT_POLICY, PLAYER_SIGHT_POLICY, sceneHasVision, type SightPolicy } from './tokenSightPolicy';
 import { selectSight } from './selectSight';
 import type { MeasurementSettings } from '../grid/measurementFormat';
 import { sleeps } from '../lighting/lightActivity';
 import { lightZoneList, withZones } from '../lighting/lightZones';
-import { worldTexel } from '../lighting/lightingConstants';
+import { REFLECTION, wallRadius, worldTexel } from '../lighting/lightingConstants';
+import { AREA_SAMPLE_SPACING } from './areaReach';
 import { unitScaleOf } from '../lighting/lightingUnits';
 import { sealedWalls } from '../lighting/sealWalls';
 import { SightTokens, heldForSight } from '../lighting/sightOnDrop';
@@ -22,7 +23,9 @@ import type { MapBounds } from './visibility';
 import { wallList } from './wallList';
 import type { EngineLight, EngineZone } from '../pixi/lighting/engine/types';
 import { LightReaches } from './lightReaches';
+import { LightMotion, NO_MOVING_LIGHTS } from './lightMotion';
 import { activeLights, engineLight } from './lightSources';
+import { everyLevelObjects, levelObjects } from '../levels/levelObjects';
 import { mapTokens } from '../tokens/offMap';
 
 /** What a scene's lighting works out on the CPU, in world pixels: the engine draws it and the rules read it. */
@@ -49,6 +52,12 @@ export interface SceneState {
   lighting: ViewState['lighting'];
   grid: ViewState['grid'];
   heldTokens: ViewState['heldTokens'];
+  /**
+   * The scene's levels and the one shown: only that level's walls, lights and tokens count (`levelObjects`), except
+   * that a level without a vision token sees nothing while a token on another level has vision (`sceneHasVision`).
+   */
+  levels?: ViewState['levels'];
+  viewedLevel?: ViewState['viewedLevel'];
 }
 
 interface Built {
@@ -59,6 +68,10 @@ interface Built {
   grid: ViewState['grid'];
   lighting: SceneLighting;
   rules: SightRules | undefined;
+  /** A token on any level has vision (`sceneHasVision`): a level shown without one sees nothing, not all. */
+  hasVision: boolean;
+  /** The world sight without a range reaches over. */
+  reach: MapBounds;
   model: SceneModel;
 }
 
@@ -73,48 +86,79 @@ export class SceneModelBuilder {
   private readonly sightTokens = new SightTokens();
   private readonly sightCache = new SightCache();
   private readonly lightReaches = new LightReaches();
+  /** Which lights are moving, where the builder is given a clock. */
+  private readonly motion: LightMotion | null;
   private built: Built | null = null;
 
-  /** The model of `state`, and whether this call built it anew. */
-  update(state: SceneState, bounds: MapBounds, measurement: () => MeasurementSettings, sightRules?: () => SightRules): { model: SceneModel; rebuilt: boolean } {
-    const { walls, lights, lightZones: zones } = state.objects;
+  /**
+   * `reflectedLight: false` builds lights without their reflection (`REFLECTION`), as before it
+   * existed. With a `clock` (ms), a light that moves is built as moving (`LightMotion`): marked
+   * `moving`, so the engine traces its tile cheaply; once it rests, the next update builds it
+   * whole (`restsAt`). Its reflection is there all along.
+   */
+  constructor(private readonly options: { reflectedLight?: boolean; clock?: () => number } = {}) {
+    this.motion = options.clock ? new LightMotion() : null;
+  }
+
+  /** When a light built as moving comes to rest: an update from then on builds it whole. Null while none moves. */
+  restsAt(): number | null {
+    return this.motion?.restsAt() ?? null;
+  }
+
+  /**
+   * The model of `state`, and whether this call built it anew. Sight without a range reaches over
+   * `reach` (the map, unless the level's openings look over larger maps below it).
+   */
+  update(state: SceneState, bounds: MapBounds, measurement: () => MeasurementSettings, sightRules?: () => SightRules, reach: MapBounds = bounds): { model: SceneModel; rebuilt: boolean } {
+    const { walls, lights, lightZones: zones } = levelObjects(state);
     const { grid, lighting } = state;
     const tokens = this.sightTokens.read(state);
     const rules = sightRules?.();
+    // Read from every level: a token on another floor switching vision on or off changes this level's sight.
+    const hasVision = sceneHasVision(everyLevelObjects(state).tokens);
     const last = this.built;
-    if (last && last.walls === walls && last.lights === lights && last.zones === zones && last.tokens === tokens && last.grid === grid && last.rules === rules) {
+    const sameReach = last?.reach.width === reach.width && last.reach.height === reach.height;
+    const rest = this.restsAt();
+    const rested = rest !== null && this.options.clock!() >= rest;
+    if (last && !rested && sameReach && last.walls === walls && last.lights === lights && last.zones === zones && last.tokens === tokens && last.grid === grid && last.rules === rules && last.hasVision === hasVision) {
       const same = !sightOptionsChanged(last.lighting, lighting) && !awakeLightsChanged(lights, withZones(last.lighting, lightZoneList(zones)), withZones(lighting, lightZoneList(zones)));
       // The lighting is noted either way: the next update compares with it, not with an older one.
       last.lighting = lighting;
       if (same) return { model: last.model, rebuilt: false };
     }
-    const model = this.build(state, tokens, bounds, measurement(), rules);
-    this.built = { walls, lights, zones, tokens, grid, lighting, rules, model };
+    const model = this.build(state, tokens, bounds, reach, measurement(), rules, hasVision);
+    this.built = { walls, lights, zones, tokens, grid, lighting, rules, hasVision, reach, model };
     return { model, rebuilt: true };
   }
 
   /** The next update builds anew, whatever changed: the map's size did, or lighting was off meanwhile. */
   reset(): void {
     this.built = null;
+    this.motion?.clear();
   }
 
-  private build(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, measurement: MeasurementSettings, rules: SightRules | undefined): SceneModel {
+  private build(state: SceneState, tokens: Record<string, TokenEntity>, bounds: MapBounds, reach: MapBounds, measurement: MeasurementSettings, rules: SightRules | undefined, hasVision: boolean): SceneModel {
     const scale = unitScaleOf(measurement, state.grid);
-    const walls = sealedWalls(wallList(state.objects.walls), worldTexel(bounds));
-    const zoneList = lightZoneList(state.objects.lightZones);
+    const walls = sealedWalls(wallList(levelObjects(state).walls), worldTexel(bounds));
+    const zoneList = lightZoneList(levelObjects(state).lightZones);
     const ambient = withZones(state.lighting, zoneList);
-    const shining = activeLights(state.objects.lights, tokens, ambient).map((light) => engineLight(light, scale));
-    const everyReach = this.lightReaches.sync(shining, walls);
+    const shining = activeLights(levelObjects(state).lights, tokens, ambient).map((light) => engineLight(light, scale));
+    // An area light's outline, and the edges of every light's shadows its reflection comes from,
+    // are traced a quarter cell apart, clear of the capsules the picture puts around walls.
+    const sampling = { spacing: scale.cellSize * AREA_SAMPLE_SPACING, clearance: wallRadius(worldTexel(bounds)) };
+    const reflection = this.options.reflectedLight === false ? null : { ...sampling, reach: REFLECTION.cells * scale.cellSize };
+    const moving = this.motion?.note(shining, this.options.clock!()) ?? NO_MOVING_LIGHTS;
+    const everyReach = this.lightReaches.sync(shining, walls, sampling, reflection);
     // A light whose flame stands in magical darkness it does not outshine gives nothing: the picture and the rule both leave it out.
     const out = shining.map((light) => !light.darkness && quenched(light, light.priority ?? 0, everyReach));
     // A darkness is drawn as the polygon the rule counts, and veils the light it swallows where the
     // rule counts that light: the reaches' polygons, handed on rather than traced again.
     const dark = shining.some((light) => light.darkness);
-    const lights = shining.flatMap((light, i) => (out[i] ? [] : [dark ? { ...light, area: everyReach[i]!.polygon } : light]));
+    const lights = shining.flatMap((light, i) => (out[i] ? [] : [withRule(moving.has(light.key) ? { ...light, moving: true } : light, everyReach[i]!, dark)]));
     const reaches = everyReach.filter((_, i) => !out[i]);
-    const sources = sourcesInDarkness(sightSources(tokens, scale, bounds, rules, GM_SIGHT_POLICY), ambient, reaches);
+    const sources = sourcesInDarkness(sightSources(tokens, scale, reach, rules, GM_SIGHT_POLICY), ambient, reaches);
     this.sightCache.retain(new Set(sources.map(source => source.tokenId)));
-    const gmSight = sceneSight(state.lighting, sources, walls, this.sightCache);
+    const gmSight = sceneSight(state.lighting, sources, walls, this.sightCache, { sceneHasVision: hasVision });
     const sight = selectSight(gmSight, tokens, PLAYER_SIGHT_POLICY);
     // Half a cell: the width of a zone's soft edge past its outline.
     const zones = zoneList.map(({ polygon, ambient: level, ambientColor }) => ({ polygon, ambient: level, ...(ambientColor && { ambientColor }), soft: scale.cellSize / 2 }));
@@ -123,6 +167,17 @@ export class SceneModelBuilder {
 }
 
 const NO_ZONES: readonly EngineZone[] = [];
+
+/**
+ * A light with what the rule counts for it that the picture draws as the rule has it: its
+ * reflection, and in a scene with a darkness, for the darkness map, its reach's polygon and an
+ * area light's parts beyond its area.
+ */
+function withRule(light: EngineLight, reach: LightReach, dark: boolean): EngineLight {
+  const reflected = reach.reflection?.length ? { reflection: reach.reflection } : null;
+  if (dark) return { ...light, area: reach.polygon, ...(reach.parts && { parts: reach.parts }), ...reflected };
+  return reflected ? { ...light, ...reflected } : light;
+}
 
 /** Whether a light that follows the ambient light wakes or falls asleep between two ambient lights. */
 function awakeLightsChanged(lights: ViewState['objects']['lights'], before: AmbientLight, after: AmbientLight): boolean {
@@ -158,7 +213,7 @@ export class SceneSpots {
   constructor(private readonly policy: SightPolicy = PLAYER_SIGHT_POLICY) {}
 
   update(model: SceneModel, state: SceneState, measurement: () => MeasurementSettings, sightRules?: () => SightRules, sight: Sight = model.sight): SeenSpot[] {
-    const inputs: SpotInputs = { sight, model, tokens: mapTokens(state.objects), held: heldForSight(state), lighting: state.lighting, grid: state.grid, rules: sightRules?.() };
+    const inputs: SpotInputs = { sight, model, tokens: mapTokens(levelObjects(state)), held: heldForSight(state), lighting: state.lighting, grid: state.grid, rules: sightRules?.() };
     const last = this.inputs;
     this.inputs = inputs;
     if (last && (Object.keys(inputs) as (keyof SpotInputs)[]).every((key) => last[key] === inputs[key])) return this.spots;

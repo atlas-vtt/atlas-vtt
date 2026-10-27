@@ -99,7 +99,7 @@ export function setup(): Setup {
     setWallPointerMoveHandler: (fn: Setup['wallMove']) => { wired.wallMove = fn; },
     setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore,
     setDoorMenuHandlers: (handlers: DoorMenuHandlers) => { doorMenu.current = handlers; },
-    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, refreshPlayerSight: ignore,
+    setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore,
     getSensedOutlineLayer: () => sensedOutlines,
   } as unknown as TokenRenderer);
   const torch = store.getState().addLight({ x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });

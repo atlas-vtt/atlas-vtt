@@ -49,8 +49,8 @@ const SURE_CELL_SIZE = 12;
 const MAX_DETECTED_SQUARE_ASPECT = 1.1;
 /** Fits supported this nearly alike are a tie, which the more regular one wins. */
 const SUPPORT_TIE = 0.02;
-/** Support at which a fit settles the grid type. */
-const DECISIVE_SUPPORT = 0.5;
+/** Support at which a fit settles the grid type: most of the map's lines agree with it. */
+export const DECISIVE_SUPPORT = 0.5;
 /** Sizes closer than this fraction are the same proposal. */
 const SAME_SIZE_TOLERANCE = 0.03;
 /** Aspects closer than this fraction are the same grid at other sizes. */

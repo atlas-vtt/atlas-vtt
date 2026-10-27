@@ -7,6 +7,7 @@ import type { SeatSource } from './seatSource.ts';
 import { sharedTokens, snapGridOf } from './scenePicture.ts';
 import { SequencedList } from './sequencedList.ts';
 import { NO_TOKEN_RULES, numberShownTokens, type TokenRules } from './tokenUI.ts';
+import { levelObjects } from '../../levels/levelObjects';
 import type { AtlasPlayerSettings } from './atlasLighting.ts';
 import { movesOutOfTurn, sharedTurnTokens, type TurnShareState } from './turnShare.ts';
 import { isOffMap, mapTokens, sceneTokens } from '../../tokens/offMap';
@@ -39,6 +40,8 @@ export interface TokenSharePorts {
   now(): number;
   setTimer(run: () => void, ms: number): number;
   clearTimer(timer: number): void;
+  /** The random ids players know tokens by, by GM id, where several shares name tokens alike (the floors of one scene); else the share's own. */
+  aliases?: Map<string, string>;
 }
 
 /**
@@ -71,7 +74,7 @@ export class TokenShare {
   private lastAt = Number.NEGATIVE_INFINITY;
   private timer: number | undefined;
   private poll: number | undefined;
-  private readonly aliases = new Map<string, string>();
+  private readonly aliases: Map<string, string>;
   private readonly art: ArtRefs;
   /** Vault paths of the artwork the last list shows, by hash. */
   private shownArt = new Map<string, string>();
@@ -92,6 +95,7 @@ export class TokenShare {
     this.ports = ports;
     this.listed = listed;
     this.list = new SequencedList('tokens', ports);
+    this.aliases = ports.aliases ?? new Map<string, string>();
     this.art = new ArtRefs((path) => ports.readImage(path), () => this.update());
   }
 
@@ -234,7 +238,7 @@ export class TokenShare {
     const seats = this.ports.seats;
     const shown = source.playerRollTokens(state.mapPath);
     // As Atlas's player window numbers them: the tokens they see, and the combatants beside the map their list shows unless hidden
-    const scene = sceneTokens(state.objects);
+    const scene = sceneTokens(levelObjects(state));
     const inView = (id: string): boolean => (isOffMap(scene[id]) ? scene[id]?.isHidden !== true : shown.has(id));
     const before = { numbers: this.numbers, badgesOn: this.badgesOn };
     const badges = numberShownTokens(this.numbers, scene, inView, state.tokenSettings?.showInstanceBadges ?? true);
@@ -251,7 +255,7 @@ export class TokenShare {
     const moveRules = { movesOnTurn: settings?.movesOnTurn === true, showInitiative, definitions: rules.resources };
     const held = new Set([...shown.keys()].filter((id) => movesOutOfTurn(turnState, moveRules, id)));
     const tokens = sharedTokens({
-      tokens: mapTokens(state.objects),
+      tokens: mapTokens(levelObjects(state)),
       shown,
       gridSize,
       showNames: this.ports.showNames(),

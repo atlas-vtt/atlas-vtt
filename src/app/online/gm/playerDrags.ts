@@ -95,7 +95,7 @@ export class PlayerDrags {
     if (current === undefined || token === undefined) return;
     current.lastAt = this.ports.now();
     // From where the last message left it, up to the first wall in the way.
-    const at = landing(context, token, verdict);
+    const at = landing(context, state, verdict.tokenId, token, verdict);
     this.write((draft) => {
       const moved = sceneTokens(draft.objects)[verdict.tokenId];
       if (moved === undefined) return;
@@ -123,7 +123,7 @@ export class PlayerDrags {
       return !verdict.ok && verdict.reason === 'turn' ? 'turn' : false;
     }
     const token = mapTokens(state.objects)[live.tokenId];
-    const at = token === undefined ? { x: verdict.x, y: verdict.y } : landing(context, token, verdict);
+    const at = token === undefined ? { x: verdict.x, y: verdict.y } : landing(context, state, live.tokenId, token, verdict);
     this.end([live], at);
     return at;
   }

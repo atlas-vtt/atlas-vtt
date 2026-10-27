@@ -1,0 +1,82 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ── Map files as the floors of one scene ────────────────────────────────────
+// The scene's name, then one row per floor, top floor first: its name over its
+// file's, then the two buttons that move it, as one group.
+
+.atlas-uvtt-floors-overlay {
+  @include atlas-modal-overlay($z-atlas-modal);
+}
+
+.atlas-uvtt-floors {
+  @include atlas-modal-window;
+  width: 460px;
+}
+
+.atlas-uvtt-floors__header {
+  @include atlas-modal-header;
+}
+
+.atlas-uvtt-floors__body {
+  @include atlas-modal-body;
+}
+
+.atlas-uvtt-floors__field {
+  @include atlas-flex-col($gap: $spacing-s);
+}
+
+.atlas-uvtt-floors__label {
+  @include atlas-field-label;
+}
+
+.atlas-uvtt-floors__input {
+  @include atlas-text-input;
+}
+
+.atlas-uvtt-floors__list {
+  @include atlas-flex-col($gap: $spacing-xs);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-uvtt-floors__floor {
+  @include atlas-flex-row($spacing-xs);
+  padding: $spacing-xs;
+  border-radius: $radius-l;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+}
+
+.atlas-uvtt-floors__names {
+  @include atlas-flex-col($gap: $spacing-xs);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.atlas-uvtt-floors__file {
+  @include atlas-truncate;
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-uvtt-floors__move {
+  @include atlas-icon-button('s');
+  @include atlas-ghost-button;
+  // As tall as the floor's name field beside it
+  width: var(--input-height);
+  height: var(--input-height);
+  box-shadow: none;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.atlas-uvtt-floors__footer {
+  @include atlas-modal-footer;
+}

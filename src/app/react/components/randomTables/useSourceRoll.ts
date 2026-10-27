@@ -4,7 +4,7 @@ import { countByRarity, countDrawable, rollLoot } from '../../../loot/lootRoller
 import { rollCollectionTable, tableRollEntry } from '../../../randomTables/tableResults';
 import type { SelectedSource } from './tableSelection';
 import type { RandomTablesLibrary } from './useRandomTables';
-import { rollFactLong, statusLine, tableName } from './tableFacts';
+import { statusLine, tableFactLong, tableName } from './tableFacts';
 import { t } from '../../../i18n';
 
 export interface SourceRoll {
@@ -54,7 +54,7 @@ export function useSourceRoll(
       unit: found.source.kind === 'items' ? 'items' : 'results',
       rollLabel: t('tables.roll'),
       rollName: t('tables.rollTable', { name: tableName(found) }),
-      hint: !canRoll ? status ?? t('tables.nothingToRoll') : rollFactLong(table),
+      hint: !canRoll ? status ?? t('tables.nothingToRoll') : tableFactLong(found),
       canRoll,
       rarityCounts: NO_RARITIES,
       roll: async (rolls, mapName) => {

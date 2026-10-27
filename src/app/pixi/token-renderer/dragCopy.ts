@@ -1,6 +1,7 @@
 import type { StoreApi } from 'zustand';
 import type { ViewAtlasState } from '../../storeFactory';
 import { collectMapObjects } from '../../clipboard/mapObjectContent';
+import { levelObjects } from '../../levels/levelObjects';
 import { mapTokens } from '../../tokens/offMap';
 
 type Positions = Record<string, { x: number; y: number }>;
@@ -24,12 +25,12 @@ export function copyDragSelection(
   fromSelection = true,
 ): { ids: string[]; initialPositions: Positions } | null {
   const state = store.getState();
-  const tokenIds = dragIds.filter((id) => mapTokens(state.objects)[id] && initialPositions[id]);
+  const tokenIds = dragIds.filter((id) => mapTokens(levelObjects(state))[id] && initialPositions[id]);
   if (tokenIds.length === 0) return null;
-  const drawingIds = fromSelection ? state.selectedIds.filter((id) => state.objects.drawings[id]) : [];
+  const drawingIds = fromSelection ? state.selectedIds.filter((id) => levelObjects(state).drawings[id]) : [];
 
   // Tokens are inserted first, in the order they were collected, so copies line up with tokenIds.
-  const copies = state.insertMapObjects(collectMapObjects(state.objects, [...tokenIds, ...drawingIds]));
+  const copies = state.insertMapObjects(collectMapObjects(levelObjects(state), [...tokenIds, ...drawingIds]));
   const ids = copies.slice(0, tokenIds.length);
   if (fromSelection) state.setSelection([...ids, ...drawingIds]);
 

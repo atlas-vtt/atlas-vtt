@@ -5,6 +5,8 @@ import { sha256Hex } from './assetServe.ts';
 import { Pacer, type PacerClock } from '../marks/index.ts';
 import { sharedFog, sharedLightingScene, sharedSight } from './sceneInputs.ts';
 import { SequencedList } from './sequencedList.ts';
+import { levelObjects } from '../../levels/levelObjects';
+import { levelExploredMask } from '../../levels/sceneLevels';
 
 export interface InputSharePorts extends PacerClock {
   send(body: GmMessage, to?: string): void;
@@ -105,7 +107,7 @@ export class InputShare {
   update(): void {
     if (this.scene === null) return;
     this.pacer.request();
-    if (this.scene.lit && this.store.getState().exploredMask !== this.mask?.source) this.exploredPacer.request();
+    if (this.scene.lit && levelExploredMask(this.store.getState()) !== this.mask?.source) this.exploredPacer.request();
   }
 
   /** The last inputs again, whole, to one player or to all. */
@@ -133,9 +135,9 @@ export class InputShare {
     const scene = this.scene;
     const state = this.store.getState();
     if (scene === null || !state.mapLoaded || state.isMapLoading) return;
-    if (state.objects.fog !== this.fogOf) {
-      this.fogOf = state.objects.fog;
-      this.fog.publish(scene.id, { fog: sharedFog(state.objects.fog, (key) => this.fogAlias(key)) });
+    if (levelObjects(state).fog !== this.fogOf) {
+      this.fogOf = levelObjects(state).fog;
+      this.fog.publish(scene.id, { fog: sharedFog(levelObjects(state).fog, (key) => this.fogAlias(key)) });
     }
     if (!scene.lit) return;
     const source = this.ports.lightingSource();
@@ -156,15 +158,15 @@ export class InputShare {
     const rules = source.rules();
     const measurement = source.measurement();
     const key = this.lighting;
-    if (key !== null && key.walls === state.objects.walls && key.zones === state.objects.lightZones && key.grid === state.grid && key.rules === rules && key.unitDistance === measurement.unitDistance) return key.scene;
+    if (key !== null && key.walls === levelObjects(state).walls && key.zones === levelObjects(state).lightZones && key.grid === state.grid && key.rules === rules && key.unitDistance === measurement.unitDistance) return key.scene;
     const scene = sharedLightingScene(state, rules, measurement);
-    this.lighting = { walls: state.objects.walls, zones: state.objects.lightZones, grid: state.grid, rules, unitDistance: measurement.unitDistance, scene, sent: null };
+    this.lighting = { walls: levelObjects(state).walls, zones: levelObjects(state).lightZones, grid: state.grid, rules, unitDistance: measurement.unitDistance, scene, sent: null };
     return scene;
   }
 
   private async flushExplored(): Promise<void> {
     const scene = this.scene;
-    const source = this.store.getState().exploredMask;
+    const source = levelExploredMask(this.store.getState());
     if (scene === null || !scene.lit || source === this.mask?.source) return;
     const bytes = maskBytes(source);
     const ref: AssetRef | null = bytes === null ? null : { hash: await sha256Hex(bytes), size: bytes.length, mime: 'image/png' };

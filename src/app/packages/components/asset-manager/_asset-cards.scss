@@ -203,6 +203,15 @@
   }
 }
 
+// Marks a map whose video plays over its first frame; the card shows that frame.
+.atlas-asset-animated-indicator {
+  position: absolute;
+  top: $spacing-s;
+  right: $spacing-s;
+  z-index: 2;
+  @include atlas-statblock-badge(22px);
+}
+
 .atlas-asset-spawn-badge {
   position: absolute;
   top: $spacing-s;

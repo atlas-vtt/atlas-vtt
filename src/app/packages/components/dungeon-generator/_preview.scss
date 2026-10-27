@@ -1,0 +1,192 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Dungeon generator – the live map floating beside the wizard
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Placed and sized by `wizardLayout` (inline): the room the map floats in, with nothing drawn of its own.
+.atlas-dungeon-wizard-preview {
+  position: absolute;
+  display: flex;
+}
+
+.atlas-dungeon-preview {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  outline: none;
+}
+
+.atlas-dungeon-preview__stage {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Beside the wizard the map hangs from the panel's top line, on the side that faces it.
+.atlas-dungeon-wizard-preview .atlas-dungeon-preview__stage {
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+
+.atlas-dungeon-wizard-preview--left .atlas-dungeon-preview__stage {
+  justify-content: flex-end;
+}
+
+// The map itself is the floating surface: exactly its shape (sized by `PreviewCanvas`), never past
+// the room, its corner the panel's. It clips nothing, so the cell-size dialog may hang out of it.
+// Each picture has one, laid over the last while that fades out: out of flow, but placed by the
+// stage's alignment as its only item would be, so both stand where a lone surface stands.
+.atlas-dungeon-preview__map {
+  position: absolute;
+  @include atlas-panel-radius($radius-2xl, 0px);
+  box-shadow: $shadow-elevated;
+
+  // A hairline over the picture, so a white or black look keeps its edge on any theme.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100, #fff) 12%, transparent);
+    pointer-events: none;
+  }
+}
+
+// The map's tools and floor switcher, over the surface shown: placed as it is, letting presses
+// through to the map but for its controls.
+.atlas-dungeon-preview__chrome {
+  position: absolute;
+  @include atlas-panel-radius($radius-2xl, 0px);
+  pointer-events: none;
+
+  > * {
+    pointer-events: auto;
+  }
+}
+
+.atlas-dungeon-preview__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: inherit;
+  @include atlas-corner-shape;
+  transition: filter $transition-slow $transition-ease;
+}
+
+// A drawing that takes a moment: the picture shown dims until the next melts in.
+.atlas-dungeon-preview--drawing .atlas-dungeon-preview__canvas {
+  filter: saturate(0.7) brightness(0.94);
+}
+
+.atlas-dungeon-preview__skeleton {
+  position: absolute;
+  inset: 0;
+  @include atlas-flex-col($gap: $spacing-s);
+  align-items: center;
+  padding: $spacing-l;
+  border-radius: inherit;
+  background: var(--background-secondary);
+  --atlas-skeleton-surface: var(--background-secondary);
+}
+
+.atlas-dungeon-preview__skeleton-map {
+  flex: 1;
+  width: 70%;
+  border-radius: $radius-l;
+}
+
+.atlas-dungeon-preview__failed {
+  position: absolute;
+  bottom: $spacing-s;
+  left: 50%;
+  margin: 0;
+  padding: $spacing-xs $spacing-s;
+  transform: translateX(-50%);
+  border-radius: $radius-m;
+  background: var(--background-primary);
+  color: var(--text-error);
+  font-size: $font-ui-smaller;
+}
+
+// ── On the map ──────────────────────────────────────────────────────────────
+// Export and New layout in the map's top right corner, concentric with it.
+
+.atlas-dungeon-wizard-preview__tools {
+  @include atlas-elevated-surface;
+  @include atlas-panel-inset-radius($spacing-m);
+  position: absolute;
+  top: $spacing-m;
+  right: $spacing-m;
+  display: flex;
+  gap: $spacing-xs;
+  padding: $spacing-xs;
+  box-shadow: $shadow-md;
+}
+
+.atlas-dungeon-wizard-preview__tool.btn {
+  @include atlas-icon-button('m');
+  @include atlas-panel-inset-radius(calc(#{$spacing-m} + #{$border-width-m} + #{$spacing-xs}));
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+
+  &:hover:not(:disabled) {
+    background: var(--background-modifier-hover);
+    color: var(--text-normal);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.94);
+  }
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+// A dungeon of several floors: which one the map shows, at the map's foot.
+.atlas-dungeon-floor-switcher {
+  position: absolute;
+  bottom: $spacing-m;
+  left: 50%;
+  translate: -50% 0;
+  box-shadow: $shadow-md;
+
+  > .atlas-segmented__option {
+    min-width: 32px;
+  }
+}
+
+// The map PNG's cell size, asked under the map's tools.
+.atlas-dungeon-cell-dialog {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-xl);
+  @include atlas-flex-col($gap: $spacing-s);
+  position: absolute;
+  top: calc(100% + #{$spacing-s});
+  right: 0;
+  z-index: 2;
+  padding: $spacing-s;
+}
+
+.atlas-dungeon-cell-dialog__row {
+  @include atlas-flex-row($gap: $spacing-s);
+}
+
+.atlas-dungeon-cell-dialog__actions {
+  @include atlas-flex-row($gap: $spacing-s);
+  justify-content: flex-end;
+
+  > .btn {
+    @include atlas-panel-inset-radius($spacing-s, bottom-right);
+  }
+}

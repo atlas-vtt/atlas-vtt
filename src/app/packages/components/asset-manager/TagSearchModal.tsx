@@ -5,13 +5,16 @@ import { Search, Check, Plus, Minus, Tag as TagIcon } from 'lucide-react';
 import { CloseButton } from '../primitives/CloseButton';
 import { Button } from '../primitives/button';
 import type { AnyAsset, Tag } from './types';
+import { hasAssetTag } from '../../../services/tagGroups';
+import { toggleAssetTag } from './utils/assetTags';
 import { t } from '../../../i18n';
 
 interface TagSearchModalProps {
   selectedAssets: AnyAsset[];
   availableTags: Tag[];
   allAssets: AnyAsset[];
-  onToggleTag: (tagId: string, selectedAssets: AnyAsset[]) => void;
+  /** Saves one asset's tags after a toggle; called for each asset of the dialog. */
+  onSetAssetTags: (asset: AnyAsset, tags: string[]) => void;
   /** Receives the dialog's assets with the tags toggled so far. */
   onCreateTag: (tagName: string, selectedAssets: AnyAsset[]) => void;
   onClose: () => void;
@@ -21,7 +24,7 @@ function TagSearchModalInner({
   selectedAssets: initialAssets,
   availableTags,
   allAssets,
-  onToggleTag,
+  onSetAssetTags,
   onCreateTag,
   onClose,
 }: TagSearchModalProps): React.ReactElement {
@@ -51,7 +54,7 @@ function TagSearchModalInner({
   const tagUsageMap = useMemo(() => {
     const map = new Map<string, number>();
     availableTags.forEach(tag => {
-      map.set(tag.id, allAssets.filter(a => (a.tags || []).includes(tag.id)).length);
+      map.set(tag.id, allAssets.filter(a => hasAssetTag(a.tags, tag)).length);
     });
     return map;
   }, [availableTags, allAssets]);
@@ -67,16 +70,11 @@ function TagSearchModalInner({
   const canCreate = searchQuery.trim() &&
     !availableTags.some(t => t.name.toLowerCase() === searchQuery.trim().toLowerCase());
 
-  const handleToggleTag = (tagId: string): void => {
-    onToggleTag(tagId, assets);
-    // Update local asset state so the UI reflects the toggle immediately
-    setAssets(prev =>
-      prev.map(asset => {
-        const current = asset.tags || [];
-        const has = current.includes(tagId);
-        return { ...asset, tags: has ? current.filter((t) => t !== tagId) : [...current, tagId] };
-      }),
-    );
+  // Assets carry tags by name (creators, Edit Token) or, from older versions, by id.
+  const handleToggleTag = (tag: Tag): void => {
+    const toggled = assets.map(asset => ({ ...asset, tags: toggleAssetTag(asset.tags, tag) }));
+    toggled.forEach((asset, index) => onSetAssetTags(assets[index]!, asset.tags));
+    setAssets(toggled);
   };
 
   const handleCreate = (): void => {
@@ -125,15 +123,15 @@ function TagSearchModalInner({
         {/* Tag list */}
         <div className="atlas-tag-search__list">
           {sortedTags.map((tag) => {
-            const allHave = assets.every(a => (a.tags || []).includes(tag.id));
-            const someHave = assets.some(a => (a.tags || []).includes(tag.id));
+            const allHave = assets.every(a => hasAssetTag(a.tags, tag));
+            const someHave = assets.some(a => hasAssetTag(a.tags, tag));
             const count = tagUsageMap.get(tag.id) || 0;
 
             return (
               <div
                 key={tag.id}
                 className={`atlas-tag-search__item ${allHave ? 'atlas-tag-search__item--selected' : someHave ? 'atlas-tag-search__item--partial' : ''}`}
-                onClick={() => handleToggleTag(tag.id)}
+                onClick={() => handleToggleTag(tag)}
               >
                 <div className="atlas-tag-search__item-icon">
                   {allHave ? <Check size={16} /> : someHave ? <Minus size={16} /> : <Plus size={16} />}

@@ -7,6 +7,7 @@ import type { InitiativeEntry } from '../../src/app/types/initiativeTypes';
 const state = vi.hoisted(() => ({
   objects: { tokens: {} as Record<string, unknown> },
   tokenSettings: { showInstanceBadges: true },
+  levels: undefined as unknown,
 }));
 
 vi.mock('../../src/app/react/root/AtlasUIContext', async () => ({
@@ -57,5 +58,27 @@ describe('InitiativeCard portrait', () => {
 
     expect(card.querySelector('.atlas-token-portrait')).toBeNull();
     expect(card.querySelector('.atlas-initiative-card__avatar svg')).not.toBeNull();
+  });
+
+  it('numbers a token among the look-alikes on its own level, as the map does', () => {
+    state.levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: null },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: null },
+    ];
+    const twin = (level: string): Record<string, unknown> => ({ t2: { id: 't2', kind: 'character', name: 'Troll', imagePath: 'tokens/troll.webp', x: 0, y: 0, instanceNumber: 2, level } });
+    const badge = (): string | null | undefined => {
+      const card = render(
+        <InitiativeCard entry={entry} index={0} isHoveredForPreview={false}
+          onDragStart={vi.fn()} onDragOver={vi.fn()} onDragEnd={vi.fn()} onContextMenu={vi.fn()} onHover={vi.fn()} />,
+      ).container;
+      return card.querySelector('.atlas-initiative-card__instance-badge')?.textContent;
+    };
+    const troll = { id: 't1', kind: 'character', name: 'Troll', imagePath: 'tokens/troll.webp', x: 0, y: 0, instanceNumber: 1 };
+
+    state.objects.tokens = { t1: troll, ...twin('upper') };
+    expect(badge()).toBeUndefined();
+    state.objects.tokens = { t1: troll, ...twin('ground') };
+    expect(badge()).toBe('1');
+    state.levels = undefined;
   });
 });

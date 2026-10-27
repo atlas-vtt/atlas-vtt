@@ -21,6 +21,8 @@ interface SightMesh {
 interface Area {
   origin: Point;
   apex: number;
+  /** How far the senses that share it reach, 0 where that is the whole map (`unlimited`). */
+  range: number;
   channels: [number, number, number, number];
 }
 
@@ -42,14 +44,18 @@ export class SightMeshes {
   /** The footprints of tokens shown where no sense shows the map: drawn apart, since they follow a dragged token. */
   private spots: SightMesh[] = [];
 
-  draw(sight: Sight, radius: number): void {
+  /**
+   * A sense whose range is at least `unlimited` (the map's diagonal: what a sense without a range
+   * is given) reaches the whole map, and its picture does not fade.
+   */
+  draw(sight: Sight, radius: number, unlimited = Infinity): void {
     const areas = new Map<Polygon, Area>();
     for (const region of sight.all ? [] : sight.regions) {
       const channels = sightChannels(region);
       if (!channels || !region.polygon || region.polygon.length < 3) continue;
       const area = areas.get(region.polygon);
       if (area) channels.forEach((value, i) => { area.channels[i] = Math.max(area.channels[i]!, value); });
-      else areas.set(region.polygon, { origin: region.origin, apex: region.apex, channels: [...channels] });
+      else areas.set(region.polygon, { origin: region.origin, apex: region.apex, range: region.radius >= unlimited - 1 ? 0 : region.radius, channels: [...channels] });
     }
     for (const [polygon, kept] of this.meshes) {
       if (areas.has(polygon) && radius === this.radius) continue;
@@ -57,10 +63,10 @@ export class SightMeshes {
       this.meshes.delete(polygon);
     }
     this.radius = radius;
-    for (const [polygon, { origin, apex, channels }] of areas) {
+    for (const [polygon, { origin, apex, range, channels }] of areas) {
       // A kept polygon is drawn as it was: the cache hands out a new one whenever a token or its senses change.
       if (this.meshes.has(polygon)) continue;
-      this.meshes.set(polygon, this.create(polygon, origin, sightWedges(origin, polygon, radius, apex).slice(0, MAX_WEDGES), channels));
+      this.meshes.set(polygon, this.create(polygon, origin, sightWedges(origin, polygon, radius, apex).slice(0, MAX_WEDGES), channels, range));
     }
   }
 
@@ -74,11 +80,13 @@ export class SightMeshes {
     this.spots = spots.filter((spot) => spot.polygon.length >= 3).map((spot) => this.create(spot.polygon, spot, [], SPOT_CHANNELS));
   }
 
-  private create(polygon: Polygon, origin: Point, wedges: readonly SightWedge[], channels: SightChannels): SightMesh {
+  /** A mesh of `polygon` around `origin`; a `range` above 0 fades its picture towards that radius (`SENSE_FADE`). */
+  private create(polygon: Polygon, origin: Point, wedges: readonly SightWedge[], channels: SightChannels, range = 0): SightMesh {
     const wedgeSource = wedgeTexture(wedges);
     const uniforms = new UniformGroup({
       uWedgeCount: { value: wedges.length, type: 'i32' },
       uChannel: { value: new Float32Array(channels), type: 'vec4<f32>' },
+      uFade: { value: new Float32Array([origin.x, origin.y, range]), type: 'vec3<f32>' },
     });
     const shader = createShader(ENGINE_SHADERS.sight, { sightUniforms: uniforms, uWedges: wedgeSource });
     const mesh = new Mesh({ geometry: fanGeometry(origin, polygon), shader });

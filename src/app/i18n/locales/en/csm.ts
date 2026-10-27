@@ -57,6 +57,8 @@ export const csm = {
   'csm.grid.diagonal.alternating': 'Alternate 1 and 2 (5/10/5)',
   'csm.grid.diagonal.equidistant': 'Every diagonal counts 1',
   'csm.grid.diagonal.euclidean': 'Exact distance',
+  'csm.grid.difficultTerrain': 'Difficult terrain costs double',
+  'csm.grid.difficultTerrainHint': 'A token\'s movement ruler counts each square or hex of difficult terrain it enters twice.',
   'csm.grid.distance': 'Distance per Square',
   'csm.grid.distanceInvalid': 'Distance per Square needs a number from 0.000001 to 1,000,000.',
   'csm.grid.max': 'Max',

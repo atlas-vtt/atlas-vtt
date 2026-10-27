@@ -75,7 +75,7 @@ export class MapThumbnailService {
     if (!framed) return null;
     const { rect: contentBounds, resolution: renderResolution } = framed;
 
-    const frame = { x: contentBounds.x, y: contentBounds.y, resolution: renderResolution };
+    const frame = { x: contentBounds.x, y: contentBounds.y, resolution: renderResolution, width: contentBounds.width, height: contentBounds.height };
     let renderTexture: Texture;
     try {
       renderTexture = capture(frame, () => pixiApp.renderer.generateTexture({

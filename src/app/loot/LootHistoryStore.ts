@@ -5,7 +5,7 @@ import { debounce, type DebouncedFunction } from '../../utils/debounce';
 import { readLootHistory, type LootRoll } from './lootHistory';
 import {
   EMPTY_DEVICE_HISTORY, clearedHistory, mergeLootHistories, prunedHistory, readDeviceLootHistory, serializeDeviceLootHistory,
-  withLegacyRolls, withRoll, withoutRoll, type DeviceLootHistory,
+  withLegacyRolls, withReplacedRoll, withRoll, withoutRoll, type DeviceLootHistory,
 } from './deviceLootHistory';
 import { deviceLootHistoryPath, legacyLootHistoryPath, lootHistoryCollectionOf, lootHistoryFolder } from './lootHistoryPaths';
 
@@ -104,6 +104,11 @@ export class LootHistoryStore {
 
   add(collectionId: string, roll: LootRoll): void {
     void this.edit(collectionId, (own) => withRoll(own, roll));
+  }
+
+  /** Puts `roll` in place of the roll of its id (a result rolled again on its card); nothing once it was removed. */
+  replace(collectionId: string, roll: LootRoll): void {
+    void this.edit(collectionId, (own, others) => withReplacedRoll(own, others, roll));
   }
 
   remove(collectionId: string, rollId: string): void {

@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 import { RenderTexture } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
-import { DARKNESS, sealTolerance, wallBand, wallCore, worldTexel } from '../../../../lighting/lightingConstants';
+import { DARKNESS, lightFade, sealTolerance, wallBand, wallCore, worldTexel } from '../../../../lighting/lightingConstants';
 import { sealWalls } from '../../../../lighting/sealWalls';
 import type { WallSegment } from '../../../../types/wallTypes';
 import { crossedByHand, grazes, turningPoints } from '../../../../vision/__tests__/byHand';
@@ -166,7 +166,8 @@ async function fuzz({ seed, trials, open = false, bounds = { width: 2048, height
 
       const reaches = lights.map((light) => lightReach({ x: light.x, y: light.y }, light.dim, walls, light.bright));
       // A solid wall is a line to the rule and a capsule to the picture; a limited wall is a line to both.
-      const widelyLit = (point: { x: number; y: number }, reach: LightReach, clear: number): boolean => Math.hypot(point.x - reach.origin.x, point.y - reach.origin.y) <= reach.dim && pointInPolygon(point, reach.polygon)
+      // Lit by the picture: within the dim radius where the light's fade leaves at least a fifth of it.
+      const widelyLit = (point: { x: number; y: number }, reach: LightReach, clear: number): boolean => lightFade(reach.bright, reach.dim, Math.hypot(point.x - reach.origin.x, point.y - reach.origin.y)) >= 0.2 && pointInPolygon(point, reach.polygon)
         && walls.every((wall) => wall.limited || !blocksFrom(wall, reach.origin, 'light') || Math.min(distSqToSegment(wall.p1, reach.origin, point), distSqToSegment(wall.p2, reach.origin, point), distSqToSegment(reach.origin, wall.p1, wall.p2), distSqToSegment(point, wall.p1, wall.p2)) > clear * clear);
       const edges = sight.regions.map((region) => region.polygon!.map((q): P => [q.x, q.y]));
       const filter = 1.5 / scale + 0.01;

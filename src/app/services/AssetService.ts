@@ -86,6 +86,11 @@ export interface EncounterTokenRef extends GroupTokenRef {
   offset?: { x: number; y: number };
   /** Full token state at save time (HP, conditions, statblock link, ...). Restored verbatim on spawn. */
   state?: TokenStateSnapshot;
+  /**
+   * Dice (`"2d4"`) that say how many copies this reference stands for, rolled on every spawn
+   * (`encounterQuantity.ts`). Unset, it is one copy, which is also what older versions spawn.
+   */
+  quantity?: string;
 }
 
 export type EncounterDifficulty = 'easy' | 'medium' | 'hard' | 'deadly';

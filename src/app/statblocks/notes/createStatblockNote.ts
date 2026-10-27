@@ -5,6 +5,7 @@
  */
 
 import { normalizePath, type App, type TFile, type TFolder } from 'obsidian';
+import { freeNotePath, isRootPath } from '../../utils/notePaths';
 import { ensureFolder } from '../../plugin/vaultFolders';
 import { TokenStatblockLinkService } from '../../services/TokenStatblockLinkService';
 import { INVALID_NAME_CHARACTERS } from '../../services/assetPaths';
@@ -98,20 +99,4 @@ export function statblockNoteText(note: Pick<NewStatblockNote, 'name' | 'templat
 export function noteFileName(name: string): string {
   const cleaned = name.trim().replace(new RegExp(INVALID_NAME_CHARACTERS.source, 'g'), '-').replace(/^\.+/, '').trim();
   return cleaned || FALLBACK_NAME;
-}
-
-/**
- * `<name>.md` in the folder, else `<name> 2.md`, `<name> 3.md`… Taken counts any letter case,
- * since the file systems of macOS and Windows do not tell names apart by it.
- */
-export function freeNotePath(app: App, folder: TFolder, stem: string): string {
-  const taken = new Set(folder.children.map((child) => child.name.toLowerCase()));
-  const pathOf = (name: string): string => normalizePath(isRootPath(folder.path) ? name : `${folder.path}/${name}`);
-  let name = `${stem}.md`;
-  for (let n = 2; taken.has(name.toLowerCase()) || app.vault.getAbstractFileByPath(pathOf(name)); n++) name = `${stem} ${n}.md`;
-  return pathOf(name);
-}
-
-function isRootPath(path: string): boolean {
-  return path === '/' || path === '';
 }

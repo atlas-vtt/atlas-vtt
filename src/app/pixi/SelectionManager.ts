@@ -13,6 +13,7 @@ import { prefersReducedMotion } from '../utils/motion';
 import type { LayerVisibility } from './playerSafeFrame';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { pointInPolygon } from '../vision/visibility';
+import { levelObjects } from '../levels/levelObjects';
 import { GroupRotation, type GroupTurnHost } from './selection/GroupRotation';
 import { mapTokens } from '../tokens/offMap';
 
@@ -139,7 +140,7 @@ export class SelectionManager {
 
     // Dragged or undone drawings move without the selection changing
     this._unsubscribeFromDrawingChanges = this.store.subscribe(
-      (state: ViewAtlasState) => state.objects.drawings,
+      (state: ViewAtlasState) => levelObjects(state).drawings,
       () => this.updateSelectionOverlay()
     );
 
@@ -359,7 +360,7 @@ export class SelectionManager {
   
   private getDrawingBoundsById(): Array<[string, DrawingBounds]> {
     const entries: Array<[string, DrawingBounds]> = [];
-    for (const stroke of Object.values(this.store.getState().objects.drawings)) {
+    for (const stroke of Object.values(levelObjects(this.store.getState()).drawings)) {
       const bounds = getDrawingBounds(stroke);
       if (bounds) entries.push([stroke.id, bounds]);
     }
@@ -396,7 +397,9 @@ export class SelectionManager {
   /** Draws the selection as the canvas shows it now: called when it or a selected thing changes. */
   public updateSelectionOverlay(): void {
     if (this.highlights.layer.destroyed) return;
-    const { selectedIds, objects } = this.store.getState();
+    const state = this.store.getState();
+    const { selectedIds } = state;
+    const objects = levelObjects(state);
     const targets = selectionTargets(selectedIds, {
       world: this.viewport,
       tokens: this.tokenRendererProvider(),

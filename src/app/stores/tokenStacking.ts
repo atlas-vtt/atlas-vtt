@@ -1,4 +1,8 @@
 import type { TokenEntity } from '../types';
+import { linkLandings } from '../levels/levelLinks';
+import { floorBelow, type ArtFloors } from '../levels/levelSurfaces';
+import { resolveLevel, type SceneLevels } from '../levels/sceneLevels';
+import type { LevelLink, LevelSurface } from '../types/sceneLevelTypes';
 
 const layerOf = (token: TokenEntity): number => token.layer ?? 0;
 
@@ -31,21 +35,28 @@ export interface TokenPlace {
   rotation?: number;
 }
 
-/** What putting tokens down writes: the tokens, and the flag that tells spatial audio a token moved. */
+/** What putting tokens down writes: the tokens, and the flag that tells spatial audio a token moved; and the stairs and openings it reads. */
 export interface PlacedTokensState {
-  objects: { tokens: Record<string, TokenEntity> };
+  objects: { tokens: Record<string, TokenEntity>; levelLinks?: Record<string, LevelLink> | undefined; levelSurfaces?: Record<string, LevelSurface> | undefined };
+  levels?: SceneLevels;
   _audioDirty: boolean;
 }
 
 /**
- * Puts tokens down: each at its place (facing the way it is given, if it is), all of them on top of every other token (`raiseTokens`),
- * and flags the move for spatial audio. Changes only what the scene saves and undoes (the
- * tokens' places and order) and the audio flag; letting go of held tokens is pointer state,
- * which `dropTokens` does. Tokens not listed keep their objects. Changes `state` in place
- * (a store draft).
+ * Puts tokens down: each at its place (facing the way it is given, if it is), all of them on top of
+ * every other token (`raiseTokens`), and flags the move for spatial audio. A token put down inside
+ * stairs (`linkLandings`) that lead to one level goes to that level, at the same place, in the same
+ * write; where they offer several, it stays and the caller may offer the choice (`linkChoice`). A
+ * token that ends where its level has no floor (an opening, or where the view draws its map
+ * transparent: `art`, `floorBelow`) falls to the first level below that has, in the same write; over
+ * a chasm it stays. Changes only what the scene saves and undoes (the tokens' places, order and
+ * levels) and the audio flag; letting go of held tokens is pointer state, which `dropTokens` does.
+ * Tokens not listed keep their objects. Changes `state` in place (a store draft); returns nothing,
+ * so a recipe may hand its call on.
  */
-export function placeTokens(state: PlacedTokensState, positions: readonly TokenPlace[]): void {
+export function placeTokens(state: PlacedTokensState, positions: readonly TokenPlace[], art?: ArtFloors): void {
   const { tokens } = state.objects;
+  const landings = linkLandings(state, positions);
   for (const { id, x, y, rotation } of positions) {
     const token = tokens[id];
     if (token) {
@@ -53,6 +64,16 @@ export function placeTokens(state: PlacedTokensState, positions: readonly TokenP
       token.y = y;
       if (rotation !== undefined) token.rotation = rotation;
     }
+  }
+  for (const { tokenId, targets } of landings) {
+    const token = tokens[tokenId];
+    if (token && targets.length === 1) token.level = targets[0];
+  }
+  for (const { id, x, y } of positions) {
+    const token = tokens[id];
+    const from = token ? resolveLevel(state.levels, token.level) : null;
+    const below = token && from !== null ? floorBelow(state, from, { x, y }, art) : null;
+    if (token && below !== null) token.level = below;
   }
   raiseTokens(tokens, positions.map(({ id }) => id));
   state._audioDirty = true;

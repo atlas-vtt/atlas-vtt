@@ -32,20 +32,28 @@ afterEach(() => {
   pans.calls.length = 0;
 });
 
-function setup() {
+const FLOORS = [{ id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 } }, { id: 'cellar', name: 'Cellar', elevation: { bottom: -10, top: 0 } }];
+
+function setup(floors: { isGMView: boolean } | null = null) {
   const { app } = createInMemoryApp();
   const settings = new SettingsService(app);
-  const viewStore = createStore(() => ({
+  const viewStore = createStore<Record<string, unknown>>((set) => ({
     initiative: fight('hero'), mapPath: 'a.atlasmap', isMapLoading: false, grid: { size: 70 },
     objects: { tokens: { hero: token('hero'), ghost: token('ghost', { isHidden: true }), away: token('away') } },
+    ...(floors && {
+      levels: FLOORS, viewedLevel: 'ground', isGMView: floors.isGMView,
+      objects: { tokens: { hero: token('hero', { level: 'cellar' }), ghost: token('ghost'), away: token('away') } },
+      setViewedLevel: (level: string) => set({ viewedLevel: level }),
+    }),
   }));
   store.value = viewStore;
-  // The canvas shows the hero and the ghost; the token beside the map has no sprite
-  ui.value = { app, view: { renderer: { getViewportInstance: () => ({}), canvasShowsToken: (id: string) => id !== 'away' } } };
+  // The canvas shows the hero and the ghost (of the floor in view); the token beside the map has no sprite
+  const onCanvas = (id: string): boolean => id !== 'away' && (!floors || id !== 'hero' || viewStore.getState().viewedLevel === 'cellar');
+  ui.value = { app, view: { renderer: { getViewportInstance: () => ({}), canvasShowsToken: onCanvas } } };
   render(<TurnAnnouncer />);
   const turnTo = (active: string): void => act(() => viewStore.setState({ initiative: fight(active) }));
   const banner = (): string | null => document.querySelector('.atlas-turn-banner__title')?.textContent ?? null;
-  return { settings, turnTo, banner };
+  return { settings, turnTo, banner, viewStore };
 }
 
 describe('a turn change on the GM\'s map', () => {
@@ -64,5 +72,22 @@ describe('a turn change on the GM\'s map', () => {
     turnTo('hero');
     turnTo('away');
     expect(pans.calls).toEqual(['hero']);
+  });
+
+  it('follows the turn to another floor in the GM\'s view, and leaves it there in the players\' view', () => {
+    const gm = setup({ isGMView: true });
+    gm.settings.setInitiativeTurnOptions({ followTurn: true, banner: false });
+    gm.turnTo('ghost');
+    gm.turnTo('hero');
+    expect(gm.viewStore.getState().viewedLevel).toBe('cellar');
+    expect(pans.calls).toEqual(['ghost', 'hero']);
+
+    pans.calls.length = 0;
+    const players = setup({ isGMView: false });
+    players.settings.setInitiativeTurnOptions({ followTurn: true, banner: false });
+    players.turnTo('ghost');
+    players.turnTo('hero');
+    expect(players.viewStore.getState().viewedLevel).toBe('ground');
+    expect(pans.calls).toEqual(['ghost']);
   });
 });

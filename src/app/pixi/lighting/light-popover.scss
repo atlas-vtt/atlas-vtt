@@ -199,7 +199,10 @@ $gap: $spacing-s;
 
 // A light zone's popover: its name is text, not a number, and the four times of day share the
 // popover's width by what each needs, with the track and its options concentric in the popover.
-.atlas-light-popover--zone {
+// Stairs' ways share it alike, and an opening's choice of open or floor.
+.atlas-light-popover--zone,
+.atlas-light-popover--stairs,
+.atlas-light-popover--opening {
   .atlas-light-popover__range > input {
     padding: 0 $spacing-s;
     text-align: start;
@@ -236,6 +239,16 @@ $gap: $spacing-s;
   .atlas-select {
     width: 128px;
   }
+}
+
+// Stairs: the levels they join under a quiet heading, and a line where they lead nowhere.
+.atlas-light-popover__heading {
+  @include atlas-field-label;
+}
+
+.atlas-light-popover__hint {
+  margin: 0;
+  color: var(--text-muted);
 }
 
 // ── Actions ──────────────────────────────────────────────────────────────────

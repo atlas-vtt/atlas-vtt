@@ -1,4 +1,5 @@
 import { Container, Rectangle, type Texture } from 'pixi.js';
+import type { TFile } from 'obsidian';
 import { destroyTree } from '../utils/destroyTree';
 import { MapAlbedo } from './mapAlbedo';
 import { MapImageLayer, viewportCamera, type CameraSource } from './MapImageLayer';
@@ -10,7 +11,9 @@ import type { PixelRect } from './pyramid';
 import { isMapClosed } from './tileErrors';
 import { ResidentOverviews } from './residentOverviews';
 import { TileTextureCache } from './tileTextureCache';
-import { imageToWorld, NO_STRETCH, sameStretch, turnedBox, type MapStretch } from '../../grid/mapStretch';
+import { imageToWorld, imageWorldRect, NO_STRETCH, sameStretch, turnedBox, type MapStretch } from '../../grid/mapStretch';
+import { MapVideoSlot } from './video/MapVideoSlot';
+import type { MapVideoMode } from './video/mapVideoPlayback';
 
 /**
  * The one owner of a view's map image (decisions 1, 12 and 13 of the tiled map images plan): it
@@ -29,6 +32,8 @@ interface Opened {
   tiles: MapTiles | null;
   width: number;
   height: number;
+  /** The video of an animated map whose poster opened, which plays over the tiles. */
+  video: TFile | null;
 }
 
 interface Shown extends Opened {
@@ -53,12 +58,16 @@ export class MapImage {
   private stretch: MapStretch = NO_STRETCH;
   /** Holds the tile layer inside `layer`, turned level about the image's centre; `layer` stretches it. */
   private readonly turned = new Container({ label: 'map-image-turned' });
+  /** An animated map's video, above the tiles inside `turned`, so it is stretched and turned like them. */
+  private readonly video: MapVideoSlot;
   private readonly stopRestarts: () => void;
 
   constructor(private readonly deps: MapImageDeps) {
     this.layer = new Container({ label: 'map-image', eventMode: 'none', interactiveChildren: false });
     this.layer.boundsArea = new Rectangle(0, 0, 0, 0);
     this.layer.addChild(this.turned);
+    this.video = new MapVideoSlot(deps.video, deps.requestRender);
+    this.turned.addChild(this.video.container);
     this.cache = new TileTextureCache({ ticker: deps.ticker, renderer: deps.renderer, requestRender: deps.requestRender });
     this.resident = new ResidentOverviews(this.cache);
     const camera = viewportCamera(deps.viewport, deps.renderer ?? { resolution: 1 });
@@ -73,8 +82,7 @@ export class MapImage {
   /** The image in world units, as it is drawn; null before the first load and after `clear`. */
   get worldRect(): PixelRect | null {
     if (!this.shown) return null;
-    const { box } = turnedBox(this.shown.width, this.shown.height, this.stretch);
-    return { x: 0, y: 0, width: box.width * this.stretch.x, height: box.height * this.stretch.y };
+    return { x: 0, y: 0, ...imageWorldRect(this.shown, this.stretch) };
   }
 
   /** The image's own size in pixels, whatever its stretch; null before the first load and after `clear`. */
@@ -82,10 +90,10 @@ export class MapImage {
     return this.shown ? { width: this.shown.width, height: this.shown.height } : null;
   }
 
-  /** The corners of an image that lies turned in its world rect, which then holds a little more than the image; null for a level one. */
+  /** The corners of an image that lies turned, or placed in from the origin, in its world rect, which then holds more than the image; null for one that fills it. */
   get outline(): Array<{ x: number; y: number }> | null {
     const { shown, stretch } = this;
-    if (!shown || !stretch.rotation) return null;
+    if (!shown || (!stretch.rotation && !stretch.offset?.x && !stretch.offset?.y)) return null;
     const { width, height } = shown;
     return [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }].map((corner) => imageToWorld(corner, { width, height }, stretch));
   }
@@ -114,12 +122,23 @@ export class MapImage {
     this.emit('image');
   }
 
+  /** Whether an animated map's video plays, holds its frame, or gives way to its poster (`mapVideoMode`). */
+  setVideoMode(mode: MapVideoMode): void {
+    if (!this.destroyed) this.video.setMode(mode);
+  }
+
+  /** Hides an animated map's video for one render of a picture of the scene, which shows its poster; returns what shows it again. */
+  hideVideoFor(): () => void {
+    return this.destroyed ? noop : this.video.hideFor();
+  }
+
   /** Takes the image off, as when its scene could not be opened; `worldRect` is null until the next load. */
   clear(): void {
     if (this.destroyed) return;
     this.generation++;
     const previous = this.shown;
     this.shown = null;
+    this.video.clear();
     this.retire(previous);
     this.layer.boundsArea = new Rectangle(0, 0, 0, 0);
     this.albedo.reset();
@@ -189,6 +208,7 @@ export class MapImage {
     this.resident.clear();
     this.regions.clear();
     this.albedo.reset();
+    this.video.destroy();
     this.cache.destroy();
     destroyTree(this.layer);
     this.listeners.clear();
@@ -206,6 +226,7 @@ export class MapImage {
     this.loaded = { source, generation };
     if (stretch) this.stretch = stretch;
     this.show(next, replace);
+    this.video.show(next.video, { width: next.width, height: next.height });
   }
 
   /**
@@ -220,17 +241,19 @@ export class MapImage {
   }
 
   private async open(source: MapImageSource): Promise<Opened> {
-    if (source.kind === 'none') return { tiles: null, width: source.width, height: source.height };
-    if (source.kind === 'file') {
+    if (source.kind === 'none') return { tiles: null, width: source.width, height: source.height, video: null };
+    if (source.kind === 'file' || source.kind === 'video') {
       try {
+        // A video's pyramid is built from its poster (`MapImageService.open`).
         const opened = await this.deps.service.open(source.file);
-        return { tiles: decoderTiles(this.deps.service, opened), width: opened.pyramid.width, height: opened.pyramid.height };
+        const { width, height } = opened.pyramid;
+        return { tiles: decoderTiles(this.deps.service, opened), width, height, video: source.kind === 'video' ? source.file : null };
       } catch (error) {
         this.deps.service.reportUnshown(source.file, error);
       }
     }
     const tiles = placeholderTiles();
-    return { tiles, width: tiles.source.pyramid.width, height: tiles.source.pyramid.height };
+    return { tiles, width: tiles.source.pyramid.width, height: tiles.source.pyramid.height, video: null };
   }
 
   private show(next: Opened, replace: boolean): void {
@@ -256,7 +279,8 @@ export class MapImage {
         ...(this.deps.drawAtOnce && { drawAtOnce: this.deps.drawAtOnce }),
         onTileError: onceLogged(),
       });
-      this.turned.addChild(layer.container);
+      // Beneath the video, which an animated map draws over its tiles.
+      this.turned.addChildAt(layer.container, this.turned.getChildIndex(this.video.container));
     }
     this.shown = { ...next, layer };
     if (samePyramid) {
@@ -283,11 +307,13 @@ export class MapImage {
     this.turned.pivot.set(shown.width / 2, shown.height / 2);
     this.turned.position.set(shown.width / 2 - corner.x, shown.height / 2 - corner.y);
     this.turned.rotation = (-(this.stretch.rotation ?? 0) * Math.PI) / 180;
+    const { x: left = 0, y: top = 0 } = this.stretch.offset ?? {};
+    this.layer.position.set(left, top);
     this.layer.scale.set(x, y);
     // In the layer's own space, which the scale stretches.
     this.layer.boundsArea = new Rectangle(0, 0, box.width, box.height);
-    this.deps.viewport.worldWidth = Math.max(box.width * x, MIN_WORLD_SIDE);
-    this.deps.viewport.worldHeight = Math.max(box.height * y, MIN_WORLD_SIDE);
+    this.deps.viewport.worldWidth = Math.max(left + box.width * x, MIN_WORLD_SIDE);
+    this.deps.viewport.worldHeight = Math.max(top + box.height * y, MIN_WORLD_SIDE);
     for (const [region, release] of this.regions) {
       release();
       this.regions.set(region, shown.layer?.addDemandRegion(this.onImage(region)) ?? noop);
@@ -299,10 +325,11 @@ export class MapImage {
    * axes' detail. Of a turned image it is the upright box around the view, which holds a little more.
    */
   private onImage(view: TileView): TileView {
-    const { x, y, rotation } = this.stretch;
-    if (x === 1 && y === 1 && !rotation) return view;
+    const { x, y, rotation, offset } = this.stretch;
+    const { x: shiftX = 0, y: shiftY = 0 } = offset ?? {};
+    if (x === 1 && y === 1 && !rotation && !shiftX && !shiftY) return view;
     const { rect } = view;
-    const unstretched = { x: rect.x / x, y: rect.y / y, width: rect.width / x, height: rect.height / y };
+    const unstretched = { x: (rect.x - shiftX) / x, y: (rect.y - shiftY) / y, width: rect.width / x, height: rect.height / y };
     const worldPerScreenPixel = view.worldPerScreenPixel / Math.max(x, y);
     if (!rotation || !this.shown) return { rect: unstretched, worldPerScreenPixel };
 

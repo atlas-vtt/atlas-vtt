@@ -163,12 +163,12 @@ describe('TileCache', () => {
       field.build(splitBlocking([door]).twoWay);
       cache.sync(lights, [door], 'all');
       const farBefore = cache.tiles().get('far')!.texture;
-      expect(litAt(renderer, cache.tiles().get('near')!, [140, 100])).toBe(0);
+      expect(litAt(renderer, cache.tiles().get('near')!, [130, 100])).toBe(0);
       const opened = [{ ...door, closed: false }];
       field.build(splitBlocking(opened).twoWay);
       expect(cache.sync(lights, opened, [[97, -3, 6, 206]])).toBe(true);
       expect(cache.tiles().get('far')!.texture).toBe(farBefore);
-      expect(litAt(renderer, cache.tiles().get('near')!, [140, 100])).toBeGreaterThan(0.5);
+      expect(litAt(renderer, cache.tiles().get('near')!, [130, 100])).toBeGreaterThan(0.5);
       const partial = readUnorm(renderer, cache.tiles().get('near')!.texture);
       fresh.sync(lights, opened, 'all');
       expect(Array.from(partial)).toEqual(Array.from(readUnorm(renderer, fresh.tiles().get('near')!.texture)));
@@ -302,7 +302,7 @@ describe('TileCache', () => {
         const wall = { id: 'o', kind: 'wall' as const, type: 'solid' as const, direction, p1: { x: 100, y: 0 }, p2: { x: 100, y: 200 } };
         field.build(splitBlocking([wall]).twoWay);
         cache.sync([light('l', 60, 100)], [wall], 'all');
-        return litAt(renderer, cache.tiles().get('l')!, [140, 100]);
+        return litAt(renderer, cache.tiles().get('l')!, [130, 100]);
       };
       const values = [lit('left'), lit('right')].sort((a, b) => a - b);
       expect(values[0]).toBe(0);

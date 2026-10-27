@@ -12,6 +12,7 @@ import type { LightZoneChanges } from '../../types/lightingTypes';
 import { SliderField } from './lightingPanelFields';
 import { useColourPick, useGestureTransactions, type ColourPick } from './useGestureTransactions';
 import { useZonePopoverPosition } from './useLightPopoverPosition';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** Keys the popover's controls use themselves; they must not reach the map's shortcuts. */
 const OWN_KEYS = new Set([' ', 'Enter', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown', 'Backspace', 'Delete']);
@@ -32,7 +33,7 @@ export function LightZonePopoverHost(): React.ReactElement {
 
 function LightZonePopover({ zoneId }: { zoneId: string }): React.ReactElement | null {
   const store = useViewStoreHook();
-  const current = useAtlasStore((state) => state.objects.lightZones?.[zoneId]);
+  const current = useAtlasStore((state) => levelObjects(state).lightZones?.[zoneId]);
   // While it leaves, the popover still shows the zone it had, also when that zone was deleted.
   const shown = useRef(current);
   if (current) shown.current = current;

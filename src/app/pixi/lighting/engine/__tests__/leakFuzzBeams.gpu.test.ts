@@ -1,6 +1,6 @@
 /// <reference types="vite/client" />
 import { describe, expect, it } from 'vitest';
-import { LIGHT_REACH, sealTolerance, softEdge, worldTexel } from '../../../../lighting/lightingConstants';
+import { LIGHT_REACH, beamEdge, sealTolerance, softEdge, worldTexel } from '../../../../lighting/lightingConstants';
 import { placeLight } from '../../../../lighting/lightPlacement';
 import { sealWalls } from '../../../../lighting/sealWalls';
 import { allSegments, splitBlocking } from '../../../../lighting/segments';
@@ -48,8 +48,8 @@ interface FuzzOptions {
  * compared texel by texel with the same lights shining all around. A beam multiplies its light's
  * share by at most 1, so a room's walls hold for beams as they hold for lights (the leak fuzz);
  * this fuzz holds the beam itself: nowhere brighter than the light all around, nothing outside
- * the beam past its soft edge (a width in world pixels at its sides and its far end), everything
- * of the light inside it up to its dim radius.
+ * the beam (its sides fade inside it, over a width in world pixels), everything of the light
+ * inside it short of its soft sides, up to its dim radius.
  */
 async function fuzz({ seed, trials, allAround = false, turned = false, bounds = BOUNDS, quality = DEFAULT_LIGHTING_QUALITY }: FuzzOptions): Promise<Report> {
   const renderer = await createTestRenderer(64);
@@ -66,8 +66,7 @@ async function fuzz({ seed, trials, allAround = false, turned = false, bounds = 
       const lights: EngineLight[] = room.lights.map(([x, y], i) => {
         const dim = 150 + rand() * 500;
         const cone: VisionCone = { facing: rand() * 2 * Math.PI, angle: 0.2 + rand() * 4.5, ...(rand() < 0.5 && { apex: 10 + rand() * 60 }) };
-        // The soft edge of a grid of 30 to 110 px cells.
-        return { key: `l${i}`, x, y, bright: dim / 2, dim, flame: 2 + rand() * 90, color: [1, 1, 1], intensity: 1, animation: 'none', cone, edge: softEdge(dim, 30 + rand() * 80) };
+        return { key: `l${i}`, x, y, bright: dim / 2, dim, flame: 2 + rand() * 90, color: [1, 1, 1], intensity: 1, animation: 'none', cone, edge: softEdge(dim) };
       });
       const read = (drawn: EngineLight[]): Float32Array => {
         world.update(walls, drawn, null);
@@ -94,11 +93,13 @@ async function fuzz({ seed, trials, allAround = false, turned = false, bounds = 
           if (d >= reach) continue;
           const apex = cone.apex ?? 0;
           const off = Math.acos(Math.min(1, Math.max(-1, ((x - at.x) * Math.cos(cone.facing) + (y - at.y) * Math.sin(cone.facing)) / Math.max(d, 1e-4)))) - cone.angle / 2;
-          // Across the cone's nearer edge in front of the light, from the light itself behind it.
+          // Past the cone's nearer side in front of the light, from the light itself behind it; and inside it, how far from that side.
           const across = off < Math.PI / 2 ? d * Math.sin(Math.max(off, 0)) : d;
-          if (d < dim + edge + EDGE && (across < edge + EDGE || d < apex + edge + EDGE)) outside = false;
-          // Inside the beam and the dim radius the light is all there; past the radius a beam ends sooner.
-          if ((off > -EDGE && d > apex - EDGE) || d > dim - EDGE) inside = false;
+          const within = off < 0 ? (-off < Math.PI / 2 ? d * Math.sin(-off) : d) : 0;
+          // Nothing past the cone's sides and its own space (and a map texel and a screen pixel of filtering).
+          if (d < dim + EDGE && (across < EDGE || d < apex + EDGE)) outside = false;
+          // Inside the beam, short of its soft sides, the light is all there: it fades within its dim range as the light all around does.
+          if (within < beamEdge(edge, d, cone.angle, texel) + EDGE || d > dim - EDGE) inside = false;
         }
         if (outside) {
           report.outside++;
@@ -118,7 +119,7 @@ async function fuzz({ seed, trials, allAround = false, turned = false, bounds = 
 }
 
 describe('leak fuzz: beams', () => {
-  it('lights nothing outside a beam past its soft side, all of the light inside it, and nowhere more than the light all around', { timeout: 3_600_000 }, async () => {
+  it('lights nothing outside a beam, all of the light inside it short of its soft sides, and nowhere more than the light all around', { timeout: 3_600_000 }, async () => {
     const report = await fuzz({ seed: 11, trials: TRIALS });
     console.info(`leak fuzz (beams): ${JSON.stringify({ trials: TRIALS, ...report })}`);
     expect(report.rooms).toBeGreaterThan(TRIALS * 0.8);

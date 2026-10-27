@@ -138,6 +138,7 @@ function setup(extra: Partial<ConstructorParameters<typeof LightingController>[0
       wired.sightIsCurrent = current;
     },
     setGlideWay: () => undefined,
+    setArtFloors: () => undefined,
     refreshPlayerSight: wired.refreshPlayerSight,
     getSensedOutlineLayer: () => wired.sensedOutlines,
   } as unknown as TokenRenderer);
@@ -228,9 +229,9 @@ describe('LightingController in session view', () => {
     store.getState().setSceneLighting({ enabled: true });
     store.getState().setGMView(false);
     const layers = controller.playerLayers();
-    // The players' lighting, the outlines of sensed tokens, the players' door badges, and each of the GM's seven overlays.
-    expect(layers).toHaveLength(10);
-    expect(Object.keys(controller.gmOverlays())).toHaveLength(7);
+    // The players' lighting, the outlines of sensed tokens, the players' door badges, and each of the GM's eight overlays.
+    expect(layers).toHaveLength(11);
+    expect(Object.keys(controller.gmOverlays())).toHaveLength(8);
     for (const { layer, visible } of layers) expect(layer.visible).toBe(visible);
     expect(lighting.modeLayer.visible).toBe(true);
   });

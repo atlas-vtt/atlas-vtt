@@ -136,4 +136,30 @@ describe('rewriteMapReferences', () => {
       diceLog: [{ source: { tokenImagePath: 'Keep/goblin.webp', statblockPath: 'Keep/Goblin.md' } }, {}],
     });
   });
+
+  it('retargets the map of every level, a video too, and passes over entries that are no level', () => {
+    const map = {
+      background: 'Camp/ground.webp',
+      levels: [
+        { id: 'ground', background: 'Camp/ground.webp' },
+        { id: 'upper', background: 'Camp/upper.webm', foreground: 'Camp/roof.webp' },
+        null,
+      ],
+    };
+    const moved = movedPathOf([
+      { from: 'Camp/ground.webp', to: 'Keep/ground.webp' },
+      { from: 'Camp/upper.webm', to: 'Keep/upper.webm' },
+      { from: 'Camp/roof.webp', to: 'Keep/roof.webp' },
+    ]);
+
+    expect(rewriteMapReferences(map, moved)).toBe(true);
+    expect(map).toEqual({
+      background: 'Keep/ground.webp',
+      levels: [
+        { id: 'ground', background: 'Keep/ground.webp' },
+        { id: 'upper', background: 'Keep/upper.webm', foreground: 'Keep/roof.webp' },
+        null,
+      ],
+    });
+  });
 });

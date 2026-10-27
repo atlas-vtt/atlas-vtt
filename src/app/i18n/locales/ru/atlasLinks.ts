@@ -16,4 +16,5 @@ export const atlasLinks: Translation = {
   'atlasLinks.snapshotMissing': 'У этой сцены нет снимка «{name}».',
   'atlasLinks.snapshotOf': 'Снимок сцены «{scene}»',
   'atlasLinks.tokenCount': { one: '{count} токен', few: '{count} токена', many: '{count} токенов', other: '{count} токена' },
+  'atlasLinks.tokenRange': { one: '{range} токен', few: '{range} токена', many: '{range} токенов', other: '{range} токена' },
 };

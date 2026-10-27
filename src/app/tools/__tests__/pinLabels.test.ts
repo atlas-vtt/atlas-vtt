@@ -50,4 +50,18 @@ describe('nextPinLabel', () => {
   it('ranks multi-letter labels above single letters', () => {
     expect(nextPinLabel(pins(['letter', 'AA'], ['letter', 'Z']), 'letter')).toBe('AB');
   });
+
+  it('continues number pins from the highest number a label ends with, as after a keyed dungeon', () => {
+    expect(nextPinLabel(pins(['number', 'A1'], ['number', 'A12'], ['number', 'B3']), 'number')).toBe('13');
+    expect(nextPinLabel(pins(['number', 'A2'], ['number', '5']), 'number')).toBe('6');
+  });
+
+  it('passes over labels that end with no number instead of answering NaN', () => {
+    expect(nextPinLabel(pins(['number', 'Hall'], ['number', 'B']), 'number')).toBe('1');
+    expect(nextPinLabel(pins(['number', 'Hall'], ['number', '2']), 'number')).toBe('3');
+  });
+
+  it('counts only labels of letters alone in the letter sequence', () => {
+    expect(nextPinLabel(pins(['letter', 'A1'], ['letter', 'b'], ['letter', 'C']), 'letter')).toBe('D');
+  });
 });

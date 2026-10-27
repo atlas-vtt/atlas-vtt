@@ -21,6 +21,7 @@ export interface CreateBitmap {
 
 export interface TileContext {
   drawImage(image: ImageBitmap, sx: number, sy: number, sw: number, sh: number, dx: number, dy: number, dw: number, dh: number): void;
+  getImageData(sx: number, sy: number, sw: number, sh: number): { data: Uint8ClampedArray };
 }
 
 export interface TileCanvas {
@@ -51,6 +52,10 @@ export interface TileGraphics {
   /** `source`'s rect encoded as a WebP tile. */
   encodeTile(source: ImageBitmap, rect: PixelRect): Promise<Blob>;
   compose(width: number, height: number, parts: readonly ComposedPart[]): ImageBitmap;
+  /** One byte per pixel of `source`, row by row: 1 where its alpha is above `threshold` (of 255). */
+  opaquePixels(source: ImageBitmap, threshold: number): Uint8Array;
+  /** The alpha of each pixel of `source`, row by row. */
+  alphaBytes(source: ImageBitmap): Uint8Array;
 }
 
 function context(canvas: TileCanvas): TileContext {
@@ -79,6 +84,21 @@ export function createTileGraphics(primitives: GraphicsPrimitives): TileGraphics
         ctx.drawImage(source, from.x, from.y, from.width, from.height, to.x, to.y, to.width, to.height);
       }
       return canvas.transferToImageBitmap();
+    },
+    opaquePixels(source, threshold) {
+      const alpha = this.alphaBytes(source);
+      for (let i = 0; i < alpha.length; i++) alpha[i] = alpha[i]! > threshold ? 1 : 0;
+      return alpha;
+    },
+    alphaBytes(source) {
+      const { width, height } = source;
+      const canvas = createCanvas(width, height);
+      const ctx = context(canvas);
+      ctx.drawImage(source, 0, 0, width, height, 0, 0, width, height);
+      const { data } = ctx.getImageData(0, 0, width, height);
+      const alpha = new Uint8Array(width * height);
+      for (let i = 0; i < alpha.length; i++) alpha[i] = data[i * 4 + 3]!;
+      return alpha;
     },
   };
 }

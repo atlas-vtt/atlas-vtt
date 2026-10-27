@@ -5,6 +5,7 @@ import { linksReadableNote } from '../../../tools/pinNoteLink';
 import type { NotePin } from '../../../types';
 import type { Point } from '../../../types/visionTypes';
 import type { SceneState } from '../atlasView.ts';
+import { levelObjects } from '../../../levels/levelObjects';
 import { sentPinFace } from './sentPinFace.ts';
 
 /** A readable pin players see now: the GM's pin, the place they see it at and the alias they know it by. */
@@ -47,7 +48,7 @@ export class ReadablePins {
   /** The pins players see now; null while a lit scene's sight cannot be read. */
   listed(state: SceneState, sight: PinSight): ListedPin[] | null {
     const layout = hexLayoutOfGrid(state.grid);
-    const offered = Object.values(state.objects.pins ?? {}).filter(isOffered)
+    const offered = Object.values(levelObjects(state).pins ?? {}).filter(isOffered)
       .map((pin) => ({ pin, place: pinDisplayPoint(pin, layout) }))
       .filter(({ place }) => onMap(place));
     const shown = this.shown(offered.map(({ place }) => place), sight);

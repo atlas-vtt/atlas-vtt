@@ -5,27 +5,28 @@ import { Button } from '../../primitives/button';
 import { LinkedStatblock } from '../../../../statblocks/render/LinkedStatblock';
 import type { TokenVitals } from '../../../../services/statblockVitalsSync';
 import { t } from '../../../../i18n';
+import { stepQuantity, type Quantity } from '../../../../encounters/encounterQuantity';
 import type { TokenAsset } from '../types';
 import { CountStepper } from './CountStepper';
-import { MAX_PICK_COUNT } from './encounterPicks';
 import { flashCard } from './flashCard';
 
 interface CreatureCardProps {
   app: App;
   token: TokenAsset;
-  count: number;
-  onCountChange: (token: TokenAsset, count: number) => void;
+  count: Quantity;
+  onCountChange: (token: TokenAsset, count: Quantity) => void;
 }
 
 /** What a press on the statblock means for itself: its dice, links and fields, never adding the creature. */
 const OWN_CONTROLS = 'a, button, input, textarea, select, summary, [role="button"], [contenteditable]:not([contenteditable="false"])';
 
 /**
- * A creature of the feed, picked as cards are in a deck builder: a click on its statblock adds one,
- * and the notch on its top edge says how many it holds and changes that (− n +), or offers Add.
+ * A creature of the feed, picked as cards are in a deck builder: a click on its statblock adds one
+ * (one die more where its number is rolled), and the notch on its top edge says how many it holds
+ * and changes that (− n +), or offers Add.
  */
 export function CreatureCard({ app, token, count, onCountChange }: CreatureCardProps): React.JSX.Element {
-  const picked = count > 0;
+  const picked = count !== 0;
   // The statblock shows the creature as its token looks, with or without its ring, as the DM screen does.
   const art = useMemo((): TokenVitals[] => [{ name: token.name, imagePath: token.imagePath, showRing: token.showRing }], [token.name, token.imagePath, token.showRing]);
 
@@ -34,8 +35,9 @@ export function CreatureCard({ app, token, count, onCountChange }: CreatureCardP
     if (target.closest(OWN_CONTROLS) || target.closest('.atlas-encounter-card__notch')) return;
     // A drag that selected text is reading, not picking.
     if (!target.ownerDocument.getSelection()?.isCollapsed) return;
-    if (count >= MAX_PICK_COUNT) return;
-    onCountChange(token, count + 1);
+    const more = stepQuantity(count, 1);
+    if (more === count) return;
+    onCountChange(token, more);
     flashCard(event.currentTarget);
   };
 

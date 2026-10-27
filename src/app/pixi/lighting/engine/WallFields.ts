@@ -88,7 +88,7 @@ export class WallFields {
       this.lightField ??= this.create();
       this.lightField.build(allSegments(light));
     }
-    this.hasKinds = walls.some((wall) => wall.blocks !== undefined);
+    this.hasKinds = walls.some((wall) => wall.blocks === 'sight' || wall.blocks === 'light');
     if (this.hasKinds) {
       this.sightField ??= this.create();
       this.sightField.build(allSegments(splitBlocking(walls, 'sight')));

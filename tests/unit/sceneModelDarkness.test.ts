@@ -88,6 +88,16 @@ describe('a vision token inside magical darkness', () => {
     expect(regionsOf({ hero: token('hero', 520) }, { dark: DARK, sun: light('sun', 540, { ...torch, priority: 1 }) }, 0)).toEqual([`hero:${NORMAL_SIGHT.id}`]);
   });
 
+  it('stays without its eyes beside a companion whose small light outshines the darkness, on every side', () => {
+    // A 5 ft light reaches exactly to the centre of the next cell, where its picture has faded to nothing.
+    const lantern: LightEmission = { bright: 0, dim: 5, color: '#aa00ff', intensity: 1, animation: 'none', priority: 1 };
+    const bearer: TokenEntity = { ...token('bearer', 500), light: lantern };
+    for (const [dx, dy] of [[-70, 0], [70, 0], [0, -70], [0, 70]] as const) {
+      const hero: TokenEntity = { ...token('hero', 500 + dx, [{ id: 'dnd5e-darkvision', range: 60 }]), y: 600 + dy };
+      expect(regionsOf({ bearer, hero }, { dark: DARK }, 0)).toEqual([`bearer:${NORMAL_SIGHT.id}`]);
+    }
+  });
+
   it('is still shown to the players within its own space', () => {
     const scene = state({ dark: DARK }, { hero: token('hero', 520) }, 1);
     const builder = new SceneModelBuilder();

@@ -1,9 +1,12 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { ArrowUpRight, Copy, EyeOff } from 'lucide-react';
 import { Button } from '../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { TableResult } from '../../../loot/lootHistory';
+import type { LootDraw } from '../../../loot/lootRoller';
+import { LootGiveButton } from '../loot/LootGiveButton';
+import { PartControls, RerollUnlockedButton, SaveAsNoteButton, toggledLock, type GeneratorCardHandlers } from './GeneratorControls';
 import { EASE_OUT_CONTROL_POINTS, PANEL_ENTER_FROM, PANEL_ENTER_MS } from '../../../utils/motion';
 import { LootInlineText } from '../loot/LootInlineText';
 import { ResultText } from './ResultText';
@@ -18,12 +21,21 @@ interface TableResultCardProps {
   onOpenSource: (result: TableResult) => void;
   onOpenLink: (link: string) => void;
   onCopy: (result: TableResult) => void;
+  /** A generator's controls; absent for other results. */
+  generator?: GeneratorCardHandlers | undefined;
+  /** The roll's draw that is this result as an item, handed out with Give. */
+  item?: LootDraw | undefined;
 }
+
+const NO_LOCKS: ReadonlySet<number> = new Set();
 
 const STAGGER_S = 0.06;
 
-function TableResultCardView({ result, fresh, order, onOpenSource, onOpenLink, onCopy }: TableResultCardProps): React.ReactElement {
+function TableResultCardView({ result, fresh, order, onOpenSource, onOpenLink, onCopy, generator, item }: TableResultCardProps): React.ReactElement {
   const reduceMotion = useReducedMotion();
+  // Locks are this card's alone: never stored, gone when the card goes.
+  const [locked, setLocked] = useState(NO_LOCKS);
+  const rerolls = generator && result.generator && generator.canReroll(result) ? generator : null;
   const enter = reduceMotion ? { opacity: 0 } : { opacity: 0, transform: PANEL_ENTER_FROM };
 
   return (
@@ -42,6 +54,8 @@ function TableResultCardView({ result, fresh, order, onOpenSource, onOpenLink, o
         <p className="atlas-table-card__text">
           <ResultText text={result.text} rolls={result.rolls ?? []} onOpenLink={onOpenLink} />
         </p>
+        {item && <LootGiveButton draw={item} />}
+        {generator?.canSave(result) && <SaveAsNoteButton onSave={() => generator.onSave(result)} />}
         <LabelTooltip label={t('tables.copy')}>
           <Button
             variant="ghost"
@@ -56,9 +70,9 @@ function TableResultCardView({ result, fresh, order, onOpenSource, onOpenLink, o
       </div>
 
       {result.fields.length > 0 && (
-        <dl className="atlas-table-card__fields">
+        <dl className={`atlas-table-card__fields${rerolls ? ' atlas-table-card__fields--parts' : ''}`}>
           {result.fields.map((field) => (
-            <div key={field.label} className={`atlas-table-card__field${field.hidden ? ' is-hidden' : ''}`}>
+            <div key={field.row ?? field.label} className={`atlas-table-card__field${field.hidden ? ' is-hidden' : ''}`}>
               <dt>
                 {field.label}
                 {field.hidden && (
@@ -68,12 +82,22 @@ function TableResultCardView({ result, fresh, order, onOpenSource, onOpenLink, o
                 )}
               </dt>
               <dd><LootInlineText text={field.value} onOpenLink={onOpenLink} /></dd>
+              {rerolls && field.row !== undefined && (
+                <PartControls
+                  label={field.label}
+                  row={field.row}
+                  locked={locked.has(field.row)}
+                  onLock={(row) => setLocked(toggledLock(locked, row))}
+                  onReroll={(row) => rerolls.onRerollPart(result, row)}
+                />
+              )}
             </div>
           ))}
         </dl>
       )}
 
       <div className="atlas-loot-card__foot">
+        {rerolls && <RerollUnlockedButton onReroll={() => rerolls.onRerollUnlocked(result, locked)} />}
         <LabelTooltip label={t('tables.openNote')}>
           <button type="button" className="atlas-loot-text-button atlas-loot-card__source" onClick={() => onOpenSource(result)}>
             <span>{result.source.join(' › ')}</span>
@@ -85,5 +109,5 @@ function TableResultCardView({ result, fresh, order, onOpenSource, onOpenLink, o
   );
 }
 
-/** One rolled result of a Text table; renders again only when its own props change. */
+/** One rolled result of a Text table or a generator; renders again only when its own props change. */
 export const TableResultCard = memo(TableResultCardView);

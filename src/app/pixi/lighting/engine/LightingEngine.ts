@@ -1,10 +1,10 @@
-import { Container, Graphics, Matrix, Texture, type Renderer } from 'pixi.js';
+import { Container, Graphics, Matrix, Rectangle, Texture, type Renderer } from 'pixi.js';
 import { exploredMemoryOn } from '../../../lighting/sceneLightingOptions';
 import { DEFAULT_LIGHTING_QUALITY, type LightingQuality } from '../../../lighting/lightingQuality';
 import type { UnlitGrid } from '../../../grid/gridLightingMark';
 import { destroyTree } from '../../utils/destroyTree';
 import { BackBufferHold } from './backBuffer';
-import { createCompositeFilter, type CompositeFilter, type LightingMode } from './compositeFilter';
+import { createCompositeFilter, NO_BELOW, type BelowPictures, type CompositeFilter, type CompositeStack, type LightingMode } from './compositeFilter';
 import { contextLost, glOf } from './gpu';
 import { LightingWorld } from './LightingWorld';
 import { ambientLift, darkLooks } from './senseDrawing';
@@ -12,6 +12,28 @@ import { describeShaderFailures, failedEngineShaders } from './shaderCheck';
 import { SceneSightLayers } from './SceneSightLayers';
 import type { BoundFields } from './WallFields';
 import type { EngineScene, SceneFrame } from './types';
+import type { Box } from '../../../vision/polygonBounds';
+
+/** How an engine draws: on the canvas as the view's own lighting, or off-screen as a level below the view's (`LevelsBelow`). */
+export interface LightingEngineOptions {
+  /** The level of the view's stack this engine lights: 0 the level the view shows (the default), 1 or 2 a level below it drawn. */
+  levelIndex?: number;
+  /**
+   * Whether the engine holds the canvas' back buffer while it is on (the default). An engine that
+   * only ever renders into textures needs none, and must leave the view's own hold alone.
+   */
+  backBuffer?: boolean;
+  /** Whether heavy work goes to the graphics device only as fast as it runs it (`GpuPacer`); off (the default), every update builds everything at once. */
+  paced?: boolean;
+}
+
+/** The snapshots of the levels below for a render, and how much each level down is dimmed. */
+export interface BelowShown {
+  pictures: BelowPictures;
+  dim: number;
+}
+
+const NOTHING_BELOW: BelowShown = { pictures: NO_BELOW, dim: 1 };
 
 /**
  * Scene lighting, independent of the store: world-space caches (`LightingWorld`), sight meshes
@@ -32,6 +54,12 @@ export class LightingEngine {
   private composite: CompositeFilter | null = null;
   private boundFields: BoundFields | null = null;
   private explored: Texture = Texture.EMPTY;
+  /** The level stack of the view's openings, and the pictures of the levels below for the render about to be drawn. */
+  private stack: CompositeStack | null = null;
+  private below: BelowShown = { pictures: NO_BELOW, dim: 1 };
+  /** Where the composite runs beyond the world: the maps of the levels below seen through the openings. */
+  private coverage: { width: number; height: number } | null = null;
+  private readonly levelIndex: number;
   private mode: LightingMode = 'gm';
   private view = { screenToWorld: new Matrix(), zoom: 1 };
   /** An off-screen render holds the composite on its own view (`renderFrame`). */
@@ -53,13 +81,13 @@ export class LightingEngine {
     },
   };
 
-  private readonly backBuffer: BackBufferHold;
+  private readonly backBuffer: BackBufferHold | null;
   private readonly paced: boolean;
 
-  /** `paced`: heavy work goes to the graphics device only as fast as it runs it (`GpuPacer`); off, every update builds everything at once. */
-  constructor(private readonly renderer: Renderer, private quality: LightingQuality = DEFAULT_LIGHTING_QUALITY, options: { paced?: boolean } = {}) {
+  constructor(private readonly renderer: Renderer, private quality: LightingQuality = DEFAULT_LIGHTING_QUALITY, options: LightingEngineOptions = {}) {
     this.paced = options.paced ?? false;
-    this.backBuffer = new BackBufferHold(renderer);
+    this.backBuffer = options.backBuffer === false ? null : new BackBufferHold(renderer);
+    this.levelIndex = options.levelIndex ?? 0;
     this.layer.eventMode = 'none';
     this.layer.addChild(this.boundsRect, this.sightLayers.view);
     renderer.runners.contextChange.add(this.contextListener);
@@ -95,15 +123,16 @@ export class LightingEngine {
    */
   setQuality(quality: LightingQuality): void {
     this.quality = quality;
+    this.composite?.setPixelRatio(this.pixelRatio());
     this.world?.setFlicker(quality.flickerMs);
     const { scene } = this;
-    if (scene && this.world && !this.world.fits(quality)) this.attempt(() => this.build(scene));
+    if (scene && this.world && !this.world.fits(quality, scene.cellSize)) this.attempt(() => this.build(scene));
   }
 
   private build(scene: EngineScene): void {
     const { bounds } = scene;
-    if (!this.world || this.world.bounds.width !== bounds.width || this.world.bounds.height !== bounds.height || !this.world.fits(this.quality)) {
-      this.replaceWorld(new LightingWorld(this.renderer, bounds, this.quality, this.paced));
+    if (!this.world || this.world.bounds.width !== bounds.width || this.world.bounds.height !== bounds.height || !this.world.fits(this.quality, scene.cellSize)) {
+      this.replaceWorld(new LightingWorld(this.renderer, bounds, this.quality, this.paced, scene.cellSize));
     }
     const world = this.world!;
     const composite = this.composite!;
@@ -134,7 +163,7 @@ export class LightingEngine {
     if (this.stopped) return;
     this.enabled = on;
     this.layer.visible = on;
-    this.backBuffer.set(on);
+    this.backBuffer?.set(on);
     if (!on) this.dropWorld();
   }
 
@@ -152,8 +181,9 @@ export class LightingEngine {
     this.composite?.setGrid(grid?.markColor() ?? null);
   }
 
-  animate(now: number): boolean {
-    return this.attempt(() => this.currentWorld()?.animate(now)) ?? false;
+  /** Builds what is still to build and redraws the flicker when due; `view` (world px) is where flicker is looked at (`LightingWorld.animate`). */
+  animate(now: number, view?: Box): boolean {
+    return this.attempt(() => this.currentWorld()?.animate(now, false, view)) ?? false;
   }
 
   busy(): boolean {
@@ -204,20 +234,54 @@ export class LightingEngine {
    * renders in the tree as on the canvas: PIXI copies any render target into a blend filter's
    * back texture, and only the canvas needs the back buffer for that.
    */
-  renderFrame<T>(frame: SceneFrame, render: () => T): T {
+  renderFrame<T>(frame: SceneFrame, render: () => T, below: BelowShown = NOTHING_BELOW): T {
     // Off or stopped, the engine has no composite: the render is as it is without lighting.
     if (!this.composite) return render();
     this.viewHeld = true;
+    // A thumbnail is drawn on every pixel it has.
+    this.composite?.setPixelRatio(undefined);
     this.attempt(() => this.applySightMode('gm'));
     // Without a camera a frame pixel is 1 / resolution world pixels, counted from (x, y).
     this.composite?.setView(new Matrix(1, 0, 0, 1, frame.x, frame.y), frame.resolution);
+    // The levels below drawn for this frame; where none was, their texels show nothing.
+    this.composite?.setBelow(below.pictures, below.dim);
     try {
       return render();
     } finally {
       this.viewHeld = false;
+      this.composite?.setPixelRatio(this.pixelRatio());
       this.attempt(() => this.applySightMode(this.mode));
       this.composite?.setView(this.view.screenToWorld, this.view.zoom);
+      this.composite?.setBelow(this.below.pictures, this.below.dim);
     }
+  }
+
+  /** The level stack of the view's openings (`LevelStackTexture`), or null while the level shows only itself. The caller owns its texture. */
+  setStack(stack: CompositeStack | null): void {
+    this.stack = stack;
+    this.composite?.setStack(stack);
+    // A level below without a stack is drawn nowhere, so its area may stay as it was.
+    if (this.levelIndex > 0 && stack) this.layer.filterArea = belowArea(stack);
+  }
+
+  /**
+   * The snapshots of the levels below for the render about to be drawn (`LevelsBelow.prepare`),
+   * nearest first, dimmed by `dim` once per level down; a level without one shows nothing where the
+   * stack shows it. The caller owns the textures.
+   */
+  setBelow(pictures: BelowPictures, dim: number): void {
+    this.below = { pictures, dim };
+    if (!this.viewHeld) this.composite?.setBelow(pictures, dim);
+  }
+
+  /**
+   * Where the composite runs besides the world: from the origin over `area` (the maps of the levels
+   * below seen through the view's openings, a tower's ground beyond its own map); null, the world alone.
+   */
+  setCoverage(area: { width: number; height: number } | null): void {
+    if (area?.width === this.coverage?.width && area?.height === this.coverage?.height) return;
+    this.coverage = area;
+    this.drawBounds();
   }
 
   /** The caller owns `texture`; set its replacement before destroying it. */
@@ -231,7 +295,7 @@ export class LightingEngine {
     this.dropWorld();
     this.sightLayers.destroy();
     destroyTree(this.layer);
-    this.backBuffer.release();
+    this.backBuffer?.release();
   }
 
   /** Runs GPU work if the device can take it now; an error stops the engine instead of escaping. */
@@ -272,6 +336,15 @@ export class LightingEngine {
     return true;
   }
 
+  /**
+   * Device pixels per screen pixel the composite may take (`LightingQuality.compositePixelRatio`).
+   * Only the view's own level: a level below draws its picture texel on pixel for the view's
+   * composite, which reads it as it is.
+   */
+  private pixelRatio(): number | undefined {
+    return this.levelIndex === 0 ? this.quality.compositePixelRatio : undefined;
+  }
+
   /** The world, rebuilt from the last scene when a restored context took it. */
   private currentWorld(): LightingWorld | null {
     if (!this.world && this.scene) this.build(this.scene);
@@ -288,7 +361,7 @@ export class LightingEngine {
     } catch (error) {
       console.error('Atlas: could not release the lighting textures', error);
     }
-    this.backBuffer.release();
+    this.backBuffer?.release();
   }
 
   /** The composite goes with the world, so it never holds the world's destroyed textures. */
@@ -317,12 +390,31 @@ export class LightingEngine {
       this.composite = createCompositeFilter(world, this.explored);
       this.composite.setMode(this.mode);
       this.composite.setView(this.view.screenToWorld, this.view.zoom);
+      this.composite.setLevelIndex(this.levelIndex);
+      this.composite.setPixelRatio(this.pixelRatio());
+      this.composite.setStack(this.stack);
+      this.composite.setBelow(this.below.pictures, this.below.dim);
       this.layer.filters = [this.composite.filter];
     }
     previous?.destroy();
-    const { width, height } = world.bounds;
-    // PIXI takes the filter area from the children's bounds: keep the whole map covered.
-    this.boundsRect.clear().rect(0, 0, width, height).fill({ color: 0, alpha: 0 });
+    this.drawBounds();
     this.sightLayers.clear();
   }
+
+  /** PIXI takes the filter area from the children's bounds: keep the whole map covered, and what lies beyond it through the openings. */
+  private drawBounds(): void {
+    if (!this.world) return;
+    const { width, height } = this.world.bounds;
+    this.boundsRect.clear().rect(0, 0, Math.max(width, this.coverage?.width ?? 0), Math.max(height, this.coverage?.height ?? 0)).fill({ color: 0, alpha: 0 });
+  }
+}
+
+/**
+ * Where a level below's composite runs: the stack's texels, a texel wider all round, in world pixels
+ * (the layer's own). Its picture is read only where the stack shows it, so the rest of the map is
+ * left unlit and costs nothing.
+ */
+function belowArea(stack: CompositeStack): Rectangle {
+  const { box, texel } = stack;
+  return new Rectangle((box.x - 1) * texel, (box.y - 1) * texel, (box.columns + 2) * texel, (box.rows + 2) * texel);
 }

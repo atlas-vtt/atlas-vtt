@@ -28,6 +28,8 @@ export class PlayerSightTokens {
   private settling: (() => void) | null = null;
   private destroyed = false;
   private fog?: () => FogCoverage | null;
+  /** Whether the roof of the level shown covers a point in the players' picture. */
+  private roof?: (point: { x: number; y: number }) => boolean;
   private playerView?: () => boolean;
   /** The immutable shape and displayed centre fully determine fog membership. */
   private readonly membership = new WeakMap<object, { coverage: FogCoverage; x: number; y: number; covered: boolean }>();
@@ -61,6 +63,15 @@ export class PlayerSightTokens {
   setFogProvider(provider: () => FogCoverage | null, playerView: () => boolean): void {
     this.fog = provider;
     this.playerView = playerView;
+  }
+
+  /**
+   * The roof drawn over the players' picture (`ViewRoofs.covers`): a token whose centre it covers is
+   * not seen, as under committed fog, lit scene or not. `playerView` says when the canvas shows their view.
+   */
+  setRoofProvider(covers: (point: { x: number; y: number }) => boolean, playerView: () => boolean): void {
+    this.roof = covers;
+    this.playerView ??= playerView;
   }
 
   /** Whether the canvas shows the players' view: session view, or the peek of a lit scene. */
@@ -112,6 +123,12 @@ export class PlayerSightTokens {
     return !!perception || this.showsPlayers();
   }
 
+  /** Whether the roof covers the token, at its displayed centre (the stored place before it has a sprite). */
+  private roofed(tokenId: string): boolean {
+    const point = this.host.sprites()[tokenId] ?? this.host.tokens()[tokenId];
+    return !!this.roof && !!point && this.roof({ x: point.x, y: point.y });
+  }
+
   private covered(tokenId: string, coverage: FogCoverage | null): boolean {
     const point = this.host.sprites()[tokenId] ?? this.host.tokens()[tokenId];
     if (!coverage || !point) return true;
@@ -122,12 +139,12 @@ export class PlayerSightTokens {
     return covered;
   }
 
-  /** A frame always applies fog, including on an unlit scene and during a held gesture. */
+  /** A frame always applies fog and the roof, including on an unlit scene and during a held gesture. */
   framePerception(perception?: TokenPerception): TokenPerception | undefined {
-    if (!this.fog) return perception;
-    const coverage = this.fog();
-    if (coverage?.shape.length === 0) return perception;
-    return (id) => this.covered(id, coverage) ? 'unseen' : (perception?.(id) ?? 'seen');
+    const coverage = this.fog?.();
+    const fogged = !!this.fog && coverage?.shape.length !== 0;
+    if (!fogged && !this.roof) return perception;
+    return (id) => (fogged && this.covered(id, coverage ?? null)) || this.roofed(id) ? 'unseen' : (perception?.(id) ?? 'seen');
   }
 
   /** How the players perceive each token, while the canvas shows their view. */
@@ -139,6 +156,7 @@ export class PlayerSightTokens {
   /** Fog excludes held tokens too; the held exception applies only to lighting. */
   hides(tokenId: string, perception = this.perception()): boolean {
     if (this.fog && this.fogActive(perception) && this.covered(tokenId, this.fog())) return true;
+    if (this.fogActive(perception) && this.roofed(tokenId)) return true;
     return !!perception && perception(tokenId) !== 'seen' && !this.host.held().has(tokenId);
   }
 

@@ -3,6 +3,9 @@ import type { LightLevel } from '../types/senseTypes';
 import type { Point } from '../types/visionTypes';
 import type { AmbientLight, LightReach } from './sight';
 import { pointInPolygon } from './visibility';
+import { areaDistance } from './areaReach';
+import { inBox, reachBox } from './polygonBounds';
+import { reflectedAt } from './reflectedLight';
 
 /**
  * The light level the scene's ambient light alone gives every point: dark below the lit
@@ -31,26 +34,43 @@ function ambientLevelAt(point: Point, light: AmbientLight): LightLevel {
 
 /**
  * The light level the lights that outrank `above` give `point`: bright within a bright radius,
- * dim within a dim one, where no wall is between. A darkness source is no light.
+ * dim within a dim one, where no wall is between; an area light counts both from the nearest
+ * point of its area in clear view (`areaDistance`). Where a light's reflection reaches
+ * (`reflectedAt`) it is dim. A darkness source is no light.
  */
 function levelFromLights(point: Point, lights: readonly LightReach[], above = -Infinity): LightLevel {
   let level: LightLevel = 'dark';
   for (const light of lights) {
-    if (light.darkness || (light.priority ?? 0) <= above) continue;
-    const distance = Math.hypot(point.x - light.origin.x, point.y - light.origin.y);
-    if (distance > light.dim || !pointInPolygon(point, light.polygon)) continue;
-    if (distance <= light.bright) return 'bright';
-    level = 'dim';
+    if (light.darkness || (light.priority ?? 0) <= above || !inBox(point, reachBox(light))) continue;
+    const direct = directLevel(point, light);
+    if (direct === 'bright') return 'bright';
+    if (direct === 'dim' || (level === 'dark' && light.reflection?.length && reflectedAt(point, light.reflection))) level = 'dim';
   }
   return level;
 }
 
-/** The priority of the strongest darkness source that covers `point`; none covers it at -Infinity. */
+/**
+ * The light level `light` gives `point` straight from itself, without its reflection. The dim
+ * radius itself is dark: the picture has faded to nothing there (`lightFade`), and the polygon
+ * would decide a point on it by which side it lies (a token one cell from a light of one cell).
+ * An area light's own area is lit whatever its dim radius.
+ */
+function directLevel(point: Point, light: LightReach): LightLevel {
+  const distance = light.parts ? areaDistance(point, light, light.dim) : Math.hypot(point.x - light.origin.x, point.y - light.origin.y);
+  const beyond = distance > 0 ? distance >= light.dim : distance > light.dim;
+  if (beyond || (!light.parts && !pointInPolygon(point, light.polygon))) return 'dark';
+  return distance <= light.bright ? 'bright' : 'dim';
+}
+
+/**
+ * The priority of the strongest darkness source that covers `point`; none covers it at -Infinity.
+ * Its radius itself is not covered, where its picture swallows nothing, as a light's dim radius is not lit.
+ */
 export function darknessAt(point: Point, lights: readonly LightReach[]): number {
   let priority = -Infinity;
   for (const light of lights) {
     if (!light.darkness || (light.priority ?? 0) <= priority) continue;
-    if (Math.hypot(point.x - light.origin.x, point.y - light.origin.y) <= light.dim && pointInPolygon(point, light.polygon)) priority = light.priority ?? 0;
+    if (Math.hypot(point.x - light.origin.x, point.y - light.origin.y) < light.dim && pointInPolygon(point, light.polygon)) priority = light.priority ?? 0;
   }
   return priority;
 }

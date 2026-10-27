@@ -1,7 +1,7 @@
 import { ambientGate, sleeps } from '../../lighting/lightActivity';
 import { beamOf } from '../../lighting/lightBeam';
-import { lightKindOf } from '../../lighting/lightPresets';
-import type { LightKind, LightSource } from '../../types/lightingTypes';
+import { lightGlyphOf, type LightGlyph } from '../../lighting/lightGlyphs';
+import type { LightSource } from '../../types/lightingTypes';
 import type { Point } from '../../types/visionTypes';
 import { canvasBadgeColors } from '../utils/canvasBadgeColors';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils';
@@ -40,7 +40,8 @@ export function lightMarkerTheme(): LightMarkerTheme {
 
 /** How one light's marker is drawn. */
 export interface LightMarkerLook {
-  kind: LightKind;
+  /** The glyph: the light's kind, or an area light's surface. */
+  kind: LightGlyph;
   glyphTint: number;
   glyphAlpha: number;
   ringColor: number;
@@ -113,7 +114,7 @@ export function lightMarkerLook(light: LightSource, state: LightMarkerState, the
   const color = readableTint(lightColorNumber(light.emission.color), theme.background);
   const off = !!light.hidden || sleeps(light, ambient);
   return {
-    kind: lightKindOf(light.emission),
+    kind: lightGlyphOf(light),
     glyphTint: off ? theme.stroke : color,
     glyphAlpha: off ? 0.4 : 1,
     ringColor: color,

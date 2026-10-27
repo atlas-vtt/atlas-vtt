@@ -57,6 +57,17 @@ describe('engine shader sources', () => {
     expect(clashes).toEqual([]);
   });
 
+  // A merge once kept a read of uInputPixel and dropped its declaration: the composite failed to link and every view fell back to the Canvas picture.
+  it.each(shaders)('%s declares every uniform of PIXI\'s it reads', (_name, shader) => {
+    const undeclared: string[] = [];
+    for (const [stage, source] of [['vertex', shader.vertex], ['fragment', shader.fragment]] as const) {
+      const declared = uniformsOf(source);
+      const code = withoutComments(source);
+      for (const name of Object.keys(PIXI_UNIFORMS)) if (new RegExp(`\\b${name}\\b`).test(code) && !declared.has(name)) undeclared.push(`${stage}: ${name}`);
+    }
+    expect(undeclared).toEqual([]);
+  });
+
   // ANGLE translates GLSL to HLSL for Direct3D, whose compiler rejects or unrolls loops and
   // branches that sample with implicit gradients; every engine read names its level instead.
   it.each(shaders)('%s samples every texture at an explicit level', (_name, shader) => {

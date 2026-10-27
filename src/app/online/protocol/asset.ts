@@ -10,6 +10,8 @@ export const MAX_ASSET_BYTES = 64 * 1024 * 1024;
 
 /** Image types a map or a token's artwork may have. */
 export const IMAGE_MIME_TYPES: readonly string[] = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif'];
+/** Video types an animated map may have: a page plays it in its poster's place. */
+export const VIDEO_MIME_TYPES: readonly string[] = ['video/webm', 'video/mp4'];
 /** The type of a text players are sent by hash (a quest's whole text): Markdown in UTF-8. */
 export const TEXT_MIME_TYPE = 'text/markdown';
 
@@ -30,6 +32,9 @@ function parseRef(value: unknown, mimes: readonly string[]): AssetRef | null {
 
 /** An image's reference, or null for anything malformed or of a type players are not sent. */
 export const parseAsset = (value: unknown): AssetRef | null => parseRef(value, IMAGE_MIME_TYPES);
+
+/** A video's reference (`VIDEO_MIME_TYPES`), or null for anything malformed or of another type. */
+export const parseVideoAsset = (value: unknown): AssetRef | null => parseRef(value, VIDEO_MIME_TYPES);
 
 /** A text's reference (`TEXT_MIME_TYPE`), or null for anything malformed or of another type. */
 export const parseTextAsset = (value: unknown): AssetRef | null => parseRef(value, [TEXT_MIME_TYPE]);

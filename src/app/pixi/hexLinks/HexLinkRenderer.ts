@@ -14,6 +14,7 @@ import { cssColorToHexNumber, getObsidianAccentColor } from '../utils/colorUtils
 import { destroyTree } from '../utils/destroyTree';
 import { createHexLinkChip } from './hexLinkChip';
 import { MAP_LAYER_Z } from '../mapLayerOrder';
+import { levelObjects } from '../../levels/levelObjects';
 
 const HOVER_FILL_ALPHA = 0.28;
 const PRESSED_FILL_ALPHA = 0.45;
@@ -58,7 +59,7 @@ export class HexLinkRenderer {
     this.container.addChild(this.highlightGraphics);
 
     this.unsubscribers.push(
-      store.subscribe((state: ViewAtlasState) => state.objects.pins, () => this.redraw()),
+      store.subscribe((state: ViewAtlasState) => levelObjects(state).pins, () => this.redraw()),
       store.subscribe((state: ViewAtlasState) => state.grid, () => this.redraw()),
       store.subscribe((state: ViewAtlasState) => state.isGMView, () => this.redraw()),
     );
@@ -95,7 +96,7 @@ export class HexLinkRenderer {
   hitTest(worldX: number, worldY: number): string | null {
     const layout = this.layout();
     if (!layout || this.isHidden()) return null;
-    return hexLinkAt(this.state.objects.pins, layout, { x: worldX, y: worldY })?.id ?? null;
+    return hexLinkAt(levelObjects(this.state).pins, layout, { x: worldX, y: worldY })?.id ?? null;
   }
 
   setHovered(pinId: string | null): void {
@@ -135,7 +136,7 @@ export class HexLinkRenderer {
   }
 
   private currentHighlight(layout: HexLayout): Highlight | null {
-    const pins = this.state.objects.pins;
+    const pins = levelObjects(this.state).pins;
     const pinId = this.pressedPinId ?? this.hoveredPinId;
     const pin = pinId ? pins[pinId] : undefined;
     if (pin && isShownAsHex(pin, layout)) {

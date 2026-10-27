@@ -6,6 +6,7 @@ import type { ViewAtlasStore } from '../storeFactory';
 import type { MapFile } from './MapPersistence';
 import { getHistoryStore } from '../stores/history';
 import { detectGridOfNewScene } from './firstGridDetection';
+import { revealNewDungeon } from './dungeonSceneReveal';
 import { describeError } from '../utils/errors';
 import { sceneNameOf } from '../utils/sceneName';
 import { settledWithin } from '../utils/settledWithin';
@@ -28,6 +29,8 @@ export class MapService {
   private readonly loads = new LatestRequestQueue();
   /** Ends the grid detection of a new scene that is shown and not yet done with. */
   private endGridDetection: (() => void) | null = null;
+  /** Ends a new dungeon growing into being on the map shown. */
+  private endReveal: (() => void) | null = null;
 
   constructor(private app: App, eventBus: EventEmitter, private store: ViewAtlasStore) {
     this.eventBus = eventBus;
@@ -40,11 +43,12 @@ export class MapService {
    * @param filePath The path to the map file
    * @param camera Where the scene is shown (its tab's own camera); without one the map is fitted to the view.
    * The loading screen waits for the tiles this camera shows.
+   * @param level The level shown first, over the camera's; unset, the camera's, else the first.
    * @returns The loaded map data, or null when loading failed or a later request replaced this one
    */
-  public loadMap(rendererService: RendererService, filePath: string, camera: ViewCamera | null = null): Promise<MapFile | null> {
+  public loadMap(rendererService: RendererService, filePath: string, camera: ViewCamera | null = null, level?: string): Promise<MapFile | null> {
     return this.loads.run(async (isSuperseded) => {
-      const load = this.runLoad(rendererService, filePath, camera, isSuperseded);
+      const load = this.runLoad(rendererService, filePath, camera, isSuperseded, level);
       if (await settledWithin(load, STALLED_LOAD_MS)) return load;
       if (isSuperseded()) return null;
       // The loading overlay covers the whole view, its tabs included: a load that never ends
@@ -65,11 +69,14 @@ export class MapService {
     filePath: string,
     camera: ViewCamera | null,
     isSuperseded: () => boolean,
+    level?: string,
   ): Promise<MapFile | null> {
     try {
       // A detection still running on the scene being left ends with it.
       this.endGridDetection?.();
       this.endGridDetection = null;
+      this.endReveal?.();
+      this.endReveal = null;
 
       // Services save what belongs to the map being left while its state is still loaded
       if (this.store.getState().mapLoaded) this.eventBus.emit('map-unloading');
@@ -127,9 +134,12 @@ export class MapService {
         filePath,
         camera,
         isSuperseded,
+        level,
       );
       if (!displayed) return null;
       this.currentMapData = displayed.mapData;
+      // The level the tab was left on, else the first; the store's levels arrive with the rehydration below
+      storeState.setViewedLevel(displayed.level);
       // The tiles in view load meanwhile; the loading screen stays until they are drawn, or for a while.
       const mapImage = renderer.getMapImage();
       const imageReady = mapImage ? mapImage.whenCameraReady(MAP_IMAGE_READY_MS) : null;
@@ -213,7 +223,15 @@ export class MapService {
         }
       };
       const hideLoadingScreen = (): void => {
-        if (imageReady) void imageReady.then(revealMap);
+        // A dungeon made on this device and never shown grows into being: the loading screen waits for its first frame
+        const { isPlayerView, viewedLevel } = this.store.getState();
+        const reveal = isPlayerView ? null : revealNewDungeon(this.app, renderer, filePath, viewedLevel ?? null);
+        const revealed = reveal?.then((end) => {
+          if (isSuperseded()) end?.();
+          else this.endReveal = end;
+        });
+        const shown = revealed && imageReady ? Promise.all([imageReady, revealed]) : revealed ?? imageReady;
+        if (shown) void shown.then(revealMap);
         else revealMap();
       };
       this.eventBus.emit('wait-for-tokens-loaded', hideLoadingScreen);
@@ -276,11 +294,13 @@ export class MapService {
     this.loads.cancel();
     this.endGridDetection?.();
     this.endGridDetection = null;
+    this.endReveal?.();
+    this.endReveal = null;
   }
 
   /** `loadMap` for a file of the vault. */
-  public async loadMapFromFile(rendererService: RendererService, file: TFile, camera: ViewCamera | null = null): Promise<MapFile | null> {
-    return this.loadMap(rendererService, file.path, camera);
+  public async loadMapFromFile(rendererService: RendererService, file: TFile, camera: ViewCamera | null = null, level?: string): Promise<MapFile | null> {
+    return this.loadMap(rendererService, file.path, camera, level);
   }
 
   /** The data of the loaded map, or null if none is loaded. */

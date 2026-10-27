@@ -6,6 +6,8 @@ export const FIELD_MAX = 128;
 export const BASE_TEXEL = 2;
 /** Longest side of a world-space texture; larger maps get coarser texels. */
 export const MAX_TEXELS = 4096;
+/** Texels of the lighting's picture a grid cell spans at most (`pictureTexel`): a 70 px cell at `BASE_TEXEL` spans 35. */
+export const CELL_TEXELS = 48;
 /**
  * Farthest a light may reach, in world pixels: the side of the largest map lit at full
  * resolution. A light's tile is cut to the map, so the engine never traces more than this.
@@ -16,6 +18,13 @@ export const MAX_LIGHT_REACH = MAX_TEXELS * BASE_TEXEL;
  * qualities trace fewer (`LightingQuality.tileRays`).
  */
 export const TILE_RAYS = 32;
+/**
+ * Rays a moving light's tile traces across its flame (`EngineLight.moving`): its shadows are a
+ * little harder while it moves, and the tile is traced in full once it rests. It keeps the
+ * field's texels and is smoothed like any tile: traced on coarser texels and left unsmoothed,
+ * a dragged torch showed stair steps along every wall and grainy shadows.
+ */
+export const MOVING_TILE_RAYS = 4;
 /**
  * Most tile texels one draw traces. A light's tile is traced in bands of rows within this, each
  * handed to the driver on its own: Windows resets a graphics device whose draw runs for about two
@@ -29,17 +38,42 @@ export const TILE_BAND_TEXELS = 1 << 17;
  */
 export const TILE_SMOOTH = 4;
 /**
- * A light fades out from its dim radius to this multiple of it, where it ends. The rules count
- * nothing past the dim radius as lit, so the fade is as short as a soft edge allows: at 1.06 a
- * candle looked cut out.
+ * Where a light ends in the picture, as a multiple of its dim radius: at it. The picture never
+ * lights what the rules do not count (but for a texel of filtering), so a token on a floor that
+ * looks lit is seen. Its tiles reach this far.
  */
-export const LIGHT_REACH = 1.08;
+export const LIGHT_REACH = 1;
+/**
+ * The fade: from its bright radius a light falls smoothly to nothing exactly at its dim radius,
+ * so it sinks into the dark instead of stopping (Fabian, 2026-10-23: the light must never look
+ * larger than what creatures see, and fade into blackness within it). A light bright to its end,
+ * or nearly, still fades over at least this share of its dim radius.
+ */
+export const LIGHT_FADE_MIN = 0.3;
+/**
+ * The fade is shaped in what the eye sees, not in light (`FADE_GLSL`): the light itself falls as
+ * that curve to this power, about the display's (sRGB is near a 2.4 power), so its brightness on
+ * screen falls without a ring where the fade begins and without a step where it ends.
+ */
+export const FADE_POWER = 2.4;
+
+/** The share of a light left at `distance` by its fade (`FADE_GLSL`, which this mirrors): 1 to where the fade begins, 0 from the dim radius on. */
+export function lightFade(bright: number, dim: number, distance: number): number {
+  const from = Math.min(bright, dim * (1 - LIGHT_FADE_MIN));
+  const u = Math.min(1, Math.max(0, (dim - distance) / Math.max(dim - from, 1e-3)));
+  return (u * (2 - u)) ** (1.5 * FADE_POWER);
+}
+/**
+ * A sense with a range that shows the map (darkvision, a token's limited sight) fades in the
+ * players' picture over this last share of its range, as light fades within its dim radius: what
+ * it perceives is unchanged, the picture only darker towards its edge.
+ */
+export const SENSE_FADE = 0.4;
 /**
  * How much light a light gives in its two ranges (HDR, before exposure): `bright` up to the
- * bright radius, `dim` from there to the dim radius, with a soft knee between them. The
- * composite tonemaps a light at its bright level and scales the result back, so every floor
- * shows the dim range at the same share of the bright range, about a third; it must not fall
- * under a quarter (`lightFalloff.gpu.test.ts`).
+ * bright radius, `dim` from there to the dim radius, with a soft knee between them, and the
+ * fade (`LIGHT_FADE_MIN`) over the dim range. The composite tonemaps a light at its bright level
+ * and scales the result back, so a dim floor shows its share of the bright range on any floor.
  */
 export const LIGHT_LEVELS = { bright: 1.25, dim: 0.4 } as const;
 export const EXPOSURE = 0.9;
@@ -50,27 +84,21 @@ export const MIN_SOFTNESS = 0.12;
 /** Strength of the cool grey shift where the light is low and none of it a light's own (ambient, bounce). */
 export const PURKINJE = 0.55;
 
-/**
- * How wide, in world pixels, a light's edge is soft where the rules give it a hard one: past the
- * sides of a beam, and past its far end. No wider than the fade past a dim radius, and never
- * more than half a cell: what lies there looks lit and is not counted, so a token standing in
- * it is hidden on a floor that seems lit.
- */
-export function softEdge(dim: number, cellSize: number): number {
-  return Math.min((LIGHT_REACH - 1) * dim, cellSize / 2);
+/** How wide, in world pixels, a beam's sides fade at most: as wide as its far end fades. */
+export function softEdge(dim: number): number {
+  return LIGHT_FADE_MIN * dim;
 }
 /**
- * A light that shines one way gives its full light inside its cone, where the rules count it,
- * and falls off past the cone's sides over its soft edge (`softEdge`, a width, not an angle: an
- * angle grows with the distance), steeply at first. That width is also held to a share
- * (`BEAM_EDGE`) of the beam's half-width at that distance (`beamEdge`), so a narrow or short
- * beam has a narrow edge: a fixed width lit more floor beside such a beam than the beam itself
- * (`beamSpill.gpu.test.ts`). A beam wider than a half turn leaves a dark wedge behind the
- * light, and the edge is held to that wedge's half-width instead, so it never fills the wedge.
- * The beam's far end fades over the edge it has there (`beamEnd`), and its own space (the
- * cone's apex), which is lit all around, over the edge it has at that radius.
+ * A light that shines one way gives its light inside its cone, where the rules count it, and
+ * fades towards the cone's sides as towards its dim radius (`FADE_GLSL`), to nothing on them:
+ * over its soft edge inside the cone (`softEdge`, a width, not an angle: an angle grows with the
+ * distance), held to a share (`BEAM_EDGE`) of the beam's half-width at that distance
+ * (`beamEdge`), so a narrow beam has narrow soft sides that widen with the distance, as a real
+ * beam's penumbra does. A beam wider than a half turn leaves a dark wedge behind the light, and
+ * the edge is held to that wedge's half-width instead. Its far end fades like any light's, and its
+ * own space (the cone's apex), which is lit all around, fades to nothing at its radius.
  */
-export const BEAM_EDGE = 0.06;
+export const BEAM_EDGE = 0.25;
 /** A beam's edge is never narrower than this many texels of the light map, where it is drawn: a narrower one shows the texels as steps. */
 export const BEAM_EDGE_TEXELS = 1;
 
@@ -83,14 +111,10 @@ export function beamEdge(edge: number, distance: number, angle: number, texel: n
   return Math.min(edge, Math.max(BEAM_EDGE_TEXELS * texel, BEAM_EDGE * distance * Math.sin(Math.min(angle / 2, Math.PI - angle / 2))));
 }
 
-/** How far past its dim radius a beam of `angle` (radians) fades out: as `beamEdge`, by the beam's own half-width at that radius. */
-export function beamEnd(edge: number, dim: number, angle: number, texel: number): number {
-  return Math.min(edge, Math.max(BEAM_EDGE_TEXELS * texel, BEAM_EDGE * dim * Math.sin(Math.min(angle / 2, Math.PI / 2))));
-}
 
 /**
  * A source of magical darkness swallows all light up to its radius; over the last `rim` world
- * pixels inside it (and no more than the fade past a light's dim radius) the light comes back,
+ * pixels inside it (and no more than `rimShare` of its radius) the light comes back,
  * so its edge is soft and nothing beyond the radius is darkened. The rule counts the rim as dark:
  * it is kept narrow, since a wide one shows daylight where a token is hidden. `veil` is the faint cool tint (linear light) the players see in place of the map
  * there, to tell magical darkness from the unlit dark; `gmVeil` the stronger one the GM sees
@@ -98,21 +122,47 @@ export function beamEnd(edge: number, dim: number, angle: number, texel: number)
  */
 export const DARKNESS = {
   rim: 6,
+  rimShare: 0.08,
   veil: [0.003, 0.0026, 0.011],
   gmVeil: [0.03, 0.022, 0.085],
+} as const;
+
+/**
+ * Reflected light: what a light's lit floor gives back into the shadows next to it, one bounce,
+ * so a room round a corner from a torch is dimly lit and a token standing there is seen.
+ * *Rule*: the floor along the edges of the light's shadows reflects; a point with a clear line to
+ * such a point of the floor is in dim light while the whole way, light to floor to point, is no
+ * longer than the light's dim range, and the second part no longer than `share` of it (where
+ * the floor is brightly lit, less where it is less lit) or `cells` grid cells. So a light never
+ * reaches past its own range, and the next room gets what of it is left. *Picture*: in the
+ * light's colour at `level` (HDR) next to brightly lit floor it comes from (less next to less lit
+ * floor), fading as a light does (`FADE_GLSL`) over the last `fade` of its reach to nothing
+ * where the rule stops counting it, blurred within the free floor over `blur` of its longest
+ * reach, so the points it is traced from show as one soft spill.
+ */
+export const REFLECTION = {
+  share: 0.4,
+  cells: 3,
+  level: 0.4,
+  fade: 0.6,
+  blur: 0.1,
 } as const;
 
 export const BOUNCE = {
   probe: 16,
   interval: 16,
+  /** Grid cell (world px) at which the bounce is built at `probe`: maps with larger cells build it as coarse per cell (`bounceScale`). */
+  cell: 70,
   cascades: 4,
   emitTexel: 4,
   spread: 250,
   floorGain: 0.001,
   wallGain: 0.6,
   gain: 1,
-  /** While lights move, bounce is rebuilt at most this often. */
+  /** While lights change, bounce is rebuilt at most this often; a moving light's banded builds follow each other (`LightingWorld.animate`). */
   throttleMs: 100,
+  /** Texels of cascade a frame draws of the bounce while a light moves (`RadianceCascades.step`). */
+  movingTexels: 1 << 18,
 } as const;
 
 /**

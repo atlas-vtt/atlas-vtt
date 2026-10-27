@@ -8,6 +8,7 @@ import type { WallInteraction } from '../vision/WallInteraction';
 import type { WallRenderer } from '../vision/WallRenderer';
 import { removeDoor, removeJoint } from './wallJoints';
 import { t } from '../../i18n';
+import { levelObjects } from '../../levels/levelObjects';
 
 export interface LightingMenuContext {
   store: ViewAtlasStore;
@@ -19,7 +20,7 @@ export interface LightingMenuContext {
 }
 
 export function showLightMenu(context: LightingMenuContext, lightId: string, screenX: number, screenY: number): void {
-  const light = readLight(context.store.getState().objects.lights[lightId]);
+  const light = readLight(levelObjects(context.store.getState()).lights[lightId]);
   if (!light) return;
   const entries: ContextMenuEntry[] = [
     { type: 'item', label: t('light.configure'), icon: 'settings', onClick: () => context.store.getState().openLightPopover(lightId) },
@@ -36,7 +37,7 @@ export function showLightMenu(context: LightingMenuContext, lightId: string, scr
 
 /** What a door offers: to open or close it, and to lock it; a locked door only to unlock it. Nothing for a wall that is no door. */
 export function doorMenuEntries(store: ViewAtlasStore, wallId: string): ContextMenuEntry[] {
-  const wall = readWall(store.getState().objects.walls[wallId]);
+  const wall = readWall(levelObjects(store.getState()).walls[wallId]);
   if (!wall || (wall.type !== 'door' && wall.type !== 'secret-door')) return [];
   if (wall.locked) return [{ type: 'item', label: 'Unlock door', icon: 'lock-open', onClick: () => store.getState().setDoorLocked(wallId, false) }];
   const closed = wall.closed ?? true;
@@ -62,7 +63,7 @@ export function showWallMenu(context: LightingMenuContext, worldX: number, world
   }
 
   // A right-click on an unselected wall selects it first, with its chain. Not as a press would: that opens a door, and takes hold of a wall's end.
-  const allWalls = store.getState().objects.walls;
+  const allWalls = levelObjects(store.getState()).walls;
   const vertexHit = wallRenderer.hitTestVertices(worldX, worldY);
   const joint = vertexHit ? allWalls[vertexHit.wallId]?.[vertexHit.vertex] : undefined;
   const segmentId = joint ? null : wallRenderer.hitTestWalls(worldX, worldY);

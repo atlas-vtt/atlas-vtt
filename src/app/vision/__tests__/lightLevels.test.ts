@@ -78,6 +78,16 @@ describe('lightLevelAt', () => {
     expect(lightLevelAt({ x: 300, y: 100 }, { ambient: 0.8 }, [torch])).toBe('bright');
   });
 
+  it('ends at the dim radius on every side alike, where the picture has faded to nothing', () => {
+    // A token one cell from a light of one cell stands exactly on its dim radius.
+    const lamp = lightReach({ x: 500, y: 500 }, 70, []);
+    const sides = [{ x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 }];
+    for (const side of sides) {
+      expect(lightLevelAt({ x: 500 + side.x * 70, y: 500 + side.y * 70 }, dark, [lamp])).toBe('dark');
+      expect(lightLevelAt({ x: 500 + side.x * 69, y: 500 + side.y * 69 }, dark, [lamp])).toBe('dim');
+    }
+  });
+
   it('never reports magical darkness, which only darkness sources will make', () => {
     for (const ambient of [0, 0.5, 1]) {
       for (const y of [100, 180, 500]) expect(lightLevelAt({ x: 100, y }, { ambient }, [torch])).not.toBe('magical-dark');
@@ -140,6 +150,14 @@ describe('magical darkness', () => {
     const atWall = lightReach({ x: 170, y: 100 }, 60, [wall], 0, { darkness: true });
     expect(lightLevelAt({ x: 229, y: 100 }, day, [atWall])).toBe('bright');
     expect(lightLevelAt({ x: 199, y: 100 }, day, [atWall])).toBe('magical-dark');
+  });
+
+  it('ends at its radius on every side alike, where its picture swallows nothing', () => {
+    const source = lightReach({ x: 500, y: 500 }, 70, [], 0, { darkness: true });
+    for (const side of [{ x: -1, y: 0 }, { x: 1, y: 0 }, { x: 0, y: -1 }, { x: 0, y: 1 }]) {
+      expect(lightLevelAt({ x: 500 + side.x * 70, y: 500 + side.y * 70 }, day, [source])).toBe('bright');
+      expect(lightLevelAt({ x: 500 + side.x * 69, y: 500 + side.y * 69 }, day, [source])).toBe('magical-dark');
+    }
   });
 
   it('is no light: a darkness source lights nothing', () => {

@@ -1,5 +1,5 @@
 import React, { memo, useEffect, useId } from 'react';
-import { Map as MapIcon, ScrollText } from 'lucide-react';
+import { Film, Map as MapIcon, ScrollText } from 'lucide-react';
 import type { AnyAsset } from '../types';
 import type { AssetCardHandlers } from '../hooks/useAssetCardHandlers';
 import { TokenPortrait } from '../../shared/TokenPortrait';
@@ -116,6 +116,12 @@ export const AssetCard = memo(function AssetCard({
             </div>
 
             <AssetTagMenu asset={asset} />
+
+            {asset.type === 'maps' && asset.animated && (
+              <LabelTooltip label={t('am.card.animated')}>
+                <div className="atlas-asset-animated-indicator"><Film /></div>
+              </LabelTooltip>
+            )}
 
             {statblockPath && spawnCount <= 1 && (
               <LabelTooltip label={t('am.card.statblockLinked')}>

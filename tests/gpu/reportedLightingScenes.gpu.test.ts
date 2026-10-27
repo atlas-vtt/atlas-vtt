@@ -247,7 +247,7 @@ describe('the scenes of the lighting crash reports, drawn under strict GL', () =
     controller.wire({
       setLightHandlers: ignore, setWallPointerDownHandler: ignore, setWallContextMenuHandler: ignore, setWallPointerMoveHandler: ignore,
       setWallPointerUpHandler: ignore, setWallDoubleClickHandler: ignore, setWallCursorProvider: ignore, setDoorMenuHandlers: ignore,
-      setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
+      setDoorClickHandler: ignore, setPlayerSightProvider: ignore, setGlideWay: ignore, setArtFloors: ignore, refreshPlayerSight: ignore, getSensedOutlineLayer: () => ({ visible: false }),
     } as unknown as TokenRenderer);
     // The GM's overlays are on the canvas: the view stays the GM's.
     const frames = (): void => canvas.frames({ modeLayer: { visible: false } });

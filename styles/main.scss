@@ -83,6 +83,7 @@
   @import '../src/app/packages/components/asset-manager/asset-manager.scss';
   @import '../src/app/packages/components/asset-manager/token-creator/token-creator.scss';
   @import '../src/app/packages/components/asset-manager/encounter-builder/encounter-builder.scss';
+  @import '../src/app/packages/components/dungeon-generator/dungeon-generator.scss';
   @import '../src/app/packages/components/primitives/context-menu.scss';
   @import '../src/app/packages/components/primitives/dropdown-menu.scss';
   @import '../src/app/packages/components/toolbar/scene-lighting-section.scss';
@@ -756,6 +757,11 @@
   overflow: auto;
 }
 
+.view-content.atlas-dungeon-generator-view {
+  padding: 0;
+  overflow: hidden;
+}
+
 // Atlas VTT view styles - scoped to our plugin views only
 .workspace-leaf-content[data-type="atlas-vtt"] .atlas-vtt-view,
 .workspace-leaf-content[data-type="atlas-vtt-dashboard"] .atlas-vtt-view {
@@ -828,6 +834,11 @@
   font-family: var(--font-interface);
   font-size: $font-ui-small;
 
+  // A create entry is at work over the map (Generate dungeon): the dropdown waits unseen.
+  &.atlas-away {
+    visibility: hidden;
+  }
+
   // ── Search ─────────────────────────────────────────────────────
   .pin-search-wrapper {
     position: relative;
@@ -863,6 +874,8 @@
     @include atlas-scrollbar;
     max-height: 240px;
     overflow-y: auto;
+    // The icon row sets the panel's width; a long note name truncates instead of widening it
+    contain: inline-size;
   }
 
   .pin-result-item {
@@ -900,6 +913,27 @@
       min-width: 0;
       @include atlas-truncate;
     }
+
+    // A create entry's label, with the reason under it when the name cannot be used
+    .pin-result-text {
+      @include atlas-flex-col($gap: 0);
+      flex: 1;
+      min-width: 0;
+    }
+
+    .pin-result-reason {
+      font-size: $font-ui-smaller;
+      color: var(--text-faint);
+    }
+
+    &.is-disabled {
+      cursor: default;
+      color: var(--text-muted);
+
+      &:active {
+        background: none;
+      }
+    }
   }
 
   // Small pill labels: map badge and heading level.
@@ -923,6 +957,11 @@
     letter-spacing: 0.02em;
   }
 
+  .pin-result-badge.is-encounters {
+    color: var(--color-orange);
+    background: color-mix(in oklch, var(--color-orange) 14%, transparent);
+  }
+
   .pin-header-level {
     color: var(--text-muted);
     background: var(--background-modifier-hover);
@@ -930,6 +969,8 @@
 
   .pin-header-file {
     flex-shrink: 0;
+    max-width: 40%;
+    @include atlas-truncate;
     font-size: $font-ui-smaller;
     color: var(--text-faint);
   }

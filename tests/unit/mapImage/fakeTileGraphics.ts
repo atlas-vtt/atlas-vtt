@@ -66,6 +66,7 @@ export class FakeTileGraphics implements TileGraphics {
   readonly resizes: Array<{ width: number; height: number }> = [];
   readonly encodes: EncodeCall[] = [];
   readonly composes: Array<{ width: number; height: number; parts: number }> = [];
+  readonly opaqueReads: Array<{ width: number; height: number; threshold: number }> = [];
   /** Awaited before every crop, so a test can hold one. */
   cropGate: () => Promise<void> = () => Promise.resolve();
 
@@ -101,6 +102,19 @@ export class FakeTileGraphics implements TileGraphics {
     for (const part of parts) asFake(part.source);
     this.composes.push({ width, height, parts: parts.length });
     return this.make(width, height, 'composed');
+  }
+
+  /** Pixels without colour: the fake holds art in its left half. */
+  opaquePixels(source: ImageBitmap, threshold: number): Uint8Array {
+    const { width, height } = asFake(source);
+    this.opaqueReads.push({ width, height, threshold });
+    return new Uint8Array(width * height).map((_, i) => (i % width < width / 2 ? 1 : 0));
+  }
+
+  /** Alpha without colour: the fake is opaque in its left half and faint in a column beside it. */
+  alphaBytes(source: ImageBitmap): Uint8Array {
+    const { width, height } = asFake(source);
+    return new Uint8Array(width * height).map((_, i) => (i % width < width / 2 ? 255 : i % width === Math.ceil(width / 2) ? 60 : 0));
   }
 
   private make(width: number, height: number, origin: BitmapOrigin): FakeBitmap {

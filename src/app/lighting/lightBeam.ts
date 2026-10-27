@@ -11,14 +11,17 @@ export const DIRECTION_STEP = 5;
 interface Shining {
   rotation?: number;
   emission: LightEmission;
+  /** An area light glows from its whole area (`LightSource.area`). */
+  area?: readonly Point[] | undefined;
 }
 
 /**
  * The cone a light shines in, or none when it shines all around. A source of magical darkness
- * never has one: it fills its radius. `apex` is the radius lit all around at the light itself.
+ * never has one: it fills its radius; nor has an area light, which glows from its whole area.
+ * `apex` is the radius lit all around at the light itself.
  */
 export function beamOf(light: Shining, apex = 0): VisionCone | undefined {
-  return light.emission.darkness ? undefined : visionCone(light.rotation, light.emission.angle, apex);
+  return light.emission.darkness || light.area ? undefined : visionCone(light.rotation, light.emission.angle, apex);
 }
 
 /** The emission shining `degrees` wide. A full turn stores no angle: the light shines all around. */

@@ -257,6 +257,15 @@ describe('leak fuzz: ambient zones and explored memory', () => {
     expect(report).toMatchObject(CLEAN);
   });
 
+  // At resolution 2 the lower qualities work the composite out on a quarter of the pixels and draw it up (`CompositeUpscale`).
+  it('holds at the balanced lighting quality at renderer resolution 2', { timeout: 3_600_000 }, async () => {
+    const report = await fuzz({ seed: 17, trials: SIDE_TRIALS, resolution: 2, quality: LIGHTING_QUALITY.balanced });
+    console.info(`leak fuzz (zones, memory, balanced, resolution 2): ${JSON.stringify({ trials: SIDE_TRIALS, ...report })}`);
+    expect(report.inside).toBeGreaterThan(SIDE_TRIALS * 80);
+    expect(report.remembered).toBeGreaterThan(SIDE_TRIALS * 80);
+    expect(report).toMatchObject(CLEAN);
+  });
+
   it('finds zone light, a lit wall and memory past a wall with a gap (the checks can fail)', async () => {
     const report = await fuzz({ seed: 11, trials: 24, gap: 0.9 });
     console.info(`negative control (zones, memory): ${JSON.stringify(report)}`);

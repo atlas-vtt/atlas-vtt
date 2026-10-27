@@ -3,10 +3,15 @@ import type { TFile } from 'obsidian';
 import type { TileReader } from './mapImageTiles';
 import type { OpenedMap } from './TileDecoderClient';
 import type { TileUploader } from './tileTextureCache';
+import type { MapVideoDeps } from './video/MapVideoSlot';
 
-/** What a scene shows under its tokens: a vault image, the missing-image placeholder, or nothing of a given size. */
+/**
+ * What a scene shows under its tokens: a vault image, a vault video (an animated map: its first
+ * frame is the image, the video plays over it), the missing-image placeholder, or nothing of a given size.
+ */
 export type MapImageSource =
   | { kind: 'file'; file: TFile }
+  | { kind: 'video'; file: TFile }
   | { kind: 'placeholder' }
   | { kind: 'none'; width: number; height: number };
 
@@ -41,4 +46,6 @@ export interface MapImageDeps {
   drawAtOnce?: () => boolean;
   /** The size of the pictures of the whole map taken (thumbnails), whose tiles stay loaded. */
   picture?: { width: number; height: number };
+  /** Plays animated maps; without it a video map shows its first frame. */
+  video?: MapVideoDeps;
 }

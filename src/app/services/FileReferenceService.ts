@@ -3,7 +3,7 @@ import { AssetService, Asset } from './AssetService';
 import { isPersistedMapEnvelope } from './MapPersistence';
 import { normalizeImagePath } from '../utils/pathUtils';
 import { mapThumbnailPath } from '../utils/dataFileMigration';
-import { movedPathOf, rewriteMapReferences, type MovedPath, type PathMove } from './renamedPaths';
+import { movedFolderPathOf, movedPathOf, rewriteMapReferences, type MovedPath, type PathMove } from './renamedPaths';
 import { SceneSnapshotService } from '../snapshots/SceneSnapshotService';
 import { allSnapshotFiles, hiddenSnapshotFiles } from '../snapshots/sceneSnapshotFolders';
 import { STATBLOCK_IMAGE_KEYS } from './statblockImageKeys';
@@ -60,6 +60,11 @@ export class FileReferenceService {
     if (await assetService.followCollectionFolderRename(oldPath, newPath)) {
       this.app.workspace.trigger('atlas-vtt:refresh-assets');
     }
+  }
+
+  /** Points what maps and snapshots name at or below moved folders (pins rolling a folder of encounters) at the folders' new places. */
+  async followMovedFolders(moves: readonly PathMove[]): Promise<void> {
+    if (moves.length > 0) await this.updateMapFiles(movedFolderPathOf(moves));
   }
 
   // ---------------------------------------------------------------------------

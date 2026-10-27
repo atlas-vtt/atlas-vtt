@@ -1,6 +1,6 @@
 import { BufferImageSource, Texture } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
-import { LIGHT_REACH } from '../../../../lighting/lightingConstants';
+import { FADE_POWER, LIGHT_FADE_MIN } from '../../../../lighting/lightingConstants';
 import { LIGHT_PRESETS, LIGHT_PRESET_IDS } from '../../../../lighting/lightPresets';
 
 /** The presets that give light: a darkness has no falloff. */
@@ -22,8 +22,10 @@ const FLOOR = 0x808080;
 const FLOORS = [0x404040, 0x595959, FLOOR, 0xffffff] as const;
 /** 5 ft cells of 35 px: a lantern's 60 ft fit a 1024 px map with their fade. */
 const SCALE: UnitScale = { unitDistance: 5, cellSize: 35 };
-/** The share of the bright level the dim range never falls below. */
-const DIM_FLOOR = 0.25;
+/** How far into its fade the eye still sees at least this share of what it saw where the fade began (`FADE_GLSL` gives 0.65 halfway; the knee and the tonemap take more: 32 to 62 % measured). */
+const HALFWAY_SEEN = 0.3;
+/** What the eye sees two pixels inside the dim radius, at most, of the fade's start: nearly black (up to 19 % measured, a torch on a white floor, whose start the tonemap compresses). */
+const EDGE_SEEN = 0.2;
 
 /**
  * What the players see of one light on an open floor, by distance from its flame: the displayed
@@ -33,7 +35,8 @@ const DIM_FLOOR = 0.25;
 interface Profile {
   bright: number;
   dim: number;
-  reach: number;
+  /** Where the fade begins: the bright radius, or `LIGHT_FADE_MIN` of the dim radius before it. */
+  from: number;
   /** World pixels between two samples. */
   step: number;
   at(distance: number): number;
@@ -70,17 +73,18 @@ function brightLevel(profile: Profile): number {
   return profile.at(profile.bright / 2);
 }
 
-/** Distances from the bright radius to one light-map texel inside the dim radius, the dim range as drawn. */
-function dimRange(profile: Profile): number[] {
-  const end = profile.dim - 2;
-  const distances: number[] = [];
-  for (let d = Math.min(profile.bright, end); d < end; d += profile.step) distances.push(d);
-  return [...distances, end];
+/** What the eye sees at `d` as a share of what it sees where the fade begins: displayed luminance to the display's power. */
+function seenShare(profile: Profile, d: number): number {
+  return (profile.at(d) / profile.at(profile.from)) ** (1 / FADE_POWER);
 }
 
-/** The dimmest point of the dim range, as a share of `level`. */
-function dimFloor(profile: Profile, level = brightLevel(profile)): number {
-  return Math.min(...dimRange(profile).map((d) => profile.at(d))) / level;
+/** The fade as the players see it: clearly lit halfway through, nearly black at the dim radius. */
+function expectFade(profile: Profile, name: string): void {
+  const halfway = seenShare(profile, (profile.from + profile.dim) / 2);
+  const edge = seenShare(profile, profile.dim - 2);
+  console.info(`${name}: seen halfway through the fade ${(halfway * 100).toFixed(1)}%, at the dim radius ${(edge * 100).toFixed(1)}%`);
+  expect(halfway).toBeGreaterThan(HALFWAY_SEEN);
+  expect(edge).toBeLessThan(EDGE_SEEN);
 }
 
 describe('light falloff as the players see it', () => {
@@ -121,40 +125,27 @@ describe('light falloff as the players see it', () => {
       const colour = colourAt(distance);
       return (Math.max(...colour) - Math.min(...colour)) / at(distance);
     };
-    return { bright: light.bright, dim: light.dim, reach: light.dim * LIGHT_REACH, step, at, saturationAt };
+    return { bright: light.bright, dim: light.dim, from: Math.min(light.bright, light.dim * (1 - LIGHT_FADE_MIN)), step, at, saturationAt };
   }
 
-  it.each(SHINING)('lights the dim range of a %s out to its edge: never under a quarter of the bright level', async (id) => {
-    const profile = await profileOf(LIGHT_PRESETS[id].emission);
-    const floor = dimFloor(profile);
-    console.info(`${id}: dim range floor ${(floor * 100).toFixed(1)}% of the bright level`);
-    expect(floor).toBeGreaterThanOrEqual(DIM_FLOOR);
+  // Fabian, 2026-10-23: a light fades within its dim range into the dark, and never past it.
+  it.each(SHINING)('fades a %s through its dim range: clearly lit halfway, nearly black at its dim radius', async (id) => {
+    expectFade(await profileOf(LIGHT_PRESETS[id].emission), id);
   });
 
   it.each([
     ['all bright (bright = dim)', custom(30, 30), 1024],
     ['small (2 ft / 4 ft)', custom(2, 4), 1024],
     ['large (120 ft / 240 ft)', custom(120, 240), 4096],
-  ] as const)('lights the dim range of a custom light out to its edge: %s', async (name, emission, map) => {
-    const profile = await profileOf(emission, { map });
-    const floor = dimFloor(profile);
-    console.info(`${name}: dim range floor ${(floor * 100).toFixed(1)}% of the bright level`);
-    expect(floor).toBeGreaterThanOrEqual(DIM_FLOOR);
-  });
-
-  it('lights a light without a bright range as dim light: a quarter of what a bright range of its kind shows', async () => {
-    const level = brightLevel(await profileOf(custom(20, 40)));
-    const floor = dimFloor(await profileOf(custom(0, 40)), level);
-    console.info(`dim only (bright = 0): dim range floor ${(floor * 100).toFixed(1)}% of the bright level`);
-    expect(floor).toBeGreaterThanOrEqual(DIM_FLOOR);
+    ['dim only (bright = 0)', custom(0, 40), 1024],
+  ] as const)('fades a custom light through its dim range: %s', async (name, emission, map) => {
+    expectFade(await profileOf(emission, { map }), name);
   });
 
   describe.each(FLOORS.map((floor) => [hex(floor), floor] as const))('on a %s floor', (name, floor) => {
 
-    it.each(KINDS)(`lights the dim range of a %s on ${name} out to its edge`, async (kind, emission) => {
-      const floorShare = dimFloor(await profileOf(emission, { floor }));
-      console.info(`${kind} on ${name}: dim range floor ${(floorShare * 100).toFixed(1)}% of the bright level`);
-      expect(floorShare).toBeGreaterThanOrEqual(DIM_FLOOR);
+    it.each(KINDS)(`fades a %s on ${name} through its dim range`, async (kind, emission) => {
+      expectFade(await profileOf(emission, { floor }), `${kind} on ${name}`);
     });
 
     it.each(KINDS)(`shows a %s on ${name} brightest at the flame and its dim range clearly dimmer than its bright range`, async (_kind, emission) => {
@@ -167,20 +158,18 @@ describe('light falloff as the players see it', () => {
   });
 
   it.each(KINDS.flatMap(([kind, emission]) => [0.5, 0.25].map((intensity) => [kind, intensity, emission] as const)))(
-    'lights the dim range of a %s at intensity %s out to its edge',
+    'fades a %s at intensity %s through its dim range',
     async (kind, intensity, emission) => {
-      const floorShare = dimFloor(await profileOf({ ...emission, intensity }));
-      console.info(`${kind} at intensity ${intensity}: dim range floor ${(floorShare * 100).toFixed(1)}% of the bright level`);
-      expect(floorShare).toBeGreaterThanOrEqual(DIM_FLOOR);
+      expectFade(await profileOf({ ...emission, intensity }), `${kind} at intensity ${intensity}`);
     },
   );
 
   it('keeps the colour of a light through its fade: no grey ring around it', async () => {
     const profile = await profileOf(LIGHT_PRESETS.torch.emission);
-    const edge = profile.at(profile.dim - 2);
-    const colour = profile.saturationAt(profile.dim - 2);
+    const edge = profile.at(profile.from);
+    const colour = profile.saturationAt(profile.from);
     let measured = 0;
-    for (let d = profile.dim; d < profile.reach; d += profile.step) {
+    for (let d = profile.from; d < profile.dim; d += profile.step) {
       // Darker than this, 8-bit channels say little about colour.
       if (profile.at(d) < 0.15 * edge) continue;
       expect(profile.saturationAt(d)).toBeGreaterThan(0.85 * colour);
@@ -189,38 +178,34 @@ describe('light falloff as the players see it', () => {
     expect(measured).toBeGreaterThan(3);
   });
 
-  it('fades out past the dim radius and shows nothing from the reach on', async () => {
+  it('shows nothing of the light past its dim radius', async () => {
     const profile = await profileOf(LIGHT_PRESETS.torch.emission);
     const level = brightLevel(profile);
-    const edge = profile.at(profile.dim - 2);
-    const halfway = profile.at((profile.dim + profile.reach) / 2);
-    expect(halfway).toBeLessThan(0.75 * edge);
-    expect(halfway).toBeGreaterThan(0.1 * edge);
-    // Past the reach only bounced light is left: under a fiftieth of the bright level.
-    for (const d of [profile.reach + 2, profile.reach + 20, profile.reach + 60]) expect(profile.at(d)).toBeLessThan(0.02 * level);
+    // Past the dim radius only bounced light is left: under a fiftieth of the bright level.
+    for (const d of [profile.dim + 2, profile.dim + 20, profile.dim + 60]) expect(profile.at(d)).toBeLessThan(0.02 * level);
   });
 
-  it('keeps the dim range brighter than the grey of darkvision beside it', async () => {
+  it('never shows the fade darker than the grey of darkvision there', async () => {
     // A token at the flame that sees 500 px, all of it with darkvision.
     const sight = computeSight([{ tokenId: 't', origin: { x: 512, y: 512 }, range: 500, senses: [darkvision(500)] }], []);
     const profile = await profileOf(LIGHT_PRESETS.torch.emission, { sight });
-    const grey = profile.at(profile.reach + 40);
+    const grey = profile.at(profile.dim + 10);
     expect(grey).toBeGreaterThan(0);
-    expect(profile.at(profile.dim - 2)).toBeGreaterThan(1.3 * grey);
+    for (let d = profile.from; d < profile.dim; d += profile.step) expect(profile.at(d)).toBeGreaterThan(0.9 * grey);
   });
 
   it.each(SHINING)('shows no ring around a %s: light only falls with distance, and nowhere steeply', async (id) => {
     const profile = await profileOf(LIGHT_PRESETS[id].emission);
     const level = brightLevel(profile);
     let steepest = 0;
-    for (let d = profile.bright / 2; d < profile.reach + 20; d += profile.step) {
+    for (let d = profile.bright / 2; d < profile.dim + 20; d += profile.step) {
       const drop = profile.at(d) - profile.at(d + profile.step);
       // 8-bit channels and dither: a level may round up by one step.
       expect(drop).toBeGreaterThan(-0.01 * level);
       steepest = Math.max(steepest, drop / profile.step);
     }
-    // The steepest fall, as a share of the bright level per hundredth of the dim radius. It is the
-    // fade's: a hard edge would drop the whole dim level, a third of the bright level, at once.
+    // The steepest fall, as a share of the bright level per hundredth of the dim radius: a hard edge
+    // would drop the whole dim level, a third of the bright level, at once.
     const perHundredth = (steepest * profile.dim) / 100 / level;
     console.info(`${id}: steepest fall ${(perHundredth * 100).toFixed(1)}% of the bright level per 1% of the dim radius`);
     expect(perHundredth).toBeLessThan(0.12);

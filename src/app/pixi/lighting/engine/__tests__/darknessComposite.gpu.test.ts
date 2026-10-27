@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { BUILT_IN_SENSES, GENERIC_SENSES } from '../../../../gameSystems/senses';
-import { LIGHT_REACH } from '../../../../lighting/lightingConstants';
+import { lightFade } from '../../../../lighting/lightingConstants';
 import type { TokenEntity } from '../../../../types';
 import type { TokenSense } from '../../../../types/senseTypes';
 import type { WallSegment } from '../../../../types/wallTypes';
@@ -147,10 +147,10 @@ describe('magical darkness in the composite', () => {
     for (let x = 60; x <= 500; x += 8) {
       for (const y of [420, 470, 512, 560, 610]) {
         const point = { x, y };
-        // The soft edge of the darkness and of the lamp's reach lie inside these bands.
+        // The soft edge of the darkness lies inside this band, and the lamp's fade where it has faded to under a fifth.
         const fromDarkness = Math.hypot(x - darkness.x, y - darkness.y);
         const fromLamp = Math.hypot(x - lamp.x, y - lamp.y);
-        if (Math.abs(fromDarkness - darkness.dim) < 14 || (fromLamp > lamp.dim - 14 && fromLamp < lamp.dim * LIGHT_REACH + 4)) continue;
+        if (Math.abs(fromDarkness - darkness.dim) < 14 || (fromLamp < lamp.dim + 4 && lightFade(lamp.bright, lamp.dim, fromLamp) < 0.2)) continue;
         const level = lightLevelAt(point, { ambient: 0 }, rule);
         const shown = luminance(at(point));
         if (level === 'magical-dark') {

@@ -9,6 +9,9 @@ import type { DiceRollResult } from './diceTypes';
 import type { CameraState, GridState } from './gridTypes';
 import type { ViewUIState } from './viewUIState';
 import type { PartyValues } from './partyTypes';
+import type { LevelAlignment, LevelLink, LevelSurface, SceneLevel } from './sceneLevelTypes';
+import type { LiquidSurface } from './liquidTypes';
+import type { MapFeature } from './mapFeatureTypes';
 
 /** Data read from a map view, independent of the store and persistence services. */
 export interface ViewState extends ViewUIState {
@@ -39,6 +42,19 @@ export interface ViewState extends ViewUIState {
   // Map background image path
   background: string | null;
 
+  /**
+   * The scene's levels (floors), bottom first; absent for a scene with one level. Objects stay in
+   * the flat `objects` with their level tag; what a view shows of them is `levelObjects`. The first
+   * level's background is `background`: read a level's with `levelBackground`. Saved with the map,
+   * never undo-tracked, like `lighting`.
+   */
+  levels?: SceneLevel[] | undefined;
+  /**
+   * How each level's image is fitted to the scene's grid, by level id (`levelImagePlacement`); in a
+   * file each level carries its own. Undo-tracked level by level, unlike `levels`.
+   */
+  levelAlignments?: Record<string, LevelAlignment> | undefined;
+
   // Grid configuration
   grid: GridState | null;
 
@@ -54,6 +70,14 @@ export interface ViewState extends ViewUIState {
     audios: Record<string, AudioSource>;
     /** Areas with ambient light of their own, in the order they were drawn; absent until the first is. Read with `lightZoneList`. */
     lightZones?: Record<string, LightZone>;
+    /** Stairs and other areas that take a token to another level; absent until the first is drawn. Read with `levelLinkList`. */
+    levelLinks?: Record<string, LevelLink>;
+    /** Openings to the levels below, and floor over them; absent until the first is drawn. Read with `levelSurfaceList`. */
+    levelSurfaces?: Record<string, LevelSurface>;
+    /** Named areas the GM reads on hover, some difficult terrain or cover; absent until the first is added. Read with `mapFeatureList`. */
+    mapFeatures?: Record<string, MapFeature>;
+    /** Water, lava and acid that move while maps are animated; absent until the first is added. Read with `liquidList`. */
+    liquids?: Record<string, LiquidSurface>;
   };
 
   // Camera state
@@ -63,6 +87,8 @@ export interface ViewState extends ViewUIState {
   lighting: SceneLighting;
   /** What the players' tokens have explored, as a PNG data URL; saved with the map, never undo-tracked. */
   exploredMask: string | null;
+  /** The explored memories of the levels above the first, by level id; the first level's is `exploredMask`. */
+  exploredMasks?: Record<string, string> | undefined;
   /**
    * How many edits by hand led to the explored memory as it is, counted since the scene loaded.
    * The memory itself is no store state, so this count stands for it in the undo history: a
@@ -81,7 +107,7 @@ export interface ViewState extends ViewUIState {
   _audioDirty: boolean;
 
   // Tool and selection state
-  activeTool: 'move' | 'select' | 'fog' | 'text' | 'measure' | 'measure-circle' | 'measure-cone' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'draw-pen' | 'draw-eraser' | 'draw-icon' | 'draw-line' | 'draw-rectangle' | 'draw-circle' | 'wall' | 'audio';
+  activeTool: 'move' | 'select' | 'fog' | 'text' | 'measure' | 'measure-circle' | 'measure-cone' | 'eraser' | 'asset' | 'note-pin' | 'laser-pointer' | 'draw-pen' | 'draw-eraser' | 'draw-icon' | 'draw-line' | 'draw-rectangle' | 'draw-circle' | 'wall' | 'audio' | 'stairs';
   selectionMode: 'box' | 'lasso';
   selectedIds: string[];
 

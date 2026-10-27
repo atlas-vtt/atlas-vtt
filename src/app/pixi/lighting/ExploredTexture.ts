@@ -9,6 +9,12 @@ import type { TexelRegion } from './StampScratch';
 /** Longest side of the explored memory in texels; it is drawn dim and soft, so this is plenty. */
 const MAX_TEXELS = 2048;
 
+/** The memory's texels over a map of `bounds`: how many, and how many a world pixel is stamped at. */
+export function exploredGrid(bounds: MapBounds): { columns: number; rows: number; scale: number } {
+  const scale = Math.min(1, MAX_TEXELS / Math.max(bounds.width, bounds.height, 1));
+  return { columns: Math.max(1, Math.ceil(bounds.width * scale)), rows: Math.max(1, Math.ceil(bounds.height * scale)), scale };
+}
+
 /**
  * A smaller image of the memory at the memory's size, with its edges where they were: scaled up
  * its coverage is spread over a texel or two, and only what is more than half covered is kept
@@ -42,11 +48,9 @@ export class ExploredTexture {
   private readonly mergeSprite = new Sprite();
 
   constructor(private readonly renderer: Renderer, bounds: MapBounds) {
-    this.scale = Math.min(1, MAX_TEXELS / Math.max(bounds.width, bounds.height, 1));
-    this.texture = RenderTexture.create({
-      width: Math.max(1, Math.ceil(bounds.width * this.scale)),
-      height: Math.max(1, Math.ceil(bounds.height * this.scale)),
-    });
+    const grid = exploredGrid(bounds);
+    this.scale = grid.scale;
+    this.texture = RenderTexture.create({ width: grid.columns, height: grid.rows });
     this.scratch = new StampScratch(renderer);
     this.mergeSprite.blendMode = 'max';
     this.merge.addChild(this.mergeSprite);
@@ -58,7 +62,7 @@ export class ExploredTexture {
     const region = stampRegion(shapes, this.scale, this.texture);
     if (!region) return;
     this.mergeSprite.alpha = level;
-    this.scratch.begin(shapes);
+    this.scratch.begin(shapes, this.scale);
     for (const tile of tilesOf(region)) {
       this.mergeSprite.texture = this.scratch.renderTile(this.scale, tile.x, tile.y);
       this.mergeSprite.position.set(tile.x, tile.y);

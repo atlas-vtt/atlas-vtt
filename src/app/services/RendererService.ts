@@ -9,6 +9,7 @@ import type { ViewAtlasStore } from '../storeFactory';
 import type { SettingsService } from './SettingsService';
 import { bindViewportNavigation } from '../pixi/viewportNavigation';
 import { bindMapLoadingFrameHold } from '../pixi/mapLoadingFrameHold';
+import { bindLevelSwitchTransition } from '../pixi/levelSwitchTransition';
 
 export class RendererService {
   // private renderer: PixiRenderer | null = null; // Old type
@@ -20,6 +21,7 @@ export class RendererService {
   private settingsService: SettingsService;
   private unbindNavigation: (() => void) | null = null;
   private unbindFrameHold: (() => void) | null = null;
+  private unbindLevelTransition: (() => void) | null = null;
 
   constructor(
     private app: App,
@@ -52,6 +54,13 @@ export class RendererService {
       // Pass the PixiAppManager instance to the orchestrator
       this.renderer = new PixiRendererOrchestrator(this.app, this.pixiAppManager, this.eventBus, this.store, this.viewId);
       
+      // Before the renderers subscribe: a switch of level captures the last frame before they draw the new level
+      const renderer = this.renderer;
+      this.unbindLevelTransition = bindLevelSwitchTransition(this.store, {
+        getAppInstance: () => renderer.getAppInstance(),
+        getMapImage: () => renderer.getMapImage(),
+      });
+
       try {
         // The orchestrator's init will call pixiAppManager.init
         await this.renderer.init(containerEl);
@@ -127,6 +136,8 @@ export class RendererService {
     this.unbindNavigation = null;
     this.unbindFrameHold?.();
     this.unbindFrameHold = null;
+    this.unbindLevelTransition?.();
+    this.unbindLevelTransition = null;
     if (this.renderer) {
       this.renderer.destroy();
       this.renderer = null;

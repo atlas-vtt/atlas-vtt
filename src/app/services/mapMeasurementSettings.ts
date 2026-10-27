@@ -1,5 +1,6 @@
 import { resolveMeasurementSettings, type MeasurementSettings } from '../grid/measurementFormat';
 import { collectionConeAngle } from '../gameSystems/coneAngle';
+import { collectionDifficultTerrain } from '../gameSystems/difficultTerrain';
 import { rulesForMap, type RulesLookup } from '../gameSystems/mapRules';
 import type { ViewAtlasState } from '../storeFactory';
 
@@ -11,5 +12,9 @@ export function mapMeasurementSettings(
   const { settings } = rulesForMap(lookup, state.mapPath);
   if (!settings) return resolveMeasurementSettings(undefined, state.grid);
   const { gridDefaults, systemPresetId } = settings;
-  return { ...resolveMeasurementSettings(gridDefaults, state.grid), coneAngle: collectionConeAngle(gridDefaults, systemPresetId) };
+  return {
+    ...resolveMeasurementSettings(gridDefaults, state.grid),
+    coneAngle: collectionConeAngle(gridDefaults, systemPresetId),
+    difficultTerrain: collectionDifficultTerrain(gridDefaults, systemPresetId),
+  };
 }

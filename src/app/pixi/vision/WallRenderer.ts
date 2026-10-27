@@ -11,6 +11,7 @@ import { destroyTree } from '../utils/destroyTree';
 import { KindWallLayer, type KindWall } from './KindWallLayer';
 import { drawDashedLine, hasKindLook } from './wallKindLook';
 import { VERTEX_HANDLE_RADIUS, WallPreview } from './WallPreview';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** Screen pixels: how close to a wall or a wall's end a press lands on it, never less than what is drawn. */
 const HIT_TOLERANCE = 6;
@@ -61,13 +62,13 @@ export class WallRenderer {
 
     // Redraw while shown; whoever shows it (the wall tool) owns `visible`.
     this._unsubscribe = store.subscribe((state, previous) => {
-      if (this.container.visible && state.objects !== previous.objects) this.redraw(state);
+      if (this.container.visible && levelObjects(state) !== levelObjects(previous)) this.redraw(state);
     });
   }
 
   /** The walls that block one thing or are limited, in the colours of now. */
   private kindWalls(state: ViewAtlasState): KindWall[] {
-    return wallList(state.objects.walls).filter(hasKindLook).map((wall) => {
+    return wallList(levelObjects(state).walls).filter(hasKindLook).map((wall) => {
       const open = (wall.type === 'door' || wall.type === 'secret-door') && !(wall.closed ?? true);
       return { wall, color: this.selectedWallIds.has(wall.id) ? this.accentColor : open ? 0x44dd44 : this.getWallColor(wall), alpha: open ? 0.6 : 1, hollow: wall.type === 'secret-door' };
     });
@@ -89,7 +90,7 @@ export class WallRenderer {
     );
     this.wallGraphics.clear();
     this.handleGraphics.clear();
-    for (const wall of wallList(state.objects.walls)) {
+    for (const wall of wallList(levelObjects(state).walls)) {
       this.drawWall(wall);
     }
     this.kinds.set(this.kindWalls(state));
@@ -222,7 +223,7 @@ export class WallRenderer {
   /** Hit-test walls at a world coordinate. Returns wall id or null. */
   hitTestWalls(worldX: number, worldY: number): string | null {
     const tolerance = Math.max(HIT_TOLERANCE, HIT_TOLERANCE / this.zoom);
-    for (const wall of wallList(this.store.getState().objects.walls)) {
+    for (const wall of wallList(levelObjects(this.store.getState()).walls)) {
       if (this.pointToSegmentDist(worldX, worldY, wall.p1.x, wall.p1.y, wall.p2.x, wall.p2.y) < tolerance) {
         return wall.id;
       }
@@ -232,7 +233,7 @@ export class WallRenderer {
 
   /** Hit-test wall vertex handles. Returns { wallId, vertex } or null. */
   hitTestVertices(worldX: number, worldY: number): { wallId: string; vertex: 'p1' | 'p2' } | null {
-    const walls = this.store.getState().objects.walls;
+    const walls = levelObjects(this.store.getState()).walls;
     const threshold = Math.max(VERTEX_HIT, VERTEX_HIT / this.zoom);
     const thresholdSq = threshold * threshold;
 

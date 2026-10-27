@@ -6,18 +6,24 @@ import { MAP_THUMBNAIL_SIZE } from './services/MapThumbnailService';
 import type { PixiRendererOrchestrator } from './PixiRendererOrchestrator';
 import type { GridOptions } from './grid/GridSystem';
 import { parseGridColor } from './grid/gridContrastColor';
-import { readMapStretch, sameStretch } from './grid/mapStretch';
+import { sameStretch } from './grid/mapStretch';
+import { levelAlignmentsOf, levelImagePlacement, viewedImagePlacement } from './levels/levelAlignment';
 import { cellNumberStyleOfGrid } from './grid/cellNumbering';
 import { MapImage } from './pixi/mapImage/MapImage';
 import { MapImageService } from './pixi/mapImage/MapImageService';
+import { vaultMapVideos } from './pixi/mapImage/video/vaultMapVideos';
 import { fitMapRect, fitZoomRange } from './pixi/fitMapRect';
 import { showCamera, type ViewCamera } from './pixi/viewCamera';
 import { requestRender } from './pixi/RenderScheduler';
 import { prefersReducedMotion } from './utils/motion';
 import type { ViewAtlasStore } from './storeFactory';
+import { levelBackground } from './levels/levelEdits';
+import { viewedLevelId, type LevelView } from './levels/sceneLevels';
 
 export interface DisplayedMap {
   mapData: MapFile;
+  /** The level shown (`MapLoader.load`); null for a scene without levels. */
+  level: string | null;
 }
 
 /** The part of the renderer a map load shows its map through. */
@@ -28,6 +34,37 @@ type MapRenderer = Pick<
 
 /** The store background each map image shows, as the load or the store's change that showed it named it. */
 const shownBackground = new WeakMap<MapImage, string | null>();
+/** The background each map image has finished loading: what it shows on screen. */
+const loadedBackground = new WeakMap<MapImage, string | null>();
+
+/** Who hears that a map image has finished loading the background asked of it (`onBackgroundLoaded`). */
+const backgroundListeners = new Set<(mapImage: MapImage) => void>();
+
+/** Loads `background` into `mapImage` and notes it shown once loaded, unless another was asked for meanwhile. */
+async function showBackground(mapImage: MapImage, background: string | null, load: () => Promise<void>): Promise<void> {
+  shownBackground.set(mapImage, background);
+  await load();
+  if (shownBackground.get(mapImage) !== background) return;
+  loadedBackground.set(mapImage, background);
+  for (const listener of [...backgroundListeners]) listener(mapImage);
+}
+
+/**
+ * Calls `listener` whenever a map image has finished loading the background it was last asked
+ * for, so whoever waits for `showsViewedLevel` learns when it turns true. Returns the unsubscribe.
+ */
+function onBackgroundLoaded(listener: (mapImage: MapImage) => void): () => void {
+  backgroundListeners.add(listener);
+  return () => { backgroundListeners.delete(listener); };
+}
+
+/**
+ * Whether `mapImage` shows the background of the level the view's state shows: after a switch of
+ * level it does once that level's image has loaded. Players' frames wait for it.
+ */
+function showsViewedLevel(mapImage: MapImage | null, state: Parameters<typeof levelBackground>[0] & LevelView): boolean {
+  return !mapImage || loadedBackground.get(mapImage) === levelBackground(state, viewedLevelId(state));
+}
 
 /** The view's map image, made and handed to the renderer on the first load; null without a viewport. */
 function viewMapImage(app: App, renderer: MapRenderer): MapImage | null {
@@ -36,8 +73,9 @@ function viewMapImage(app: App, renderer: MapRenderer): MapImage | null {
   const viewport = renderer.getViewportInstance();
   if (!viewport) return null;
   const pixi = renderer.getAppInstance();
+  const service = MapImageService.forApp(app);
   const mapImage = new MapImage({
-    service: MapImageService.forApp(app),
+    service,
     viewport,
     // Not the app's ticker: a load stops that one to hold the last frame (`bindMapLoadingFrameHold`)
     // and waits for the tiles in view, which arrive on this one.
@@ -47,6 +85,7 @@ function viewMapImage(app: App, renderer: MapRenderer): MapImage | null {
     // While a load holds the last frame, the crossfade from it shows the tiles, so they do not fade in too.
     drawAtOnce: () => !pixi.ticker.started || prefersReducedMotion(pixi.canvas),
     picture: MAP_THUMBNAIL_SIZE,
+    video: vaultMapVideos(app, service, pixi.renderer, pixi.canvas),
   });
   renderer.setMapImage(mapImage);
   return mapImage;
@@ -57,6 +96,7 @@ function viewMapImage(app: App, renderer: MapRenderer): MapImage | null {
  * return the parsed mapData. Returns null without touching the renderer when
  * `isSuperseded` reports that a newer load took over while the file was read.
  * The camera goes to `camera` (a tab's own, kept from when it was last shown), else fits the map.
+ * The level shown is `level`, else the camera's, else the first.
  */
 async function loadAndDisplay(
   app: App,
@@ -64,14 +104,15 @@ async function loadAndDisplay(
   filePath: string,
   camera: ViewCamera | null = null,
   isSuperseded: () => boolean = () => false,
+  shownLevel?: string,
 ): Promise<DisplayedMap | null> {
-  const { mapData, image } = await MapLoader.load(app, filePath);
+  const { mapData, image, level } = await MapLoader.load(app, filePath, shownLevel ?? camera?.level);
   if (isSuperseded()) return null;
 
   const mapImage = viewMapImage(app, renderer);
   if (mapImage) {
-    shownBackground.set(mapImage, mapData.background ?? null);
-    await mapImage.load(image, readMapStretch(mapData.grid?.mapStretch));
+    const placement = levelImagePlacement({ levels: mapData.levels, grid: mapData.grid, levelAlignments: levelAlignmentsOf(mapData.levels) }, level);
+    await showBackground(mapImage, levelBackground(mapData, level), () => mapImage.load(image, placement));
     if (isSuperseded()) return null;
   }
 
@@ -122,33 +163,43 @@ async function loadAndDisplay(
     };
   }
 
-  return { mapData };
+  return { mapData, level };
 }
 
 /**
- * Shows the store's background whenever it changes outside a load (undo or redo of a background
- * change, a missing image removed): the image loads into the same map image. Returns the unsubscribe.
+ * Shows the background of the level the view shows whenever it changes outside a load (another
+ * level shown, undo or redo of a background change, a missing image removed): the image loads into
+ * the same map image. Returns the unsubscribe.
  */
 function followBackground(app: App, store: ViewAtlasStore, mapImage: MapImage): () => void {
-  return store.subscribe((state) => state.background, (background) => {
+  return store.subscribe((state) => levelBackground(state, viewedLevelId(state)), (background) => {
     const state = store.getState();
     // A load sets the background itself and shows the image of its file.
     if (!state.mapLoaded || state.isMapLoading) return;
     if (shownBackground.get(mapImage) === background) return;
-    shownBackground.set(mapImage, background);
-    void mapImage.load(mapImageSourceFor(app, background, state.grid?.size));
+    // The image comes in drawn as its level is aligned, and follows an alignment changed while it loaded
+    void showBackground(mapImage, background, () => mapImage.load(mapImageSourceFor(app, background, state.grid?.size), viewedImagePlacement(state))).then(() => {
+      const placement = viewedImagePlacement(store.getState());
+      if (shownBackground.get(mapImage) === background && !sameStretch(placement, mapImage.mapStretch)) mapImage.setStretch(placement);
+    });
   });
 }
 
+/** Whether another image is on its way into `mapImage`, which will come in drawn as its level is. */
+function loadingAnother(mapImage: MapImage): boolean {
+  return shownBackground.get(mapImage) !== loadedBackground.get(mapImage);
+}
+
 /**
- * Draws the map image with the stretch of the store's grid whenever that changes outside a load
- * (an alignment applied, its undo or redo), and says so with `onFollowed`. Returns the unsubscribe.
+ * Draws the map image as the level the view shows is aligned (`viewedImagePlacement`) whenever that
+ * changes outside a load (an alignment applied, its undo or redo, another level shown), and says so
+ * with `onFollowed`. Returns the unsubscribe.
  */
 function followStretch(store: ViewAtlasStore, mapImage: MapImage, onFollowed: () => void): () => void {
-  return store.subscribe((state) => readMapStretch(state.grid?.mapStretch), (stretch) => {
+  return store.subscribe((state) => viewedImagePlacement(state), (stretch) => {
     const state = store.getState();
-    // A load shows its image with the stretch of its file.
-    if (!state.mapLoaded || state.isMapLoading) return;
+    // A load shows its image with the stretch of its file, and another level's image comes in drawn as its level is.
+    if (!state.mapLoaded || state.isMapLoading || loadingAnother(mapImage)) return;
     mapImage.setStretch(stretch);
     // The image may have been drawn this way already, as an alignment's preview: nothing changed on it then.
     onFollowed();
@@ -158,4 +209,4 @@ function followStretch(store: ViewAtlasStore, mapImage: MapImage, onFollowed: ()
 /**
  * Handles loading map resources and initialising renderer state.
  */
-export const MapController = { loadAndDisplay, followBackground, followStretch };
+export const MapController = { loadAndDisplay, followBackground, followStretch, showsViewedLevel, onBackgroundLoaded };

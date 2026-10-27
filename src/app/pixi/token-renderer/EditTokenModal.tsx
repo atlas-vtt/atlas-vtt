@@ -29,6 +29,7 @@ import { lightForm, lightFromForm, visionForm, visionFromForm, type LightForm, t
 import { numberText } from '../../utils/numberInput';
 import { t } from '../../i18n';
 import { sceneTokens } from '../../tokens/offMap';
+import { everyLevelObjects } from '../../levels/levelObjects';
 
 interface EditTokenValues {
   name: string;
@@ -195,7 +196,8 @@ export function openEditTokenModal(
    * not put back what the token had when the modal opened.
    */
   const handleSave = (values: EditTokenValues, resourceDefaults: Record<string, ResourceValue>): void => {
-    const current = sceneTokens(store.getState().objects)[token.id];
+    // The token wherever it stands now: a floor it went to while the modal was open included
+    const current = sceneTokens(everyLevelObjects(store.getState()))[token.id];
     const changed = <K extends keyof EditTokenValues>(key: K): boolean => JSON.stringify(values[key]) !== JSON.stringify(initial[key]);
     const maxima = definitions.filter(({ key }) => values.maxima[key] !== initial.maxima[key]);
     const updates: TokenUpdates = {

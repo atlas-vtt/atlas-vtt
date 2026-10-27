@@ -2,6 +2,7 @@ import { factsOf, type CreatureLookupFn } from '../../../../creatures/creatureFa
 import { RATING_FILTERS } from '../../../../creatures/creatureFieldCatalog';
 import { statblockResourceValue } from '../../../../resources/statblockResourceValues';
 import type { ResourceDefinition } from '../../../../resources/resourceTypes';
+import { quantityRange, type QuantityRange } from '../../../../encounters/encounterQuantity';
 import { totalCount, type EncounterPick } from './encounterPicks';
 
 /** The span of the creatures' ratings, on the one scale they all share. */
@@ -11,15 +12,18 @@ export interface RatingSpan {
   max: number;
 }
 
-/** The sum of a resource over every creature, a whole pool the party has to wear down. */
-export interface ResourceTotal {
+/**
+ * The sum of a resource over every creature, a whole pool the party has to wear down: from the
+ * fewest creatures their dice can bring to the most (`min` = `max` where no number is rolled).
+ */
+export interface ResourceTotal extends QuantityRange {
   key: string;
   name: string;
-  value: number;
 }
 
 export interface EncounterMetrics {
-  count: number;
+  /** The fewest and most creatures, since a creature's number may be dice. */
+  count: QuantityRange;
   rating: RatingSpan | null;
   totals: ResourceTotal[];
 }
@@ -57,13 +61,15 @@ function resourceTotals(
   const creatures = picks.map((pick) => (pick.token.statblockPath ? lookup(pick.token.statblockPath) : null));
   return resources.flatMap((definition): ResourceTotal[] => {
     if (!definition.defeatedWhenSpent || definition.direction === 'static') return [];
-    let value = 0;
+    const total = { min: 0, max: 0 };
     for (const [index, pick] of picks.entries()) {
       const creature = creatures[index];
       const max = creature ? statblockResourceValue(creature.fields, definition, creature.meanings)?.max : undefined;
       if (max === undefined) return [];
-      value += max * pick.count;
+      const copies = quantityRange(pick.count);
+      total.min += max * copies.min;
+      total.max += max * copies.max;
     }
-    return [{ key: definition.key, name: definition.name, value }];
+    return [{ key: definition.key, name: definition.name, ...total }];
   });
 }

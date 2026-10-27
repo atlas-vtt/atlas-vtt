@@ -1,17 +1,18 @@
 import { TFile, type App } from 'obsidian';
 import { TileDecoderClient } from './TileDecoderClient';
+import { requiredMainThreadDecode } from './mainThreadDecode';
 
 /**
  * Builds a freshly saved map image's tiles into this device's cache, so the
  * map's first open is as quick as any later one. Fire and forget: the build
  * gives way to every map being opened, the file is read only if the cache
- * cannot tell it by path, size and time, and a failure costs nothing but
+ * cannot tell it by path, size and time (a video's pyramid is its poster's), and a failure costs nothing but
  * the head start (the map is built when it is first opened instead).
  */
 export function prebuildMapImage(app: App, file: TFile): void {
   const identity = { path: file.path, size: file.stat.size, mtime: file.stat.mtime };
   TileDecoderClient.forApp(app)
-    .prebuild(() => app.vault.readBinary(file), identity)
+    .prebuild(() => app.vault.readBinary(file), identity, requiredMainThreadDecode(file))
     .catch((error: unknown) => console.debug(`[Atlas] The tiles of ${file.path} were not built ahead`, error));
 }
 

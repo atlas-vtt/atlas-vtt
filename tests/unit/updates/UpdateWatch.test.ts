@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { UpdateWatch, type UpdateWatchDeps } from '../../../src/app/updates/UpdateWatch';
 
-function watchWith(published: Array<string | null>, overrides: Partial<UpdateWatchDeps> = {}): { watch: UpdateWatch; announce: ReturnType<typeof vi.fn>; readPublished: ReturnType<typeof vi.fn> } {
-  let stored: string | null = null;
+/** What a device keeps between starts of Atlas: the version the GM last acted on. */
+interface Device { stored: string | null }
+
+function watchWith(published: Array<string | null>, overrides: Partial<UpdateWatchDeps> = {}, device: Device = { stored: null }): { watch: UpdateWatch; announce: ReturnType<typeof vi.fn>; readPublished: ReturnType<typeof vi.fn> } {
   const queue = [...published];
   const readPublished = vi.fn(async () => queue.shift() ?? null);
   const announce = vi.fn();
@@ -11,7 +13,7 @@ function watchWith(published: Array<string | null>, overrides: Partial<UpdateWat
     readPublished,
     enabled: () => true,
     online: () => true,
-    announced: { get: () => stored, set: (version) => { stored = version; } },
+    announced: { get: () => device.stored, set: (version) => { device.stored = version; } },
     announce,
     ...overrides,
   });
@@ -19,12 +21,12 @@ function watchWith(published: Array<string | null>, overrides: Partial<UpdateWat
 }
 
 describe('UpdateWatch', () => {
-  it('announces a newer release once', async () => {
+  it('announces a newer release once while Atlas runs', async () => {
     const { watch, announce } = watchWith(['0.9.0', '0.9.0']);
     await watch.check();
     await watch.check();
     expect(announce).toHaveBeenCalledOnce();
-    expect(announce).toHaveBeenCalledWith('0.9.0');
+    expect(announce).toHaveBeenCalledWith('0.9.0', expect.any(Function));
     expect(watch.available()).toBe('0.9.0');
   });
 
@@ -32,7 +34,24 @@ describe('UpdateWatch', () => {
     const { watch, announce } = watchWith(['0.9.0', '0.9.1']);
     await watch.check();
     await watch.check();
-    expect(announce.mock.calls).toEqual([['0.9.0'], ['0.9.1']]);
+    expect(announce.mock.calls.map(([version]) => version)).toEqual(['0.9.0', '0.9.1']);
+  });
+
+  it('announces again at the next start until the GM acts on the notice, and then no more', async () => {
+    const device: Device = { stored: null };
+    // Shown, but nobody looked: the next start shows it again
+    const first = watchWith(['0.9.1'], {}, device);
+    await first.watch.check();
+    expect(first.announce).toHaveBeenCalledOnce();
+    const second = watchWith(['0.9.1'], {}, device);
+    await second.watch.check();
+    expect(second.announce).toHaveBeenCalledOnce();
+    // Update, What's new or the close button: that version is never shown again
+    (second.announce.mock.calls[0]![1] as () => void)();
+    const third = watchWith(['0.9.1'], {}, device);
+    await third.watch.check();
+    expect(third.announce).not.toHaveBeenCalled();
+    expect(third.watch.available()).toBe('0.9.1');
   });
 
   it('stays silent while switched off or offline, unless asked', async () => {

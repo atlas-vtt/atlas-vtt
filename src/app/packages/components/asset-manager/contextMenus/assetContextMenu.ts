@@ -13,6 +13,7 @@ import type { SpawnContext } from '../utils/tokenSpawnService';
 import { spawnMenuEntries } from './spawnMenuEntries';
 import type { AssetService } from '../../../../services/AssetService';
 import { renameScene } from '../../../../services/sceneRename';
+import { hasAssetTag } from '../../../../services/tagGroups';
 import { TagSearchModal } from '../TagSearchModal';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { confirmAction } from '../../../../ui/confirmDialog';
@@ -262,22 +263,14 @@ export function buildAssetContextMenuEntries(
         selectedAssets: assetsToTag,
         availableTags: deps.availableTags,
         allAssets: deps.assets,
-        onToggleTag: (tagId: string, modalSelectedAssets: AnyAsset[]) => {
-          for (const sa of modalSelectedAssets) {
-            const currentTags = sa.tags || [];
-            const newTags = currentTags.includes(tagId)
-              ? currentTags.filter((t) => t !== tagId)
-              : [...currentTags, tagId];
-            void deps.setAssetTags(sa, newTags);
-          }
-        },
+        onSetAssetTags: (taggedAsset: AnyAsset, tags: string[]) => { void deps.setAssetTags(taggedAsset, tags); },
         onCreateTag: (tagName: string, modalSelectedAssets: AnyAsset[]) => {
           const applyNewTag = async (): Promise<void> => {
             const tag = await deps.handleCreateTag(tagName);
             if (!tag) return;
             await Promise.all(modalSelectedAssets
-              .filter((sa) => !(sa.tags || []).includes(tag.id))
-              .map((sa) => deps.setAssetTags(sa, [...(sa.tags || []), tag.id])));
+              .filter((sa) => !hasAssetTag(sa.tags, tag))
+              .map((sa) => deps.setAssetTags(sa, [...(sa.tags || []), tag.name])));
           };
           runInBackground(applyNewTag(), `Creating tag ${tagName}`);
         },

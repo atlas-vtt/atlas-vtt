@@ -12,6 +12,12 @@ export function getLoadedAtlasView(app: App): AtlasView | null {
   return isAtlasView(view) ? view : null;
 }
 
+/** The loaded Atlas view whose map is held by `store`, or null when no view shows it. */
+export function atlasViewOfStore(app: App, store: unknown): AtlasView | null {
+  const view = getLoadedAtlasView(app);
+  return view?.getStore() === store ? view : null;
+}
+
 /** The Atlas view, first loading its leaf if Obsidian deferred it (background tabs after a restart). */
 export async function loadAtlasView(app: App): Promise<AtlasView | null> {
   const leaf = getExistingAtlasLeaf(app);

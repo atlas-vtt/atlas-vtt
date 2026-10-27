@@ -16,6 +16,8 @@ export const MAP_HOTKEYS = [
   { id: 'lightingPeek', label: t('hotkey.lightingPeek'), group: t('hotkey.group.map'), defaultKey: 'h', dmOnly: true },
   { id: 'fitMap', label: t('hotkey.fitMap'), group: t('hotkey.group.map'), defaultKey: 'Shift+1' },
   { id: 'fitToken', label: t('hotkey.fitToken'), group: t('hotkey.group.map'), defaultKey: 'Shift+2' },
+  { id: 'levelUp', label: t('hotkey.levelUp'), group: t('hotkey.group.map'), defaultKey: 'PageUp', dmOnly: true },
+  { id: 'levelDown', label: t('hotkey.levelDown'), group: t('hotkey.group.map'), defaultKey: 'PageDown', dmOnly: true },
   { id: 'move', label: t('hotkey.move'), group: t('hotkey.group.tools'), defaultKey: 'v' },
   { id: 'fog', label: t('hotkey.fog'), group: t('hotkey.group.tools'), defaultKey: 'f', dmOnly: true },
   { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },

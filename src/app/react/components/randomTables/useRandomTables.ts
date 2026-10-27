@@ -17,6 +17,8 @@ export interface RandomTablesLibrary {
   /** Items: the loot bases with their views, then the Items tables of notes. */
   items: { bases: LootBase[]; tables: CollectionTable[] };
   text: CollectionTable[];
+  /** Tables rolled as generators: one result of all their parts. */
+  generators: CollectionTable[];
   /** Named after plain-number item prices. */
   currency: string | undefined;
   /** False until every base and note has been read once. */
@@ -86,6 +88,7 @@ export function useRandomTables(app: App, collectionId: string | null): RandomTa
   return useMemo(() => ({
     items: { bases: library.bases, tables: tables.filter((table) => table.source.kind === 'items') },
     text: tables.filter((table) => table.source.kind === 'text'),
+    generators: tables.filter((table) => table.source.kind === 'generator'),
     currency: loot.currency,
     loaded: library.loaded && loaded,
     basesAvailable: library.basesAvailable,

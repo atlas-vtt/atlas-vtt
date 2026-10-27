@@ -5,6 +5,7 @@ import type { SeenSpot } from '../../../vision/perception';
 import type { Sight } from '../../../vision/sight';
 import type { MapBounds, Polygon } from '../../../vision/visibility';
 import type { VisionCone } from '../../../vision/visionCone';
+import type { ReflectionPart } from '../../../vision/reflectedLight';
 
 /** A light in world pixels with its steady settings; colour is linear and already tinted. */
 export interface EngineLight {
@@ -30,8 +31,24 @@ export interface EngineLight {
    * darkness swallows its light. Without it the engine works the area out the same way.
    */
   area?: Polygon;
-  /** Width in world pixels of the soft edge past a beam's sides and far end (`softEdge`); unset, the fade past the dim radius. */
+  /** Width in world pixels of the soft edge inside a beam's sides at most (`softEdge`); unset, `softEdge` of its dim radius. */
   edge?: number;
+  /**
+   * A light that glows from a whole area (lava): its corners, at most `MAX_AREA_CORNERS`. Inside
+   * it the light is bright; `bright` and `dim` count from its outline, and `x`, `y` are its middle.
+   * Such a light has no cone and no flame of its own.
+   */
+  surface?: readonly { x: number; y: number }[];
+  /** Where the rule counts an area light's light beyond its area (`LightReach.parts`), handed on with `area` where one builder made both. */
+  parts?: readonly { origin: { x: number; y: number }; polygon: Polygon }[];
+  /** Where its lit floor gives light back (`LightReach.reflection`), as the rule counts it; the same list while it stays. */
+  reflection?: readonly ReflectionPart[];
+  /**
+   * The light is moving (`LightMotion`): its tile is traced with few rays and at once, wherever
+   * the device stands, so it is drawn where it is in this frame, and the bounce waits for it to
+   * rest. Once it rests it is built without this, in full.
+   */
+  moving?: true;
 }
 
 /** An area with ambient light of its own (`LightZone`), in world pixels; inside `polygon` the rule counts its level. */
@@ -64,6 +81,8 @@ export interface EngineScene extends Pick<SceneLighting, 'ambientColor' | 'explo
   spots?: readonly SeenSpot[];
   /** Footprint radius of a vision token, for the soft edges of its sight. */
   sightRadius: number;
+  /** The grid's cell in world px: the world textures' texel follows it (`pictureTexel`). Unset, the map's size alone decides. */
+  cellSize?: number;
   ambient: number;
   /** The scene's ambient zones in their order, the same list while they stay; none draws exactly as before zones existed. */
   zones?: readonly EngineZone[];
@@ -77,4 +96,7 @@ export interface SceneFrame {
   x: number;
   y: number;
   resolution: number;
+  /** The frame's size in world pixels; without one no level below is drawn into it. */
+  width?: number;
+  height?: number;
 }

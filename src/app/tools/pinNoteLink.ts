@@ -1,4 +1,5 @@
 import type { NotePin } from '../types';
+import { isEncounterFolderLink } from '../links/atlasLinkTargets';
 
 /** A pin's link as written: the note's path, and the heading after `#` (null for the whole note). */
 export interface PinNoteLink {
@@ -14,8 +15,8 @@ export function pinNoteLink(notePath: string): PinNoteLink {
   return { linkpath, heading: heading === '' ? null : heading };
 }
 
-/** Whether a pin links to a note players could read: anything but a scene. */
+/** Whether a pin links to a note players could read: anything but a scene or a folder of encounters. */
 export function linksReadableNote(pin: Pick<NotePin, 'notePath'>): boolean {
   const { linkpath } = pinNoteLink(pin.notePath);
-  return linkpath !== '' && !linkpath.toLowerCase().endsWith('.atlasmap');
+  return linkpath !== '' && !linkpath.toLowerCase().endsWith('.atlasmap') && !isEncounterFolderLink(linkpath);
 }

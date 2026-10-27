@@ -1,0 +1,27 @@
+import type { Message } from '../../types';
+
+export const uvttFloors = {
+  'uvttFloors.fileProblem': '{file}: {problem}',
+  'uvttFloors.failed': 'The files could not be imported.',
+  'uvttFloors.tooMany': 'One scene takes at most {count} floors.',
+  'uvttFloors.tooLarge': 'Together the files are larger than {size} MB.',
+  'uvttFloors.tooManyWalls': 'Together the files have more than {count} wall segments.',
+  'uvttFloors.tooManyLights': 'Together the files have more than {count} lights.',
+  'uvttFloors.otherGrid': 'The cells of {file} are {size} pixels wide, those of {other} {otherSize} pixels, so they do not share a grid.',
+  'uvttFloors.mapName': '{scene}, {level}',
+  'uvttFloors.reading': 'Reading {files}…',
+  'uvttFloors.importing': 'Importing "{name}" with {count} levels…',
+  'uvttFloors.couldNot': 'Could not import "{name}". {problem}',
+  'uvttFloors.imported': { one: 'Imported "{name}" with {count} level: {contents}.', other: 'Imported "{name}" with {count} levels: {contents}.' },
+  'uvttFloors.walls': { one: '{count} wall', other: '{count} walls' },
+  'uvttFloors.doors': { one: '{count} door', other: '{count} doors' },
+  'uvttFloors.lights': { one: '{count} light', other: '{count} lights' },
+  'uvttFloors.lightsOff': 'Lights whose glow the image already shows are switched off.',
+  'uvttFloors.scaledDown': 'The images of {files} were scaled down to the largest size a map keeps.',
+  'uvttFloors.title': 'Import {count} maps',
+  'uvttFloors.sceneName': 'Scene name',
+  'uvttFloors.levels': 'Levels, top floor first',
+  'uvttFloors.asScenes': 'Import as {count} scenes',
+  'uvttFloors.asLevels': 'Import as one scene',
+  'uvttFloors.separately': 'Each file became a scene of its own. {reason}',
+} as const satisfies Record<string, Message>;

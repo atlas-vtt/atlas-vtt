@@ -29,7 +29,7 @@ export interface Setup {
   canvas: HTMLCanvasElement;
   /** A torch at (400, 300): bright 20 ft is 280 px, dim 40 ft is 560 px on the 70 px grid. */
   torch: string;
-  tool: { active: boolean };
+  tool: { active: boolean; moves: boolean };
   select: ReturnType<typeof vi.fn>;
   press: (x: number, y: number, keys?: { ctrl?: boolean; blocked?: boolean }) => boolean;
   move: (x: number, y: number, alt?: boolean) => void;
@@ -52,9 +52,10 @@ export function setup(doc: Document = document): Setup {
   const torch = store.getState().addLight({ x: 400, y: 300, emission: { ...genericLight('torch'), kind: 'torch' } });
   const markers = new LightMarkers(viewport, store);
   const rings = new LightRangeRings(viewport, store, () => FEET);
-  const tool = { active: false };
+  /** `active`: the lighting tool; `moves`: the select or move tool. */
+  const tool = { active: false, moves: false };
   const select = vi.fn();
-  const lights = new LightInteraction({ viewport, canvas, store, markers, rings, canMove: () => tool.active, select });
+  const lights = new LightInteraction({ viewport, canvas, store, markers, rings, canMove: () => tool.active, movesThings: () => tool.moves, select });
   const history = getHistoryStore(store)!;
   history.getState().clear();
   cleanup = () => {

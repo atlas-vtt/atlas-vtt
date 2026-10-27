@@ -57,13 +57,16 @@ export interface GlobalContextMenuOptions extends ContextMenuOptions {
   doc?: Document | undefined;
 }
 
+/** Opens a menu for callers outside React; false where no provider is rendered (in that document) to open it. */
 export function openContextMenuGlobal(
   entries: ContextMenuEntry[],
   position: { x: number; y: number },
   options?: GlobalContextMenuOptions,
-): void {
+): boolean {
   const inDoc = options?.doc === undefined ? controllers : controllers.filter((controller) => controller.doc() === options.doc);
-  inDoc[inDoc.length - 1]?.open(entries, position, options);
+  const controller = inDoc[inDoc.length - 1];
+  controller?.open(entries, position, options);
+  return controller !== undefined;
 }
 
 export function closeContextMenuGlobal(): void {

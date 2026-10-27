@@ -84,8 +84,11 @@
 /// @param {String} $size - 's', 'm', or 'l'
 @mixin atlas-icon-button($size: 'm') {
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
+  // Obsidian pads every <button>: inside a button of fixed size that padding squeezed the icon
+  padding: 0;
   border: none;
   cursor: pointer;
   transition: transform $transition-press $transition-ease-out;

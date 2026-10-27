@@ -4,6 +4,7 @@ import { CapsuleField } from '../CapsuleField';
 import { LightMap } from '../LightMap';
 import { TileCache } from '../TileCache';
 import { RadianceCascades } from '../RadianceCascades';
+import { union } from '../LightMap';
 import { BOUNCE, wallRadius } from '../../../../lighting/lightingConstants';
 import { splitBlocking } from '../../../../lighting/segments';
 import { createTestRenderer, readFloats } from './gpuTestUtils';
@@ -107,13 +108,55 @@ describe('RadianceCascades', () => {
     field.build(splitBlocking(walls).twoWay);
     tiles.sync([{ key: 'l', x: 200, y: 256, bright: 120, dim: 240, flame: 20, color: [1, 1, 1], intensity: 1, animation: 'none' }], walls, 'all');
     const tile = tiles.tiles().get('l')!;
-    map.draw([{ tile, bright: 120, dim: 240, reach: 240 * 1.12, color: [1, 1, 1], intensity: 1 }]);
+    map.draw([{ tile, bright: 120, dim: 240, color: [1, 1, 1], intensity: 1 }]);
     cascades.build(map, albedo, field);
     const probes = readFloats(renderer, cascades.fluence);
     const width = cascades.fluence.source.pixelWidth;
     const probe = (x: number, y: number): number => probes[(Math.floor(y / BOUNCE.probe) * width + Math.floor(x / BOUNCE.probe)) * 4]!;
     return { probes, probe };
   }
+
+  it.each([1, 2.5])('builds anew in bands over the part a moved light can reach, as a whole build would (scale %s)', async (scale) => {
+    const world = { width: 6144, height: 1024 };
+    const renderer: WebGLRenderer = await createTestRenderer(64);
+    const field = new CapsuleField(renderer, [0, 0, world.width, world.height], 2, wallRadius(2));
+    const tiles = new TileCache(renderer, field, world);
+    const map = new LightMap(renderer, world, 2);
+    const banded = new RadianceCascades(renderer, world, field, scale);
+    const whole = new RadianceCascades(renderer, world, field, scale);
+    cleanup.push(() => {
+      for (const done of [banded, whole, map, tiles, field]) done.destroy();
+      renderer.destroy();
+    });
+    // Open floor beside the rooms, with a long wall to give light back from afar.
+    const hall = [...walls, wall('long', 1100, 900, 5800, 900)];
+    field.build(splitBlocking(hall).twoWay);
+    const light = { key: 'l', x: 1600, y: 600, bright: 120, dim: 240, flame: 20, color: [1, 1, 1] as const, intensity: 1, animation: 'none' as const };
+    // A lamp far off, whose bounce the moved light's build must leave as it is.
+    const lamp = { ...light, key: 'far', x: 4600, y: 600 };
+    const lightUp = (moved: typeof light): void => {
+      tiles.sync([moved, lamp], hall, 'all');
+      map.draw([moved, lamp].map((l) => ({ tile: tiles.tiles().get(l.key)!, bright: l.bright, dim: l.dim, color: l.color, intensity: 1 })));
+    };
+    lightUp(light);
+    banded.build(map, null, field);
+    const before = tiles.tiles().get('l')!.rect;
+    lightUp({ ...light, x: 1800, y: 640 });
+    banded.begin(map, null, union(before, tiles.tiles().get('l')!.rect));
+    let steps = 1;
+    while (!banded.step(field, 4096)) steps++;
+    expect(steps).toBeGreaterThan(BOUNCE.cascades + 1);
+    whole.build(map, null, field);
+    const got = readFloats(renderer, banded.fluence);
+    const want = readFloats(renderer, whole.fluence);
+    let largest = 0;
+    for (const v of want) largest = Math.max(largest, v);
+    expect(largest).toBeGreaterThan(0);
+    for (let i = 0; i < want.length; i++) {
+      // Half floats keep 11 significant bits.
+      expect(Math.abs(got[i]! - want[i]!)).toBeLessThanOrEqual(Math.abs(want[i]!) * 2 ** -10 + 1e-6);
+    }
+  });
 
   it('bounces light into a lit room and none into the closed room beside it', async () => {
     const { probe } = await bounce(null);

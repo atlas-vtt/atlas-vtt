@@ -12,6 +12,7 @@ import { folderIdOf } from './assetFolders';
 import { ENCOUNTER_PREVIEW_COUNT } from './encounterPreviewLayout';
 import { mapThumbnailPath } from '../../../../utils/dataFileMigration';
 import { isPlayerCharacter } from '../../../../characters/playerCharacters';
+import { isVideoMapPath } from '../../../../pixi/mapImage/video/videoMapFiles';
 
 /** The stored asset types the asset manager shows, one per tab. */
 export type TabServiceAsset = AssetOfType<'token' | 'map' | 'scene' | 'encounter'>;
@@ -198,13 +199,16 @@ export function formatServiceAsset(
       };
     }
     case 'map': {
-      const imageUrl = resourceUrl(app, asset.mapFilePath);
+      const animated = isVideoMapPath(asset.mapFilePath);
+      // A video is no image for a card: without a thumbnail of its poster the card shows its placeholder.
+      const imageUrl = animated ? '' : resourceUrl(app, asset.mapFilePath);
       return {
         ...base,
         type: 'maps',
         ...cardArt(app, asset, imageUrl, thumbnailOf),
         imageUrl,
         mapFilePath: asset.mapFilePath,
+        ...(animated && { animated: true as const }),
       };
     }
     case 'scene':

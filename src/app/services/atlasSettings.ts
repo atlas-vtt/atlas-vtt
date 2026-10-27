@@ -6,6 +6,7 @@ import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures
 import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/diceLook';
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import type { InitiativeDock } from '../initiative/initiativeLayout';
+import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
 
 /**
  * How wheel events drive the map viewport.
@@ -59,6 +60,8 @@ export interface AtlasSettings {
   experimental: Partial<Record<ExperimentalFeatureId, boolean>>;
   /** The GM's toolbar layout, only what differs from the default; read with `getToolbarLayout`. */
   toolbar: StoredToolbarLayout;
+  /** The dungeon generator's style, view and last tags. Read with `getDungeonGenerator`. */
+  dungeonGenerator: DungeonGeneratorSettings;
   localPlayerView: {
     // UI element visibility toggles
     showToolbar: boolean;
@@ -98,6 +101,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   initiativeMovesOnTurn: false,
   experimental: {},
   toolbar: {},
+  dungeonGenerator: DEFAULT_DUNGEON_GENERATOR_SETTINGS,
   localPlayerView: {
     // UI element visibility defaults
     showToolbar: false, // Hide toolbar by default in player view

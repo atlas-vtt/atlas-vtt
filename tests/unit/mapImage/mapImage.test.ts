@@ -56,8 +56,8 @@ function harness(): {
   return { mapImage, service, viewport, changes, ticker, restart: () => [...restarts].forEach((listener) => listener()) };
 }
 
-/** The tile layers a map image shows: inside the container that turns them level. */
-const tileLayers = (image: MapImage): readonly unknown[] => image.layer.children[0]!.children;
+/** The tile layers a map image shows: inside the container that turns them level, without the video an animated map draws over them. */
+const tileLayers = (image: MapImage): readonly unknown[] => image.layer.children[0]!.children.filter((child) => child.label !== 'map-video');
 
 const images: MapImage[] = [];
 
@@ -78,7 +78,7 @@ describe('MapImage', () => {
     expect(mapImage.layer.boundsArea).toMatchObject({ x: 0, y: 0, width: 12000, height: 3000 });
     // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
-    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
+    expect(tileLayers(mapImage)).toHaveLength(1);
     expect({ width: viewport.worldWidth, height: viewport.worldHeight }).toEqual({ width: 12000, height: 10000 });
     expect(changes).toEqual(['image']);
   });
@@ -185,6 +185,18 @@ describe('MapImage', () => {
     expect(service.close).toHaveBeenCalledWith(7);
   });
 
+  it('draws a video map from its poster\'s pyramid, its tiles beneath the video', async () => {
+    const { mapImage, service } = harness();
+    service.open.mockResolvedValue(opened(1, 'river-poster', 1920, 1080));
+
+    await mapImage.load({ kind: 'video', file: fileAt('maps/river.webm') });
+    await mapImage.load({ kind: 'video', file: fileAt('maps/river.webm') });
+
+    expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 1920, height: 1080 });
+    const turned = mapImage.layer.children[0]!;
+    expect(turned.children.map((child) => child.label)).toEqual([expect.not.stringMatching('map-video'), 'map-video']);
+  });
+
   it('keeps what it draws when a load opens the same pyramid again, and closes the second open', async () => {
     const { mapImage, service, changes } = harness();
     service.open.mockResolvedValueOnce(opened(1, 'cave')).mockResolvedValueOnce(opened(2, 'cave'));
@@ -210,7 +222,7 @@ describe('MapImage', () => {
     expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 800, height: 600 });
     // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
-    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
+    expect(tileLayers(mapImage)).toHaveLength(1);
   });
 
   it('shows the placeholder and reports the file when its image cannot be opened', async () => {
@@ -225,7 +237,7 @@ describe('MapImage', () => {
     expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 128, height: 128 });
     // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
-    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
+    expect(tileLayers(mapImage)).toHaveLength(1);
   });
 
   it('shows the placeholder for a missing image as a picture of one tile, never kept in the cache', async () => {
@@ -236,7 +248,7 @@ describe('MapImage', () => {
     expect(mapImage.worldRect).toEqual({ x: 0, y: 0, width: 128, height: 128 });
     // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
-    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
+    expect(tileLayers(mapImage)).toHaveLength(1);
     const tiles = placeholderTiles();
     expect(tiles.source.pyramid.levels).toHaveLength(1);
     expect(tiles.cacheable).toBe(false);
@@ -328,7 +340,7 @@ describe('MapImage', () => {
 
     // The layer holds the container that turns the tiles level, which holds the tile layer.
     expect(mapImage.layer.children).toHaveLength(1);
-    expect(mapImage.layer.children[0]!.children).toHaveLength(1);
+    expect(tileLayers(mapImage)).toHaveLength(1);
     expect(service.close).toHaveBeenCalledWith(1);
     const again = service.tile.mock.calls.filter((call) => call[0] === 2).map((call) => JSON.stringify(call[1]));
     expect(again).toEqual(expect.arrayContaining(failedRefs));

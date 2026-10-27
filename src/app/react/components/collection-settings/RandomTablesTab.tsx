@@ -90,6 +90,7 @@ export function RandomTablesTab(props: RandomTablesTabProps): React.ReactElement
             {tables.filter((found) => found.source.path === path).map((found) => (
               <TableSourceRow
                 key={found.id}
+                app={app}
                 found={found}
                 onChange={change}
                 onRemove={() => onRandomTablesChange(withoutRandomTable(stored, found.source.path, found.source.index))}

@@ -14,6 +14,13 @@ import type { UvttLight, UvttMap, UvttPoint } from './uvttTypes';
 export interface UvttTarget {
   cellSize: number;
   unit: Pick<MeasurementSettings, 'unitType' | 'unitDistance'>;
+  /**
+   * The cell of the scene the image's top-left corner lies at, where the image is not the scene's
+   * corner: a floor of several placed by its origin. Unset is the scene's corner.
+   */
+  at?: UvttPoint;
+  /** The level of a scene of several the file's walls, doors and lights belong to; their ids then name it. */
+  level?: { id: string; index: number };
 }
 
 export interface UvttCounts {
@@ -75,12 +82,18 @@ function emissionOf(light: UvttLight, { unit, cellSize }: UvttTarget): LightEmis
  *
  * Nothing is placed farther than one cell from the image: a wall is cut where it leaves that
  * rectangle, and a wall, a door or a light outside it is left out.
+ *
+ * A floor of a scene of several lies `target.at` cells from the scene's corner, and what it places
+ * belongs to `target.level`.
  */
 export function uvttToScene(map: UvttMap, target: UvttTarget): UvttScene {
-  const { cellSize } = target;
+  const { cellSize, at = { x: 0, y: 0 }, level } = target;
   const rect = placeableRect(map.size);
   const fromCorner = (point: UvttPoint): UvttPoint => ({ x: point.x - map.origin.x, y: point.y - map.origin.y });
-  const toWorld = (cell: UvttPoint): UvttPoint => ({ x: cell.x * cellSize, y: cell.y * cellSize });
+  const toWorld = (cell: UvttPoint): UvttPoint => ({ x: (cell.x + at.x) * cellSize, y: (cell.y + at.y) * cellSize });
+  // Files of one scene count their walls and lights each from one, so a level's ids name it
+  const tag = level ? `uvtt_${level.index + 1}` : 'uvtt';
+  const levels = level && { levels: [level.id] };
   const walls: Record<string, WallSegment> = {};
   const counts: UvttCounts = { walls: 0, doors: 0, lights: 0 };
   const skipped: UvttSkipped = { outside: 0, unlit: 0, windows: 0 };
@@ -89,8 +102,8 @@ export function uvttToScene(map: UvttMap, target: UvttTarget): UvttScene {
 
   const addWall = (from: UvttPoint, to: UvttPoint, rest: Pick<WallSegment, 'type' | 'closed' | 'chainId'>): boolean => {
     if (from.x === to.x && from.y === to.y) return false;
-    const id = `wall_uvtt_${++segments}`;
-    walls[id] = { id, kind: 'wall', p1: toWorld(from), p2: toWorld(to), ...rest };
+    const id = `wall_${tag}_${++segments}`;
+    walls[id] = { id, kind: 'wall', p1: toWorld(from), p2: toWorld(to), ...rest, ...levels };
     return true;
   };
 
@@ -103,7 +116,7 @@ export function uvttToScene(map: UvttMap, target: UvttTarget): UvttScene {
         continue;
       }
       onImage++;
-      if (addWall(inside[0], inside[1], { type: 'solid', chainId: `chain_uvtt_${lineIndex + 1}` })) counts.walls++;
+      if (addWall(inside[0], inside[1], { type: 'solid', chainId: `chain_${tag}_${lineIndex + 1}` })) counts.walls++;
     }
   });
   for (const portal of map.portals) {
@@ -129,13 +142,14 @@ export function uvttToScene(map: UvttMap, target: UvttTarget): UvttScene {
       skipped.unlit++;
       continue;
     }
-    const id = `light_uvtt_${++counts.lights}`;
-    lights[id] = { id, kind: 'light', ...toWorld(position), emission: emissionOf(light, target), ...(map.bakedLighting && { hidden: true }) };
+    const id = `light_${tag}_${++counts.lights}`;
+    lights[id] = { id, kind: 'light', ...toWorld(position), emission: emissionOf(light, target), ...(map.bakedLighting && { hidden: true }), ...levels };
   }
 
   const ambient = map.bakedLighting || map.ambientLight === null ? DAYLIGHT : brightnessOf(map.ambientLight);
   return {
-    grid: { size: cellSize, ...normaliseGridOffset('square', cellSize, -map.origin.x * cellSize, -map.origin.y * cellSize) },
+    // The scene's corner lies `at` cells before the image's, which lies at the file's origin
+    grid: { size: cellSize, ...normaliseGridOffset('square', cellSize, (at.x - map.origin.x) * cellSize, (at.y - map.origin.y) * cellSize) },
     walls,
     lights,
     lighting: { enabled: true, ambient },

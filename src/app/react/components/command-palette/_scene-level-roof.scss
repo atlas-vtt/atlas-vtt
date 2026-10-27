@@ -1,0 +1,41 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ── A level's roof in the Scene levels page ─────────────────────────────────
+// One compact row: the image drawn above the level's tokens, the button that picks it, and the one that removes it.
+
+.atlas-scene-level__roof {
+  @include atlas-flex-row($spacing-xs);
+  padding: $spacing-xs;
+  margin-left: $spacing-l;
+  border-radius: $radius-l;
+  background: var(--background-secondary);
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+
+  &--alone {
+    margin-left: 0;
+  }
+}
+
+.atlas-scene-level__roof-icon {
+  flex-shrink: 0;
+  width: $icon-s;
+  height: $icon-s;
+  margin: 0 $spacing-xs;
+  color: var(--text-muted);
+}
+
+.atlas-scene-level__roof-file {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-scene-level__roof-pick {
+  flex-shrink: 0;
+  height: var(--input-height);
+  font-size: $font-ui-small;
+}

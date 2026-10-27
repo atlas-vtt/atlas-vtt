@@ -76,6 +76,22 @@ describe('map copy, paste and duplicate', () => {
     expect([tokenAt(store, first!).x, tokenAt(store, second!).x]).toEqual([75, 125]);
   });
 
+  it('lands a duplicate on the level shown, stepping aside only from what stands there', () => {
+    const { store } = createStore();
+    store.setState({ levels: [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: null },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: null },
+    ], viewedLevel: 'upper' });
+    const a = addGoblin(store, 25, 25);
+    store.getState().setViewedLevel('ground');
+    addGoblin(store, 75, 75);
+    store.getState().setViewedLevel('upper');
+
+    const [copy] = store.getState().duplicateMapObjects([a]);
+
+    expect(tokenAt(store, copy!)).toMatchObject({ x: 75, y: 75, level: 'upper' });
+  });
+
   it('steps along the hex lattice so duplicates stay on hex centres', () => {
     const { store } = createStore(HEX);
     const a = addGoblin(store, 30, 60 / Math.sqrt(3));

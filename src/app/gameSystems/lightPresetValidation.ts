@@ -12,7 +12,7 @@ import { isHexColor } from '../utils/hexColor';
 import { coneAngle } from '../vision/visionCone';
 import { collectionLightPresets } from './lightPresetRules';
 
-const ANIMATIONS: readonly LightAnimation[] = ['none', 'torch', 'candle', 'pulse', 'magic'];
+const ANIMATIONS: readonly LightAnimation[] = ['none', 'torch', 'candle', 'pulse', 'magic', 'smoulder'];
 const UNITS: readonly LightPresetUnit[] = ['feet', 'yards', 'meters', 'squares'];
 /** The ranges the light popover's sliders give intensity and softness. */
 const MAX_INTENSITY = 2;

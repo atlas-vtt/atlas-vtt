@@ -8,7 +8,7 @@ export const EMPTY_MAP_IMAGE: MapImageSource = { kind: 'none', width: 1400, heig
 
 /** What `MapLoader.load` returns for `mapData` in tests that mock it. */
 export function loadedMap(mapData: MapFile): LoadedMap {
-  return { mapData, image: EMPTY_MAP_IMAGE };
+  return { mapData, image: EMPTY_MAP_IMAGE, level: null };
 }
 
 /** A map image without a GPU: loads resolve at once and every view is ready. */

@@ -119,6 +119,28 @@ describe('the Random tables tab', () => {
     expect(draft().randomTables[0]).toEqual(stored);
   });
 
+  it('makes a table a generator, which is saved to a folder instead of hiding columns or repeating rows', async () => {
+    const generator = '## Magic Weapon\n\n| Part | Result |\n| --- | --- |\n| Name | {Type} |\n| Type | Mace |\n| Bonus | +1 |\n';
+    const { app } = createInMemoryApp({ files: { 'Generators/Weapons.md': generator }, folders: ['Loot'] });
+    const stored: RandomTableSource = { path: 'Generators/Weapons.md', table: 'Magic Weapon', index: 0, kind: 'text', noRepeats: true };
+    const { draft } = renderTab(app, { randomTables: [stored] });
+    const row = await screen.findByRole('button', { name: /Magic Weapon/ });
+
+    fireEvent.click(screen.getByRole('radio', { name: 'Generator' }));
+    expect(draft().randomTables[0]).toMatchObject({ kind: 'generator' });
+    await waitFor(() => expect(row.textContent).toContain('2'));
+    fireEvent.click(row);
+    expect(screen.queryByRole('checkbox', { name: 'No repeats' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Result' })).toBeNull();
+
+    const folder = screen.getByRole('combobox', { name: 'Save results to' });
+    fireEvent.change(folder, { target: { value: 'Loot/Magic weapons ' } });
+    expect(draft().randomTables[0]).toMatchObject({ saveFolder: 'Loot/Magic weapons' });
+    expect((folder as HTMLInputElement).value).toBe('Loot/Magic weapons ');
+    fireEvent.change(folder, { target: { value: '' } });
+    expect(draft().randomTables[0]).not.toHaveProperty('saveFolder');
+  });
+
   it('edits the rarity words, storing nothing while they are the system\'s', () => {
     const { app } = createInMemoryApp({ files: {} });
     const { draft } = renderTab(app, {}, 'builtin:pathfinder2e');

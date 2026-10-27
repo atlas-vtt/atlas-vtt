@@ -128,4 +128,32 @@ describe('tile worker', () => {
     overview.close();
     client.close(second.handle);
   });
+
+  it('reads which pixels of a map hold art, from its overview, as one byte each', async () => {
+    // Opaque but for a transparent square, whose left half is faint (below the threshold) and right half is not.
+    const canvas = new OffscreenCanvas(1200, 800);
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#808080';
+    ctx.fillRect(0, 0, 1200, 800);
+    ctx.clearRect(200, 200, 400, 300);
+    ctx.fillStyle = 'rgba(128, 128, 128, 0.01)';
+    ctx.fillRect(200, 200, 200, 300);
+    ctx.fillStyle = 'rgba(128, 128, 128, 0.2)';
+    ctx.fillRect(400, 200, 200, 300);
+    const png = await (await canvas.convertToBlob({ type: 'image/png' })).arrayBuffer();
+    const map = await client.open(() => Promise.resolve(png.slice(0)), { path: 'maps/transparent.png', size: 2, mtime: 3 });
+    try {
+      const raster = await client.alphaRaster(map.handle, 600, 8);
+      expect([raster.width, raster.height]).toEqual([600, 400]);
+      const at = (x: number, y: number): number => raster.opaque[y * 600 + x]!;
+      expect([at(10, 10), at(150, 175), at(250, 175), at(590, 390)]).toEqual([1, 0, 1, 1]);
+      // Only the square's own pixels, less its anti-aliased rim, are transparent.
+      let clear = 0;
+      for (const value of raster.opaque) clear += value === 0 ? 1 : 0;
+      expect(clear).toBeGreaterThan(98 * 148);
+      expect(clear).toBeLessThanOrEqual(100 * 150);
+    } finally {
+      client.close(map.handle);
+    }
+  });
 });

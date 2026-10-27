@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, it, expect, vi } from 'vitest';
-import { App, TFile } from 'obsidian';
+import { App, TFile, TFolder } from 'obsidian';
 import { createPinNoteSearch } from '../../src/app/tools/pinNoteSearch';
+import { noteNameProblem, type PinCreateEntry, type PinLinkTarget } from '../../src/app/tools/pinCreateEntries';
 
 let container: HTMLElement;
 
@@ -9,12 +10,15 @@ interface SetupOptions {
   headings?: Record<string, string[]>;
   paths?: string[];
   mapPath?: string | null;
+  createEntries?: PinCreateEntry[];
+  /** Folders the vault finds by path, such as a collection's encounters folder. */
+  folders?: Record<string, TFolder>;
 }
 
-function setup({ headings = {}, paths = ['Tavern.md', 'Temple.md', 'Town.atlasmap'], mapPath = null }: SetupOptions = {}): { onPick: ReturnType<typeof vi.fn>; onCancel: ReturnType<typeof vi.fn> } {
+function setup({ headings = {}, paths = ['Tavern.md', 'Temple.md', 'Town.atlasmap'], mapPath = null, createEntries, folders = {} }: SetupOptions = {}): { onPick: ReturnType<typeof vi.fn>; onCancel: ReturnType<typeof vi.fn> } {
   const files = paths.map((path) => new TFile(path));
   const app = {
-    vault: { getAllLoadedFiles: () => files },
+    vault: { getAllLoadedFiles: () => files, getAbstractFileByPath: (path: string) => folders[path] ?? null },
     metadataCache: {
       getFileCache: (file: TFile) => ({
         headings: (headings[file.path] ?? headings[file.basename] ?? []).map((heading) => ({ heading, level: 2 })),
@@ -24,7 +28,7 @@ function setup({ headings = {}, paths = ['Tavern.md', 'Temple.md', 'Town.atlasma
   const onPick = vi.fn();
   const onCancel = vi.fn();
   container = document.body.createDiv();
-  createPinNoteSearch(container, { app, mapPath, onPick, onCancel });
+  createPinNoteSearch(container, { app, mapPath, onPick, onCancel, ...(createEntries && { createEntries }) });
   return { onPick, onCancel };
 }
 
@@ -175,6 +179,114 @@ describe('pin note search', () => {
       paths: ['Tavern.md', 'atlas-vtt/collections/Realm/scenes/Keep.atlasmap', 'atlas-vtt/collections/Other/scenes/Crypt.atlasmap'],
     });
     const names = [...container.querySelectorAll('.pin-result-name')].map((element) => element.textContent);
-    expect(names).toEqual(['Tavern', 'Keep']);
+    expect(names).toEqual(['Keep', 'Tavern']);
+  });
+
+  it('lists the map\'s folders of encounters among the notes by name, with how many each holds', () => {
+    const folder = (path: string, children: Array<TFile | TFolder>): TFolder => Object.assign(new TFolder(path), { children });
+    const root = 'atlas-vtt/collections/Realm/encounters';
+    const forest = folder(`${root}/Forest`, [new TFile(`${root}/Forest/wolves.json`), new TFile(`${root}/Forest/bandits.json`)]);
+    const { onPick } = setup({ mapPath: 'atlas-vtt/collections/Realm/scenes/Town.atlasmap', paths: ['Zoo.md', 'Forest notes.md', 'Bandit camp.md'], folders: { [root]: folder(root, [forest]) } });
+    const names = [...container.querySelectorAll('.pin-result-name')].map((element) => element.textContent);
+    expect(names).toEqual(['All encounters', 'Bandit camp', 'Forest', 'Forest notes', 'Zoo']);
+    type('forest');
+    expect(activeName()).toBe('Forest');
+    expect(container.querySelector('.pin-result-item.is-active .pin-result-badge')?.textContent).toBe('2 encounters');
+    press('Enter');
+    expect(onPick).toHaveBeenCalledWith(`${root}/Forest`);
+  });
+});
+
+describe('pin note search create entries', () => {
+  beforeEach(() => {
+    Element.prototype.scrollIntoView = vi.fn();
+  });
+  afterEach(() => container.remove());
+
+  const noteEntry = (create: (name: string) => Promise<PinLinkTarget | null>): PinCreateEntry => ({
+    id: 'note',
+    label: (name) => `Create note “${name}”`,
+    icon: 'file-plus',
+    problem: noteNameProblem,
+    create,
+  });
+  const names = (): Array<string | null> => [...container.querySelectorAll('.pin-result-name')].map((element) => element.textContent);
+  const settle = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it('offers them only for a typed name no file carries', () => {
+    setup({ createEntries: [noteEntry(async () => null)] });
+    expect(names()).not.toContain('Create note “”');
+    type('  ');
+    expect(container.querySelector('.pin-create-item')).toBeNull();
+    type('TAVERN');
+    expect(container.querySelector('.pin-create-item')).toBeNull();
+    type('town');
+    expect(container.querySelector('.pin-create-item')).toBeNull();
+    type('Tav');
+    expect(names()).toEqual(['Create note “Tav”', 'Tavern']);
+  });
+
+  it('lists them first and active, in the order given, and moves past them with the keys', async () => {
+    const dungeon = vi.fn(async () => ({ path: 'Dungeons/Crypt.atlasmap', sceneLevel: 'floor-a' }));
+    const { onPick } = setup({
+      createEntries: [noteEntry(async () => null), { id: 'dungeon', label: (name) => `Generate “${name}”`, icon: 'castle', create: dungeon }],
+    });
+    type('Te');
+    expect(names()).toEqual(['Create note “Te”', 'Generate “Te”', 'Temple']);
+    expect(activeName()).toBe('Create note “Te”');
+    press('ArrowDown');
+    press('Enter');
+    // It works in the dropdown's place, so it is handed the dropdown
+    expect(dungeon).toHaveBeenCalledWith('Te', container);
+    await settle();
+    // A scene made for the pin names the floor it opens on
+    expect(onPick).toHaveBeenCalledWith('Dungeons/Crypt.atlasmap', 'floor-a');
+  });
+
+  it('picks the path created on Enter, once, with the name as typed', async () => {
+    let finish: (target: PinLinkTarget) => void = () => undefined;
+    const create = vi.fn(() => new Promise<PinLinkTarget | null>((resolve) => { finish = resolve; }));
+    const { onPick } = setup({ createEntries: [noteEntry(create)] });
+    type(' Cellar ');
+    press('Enter');
+    press('Enter');
+    press('ArrowDown');
+    press('Enter');
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(create).toHaveBeenCalledWith('Cellar', container);
+    expect(onPick).not.toHaveBeenCalled();
+    finish({ path: 'Notes/Cellar.md' });
+    await settle();
+    expect(onPick).toHaveBeenCalledTimes(1);
+    expect(onPick).toHaveBeenCalledWith('Notes/Cellar.md', undefined);
+  });
+
+  it('picks nothing when the create is cancelled, and lets the search go on', async () => {
+    const { onPick } = setup({ createEntries: [noteEntry(async () => null)] });
+    type('Cellar');
+    press('Enter');
+    await settle();
+    expect(onPick).not.toHaveBeenCalled();
+    type('Tavern');
+    press('Enter');
+    expect(onPick).toHaveBeenCalledWith('Tavern.md');
+  });
+
+  it('disables the entry for an unusable name, says why, and leaves it out of the keys', () => {
+    const create = vi.fn(async () => 'x.md');
+    const { onPick } = setup({ createEntries: [noteEntry(create)] });
+    type('A: B');
+    const item = container.querySelector('.pin-create-item')!;
+    expect(item.classList.contains('is-disabled')).toBe(true);
+    expect(item.getAttribute('aria-disabled')).toBe('true');
+    expect(item.querySelector('.pin-result-reason')?.textContent).toContain('cannot contain');
+    expect(container.querySelector('.pin-empty-state')).toBeNull();
+    expect(activeName()).toBeUndefined();
+    press('Enter');
+    (item as HTMLElement).click();
+    expect(create).not.toHaveBeenCalled();
+    expect(onPick).not.toHaveBeenCalled();
+    type('.hidden');
+    expect(container.querySelector('.pin-result-reason')?.textContent).toContain('dot');
   });
 });

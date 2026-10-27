@@ -1,6 +1,7 @@
 import { MARKS_INTERVAL_MS } from '../protocol/index.ts';
 import { Application, Container } from 'pixi.js';
 import { getDomHost } from '../../host/dom';
+import { addRendererSystemsByEntry } from '../../pixi/utils/rendererSystems';
 import { RemoteDrags, type RemoteDrag } from './RemoteDrags.ts';
 import { RemoteLasers, type RemoteLaser } from './RemoteLasers.ts';
 import { RemoteMeasures, type MeasureRules, type RemoteMeasure } from './RemoteMeasures.ts';
@@ -94,6 +95,7 @@ export class MarkOverlay {
 
   private async start(host: OverlayHost): Promise<void> {
     this.starting ??= (async () => {
+      addRendererSystemsByEntry();
       const app = new Application();
       const canvas = getDomHost().createCanvas(host.canvas.ownerDocument);
       canvas.classList.add('atlas-online-marks');

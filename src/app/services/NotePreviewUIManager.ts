@@ -7,8 +7,15 @@ import { NotePreviewWindow } from './NotePreviewWindow';
 import { StatblockPreviewWindow } from './StatblockPreviewWindow';
 import { isStatblockNote, statblockNoteKnown, unparsedFrontmatterStatblock } from '../statblocks/resolve/statblockNote';
 import { MapLinkPreview } from './MapLinkPreview';
+import { EncounterFolderPreview } from './EncounterFolderPreview';
+import { isEncounterFolderLink } from '../links/atlasLinkTargets';
+import { linkedEncounterFolder } from '../encounters/encounterFolders';
+import { encountersInFolder, placeEncounter, rollEncounterFolder } from '../encounters/encounterFolderRoll';
+import { atlasViewOfStore } from '../plugin/atlasLeaves';
+import type { AtlasView } from '../atlas-view';
 import { linkedFilePath, linkedMapPath, linkedSceneFile } from './sceneLinks';
 import { runInBackground } from '../utils/backgroundTask';
+import { t } from '../i18n';
 import { findAtlasLeafByViewId } from '../utils/atlasLeafLookup';
 import { readPinnedNotePreviews } from '../stores/pinnedNotePreviewSlice';
 import { isModHeld } from '../keyboard/modKey';
@@ -339,6 +346,11 @@ export class NotePreviewUIManager {
     // Hide all unpinned previews before creating a new one
     this.hideAllUnpinnedPreviews();
     
+    if (isEncounterFolderLink(pin.notePath)) {
+      await this.showEncounterFolderPreview(pin, screenX, screenY, sourceLeaf);
+      return;
+    }
+
     // Scene links → lightweight tooltip with thumbnail + "Open Map" button; nothing for a scene not in this collection
     if (linkedMapPath(pin.notePath)) {
       const scene = linkedSceneFile(this.app, this.store.getState().mapPath, pin.notePath);
@@ -403,6 +415,28 @@ export class NotePreviewUIManager {
       { x: screenX, y: screenY },
       sourceLeaf ?? null,
     ));
+  }
+
+  /** The card of a pin that rolls encounters; nothing for a pin on a scene outside every collection. */
+  private async showEncounterFolderPreview(pin: PreviewAnchor, screenX: number, screenY: number, sourceLeaf?: WorkspaceLeaf | null): Promise<void> {
+    const folder = linkedEncounterFolder(this.store.getState().mapPath, pin.notePath);
+    if (!folder) return;
+    const hides = this.hideCount;
+    const encounters = await encountersInFolder(this.app, folder);
+    // A hide or another hover while the encounters were read wins
+    if (hides !== this.hideCount) return;
+    const view = (): AtlasView | null => atlasViewOfStore(this.app, this.store);
+    const preview = new EncounterFolderPreview({
+      folder,
+      encounters,
+      pin,
+      position: { x: screenX, y: screenY },
+      doc: this.previewDocument(sourceLeaf),
+      roll: () => runInBackground(rollEncounterFolder(this.app, view(), folder), `Rolling an encounter from ${folder}`, t('pin.encounters.failed')),
+      place: (encounter) => runInBackground(placeEncounter(this.app, view(), encounter), `Placing ${encounter.name}`, t('pin.encounters.failed')),
+      onClosed: (closed) => this.handlePreviewClosed(closed),
+    });
+    this.activePreviews.set(`${pin.notePath}::${pin.id}`, preview);
   }
 
   private trackNotePreview(preview: NotePreviewWindow): void {
