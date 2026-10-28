@@ -113,6 +113,26 @@ it('saves the default crop converted in the background, and crops again once the
   expect(crop.mock.calls.map(([file]: [File]) => file.name)).toEqual(['wolf.png']);
 });
 
+it('saves a whole ringless upload at default fit and renders edited scales and positions', async () => {
+  const { app, files, assets } = setup();
+  crop.mockImplementation(async (file: File) => converted(`${file.name} scaled`));
+  const waitForOptimized = vi.fn(async (id: string, kind: string) => kind === 'whole' ? converted(`${id} whole`) : undefined);
+  const previews = [
+    preview('goblin', { showRing: false }),
+    preview('wolf', { showRing: false, imageScale: 2 }),
+    preview('bat', { showRing: false, imageScale: 0.5, imagePosition: { x: 0.1, y: -0.1 } }),
+  ];
+  expect(await saveTokenPreviews({ app, assetService: assets, mode: 'token', previews, collection: 'Default', tags: [], waitForOptimized })).toBe(3);
+  expect(waitForOptimized).toHaveBeenCalledExactlyOnceWith('goblin', 'whole');
+  expect(crop.mock.calls).toEqual([
+    [previews[1]!.file, 2, { x: 0, y: 0 }, expect.any(AbortSignal), false, false],
+    [previews[2]!.file, 0.5, { x: 0.1, y: -0.1 }, expect.any(AbortSignal), false, false],
+  ]);
+  const tokens = await assets.getTokenAssets();
+  expect(tokens.every(token => token.showRing === false)).toBe(true);
+  expect(files.get(tokens.find(token => token.name === 'wolf')!.imagePath)).toBe('wolf.png scaled image');
+});
+
 it('trashes the files of a batch the index refuses, and keeps them when the write may have landed', async () => {
   const { app, files, assets } = setup();
   const options = { app, assetService: assets, mode: 'token' as const, previews: [preview('goblin')], collection: 'Default', tags: [], waitForOptimized: async () => converted('goblin') };
