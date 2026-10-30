@@ -14,6 +14,7 @@
     "build:ci": "cross-env COPY_ON_CHANGE=false vite build",
     "postbuild": "node scripts/copy-plugin.js",
     "test": "vitest --project unit",
+    "test:slow": "vitest run --project slow",
     "test:gpu": "vitest run --project gpu",
     "changelog:generate": "node scripts/changelog.js",
     "changelog:check": "node scripts/changelog.js --check",

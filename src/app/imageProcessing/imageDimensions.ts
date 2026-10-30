@@ -88,8 +88,9 @@ export async function imageHeader(blob: Blob): Promise<ImageHeader | null> {
   for (let length = HEADER_BYTES; ; length *= 16) {
     const bytes = new DataView(await blob.slice(0, length).arrayBuffer());
     const header = headerOf(bytes);
-    // A JPEG's frame header may lie past the metadata a camera or Photoshop writes first: read further until it is found.
-    if (header || length >= blob.size || !isJpegStart(bytes)) return header;
+    // A JPEG's frame header may lie past the metadata a camera or Photoshop writes first: read further until it is found,
+    // or until a slice comes back short, which is the file's end whatever `size` says.
+    if (header || bytes.byteLength < length || length >= blob.size || !isJpegStart(bytes)) return header;
   }
 }
 
