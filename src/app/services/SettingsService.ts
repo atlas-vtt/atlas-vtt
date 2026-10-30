@@ -27,6 +27,7 @@ import type { InitiativeTurnOptions } from '../initiative/turnOptions';
 import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
 import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
 import { readDungeonGeneratorSettings, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import type { TableTvSettings } from './tableTvSettings';
 
 export { TUTORIAL_IDS } from './atlasSettings';
 export type { AtlasSettings, NavigationInputMode, NavigationSettings, TutorialId } from './atlasSettings';
@@ -454,6 +455,15 @@ export class SettingsService {
     const stored: Record<string, unknown> = this.settings.localPlayerView;
     stored.tokenBarsCarriedOver = true;
     this.scheduleSave();
+  }
+
+  getTableTvSettings(): TableTvSettings {
+    return { ...this.settings.tableTv };
+  }
+
+  setTableTvSettings(changes: Partial<TableTvSettings>): void {
+    this.settings.tableTv = { ...this.settings.tableTv, ...changes };
+    this.commit();
   }
 
   getLocalPlayerViewSettings(): AtlasSettings['localPlayerView'] {

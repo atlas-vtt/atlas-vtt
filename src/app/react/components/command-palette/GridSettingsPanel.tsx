@@ -12,6 +12,7 @@ import { DEFAULT_CELL_NUMBER_OPACITY, isCellNumberFormat, type CellNumberFormat 
 import { debounce } from '../../../../utils/debounce';
 import { useDetectGridOnNewScenes } from '../../hooks/useDetectGridOnNewScenes';
 import { t } from '../../../i18n';
+import { SettingsService } from '../../../services/SettingsService';
 
 /** `undefined` leaves the colour to the grid, which picks black or white from the map's brightness. */
 const GRID_COLORS: ReadonlyArray<{ value: string | undefined; label: string }> = [
@@ -87,6 +88,9 @@ export function GridSettingsPanel({
   const currentLineType: string = currentGrid?.lineType ?? 'solid';
   // Held locally: the palette does not re-render when the store's grid changes
   const [hexNumbers, setHexNumbers] = React.useState<CellNumberFormat | undefined>(currentGrid?.cellNumbers);
+  const [tableTvTrueScale, setTableTvTrueScale] = React.useState(currentGrid?.tableTvTrueScale !== false);
+  // Only asked where the player view is a table TV at true scale (Atlas' settings, TrueScale)
+  const usesTrueScale = SettingsService.forApp(view?.app)?.getTableTvSettings().trueScale === true;
   const [hexNumberOpacity, setHexNumberOpacity] = React.useState(
     currentGrid?.cellNumberOpacity ?? DEFAULT_CELL_NUMBER_OPACITY,
   );
@@ -127,6 +131,17 @@ export function GridSettingsPanel({
           view?.atlasStore?.getState().setSnapToGrid(next);
         }}
       />
+
+      {usesTrueScale && <SettingToggleRow
+        label={t('grid.tableTvTrueScale')}
+        hint={t('grid.tableTvTrueScaleHint')}
+        value={tableTvTrueScale}
+        onToggle={() => {
+          const next = !tableTvTrueScale;
+          setTableTvTrueScale(next);
+          patchGrid({ tableTvTrueScale: next });
+        }}
+      />}
 
       <SettingRow label={t('grid.type')}>
         <ObsidianMenuDropdown

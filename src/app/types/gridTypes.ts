@@ -34,6 +34,8 @@ export interface GridState {
   measurementType?: 'units' | 'abstract'; // Measurement system to use
   /** Set on new scenes: align the grid to the map image on the first load, then cleared. */
   autoDetect?: boolean;
+  /** TrueScale: lock this scene's player zoom to the real-world cell size. Unset counts as on. */
+  tableTvTrueScale?: boolean;
   /**
    * How the map image is drawn stretched so that this regular grid fits the cells printed on it
    * (hexes a few percent too tall, squares that are rectangles). Part of the alignment: size and

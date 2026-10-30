@@ -18,6 +18,8 @@ import type { Screen } from '../types/playerFrame';
 import { presentedSceneOf, type PresentedScene } from './presentedScene';
 import { onMapRulesChange } from './mapRules';
 import { showNotice } from '../ui/notice';
+import { tableTvOf, type TableTv } from './tableTvFrame';
+import { applyTableTvLook, PLAYER_OVERLAYS_CLASS } from './playerWindowTurn';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
 const PLAYER_WINDOW_BODY_CLASS = 'atlas-player-window';
@@ -363,7 +365,11 @@ export class PlayerWindowService {
       const canvas = content.createEl('canvas');
       canvas.id = 'atlas-player-canvas';
 
-      this.sceneOverlays.forEach((overlay) => overlay.mount(content));
+      // Widgets, initiative, dice and the freeze badge turn with the map on a sideways table TV
+      const overlayLayer = content.createDiv({ cls: PLAYER_OVERLAYS_CLASS });
+      const applyTurn = (): void => applyTableTvLook(body, overlayLayer, this.settingsService.getTableTvSettings());
+      applyTurn();
+      this.sceneOverlays.forEach((overlay) => overlay.mount(overlayLayer));
       this.settingsUnsubscribe?.();
       // Player view settings decide which layers players see
       // So do the rules the scene plays by: which resources they see
@@ -371,14 +377,17 @@ export class PlayerWindowService {
         this.mirror?.markStale();
         this.sceneOverlays.forEach((overlay) => overlay.refresh?.());
       });
-      const unsubscribeSettings = this.settingsService.onChange(() => this.mirror?.markStale());
+      const unsubscribeSettings = this.settingsService.onChange(() => {
+        this.mirror?.markStale();
+        applyTurn();
+      });
       this.settingsUnsubscribe = () => {
         unsubscribeSettings();
         stopRules();
       };
 
       // Create freeze indicator
-      const freezeIndicator = content.createDiv();
+      const freezeIndicator = overlayLayer.createDiv();
       freezeIndicator.id = 'atlas-player-freeze-indicator';
       const freezeIcon = freezeIndicator.createSvg('svg', { attr: {
         width: 16,
@@ -457,6 +466,7 @@ export class PlayerWindowService {
       heldFrame: () => this.heldFrame,
       frozenCamera: () => this.frozenCamera,
       settings: () => this.settingsService.getLocalPlayerViewSettings(),
+      tableTv: () => this.tableTv(),
       onFrame: (camera) => this.recordPlayerCamera(camera),
     });
     this.mirror = mirror;
@@ -482,6 +492,12 @@ export class PlayerWindowService {
   private windowScreen(canvas: HTMLCanvasElement): Screen | null {
     if (!this.playerWindow || this.playerWindow.closed) return null;
     return { width: canvas.clientWidth, height: canvas.clientHeight, resolution: this.playerWindow.devicePixelRatio || 1 };
+  }
+
+  /** The table TV the player window is, read anew for every frame; none while the window is closed. */
+  private tableTv(): TableTv | undefined {
+    const win = this.playerWindow;
+    return win && !win.closed ? tableTvOf(win, this.settingsService.getTableTvSettings()) : undefined;
   }
 
   /** Persist the camera players see so a restored window reopens on the same framing. */

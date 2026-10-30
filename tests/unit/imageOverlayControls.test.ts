@@ -51,6 +51,15 @@ describe('ImageOverlayControls', () => {
     container.remove();
   });
 
+  it('pans an image on a turned table TV the way the pointer moves', () => {
+    const container = document.body.createDiv({ cls: 'atlas-image-display' });
+    const image = container.createEl('img');
+    // Turned a quarter clockwise: a drag to the right on screen is a drag up in the turned layer
+    new ImageOverlayControls(container, image, window, vi.fn(), () => 90);
+    click(container, { x: 20, y: 20 }, { x: 80, y: 20 });
+    expect(image.style.transform).toBe('translate(0px, -60px) scale(1)');
+  });
+
   it('stops listening once detached', () => {
     const { container, dismiss, controls } = setup();
     controls.detach();

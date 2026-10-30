@@ -7,6 +7,8 @@ import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/dic
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import type { InitiativeDock } from '../initiative/initiativeLayout';
 import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
+import { DEFAULT_SHOWN_IMAGE_LAYOUT, readShownImageLayout, type ShownImageLayout } from './shownImageLayout';
 
 /**
  * How wheel events drive the map viewport.
@@ -77,6 +79,10 @@ export interface AtlasSettings {
     /** Online play: everyone at the table sees everyone else's cursor on the shared map. */
     showCursors: boolean;
   };
+  /** The player view on a TV lying on the table (TrueScale). Read with `getTableTvSettings`. */
+  tableTv: TableTvSettings;
+  /** How large a picture displayed to the players is and where it sits. */
+  shownImage: ShownImageLayout;
 }
 
 /** The input mode a device starts with: Macs mostly have a trackpad, other computers a mouse. */
@@ -116,6 +122,8 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
     showCommandPalette: false, // Hide command palette
     showCursors: false,
   },
+  tableTv: DEFAULT_TABLE_TV_SETTINGS,
+  shownImage: DEFAULT_SHOWN_IMAGE_LAYOUT,
 };
 
 /**
@@ -161,6 +169,8 @@ export function readStoredSettings(stored: unknown, inputMode: NavigationInputMo
       navigation: { inputMode },
       experimental: isRecord(record.experimental) ? merged.experimental : {},
       toolbar: readToolbarLayout(record.toolbar),
+      tableTv: readTableTvSettings(record.tableTv),
+      shownImage: readShownImageLayout(record.shownImage),
     },
     // Never rewritten on reading: the settings are shared with devices that may run another version.
     foreignHotkeys: keptHotkeys(record.hotkeys),

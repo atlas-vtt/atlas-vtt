@@ -117,8 +117,10 @@ function crossfade(shouldSettle: boolean): FrameMotion {
  */
 function drawAsShown(context: CanvasRenderingContext2D, element: HTMLCanvasElement): void {
   const style = element.win.getComputedStyle(element);
-  // A computed scale is `matrix(a, 0, 0, a, 0, 0)`; anything else (`none`) is unscaled
-  const scale = Number(/^matrix\(([^,]+),/.exec(style.transform)?.[1] ?? 1) || 1;
+  // A computed transform is `matrix(a, b, c, d, e, f)`, whose scale is the length of (a, b) also
+  // when a table TV turns the snapshot (player-window.scss); anything else (`none`) is unscaled
+  const matrix = /^matrix\(([^,]+),([^,]+),/.exec(style.transform);
+  const scale = matrix ? Math.hypot(Number(matrix[1]), Number(matrix[2])) || 1 : 1;
   const { width, height } = element;
   context.globalAlpha = Number(style.opacity);
   context.drawImage(element, (width * (1 - scale)) / 2, (height * (1 - scale)) / 2, width * scale, height * scale);

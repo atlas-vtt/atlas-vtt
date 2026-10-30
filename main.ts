@@ -46,6 +46,7 @@ import { changelogSettingsSection } from './src/app/settings/changelogSettingsSe
 import { hotkeySettingsSection, onboardingSettingsSection } from './src/app/settings/hotkeySettingsSection';
 import { navigationSettingsSection } from './src/app/settings/navigationSettingsSection';
 import { diceSettingsSection } from './src/app/settings/diceSettingsSection';
+import { tableTvSettingsSection } from './src/app/settings/tableTvSettingsSection';
 import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
@@ -204,6 +205,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
+      tableTvSettingsSection(this.settingsService),
       mapsSettingsSection(this.settingsService),
       mapImageCacheSettingsSection(() => TileDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),

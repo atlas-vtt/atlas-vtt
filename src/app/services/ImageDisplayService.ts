@@ -3,6 +3,8 @@ import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/Cont
 import { PlayerWindowService } from './PlayerWindowService';
 import { playImageEnter, playImageExit } from './imageDisplayMotion';
 import { ImageOverlayControls } from './imageOverlayControls';
+import { SettingsService } from './SettingsService';
+import { applyShownImageLayout, readShownImageLayout } from './shownImageLayout';
 import './image-display.scss';
 import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
@@ -25,6 +27,8 @@ export class ImageDisplayService {
   /** Overlays still fading out after being closed or replaced. */
   private leavingDisplays = new Set<ImageDisplay>();
   private controls: ImageOverlayControls | null = null;
+  /** Stops following the settings, which the shown image's size, place and turn come from. */
+  private stopLayout: (() => void) | null = null;
   private boundHandleContextMenu: (event: MouseEvent) => void;
   private boundStoreContextMenuTarget: (event: MouseEvent) => void;
   private lastContextMenuTarget: HTMLElement | null = null;
@@ -313,7 +317,9 @@ export class ImageDisplayService {
     const previous = this.detachImageDisplay();
 
     this.imageContainer = doc.body.createDiv({ cls: 'atlas-image-display' });
-    this.imageStage = this.imageContainer.createDiv({ cls: 'atlas-image-display__stage' });
+    // Turns with a table TV (the body's --atlas-tv-rotation); the close button stays on the window
+    const turn = this.imageContainer.createDiv({ cls: 'atlas-image-display__turn' });
+    this.imageStage = turn.createDiv({ cls: 'atlas-image-display__stage' });
     this.currentImage = this.imageStage.createEl('img', { cls: 'atlas-image-display__image' });
     this.currentImage.src = imageUrl;
 
@@ -321,7 +327,13 @@ export class ImageDisplayService {
     closeButton.setAttribute('aria-label', t('common.close'));
     closeButton.addEventListener('click', () => this.closeImageDisplay());
 
-    this.controls = new ImageOverlayControls(this.imageContainer, this.currentImage, playerWindow, () => this.closeImageDisplay());
+    const settings = SettingsService.forApp(this.app);
+    const container = this.imageContainer;
+    const applyLayout = (): void => applyShownImageLayout(container, readShownImageLayout(settings?.getSetting('shownImage')));
+    applyLayout();
+    this.stopLayout = settings?.onChange(applyLayout) ?? null;
+    const turnOf = (): number => settings?.getTableTvSettings().rotation ?? 0;
+    this.controls = new ImageOverlayControls(this.imageContainer, this.currentImage, playerWindow, () => this.closeImageDisplay(), turnOf);
 
     // A replaced image leaves above the new one, so the scrim stays dark while they crossfade
     previous?.container.before(this.imageContainer);
@@ -479,6 +491,8 @@ export class ImageDisplayService {
     if (!this.imageContainer || !this.imageStage || !this.currentImage) return null;
     this.controls?.detach();
     this.controls = null;
+    this.stopLayout?.();
+    this.stopLayout = null;
     const display: ImageDisplay = { container: this.imageContainer, stage: this.imageStage, imageUrl: this.currentImage.src };
     // A leaving overlay may sit above the next image; let input reach that one
     display.container.addClass('is-leaving');

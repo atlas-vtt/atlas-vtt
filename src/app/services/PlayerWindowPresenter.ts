@@ -303,6 +303,8 @@ async function waitForRenderedFrameSource(view: AtlasView): Promise<PlayerFrameS
       rollSources: { viewId: view.viewId, mapPath, shownTokens: (tokenIds) => renderer.playerRollTokens(mapPath, tokenIds) },
     } : {}),
     withPlayerSafeFrame: (copy, settings, frame) => renderer.withPlayerSafeFrame(copy, settings, frame),
+    // Hex sizes are flat-to-flat, so true scale sizes a hex across its flats
+    getGridSize: () => (view.atlasStore.getState().grid?.tableTvTrueScale === false ? undefined : renderer.getGridOptions()?.size),
     ...(badgeNumbers ? { badgeNumbers } : {}),
     ...(rendersOnChange(app) ? {
       beforeRender: {
