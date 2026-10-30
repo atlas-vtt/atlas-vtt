@@ -84,8 +84,9 @@ describe('a pyramid cut from bands', () => {
   }, 30_000);
 
   it('cuts a sub-pyramid from a coarser base level, for the reduced first pass', async () => {
-    const pyramid = pyramidOf(4100, 3000);
-    const { bands, levels } = await cutInBands(4100, 3000, [3, 100], 3);
+    // 4,100 wide for a fourth level to cut from; 700 high keeps a CI runner's time short.
+    const pyramid = pyramidOf(4100, 700);
+    const { bands, levels } = await cutInBands(4100, 700, [3, 100], 3);
     expect(new Set(bands.map((band) => band.level))).toEqual(new Set(pyramid.levels.slice(3).map((level) => level.index)));
     for (const band of bands) {
       const level = levels[band.level - 3]!;

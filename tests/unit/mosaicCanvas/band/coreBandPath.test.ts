@@ -16,7 +16,8 @@ describe('the tessera core reading a map in bands', () => {
   useReadableBlobs();
 
   it('opens the map with the pyramid the decoder names and serves a tessera once the build has written it', async () => {
-    const [width, height] = [2100, 1300];
+    // 2,100 wide for the eighth pass, 600 high for a second tessera row: small enough for a CI runner.
+    const [width, height] = [2100, 600];
     const decoder = fakeBandDecoder({ width, height, bandRows: 200 });
     const h = coreHarness({ bandDecoderOf: () => Promise.resolve(decoder) });
     const identity = { path: 'huge.png', size: 32, mtime: 1 };
@@ -42,7 +43,7 @@ describe('the tessera core reading a map in bands', () => {
   }, 60_000);
 
   it('composes the overview asked for before the build wrote a tessera, waiting for all of them at once, and the build goes on', async () => {
-    const [width, height] = [4100, 3000];
+    const [width, height] = [4100, 700];
     const decoder = fakeBandDecoder({ width, height, bandRows: 200 });
     const h = coreHarness({ bandDecoderOf: () => Promise.resolve(decoder) });
     const opened = await h.core.open({ path: 'huge.png', size: 32, mtime: 1 }, fakePng(width, height));
@@ -71,7 +72,7 @@ describe('the tessera core reading a map in bands', () => {
   });
 
   it('resumes a build that gave way to a map being opened, skipping the tesserae it wrote', async () => {
-    const [width, height] = [4100, 3000];
+    const [width, height] = [4100, 700];
     let stops = 0;
     const decoder = fakeBandDecoder({ width, height, bandRows: 400 });
     // Room for the band build alone, not for it and the second map's decoded levels together.
@@ -101,7 +102,7 @@ describe('a window of a map read from the tessera core', () => {
   useReadableBlobs();
 
   it('is composed from the tesserae of the finest level that shows it within the side asked for', async () => {
-    const [width, height] = [4100, 3000];
+    const [width, height] = [4100, 1100];
     const decoder = fakeBandDecoder({ width, height, bandRows: 400 });
     const h = coreHarness({ bandDecoderOf: () => Promise.resolve(decoder) });
     const opened = await h.core.open({ path: 'huge.png', size: 32, mtime: 1 }, fakePng(width, height));
@@ -111,9 +112,9 @@ describe('a window of a map read from the tessera core', () => {
     const bitmap = await h.core.window(9, opened.opened.handle, { x: 600, y: 400, width: 1000, height: 600 }, 1024);
     expect(bitmap && [bitmap.width, bitmap.height]).toEqual([1000, 600]);
     expect(h.graphics.composes.at(-1)).toEqual({ width: 1000, height: 600, parts: 6 });
-    // 4,100 × 3,000 within 1,024: two halvings leave 1,025 px, one too many, so three: level 3, 513 × 375 pixels.
+    // 4,100 × 1,100 within 1,024: two halvings leave 1,025 px, one too many, so three: level 3, 513 × 138 pixels.
     const whole = await h.core.window(10, opened.opened.handle, { x: 0, y: 0, width, height }, 1024);
-    expect(whole && [whole.width, whole.height]).toEqual([513, 375]);
+    expect(whole && [whole.width, whole.height]).toEqual([513, 138]);
     await h.completed(opened.opened.hash);
     h.core.close(opened.opened.handle);
   }, 60_000);

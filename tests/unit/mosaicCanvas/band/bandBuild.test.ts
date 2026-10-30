@@ -100,6 +100,11 @@ interface Bench {
 
 const HASH = 'a'.repeat(64);
 
+/** Whether two pixel buffers hold the same bytes; a deep equality over a megabyte of pixels is what made these tests slow. */
+function samePixels(a: Uint8ClampedArray, b: Uint8ClampedArray): boolean {
+  return a.length === b.length && Buffer.from(a.buffer, a.byteOffset, a.length).equals(Buffer.from(b.buffer, b.byteOffset, b.length));
+}
+
 function bench(backend = new MemoryTesseraBackend()): Bench {
   const store = new TesseraStore({ backend, estimateQuota: () => Promise.resolve(null) });
   const graphics = new PixelGraphics();
@@ -125,7 +130,8 @@ describe('a pyramid built from bands', () => {
   });
 
   it('writes every tessera of every level with the very pixels of the whole image, the coarse levels from the eighth', async () => {
-    const [width, height] = [2100, 1300];
+    // 2,100 wide for the eighth pass, 600 high for two tessera rows: enough for every path, small enough for a CI runner.
+    const [width, height] = [2100, 600];
     const pyramid = pyramidOf(width, height);
     const b = bench();
     const decoder = fakeBandDecoder({ width, height, bandRows: 53 });
@@ -141,7 +147,7 @@ describe('a pyramid built from bands', () => {
           const ref = { level: level.index, col, row };
           const rect = tesseraSourceRect(pyramid, ref);
           const expected = crop(new PixelBitmap(level.width, level.height, levels.get(level.index)!), rect);
-          expect(await b.tessera(ref), tesseraKey(ref)).toEqual(expected);
+          expect(samePixels(await b.tessera(ref), expected), tesseraKey(ref)).toBe(true);
         }
       }
     }
@@ -150,7 +156,7 @@ describe('a pyramid built from bands', () => {
   }, 60_000);
 
   it('stores the coarse levels before any fine tessera, so the overview shows while the full pass runs', async () => {
-    const [width, height] = [2100, 1300];
+    const [width, height] = [2100, 600];
     const pyramid = pyramidOf(width, height);
     const b = bench();
     const firstFine: number[] = [];
@@ -186,7 +192,8 @@ describe('a pyramid built from bands', () => {
   });
 
   it('resumes from what an earlier build wrote, decoding only the pass with tesserae missing', async () => {
-    const [width, height] = [4100, 3000];
+    // 4,100 wide for the eighth pass; 1,100 high: three tessera rows, the stop at row 1,000 leaves the first written and the rest not.
+    const [width, height] = [4100, 1100];
     const pyramid = pyramidOf(width, height);
     const backend = new MemoryTesseraBackend();
     const first = bench(backend);
@@ -205,7 +212,7 @@ describe('a pyramid built from bands', () => {
     const total = pyramid.levels.reduce((sum, level) => sum + level.cols * level.rows, 0);
     expect((await second.store.existingTesserae(HASH)).size).toBe(total);
     const levels = expectedLevels(pyramid, width, height);
-    const ref = { level: 0, col: 3, row: 4 };
-    expect(await second.tessera(ref)).toEqual(crop(new PixelBitmap(pyramid.levels[0]!.width, pyramid.levels[0]!.height, levels.get(0)!), tesseraSourceRect(pyramid, ref)));
+    const ref = { level: 0, col: 3, row: 2 };
+    expect(samePixels(await second.tessera(ref), crop(new PixelBitmap(pyramid.levels[0]!.width, pyramid.levels[0]!.height, levels.get(0)!), tesseraSourceRect(pyramid, ref)))).toBe(true);
   }, 60_000);
 });
