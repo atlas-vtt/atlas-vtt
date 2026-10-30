@@ -87,6 +87,8 @@ export interface MirrorInputs {
   heldFrame(): HTMLCanvasElement | null;
   /** The table TV the window is: true scale, and the calibration ruler. Without it frames are `playerFrame`'s. */
   tableTv?(): TableTv | undefined;
+  /** Most pixels a frame is rendered with (`playerFrame`); its default without. */
+  pixelBudget?(): number;
   /**
    * The camera players stay on while the DM's own moves. One with a world rectangle (`width`,
    * `height`) keeps showing that rectangle; one without is centred in the DM's screen as it is now.
@@ -240,7 +242,7 @@ export class PlayerFrameMirror {
   private frameOf(source: PlayerFrameSource): PlayerFrame | null {
     const window = this.inputs.window();
     const camera = this.cameraOf(source);
-    return window && camera ? tableTvPlayerFrame(window, camera, source.getScreen?.(), this.inputs.tableTv?.(), source.getGridSize?.()) : null;
+    return window && camera ? tableTvPlayerFrame(window, camera, source.getScreen?.(), this.inputs.tableTv?.(), source.getGridSize?.(), this.inputs.pixelBudget?.()) : null;
   }
 
   /** Bring a live frame of `source`, rendered through `frames`, onto the players' canvas. */

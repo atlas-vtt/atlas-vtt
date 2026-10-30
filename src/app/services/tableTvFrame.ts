@@ -44,9 +44,10 @@ export function targetCellPx(tv: TableTv): number {
  */
 export function tableTvPlayerFrame(
   window: Screen, camera: PlayerCameraState, pane: Screen | undefined, tv: TableTv | undefined, cellWorld: number | undefined,
+  pixelBudget?: number,
 ): PlayerFrame | null {
   const view = viewOf(camera, pane);
-  const frame = view ? playerFrame(window, view, pane) : null;
+  const frame = view ? playerFrame(window, view, pane, pixelBudget) : null;
   if (!frame || !tv?.settings.trueScale || !cellWorld || !(cellWorld > 0)) return frame;
   // Points (CSS pixels) per world pixel: the cell's device pixels on the glass, in CSS pixels
   return { ...frame, scale: targetCellPx(tv) / tv.devicePixelRatio / cellWorld };

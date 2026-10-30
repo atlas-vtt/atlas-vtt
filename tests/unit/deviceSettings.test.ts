@@ -19,20 +19,25 @@ describe('the settings this device keeps to itself', () => {
     before.setAnimateMaps(false);
     before.setLightingQuality('saver');
     before.setNavigationSettings({ inputMode: 'mouse' });
+    expect(before.isPlayerView4k()).toBe(false);
+    before.setPlayerView4k(true);
 
     const after = await reloaded(app);
 
     expect(after.getAnimateMaps()).toBe(false);
     expect(after.getLightingQuality()).toBe('saver');
     expect(after.getNavigationSettings().inputMode).toBe('mouse');
+    expect(after.isPlayerView4k()).toBe(true);
 
     after.setAnimateMaps(true);
     after.setLightingQuality('high');
     after.setNavigationSettings({ inputMode: 'trackpad' });
+    after.setPlayerView4k(false);
     const again = await reloaded(app);
     expect(again.getAnimateMaps()).toBe(true);
     expect(again.getLightingQuality()).toBe('high');
     expect(again.getNavigationSettings().inputMode).toBe('trackpad');
+    expect(again.isPlayerView4k()).toBe(false);
   });
 
   it('read animating maps as the first builds stored it, and as never chosen when nothing is stored', async () => {

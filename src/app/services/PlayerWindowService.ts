@@ -13,7 +13,7 @@ import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE, type PlayerCameraState } from 
 import { freezeCanvasFrame, type SceneTransition } from '../pixi/sceneTransition';
 import { t } from '../i18n';
 import { cannotRender, PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
-import { framedCamera } from './playerFrame';
+import { framedCamera, PLAYER_FRAME_4K_PIXEL_BUDGET, PLAYER_FRAME_PIXEL_BUDGET } from './playerFrame';
 import type { PlayerFrame, Screen, Size } from '../types/playerFrame';
 import { presentedSceneOf, type PresentedScene } from './presentedScene';
 import { onMapRulesChange } from './mapRules';
@@ -191,7 +191,7 @@ export class PlayerWindowService {
     const window = canvas?.instanceOf(HTMLCanvasElement) ? this.windowScreen(canvas) : null;
     const camera = this.isWindowOpen() ? this.frozenCamera ?? this.cameraPlayersSee() : null;
     if (!source || !window || !camera) return null;
-    return tableTvPlayerFrame(window, camera, source.getScreen?.(), this.tableTv(), source.getGridSize?.());
+    return tableTvPlayerFrame(window, camera, source.getScreen?.(), this.tableTv(), source.getGridSize?.(), this.pixelBudget());
   }
 
   /**
@@ -569,6 +569,7 @@ export class PlayerWindowService {
       frozenCamera: () => this.frozenCamera,
       settings: () => this.settingsService.getLocalPlayerViewSettings(),
       tableTv: () => this.tableTv(),
+      pixelBudget: () => this.pixelBudget(),
       onFrame: (camera) => this.recordPlayerCamera(camera),
     });
     this.mirror = mirror;
@@ -600,6 +601,11 @@ export class PlayerWindowService {
   private tableTv(): TableTv | undefined {
     const win = this.playerWindow;
     return win && !win.closed ? tableTvOf(win, this.settingsService.getTableTvSettings()) : undefined;
+  }
+
+  /** Most pixels a players' frame is rendered with on this device (the player view settings). */
+  private pixelBudget(): number {
+    return this.settingsService.isPlayerView4k() ? PLAYER_FRAME_4K_PIXEL_BUDGET : PLAYER_FRAME_PIXEL_BUDGET;
   }
 
   /** Persist the camera players see so a restored window reopens on the same framing. */
