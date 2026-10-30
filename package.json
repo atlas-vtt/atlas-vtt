@@ -78,7 +78,7 @@
     "autoprefixer": "^10.6.1",
     "cross-env": "^7.0.3",
     "esbuild": "0.28.2",
-    "eslint": "^9.39.5",
+    "eslint": "^10.13.0",
     "eslint-plugin-obsidianmd": "^0.4.2",
     "fast-check": "4.10.2",
     "jsdom": "^26.1.0",
