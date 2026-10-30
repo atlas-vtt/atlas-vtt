@@ -267,4 +267,43 @@ describe('player camera freeze', () => {
     expect(service.isFrozen()).toBe(false);
     expect(playerWindowStore.getState().isFrozen).toBe(false);
   });
+
+  it('frames players on a picked point at their zoom, frozen there, only on the scene they see', () => {
+    const { service, session, setDmCamera, nextFrame } = setup();
+    setDmCamera({ centerX: 10, centerY: 20, scale: 1.5 });
+    nextFrame();
+    expect(service.framePlayersOn('scene-b', 300, 400)).toBe(false);
+    expect(service.isFrozen()).toBe(false);
+
+    expect(service.framePlayersOn('scene-a', 300, 400)).toBe(true);
+    expect(service.isFrozen()).toBe(true);
+    expect(session.camera).toMatchObject({ centerX: 300, centerY: 400, scale: 1.5 });
+    // The DM's camera no longer moves them
+    setDmCamera({ centerX: 0, centerY: 0, scale: 3 });
+    nextFrame();
+    expect(session.camera).toMatchObject({ centerX: 300, centerY: 400, scale: 1.5 });
+  });
+
+  it('outlines what players see of their scene, and none of another', () => {
+    const { service, setDmCamera, nextFrame } = setup();
+    setDmCamera({ centerX: 10, centerY: 20, scale: 1 });
+    nextFrame();
+    // The 800 × 600 pane fits into the 16:9 window by its height
+    expect(service.playerViewFrame('scene-a')).toEqual({ centerX: 10, centerY: 20, width: 600 * 1280 / 720, height: 600 });
+    expect(service.playerViewFrame('scene-b')).toBeNull();
+  });
+
+  it('presents another scene on a picked point, at the zoom players have', () => {
+    const { service, source, session, setDmCamera, nextFrame } = setup();
+    setDmCamera({ centerX: 10, centerY: 20, scale: 1.5 });
+    nextFrame();
+    const camera = service.playerCameraAt(300, 400);
+    expect(camera).toMatchObject({ centerX: 300, centerY: 400, scale: 1.5 });
+
+    setDmCamera({ centerX: 0, centerY: 0, scale: 3 });
+    service.presentCanvas(source, 'scene-b', undefined, camera!);
+    expect(playerWindowStore.getState().shownTabId).toBe('scene-b');
+    expect(service.isFrozen()).toBe(true);
+    expect(session.camera).toMatchObject({ centerX: 300, centerY: 400, scale: 1.5 });
+  });
 });

@@ -14,11 +14,11 @@ import { freezeCanvasFrame, type SceneTransition } from '../pixi/sceneTransition
 import { t } from '../i18n';
 import { cannotRender, PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
 import { framedCamera } from './playerFrame';
-import type { Screen } from '../types/playerFrame';
+import type { PlayerFrame, Screen, Size } from '../types/playerFrame';
 import { presentedSceneOf, type PresentedScene } from './presentedScene';
 import { onMapRulesChange } from './mapRules';
 import { showNotice } from '../ui/notice';
-import { tableTvOf, type TableTv } from './tableTvFrame';
+import { frameWorldSize, tableTvOf, tableTvPlayerFrame, type TableTv } from './tableTvFrame';
 import { applyTableTvLook, PLAYER_OVERLAYS_CLASS } from './playerWindowTurn';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
@@ -110,6 +110,54 @@ export class PlayerWindowService {
   }
 
   /**
+   * Freezes players centred on the world point (x, y) of the scene shown in `tabId`, at the zoom
+   * they have (Frame player view). Returns false, changing nothing, when players see another scene.
+   */
+  public framePlayersOn(tabId: string, x: number, y: number): boolean {
+    const camera = this.framingCamera(tabId);
+    if (!camera) return false;
+    this.setFrozenCamera({ ...camera, centerX: x, centerY: y });
+    return true;
+  }
+
+  /** The camera players are on, moved to the world point (x, y): to present another scene framed there; null while the window is closed. */
+  public playerCameraAt(x: number, y: number): PlayerCameraState | null {
+    const camera = this.isWindowOpen() ? this.frozenCamera ?? this.cameraPlayersSee() : null;
+    return camera ? { ...camera, centerX: x, centerY: y } : null;
+  }
+
+  /**
+   * What players see now of the scene on `tabId`: their frame's centre and size in world units;
+   * null where they see another scene, a held frame, or no window is open.
+   */
+  public playerViewFrame(tabId: string): { centerX: number; centerY: number; width: number; height: number } | null {
+    const camera = this.framingCamera(tabId);
+    const size = camera ? this.playerViewWorldSize() : null;
+    return camera && size ? { centerX: camera.centerX, centerY: camera.centerY, ...size } : null;
+  }
+
+  /** The map area players see at their zoom, in world units, on `source`'s map (by default the one they see); null without a live scene. */
+  public playerViewWorldSize(source: PlayerFrameSource | null = this.streamSource): Size | null {
+    const frame = this.playerFrameOf(source);
+    return frame ? frameWorldSize(frame) : null;
+  }
+
+  /** The camera players see the scene of `tabId` through, where they see it live. */
+  private framingCamera(tabId: string): PlayerCameraState | null {
+    if (!this.isWindowOpen() || this.heldFrame || playerWindowStore.getState().shownTabId !== tabId) return null;
+    return this.frozenCamera ?? this.cameraPlayersSee();
+  }
+
+  /** The frame the mirror would render of `source` through the camera players are on: the same function, so the outline is what players get. */
+  private playerFrameOf(source: PlayerFrameSource | null): PlayerFrame | null {
+    const canvas = this.playerWindow?.document.getElementById('atlas-player-canvas');
+    const window = canvas?.instanceOf(HTMLCanvasElement) ? this.windowScreen(canvas) : null;
+    const camera = this.isWindowOpen() ? this.frozenCamera ?? this.cameraPlayersSee() : null;
+    if (!source || !window || !camera) return null;
+    return tableTvPlayerFrame(window, camera, source.getScreen?.(), this.tableTv(), source.getGridSize?.());
+  }
+
+  /**
    * The camera players see the presented scene through now: that of its last frame, else the
    * DM's own. Never a camera of another scene: the one players saw before this scene was
    * presented frames a rectangle of that scene's map; while a frame is held the view shows the
@@ -187,9 +235,10 @@ export class PlayerWindowService {
 
   /**
    * Show the scene tab `tabId`, already rendered into `source`, to players.
-   * Any freeze is lifted because the DM explicitly chose what players see.
+   * Any freeze is lifted because the DM explicitly chose what players see; with `camera`
+   * (Frame player view on a scene players did not see), players are frozen on it instead.
    */
-  public presentCanvas(source: PlayerFrameSource, tabId: string, filePath?: string): void {
+  public presentCanvas(source: PlayerFrameSource, tabId: string, filePath?: string, camera?: PlayerCameraState): void {
     if (!this.isWindowOpen()) {
       showNotice(t('player.notOpen'));
       return;
@@ -202,11 +251,13 @@ export class PlayerWindowService {
     this.mirror?.markStale();
     this.presentScene();
     this.heldFrame = null;
-    this.setFrozenCamera(null);
+    this.setFrozenCamera(camera ?? null);
     // The camera players saw the scene before through says nothing about this one
     if (anotherScene) this.shownCamera = null;
     playerWindowStore.setState({ shownTabId: tabId });
-    this.playerView?.updateSession({ tabId, ...(filePath ? { filePath } : {}), levelId: levelId ?? undefined, frozen: false, ...(anotherScene ? { camera: null } : {}) });
+    this.playerView?.updateSession({
+      tabId, ...(filePath ? { filePath } : {}), levelId: levelId ?? undefined, frozen: this.isFrozen(), ...(anotherScene && !this.isFrozen() ? { camera: null } : {}),
+    });
     this.followSource();
   }
 

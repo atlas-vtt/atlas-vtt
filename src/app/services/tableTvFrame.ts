@@ -1,5 +1,5 @@
 import type { PlayerCameraState } from '../types/playerCamera';
-import type { PlayerFrame, Screen } from '../types/playerFrame';
+import type { PlayerFrame, Screen, Size } from '../types/playerFrame';
 import { playerFrame, viewOf } from './playerFrame';
 import type { TableTvSettings } from './tableTvSettings';
 import { cellPx, parseResolution } from './tableTv';
@@ -50,6 +50,11 @@ export function tableTvPlayerFrame(
   if (!frame || !tv?.settings.trueScale || !cellWorld || !(cellWorld > 0)) return frame;
   // Points (CSS pixels) per world pixel: the cell's device pixels on the glass, in CSS pixels
   return { ...frame, scale: targetCellPx(tv) / tv.devicePixelRatio / cellWorld };
+}
+
+/** The world area a frame shows. */
+export function frameWorldSize(frame: PlayerFrame): Size {
+  return { width: frame.width / frame.resolution / frame.scale, height: frame.height / frame.resolution / frame.scale };
 }
 
 /** Ten cells of the true size across the middle of the frame, to measure with a ruler on the glass. */

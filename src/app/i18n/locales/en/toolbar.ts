@@ -64,6 +64,8 @@ export const toolbar = {
   'toolbar.pointToPoint': 'Point to point',
   'toolbar.gmView': 'GM View ({key})',
   'toolbar.sessionView': 'Session View ({key})',
+  'toolbar.framePlayers': 'Frame player view',
+  'toolbar.framePlayersPicking': 'Place the outline of the player view and click (Esc cancels)',
   'toolbar.diceFailed': 'Dice tool not initialized. Please try reloading the view.',
   'toolbar.laserColour': 'Laser colour',
   'toolbar.laserSize': 'Laser size',
