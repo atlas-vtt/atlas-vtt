@@ -27,6 +27,8 @@ export const tableTv = {
   'tableTv.trim': 'Trim (%)',
   'tableTv.trimDesc': 'Fine correction of the true scale. 100 = no correction.',
   'tableTv.trimReset': 'Reset to 100',
+  'tableTv.glide': 'Pushed view glide (ms)',
+  'tableTv.glideDesc': 'While players are frozen, presenting the map they see moves them to your view. This sets how long that glide takes; 0 jumps.',
   'tableTv.widgetsPlace': 'Widgets on player view: placement',
   'tableTv.widgetsPlaceDesc': 'Where on the player view the widgets sit, as the players see it.',
   'tableTv.widgetsSize': 'Widgets on player view: size',

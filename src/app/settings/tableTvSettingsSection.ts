@@ -2,7 +2,7 @@ import type { Setting, TextComponent } from 'obsidian';
 import type { SettingsService } from '../services/SettingsService';
 import { calibratedTrim, CELL_MM_PRESETS, TV_DIAGONAL_PRESETS, TV_RESOLUTION_PRESETS } from '../services/tableTv';
 import {
-  MAX_WIDGET_SCALE, MIN_WIDGET_SCALE, PLAYER_WIDGET_POSITIONS, TV_ROTATIONS, type TableTvSettings,
+  MAX_VIEW_GLIDE_MS, MAX_WIDGET_SCALE, MIN_WIDGET_SCALE, PLAYER_WIDGET_POSITIONS, TV_ROTATIONS, type TableTvSettings,
 } from '../services/tableTvSettings';
 import type { AtlasSettingSection } from './settingSections';
 import { shownImageSettingsRows } from './shownImageSettingsSection';
@@ -143,6 +143,15 @@ export function tableTvSettingsSection(settingsService: SettingsService): AtlasS
           return settingsService.onChange(({ tableTv }) => {
             if (field && Number(field.getValue().replace(',', '.')) !== tableTv.trim) field.setValue(String(tableTv.trim));
           });
+        },
+      },
+      {
+        name: t('tableTv.glide'),
+        desc: t('tableTv.glideDesc'),
+        aliases: ['freeze', 'push', 'glide', 'smooth', 'camera'],
+        render: (setting) => {
+          setting.addSlider((s) => s.setLimits(0, MAX_VIEW_GLIDE_MS, 100).setValue(tv().viewGlideMs)
+            .onChange((viewGlideMs) => set({ viewGlideMs })));
         },
       },
       {

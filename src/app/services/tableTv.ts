@@ -32,3 +32,23 @@ export function calibratedTrim(trim: number, expectedMm: number, measuredMm: num
   if (!(measuredMm > 0) || !(expectedMm > 0)) return trim;
   return Math.round(trim * (expectedMm / measuredMm) * 100) / 100;
 }
+
+/** Camera `t` (0–1, eased in and out) of the way from `from` to `to`; zoom and size change at an even rate. */
+export function glideCamera(
+  from: { centerX: number; centerY: number; scale: number; width?: number; height?: number },
+  to: { centerX: number; centerY: number; scale: number; width?: number; height?: number },
+  t: number,
+): { centerX: number; centerY: number; scale: number; width?: number; height?: number } {
+  const k = t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+  // Sizes change by a factor, like the zoom, so the glide feels even at every step
+  const between = (a: number, b: number): number => a * (b / a) ** k;
+  const sized = from.width && from.height && to.width && to.height
+    ? { width: between(from.width, to.width), height: between(from.height, to.height) }
+    : {};
+  return {
+    centerX: from.centerX + (to.centerX - from.centerX) * k,
+    centerY: from.centerY + (to.centerY - from.centerY) * k,
+    scale: between(from.scale, to.scale),
+    ...sized,
+  };
+}

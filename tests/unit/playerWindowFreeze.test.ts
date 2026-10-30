@@ -20,10 +20,12 @@ interface Harness {
   source: PlayerFrameSource & { withPlayerSafeFrame: ReturnType<typeof vi.fn<PlayerFrameSource['withPlayerSafeFrame']>> };
   session: LocalPlayerSession;
   drawImage: ReturnType<typeof vi.fn>;
+  settings: SettingsService;
   setDmCamera(camera: PlayerCameraState): void;
   /** The DM's pane takes this size, as when a sidebar opens. */
   resizePane(width: number, height: number): void;
-  nextFrame(): void;
+  /** Runs the last requested animation frame at `time` ms. */
+  nextFrame(time?: number): void;
   /** The frame rendered last. */
   lastFrame(): PlayerFrame;
   /** Attaches the player window; a harness made with `attach: false` has not yet. */
@@ -46,12 +48,13 @@ function setup({ attach: attachNow = true } = {}): Harness {
   sizePlayerWindow();
   const { app } = createInMemoryApp();
   const store = createStore(() => ({})) as StoreApi<ViewAtlasState>;
-  const service = new PlayerWindowService(app, store, new SettingsService(app));
+  const settings = new SettingsService(app);
+  const service = new PlayerWindowService(app, store, settings);
   const doc = document.implementation.createHTMLDocument();
   Object.defineProperty(doc, 'readyState', { value: 'complete' });
   Object.defineProperty(doc.body, 'win', { value: {
     document: doc, closed: false, addEventListener: vi.fn(), removeEventListener: vi.fn(), close: vi.fn(),
-    requestAnimationFrame, cancelAnimationFrame: vi.fn(), devicePixelRatio: 1,
+    requestAnimationFrame, cancelAnimationFrame: vi.fn(), devicePixelRatio: 1, performance: { now: () => 0 },
   } });
   let dmCamera: PlayerCameraState = { centerX: 0, centerY: 0, scale: 1 };
   let pane: Screen = { width: 800, height: 600, resolution: 1 };
@@ -70,10 +73,10 @@ function setup({ attach: attachNow = true } = {}): Harness {
   const attach = (): void => service.attachToView(view as unknown as LocalPlayerView, source, { tabId: 'scene-a', filePath: 'scene-a.atlasmap' });
   if (attachNow) attach();
   return {
-    service, source, session, drawImage, attach,
+    service, source, session, drawImage, attach, settings,
     setDmCamera: (camera) => { dmCamera = camera; },
     resizePane: (width, height) => { pane = { width, height, resolution: 1 }; },
-    nextFrame: () => frame?.(0),
+    nextFrame: (time = 0) => frame?.(time),
     lastFrame: () => source.withPlayerSafeFrame.mock.lastCall![2],
   };
 }
@@ -259,13 +262,64 @@ describe('player camera freeze', () => {
     });
   });
 
-  it('presenting a scene lifts the freeze', () => {
+  it('presenting a scene leaves players who are not frozen following the DM', () => {
     const { service, source, nextFrame } = setup();
     nextFrame();
-    service.toggleCameraFreeze();
     service.presentCanvas(source, 'scene-b');
     expect(service.isFrozen()).toBe(false);
     expect(playerWindowStore.getState().isFrozen).toBe(false);
+  });
+
+  it('presenting another scene keeps the freeze, on the DM framing of that scene', () => {
+    const { service, source, session, setDmCamera, nextFrame } = setup();
+    nextFrame();
+    service.toggleCameraFreeze();
+    setDmCamera({ centerX: 500, centerY: 600, scale: 2 });
+    service.presentCanvas(source, 'scene-b');
+    expect(service.isFrozen()).toBe(true);
+    expect(playerWindowStore.getState().isFrozen).toBe(true);
+    expect(session).toMatchObject({ tabId: 'scene-b', frozen: true, camera: { centerX: 500, centerY: 600, scale: 2 } });
+  });
+
+  it('presenting the same scene again pushes the DM framing and stays frozen', () => {
+    const { service, source, session, settings, setDmCamera, nextFrame } = setup();
+    settings.setTableTvSettings({ viewGlideMs: 0 });
+    nextFrame();
+    service.toggleCameraFreeze();
+    setDmCamera({ centerX: 500, centerY: 600, scale: 2 });
+    service.presentCanvas(source, 'scene-a');
+    expect(service.isFrozen()).toBe(true);
+    expect(session.camera).toMatchObject({ centerX: 500, centerY: 600, scale: 2 });
+  });
+
+  it('glides frozen players to a view pushed on the same scene', () => {
+    const { service, source, session, setDmCamera, nextFrame } = setup();
+    nextFrame();
+    service.toggleCameraFreeze();
+    setDmCamera({ centerX: 100, centerY: 0, scale: 1 });
+    service.presentCanvas(source, 'scene-a');
+    // Halfway through the default 800 ms
+    nextFrame(400);
+    expect(session.camera).not.toMatchObject({ centerX: 100 });
+    nextFrame(800);
+    expect(service.isFrozen()).toBe(true);
+    expect(session.camera).toMatchObject({ centerX: 100, centerY: 0, scale: 1 });
+  });
+
+  it('returns players to the frame the GM set on a map when it is presented again', () => {
+    const { service, source, session, settings, setDmCamera, nextFrame } = setup();
+    settings.setTableTvSettings({ viewGlideMs: 0 });
+    setDmCamera({ centerX: 10, centerY: 20, scale: 1.5 });
+    nextFrame();
+    service.framePlayersOn('scene-a', 300, 400);
+    service.toggleCameraFreeze();
+
+    setDmCamera({ centerX: 0, centerY: 0, scale: 3 });
+    service.presentCanvas(source, 'scene-b', 'scene-b.atlasmap');
+    expect(service.isFrozen()).toBe(false);
+    service.presentCanvas(source, 'scene-a', 'scene-a.atlasmap');
+    expect(service.isFrozen()).toBe(true);
+    expect(session.camera).toMatchObject({ centerX: 300, centerY: 400, scale: 1.5 });
   });
 
   it('frames players on a picked point at their zoom, frozen there, only on the scene they see', () => {

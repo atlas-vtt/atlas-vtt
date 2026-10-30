@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { calibratedTrim, cellPx, parseResolution, pxPerMM } from '../../src/app/services/tableTv';
+import { calibratedTrim, cellPx, glideCamera, parseResolution, pxPerMM } from '../../src/app/services/tableTv';
 import { tableTvPlayerFrame, targetCellPx, type TableTv } from '../../src/app/services/tableTvFrame';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings } from '../../src/app/services/tableTvSettings';
 import { playerFrame, viewOf } from '../../src/app/services/playerFrame';
@@ -16,6 +16,17 @@ describe('TrueScale geometry', () => {
     // 10 cells meant to be 270 mm measured 260 mm: grow by 270/260
     expect(calibratedTrim(100, 270, 260)).toBeCloseTo(103.85, 2);
     expect(calibratedTrim(100, 270, 0)).toBe(100);
+  });
+
+  it('glides the camera with eased motion and even zoom', () => {
+    const a = { centerX: 0, centerY: 0, scale: 1 };
+    const b = { centerX: 100, centerY: -50, scale: 4 };
+    expect(glideCamera(a, b, 0)).toEqual(a);
+    expect(glideCamera(a, b, 1)).toEqual(b);
+    const mid = glideCamera(a, b, 0.5);
+    expect(mid.centerX).toBeCloseTo(50);
+    expect(mid.scale).toBeCloseTo(2);
+    expect(glideCamera(a, b, 0.1).centerX).toBeLessThan(10);
   });
 
   it('parses resolutions', () => {

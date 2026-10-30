@@ -9,6 +9,7 @@ export const PLAYER_WIDGET_POSITIONS = ['top-left', 'top', 'top-right', 'bottom-
 export type PlayerWidgetPosition = typeof PLAYER_WIDGET_POSITIONS[number];
 export const MIN_WIDGET_SCALE = 0.5;
 export const MAX_WIDGET_SCALE = 2.5;
+export const MAX_VIEW_GLIDE_MS = 3000;
 
 /** The player view on a TV lying on the table (Atlas' settings, TrueScale). */
 export interface TableTvSettings {
@@ -24,6 +25,8 @@ export interface TableTvSettings {
   trim: number;
   /** Draws a 10-cell ruler on the player view to measure. */
   showCalibration: boolean;
+  /** How long frozen players glide to a view pushed on the map they see, in ms; 0 jumps. */
+  viewGlideMs: number;
   widgetPosition: PlayerWidgetPosition;
   widgetScale: number;
 }
@@ -37,6 +40,7 @@ export const DEFAULT_TABLE_TV_SETTINGS: TableTvSettings = {
   cellMm: 27,
   trim: 100,
   showCalibration: false,
+  viewGlideMs: 800,
   widgetPosition: 'top-right',
   widgetScale: 1,
 };
@@ -57,6 +61,7 @@ export function readTableTvSettings(stored: unknown): TableTvSettings {
     cellMm: positive(stored.cellMm) ? stored.cellMm : d.cellMm,
     trim: positive(stored.trim) ? stored.trim : d.trim,
     showCalibration: typeof stored.showCalibration === 'boolean' ? stored.showCalibration : d.showCalibration,
+    viewGlideMs: typeof stored.viewGlideMs === 'number' && stored.viewGlideMs >= 0 && stored.viewGlideMs <= MAX_VIEW_GLIDE_MS ? stored.viewGlideMs : d.viewGlideMs,
     widgetPosition: PLAYER_WIDGET_POSITIONS.find((position) => position === stored.widgetPosition) ?? d.widgetPosition,
     widgetScale: positive(widgetScale) && widgetScale >= MIN_WIDGET_SCALE && widgetScale <= MAX_WIDGET_SCALE ? widgetScale : d.widgetScale,
   };
