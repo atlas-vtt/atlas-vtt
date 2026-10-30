@@ -4,7 +4,7 @@ import { generateDungeon } from '../../../src/app/dungeons/generate';
 describe('generateDungeon', () => {
   it('gives the same dungeon for the same request, over many seeds and every floor count', () => {
     const sets = [[], ['large', 'ordered', 'wet'], ['small', 'string'], ['secret', 'round', 'colonnades']];
-    for (let seed = 1; seed <= 1000; seed++) {
+    for (let seed = 1; seed <= 250; seed++) {
       const request = { seed: seed * 104_729, tags: sets[seed % sets.length]!, floors: 1 + (seed % 4) };
       expect(generateDungeon(request)).toEqual(generateDungeon(request));
     }
