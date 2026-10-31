@@ -150,6 +150,15 @@ export class SceneShare {
     return this.tokens.shareOfScene(scene)?.listedToken(scene, alias);
   }
 
+  /** The player whose drag holds a token (by GM token id), on whichever floor, or undefined while none does. */
+  draggerOf(tokenId: string): string | undefined {
+    for (const share of this.floors.values()) {
+      const player = share.draggerOf(tokenId);
+      if (player !== undefined) return player;
+    }
+    return undefined;
+  }
+
   /** The tokens among `tokenIds` that the players of each token's floor see now, as their frame names them: what the books read. */
   shown(mapPath: string, tokenIds: readonly string[]): ReadonlyMap<string, ShownRollToken> {
     return this.tokens.shown(mapPath, tokenIds);

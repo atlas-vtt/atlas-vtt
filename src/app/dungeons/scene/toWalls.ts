@@ -38,21 +38,30 @@ const DOOR_WALLS: Partial<Record<DoorKind, DoorWall>> = {
 /** Doors closed on their own line: a cave's crawl is rock all through and a house's doorway is its wall, so even a secret door closes there. */
 const ON_LINE_DOOR_WALLS: Partial<Record<DoorKind, DoorWall>> = { ...DOOR_WALLS, secret: { type: 'secret-door', v: () => 0 } };
 
+/** How far past a mouth's side an edge across it may reach and still be the mouth, in cells. */
+const MOUTH_OVERHANG = 0.5;
+
 /**
- * Whether a point lies on the outer mouth of an entrance: the edge of its cell's wall ring that
- * faces the outside. An entrance leads out, so no wall closes it there (the map draws none either:
- * the ground outside the way in is cleared).
+ * Whether an edge of a wall ring lies on the outer mouth of an entrance: the edge of its cell's
+ * wall ring that faces the outside. An entrance leads out, so no wall closes it there (the map
+ * draws none either: the ground outside the way in is cleared). An edge along the mouth's line whose
+ * middle lies within the mouth is its too, though a corner of it lies further out: a cave's
+ * outline may cross a wide mouth in one straight edge that overhangs it a little (up to
+ * `MOUTH_OVERHANG`), which was left standing as a wall across the way in.
  */
-function entranceMouth(door: DungeonDoor, half: number, cave: boolean): (p: Vec) => boolean {
+function entranceMouth(door: DungeonDoor, half: number, cave: boolean): (a: Vec, b: Vec) => boolean {
   const cells = doorCells(door);
   // A cave's outline meets its straight mouth at a slant, so the grown corner lies up to a further half wall along it.
   const reach = cells.length / 2 + (cave ? 2 : 1) * half + 1 / STEPS;
   const m = doorMiddle(door);
   const mouth = { x: m.x - door.dir.x * (mouthDepth(door) + half), y: m.y - door.dir.y * (mouthDepth(door) + half) };
-  return p => {
-    const dx = p.x - mouth.x;
-    const dy = p.y - mouth.y;
-    return Math.abs(dx * door.dir.x + dy * door.dir.y) < 1 / STEPS && Math.abs(dx * door.dir.y - dy * door.dir.x) <= reach;
+  const along = (p: Vec): number => Math.abs((p.x - mouth.x) * door.dir.y - (p.y - mouth.y) * door.dir.x);
+  const onLine = (p: Vec): boolean => Math.abs((p.x - mouth.x) * door.dir.x + (p.y - mouth.y) * door.dir.y) < 1 / STEPS;
+  return (a, b) => {
+    if (!onLine(a) || !onLine(b)) return false;
+    if (along(a) <= reach && along(b) <= reach) return true;
+    const middle = along({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    return middle <= cells.length / 2 && Math.max(along(a), along(b)) <= reach + MOUTH_OVERHANG;
   };
 }
 
@@ -143,7 +152,7 @@ export function dungeonWalls(
   };
 
   const mouths = doors.filter(door => door.from === null).map(door => entranceMouth(door, half, shown.cave !== undefined));
-  const onMouth = (a: Vec, b: Vec): boolean => mouths.some(mouth => mouth(a) && mouth(b));
+  const onMouth = (a: Vec, b: Vec): boolean => mouths.some(mouth => mouth(a, b));
   outlines.forEach((ring, index) => {
     const chainId = `chain_${of.id}_${index + 1}`;
     ring.forEach((corner, i) => {

@@ -24,7 +24,7 @@ export const settings = {
   'settings.navigation.trackpadHint': 'Two-finger scroll pans around the map. Pinch to zoom in and out. Right-click and drag also pans.',
   'settings.storage.clear': 'Clear',
   'settings.storage.heading': 'Storage',
-  'settings.storage.mapImageCache': 'Map image cache',
+  'settings.storage.mapImageCache': 'Mosaic Canvas cache',
   'settings.storage.mapImageCacheInfo': 'Keeps the tiles of each map on this device, so maps open quickly. Whatever is cleared is built again when a map needs it.',
   'settings.storage.unavailable': 'Unavailable',
   'settings.support.discord': 'Discord community',

@@ -83,12 +83,15 @@ export interface CrayonArea {
   strength?: Field;
   /** Where the area lies: strokes are laid only along the runs of a line inside it. */
   inside?: AreaMask;
+  /** The strokes' direction in radians (along a floor's boards); unset, the area's own from its seed. */
+  angle?: number;
 }
 
 /** Colours `area` in by hand, multiplied onto what lies under it, so it can lie over the drawing as well as under it. */
 export function crayonArea(ctx: Canvas2D, area: CrayonArea, unit: number): void {
   const rng = rngFrom(area.seed);
-  const angle = (-38 + (rng() - 0.5) * 34) * (Math.PI / 180);
+  const own = (-38 + (rng() - 0.5) * 34) * (Math.PI / 180);
+  const angle = area.angle ?? own;
   const lanes = new Map<number, { lane: Lane; level: number; path: Path2D }>();
   const laneOf = (lane: Lane, index: number, level: number): Path2D => {
     const key = index * (LEVELS + 1) + level;

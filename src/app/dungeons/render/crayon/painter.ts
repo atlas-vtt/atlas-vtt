@@ -1,19 +1,19 @@
 import type { ArtScene } from '../art/artScene';
 import { traceShapes } from '../geometry';
-import { drawFloorJoints } from '../engraved/floor';
 import { paintEngraved } from '../engraved/painter';
 import { clipLanes, drawRock } from '../rock';
 import { crayonGroundsPaint } from '../grounds/crayonPaint';
 import { CRAYONS } from './colours';
 import { crayonBox, type CrayonBox } from './crayonBox';
+import { crayonCaveFloor, crayonCaveMouth, crayonFloor } from './floors';
 import { crayonHand } from './hand';
 import { crayonPens, plantPens } from './pens';
 import { crayonWater } from './pools';
 
 /**
  * Crayon, a map drawn in graphite on vellum and coloured in by hand, in Engraved's order: the rock's
- * hatching in clusters round the walls over a wash of earth crayon, the floor left as bare paper
- * with its joints faintly pencilled, water in blue crayon, plants tinted green, and every surface
+ * hatching in clusters round the walls over a wash of earth crayon, every floor coloured in as its
+ * material (`floors.ts`) with its joints faintly pencilled, water in blue crayon, plants tinted green, and every surface
  * coloured in with its material's crayon as it is drawn.
  */
 export function paintCrayon(scene: ArtScene): void {
@@ -29,10 +29,9 @@ export function paintCrayon(scene: ArtScene): void {
       drawRock(art.env);
       colourRock(art, box);
     },
-    floor: (art, p) => {
-      box.paper(path => traceShapes(path, art.floors));
-      drawFloorJoints(art, p);
-    },
+    floor: (art, p) => crayonFloor(art, p, box),
+    caveFloor: (art, p) => crayonCaveFloor(art, p, box),
+    caveMouth: (art, p) => crayonCaveMouth(art, p, box),
     water: crayonWater(box),
   });
 }

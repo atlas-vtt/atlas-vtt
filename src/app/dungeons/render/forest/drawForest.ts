@@ -11,12 +11,10 @@ import { drawRiverBridges } from './riverBridges';
 import { ROAD_WEAR, RUT_WEAR, roadBand, rutRings } from './roads';
 import { roadField } from '../../forest/forestRoads';
 import { pointsBounds, tracePolygon, traceShapes, type Vec } from '../geometry';
-import { wayCentre, wayFrameOf, wayHalf, type WayOut } from '../cave/mouth/wayOut';
 import { drawGrid } from '../grid';
 import type { GroundsPaint } from '../grounds/paint';
 import { drawTerrainGround, drawTerrainOpenings, drawTerrainStanding } from '../terrain/drawTerrain';
 import { loneTrees } from './loneTrees';
-import { trailFade, trailRing } from './trails';
 import { MASS_DEPTH, woodsMass, type WoodsClump } from './woodsMass';
 import { crownClump, treeKind } from './treeShapes';
 import { forestLookOf } from '../../forestLooks';
@@ -27,12 +25,12 @@ export interface ForestArt {
   ground: GroundsPaint;
   colours: { water: string; cloth: string };
   woods(): void;
-  /** Worn ground (a trail's, a road's, a road's ruts) over `path`, its outline `edges`, as strong as `fade` says where it lies (0..1). */
+  /** Worn ground (a road's, a road's ruts) over `path`, its outline `edges`, as strong as `fade` says where it lies (0..1). */
   trail(path: PathFn, fade: (p: Vec) => number, edges: readonly Vec[][]): void;
   clump(entry: WoodsClump): void;
   /** A bare tree's limbs (`bareLimbs`), standing over the mass. */
   bare(entry: WoodsClump): void;
-  /** `depth`: how far into the mass a point lies, 0 at a clearing's or trail's edge to 1 at its depth. */
+  /** `depth`: how far into the mass a point lies, 0 at a clearing's or road's edge to 1 at its depth. */
   finish(mass: readonly WoodsClump[], depth: (x: number, y: number) => number): void;
   /** The floor's water within `trace` (shores `outlines`), as the direction draws a pool; `scene`'s floor holds the water. */
   water(scene: ArtScene, trace: PathFn, outlines: readonly Vec[][], depth: Field, deepness: Field): void;
@@ -57,44 +55,33 @@ export function drawForest(scene: ArtScene, art: ForestArt): void {
   const { rivers = [], lakes } = dungeon.floor;
   const riverWater = floorWater(rivers, lakes);
   const roads = dungeon.floor.roads ?? [];
-  // A trail a road runs in by is that road: drawn twice, half a cell apart, the two never met.
-  const ways = dungeon.ways.filter((way) => !roads.some((road) => road.points.some((p) => Math.hypot(p.x - way.mouth.at.x, p.y - way.mouth.at.y) < ROAD_TAKES_TRAIL)));
-  const trails = ways.map(trailRing);
+  // No trail of an entrance is drawn: where a road or footpath leads in through an entrance it is the way out, and an
+  // entrance none leads through has nothing beyond it, since a trail fading into the woods is a way that ends nowhere.
   // The ground runs on under the mass along a river, round a lake and either side of a road as along a clearing; one union, so no band's winding cancels another's.
-  const verges = roads.map((r) => roadBand(r, r.width / 2 + MASS_DEPTH));
+  const verges = roads.flatMap((r) => roadBand(r, r.width / 2 + MASS_DEPTH));
   const banks = riverWater.length || verges.length ? unionRings([...(riverWater.length ? grownRings(riverWater, MASS_DEPTH) : []), ...verges]) : [];
   const ground = (path: CanvasPath): void => {
     traceShapes(path, scene.floors, MASS_DEPTH, MASS_DEPTH);
-    for (const ring of trails) tracePolygon(path, ring);
     for (const ring of banks) tracePolygon(path, ring);
   };
-  // The trails and rivers run through the woods: the mass keeps off them as off a clearing.
-  // The mass overhangs a trail's sides a little, so the woods' colour never shows between them.
+  // The rivers and roads run through the woods: the mass keeps off them as off a clearing.
   // Asked a few million times: no allocation in it.
   const field = waterField(rivers, lakes);
-  // The bridges, with worn paths onto the ends no trail reaches: the woods keep off them too.
+  // The bridges: the woods keep off them too.
   const bridges = scene.env.view.water ? rivers.flatMap((river) => river.bridges) : [];
   // The roads run on to the map's edge through the woods, which part for them.
   const road = roadField(roads);
   const outsideAt = (x: number, y: number): number => {
     let best = Math.min(scene.sdfAt(x, y), field.distance(x, y) - RIVER_BANK);
-    for (const way of ways) best = Math.min(best, trailDistance(way, { x, y }) + TRAIL_OVERHANG);
     best = Math.min(best, road.distance(x, y) - ROAD_VERGE);
     return best;
   };
   // The woods first and the ground over them, never the woods cut out of the frame: an even-odd cut turns back where two clearings' reaches overlap.
   art.woods();
   art.ground.lawn(ground, cellsOf(view));
-  // Each trail worn into the ground, fading where it leaves into the woods.
-  // Trails and roads are one worn ground, painted once: two bands laid over each other show where each lies.
-  const worn = unionRings([...trails, ...roads.map((r) => roadBand(r, r.width / 2))]);
-  if (worn.length) {
-    art.trail(polysPath(worn), (p) => {
-      let wear = road.distance(p.x, p.y) < 0 ? ROAD_WEAR : 0;
-      for (const way of ways) if (trailDistance(way, p) < 0) wear = Math.max(wear, trailFade(way, wayFrameOf(way, p).u));
-      return wear;
-    }, worn);
-  }
+  // The roads are one worn ground, painted once: two bands laid over each other show where each lies.
+  const worn = unionRings(roads.flatMap((r) => roadBand(r, r.width / 2)));
+  if (worn.length) art.trail(polysPath(worn), (p) => (road.distance(p.x, p.y) < 0 ? ROAD_WEAR : 0), worn);
   const ruts = rutRings(roads);
   if (ruts.length) art.trail(polysPath(ruts), () => RUT_WEAR, ruts);
   const drawn = scene.env.view.water ? drawWater(scene, art, riverWater, field) : riverWater;
@@ -164,12 +151,6 @@ function drawWater(scene: ArtScene, art: ForestArt, riverWater: readonly Vec[][]
   return water;
 }
 
-/** A road that passes this near an entrance takes over its trail, in cells. */
-const ROAD_TAKES_TRAIL = 2.5;
-
-/** How far the mass reaches over a trail's sides, in cells. */
-const TRAIL_OVERHANG = 0.1;
-
 /** How far a clump stands into the mass, 0 at the clearing to 1 at its depth. */
 export function massShare(depth: number): number {
   return Math.max(0, Math.min(1, depth / MASS_DEPTH));
@@ -180,13 +161,3 @@ function cellsOf(bounds: { minX: number; minY: number; maxX: number; maxY: numbe
   for (let y = Math.floor(bounds.minY); y < bounds.maxY; y++) for (let x = Math.floor(bounds.minX); x < bounds.maxX; x++) cells.push({ x, y });
   return cells;
 }
-
-
-/** How far `p` lies outside a trail, in cells (negative on it): beside its middle line, between its mouth and its far end. */
-function trailDistance(way: WayOut, p: Vec): number {
-  const { u, v } = wayFrameOf(way, p);
-  if (u < -0.5 || u > way.length + 0.5) return Infinity;
-  const off = v - wayCentre(way, u);
-  return Math.abs(off) - wayHalf(way, u, Math.sign(off) || 1);
-}
-

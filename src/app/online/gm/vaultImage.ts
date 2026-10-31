@@ -1,8 +1,8 @@
 import { normalizePath, type App } from 'obsidian';
 import { imageMimeType } from './assetServe.ts';
 import type { VaultImage } from './TokenShare.ts';
-import { isVideoMapPath, videoMimeType } from '../../pixi/mapImage/video/videoMapFiles';
-import { videoPosterBlob } from '../../pixi/mapImage/video/videoPoster';
+import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
+import { videoPosterBlob } from '../../pixi/mosaicCanvas/video/videoPoster';
 
 /**
  * An image of the vault as players may be sent it: its bytes and its type by its extension; null

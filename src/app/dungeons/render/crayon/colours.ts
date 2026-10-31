@@ -13,6 +13,8 @@ export const CRAYONS = {
   brick: '#a85454',
   earth: '#93805d',
   slate: '#647064',
+  /** Grey stone, a little warm: flagstones and dressed floors. */
+  stone: '#a89d86',
   water: '#5d94b8',
   deepWater: '#2e6b9e',
   ember: '#c9572d',
@@ -28,9 +30,14 @@ export interface CrayonFill {
   colour: string;
   cover: number;
   passes: number;
+  /** The strokes' direction in radians, where the material has a grain; unset, the area's own. */
+  angle?: number;
 }
 
-/** Floors stay bare vellum: a large area coloured all over shows the hand's sections as bands. */
+/** How heavily a surface of floor (a slab, a mosaic's field, a pit's bottom, a greenhouse's bed) is coloured in the ground of the floor it lies on (`crayonHand`). */
+export const FLOOR_SURFACE = { cover: 0.34, passes: 2 } as const;
+
+/** How a material is coloured in; floor by its ground, so none here. */
 export const MATERIAL_CRAYONS: Readonly<Record<Material, CrayonFill | null>> = {
   floor: null,
   stone: { colour: CRAYONS.earth, cover: 0.8, passes: 2 },

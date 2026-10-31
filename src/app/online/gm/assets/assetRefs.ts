@@ -1,5 +1,5 @@
 import { ASSET_CAPS, type AssetRef } from '../../protocol/index.ts';
-import { TILE_SPEC } from '../../../pixi/mapImage/pyramid';
+import { TESSERA_SPEC } from '../../../pixi/mosaicCanvas/pyramid';
 import { ASSET_RANKS, ASSET_USES, type AssetStoring, type AssetUse, type FloorMaps } from './assetUses.ts';
 import type { FileHashes, FileStat } from './fileHashes.ts';
 import { headerPyramid } from './pyramidPlan.ts';
@@ -98,7 +98,7 @@ export class AssetRefs implements AssetStoring {
     const shape = await headerPyramid(bytes);
     if (shape === null) return undefined;
     const pyramid = pyramids.make(hash, path, shape);
-    const id = await this.deps.register({ key: pyramidKey(hash, TILE_SPEC), hash, size: pyramid.bytes, mime, use: { kind: 'tiles', rank: ASSET_RANKS.map }, source: { pyramid }, handed });
+    const id = await this.deps.register({ key: pyramidKey(hash, TESSERA_SPEC), hash, size: pyramid.bytes, mime, use: { kind: 'tiles', rank: ASSET_RANKS.map }, source: { pyramid }, handed });
     return id === undefined ? undefined : { hash, size: pyramid.bytes, mime, id, tiles: true };
   }
 }

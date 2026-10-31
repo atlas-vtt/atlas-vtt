@@ -19,4 +19,5 @@ export const view = {
   'view.connecting': 'Connecting to game session…',
   'view.playerTitle': 'Player View: {name}',
   'view.playerDefault': 'Player View',
+  'view.noGraphics': 'Atlas needs graphics acceleration to draw maps. Turn on hardware acceleration in Obsidian\'s general settings, or check your graphics drivers.',
 } as const satisfies Record<string, Message>;

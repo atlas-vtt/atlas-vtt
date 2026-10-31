@@ -6,9 +6,9 @@ import { ASSET_USES, type AssetStoring } from './assets/assetUses.ts';
 import { Pacer, type PacerClock } from '../marks/index.ts';
 import { sharedFog, sharedLightingScene, sharedSight } from './sceneInputs.ts';
 import { SequencedList } from './sequencedList.ts';
+import { ExploredRemovals } from './exploredRemovals.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelExploredMask } from '../../levels/sceneLevels';
-import { playersFog } from '../../fog/playersFog';
 
 export interface InputSharePorts extends PacerClock {
   send(body: GmMessage, to?: string): void;
@@ -29,6 +29,8 @@ export const INPUT_INTERVAL_MS = 66;
 export const EXPLORED_INTERVAL_MS = 5_000;
 
 const PNG_DATA_URL = 'data:image/png;base64,';
+
+const loading = (state: SceneState): boolean => !state.mapLoaded || state.isMapLoading;
 
 /** The PNG bytes of a saved explored memory (a data URL), or null for none or anything else. */
 function maskBytes(mask: string | null): Uint8Array<ArrayBuffer> | null {
@@ -75,8 +77,12 @@ export class InputShare {
   private readonly lightAliases = new Map<string, string>();
   /** The random ids of the shared scene's fog operations, by their keys in the store. */
   private readonly fogAliases = new Map<string, string>();
-  /** The saved explored memory players were sent last (a data URL), with its stored reference where it went by one; null before one was. */
-  private mask: { readonly source: string | null; readonly ref: AssetRef | null } | null = null;
+  /** The saved explored memory players were sent last (a data URL), with its stored reference where it went by one and the count of removals it went with; null before one was. */
+  private mask: { readonly source: string | null; readonly ref: AssetRef | null; readonly serial: number } | null = null;
+  /** The times the GM took memory away from this floor, sent with every explored memory. */
+  private readonly removals: ExploredRemovals;
+  /** The id of the scene last shared, which stays while none is. */
+  private sharedId: string | null = null;
   private readonly pacer: Pacer;
   private readonly exploredPacer: Pacer;
   /** The fog and sight inputs sent: whole for a new scene, a joiner or a player who asks, else as deltas. */
@@ -90,6 +96,7 @@ export class InputShare {
     this.exploredPacer = new Pacer(ports, EXPLORED_INTERVAL_MS, () => void this.flushExplored());
     this.fog = new SequencedList('fog', ports);
     this.sight = new SequencedList('sight', ports);
+    this.removals = new ExploredRemovals(() => store.shown?.() ?? true);
   }
 
   /** The shared scene the inputs belong to; null sends none. */
@@ -104,6 +111,11 @@ export class InputShare {
     this.lighting = null;
     this.releaseMask();
     this.mask = null;
+    if (scene !== null) {
+      if (scene.id === this.sharedId) this.removals.sharedAgain();
+      else this.removals.reset();
+      this.sharedId = scene.id;
+    }
     this.pacer.cancel();
     this.exploredPacer.cancel();
     this.update();
@@ -113,7 +125,21 @@ export class InputShare {
   update(): void {
     if (this.scene === null) return;
     this.pacer.request();
-    if (this.scene.lit && levelExploredMask(this.store.getState()) !== this.mask?.source) this.exploredPacer.request();
+    if (!this.scene.lit) return;
+    const state = this.store.getState();
+    if (loading(state)) return this.removals.loading();
+    this.removals.observe(state);
+    if (this.exploredChanged(state)) this.exploredPacer.request();
+  }
+
+  /** The scene's map is loading: nothing goes out, and what the load ends with is compared with what was before it. */
+  mapLoading(): void {
+    this.removals.loading();
+  }
+
+  /** Whether the memory saved, or the count of removals, is another than players were sent last. */
+  private exploredChanged(state: SceneState): boolean {
+    return levelExploredMask(state) !== this.mask?.source || this.removals.serial !== this.mask.serial;
   }
 
   /** The last inputs again, whole, to one player or to all. */
@@ -136,10 +162,9 @@ export class InputShare {
     const scene = this.scene;
     const state = this.store.getState();
     if (scene === null || !state.mapLoaded || state.isMapLoading) return;
-    const fog = playersFog(state);
-    if (fog !== this.fogOf) {
-      this.fogOf = fog;
-      this.fog.publish(scene.id, { fog: sharedFog(fog, (key) => this.fogAlias(key)) });
+    if (levelObjects(state).fog !== this.fogOf) {
+      this.fogOf = levelObjects(state).fog;
+      this.fog.publish(scene.id, { fog: sharedFog(levelObjects(state).fog, (key) => this.fogAlias(key)) });
     }
     if (!scene.lit) return;
     const source = this.ports.lightingSource();
@@ -180,20 +205,23 @@ export class InputShare {
    */
   private async flushExplored(): Promise<void> {
     const scene = this.scene;
-    const source = levelExploredMask(this.store.getState());
-    if (scene === null || !scene.lit || source === this.mask?.source) return;
+    const state = this.store.getState();
+    // A load clears the memory before it reads the scene's: what it ends with goes once it is done.
+    if (scene === null || !scene.lit || loading(state) || !this.exploredChanged(state)) return;
+    const source = levelExploredMask(state);
     const bytes = maskBytes(source);
     const inline = bytes !== null && bytes.length <= EXPLORED_INLINE_BYTES;
     const ref = bytes === null || inline ? null : ((await this.ports.stored?.refOf(bytes, 'image/png', ASSET_USES.explored)) ?? null);
-    // A newer memory or another scene came meanwhile: this one is not sent.
-    if (this.scene !== scene || levelExploredMask(this.store.getState()) !== source) {
+    // A newer memory, another scene or a load came meanwhile: this one is not sent.
+    if (this.scene !== scene || loading(this.store.getState()) || levelExploredMask(this.store.getState()) !== source) {
       if (ref !== null) this.ports.stored?.release(ref);
       return;
     }
     // The memory it replaces need not go up any more, nor be told of.
     if (this.mask?.ref?.id !== ref?.id) this.releaseMask();
-    this.mask = { source, ref };
-    this.publish({ t: 'explored', scene: scene.id, ...(inline ? { png: toBase64(bytes) } : ref !== null && { mask: ref }) });
+    const serial = this.removals.serial;
+    this.mask = { source, ref, serial };
+    this.publish({ t: 'explored', scene: scene.id, ...(inline ? { png: toBase64(bytes) } : ref !== null && { mask: ref }), serial });
   }
 
   /** Lets go of the stored explored memory players were sent last. */

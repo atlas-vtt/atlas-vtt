@@ -1,7 +1,6 @@
 /**
  * Fog coverage is drawn on one Canvas-backed sprite. Invisible per-operation
  * sprites retain the editing hit areas and selection/context-menu behavior.
- * Under cloud reveal the fog players see is drawn as clouds (`FogCloudLayer`).
  */
 import * as PIXI from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
@@ -12,8 +11,6 @@ import type { FogBounds, FogOperation } from '../../types/fogTypes';
 import { validateFogOperation } from '../../fog/fogOperationShape';
 import { FogCoverageCache } from '../../fog/FogCoverageCache';
 import type { FogCoverage } from '../../fog/fogCoverage';
-import { playersFog } from '../../fog/playersFog';
-import { FogCloudLayer } from './FogCloudLayer';
 import { FogCanvasCompositor } from './FogCanvasCompositor';
 import { FogCursorPreview } from './FogCursorPreview';
 import { FogOperationCanvas } from './FogOperationCanvas';
@@ -60,12 +57,7 @@ export class FogOfWarRenderer {
 
   // Committed coverage and temporary drawing preview
   private readonly coverageCache = new FogCoverageCache();
-  /** The players' fog while it is held apart from the fog being edited (`playersFog`), worked out only where `coverageCache` no longer knows it. */
-  private readonly playersCoverageCache = new FogCoverageCache();
-  /** The held fog's coverage, kept while the GM edits on, so it is never worked out again. */
-  private heldCoverage: { fog: Readonly<Record<string, FogOperation>>; mapPath: string | null; coverage: FogCoverage | null } | null = null;
   private compositor: FogCanvasCompositor;
-  private readonly cloudLayer: FogCloudLayer;
   private cursorPreview: FogCursorPreview;
 
   // Drawing state: the stroke under way, with the brush, lasso or rectangle
@@ -128,13 +120,6 @@ export class FogOfWarRenderer {
     this.previewSprite.zIndex = 999; // Below per-op sprites during normal mode
     this.container.addChild(this.previewSprite);
 
-    // ── Cloud reveal: the players' fog as clouds ────────────────────
-    this.cloudLayer = new FogCloudLayer(_pixiApp);
-    this.cloudLayer.container.zIndex = 998;
-    this.cloudLayer.container.visible = false;
-    this.cloudLayer.container.alpha = this.previewSprite.alpha;
-    this.container.addChild(this.cloudLayer.container);
-
     // ── Lasso & rectangle preview graphics ──────────────────────────
     this.lassoGraphics = new PIXI.Graphics();
     this.lassoGraphics.eventMode = 'none';
@@ -177,32 +162,16 @@ export class FogOfWarRenderer {
     return this.container;
   }
 
-  /** The shape of the fog the players see (`playersFog`); null means invalid geometry. */
-  getPlayersCoverage(): FogCoverage | null {
+  /** The committed shape drawn by the compositor; null means invalid geometry. */
+  getCommittedCoverage(): FogCoverage | null {
     const state = this.store.getState();
-    const committed = levelObjects(state)?.fog ?? EMPTY_FOG;
-    const fog = state.fogHeld ? playersFog(state) : committed;
-    const key = levelMapKey(state.mapPath, state);
-    // The committed fog shares the compositor's cache, so it is replayed once for both
-    if (fog === committed) {
-      this.heldCoverage = null;
-      return this.coverageCache.get(committed, key);
-    }
-    // The held fog was the committed fog until the edit began: the compositor's cache has it still
-    const held = this.heldCoverage;
-    if (held?.fog === fog && held.mapPath === key) return held.coverage;
-    const known = this.coverageCache.known(fog, key);
-    const coverage = known !== undefined ? known : this.playersCoverageCache.get(fog, key);
-    this.heldCoverage = { fog, mapPath: key, coverage };
-    return coverage;
+    return this.coverageCache.get(levelObjects(state)?.fog ?? EMPTY_FOG, levelMapKey(state.mapPath, state));
   }
 
-  /** Local player captures share the DM renderer but must not share its fog preview opacity; under cloud reveal they show the clouds. */
+  /** Local player captures share the DM renderer but must not share its fog preview opacity. */
   getPlayerViewLayers(): LayerVisibility[] {
-    const clouds = this.cloudLayer.presenting;
     return [
-      { layer: this.previewSprite, visible: !clouds && this.previewSprite.visible, alpha: 1 },
-      { layer: this.cloudLayer.container, visible: clouds, alpha: 1 },
+      { layer: this.previewSprite, visible: this.previewSprite.visible, alpha: 1 },
       { layer: this.cursorPreview.getDisplayObject(), visible: false },
       { layer: this.lassoGraphics, visible: false },
       { layer: this.rectPreviewGraphics, visible: false },
@@ -211,11 +180,7 @@ export class FogOfWarRenderer {
 
   /** The fog as translucent as the GM view shows it, also while the canvas is in session view: for a picture of the scene. */
   getGmViewLayers(): LayerVisibility[] {
-    const alpha = resolveFogPreviewAlpha({ isPlayerView: false, isGMView: true });
-    return [
-      { layer: this.previewSprite, visible: this.previewSprite.visible, alpha },
-      { layer: this.cloudLayer.container, visible: this.cloudLayer.container.visible, alpha },
-    ];
+    return [{ layer: this.previewSprite, visible: this.previewSprite.visible, alpha: resolveFogPreviewAlpha({ isPlayerView: false, isGMView: true }) }];
   }
 
   /** Returns a map of fog sprite IDs → Containers for SelectionManager. */
@@ -285,7 +250,6 @@ export class FogOfWarRenderer {
     this.refreshBounds();
     this.renderPreviewFromStore();
     this.previewSprite.visible = true;
-    this.applyClouds();
 
     if (this.stroke.mode === 'brush') {
       this.cursorPreview.show(this.isErasing);
@@ -308,9 +272,9 @@ export class FogOfWarRenderer {
     // Viewport-level dispatch (via TokenRenderer) handles fog clicks instead.
     this.setFogSpritesInteractive(false);
 
-    // Update container visibility; clouds that part over the last fog play out first
+    // Update container visibility
     const fogOps = levelObjects(this.store.getState())?.fog;
-    if ((!fogOps || Object.keys(fogOps).length === 0) && !this.cloudLayer.hasClouds) {
+    if (!fogOps || Object.keys(fogOps).length === 0) {
       this.container.visible = false;
     } else {
       this.container.visible = true;
@@ -332,7 +296,6 @@ export class FogOfWarRenderer {
     this.eventBus.off('map-image-updated', this.mapImageUpdatedHandler);
 
     this.cursorPreview.destroy();
-    this.cloudLayer.destroy();
     this.compositor.destroy();
 
     // Destroy per-op sprites
@@ -404,11 +367,9 @@ export class FogOfWarRenderer {
   private setupStoreSubscriptions(): void {
     let prevTool = this.store.getState().activeTool;
     let prevFog = levelObjects(this.store.getState())?.fog;
-    let prevFogHeld = this.store.getState().fogHeld;
     let prevLoading = this.store.getState().isMapLoading;
     let prevMapPath = this.store.getState().mapPath;
     let prevGMView = this.store.getState().isGMView;
-    let prevFogStyle = this.store.getState().fogStyle;
 
     this.unsubscribe = this.store.subscribe((state) => {
       // Clear old pixels; coverage lookups synchronize their own map identity.
@@ -419,8 +380,6 @@ export class FogOfWarRenderer {
         this.resetDrawingState();
         this.clearAllFogSprites();
         this.compositor.clearCanvas();
-        // Another map's fog is shown, never animated into
-        this.cloudLayer.reset();
       }
 
       // Tool changes → enable/disable fog mode or toggle interaction
@@ -434,12 +393,10 @@ export class FogOfWarRenderer {
         }
       }
 
-      // Fog data changes (undo/redo, map load, drag commit, the players' fog let go) → rebuild sprites
+      // Fog data changes (undo/redo, map load, drag commit) → rebuild sprites
       // Skip while a stroke is under way: its preview is on the canvas
       // and during map loading (the isMapLoading→false handler rebuilds instead)
-      if (levelObjects(state)?.fog !== prevFog || state.fogHeld !== prevFogHeld || state.fogStyle !== prevFogStyle || mapChanged) {
-        prevFogHeld = state.fogHeld;
-        prevFogStyle = state.fogStyle;
+      if (levelObjects(state)?.fog !== prevFog || mapChanged) {
         prevFog = levelObjects(state)?.fog;
         if (!this.stroke.active && !state.isMapLoading) {
           this.refreshBounds();
@@ -452,7 +409,6 @@ export class FogOfWarRenderer {
         prevLoading = state.isMapLoading;
         if (state.isMapLoading) {
           this.container.visible = false;
-          this.cloudLayer.reset();
         } else {
           this.refreshBounds();
           this.rebuildFogSprites();
@@ -466,7 +422,6 @@ export class FogOfWarRenderer {
           isPlayerView: state.isPlayerView,
           isGMView: state.isGMView,
         });
-        this.cloudLayer.container.alpha = this.previewSprite.alpha;
       }
     });
   }
@@ -477,7 +432,6 @@ export class FogOfWarRenderer {
       isPlayerView: state.isPlayerView,
       isGMView: state.isGMView,
     });
-    this.cloudLayer.container.alpha = this.previewSprite.alpha;
 
     if (state.isMapLoading) {
       this.container.visible = false;
@@ -502,8 +456,7 @@ export class FogOfWarRenderer {
       const rendered = this.renderPreviewFromStore();
       const tool = this.store.getState().activeTool;
       this.previewSprite.visible = allOps.length > 0 || !rendered;
-      this.applyClouds();
-      this.container.visible = this.previewSprite.visible || this.cloudLayer.container.visible || tool === 'fog' || tool === 'eraser';
+      this.container.visible = this.previewSprite.visible || tool === 'fog' || tool === 'eraser';
       if (!rendered) {
         this.clearAllFogSprites();
         return;
@@ -557,25 +510,6 @@ export class FogOfWarRenderer {
     } catch (error) {
       console.error('[FogOfWarRenderer] Error rebuilding fog sprites:', error);
     }
-  }
-
-  /**
-   * Cloud reveal: the players' fog as clouds, which part and gather over what changed. The GM sees
-   * the fog flat while editing it (the fog and eraser tools), else the clouds as players do. Fog
-   * whose geometry is invalid stays on the compositor's opaque cover, and fog the clouds could not
-   * be drawn for stays flat.
-   */
-  private applyClouds(): void {
-    const state = this.store.getState();
-    const coverage = state.fogStyle.clouds && !state.isMapLoading ? this.getPlayersCoverage() : null;
-    if (!coverage || !this.cloudLayer.present(coverage, this.compositor.getBounds(), state.fogStyle.color)) {
-      this.cloudLayer.reset();
-      this.cloudLayer.container.visible = false;
-      return;
-    }
-    const editing = state.activeTool === 'fog' || state.activeTool === 'eraser';
-    this.cloudLayer.container.visible = !editing && this.cloudLayer.hasClouds;
-    if (!editing) this.previewSprite.visible = false;
   }
 
   private createFogSprite(paintOp: FogOperation, eraseOps: FogOperation[]): void {

@@ -192,6 +192,19 @@
   pointer-events: none;
 }
 
+// Why an upload cannot be converted, in the art's place: the card never shows such an upload itself.
+.atlas-token-card__refused {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: $spacing-m;
+  display: flex;
+  align-items: center;
+  font-size: var(--font-ui-small);
+  color: var(--text-muted);
+  text-align: center;
+}
+
 .atlas-token-card__badge {
   position: absolute;
   right: $spacing-s;

@@ -1,6 +1,6 @@
 import { ASSET_CAPS, IMAGE_MIME_TYPES, isSide, type AssetRef } from '../../protocol/index.ts';
 import { imageDimensions } from '../../../imageProcessing/imageDimensions';
-import { isVideoMapPath } from '../../../pixi/mapImage/video/videoMapFiles';
+import { isVideoMapPath } from '../../../pixi/mosaicCanvas/video/videoMapFiles';
 import { ASSET_USES, type AssetStoring } from '../assets/assetUses.ts';
 import type { VaultImage } from '../TokenShare.ts';
 

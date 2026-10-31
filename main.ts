@@ -84,9 +84,11 @@ import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
-import { TileDecoderClient } from './src/app/pixi/mapImage/TileDecoderClient';
+import { TesseraDecoderClient } from './src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
+import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
 import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
-import { MapImageService } from './src/app/pixi/mapImage/MapImageService';
+import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -168,6 +170,7 @@ export default class AtlasVTTPlugin extends Plugin {
     // whose folder renames reach map files only through these vault events.
     registerVaultSync(this);
     registerDiceStageRelease(this);
+    registerMapProcessingStatus(this);
     registerAccentColorSync(this);
     // Views first, so workspace restore can resolve persisted Atlas tabs
     // before the slower startup path finishes.
@@ -207,7 +210,7 @@ export default class AtlasVTTPlugin extends Plugin {
       diceSettingsSection(this.settingsService),
       tableTvSettingsSection(this.settingsService),
       mapsSettingsSection(this.settingsService),
-      mapImageCacheSettingsSection(() => TileDecoderClient.forApp(this.app)),
+      mapImageCacheSettingsSection(() => TesseraDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
       changelogSettingsSection(this.settingsService, changelogService, this.manifest.version, updateWatch),
@@ -280,9 +283,10 @@ export default class AtlasVTTPlugin extends Plugin {
     releaseMapPictures(this.app);
     CreatureIndex.release(this.app);
     TemplateLibrary.release(this.app);
-    TileDecoderClient.release(this.app);
+    MapProcessing.release(this.app);
+    TesseraDecoderClient.release(this.app);
     DungeonWorkerClient.release(this.app);
-    MapImageService.release(this.app);
+    MosaicCanvasService.release(this.app);
     disposeImageProcessing();
     disposeSpectralEngine();
   }

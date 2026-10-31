@@ -212,6 +212,7 @@ export function createAtlasStorage<T extends { mapPath: string | null; mapLoaded
       if (!mapFile) {
         return null;
       }
+      writer.fileSeen(mapPath);
 
       let content: string;
       try {

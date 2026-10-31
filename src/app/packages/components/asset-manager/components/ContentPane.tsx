@@ -21,6 +21,8 @@ import { useSpawnCountTyping } from '../hooks/useSpawnCountTyping';
 import { useAssetStatblockPreview } from '../hooks/useAssetStatblockPreview';
 import { useRememberedScroll, type ScrollMemory } from '../hooks/useRememberedScroll';
 import { useScrollbarGutter } from '../../primitives/useScrollbarGutter';
+import { MapProcessing } from '../../../../pixi/mosaicCanvas/mapProcessing';
+import { MapProcessingContext, type MapProcessingLookup } from './mapProcessingContext';
 import { Button } from '../../primitives/button';
 import { t } from '../../../../i18n';
 
@@ -93,6 +95,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
   useScrollbarGutter(scrollElement);
   useRememberedScroll(scrollElement, props.scrollKey, props.scrollMemory);
 
+  const processing = useMemo((): MapProcessingLookup => ({ app: props.app, processing: MapProcessing.forApp(props.app) }), [props.app]);
   const selectedIds = useMemo(() => new Set(selectedAssetIds), [selectedAssetIds]);
   const draggingIds = useMemo(
     () => (draggedItems?.type === 'asset' ? new Set(draggedItems.ids) : NO_IDS),
@@ -196,13 +199,15 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
                   end={folders.length === 0 && selection}
                 />
                 {!collapsedSections.assets && (
-                  <VirtualAssetGrid
-                    assets={assets}
-                    scrollElement={scrollElement}
-                    renderCard={renderCard}
-                    onBackgroundClick={clearIfBackground}
-                    appear={paneShown.current}
-                  />
+                  <MapProcessingContext.Provider value={processing}>
+                    <VirtualAssetGrid
+                      assets={assets}
+                      scrollElement={scrollElement}
+                      renderCard={renderCard}
+                      onBackgroundClick={clearIfBackground}
+                      appear={paneShown.current}
+                    />
+                  </MapProcessingContext.Provider>
                 )}
               </section>
             )}

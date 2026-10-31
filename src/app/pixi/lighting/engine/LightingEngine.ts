@@ -313,6 +313,8 @@ export class LightingEngine {
   /**
    * Whether the context is there and links the engine's shaders. After a restored context the
    * world goes (its textures are blank) and the shaders are checked again on the new one.
+   * Another renderer than WebGL (PIXI's Canvas or WebGPU renderer, which a browser without
+   * WebGL gets) has no pipe for the engine's meshes: the engine stops before it draws anything.
    */
   private ready(): boolean {
     if (contextLost(this.renderer)) return false;
@@ -325,7 +327,12 @@ export class LightingEngine {
     }
     if (this.verified) return true;
     const gl = glOf(this.renderer);
-    const failures = gl ? failedEngineShaders(gl) : [];
+    if (!gl) {
+      console.error(`Atlas: dynamic lighting needs WebGL, and this view draws with PIXI's ${this.renderer.name} renderer`);
+      this.stop();
+      return false;
+    }
+    const failures = failedEngineShaders(gl);
     // Lost while compiling: the logs say nothing about the device. Wait for the restore.
     if (contextLost(this.renderer)) return false;
     if (failures.length > 0) {

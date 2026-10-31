@@ -21,8 +21,7 @@ const SEEDS = Number(import.meta.env.VITE_FALLBACK_SEEDS) || 24;
 const SLIVERS = [484, 486, 593];
 
 /**
- * The picture the line-of-sight fallback gives the players, on PIXI's Canvas renderer and on
- * WebGL, against the exact black: the previous version's drawing read as it was meant, whose
+ * The picture the line-of-sight fallback gives the players against the exact black: the previous version's drawing read as it was meant, whose
  * polygons are the sweep's own. No pixel shows anything where the exact black holds its middle
  * with a texel of the mask to spare around it, and every black pixel has an outline or the
  * map's edge within three texels of it. Both hold at zoom 1 and at the map's maximum zoom.
@@ -64,7 +63,7 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
       expect(inside.map(({ x, y }) => pictures.exactlyBlack(x, y))).toEqual(inside.map(() => true));
       for (const scale of [1, MAX_ZOOM]) {
         const view = { scale, centre: { x: 214, y: 585 } };
-        expect(inside.map(({ x, y }) => pictures.shownAt(view, x, y))).toEqual(inside.map(() => ({ canvas: 'black', webgl: 'black' })));
+        expect(inside.map(({ x, y }) => pictures.shownAt(view, x, y))).toEqual(inside.map(() => ({ webgl: 'black' })));
         expect(faults(pictures.judge(view))).toEqual(CLEAN);
       }
       expect(sweep(pictures)).toEqual(CLEAN);
@@ -115,10 +114,10 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
       }));
       const whole = { scale: 1, centre: { x: 160, y: 160 } };
       // The scout sees the whole room: its floor shows, the opening in it is black.
-      expect(pictures.shownAt(whole, 100, 100)).toEqual({ canvas: 'floor', webgl: 'floor' });
-      for (const [x, y] of [[160, 160], [210, 210], [265, 265]] as const) expect(pictures.shownAt(whole, x, y)).toEqual({ canvas: 'black', webgl: 'black' });
+      expect(pictures.shownAt(whole, 100, 100)).toEqual({ webgl: 'floor' });
+      for (const [x, y] of [[160, 160], [210, 210], [265, 265]] as const) expect(pictures.shownAt(whole, x, y)).toEqual({ webgl: 'black' });
       // Off the opening by more than the black's own reach, the floor shows.
-      expect(pictures.shownAt(whole, 140, 200)).toEqual({ canvas: 'floor', webgl: 'floor' });
+      expect(pictures.shownAt(whole, 140, 200)).toEqual({ webgl: 'floor' });
     } finally {
       pictures.close();
     }
@@ -141,10 +140,10 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
       const tallies = pictures.judge(whole);
       expect(faults(tallies)).toEqual(CLEAN);
       // Most of the map is seen by two or more of them, and shows.
-      expect(Math.min(tallies.canvas.open, tallies.webgl.open)).toBeGreaterThan(60_000);
+      expect(tallies.webgl.open).toBeGreaterThan(60_000);
       // Beside the pillar all four see the floor; inside it nobody does.
-      expect(pictures.shownAt(whole, 140, 160)).toEqual({ canvas: 'floor', webgl: 'floor' });
-      expect(pictures.shownAt(whole, 160, 160)).toEqual({ canvas: 'black', webgl: 'black' });
+      expect(pictures.shownAt(whole, 140, 160)).toEqual({ webgl: 'floor' });
+      expect(pictures.shownAt(whole, 160, 160)).toEqual({ webgl: 'black' });
       expect(sweep(pictures)).toEqual(CLEAN);
     } finally {
       pictures.close();
@@ -158,10 +157,10 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
     });
     try {
       const whole = { scale: 1, centre: { x: 160, y: 160 } };
-      expect(pictures.shownAt(whole, 150, 160)).toEqual({ canvas: 'floor', webgl: 'floor' });
-      expect(pictures.shownAt(whole, 260, 160)).toEqual({ canvas: 'black', webgl: 'black' });
+      expect(pictures.shownAt(whole, 150, 160)).toEqual({ webgl: 'floor' });
+      expect(pictures.shownAt(whole, 260, 160)).toEqual({ webgl: 'black' });
       // Past the wall's upper end.
-      expect(pictures.shownAt(whole, 250, 10)).toEqual({ canvas: 'floor', webgl: 'floor' });
+      expect(pictures.shownAt(whole, 250, 10)).toEqual({ webgl: 'floor' });
       expect(sweep(pictures)).toEqual(CLEAN);
     } finally {
       pictures.close();
@@ -177,13 +176,13 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
         const seen = all.judge(view);
         expect(faults(seen)).toEqual(CLEAN);
         // Every pixel is the floor: nothing black along the map's edge, inside or outside it.
-        expect([seen.canvas.open, seen.webgl.open]).toEqual([512 * 512, 512 * 512]);
+        expect(seen.webgl.open).toBe(512 * 512);
         const dark = little.judge(view);
         expect(faults(dark)).toEqual(CLEAN);
       }
       // Black to the map's edge, the floor from the first pixel past it.
       const whole = { scale: 1, centre: { x: 160, y: 120 } };
-      const black = { canvas: 'black', webgl: 'black' }, floor = { canvas: 'floor', webgl: 'floor' };
+      const black = { webgl: 'black' }, floor = { webgl: 'floor' };
       expect([little.shownAt(whole, 0.5, 200.5), little.shownAt(whole, 319.5, 200.5), little.shownAt(whole, 300.5, 0.5), little.shownAt(whole, 300.5, 239.5)]).toEqual([black, black, black, black]);
       expect([little.shownAt(whole, -0.5, 200.5), little.shownAt(whole, 320.5, 200.5), little.shownAt(whole, 300.5, -0.5), little.shownAt(whole, 300.5, 240.5)]).toEqual([floor, floor, floor, floor]);
     } finally {
@@ -212,7 +211,7 @@ describe('the picture of the line-of-sight fallback against the exact black', { 
         const view = { scale: 1, centre: middle };
         // The middle 40 px of the doorway, on the door's line: the black at the jambs reaches two texels into it at most.
         const doorway = [-20, -10, 0, 10, 20].map((along) => pictures.shownAt(view, at(along).x, at(along).y));
-        expect(doorway).toEqual(doorway.map(() => ({ canvas: 'floor', webgl: 'floor' })));
+        expect(doorway).toEqual(doorway.map(() => ({ webgl: 'floor' })));
         expect(faults(pictures.judge(view))).toEqual(CLEAN);
         expect(faults(pictures.judge({ scale: MAX_ZOOM, centre: at(35) }))).toEqual(CLEAN);
       } finally {

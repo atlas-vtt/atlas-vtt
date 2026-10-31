@@ -1,0 +1,24 @@
+@use '../../../../../styles/tokens' as *;
+
+// A map image still being cut into tiles: the track in the border colour, the part done in the accent.
+.atlas-processing-ring {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  fill: none;
+  stroke-width: 2;
+}
+
+.atlas-processing-ring__track {
+  stroke: var(--background-modifier-border);
+}
+
+.atlas-processing-ring__fill {
+  stroke: var(--interactive-accent);
+  stroke-linecap: round;
+  transition: stroke-dashoffset $transition-normal $transition-ease-out;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}

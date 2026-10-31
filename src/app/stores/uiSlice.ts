@@ -64,7 +64,6 @@ export function createInitialUIState(): Pick<
   | 'isToolbarEditing'
   | 'dungeonGenerator'
   | 'roofsHidden'
-  | 'fogHeld'
 > {
   return {
     isGridSettingsOpen: false,
@@ -86,7 +85,6 @@ export function createInitialUIState(): Pick<
     isToolbarEditing: false,
     dungeonGenerator: null,
     roofsHidden: false,
-    fogHeld: null,
   };
 }
 

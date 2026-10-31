@@ -1,6 +1,5 @@
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { Point } from './visionTypes';
-import type { FogOperation } from './fogTypes';
 
 /** The tokens held at their starting positions. */
 export type HeldTokens = Readonly<Record<string, Point>>;
@@ -55,6 +54,4 @@ export interface ViewUIState {
   dungeonGenerator: DungeonGeneratorRequest | null;
   /** The GM hides the roofs of the GM's own picture in this view (the switcher's Roofs); players still see theirs. Never saved. */
   roofsHidden: boolean;
-  /** The fog the players are kept on while the GM edits fog under cloud reveal (`heldFog`); read with `playersFog`. Never saved. */
-  fogHeld: Readonly<Record<string, FogOperation>> | null;
 }

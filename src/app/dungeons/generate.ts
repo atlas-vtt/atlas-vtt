@@ -154,6 +154,6 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const levelOf = (index: number): number => (shaped ? level * (CAVE_UPPER_WATER + ((1 - CAVE_UPPER_WATER) * (index + 1)) / parts.length) : level);
   const floors = parts.map((part, index) => finishFloor(seed, index, { ...part, stack, openAbove: openAbove(index) }, terrain[index] as FloorTerrain, levelOf(index), sites?.[index]));
   // A Forest's entry floor is a cave floor read as glades; its floors below stay caves.
-  const shown = theme === 'forest' ? floors.map((floor, index) => (index === 0 ? forestFloor(floor, seed, params.tags) : floor)) : floors;
+  const shown = theme === 'forest' ? floors.map((floor, index) => (index === 0 ? forestFloor(floor, seed, params.tags, floors.slice(1)) : floor)) : floors;
   return { version: DUNGEON_GENERATOR_VERSION, seed, theme, tags, floors: shown, ...(shaped && { cave: shaped.cave }), ...(below > 0 && { below }) };
 }

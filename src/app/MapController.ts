@@ -9,9 +9,9 @@ import { parseGridColor } from './grid/gridContrastColor';
 import { sameStretch } from './grid/mapStretch';
 import { levelAlignmentsOf, levelImagePlacement, viewedImagePlacement } from './levels/levelAlignment';
 import { cellNumberStyleOfGrid } from './grid/cellNumbering';
-import { MapImage } from './pixi/mapImage/MapImage';
-import { MapImageService } from './pixi/mapImage/MapImageService';
-import { vaultMapVideos } from './pixi/mapImage/video/vaultMapVideos';
+import { MosaicCanvas } from './pixi/mosaicCanvas/MosaicCanvas';
+import { MosaicCanvasService } from './pixi/mosaicCanvas/MosaicCanvasService';
+import { vaultMapVideos } from './pixi/mosaicCanvas/video/vaultMapVideos';
 import { fitMapRect, fitZoomRange } from './pixi/fitMapRect';
 import { showCamera, type ViewCamera } from './pixi/viewCamera';
 import { requestRender } from './pixi/RenderScheduler';
@@ -33,15 +33,15 @@ type MapRenderer = Pick<
 >;
 
 /** The store background each map image shows, as the load or the store's change that showed it named it. */
-const shownBackground = new WeakMap<MapImage, string | null>();
+const shownBackground = new WeakMap<MosaicCanvas, string | null>();
 /** The background each map image has finished loading: what it shows on screen. */
-const loadedBackground = new WeakMap<MapImage, string | null>();
+const loadedBackground = new WeakMap<MosaicCanvas, string | null>();
 
 /** Who hears that a map image has finished loading the background asked of it (`onBackgroundLoaded`). */
-const backgroundListeners = new Set<(mapImage: MapImage) => void>();
+const backgroundListeners = new Set<(mapImage: MosaicCanvas) => void>();
 
 /** Loads `background` into `mapImage` and notes it shown once loaded, unless another was asked for meanwhile. */
-async function showBackground(mapImage: MapImage, background: string | null, load: () => Promise<void>): Promise<void> {
+async function showBackground(mapImage: MosaicCanvas, background: string | null, load: () => Promise<void>): Promise<void> {
   shownBackground.set(mapImage, background);
   await load();
   if (shownBackground.get(mapImage) !== background) return;
@@ -53,7 +53,7 @@ async function showBackground(mapImage: MapImage, background: string | null, loa
  * Calls `listener` whenever a map image has finished loading the background it was last asked
  * for, so whoever waits for `showsViewedLevel` learns when it turns true. Returns the unsubscribe.
  */
-function onBackgroundLoaded(listener: (mapImage: MapImage) => void): () => void {
+function onBackgroundLoaded(listener: (mapImage: MosaicCanvas) => void): () => void {
   backgroundListeners.add(listener);
   return () => { backgroundListeners.delete(listener); };
 }
@@ -62,27 +62,27 @@ function onBackgroundLoaded(listener: (mapImage: MapImage) => void): () => void 
  * Whether `mapImage` shows the background of the level the view's state shows: after a switch of
  * level it does once that level's image has loaded. Players' frames wait for it.
  */
-function showsViewedLevel(mapImage: MapImage | null, state: Parameters<typeof levelBackground>[0] & LevelView): boolean {
+function showsViewedLevel(mapImage: MosaicCanvas | null, state: Parameters<typeof levelBackground>[0] & LevelView): boolean {
   return !mapImage || loadedBackground.get(mapImage) === levelBackground(state, viewedLevelId(state));
 }
 
 /** The view's map image, made and handed to the renderer on the first load; null without a viewport. */
-function viewMapImage(app: App, renderer: MapRenderer): MapImage | null {
+function viewMapImage(app: App, renderer: MapRenderer): MosaicCanvas | null {
   const existing = renderer.getMapImage();
   if (existing) return existing;
   const viewport = renderer.getViewportInstance();
   if (!viewport) return null;
   const pixi = renderer.getAppInstance();
-  const service = MapImageService.forApp(app);
-  const mapImage = new MapImage({
+  const service = MosaicCanvasService.forApp(app);
+  const mapImage = new MosaicCanvas({
     service,
     viewport,
     // Not the app's ticker: a load stops that one to hold the last frame (`bindMapLoadingFrameHold`)
-    // and waits for the tiles in view, which arrive on this one.
+    // and waits for the tesserae in view, which arrive on this one.
     ticker: Ticker.shared,
     renderer: pixi.renderer,
     requestRender: () => requestRender(pixi),
-    // While a load holds the last frame, the crossfade from it shows the tiles, so they do not fade in too.
+    // While a load holds the last frame, the crossfade from it shows the tesserae, so they do not fade in too.
     drawAtOnce: () => !pixi.ticker.started || prefersReducedMotion(pixi.canvas),
     picture: MAP_THUMBNAIL_SIZE,
     video: vaultMapVideos(app, service, pixi.renderer, pixi.canvas),
@@ -171,7 +171,7 @@ async function loadAndDisplay(
  * level shown, undo or redo of a background change, a missing image removed): the image loads into
  * the same map image. Returns the unsubscribe.
  */
-function followBackground(app: App, store: ViewAtlasStore, mapImage: MapImage): () => void {
+function followBackground(app: App, store: ViewAtlasStore, mapImage: MosaicCanvas): () => void {
   return store.subscribe((state) => levelBackground(state, viewedLevelId(state)), (background) => {
     const state = store.getState();
     // A load sets the background itself and shows the image of its file.
@@ -186,7 +186,7 @@ function followBackground(app: App, store: ViewAtlasStore, mapImage: MapImage): 
 }
 
 /** Whether another image is on its way into `mapImage`, which will come in drawn as its level is. */
-function loadingAnother(mapImage: MapImage): boolean {
+function loadingAnother(mapImage: MosaicCanvas): boolean {
   return shownBackground.get(mapImage) !== loadedBackground.get(mapImage);
 }
 
@@ -195,7 +195,7 @@ function loadingAnother(mapImage: MapImage): boolean {
  * changes outside a load (an alignment applied, its undo or redo, another level shown), and says so
  * with `onFollowed`. Returns the unsubscribe.
  */
-function followStretch(store: ViewAtlasStore, mapImage: MapImage, onFollowed: () => void): () => void {
+function followStretch(store: ViewAtlasStore, mapImage: MosaicCanvas, onFollowed: () => void): () => void {
   return store.subscribe((state) => viewedImagePlacement(state), (stretch) => {
     const state = store.getState();
     // A load shows its image with the stretch of its file, and another level's image comes in drawn as its level is.

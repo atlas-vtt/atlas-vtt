@@ -29,7 +29,7 @@ describe('the explored memory', () => {
   it('goes inline as a PNG, and is never offered to the store', async () => {
     const mask = bytesOf(5000, 3);
     const { sent, store } = await exploredSent(mask);
-    expect(sent.at(-1)).toEqual({ t: 'explored', scene: '000000000000000000000001', png: toBase64(mask) });
+    expect(sent.at(-1)).toEqual({ t: 'explored', scene: '000000000000000000000001', png: toBase64(mask), serial: 0 });
     // Players read it as the protocol has it.
     expect(parseGmMessage(JSON.parse(JSON.stringify(sent.at(-1))))).toEqual(sent.at(-1));
     expect(store.client.offers.flat().some((asset) => asset.size === mask.length)).toBe(false);
@@ -40,7 +40,7 @@ describe('the explored memory', () => {
     const { sent, store } = await exploredSent(mask);
     const hash = await sha256Hex(mask);
     const id = await assetIdOf(SALT, hash);
-    expect(sent.at(-1)).toEqual({ t: 'explored', scene: '000000000000000000000001', mask: { hash, size: mask.length, mime: 'image/png', id } });
+    expect(sent.at(-1)).toEqual({ t: 'explored', scene: '000000000000000000000001', mask: { hash, size: mask.length, mime: 'image/png', id }, serial: 0 });
     expect(parseGmMessage(JSON.parse(JSON.stringify(sent.at(-1))))).toEqual(sent.at(-1));
     expect(store.client.offers.flat()).toContainEqual({ id, kind: 'image', size: mask.length });
   });
@@ -50,7 +50,7 @@ describe('the explored memory', () => {
     const table = shareHarness(litWith(mask), new Map([['maps/cave.webp', bytesOf(300, 1)]]), undefined, undefined, fakeStoring(() => true));
     table.share.start();
     await table.advance(EXPLORED_INTERVAL_MS + 100);
-    expect(table.sent.flatMap(({ body }) => (body.t === 'explored' ? [body] : []))).toEqual([{ t: 'explored', scene: '000000000000000000000001' }]);
+    expect(table.sent.flatMap(({ body }) => (body.t === 'explored' ? [body] : []))).toEqual([{ t: 'explored', scene: '000000000000000000000001', serial: 0 }]);
   });
 
   it('is taken from players once the store no longer keeps a large one', async () => {

@@ -97,7 +97,7 @@ function completeBlock(grid: CaveGrid, room: DungeonRoom): void {
  * through that corner: then taking `c` parts nothing, wherever the rest of the room lies.
  */
 function joinedRound(grid: CaveGrid, room: DungeonRoom, c: CellPoint): boolean {
-  const own = (dx: number, dy: number): boolean => grid.holds(c.x + dx, c.y + dy, room.id);
+  const own = (dx: number, dy: number): boolean => grid.holds(c.x + dx, c.y + dy, room.id) && !grid.stairCells.has(cellKey(c.x + dx, c.y + dy));
   // The side neighbours in turn round the cell, each with the corner before the next.
   const ring: readonly (readonly [number, number])[] = [[0, -1], [1, 0], [0, 1], [-1, 0]];
   const sides = ring.map(([dx, dy]) => own(dx, dy));
@@ -111,10 +111,13 @@ function joinedRound(grid: CaveGrid, room: DungeonRoom, c: CellPoint): boolean {
   return gaps <= 1;
 }
 
-/** Whether the room's cells stay one piece without `c`. */
+/**
+ * Whether the room's cells stay one piece without `c`. Its stairwells join nothing: a token steps
+ * onto stairs only across their ground end, so floor reached past their sides alone is cut off.
+ */
 export function wholeWithout(grid: CaveGrid, room: DungeonRoom, c: CellPoint): boolean {
   if (joinedRound(grid, room, c)) return true;
-  const cells = grid.cellsOf(room.id).filter((d) => d.x !== c.x || d.y !== c.y);
+  const cells = grid.cellsOf(room.id).filter((d) => (d.x !== c.x || d.y !== c.y) && !grid.stairCells.has(cellKey(d.x, d.y)));
   if (cells.length === 0) return false;
   const keys = new Set(cells.map((d) => cellKey(d.x, d.y)));
   const seen = new Set([cellKey(cells[0]!.x, cells[0]!.y)]);

@@ -23,7 +23,7 @@ import { tokenSizeSubmenu } from '../../../../react/components/context-menu/toke
 import { playerCharacterEntry, setPlayerCharacters } from '../../../../react/components/context-menu/playerCharacterMenu';
 import type { TransferMode } from '../../../../services/assetTransfer/transferPlan';
 import type { CreateScenePrefill } from '../hooks/useAssetCrud';
-import { scenePrefillFromMap } from '../utils/sceneCreation';
+import { sceneMenuEntries } from './sceneMenuEntries';
 import { createStatblockEntry } from '../../../../statblocks/editor/create/entryPoints';
 import { copyAssetLink } from '../../../../links/atlasLinkText';
 import { t } from '../../../../i18n';
@@ -75,15 +75,8 @@ export function buildAssetContextMenuEntries(
     assetService: deps.assetService, random: diceRandom,
   };
 
-  // ── Create Scene from Map ─────────────────────────────────────
-  if (asset.type === 'maps') {
-    entries.push({
-      type: 'item',
-      label: 'Create Scene',
-      icon: 'clapperboard',
-      onClick: () => deps.openCreateScene(scenePrefillFromMap(asset)),
-    });
-  }
+  // ── Create Scene from Map(s) ──────────────────────────────────
+  entries.push(...sceneMenuEntries(asset, selectedAssets, deps));
 
   // ── Spawn: on the map, or into the initiative tracker ─────────
   entries.push(...spawnMenuEntries(asset, selectedAssets, spawnCtx, deps.onClose));

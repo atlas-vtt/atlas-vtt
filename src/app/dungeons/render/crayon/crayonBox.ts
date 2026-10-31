@@ -65,7 +65,7 @@ export function crayonBox(scene: ArtScene): CrayonBox {
       // A piece is drawn turned and scaled: its strokes keep the map's size.
       const m = ctx.getTransform();
       const scale = Math.sqrt(Math.abs(m.a * m.d - m.b * m.c)) / pxPerCell || 1;
-      crayonArea(ctx, { path, bounds, paint: paintOf(fill.colour), cover: fill.cover, passes: fill.passes, seed: areaSeed(bounds, salt), ...(strength && { strength }), ...(inside && { inside }) }, unit / scale);
+      crayonArea(ctx, { path, bounds, paint: paintOf(fill.colour), cover: fill.cover, passes: fill.passes, seed: areaSeed(bounds, salt), ...(strength && { strength }), ...(inside && { inside }), ...(fill.angle !== undefined && { angle: fill.angle }) }, unit / scale);
     },
     paper: (path) => {
       const at = (layout ??= mapLayout(dungeon.model, pxPerCell, view));

@@ -5,6 +5,7 @@ import type { AssetCardHandlers } from '../hooks/useAssetCardHandlers';
 import { TokenPortrait } from '../../shared/TokenPortrait';
 import { LabelTooltip, Tooltip, TooltipContent, TooltipTrigger } from '../../primitives/tooltip';
 import { AssetTagMenu } from './AssetTagMenu';
+import { ProcessingBadge } from './ProcessingBadge';
 import { RevealImage } from '../../primitives/RevealImage';
 import { Skeleton } from '../../primitives/Skeleton';
 import { encounterPreviewStyle } from '../utils/encounterPreviewLayout';
@@ -122,6 +123,8 @@ export const AssetCard = memo(function AssetCard({
                 <div className="atlas-asset-animated-indicator"><Film /></div>
               </LabelTooltip>
             )}
+
+            {(asset.type === 'maps' || asset.type === 'scenes') && <ProcessingBadge asset={asset} />}
 
             {statblockPath && spawnCount <= 1 && (
               <LabelTooltip label={t('am.card.statblockLinked')}>

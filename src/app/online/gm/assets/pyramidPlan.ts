@@ -1,8 +1,8 @@
 import { ASSET_CAPS } from '../../protocol/index.ts';
-import type { StoredTileSize } from '../../../pixi/mapImage/tileBlobs';
-import { pyramidTiles } from '../../../pixi/mapImage/tileBlobs';
+import type { StoredTesseraSize } from '../../../pixi/mosaicCanvas/tesseraBlobs';
+import { pyramidTesserae } from '../../../pixi/mosaicCanvas/tesseraBlobs';
 import { imageDimensions } from '../../../imageProcessing/imageDimensions';
-import { pyramidOf, TILE_SPEC, tileSourceRect, tileWorldRect, type Pyramid } from '../../../pixi/mapImage/pyramid';
+import { pyramidOf, TESSERA_SPEC, tesseraSourceRect, tesseraWorldRect, type Pyramid } from '../../../pixi/mosaicCanvas/pyramid';
 
 /** The most a batch of tiles carries: below the store's 8 MiB body, with room for the form's headers. */
 export const BATCH_BYTES = 7.5 * 1024 * 1024;
@@ -27,7 +27,7 @@ export const MAP_CENTRE: MapFocus = { x: 0.5, y: 0.5 };
 
 /** One request of a pyramid's upload: its tiles, and whether it carries the manifest. */
 export interface TileBatch {
-  readonly tiles: readonly StoredTileSize[];
+  readonly tiles: readonly StoredTesseraSize[];
   readonly manifest: boolean;
   /** Whether it belongs to the overview level, which goes before anything else of the map. */
   readonly overview: boolean;
@@ -55,7 +55,7 @@ export async function headerPyramid(bytes: Uint8Array<ArrayBuffer>): Promise<Pyr
 
 /** `manifest.json`: width, height, spec, levels and tile count, which a page reads the pyramid by. */
 export function manifestOf(pyramid: Pyramid): Uint8Array<ArrayBuffer> {
-  return new TextEncoder().encode(JSON.stringify({ width: pyramid.width, height: pyramid.height, spec: TILE_SPEC, levels: pyramid.levels.length, count: tileCount(pyramid) })).slice();
+  return new TextEncoder().encode(JSON.stringify({ width: pyramid.width, height: pyramid.height, spec: TESSERA_SPEC, levels: pyramid.levels.length, count: tileCount(pyramid) })).slice();
 }
 
 /**
@@ -64,16 +64,16 @@ export function manifestOf(pyramid: Pyramid): Uint8Array<ArrayBuffer> {
  * the manifest, within what the store keeps under one id.
  */
 export function pyramidBound(pyramid: Pyramid): number {
-  const tiles = pyramidTiles(pyramid).reduce((sum, ref) => {
-    const rect = tileSourceRect(pyramid, ref);
+  const tiles = pyramidTesserae(pyramid).reduce((sum, ref) => {
+    const rect = tesseraSourceRect(pyramid, ref);
     return sum + Math.ceil(rect.width * rect.height * TILE_BYTES_PER_PIXEL) + TILE_BYTES_HEADER;
   }, 0);
   return Math.min(ASSET_CAPS.tiles, tiles + MANIFEST_BYTES);
 }
 
 /** A tile's distance from the focus, in shares of the map. */
-function distance(pyramid: Pyramid, tile: StoredTileSize, focus: MapFocus): number {
-  const rect = tileWorldRect(pyramid, tile);
+function distance(pyramid: Pyramid, tile: StoredTesseraSize, focus: MapFocus): number {
+  const rect = tesseraWorldRect(pyramid, tile);
   return Math.hypot((rect.x + rect.width / 2) / pyramid.width - focus.x, (rect.y + rect.height / 2) / pyramid.height - focus.y);
 }
 
@@ -82,11 +82,11 @@ function distance(pyramid: Pyramid, tile: StoredTileSize, focus: MapFocus): numb
  * `BATCH_TILES` tiles and `BATCH_BYTES` bytes; the first carries the manifest where `manifest` names
  * its bytes (the pyramid's first level to go up, the overview).
  */
-export function planLevel(pyramid: Pyramid, tiles: readonly StoredTileSize[], focus: MapFocus, manifest: Uint8Array | null): TileBatch[] {
+export function planLevel(pyramid: Pyramid, tiles: readonly StoredTesseraSize[], focus: MapFocus, manifest: Uint8Array | null): TileBatch[] {
   const overview = tiles[0]?.level === pyramid.overview;
   const sorted = tiles.map((tile) => ({ tile, away: distance(pyramid, tile, focus) })).sort((a, b) => a.away - b.away);
   const batches: TileBatch[] = [];
-  let current: StoredTileSize[] = [];
+  let current: StoredTesseraSize[] = [];
   let size = manifest?.length ?? 0;
   const close = (): void => {
     batches.push({ tiles: current, manifest: manifest !== null && batches.length === 0, overview });

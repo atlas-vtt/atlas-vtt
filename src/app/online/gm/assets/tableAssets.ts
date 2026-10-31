@@ -8,8 +8,8 @@ import { stagedSceneAssets } from './assetGather.ts';
 import { AssetPublisher } from './AssetPublisher.ts';
 import type { AssetRefs } from './assetRefs.ts';
 import type { MapFocus } from './pyramidPlan.ts';
-import { buildMapPyramid } from '../../../pixi/mapImage/prebuildMapImage';
-import { TileDecoderClient } from '../../../pixi/mapImage/TileDecoderClient';
+import { buildMapPyramid } from '../../../pixi/mosaicCanvas/prebuildMosaicCanvas';
+import { TesseraDecoderClient } from '../../../pixi/mosaicCanvas/TesseraDecoderClient';
 import { call } from '../atlasView.ts';
 import { AssetStoreClient } from './storeClient.ts';
 
@@ -59,8 +59,8 @@ export function tablePublisher(deps: TablePublisherDeps): AssetPublisher {
     client: new AssetStoreClient(deps.origin, () => assets.token()),
     pyramids: {
       build: (path) => buildMapPyramid(app, path),
-      level: (hash, level, signal) => TileDecoderClient.forApp(app).levelReady(hash, level, signal),
-      blobs: (hash, tiles) => TileDecoderClient.forApp(app).tileBlobs(hash, [...tiles]),
+      level: (hash, level, signal) => TesseraDecoderClient.forApp(app).levelReady(hash, level, signal),
+      blobs: (hash, tiles) => TesseraDecoderClient.forApp(app).tesseraBlobs(hash, [...tiles]),
       focus: () => deps.focus(),
     },
     salt: assets.salt,

@@ -6,7 +6,7 @@ import { createStore } from 'zustand/vanilla';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
 import type { SceneFrame } from '../../src/app/pixi/lighting/engine/types';
-import type { TileView } from '../../src/app/pixi/mapImage/levelOfDetail';
+import type { TesseraView } from '../../src/app/pixi/mosaicCanvas/levelOfDetail';
 import { MapThumbnailService } from '../../src/app/services/MapThumbnailService';
 import { ServiceManager } from '../../src/app/services/ServiceManager';
 
@@ -40,12 +40,12 @@ function setup(contextLost = false) {
     lightMarkers: gmOverlays.lightMarkers.visible, rangeRings: gmOverlays.rangeRings.visible, sightAids: gmOverlays.sightAids.visible, hiddenToken: hiddenToken.visible, hiddenTokenAlpha: hiddenToken.alpha, fogAlpha: fog.alpha,
   });
 
-  const rendered: Array<{ frame: Rectangle; resolution: number; shown: ReturnType<typeof shown>; lit: boolean; picture: TileView | null }> = [];
+  const rendered: Array<{ frame: Rectangle; resolution: number; shown: ReturnType<typeof shown>; lit: boolean; picture: TesseraView | null }> = [];
   let lighting = false;
-  // The map image's tiles of the picture it draws for, until restored
-  let picture: TileView | null = null;
+  // The map image's tesserae of the picture it draws for, until restored
+  let picture: TesseraView | null = null;
   const restoreMapImage = vi.fn(() => { picture = null; });
-  const drawFor = vi.fn((view: TileView) => {
+  const drawFor = vi.fn((view: TesseraView) => {
     picture = view;
     return restoreMapImage;
   });
@@ -105,7 +105,7 @@ describe('a map view\'s thumbnail render', () => {
     expect(frames[0]).toMatchObject({ x: 0, y: 0, resolution: 0.5 });
   });
 
-  it('draws the map image\'s tiles at the thumbnail\'s own detail, and the canvas\' again afterwards', () => {
+  it('draws the map image\'s tesserae at the thumbnail\'s own detail, and the canvas\' again afterwards', () => {
     const { services, rendered, restoreMapImage } = setup();
     services.renderMapThumbnail({ width: 640, height: 360 });
     expect(rendered[0]!.picture).toEqual({ rect: { x: 0, y: 75, width: 800, height: 450 }, worldPerScreenPixel: 1.25 });

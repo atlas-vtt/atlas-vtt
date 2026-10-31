@@ -1,4 +1,4 @@
-import type { PlayerMessage, SharedFloor, SharedScene } from '../protocol/index.ts';
+import { GM_MARKS, type PlayerMessage, type SharedFloor, type SharedScene } from '../protocol/index.ts';
 import type { ShownRollToken } from '../../services/playerRollSource';
 import { isLit, LIGHTING_REFUSAL } from './atlasLighting.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
@@ -22,7 +22,7 @@ import { TOKEN_POLL_MS, TokenShare } from './TokenShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelBackground } from '../../levels/levelEdits';
 import { viewedLevelId } from '../../levels/sceneLevels';
-import { isVideoMapPath, videoMimeType } from '../../pixi/mapImage/video/videoMapFiles';
+import { isVideoMapPath, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 import { t } from '../../i18n';
 
 /** The type of an animated map's video by its path, or null for a path that is no video map. */
@@ -75,7 +75,10 @@ export class FloorShare {
     // The initiative list shows the players' look-alike numbers too: it follows them as they change
     this.tokens = new TokenShare(store, { ...ports, numbersChanged: () => this.layers.update(), liveCarriedUntil: (alias) => this.live?.carriedUntil(alias) }, (listed) => mine?.setList(listed));
     const rulers = (): RulerPaths => dragRulerPaths(store.getState(), ports.gmDragRuler?.() ?? null, this.moves.dragStarts());
-    this.live = ports.sendLive === undefined ? null : new LiveShare(store, { ...ports, sendLive: (body, key) => ports.sendLive?.(body, key), rulers }, () => ({
+    const cursorsShown = (): boolean => ports.atlasSettings().showCursors;
+    // A held token no player drags is held by the GM's own pointer
+    const holder = (tokenId: string): string | undefined => (cursorsShown() ? this.moves.draggerOf(tokenId) ?? GM_MARKS : undefined);
+    this.live = ports.sendLive === undefined ? null : new LiveShare(store, { ...ports, sendLive: (body, key) => ports.sendLive?.(body, key), rulers, holder }, () => ({
       scene: this.tokens.listedScene,
       alias: (tokenId) => this.tokens.listedAlias(tokenId),
     }));
@@ -85,7 +88,6 @@ export class FloorShare {
       tokenAlias: (id) => this.tokens.alias(id),
     });
     this.layers = new MapLayerShare(store, { ...ports, mapLayers: () => ports.mapLayers?.() ?? null, badgeOf: (tokenId) => this.tokens.badgeOf(tokenId), tokenAlias: (tokenId) => this.tokens.listedAlias(tokenId) });
-    const cursorsShown = (): boolean => ports.atlasSettings().showCursors;
     this.rules = new RulesShare(store, { ...ports, cursorsShown, rollDice: () => mapRollDice(ports.dice?.() ?? null) });
     this.moves = new PlayerMoves(store, {
       ...ports,
@@ -151,6 +153,11 @@ export class FloorShare {
   /** A player's map shows again: they are sent the marks as they are now, also where there are none, so none they held stays. */
   catchUpMarks(to: string): void {
     this.marks.catchUp(to);
+  }
+
+  /** The player whose drag holds a token on this floor (by GM token id), or undefined while none does. */
+  draggerOf(tokenId: string): string | undefined {
+    return this.moves.draggerOf(tokenId);
   }
 
   /** Who owns which token, which tokens are player tokens, or who is connected changed. */
@@ -227,7 +234,7 @@ export class FloorShare {
   }
 
   private async update(state: SceneState): Promise<void> {
-    if (!state.mapLoaded || state.isMapLoading) return;
+    if (!state.mapLoaded || state.isMapLoading) return this.inputs.mapLoading();
     const lit = isLit(state);
     const refusal = lit && this.ports.lightingSource() === null ? LIGHTING_REFUSAL : null;
     if (refusal !== null) {

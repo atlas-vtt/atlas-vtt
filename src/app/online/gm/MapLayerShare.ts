@@ -17,7 +17,6 @@ import { WidgetShare } from './WidgetShare.ts';
 import { levelObjects } from '../../levels/levelObjects';
 import { levelMapKey } from '../../levels/sceneLevels';
 import { mapTokens } from '../../tokens/offMap';
-import { playersFog } from '../../fog/playersFog';
 
 export interface MapLayerSharePorts extends PacerClock {
   send(body: GmMessage, to?: string): void;
@@ -136,7 +135,7 @@ export class MapLayerShare {
     const settings = this.ports.atlasSettings();
     this.publish({ t: 'grid', scene: scene.id, grid: sharedGrid(source.grid()) });
     this.publishLiquids(scene.id, levelObjects(state).liquids);
-    const fog = this.fog.get(playersFog(state), levelMapKey(state.mapPath, state));
+    const fog = this.fog.get(levelObjects(state).fog, levelMapKey(state.mapPath, state));
     const annotations = this.annotationsOf(state, fog);
     // Drawings may run to megabytes: they are compared as text only when worked out anew.
     if (annotations !== this.annotationsSent) {
@@ -169,7 +168,7 @@ export class MapLayerShare {
     const source = this.ports.mapLayers();
     const map = state.mapPath;
     if (this.scene?.id !== sceneId || source === null || map === null || !state.mapLoaded || state.isMapLoading) return null;
-    const listed = this.readablePins(state, source, this.fog.get(playersFog(state), levelMapKey(map, state)))?.find((pin) => pin.alias === alias);
+    const listed = this.readablePins(state, source, this.fog.get(levelObjects(state).fog, levelMapKey(map, state)))?.find((pin) => pin.alias === alias);
     return listed === undefined ? null : { ...listed, map };
   }
 

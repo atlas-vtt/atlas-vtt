@@ -303,10 +303,6 @@
   color: var(--text-muted);
 }
 
-.atlas-dropdown-swatches--disabled .atlas-dropdown-swatches__label {
-  color: var(--text-faint);
-}
-
 .atlas-swatch-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);

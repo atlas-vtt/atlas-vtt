@@ -5,7 +5,7 @@
  * rows they are reached from are claimed from the start and never given up.
  */
 
-import { approachCells, doorApproaches, type StairSpot, spotRect } from '../../floors/stairSpots';
+import { approachCells, doorApproaches, type StairSpot, spotRect, stairwellCells } from '../../floors/stairSpots';
 import { cellKey, cellsOf, doorCells, floorRect, inRect, wallRect } from '../../geometry';
 import type { CellPoint, DungeonDoor, DungeonRoom } from '../../model';
 
@@ -60,10 +60,13 @@ export class CaveGrid {
   private readonly cells = new Map<number, Set<number>>();
   private readonly needed = new Map<number, Set<string>>();
   readonly doors: readonly DungeonDoor[];
+  /** Every stairwell's cells, by key: kept floor that no way between the room's other floor may cross. */
+  readonly stairCells: ReadonlySet<string>;
 
   /** `index`, the floor's own, tells which end of each stairwell lies on it; unset, both rows a stairwell is reached from are kept. */
   constructor(floor: CaveFloorPlan, index = -1) {
     this.doors = floor.doors;
+    this.stairCells = stairwellCells(floor.stairs);
     const rects = floor.rooms.map((room) => wallRect(room));
     const xs = [...rects.flatMap((r) => [r.x0, r.x1]), ...floor.doors.map((d) => d.x)];
     const ys = [...rects.flatMap((r) => [r.y0, r.y1]), ...floor.doors.map((d) => d.y)];

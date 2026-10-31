@@ -16,7 +16,6 @@ import { PerceptionMemo, tokenPerception, type TokenPerception } from '../../vis
 import { PLAYER_SIGHT_POLICY } from '../../vision/tokenSightPolicy';
 import { isLit, type LightingSource } from './atlasLighting.ts';
 import type { MapLayerSource } from './atlasMapLayers.ts';
-import { playersFog } from '../../fog/playersFog';
 import type { PlayerTokenSource, SceneState } from './atlasView.ts';
 import type { MapSize } from './moveCheck.ts';
 import { roundPlace } from './scenePicture.ts';
@@ -92,7 +91,7 @@ export class FloorSight {
     });
   }
 
-  /** How the players perceive each token of the floor: by its lighting where lit, under the fog they see (`playersFog`), failing closed under a roof. */
+  /** How the players perceive each token of the floor: by its lighting where lit, under its committed fog, failing closed under a roof. */
   private perception(state: SceneState): TokenPerception | undefined {
     const objects = levelObjects(state);
     const tokens = mapTokens(objects);
@@ -102,7 +101,7 @@ export class FloorSight {
     const lit = lighting === null ? undefined : tokenPerception(lighting.currentSight(), lighting.ambientLight(), lighting.lightReaches(), { ...tokens }, { conditions: rules?.conditions ?? [], held: heldForSight(state) }, this.memo);
     // Lit, but its lighting cannot be read: nothing is seen
     if (sceneLit && lit === undefined) return () => 'unseen';
-    const coverage = this.fog.get(playersFog(state), levelMapKey(state.mapPath, state));
+    const coverage = this.fog.get(objects.fog, levelMapKey(state.mapPath, state));
     const fogged = coverage === null || coverage.shape.length > 0;
     const roofed = this.roofed();
     if (!fogged && !roofed) return lit;

@@ -438,6 +438,23 @@ describe('the ruler of a drag', () => {
   });
 });
 
+describe('whose pointer holds a dragged token', () => {
+  const place = { id: 'a'.repeat(24), x: 105, y: 35 };
+  const live = (by: unknown): unknown => ({ t: 'live', scene: 's1', at: 1, tokens: [{ ...place, by }] });
+
+  it('is read as the GM or a player\'s relay id, and a place without it reads as before', () => {
+    expect(parseGmMessage(live('gm'))).toEqual(live('gm'));
+    expect(parseGmMessage(live('abcdefghijklmnopqrst'))).toEqual(live('abcdefghijklmnopqrst'));
+    expect(parseGmMessage({ t: 'live', scene: 's1', at: 1, tokens: [place] })).toEqual({ t: 'live', scene: 's1', at: 1, tokens: [place] });
+  });
+
+  it('leaves out a holder it cannot name and keeps the place: a later GM may name holders of other kinds', () => {
+    for (const unknown of ['', 'GM', 'player', 'abcdefghijklmnopqrs1', 1, null, {}]) {
+      expect(parseGmMessage(live(unknown)), JSON.stringify(unknown)).toEqual({ t: 'live', scene: 's1', at: 1, tokens: [place] });
+    }
+  });
+});
+
 describe('a campaign\'s players', () => {
   const LETTERS = 'abcdefghijklmnopqrstuvwxyz234567';
   const seat = (n: number): { id: string; name: string; code: string } => ({ id: `${LETTERS[n % 32]}${LETTERS[Math.floor(n / 32)]}`.padEnd(20, 'a'), name: `Player ${n}`, code: String(100000 + n) });

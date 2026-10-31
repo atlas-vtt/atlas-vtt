@@ -33,6 +33,13 @@ and every one of them blocks the merge, lint included.
 
 ### Tests
 
+The suite is two projects. `unit` runs in CI on every push and pull request, in four
+shards. `slow` holds the files that take a CI runner ten seconds or more each (the dungeon
+generator's invariants, the Spectral Engine on drawn maps, visibility sweeps, wall sealing,
+property and fuzz tests; the list is `SLOW_TEST_FILES` in `vitest.config.mts`) and never
+runs in CI: run `npm run test:slow` locally when the code those files cover changes, or
+one file of it with `npx vitest run --project slow <path>`.
+
 Unit tests run in Node. A test that needs a DOM (React, `document`, canvas
 elements) starts with `// @vitest-environment jsdom`; without it, it fails with
 `document is not defined`. Keep that line off tests that do not need it: jsdom

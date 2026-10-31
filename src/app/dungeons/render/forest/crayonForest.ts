@@ -1,6 +1,5 @@
 import type { ArtScene } from '../art/artScene';
 import { viewBounds } from '../art/artScene';
-import { valueNoise } from '../art/noise';
 import { CRAYONS } from '../crayon/colours';
 import { crayonBox } from '../crayon/crayonBox';
 import { crayonHand } from '../crayon/hand';
@@ -8,25 +7,20 @@ import { crayonPens } from '../crayon/pens';
 import { crayonWater } from '../crayon/pools';
 import { traceShape } from '../grounds/crowns';
 import { crayonGroundsPaint } from '../grounds/crayonPaint';
-import type { GroundsPaint } from '../grounds/paint';
 import { mapLayout } from '../layoutSize';
 import { mixColours, withAlpha } from '../palette';
 import { drawVellum } from '../vellum';
 import { drawForest, massShare } from './drawForest';
 import { strokeLimbs } from './forestPaint';
 
-/** Dolmenwood's meadow, the light yellow-green of a forest's open ground. */
-const MEADOW = '#a8a348';
 /** The woods' vellum: a light green, lighter than the mass's coats, so the mass stands out as the woods' edge. */
 const WOODS = '#94ab84';
 /** How much stronger the woods' vellum grain is than the paper's: a mid green shows little of it. */
 const WOODS_GRAIN = 3;
-/** Grass growing thicker in spots. */
-const GRASS = '#7f9a4a';
 
 /**
- * Crayon's forest: the woods in two coats of green; the clearings' paper washed faintly in meadow,
- * thicker grass in spots and earth where it is worn, under the tufts; clumps in paper with graphite
+ * Crayon's forest: the woods in two coats of green; the clearings a meadow as every crayon lawn is
+ * (`CRAYON_GROUNDS.meadow`); clumps in paper with graphite
  * outlines that fade into the mass and a curl along each lit part at its edge, then one coat over the
  * whole mass, leaf green at the clearing, shade green deeper in.
  */
@@ -36,23 +30,9 @@ export function paintCrayonForest(scene: ArtScene): void {
   const hand = crayonHand(scene, pens, box);
   const { ctx, dungeon } = scene.env;
   const b = viewBounds(scene.frame, 1);
-    const seed = dungeon.model.seed;
-  const broad = (x: number, y: number): number => valueNoise(x * 0.18, y * 0.18, seed + 61) * 0.7 + valueNoise(x * 0.5, y * 0.5, seed + 62) * 0.3;
-  const spots = (x: number, y: number): number => Math.max(0, (valueNoise(x * 1.1, y * 1.1, seed + 63) - 0.55) * 3.2);
-  const lawn = crayonGroundsPaint(hand, pens, box);
-  const ground: GroundsPaint = {
-    ...lawn,
-    lawn: (path, cells) => {
-      lawn.lawn(path, cells);
-      // A light touch the paper still shows through, so the clearing stays light under tokens.
-      box.colourIn(path, { colour: MEADOW, cover: 0.38, passes: 2 }, (x, y) => 0.5 + 0.5 * broad(x, y), b);
-      box.colourIn(path, { colour: GRASS, cover: 0.32, passes: 2 }, spots, b);
-      box.colourIn(path, { colour: CRAYONS.earth, cover: 0.25, passes: 1 }, (x, y) => Math.max(0, 1 - broad(x, y) * 2.5), b);
-    },
-  };
   drawForest(scene, {
     hand,
-    ground,
+    ground: crayonGroundsPaint(hand, pens, box),
     colours: { water: pens.water, cloth: pens.floor },
     woods: () => {
       // The woods are vellum in a green, as the paper round every map is, its grain strong enough to

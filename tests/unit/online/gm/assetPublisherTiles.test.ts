@@ -4,7 +4,7 @@ import { pyramidKey } from '../../../../src/app/online/gm/assets/assetRefs.ts';
 import { ASSET_USES } from '../../../../src/app/online/gm/assets/assetUses.ts';
 import { BATCH_TILES, manifestOf, pyramidBound } from '../../../../src/app/online/gm/assets/pyramidPlan.ts';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
-import { pyramidOf } from '../../../../src/app/pixi/mapImage/pyramid';
+import { pyramidOf } from '../../../../src/app/pixi/mosaicCanvas/pyramid';
 import { bytesOf, publisherHarness, SALT, sharesHeard } from './fakeAssetStore.ts';
 import { kept } from './fakeStoring.ts';
 import { pngOf } from './fakeTileCache.ts';

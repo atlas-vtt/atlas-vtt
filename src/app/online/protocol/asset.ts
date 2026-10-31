@@ -9,8 +9,8 @@ export const HASH_PATTERN = /^[0-9a-f]{64}$/;
  * made by the GM's Atlas, unguessable, and the capability to read the object for as long as it lives.
  */
 export const ASSET_ID_PATTERN = /^[0-9a-f]{64}$/;
-/** The largest object the asset store holds under one id (a tile pyramid as a whole, a video). */
-export const MAX_STORED_BYTES = 2 * 1024 ** 3;
+/** The largest object the asset store holds under one id (a tile pyramid as a whole, a video): a gigapixel map's lossless tiles with room for noisy art. */
+export const MAX_STORED_BYTES = 4 * 1024 ** 3;
 /** What one stored asset of each kind may hold at most; the store's offer refuses more. */
 export const ASSET_CAPS = {
   image: 95 * 1024 * 1024,

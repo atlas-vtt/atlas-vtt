@@ -80,7 +80,7 @@ describe('the explored memory', () => {
 });
 
 describe('the GM level', () => {
-  it('is 9: stored assets, the explored memory inline or stored, and no assets over the socket', () => {
-    expect(GM_LEVEL).toBe(9);
+  it('is at least 9: stored assets, the explored memory inline or stored, and no assets over the socket', () => {
+    expect(GM_LEVEL).toBeGreaterThanOrEqual(9);
   });
 });

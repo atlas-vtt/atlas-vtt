@@ -1,4 +1,4 @@
-import { animateMapsOn } from '../pixi/mapImage/video/mapVideoPlayback';
+import { animateMapsOn } from '../pixi/mosaicCanvas/video/mapVideoPlayback';
 import type { SettingsService } from '../services/SettingsService';
 import type { AtlasSettingSection } from './settingSections';
 import { t } from '../i18n';

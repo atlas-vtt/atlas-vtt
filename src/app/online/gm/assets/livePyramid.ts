@@ -1,6 +1,6 @@
-import { pyramidOf, type Pyramid } from '../../../pixi/mapImage/pyramid';
-import type { StoredLevel } from '../../../pixi/mapImage/tileBlobs';
-import { TileLevelError } from '../../../pixi/mapImage/tileErrors';
+import { pyramidOf, type Pyramid } from '../../../pixi/mosaicCanvas/pyramid';
+import type { StoredLevel } from '../../../pixi/mosaicCanvas/tesseraBlobs';
+import { TesseraLevelError } from '../../../pixi/mosaicCanvas/tesseraErrors';
 import type { Timers } from '../companionTimers.ts';
 import { pyramidRank, type MapStanding } from './assetUses.ts';
 import { levelOrder, manifestOf, planLevel, pyramidBound, tileCount, type MapFocus, type TileBatch } from './pyramidPlan.ts';
@@ -10,7 +10,7 @@ import { retryMs } from './uploadPace.ts';
 export const MAX_LEVEL_TRIES = 6;
 
 export interface LivePyramidPorts {
-  /** A level once all its tiles are stored; rejects once `signal` aborts or the worker stops, with `TileLevelError` for a level it cannot answer for. */
+  /** A level once all its tiles are stored; rejects once `signal` aborts or the worker stops, with `TesseraLevelError` for a level it cannot answer for. */
   level(hash: string, level: number, signal: AbortSignal): Promise<StoredLevel>;
   /** Asks for the pyramid to be built, in its turn; `drop` takes the wish back. */
   want(pyramid: LivePyramid): void;
@@ -133,7 +133,7 @@ export class LivePyramid {
       if (this.waiting !== waiting) return;
       this.waiting = null;
       // A level the cached pyramid does not have: no answer will ever come.
-      if (error instanceof TileLevelError) return this.fail();
+      if (error instanceof TesseraLevelError) return this.fail();
       // The worker stopped and forgot the wait: built and waited for again.
       if ((this.waitFailures += 1) >= MAX_LEVEL_TRIES) return this.fail();
       this.ports.timers.setTimer(() => {
@@ -153,10 +153,10 @@ export class LivePyramid {
       this.plannedBytes = this.manifestBytes.length;
     }
     const level = this.pyramid.levels[stored.level];
-    if (level === undefined || stored.tiles.length !== level.cols * level.rows) return this.fail();
-    const batches = planLevel(this.pyramid, stored.tiles, this.ports.focus(), this.plannedLevels === 0 ? this.manifestBytes : null);
+    if (level === undefined || stored.tesserae.length !== level.cols * level.rows) return this.fail();
+    const batches = planLevel(this.pyramid, stored.tesserae, this.ports.focus(), this.plannedLevels === 0 ? this.manifestBytes : null);
     this.planned.push(...batches);
-    this.plannedBytes += stored.tiles.reduce((sum, tile) => sum + tile.bytes, 0);
+    this.plannedBytes += stored.tesserae.reduce((sum, tile) => sum + tile.bytes, 0);
     if (this.plannedLevels === 0) this.overviewBatches = batches.length;
     this.plannedLevels += 1;
     if (this.plannedLevels === this.order.length) this.ports.drop(this);

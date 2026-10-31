@@ -24,7 +24,7 @@ import { type CaveGroundPainting, type CaveGroundPart, builtSurround, caveGround
 /**
  * What a direction that draws Engraved's plan brings to it: its pens and hand, the pens plants
  * are drawn with, how it paints the grounds, the rock round the walls (where no built surround or
- * house takes its place), the floor (where it is no cave's), and its water.
+ * house takes its place), the floor (a cave's too, if it draws one of its own), and its water.
  */
 export interface EngravedKit {
   pens: Pens;
@@ -33,6 +33,9 @@ export interface EngravedKit {
   groundsPaint: () => GroundsPaint;
   rock: (scene: ArtScene) => void;
   floor: (scene: ArtScene, pens: Pens) => void;
+  /** A cave's floor and the ground of its ways out, where the direction draws them otherwise than the cave registry's engraved ones. */
+  caveFloor?: (scene: ArtScene, pens: Pens) => void;
+  caveMouth?: (scene: ArtScene, pens: Pens) => void;
   water: WaterPainter;
 }
 
@@ -63,8 +66,10 @@ export function paintEngraved(scene: ArtScene, kit: EngravedKit = engravedKit(sc
     if (surround) surround.engraved(scene, pens);
     else kit.rock(scene);
   }
-  cave('mouth')?.engraved(scene, pens);
-  (cave('floor')?.engraved ?? kit.floor)(scene, pens);
+  const mouth = cave('mouth');
+  if (mouth) (kit.caveMouth ?? mouth.engraved)(scene, pens);
+  const caveFloor = cave('floor');
+  (caveFloor ? (kit.caveFloor ?? caveFloor.engraved) : kit.floor)(scene, pens);
   drawPools(scene, pens, kit.water);
   drawTerrainGround(hand, colours);
   growth.ground();

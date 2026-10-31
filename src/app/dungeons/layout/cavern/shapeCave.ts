@@ -22,6 +22,7 @@ import { type LaneWay, claimLane, laneEnds, mainRoute, wideLane, windingWay } fr
 import { stairWays } from './stairWays';
 import { carveTunnel, shapeDoors, tunnelEnds } from './tunnels';
 import { fillPockets, warpCave } from './caveWarp';
+import { stairsJoin } from './caveFits';
 
 export interface ShapedCaves {
   floors: PlannedFloor[];
@@ -42,7 +43,8 @@ function shapeChambers(seed: number, index: number, shaping: CaveShaping, faults
     const doors = floor.doors.filter((door) => door.from === room.id || door.to === room.id).length;
     const roll = rng();
     const fill = doors >= HUB_DOORS || room === largest ? shaping.fill[1] : lerp(shaping.fill, roll);
-    const seeds = chamberSeeds(grid, room, lane);
+    const { seeds, whole } = chamberSeeds(grid, room, lane);
+    if (!whole) console.debug(`[Atlas] cave floor ${index} of seed ${seed}: chamber ${room.id} could not be joined round its stairwells`);
     fields.set(room, growChamber(rng, grid, room, seeds, { gamma: lerp(shaping.gamma, rng()), stretch: shaping.stretch, fill, faults }));
     smoothChamber(grid, room, new Set(seeds.map((c) => cellKey(c.x, c.y))), rng() < 0.5 ? 1 : 2);
   }
@@ -87,25 +89,27 @@ function basinsPerFloor(floors: readonly PlannedFloor[], level: number, dry: boo
 /**
  * The floor's grid with its lane claimed and every chamber's core kept: a winding lane where one
  * fits and leaves every chamber a core, which may stand out in its swell; else the plain lane; else
- * the plain lane with cores inside their rectangles, as the layout made sure of.
+ * the plain lane with cores inside their rectangles, as the layout made sure of. A try counts only
+ * where every chamber holding a stairwell can also join the row it is entered from round it
+ * (`stairsJoin`): a winding lane or a core out in the swell may take the cells that way needs.
  */
 function laneGrid(seed: number, index: number, floor: PlannedFloor, boss: boolean, count: number): { grid: CaveGrid; lane: CellPoint[] } {
   const [from, to] = laneEnds(index, count, floor, boss);
   const route = mainRoute(floor, from, to);
   // A lane does not hang on the cores, so the plain one is found once for both tries that take it.
   const lanes = new Map<LaneWay | undefined, CellPoint[] | null>();
-  const laid = (way: LaneWay | undefined, out: boolean): { grid: CaveGrid; lane: CellPoint[] | null; cores: boolean } => {
+  const laid = (way: LaneWay | undefined, out: boolean): { grid: CaveGrid; lane: CellPoint[] | null; fits: boolean } => {
     const grid = new CaveGrid(floor, index);
     if (!lanes.has(way)) lanes.set(way, wideLane(grid, floor, route, from, to, way));
     const lane = lanes.get(way)!;
     if (lane) claimLane(grid, floor, route, lane, way?.swell);
-    return { grid, lane, cores: lane !== null && reserveCores(grid, floor.rooms, out) };
+    return { grid, lane, fits: lane !== null && reserveCores(grid, floor.rooms, out) && stairsJoin(grid, floor) };
   };
   // The last try is the layout's own, which it made sure of.
   const tries: readonly [LaneWay | undefined, boolean][] = [[windingWay(floorStream(seed, 'cave', index, 'lane')), true], [undefined, true], [undefined, false]];
   let tried = laid(...tries[0]!);
   for (const next of tries.slice(1)) {
-    if (tried.cores) break;
+    if (tried.fits) break;
     tried = laid(...next);
   }
   return { grid: tried.grid, lane: tried.lane ?? [] };

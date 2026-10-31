@@ -1,8 +1,8 @@
-import { pyramidOf } from '../../../../src/app/pixi/mapImage/pyramid';
-import type { StoredLevel } from '../../../../src/app/pixi/mapImage/tileBlobs';
-import type { TileRef } from '../../../../src/app/pixi/mapImage/pyramid';
+import { pyramidOf } from '../../../../src/app/pixi/mosaicCanvas/pyramid';
+import type { StoredLevel } from '../../../../src/app/pixi/mosaicCanvas/tesseraBlobs';
+import type { TesseraRef } from '../../../../src/app/pixi/mosaicCanvas/pyramid';
 import type { BuiltPyramid } from '../../../../src/app/online/gm/assets/pyramidBuilds.ts';
-import { TileLevelError } from '../../../../src/app/pixi/mapImage/tileErrors';
+import { TesseraLevelError } from '../../../../src/app/pixi/mosaicCanvas/tesseraErrors';
 
 /*
  * This device's tile cache as the GM's publisher sees it, for tests: map images by path, each with the
@@ -111,7 +111,7 @@ export class FakeTileCache {
     return this.waits.length;
   }
 
-  blobs(hash: string, tiles: readonly TileRef[]): Promise<(ArrayBuffer | null)[]> {
+  blobs(hash: string, tiles: readonly TesseraRef[]): Promise<(ArrayBuffer | null)[]> {
     this.tileReads.push(tiles.map((tile) => `${tile.level}/${tile.col}/${tile.row}`));
     const map = [...this.maps.values()].find((candidate) => candidate.hash === hash);
     return Promise.resolve(tiles.map((tile) => (map !== undefined && map.stored.has(tile.level) ? new Uint8Array(map.tileBytes).fill(7).buffer : null)));
@@ -129,14 +129,14 @@ export class FakeTileCache {
       const level = pyramid.levels[wait.level];
       if (level === undefined) {
         this.waits = this.waits.filter((candidate) => candidate !== wait);
-        wait.reject(new TileLevelError(`Level ${wait.level} is outside the pyramid`));
+        wait.reject(new TesseraLevelError(`Level ${wait.level} is outside the pyramid`));
         continue;
       }
       if (!map.stored.has(wait.level)) continue;
       this.waits = this.waits.filter((candidate) => candidate !== wait);
       const tiles = [];
       for (let row = 0; row < level.rows; row += 1) for (let col = 0; col < level.cols; col += 1) tiles.push({ level: wait.level, col, row, bytes: map.tileBytes });
-      wait.resolve({ width: map.width, height: map.height, decodedScale: map.decodedScale, level: wait.level, tiles });
+      wait.resolve({ width: map.width, height: map.height, decodedScale: map.decodedScale, level: wait.level, tesserae: tiles });
     }
   }
 }

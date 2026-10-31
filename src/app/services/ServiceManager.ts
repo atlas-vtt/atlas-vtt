@@ -19,7 +19,7 @@ import { SoundEffectService } from './SoundEffectService';
 import { DiceToastObserver } from './DiceToastObserver';
 import type { ViewAtlasStore } from '../storeFactory';
 import { PartySync } from '../campaigns/partyValues/PartySync';
-import { pictureView } from '../pixi/mapImage/levelOfDetail';
+import { pictureView } from '../pixi/mosaicCanvas/levelOfDetail';
 
 /** How long a snapshot waits for the map image's detail before it renders what is drawn. */
 const THUMBNAIL_DETAIL_WAIT_MS = 500;

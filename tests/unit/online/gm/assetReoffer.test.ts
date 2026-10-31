@@ -3,7 +3,7 @@ import type { OfferedAsset } from '../../../../src/app/online/gm/assets/assetRou
 import { ASSET_USES } from '../../../../src/app/online/gm/assets/assetUses.ts';
 import { manifestOf } from '../../../../src/app/online/gm/assets/pyramidPlan.ts';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
-import { pyramidOf } from '../../../../src/app/pixi/mapImage/pyramid';
+import { pyramidOf } from '../../../../src/app/pixi/mosaicCanvas/pyramid';
 import { bytesOf, publisherHarness, sharesHeard, type PublisherHarness } from './fakeAssetStore.ts';
 import { pngOf } from './fakeTileCache.ts';
 

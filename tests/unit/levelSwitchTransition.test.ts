@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createStore, type StoreApi } from 'zustand/vanilla';
 import type { Application } from 'pixi.js';
 import type { ViewAtlasStore } from '../../src/app/storeFactory';
-import type { MapImage } from '../../src/app/pixi/mapImage/MapImage';
+import type { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
 
 interface FakeTransition { play: ReturnType<typeof vi.fn>; cancel: ReturnType<typeof vi.fn>; paintInto: ReturnType<typeof vi.fn> }
 
@@ -37,7 +37,7 @@ const LEVELS = [{ id: 'cellar' }, { id: 'ground' }, { id: 'tower' }];
 
 interface FakeState { mapLoaded: boolean; isMapLoading: boolean; levels: typeof LEVELS; viewedLevel: string }
 
-function setup(): { app: { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }; store: StoreApi<FakeState>; mapImage: MapImage } {
+function setup(): { app: { start: ReturnType<typeof vi.fn>; stop: ReturnType<typeof vi.fn> }; store: StoreApi<FakeState>; mapImage: MosaicCanvas } {
   const store = createStore<FakeState>(() => ({ mapLoaded: true, isMapLoading: false, levels: LEVELS, viewedLevel: 'ground' }));
   const ticker = { started: true, addOnce: (callback: () => void) => callback() };
   const app = {
@@ -45,7 +45,7 @@ function setup(): { app: { start: ReturnType<typeof vi.fn>; stop: ReturnType<typ
     stop: vi.fn(() => { ticker.started = false; }),
     start: vi.fn(() => { ticker.started = true; }),
   };
-  const mapImage = { whenCameraReady: vi.fn(() => Promise.resolve()) } as unknown as MapImage;
+  const mapImage = { whenCameraReady: vi.fn(() => Promise.resolve()) } as unknown as MosaicCanvas;
   bindLevelSwitchTransition(store as unknown as ViewAtlasStore, {
     getAppInstance: () => app as unknown as Application,
     getMapImage: () => mapImage,

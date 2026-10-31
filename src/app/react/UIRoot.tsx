@@ -160,18 +160,22 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}
           <div className="atlas-top-bar-row">
-            {!isPlayerView && (
-              <PanelBoundary name="the scene tabs">
-                <SceneTabBar
-                  onSwitchTab={switchTab}
-                  onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
-                  onAddTab={() => view?.openSceneBrowser()}
-                  onPresentTab={presentTab}
-                  presentedTabId={presentedScene?.tabId ?? null}
-                  onShowAllTabs={() => setSceneSwitcherOpen(true)}
-                />
-              </PanelBoundary>
-            )}
+            {/* The scene tabs at the left end; what hangs directly below them (online play's unread table log) is put in the slot */}
+            <div className="atlas-top-bar-start">
+              {!isPlayerView && (
+                <PanelBoundary name="the scene tabs">
+                  <SceneTabBar
+                    onSwitchTab={switchTab}
+                    onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
+                    onAddTab={() => view?.openSceneBrowser()}
+                    onPresentTab={presentTab}
+                    presentedTabId={presentedScene?.tabId ?? null}
+                    onShowAllTabs={() => setSceneSwitcherOpen(true)}
+                  />
+                </PanelBoundary>
+              )}
+              <div className="atlas-top-bar-start__below" />
+            </div>
             {/* Widgets and the DM's dice rolls share the right end; rolls hang below the widgets */}
             <div className="atlas-top-bar-end">
               <PanelBoundary name="the widgets">

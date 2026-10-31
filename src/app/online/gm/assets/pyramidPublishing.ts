@@ -1,5 +1,5 @@
-import type { Pyramid } from '../../../pixi/mapImage/pyramid';
-import type { StoredLevel } from '../../../pixi/mapImage/tileBlobs';
+import type { Pyramid } from '../../../pixi/mosaicCanvas/pyramid';
+import type { StoredLevel } from '../../../pixi/mosaicCanvas/tesseraBlobs';
 import type { Timers } from '../companionTimers.ts';
 import { imageMimeType } from '../assetServe.ts';
 import { ASSET_RANKS, pyramidRank, type FloorMaps, type MapStanding } from './assetUses.ts';

@@ -87,7 +87,7 @@ describe('a scene with a placed map', () => {
   it('carries the stretch beside the map, and a fitted floor its fit', () => {
     const stretched = scene({ stretch: { x: 1.05724, y: 1, rotation: 1.29614 } });
     expect(parseGmMessage(JSON.parse(JSON.stringify(stretched)))).toEqual(stretched);
-    const fitted = scene({ stretch: { x: 1.2, y: 1 }, fit: FIT, floor: { group: 'g', level: 1, name: 'Tower' } });
+    const fitted = scene({ stretch: { x: 1.2, y: 1 }, fit: FIT, floor: { group: 'g', level: 1 } });
     expect(parseGmMessage(JSON.parse(JSON.stringify(fitted)))).toEqual(fitted);
     expect(parseGmMessage(scene({ fit: FIT }))).toEqual(scene({ fit: FIT }));
   });

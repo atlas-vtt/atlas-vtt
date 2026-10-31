@@ -2,7 +2,7 @@ import { glyphPainterOf } from '../../style';
 import type { GlyphPen } from '../glyphPen';
 import type { GlyphFit, PropGlyph } from '../propShapes';
 import { glyphSolid } from './glyphLight';
-import type { Hand } from './hand';
+import type { Hand, Material } from './hand';
 
 /** Where a glyph stands: its centre in cells, its turn, its scale and the size it is drawn at. */
 export interface GlyphPlace {
@@ -21,7 +21,12 @@ export interface GlyphPlace {
  */
 export function drawGlyph(hand: Hand, place: GlyphPlace, glyph: PropGlyph, water: string, cloth: string): void {
   const { ctx, palette, style } = hand.scene.env;
-  const paint = hand.paint(glyph.material);
+  const fill = hand.fillAt?.(place.x, place.y);
+  const paintOf = (material: Material): { fill: string; ink: string } => {
+    const paint = hand.paint(material);
+    return fill === undefined ? paint : { ...paint, fill };
+  };
+  const paint = paintOf(glyph.material);
   const { fit } = place;
   ctx.save();
   ctx.translate(place.x, place.y);
@@ -39,7 +44,7 @@ export function drawGlyph(hand: Hand, place: GlyphPlace, glyph: PropGlyph, water
     hand,
     rotation: place.rotation,
     scale: place.scale,
-    paint: material => hand.paint(material),
+    paint: paintOf,
   };
   glyph[glyphPainterOf(style.direction)](pen, fit);
   const { silhouette } = glyph;

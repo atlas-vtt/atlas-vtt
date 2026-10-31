@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { animateMapsOn, mapVideoMode, type MapVideoConditions } from '../../../src/app/pixi/mapImage/video/mapVideoPlayback';
+import { animateMapsOn, mapVideoMode, type MapVideoConditions } from '../../../src/app/pixi/mosaicCanvas/video/mapVideoPlayback';
 
 const seen: MapVideoConditions = { animate: true, loading: false, contextLost: false, viewShown: true, shownToPlayers: false };
 

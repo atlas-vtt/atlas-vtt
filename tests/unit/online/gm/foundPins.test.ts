@@ -4,6 +4,7 @@ import { parseGmMessage, type GmMessage, type SharedPin } from '../../../../src/
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
 import { TableLog } from '../../../../src/app/online/gm/log/TableLog.ts';
 import { FoundShare } from '../../../../src/app/online/gm/pins/FoundShare.ts';
+import { roomPins } from '../../../../src/app/dungeons/scene/toNote';
 import type { NotePin } from '../../../../src/app/types';
 import type { WallSegment } from '../../../../src/app/types/wallTypes';
 import { questVault } from '../../../mocks/questVault';
@@ -101,7 +102,7 @@ describe('readable pins players are sent', () => {
   it('send only readable pins of notes that committed fog does not cover, by alias and with nothing of the note', async () => {
     const { shown } = await table({
       open: pin('open', 300), fogged: pin('fogged', 1200), plain: pin('plain', 500, { readable: undefined }),
-      gm: pin('gm', 600, { gmOnly: true }), scene: pin('scene', 650, { notePath: 'Scenes/Crypt.atlasmap' }),
+      gm: pin('gm', 600, { gmOnly: true, readable: undefined }), scene: pin('scene', 650, { notePath: 'Scenes/Crypt.atlasmap' }),
     });
     expect(shown()).toHaveLength(1);
     const [listed] = shown();
@@ -122,6 +123,13 @@ describe('readable pins players are sent', () => {
   it('in a lit scene send only the pins where the players see the map now, as door badges', async () => {
     const { shown } = await table({ near: pin('near', 500), behind: pin('behind', 900) }, true);
     expect(shown().map((listed) => listed.x)).toEqual([500]);
+  });
+
+  it('send a generated dungeon\'s room pin once the GM makes it readable, though the generator marked it the GM\'s own', async () => {
+    const generated = roomPins([{ key: 'A5', heading: 'A5', facts: 'Dust.', pin: { x: 500, y: 400 } }], NOTE).pin_dungeon_A5!;
+    expect(generated.gmOnly).toBe(true);
+    const { shown } = await table({ [generated.id]: { ...generated, readable: true } }, true);
+    expect(shown()).toEqual([expect.objectContaining({ x: 500, y: 400, icon: 'number', label: 'A5' })]);
   });
 });
 

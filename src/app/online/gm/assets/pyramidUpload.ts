@@ -1,4 +1,4 @@
-import type { TileRef } from '../../../pixi/mapImage/pyramid';
+import type { TesseraRef } from '../../../pixi/mosaicCanvas/pyramid';
 import type { StoreTrouble } from './storeClient.ts';
 import type { AssetStoreClient } from './storeClient.ts';
 import type { TakeSlot } from './assetUpload.ts';
@@ -6,7 +6,7 @@ import { multipartBody, type FormPart } from './multipartBody.ts';
 import type { TileBatch } from './pyramidPlan.ts';
 
 /** Where a pyramid's stored tiles are read: this device's tile cache, as they are, never decoded. */
-export type TileBlobs = (hash: string, tiles: readonly TileRef[]) => Promise<(ArrayBuffer | null)[]>;
+export type TileBlobs = (hash: string, tiles: readonly TesseraRef[]) => Promise<(ArrayBuffer | null)[]>;
 
 /** A pyramid's batches as far as they are planned: a level's once the cache holds all its tiles (`LivePyramid`). */
 export interface PyramidBatches {
@@ -36,7 +36,7 @@ export interface PyramidRun {
 }
 
 /** A tile's part in a batch: `<level>/<col>_<row>`, as the store names it. */
-const partName = (tile: TileRef): string => `${tile.level}/${tile.col}_${tile.row}`;
+const partName = (tile: TesseraRef): string => `${tile.level}/${tile.col}_${tile.row}`;
 
 /**
  * Uploads a pyramid's batches from `job.next` on, one after another (a page takes the tiles stored to be

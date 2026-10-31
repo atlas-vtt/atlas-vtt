@@ -5,8 +5,8 @@ import type { OfferAnswer, OfferedAsset, PartsSession, TilesProgress } from '../
 import { ASSET_USES } from '../../../../src/app/online/gm/assets/assetUses.ts';
 import type { StoreResult } from '../../../../src/app/online/gm/assets/storeClient.ts';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
-import { pyramidOf } from '../../../../src/app/pixi/mapImage/pyramid';
-import { pyramidTiles, type StoredTileSize } from '../../../../src/app/pixi/mapImage/tileBlobs';
+import { pyramidOf } from '../../../../src/app/pixi/mosaicCanvas/pyramid';
+import { pyramidTesserae, type StoredTesseraSize } from '../../../../src/app/pixi/mosaicCanvas/tesseraBlobs';
 import { pngOf } from './fakeTileCache.ts';
 import { FakeUplink, percentiles, type UplinkOptions } from './fakeUplink.ts';
 import { settled } from './settled.ts';
@@ -15,7 +15,7 @@ import { kept } from './fakeStoring.ts';
 /** The map's pyramid as this device's cache holds it: every tile stored. */
 interface CachedPyramid {
   readonly hash: string;
-  readonly tiles: readonly StoredTileSize[];
+  readonly tiles: readonly StoredTesseraSize[];
 }
 
 /*
@@ -155,7 +155,7 @@ async function simulate(bitsPerSecond: number, paced: boolean, video: Uint8Array
     signedOutByServer: () => undefined,
     pyramids: {
       build: () => Promise.resolve({ hash: facts.hash, complete: true }),
-      level: (_hash, level) => Promise.resolve({ width: 14_000, height: 9_200, decodedScale: 1, level, tiles: facts.tiles.filter((tile) => tile.level === level) }),
+      level: (_hash, level) => Promise.resolve({ width: 14_000, height: 9_200, decodedScale: 1, level, tesserae: facts.tiles.filter((tile) => tile.level === level) }),
       blobs: (_hash, tiles) => Promise.resolve(tiles.map((tile) => new ArrayBuffer(facts.tiles.find((stored) => stored.level === tile.level && stored.col === tile.col && stored.row === tile.row)?.bytes ?? 0))),
       focus: () => null,
     },
@@ -188,7 +188,7 @@ describe('uploads sharing the GM\'s uplink with the live lane (a model)', () => 
     const video = new Uint8Array(VIDEO_BYTES);
     const image = pngOf(14_000, 9_200);
     const pyramid = pyramidOf(14_000, 9_200);
-    const tiles = pyramidTiles(pyramid);
+    const tiles = pyramidTesserae(pyramid);
     const facts: CachedPyramid = { hash: await sha256Hex(image), tiles: tiles.map((ref) => ({ ...ref, bytes: Math.floor(PYRAMID_BYTES / tiles.length) })) };
     const rows: string[] = [];
     const runs = new Map<string, Run>();

@@ -6,7 +6,7 @@ import { fakeMapRenderer } from '../../helpers/fakeMapRenderer';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../../src/app/storeFactory';
 import { MapService } from '../../../src/app/services/MapService';
 import type { RendererService } from '../../../src/app/services/RendererService';
-import type { MapImageSource } from '../../../src/app/pixi/mapImage/mapImageTypes';
+import type { MosaicCanvasSource } from '../../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
 import { movedWithMap, worldToImage } from '../../../src/app/grid/mapStretch';
 import { levelImagePlacement } from '../../../src/app/levels/levelAlignment';
 import { levelObjects } from '../../../src/app/levels/levelObjects';
@@ -34,7 +34,7 @@ function sceneState(extra: Record<string, unknown> = {}): Record<string, unknown
   };
 }
 
-interface Harness { service: MapService; store: ViewAtlasStore; files: Map<string, string>; rendererService: RendererService; images: MapImageSource[] }
+interface Harness { service: MapService; store: ViewAtlasStore; files: Map<string, string>; rendererService: RendererService; images: MosaicCanvasSource[] }
 
 function setup(content: string): Harness {
   const { app, files } = createInMemoryApp({ files: { [SCENE]: content, 'maps/ground.png': '', 'maps/upper.png': '' } });
@@ -43,7 +43,7 @@ function setup(content: string): Harness {
   const store = createViewAtlasStore(app, 'scene-levels-persistence-test');
   const eventBus = new EventEmitter();
   eventBus.on('wait-for-tokens-loaded', (done: () => void) => done());
-  const images: MapImageSource[] = [];
+  const images: MosaicCanvasSource[] = [];
   const renderer = fakeMapRenderer((source) => images.push(source));
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);

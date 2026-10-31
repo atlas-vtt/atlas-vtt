@@ -23,7 +23,7 @@ const BAND = 3;
  * texels: the middle with a texel to spare on every side, which is what the mask promises.
  */
 const SPARE = [[0, 0], [-1, -1], [0, -1], [1, -1], [-1, 0], [1, 0], [-1, 1], [0, 1], [1, 1], [-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]];
-export const KINDS = ['canvas', 'webgl'] as const;
+export const KINDS = ['webgl'] as const;
 export type Kind = (typeof KINDS)[number];
 
 /** A camera: screen pixels per world pixel, and the world point in the middle of the screen. */
@@ -120,16 +120,16 @@ function outlineEdges(drawing: Graphics): [number, number, number, number][] {
   return edges;
 }
 
-/** Both renderers, made once for a test file. */
+/** The renderer, made once for a test file. */
 export async function startRenderers(): Promise<{ renderers: Record<Kind, Renderer>; stop: () => void }> {
   const made = await Promise.all(KINDS.map((preference) => autoDetectRenderer({ preference, width: VIEW, height: VIEW, antialias: false, backgroundAlpha: 1, backgroundColor: FLOOR })));
   made.forEach((renderer, index) => {
     if (renderer.name !== KINDS[index]) throw new Error(`PIXI started its ${renderer.name} renderer where ${KINDS[index]} was asked for`);
   });
-  return { renderers: { canvas: made[0]!, webgl: made[1]! }, stop: () => made.forEach((renderer) => renderer.destroy()) };
+  return { renderers: { webgl: made[0]! }, stop: () => made.forEach((renderer) => renderer.destroy()) };
 }
 
-/** A scene through the line-of-sight fallback on both renderers, and through the previous version's drawing. */
+/** A scene through the line-of-sight fallback, and through the previous version's drawing. */
 export interface Pictures {
   bounds: MapBounds;
   /** Where the black has edges worth zooming in on: the tokens that see, corners of what they see, the darknesses. */
@@ -156,7 +156,6 @@ export function openPictures(renderers: Record<Kind, Renderer>, { bounds, ...dep
   const all = { ...deps, bounds: () => bounds };
   const exactViewport = new Container();
   const exact = new ExactFallback({ viewport: exactViewport as unknown as Viewport, ...all });
-  // A stage of its own for each renderer: a display object is built for the renderer that drew it first.
   const shown = KINDS.map((kind) => {
     const stage = new Container();
     const viewport = new Container();
@@ -210,7 +209,7 @@ export function openPictures(renderers: Record<Kind, Renderer>, { bounds, ...dep
     };
     // Beyond the map's edge nothing is black, where the previous version painted a darkness that spilled over it.
     const blackOnMap = (point: Point): boolean => onMap(point) && exactlyBlack(point.x, point.y);
-    const tallies: Tallies = { canvas: { leaked: 0, lost: 0, seam: 0, beyond: 0, open: 0 }, webgl: { leaked: 0, lost: 0, seam: 0, beyond: 0, open: 0 } };
+    const tallies: Tallies = { webgl: { leaked: 0, lost: 0, seam: 0, beyond: 0, open: 0 } };
     for (const kind of KINDS) {
       const pixels = pixelsOf(kind, view);
       const tally = tallies[kind];
@@ -240,7 +239,7 @@ export function openPictures(renderers: Record<Kind, Renderer>, { bounds, ...dep
   const make = (view: View): Record<Kind, { blended: number; tight: number }> => {
     const origin = originOf(view);
     const hiddenAt = (wx: number, wy: number): boolean => wx > 0 && wy > 0 && wx < bounds.width && wy < bounds.height && exactlyBlack(wx, wy);
-    const found = { canvas: { blended: 0, tight: 0 }, webgl: { blended: 0, tight: 0 } };
+    const found = { webgl: { blended: 0, tight: 0 } };
     for (const kind of KINDS) {
       const pixels = pixelsOf(kind, view);
       for (let i = 0; i < VIEW * VIEW; i++) {
@@ -270,7 +269,7 @@ export function openPictures(renderers: Record<Kind, Renderer>, { bounds, ...dep
       const origin = originOf(view);
       const [px, py] = [Math.floor(x * view.scale + origin.x), Math.floor(y * view.scale + origin.y)];
       const name = (colour: number): string => (colour === 0 ? 'black' : colour === FLOOR ? 'floor' : 'other');
-      return { canvas: name(colourAt(pixelsOf('canvas', view), px, py)), webgl: name(colourAt(pixelsOf('webgl', view), px, py)) };
+      return { webgl: name(colourAt(pixelsOf('webgl', view), px, py)) };
     },
     close: () => {
       for (const { stage, fallback } of shown) {

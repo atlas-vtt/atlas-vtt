@@ -109,19 +109,6 @@ export function levelObjects<O extends ObjectsByKind>(state: LevelObjectsState<O
 }
 
 /**
- * The entries of one record on the level the view shows, filtered as `levelObjects` filters a
- * kind: for a record that is not the state's (the players' held fog), so the memory `levelObjects`
- * keeps of each level's last result stays the state's. The record itself where every entry is on
- * the level, `earlier` where it holds the same entries.
- */
-export function recordOnViewedLevel<R extends AnyRecord>(record: R, view: LevelView, earlier?: R): R {
-  const { levels } = view;
-  if (!hasLevels(levels)) return record;
-  // Every entry of `record`, or the subset of them `filterRecord` kept: the same entry type
-  return filterRecord(record, viewedLevelId(view) ?? '', levels, earlier) as R;
-}
-
-/**
  * The objects of level `levelId`, as a view of that level reads them (`levelObjects`): for what a
  * view shows of another level, the level below seen through its openings. Never for writes.
  */

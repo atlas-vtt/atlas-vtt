@@ -29,14 +29,14 @@ describe('the shared scene', () => {
     table.presented = 'upper';
     table.share.start();
     await table.set(state({ levels, viewedLevel: 'upper' }));
-    expect(scenes(table.sent).at(-1)).toMatchObject({ map: { hash: await sha256Hex(UPPER) }, floor: { level: 1, name: 'Upper' } });
+    expect(scenes(table.sent).at(-1)).toMatchObject({ map: { hash: await sha256Hex(UPPER) }, floor: { level: 1 } });
 
     const sent = table.sent.length;
     await table.set(state({ levels, viewedLevel: 'ground' }));
     expect(scenes(table.sent.slice(sent))).toEqual([]);
     table.presented = 'ground';
     await table.advance(1000);
-    expect(scenes(table.sent).at(-1)).toMatchObject({ map: { hash: await sha256Hex(MAP) }, floor: { level: 0, name: 'Ground' } });
+    expect(scenes(table.sent).at(-1)).toMatchObject({ map: { hash: await sha256Hex(MAP) }, floor: { level: 0 } });
   });
 
   it('is held while a scene loads and goes out once it has loaded', async () => {

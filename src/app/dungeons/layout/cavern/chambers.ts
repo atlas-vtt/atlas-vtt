@@ -88,8 +88,8 @@ export function reserveCores(grid: CaveGrid, rooms: readonly DungeonRoom[], out 
   });
 }
 
-/** The fewest cells the room may take that join `cells` to `reached`, or none where no way leads. */
-function joinPath(grid: CaveGrid, room: DungeonRoom, from: CellPoint, reached: ReadonlySet<string>): CellPoint[] {
+/** The fewest cells the room may take that join `from` to `reached` without crossing `blocked`, or none where no way leads. */
+function joinPath(grid: CaveGrid, room: DungeonRoom, from: CellPoint, reached: ReadonlySet<string>, blocked: ReadonlySet<string>): CellPoint[] | null {
   const back = new Map<string, string>([[key(from), key(from)]]);
   const queue = [key(from)];
   for (let head = 0; head < queue.length; head++) {
@@ -102,12 +102,12 @@ function joinPath(grid: CaveGrid, room: DungeonRoom, from: CellPoint, reached: R
     const c = unkey(at);
     for (const [dx, dy] of NEAR4) {
       const n = { x: c.x + dx, y: c.y + dy };
-      if (back.has(key(n)) || !mayTake(grid, room, n)) continue;
+      if (back.has(key(n)) || blocked.has(key(n)) || !mayTake(grid, room, n)) continue;
       back.set(key(n), at);
       queue.push(key(n));
     }
   }
-  return [];
+  return null;
 }
 
 /** Groups of cells side by side. */
@@ -133,20 +133,57 @@ function pieces(cells: ReadonlySet<string>): string[][] {
   return out;
 }
 
-/** What a chamber must keep, joined into one piece: its core, its kept cells, the lane in it and, for the boss, the arena's platform. */
-export function chamberSeeds(grid: CaveGrid, room: DungeonRoom, lane: ReadonlySet<string>): CellPoint[] {
+/**
+ * `kept` joined into one piece through cells the room may take, never through `blocked` (its
+ * stairwells: a token steps onto stairs only across their ground end, so they join nothing), and
+ * whether every piece could be joined.
+ */
+function joinRound(grid: CaveGrid, room: DungeonRoom, kept: ReadonlySet<string>, blocked: ReadonlySet<string>): { joined: Set<string>; whole: boolean } {
+  const walked = new Set([...kept].filter((k) => !blocked.has(k)));
+  const [main, ...rest] = pieces(walked).sort((a, b) => b.length - a.length);
+  const joined = new Set(main ?? []);
+  let whole = true;
+  for (const piece of rest) {
+    for (const k of piece) joined.add(k);
+    const way = joinPath(grid, room, unkey(piece[0]!), new Set([...joined].filter((k) => !piece.includes(k))), blocked);
+    if (way === null) whole = false;
+    for (const c of way ?? []) joined.add(key(c));
+  }
+  return { joined, whole };
+}
+
+/** What a chamber grows from, and whether all of it could be joined into one piece. */
+export interface ChamberSeeds {
+  seeds: CellPoint[];
+  whole: boolean;
+}
+
+/**
+ * What a chamber must keep, joined into one piece round its stairwells (`joinRound`): its core,
+ * its kept cells, the lane in it and, for the boss, the arena's platform.
+ */
+export function chamberSeeds(grid: CaveGrid, room: DungeonRoom, lane: ReadonlySet<string>): ChamberSeeds {
   const r = floorRect(room);
   // The core is kept already (`reserveCores`), with the rest the room needs.
   const seeds = new Set<string>(grid.required(room.id));
   for (const k of lane) if (inRect(r, unkey(k).x, unkey(k).y)) seeds.add(k);
   if (room.boss) for (const c of arenaSeeds(room)) if (mayTake(grid, room, c)) seeds.add(key(c));
-  const [main, ...rest] = pieces(seeds).sort((a, b) => b.length - a.length);
-  const joined = new Set(main ?? []);
-  for (const piece of rest) {
-    for (const k of piece) joined.add(k);
-    for (const c of joinPath(grid, room, unkey(piece[0]!), new Set([...joined].filter((k) => !piece.includes(k))))) joined.add(key(c));
-  }
-  return [...joined].map(unkey).sort((a, b) => a.y - b.y || a.x - b.x);
+  const { joined, whole } = joinRound(grid, room, seeds, grid.stairCells);
+  for (const k of seeds) joined.add(k);
+  return { seeds: [...joined].map(unkey).sort((a, b) => a.y - b.y || a.x - b.x), whole };
+}
+
+/**
+ * Whether what the room keeps (its core, the cells before its doors, the lane, its stairwells' rows,
+ * and `extra`'s cells and row, a stairwell it would hold too) can be joined round its stairwells:
+ * the cave counterpart of `spotFits`' "the room's other floor still one", on the cells a chamber
+ * may take, since a cave room keeps off every other room's. Asked where stairs are placed, so the
+ * row each stairwell is entered from always reaches the rest of its floor.
+ */
+export function stairsJoinRound(grid: CaveGrid, room: DungeonRoom, extra?: { cells: readonly string[]; row: readonly string[] }): boolean {
+  const kept = new Set([...grid.required(room.id), ...(extra?.row ?? [])]);
+  const blocked = extra ? new Set([...grid.stairCells, ...extra.cells]) : grid.stairCells;
+  return joinRound(grid, room, kept, blocked).whole;
 }
 
 /**
@@ -186,14 +223,14 @@ export function growChamber(rng: Rng, grid: CaveGrid, room: DungeonRoom, seeds: 
   return field;
 }
 
-/** Whether the mask stays one piece without `without`. */
-function stillWhole(mask: ReadonlySet<string>, without: string): boolean {
-  const rest = new Set(mask);
+/** Whether the mask stays one piece without `without`, its stairwells joining nothing. */
+function stillWhole(grid: CaveGrid, mask: ReadonlySet<string>, without: string): boolean {
+  const rest = new Set([...mask].filter((k) => !grid.stairCells.has(k)));
   rest.delete(without);
   return pieces(rest).length <= 1;
 }
 
-/** Fills cells with five or more of their eight neighbours in the chamber and drops those with two or fewer, never a kept one, never splitting it. */
+/** Fills cells with five or more of their eight neighbours in the chamber and drops those with two or fewer, never a kept one, never splitting it (round its stairwells). */
 export function smoothChamber(grid: CaveGrid, room: DungeonRoom, keep: ReadonlySet<string>, passes: 1 | 2): void {
   const r = floorRect(room);
   for (let pass = 0; pass < passes; pass++) {
@@ -205,7 +242,7 @@ export function smoothChamber(grid: CaveGrid, room: DungeonRoom, keep: ReadonlyS
       if (!mask.has(k) && n >= 5 && grid.mayClaim(c.x, c.y, room.id)) {
         grid.claim(c.x, c.y, room.id);
         mask.add(k);
-      } else if (mask.has(k) && n <= 2 && !keep.has(k) && stillWhole(mask, k)) {
+      } else if (mask.has(k) && n <= 2 && !keep.has(k) && stillWhole(grid, mask, k)) {
         grid.release(c.x, c.y);
         mask.delete(k);
       }

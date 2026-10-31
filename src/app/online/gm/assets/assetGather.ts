@@ -1,7 +1,7 @@
 import type { App } from 'obsidian';
 import { isPersistedMapEnvelope, parseSceneFile } from '../../../services/MapPersistence';
 import { getDataFilePath } from '../../../utils/dataFileMigration';
-import { isVideoMapPath } from '../../../pixi/mapImage/video/videoMapFiles';
+import { isVideoMapPath } from '../../../pixi/mosaicCanvas/video/videoMapFiles';
 import { mapTokens } from '../../../tokens/offMap';
 import { imageMimeType } from '../assetServe.ts';
 import { ASSET_RANKS, type AssetUse } from './assetUses.ts';

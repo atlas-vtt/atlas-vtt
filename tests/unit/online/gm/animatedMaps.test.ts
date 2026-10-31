@@ -90,6 +90,21 @@ async function liquidTable(state: SceneState, seats?: SeatSource, images = new M
 }
 
 describe('the liquids that move on the map', () => {
+  it('send a river\'s course, rounded as its corners are, and the edges where its water goes on', async () => {
+    const river = surface('liquid_river', { polygon: square(0, 0, 300), flow: { x: 1, y: 0 }, course: [{ x: -10.004, y: 150.126 }, { x: 310, y: 150 }], openEdges: [1, 3] });
+    const still = surface('liquid_lake', { course: [{ x: 0, y: 0 }, { x: 1, y: 1 }] });
+    const table = await liquidTable(withLiquids({ liquid_river: river, liquid_lake: still }));
+    const [shared, lake] = ofKind(table.sent, 'liquids')[0]!.liquids;
+    expect(shared).toMatchObject({ flow: { x: 1, y: 0 }, course: [-10, 150.13, 310, 150], openEdges: [1, 3] });
+    // A course only where the water flows, as Atlas reads it.
+    expect(lake?.course).toBeUndefined();
+  });
+
+  it('go to players in the look the GM\'s map draws them, a Crayon map\'s as Crayon\'s strokes', async () => {
+    const table = await liquidTable(withLiquids({ liquid_lava: surface('liquid_lava', { liquid: 'lava', colors: LAVA, art: 'crayon' }) }));
+    expect(ofKind(table.sent, 'liquids')[0]?.liquids[0]?.art).toBe('crayon');
+  });
+
   it('go to players as Atlas reads them, under aliases, with no id of the GM\'s scene', async () => {
     const table = await liquidTable(withLiquids(POOLS));
     const [message] = ofKind(table.sent, 'liquids');

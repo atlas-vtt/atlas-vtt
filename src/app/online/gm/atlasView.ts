@@ -10,8 +10,8 @@ export const ATLAS_VIEW_TYPE = 'atlas-vtt';
 export const LOCAL_PLAYER_VIEW_TYPE = 'atlas-vtt-local-player';
 
 /** The part of an Atlas map tab's store the companion reads. */
-export type SceneState = Pick<ViewState, 'mapPath' | 'mapLoaded' | 'isMapLoading' | 'background' | 'lighting' | 'objects' | 'grid' | 'heldTokens' | 'exploredMask' | 'isDragging' | '_audioDirty'>
-  & Partial<Pick<ViewState, 'tokenSettings' | 'levels' | 'viewedLevel' | 'exploredMasks' | 'levelAlignments' | 'fogHeld'>>;
+export type SceneState = Pick<ViewState, 'mapPath' | 'mapLoaded' | 'isMapLoading' | 'background' | 'lighting' | 'objects' | 'grid' | 'heldTokens' | 'exploredMask' | 'exploredEdits' | 'isDragging' | '_audioDirty'>
+  & Partial<Pick<ViewState, 'tokenSettings' | 'levels' | 'viewedLevel' | 'exploredMasks' | 'levelAlignments'>>;
 
 /**
  * What the companion asks of an Atlas tab's renderer (`PixiRendererOrchestrator`): the tokens the
@@ -28,6 +28,8 @@ export interface SceneStore {
   /** A write through Atlas's own middleware (immer and history): one undo step. */
   setState(recipe: (draft: SceneState) => void): void;
   subscribe(listener: (state: SceneState) => void): () => void;
+  /** Whether the GM's view shows what this store holds (a floor's store: that floor); unset, it does. */
+  shown?(): boolean;
 }
 
 /** Atlas's store is zustand's `create` result: a function with the store methods on it. */

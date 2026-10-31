@@ -1,7 +1,7 @@
 import type { App } from 'obsidian';
 import { t } from '../../i18n';
 import { renderThumbnail } from '../../imageProcessing/imageProcessing';
-import { videoPosterBlob } from '../../pixi/mapImage/video/videoPoster';
+import { videoPosterBlob } from '../../pixi/mosaicCanvas/video/videoPoster';
 import type { AssetService } from '../../services/AssetService';
 import { AssetThumbnailService, THUMBNAIL_SPEC } from '../../services/AssetThumbnailService';
 import { showNotice } from '../../ui/notice';

@@ -1,5 +1,5 @@
 /**
- * Crayon's grounds, as the Reprieve map draws its village: the lawn bare vellum with tufts of grass
+ * Crayon's grounds, as the Reprieve map draws its village: the lawn vellum washed in meadow with tufts of grass
  * in graphite crayon, thick where the grass grows in clumps and stray elsewhere; a hedge and every tree crown coloured in leaf green under
  * Engraved's scalloped outlines; water and glass in blue crayon. Gravel is washed, as Reprieve's road
  * is, with a few pebbles: Engraved's close stipple under crayon is more detail than a map's WebP holds.
@@ -13,6 +13,8 @@ import type { Canvas2D } from '../geometry';
 import type { Pens } from '../engraved/pens';
 import { CRAYONS } from '../crayon/colours';
 import type { CrayonBox } from '../crayon/crayonBox';
+import { CRAYON_GROUNDS, colourGround, groundFields } from '../crayon/ground';
+import { viewBounds } from '../art/artScene';
 import { traceShape } from './crowns';
 import { cutCrown } from './engravedCrown';
 import { engravedGroundsPaint } from './engravedPaint';
@@ -26,11 +28,15 @@ export function crayonGroundsPaint(hand: Hand, pens: Pens, box: CrayonBox): Grou
   const seed = dungeon.model.seed;
   const lines = engravedGroundsPaint(hand, pens);
   const fine = hand.weight('fine');
+  let ground: ReturnType<typeof groundFields> | null = null;
+  const fields = (): ReturnType<typeof groundFields> => (ground ??= groundFields(seed));
   return {
     ...lines,
     lawn: (path, cells) => {
       box.paper(path);
       withClip(ctx, path, () => grassTufts(ctx, scatter(cells, 2.2, seed + 11), seed, pens.ink, fine * 1.15));
+      // A light touch the paper still shows through, so the ground stays light under tokens.
+      colourGround(box, path, CRAYON_GROUNDS.meadow, fields(), viewBounds(hand.scene.frame, 1));
     },
     gravel: (path, cells) => {
       // Reprieve's road: the paper washed in earth crayon, a pebble pencilled here and there.

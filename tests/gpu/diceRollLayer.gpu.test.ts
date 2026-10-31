@@ -4,7 +4,7 @@ import css from '../../styles/main.scss?inline';
 
 /**
  * The map UI as `UIRoot` lays it out, reduced to what decides the stacking:
- * the top bar row with the dice rolls hanging from its right end, and the DM
+ * the top bar row with the dice rolls at its right end, and the DM
  * screen over the whole view. Styled by the plugin's real stylesheet.
  */
 const MAP_UI = `
@@ -54,13 +54,13 @@ describe('the layer of the dice rolls', () => {
     style.remove();
   });
 
-  it('shows a roll above the DM screen, and the bars below it', () => {
+  it('shows a roll above the DM screen and the widgets, and the scene tabs below the DM screen', () => {
     expect(onTopOf('.atlas-dice-roll__sheet')?.className).toBe('atlas-dice-roll__sheet');
     expect(onTopOf('.atlas-scene-tab-bar')?.className).toBe('atlas-dm-screen-backdrop');
-    expect(onTopOf('.atlas-widget-bar')?.className).toBe('atlas-dm-screen-backdrop');
+    expect(onTopOf('.atlas-widget-bar')?.className).toBe('atlas-dice-roll__sheet');
   });
 
-  it('keeps the bars in the corners of the view and the rolls below the widgets', () => {
+  it('keeps the bars in the corners of the view and lays the rolls in the top right corner, over the widgets', () => {
     const view = leaf.getBoundingClientRect();
     const inset = 8;
     expect(boxOf('.atlas-scene-tab-bar').left).toBe(view.left + inset);
@@ -68,6 +68,6 @@ describe('the layer of the dice rolls', () => {
     expect(boxOf('.atlas-widget-bar').right).toBe(view.right - inset);
     expect(boxOf('.atlas-widget-bar').top).toBe(view.top + inset);
     expect(boxOf('.atlas-dice-rolls').right).toBe(view.right - inset);
-    expect(boxOf('.atlas-dice-rolls').top).toBe(boxOf('.atlas-widget-bar').bottom + inset);
+    expect(boxOf('.atlas-dice-rolls').top).toBe(view.top + inset);
   });
 });

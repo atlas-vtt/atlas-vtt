@@ -13,10 +13,10 @@ import { StatblockNotes, templateOf } from './statblockNotes.ts';
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
 // The GM's marks draw with PIXI over Atlas's canvas, which a table of books has no use for.
 // Node has no tile worker: a map's pyramid is still being cut for as long as the test runs, as on a slow device.
-vi.mock('../../../../src/app/pixi/mapImage/prebuildMapImage', async (original) => ({ ...(await original<typeof import('../../../../src/app/pixi/mapImage/prebuildMapImage')>()), buildMapPyramid: () => new Promise(() => undefined) }));
-vi.mock('../../../../src/app/pixi/mapImage/TileDecoderClient', async (original) => ({
-  ...(await original<typeof import('../../../../src/app/pixi/mapImage/TileDecoderClient')>()),
-  TileDecoderClient: { forApp: () => ({ levelReady: () => new Promise(() => undefined), tileBlobs: () => Promise.resolve([]) }), release: () => undefined },
+vi.mock('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', async (original) => ({ ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas')>()), buildMapPyramid: () => new Promise(() => undefined) }));
+vi.mock('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient', async (original) => ({
+  ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient')>()),
+  TesseraDecoderClient: { forApp: () => ({ levelReady: () => new Promise(() => undefined), tesseraBlobs: () => Promise.resolve([]) }), release: () => undefined },
 }));
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
   GmMarks: class {

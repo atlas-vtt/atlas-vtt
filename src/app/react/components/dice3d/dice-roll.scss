@@ -14,12 +14,12 @@ $dice-roll-avatar: 44px;
 $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%, rgb(0 0 0 / 0.45) 76%, rgb(0 0 0 / 0) 100%);
 
 // The column carries .atlas-vtt-plugin itself (see DiceRollDisplay). For the DM
-// it hangs from the right end of the top bar row, right-aligned and out of the
-// middle of the map where the DM works: below the widgets, or at the top when
-// there are none. The player window centres it (player-window.scss).
+// it stands at the top right of the map, out of the middle where the DM works:
+// a roll is read for a moment and goes, so it lies over the widgets and whatever
+// else stands there. The player window centres it (player-window.scss).
 &.atlas-dice-rolls {
   position: absolute;
-  top: 100%;
+  top: 0;
   right: 0;
   width: $dice-roll-width;
   max-width: calc(100vw - 2 * #{$spacing-s});
@@ -27,10 +27,6 @@ $dice-roll-engraving-fade: radial-gradient(ellipse 74% 74% at 50% 50%, #000 38%,
   pointer-events: none;
   @include atlas-flex-col($spacing-s);
   align-items: flex-end;
-}
-
-.atlas-widget-bar + &.atlas-dice-rolls {
-  margin-top: $spacing-s;
 }
 
 .atlas-dice-roll {

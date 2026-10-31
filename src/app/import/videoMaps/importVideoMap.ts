@@ -1,7 +1,7 @@
 import type { App } from 'obsidian';
 import { getLocale, t } from '../../i18n';
-import { prebuildMapImageAt } from '../../pixi/mapImage/prebuildMapImage';
-import { isVideoMapPath, MAX_VIDEO_MAP_BYTES, videoMapExtension, videoMimeType } from '../../pixi/mapImage/video/videoMapFiles';
+import { prebuildMosaicCanvasAt } from '../../pixi/mosaicCanvas/prebuildMosaicCanvas';
+import { isVideoMapPath, MAX_VIDEO_MAP_BYTES, videoMapExtension, videoMimeType } from '../../pixi/mosaicCanvas/video/videoMapFiles';
 import type { AssetService } from '../../services/AssetService';
 import type { AssetThumbnailService } from '../../services/AssetThumbnailService';
 import { discardAssetFiles, writeAssetFile } from '../../services/assetImageFiles';
@@ -34,7 +34,7 @@ export function videoMapRefusal(file: Pick<File, 'name' | 'size'>): string | nul
 /**
  * Adds a video to a collection as an animated map. The video is stored byte for byte (a browser
  * cannot encode video well, and players notice), only once it played here: its first frame is
- * the card's thumbnail and the map's tiles, built ahead like any new map's.
+ * the card's thumbnail and the map's tesserae, built ahead like any new map's.
  */
 export async function importVideoMap(deps: VideoMapImportDeps, file: File, collectionId: string): Promise<VideoMapImport> {
   const refusal = videoMapRefusal(file);
@@ -68,6 +68,6 @@ export async function importVideoMap(deps: VideoMapImportDeps, file: File, colle
     if (!(error instanceof AssetRegistrationUncertainError)) await discardAssetFiles(app, [mapFilePath, thumbnailPath]);
     return refused(t('videoMap.saveFailed', { reason: describeError(error) }));
   }
-  prebuildMapImageAt(app, mapFilePath);
+  prebuildMosaicCanvasAt(app, mapFilePath);
   return { ok: true, name };
 }

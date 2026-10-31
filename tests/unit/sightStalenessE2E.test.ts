@@ -27,8 +27,16 @@ import { wallList } from '../../src/app/vision/wallList';
 import { creatureVault, type CreatureVault } from '../mocks/creatureVault';
 import { stubJsdomGraphics } from '../mocks/jsdomGraphics';
 
-// The line-of-sight fallback is the whole lighting view here: real sight, real cache, no GPU.
-vi.mock('../../src/app/pixi/utils/rendererType', () => ({ usesCanvasRenderer: () => true }));
+// The line-of-sight fallback is the whole lighting view here: real sight, real cache, no GPU. The
+// engine's view gives up as it is made, as one whose shaders do not compile does.
+vi.mock('../../src/app/pixi/lighting/LightingRenderer', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../src/app/pixi/lighting/LightingRenderer')>()),
+  LightingRenderer: class {
+    modeLayer = { visible: false };
+    constructor(deps: { onUnavailable: (reason: 'failed') => void }) { deps.onUnavailable('failed'); }
+    destroy(): void {}
+  },
+}));
 vi.mock('../../src/app/utils/activeLeafGuard', () => ({ isActiveAtlasLeaf: () => true }));
 
 const MAP = 'atlas-vtt/collections/dungeon/scenes/cave.atlasmap';
@@ -67,7 +75,7 @@ function world(): World {
   store.getState().setMapPath(MAP);
   const controller = new LightingController({
     viewport,
-    app: { canvas: document.createElement('canvas'), renderer: { name: 'canvas' } } as unknown as Application,
+    app: { canvas: document.createElement('canvas'), renderer: { name: 'webgl' } } as unknown as Application,
     store,
     eventBus: new EventEmitter(),
     obsApp: current.app,

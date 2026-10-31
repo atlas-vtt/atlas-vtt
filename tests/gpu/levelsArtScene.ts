@@ -1,13 +1,13 @@
 import { CanvasSource, Texture } from 'pixi.js';
 import { OPEN_ALPHA_BYTE, type ArtAlpha } from '../../src/app/levels/artRaster';
-import { createTileGraphics, browserGraphicsPrimitives } from '../../src/app/pixi/mapImage/tileGraphics';
+import { createTesseraGraphics, browserGraphicsPrimitives } from '../../src/app/pixi/mosaicCanvas/tesseraGraphics';
 import type { P } from '../../src/app/pixi/lighting/engine/__tests__/fuzzRooms';
 
 /**
  * Maps with transparent parts for the levels' leak fuzz over art (`levelsArtFuzz.ts`): noise of one
  * hue per level, with round holes whose edges fade over a few pixels (anti-aliased) and, around
  * some, a faint shadow (alpha a quarter) that is floor. Each map comes with its true alpha, for the
- * checks, and the alpha the tile worker would read (`ArtAlpha`): the image itself up to 2,048 px, its
+ * checks, and the alpha the tessera worker would read (`ArtAlpha`): the image itself up to 2,048 px, its
  * overview resized as the worker resizes it above.
  */
 
@@ -27,7 +27,7 @@ export interface ArtMap {
   height: number;
   /** The true alpha of every pixel, row by row. */
   trueAlpha: Uint8ClampedArray;
-  /** What the tile worker reads of it (`FakeMap.alpha`). */
+  /** What the tessera worker reads of it (`FakeMap.alpha`). */
   alpha: ArtAlpha;
 }
 
@@ -90,12 +90,12 @@ export async function artMap(width: number, height: number, hue: Hue, holes: rea
   return { texture, width, height, trueAlpha: alpha, alpha: await workerRead(canvas, alpha, width, height) };
 }
 
-/** What the tile worker reads of a map: its own pixels up to `OVERVIEW` a side, else its overview resized as the worker does. */
+/** What the tessera worker reads of a map: its own pixels up to `OVERVIEW` a side, else its overview resized as the worker does. */
 async function workerRead(canvas: HTMLCanvasElement, alpha: Uint8ClampedArray, width: number, height: number): Promise<ArtAlpha> {
   if (Math.max(width, height) <= OVERVIEW) {
     return { width, height, opaque: Uint8Array.from(alpha, (a) => (a > OPEN_ALPHA_BYTE ? 1 : 0)) };
   }
-  const graphics = createTileGraphics(browserGraphicsPrimitives());
+  const graphics = createTesseraGraphics(browserGraphicsPrimitives());
   const scale = OVERVIEW / Math.max(width, height);
   const source = await createImageBitmap(canvas);
   const overview = await graphics.resize(source, Math.round(width * scale), Math.round(height * scale));

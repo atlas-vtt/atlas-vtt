@@ -85,13 +85,13 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
   const shownRenderer = (): unknown => (shown() ? renderer : null);
   const measurement = lastWhileShown(shown, () => measurementOf(renderer) ?? lightingSourceOf(renderer)?.measurement() ?? null);
   const liveRenderer = (): unknown => (live() ? renderer : null);
-  const marks = new GmMarks(ports.app, liveRenderer, tab.store, () => {
+  const marks: GmMarks = new GmMarks(ports.app, liveRenderer, tab.store, () => {
     const grid = call(liveRenderer(), 'getGridOptions') as GridGeometry | null | undefined;
     if (grid === null || grid === undefined) return null;
     const state = tab.store.getState();
     const difficult = difficultCells(mapFeatureList(levelObjects(state).mapFeatures));
     return { grid, measurement: measurement() ?? resolveMeasurementSettings(undefined, state.grid), difficult } satisfies MeasureRules;
-  });
+  }, (tokenId): string | undefined => share.draggerOf(tokenId));
   // Players' marks leave the GM's canvas as the hold begins: it is about to show another scene.
   const store = new PresentedStore(tab.store, presented, () => {
     if (!live()) return;
@@ -99,7 +99,7 @@ export function bindScene(ports: SceneBindingPorts, tab: AtlasTab, presented: Pr
     marks.showPlayerDrags([]);
     marks.showPlayerCursors([]);
   });
-  const share = new SceneShare(store, {
+  const share: SceneShare = new SceneShare(store, {
     tokenSource: () => asTokenSource(shownRenderer()),
     lightingSource: () => lightingSourceOf(shownRenderer()),
     measurement,

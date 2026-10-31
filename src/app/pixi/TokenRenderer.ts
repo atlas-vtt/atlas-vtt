@@ -1,5 +1,4 @@
 import type { FogCoverage } from '../fog/fogCoverage';
-import { playersFog } from '../fog/playersFog';
 import { StatblockTokenSync } from '../plugin/StatblockTokenSync';
 import { TokenCollectionSync } from '../plugin/TokenCollectionSync';
 import type { ResourceDefsProvider } from '../resources/resourceTypes';
@@ -35,7 +34,7 @@ import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
 import { DragRulerView } from './token-renderer/DragRulerView';
 import { SyncService } from './token-renderer/SyncService';
 import { tokenSyncState } from './token-renderer/tokenSyncState';
-import { TokenGlide, placedAtOnce } from './token-renderer/TokenGlide';
+import { TokenGlide, placedAtOnce, type HeldPlayout, type TokenHolder } from './token-renderer/TokenGlide';
 import type { ShownPlaces } from '../lighting/shownPlaces';
 import type { Point } from '../types/visionTypes';
 import type { ArtFloors } from '../levels/levelSurfaces';
@@ -53,7 +52,6 @@ import type { BarsSpan, TokenGroupContainer } from './token-renderer/types';
 import type { TokenPreview } from './tokenPlacement/PlacementGhost';
 import type { TokenInput } from '../types/viewState';
 import { setCanvasCursor } from './utils/canvasCursor';
-import { usesCanvasRenderer } from './utils/rendererType';
 import { markHandled, resetHandled } from './utils/handledEvents';
 import { watchClick } from './utils/clickRelease';
 import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
@@ -111,6 +109,8 @@ export class TokenRenderer {
   });
   /** Whether a token may be drawn on its way between two places; set by the lighting while it lights the view. */
   private glideWay?: (from: Point, to: Point) => boolean;
+  /** How tokens someone else holds are drawn (`setHeldPlayout`); null glides them to each place. */
+  private heldPlayout: HeldPlayout | null = null;
   private uiManager: UIManager;
   private interactionController: InteractionController;
   private dragRuler: DragRuler;
@@ -206,6 +206,8 @@ export class TokenRenderer {
       reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
       ...(shownPlaces && { shown: shownPlaces }),
       clearWay: (from, to) => this.glideWay?.(from, to) ?? true,
+      heldPlayout: () => this.heldPlayout,
+      heldBy: (tokenId) => this.heldBy(tokenId),
     });
     this.obsApp = obsApp;
     this.viewport = viewport;
@@ -281,7 +283,6 @@ export class TokenRenderer {
       ticker: () => this.pixiApp?.ticker ?? null,
       reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
       defeated: (state) => defeatedCombatants(state.initiative.entries, sceneTokens(everyLevelObjects(state)), this.resourceDefsProvider()),
-      canMask: () => !this.pixiApp?.renderer || !usesCanvasRenderer(this.pixiApp.renderer),
     });
     this.collectionSync = new TokenCollectionSync(obsApp, store.getState, {
       refreshRules: () => this.refreshCollectionRules(),
@@ -373,7 +374,7 @@ export class TokenRenderer {
     // Fog and perspective changes affect presentation even when no token or light changed.
     const gmViewUnsubscribe = this.store.subscribe((state, previous) => {
       if (state.isGMView !== previous.isGMView || state.isPlayerView !== previous.isPlayerView ||
-          playersFog(state) !== playersFog(previous) || state.mapPath !== previous.mapPath ||
+          levelObjects(state).fog !== levelObjects(previous).fog || state.mapPath !== previous.mapPath ||
           state.isMapLoading !== previous.isMapLoading) this.refreshPlayerSight();
     });
     const origUnsubGM = this._unsubscribeFromStore;
@@ -936,8 +937,11 @@ export class TokenRenderer {
             // A dropped token is already gliding from the pointer, where it showed, to this place
             const mayGlide = this.glide.headsTo(token.id, token.x, token.y) || this.mayGlide(token, prevToken);
             const pointerDrags = this.interactionController.isDraggingTokens();
-            if (placedAtOnce({ held: !!heldTokens[token.id], pointerDrags, loading: isMapLoading, mayGlide })) {
+            const held = !!heldTokens[token.id];
+            if (placedAtOnce({ held, pointerDrags, loading: isMapLoading, mayGlide })) {
               this.glide.jump(token.id, token.x, token.y);
+            } else if (held) {
+              this.glide.follow(token.id, token.x, token.y);
             } else {
               this.glide.to(token.id, token.x, token.y);
             }
@@ -1644,6 +1648,20 @@ export class TokenRenderer {
    */
   public setGlideWay(clearWay: (from: Point, to: Point) => boolean): void {
     this.glideWay = clearWay;
+  }
+
+  /**
+   * How tokens someone else holds are drawn from now on: played out as the cursor of the pointer
+   * holding them (a player's drag followed online), or, with null, glided to each place the store gives.
+   */
+  public setHeldPlayout(playout: HeldPlayout | null): void {
+    this.heldPlayout = playout;
+  }
+
+  /** Who holds a token: this view's pointer while it drags tokens, else whoever the store notes it held by. */
+  private heldBy(tokenId: string): TokenHolder {
+    if (!this.store.getState().heldTokens[tokenId]) return null;
+    return this.interactionController.isDraggingTokens() ? 'pointer' : 'elsewhere';
   }
 
   /** The lighting lays out the levels' maps (`ArtFloors`): a token dropped where it draws a level below falls there. */

@@ -35,11 +35,11 @@ it('names rolls from the fog the renderer already holds, working out nothing aga
   try {
     const sprites = Object.fromEntries(Object.values(tokens).map((t) => [t.id, { x: t.x, y: t.y } as TokenGroupContainer]));
     const sight = new PlayerSightTokens({ tokens: () => tokens as never, sprites: () => sprites, held: () => new Set() });
-    sight.setFogProvider(() => renderer.getPlayersCoverage(), () => false);
+    sight.setFogProvider(() => renderer.getCommittedCoverage(), () => false);
     const roll = (): string[] => [...shownRollTokens(store.getState() as unknown as RollSceneState, MAP, sprites, () => sight.framePerception()).keys()];
 
     expect(roll()).toEqual(['wolf']);
-    const covers = vi.spyOn(Object.getPrototypeOf(renderer.getPlayersCoverage()), 'covers');
+    const covers = vi.spyOn(Object.getPrototypeOf(renderer.getCommittedCoverage()), 'covers');
     const built = builds.mock.calls.length;
 
     // A players' frame, a fog redraw and more rolls of the same scene

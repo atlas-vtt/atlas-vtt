@@ -46,8 +46,6 @@ import { isPinLabelKind, nextPinLabel } from './tools/pinLabels';
 import { movedFolderPathOf, movedPathOf, rewriteMapReferences } from './services/renamedPaths';
 import { conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
-import { DEFAULT_FOG_STYLE, readFogStyle, type FogStyle } from './fog/fogStyle';
-import { heldFog } from './fog/playersFog';
 import { isolateListeners } from './stores/isolatedListeners';
 import { elsewhereThanViewedLevel, placedOnViewedLevel, placedOnViewedLevels } from './levels/sceneLevels';
 import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
@@ -161,8 +159,6 @@ export interface ViewAtlasState extends ViewState {
   setFogOperations: (fog: Record<string, FogOperation>) => void;
   /** Removes the fog of the level the view shows; other floors keep theirs. */
   clearFog: () => void;
-  /** Changes how the scene shows its fog; not an undo step. */
-  setFogStyle: (changes: Partial<FogStyle>) => void;
   /** Merges `changes` into the scene's lighting; an option given as undefined is removed. */
   setSceneLighting: (changes: SceneLightingChanges) => void;
   /** Sets the explored memory of `level` (unset: the level the view shows; null: the first); a level the scene no longer has keeps none. */
@@ -334,9 +330,8 @@ export const DEFAULT_TOKEN_SETTINGS: Readonly<ViewAtlasState['tokenSettings']> =
   tokenRingSize: 1,
 };
 
-const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'fogStyle' | 'exploredMask' | 'exploredEdits' | 'partyValues'> => ({
+const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues'> => ({
   lighting: { ...DEFAULT_SCENE_LIGHTING },
-  fogStyle: DEFAULT_FOG_STYLE,
   exploredMask: null,
   exploredEdits: 0,
   partyValues: {},
@@ -765,7 +760,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               return;
             }
             draft.activeTool = tool;
-            draft.fogHeld = heldFog({ ...get(), activeTool: tool });
           }),
 
           setSelectionMode: (mode) => set((draft) => {
@@ -1199,12 +1193,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.objects.fog = elsewhereThanViewedLevel(draft.objects.fog, draft);
           }),
 
-          setFogStyle: (changes) => set((draft) => {
-            const fogStyle = { ...get().fogStyle, ...changes };
-            draft.fogStyle = fogStyle;
-            draft.fogHeld = heldFog({ ...get(), fogStyle });
-          }),
-
           setSceneLighting: (changes) => set((draft) => {
             Object.assign(draft.lighting, changes);
             for (const field of Object.keys(changes) as SceneLightingOption[]) {
@@ -1400,8 +1388,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.pinnedNotePreviews = {};
             draft.lootRoller = createInitialLootRollerState();
             draft.lighting = { ...DEFAULT_SCENE_LIGHTING };
-            draft.fogStyle = DEFAULT_FOG_STYLE;
-            draft.fogHeld = null;
             draft.exploredMask = null;
             draft.exploredMasks = undefined;
             draft.exploredEdits = 0;
@@ -1576,7 +1562,6 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               pinnedNotePreviews: state.pinnedNotePreviews, // Pinned note preview windows
               lootRoller: state.lootRoller, // Loot roller window, filters and history
               lighting: state.lighting,
-              fogStyle: state.fogStyle,
               exploredMask: state.exploredMask,
               exploredMasks: state.exploredMasks,
             };
@@ -1587,19 +1572,12 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             const saved: Partial<ViewAtlasState> = isRecord(persisted) ? persisted : {};
             const read = readSceneLevels(saved.levels, saved.background ?? current.background);
             const levels = withoutAlignments(read);
-            const loaded: ViewAtlasState = {
+            return {
               ...current,
               ...saved,
               levels,
               levelAlignments: levelAlignmentsOf(read),
               exploredMasks: readExploredMasks(saved.exploredMasks, levels),
-              fogStyle: readFogStyle(saved.fogStyle),
-              fogHeld: null,
-            };
-            return {
-              ...loaded,
-              // A scene loaded while the fog tools are taken up holds its own fog, never the scene's before
-              fogHeld: heldFog(loaded),
               lootRoller: readLootRollerState(saved.lootRoller),
               lighting: readSceneLighting(saved.lighting),
               exploredMask: readExploredMask(saved.exploredMask),

@@ -18,4 +18,5 @@ export const view: Translation = {
   'view.connecting': 'Подключение к игре…',
   'view.playerTitle': 'Экран игроков: {name}',
   'view.playerDefault': 'Экран игроков',
+  'view.noGraphics': 'Atlas нужно аппаратное ускорение графики, чтобы рисовать карты. Включите аппаратное ускорение в общих настройках Obsidian или проверьте драйверы видеокарты.',
 };

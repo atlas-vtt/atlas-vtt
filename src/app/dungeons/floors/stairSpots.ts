@@ -52,6 +52,14 @@ export function approachCells(spot: StairSpot, end: StairEnd): CellPoint[] {
   return cellsOf({ x0: r.x0, y0: y, x1: r.x1, y1: y });
 }
 
+/**
+ * Every stairwell's cells, by key: floor a token walks onto only across its ground end, so no way
+ * between other floor may pass through it (its sides are closed on both floors).
+ */
+export function stairwellCells(stairs: readonly StairSpot[]): Set<string> {
+  return new Set(stairs.flatMap((s) => cellsOf(spotRect(s))).map((c) => cellKey(c.x, c.y)));
+}
+
 /** Every stairwell, the rows it is reached from at either end and the cells round them, by key: what nothing low may crowd. */
 export function stairsAndAround(stairs: readonly StairSpot[]): string[] {
   const cells = stairs.flatMap((s) => [...cellsOf(spotRect(s)), ...approachCells(s, 'upper'), ...approachCells(s, 'lower')]);
@@ -108,7 +116,7 @@ export function spotFits(room: StairRoom, space: FloorSpace, spot: StairSpot, en
   const open = end === 'upper' ? dir(-spot.down.x, -spot.down.y) : spot.down;
   if (!touchesWall(rect, floor, open)) return false;
   const inFloor = (c: CellPoint): boolean => inRect(floor, c.x, c.y);
-  const taken = new Set(space.stairs.flatMap((s) => cellsOf(spotRect(s))).map((c) => cellKey(c.x, c.y)));
+  const taken = stairwellCells(space.stairs);
   const own = new Set(cells.map((c) => cellKey(c.x, c.y)));
   const approach = approachCells(spot, end);
   const needed = [

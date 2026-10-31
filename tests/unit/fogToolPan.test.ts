@@ -2,7 +2,6 @@ import { expect, it, vi } from 'vitest';
 import type { FederatedPointerEvent } from 'pixi.js';
 import { FogOfWarRenderer } from '../../src/app/pixi/fog/FogOfWarRenderer';
 import { ShapeStroke } from '../../src/app/tools/shapeStroke';
-import { DEFAULT_FOG_STYLE } from '../../src/app/fog/fogStyle';
 
 interface FogToolHarness {
   stroke: ShapeStroke;
@@ -18,7 +17,7 @@ const pointer = (button: number, at = 140): FederatedPointerEvent =>
 function fogTool(): { tool: FogToolHarness; viewport: { pause: boolean }; addFogOperation: ReturnType<typeof vi.fn> } {
   const viewport = { pause: false, toWorld: (point: { x: number; y: number }) => point };
   const addFogOperation = vi.fn();
-  const state = { activeTool: 'fog', isMapLoading: false, grid: { size: 70 }, objects: { fog: {} }, fogStyle: DEFAULT_FOG_STYLE, fogHeld: null, addFogOperation };
+  const state = { activeTool: 'fog', isMapLoading: false, grid: { size: 70 }, objects: { fog: {} }, addFogOperation };
   const tool = Object.assign(Object.create(FogOfWarRenderer.prototype) as FogOfWarRenderer, {
     store: { getState: () => state },
     viewport,
@@ -26,7 +25,6 @@ function fogTool(): { tool: FogToolHarness; viewport: { pause: boolean }; addFog
     container: {},
     fogSprites: new Map(),
     previewSprite: {},
-    cloudLayer: { reset: vi.fn(), container: {} },
     renderPreviewFromStore: vi.fn(),
     refreshBounds: vi.fn(),
     rectPreviewGraphics: { clear: vi.fn(), rect: vi.fn(), stroke: vi.fn().mockReturnThis(), fill: vi.fn() },
