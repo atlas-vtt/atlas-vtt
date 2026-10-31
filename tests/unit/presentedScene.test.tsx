@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import React from 'react';
-import { cleanup, render, screen } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, expect, it, vi } from 'vitest';
 import { AtlasUIContext } from '../../src/app/react/root/AtlasUIContext';
 import { SceneTabBar } from '../../src/app/react/components/SceneTabBar';
@@ -64,16 +64,24 @@ it('reads anything stored that is no scene as nothing presented, and survives st
   expect(presented.get()).toEqual({ tabId: 'tab-1', filePath: 'Cave.atlasmap' });
 });
 
-it('marks the presented tab\'s eye whether or not the player window is open', () => {
+it('keeps the presented eye on the same scene when its tab changes position', () => {
   vi.stubGlobal('ResizeObserver', class { observe(): void {} disconnect(): void {} });
   Element.prototype.scrollIntoView = vi.fn();
   const tabMetaStore = createTabMetaStore();
-  const [, cave] = ['Tavern', 'Cave'].map((name) => tabMetaStore.getState().addTab(`${name}.atlasmap`, name));
+  const [tavern, cave] = ['Tavern', 'Cave'].map((name) => tabMetaStore.getState().addTab(`${name}.atlasmap`, name));
   const value = { app: {}, view: { viewId: 'map', tabMetaStore }, pixiApp: null, renderer: null } as never;
   render(<AtlasUIContext.Provider value={value}>
-    <SceneTabBar onSwitchTab={vi.fn()} onCloseTab={vi.fn()} onAddTab={vi.fn()} onPresentTab={vi.fn()} presentedTabId={cave!} onShowAllTabs={vi.fn()} />
+    <SceneTabBar onMoveTab={(id, before) => tabMetaStore.getState().moveTab(id, before)} onSwitchTab={vi.fn()} onCloseTab={vi.fn()} onAddTab={vi.fn()} onPresentTab={vi.fn()} presentedTabId={cave!} onShowAllTabs={vi.fn()} />
   </AtlasUIContext.Provider>);
   const eyes = screen.getAllByRole('button', { pressed: true });
   expect(eyes).toHaveLength(1);
   expect(screen.getByRole('tab', { name: /Cave/ }).contains(eyes[0]!)).toBe(true);
+
+  act(() => { tabMetaStore.getState().moveTab(cave!, tavern!); });
+
+  expect(screen.getAllByRole('tab').map((tab) => tab.dataset.sceneTabId)).toEqual([cave, tavern]);
+  const reorderedEyes = screen.getAllByRole('button', { pressed: true });
+  expect(reorderedEyes).toHaveLength(1);
+  expect(screen.getByRole('tab', { name: /Cave/ }).contains(reorderedEyes[0]!)).toBe(true);
+  expect(screen.getByRole('tab', { name: /Tavern/ }).contains(reorderedEyes[0]!)).toBe(false);
 });

@@ -283,6 +283,33 @@ describe('PlayerWindowPresenter', () => {
       return { ...fake, tavern, dungeon };
     }
 
+    test('keeps the presented scene and its held frame while the DM only reorders tabs', async () => {
+      const { view, atlasStore, tavern, dungeon } = await presentTavernThenBrowse();
+      const source = shownSource();
+      const changes = vi.fn();
+      const stop = presentedSceneOf(app).onChange(changes);
+      serviceMock.holdCurrentFrame.mockClear();
+      serviceMock.releaseHeldFrame.mockClear();
+      serviceMock.presentCanvas.mockClear();
+      view.switchToTab.mockClear();
+
+      view.tabMetaStore.getState().moveTab(dungeon, tavern);
+      await flush();
+
+      expect(view.tabMetaStore.getState().tabs.map((tab: { id: string }) => tab.id)).toEqual([dungeon, tavern]);
+      expect(view.tabMetaStore.getState().activeTabId).toBe(dungeon);
+      expect(atlasStore.getState().mapPath).toBe(DUNGEON);
+      expect(playerWindowStore.getState().shownTabId).toBe(tavern);
+      expect(presentedSceneOf(app).get()).toEqual({ tabId: tavern, filePath: TAVERN });
+      expect(source.store).toBe(atlasStore);
+      expect(changes).not.toHaveBeenCalled();
+      expect(view.switchToTab).not.toHaveBeenCalled();
+      expect(serviceMock.holdCurrentFrame).not.toHaveBeenCalled();
+      expect(serviceMock.releaseHeldFrame).not.toHaveBeenCalled();
+      expect(serviceMock.presentCanvas).not.toHaveBeenCalled();
+      stop();
+    });
+
     test.each([
       ['the scene is marked loaded', [{ isMapLoading: false }, { mapLoaded: true }]],
       ['the loading overlay goes', [{ mapLoaded: true }, { isMapLoading: false }]],

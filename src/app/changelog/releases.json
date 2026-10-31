@@ -2,6 +2,11 @@
   "version": "0.11.1-beta.0",
   "releases": [
     {
+      "version": "0.11.1-beta.0",
+      "title": "Coming in 0.11.1",
+      "markdown": "## Improved\n\n- Arrange open scene tabs by dragging them into your preferred order. Atlas remembers the order when you reopen your workspace."
+    },
+    {
       "version": "0.11.0",
       "date": "2026-10-30",
       "title": "Mosaic Canvas, procedural forest maps and new crayon style",

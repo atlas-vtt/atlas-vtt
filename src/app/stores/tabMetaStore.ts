@@ -9,6 +9,8 @@ export interface TabMetaState {
 export interface TabMetaActions {
   addTab: (filePath: string, displayName: string) => string;
   removeTab: (tabId: string) => void;
+  /** Inserts an existing tab before another, or at the end for null. */
+  moveTab: (tabId: string, beforeTabId: string | null) => boolean;
   setActiveTab: (tabId: string) => void;
   getTabByFilePath: (filePath: string) => SceneTab | undefined;
   markTabLoaded: (tabId: string) => void;
@@ -48,6 +50,18 @@ export function createTabMetaStore(): TabMetaStore {
             : s.activeTabId;
         return { tabs, activeTabId };
       });
+    },
+
+    moveTab: (tabId: string, beforeTabId: string | null): boolean => {
+      const { tabs } = get();
+      const source = tabs.find((tab) => tab.id === tabId);
+      if (!source || tabId === beforeTabId || (beforeTabId !== null && !tabs.some((tab) => tab.id === beforeTabId))) return false;
+      const next = tabs.filter((tab) => tab !== source);
+      const index = beforeTabId === null ? next.length : next.findIndex((tab) => tab.id === beforeTabId);
+      next.splice(index, 0, source);
+      if (next.every((tab, position) => tab === tabs[position])) return false;
+      set({ tabs: next });
+      return true;
     },
 
     setActiveTab: (tabId: string): void => {

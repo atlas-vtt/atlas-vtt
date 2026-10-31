@@ -8,6 +8,7 @@ import type { PresentedTab, TabSource } from '../../../../src/app/online/gm/pres
 import { PresentedStore } from '../../../../src/app/online/gm/presentedStore.ts';
 import { ALIAS, ANA, SCENE, STORE_FACTORY, type StoreFactory } from './realStore.ts';
 import { token } from './shareHarness.ts';
+import { createTabMetaStore } from '../../../../src/app/stores/tabMetaStore';
 
 const { createViewAtlasStore } = (await import(/* @vite-ignore */ STORE_FACTORY)) as { createViewAtlasStore: StoreFactory };
 
@@ -72,6 +73,45 @@ describe('the shared store while the GM works on another scene tab', () => {
   });
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  it('ignores order-only tab notifications while live and while holding the presented scene', () => {
+    const v = view();
+    const tabs = createTabMetaStore();
+    tabs.getState().setTabs(v.tabs.getState().tabs, 'cave');
+    const presented = { ...v.presented, tabs };
+    const holds = vi.fn();
+    const gate = new PresentedStore(v.store as unknown as SceneStore, presented, holds);
+    const heard: SceneState[] = [];
+    gate.subscribe((state) => heard.push(state));
+    const live = gate.getState();
+
+    tabs.getState().moveTab('hall', 'cave');
+
+    expect(tabs.getState().tabs.map((tab) => tab.id)).toEqual(['hall', 'cave']);
+    expect(tabs.getState().activeTabId).toBe('cave');
+    expect(gate.held).toBe(false);
+    expect(gate.getState()).toBe(live);
+    expect(heard).toEqual([]);
+    expect(holds).not.toHaveBeenCalled();
+
+    tabs.getState().setActiveTab('hall');
+    const held = gate.getState();
+    expect(gate.held).toBe(true);
+    expect(heard).toHaveLength(1);
+    expect(holds).toHaveBeenCalledOnce();
+
+    tabs.getState().moveTab('cave', 'hall');
+
+    expect(tabs.getState().tabs.map((tab) => tab.id)).toEqual(['cave', 'hall']);
+    expect(tabs.getState().activeTabId).toBe('hall');
+    expect(gate.held).toBe(true);
+    expect(gate.getState()).toBe(held);
+    expect(gate.getState()).toMatchObject({ mapPath: CAVE, isMapLoading: true });
+    expect(Object.keys(gate.getState().objects.tokens)).toEqual(['ogre']);
+    expect(heard).toHaveLength(1);
+    expect(holds).toHaveBeenCalledOnce();
+    gate.dispose();
   });
 
   it('holds the presented scene as last shown, marked loading, takes no writes and tells nothing until the scene is shown again', () => {
