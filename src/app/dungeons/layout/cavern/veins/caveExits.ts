@@ -20,6 +20,8 @@ export interface CaveExit {
   depth?: number;
   /** The largest exit of a double: a traverse, sump, letterbox or breakdown, opposite the way in. */
   special?: true;
+  /** The width the dice gave, in feet, before the cave's character bent it. */
+  rolled?: number;
 }
 
 /** What a way through the rock carries from the exit it was rolled as, and whether a double made it special. */
@@ -117,8 +119,8 @@ export function rollExits(rng: Rng, rules: ExitRules = PLAIN_EXITS, depths: Rng 
   const exits = exitWidths(d1, d2).map((rolled, k): CaveExit => {
     const width = bentWidth(rng, rolled, rules);
     const vertical = verticalOf(rng, rules);
-    if (k === 0 && special) return { width, way: special, special: true };
-    return { width, way: wayOfWidth(width), ...(vertical && { vertical }) };
+    if (k === 0 && special) return { width, way: special, special: true, rolled };
+    return { width, way: wayOfWidth(width), ...(vertical && { vertical }), rolled };
   });
   return exits.map((exit) => (exit.vertical ? { ...exit, depth: verticalDepth(depths) } : exit));
 }
@@ -127,6 +129,15 @@ export function rollExits(rng: Rng, rules: ExitRules = PLAIN_EXITS, depths: Rng 
 export function rollLoopWay(rng: Rng, rules: ExitRules = PLAIN_EXITS): WayRoll {
   const width = bentWidth(rng, int(rng, 1, 6) + int(rng, 1, 6), rules);
   return { width, way: wayOfWidth(width) };
+}
+
+/**
+ * Whether a chamber's exit roll gave it no way on a body can walk: its largest exit, as the dice
+ * gave it, four feet or less (two d6 that show 2 to 4, one chamber in six). A cave's character that
+ * lowers its roofs never makes one: the main path keeps standing room wherever the book gives it.
+ */
+export function onlyCrawlsOn(exits: readonly CaveExit[]): boolean {
+  return (exits[0]?.rolled ?? Infinity) <= CRAWL_WIDTH;
 }
 
 /** The ways a roll's exits in one direction make, each with its width and depth. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DungeonModel, TerrainDrop } from '../../src/app/dungeons/model';
+import type { DungeonModel, TerrainDrop, VerticalKind } from '../../src/app/dungeons/model';
 import { continuingCell } from '../../src/app/dungeons/layout/cavern/veins/continuing';
 import { renderMap } from '../../src/app/dungeons/render/renderMap';
 import { DEFAULT_VIEW } from '../../src/app/dungeons/style';
@@ -11,7 +11,8 @@ import { savePng, withoutText } from './dungeonRenderHarness';
  * The ways between caves as drawn, in each painter (parchment is Stone, print Engraved, crayon
  * Crayon): each way's ink lies within two cells of its door, an aven's of its cell and a squeeze
  * leading on of its rim cell; nothing else on the map changes; a squeeze, a letterbox and a crawl
- * keep the middle of their way clear of ink; and a door that names a walk draws as one without a way.
+ * keep the middle of their way clear of ink; a door that names a walk draws as one without a way;
+ * and a climb within the floor stays in its door cell and half a cell either side.
  */
 
 const PX = 60;
@@ -166,7 +167,46 @@ describe('the ways between caves as drawn', () => {
     });
   }
 
+  /** The cave without its ways, its walk turned into a climb of `kind` (a pitch's width or a chimney's), rising towards its passage unless it `descends`. */
+  function withClimb(kind: VerticalKind, descends: boolean): DungeonModel {
+    const model = caveVeinWaysModel(false);
+    const spot = WAY_SPOTS.find(s => s.way === 'walk')!;
+    const door = model.floors[0]!.doors.find(d => d.x === spot.door.x && d.y === spot.door.y)!;
+    door.way = 'climb';
+    door.width = kind === 'shaft' ? 8 : 3;
+    door.drop = { depth: 20, kind };
+    if (descends) door.descends = true;
+    return model;
+  }
+
+  for (const look of LOOKS) {
+    it(`draws a climb in its door cell and half a cell either side, its rope on the upper side and a chimney narrower than a pitch, in ${look}`, () => {
+      const plain = draw(caveVeinWaysModel(false), look);
+      const { door } = WAY_SPOTS.find(s => s.way === 'walk')!;
+      const [pitch, chimney] = (['shaft', 'chimney'] as const).map(kind => inked(withClimb(kind, false), plain, look, door));
+      expect(chimney!.count, `${look}: a chimney against a pitch`).toBeLessThan(pitch!.count * 0.9);
+      for (const way of [pitch, chimney]) {
+        expect(way!.count, `${look}: a climb is drawn`).toBeGreaterThan(PX);
+        expect(way!.reach, `${look}: ink beside its cell`).toBeLessThanOrEqual(0.6);
+      }
+      // The walk runs south from the chamber into its passage: the rope is tied on whichever side lies higher.
+      for (const descends of [false, true]) {
+        const drawn = draw(withClimb('shaft', descends), look);
+        let north = 0;
+        let south = 0;
+        for (let y = 0; y < drawn.size; y++) for (let x = 0; x < drawn.size; x++) {
+          if (!differs(drawn, plain, (y * drawn.size + x) * 4)) continue;
+          const p = cellAt(x, y);
+          if (p.y < door.y) north++;
+          else if (p.y > door.y + 1) south++;
+        }
+        expect(descends ? north > south : south > north, `${look}: rope on the upper side (descends ${descends}: ${north} north, ${south} south)`).toBe(true);
+      }
+    });
+  }
+
   it('writes a sample of every way in each painter', async () => {
     for (const look of LOOKS) await savePng(draw(caveVeinWaysModel(), look, 100).canvas, `caveWays/veins-${look}`);
+    for (const look of LOOKS) await savePng(draw(withClimb('shaft', false), look, 100).canvas, `caveWays/climb-${look}`);
   });
 });

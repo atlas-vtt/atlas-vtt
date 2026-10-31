@@ -79,6 +79,7 @@ const WAY_FEATURES: Readonly<Record<Exclude<CaveWay, 'walk'>, { name: MessageKey
   sump: { name: 'dungeon.way.sump', terrain: { difficult: true } },
   traverse: { name: 'dungeon.way.traverse' },
   breakdown: { name: 'dungeon.way.breakdown', terrain: { difficult: true } },
+  climb: { name: 'dungeon.way.climb', terrain: { difficult: true } },
 };
 
 /** Every way of a cave floor that is no walk, on its door's cells, so the GM reads it on hover and the movement cost applies. */
@@ -86,7 +87,7 @@ function wayDrafts(doors: readonly DungeonDoor[]): Draft[] {
   return doors.flatMap(door => {
     const way = door.way && door.way !== 'walk' ? WAY_FEATURES[door.way] : undefined;
     if (!way) return [];
-    return cellOutlines(doorCells(door), MAX_FEATURE_CORNERS).map(polygon => withTerrain({ polygon, name: t(way.name) }, way.terrain));
+    return cellOutlines(doorCells(door), MAX_FEATURE_CORNERS).map(polygon => withTerrain({ polygon, name: t(way.name, { depth: door.drop?.depth ?? 0 }) }, way.terrain));
   });
 }
 

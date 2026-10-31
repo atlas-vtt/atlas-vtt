@@ -49,7 +49,7 @@ export function drawPassages(hand: Hand): void {
   const drawn = (part: CaveWayPart): boolean => way(part) !== undefined;
   for (const part of ['narrows', 'crawl', 'scree', 'pitch', 'aven'] as const) way(part)?.(hand);
   // What a door's way adds to the narrows (or puts in their place), and the squeezes that lead on from leaf chambers.
-  for (const part of ['lowWay', 'squeeze', 'letterbox', 'sumpWay', 'traverseWay', 'breakdownWay', 'continuing'] as const) way(part)?.(hand);
+  for (const part of ['lowWay', 'squeeze', 'letterbox', 'sumpWay', 'traverseWay', 'breakdownWay', 'continuing', 'climbWay'] as const) way(part)?.(hand);
   for (const door of env.dungeon.doors) {
     if (door.kind === 'door' && !drawn('narrows')) drawDoor(hand, door);
     else if (door.kind === 'steps' && !drawn('scree')) drawFlight(hand, { x: door.x, y: door.y, w: 1, h: 1 }, door.descends ? door.dir : flip(door.dir), 0, 0.22);

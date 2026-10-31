@@ -227,9 +227,11 @@ export function planFloors(seed: number, params: DungeonParams, count: number, b
     const last = index === count - 1;
     const next = nextAcross(seed, params, earlier, index, last, boss, stack, link++, index === 1 && fromEntrance, passOver.get(index) ?? 0);
     if (!next) break;
-    if (!next.sound && (isStorey(stack, index) || (params.cave !== undefined && !next.linked)) && regrown < MOST_REGROWN) {
+    if (!next.sound && (isStorey(stack, index) || params.cave !== undefined) && regrown < MOST_REGROWN) {
       // A storey that cannot keep every rule on the floor below has that floor grown anew, and then the one under it;
-      // so has a cave floor that breaks the rules between floors (a way whose row its chamber cannot join round it, `caveFits`).
+      // so has a cave floor that keeps any rule short: one that breaks the rules between floors (a way whose row its
+      // chamber cannot join round it, `caveFits`), or one that finds no boss room under a floor whose long galleries
+      // left it no chamber to link to.
       regrown += 1;
       const fails = (failsAt.get(index) ?? 0) + 1;
       failsAt.set(index, fails);

@@ -3,8 +3,11 @@ import { pointsBounds, type Vec } from '../geometry';
 import { castShadow, type Hand } from '../art/hand';
 import { polysPath, smoothstep } from '../art/paths';
 import { drawField, fieldOf, gridOver } from '../art/raster';
+import { onCaveFloor } from '../cave/caveArt';
 import { OPENING_RADIUS } from '../cave/ways/shaftMouth';
+import type { RenderEnv } from '../renderEnv';
 import { cellRings, edgesFacing, type CellEdge } from './cellRings';
+import { crackRings, drawCrack } from './crack';
 import { drawDrop, dropDepth, dropTone, FACE } from './drops';
 import { cellSet, cutsHoles, hasFloorBelow, isHole, onFloor, shownPieces } from './pieces';
 import { chiselled } from './stones';
@@ -60,8 +63,18 @@ function narrowRings(piece: DungeonTerrain): Vec[][] | null {
   }), piece.id * 13 + 5, 0.035));
 }
 
-/** A hole's outline: chiselled rock, the straight edges of a built well, a narrow way's round mouth, or a murder hole's small square in the middle of its cell. */
-export function holeRings(piece: DungeonTerrain): Vec[][] {
+/** Whether a hole is a crack in a cave's floor (`crack.ts`): a chasm, or a bottomless shaft as wide as its cells. */
+function isCrack(env: RenderEnv, piece: DungeonTerrain): boolean {
+  if (!onCaveFloor(env)) return false;
+  return piece.kind === 'chasm' || (piece.kind === 'shaft' && piece.opening?.bottom === null && narrowRadius(piece) === null);
+}
+
+/**
+ * A hole's outline: a crack in a cave's floor (given the floor), chiselled rock, the straight edges
+ * of a built well, a narrow way's round mouth, or a murder hole's small square in the middle of its cell.
+ */
+export function holeRings(piece: DungeonTerrain, env?: RenderEnv): Vec[][] {
+  if (env && isCrack(env, piece)) return crackRings(env, piece);
   const narrow = narrowRings(piece);
   if (narrow) return narrow;
   if (piece.kind === 'murder-hole') {
@@ -87,10 +100,11 @@ export function drawHoles(hand: Hand): void {
   }
   for (const hole of holes) {
     if (hole.kind === 'gallery') balustrade(hand, edgesFacing(hole.cells, c => !cellSet(hole.cells).has(`${c.x},${c.y}`) && onFloor(env, c)));
-    const rings = holeRings(hole);
+    const rings = holeRings(hole, env);
     const share = faceShare(hole);
     const bottom = hole.opening?.bottom === null || !hasFloorBelow(env) ? 'void' : 'floor';
     if (cut) cutHole(hand, rings, built(hole), (hole.kind === 'murder-hole' ? MURDER_HOLE_FACE : CUT_FACE) * share);
+    else if (bottom === 'void' && isCrack(env, hole)) drawCrack(hand, rings, FACE.void * share);
     else drawDrop(hand, rings, bottom, built(hole), FACE[bottom] * share);
   }
   if (cave) env.ctx.restore();

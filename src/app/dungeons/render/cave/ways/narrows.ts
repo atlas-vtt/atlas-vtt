@@ -37,7 +37,7 @@ export function doorFrame(door: DungeonDoor, down = door.dir): WayFrame {
 }
 
 /** The ways that keep the narrows' shoulders: a squeeze and a letterbox pinch the rock in further and draw their own. */
-const SHOULDERED = new Set<CaveWay>(['walk', 'crawl', 'sump', 'traverse', 'breakdown']);
+const SHOULDERED = new Set<CaveWay>(['walk', 'crawl', 'sump', 'traverse', 'breakdown', 'climb']);
 
 /** Rock shoulders outside the full-width route, with a chipped face towards the opening. */
 export function drawNarrows(hand: Hand): void {

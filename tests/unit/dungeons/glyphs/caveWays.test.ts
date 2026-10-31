@@ -20,7 +20,7 @@ import { addRoom, emptyFloor, emptyModel } from '../../../fixtures/dungeonModelB
 
 const PARTS: CaveWayPart[] = ['narrows', 'crawl', 'pitch', 'aven', 'scree'];
 /** The parts a door's way draws, by the way it names. */
-const WAY_PARTS: [CaveWayPart, CaveWay][] = [['lowWay', 'crawl'], ['squeeze', 'squeeze'], ['letterbox', 'letterbox'], ['sumpWay', 'sump'], ['traverseWay', 'traverse'], ['breakdownWay', 'breakdown']];
+const WAY_PARTS: [CaveWayPart, CaveWay][] = [['lowWay', 'crawl'], ['squeeze', 'squeeze'], ['letterbox', 'letterbox'], ['sumpWay', 'sump'], ['traverseWay', 'traverse'], ['breakdownWay', 'breakdown'], ['climbWay', 'climb']];
 const DIRS: CellDir[] = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }];
 const STAIR: DungeonStair = { x: 2, y: 2, w: 2, h: 3, down: { x: 0, y: 1 }, to: 1, link: 0, way: 'pitch' };
 

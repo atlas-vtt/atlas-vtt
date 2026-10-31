@@ -20,6 +20,8 @@ export interface Branch {
   fallbacks: Branch[];
   /** In a cave, the exit this branch leads out by: the door it opens is passed this way. */
   exit?: WayRoll;
+  /** In a cave, the passages of a long way still to lay, this branch's first: the cells of floor of each. */
+  route?: readonly number[];
 }
 
 type Exit = 'left' | 'right' | 'forward';
@@ -42,14 +44,14 @@ function sideDepth(rng: Rng, room: WorkRoom): number {
   return mayTurnRound(room) ? (room.depth - 1) / 2 : k;
 }
 
-function sideBranch(room: WorkRoom, side: 1 | -1, k: number, flip: boolean, seed: number): Branch {
+export function sideBranch(room: WorkRoom, side: 1 | -1, k: number, flip: boolean, seed: number): Branch {
   const sign = (flip ? -1 : 1) * side;
   const half = (room.width - 1) / 2;
   const p = perpendicular(room.axis);
   return { origin: localCell(room, k, sign * half), axis: sign > 0 ? p : negate(p), flip: side > 0 ? flip : !flip, seed, fallbacks: [] };
 }
 
-function forwardBranch(room: WorkRoom, offset: number, flip: boolean, seed: number): Branch {
+export function forwardBranch(room: WorkRoom, offset: number, flip: boolean, seed: number): Branch {
   const sign = flip ? -1 : 1;
   return { origin: localCell(room, room.depth - 1, sign * offset), axis: room.axis, flip, seed, fallbacks: [] };
 }

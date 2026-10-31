@@ -72,7 +72,21 @@ function laneEnds(model: DungeonModel, index: number): [CellPoint[], CellPoint[]
   return to && from.length ? [from, to] : null;
 }
 
-/** Rule 10: no thin spur, no corner pinch, a 3 × 3 block in every chamber, the main path two cells wide. */
+/** The ways the main path may pinch to one cell through: a crawl, a squeeze, a letterbox, where a chamber has no wider way on. */
+const PINCHING: ReadonlySet<string> = new Set(['crawl', 'squeeze', 'letterbox']);
+
+/** Whether the door is one where the main path pinches: an open way of one cell on the lane, too low or tight to walk. */
+function pinchesLane(door: DungeonFloor['doors'][number], lane: ReadonlySet<string>): boolean {
+  return door.kind === 'opening' && !door.wide && PINCHING.has(door.way ?? 'walk') && lane.has(key(door));
+}
+
+/** The lane cells beside the doors where the main path pinches: rock, which the main path's two cells pass there alone. */
+function pinchCells(floor: DungeonFloor): string[] {
+  const lane = new Set((floor.cave?.lane ?? []).map(key));
+  return floor.doors.filter((d) => pinchesLane(d, lane)).flatMap((d) => [-1, 1].map((s) => cellKey(d.x + s * d.dir.y, d.y + s * d.dir.x))).filter((k) => lane.has(k));
+}
+
+/** Rule 10: no thin spur, no corner pinch, a 3 × 3 block in every chamber, the main path two cells wide but where it pinches through a crawl. */
 export function guardProblems(model: DungeonModel, index: number): string[] {
   const floor = model.floors[index]!;
   const cells = caveFloorCells(floor);
@@ -90,7 +104,7 @@ export function guardProblems(model: DungeonModel, index: number): string[] {
     }
   }
   const ends = laneEnds(model, index);
-  if (ends && !wideWay(cells, ends[0], ends[1])) out.push('the main path is narrower than two cells');
+  if (ends && !wideWay(new Set([...cells, ...pinchCells(floor)]), ends[0], ends[1])) out.push('the main path is narrower than two cells');
   return out;
 }
 
@@ -132,12 +146,17 @@ function wideWalk(floor: DungeonFloor, door: DungeonFloor['doors'][number]): boo
   return (door.width ?? 0) >= 10 && large(door.from) && large(door.to);
 }
 
-/** One-cell narrows lie off the main path: where the lane passes a narrows it has two cells across the wall. Off it a narrows is one cell, but a wide walk between two large chambers. */
+/**
+ * One-cell narrows lie off the main path: where the lane passes a narrows it has two cells across
+ * the wall, but through a crawl, a squeeze or a letterbox. Off it a narrows is one cell, but a wide
+ * walk between two large chambers.
+ */
 export function laneNarrowsProblems(floor: DungeonFloor): string[] {
   const lane = new Set((floor.cave?.lane ?? []).map(key));
   const doorCell = new Set(floor.doors.flatMap((d) => (d.kind === 'secret' ? [] : doorCells(d))).map(key));
   return floor.doors.flatMap((door) => {
     if (door.kind === 'secret' || !lane.has(key(door))) return door.wide && !lane.has(key(door)) && !wideWalk(floor, door) ? [`a wide narrows at ${key(door)} off the main path`] : [];
+    if (pinchesLane(door, lane)) return [];
     const beside = [-1, 1].map((s) => ({ x: door.x + s * door.dir.y, y: door.y + s * door.dir.x }));
     return beside.some((c) => lane.has(key(c)) && doorCell.has(key(c))) ? [] : [`a one-cell narrows at ${key(door)} on the main path`];
   });
@@ -207,7 +226,8 @@ function sizedElsewhere(room: DungeonRoom, index: number): boolean {
 
 /**
  * The book's cave rules a floor keeps: every door is passed some way; the main path is walked
- * (no special route on it); every chamber has its size tier and the floor that tier gives (a
+ * (no special route or climb on it) but where it pinches through a crawl or tighter; every
+ * chamber has its size tier and the floor that tier gives (a
  * chamber sized elsewhere, the tier its floor reaches); in a cave that never has dead passages
  * every dead end without a stairwell has its squeeze leading on.
  */
@@ -217,7 +237,7 @@ export function veinsProblems(model: DungeonModel, index: number): string[] {
   const out: string[] = [];
   for (const door of floor.doors) {
     if (!door.way) out.push(`a door at ${key(door)} without a way`);
-    if (door.kind !== 'secret' && lane.has(key(door)) && door.way !== 'walk') out.push(`a ${door.way} at ${key(door)} on the main path`);
+    if (door.kind !== 'secret' && lane.has(key(door)) && door.way !== 'walk' && !pinchesLane(door, lane)) out.push(`a ${door.way} at ${key(door)} on the main path`);
   }
   const stairKeys = new Set(floor.stairs.flatMap(stairCellsOf).map(key));
   const deadPassages = model.cave?.character?.never === 'dead-passages';

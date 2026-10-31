@@ -1,5 +1,6 @@
 import type { CaveWayDraw, CaveWayPart } from '../caveArt';
 import { drawBreakdowns } from './breakdownWay';
+import { drawClimbs } from './climbWay';
 import { drawContinuing } from './continuing';
 import { drawCrawls } from './crawl';
 import { drawLetterboxes } from './letterbox';
@@ -25,4 +26,5 @@ export const CAVE_WAYS: Partial<Record<CaveWayPart, CaveWayDraw>> = {
   traverseWay: drawTraverses,
   breakdownWay: drawBreakdowns,
   continuing: drawContinuing,
+  climbWay: drawClimbs,
 };

@@ -2,12 +2,14 @@
  * The token-fit guards of a shaped cave floor (report §6.8 step 4), checked and repaired by giving
  * cells back to their rooms: no chamber cell with fewer than two floor cells beside it, no two
  * floor cells meeting only at a corner, a 3 × 3 block in every chamber, and the main path two
- * cells wide from end to end. A crawl (a secret door) is rock as drawn, so no floor here.
+ * cells wide from end to end but through a crawl it must pass. A hidden crawl (a secret door) is
+ * rock as drawn, so no floor here.
  */
 
 import type { PlannedFloor } from '../../floors/planFloors';
 import { cellKey, cellsOf, floorRect } from '../../geometry';
-import type { CellPoint, DungeonRoom } from '../../model';
+import type { CellPoint, DungeonDoor, DungeonRoom } from '../../model';
+import { NARROW_WAYS } from './veins/doorWays';
 import { floorOf, mayWiden } from './bulges';
 import { type CaveGrid, NEAR4, ROCK, unkey } from './caveGrid';
 
@@ -43,6 +45,21 @@ function wideWay(isFloor: (x: number, y: number) => boolean, from: CellPoint, to
   return false;
 }
 
+/**
+ * The lane cells beside the doors where the main path pinches to one cell (a crawl, a squeeze or a
+ * letterbox on it, `onlyNarrowWaysOn`): rock, which the two-cell walk of the path passes there and
+ * nowhere else.
+ */
+export function pinchCells(doors: readonly DungeonDoor[], lane: readonly CellPoint[]): Set<string> {
+  const keys = new Set(lane.map((c) => cellKey(c.x, c.y)));
+  return new Set(
+    doors
+      .filter((door) => door.kind === 'opening' && !door.wide && NARROW_WAYS.has(door.way ?? 'walk') && keys.has(cellKey(door.x, door.y)))
+      .flatMap((door) => [-1, 1].map((s) => cellKey(door.x + s * door.dir.y, door.y + s * door.dir.x)))
+      .filter((k) => keys.has(k)),
+  );
+}
+
 export function guardProblems(grid: CaveGrid, floor: PlannedFloor, lane: readonly CellPoint[]): GuardProblem[] {
   const isFloor = floorOf(grid, floor.doors);
   const out: GuardProblem[] = [];
@@ -61,7 +78,9 @@ export function guardProblems(grid: CaveGrid, floor: PlannedFloor, lane: readonl
   }
   const first = lane[0];
   const last = lane[lane.length - 1];
-  if (!first || !last || !wideWay(isFloor, first, last)) out.push({ kind: 'lane', at: first ?? { x: 0, y: 0 } });
+  const pinches = pinchCells(floor.doors, lane);
+  const passable = (x: number, y: number): boolean => isFloor(x, y) || pinches.has(cellKey(x, y));
+  if (!first || !last || !wideWay(passable, first, last)) out.push({ kind: 'lane', at: first ?? { x: 0, y: 0 } });
   return out;
 }
 

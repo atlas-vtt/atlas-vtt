@@ -36,6 +36,7 @@ export function compactLayout(layout: WorkLayout): CompactLayout {
       boss: room.boss,
       ...(layout.tiered && kindOf(room) === 'room' && { tier: chamberTier(room) }),
       ...(room.vertical && { vertical: room.vertical }),
+      ...(room.tight && { tight: true }),
     };
   });
   const doors = layout.doors.map(

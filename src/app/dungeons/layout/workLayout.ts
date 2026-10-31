@@ -34,6 +34,8 @@ export interface WorkRoom {
   tier?: ChamberTier;
   /** A cave chamber's roof and floor exits, from its exit roll. */
   vertical?: CaveVerticalExits;
+  /** A cave chamber whose largest exit rolled four feet or less (`onlyCrawlsOn`). */
+  tight?: true;
 }
 
 export type PassageKind = Exclude<RoomKind, 'room'>;

@@ -39,7 +39,7 @@ function onwardDoors(floor: DungeonFloor, id: number): DungeonFloor['doors'] {
 describe('special ways in generated caves', () => {
   it('cross a passage once: of its other doors only its far one keeps the way, and a passage past the first keeps none', () => {
     let routes = 0;
-    for (let k = 1; k <= 60; k++) {
+    for (let k = 1; k <= 100; k++) {
       const model = generateDungeon({ seed: k * 7_717, theme: 'cavern', tags: k % 2 ? ['wet'] : [], floors: 1 + (k % 3) });
       for (const floor of model.floors) {
         for (const room of floor.rooms) {

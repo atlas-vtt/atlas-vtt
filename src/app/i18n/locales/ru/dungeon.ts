@@ -169,6 +169,7 @@ export const dungeon: Translation = {
   'dungeon.way.sump': 'Сифон',
   'dungeon.way.traverse': 'Траверс',
   'dungeon.way.breakdown': 'Завал',
+  'dungeon.way.climb': 'Уступ, {depth} фт',
 
   'dungeon.terrain.lowWall': 'Низкая стена',
   'dungeon.terrain.rubbleHeap': 'Груда обломков',

@@ -32,11 +32,12 @@ export interface CaveFault {
  * How a way between two caves is passed, by its size against a human body (Veins of the Earth's
  * routes): a walk stands upright (over 4 ft), a crawl goes on all fours (about 3 ft), a squeeze on
  * the belly (1 to 2 ft), a letterbox squeeze flat with an arm forward (1 ft); a traverse, a sump
- * and a breakdown are the special routes a doubles roll gives, opposite the way in.
+ * and a breakdown are the special routes a doubles roll gives, opposite the way in. A climb is a
+ * pitch or chimney within the floor, 10 or 20 ft, roped: the way rises or drops without leaving it.
  */
-export type CaveWay = 'walk' | 'crawl' | 'squeeze' | 'letterbox' | 'traverse' | 'sump' | 'breakdown';
+export type CaveWay = 'walk' | 'crawl' | 'squeeze' | 'letterbox' | 'traverse' | 'sump' | 'breakdown' | 'climb';
 
-export const CAVE_WAYS: readonly CaveWay[] = ['walk', 'crawl', 'squeeze', 'letterbox', 'traverse', 'sump', 'breakdown'];
+export const CAVE_WAYS: readonly CaveWay[] = ['walk', 'crawl', 'squeeze', 'letterbox', 'traverse', 'sump', 'breakdown', 'climb'];
 
 /** The special routes: what a doubles roll makes of a cave's largest exit. */
 export const SPECIAL_WAYS: readonly CaveWay[] = ['traverse', 'sump', 'letterbox', 'breakdown'];

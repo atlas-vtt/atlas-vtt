@@ -39,7 +39,8 @@ describe('a cavern from above', () => {
     // lies along a chain of narrows a winding cave's main path runs straight through.
     expect(straight).toBeLessThan(0.04);
     expect(Math.max(...longest)).toBeLessThanOrEqual(5.5);
-    expect(median(longest)).toBeLessThan(2.8);
+    // Long ways laid as chains of passages (2026-10-31) moved the median from 2.7 cells to 2.8.
+    expect(median(longest)).toBeLessThan(2.85);
   }, HEAVY);
 
   it('shapes chambers that are no rectangles: most fill well under their bounding rectangle, few nearly all of it', () => {

@@ -57,6 +57,33 @@ describe('the note names a cave\'s ways', () => {
     expect(factsOf(model, room)).toMatch(/narrows to the/);
   });
 
+  it('says how far a climb within the floor rises or drops, and which way', () => {
+    const model = plainCave(1);
+    const { room, door, direction } = chamberWithWay(model);
+    door.way = 'climb';
+    door.drop = { depth: 20, kind: 'shaft' };
+    door.descends = true;
+    expect(factsOf(model, room)).toContain(`a 20 ft climb down to the ${direction}`);
+    delete door.descends;
+    door.drop = { depth: 10, kind: 'chimney' };
+    expect(factsOf(model, room)).toContain(`a 10 ft climb up to the ${direction}`);
+  });
+
+  it('says where a chamber\'s one way on is a crawl or tighter, and nowhere else', () => {
+    const model = plainCave(1);
+    const floor = model.floors[0]!;
+    // A chamber with one way on besides the way it is entered by, and no stairwell.
+    const room = floor.rooms.find((r) => r.kind === 'room' && r.parent !== null && floor.doors.filter((d) => (d.from === r.id || d.to === r.id) && d.kind !== 'secret' && !(d.to === r.id && d.from === r.parent)).length === 1)!;
+    const on = floor.doors.find((d) => (d.from === room.id || d.to === room.id) && !(d.to === room.id && d.from === room.parent))!;
+    on.kind = 'opening';
+    for (const [way, words] of [['crawl', 'The only way on is a crawl.'], ['squeeze', 'The only way on is a squeeze.'], ['letterbox', 'The only way on is a letterbox squeeze.']] as const) {
+      on.way = way;
+      expect(factsOf(model, room), way).toContain(words);
+    }
+    on.way = 'walk';
+    expect(factsOf(model, room)).not.toContain('The only way on');
+  });
+
   it('keeps a secret door a hidden crawl and steps a scree slope, whatever their way', () => {
     const model = plainCave(1);
     const { room, door, direction } = chamberWithWay(model);

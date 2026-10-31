@@ -2,7 +2,7 @@ import type { DoorKind } from '../model';
 import type { DungeonParams, SizeStyle } from '../params';
 import { type Rng, chance, int, pick, weighted } from '../rng';
 import { type ChamberTier, type TierDraw, drawTier, tierSize } from './cavern/veins/caveSizes';
-import { routeDepth } from './cavern/veins/routeLength';
+import { ROUTE_WALLS, routeSegments, routeTurns } from './cavern/veins/routeLength';
 import type { PassageKind } from './workLayout';
 
 export interface RoomSize {
@@ -14,6 +14,19 @@ export interface RoomSize {
   passage?: PassageKind;
   /** A cave chamber's size tier, where the size was drawn by tier. */
   tier?: ChamberTier;
+  /** A cave passage that is the first of a long way: the cells of floor of each passage still to lay after it. */
+  route?: number[];
+}
+
+/** A cave passage of a way, `cells` of floor long. */
+export function routePassage(cells: number): RoomSize {
+  return { width: 3, depth: cells + ROUTE_WALLS };
+}
+
+/** A cave passage as long as its way's first stretch, and the stretches still to lay after it. */
+function drawRoute(rng: Rng): RoomSize {
+  const [first, ...rest] = routeSegments(routeTurns(rng));
+  return { ...routePassage(first!), ...(rest.length > 0 && { route: rest }) };
 }
 
 function sizeOfStyle(rng: Rng, style: SizeStyle): RoomSize {
@@ -46,7 +59,7 @@ function widePassage(depth: number, style: SizeStyle, floor: number): RoomSize {
  * normal room grows to `minRoomFloor` after the draw, and a passage to `passageFloor`, so the rolls
  * stay as they were. In a Cavern with the book's rules a chamber is drawn at a size tier (`cave`
  * says what its floor allows, and whether the room must be a chamber) and a corridor runs as long
- * as its way takes.
+ * as its way takes, the first of a chain where the way is long (`route`).
  */
 export function drawSize(rng: Rng, params: DungeonParams, cave: TierDraw = { gargantuan: false }): RoomSize {
   const style = pick(rng, params.sizeStyles);
@@ -57,7 +70,7 @@ export function drawSize(rng: Rng, params: DungeonParams, cave: TierDraw = { gar
     // A round cave's chambers come out square half the time, as long as they are wide: every tier's floor allows it.
     return { ...size, ...(params.squareRooms && chance(rng, 0.5) && { depth: size.width }), tier };
   }
-  const drawn = veins && style === 2 ? { width: 3, depth: routeDepth(rng) } : sizeOfStyle(rng, style);
+  const drawn = veins && style === 2 ? drawRoute(rng) : sizeOfStyle(rng, style);
   if (style >= 2) return params.passageFloor ? widePassage(drawn.depth, style, params.passageFloor) : drawn;
   const size = params.squareRooms && chance(rng, 0.5) ? { width: drawn.width, depth: drawn.width } : drawn;
   return params.minRoomFloor ? atLeast(size, params.minRoomFloor) : size;

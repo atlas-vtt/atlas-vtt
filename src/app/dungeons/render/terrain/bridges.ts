@@ -42,7 +42,7 @@ export function drawBridges(hand: Hand): void {
   for (const bridge of shownPieces(env, new Set(['bridge']))) {
     const under = terrain[bridge.spans ?? -1];
     if (!under) continue;
-    if (isHole(under)) ropeBridge(hand, bridge, polysPath(holeRings(under)), cutsHoles(env));
+    if (isHole(under)) ropeBridge(hand, bridge, polysPath(holeRings(under, env)), cutsHoles(env));
     else stoneBridge(hand, bridge);
   }
 }

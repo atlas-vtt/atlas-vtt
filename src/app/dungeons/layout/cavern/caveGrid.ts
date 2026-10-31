@@ -59,6 +59,7 @@ export class CaveGrid {
   private readonly envelopes: Int32Array;
   private readonly cells = new Map<number, Set<number>>();
   private readonly needed = new Map<number, Set<string>>();
+  private readonly held = new Set<number>();
   readonly doors: readonly DungeonDoor[];
   /** Every stairwell's cells, by key: kept floor that no way between the room's other floor may cross. */
   readonly stairCells: ReadonlySet<string>;
@@ -168,7 +169,8 @@ export class CaveGrid {
   mayTouchAt(owner: number, other: number, x: number, y: number, nx: number, ny: number, ownerAt: (x: number, y: number) => number = (cx, cy) => this.owner(cx, cy)): boolean {
     if (this.mayTouch(owner, other)) return true;
     if (isDoor(owner) || isDoor(other) || owner === ROCK || other === ROCK) return false;
-    const byDoor = (k: number, cx: number, cy: number): boolean => NEAR8.some(([dx, dy]) => ownerAt(cx + dx, cy + dy) === doorOwner(k));
+    // A cell held as rock beside a pinch of the main path is no part of the narrows two rooms may meet round.
+    const byDoor = (k: number, cx: number, cy: number): boolean => NEAR8.some(([dx, dy]) => ownerAt(cx + dx, cy + dy) === doorOwner(k) && !this.heldAsRock(cx + dx, cy + dy));
     // A crawl is rock as drawn, so nothing meets round it.
     return this.doors.some((door, k) => door.kind !== 'secret' && ((door.from === owner && door.to === other) || (door.from === other && door.to === owner)) && byDoor(k, x, y) && byDoor(k, nx, ny));
   }
@@ -187,6 +189,22 @@ export class CaveGrid {
   /** Whether the cell belongs to `owner`. */
   holds(x: number, y: number, owner: number): boolean {
     return this.owner(x, y) === owner;
+  }
+
+  /**
+   * Keeps the cell its owner's, so no room takes it, but rock as drawn (`heldAsRock`): the wall cell
+   * beside a door where the main path pinches to one cell, which every pass that shapes the floor
+   * round it must read as rock from the start.
+   */
+  holdAsRock(x: number, y: number): void {
+    const i = this.index(x, y);
+    if (i >= 0) this.held.add(i);
+  }
+
+  /** Whether the cell is held as rock (`holdAsRock`). */
+  heldAsRock(x: number, y: number): boolean {
+    const i = this.index(x, y);
+    return i >= 0 && this.held.has(i);
   }
 
   /** Claims cells for `owner` that it may never give up. */

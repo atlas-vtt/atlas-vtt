@@ -44,34 +44,51 @@ function rimTicks(rim: readonly Vec[], centre: Vec, keepClear: Vec): Vec[][] {
   return ticks;
 }
 
-function pitch(hand: Hand, frame: WayFrame, mouth: ShaftMouth): void {
-  const { at, along } = frame;
-  const { rings, near } = mouth;
+/**
+ * A shaft's mouth in the floor, from its rim down to the dark: the rim's surface and the ledges
+ * stepping down, with what is rigged over the lip (`rigged`, a rope) drawn between the upper
+ * ledges and the deeper ones, so the dark below is laid over its end. `keepClear` is where the rope
+ * goes over, which the rim's ticks leave alone.
+ */
+export function drawShaftDown(hand: Hand, mouth: ShaftMouth, rigged: () => void, keepClear: Vec): void {
+  const { rings } = mouth;
   const rim = rings[0]!;
   rimSurface(hand, rim);
   layDepth(hand, mouth, 0, 2);
   ledge(hand, rings[1]!);
-  // The rope is tied on the approach, goes over the near lip and down the lit ledges into the dark.
-  const k = Math.min(1, approachLength(along) / 0.85);
-  const tie = near - approachLength(along) * 0.52;
-  const anchor = [at(-0.2 * k, tie - 0.13 * k), at(0.1 * k, tie - 0.11 * k), at(0.18 * k, tie + 0.04 * k), at(-0.03 * k, tie + 0.13 * k), at(-0.23 * k, tie + 0.03 * k)];
-  hand.fill(polyPath(anchor), 'rock');
-  hand.line([anchor], 'outline', true);
-  const lip = at(0.03, near + 0.03);
-  const bottom = rings[3]!;
-  const shelf = rings[2]!.reduce((s, p) => ({ x: s.x + p.x / rings[2]!.length, y: s.y + p.y / rings[2]!.length }), { x: 0, y: 0 });
-  rope(hand, [
-    at(-0.15 * k, tie - 0.04 * k), at(-0.08 * k, tie + 0.08 * k), at(0.08 * k, tie + 0.06 * k), at(0.09 * k, tie - 0.06 * k), at(-0.1 * k, tie - 0.07 * k),
-    // It ends inside the lowest ledge, whose dark is laid over it: lost below.
-    at(-0.05 * k, tie + 0.16 * k), lip, { x: lip.x * 0.2 + shelf.x * 0.8, y: lip.y * 0.2 + shelf.y * 0.8 },
-  ]);
+  rigged();
   ledge(hand, rings[2]!);
   layDepth(hand, mouth, 2, 4);
   layDark(hand, mouth);
-  hand.line([bottom], 'fine', true);
+  hand.line([rings[3]!], 'fine', true);
   // Stone's depth already says which way is down; Engraved, with no tone to spare, marks it as surveyors do.
-  if (hand.scene.env.style.direction !== 'stone') hand.line(rimTicks(rim, mouth.centre, lip), 'fine');
+  if (hand.scene.env.style.direction !== 'stone') hand.line(rimTicks(rim, mouth.centre, keepClear), 'fine');
   hand.edges(rim, false);
+}
+
+/** The middle of a ring: where a rope going down a shaft comes to rest on its lowest lit ledge. */
+export function ringMiddle(ring: readonly Vec[]): Vec {
+  return ring.reduce((s, p) => ({ x: s.x + p.x / ring.length, y: s.y + p.y / ring.length }), { x: 0, y: 0 });
+}
+
+function pitch(hand: Hand, frame: WayFrame, mouth: ShaftMouth): void {
+  const { at, along } = frame;
+  const { rings, near } = mouth;
+  // The rope is tied on the approach, goes over the near lip and down the lit ledges into the dark.
+  const k = Math.min(1, approachLength(along) / 0.85);
+  const tie = near - approachLength(along) * 0.52;
+  const lip = at(0.03, near + 0.03);
+  drawShaftDown(hand, mouth, () => {
+    const anchor = [at(-0.2 * k, tie - 0.13 * k), at(0.1 * k, tie - 0.11 * k), at(0.18 * k, tie + 0.04 * k), at(-0.03 * k, tie + 0.13 * k), at(-0.23 * k, tie + 0.03 * k)];
+    hand.fill(polyPath(anchor), 'rock');
+    hand.line([anchor], 'outline', true);
+    const shelf = ringMiddle(rings[2]!);
+    rope(hand, [
+      at(-0.15 * k, tie - 0.04 * k), at(-0.08 * k, tie + 0.08 * k), at(0.08 * k, tie + 0.06 * k), at(0.09 * k, tie - 0.06 * k), at(-0.1 * k, tie - 0.07 * k),
+      // It ends inside the lowest ledge, whose dark is laid over it: lost below.
+      at(-0.05 * k, tie + 0.16 * k), lip, { x: lip.x * 0.2 + shelf.x * 0.8, y: lip.y * 0.2 + shelf.y * 0.8 },
+    ]);
+  }, lip);
 }
 
 /** An opening overhead seen from the floor below it: the light it lets down, the rubble under it and its dashed rings. */

@@ -13,7 +13,7 @@ import type { DungeonStack, DungeonWindow, FloorWalls, HouseGrounds } from './ho
 import type { PropKind } from './props/propKinds';
 import type { RoomTypeId } from './themes/roomTypes';
 import type { ThemeChoice, ThemeId } from './themes/themeTypes';
-import type { DungeonTerrain, FiveRoomStage } from './terrainModel';
+import type { DungeonTerrain, FiveRoomStage, TerrainDrop } from './terrainModel';
 
 export type { CoverLevel, DungeonTerrain, FiveRoomStage, HazardKind, TerrainDrop, TerrainKind, TerrainOpening, TerrainTraits } from './terrainModel';
 export { FIVE_ROOM_STAGES } from './terrainModel';
@@ -79,6 +79,11 @@ export interface DungeonRoom {
   /** A cave chamber's exits in its roof and floor, from its exit roll; unset where it rolled none. */
   vertical?: CaveVerticalExits;
   /**
+   * A cave chamber whose largest exit rolled four feet or less: no way on from it stands high enough
+   * to walk, so the main path pinches to one cell through its door (`onlyNarrowWaysOn`).
+   */
+  tight?: true;
+  /**
    * A cave's leaf chamber's way on that nobody can follow: a squeeze leaving by this side from the
    * chamber's rim cell furthest that way, too tight to pass. Unset where the chamber has none.
    */
@@ -101,7 +106,7 @@ export interface DungeonDoor {
   /** Room on each side; `from` is null for the outside of an entrance. */
   from: number | null;
   to: number | null;
-  /** Steps that lead down from `from` to `to`; unset, they lead up. */
+  /** Steps (or a cave's climb) that lead down from `from` to `to`; unset, they lead up. */
   descends?: true;
   /** Two cells wide, a cave's narrows or an opening between two wide passages: this cell and the one at `x + wide.x, y + wide.y` (`doorCells`). */
   wide?: CellDir;
@@ -109,6 +114,11 @@ export interface DungeonDoor {
   way?: CaveWay;
   /** In a cave, the way's width (or height) in feet as the exit roll gave it; unset outside a cave. */
   width?: number;
+  /**
+   * A cave's climb (`way` 'climb'): how far the way rises or drops within the floor, in feet, and how
+   * it is passed by its width (a pitch, a chimney); `descends` says which side is lower.
+   */
+  drop?: TerrainDrop;
   /**
    * On a floor whose walls stand on cell edges (`DungeonFloor.walls`): the door stands on the edge
    * between `(x, y)`, the cell on its `from` side (outside, for an entrance), and the cell across it

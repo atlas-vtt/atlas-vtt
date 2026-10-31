@@ -7,7 +7,7 @@
 import type { FloorStack } from '../../floors/floorStack';
 import type { PlannedFloor } from '../../floors/planFloors';
 import { cellKey } from '../../geometry';
-import type { CaveFloor, CaveModel, CellPoint, DungeonRoom } from '../../model';
+import type { CaveFloor, CaveModel, CellPoint, DungeonDoor, DungeonRoom } from '../../model';
 import type { DungeonParams } from '../../params';
 import { floorStream, stream } from '../../rng';
 import { CaveGrid } from './caveGrid';
@@ -21,9 +21,10 @@ import { basinCount, caveHeights, hydrology, lowRooms, springByTheMouth } from '
 import { caveSites } from './caveSites';
 import { type LaneWay, claimLane, laneEnds, mainRoute, wideLane, windingWay } from './mainPath';
 import { stairWays } from './stairWays';
-import { carveTunnel, doorOnLane, shapeDoors, tunnelEnds } from './tunnels';
+import { type TunnelWidth, carveTunnel, doorOnLane, pinchLane, shapeDoors, tunnelEnds } from './tunnels';
+import { inFloorClimbs } from './veins/climbs';
 import { withContinuing } from './veins/continuing';
-import { LANE_WIDTH, blockWays, streamFalls } from './veins/doorWays';
+import { blockWays, passageCells, streamFalls } from './veins/doorWays';
 import { fillPockets, warpCave } from './caveWarp';
 import { stairsJoin } from './caveFits';
 
@@ -65,14 +66,17 @@ function swellRooms(seed: number, index: number, floor: PlannedFloor, grid: Cave
 }
 
 /**
- * How wide a side tunnel runs: two cells now and then (`sideWide`), and with the book's rules
- * always where it was entered by a walk ten feet wide. A crawl or squeeze is low or tight, not
- * narrow: its tunnel swells and pinches like any other, and only its narrows shows how it is passed.
+ * How many cells across a tunnel runs: the lane's two on the main path; off it two now and then
+ * (`sideWide`). With the book's rules a passage is as wide as the way it was entered by
+ * (`passageCells`): a crawl, a squeeze or a letterbox one cell, a walk ten feet wide two, a broader
+ * walk between two great chambers three, on the main path too; a narrower walk one or two. Every
+ * tunnel still swells here and there (`widenTunnel`), as rock breaks.
  */
-function sideWidth(rng: () => number, shaping: CaveShaping, floor: PlannedFloor, room: DungeonRoom): 1 | 2 {
+function tunnelWidth(rng: () => number, shaping: CaveShaping, floor: PlannedFloor, room: DungeonRoom, onLane: boolean, entered: DungeonDoor | undefined): TunnelWidth {
+  const way = shaping.veins && entered ? passageCells(entered, room, floor.rooms, floor.doors) : undefined;
+  if (onLane) return way === 3 ? 3 : 2;
   const wide = rng() < shaping.sideWide;
-  const entered = shaping.veins && floor.doors.find((door) => door.to === room.id && door.from === room.parent);
-  return wide || (entered && entered.way === 'walk' && (entered.width ?? 0) >= LANE_WIDTH) ? 2 : 1;
+  return way ?? (wide ? 2 : 1);
 }
 
 function shapeTunnels(seed: number, index: number, shaping: CaveShaping, floor: PlannedFloor, grid: CaveGrid, lane: ReadonlySet<string>): void {
@@ -80,8 +84,10 @@ function shapeTunnels(seed: number, index: number, shaping: CaveShaping, floor: 
     if (room.kind === 'room') continue;
     const rng = floorStream(seed, 'cave', index, `tunnel:${room.id}`);
     const onLane = grid.cellsOf(room.id).some((c) => lane.has(cellKey(c.x, c.y)));
+    const entered = floor.doors.find((door) => door.to === room.id && door.from === room.parent);
+    const width = tunnelWidth(rng, shaping, floor, room, onLane, entered);
     // A cave with the book's rules runs long passages, which keep clear of the walls they share.
-    carveTunnel(rng, grid, room, tunnelEnds(grid, room, floor.doors), onLane ? 2 : sideWidth(rng, shaping, floor, room), lane, floor.rooms, shaping.veins !== undefined);
+    carveTunnel(rng, grid, room, tunnelEnds(grid, room, floor.doors), width, lane, floor.rooms, shaping.veins !== undefined);
   }
 }
 
@@ -145,13 +151,14 @@ function shapeFloor(how: FloorShaping, floors: readonly PlannedFloor[], index: n
   const floor = floors[index]!;
   const { grid, lane } = laneGrid(seed, index, floor, boss, floors.length);
   const laneKeys = new Set(lane.map((c) => cellKey(c.x, c.y)));
+  const veins = shaping.veins?.rules;
+  const pinched = veins ? pinchLane(grid, floor, laneKeys) : new Set<number>();
   const fields = shapeChambers(seed, index, shaping, faults, floor, grid, laneKeys);
   shapeTunnels(seed, index, shaping, floor, grid, laneKeys);
   swellRooms(seed, index, floor, grid, fields);
   warpCave(floorStream(seed, 'cave', index, 'warp'), grid, floor, faults);
   fillPockets(grid);
-  const veins = shaping.veins?.rules;
-  const shaped = shapeDoors(floor.doors, laneKeys, grid, veins && floor.rooms);
+  const shaped = shapeDoors(floor.doors, laneKeys, grid, veins && floor.rooms, pinched);
   const doors = veins ? blockWays(floorStream(seed, 'cave', index, 'blocked'), shaped, floor.rooms, (k) => doorOnLane(floor.doors[k]!, k, laneKeys, grid), veins.blockedWays) : shaped;
   const left = repairGuards(grid, { ...floor, doors }, lane, veins !== undefined);
   if (left.length > 0) console.debug(`[Atlas] cave floor ${index} of seed ${seed} keeps ${left.length} token-fit problems`, left.map((p) => p.kind));
@@ -180,7 +187,8 @@ export function shapeCaves(seed: number, params: DungeonParams, floors: readonly
     const cave = floor.cave!;
     Object.assign(cave, hydrology(floorStream(seed, 'cave', index, 'water'), floor, cave.heights, level, how.dry, takes[index], index === shaped.length - 1));
     // A cave whose water never runs calm drops every stream over falls.
-    if (veins?.rules.streamFalls) floor.doors = streamFalls(floor.doors, cave.streams);
+    if (veins?.rules.streamFalls) floor.doors = streamFalls(floor.doors, cave.streams, cave.lane);
+    if (veins) floor.doors = inFloorClimbs(floorStream(seed, 'cave', index, 'climbs'), floor.doors, cave);
   });
   stairWays(stream(seed, 'cave', 'ways'), shaped, stack, veins?.rules.pitchesOnly);
   if (params.tags.has('inhabited') && !how.dry && shaped[0]) springByTheMouth(shaped[0], caveSites(shaped)[0]!);

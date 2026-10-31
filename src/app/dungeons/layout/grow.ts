@@ -9,10 +9,11 @@ import type { DungeonParams } from '../params';
 import { type CellRect, contains, rectsClash, rectsTouch } from '../geometry';
 import type { KeyedRng, Rng } from '../rng';
 import { type Branch, type CaveBranching, branchesOf } from './branches';
-import { type CaveExit, type WayRoll, rollExits, verticalExits } from './cavern/veins/caveExits';
+import { type CaveExit, type WayRoll, onlyCrawlsOn, rollExits, verticalExits } from './cavern/veins/caveExits';
 import { GARGANTUAN_FLOOR_ROOMS, type TierDraw } from './cavern/veins/caveSizes';
 import { RoomIndex } from './roomIndex';
-import { type RoomSize, drawDoorKind, drawSize } from './sizes';
+import { type RoomSize, drawDoorKind, drawSize, routePassage } from './sizes';
+import { chainedBranches } from './cavern/veins/routeChain';
 import { REGULAR_ZONE, type WorkLayout, type WorkRoom, doorMayOpen, isNormal, roomAt, roomRect } from './workLayout';
 
 /** Corridors do not count towards size; this keeps a corridor maze from growing forever. */
@@ -40,6 +41,8 @@ interface QueuedRoom {
   fallbacks: Branch[];
   /** In a cave, the exit the room is entered by. */
   exit?: WayRoll;
+  /** In a cave, the passages of a long way still to lay, this room's first: it is a passage that long. */
+  route?: readonly number[];
 }
 
 /**
@@ -124,8 +127,19 @@ function caveBranching(rng: Rng, depths: Rng, params: DungeonParams, layout: Wor
   const exits: CaveExit[] | null = isNormal(room) ? rollExits(rng, rules.exits, depths) : null;
   const vertical = exits && verticalExits(exits);
   if (vertical) room.vertical = vertical;
+  if (exits && onlyCrawlsOn(exits)) room.tight = true;
   const through = wayThrough(layout, room, item);
   return { exits, passageSides: rules.passageSides, ...(through && { through }), ...(rules.oneWayOn && { oneWayOn: true }) };
+}
+
+/**
+ * The branches of a placed room; a cave passage with more of its way to lay (`route`) leads on to
+ * the next passage first, its draws from a stream of its own, so every other room's are as before.
+ */
+function roomBranches(rng: Rng, rngOf: KeyedRng, params: DungeonParams, layout: WorkLayout, room: WorkRoom, item: QueuedRoom, route: readonly number[]): Branch[][] {
+  const groups = branchesOf(rng, room, item.flip, params, caveBranching(rng, rngOf(`depths:${item.seed}`), params, layout, room, item));
+  const rules = params.cave?.veins?.rules;
+  return rules && route.length > 0 && !isNormal(room) ? chainedBranches(rngOf(`route:${item.seed}`), room, item.flip, groups, route, rules.exits) : groups;
 }
 
 /**
@@ -143,7 +157,7 @@ export function growTree(rngOf: KeyedRng, params: DungeonParams, root: FloorRoot
     const item = queue[head] as QueuedRoom;
     const first = item.parent === null;
     const rng = rngOf(item.seed);
-    const drawn = first && root.landing ? root.landing : drawSize(rng, params, params.cave?.veins && tierDraw(layout, params, item));
+    const drawn = first && root.landing ? root.landing : item.route ? routePassage(item.route[0]!) : drawSize(rng, params, params.cave?.veins && tierDraw(layout, params, item));
     const size = first && root.minDepth !== undefined && isNormal(drawn) ? { ...drawn, depth: Math.max(drawn.depth, root.minDepth) } : drawn;
     const room = newRoom(layout, item, size, first && root.landing !== undefined);
     const rect = roomRect(room);
@@ -163,7 +177,7 @@ export function growTree(rngOf: KeyedRng, params: DungeonParams, root: FloorRoot
       layout.doors.push({ x: item.origin.x, y: item.origin.y, dir: item.axis, kind: 'opening', from: null, to: room.id, loop: false });
     }
     if (isNormal(room)) normals++;
-    for (const group of branchesOf(rng, room, item.flip, params, caveBranching(rng, rngOf(`depths:${item.seed}`), params, layout, room, item))) {
+    for (const group of roomBranches(rng, rngOf, params, layout, room, item, item.route ? item.route.slice(1) : (drawn.route ?? []))) {
       const id = groups++;
       group.forEach((branch) => queue.push({ ...branch, parent: room.id, group: id }));
     }

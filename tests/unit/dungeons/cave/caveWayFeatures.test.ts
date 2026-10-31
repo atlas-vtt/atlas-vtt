@@ -46,6 +46,18 @@ describe('a cave\'s ways as map features', () => {
     });
   });
 
+  it('names a climb within the floor with its depth, difficult', () => {
+    const model = generateDungeon({ seed: 5_151, theme: 'cavern', tags: ['dry'], floors: 1 });
+    const floor = model.floors[0]!;
+    for (const door of floor.doors) delete door.way;
+    const door = floor.doors.find((d) => d.from !== null && d.to !== null && d.kind === 'opening')!;
+    door.way = 'climb';
+    door.drop = { depth: 20, kind: 'chimney' };
+    const climbs = featuresOf(model).filter((f) => f.name === 'Climb, 20 ft');
+    expect(climbs).toHaveLength(1);
+    expect(climbs[0]!.terrain?.difficult).toBe(true);
+  });
+
   it('gives a walk no feature', () => {
     // A dry cave: no sump's water carries a way's name.
     const model = generateDungeon({ seed: 5_151, theme: 'cavern', tags: ['dry'], floors: 1 });

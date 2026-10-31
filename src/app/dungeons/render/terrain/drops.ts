@@ -63,13 +63,21 @@ export function drawDrop(hand: Hand, rings: Vec[][], bottom: DropBottom, built =
 
 /** Lines following the lip down the face, broken, as rock steps away below it. */
 function ledges(rings: readonly Vec[][], bottom: DropBottom): Vec[][] {
+  return brokenLedges(rings, bottom === 'pit' ? [0.08] : [0.09, 0.19], 3.3, 0.58);
+}
+
+/**
+ * Lines `insets` cells in from the lip, broken where a noise of `scale` per cell rises past `gap`:
+ * the higher the scale, the shorter the pieces.
+ */
+export function brokenLedges(rings: readonly Vec[][], insets: readonly number[], scale: number, gap: number): Vec[][] {
   const out: Vec[][] = [];
   for (const ring of rings) {
-    for (const inset of bottom === 'pit' ? [0.08] : [0.09, 0.19]) {
+    for (const inset of insets) {
       for (const run of insetRuns(ring, inset)) {
         let piece: Vec[] = [];
         run.forEach((p, i) => {
-          if (valueNoise(p.x * 3.3 + inset * 9, p.y * 3.3, 17) > 0.58) {
+          if (valueNoise(p.x * scale + inset * 9, p.y * scale, 17) > gap) {
             if (piece.length > 2) out.push(piece);
             piece = [];
           } else piece.push(p);

@@ -172,6 +172,7 @@ export const dungeon = {
   'dungeon.way.sump': 'Sump',
   'dungeon.way.traverse': 'Traverse',
   'dungeon.way.breakdown': 'Breakdown choke',
+  'dungeon.way.climb': 'Climb, {depth} ft',
 
   // Terrain: what the GM's hover label and the room's note name a piece (`DungeonTerrain.name`).
   'dungeon.terrain.lowWall': 'Low wall',
