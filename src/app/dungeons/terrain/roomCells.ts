@@ -14,10 +14,7 @@ import { cellKey, cellsOf, dir, doorSide, floorCellsOf, holdsCell } from '../geo
 import { type StairEnd, approachCells, doorApproaches, spotRect } from '../floors/stairSpots';
 import type { Footing } from './catalog';
 import { FloorGraph } from './floorGraph';
-
-/** A side of the room in its own frame: the far wall, the wall it was entered by, and the two across. */
-export type WallSide = 'back' | 'left' | 'right' | 'near';
-export const WALL_SIDES: readonly WallSide[] = ['back', 'left', 'right', 'near'];
+import { type WallSide, edgeSlot, insideRound, sideBeyond, touches } from './roomFrame';
 
 export class RoomCells {
   readonly depth: number;
@@ -72,10 +69,10 @@ export class RoomCells {
     const stairway = stairs.flatMap((s) => [...cellsOf(spotRect(s)), ...approachCells(s, endOf(s))]);
     for (const c of stairway) for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) this.byStairs.add(cellKey(c.x + dx, c.y + dy));
     for (const c of floorCellsOf(room)) {
-      if (!this.inside(c, [0.5], 0)) continue;
+      if (!insideRound(room, c, [0.5], 0)) continue;
       const key = cellKey(c.x, c.y);
       this.floor.add(key);
-      if (this.inside(c, [0, 1], 0.05) && !this.clear.has(key) && !columns.some((col) => touches(col, c))) this.open.add(key);
+      if (insideRound(room, c, [0, 1], 0.05) && !this.clear.has(key) && !columns.some((col) => touches(col, c))) this.open.add(key);
     }
   }
 
@@ -220,17 +217,7 @@ export class RoomCells {
 
   /** The way out of the room through `side`. */
   beyond(side: WallSide): CellDir {
-    const { axis, across } = this;
-    switch (side) {
-      case 'back':
-        return axis;
-      case 'near':
-        return dir(-axis.x, -axis.y);
-      case 'right':
-        return across;
-      case 'left':
-        return dir(-across.x, -across.y);
-    }
+    return sideBeyond(this.axis, this.across, side);
   }
 
   /** The way along the wall of `side`, the order its wall cells come in. */
@@ -293,26 +280,4 @@ export class RoomCells {
     this.floorGraph ??= new FloorGraph([...this.floor].map((key) => key.split(',').map(Number) as [number, number]).map(([x, y]) => ({ x, y })));
     return this.floorGraph;
   }
-
-  /** Whether the points of the cell at `at` (0 a corner, 0.5 its middle) lie `margin` inside the circle of a round room. */
-  private inside(c: CellPoint, at: readonly number[], margin: number): boolean {
-    const { room } = this;
-    if (!room.rotunda) return true;
-    const cx = room.x + room.w / 2;
-    const cy = room.y + room.h / 2;
-    const r = Math.sqrt(room.w * room.w + 1) / 2 - margin;
-    return at.every((dx) => at.every((dy) => Math.hypot(c.x + dx - cx, c.y + dy - cy) <= r));
-  }
-}
-
-/** Whether a column stands on or touches the cell. */
-function touches(column: DungeonColumn, c: CellPoint): boolean {
-  const dx = Math.max(c.x - column.x, 0, column.x - (c.x + 1));
-  const dy = Math.max(c.y - column.y, 0, column.y - (c.y + 1));
-  return Math.hypot(dx, dy) < column.radius + 0.05;
-}
-
-/** The edge of cell `c` towards `d`, as a key. */
-function edgeSlot(c: CellPoint, d: CellPoint): string {
-  return `${cellKey(c.x, c.y)}>${d.x},${d.y}`;
 }

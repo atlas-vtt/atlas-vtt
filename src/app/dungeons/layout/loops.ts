@@ -212,11 +212,34 @@ function placeLoops(rngOf: KeyedRng, layout: WorkLayout, params: DungeonParams):
   }
 }
 
+/** Whether a cell is a corner of the room's floor. */
+function atCorner(room: WorkRoom, c: CellPoint): boolean {
+  const f = floorOf(room);
+  return (c.x === f.x0 || c.x === f.x1) && (c.y === f.y0 || c.y === f.y1);
+}
+
+/**
+ * The candidates whose spots lead into no chamber at a corner of its floor. A cave's hidden crawl
+ * is rock as drawn, so nothing meets round it: the cell before it in a corner must be widened
+ * along the wall it crosses, and where a passage runs along the other side of that wall (the main
+ * path swinging out of a narrow tunnel) neither neighbour may be taken, and the cell stays a spur.
+ */
+function offChamberCorners(layout: WorkLayout, candidates: readonly LoopCandidate[]): LoopCandidate[] {
+  const corner = (id: number, c: CellPoint): boolean => {
+    const room = layout.rooms[id];
+    return room !== undefined && isNormal(room) && atCorner(room, c);
+  };
+  return candidates
+    .map((candidate) => ({ ...candidate, spots: candidate.spots.filter(({ cell, dir }) => !corner(candidate.a, { x: cell.x - dir.x, y: cell.y - dir.y }) && !corner(candidate.b, { x: cell.x + dir.x, y: cell.y + dir.y })) }))
+    .filter((candidate) => candidate.spots.length > 0);
+}
+
 /** Now and then a secret door that cuts a long way short, into a secret wing or between ordinary rooms. */
 export function addSecretLoops(rngOf: KeyedRng, layout: WorkLayout, params: DungeonParams): void {
   const rng = rngOf('secret-loops');
   if (!chance(rng, params.secretLoopChance)) return;
-  const pending = loopCandidates(layout, (a, b) => !a.boss && !b.boss && (a.zone === b.zone || a.zone === REGULAR_ZONE || b.zone === REGULAR_ZONE));
+  const candidates = loopCandidates(layout, (a, b) => !a.boss && !b.boss && (a.zone === b.zone || a.zone === REGULAR_ZONE || b.zone === REGULAR_ZONE));
+  const pending = params.cave?.veins ? offChamberCorners(layout, candidates) : candidates;
   const shortcut = longCandidate(rng, layout, pending, MIN_LOOP_COST);
   if (shortcut) placeLoop(rng, layout, shortcut, 'secret', pending);
 }

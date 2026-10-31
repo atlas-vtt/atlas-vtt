@@ -76,11 +76,13 @@ function finishFloor(seed: number, index: number, parts: FloorParts, terrain: Fl
   const mayPool = (id: number): boolean => parts.water?.pools.has(id) ?? true;
   const wet = cave && caveWater(cave, rooms, terrain.pieces);
   const pools = dry ? new Set<number>() : (wet?.pools ?? poolRooms(floorStream(seed, 'water', index, 'pools'), rooms, doors, params.poolChance, mayPool));
+  // The ground round stairwells and a cave's entrances is walked onto: no water stands there.
+  const walked = [...stairsAndAround(stairs), ...(cave ? entrancesAndAround(doors) : [])];
   // A cave's deep water is part of its water: one body with the floor's water where they meet, its own shore where not.
-  const deep = cave ? [...terrain.pieces.filter((p) => p.traits.hazard === 'deep-water').flatMap((p) => p.cells), ...sumpMouths(doors, terrain.pieces)] : [];
+  const deep = cave ? [...terrain.pieces.filter((p) => p.traits.hazard === 'deep-water').flatMap((p) => p.cells), ...sumpMouths(doors, terrain.pieces, new Set([...walked, ...cave.lane.map((c) => cellKey(c.x, c.y))]))] : [];
   // Its rimstone dams lie where water steps down, at a lake's edge: water may lie over them, never round them as an island.
   const wetted = new Set([...deep, ...(cave ? terrain.pieces.filter((p) => p.kind === 'rimstone').flatMap((p) => p.cells) : [])].map((c) => cellKey(c.x, c.y)));
-  const kept = [...[...terrain.takenCells()].filter((key) => !wetted.has(key)), ...drainCells(terrain.pieces), ...stairsAndAround(stairs), ...(cave ? entrancesAndAround(doors) : []), ...(parts.water?.dry ?? [])];
+  const kept = [...[...terrain.takenCells()].filter((key) => !wetted.has(key)), ...drainCells(terrain.pieces), ...walked, ...(parts.water?.dry ?? [])];
   const { water, waterCells } = placeWater(seed, index, rooms, { level, pools, dry: new Set(kept), ...(deep.length && { deep }), ...(wet && { rooms: wet.rooms, shoreCorners: wet.shoreCorners, natural: true }) });
   const flora = floraOf(params.tags, parts.theme);
   const house = planned.house && houseCells({ rooms, stacks: planned.house.stacks });
@@ -120,8 +122,9 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const house = definition.layout === 'house' ? planHouse(seed, params.tags, count, boss, fiveRoom) : null;
   const laid = house?.floors ?? planFloors(seed, params, count, boss, fiveRoom, definition);
   const below = house?.below ?? 0;
+  const stack = floorStack(rise, laid.length, below);
   // A Cavern shapes its rooms into chambers and tunnels before anything reads them.
-  const shaped = params.cave ? shapeCaves(seed, params, laid, boss, rolled) : null;
+  const shaped = params.cave ? shapeCaves(seed, params, laid, boss, rolled, stack) : null;
   const planned = shaped?.floors ?? laid;
   const sites = shaped ? caveSites(planned) : null;
   const themed = typeDungeon(seed, theme, params.tags, planned, below, shaped?.cave.character);
@@ -129,7 +132,6 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   // A built theme's floors are dry unless the GM or the tags ask for water; then it stands only where its rooms have it.
   const { built } = themed.theme.definition;
   const level = built && request.waterLevel === undefined && params.waterLevel === null ? 0 : rolled;
-  const stack = floorStack(rise, planned.length, below);
   const parts = planned.map((floor, index): Omit<FloorParts, 'stack' | 'openAbove'> => {
     // A cellar is built as a floor below ground.
     const floorPar = floorParams(params, index, storeyOf(stack, index) < 0 ? 'down' : rise);

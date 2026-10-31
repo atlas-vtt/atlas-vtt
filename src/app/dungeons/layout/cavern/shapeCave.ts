@@ -4,6 +4,7 @@
  * repaired; the cells written onto the rooms, the lane and fault lines onto the floor.
  */
 
+import type { FloorStack } from '../../floors/floorStack';
 import type { PlannedFloor } from '../../floors/planFloors';
 import { cellKey } from '../../geometry';
 import type { CaveFloor, CaveModel, CellPoint, DungeonRoom } from '../../model';
@@ -163,9 +164,10 @@ function shapeFloor(how: FloorShaping, floors: readonly PlannedFloor[], index: n
 
 /**
  * Every floor of a Cavern shaped, its heights, water and ways between floors worked out, and the
- * cave's variant and fault directions. `level` is the dungeon's water level.
+ * cave's variant and fault directions. `level` is the dungeon's water level; `stack` says which
+ * floor lies above which.
  */
-export function shapeCaves(seed: number, params: DungeonParams, floors: readonly PlannedFloor[], boss: boolean, level: number): ShapedCaves {
+export function shapeCaves(seed: number, params: DungeonParams, floors: readonly PlannedFloor[], boss: boolean, level: number, stack: FloorStack): ShapedCaves {
   const shaping = params.cave;
   if (!shaping) throw new Error('shapeCaves needs a Cavern’s params');
   const faults = faultDirections(stream(seed, 'cave', 'faults'), floors[0]?.rooms ?? []);
@@ -180,7 +182,7 @@ export function shapeCaves(seed: number, params: DungeonParams, floors: readonly
     // A cave whose water never runs calm drops every stream over falls.
     if (veins?.rules.streamFalls) floor.doors = streamFalls(floor.doors, cave.streams);
   });
-  stairWays(stream(seed, 'cave', 'ways'), shaped, veins?.rules.pitchesOnly);
+  stairWays(stream(seed, 'cave', 'ways'), shaped, stack, veins?.rules.pitchesOnly);
   if (params.tags.has('inhabited') && !how.dry && shaped[0]) springByTheMouth(shaped[0], caveSites(shaped)[0]!);
   return { floors: shaped, cave: { variant: shaping.variant, faults, ...(veins && { character: veins.character }) } };
 }

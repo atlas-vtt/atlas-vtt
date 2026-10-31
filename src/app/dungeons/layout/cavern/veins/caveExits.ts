@@ -8,7 +8,7 @@
 
 import { type CaveWay, SPECIAL_WAYS } from '../../../caveModel';
 import type { CaveVerticalExits } from '../../../model';
-import { type Rng, chance, int, pick } from '../../../rng';
+import { type Rng, chance, int, pick, weighted } from '../../../rng';
 
 /** One exit of a chamber: its width (or height) in feet and how it is passed; a roof or floor exit leads up or down. */
 export interface CaveExit {
@@ -19,8 +19,13 @@ export interface CaveExit {
   special?: true;
 }
 
-/** What a way through the rock carries from the exit it was rolled as. */
-export type WayRoll = Pick<CaveExit, 'way' | 'width'>;
+/** What a way through the rock carries from the exit it was rolled as, and whether a double made it special. */
+export type WayRoll = Pick<CaveExit, 'way' | 'width' | 'special'>;
+
+/** The way an exit is passed, as a way through the rock carries it on. */
+export function wayRollOf(exit: CaveExit): WayRoll {
+  return { way: exit.way, width: exit.width, ...(exit.special && { special: true }) };
+}
 
 /** How a cave's character bends its exits. */
 export interface ExitRules {
@@ -32,14 +37,16 @@ export interface ExitRules {
   noWalk: boolean;
   /** Where roof and floor exits go: either, or all down (exits hidden in the floor), or all up. */
   vertical: 'any' | 'up' | 'down';
+  /** A double's special way is a breakdown twice as often as any other: a cave whose boulders lie balanced everywhere. */
+  breakdowns: boolean;
 }
 
-export const PLAIN_EXITS: ExitRules = { shrink: 0, squeezes: false, noWalk: false, vertical: 'any' };
+export const PLAIN_EXITS: ExitRules = { shrink: 0, squeezes: false, noWalk: false, vertical: 'any', breakdowns: false };
 
 /** A face of the die in six is the roof, one the floor: a third of exits lead up or down. */
 export const VERTICAL_CHANCE = 1 / 3;
 /** The widest a crawl is, in feet: one wider stands as a walk. */
-const CRAWL_WIDTH = 4;
+export const CRAWL_WIDTH = 4;
 const SQUEEZE_WIDTH = 2;
 /** The share of crawls that narrow to squeezes where the cave narrows before it opens: about as many as a plain roll's squeezes, so they come twice as often. */
 const NARROWING = 0.75;
@@ -79,11 +86,17 @@ function verticalOf(rng: Rng, rules: ExitRules): 'up' | 'down' | undefined {
   return rules.vertical === 'any' ? (up ? 'up' : 'down') : rules.vertical;
 }
 
+/** A double's special way: any of the four alike, or breakdown twice as often where the rules say; one draw either way. */
+function specialWay(rng: Rng, rules: ExitRules): CaveWay {
+  if (!rules.breakdowns) return pick(rng, SPECIAL_WAYS);
+  return weighted(rng, SPECIAL_WAYS.map((way) => [way, way === 'breakdown' ? 2 : 1] as const));
+}
+
 /** A chamber's exits, largest first. A double's special exit leads on through the wall opposite the way in, never up or down. */
 export function rollExits(rng: Rng, rules: ExitRules = PLAIN_EXITS): CaveExit[] {
   const d1 = int(rng, 1, 6);
   const d2 = int(rng, 1, 6);
-  const special = d1 === d2 ? pick(rng, SPECIAL_WAYS) : undefined;
+  const special = d1 === d2 ? specialWay(rng, rules) : undefined;
   return exitWidths(d1, d2).map((rolled, k): CaveExit => {
     const width = bentWidth(rng, rolled, rules);
     const vertical = verticalOf(rng, rules);

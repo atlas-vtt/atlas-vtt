@@ -74,7 +74,9 @@ export function caveParams(params: DungeonParams): DungeonParams {
  * A Cavern's params with the book's rules: its character and most common size drawn from `rng`
  * (character first), its chamber sizes leaned by the tags and the character, and no mirrored
  * branches: a cave grows as its exits fall, never in matching pairs. A cave that changes scale
- * unpredictably has twice the junctions; its character sets how often a door is a scree step.
+ * unpredictably does so in its chambers' tiers alone: more junctions left no room for the main
+ * path's two-cell lane where they turned one after another. Its character sets how often a door
+ * is a scree step.
  */
 export function withVeins(params: DungeonParams, rng: Rng): DungeonParams {
   const { cave } = params;
@@ -84,11 +86,9 @@ export function withVeins(params: DungeonParams, rng: Rng): DungeonParams {
   const rules = characterModifiers(character);
   const tagged = tagTierRules(params.tags);
   const tiers: TierRules = { common, commonWeight: tagged.commonWeight, shift: tagged.shift + rules.tierStep, cap: tagged.cap, flat: rules.shiftingScale };
-  const junctions = rules.shiftingScale ? params.sizeStyles.filter((style) => style === 3) : [];
   return {
     ...params,
     symmetry: params.symmetry.map(() => false),
-    sizeStyles: [...params.sizeStyles, ...junctions],
     stepsChance: Math.min(MOST_STEPS, params.stepsChance * rules.steps),
     cave: { ...cave, stretch: cave.stretch * FAULT_STRETCH, veins: { character, rules, tiers } },
   };

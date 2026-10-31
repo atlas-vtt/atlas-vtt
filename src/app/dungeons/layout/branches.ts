@@ -7,7 +7,7 @@ import type { CellDir, CellPoint } from '../model';
 import type { DungeonParams } from '../params';
 import { dir, perpendicular } from '../geometry';
 import { MAX_SEED, type Rng, chance, int, pick, shuffled } from '../rng';
-import type { CaveExit, WayRoll } from './cavern/veins/caveExits';
+import { type CaveExit, type WayRoll, wayRollOf } from './cavern/veins/caveExits';
 import { type WorkRoom, isNormal, kindOf, localCell } from './workLayout';
 
 export interface Branch {
@@ -122,10 +122,10 @@ function caveBranches(rng: Rng, room: WorkRoom, flip: boolean, exits: readonly C
   const sides = shuffled<Exit>(rng, special ? ['left', 'right'] : ['left', 'right', 'forward']);
   const placed = wall.filter((exit) => exit !== special).slice(0, sides.length).map((exit, k) => ({ exit, branch: exitBranch(rng, room, sides[k]!, flip) }));
   const ahead = special ? [{ exit: special, branch: forwardBranch(room, 0, flip, newSeed(rng)) }] : [];
-  return [...ahead, ...placed].map(({ exit, branch }) => [{ ...branch, exit: { way: exit.way, width: exit.width } }]);
+  return [...ahead, ...placed].map(({ exit, branch }) => [{ ...branch, exit: wayRollOf(exit) }]);
 }
 
-/** What a cave lends a room's branches: a chamber's exit roll, else the way a passage was entered by, which runs on through it. */
+/** What a cave lends a room's branches: a chamber's exit roll, else the way a passage was entered by, which its far door keeps. */
 export interface CaveBranching {
   exits: readonly CaveExit[] | null;
   through?: WayRoll;
@@ -133,18 +133,29 @@ export interface CaveBranching {
   passageSides: number;
 }
 
-function withExit(groups: Branch[][], exit: WayRoll | undefined): Branch[][] {
-  if (!exit) return groups;
+function withExit(groups: Branch[][], exit: WayRoll): Branch[][] {
   return groups.map((group) => group.map((branch) => ({ ...branch, exit, fallbacks: branch.fallbacks.map((fallback) => ({ ...fallback, exit })) })));
+}
+
+/**
+ * A passage's ways on, where it was entered by a way: the way runs on through its far door, the
+ * route it is part of, while a side way off it is a way of its own, walked.
+ */
+function onThrough(groups: Branch[][], room: WorkRoom, exit: WayRoll | undefined): Branch[][] {
+  if (!exit) return groups;
+  const onward = (branch: Branch): Branch => (branch.axis.x === room.axis.x && branch.axis.y === room.axis.y ? { ...branch, exit } : branch);
+  return groups.map((group) => group.map((branch) => ({ ...onward(branch), fallbacks: branch.fallbacks.map(onward) })));
 }
 
 /** The branches of a placed room, grouped: branches of one group share a seed and a mirror group. */
 export function branchesOf(rng: Rng, room: WorkRoom, flip: boolean, params: DungeonParams, cave?: CaveBranching): Branch[][] {
   if (params.string) {
     const lead = cave?.exits?.find((exit) => !exit.vertical);
-    return withExit(stringBranches(rng, room, flip, params.tags), lead ? { way: lead.way, width: lead.width } : cave?.through);
+    const groups = stringBranches(rng, room, flip, params.tags);
+    // A chamber's one way on is its exit, whichever wall it leaves by.
+    return lead ? withExit(groups, wayRollOf(lead)) : onThrough(groups, room, cave?.through);
   }
   if (cave?.exits) return caveBranches(rng, room, flip, cave.exits);
-  if (cave) return withExit(pick(rng, params.symmetry) ? mirroredBranches(rng, room, flip) : freeBranches(rng, room, flip, cave.passageSides), cave.through);
+  if (cave) return onThrough(pick(rng, params.symmetry) ? mirroredBranches(rng, room, flip) : freeBranches(rng, room, flip, cave.passageSides), room, cave.through);
   return pick(rng, params.symmetry) ? mirroredBranches(rng, room, flip) : freeBranches(rng, room, flip);
 }

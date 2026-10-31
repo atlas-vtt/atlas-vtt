@@ -5,12 +5,15 @@
  * it and into the dark where no floor does. A roof exit is an aven: a chimney rising over a cell
  * of the floor, walked under, to the floor above where one lies over it, into the dark where not.
  * At most two of each in a chamber, and a shaft or chasm its type already cut counts as one; in a
- * small chamber one piece in all, since every exit takes floor its cover needs. Neither takes the
- * last place for cover. No two shafts lie as mirror images of each other, above or where they land:
- * nature makes no such pair.
+ * small chamber one piece in all, since every exit takes floor its cover needs. A pitch down from
+ * the chamber is the way through one of its floor exits, so that exit is no shaft as well. Neither
+ * takes the last place for cover. No two shafts lie as mirror images of each other, above or where
+ * they land: nature makes no such pair.
  */
 
-import { cellKey, floorCellsOf } from '../../geometry';
+import { stairEnd } from '../../floors/floorStack';
+import { spotRect } from '../../floors/stairSpots';
+import { cellKey, cellsOf, floorCellsOf } from '../../geometry';
 import type { CellPoint, DungeonRoom } from '../../model';
 import { type Rng, shuffled } from '../../rng';
 import { LIVED_IN } from '../../themes/cavern/formations';
@@ -64,6 +67,12 @@ function holdsHole(work: TerrainWork, k: number, room: number): boolean {
   return work.floors[k]?.inRoom(room).some((p) => p.kind === 'shaft' || p.kind === 'chasm') === true;
 }
 
+/** Whether the room holds the upper end of a pitch: the way down one of its floor exits already takes. */
+function pitchesDown(work: TerrainWork, k: number, rc: RoomCells): boolean {
+  const stairs = work.floors[k]?.plan.stairs ?? [];
+  return stairs.some((s) => s.way === 'pitch' && stairEnd(work.stack, k, s.to) === 'upper' && cellsOf(spotRect(s)).some((c) => rc.isFloor(c)));
+}
+
 /** A shaft of `width` feet in the room, falling to the floor below or into the dark; whether one was cut. */
 function shaftIn(work: TerrainWork, k: number, rc: RoomCells, rng: Rng, width: number): boolean {
   const floor = work.floors[k];
@@ -106,7 +115,9 @@ export function placeVerticalExits(work: TerrainWork, k: number): void {
   for (const room of floor.plan.rooms) {
     const rc = floor.room(room.id);
     if (!rc || !room.vertical) continue;
-    const { up, down } = room.vertical;
+    const { up } = room.vertical;
+    // The widest floor exit is the one a pitch goes down.
+    const down = room.vertical.down.slice(pitchesDown(work, k, rc) ? 1 : 0);
     const held = holdsHole(work, k, room.id);
     let left = rc.floorCount < SMALL_CHAMBER ? (held ? 0 : 1) : Infinity;
     if (down.length > 0 && mayOpenHole(work, k, room)) {

@@ -46,7 +46,7 @@ export interface CharacterModifiers {
   exits: ExitRules;
   /** Tiers every chamber grows: a cave built to the largest size. */
   tierStep: number;
-  /** Every size as likely as any, gargantuan caves and junctions twice as often: a cave that changes scale unpredictably. */
+  /** Every size as likely as any, the tiniest and gargantuan caves twice as often: a cave that changes scale unpredictably. */
   shiftingScale: boolean;
   /** A chamber's size leans to the other side of its parent's: a cave whose caves never flow regularly. */
   leanAway: boolean;
@@ -80,7 +80,7 @@ export function characterModifiers(character: CaveCharacter): CharacterModifiers
   return {
     loops: (always === 'curves-back' ? 2 : 1) * (never === 'dead-passages' ? 2 : 1),
     passageSides: always === 'curves-back' ? 0.75 : 0.5,
-    exits: { shrink: always === 'low-roofs' ? 2 : 0, squeezes: always === 'narrows-then-opens', noWalk, vertical },
+    exits: { shrink: always === 'low-roofs' ? 2 : 0, squeezes: always === 'narrows-then-opens', noWalk, vertical, breakdowns: always === 'balanced-boulders' },
     tierStep: always === 'maximum-size' ? 1 : 0,
     shiftingScale: always === 'shifting-scale',
     leanAway: never === 'regular-caves',

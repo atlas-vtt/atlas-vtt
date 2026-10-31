@@ -23,7 +23,7 @@ export type { DungeonStack, DungeonWindow, FloorWalls, GroundsKind, GroundsPiece
 export type { PropKind } from './props/propKinds';
 
 /** Bump when the same seed and tags would give another dungeon. */
-export const DUNGEON_GENERATOR_VERSION = 3;
+export const DUNGEON_GENERATOR_VERSION = 4;
 
 export interface CellPoint {
   x: number;

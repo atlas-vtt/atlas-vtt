@@ -56,6 +56,21 @@ describe('a chamber’s exits', () => {
     expect(squeezes(rolls(19, { ...PLAIN_EXITS, squeezes: true }).flat())).toBeGreaterThan(squeezes(plain) * 1.8);
   });
 
+  it('make a double’s special way a breakdown twice as often where boulders lie balanced everywhere, every other roll as it was', () => {
+    const share = (list: CaveExit[][]): number => {
+      const special = list.filter((exits) => exits[0]?.special);
+      return special.filter((exits) => exits[0]!.way === 'breakdown').length / special.length;
+    };
+    const plain = rolls(29);
+    const balanced = rolls(29, { ...PLAIN_EXITS, breakdowns: true });
+    expect(Math.abs(share(plain) - 1 / 4)).toBeLessThan(0.04);
+    expect(Math.abs(share(balanced) - 2 / 5)).toBeLessThan(0.04);
+    balanced.forEach((exits, k) => {
+      expect(exits.map((exit) => exit.width)).toEqual(plain[k]!.map((exit) => exit.width));
+      expect(exits.filter((exit) => !exit.special)).toEqual(plain[k]!.filter((exit) => !exit.special));
+    });
+  });
+
   it('roll a loop’s way as one exit, 2d6 ft', () => {
     const rng = rngFrom(23);
     const ways = Array.from({ length: 2_000 }, () => rollLoopWay(rng));

@@ -1,6 +1,7 @@
 import type { DungeonTerrain, TerrainKind } from '../../model';
 import { HOLE_KINDS } from '../../terrain/catalog';
 import type { Hand } from '../art/hand';
+import { onCaveFloor } from '../cave/caveArt';
 import { UNDERGROWTH } from '../growth/growthForms';
 import { drawAven } from './aven';
 import { drawBridges } from './bridges';
@@ -13,6 +14,7 @@ import { drawHoles } from './holes';
 import { drawPool, drawPortalRing } from './interest';
 import { shownPieces } from './pieces';
 import { drawRaised } from './raised';
+import { raggedGround } from './scatterPatch';
 import { drawObelisk, drawPillar, drawStatue, drawWallFragment } from './tall';
 
 /**
@@ -35,7 +37,8 @@ const GROUND: Partial<Record<TerrainKind, Draw>> = {
   'sulphur-crust': drawSulphurCrust,
   rimstone: drawRimstone,
   'boulder-choke': drawBoulderChoke,
-  'rubble-field': (hand, piece) => drawScatter(hand, piece, 0.05, 15),
+  // On a cave's floor the field is one ragged patch; on a built floor it keeps its whole cells.
+  'rubble-field': (hand, piece) => drawScatter(hand, piece, 0.05, 15, onCaveFloor(hand.scene.env) ? raggedGround(hand.scene, piece) : undefined),
   'chasm-floor': (hand, piece) => drawScatter(hand, piece, 0.075, 9),
   'broken-floor': drawBrokenFloor,
   mosaic: drawMosaic,

@@ -8,7 +8,7 @@
 import { dir } from '../geometry';
 import type { CellPoint, DungeonProp, PropKind } from '../model';
 import { chance, int } from '../rng';
-import { WALL_SIDES } from '../terrain/roomCells';
+import { WALL_SIDES } from '../terrain/roomFrame';
 import type { FurnishRecipe, Piece } from '../themes/themeTypes';
 import { dais } from './arrange';
 import { besideParent, flanking, inGrid, onShore } from './arrangeGroups';

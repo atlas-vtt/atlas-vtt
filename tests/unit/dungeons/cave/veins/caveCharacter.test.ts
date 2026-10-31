@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { CAVE_ALWAYS_TRAITS, CAVE_NEVER_TRAITS } from '../../../../../src/app/dungeons/caveModel';
 import { characterModifiers, drawCharacter } from '../../../../../src/app/dungeons/layout/cavern/veins/caveCharacter';
-import { rngFrom } from '../../../../../src/app/dungeons/rng';
-import type { DungeonTag } from '../../../../../src/app/dungeons/tags';
+import { caveParams, withVeins } from '../../../../../src/app/dungeons/layout/cavern/caveParams';
+import { dungeonParams } from '../../../../../src/app/dungeons/params';
+import { rngFrom, stream } from '../../../../../src/app/dungeons/rng';
+import { type DungeonTag, readTags } from '../../../../../src/app/dungeons/tags';
 
 const draws = (tags: DungeonTag[], count = 3_000): ReturnType<typeof drawCharacter>[] => Array.from({ length: count }, (_, k) => drawCharacter(rngFrom(k + 1), new Set(tags)));
 
@@ -47,7 +49,8 @@ describe('a cave’s character', () => {
     const of = (always: (typeof CAVE_ALWAYS_TRAITS)[number], never: (typeof CAVE_NEVER_TRAITS)[number]): ReturnType<typeof characterModifiers> => characterModifiers({ always, never });
     const plain = of('balanced-boulders', 'regular-caves');
     expect(plain.loops).toBe(1);
-    expect(plain.exits).toEqual({ shrink: 0, squeezes: false, noWalk: false, vertical: 'any' });
+    expect(plain.exits).toEqual({ shrink: 0, squeezes: false, noWalk: false, vertical: 'any', breakdowns: true });
+    expect(of('curves-back', 'regular-caves').exits.breakdowns).toBe(false);
     expect(plain.leanAway).toBe(true);
     expect(plain.continuing).toBe(0.5);
     expect(of('curves-back', 'dead-passages').loops).toBe(4);
@@ -63,5 +66,18 @@ describe('a cave’s character', () => {
     expect(of('blocked-ways', 'standing-room')).toMatchObject({ blockedWays: 1 / 3, exits: { noWalk: true } });
     expect(of('narrows-then-opens', 'dead-passages')).toMatchObject({ opensPastSqueeze: true, continuing: 1, exits: { squeezes: true } });
     expect(of('shifting-scale', 'calm-water').shiftingScale).toBe(true);
+  });
+
+  it('changes scale by its chambers alone, never by the planner’s passages: a cave that changes scale has the size styles of any other', () => {
+    const base = caveParams(dungeonParams(readTags(['wet', 'winding'])));
+    let shifting = 0;
+    for (let seed = 1; seed <= 400; seed++) {
+      const params = withVeins(base, stream(seed, 'cave', 'character'));
+      if (params.cave?.veins?.character.always !== 'shifting-scale') continue;
+      shifting++;
+      expect(params.sizeStyles, `seed ${seed}`).toEqual(base.sizeStyles);
+      expect(params.cave.veins.tiers.flat).toBe(true);
+    }
+    expect(shifting).toBeGreaterThan(0);
   });
 });

@@ -49,6 +49,17 @@ describe('a chamber\'s exits in roof and floor, built by hand', () => {
     expect(floors[0]!.pieces.filter((p) => p.kind === 'shaft')).toHaveLength(2);
   });
 
+  it('takes a pitch whose upper end the chamber holds for one of its floor exits: the way down is that pitch, not a shaft beside it', () => {
+    for (let seed = 1; seed <= 12; seed++) {
+      const { work, floors } = handCave({ vertical: { up: [], down: [6] }, below: true, pitch: true }, seed);
+      placeVerticalExits(work, 0);
+      expect(floors[0]!.pieces.filter((p) => p.kind === 'shaft'), `seed ${seed}`).toEqual([]);
+    }
+    const { work, floors } = handCave({ vertical: { up: [], down: [6, 3] }, below: true, pitch: true });
+    placeVerticalExits(work, 0);
+    expect(floors[0]!.pieces.filter((p) => p.kind === 'shaft')).toHaveLength(1);
+  });
+
   it('keeps shafts and avens off the lane, the doors and the cells before them', () => {
     const lane = CHAMBER_A.filter((c) => c.y === 3 || c.y === 4);
     for (let seed = 1; seed <= 12; seed++) {

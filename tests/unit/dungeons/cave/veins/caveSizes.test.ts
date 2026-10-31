@@ -52,9 +52,9 @@ describe('cave size tiers', () => {
     expect(Math.abs(none.hall - (TIER_WEIGHTS.hall + TIER_WEIGHTS.gargantuan))).toBeLessThanOrEqual(1.5);
   });
 
-  it('draw every tier alike, gargantuan twice, when the cave changes scale unpredictably', () => {
+  it('draw every tier alike, the tiniest and the gargantuan twice, when the cave changes scale unpredictably', () => {
     const flat = shares({ ...PLAIN, flat: true });
-    for (const tier of CHAMBER_TIERS) expect(Math.abs(flat[tier] - (tier === 'gargantuan' ? 200 : 100) / 8), tier).toBeLessThanOrEqual(2);
+    for (const tier of CHAMBER_TIERS) expect(Math.abs(flat[tier] - (tier === 'gargantuan' || tier === 'room' ? 200 : 100) / 9), tier).toBeLessThanOrEqual(2);
   });
 
   it('lean away from the parent’s size, and a tier larger past a squeeze', () => {

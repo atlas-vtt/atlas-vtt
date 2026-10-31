@@ -9,12 +9,11 @@
 import type { CaveWay } from '../../../caveModel';
 import type { DungeonDoor, DungeonRoom } from '../../../model';
 import { type Rng, chance } from '../../../rng';
+import { CRAWL_WIDTH } from './caveExits';
 import { type ChamberTier, tierIndex } from './caveSizes';
 
 /** A way two cells wide, in feet: what a door on the main path is. */
 export const LANE_WIDTH = 10;
-/** The widest a crawl is, in feet. */
-const CRAWL_WIDTH = 4;
 /** The least a chamber is, beside another, for a walk between them to stand two cells wide off the main path. */
 const WIDE_TIER: ChamberTier = 'triple';
 

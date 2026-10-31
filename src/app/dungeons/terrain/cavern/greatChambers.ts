@@ -9,7 +9,7 @@
  * breakdown, cover and textures, which find it there.
  */
 
-import type { DungeonRoom } from '../../model';
+import type { DungeonRoom, PropKind } from '../../model';
 import { type Rng, chance, weighted } from '../../rng';
 import { LIVED_IN } from '../../themes/cavern/formations';
 import type { TypedRoom } from '../typeTerrain';
@@ -45,6 +45,9 @@ const LEAST: Readonly<Record<GreatSize, number>> = { house: 4, hall: 8, gargantu
 const FALLBACKS: readonly GreatPattern[] = ['boulders', 'breakdown'];
 /** Free cells between two interiors of one chamber. */
 const BETWEEN = 2;
+/** How large a chamber's dripstone is drawn: a column or a stalagmite in a hall a hundred feet across stands taller than one in a house-sized cave, its cell the same; past 1.4 its cover would reach well into the cells beside it. */
+const FORMATION_SCALE: Readonly<Record<GreatSize, number>> = { house: 1, hall: 1.25, gargantuan: 1.4 };
+const DRIPSTONE: ReadonlySet<PropKind> = new Set(['stalagmites', 'column-formation']);
 
 const FORMATIONS: ReadonlySet<GreatPattern> = new Set(['columns', 'forest', 'ring']);
 const SIZES: Readonly<Partial<Record<NonNullable<DungeonRoom['tier']>, GreatSize>>> = { house: 'house', hall: 'hall', gargantuan: 'gargantuan' };
@@ -121,6 +124,7 @@ export function placeGreatChambers(work: TerrainWork, k: number, rooms: readonly
       }
       LAY[pattern](g);
     }
+    for (const { prop } of g.props) if (DRIPSTONE.has(prop.kind)) prop.scale = FORMATION_SCALE[g.size];
     furnishInterior(floor, g.props);
     out.set(room.id, patterns);
   }

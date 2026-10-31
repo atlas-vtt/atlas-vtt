@@ -55,9 +55,8 @@ export function continuingCell(room: Pick<DungeonRoom, 'x' | 'y' | 'w' | 'h' | '
   return rim[Math.floor((rim.length - 1) / 2)];
 }
 
-/** Whether the rock beyond the cell, `room.rock` cells towards `dir`, holds nothing of the floor's. */
-function rockBeyond(cell: CellPoint, dir: CellDir, floor: ContinuingFloor, room: Room): boolean {
-  const taken = floorKeys(floor);
+/** Whether the rock beyond the cell, `room.rock` cells towards `dir`, holds nothing of the floor's (`taken`, by key). */
+function rockBeyond(cell: CellPoint, dir: CellDir, taken: ReadonlySet<string>, room: Room): boolean {
   return Array.from({ length: room.rock }, (_, k) => k + 1).every((k) => !taken.has(cellKey(cell.x + dir.x * k, cell.y + dir.y * k)));
 }
 
@@ -83,13 +82,15 @@ function deadEnd(room: DungeonRoom, doors: readonly DungeonDoor[], floor: Contin
  */
 export function withContinuing(rng: Rng, rooms: readonly DungeonRoom[], floor: { doors: readonly DungeonDoor[]; stairs: readonly DungeonStair[] }, share: number): DungeonRoom[] {
   const whole = { rooms, doors: floor.doors, stairs: floor.stairs };
+  // Every wall of every dead end asks what the floor holds: the floor is read once.
+  const taken = floorKeys(whole);
   return rooms.map((room) => {
     const hit = chance(rng, share);
     const order = shuffled(rng, DIRS);
     if (!hit || !deadEnd(room, floor.doors, whole)) return room;
     const fits = (space: Room): ((d: CellDir) => boolean) => (d) => {
       const cell = continuingCell(room, d);
-      return cell !== undefined && rockBeyond(cell, d, whole, space) && clearOf(cell, whole, space);
+      return cell !== undefined && rockBeyond(cell, d, taken, space) && clearOf(cell, whole, space);
     };
     // Where every dead end must lead on, a squeeze may stand tighter than it would by choice.
     const dir = order.find(fits(ROOMY)) ?? (share >= 1 ? order.find(fits(TIGHT)) : undefined);

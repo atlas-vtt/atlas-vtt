@@ -39,6 +39,8 @@ const COMMON_WEIGHT = 2;
 const ORDERED_COMMON_WEIGHT = 4;
 /** How much more often a chamber takes a size on the other side of its parent's, in a cave that never lets its caves flow regularly. */
 const LEAN_WEIGHT = 3;
+/** The tiers a cave that changes scale draws twice as often: cramped hollows beside vast halls. */
+const FLAT_EXTREMES: ReadonlySet<ChamberTier> = new Set<ChamberTier>(['room', 'gargantuan']);
 /** The fewest normal rooms a floor may have to hold a gargantuan cave: one alone would be the whole floor. */
 export const GARGANTUAN_FLOOR_ROOMS = 6;
 
@@ -59,7 +61,7 @@ export interface TierRules {
   shift: number;
   /** The largest tier a chamber may be. */
   cap: ChamberTier;
-  /** Every tier as likely as any other, and gargantuan caves twice that: a cave that changes scale unpredictably. */
+  /** Every tier as likely as any other, and the tiniest and gargantuan caves twice that: a cave that changes scale unpredictably. */
   flat: boolean;
 }
 
@@ -95,7 +97,7 @@ function across(from: ChamberTier, tier: ChamberTier): boolean {
 
 function tierWeights(rules: TierRules, draw: TierDraw): (readonly [ChamberTier, number])[] {
   return CHAMBER_TIERS.map((tier) => {
-    const base = rules.flat ? (tier === 'gargantuan' ? 2 : 1) : TIER_WEIGHTS[tier];
+    const base = rules.flat ? (FLAT_EXTREMES.has(tier) ? 2 : 1) : TIER_WEIGHTS[tier];
     const common = tier === rules.common ? (rules.commonWeight ?? COMMON_WEIGHT) : 1;
     const lean = draw.awayFrom !== undefined && across(draw.awayFrom, tier) ? LEAN_WEIGHT : 1;
     return [tier, base * common * lean] as const;

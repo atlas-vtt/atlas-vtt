@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { generateDungeon } from '../../../../src/app/dungeons/generate';
-import { doorSide, doorwayCells, holdsCell } from '../../../../src/app/dungeons/geometry';
-import type { CellPoint, DungeonFloor } from '../../../../src/app/dungeons/model';
+import { entrancesAndAround, stairsAndAround } from '../../../../src/app/dungeons/floors/stairSpots';
+import { cellKey, doorSide, doorwayCells, holdsCell } from '../../../../src/app/dungeons/geometry';
+import type { CellPoint, DungeonDoor, DungeonFloor, DungeonTerrain } from '../../../../src/app/dungeons/model';
 import { pointInPolygon } from '../../../../src/app/dungeons/render/geometry';
-import { placeWater } from '../../../../src/app/dungeons/water';
+import { placeWater, sumpMouths } from '../../../../src/app/dungeons/water';
 import { room } from '../plannedFloorFixtures';
 
 describe('water in a cave', () => {
@@ -31,6 +32,26 @@ function underWater(floor: DungeonFloor, c: CellPoint): boolean {
   }));
 }
 
+/** A sump way from room 0 into room 1 through (7, 3), its water a cell past the mouth at (8, 3). */
+const SUMP_DOOR: DungeonDoor = { x: 7, y: 3, dir: { x: 1, y: 0 }, kind: 'opening', from: 0, to: 1, way: 'sump' };
+const SUMP = { name: 'dungeon.terrain.sump', kind: 'sump', room: 1, cells: [{ x: 9, y: 3 }], traits: { hazard: 'deep-water' } } as unknown as DungeonTerrain;
+
+describe('a sump’s mouth', () => {
+  it('joins the doorway and the cell before it to the sump', () => {
+    expect(sumpMouths([SUMP_DOOR], [SUMP], new Set())).toEqual([{ x: 7, y: 3 }, { x: 8, y: 3 }]);
+  });
+
+  it('stays dry, doorway and all, where its cells must stay walkable: the lane, a stairwell’s surroundings, an entrance’s', () => {
+    expect(sumpMouths([SUMP_DOOR], [SUMP], new Set(['8,3']))).toEqual([]);
+    expect(sumpMouths([SUMP_DOOR], [SUMP], new Set(['7,3']))).toEqual([]);
+  });
+});
+
+/** The cells a sump's mouth never takes on a generated floor. */
+function keptDry(floor: DungeonFloor): Set<string> {
+  return new Set([...(floor.cave?.lane ?? []).map((c) => cellKey(c.x, c.y)), ...stairsAndAround(floor.stairs), ...entrancesAndAround(floor.doors)]);
+}
+
 describe('a sump behind its door', () => {
   it('is part of the floor’s water from the doorway on: no dry cell between the way and the water it dives into', () => {
     let sumps = 0;
@@ -41,7 +62,8 @@ describe('a sump behind its door', () => {
           for (const room of [door.from, door.to]) {
             const mouth = room === null ? [] : doorSide(door, room);
             const piece = floor.terrain.find((p) => p.room === room && p.name === 'dungeon.terrain.sump' && p.cells.some((c) => mouth.some((m) => Math.abs(m.x - c.x) + Math.abs(m.y - c.y) <= 1)));
-            if (!piece) continue;
+            const dry = keptDry(floor);
+            if (!piece || [...doorwayCells(door), ...mouth].some((c) => dry.has(cellKey(c.x, c.y)))) continue;
             sumps++;
             for (const [what, cells] of [["doorway", doorwayCells(door)], ["mouth", mouth], ["piece", piece.cells]] as const) for (const c of cells) expect(underWater(floor, c), `seed ${model.seed} ${what} ${c.x},${c.y}`).toBe(true);
           }

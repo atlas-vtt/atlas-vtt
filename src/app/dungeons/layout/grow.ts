@@ -102,14 +102,26 @@ function tierDraw(layout: WorkLayout, params: DungeonParams, item: QueuedRoom): 
   return { gargantuan, ...(away && { awayFrom: away }), ...(opens && { opens }), ...(mouth && { chamber: true }) };
 }
 
+/**
+ * The way a passage runs on through its far door: the way it was entered by. A double's special
+ * way (a sump, a traverse) is one stretch of the route, so it crosses only the passage a chamber's
+ * exit opens into; a passage past that one is passed as it comes.
+ */
+function wayThrough(layout: WorkLayout, room: WorkRoom, item: QueuedRoom): WayRoll | undefined {
+  if (isNormal(room) || !item.exit) return undefined;
+  const fromChamber = item.parent !== null && isNormal(roomAt(layout, item.parent));
+  return item.exit.special && !fromChamber ? undefined : item.exit;
+}
+
 /** A cave's branching for a placed room: a chamber rolls its exits (and keeps those in its roof and floor), a passage runs on the way it was entered. */
-function caveBranching(rng: Rng, params: DungeonParams, room: WorkRoom, item: QueuedRoom): CaveBranching | undefined {
+function caveBranching(rng: Rng, params: DungeonParams, layout: WorkLayout, room: WorkRoom, item: QueuedRoom): CaveBranching | undefined {
   const rules = params.cave?.veins?.rules;
   if (!rules) return undefined;
   const exits: CaveExit[] | null = isNormal(room) ? rollExits(rng, rules.exits) : null;
   const vertical = exits && verticalExits(exits);
   if (vertical) room.vertical = vertical;
-  return { exits, passageSides: rules.passageSides, ...(item.exit && { through: item.exit }) };
+  const through = wayThrough(layout, room, item);
+  return { exits, passageSides: rules.passageSides, ...(through && { through }) };
 }
 
 /**
@@ -147,7 +159,7 @@ export function growTree(rngOf: KeyedRng, params: DungeonParams, root: FloorRoot
       layout.doors.push({ x: item.origin.x, y: item.origin.y, dir: item.axis, kind: 'opening', from: null, to: room.id, loop: false });
     }
     if (isNormal(room)) normals++;
-    for (const group of branchesOf(rng, room, item.flip, params, caveBranching(rng, params, room, item))) {
+    for (const group of branchesOf(rng, room, item.flip, params, caveBranching(rng, params, layout, room, item))) {
       const id = groups++;
       group.forEach((branch) => queue.push({ ...branch, parent: room.id, group: id }));
     }

@@ -1,7 +1,7 @@
 import { caveSites } from '../../../../src/app/dungeons/layout/cavern/caveSites';
 import { floorStack } from '../../../../src/app/dungeons/floors/floorStack';
 import { cellsOf } from '../../../../src/app/dungeons/geometry';
-import type { CaveCharacter, CaveFloor, CaveWay, CellPoint, DungeonDoor, DungeonFloor, DungeonRoom } from '../../../../src/app/dungeons/model';
+import type { CaveCharacter, CaveFloor, CaveWay, CellPoint, DungeonDoor, DungeonFloor, DungeonRoom, DungeonStair } from '../../../../src/app/dungeons/model';
 import { readTags } from '../../../../src/app/dungeons/tags';
 import { ALL_TERRAIN_KINDS } from '../../../../src/app/dungeons/terrain/catalog';
 import { type FloorPlan, FloorTerrain } from '../../../../src/app/dungeons/terrain/floorTerrain';
@@ -35,9 +35,14 @@ export interface HandCaveOptions {
   character?: CaveCharacter;
   /** Chambers west and east of A instead of the passage, each joined to A by a sump way at mirrored places; the way in from the north. */
   twinSumps?: boolean;
+  /** A pitch down from A's south-east corner (cells (4, 5) and (5, 5)) to the floor below, which `below` adds. */
+  pitch?: boolean;
 }
 
 const square = (x0: number, y0: number, x1: number, y1: number): CellPoint[] => cellsOf({ x0, y0, x1, y1 });
+
+/** The pitch's end on a floor, leading to floor `to`. */
+const pitchEnd = (to: number): DungeonStair => ({ x: 4, y: 5, w: 2, h: 1, down: { x: 1, y: 0 }, to, link: 1, way: 'pitch' });
 
 /** The passage's cells. */
 export const PASSAGE = square(8, 3, 13, 4);
@@ -74,17 +79,17 @@ function topFloor(options: HandCaveOptions): FloorPlan {
     { x: 7, y: 3, dir: { x: 1, y: 0 }, kind: 'opening', from: 0, to: 1, ...way },
     { x: 14, y: 3, dir: { x: 1, y: 0 }, kind: 'opening', from: 1, to: 2, way: 'walk' },
   ];
-  return { rooms: [a, passage, b], doors, stairs: [], columns: [], offeredTerrain: ALL_TERRAIN_KINDS, cave: caveFloor(options.lane ?? []) };
+  return { rooms: [a, passage, b], doors, stairs: options.pitch ? [pitchEnd(1)] : [], columns: [], offeredTerrain: ALL_TERRAIN_KINDS, cave: caveFloor(options.lane ?? []) };
 }
 
-function lowerFloor(): FloorPlan {
+function lowerFloor(options: HandCaveOptions): FloorPlan {
   const under: DungeonRoom = { ...room(0, { x: -1, y: -1, w: 10, h: 10, axis: { x: 1, y: 0 } }), cells: square(0, 0, 7, 7) };
-  return { rooms: [under], doors: [], stairs: [], columns: [], offeredTerrain: ALL_TERRAIN_KINDS, cave: caveFloor([]) };
+  return { rooms: [under], doors: [], stairs: options.pitch ? [pitchEnd(0)] : [], columns: [], offeredTerrain: ALL_TERRAIN_KINDS, cave: caveFloor([]) };
 }
 
 /** The hand-built cave, ready for a terrain pass on floor 0. */
 export function handCave(options: HandCaveOptions = {}, seed = 1): HandCave {
-  const plans = [topFloor(options), ...(options.below ? [lowerFloor()] : [])];
+  const plans = [topFloor(options), ...(options.below ? [lowerFloor(options)] : [])];
   const stack = floorStack('down', plans.length);
   const floors = plans.map((plan, index) => new FloorTerrain(index, plan, stack));
   const sites = caveSites(plans.map((plan) => ({ rooms: [...plan.rooms], doors: [...plan.doors], stairs: [...plan.stairs], ...(plan.cave && { cave: plan.cave }) })));
