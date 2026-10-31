@@ -50,6 +50,13 @@ export interface Hand {
    * direction that models each stone draws the pile whole; without it, the caller draws its stones.
    */
   pile?(stones: readonly PileStone[], weight: (stone: PileStone) => Weight): void;
+  /**
+   * Shade pressed in with a dark crayon over `path`: `cover` the pressure, `passes` the layers,
+   * heavier where `strength` (0..1) is, if given. Only a look that colours in with crayon has it.
+   */
+  wax?(path: PathFn, cover: number, passes: number, strength?: Field, bounds?: Bounds): void;
+  /** Broad strokes of the same dark crayon along `runs`, `width` cells wide, `cover` the pressure: shade laid along an edge, the paper's tooth showing through. */
+  waxStroke?(runs: readonly (readonly Vec[])[], width: number, cover: number): void;
 }
 
 /**

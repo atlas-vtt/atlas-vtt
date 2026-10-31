@@ -1,6 +1,9 @@
 import type { ArtScene } from '../art/artScene';
 import type { Hand, Material } from '../art/hand';
-import { pathBounds, polysPath, type PathFn } from '../art/paths';
+import { pathBounds, polysPath, type Field, type PathFn } from '../art/paths';
+import type { Bounds, Vec } from '../geometry';
+import { runsPath } from '../art/paths';
+import { crayonPaint } from './tooth';
 import { mixColours } from '../palette';
 import { groundAt } from './floorMaterials';
 import { CRAYON_GROUNDS, type CrayonGroundId } from './ground';
@@ -54,6 +57,11 @@ export function crayonHand(scene: ArtScene, pens: Pens, box: CrayonBox): Hand {
       colour(path, material);
     },
     water: (pools, depth, deep) => water(scene, pens, polysPath(pools), pools, depth, deep),
+    // Monochrome is graphite alone: its shade stays the engraving's hatching.
+    ...(scene.env.view.monochrome ? {} : {
+      wax: (path: PathFn, cover: number, passes: number, strength?: Field, bounds?: Bounds) => box.colourIn(path, { colour: CRAYONS.umber, cover, passes }, strength, bounds),
+      waxStroke: (runs: readonly (readonly Vec[])[], width: number, cover: number) => waxStroke(scene, runs, width, cover),
+    }),
     lava: (pools, tint) => {
       lines.lava(pools, tint);
       const path = polysPath(pools);
@@ -67,4 +75,20 @@ export function crayonHand(scene: ArtScene, pens: Pens, box: CrayonBox): Hand {
     },
   };
   return hand;
+}
+
+/** Broad umber strokes along runs, multiplied onto the drawing on the paper's tooth: shade as a hand lays it along an edge. */
+function waxStroke(scene: ArtScene, runs: readonly (readonly Vec[])[], width: number, cover: number): void {
+  const { ctx } = scene.env;
+  ctx.save();
+  ctx.beginPath();
+  runsPath(runs)(ctx);
+  ctx.globalCompositeOperation = scene.raster ? 'multiply' : 'source-over';
+  ctx.globalAlpha = cover;
+  ctx.strokeStyle = scene.raster ? crayonPaint(ctx, CRAYONS.umber) : CRAYONS.umber;
+  ctx.lineWidth = width;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+  ctx.restore();
 }

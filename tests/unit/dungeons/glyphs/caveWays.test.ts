@@ -68,8 +68,10 @@ function draw(part: CaveWayPart, hand: Hand): void {
   CAVE_WAYS[part]!(hand);
 }
 
+/** What a drawing did: the hand's calls, and the paths it laid on the picture itself (dashes, ropes, bands). */
 function operations(hand: Hand): number {
-  return [hand.surface, hand.grain, hand.line, hand.edges, hand.solid, hand.tone].reduce((n, fn) => n + vi.mocked(fn).mock.calls.length, 0);
+  const calls = [hand.surface, hand.grain, hand.line, hand.edges, hand.solid, hand.tone].reduce((n, fn) => n + vi.mocked(fn).mock.calls.length, 0);
+  return calls + ((hand.scene.env.ctx as unknown as SvgCanvas).toSvg().match(/<path\b/g)?.length ?? 0);
 }
 
 /** Sample every recorded path segment, including closure, with its widest ink allowance. */
@@ -176,16 +178,17 @@ describe('cave ways', () => {
     for (const part of PARTS) expect(caveWay(part, built.scene.env)).toBeUndefined();
   });
 
-  it('draws scree on both floors and darkens it towards down or descends', () => {
+  it('draws scree on both floors, its largest stones at the foot, down the way it descends', () => {
     for (const dir of DIRS) for (const descends of [true, undefined] as const) {
       const hand = record(modelWith([{ x: 3, y: 3, dir, kind: 'steps', from: 0, to: 0, ...(descends && { descends }) }]));
       draw('scree', hand);
+      // Gravity sorts the stones: the blocks large enough to be modelled rolled past the door's cell.
       const solids = vi.mocked(hand.solid).mock.calls;
       expect(solids.length).toBeGreaterThan(0);
       const sign = descends ? 1 : -1;
-      for (const [, centre, , strength] of solids) {
+      for (const [, centre] of solids) {
         const downhill = (centre.x - 3.5) * dir.x * sign + (centre.y - 3.5) * dir.y * sign;
-        expect(strength).toBeCloseTo(0.5 + downhill);
+        expect(downhill).toBeGreaterThan(0.4);
       }
     }
     for (const floor of [0, 1]) {

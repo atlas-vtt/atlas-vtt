@@ -7,7 +7,9 @@ import { onCaveFloor } from '../cave/caveArt';
 import { OPENING_RADIUS } from '../cave/ways/shaftMouth';
 import type { RenderEnv } from '../renderEnv';
 import { cellRings, edgesFacing, type CellEdge } from './cellRings';
-import { crackRings, drawCrack } from './crack';
+import { crackRings } from './crack';
+import { BOTTOMLESS } from '../vertical/marks';
+import { drawPit } from '../vertical/pit';
 import { drawDrop, dropDepth, dropTone, FACE } from './drops';
 import { cellSet, cutsHoles, hasFloorBelow, isHole, onFloor, shownPieces } from './pieces';
 import { chiselled } from './stones';
@@ -63,15 +65,10 @@ function narrowRings(piece: DungeonTerrain): Vec[][] | null {
   }), piece.id * 13 + 5, 0.035));
 }
 
-/** Whether a hole is a crack in a cave's floor (`crack.ts`): a chasm, or a bottomless shaft as wide as its cells. */
+/** Whether a hole is a crack in a cave's floor (`crack.ts`): a chasm, or a shaft as wide as its cells, bottomless or not; never along cell lines. */
 function isCrack(env: RenderEnv, piece: DungeonTerrain): boolean {
   if (!onCaveFloor(env)) return false;
-  return piece.kind === 'chasm' || (piece.kind === 'shaft' && piece.opening?.bottom === null && narrowRadius(piece) === null);
-}
-
-/** Whether a bottomless hole in a cave's floor is drawn as a crack: a crack's own outline, or a chimney's or squeeze's round mouth, so ink falls with the width of the way down. */
-function drawsAsCrack(env: RenderEnv, piece: DungeonTerrain): boolean {
-  return isCrack(env, piece) || (onCaveFloor(env) && narrowRadius(piece) !== null);
+  return piece.kind === 'chasm' || (piece.kind === 'shaft' && narrowRadius(piece) === null);
 }
 
 /**
@@ -108,11 +105,26 @@ export function drawHoles(hand: Hand): void {
     const rings = holeRings(hole, env);
     const share = faceShare(hole);
     const bottom = hole.opening?.bottom === null || !hasFloorBelow(env) ? 'void' : 'floor';
-    if (cut) cutHole(hand, rings, built(hole), (hole.kind === 'murder-hole' ? MURDER_HOLE_FACE : CUT_FACE) * share);
-    else if (bottom === 'void' && drawsAsCrack(env, hole)) drawCrack(hand, rings, FACE.void * share);
+    if (cave) drawCaveHole(hand, hole, rings, cut, share);
+    else if (cut) cutHole(hand, rings, built(hole), (hole.kind === 'murder-hole' ? MURDER_HOLE_FACE : CUT_FACE) * share);
     else drawDrop(hand, rings, bottom, built(hole), FACE[bottom] * share);
   }
   if (cave) env.ctx.restore();
+}
+
+/**
+ * A hole in a cave's floor, as a pit or shaft is drawn (`vertical/pit.ts`): as deep as its way's
+ * drop says, else ten feet a floor to the floor it falls to, else bottomless; cut out of the map over
+ * a floor below, so the level below shows through it.
+ */
+function drawCaveHole(hand: Hand, hole: DungeonTerrain, rings: Vec[][], cut: boolean, share: number): void {
+  const { env } = hand.scene;
+  const below = hole.opening?.bottom ?? null;
+  const bottomless = below === null || !hasFloorBelow(env);
+  const feet = hole.traits.drop?.depth ?? (bottomless ? BOTTOMLESS : 10 * Math.max(1, below - env.dungeon.index));
+  const bottom = cut ? 'cut' : bottomless ? 'void' : 'floor';
+  const face = (cut ? CUT_FACE : FACE[bottomless ? 'void' : 'floor']) * share;
+  drawPit(hand, rings, { feet, bottom, seed: env.dungeon.model.seed + hole.id * 7, face });
 }
 
 /** A hole over a floor below: its lip and a narrow face, then nothing, so the level below shows. */

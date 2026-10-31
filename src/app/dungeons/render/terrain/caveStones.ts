@@ -5,21 +5,28 @@ import { smallFloorHand, smallShallowPools } from '../stone/smallFloorFields';
 import { valueNoise } from '../art/noise';
 import { polyPath, polysPath } from '../art/paths';
 import { pointsBounds, type Vec } from '../geometry';
-import { coverRings } from './caveStains';
+import { cellRings } from './cellRings';
+import { raggedRing, type RaggedShape } from './scatterPatch';
 import { pieceRng } from './pieces';
 import { stoneOutline } from './stones';
 
-/** Fallen blocks fill a walked choke; their small crevices have depth, never a cast shadow. */
+/** The dark a choke's blocks lie in: its cells' outline rounded and held a little inside them, never a cell line. */
+const CHOKE: RaggedShape = { sigma: 1.8, waves: 1.1, swell: 0.12, rag: 0.05, outwards: -0.06 };
+
+/**
+ * Fallen blocks fill a walked choke, jammed at odd angles and sizes rather than set in a grid;
+ * their crevices have depth, never a cast shadow, in a patch that follows no cell line.
+ */
 export function drawBoulderChoke(hand: Hand, piece: DungeonTerrain): void {
   hand = smallFloorHand(hand);
   const rng = pieceRng(hand.scene.env, piece);
-  const rings = coverRings(piece);
+  const rings = cellRings(piece.cells).map(ring => raggedRing(ring, piece.id * 29 + 3, CHOKE));
   hand.tone(() => 0.24, pointsBounds(rings.flat()), polysPath(rings), 'depth');
   const stones: Block[] = [];
   for (const cell of piece.cells) {
     for (const [dx, dy] of [[0.32, 0.32], [0.68, 0.32], [0.32, 0.68], [0.68, 0.68]]) {
-      const centre = { x: cell.x + dx! + (rng() - 0.5) * 0.04, y: cell.y + dy! + (rng() - 0.5) * 0.04 };
-      const radius = 0.20 + rng() * 0.015;
+      const centre = { x: cell.x + dx! + (rng() - 0.5) * 0.16, y: cell.y + dy! + (rng() - 0.5) * 0.16 };
+      const radius = 0.15 + rng() * 0.08;
       stones.push({ poly: stoneOutline(rng, centre, radius), centre, radius });
     }
   }
