@@ -3,6 +3,7 @@ import { cn } from '../../../../utils/cn';
 import { useKeepInView } from '../../../packages/components/primitives/useKeepInView';
 import type { TemplateField } from '../../model/templateTypes';
 import { quoted } from '../../values/valueText';
+import { t } from '../../../i18n';
 
 export interface ChoiceOption {
   value: string;
@@ -18,7 +19,7 @@ export function choiceOptions(field: Pick<TemplateField, 'options' | 'open'>, ty
   const options = offered.filter((option) => option.toLowerCase().includes(wanted));
   const listed = options.map((option) => ({ value: option, label: option }));
   const exact = (field.options ?? []).some((option) => option.toLowerCase() === wanted);
-  return field.open && wanted && !exact ? [...listed, { value: typed.trim(), label: `Use ${quoted(typed.trim())}` }] : listed;
+  return field.open && wanted && !exact ? [...listed, { value: typed.trim(), label: t('statblockEditor.useTyped', { value: quoted(typed.trim()) }) }] : listed;
 }
 
 const STEPS: Readonly<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 };

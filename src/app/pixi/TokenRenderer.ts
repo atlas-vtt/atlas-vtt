@@ -10,7 +10,7 @@ import { TokenExit } from './token-renderer/TokenExit';
 import { NOTHING_SEEN, PlayerSightTokens, seenByPlayers, seenTokens } from './token-renderer/PlayerSightTokens';
 import { PlayersViewWatch } from './token-renderer/PlayersViewWatch';
 import { TurnMarkers } from './token-renderer/turnMarker/TurnMarkers';
-import { PlayerInstanceBadges, type PlayerBadgeNumbers } from './token-renderer/PlayerInstanceBadges';
+import { ShownBadgeNumbers, type PlayerBadgeNumbers } from './token-renderer/PlayerBadgeNumbers';
 import type { TokenSeen } from '../vision/measureOrigin';
 import { Sprite, Container, Graphics, Application, FederatedPointerEvent } from "pixi.js";
 import { Viewport } from "pixi-viewport";
@@ -34,7 +34,7 @@ import { DragRuler, type DragRulerPath } from './token-renderer/DragRuler';
 import { DragRulerView } from './token-renderer/DragRulerView';
 import { SyncService } from './token-renderer/SyncService';
 import { tokenSyncState } from './token-renderer/tokenSyncState';
-import { TokenGlide, placedAtOnce } from './token-renderer/TokenGlide';
+import { TokenGlide, placedAtOnce, type HeldPlayout, type TokenHolder } from './token-renderer/TokenGlide';
 import type { ShownPlaces } from '../lighting/shownPlaces';
 import type { Point } from '../types/visionTypes';
 import type { ArtFloors } from '../levels/levelSurfaces';
@@ -52,7 +52,6 @@ import type { BarsSpan, TokenGroupContainer } from './token-renderer/types';
 import type { TokenPreview } from './tokenPlacement/PlacementGhost';
 import type { TokenInput } from '../types/viewState';
 import { setCanvasCursor } from './utils/canvasCursor';
-import { usesCanvasRenderer } from './utils/rendererType';
 import { markHandled, resetHandled } from './utils/handledEvents';
 import { watchClick } from './utils/clickRelease';
 import type { HexLinkPointerHandlers } from './hexLinks/HexLinkInteraction';
@@ -110,6 +109,8 @@ export class TokenRenderer {
   });
   /** Whether a token may be drawn on its way between two places; set by the lighting while it lights the view. */
   private glideWay?: (from: Point, to: Point) => boolean;
+  /** How tokens someone else holds are drawn (`setHeldPlayout`); null glides them to each place. */
+  private heldPlayout: HeldPlayout | null = null;
   private uiManager: UIManager;
   private interactionController: InteractionController;
   private dragRuler: DragRuler;
@@ -165,7 +166,7 @@ export class TokenRenderer {
   /** The tokens as the players' sight shows them: which are left out, and the outlines of sensed ones. */
   private readonly playerSight = new PlayerSightTokens({ tokens: () => mapTokens(levelObjects(this.store.getState())), sprites: () => this.tokenSprites, held: () => this.heldTokenIds });
   private readonly playersView = new PlayersViewWatch();
-  private readonly playerBadges = new PlayerInstanceBadges({ state: () => this.store.getState(), sprites: () => this.tokenSprites });
+  private readonly playerBadges = new ShownBadgeNumbers(() => this.store.getState());
   /** The marker on the tokens whose turn it is. */
   private turnMarkers!: TurnMarkers;
   private lightHandlers?: LightPointerHandlers;
@@ -205,6 +206,8 @@ export class TokenRenderer {
       reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
       ...(shownPlaces && { shown: shownPlaces }),
       clearWay: (from, to) => this.glideWay?.(from, to) ?? true,
+      heldPlayout: () => this.heldPlayout,
+      heldBy: (tokenId) => this.heldBy(tokenId),
     });
     this.obsApp = obsApp;
     this.viewport = viewport;
@@ -280,7 +283,6 @@ export class TokenRenderer {
       ticker: () => this.pixiApp?.ticker ?? null,
       reducedMotion: () => prefersReducedMotion(this.viewport.options?.events?.domElement ?? document.body),
       defeated: (state) => defeatedCombatants(state.initiative.entries, sceneTokens(everyLevelObjects(state)), this.resourceDefsProvider()),
-      canMask: () => !this.pixiApp?.renderer || !usesCanvasRenderer(this.pixiApp.renderer),
     });
     this.collectionSync = new TokenCollectionSync(obsApp, store.getState, {
       refreshRules: () => this.refreshCollectionRules(),
@@ -329,7 +331,6 @@ export class TokenRenderer {
     this.viewport.addChild(this.tokenContainer);
     this.viewport.addChild(this.playerSight.outlineLayer);
     this.watchCanvasTurn();
-    this.playersView.listen(() => this.playerSight.whenSettled(() => this.syncCanvasBadges()));
 
     this.dragRuler = new DragRuler(
       new DragRulerView(this.viewport, this.tokenContainer),
@@ -822,17 +823,6 @@ export class TokenRenderer {
   }
 
   /**
-   * The canvas shows the players' badges while it sees as their frame does, so both number alike, and the GM's
-   * otherwise. A load keeps what it shows: the store holds the scene only in part, and the lighting the sight of
-   * the scene before. While the lighting has no sight for the scene, it shows none.
-   */
-  private syncCanvasBadges(): void {
-    const seen = this.playerSight.sharesFrameSight() ? this.playersSeeOnCanvas() : null;
-    if (!seen) this.playerBadges.syncCanvas(null);
-    else if (!this.store.getState().isMapLoading) this.playerBadges.syncCanvas(this.playerSight.sightIsCurrent() ? seen : NOTHING_SEEN);
-  }
-
-  /**
    * The turn flashes on the canvas: while it shows the players' view (session view, the peek, the
    * palette's player mode) only where the players are shown their initiative list, as their frame.
    */
@@ -947,8 +937,11 @@ export class TokenRenderer {
             // A dropped token is already gliding from the pointer, where it showed, to this place
             const mayGlide = this.glide.headsTo(token.id, token.x, token.y) || this.mayGlide(token, prevToken);
             const pointerDrags = this.interactionController.isDraggingTokens();
-            if (placedAtOnce({ held: !!heldTokens[token.id], pointerDrags, loading: isMapLoading, mayGlide })) {
+            const held = !!heldTokens[token.id];
+            if (placedAtOnce({ held, pointerDrags, loading: isMapLoading, mayGlide })) {
               this.glide.jump(token.id, token.x, token.y);
+            } else if (held) {
+              this.glide.follow(token.id, token.x, token.y);
             } else {
               this.glide.to(token.id, token.x, token.y);
             }
@@ -1476,7 +1469,7 @@ export class TokenRenderer {
     return this.playerSight.framePerception(lighting);
   }
 
-  /** The numbers the players' instance badges show, as their last frame numbered them. */
+  /** The GM's instance numbers the players' last frame showed them, for their initiative list. */
   public playerBadgeNumbers(): PlayerBadgeNumbers {
     return this.playerBadges;
   }
@@ -1499,7 +1492,7 @@ export class TokenRenderer {
 
   /**
    * Player overlays prepared for the next mirrored frame; `perception` leaves out what the players do not see, outlines
-   * what they only sense and numbers the instance badges among what they see, none while the lighting has no sight for the scene.
+   * what they only sense and takes the GM's instance numbers of what they see for their initiative list, none while the lighting has no sight for the scene.
    */
   public getPlayerViewLayers(settings: AtlasSettings['localPlayerView'], perception?: TokenPerception): LayerVisibility[] {
     perception = this.playerFramePerception(perception);
@@ -1508,7 +1501,7 @@ export class TokenRenderer {
     this.playerBadges.pass(this.playerSight.sightIsCurrent() ? seenByPlayers(mapTokens(levelObjects(state)), perception) : NOTHING_SEEN);
     // Players learn of the turn only where their initiative list shows it
     const turnShown = settings.showInitiative && state.initiativeTrackerOpen;
-    return [...this.playerSight.frameLayers(perception), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.playerBadges.layers(), ...this.dragRuler.getPlayerViewLayers(isSeen), ...this.exit.playerViewLayers(),
+    return [...this.playerSight.frameLayers(perception), ...this.uiManager.getPlayerViewLayers(settings, isSeen), ...this.dragRuler.getPlayerViewLayers(isSeen), ...this.exit.playerViewLayers(),
       ...this.turnMarkers.playerLayers(seenByPlayers(mapTokens(levelObjects(state)), perception), turnShown)];
   }
 
@@ -1524,7 +1517,7 @@ export class TokenRenderer {
 
   /** Tokens and their bars, nameplates and badges as the GM view shows them, whatever view the canvas is in: for a picture of the scene. */
   public getGmViewLayers(): LayerVisibility[] {
-    return [...gmTokenLayers(mapTokens(levelObjects(this.store.getState())), this.tokenSprites), ...this.uiManager.getGmViewLayers(), ...this.playerSight.gmLayers(), ...this.playerBadges.gmLayers(), ...this.turnMarkers.pictureLayers()];
+    return [...gmTokenLayers(mapTokens(levelObjects(this.store.getState())), this.tokenSprites), ...this.uiManager.getGmViewLayers(), ...this.playerSight.gmLayers(), ...this.turnMarkers.pictureLayers()];
   }
 
   /** Get all token sprites for external systems like SelectionManager. */
@@ -1655,6 +1648,20 @@ export class TokenRenderer {
    */
   public setGlideWay(clearWay: (from: Point, to: Point) => boolean): void {
     this.glideWay = clearWay;
+  }
+
+  /**
+   * How tokens someone else holds are drawn from now on: played out as the cursor of the pointer
+   * holding them (a player's drag followed online), or, with null, glided to each place the store gives.
+   */
+  public setHeldPlayout(playout: HeldPlayout | null): void {
+    this.heldPlayout = playout;
+  }
+
+  /** Who holds a token: this view's pointer while it drags tokens, else whoever the store notes it held by. */
+  private heldBy(tokenId: string): TokenHolder {
+    if (!this.store.getState().heldTokens[tokenId]) return null;
+    return this.interactionController.isDraggingTokens() ? 'pointer' : 'elsewhere';
   }
 
   /** The lighting lays out the levels' maps (`ArtFloors`): a token dropped where it draws a level below falls there. */

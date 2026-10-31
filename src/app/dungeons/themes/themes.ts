@@ -7,6 +7,7 @@ import { pick, stream } from '../rng';
 import type { DungeonTag } from '../tags';
 import { fortressParams } from '../layout/fortressParams';
 import { CAVERN } from './cavern';
+import { FOREST } from './forest';
 import { FORTRESS } from './fortress';
 import { houseFacts } from './houseFacts';
 import { MANSION } from './mansion';
@@ -22,6 +23,7 @@ export const THEMES: Readonly<Record<ThemeId, ThemeDefinition>> = {
   mansion: { id: 'mansion', built: true, rise: 'up', stairsFromEntrance: true, architectureOnly: true, layout: 'house', facts: houseFacts,
     ignores: [...LAYOUT_TAGS, 'secret'], refuses: [...NO_MOLTEN, { tag: 'flooded' }], programme: MANSION },
   cavern: CAVERN,
+  forest: FOREST,
 };
 
 export function themeOf(id: ThemeId): ThemeDefinition {

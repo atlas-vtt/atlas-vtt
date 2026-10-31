@@ -13,7 +13,7 @@ import { SEES_ALL } from '../../../../vision/sight';
 import type { MapBounds } from '../../../../vision/visibility';
 import { hasArea } from '../../../../vision/polygonArea';
 import { LightingEngine } from '../LightingEngine';
-import { LightingWorld } from '../LightingWorld';
+import { createEngineWorld } from '../engineWorld';
 import type { EngineLight } from '../types';
 import { createTestRenderer, readFloats } from './gpuTestUtils';
 import { distToOutline, fuzzRooms, insidePolygon, rng, roomOutline, type FuzzRoom, type P } from './fuzzRooms';
@@ -124,7 +124,7 @@ function areaOf(kind: Kind, room: FuzzRoom, outline: readonly P[], rand: () => n
 async function fuzz({ seed, trials, gap, bounds = { width: 2048, height: 2048 }, quality = DEFAULT_LIGHTING_QUALITY }: FuzzOptions): Promise<Report> {
   const renderer = await createTestRenderer(SIZE);
   const engine = new LightingEngine(renderer, quality);
-  const world = new LightingWorld(renderer, bounds, quality);
+  const world = createEngineWorld(renderer, bounds, quality, false);
   const target = RenderTexture.create({ width: SIZE, height: SIZE });
   const texel = worldTexel(bounds, quality.maxTexels);
   const ruleTexel = worldTexel(bounds);

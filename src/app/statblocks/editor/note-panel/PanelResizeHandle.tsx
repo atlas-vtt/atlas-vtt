@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { MIN_PANEL_WIDTH, clampPanelWidth } from './panelPrefs';
+import { t } from '../../../i18n';
 
 export interface PanelResizeHandleProps {
   width: number;
@@ -91,12 +92,12 @@ export function PanelResizeHandle({ width, availableWidth, onResize, onCancel, o
   };
 
   return (
-    <LabelTooltip label="Drag to resize, double-click to reset" side="left" describe>
+    <LabelTooltip label={t('statblockEditor.resizeHint')} side="left" describe>
       <div
         className="atlas-sb-note-panel__handle"
         role="separator"
         aria-orientation="vertical"
-        aria-label="Statblock width"
+        aria-label={t('statblockEditor.panelWidth')}
         aria-valuenow={shown}
         aria-valuemin={MIN_PANEL_WIDTH}
         aria-valuemax={clampPanelWidth(Number.POSITIVE_INFINITY, availableWidth())}

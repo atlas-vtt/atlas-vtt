@@ -10,6 +10,7 @@ import type { ChromeStyle } from '../LabelEditor';
 import { placeClearOf, type OptionsPlacement } from '../options/optionsPlacement';
 import { OUTLINE_OFFSET, TOOLBAR_GAP } from '../toolbar/toolbarBelow';
 import type { NamePrompt } from './useBlockNaming';
+import { t } from '../../../../i18n';
 import './name-popover.scss';
 
 export interface NamePopoverProps {
@@ -148,7 +149,7 @@ export function NamePopover({ layer, stage, prompt, revision }: NamePopoverProps
       data-closing={present ? undefined : ''}
       style={style}
       role="dialog"
-      aria-label="Name"
+      aria-label={t('templateEditor.name')}
     >
       <motion.div className="atlas-te-naming__panel" variants={variants} initial="hidden" animate="visible" exit="exit">
         <input

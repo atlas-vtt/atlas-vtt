@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_BOOK_MAPS, MAX_MAP_ENTRANCES, parseGmMessage, parsePlayerMessage, type BookWorldMap, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 
-const ART = { hash: 'a'.repeat(64), size: 10, mime: 'image/webp' };
+const ART = { hash: 'a'.repeat(64), size: 10, mime: 'image/webp', id: 'e'.repeat(64) };
 const WORLD = '0'.repeat(24);
 const TOWN = '1'.repeat(24);
 const INN = '2'.repeat(24);

@@ -14,6 +14,8 @@ import { runInBackground } from './utils/backgroundTask';
 import { restoreLinkedSnapshot } from './links/openAtlasLink';
 import type { ViewCamera } from './pixi/viewCamera';
 import { showNotice } from './ui/notice';
+import { observeResize } from './utils/observeResize';
+import { inMainWindow } from './plugin/atlasMainWindow';
 
 import { ATLAS_VIEW_TYPE } from './atlasViewType';
 
@@ -76,7 +78,7 @@ export class AtlasView extends FileView {
    */
   private openingLevel: string | null = null;
   private plugin: AtlasVTTPlugin | undefined;
-  private resizeObserver: ResizeObserver | null = null;
+  private stopResizeObserver: (() => void) | null = null;
   private lastContainerWidth: number = 0;
   private lastContainerHeight: number = 0;
   private isViewClosing = false;
@@ -233,6 +235,10 @@ export class AtlasView extends FileView {
     containerEl.addClass('atlas-vtt-view');
     containerEl.tabIndex = -1;
 
+    // Atlas runs in the main window only: a view opened in a popout loads nothing, since
+    // `keepAtlasInMainWindow` closes it and opens its scenes in the main window.
+    if (!inMainWindow(this.app.workspace, this.leaf)) return;
+
     this.detachLeafFocusHandlers();
     this.boundClaimLeafFocus = () => this.claimLeafFocus();
     containerEl.addEventListener('pointerdown', this.boundClaimLeafFocus, true);
@@ -252,7 +258,7 @@ export class AtlasView extends FileView {
       if (this.isViewClosing) {
         return;
       }
-      this._serviceManager.getNotePreviewUIManager().followView(containerEl);
+      this._serviceManager.getNotePreviewUIManager().setViewElement(containerEl);
 
       // Mount UI overlay once the renderer is initialized
       const uiOverlay = this._serviceManager.getUIOverlay();
@@ -299,11 +305,8 @@ export class AtlasView extends FileView {
     this.temporalCache.clear();
     this.viewportCache.clear();
 
-    // Clean up resize observer
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = null;
-    }
+    this.stopResizeObserver?.();
+    this.stopResizeObserver = null;
 
     // Clean up event listeners
     this.detachLeafFocusHandlers();
@@ -843,35 +846,16 @@ export class AtlasView extends FileView {
     return this._serviceManager.getRendererService().getRenderer();
   }
 
-  /**
-   * Sets up window resize detection to update the PIXI canvas
-   * Only responds to actual window size changes, not container changes
-   */
+  /** Sizes the PIXI canvas to the pane whenever the pane changes size. */
   private setupWindowResizeDetection(): void {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect();
-      this.resizeObserver = null;
-    }
-
-    // Observe the actual container element so PIXI sizes to the pane, not the window
-    this.resizeObserver = new ResizeObserver(() => {
+    this.stopResizeObserver?.();
+    this.stopResizeObserver = observeResize([this.containerEl], () => {
       const currentWidth = this.containerEl.clientWidth;
       const currentHeight = this.containerEl.clientHeight;
-
-      // Only resize if the container dimensions actually changed
-      if (currentWidth !== this.lastContainerWidth ||
-          currentHeight !== this.lastContainerHeight) {
-
-        this.lastContainerWidth = currentWidth;
-        this.lastContainerHeight = currentHeight;
-
-        // Resize the renderer to match the container
-        const rendererService = this._serviceManager.getRendererService();
-        rendererService.resize(currentWidth, currentHeight);
-      }
+      if (currentWidth === this.lastContainerWidth && currentHeight === this.lastContainerHeight) return;
+      this.lastContainerWidth = currentWidth;
+      this.lastContainerHeight = currentHeight;
+      this._serviceManager.getRendererService().resize(currentWidth, currentHeight);
     });
-
-    // Observe the container element for size changes (fires immediately)
-    this.resizeObserver.observe(this.containerEl);
   }
 }

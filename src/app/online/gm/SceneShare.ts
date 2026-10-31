@@ -2,8 +2,9 @@ import { parsePlayerMessage, type SharedFloor } from '../protocol/index.ts';
 import type { ShownRollToken } from '../../services/playerRollSource';
 import { isLit, LIGHTING_REFUSAL } from './atlasLighting.ts';
 import type { SceneState, SceneStore } from './atlasView.ts';
-import { imageMimeType, REPEAT_REQUEST_MS } from './assetServe.ts';
+import { imageMimeType } from './assetServe.ts';
 import { FloorAudience } from './floorAudience.ts';
+import { floorMaps } from './floorMaps.ts';
 import { floorPorts, noticeOnce } from './floorPorts.ts';
 import { FloorShare } from './FloorShare.ts';
 import { FloorSight } from './floorSight.ts';
@@ -16,7 +17,7 @@ import type { SceneSharePorts } from './sceneSharePorts.ts';
 import { TOKEN_POLL_MS } from './TokenShare.ts';
 import { hasLevels, resolveLevel, viewedLevelId } from '../../levels/sceneLevels';
 
-export { imageMimeType, isLit, LIGHTING_REFUSAL, REPEAT_REQUEST_MS };
+export { imageMimeType, isLit, LIGHTING_REFUSAL };
 export type { SceneSharePorts };
 
 const DEFAULT_CELL = 70;
@@ -117,6 +118,12 @@ export class SceneShare {
     this.acting.delete(player);
   }
 
+  /** Assets players were handed may no longer be stored: every floor reads its map and art again. */
+  refreshAssets(): void {
+    for (const share of this.floors.values()) share.refreshAssets();
+    this.dice.refreshArt();
+  }
+
   /** Withdraws the scene: players see none until a scene is shared again. */
   withdraw(): void {
     for (const share of this.floors.values()) share.withdraw();
@@ -141,6 +148,15 @@ export class SceneShare {
   /** The GM id of a token by the id players know it by in the list of `scene`, while that is a floor's last list. */
   listedToken(scene: string, alias: string): string | undefined {
     return this.tokens.shareOfScene(scene)?.listedToken(scene, alias);
+  }
+
+  /** The player whose drag holds a token (by GM token id), on whichever floor, or undefined while none does. */
+  draggerOf(tokenId: string): string | undefined {
+    for (const share of this.floors.values()) {
+      const player = share.draggerOf(tokenId);
+      if (player !== undefined) return player;
+    }
+    return undefined;
   }
 
   /** The tokens among `tokenIds` that the players of each token's floor see now, as their frame names them: what the books read. */
@@ -184,7 +200,7 @@ export class SceneShare {
     const levels = hasLevels(state.levels);
     const presented = levels ? resolveLevel(state.levels, this.ports.presentedLevel?.()) : null;
     const players = [...new Set([...(this.ports.seats?.onlinePlayers() ?? []), ...extra])];
-    const inputs = [state.objects.tokens, state.levels, presented, players.join('\n'), [...this.acting].join('\n')];
+    const inputs = [state.objects.tokens, state.levels, state.background, presented, players.join('\n'), [...this.acting].join('\n')];
     if (this.floors.size === 0 || extra.length > 0 || inputs.some((input, i) => input !== this.assigned[i])) {
       this.assigned = inputs;
       this.assigning = true;
@@ -201,6 +217,8 @@ export class SceneShare {
     const seats = this.ports.seats;
     const { floors, together } = playerFloors({ state, ownerOf: (id, token) => seats?.ownerOf(id, token), acting: this.acting, presented }, players);
     const before = this.audience.set(floors, together, presented);
+    // Ranked before the floors' shares hand their maps, so a map is never queued behind one nobody looks at
+    this.ports.stored?.floorMaps?.(floorMaps(state, floors, presented));
     const wanted = new Set([keyOf(presented), ...[...floors.values()].map(keyOf)]);
     for (const key of wanted) if (!this.floors.has(key)) this.open(key === '' ? null : key);
     for (const [player, floor] of floors) {

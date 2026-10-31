@@ -67,7 +67,7 @@ export class TableLog {
     return () => this.listeners.delete(listener);
   }
 
-  /** The vault path of artwork the log shows, by hash (a speaker's, an image the GM showed): what players may be sent. */
+  /** The vault path of artwork the log shows, by hash (a speaker's, an image the GM showed), for the GM's own view of the log. */
   artFile(hash: string): string | undefined {
     return speakerArtIn(this.list, hash) ?? imageFileIn(this.list, hash);
   }

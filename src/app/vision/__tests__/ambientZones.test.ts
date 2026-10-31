@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { NORMAL_SIGHT, GENERIC_SENSES } from '../../gameSystems/senses';
 import type { SenseDefinition } from '../../types/senseTypes';
-import { exploredShapes } from '../exploredShapes';
+import { recorded } from './recordedShapes';
 import { ambientAt, lightLevelAt } from '../lightLevels';
 import { lightReach, type AmbientLight, type Sight, type SightRegion } from '../sight';
 
@@ -63,7 +63,7 @@ describe('explored memory with ambient zones', () => {
   const torch = lightReach({ x: 150, y: 350 }, 100, [], 50);
 
   it('records what the eyes see where the ambient light is lit: the scene without its dark zones, with the lights in them', () => {
-    expect(exploredShapes(sight, day, [torch])).toEqual({
+    expect(recorded(sight, day, [torch])).toEqual({
       polygons: [torch.polygon, darkvision.polygon],
       clip: [eyes.polygon, darkvision.polygon],
       ambient: { base: true, zones: [{ polygon: cave.polygon, lit: false }, { polygon: hall.polygon, lit: true }] },
@@ -72,7 +72,7 @@ describe('explored memory with ambient zones', () => {
 
   it('records a lit zone of a dark scene', () => {
     const lit = { polygon: rect(0, 0, 100, 100), ambient: 1 };
-    expect(exploredShapes(sight, { ambient: 0, zones: [lit] }, [])).toEqual({
+    expect(recorded(sight, { ambient: 0, zones: [lit] }, [])).toEqual({
       polygons: [darkvision.polygon],
       clip: [eyes.polygon, darkvision.polygon],
       ambient: { base: false, zones: [{ polygon: lit.polygon, lit: true }] },
@@ -81,21 +81,21 @@ describe('explored memory with ambient zones', () => {
 
   it('leaves the ambient light out for tokens that see nothing by light', () => {
     const blind: Sight = { all: false, regions: [darkvision].map((r) => ({ ...r, sense: { ...r.sense, sees: { ...r.sense.sees, bright: 'none', dim: 'none' } } as SenseDefinition })) };
-    expect(exploredShapes(blind, day, [torch])?.ambient).toBeUndefined();
+    expect(recorded(blind, day, [torch])?.ambient).toBeUndefined();
   });
 
   it('keeps a darkness source\'s area out of the memory in a scene with zones too, unless a sense sees in it', () => {
     const darkness = lightReach({ x: 300, y: 250 }, 120, [], 0, { darkness: true });
-    expect(exploredShapes(sight, day, [torch, darkness])).toMatchObject({
+    expect(recorded(sight, day, [torch, darkness])).toMatchObject({
       polygons: [torch.polygon, darkvision.polygon],
       except: { areas: [darkness.polygon], unless: [] },
     });
     const truesight = region(generic('truesight'), rect(0, 0, 400, 400));
-    expect(exploredShapes({ all: false, regions: [eyes, truesight] }, day, [darkness])?.except).toEqual({ areas: [darkness.polygon], unless: [truesight.polygon] });
-    expect(exploredShapes(sight, day, [torch])).not.toHaveProperty('except');
+    expect(recorded({ all: false, regions: [eyes, truesight] }, day, [darkness])?.except).toEqual({ areas: [darkness.polygon], unless: [truesight.polygon] });
+    expect(recorded(sight, day, [torch])).not.toHaveProperty('except');
   });
 
   it('records as before without zones', () => {
-    expect(exploredShapes(sight, { ambient: 1, zones: [] }, [torch])).toEqual({ polygons: [eyes.polygon, darkvision.polygon], clip: null });
+    expect(recorded(sight, { ambient: 1, zones: [] }, [torch])).toEqual({ polygons: [eyes.polygon, darkvision.polygon], clip: null });
   });
 });

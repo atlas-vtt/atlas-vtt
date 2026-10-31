@@ -1,5 +1,6 @@
 import { Keymap, type App, type HoverParent } from 'obsidian';
 import { runInBackground } from '../../../utils/backgroundTask';
+import { t } from '../../../i18n';
 
 /** Obsidian follows the links of its own rendered notes (reading view, Live Preview, embeds). */
 const OBSIDIAN_LINK_ROOTS = '.markdown-preview-view, .cm-content';
@@ -30,7 +31,7 @@ export function followLinksIn(el: HTMLElement, app: App, sourcePath: string): ()
     if (!target) return;
     event.preventDefault();
     const pane = Keymap.isModEvent(event) || 'tab';
-    runInBackground(app.workspace.openLinkText(target, sourcePath, pane), `Opening ${target}`, 'Could not open the linked note');
+    runInBackground(app.workspace.openLinkText(target, sourcePath, pane), `Opening ${target}`, t('statblockEditor.linkFailed'));
   };
   const hover = (event: MouseEvent): void => {
     const link = internalLinkOf(event);

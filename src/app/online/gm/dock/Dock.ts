@@ -17,6 +17,7 @@ import { DockSurface } from './dockSurface.ts';
 import { playerCodeCopier } from './playerCodes.ts';
 import { PANEL_WIDTH, panelView, renderPanel, type PanelActions } from './OnlinePanel.ts';
 import { badgeOf, isRunning, menuModel, tableTitle, tooltipOf, type OnlineSnapshot, type SceneFacts } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 export type { DockDeps } from './dockDeps.ts';
 
@@ -223,7 +224,7 @@ export class Dock {
   /** A content layer for `surface`, named as the dialog the button controls; the layer it replaces gives up the name. */
   private newLayer(surface: Surface): HTMLElement {
     this.layer?.removeAttribute('id');
-    return detached(this.root, { attr: { id: this.surfaceId, role: 'dialog', 'aria-label': surface === 'panel' ? 'Online table' : 'Online play' } });
+    return detached(this.root, { attr: { id: this.surfaceId, role: 'dialog', 'aria-label': surface === 'panel' ? t('online.table') : t('online.play') } });
   }
 
   private drawMenu(layer: HTMLElement, snapshot: OnlineSnapshot, scene: SceneFacts, fresh: boolean): string {

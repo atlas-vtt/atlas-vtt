@@ -9,14 +9,15 @@ import { coneAngle } from '../../vision/visionCone';
 import { SliderField } from './lightingPanelFields';
 import { LightPresetChips } from './LightPresetChips';
 import { ColorSwatches, RangeFields } from './lightPopoverFields';
+import { t } from '../../i18n';
 
 const FLICKERS: { value: LightAnimation; label: string }[] = [
-  { value: 'none', label: 'Steady' },
-  { value: 'torch', label: 'Torch' },
-  { value: 'candle', label: 'Candle' },
-  { value: 'pulse', label: 'Pulse' },
-  { value: 'magic', label: 'Shimmer' },
-  { value: 'smoulder', label: 'Smoulder' },
+  { value: 'none', label: t('light.flicker.steady') },
+  { value: 'torch', label: t('light.flicker.torch') },
+  { value: 'candle', label: t('light.flicker.candle') },
+  { value: 'pulse', label: t('light.flicker.pulse') },
+  { value: 'magic', label: t('light.flicker.shimmer') },
+  { value: 'smoulder', label: t('light.flicker.smoulder') },
 ];
 
 const NOTHING = (): void => undefined;
@@ -81,24 +82,24 @@ export function LightEmissionFields({
       <div className="atlas-light-popover__section">
         {ranges}
         <div className="atlas-light-popover__beam">
-          <SliderField label="Beam" value={beam} {...BEAM_SLIDER} display={surface ? '–' : narrow ? `${beam}°` : direction ? 'All' : 'All around'} disabled={surface}
+          <SliderField label={t('light.beam')} value={beam} {...BEAM_SLIDER} display={surface ? '–' : narrow ? `${beam}°` : direction ? t('light.beamAll') : t('light.beamAllAround')} disabled={surface}
             onPointerDown={onSliderPointerDown} onChange={(value) => onChange(withBeam(emission, value))} {...(onBeamCommit && { onCommit: onBeamCommit })} />
           {direction && (
-            <SliderField label="Direction" value={direction.degrees} min={0} max={360 - DIRECTION_STEP} step={DIRECTION_STEP} display={narrow ? `${direction.degrees}°` : '–'}
+            <SliderField label={t('light.direction')} value={direction.degrees} min={0} max={360 - DIRECTION_STEP} step={DIRECTION_STEP} display={narrow ? `${direction.degrees}°` : '–'}
               disabled={!narrow} onPointerDown={onSliderPointerDown} onChange={direction.onChange} {...(onBeamCommit && { onCommit: onBeamCommit })} />
           )}
         </div>
-        <SliderField label="Intensity" value={emission.intensity} min={0} max={2} step={0.05} display={`${Math.round(emission.intensity * 100)} %`}
+        <SliderField label={t('light.intensity')} value={emission.intensity} min={0} max={2} step={0.05} display={`${Math.round(emission.intensity * 100)} %`}
           onPointerDown={onSliderPointerDown} onChange={(value) => onChange(editEmission(emission, 'intensity', String(value)))} />
-        <SliderField label="Softness" value={emission.sourceRadius ?? 1} min={0} max={5} step={0.25} display={surface ? '–' : String(emission.sourceRadius ?? 1)} disabled={surface}
+        <SliderField label={t('light.softness')} value={emission.sourceRadius ?? 1} min={0} max={5} step={0.25} display={surface ? '–' : String(emission.sourceRadius ?? 1)} disabled={surface}
           onPointerDown={onSliderPointerDown} onChange={(value) => onChange(editEmission(emission, 'sourceRadius', String(value)))} />
         <div className="atlas-light-popover__flicker">
-          <span id={flickerId}>Flicker</span>
+          <span id={flickerId}>{t('light.flicker')}</span>
           <Select value={emission.animation} options={FLICKERS} labelledBy={flickerId} onChange={(animation) => onChange({ ...emission, animation })} />
         </div>
         {more}
         <div className="atlas-light-popover__flicker">
-          <span id={outshinesId}>Outshines magical darkness</span>
+          <span id={outshinesId}>{t('light.outshines')}</span>
           <ToggleSwitch value={(emission.priority ?? 0) > 0} labelledBy={outshinesId} onChange={() => onChange(withPriority(emission, (emission.priority ?? 0) > 0 ? 0 : 1))} />
         </div>
       </div>

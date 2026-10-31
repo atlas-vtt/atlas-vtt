@@ -61,20 +61,20 @@ import { findAtlasLeafByViewId } from './utils/atlasLeafLookup';
 import { requestRender } from './pixi/RenderScheduler';
 import { MAP_LAYER_Z } from './pixi/mapLayerOrder';
 import { shownRollTokens } from './pixi/playerRollTokens';
-import type { PlayerBadgeNumbers } from './pixi/token-renderer/PlayerInstanceBadges';
+import type { PlayerBadgeNumbers } from './pixi/token-renderer/PlayerBadgeNumbers';
 import type { ShownRollToken } from './services/playerRollSource';
 import { t } from './i18n';
 import { showNotice } from './ui/notice';
-import type { MapImage } from './pixi/mapImage/MapImage';
-import type { MapImageChange } from './pixi/mapImage/mapImageView';
-import type { TileView } from './pixi/mapImage/levelOfDetail';
+import type { MosaicCanvas } from './pixi/mosaicCanvas/MosaicCanvas';
+import type { MosaicCanvasChange } from './pixi/mosaicCanvas/mosaicCanvasView';
+import type { TesseraView } from './pixi/mosaicCanvas/levelOfDetail';
 import { frameView } from './services/playerFrameDemand';
 import { MapController } from './MapController';
 import { NO_STRETCH, sameStretch, type MapStretch } from './grid/mapStretch';
 import { levelImageOnItsOwn, viewedImagePlacement } from './levels/levelAlignment';
 import { viewedLevelId } from './levels/sceneLevels';
 import { levelObjects } from './levels/levelObjects';
-import { watchMapVideoPlayback } from './pixi/mapImage/video/watchMapVideoPlayback';
+import { watchMapVideoPlayback } from './pixi/mosaicCanvas/video/watchMapVideoPlayback';
 import type { LiquidLayer } from './pixi/liquids/LiquidLayer';
 import { createViewLiquids } from './pixi/liquids/viewLiquids';
 import { playerWindowStore } from './stores/playerWindowStore';
@@ -83,7 +83,6 @@ import { fitZoomRange } from './pixi/fitMapRect';
 import { viewCentreInClient, worldToClient, type ClientPoint } from './pixi/utils/worldToClient';
 import { mapTokens } from './tokens/offMap';
 import { TokenPlacer } from './pixi/tokenPlacement/TokenPlacer';
-import { followWindow } from './utils/followWindow';
 
 export class PixiRendererOrchestrator { // Renamed class
   private _isDestroyed: boolean = false;
@@ -129,7 +128,7 @@ export class PixiRendererOrchestrator { // Renamed class
   private layerFog: Container | null = null; // Add fog layer
   private gridSystem?: GridSystem; // Instance of GridSystem
   /** The view's map image, owned here once the first load hands it over. */
-  private mapImage: MapImage | null = null;
+  private mapImage: MosaicCanvas | null = null;
   private stopFollowingMapImage: (() => void) | null = null;
   /** The stretch of the map the zoom range was last fitted to. */
   private zoomFittedStretch: MapStretch = NO_STRETCH;
@@ -554,7 +553,7 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   /** Builds the grid over `mapImage`, or brings the existing grid `options` and the image. */
-  public initGrid(options: GridOptions, mapImage: MapImage): void {
+  public initGrid(options: GridOptions, mapImage: MosaicCanvas): void {
     if (!this.viewport) return;
     this.setMapImage(mapImage);
     // Without an image (a scene that failed) an existing grid follows the next one by itself.
@@ -562,7 +561,7 @@ export class PixiRendererOrchestrator { // Renamed class
     this._initGridInternal(options, mapImage);
   }
 
-  private _initGridInternal(options: GridOptions, mapImage: MapImage): void {
+  private _initGridInternal(options: GridOptions, mapImage: MosaicCanvas): void {
     const currentViewport = this.viewport;
     const currentApp = this.app;
     if (!currentViewport) return;
@@ -658,7 +657,7 @@ export class PixiRendererOrchestrator { // Renamed class
    * Takes over the view's map image: its layer goes to the bottom of the viewport, and the grid,
    * the fog and the lighting follow every image it shows. Called once; the same image again does nothing.
    */
-  public setMapImage(mapImage: MapImage): void {
+  public setMapImage(mapImage: MosaicCanvas): void {
     if (this.mapImage === mapImage || this._isDestroyed) return;
     const viewport = this.viewport;
     if (!viewport) return;
@@ -685,7 +684,7 @@ export class PixiRendererOrchestrator { // Renamed class
    * Puts the liquid surfaces right above the map image, beneath the grid and everything the
    * lighting lights after the map. By zIndex: the grid inserts itself right above the map image.
    */
-  private placeLiquids(viewport: Viewport, mapImage: MapImage): void {
+  private placeLiquids(viewport: Viewport, mapImage: MosaicCanvas): void {
     const app = this.pixiAppManager.getApp();
     if (!app?.renderer || !app.ticker) return;
     this.liquids ??= createViewLiquids(app, viewport, this.store, settingsLightingQuality(SettingsService.forApp(this.obsApp)));
@@ -694,7 +693,7 @@ export class PixiRendererOrchestrator { // Renamed class
   }
 
   /** Plays the map image's animated map and the liquids on it while someone sees them; returns the function that stops. */
-  private watchMapVideo(mapImage: MapImage): () => void {
+  private watchMapVideo(mapImage: MosaicCanvas): () => void {
     const app = this.pixiAppManager.getApp();
     if (!app?.renderer) return () => undefined;
     const settings = SettingsService.forApp(this.obsApp);
@@ -719,7 +718,7 @@ export class PixiRendererOrchestrator { // Renamed class
     });
   }
 
-  public getMapImage(): MapImage | null {
+  public getMapImage(): MosaicCanvas | null {
     return this.mapImage;
   }
 
@@ -734,7 +733,7 @@ export class PixiRendererOrchestrator { // Renamed class
     return rect && rect.width > 0 ? rect : null;
   }
 
-  private mapImageChanged(change: MapImageChange): void {
+  private mapImageChanged(change: MosaicCanvasChange): void {
     // The lighting follows a new albedo by itself, without building its scene anew.
     if (this._isDestroyed || change !== 'image') return;
     // An alignment's preview draws the map another way than the scene has it: only the zoom range
@@ -862,9 +861,9 @@ export class PixiRendererOrchestrator { // Renamed class
     const frames = this.playerFrames ??= new PlayerFrameTexture(app.renderer);
     if (!frames.canRender()) return;
     // The map image and the roof at the players' own detail, put back before the DM's render
-    const tiles = frameView(frame);
-    const restoreMapImage = this.mapImage?.drawFor(tiles);
-    const restoreRoof = this.roofs?.drawFor(tiles);
+    const tesserae = frameView(frame);
+    const restoreMapImage = this.mapImage?.drawFor(tesserae);
+    const restoreRoof = this.roofs?.drawFor(tesserae);
     const render = (): void => {
       // The levels below the openings, in the players' look: the DM's own are bound again before the DM's render.
       this.lighting?.renderer.prepareBelow?.({ key: 'frame', width: frame.width / frame.resolution, height: frame.height / frame.resolution, mode: 'player' });
@@ -882,8 +881,8 @@ export class PixiRendererOrchestrator { // Renamed class
     }
   }
 
-  /** Keeps the map's tiles of `view` (the player window's frame) loaded: the view's own and its roof's (the levels below draw their snapshots' own). */
-  public addMapDemandRegion(view: TileView): () => void {
+  /** Keeps the map's tesserae of `view` (the player window's frame) loaded: the view's own and its roof's (the levels below draw their snapshots' own). */
+  public addMapDemandRegion(view: TesseraView): () => void {
     const releases = [this.mapImage?.addDemandRegion(view), this.roofs?.addDemandRegion(view)];
     return (): void => {
       for (const release of releases) release?.();
@@ -967,9 +966,9 @@ export class PixiRendererOrchestrator { // Renamed class
   /**
    * Runs `render`, the off-screen render of a thumbnail's `frame`: always the GM's picture
    * (`gmViewLayers`), lit as the GM sees the scene, without the GM's overlays. `picture` is what
-   * the thumbnail shows of the world and at what detail: the map image draws its own tiles for it.
+   * the thumbnail shows of the world and at what detail: the map image draws its own tesserae for it.
    */
-  public captureSceneFrame<T>(frame: SceneFrame, render: () => T, picture?: TileView | null): T {
+  public captureSceneFrame<T>(frame: SceneFrame, render: () => T, picture?: TesseraView | null): T {
     const restoreMapImage = picture ? this.mapImage?.drawFor(picture) : undefined;
     const restoreRoof = picture ? this.roofs?.drawFor(picture) : undefined;
     // A picture of an animated map shows its poster, as its asset card does, not whatever frame plays now.
@@ -1079,11 +1078,8 @@ export class PixiRendererOrchestrator { // Renamed class
       }
     };
     
-    // On the canvas' own window, which follows the view into a popout
-    this.unbindKeyboard = followWindow(this.pixiAppManager.getCanvasElement(), (win: Window): (() => void) => {
-      win.document.addEventListener('keydown', handleKeyDown);
-      return (): void => win.document.removeEventListener('keydown', handleKeyDown);
-    });
+    document.addEventListener('keydown', handleKeyDown);
+    this.unbindKeyboard = (): void => document.removeEventListener('keydown', handleKeyDown);
   }
   
 

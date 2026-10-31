@@ -55,7 +55,8 @@ export interface CanvasLightingDeps {
 }
 
 /**
- * Scene lighting without WebGL, which has no shaders: players still see nothing their tokens
+ * Scene lighting without the engine (its shaders failed on this device, or its last attempt on
+ * the map never finished), composed on a Canvas 2D context: players still see nothing their tokens
  * cannot see (the map is black outside line of sight, unless the scene has token vision off),
  * but there is no light, shadow or explored memory, and everything in sight counts as lit
  * whatever the scene's lit threshold: without its lights, a dark scene would hide every token.

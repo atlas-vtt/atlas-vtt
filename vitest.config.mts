@@ -11,6 +11,28 @@ const alias = {
   'pixi-viewport': fileURLToPath(new URL('./node_modules/pixi-viewport/dist/pixi_viewport.js', import.meta.url)),
 };
 
+/**
+ * Test files that take a CI runner ten seconds or more each (the dungeon generator's invariants over
+ * hundreds of seeded dungeons, the Spectral Engine on drawn maps, visibility sweeps, wall sealing on
+ * hostile inputs, property and fuzz tests): the `slow` project, run only by hand (`npm run test:slow`)
+ * when the code they cover changes. Never in CI: they held the unit shards at their 15 minute limit.
+ */
+const SLOW_TEST_FILES = [
+  'tests/unit/dungeons/**',
+  'tests/unit/dungeonWizard.test.tsx',
+  'tests/unit/spectralEngine/{drawnGrids,irregularGrids,askewMaps,detectGridInImage,printedMaps}.test.ts',
+  'tests/unit/visibility{Culling,CullingLarge,CullingControls,Timing,Rules}.test.ts',
+  'tests/unit/sceneModelControls.test.ts',
+  'tests/unit/mapTokenReadsLint.test.ts',
+  'tests/unit/dependencyBoundaryEnforcement.test.ts',
+  'tests/unit/historyParityFixtures.test.ts',
+  'tests/unit/levels/artRaster.test.ts',
+  'tests/unit/online/movement/wallCollision.test.ts',
+  'tests/unit/measuredDistanceAcrossMap.test.ts',
+  'tests/unit/statblocks/notes/frontmatterPatch.{property,corpus}.test.ts',
+  'src/app/lighting/__tests__/sealWalls{Rays,Hostile,Crowded}.test.ts',
+];
+
 export default defineConfig({
   // Dev tooling (e.g. disk-backed template loading) is enabled under test so
   // the maintainer-facing code paths are exercised. Mirrors the Vite `define`.
@@ -32,6 +54,19 @@ export default defineConfig({
           globals: true,
           setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
           // Agents' worktrees in `.claude/` hold whole copies of the repository.
+          exclude: ['**/node_modules/**', '**/.claude/**', '**/*.gpu.test.ts', ...SLOW_TEST_FILES],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'slow',
+          environment: 'node',
+          pool: 'threads',
+          testTimeout: 120_000,
+          globals: true,
+          setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
+          include: SLOW_TEST_FILES,
           exclude: ['**/node_modules/**', '**/.claude/**', '**/*.gpu.test.ts'],
         },
       },
@@ -42,7 +77,7 @@ export default defineConfig({
         optimizeDeps: { include: ['yaml', 'pixi-viewport', 'eventemitter3', 'react-dom', 'react-dom/client', 'react/jsx-dev-runtime'] },
         test: {
           name: 'gpu',
-          // Obsidian's helpers on the DOM (`createEl`, `el.win`, `onWindowMigrated`), which map views use as in Obsidian.
+          // Obsidian's helpers on the DOM (`createEl`, `el.win`), which map views use as in Obsidian.
           setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
           include: ['src/**/*.gpu.test.ts', 'tests/**/*.gpu.test.ts'],
           testTimeout: 600_000,

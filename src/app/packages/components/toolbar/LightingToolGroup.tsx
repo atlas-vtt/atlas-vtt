@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react"
-import { ArrowDownToDot, BrickWall, Flame, FlameKindling, Footprints, Lamp, Lightbulb, Moon, MousePointer2, Pencil, Sparkles, SunMoon } from "lucide-react"
+import { ArrowDownToDot, BrickWall, Flame, FlameKindling, Footprints, Gauge, Lamp, Lightbulb, Moon, MousePointer2, Pencil, Sparkles, SunMoon } from "lucide-react"
 import { t } from '../../../i18n';
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { useAtlasStore } from "../../../react/ViewStoreContext"
@@ -23,9 +23,9 @@ type RowIcon = DropdownMenuItemProps['icon']
 const SUB_MODES: readonly { value: WallToolSubMode; icon: RowIcon; label: string }[] = [
   { value: 'draw', icon: BrickWall, label: t('toolbar.drawWalls') },
   { value: 'place-light', icon: Lightbulb, label: t('toolbar.placeLights') },
-  { value: 'light-zone', icon: SunMoon, label: 'Light zones' },
+  { value: 'light-zone', icon: SunMoon, label: t('sceneLight.mode.zones') },
   { value: 'level-surface', icon: ArrowDownToDot, label: t('openings.mode') },
-  { value: 'explored-memory', icon: Footprints, label: 'Explored memory' },
+  { value: 'explored-memory', icon: Footprints, label: t('sceneLight.mode.memory') },
 ]
 
 
@@ -51,6 +51,7 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
   const lighting = useAtlasStore((state) => state.lighting)
   const setSceneLighting = useAtlasStore((state) => state.setSceneLighting)
   const setSceneLightingPanelOpen = useAtlasStore((state) => state.setSceneLightingPanelOpen)
+  const setCommandPaletteOpen = useAtlasStore((state) => state.setCommandPaletteOpen)
   const [subMode, setSubMode] = useState<WallToolSubMode>('draw')
   const [drawMode, setDrawMode] = useState<WallToolMode>('point-to-point')
   const presets = useMapLightPresets()
@@ -143,6 +144,17 @@ export function LightingToolGroup({ activeTool, selectTool, menuOpen, toggleMenu
           />
         ))}
       </div>}
+
+      <div className="atlas-dropdown-section">
+        <DropdownMenuItem
+          icon={Gauge}
+          label={t('graphics.open')}
+          onClick={() => {
+            setCommandPaletteOpen(true, 'graphics-settings')
+            closeMenu()
+          }}
+        />
+      </div>
 
       <SceneLightingSection
         lighting={lighting}

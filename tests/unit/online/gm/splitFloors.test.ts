@@ -80,9 +80,9 @@ describe('players climbing a generated Fortress', () => {
     table.share.start();
     await table.set(climbing);
     await table.advance(1000);
-    expect(sceneOf(toPlayer(table.sent, ANA))?.floor).toMatchObject({ level: 1, name: 'Floor B' });
-    expect(sceneOf(toPlayer(table.sent, BEN))?.floor).toMatchObject({ level: 2, name: 'Floor C' });
-    expect(sceneOf(toPlayer(table.sent, CARA))?.floor).toMatchObject({ level: 0, name: 'Floor A' });
+    expect(sceneOf(toPlayer(table.sent, ANA))?.floor).toMatchObject({ level: 1 });
+    expect(sceneOf(toPlayer(table.sent, BEN))?.floor).toMatchObject({ level: 2 });
+    expect(sceneOf(toPlayer(table.sent, CARA))?.floor).toMatchObject({ level: 0 });
   });
 });
 
@@ -92,8 +92,9 @@ describe('players on different floors of one scene', () => {
     const ana = sceneOf(toPlayer(table.sent, ANA));
     const ben = sceneOf(toPlayer(table.sent, BEN));
     const cara = sceneOf(toPlayer(table.sent, CARA));
-    expect(ana).toMatchObject({ map: { hash: await sha256Hex(GROUND_MAP) }, floor: { level: 0, name: 'Ground' } });
-    expect(ben).toMatchObject({ map: { hash: await sha256Hex(UPPER_MAP) }, floor: { level: 1, name: 'Tower top' } });
+    expect(ana).toMatchObject({ map: { hash: await sha256Hex(GROUND_MAP) }, floor: { level: 0 } });
+    expect(ben?.floor).not.toHaveProperty('name');
+    expect(ben).toMatchObject({ map: { hash: await sha256Hex(UPPER_MAP) }, floor: { level: 1 } });
     expect(cara?.id).toBe(ana?.id);
     expect(ben?.floor?.group).toBe(ana?.floor?.group);
     expect(names(toPlayer(table.sent, ANA))).toEqual(['Ana', 'Goblin']);

@@ -1,10 +1,11 @@
 import React from 'react';
 import type { SessionSnapshot } from '../sessionTypes';
+import { t } from '../../../../i18n';
 
 /** The line under the card while nothing else needs it (§12.1). */
-export const GESTURE_HINT = 'Point at a part to change it · / adds · right-click for more';
-export const NEWER_LINE = 'This template is from a newer Atlas. Update Atlas to edit it.';
-export const BUILT_IN_LINE = 'Built in. Save keeps your changes as a new template.';
+export const GESTURE_HINT = t('templateEditor.gestureHint');
+export const NEWER_LINE = t('templateEditor.newerTemplate');
+export const BUILT_IN_LINE = t('templateEditor.builtInLine');
 
 /** What the line says about the template, else how to work the card. */
 function footerLine(snapshot: Pick<SessionSnapshot, 'readOnlyReason' | 'builtIn'>): string {

@@ -10,6 +10,7 @@
  */
 
 import { own } from '../format/jsonValues';
+import { t } from '../../i18n';
 
 interface Integration {
   /** Whether the button's code or command reaches the plugin. */
@@ -27,7 +28,7 @@ const TRACKER_PLUGIN = /\bplugins\s*(?:\.\s*getPlugin\s*\(|(?:\.\s*plugins\s*)?\
 const INTEGRATIONS: readonly Integration[] = [
   {
     calls: (code, command) => TRACKER_GLOBAL.test(code) || TRACKER_PLUGIN.test(code) || command.startsWith(`${INITIATIVE_TRACKER_ID}:`),
-    sentence: "Fantasy Statblocks' Initiative Tracker buttons were left out: Atlas has its own initiative tracker.",
+    sentence: t('statblockEditor.fs.initiativeButtons'),
   },
 ];
 

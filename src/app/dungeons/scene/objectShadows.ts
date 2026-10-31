@@ -4,6 +4,7 @@ import { rotate } from '../render/geometry';
 import { propTall } from '../render/propShapes';
 import { cellBox } from '../render/terrain/cellRings';
 import { FRAGMENT, INSET as DRAWN_INSET } from '../render/terrain/footprints';
+import { loneTrees } from '../render/forest/loneTrees';
 import type { VisibleDungeon } from '../render/visibleDungeon';
 import type { DungeonView } from '../style';
 import type { DungeonPlacement } from './toWalls';
@@ -77,8 +78,16 @@ export function tallObjects(dungeon: VisibleDungeon, view: Pick<DungeonView, 'pr
     .map((column): Footprint => ({ x: column.x, y: column.y, halfW: column.radius, halfH: column.radius, round: !column.square, rotation: 0 }));
   const props = view.props ? floor.props.filter(prop => roomShapes.has(prop.room)).flatMap(prop => propFootprint(prop) ?? []) : [];
   const terrain = floor.terrain.filter(piece => roomShapes.has(piece.room)).flatMap(piece => terrainFootprint(piece) ?? []);
-  return [...columns, ...props, ...terrain];
+  // A Forest's lone trees stand on their trunks: a narrow one a fifth of a cell across, a thick one a quarter.
+  const trunks = loneTrees(dungeon).map((tree): Footprint => {
+    const r = tree.thick ? TRUNK.thick : TRUNK.narrow;
+    return { x: tree.x, y: tree.y, halfW: r, halfH: r, round: true, rotation: 0 };
+  });
+  return [...columns, ...props, ...terrain, ...trunks];
 }
+
+/** A lone tree's trunk's radius, in cells, by how thick it is (`LoneTree.thick`). */
+const TRUNK = { narrow: 0.12, thick: 0.18 } as const;
 
 interface Point {
   x: number;

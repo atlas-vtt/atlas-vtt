@@ -7,7 +7,7 @@ import { isEmptyBook, type StoredBook } from '../../../../src/app/online/gm/book
 import { OnlineControl } from '../../../../src/app/online/gm/OnlineControl.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
-import { app, atlasTab, FakeSocket, png, present, workspace, type FakeTab } from './fakeTable.ts';
+import { app, atlasTab, FakeSocket, png, present, workspace, type FakeTab, storedAccount } from './fakeTable.ts';
 import { fakeTokenSource } from './fakeTokenSource.ts';
 import { advanceSettled } from './settled.ts';
 import { sceneState } from './shareHarness.ts';
@@ -185,7 +185,7 @@ export async function openTable(shelf: BookShelf, players: readonly PlayerInfo[]
   workspace.leaves = [tab.leaf];
   present(tab);
   const ownership = boundOwnership(campaign, { owners, playerTokens: {} });
-  const online = new OnlineControl(app, ownership, fakeCampaigns(campaign, { owners, playerTokens: {} }), undefined, undefined, undefined, shelf);
+  const online = new OnlineControl(app, ownership, fakeCampaigns(campaign, { owners, playerTokens: {} }), undefined, storedAccount(), undefined, shelf);
   void online.resume(SAVED);
   await advanceSettled(0);
   const socket = FakeSocket.all.at(-1);

@@ -24,6 +24,7 @@ import { TEMPLATE_EDITOR_VIEW_TYPE, readTemplateEditorState } from '../templateE
 import { promptStatblockName } from './CreationPrompt';
 import { chooseTemplate } from './TemplateChoiceModal';
 import { templateOffers, type TemplateOffer } from './templateOffers';
+import { t } from '../../../i18n';
 
 export interface StatblockCreation {
   /** The entry point's collection; the default collection when null (a map outside every collection, a command). */
@@ -76,7 +77,7 @@ export async function createStatblock(app: App, creation: StatblockCreation): Pr
     if (linked) creation.onLinked?.(notePath);
   } catch (error) {
     console.error('[Atlas] Creating a statblock failed:', error);
-    showNotice("Couldn't create the statblock.");
+    showNotice(t('statblockEditor.createFailed'));
     return null;
   }
   await openStatblockEditor(app, { notePath, collectionId, from: creation.from, focusFirstEmpty: true });
@@ -139,7 +140,7 @@ export async function startStatblockCreation(app: App, request: StatblockCreatio
     return file.path;
   } catch (error) {
     console.error('[Atlas] Creating a statblock failed:', error);
-    showNotice("Couldn't create the statblock.");
+    showNotice(t('statblockEditor.createFailed'));
     return null;
   }
 }

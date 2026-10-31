@@ -4,6 +4,7 @@ import { TokenPortrait } from '../../../packages/components/shared/TokenPortrait
 import { Skeleton, SkeletonGroup } from '../../../packages/components/primitives/Skeleton';
 import { tokenDetails } from './tokenDetails';
 import type { CardToken } from './useNoteTokens';
+import { t } from '../../../i18n';
 
 const PLACEHOLDERS = 8;
 
@@ -85,7 +86,7 @@ export function TokenChoiceGrid({ tokens, linkedIds, loaded, busy, onChoose, que
 
   if (!loaded) {
     return (
-      <SkeletonGroup className="atlas-sb-token-grid" label="Loading tokens">
+      <SkeletonGroup className="atlas-sb-token-grid" label={t('statblockEditor.token.loading')}>
         {Array.from({ length: PLACEHOLDERS }, (_, index) => (
           <span key={index} className="atlas-sb-token-choice atlas-sb-token-choice--placeholder">
             <Skeleton shape="circle" className="atlas-sb-token-choice__art" />
@@ -95,10 +96,10 @@ export function TokenChoiceGrid({ tokens, linkedIds, loaded, busy, onChoose, que
       </SkeletonGroup>
     );
   }
-  if (tokens.length === 0) return <p className="atlas-sb-token-panel__empty">No tokens in this collection yet.</p>;
-  if (shown.length === 0) return <p className="atlas-sb-token-panel__empty">No token matches “{query.trim()}”.</p>;
+  if (tokens.length === 0) return <p className="atlas-sb-token-panel__empty">{t('statblockEditor.token.none')}</p>;
+  if (shown.length === 0) return <p className="atlas-sb-token-panel__empty">{t('statblockEditor.token.noMatch', { query: query.trim() })}</p>;
   return (
-    <div ref={gridRef} className="atlas-sb-token-grid" role="group" aria-label="Tokens" onKeyDown={onGridKeyDown}>
+    <div ref={gridRef} className="atlas-sb-token-grid" role="group" aria-label={t('statblockEditor.token.tokens')} onKeyDown={onGridKeyDown}>
       {shown.map((token, index) => {
         const linked = linkedIds.has(token.id);
         return (

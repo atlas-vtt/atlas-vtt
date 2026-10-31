@@ -46,12 +46,27 @@ export interface PlacedCell {
   column: number;
 }
 
+/**
+ * How a map's cells fall into lines: the lattice's rows (`lineIsRow`) or its columns. Line `i`
+ * holds `counts[i]` cells; a cell of it has row (or column) `i` and, along the line, its index
+ * from the line's first cell as column (or row). Enough to number any cell as the whole map
+ * numbers it without placing the others.
+ */
+export interface CellLines {
+  lineIsRow: boolean;
+  counts: readonly number[];
+}
+
 /** A grid's cell geometry: how big its cells are and which ones fall on a given map. */
 export interface CellLattice {
   /** Flat-to-flat distance for hexes, side length for squares, in world pixels. */
   size: number;
   /** The cells of the map, each with its 0-based row and column. */
   cellsOnMap(map: MapRect): PlacedCell[];
+  /** The cells of the map whose centres lie in `rect` (world), placed as `cellsOnMap` places them, without placing the rest. */
+  cellsInRect(map: MapRect, rect: MapRect): PlacedCell[];
+  /** How the map's cells fall into lines, counted without placing them. */
+  linesOnMap(map: MapRect): CellLines;
 }
 
 export interface NumberedCell {
@@ -70,6 +85,21 @@ export const EPSILON = 1e-6;
 
 function padded(value: number, digits: number): string {
   return String(value).padStart(digits, '0');
+}
+
+/** The widths `column-row` pads its two parts to, for a map of `columns` × `rows` cells. */
+export function columnRowDigits(columns: number, rows: number): { column: number; row: number } {
+  return { column: Math.max(2, String(columns).length), row: Math.max(2, String(rows).length) };
+}
+
+/** A cell's `column-row` label ("0304"), each part padded to `digits`. */
+export function columnRowLabel(cell: PlacedCell, digits: { column: number; row: number }): string {
+  return padded(cell.column + 1, digits.column) + padded(cell.row + 1, digits.row);
+}
+
+/** A cell's `letter-number` label (A1, B1, ... AA1). */
+export function letterNumberLabel(cell: PlacedCell): string {
+  return columnLetters(cell.column + 1) + String(cell.row + 1);
 }
 
 /** 1-based column to letters: 1 -> A, 26 -> Z, 27 -> AA, 53 -> BA (bijective base-26). */
@@ -102,19 +132,14 @@ export function numberCells(lattice: CellLattice, map: MapRect, format: CellNumb
     return cells.map((cell) => ({
       key: cell.key,
       center: cell.center,
-      label: columnLetters(cell.column + 1) + String(cell.row + 1),
+      label: letterNumberLabel(cell),
     }));
   }
 
   const columns = cells.reduce((most, cell) => Math.max(most, cell.column + 1), 0);
   const rows = cells.reduce((most, cell) => Math.max(most, cell.row + 1), 0);
-  const columnDigits = Math.max(2, String(columns).length);
-  const rowDigits = Math.max(2, String(rows).length);
-  return cells.map((cell) => ({
-    key: cell.key,
-    center: cell.center,
-    label: padded(cell.column + 1, columnDigits) + padded(cell.row + 1, rowDigits),
-  }));
+  const digits = columnRowDigits(columns, rows);
+  return cells.map((cell) => ({ key: cell.key, center: cell.center, label: columnRowLabel(cell, digits) }));
 }
 
 /** Numbered cells by their lattice key, for looking up a single cell's number. */

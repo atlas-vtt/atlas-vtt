@@ -7,6 +7,7 @@ export const map = {
   'map.loadingShort': 'Loading map...',
   'map.clearing': 'Clearing previous data...',
   'map.loadingImage': 'Loading map image...',
+  'map.processing': 'Processing map · {percent}%',
   'map.restoring': 'Restoring map data...',
   'map.loadingTokens': 'Loading tokens and pins...',
   'map.alignGrid': 'Align the grid',

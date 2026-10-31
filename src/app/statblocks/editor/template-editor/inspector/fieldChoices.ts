@@ -10,6 +10,7 @@ import { fieldKeysOf, keyProblem, labelFromKey, labelToKey } from '../../../mode
 import { addField } from '../../../model/fieldOps';
 import type { FieldKey, FieldType, StatblockTemplate } from '../../../model/templateTypes';
 import type { CollectionFieldKeys } from '../useCollectionFieldKeys';
+import { t } from '../../../../i18n';
 
 export type FieldChoice =
   | { kind: 'field'; key: FieldKey; label: string; type: FieldType }
@@ -76,8 +77,8 @@ export function fieldChoiceGroups(
     ? [{ kind: 'new', key: newFieldKey(template, typed, collectionKeys), label: typed }]
     : [];
   const groups: FieldChoiceGroup[] = [
-    { id: 'template', label: 'This template', choices: own },
-    { id: 'collection', label: 'Used in this collection', choices: used },
+    { id: 'template', label: t('templateEditor.thisTemplate'), choices: own },
+    { id: 'collection', label: t('templateEditor.usedInCollection'), choices: used },
     { id: 'new', label: null, choices: fresh },
   ];
   return groups.filter((group) => group.choices.length > 0);

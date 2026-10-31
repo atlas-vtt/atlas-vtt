@@ -36,13 +36,19 @@ import { NO_ASSIGNMENTS, type TokenAssignments } from '../../campaigns/players/t
 import { appCampaignChoices } from './campaignChoices.ts';
 import { DASHBOARD_VIEW_TYPE } from '../../dashboard-view';
 import { DEFAULT_SETTINGS, onlineSettingsSections, readSettings, type OnlineSettings } from './settings.ts';
+import { t } from '../../i18n';
+import { secretSaltStore } from './account/saltStore.ts';
+import { AssetSalt } from './assets/assetSalt.ts';
+import { AssetStoreClient } from './assets/storeClient.ts';
+import { RELAY_ORIGIN } from './servers.ts';
+import type { HostAccount } from './tableStart.ts';
 
 /** How long a change of the table's log waits before the data file is written. */
 const LOG_SAVE_MS = 10_000;
 /** How often the tab the table's log stands on and Atlas's image display are looked for. */
 const SYNC_MS = 1_000;
 
-const tokensText = (count: number): string => (count === 1 ? '1 token' : `${count} tokens`);
+const tokensText = (count: number): string => t('online.tokens', { count });
 
 /**
  * Online play: shares the scene of an Atlas map tab with players in their browsers. A child of the
@@ -54,6 +60,8 @@ export class OnlineFeature extends Component {
   online: OnlineControl;
   /** The GM's Atlas account, which tables are asked for with. */
   readonly account: AccountControl;
+  /** The salt the GM's asset ids are made with, kept beside the account's token. */
+  private readonly salt: AssetSalt;
   private readonly app: App;
   /** The running table as saved in this device's data, so a reload comes back to it. */
   private savedTable: SavedTable | null = null;
@@ -83,13 +91,40 @@ export class OnlineFeature extends Component {
     this.app = plugin.app;
     const campaigns = this.campaigns();
     this.online = new OnlineControl(this.app, new Ownership(playedSeats(campaigns)), campaigns);
+    const store = new AssetStoreClient(RELAY_ORIGIN, () => this.account.token());
+    const signedIn = (): boolean => this.account.token() !== null;
+    this.salt = new AssetSalt({
+      store: secretSaltStore(this.app),
+      fetch: () => store.salt(),
+      signedIn,
+      signedOutByServer: () => this.account.signedOutByServer(),
+      now: () => companionTimers().now(),
+      sleep: (ms) => new Promise((resolve) => companionTimers().setTimer(resolve, ms)),
+    });
     this.account = new AccountControl({
       http: obsidianHttp,
       timers: companionTimers(),
       tokens: secretTokenStore(this.app),
       openUrl: (url) => void window.open(url),
       notify: (text) => showNotice(text),
+      signedIn: () => {
+        void this.salt.ensure(true);
+        this.online.table?.signedIn();
+      },
+      signedOut: () => this.salt.clear(),
+      // The table uploads nothing more once the account's token is gone.
+      beforeSignOut: () => Promise.resolve(this.online.table?.suspendAssets()),
     });
+  }
+
+  /** The account as tables are started with it, with what keeps assets in the store for players. */
+  private host(): HostAccount {
+    return {
+      token: () => this.account.token(),
+      signedOutByServer: () => this.account.signedOutByServer(),
+      refresh: (force) => this.account.refresh(force),
+      assets: { salt: this.salt, settled: () => undefined },
+    };
   }
 
   /** The running table, or null. */
@@ -146,7 +181,7 @@ export class OnlineFeature extends Component {
     this.online = new OnlineControl(this.app, ownership, campaigns, (table) => {
       this.savedTable = table;
       void this.saveSettings();
-    }, this.account, { read: () => this.savedLog, write: (entries) => this.keepLog(entries) }, this.books);
+    }, this.host(), { read: () => this.savedLog, write: (entries) => this.keepLog(entries) }, this.books);
     // Atlas's "Display on player view" reaches the players online too, while a table runs.
     const images = new ImageTakeover<TFile>(() => atlasImageDisplay(this.app), {
       share: () => this.online.table?.image ?? null,
@@ -214,7 +249,7 @@ export class OnlineFeature extends Component {
     this.command('copy-online-table-link', (checking) => {
       const link = this.online.link();
       if (link === null) return false;
-      if (!checking) void copyText(activeDocument.body, link).then((copied) => showNotice(copied ? 'Join link copied.' : 'The link could not be copied.'));
+      if (!checking) void copyText(activeDocument.body, link).then((copied) => showNotice(copied ? t('online.linkCopiedNotice') : t('online.linkCopyFailed')));
       return true;
     });
     this.command('make-selected-player-tokens', (checking) => this.markSelected(checking, true));
@@ -335,8 +370,8 @@ export class OnlineFeature extends Component {
     if (checking) return true;
     const count = this.online.markSelected(player);
     if (count === null) return true;
-    if (count === 0) showNotice('Select tokens on the map first.');
-    else showNotice(player ? `Player tokens: ${tokensText(count)}. Assign each to a player in the online panel.` : `${tokensText(count)} now belong to the GM.`);
+    if (count === 0) showNotice(t('online.selectTokensFirst'));
+    else showNotice(player ? t('online.madePlayerTokens', { tokens: tokensText(count) }) : t('online.madeGmTokens', { tokens: tokensText(count) }));
     return true;
   }
 }

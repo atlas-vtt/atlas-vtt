@@ -6,6 +6,7 @@ import type { ViewAtlasStore } from '../storeFactory';
 import type { MapFile } from './MapPersistence';
 import { getHistoryStore } from '../stores/history';
 import { detectGridOfNewScene } from './firstGridDetection';
+import { MapProcessing } from '../pixi/mosaicCanvas/mapProcessing';
 import { revealNewDungeon } from './dungeonSceneReveal';
 import { describeError } from '../utils/errors';
 import { sceneNameOf } from '../utils/sceneName';
@@ -19,7 +20,7 @@ import { showNotice } from '../ui/notice';
 
 /** How long a scene may take to load before the load is given up. */
 export const STALLED_LOAD_MS = 30_000;
-/** How long the loading screen waits for the map image's tiles in view; past it the map shows as they arrive. */
+/** How long the loading screen waits for the map image's tesserae in view; past it the map shows as they arrive. */
 export const MAP_IMAGE_READY_MS = 1500;
 
 export class MapService {
@@ -42,7 +43,7 @@ export class MapService {
    * @param rendererService The RendererService instance
    * @param filePath The path to the map file
    * @param camera Where the scene is shown (its tab's own camera); without one the map is fitted to the view.
-   * The loading screen waits for the tiles this camera shows.
+   * The loading screen waits for the tesserae this camera shows.
    * @param level The level shown first, over the camera's; unset, the camera's, else the first.
    * @returns The loaded map data, or null when loading failed or a later request replaced this one
    */
@@ -140,7 +141,7 @@ export class MapService {
       this.currentMapData = displayed.mapData;
       // The level the tab was left on, else the first; the store's levels arrive with the rehydration below
       storeState.setViewedLevel(displayed.level);
-      // The tiles in view load meanwhile; the loading screen stays until they are drawn, or for a while.
+      // The tesserae in view load meanwhile; the loading screen stays until they are drawn, or for a while.
       const mapImage = renderer.getMapImage();
       const imageReady = mapImage ? mapImage.whenCameraReady(MAP_IMAGE_READY_MS) : null;
 
@@ -219,7 +220,7 @@ export class MapService {
         getHistoryStore(this.store)?.getState().resume();
 
         if (detectsGrid && renderer) {
-          this.endGridDetection = detectGridOfNewScene({ store: this.store, renderer, isCurrent: () => !isSuperseded(), refitCamera: camera === null });
+          this.endGridDetection = detectGridOfNewScene({ store: this.store, renderer, processing: MapProcessing.forApp(this.app), isCurrent: () => !isSuperseded(), refitCamera: camera === null });
         }
       };
       const hideLoadingScreen = (): void => {

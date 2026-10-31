@@ -39,6 +39,8 @@ export interface Hand {
   lava(pools: readonly Vec[][], tint: 'lava' | 'acid'): void;
   /** A glyph's colours in `material`: what it is filled with and inked in. */
   paint(material: Material): { fill: string; ink: string };
+  /** What a glyph standing at (x, y) is filled with instead of `paint`'s fill, where the floor under it asks for another (Crayon's coloured floors). */
+  fillAt?(x: number, y: number): string | undefined;
   /** The material's texture laid over `path` (already filled), without filling it again. */
   grain(path: PathFn, material: Material): void;
   /** A line weight, in cells. */

@@ -7,7 +7,7 @@ import type { FramePiece, PlayerFrame, Screen } from '../types/playerFrame';
 import { playerFrame, viewOf } from './playerFrame';
 import type { PlayerRollSources } from './playerRollSource';
 import { PlayerFrameDemand, type DemandRegions } from './playerFrameDemand';
-import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerInstanceBadges';
+import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
 
 type PlayerViewSettings = AtlasSettings['localPlayerView'];
 

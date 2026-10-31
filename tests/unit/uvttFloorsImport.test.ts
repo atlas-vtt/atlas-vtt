@@ -7,7 +7,7 @@ import { readUvttSource, type UvttSource } from '../../src/app/import/uvtt/uvttS
 import type { ProcessedImage } from '../../src/app/imageProcessing/imageProcessing';
 import { levelImagePlacement } from '../../src/app/levels/levelAlignment';
 import { levelObjects } from '../../src/app/levels/levelObjects';
-import { prebuildMapImageAt } from '../../src/app/pixi/mapImage/prebuildMapImage';
+import { prebuildMosaicCanvasAt } from '../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas';
 import { AssetService, type Asset } from '../../src/app/services/AssetService';
 import { AssetThumbnailService } from '../../src/app/services/AssetThumbnailService';
 import { parseSceneFile } from '../../src/app/services/MapPersistence';
@@ -15,7 +15,7 @@ import { createViewAtlasStore } from '../../src/app/storeFactory';
 import { daTowerFloor, floorFile, keepFloor, webpHeader } from '../fixtures/uvttFloorFiles';
 import { createInMemoryApp, interceptWrites, type InMemoryApp } from '../mocks/inMemoryVault';
 
-vi.mock('../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
+vi.mock('../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', () => ({ prebuildMosaicCanvasAt: vi.fn() }));
 
 const COLLECTION = 'Dungeons';
 
@@ -78,7 +78,7 @@ async function loaded(b: Bench, scenePath: string): Promise<ReturnType<typeof cr
 beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
   vi.spyOn(console, 'debug').mockImplementation(() => {});
-  vi.mocked(prebuildMapImageAt).mockClear();
+  vi.mocked(prebuildMosaicCanvasAt).mockClear();
 });
 afterEach(() => { vi.restoreAllMocks(); AssetService.resetInstance(); });
 
@@ -107,7 +107,7 @@ describe('Universal VTT files imported as the floors of one scene', () => {
     expect(background).toBe(maps[0]!.mapFilePath);
     // Floors on one canvas need no alignment of their own
     expect(levels?.some((level) => level.alignment)).toBe(false);
-    expect(prebuildMapImageAt).toHaveBeenCalledTimes(3);
+    expect(prebuildMosaicCanvasAt).toHaveBeenCalledTimes(3);
   });
 
   it('put each floor\'s walls, doors and lights on its level alone, with ids no other floor uses', async () => {

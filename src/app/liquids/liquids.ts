@@ -15,6 +15,8 @@ import { hasArea } from '../vision/polygonArea';
  * and the distance field more.
  */
 export const MAX_LIQUID_CORNERS = 2048;
+/** The points a surface's course may have: a river's middle at a few points a cell, across a large map. */
+export const MAX_COURSE_POINTS = 2048;
 /** The surfaces one level may have: a flooded dungeon holds a few dozen pools and channels. */
 export const MAX_LIQUIDS = 256;
 
@@ -72,6 +74,21 @@ function readHoles(value: unknown, corners: number): Point[][] {
   return holes;
 }
 
+/** A course of at least two points that are not all one, else none. */
+function readCourse(value: unknown): Point[] | undefined {
+  if (!Array.isArray(value) || value.length < 2 || value.length > MAX_COURSE_POINTS || !value.every(isPoint)) return undefined;
+  const [first] = value;
+  return first && value.some((p) => p.x !== first.x || p.y !== first.y) ? copy(value) : undefined;
+}
+
+/** The edges of an outline of `corners` corners that are open, each once, in order. */
+function readOpenEdges(value: unknown, corners: number): number[] {
+  if (!Array.isArray(value)) return [];
+  const edges = new Set<number>();
+  for (const edge of value) if (Number.isInteger(edge) && edge >= 0 && edge < corners) edges.add(edge as number);
+  return [...edges].sort((a, b) => a - b);
+}
+
 /** A surface as it is read: `id` is its place in the record; one that is no area, or of no kind Atlas knows, is none. */
 function readLiquid(id: string, value: unknown): LiquidSurface | null {
   if (!isRecord(value)) return null;
@@ -80,16 +97,20 @@ function readLiquid(id: string, value: unknown): LiquidSurface | null {
   if (!liquid || !isArea(polygon)) return null;
   const flow = readFlow(value.flow);
   const holes = readHoles(value.holes, polygon.length);
+  const course = flow ? readCourse(value.course) : undefined;
+  const openEdges = readOpenEdges(value.openEdges, polygon.length);
   return {
     id,
     kind: 'liquid',
     liquid,
     polygon: copy(polygon),
     colors: readColors(value.colors, liquid),
-    ...(value.art === 'engraved' && { art: 'engraved' as const }),
+    ...((value.art === 'engraved' || value.art === 'crayon') && { art: value.art }),
     ...(liquid === 'lava' && typeof value.lavaLight === 'string' && value.lavaLight.length <= 256 && { lavaLight: value.lavaLight }),
     ...(holes.length > 0 && { holes }),
     ...(flow && { flow }),
+    ...(course && { course }),
+    ...(openEdges.length > 0 && { openEdges }),
     ...(typeof level === 'string' && { level }),
   };
 }
@@ -121,20 +142,21 @@ export function liquidsFromFile(value: unknown): Record<string, LiquidSurface> |
 
 /**
  * A surface as it lies once the map under it is drawn another way (`objectsMovedWithMap`): its
- * corners follow the map, and so does the way it flows, which a turned or stretched map turns.
+ * corners and its course follow the map, and so does the way it flows, which a turned or stretched map turns.
  * An entry that cannot be read keeps everything but corners it can move.
  */
 export function liquidMovedWithMap<T extends Partial<LiquidSurface>>(surface: T, move: (point: Point) => Point): T {
   if (!Array.isArray(surface.polygon)) return surface;
   const polygon = surface.polygon.map(move);
   const holes = Array.isArray(surface.holes) ? { holes: surface.holes.map((hole) => (Array.isArray(hole) ? hole.map(move) : hole)) } : {};
+  const course = Array.isArray(surface.course) ? { course: surface.course.map((p) => (isPoint(p) ? move(p) : p)) } : {};
   const flow = readFlow(surface.flow);
   const start = surface.polygon.find(isPoint);
-  if (!flow || !start) return { ...surface, polygon, ...holes };
+  if (!flow || !start) return { ...surface, polygon, ...holes, ...course };
   // The map's moves are affine, so one step along the flow anywhere gives its direction everywhere.
   const step = 100;
   const from = move(start);
   const to = move({ x: start.x + flow.x * step, y: start.y + flow.y * step });
   const moved = readFlow({ x: to.x - from.x, y: to.y - from.y });
-  return { ...surface, polygon, ...holes, flow: moved ?? flow };
+  return { ...surface, polygon, ...holes, ...course, flow: moved ?? flow };
 }

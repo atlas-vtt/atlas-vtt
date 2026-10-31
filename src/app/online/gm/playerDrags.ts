@@ -77,6 +77,11 @@ export class PlayerDrags {
     return new Map([...this.live.values()].map(({ tokenId, start }) => [tokenId, start]));
   }
 
+  /** The player whose drag holds a token (by GM token id), or undefined while no player drags it. */
+  draggerOf(tokenId: string): string | undefined {
+    return this.live.get(tokenId)?.from;
+  }
+
   /** A drag message: starts or moves the player's drag, or ends it when the token may no longer be theirs. */
   receive(from: string, drag: PlayerDrag): void {
     const state = this.store.getState();

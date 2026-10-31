@@ -9,4 +9,5 @@ export const cleanup: Translation = {
   'cleanup.nothingMissing': 'Отсутствующих ресурсов нет',
   'cleanup.title': 'Убрать отсутствующие ресурсы',
   'cleanup.tokens': { one: '{count} токен', few: '{count} токена', many: '{count} токенов', other: '{count} токена' },
+  'cleanup.roofs': { one: '{count} крыша', few: '{count} крыши', many: '{count} крыш', other: '{count} крыши' },
 };

@@ -21,7 +21,7 @@ describe('AtlasView onClose', () => {
 
   it('cleans up subscriptions, pending callbacks, and service resources', async () => {
     const flushPendingSaves = vi.fn<() => Promise<void>>().mockResolvedValue();
-    const resizeObserverDisconnect = vi.fn();
+    const stopResizeObserver = vi.fn();
     const eventBusOff = vi.fn();
     const serviceManagerDestroy = vi.fn();
     const savePinnedPreviewStates = vi.fn();
@@ -34,7 +34,7 @@ describe('AtlasView onClose', () => {
       flushPendingSaves,
       temporalCache: new Map([['t', { value: 1 }]]),
       viewportCache: new Map([['v', { value: 1 }]]),
-      resizeObserver: { disconnect: resizeObserverDisconnect },
+      stopResizeObserver,
       detachLeafFocusHandlers,
       detachTabHeaderActivationHandler,
       _serviceManager: {
@@ -52,13 +52,13 @@ describe('AtlasView onClose', () => {
     // Timers stop before the last save, which keeps the time they have left
     expect(stopTimersForClose.mock.invocationCallOrder[0]).toBeLessThan(flushPendingSaves.mock.invocationCallOrder[0]!);
     expect(flushPendingSaves).toHaveBeenCalledTimes(1);
-    expect(resizeObserverDisconnect).toHaveBeenCalledTimes(1);
+    expect(stopResizeObserver).toHaveBeenCalledTimes(1);
     expect(detachLeafFocusHandlers).toHaveBeenCalledTimes(1);
     expect(detachTabHeaderActivationHandler).toHaveBeenCalledTimes(1);
     expect(serviceManagerDestroy).toHaveBeenCalledTimes(1);
 
     expect(context.isViewClosing).toBe(true);
-    expect(context.resizeObserver).toBeNull();
+    expect(context.stopResizeObserver).toBeNull();
     expect(context.temporalCache.size).toBe(0);
     expect(context.viewportCache.size).toBe(0);
   });
@@ -72,7 +72,7 @@ describe('AtlasView onClose', () => {
       flushPendingSaves,
       temporalCache: new Map([['t', { value: 1 }]]),
       viewportCache: new Map([['v', { value: 1 }]]),
-      resizeObserver: { disconnect: vi.fn() },
+      stopResizeObserver: vi.fn(),
       requestDrawingToolHandler: vi.fn(),
       _serviceManager: {
         getEventBus: () => ({ off: vi.fn() }),

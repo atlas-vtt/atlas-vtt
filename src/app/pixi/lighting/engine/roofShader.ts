@@ -101,8 +101,9 @@ void main() {
   vec3 colour = roof.rgb / roof.a;
   if (uLit > 0.5) {
     float level = max(ambient.y, uMinLight);
-    vec3 lit = neutral(toLinear(colour) * uAmbientColor * level);
-    float night = (1.0 - smoothstep(0.03, 0.35, dot(uAmbientColor * level, LUMA))) * uPurkinje;
+    float luminance = dot(uAmbientColor * level, LUMA);
+    vec3 lit = neutral(toLinear(colour) * uAmbientColor * level, luminance);
+    float night = (1.0 - smoothstep(0.03, 0.35, luminance)) * uPurkinje;
     colour = toSrgb(nightShift(lit, night));
   }
   float alpha = roof.a * shown * uAlpha;

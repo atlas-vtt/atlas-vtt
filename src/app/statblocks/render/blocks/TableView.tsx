@@ -10,12 +10,13 @@ import { hasText, NO_TEXT, type ShownText } from '../values/shownText';
 import type { ShownTable } from '../values/shownTable';
 import { TABLE_COL_ATTRIBUTE, TABLE_ROW_ATTRIBUTE } from './tableAttributes';
 import { useTableBands } from './useTableBands';
+import { t } from '../../../i18n';
 
 export { TABLE_COL_ATTRIBUTE, TABLE_ROW_ATTRIBUTE };
 
 /** What a column without a name is called while a statblock or template is edited. */
 export function unnamedColumn(col: number): string {
-  return `Column ${col + 1}`;
+  return t('statblockEditor.table.columnN', { n: col + 1 });
 }
 
 /** What an editor adds to the table: its inputs, handles and buttons. Every part is optional; the card has none. */

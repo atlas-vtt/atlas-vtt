@@ -3,6 +3,7 @@ import { useKeepInView } from '../../../../packages/components/primitives/useKee
 import { cn } from '../../../../../utils/cn';
 import { FIELD_TYPE_LABELS } from '../editorGlyphs';
 import type { FieldChoice, FieldChoiceGroup } from './fieldChoices';
+import { t } from '../../../../i18n';
 
 export interface FieldChoiceListProps {
   id: string;
@@ -51,9 +52,9 @@ export function FieldChoiceList({ id, label, groups, active, onHover, onPick }: 
       className={cn('atlas-te-choices', keepInView.capped && 'atlas-keep-in-view--capped')}
       style={keepInView.style}
     >
-      {groups.length === 0 && <div className="atlas-te-choices__empty">No field matches</div>}
+      {groups.length === 0 && <div className="atlas-te-choices__empty">{t('templateEditor.noFieldMatches')}</div>}
       {groups.map((group) => (
-        <div key={group.id} role="group" aria-label={group.label ?? 'New property'} className="atlas-te-choices__group">
+        <div key={group.id} role="group" aria-label={group.label ?? t('templateEditor.newProperty')} className="atlas-te-choices__group">
           {group.label && <div className="atlas-te-choices__group-label" aria-hidden="true">{group.label}</div>}
           {group.choices.map((choice) => (
             <div
@@ -69,7 +70,7 @@ export function FieldChoiceList({ id, label, groups, active, onHover, onPick }: 
               onClick={() => onPick(choice)}
             >
               <span className="atlas-te-choices__label">
-                {choice.kind === 'new' ? `New property “${choice.label}”` : choice.label}
+                {choice.kind === 'new' ? t('templateEditor.newPropertyNamed', { name: choice.label }) : choice.label}
               </span>
               <span className={cn('atlas-te-choices__hint', choice.kind === 'new' && 'atlas-te-choices__hint--key')}>
                 {hint(choice)}

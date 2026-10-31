@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fitPreviewWindowLayout, previewReach, shiftIntoFrame } from '../../src/app/services/previewWindowLayout';
+import { fitPreviewWindowLayout, previewReach, shiftIntoFrame, visiblePart } from '../../src/app/services/previewWindowLayout';
 
 const FRAME = { left: 300, top: 40, right: 1300, bottom: 840 };
 const box = (left: number, top: number, width: number, height: number): { left: number; top: number; right: number; bottom: number } =>
@@ -38,6 +38,16 @@ describe('previewReach', () => {
 
   it('is nothing while the window is hidden', () => {
     expect(previewReach({ left: 0, top: 0, right: 0, bottom: 0 }, null)).toBeNull();
+  });
+});
+
+describe('visiblePart', () => {
+  const card = box(100, 100, 400, 300);
+
+  it('is the part of a header its card shows, or nothing once it is scrolled out', () => {
+    expect(visiblePart(box(100, 120, 400, 50), [card])).toEqual(box(100, 120, 400, 50));
+    expect(visiblePart(box(100, 80, 400, 50), [card])).toEqual(box(100, 100, 400, 30));
+    expect(visiblePart(box(100, -900, 400, 50), [card, box(0, 0, 1000, 1000)])).toBeNull();
   });
 });
 

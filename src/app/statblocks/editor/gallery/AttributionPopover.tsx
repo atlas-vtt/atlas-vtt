@@ -8,6 +8,7 @@ import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { useKeepInView } from '../../../packages/components/primitives/useKeepInView';
 import { cn } from '../../../../utils/cn';
 import type { TemplateSource } from '../../model/templateTypes';
+import { t } from '../../../i18n';
 
 /** The full credit of a licensed template (§10.5): attribution, licence link, Atlas' change and a trademark line where the source has one. */
 export function AttributionText({ source, headingId }: { source: TemplateSource; headingId?: string | undefined }): React.JSX.Element {
@@ -17,7 +18,7 @@ export function AttributionText({ source, headingId }: { source: TemplateSource;
       <p className="atlas-te-attribution__text">{source.attribution}</p>
       <p className="atlas-te-attribution__text">{source.modification}</p>
       {source.trademarkNotice && <p className="atlas-te-attribution__text">{source.trademarkNotice}</p>}
-      <a className="atlas-te-attribution__link" href={source.licenceUrl} target="_blank" rel="noopener noreferrer">Read the licence</a>
+      <a className="atlas-te-attribution__link" href={source.licenceUrl} target="_blank" rel="noopener noreferrer">{t('statblockEditor.readLicence')}</a>
     </>
   );
 }
@@ -76,7 +77,7 @@ export function AttributionButton({ source, name, layer }: AttributionButtonProp
 
   return (
     <>
-      <LabelTooltip label={`Where ${name} comes from`}>
+      <LabelTooltip label={t('statblockEditor.whereFrom', { name })}>
         <Button
           ref={buttonRef}
           type="button"

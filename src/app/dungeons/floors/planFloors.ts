@@ -16,8 +16,8 @@ import { type BuiltFloor, type FloorRequest, buildFloorLayout } from '../layout/
 import type { CompactLayout } from '../layout/compact';
 import { dir, floorRect } from '../geometry';
 import type { CaveFloorPlan } from '../layout/cavern/caveGrid';
-import { caveFits } from '../layout/cavern/caveFits';
-import { type LaneEnd, clearOfLane, finalEnd } from '../layout/cavern/mainPath';
+import { caveFits, furtherStairFits } from '../layout/cavern/caveFits';
+import { type LaneEnd, finalEnd } from '../layout/cavern/mainPath';
 import { TWO_CONNECTIONS_FROM, type FloorShape, type PlacedStair, chooseOnward, extraConnection, normalRooms } from './connections';
 import { type FloorStack, floorStack, isAbove, stairEnd } from './floorStack';
 import type { ThemeDefinition } from '../themes/themeTypes';
@@ -94,12 +94,12 @@ function stairPair(spot: StairSpot, earlier: number, link: number): [DungeonStai
  * a second stairwell where both are large enough, then whether a way leads on. Null where what is
  * needed cannot stand.
  */
-function linkFloor(seed: number, earlier: FloorShape, later: FloorShape, index: number, last: boolean, stack: FloorStack, across: number, keepsLane: (spot: StairSpot) => boolean): Link | null {
+function linkFloor(seed: number, earlier: FloorShape, later: FloorShape, index: number, last: boolean, stack: FloorStack, across: number, furtherFits: (spot: StairSpot) => boolean): Link | null {
   const extra: StairSpot[] = [];
   let before = earlier;
   let after = later;
   if (normalRooms(earlier) >= TWO_CONNECTIONS_FROM && normalRooms(later) >= TWO_CONNECTIONS_FROM) {
-    const spot = extraConnection(stairsRng(seed, index, 'extra'), before, after, index - 1, stack, keepsLane);
+    const spot = extraConnection(stairsRng(seed, index, 'extra'), before, after, index - 1, stack, furtherFits);
     if (!spot) return null;
     extra.push(spot);
     before = { ...before, stairs: [...before.stairs, { ...spot, to: index }] };
@@ -131,7 +131,7 @@ function nextFloor(seed: number, params: DungeonParams, earlier: FloorShape, ind
   const end = stairEnd(stack, index, index - 1);
   const within = footprintOf(earlier, index, stack);
   const storey: StoreyLanding | null = isStorey(stack, index) ? { over: stairRoomFloor(earlier, landing), ground: within, small: index > 1 } : null;
-  const keepsLane = params.cave ? clearOfLane(earlier, index - 1) : (): boolean => true;
+  const furtherFits = params.cave ? furtherStairFits(earlier, index - 1, stairEnd(stack, index - 1, index)) : (): boolean => true;
   const request: FloorRequest = {
     floor: index,
     params: floorParams(params, index, stack.rise),
@@ -143,7 +143,7 @@ function nextFloor(seed: number, params: DungeonParams, earlier: FloorShape, ind
     galleries: isAbove(stack, index - 1, index) ? earlier.rooms.filter((room) => room.kind === 'room' && room.wing === 'regular' && !room.rotunda).map(floorRect) : [],
     blocked: landingCells(landing, end),
     accept: (built) => {
-      const link = linkFloor(seed, earlier, { ...built, stairs: [landing] }, index, last, stack, params.stairAcross ?? 1, keepsLane);
+      const link = linkFloor(seed, earlier, { ...built, stairs: [landing] }, index, last, stack, params.stairAcross ?? 1, furtherFits);
       const stairs = [landing, ...(link?.extra ?? []).map((spot) => ({ ...spot, to: index - 1 }))];
       return link !== null && laneHolds(params, { ...built, stairs }, index, { kind: 'stair', spot: landing }, link.onward, boss && last);
     },
@@ -157,6 +157,8 @@ function nextFloor(seed: number, params: DungeonParams, earlier: FloorShape, ind
 interface NextFloor {
   layout: CompactLayout;
   sound: boolean;
+  /** Keeps the rules between floors (`BuiltFloor.linked`). */
+  linked: boolean;
   /** The stairwell's end on the floor before, and on this one. */
   from: DungeonStair;
   landing: DungeonStair;
@@ -174,7 +176,7 @@ function nextAcross(seed: number, params: DungeonParams, earlier: PlannedFloor, 
     if (!onward) break;
     const [from, landing] = stairPair(onward.spot, index - 1, link);
     const built = nextFloor(seed, params, { ...earlier, stairs: [...earlier.stairs, from] }, index, last, landing, boss, stack, passOver);
-    const next = built && { layout: built.layout, sound: built.sound, from, landing };
+    const next = built && { layout: built.layout, sound: built.sound, linked: built.linked, from, landing };
     if (next?.sound) return next;
     first ??= next;
   }
@@ -225,8 +227,9 @@ export function planFloors(seed: number, params: DungeonParams, count: number, b
     const last = index === count - 1;
     const next = nextAcross(seed, params, earlier, index, last, boss, stack, link++, index === 1 && fromEntrance, passOver.get(index) ?? 0);
     if (!next) break;
-    if (!next.sound && isStorey(stack, index) && regrown < MOST_REGROWN) {
-      // A storey that cannot keep every rule on the floor below has that floor grown anew, and then the one under it.
+    if (!next.sound && (isStorey(stack, index) || (params.cave !== undefined && !next.linked)) && regrown < MOST_REGROWN) {
+      // A storey that cannot keep every rule on the floor below has that floor grown anew, and then the one under it;
+      // so has a cave floor that breaks the rules between floors (a way whose row its chamber cannot join round it, `caveFits`).
       regrown += 1;
       const fails = (failsAt.get(index) ?? 0) + 1;
       failsAt.set(index, fails);
@@ -239,8 +242,8 @@ export function planFloors(seed: number, params: DungeonParams, count: number, b
     }
     const { layout, from, landing } = next;
     const earlierWithStairs = { ...earlier, stairs: [...earlier.stairs, from] };
-    const keepsLane = params.cave ? clearOfLane(earlierWithStairs, index - 1) : (): boolean => true;
-    const extra = linkFloor(seed, earlierWithStairs, { ...layout, stairs: [landing] }, index, last, stack, across, keepsLane)?.extra ?? [];
+    const furtherFits = params.cave ? furtherStairFits(earlierWithStairs, index - 1, stairEnd(stack, index - 1, index)) : (): boolean => true;
+    const extra = linkFloor(seed, earlierWithStairs, { ...layout, stairs: [landing] }, index, last, stack, across, furtherFits)?.extra ?? [];
     const pairs = extra.map((spot) => stairPair(spot, index - 1, link++));
     floors[index - 1] = { ...earlier, stairs: [...earlierWithStairs.stairs, ...pairs.map(([e]) => e)] };
     floors.push(withStairs(layout, [landing, ...pairs.map(([, l]) => l)]));

@@ -2,12 +2,12 @@ import type { EventEmitter } from 'events';
 import React, { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useAtlasUI } from '../../root/AtlasUIContext';
-import { useDiceDisplay } from '../../hooks/useDiceDisplay';
+import { useDiceDisplay, useDiceVolume } from '../../hooks/useDiceDisplay';
 import { diceFontClass, useDiceLook } from '../../hooks/useDiceLook';
 import { cn } from '../../../../utils/cn';
 import { throwStyle } from '../../../dice3d/diceDisplay';
 import { diceSceneToShow } from '../../../dice3d/rollPresentation';
-import { warmDiceSounds } from '../../../dice3d/audio/diceSamples';
+import { setDiceVolume, warmDiceSounds } from '../../../dice3d/audio/diceSamples';
 import { playDiceReveal } from '../../../audio/diceRevealSound';
 import { canShowDice, warmStages } from '../../../dice3d/stagePool';
 import type { DiceRollResult } from '../../../types/diceTypes';
@@ -20,7 +20,6 @@ import { DiceToast } from './DiceToast';
 import { DICE_TOAST_KNOT_PATHS, DICE_TOAST_KNOT_SYMBOL_ID } from './diceToastOrnament';
 import { useDiceToasts } from './useDiceToasts';
 import { useDiceAvatar } from './useDiceAvatar';
-import { useViewWindow } from '../../useViewWindow';
 
 /** What comes with a roll to show: `muted` where another display plays its sounds, `origin` the token and scene it was made for. */
 export interface RollOptions {
@@ -68,10 +67,15 @@ const CARD_VOLUME = 0.7;
  * Every dice roll, at the top centre of the map: thrown as 3D dice, or as a
  * result card when 3D dice are off or the roll holds dice no real body shows.
  */
-export function DiceRollDisplay({ container, prepare, muted = false, eventBus: suppliedBus, subscribe, cardSounds = false }: DiceRollDisplayProps): React.ReactElement | null {
+export function DiceRollDisplay({ container, prepare, muted: windowMuted = false, eventBus: suppliedBus, subscribe, cardSounds = false }: DiceRollDisplayProps): React.ReactElement | null {
   const { app, view } = useAtlasUI();
   const eventBus = suppliedBus ?? view?.serviceManager?.getEventBus();
   const display = useDiceDisplay(app ?? undefined);
+  const volume = useDiceVolume(app ?? undefined);
+  // At volume 0 the dice stay silent; nothing is decoded or scheduled for them. A roll keeps the
+  // silence it was thrown with: the stage throws again when its `muted` changes, and the master
+  // gain (`setDiceVolume`) quiets a roll in flight.
+  const muted = windowMuted || volume === 0;
   const look = useDiceLook(app ?? undefined);
   const { toasts, addToast, dismissToast, dismissAllToasts } = useDiceToasts();
   const [rolls, setRolls] = useState<readonly StackedRoll[]>([]);
@@ -85,14 +89,19 @@ export function DiceRollDisplay({ container, prepare, muted = false, eventBus: s
       // Without WebGL a stage stays blank (white on some systems), so the roll shows as a card
       if (!scene || !canShowDice(stageDoc)) {
         addToast(prepared);
-        if (cardSounds && !muted && !options.muted) void playDiceReveal(prepared.result.crit ?? null, CARD_VOLUME).catch(() => undefined);
+        if (cardSounds && !muted && !options.muted) void playDiceReveal(prepared.result.crit ?? null, CARD_VOLUME * volume).catch(() => undefined);
         return;
       }
       if (!muted && !options.muted) warmDiceSounds();
-      setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display), ...(options.muted && { muted: true as const }) }));
+      setRolls((prev) => pushRoll(prev, { ...prepared, scene, style: throwStyle(display), ...((options.muted || volume === 0) && { muted: true as const }) }));
     };
     return (subscribe ?? busRolls(eventBus))(show);
-  }, [subscribe, eventBus, addToast, prepare, display, muted, cardSounds, stageDoc]);
+  }, [subscribe, eventBus, addToast, prepare, display, muted, volume, cardSounds, stageDoc]);
+
+  // One audio context plays every window's dice; only the window that sounds sets its volume
+  useEffect(() => {
+    if (!windowMuted) setDiceVolume(volume);
+  }, [volume, windowMuted]);
 
   // Dice stages are built while nothing rolls, so that the first roll does not wait for one.
   useEffect(() => {
@@ -103,9 +112,9 @@ export function DiceRollDisplay({ container, prepare, muted = false, eventBus: s
   // takes it (a modal, the palette, the dashboard) or someone is typing. The
   // player window takes no keyboard input, so only the map view listens.
   const showing = rolls.some((roll) => !roll.leaving) || toasts.some((toast) => toast.phase !== 'exiting');
-  const win = useViewWindow(view?.containerEl);
   useEffect(() => {
     if (container || !showing) return;
+    const win = view?.containerEl.win ?? window;
     const handler = (e: KeyboardEvent): void => {
       if (e.key !== 'Escape' || !canRunMapHotkeys(e, view?.viewId)) return;
       e.preventDefault();
@@ -115,7 +124,7 @@ export function DiceRollDisplay({ container, prepare, muted = false, eventBus: s
     };
     win.addEventListener('keydown', handler, true);
     return (): void => win.removeEventListener('keydown', handler, true);
-  }, [container, showing, view, win, dismissAllToasts]);
+  }, [container, showing, view, dismissAllToasts]);
 
   const close = useCallback((id: string): void => setRolls((prev) => closeRoll(prev, id)), []);
   const dismiss = useCallback((id: string): void => setRolls((prev) => dismissRoll(prev, id)), []);
@@ -135,7 +144,7 @@ export function DiceRollDisplay({ container, prepare, muted = false, eventBus: s
           </defs>
         </svg>
       )}
-      <DiceRollStack rolls={rolls} muted={muted} onClose={close} onDone={dismiss} useAvatar={useDiceAvatar} />
+      <DiceRollStack rolls={rolls} muted={windowMuted} onClose={close} onDone={dismiss} useAvatar={useDiceAvatar} />
       {toasts.map((toast) => (
         <DiceToast key={toast.id} result={toast.result} presentation={toast.sourcePresentation} phase={toast.phase} onDismiss={() => dismissToast(toast.id)} useAvatar={useDiceAvatar} />
       ))}

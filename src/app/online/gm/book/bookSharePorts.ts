@@ -3,12 +3,11 @@ import type { PlacedTokenSource } from '../../../characters/playerCharacters';
 import type { ResolvedStatblock } from '../../../statblocks/model/resolvedTypes';
 import type { NotePatch } from '../../../statblocks/notes/patchTypes';
 import type { ArmedCards } from '../armedCards.ts';
-import type { ScaleImage } from '../assetVariants.ts';
+import type { AssetStoring } from '../assets/assetUses.ts';
 import type { Timers } from '../companionTimers.ts';
 import type { KnownPlayer, OwnedToken } from '../ownership.ts';
 import type { VaultImage } from '../TokenShare.ts';
 import type { BookScene } from './bookScene.ts';
-import type { QuestAsset } from './questGate.ts';
 import type { ResourceEdit } from './resourceEdit.ts';
 import type { ResourceAnswer } from './resourceWrites.ts';
 import type { RestGate } from './restGate.ts';
@@ -29,6 +28,8 @@ export interface BookSharePorts extends Timers {
   /** The owner of a token of the shared scene (`Ownership.ownerOf`). */
   ownerOf(tokenId: string, token: OwnedToken | undefined): string | undefined;
   readImage(path: string): Promise<VaultImage | null>;
+  /** How players are handed assets the store keeps for them; without it they are handed none. */
+  stored?: AssetStoring | undefined;
   /** The file at a vault path as it is now, or null when there is none. */
   stat(path: string): FileStat | null;
   /** The world map players may be shown now with the maps it leads into, or null for none. */
@@ -37,8 +38,6 @@ export interface BookSharePorts extends Timers {
   notice(text: string): void;
   /** The quests of the campaign being played, as players read them: the same for every character. */
   quests(): Promise<readonly BookQuest[]>;
-  /** What a quest's whole text or image is served from, by hash, while the quests last answered name it. */
-  questAsset(hash: string): QuestAsset | undefined;
   /** Writes a checked edit of a player's own resource into Atlas, and answers what the resource holds then (null when it was not taken), at once or later. */
   editResource(edit: ResourceEdit, answer: ResourceAnswer): void;
   /** The statblock note the library token a placed token came from links, or null for none. */
@@ -55,6 +54,4 @@ export interface BookSharePorts extends Timers {
   readonly cards: ArmedCards;
   /** The rest requests' cards changed: the control draws them anew. */
   cardsChanged(): void;
-  /** Scales an image for a player who asks for a longest side; without it players get originals only. */
-  scaleImage?: ScaleImage | undefined;
 }

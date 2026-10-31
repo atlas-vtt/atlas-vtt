@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import type { ResourceDefinition } from '../../../../src/app/resources/resourceTypes';
-import { shapeOf, visibleResources } from '../../../../src/app/resources/visibleResources';
+import { visibleResources } from '../../../../src/app/resources/visibleResources';
 import type { TokenEntity } from '../../../../src/app/types';
 import type { GridState } from '../../../../src/app/types/gridTypes';
 import type { SceneLightingChanges } from '../../../../src/app/types/lightingTypes';
@@ -21,9 +21,9 @@ const { createViewAtlasStore } = (await import(/* @vite-ignore */ STORE_FACTORY)
  *   takes the GM's grid as it is);
  * - nameplates show by the player view's Show nameplates alone (`TokenUIRenderer.update` with player
  *   settings; the map's and the token's own nameplate switches decide only the GM's canvas);
- * - bars are the resources `visibleToPlayers` in bar sockets (`visibleResources(…, 'player')`; the
- *   map's hidden resources decide only the GM's canvas); the player window also shows the wheels
- *   players see, at rest, which the companion does not send yet;
+ * - bars and wheels are the resources `visibleToPlayers` (`visibleResources(…, 'player')`, each
+ *   with its socket; the map's hidden resources decide only the GM's canvas), the wheels at rest as
+ *   the player window shows them;
  * - everything else is the scene as the store holds it.
  * Settings change without a store write, so players must get them within the companion's poll.
  */
@@ -78,13 +78,13 @@ describe("token nameplates: Atlas's player window shows them by the player view'
   });
 });
 
-describe("token bars: Atlas's player window shows the resources players may see, in bar sockets", () => {
+describe("token bars and wheels: Atlas's player window shows the resources players may see, in their sockets", () => {
   it("leaves players' bars alone when the GM hides a bar on his map, and follows each resource's Show to players, without a store write", async () => {
     const { store, table, settle, tokens } = await gm(createViewAtlasStore);
     const bars = (): unknown => tokens().get('ogre')?.ui?.bars.map(({ colour, current, max }) => [colour, current, max]);
     const atlasBars = (resources: readonly ResourceDefinition[]): unknown => {
       const ogre = store.getState().objects.tokens.ogre as TokenEntity;
-      return visibleResources(ogre, resources, 'player').filter(({ slot }) => shapeOf(slot) === 'bar').map(({ definition, value }) => [definition.color, value.current, value.max]);
+      return visibleResources(ogre, resources, 'player').map(({ definition, value }) => [definition.color, value.current, value.max]);
     };
     expect(bars()).toEqual([['#dc2626', 13, 31]]);
     expect(bars()).toEqual(atlasBars(RESOURCES));

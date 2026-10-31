@@ -2,6 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import { cn } from '../../../../utils/cn';
+import { t } from '../../../i18n';
 
 /** A chip's remove button. A press keeps focus where it is, so removing never blurs (and commits) what is being typed. */
 export function ChipRemove({ label, onRemove }: { label: string; onRemove: () => void }): React.JSX.Element {
@@ -23,10 +24,10 @@ export function ChipRemove({ label, onRemove }: { label: string; onRemove: () =>
 export function UnreadChip({ part, onRemove }: { part: string; onRemove: () => void }): React.JSX.Element {
   return (
     <span className={cn('atlas-sb-pane-chip', 'atlas-sb-pane-pick--unread')}>
-      <LabelTooltip label="Not one of the options. It stays as written until you remove it.">
+      <LabelTooltip label={t('statblockEditor.notAnOption')}>
         <span className="atlas-sb-pane-chip__text" tabIndex={0}>{part}</span>
       </LabelTooltip>
-      <ChipRemove label={`Remove ${part}`} onRemove={onRemove} />
+      <ChipRemove label={t('statblockEditor.removeNamed', { name: part })} onRemove={onRemove} />
     </span>
   );
 }

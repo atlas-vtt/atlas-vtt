@@ -10,8 +10,11 @@
  * 5: a player's formula may name its numbers (`+4+3[Str mod]`, a bonus too), as a value's `@` references fill it in (2026-10-22).
  * 6: a player's roll may ask for advantage or disadvantage (`advantage`), rolled by the GM's dice set rules; the scene's rules and a player's tokens name the dice it rolls with (`dice`) (2026-10-22).
  * 7: a player sets the maximum of their character's resources, tracked numbers and Counters rows (`book-resource` with `max`, `SheetResource.maxEditable`) (2026-10-22).
+ * 8: a player takes an item out of their character's book (`book-item-delete`) (2026-10-27).
+ * 9: assets are stored for players (`AssetRef.id`, `asset-progress`) and the explored memory comes inline where it is small (`explored.png`), else stored (`explored.mask`) (2026-10-29); the first level without the GM serving assets over the table's socket (`asset-request`, `asset-chunk` and the scaled copies are gone).
+ * 10: an explored memory carries the GM's count of removals from it (`explored.serial`): players replace theirs where it changed, and add the memory to theirs otherwise (2026-10-30).
  */
-export const GM_LEVEL = 7;
+export const GM_LEVEL = 10;
 
 /** The level of a GM that names none: one from before levels, which serves level 1. */
 export const UNNAMED_GM_LEVEL = 1;

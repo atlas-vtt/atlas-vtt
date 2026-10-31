@@ -1,9 +1,8 @@
 import { everyLevelObjects } from '../../levels/levelObjects';
 import { hasLevels, levelById, resolveLevel } from '../../levels/sceneLevels';
-import { levelLabel } from '../../react/components/levels/levelEditing';
 import { mapTokens } from '../../tokens/offMap';
 import type { TokenEntity } from '../../types';
-import { MAX_FLOOR_NAME, type SharedFloor } from '../protocol/index.ts';
+import type { SharedFloor } from '../protocol/index.ts';
 import type { SceneState } from './atlasView.ts';
 
 /** A floor of the shared scene, by its level id; null is the first floor, and a scene without levels' only one. */
@@ -82,5 +81,5 @@ export function sharedFloor(state: Pick<SceneState, 'levels'>, floor: Floor, gro
   const { levels } = state;
   const level = levelById(levels, floor);
   if (!hasLevels(levels) || level === null) return undefined;
-  return { group, level: levels.indexOf(level), name: [...levelLabel(levels, level)].slice(0, MAX_FLOOR_NAME).join('') };
+  return { group, level: levels.indexOf(level) };
 }

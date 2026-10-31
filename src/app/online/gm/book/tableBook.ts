@@ -1,13 +1,14 @@
 import { normalizePath, type App } from 'obsidian';
 import type { GmMessage } from '../../protocol/index.ts';
 import { setLootRecipientSource } from '../../../loot/lootRecipients';
-import { scaleInWindow } from '../assetVariants.ts';
 import type { ArmedCards } from '../armedCards.ts';
 import { companionTimers } from '../companionTimers.ts';
 import type { Ownership } from '../ownership.ts';
 import type { VaultImage } from '../TokenShare.ts';
 import type { BookScene } from './bookScene.ts';
 import { BookShare } from './BookShare.ts';
+import type { AssetStoring } from '../assets/assetUses.ts';
+import { StoredQuests } from './storedQuests.ts';
 import { writeCharacterValue } from './characterValues.ts';
 import type { ResourceWrites } from './resourceWrites.ts';
 import { gatedQuestAsset, gatedQuests, onQuestsChange } from './questGate.ts';
@@ -26,6 +27,8 @@ export interface TableBookPorts {
   /** The shared scene as the books read it, or null while none is shown. */
   scene(): BookScene | null;
   readImage(path: string): Promise<VaultImage | null>;
+  /** How players are handed assets the store keeps for them; without it they are handed none. */
+  readonly stored?: AssetStoring | undefined;
   randomId(): string;
   /** Where players' edits of their tokens in the shared scene are written; null while no scene is shared. */
   tokenWrites(): ResourceWrites | null;
@@ -38,6 +41,8 @@ export interface TableBookPorts {
 /** A running table's books, and what they hang on while it runs. */
 export interface TableBook {
   readonly share: BookShare;
+  /** References the books hand out may go another way now (the store refused ids): they are made again. */
+  refreshAssets(): void;
   start(): void;
   stop(): void;
 }
@@ -53,6 +58,7 @@ export interface TableBook {
 export function tableBook(ports: TableBookPorts): TableBook {
   const { app, ownership } = ports;
   const timers = companionTimers();
+  const storedQuests = new StoredQuests(ports.stored, gatedQuestAsset);
   const share = new BookShare({
     send: (body, to) => ports.send(body, to),
     now: () => timers.now(),
@@ -64,14 +70,14 @@ export function tableBook(ports: TableBookPorts): TableBook {
     players: () => ownership.list(),
     ownerOf: (tokenId, token) => ownership.ownerOf(tokenId, token),
     readImage: (path) => ports.readImage(path),
+    stored: ports.stored,
     stat: (path) => {
       const file = app.vault.getFileByPath(normalizePath(path));
       return file === null ? null : { mtime: file.stat.mtime, size: file.stat.size };
     },
     worldMap: () => gatedWorldMap(),
     notice: (text) => showNotice(text),
-    quests: () => gatedQuests(),
-    questAsset: (hash) => gatedQuestAsset(hash),
+    quests: async () => storedQuests.of(await gatedQuests()),
     editResource: (edit, answer) => {
       if (edit.kind === 'character') {
         const taken = writeCharacterValue(app, edit);
@@ -88,11 +94,14 @@ export function tableBook(ports: TableBookPorts): TableBook {
     rests: gatedRests,
     cards: ports.cards,
     cardsChanged: () => ports.cardsChanged(),
-    scaleImage: scaleInWindow,
   }, ports.shelf);
   let stops: (() => void)[] = [];
   return {
     share,
+    refreshAssets: () => {
+      storedQuests.clear();
+      share.refreshAssets();
+    },
     start: () => {
       if (stops.length > 0) return;
       stops = [

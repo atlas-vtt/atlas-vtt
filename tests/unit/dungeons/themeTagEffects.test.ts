@@ -11,6 +11,7 @@ const FULFILLED: Readonly<Record<ThemeId, readonly DungeonTag[]>> = {
   fortress: ['dry'],
   mansion: ['dry', 'no-secrets'],
   cavern: [],
+  forest: [],
 };
 const SEEDS = [1, 2, 3, 4, 5, 6];
 const FLOORS = [1, 2];

@@ -4,6 +4,7 @@ import type { TemplateField } from '../../../model/templateTypes';
 import type { EditorSession } from '../sessionTypes';
 import { listFromText, sameList, textFromList } from './blockEdits';
 import { SettingNote, SwitchSetting, TextSetting } from './InspectorControls';
+import { t } from '../../../../i18n';
 
 /** Where the inspector focuses the choices when a block asks for them (the toolbar's Kind of value). */
 export const CHOICES_FOCUS_KEY = 'choices';
@@ -32,9 +33,9 @@ export function ChoiceSettings({ field, session, readOnly, edit }: ChoiceSetting
   return (
     <>
       <TextSetting
-        label="Choices"
+        label={t('templateEditor.choices')}
         value={textFromList(field.options)}
-        placeholder="Small, Medium, Large"
+        placeholder={t('templateEditor.choicesExample')}
         session={session}
         disabled={readOnly}
         focusKey={CHOICES_FOCUS_KEY}
@@ -43,14 +44,14 @@ export function ChoiceSettings({ field, session, readOnly, edit }: ChoiceSetting
           if (!sameList(options, field.options)) edit({ options: options.length > 0 ? options : undefined });
         }}
       />
-      <SwitchSetting label="Pick several" value={field.several === true} onChange={(several) => edit({ several: several || undefined })} disabled={readOnly} />
-      <SwitchSetting label="Each with a number" value={field.numbered === true} onChange={(numbered) => edit({ numbered: numbered || undefined })} disabled={readOnly} />
+      <SwitchSetting label={t('templateEditor.pickSeveral')} value={field.several === true} onChange={(several) => edit({ several: several || undefined })} disabled={readOnly} />
+      <SwitchSetting label={t('templateEditor.eachWithNumber')} value={field.numbered === true} onChange={(numbered) => edit({ numbered: numbered || undefined })} disabled={readOnly} />
       {field.numbered && (
-        <TextSetting label="Unit" value={field.unit ?? ''} placeholder="ft." session={session} disabled={readOnly}
+        <TextSetting label={t('templateEditor.unit')} value={field.unit ?? ''} placeholder={t('templateEditor.unitExample')} session={session} disabled={readOnly}
           onText={(text) => edit({ unit: text.trim() ? text : undefined })} />
       )}
-      <SwitchSetting label="Allow other values" value={field.open === true} onChange={(open) => edit({ open: open || undefined })} disabled={readOnly} />
-      {(field.options?.length ?? 0) > 0 && <SettingNote>A statblock reads “{choiceExample(field)}”.</SettingNote>}
+      <SwitchSetting label={t('templateEditor.allowOther')} value={field.open === true} onChange={(open) => edit({ open: open || undefined })} disabled={readOnly} />
+      {(field.options?.length ?? 0) > 0 && <SettingNote>{t('templateEditor.choiceReads', { example: choiceExample(field) })}</SettingNote>}
     </>
   );
 }

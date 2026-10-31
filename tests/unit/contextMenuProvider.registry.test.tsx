@@ -36,6 +36,18 @@ it('opens its menus in the document it renders in, as a map in a popout does', a
   expect(document.body.querySelector('.atlas-ctx-menu')).toBeNull();
 });
 
+it("opens a menu without a document in the focused window's provider, though a map in another window mounted later", async () => {
+  const popout = document.implementation.createHTMLDocument('popout');
+  const host = popout.body.appendChild(popout.createElement('div'));
+  render(<ContextMenuProvider><div>Popout map</div></ContextMenuProvider>, { container: host });
+  render(<ContextMenuProvider><div>Main window map</div></ContextMenuProvider>);
+  vi.stubGlobal('activeDocument', popout);
+
+  openContextMenuGlobal([{ type: 'item', label: 'Hide', onClick: vi.fn() }], { x: 10, y: 10 });
+  await waitFor(() => expect(popout.body.querySelector('.atlas-ctx-menu')).not.toBeNull());
+  expect(document.body.querySelector('.atlas-ctx-menu')).toBeNull();
+});
+
 it('returns keyboard focus without scrolling the view', async () => {
   const host = render(<ContextMenuProvider><button>Return here</button></ContextMenuProvider>);
   const trigger = host.getByRole('button');

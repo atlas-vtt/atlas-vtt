@@ -17,18 +17,18 @@ describe('themes', () => {
       expect(pickTheme(seed, 'any', ['ruined'])).not.toBe('cavern');
       expect(pickTheme(seed, 'any', ['ruined'])).toBe(pickTheme(seed, 'any', ['ruined']));
     }
-    expect(new Set(SEEDS.map((seed) => pickTheme(seed, 'any', ['lava', 'ruined'])))).toEqual(new Set<ThemeId>(['fortress', 'mansion', 'cavern']));
+    expect(new Set(SEEDS.map((seed) => pickTheme(seed, 'any', ['lava', 'ruined'])))).toEqual(new Set<ThemeId>(['fortress', 'mansion', 'cavern', 'forest']));
   });
 
-  it('Any spreads over the three themes', () => {
+  it('Any spreads over the four themes', () => {
     const counts = new Map<ThemeId, number>();
     for (let seed = 1; seed <= 600; seed++) {
       const theme = pickTheme(seed, 'any', []);
       counts.set(theme, (counts.get(theme) ?? 0) + 1);
     }
-    for (const theme of ['fortress', 'mansion', 'cavern'] as const) {
-      expect((counts.get(theme) ?? 0) / 600, theme).toBeGreaterThanOrEqual(0.25);
-      expect((counts.get(theme) ?? 0) / 600, theme).toBeLessThanOrEqual(0.42);
+    for (const theme of ['fortress', 'mansion', 'cavern', 'forest'] as const) {
+      expect((counts.get(theme) ?? 0) / 600, theme).toBeGreaterThanOrEqual(0.18);
+      expect((counts.get(theme) ?? 0) / 600, theme).toBeLessThanOrEqual(0.33);
     }
   });
 

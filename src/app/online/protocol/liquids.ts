@@ -5,9 +5,11 @@ import { COLOUR_PATTERN, MAX_COORDINATE, TOKEN_ID_PATTERN } from './tokens.ts';
 export const MAX_SHARED_LIQUIDS = 256;
 /** The corners one surface may have, its holes' included, as Atlas reads them. */
 export const MAX_SHARED_LIQUID_CORNERS = 2048;
+/** The points a surface's course may have, as Atlas reads them. */
+export const MAX_SHARED_COURSE_POINTS = 2048;
 /**
- * The corners of all surfaces of one message together: what its parts can carry at two decimals and
- * then some. A generated lake has a few hundred.
+ * The corners of all surfaces of one message together, their courses' points included: what its
+ * parts can carry at two decimals and then some. A generated lake has a few hundred.
  */
 export const MAX_SHARED_LIQUID_TOTAL = 262_144;
 
@@ -25,8 +27,11 @@ export interface SharedLiquidColours {
  * Water, lava or acid that moves on the map, drawn over the map image and under lighting and fog like
  * the map itself: it shows nothing the map does not. `id` is a random alias, the same while the scene
  * stands; corners are flat `[x0, y0, …]` in world pixels, `holes` what stands dry inside, `flow` the
- * unit direction it flows (absent: it stands still), `art` the engraved looks' ink, and `glow` an alias
- * the pieces of lava that glow with one light share, so they smoulder as one.
+ * unit direction it flows (absent: it stands still), `course` the line flowing water follows round its
+ * bends (flat, downstream: a river's middle; `flow` is then its general way), `openEdges` the edges of
+ * `polygon` (by the index of their first corner) that are no shore because the water goes on past them,
+ * `art` the engraved looks' ink or Crayon's strokes, and `glow` an alias the pieces of lava that glow with one light share,
+ * so they smoulder as one.
  */
 export interface SharedLiquid {
   readonly id: string;
@@ -34,8 +39,10 @@ export interface SharedLiquid {
   readonly polygon: readonly number[];
   readonly holes?: readonly (readonly number[])[];
   readonly flow?: { readonly x: number; readonly y: number };
+  readonly course?: readonly number[];
+  readonly openEdges?: readonly number[];
   readonly colours: SharedLiquidColours;
-  readonly art?: 'engraved';
+  readonly art?: 'engraved' | 'crayon';
   readonly glow?: string;
 }
 
@@ -66,6 +73,21 @@ function readColours(value: unknown): SharedLiquidColours | null {
   return colour(surface) && colour(deep) && colour(glint) ? { surface, deep, glint } : null;
 }
 
+/** A course of two points or more, every one on the map and not all one, else none. */
+function readCourse(value: unknown): number[] | undefined {
+  if (!Array.isArray(value) || value.length % 2 !== 0 || value.length < 4 || value.length > MAX_SHARED_COURSE_POINTS * 2 || !value.every(isCoordinate)) return undefined;
+  for (let i = 2; i < value.length; i += 2) if (value[i] !== value[0] || value[i + 1] !== value[1]) return value;
+  return undefined;
+}
+
+/** The open edges of an outline of `corners` corners, each once, in order. */
+function readOpenEdges(value: unknown, corners: number): number[] {
+  if (!Array.isArray(value) || value.length > corners) return [];
+  const edges = new Set<number>();
+  for (const edge of value) if (Number.isInteger(edge) && (edge as number) >= 0 && (edge as number) < corners) edges.add(edge as number);
+  return [...edges].sort((a, b) => a - b);
+}
+
 /** The holes that are areas, as long as all corners of the surface stay within the limit. */
 function readHoles(value: unknown, corners: number): number[][] {
   if (!Array.isArray(value)) return [];
@@ -88,20 +110,25 @@ function parseLiquid(value: unknown): SharedLiquid | null {
   if (liquid === undefined || colours === null) return null;
   const holes = readHoles(value.holes, value.polygon.length / 2);
   const flow = readFlow(value.flow);
+  const course = flow !== undefined ? readCourse(value.course) : undefined;
+  const openEdges = readOpenEdges(value.openEdges, value.polygon.length / 2);
   return {
     id: value.id,
     liquid,
     polygon: value.polygon,
     ...(holes.length > 0 && { holes }),
     ...(flow !== undefined && { flow }),
+    ...(course !== undefined && { course }),
+    ...(openEdges.length > 0 && { openEdges }),
     colours,
-    ...(value.art === 'engraved' && { art: 'engraved' as const }),
+    ...((value.art === 'engraved' || value.art === 'crayon') && { art: value.art }),
     ...(liquid === 'lava' && typeof value.glow === 'string' && TOKEN_ID_PATTERN.test(value.glow) && { glow: value.glow }),
   };
 }
 
-/** The number of corners of a surface, its holes' included. */
-export const liquidCorners = (liquid: Pick<SharedLiquid, 'polygon' | 'holes'>): number => (liquid.polygon.length + (liquid.holes ?? []).reduce((sum, hole) => sum + hole.length, 0)) / 2;
+/** The number of corners of a surface, its holes' and its course's points included. */
+export const liquidCorners = (liquid: Pick<SharedLiquid, 'polygon' | 'holes' | 'course'>): number =>
+  (liquid.polygon.length + (liquid.holes ?? []).reduce((sum, hole) => sum + hole.length, 0) + (liquid.course?.length ?? 0)) / 2;
 
 /**
  * The surfaces of a floor in drawing order (a later one lies over an earlier one): those that can be

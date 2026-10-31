@@ -10,6 +10,7 @@ import { SceneTabBar } from '../../src/app/react/components/SceneTabBar';
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { createTabMetaStore } from '../../src/app/stores/tabMetaStore';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { sceneTabProcessing } from '../mocks/sceneTabProcessing';
 import { DASHBOARD_THEME } from './dashboardTheme';
 import { mouse } from './realMouse';
 
@@ -63,7 +64,7 @@ function inTestFrame(win: Window, point: Point): Point {
   return result;
 }
 
-export async function mountSceneTabs(options: { names?: string[]; width?: number; iframe?: boolean } = {}) {
+export async function mountSceneTabs(options: { names?: string[]; width?: number; iframe?: boolean; processing?: boolean } = {}) {
   let iframe: HTMLIFrameElement | null = null;
   let win = window as OwnerWindow;
   if (options.iframe) {
@@ -106,7 +107,9 @@ export async function mountSceneTabs(options: { names?: string[]; width?: number
   let pointerId = SYNTHETIC_POINTER_ID;
   const rememberPointer = (event: PointerEvent): void => { pointerId = event.pointerId; };
   doc.addEventListener('pointerdown', rememberPointer, true);
-  const { app } = createInMemoryApp({ files: {} });
+  const processing = options.processing ? sceneTabProcessing(store.getState().tabs[0]!.filePath) : null;
+  const { app } = processing ?? createInMemoryApp({ files: {} });
+  processing?.progress(25);
   const value = { app, view: { viewId: 'scene-tabs-gpu', tabMetaStore: store }, pixiApp: null, renderer: null } as unknown as AtlasUIContextValue;
   function Fixture(): React.ReactElement {
     const [shown, setShown] = useState(presentedId);
@@ -116,9 +119,12 @@ export async function mountSceneTabs(options: { names?: string[]; width?: number
       <div className="atlas-ui" style={{ position: 'relative', width: '100%', height: '100%', pointerEvents: 'none' }}>
         <AtlasUIContext.Provider value={value}>
           <div className="atlas-top-bar-row">
-            <SceneTabBar onMoveTab={calls.move} onSwitchTab={calls.switch} onCloseTab={calls.close}
-              onPresentTab={(id) => { calls.present(id); presentedId = id; setShown(id); }} presentedTabId={shown}
-              onAddTab={calls.add} onShowAllTabs={calls.all} />
+            <div className="atlas-top-bar-start">
+              <SceneTabBar onMoveTab={calls.move} onSwitchTab={calls.switch} onCloseTab={calls.close}
+                onPresentTab={(id) => { calls.present(id); presentedId = id; setShown(id); }} presentedTabId={shown}
+                onAddTab={calls.add} onShowAllTabs={calls.all} />
+              <div className="atlas-top-bar-start__below" />
+            </div>
           </div>
         </AtlasUIContext.Provider>
       </div>
@@ -148,7 +154,7 @@ export async function mountSceneTabs(options: { names?: string[]; width?: number
     click: async (point: Point) => { const at = inTestFrame(win, point); await mouse.hover(at.x, at.y); await mouse.click(at.x, at.y); },
   };
   return {
-    win, doc, iframe, host, store, ids, calls, strip, tab, name, action, query, mouse: mouseIn,
+    win, doc, iframe, host, store, ids, calls, strip, tab, name, action, query, mouse: mouseIn, processing,
     presented: () => presentedId,
     pointerId: () => pointerId,
     order: () => store.getState().tabs.map((item) => item.id),
@@ -157,6 +163,7 @@ export async function mountSceneTabs(options: { names?: string[]; width?: number
     clearCalls: () => { for (const spy of Object.values(calls)) spy.mockClear(); },
     dispose: () => {
       rendered.unmount();
+      processing?.dispose();
       doc.removeEventListener('keydown', mapEscape);
       doc.removeEventListener('pointerdown', rememberPointer, true);
       host.remove(); style.remove(); restoreHelpers();

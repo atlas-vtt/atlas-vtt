@@ -74,16 +74,16 @@ describe('a players\' frame of its own size, brought to a 2D canvas through the 
   const cleanup: (() => void)[] = [];
   afterEach(() => { while (cleanup.length) cleanup.pop()!(); });
 
-  interface Options { pane?: [number, number]; resolution?: number; samples?: boolean; preference?: 'webgl' | 'canvas' }
+  interface Options { pane?: [number, number]; resolution?: number; samples?: boolean }
 
   /** A map view's renderer as the plugin sets it up: `samples` is a canvas of a view made while lighting is off. */
-  async function setup({ pane = [200, 120], resolution = 1, samples = false, preference = 'webgl' }: Options = {}): Promise<Rig> {
+  async function setup({ pane = [200, 120], resolution = 1, samples = false }: Options = {}): Promise<Rig> {
     const app = new Application();
     await app.init({
-      width: pane[0], height: pane[1], resolution, preference, antialias: true, useBackBuffer: !samples, autoStart: false,
+      width: pane[0], height: pane[1], resolution, preference: 'webgl', antialias: true, useBackBuffer: !samples, autoStart: false,
       backgroundColor: BACKGROUND, backgroundAlpha: 1, autoDensity: true,
     });
-    expect(app.renderer.name).toBe(preference);
+    expect(app.renderer.name).toBe('webgl');
     const { renderer } = app;
     const frames = new PlayerFrameTexture(renderer);
     const world = new Container();
@@ -96,7 +96,7 @@ describe('a players\' frame of its own size, brought to a 2D canvas through the 
     for (let i = 0; i < 60; i++) marks.circle((i * 97) % MAP, (i * 61) % MAP, 6 + (i % 5)).fill(0x102030 + i * 0x030507);
     world.addChild(floor, marks);
     app.stage.addChild(world);
-    const texture = preference === 'webgl' ? noise(256) : null;
+    const texture = noise(256);
     // In screen space, a texel to a pixel of the frame: set per frame
     const grain = texture ? new Sprite(texture) : null;
     if (grain) {
@@ -403,20 +403,6 @@ describe('a players\' frame of its own size, brought to a 2D canvas through the 
     expect(copy).not.toHaveBeenCalled();
     rig.renderer.canvas.width = width;
     rig.renderer.canvas.height = height;
-  });
-
-  it('copies a frame on PIXI\'s Canvas renderer in one piece, pixel for pixel', async () => {
-    const rig = await setup({ preference: 'canvas' });
-    for (const frame of [frameOf(500, 333), frameOf(100, 50), frameOf(640, 360, 1.5)]) {
-      const expected = rgbOf(rig.readBack(frame));
-      const { pixels, pieces } = rig.mirrored(frame);
-      expect(pieces).toHaveLength(1);
-      expect(pieces[0]!.image).not.toBe(rig.renderer.canvas);
-      expect(firstDifference(rgbOf(pixels), expected, frame.width)).toBeNull();
-    }
-    const own = rgbOf(rig.ownCanvas());
-    rig.mirrored(frameOf(500, 333));
-    expect(firstDifference(rgbOf(rig.ownCanvas()), own, rig.renderer.canvas.width)).toBeNull();
   });
 
   /** MB of the textures the renderer manages now. */

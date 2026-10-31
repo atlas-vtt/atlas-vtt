@@ -5,6 +5,7 @@ import { SEES_ALL, computeSight } from '../../../../vision/sight';
 import type { CompositeFilter } from '../compositeFilter';
 import { LightingEngine } from '../LightingEngine';
 import { LightingWorld } from '../LightingWorld';
+import { PolygonWorld } from '../PolygonWorld';
 import { LIGHTING_QUALITY } from '../../../../lighting/lightingQuality';
 import type { EngineLight, EngineScene } from '../types';
 import { createTestRenderer, renderThroughEngine } from './gpuTestUtils';
@@ -71,15 +72,25 @@ describe('LightingEngine', () => {
     const first = render(engine, renderer, 0.5, -22, -22);
     expect(first(128, 128)).toBeGreaterThan(150);
     const replaced = vi.spyOn(LightingWorld.prototype, 'destroy');
-    engine.setQuality(LIGHTING_QUALITY.saver);
+    engine.setQuality(LIGHTING_QUALITY.balanced);
     expect(replaced).toHaveBeenCalledTimes(1);
     engine.flush();
+    const balanced = render(engine, renderer, 0.5, -22, -22);
+    expect(balanced(128, 128)).toBeGreaterThan(150);
+    expect(balanced(250, 250)).toBe(0);
+    // Flicker alone changes nothing the world was built with.
+    engine.setQuality({ ...LIGHTING_QUALITY.balanced, flickerMs: 30 });
+    expect(replaced).toHaveBeenCalledTimes(1);
+    // The polygon picture is a world, and a composite, of its own.
+    const polygons = vi.spyOn(PolygonWorld.prototype, 'destroy');
+    engine.setQuality(LIGHTING_QUALITY.saver);
+    expect(replaced).toHaveBeenCalledTimes(2);
     const saver = render(engine, renderer, 0.5, -22, -22);
     expect(saver(128, 128)).toBeGreaterThan(150);
     expect(saver(250, 250)).toBe(0);
-    // Flicker alone changes nothing the world was built with.
-    engine.setQuality({ ...LIGHTING_QUALITY.saver, flickerMs: 30 });
-    expect(replaced).toHaveBeenCalledTimes(1);
+    engine.setQuality(LIGHTING_QUALITY.high);
+    expect(polygons).toHaveBeenCalledTimes(1);
+    expect(render(engine, renderer, 0.5, -22, -22)(128, 128)).toBeGreaterThan(150);
   });
 
   it("follows each render's own camera (player window)", async () => {

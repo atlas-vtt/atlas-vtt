@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { BOUNCE, FLICKER_INTERVAL_MS } from '../../../../lighting/lightingConstants';
 import { LightingWorld } from '../LightingWorld';
 import { GpuPacer } from '../GpuPacer';
-import { LIGHTING_QUALITY } from '../../../../lighting/lightingQuality';
+import { LIGHTING_QUALITY, type TracedQuality } from '../../../../lighting/lightingQuality';
 import type { DrawnLight } from '../LightMap';
 import type { EngineLight } from '../types';
 import { createTestRenderer, readFloats } from './gpuTestUtils';
@@ -105,37 +105,20 @@ describe('LightingWorld.animate', () => {
     expect(draw).toHaveBeenCalledTimes(2);
   });
 
-  it('keeps a flickering light steady and builds no bounce where the quality saves them', async () => {
+  it('builds no bounce where the quality saves it', async () => {
     const renderer = await createTestRenderer(256);
     cleanup.push(() => renderer.destroy());
-    const world = new LightingWorld(renderer, { width: 1024, height: 1024 }, LIGHTING_QUALITY.saver);
+    const world = new LightingWorld(renderer, { width: 1024, height: 1024 }, { ...LIGHTING_QUALITY.balanced, bounceMaxSide: 0 });
     cleanup.push(() => world.destroy());
-    const draw = vi.spyOn(world.lightMap, 'draw');
-    world.update([], [torch], Texture.WHITE);
+    world.update([], [{ ...torch, animation: 'none' }], Texture.WHITE);
     expect(world.cascades).toBeNull();
     expect(world.busy()).toBe(false);
-    expect(world.animate(START)).toBe(false);
-    expect(world.animate(START + 10 * FLICKER_INTERVAL_MS)).toBe(false);
-    expect(draw).toHaveBeenCalledTimes(1);
-  });
-
-  it('draws the lights steady at once when flicker is switched off', async () => {
-    const { world } = await setup();
-    world.animate(START + FLICKER_INTERVAL_MS);
-    const draw = vi.spyOn(world.lightMap, 'draw');
-    world.setFlicker(null);
-    expect(draw).toHaveBeenCalledTimes(1);
-    expect((draw.mock.calls[0]![0][0] as DrawnLight).intensity).toBe(torch.intensity);
-    expect(world.busy()).toBe(false);
-    world.setFlicker(66);
-    expect(world.busy()).toBe(true);
-    expect(world.animate(START + 10_000)).toBe(true);
   });
 
   it('holds its textures to the quality\'s texels on large maps, and keeps the finest texel on small ones', async () => {
     const renderer = await createTestRenderer(64);
     cleanup.push(() => renderer.destroy());
-    const sizes = (side: number, quality: typeof LIGHTING_QUALITY.high): [number, number] => {
+    const sizes = (side: number, quality: TracedQuality): [number, number] => {
       const world = new LightingWorld(renderer, { width: side, height: side }, quality);
       try {
         return [world.texel, world.lightMap.texture.source.pixelWidth];
@@ -145,8 +128,8 @@ describe('LightingWorld.animate', () => {
     };
     expect(sizes(8192, LIGHTING_QUALITY.high)).toEqual([2, 4096]);
     expect(sizes(8192, LIGHTING_QUALITY.balanced)).toEqual([4, 2048]);
-    expect(sizes(8192, LIGHTING_QUALITY.saver)).toEqual([8, 1024]);
-    expect(sizes(2048, LIGHTING_QUALITY.saver)).toEqual([2, 1024]);
+    expect(sizes(8192, { ...LIGHTING_QUALITY.balanced, maxTexels: 1024 })).toEqual([8, 1024]);
+    expect(sizes(2048, { ...LIGHTING_QUALITY.balanced, maxTexels: 1024 })).toEqual([2, 1024]);
     const balanced = new LightingWorld(renderer, { width: 4096, height: 4096 }, LIGHTING_QUALITY.balanced);
     cleanup.push(() => balanced.destroy());
     expect(balanced.cascades).not.toBeNull();
@@ -180,8 +163,9 @@ describe('a paced LightingWorld', () => {
   it('builds a scene too large for one batch over several frames, to the light map built at once', async () => {
     const renderer = await createTestRenderer(64);
     const bounds = { width: 4096, height: 4096 };
-    const paced = new LightingWorld(renderer, bounds, LIGHTING_QUALITY.saver, true);
-    const atOnce = new LightingWorld(renderer, bounds, LIGHTING_QUALITY.saver);
+    const coarse: TracedQuality = { ...LIGHTING_QUALITY.balanced, maxTexels: 1024, bounceMaxSide: 0, tileRays: 8 };
+    const paced = new LightingWorld(renderer, bounds, coarse, true);
+    const atOnce = new LightingWorld(renderer, bounds, coarse);
     try {
       const walls = [{ id: 'w', kind: 'wall' as const, type: 'solid' as const, p1: { x: 1000, y: 600 }, p2: { x: 1000, y: 3400 } }];
       const lights = Array.from({ length: 12 }, (_, i): EngineLight => ({ ...torch, key: `l${i}`, x: 500 + (i % 4) * 1000, y: 700 + Math.floor(i / 4) * 1200, bright: 350, dim: 700, flame: 70, animation: 'none' }));

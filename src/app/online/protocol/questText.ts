@@ -1,4 +1,4 @@
-import { isSide, MAX_ASSET_BYTES, parseAsset, type AssetRef } from './asset.ts';
+import { ASSET_CAPS, isSide, parseAsset, type AssetRef } from './asset.ts';
 import { bookText } from './bookText.ts';
 import { isRecord } from './shape.ts';
 
@@ -72,9 +72,9 @@ export function parseQuestImage(value: unknown): QuestImage | null {
  * text is (`bookText`). Null for bytes that are no UTF-8 or more than an asset holds.
  */
 export function readQuestText(bytes: Uint8Array): string | null {
-  if (bytes.length > MAX_ASSET_BYTES) return null;
+  if (bytes.length > ASSET_CAPS.text) return null;
   try {
-    return bookText(new TextDecoder('utf-8', { fatal: true }).decode(bytes), MAX_ASSET_BYTES);
+    return bookText(new TextDecoder('utf-8', { fatal: true }).decode(bytes), ASSET_CAPS.text);
   } catch {
     return null;
   }

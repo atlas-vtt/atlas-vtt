@@ -38,7 +38,6 @@ import { AtlasUIContext, AtlasUIContextValue } from './root/AtlasUIContext';
 import { ContextMenuProvider } from './root/ContextMenuContext';
 import { PanelBoundary } from './root/PanelBoundary';
 import { useMapNavigationHotkeys } from './useMapNavigationHotkeys';
-import { useViewWindow } from './useViewWindow';
 import type { AtlasView } from '../atlas-view';
 import { runInBackground } from '../utils/backgroundTask';
 
@@ -71,7 +70,6 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
   const setDiceLogOpen = useAtlasStore(s => s.setDiceLogOpen);
 
   useMapNavigationHotkeys(view, store, settings);
-  const viewWindow = useViewWindow(view?.containerEl);
 
   const switchTab = (tabId: string): void => {
     if (view) runInBackground(view.switchToTab(tabId), 'Switching scene tab');
@@ -145,9 +143,9 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
       }
     };
 
-    viewWindow.addEventListener('keydown', handleKeyDown);
-    return () => viewWindow.removeEventListener('keydown', handleKeyDown);
-  }, [app, isPlayerView, initiativeTrackerOpen, initiativeIsActive, nextTurn, previousTurn, store, view, settings, viewWindow]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [app, isPlayerView, initiativeTrackerOpen, initiativeIsActive, nextTurn, previousTurn, store, view, settings]);
 
   return (
     <AtlasUIContext.Provider value={contextValue}>
@@ -162,19 +160,23 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
           {/* Map chrome stays mounted while a scene loads; the loading overlay blocks input meanwhile */}
           {/* Top row — scene tabs (DM only) and widget bar share one flex row */}
           <div className="atlas-top-bar-row">
-            {!isPlayerView && (
-              <PanelBoundary name="the scene tabs">
-                <SceneTabBar
-                  onSwitchTab={switchTab}
-                  onMoveTab={(tabId, beforeTabId) => view?.moveSceneTab(tabId, beforeTabId) ?? false}
-                  onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
-                  onAddTab={() => view?.openSceneBrowser()}
-                  onPresentTab={presentTab}
-                  presentedTabId={presentedScene?.tabId ?? null}
-                  onShowAllTabs={() => setSceneSwitcherOpen(true)}
-                />
-              </PanelBoundary>
-            )}
+            {/* The scene tabs at the left end; what hangs directly below them (online play's unread table log) is put in the slot */}
+            <div className="atlas-top-bar-start">
+              {!isPlayerView && (
+                <PanelBoundary name="the scene tabs">
+                  <SceneTabBar
+                    onSwitchTab={switchTab}
+                    onMoveTab={(tabId, beforeTabId) => view?.moveSceneTab(tabId, beforeTabId) ?? false}
+                    onCloseTab={(tabId) => { if (view) runInBackground(view.closeTab(tabId), 'Closing scene tab'); }}
+                    onAddTab={() => view?.openSceneBrowser()}
+                    onPresentTab={presentTab}
+                    presentedTabId={presentedScene?.tabId ?? null}
+                    onShowAllTabs={() => setSceneSwitcherOpen(true)}
+                  />
+                </PanelBoundary>
+              )}
+              <div className="atlas-top-bar-start__below" />
+            </div>
             {/* Widgets and the DM's dice rolls share the right end; rolls hang below the widgets */}
             <div className="atlas-top-bar-end">
               <PanelBoundary name="the widgets">

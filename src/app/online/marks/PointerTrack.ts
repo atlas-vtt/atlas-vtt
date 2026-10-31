@@ -25,6 +25,11 @@ export interface PointerTrackOptions {
   readonly interval: number;
   /** How long a passed sample is kept for `played`, in ms. */
   readonly keep?: number;
+  /**
+   * The least delay at `now`, in ms. A track of what a pointer moves (a token it drags) takes that
+   * pointer's `lag`, so the two are drawn at one moment of the hand that moves them.
+   */
+  readonly least?: (now: number) => number;
 }
 
 /** The longest a pointer is drawn behind what arrived, in ms. */
@@ -84,6 +89,7 @@ function saidSpan(span: number | undefined): number | null {
 export class PointerTrack {
   private readonly interval: number;
   private readonly keep: number;
+  private readonly least: ((now: number) => number) | undefined;
   /** A gap longer than this between two messages is a rest. */
   private readonly rest: number;
   private readonly samples: Sample[] = [];
@@ -100,9 +106,10 @@ export class PointerTrack {
   private wait: number;
   private ended = false;
 
-  constructor({ interval, keep = 0 }: PointerTrackOptions) {
+  constructor({ interval, keep = 0, least }: PointerTrackOptions) {
     this.interval = interval;
     this.keep = keep;
+    this.least = least;
     // A cursor relayed by the GM can wait for the GM's next message as well: two intervals between messages are no rest.
     this.rest = Math.max(TRACK_REST_MS, PACE_INTERVALS * interval);
     this.wait = interval;
@@ -111,6 +118,17 @@ export class PointerTrack {
   /** How far behind the messages the pointer is drawn, in ms. */
   get delay(): number {
     return this.wait;
+  }
+
+  /**
+   * How far the pointer is drawn behind its messages at `now`, in ms: while it plays, how far its
+   * moment lies behind the newest one the quickest message would have brought by now; with nothing
+   * left to play, the delay it plays at. Another track that takes it as its `least` is drawn as far behind.
+   */
+  lag(now: number): number {
+    this.advance(now);
+    const behind = now - this.lead - this.playhead;
+    return this.passed < this.samples.length && Number.isFinite(behind) ? clamp(behind, 0, TRACK_MAX_DELAY_MS) : this.wait;
   }
 
   /** How many samples are held. */
@@ -185,13 +203,13 @@ export class PointerTrack {
     this.arrivals.push({ at: now, lead, late: lead - least + pace });
     if (this.arrivals.length > MAX_ARRIVALS) this.arrivals.shift();
     this.lead = least;
-    this.wait = Math.max(this.wait, this.target());
+    this.wait = Math.max(this.wait, this.target(now));
   }
 
-  /** One interval plus the most any recent message was late. */
-  private target(): number {
+  /** One interval plus the most any recent message was late, and no less than the `least` delay. */
+  private target(now: number): number {
     const late = this.arrivals.reduce((max, arrival) => Math.max(max, arrival.late), 0);
-    return clamp(this.interval + late, this.interval, TRACK_MAX_DELAY_MS);
+    return clamp(Math.max(this.interval + late, this.least?.(now) ?? 0), this.interval, TRACK_MAX_DELAY_MS);
   }
 
   private advance(now: number): void {
@@ -204,7 +222,7 @@ export class PointerTrack {
       this.arrivals = this.arrivals.filter((arrival) => now - arrival.at <= JITTER_WINDOW_MS);
       if (this.arrivals.length > 0) this.lead = this.arrivals.reduce((min, arrival) => Math.min(min, arrival.lead), Number.POSITIVE_INFINITY);
     }
-    this.wait = Math.max(this.target(), this.wait - SHRINK * passes);
+    this.wait = Math.max(this.target(now), this.wait - SHRINK * passes);
     if (!Number.isFinite(this.playhead)) return;
     const due = now - this.lead - this.wait;
     const behind = due - this.playhead;

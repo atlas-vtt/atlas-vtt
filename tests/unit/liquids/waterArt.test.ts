@@ -21,6 +21,11 @@ describe('water keeps the map drawing language', () => {
     expect(read[2]).toEqual({ ...pool, id: 'future' });
   });
 
+  it('preserves crayon water through the file reader', () => {
+    const saved: unknown = JSON.parse(JSON.stringify({ crayon: { ...pool, art: 'crayon' } }));
+    expect(liquidList(liquidsFromFile(saved))[0]).toMatchObject({ art: 'crayon' });
+  });
+
   const model = generateDungeon({ seed: 909, theme: 'cavern', tags: ['small', 'wet'], floors: 1 });
   for (const { id, style } of DUNGEON_STYLES) for (const monochrome of [false, true]) {
     it(`carries ${id}${monochrome ? ' monochrome' : ''} water in the art's own pigments`, () => {
@@ -30,8 +35,8 @@ describe('water keeps the map drawing language', () => {
       expect(surfaces.length).toBeGreaterThan(0);
       const palette = paletteOf(style, view);
       for (const surface of surfaces) {
-        if (style.direction === 'engraved') expect(surface).toMatchObject({ art: 'engraved' });
-        else expect(surface).not.toHaveProperty('art');
+        if (style.direction === 'stone') expect(surface).not.toHaveProperty('art');
+        else expect(surface).toMatchObject({ art: style.direction });
         if (style.direction === 'engraved') {
           expect(surface.colors.deep).toBe(palette.ink);
           expect(surface.colors.glint).toBe(monochrome ? palette.floor : surface.colors.surface);

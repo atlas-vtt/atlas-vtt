@@ -3,6 +3,7 @@ import type { SceneLighting } from '../types/lightingTypes';
 import { exploredMemoryOn } from '../lighting/sceneLightingOptions';
 import { ambientLevel } from './lightLevels';
 import { litPolygons, type AmbientLight, type LightReach, type Sight, type SightRegion } from './sight';
+import type { Point } from '../types/visionTypes';
 import type { Polygon } from './visibility';
 import type { TexelMask } from '../levels/stackClip';
 
@@ -26,6 +27,12 @@ export interface ExploredShapes {
    * level below through openings above is recorded only where the openings showed it.
    */
   within?: TexelMask;
+  /**
+   * The point each polygon that is star-shaped around one is seen from (sight from its token, a
+   * light's reach from its flame): such a polygon is drawn as a fan from it, where cutting it into
+   * triangles took milliseconds a stamp for the thousands of corners a cave's walls give it.
+   */
+  fans?: ReadonlyMap<Polygon, Point>;
 }
 
 /** A region whose sense shows the map, with the area it covers. */
@@ -63,19 +70,33 @@ export function exploredShapes(
 ): ExploredShapes | null {
   if (!exploredMemoryOn(scene) || sight.all) return null;
   const regions = sight.regions.filter(isMapRegion);
-  const except = magicalDarkness(regions, lights);
+  const extras = { ...magicalDarkness(regions, lights), fans: fansOf(regions, lights) };
   const level = ambientLevel(scene);
-  if (scene.zones?.length) return withZones(regions, scene, lights, except);
+  if (scene.zones?.length) return withZones(regions, scene, lights, extras);
   if (level !== 'dark') {
     const seen = regions.filter(({ sense }) => perceivedLevel(sense, level) !== null).map((region) => region.polygon);
-    return seen.length > 0 ? { polygons: seen, clip: null, ...except } : null;
+    return seen.length > 0 ? { polygons: seen, clip: null, ...extras } : null;
   }
   const byLight = regions.filter(seesByLight).map((region) => region.polygon);
   const inDarkness = regions.filter(seesInDarkness).map((region) => region.polygon);
   const shining = byLight.length > 0 ? lights.filter((light) => !light.darkness) : [];
   if (shining.length === 0 && inDarkness.length === 0) return null;
   // The light polygons count only inside a region that sees by light; a region that sees in darkness is seen whole.
-  return withPolygons({ clip: [...new Set([...byLight, ...inDarkness])], ...except }, () => [...shining.flatMap(litPolygons), ...inDarkness]);
+  return withPolygons({ clip: [...new Set([...byLight, ...inDarkness])], ...extras }, () => [...shining.flatMap(litPolygons), ...inDarkness]);
+}
+
+/**
+ * The point each star-shaped polygon is seen from: every region's, every light's reach from its
+ * flame and an area light's parts from their points. An area light's own outline and the area
+ * its reflection lights are no star and are left out.
+ */
+function fansOf(regions: readonly MapRegion[], lights: readonly LightReach[]): Map<Polygon, Point> {
+  const fans = new Map<Polygon, Point>(regions.map((region) => [region.polygon, region.origin]));
+  for (const light of lights) {
+    if (light.parts) for (const part of light.parts) fans.set(part.polygon, part.origin);
+    else fans.set(light.polygon, light.origin);
+  }
+  return fans;
 }
 
 /**
@@ -92,7 +113,7 @@ function withPolygons(shapes: Omit<ExploredShapes, 'polygons'>, polygons: () => 
  * for those that see by light the lights and the ambient light where it is lit, zone by zone.
  */
 // ponytail: a sense that sees by light counts every lit level; one that sees bright light only would need the zones per level.
-function withZones(regions: readonly MapRegion[], scene: AmbientLight, lights: readonly LightReach[], except: Pick<ExploredShapes, 'except'>): ExploredShapes | null {
+function withZones(regions: readonly MapRegion[], scene: AmbientLight, lights: readonly LightReach[], extras: Pick<ExploredShapes, 'except' | 'fans'>): ExploredShapes | null {
   const byLight = regions.filter(seesByLight).map((region) => region.polygon);
   const inDarkness = regions.filter(seesInDarkness).map((region) => region.polygon);
   const clip = [...new Set([...byLight, ...inDarkness])];
@@ -100,7 +121,7 @@ function withZones(regions: readonly MapRegion[], scene: AmbientLight, lights: r
   const shining = byLight.length > 0 ? lights.filter((light) => !light.darkness) : [];
   const lit = (ambient: number): boolean => ambientLevel({ ...scene, ambient }) !== 'dark';
   const ambient = { base: lit(scene.ambient), zones: (scene.zones ?? []).map((zone) => ({ polygon: zone.polygon, lit: lit(zone.ambient) })) };
-  return withPolygons({ clip, ...(byLight.length > 0 && { ambient }), ...except }, () => [...shining.flatMap(litPolygons), ...inDarkness]);
+  return withPolygons({ clip, ...(byLight.length > 0 && { ambient }), ...extras }, () => [...shining.flatMap(litPolygons), ...inDarkness]);
 }
 
 /**

@@ -13,6 +13,7 @@ import { isPlainRecord } from './fieldValueOf';
 import { readCounterRows } from './counterValues';
 import { coerce } from './valueCoercion';
 import { quoted, valueText } from './valueText';
+import { t } from '../../i18n';
 
 export interface ValueMisfit {
   /** What the chip says: "Not a number". */
@@ -25,19 +26,19 @@ type FitField = Pick<TemplateField, 'type' | 'options' | 'open' | 'several' | 'n
 
 /** What each type holds, for the label and the sentence. */
 const TYPE_NOUNS: Readonly<Record<FieldType, { noun: string; label: string }>> = {
-  text: { noun: 'plain text', label: 'Not text' },
-  markdown: { noun: 'plain text', label: 'Not text' },
-  number: { noun: 'a number', label: 'Not a number' },
-  rating: { noun: 'a rating', label: 'Not a rating' },
-  dice: { noun: 'dice', label: 'Not dice' },
-  choice: { noun: 'one of the options', label: 'Not an option' },
-  list: { noun: 'a list', label: 'Not a list' },
-  scores: { noun: 'a list of table values', label: 'Not table values' },
-  entries: { noun: 'a list of entries', label: 'Not entries' },
-  pairs: { noun: 'names with numbers', label: 'Not pairs' },
-  image: { noun: 'an image path', label: 'Not an image' },
-  spells: { noun: 'a spell list', label: 'Not spells' },
-  counters: { noun: 'rows of counters, each with a name, as many used as its maximum at most and a dice formula of what it regains', label: 'Not counters' },
+  text: { noun: t('statblockEditor.fit.noun.text'), label: t('statblockEditor.fit.not.text') },
+  markdown: { noun: t('statblockEditor.fit.noun.text'), label: t('statblockEditor.fit.not.text') },
+  number: { noun: t('statblockEditor.fit.noun.number'), label: t('statblockEditor.fit.not.number') },
+  rating: { noun: t('statblockEditor.fit.noun.rating'), label: t('statblockEditor.fit.not.rating') },
+  dice: { noun: t('statblockEditor.fit.noun.dice'), label: t('statblockEditor.fit.not.dice') },
+  choice: { noun: t('statblockEditor.fit.noun.choice'), label: t('statblockEditor.fit.not.choice') },
+  list: { noun: t('statblockEditor.fit.noun.list'), label: t('statblockEditor.fit.not.list') },
+  scores: { noun: t('statblockEditor.fit.noun.scores'), label: t('statblockEditor.fit.not.scores') },
+  entries: { noun: t('statblockEditor.fit.noun.entries'), label: t('statblockEditor.fit.not.entries') },
+  pairs: { noun: t('statblockEditor.fit.noun.pairs'), label: t('statblockEditor.fit.not.pairs') },
+  image: { noun: t('statblockEditor.fit.noun.image'), label: t('statblockEditor.fit.not.image') },
+  spells: { noun: t('statblockEditor.fit.noun.spells'), label: t('statblockEditor.fit.not.spells') },
+  counters: { noun: t('statblockEditor.fit.noun.counters'), label: t('statblockEditor.fit.not.counters') },
 };
 
 /** Types whose text is checked by coercion; the others keep any text as it is written. */
@@ -100,7 +101,7 @@ export function referenceMisfit(field: Pick<FitField, 'type'>, shown: FieldValue
   const names = [...new Set(formula ? namedReferences(shown) : formulaReferences(shown))];
   if (names.length === 0) return null;
   const listed = names.map((name) => `@${name}`).join(', ');
-  return { label: 'Unknown reference', problem: `${listed} ${names.length === 1 ? 'names' : 'name'} no number of this statblock.` };
+  return { label: t('statblockEditor.fit.unknownRef'), problem: t('statblockEditor.fit.unknownRefWhy', { list: listed, count: names.length }) };
 }
 
 /**
@@ -119,5 +120,5 @@ function misfitProblem(field: FitField, value: FieldValue): string | null {
   if (CHECKED_TEXT.has(field.type) && isScalar(value)) return textProblem(field, valueText(value));
   // Several picks may be stored as a list, or as a record of options and numbers.
   if (picksChoice(field) && !holdsRecords(value)) return textProblem(field, valueText(value));
-  return SHAPE_FITS[field.type](value) ? null : `${shortQuote(value)} isn't ${TYPE_NOUNS[field.type].noun}.`;
+  return SHAPE_FITS[field.type](value) ? null : t('statblockEditor.fit.isnt', { value: shortQuote(value), noun: TYPE_NOUNS[field.type].noun });
 }

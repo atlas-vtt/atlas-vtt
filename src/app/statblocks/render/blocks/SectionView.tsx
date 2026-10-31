@@ -9,13 +9,14 @@ import { TabPanelContext } from '../tabs/openTabs';
 import { sectionHeading } from '../values/sectionHeading';
 import { SheetHeading } from '../values/SheetHeading';
 import type { BlockViewProps } from './blockViewProps';
+import { t } from '../../../i18n';
 
 interface SectionViewProps extends BlockViewProps<SectionBlock> {
   children: React.ReactNode;
 }
 
 /** What an empty tab says while a template is edited. */
-export const EMPTY_TAB_PROMPT = 'Empty tab: select it and add a block';
+export const EMPTY_TAB_PROMPT = t('statblockEditor.emptyTab');
 
 const HEIGHT_TRANSITION = { duration: MOTION_NORMAL_MS / 1000, ease: EASE_OUT_CONTROL_POINTS };
 

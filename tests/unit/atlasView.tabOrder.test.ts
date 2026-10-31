@@ -1,11 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
-import { TFile } from 'obsidian';
+import { TFile, type App, type ViewState } from 'obsidian';
 import { AtlasView } from '../../src/app/atlas-view';
 import { createTabMetaStore } from '../../src/app/stores/tabMetaStore';
+import { keepAtlasInMainWindow } from '../../src/app/plugin/atlasMainWindow';
 
 vi.mock('../../src/app/services/ServiceManager', () => ({ ServiceManager: class {} }));
 vi.mock('../../src/app/storeFactory', () => ({ createViewAtlasStore: vi.fn() }));
 vi.mock('../../src/app/stores/history', () => ({ getHistoryStore: () => undefined }));
+vi.mock('../../src/app/ui/notice', () => ({ showNotice: vi.fn() }));
 
 function context() {
   const tabMetaStore = createTabMetaStore();
@@ -58,5 +60,46 @@ describe('scene tab order in the workspace', () => {
     expect(second.ctx.onOpen).toHaveBeenCalledOnce();
     second.view.moveSceneTab(first.ids[1]!, first.ids[2]!);
     expect(first.ctx.tabMetaStore.getState().tabs.map((tab) => tab.id)).toEqual([first.ids[2], first.ids[0], first.ids[1]]);
+  });
+
+  it('retains reordered tabs and their active scene when a restored popout returns to the main window', async () => {
+    const first = context();
+    first.view.moveSceneTab(first.ids[2]!, first.ids[0]!);
+    const second = context();
+    second.ctx.viewportCache.clear();
+    const rootSplit = {};
+    let type = 'atlas-vtt';
+    let restoration: Promise<void> | undefined;
+    const target = {
+      getContainer: () => rootSplit,
+      view: { getViewType: () => 'empty' },
+      setViewState: (state: ViewState): Promise<void> => {
+        restoration = second.view.setState(state.state, { history: false });
+        return restoration;
+      },
+    };
+    const popout = {
+      getContainer: () => ({}),
+      getViewState: (): ViewState => ({ type, state: first.view.getState() }),
+      view: { getViewType: () => type },
+      setViewState: async (state: ViewState): Promise<void> => { type = state.type; },
+      detach: vi.fn(),
+    };
+    const app = { workspace: {
+      rootSplit,
+      getLeavesOfType: () => [popout],
+      getMostRecentLeaf: () => target,
+      revealLeaf: async (): Promise<void> => undefined,
+    } } as unknown as App;
+
+    keepAtlasInMainWindow(app);
+    await vi.waitFor(() => expect(restoration).toBeDefined());
+    await restoration;
+
+    expect(popout.detach).toHaveBeenCalledOnce();
+    expect(second.ctx.tabMetaStore.getState().tabs.map((tab) => tab.id)).toEqual([first.ids[2], first.ids[0], first.ids[1]]);
+    expect(second.ctx.tabMetaStore.getState().activeTabId).toBe(first.ids[1]);
+    expect(second.view.file?.path).toBe('B.atlasmap');
+    expect(second.ctx.viewportCache.get(first.ids[1]!)).toEqual({ centerX: 30, centerY: 40, scale: 3 });
   });
 });

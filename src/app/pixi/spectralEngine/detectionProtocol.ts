@@ -12,6 +12,8 @@ export interface DetectionRequest {
   picture?: { bitmap: ImageBitmap; size: ImageSize };
   candidates?: AlignmentResult[];
   ink: boolean;
+  /** Whether the outcome should say where the map's lines lie (`DetectionOutcome.lines`). */
+  lines: boolean;
 }
 
 export type DetectionReply =

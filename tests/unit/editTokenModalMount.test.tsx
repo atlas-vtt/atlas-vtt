@@ -66,6 +66,21 @@ describe('openEditTokenModal', () => {
     }
   });
 
+  it("opens in the document of the token's map, a popout's, and closes on Escape there", () => {
+    const frame = document.body.createEl('iframe');
+    const win = frame.contentWindow!;
+    const { app } = createInMemoryApp();
+    const store = createViewAtlasStore(app, `edit-token-popout-${Math.random()}`);
+    const token: TokenEntity = { id: 't', kind: 'token', imagePath: 't.png', x: 0, y: 0 };
+    store.setState({ persistenceEnabled: false, objects: { ...store.getState().objects, tokens: { t: token } } });
+    act(() => openEditTokenModal(token, store, app, [], win.document));
+    expect(win.document.querySelector('.atlas-edit-token-modal')).not.toBeNull();
+    expect(document.querySelector('.atlas-edit-token-modal')).toBeNull();
+    act(() => { win.dispatchEvent(new win.KeyboardEvent('keydown', { key: 'Escape' })); });
+    expect(win.document.querySelector('.atlas-edit-token-modal')).toBeNull();
+    frame.remove();
+  });
+
   it('says in one line what the vision switch means', () => {
     open();
     expect(screen.getByText('The players see the map through this token. The token itself is always visible to them.')).toBeTruthy();

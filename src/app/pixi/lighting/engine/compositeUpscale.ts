@@ -16,11 +16,13 @@ export function reducedPixelRatio(max: number | undefined, resolution: number): 
  * then it draws into a texture of that many pixels, writing in alpha how much each one shows
  * (`SHOWN_GLSL`), and a second pass draws that up to the render's pixels with darkness winning
  * at every edge (`compositeUpscaleFragment`). Thumbnails and every render at or below the ratio
- * are drawn in one pass as before.
+ * are drawn in one pass as before. The filter's input (the layer's sight meshes) keeps the render's
+ * own resolution: lowering the filter's `resolution` drew the input at the ratio, but the composite
+ * maps the screen to the world by the render's pixels, so the picture beneath it was scaled and
+ * shifted on a screen of two device pixels per CSS pixel (2026-10-28).
  */
 export class CompositeUpscale extends AreaAwareFilter {
-  /** At most this many device pixels per screen pixel; unset, the render's own. */
-  maxPixelRatio: number | undefined;
+  private ratio: number | undefined;
   private readonly upscaleUniforms = new UniformGroup({
     uReducedRatio: { value: 1, type: 'f32' },
     uReducedLast: { value: new Float32Array(2), type: 'vec2<f32>' },
@@ -38,8 +40,17 @@ export class CompositeUpscale extends AreaAwareFilter {
     super(options, origin, group);
   }
 
+  /** At most this many device pixels per screen pixel; unset, the render's own. */
+  get maxPixelRatio(): number | undefined {
+    return this.ratio;
+  }
+
+  set maxPixelRatio(max: number | undefined) {
+    this.ratio = max;
+  }
+
   override apply(filterManager: FilterSystem, input: Texture, output: RenderSurface, clearMode: boolean): void {
-    const ratio = reducedPixelRatio(this.maxPixelRatio, input.source.resolution);
+    const ratio = reducedPixelRatio(this.ratio, input.source.resolution);
     if (ratio === null) {
       this.shownOut(0);
       super.apply(filterManager, input, output, clearMode);
@@ -48,6 +59,7 @@ export class CompositeUpscale extends AreaAwareFilter {
     const { width, height } = input.frame;
     const reduced = TexturePool.getOptimalTexture({ width, height, resolution: ratio, antialias: false, scaleMode: 'nearest' });
     try {
+      // The input's pixels per reduced pixel, across: the least of them is what the sight shows there.
       this.shownOut(input.source.resolution / ratio);
       super.apply(filterManager, input, reduced, true);
       const { uniforms } = this.upscaleUniforms;

@@ -1,3 +1,4 @@
+import { FOREST_LOOKS } from './forestLooks';
 import type { DungeonStyle } from './style';
 
 /**
@@ -8,6 +9,7 @@ import type { DungeonStyle } from './style';
  */
 
 export type DungeonStyleId =
+  | 'crayon'
   | 'parchment'
   | 'masonry'
   | 'print'
@@ -33,6 +35,20 @@ export interface DungeonStyleEntry {
 /** In the order the gallery shows them. */
 export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
   {
+    // Graphite on vellum, coloured in with wax crayon, as the Reprieve map of the Lockwood Manor collection.
+    id: 'crayon',
+    style: {
+      direction: 'crayon',
+      colors: { ink: '#2c1d12', rock: '#efe5cd', water: '#5d94b8', floor: '#f4ecda', paper: '#efe5cd' },
+      strokes: { thin: 0.5, normal: 1.2, thick: 1.9 },
+      shadow: { color: '#2c1d12', strength: 0.6 },
+      surround: { mode: 'hatching', strokes: 3, size: 0.3, reach: 0.5, stroke: 0.8 },
+      floor: 'flagstone',
+      grid: { weight: 0.8, strength: 0.35 },
+      forest: FOREST_LOOKS.crayon,
+    },
+  },
+  {
     id: 'parchment',
     style: {
       direction: 'stone',
@@ -42,6 +58,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'hatching', strokes: 4, size: 0.42, reach: 0.62, stroke: 0.95 },
       floor: 'flagstone',
       grid: { weight: 0.9, strength: 0.5 },
+      forest: FOREST_LOOKS.parchment,
     },
   },
   {
@@ -54,6 +71,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'stonework', strokes: 3, size: 0.52, reach: 0.7, stroke: 0.5 },
       floor: 'ashlar',
       grid: { weight: 1, strength: 0.45 },
+      forest: FOREST_LOOKS.masonry,
     },
   },
   {
@@ -66,6 +84,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'hatching', strokes: 3, size: 0.28, reach: 0.45, stroke: 0.9 },
       floor: 'flagstone',
       grid: { weight: 1, strength: 0.45 },
+      forest: FOREST_LOOKS.print,
     },
   },
   {
@@ -78,6 +97,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'dots', strokes: 4, size: 0.5, reach: 0.75, stroke: 0.35 },
       floor: 'slab',
       grid: { weight: 0.9, strength: 0.4 },
+      forest: FOREST_LOOKS.stipple,
     },
   },
   {
@@ -90,6 +110,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'hatching', strokes: 4, size: 0.3, reach: 0.5, stroke: 0.7 },
       floor: 'slab',
       grid: { weight: 0.9, strength: 0.35 },
+      forest: FOREST_LOOKS.blueprint,
     },
   },
   {
@@ -102,6 +123,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'hatching', strokes: 3, size: 0.3, reach: 0.5, stroke: 0.9 },
       floor: 'slab',
       grid: { weight: 1, strength: 0.4 },
+      forest: FOREST_LOOKS.night,
     },
   },
   {
@@ -114,6 +136,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'hatching', strokes: 4, size: 0.32, reach: 0.55, stroke: 1.1 },
       floor: 'flagstone',
       grid: { weight: 1, strength: 0.45 },
+      forest: FOREST_LOOKS.sepia,
     },
   },
   {
@@ -127,6 +150,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       floor: 'cobble',
       weathering: { color: '#5b7a2e', amount: 0.5 },
       grid: { weight: 1, strength: 0.45 },
+      forest: FOREST_LOOKS.moss,
     },
   },
   {
@@ -140,6 +164,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       floor: 'cobble',
       weathering: { color: '#ffffff', amount: 0.6 },
       grid: { weight: 1, strength: 0.4 },
+      forest: FOREST_LOOKS.ice,
     },
   },
   {
@@ -153,6 +178,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       floor: 'cobble',
       weathering: { color: '#0c0908', amount: 0.45 },
       grid: { weight: 1, strength: 0.3 },
+      forest: FOREST_LOOKS.volcanic,
     },
   },
   {
@@ -165,6 +191,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'bricks', strokes: 3, size: 0.55, reach: 0.55, stroke: 0.7 },
       floor: 'flagstone',
       grid: { weight: 1, strength: 0.45 },
+      forest: FOREST_LOOKS.sandstone,
     },
   },
   {
@@ -178,6 +205,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       floor: 'ashlar',
       weathering: { color: '#3f4a1d', amount: 0.45 },
       grid: { weight: 1, strength: 0.45 },
+      forest: FOREST_LOOKS.sewer,
     },
   },
   {
@@ -190,6 +218,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'hatching', strokes: 3, size: 0.28, reach: 0.45, stroke: 1 },
       floor: 'flagstone',
       grid: { weight: 1, strength: 0.45 },
+      forest: FOREST_LOOKS.vellum,
     },
   },
   {
@@ -202,6 +231,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'bricks', strokes: 3, size: 0.34, reach: 0.5, stroke: 0.9 },
       floor: 'slab',
       grid: { weight: 1, strength: 0.45 },
+      forest: FOREST_LOOKS.slate,
     },
   },
   {
@@ -214,6 +244,7 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'none', strokes: 3, size: 0.3, reach: 0.6, stroke: 1 },
       floor: 'slab',
       grid: { weight: 1, strength: 0.6 },
+      forest: FOREST_LOOKS.contrast,
     },
   },
   {
@@ -226,11 +257,12 @@ export const DUNGEON_STYLES: readonly DungeonStyleEntry[] = [
       surround: { mode: 'bricks', strokes: 2, size: 0.36, reach: 0.42, stroke: 0.55 },
       floor: 'ashlar',
       grid: { weight: 0.8, strength: 0.4 },
+      forest: FOREST_LOOKS.drafting,
     },
   },
 ];
 
-export const DEFAULT_STYLE_ID: DungeonStyleId = 'parchment';
+export const DEFAULT_STYLE_ID: DungeonStyleId = 'crayon';
 
 const BY_ID = new Map(DUNGEON_STYLES.map(entry => [entry.id, entry.style] as const));
 

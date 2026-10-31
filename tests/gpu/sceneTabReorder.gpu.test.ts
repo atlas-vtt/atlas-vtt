@@ -107,6 +107,61 @@ describe('scene-tab reordering in Chromium', () => {
     });
   }
 
+  it('keeps processing tooltips closed during a drag and available again afterwards', async () => {
+    const fixture = await mount({ processing: true });
+    const source = fixture.ids[0]!;
+    const ring = fixture.query('.atlas-scene-tab__processing');
+    await fixture.mouse.hover(pointIn(ring));
+    await expect.poll(() => fixture.doc.querySelector('[role="tooltip"]')?.textContent).toContain('25%');
+
+    // Start from the processing sign itself, including its tooltip's closing animation.
+    const from = pointIn(ring);
+    pointer(fixture, 'pointerdown', from);
+    pointer(fixture, 'pointermove', { x: from.x + 5, y: from.y });
+    await frames();
+    expect(grabbing(fixture)).toBe(true);
+    await expect.poll(() => fixture.doc.querySelector('[role="tooltip"]')).toBeNull();
+    act(() => fixture.processing!.progress(50));
+    await frames();
+    expect(grabbing(fixture)).toBe(true);
+    expect(fixture.doc.querySelector('[role="tooltip"]')).toBeNull();
+    expect(fixture.tab(source).querySelector('.atlas-processing-ring__fill')?.getAttribute('stroke-dashoffset')).toBe('50');
+
+    ownerEscape(fixture);
+    pointer(fixture, 'pointerup', from);
+    await frames();
+    await fixture.mouse.hover({ x: 1, y: 1 });
+    await fixture.mouse.hover(pointIn(ring));
+    await expect.poll(() => fixture.doc.querySelector('[role="tooltip"]')?.textContent).toContain('50%');
+    expect(fixture.order()).toEqual(fixture.ids);
+    expectClean(fixture);
+  });
+
+  it('cancels a drag when processing finishes and changes tab width, then accepts another drag', async () => {
+    const fixture = await mount({ processing: true });
+    const [a, b, c, d] = fixture.ids as [string, string, string, string];
+    const width = fixture.tab(a).getBoundingClientRect().width;
+    await pickUp(fixture, a, pointIn(fixture.name(c)));
+    expect(grabbing(fixture)).toBe(true);
+    act(() => fixture.processing!.complete());
+    await frames();
+    expect(fixture.tab(a).getBoundingClientRect().width).toBeLessThan(width);
+    expect(fixture.tab(a).querySelector('.atlas-scene-tab__processing')).toBeNull();
+    expect(grabbing(fixture)).toBe(false);
+    await fixture.mouse.up(pointIn(fixture.name(c)));
+    expect(fixture.order()).toEqual([a, b, c, d]);
+    expect(fixture.calls.move).not.toHaveBeenCalled();
+    expect(fixture.live()).toContain('canceled');
+
+    await pickUp(fixture, a, rightEnd(fixture));
+    await fixture.mouse.up(rightEnd(fixture));
+    await frames();
+    expect(fixture.order()).toEqual([b, c, d, a]);
+    expect(fixture.store.getState().activeTabId).toBe(a);
+    expect(fixture.presented()).toBe(b);
+    expectClean(fixture);
+  });
+
   it('keeps a subthreshold click, eye/close, and keyboard activation usable', async () => {
     const fixture = await mount();
     const [a, b, c] = fixture.ids as [string, string, string, string];

@@ -1,10 +1,22 @@
 {
-  "version": "0.10.2-beta.0",
+  "version": "0.11.1-beta.0",
   "releases": [
     {
-      "version": "0.10.2-beta.0",
-      "title": "Coming in 0.10.2",
-      "markdown": "## Improved\n\n- Arrange open scene tabs by dragging them into your preferred order. Atlas remembers the order when you reopen your workspace.\n\n## Atlas Online\n- Players see animated maps move, and the water, lava and acid of generated dungeons\n- Maps that grid alignment stretched or turned line up with tokens and walls for players"
+      "version": "0.11.1-beta.0",
+      "title": "Coming in 0.11.1",
+      "markdown": "## Improved\n\n- Arrange open scene tabs by dragging them into your preferred order. Atlas remembers the order when you reopen your workspace."
+    },
+    {
+      "version": "0.11.0",
+      "date": "2026-10-30",
+      "title": "Mosaic Canvas, procedural forest maps and new crayon style",
+      "markdown": "## New\n\n**New Feature: Mosaic Canvas**\n- Maps of up to 1,000 megapixels and 65,535 pixels a side, up to 20 million squares in one scene. Atlas now works with maps roughly seven times the largest maps other virtual tabletops take\n- No megabyte limit: a 200 MB map or a 2 GB one imports as it is, and every pixel is kept\n- How it works: Atlas reads the map once and cuts it into tesserae using pyramid tiling, small lossless tiles laid in a pyramid from a thumbnail of the whole map down to every pixel of the original. The scene opens within seconds and sharpens as the finer tesserae are cut\n-  Processing indicator shown in the asset manager\n\n**New Feature: Forests**\n- The dungeon generator makes forests: clearings joined by glades, lone trees for cover, brooks, rivers, lakes and roads\n- Multi-level forest maps use caves as underground levels\n\n**New Feature: Crayon Style**\n- New default style for all generated map types: pencil lines and hatching on vellum, coloured in with wax crayon\n\n**General**\n- Graphics settings page in the command palette: three quality presets as tabs\n- Dice volume in Atlas' settings; slide it down to turn dice sounds off. Contributed by ISorokaI\n\n## Improved\n- Optimised grid drawing with Mosaic Canvas\n- Saver lighting quality runs smoother on low-power machines\n- Improvements to Dynamic Lighting performance and visuals\n- Russian translation of online play, native statblocks, the template editor, random tables, campaigns, the dungeon generator, scene levels and the dice lab. Contributed by ISorokaI\n\n## Fixed\n- Widgets that do not fit beside the scene tabs stack in the map's corner instead of covering the initiative tracker\n- Create scenes from several selected maps at once\n- Fixed a bug where a deleted scene would re-appear\n- The number badge on look-alike tokens no longer grows past the token on a very fine grid\n- Menus in Edit Token open at their button. Contributed by ISorokaI\n- A pinned statblock scrolled down can be moved up again. Contributed by ISorokaI\n\n## Atlas Online\n- Room pins of a generated dungeon readable by players show on the players' page\n- Players see the resource wheels shown to them, not only the bars\n- Explored areas no longer black out while players move on\n- Fixed bug where values typed into a table on the character sheet would disappear\n- Several improvements to mobile UI\n\n## Important changes\n- Atlas draws with WebGL only. Where it cannot start, a new notice will display why\n\n\nThanks to my Patreon supporters Aaron, Andrew, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, Markus Baumann, Michael Breuer, Pavel Zinoviev, s g, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur and Zack Samuels. You mean everything to me :heart:\n\nHelp me develop Atlas: https://www.patreon.com/cw/atlas_vtt"
+    },
+    {
+      "version": "0.10.2",
+      "date": "2026-10-28",
+      "title": "Token numbers, dark maps and the main window",
+      "markdown": "## Atlas Online\n- Players see animated maps move, and the water, lava and acid of generated dungeons\n- Maps whose grid alignment stretched or turned them now line up correctly for players\n- Players can remove items from their inventory\n- Ticking the boxes of a Track on a player's sheet no longer overwrites the resource's maximum\n\n## Important changes\n- Atlas runs in your main Obsidian window: moved into another window, it moves back. To use two screens, move your notes into a new window\n- Players see the same token numbers as the GM in the player view and Atlas Online, and hidden tokens still count\n\n## Fixed\n- \"Kill\" no longer disappears from the token menu after switching an HP resource to static and back\n- Dark maps no longer look darker and purple with dynamic lighting in daylight\n- A small light that outshines magical darkness no longer gives the token next to it sight on some grids"
     },
     {
       "version": "0.10.1",

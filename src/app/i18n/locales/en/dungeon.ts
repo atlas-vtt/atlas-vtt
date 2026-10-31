@@ -39,6 +39,7 @@ export const dungeon = {
   'dungeon.theme.fortress': 'Fortress',
   'dungeon.theme.mansion': 'Haunted Mansion',
   'dungeon.theme.cavern': 'Cavern',
+  'dungeon.theme.forest': 'Forest',
   'dungeon.theme.refused.beside': 'Not available with {tag}',
   'dungeon.tags': 'Tags',
 
@@ -60,6 +61,7 @@ export const dungeon = {
   'dungeon.room.showHidden': 'Show hidden secret rooms',
 
   'dungeon.style': 'Style',
+  'dungeon.style.crayon': 'Crayon',
   'dungeon.style.parchment': 'Scriptorium',
   'dungeon.style.masonry': 'Keep',
   'dungeon.style.print': 'Ink',

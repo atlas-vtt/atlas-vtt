@@ -13,6 +13,7 @@ import { quoted } from '../values/valueText';
 import { syntaxError, type ExpressionError } from './errors';
 import { FORMULA_FUNCTIONS, isFormulaFunction, SLOT_WORD, type FormulaNode, type FormulaToken } from './formulaTypes';
 import { tokenizeFormula } from './tokenize';
+import { t } from '../../i18n';
 
 /** Deeper nesting than any statblock needs; it keeps hostile input from exhausting the stack. */
 const MAX_DEPTH = 64;
@@ -43,7 +44,7 @@ function arityProblem(fn: string, count: number): string | null {
   if (!isFormulaFunction(fn)) return null;
   const { min, max } = FORMULA_FUNCTIONS[fn];
   if (count >= min && count <= max) return null;
-  return max === 1 ? `${fn} takes one number.` : `${fn} needs at least one number.`;
+  return max === 1 ? t('statblockEditor.expr.oneNumber', { fn }) : t('statblockEditor.expr.someNumber', { fn });
 }
 
 class FormulaParser {
@@ -77,7 +78,7 @@ class FormulaParser {
 
   private nested<T>(at: number, read: () => T): T {
     this.depth += 1;
-    if (this.depth > MAX_DEPTH) this.fail('The formula is nested too deeply.', at);
+    if (this.depth > MAX_DEPTH) this.fail(t('statblockEditor.expr.deep'), at);
     const result = read();
     this.depth -= 1;
     return result;
@@ -117,7 +118,7 @@ class FormulaParser {
       case 'number': return { kind: 'number', value: token.value };
       case 'name': return this.named(token.name, token.at);
       case 'open': return this.nested(token.at, () => this.bracketed(token.at));
-      case 'end': return this.fail('The formula ends too early.', token.at);
+      case 'end': return this.fail(t('statblockEditor.expr.early'), token.at);
       case 'close': return this.fail(`There is a ${quoted(')')} without a ${quoted('(')}.`, token.at);
       case 'op': return this.fail(`${quoted(token.op)} needs a number before it.`, token.at);
       case 'comma': return this.fail(COMMA_OUTSIDE_CALL, token.at);
@@ -174,8 +175,8 @@ class FormulaParser {
 export function parseFormula(source: string, offset = 0): FormulaNode | ExpressionError {
   const tokens = tokenizeFormula(source, offset);
   if (!Array.isArray(tokens)) return tokens;
-  if (tokens.length === 1) return syntaxError('The formula is empty.', offset);
-  if (tokens.length > MAX_TOKENS) return syntaxError('The formula is too long.', offset);
+  if (tokens.length === 1) return syntaxError(t('statblockEditor.expr.empty'), offset);
+  if (tokens.length > MAX_TOKENS) return syntaxError(t('statblockEditor.expr.long'), offset);
   try {
     return new FormulaParser(tokens).parse();
   } catch (failure) {

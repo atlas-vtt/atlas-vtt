@@ -19,6 +19,7 @@ import { libraryLoaded } from '../resolve/readStatblock';
 import { fsLayoutToTemplate, isFsLayout } from './fsLayoutToTemplate';
 import type { FsImportReport, FsLayout, FsLayoutResolver } from './fsLayoutTypes';
 import { withTracksInPlace } from './fsTrackReplacement';
+import { t } from '../../i18n';
 
 /** What names a layout: FS's id, and its name, which a layout file keeps when FS gives it a new id. */
 export interface LayoutIdentity {
@@ -36,7 +37,7 @@ export interface FsLayoutImport {
   report: FsImportReport | null;
 }
 
-const FALLBACK_NAME = 'Imported layout';
+const FALLBACK_NAME = t('statblockEditor.fs.importedName');
 
 /** How `layout` blocks find the layouts they include: exact matches among the plugin's. */
 export function pluginLayoutResolver(app: App): FsLayoutResolver {
@@ -65,8 +66,8 @@ export function findImportedTemplate(templates: readonly LibraryTemplate[], layo
 /** A layout file's text as a layout, or the sentence that says why it is none. */
 export function readLayoutText(text: string): { layout: FsLayout } | { problem: string } {
   const parsed = parseJsonText(text);
-  if (!('value' in parsed)) return { problem: 'This file isn\'t valid JSON.' };
-  return isFsLayout(parsed.value) ? { layout: parsed.value } : { problem: 'This file isn\'t a Fantasy Statblocks layout.' };
+  if (!('value' in parsed)) return { problem: t('statblockEditor.fs.notJson') };
+  return isFsLayout(parsed.value) ? { layout: parsed.value } : { problem: t('statblockEditor.fs.notLayout') };
 }
 
 /** The last import of each app: imports run one after the other, so a second import of a layout finds the first's template. */

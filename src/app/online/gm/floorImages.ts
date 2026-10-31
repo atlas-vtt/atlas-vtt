@@ -1,32 +1,31 @@
-import { MAX_ASSET_BYTES, type AssetRef } from '../protocol/index.ts';
+import { ASSET_CAPS, type AssetRef } from '../protocol/index.ts';
 import { imageDimensions } from '../../imageProcessing/imageDimensions';
-import type { PictureImage } from './assetAnswers.ts';
-import { sha256Hex } from './assetServe.ts';
+import { isVideoMapPath } from '../../pixi/mosaicCanvas/video/videoMapFiles';
+import { ASSET_USES, type AssetStoring } from './assets/assetUses.ts';
 import type { MapSize } from './moveCheck.ts';
 import type { VaultImage } from './TokenShare.ts';
 
-/** A map image as read for sharing: its reference and bytes. */
-export type SharedImage = PictureImage & { readonly ref: AssetRef };
-
-/** What a floor's image was read as: the map with its size. */
+/**
+ * What a floor's image was read as: the map players are handed (null where the store does not keep it
+ * for them), its size, and whether it is too large to be stored as one image where no pyramid of it is.
+ */
 export interface FloorImages {
-  readonly map: SharedImage | null;
+  readonly map: AssetRef | null;
   readonly size: MapSize | null;
+  readonly tooLarge: boolean;
 }
 
-/** An image of the vault as players may be sent it, or null for one that is missing or too large. */
-async function sharedImage(readImage: (path: string) => Promise<VaultImage | null>, path: string): Promise<SharedImage | null> {
-  const image = await readImage(path);
-  if (image === null || image.bytes.length > MAX_ASSET_BYTES) return null;
-  const hash = await sha256Hex(image.bytes);
-  return { hash, bytes: image.bytes, mime: image.mime, ref: { hash, size: image.bytes.length, mime: image.mime } };
-}
-
-/** A floor's map (`background`, none for a floor without one) with its size; null where the map cannot be sent. */
-export async function readFloorImages(readImage: (path: string) => Promise<VaultImage | null>, background: string | null): Promise<FloorImages | null> {
-  if (background === null) return { map: null, size: null };
-  const map = await sharedImage(readImage, background);
-  if (map === null) return null;
-  const size = await imageDimensions(new Blob([map.bytes]));
-  return { map, size };
+/**
+ * A floor's map (`background`, none for a floor without one): as its tile pyramid where the store keeps
+ * one, else as the image where the store keeps it (within its cap for images), with its size; null
+ * where it cannot be read. A poster is drawn from its video, so it is kept rather than read again for
+ * the upload.
+ */
+export async function readFloorImages(readImage: (path: string) => Promise<VaultImage | null>, background: string | null, stored?: AssetStoring): Promise<FloorImages | null> {
+  if (background === null) return { map: null, size: null, tooLarge: false };
+  const image = await readImage(background);
+  if (image === null) return null;
+  const map = stored === undefined ? null : isVideoMapPath(background) ? await stored.refOf(image.bytes, image.mime, { ...ASSET_USES.map, map: background }) : await stored.mapRef(image.bytes, image.mime, background);
+  const size = await imageDimensions(new Blob([image.bytes]));
+  return { map, size, tooLarge: map === null && image.bytes.length > ASSET_CAPS.image };
 }

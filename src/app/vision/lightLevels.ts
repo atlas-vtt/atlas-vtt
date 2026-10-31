@@ -50,6 +50,17 @@ function levelFromLights(point: Point, lights: readonly LightReach[], above = -I
 }
 
 /**
+ * A distance within this share of a radius lies on it. Snapped token centres are `offset + (n + ½) · size`,
+ * and the difference of two misses a whole cell by a rounding error about half the time.
+ */
+const ON_RADIUS = 1e-6;
+
+/** Whether `distance` reaches the radius `radius`, counting a rounding error short of it as on it. */
+function reachesRadius(distance: number, radius: number): boolean {
+  return distance >= radius * (1 - ON_RADIUS);
+}
+
+/**
  * The light level `light` gives `point` straight from itself, without its reflection. The dim
  * radius itself is dark: the picture has faded to nothing there (`lightFade`), and the polygon
  * would decide a point on it by which side it lies (a token one cell from a light of one cell).
@@ -57,7 +68,7 @@ function levelFromLights(point: Point, lights: readonly LightReach[], above = -I
  */
 function directLevel(point: Point, light: LightReach): LightLevel {
   const distance = light.parts ? areaDistance(point, light, light.dim) : Math.hypot(point.x - light.origin.x, point.y - light.origin.y);
-  const beyond = distance > 0 ? distance >= light.dim : distance > light.dim;
+  const beyond = distance > 0 ? reachesRadius(distance, light.dim) : distance > light.dim;
   if (beyond || (!light.parts && !pointInPolygon(point, light.polygon))) return 'dark';
   return distance <= light.bright ? 'bright' : 'dim';
 }
@@ -70,7 +81,7 @@ export function darknessAt(point: Point, lights: readonly LightReach[]): number 
   let priority = -Infinity;
   for (const light of lights) {
     if (!light.darkness || (light.priority ?? 0) <= priority) continue;
-    if (Math.hypot(point.x - light.origin.x, point.y - light.origin.y) < light.dim && pointInPolygon(point, light.polygon)) priority = light.priority ?? 0;
+    if (!reachesRadius(Math.hypot(point.x - light.origin.x, point.y - light.origin.y), light.dim) && pointInPolygon(point, light.polygon)) priority = light.priority ?? 0;
   }
   return priority;
 }

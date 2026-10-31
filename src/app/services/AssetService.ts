@@ -682,7 +682,7 @@ export class AssetService {
   /** Deletes the given encounters if their token list is now empty. */
   private async deleteEmptiedGroups(groups: GroupAsset[]): Promise<void> {
     for (const group of groups) {
-      if (groupTokenRefs(group).length === 0) await this.deleteAsset(group.id);
+      if (groupTokenRefs(group).length === 0) await this.removeAsset(group.id);
     }
   }
 
@@ -1093,7 +1093,16 @@ export class AssetService {
     return { path, content: serializeRecord(asset) };
   }
 
-  async deleteAsset(id: string): Promise<void> {
+  /**
+   * Deletes an asset with its files. Holds the index while it does, so the vault check never
+   * meets a half-deleted asset: a scene whose record file is gone while its map is still there
+   * would be taken in again as a scene of its own.
+   */
+  deleteAsset(id: string): Promise<void> {
+    return this.runExclusive(() => this.removeAsset(id));
+  }
+
+  private async removeAsset(id: string): Promise<void> {
     await this.ensureLoaded();
 
     const asset = this.metadata!.assets[id];

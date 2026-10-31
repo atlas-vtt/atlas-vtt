@@ -3,26 +3,15 @@ import { CELL_TEXELS, FLICKER_INTERVAL_MS, MAX_TEXELS, TILE_RAYS, worldTexel } f
 /**
  * How much graphics memory and work the lighting may take on this device. Only the picture
  * changes: what tokens see, which light reaches them and what is remembered are worked out the
- * same way at every level, and walls hold light back at every level (a coarser texel makes
- * their capsules wider, `wallRadius`).
+ * same way at every level, and walls hold light back at every level.
  */
-export interface LightingQuality {
+interface QualityBase {
   /**
    * Longest side, in texels, of the textures the lighting keeps over the whole map (light map,
    * wall fields, darkness and zone maps). Maps up to twice this many pixels keep the finest
    * texel (`BASE_TEXEL`); larger ones get coarser texels, so memory stops growing with the map.
    */
   maxTexels: number;
-  /** Light bounces off walls and floors on maps whose longer side is at most this many pixels; 0 never. */
-  bounceMaxSide: number;
-  /** Flickering lights are redrawn at most this often, in milliseconds; null keeps every light steady. */
-  flickerMs: number | null;
-  /**
-   * Rays a light's tile traces across its flame where a texel sees only part of it (at most
-   * `TILE_RAYS`): fewer make soft shadow edges coarser and a light's tile that much cheaper to
-   * build. What a wall blocks is the same with any number.
-   */
-  tileRays: number;
   /**
    * Frames a second moving liquids are shown at, at most (`LiquidLayer`): each is a render of the
    * whole stage, the lighting's composite included.
@@ -37,26 +26,51 @@ export interface LightingQuality {
   compositePixelRatio?: number;
 }
 
+/**
+ * The picture traced on the graphics device (`LightingWorld`): each light's tile traced through
+ * the walls' capsule field, light bounced, wall faces lit from the floor in front of them.
+ * Walls' capsules grow with a coarser texel (`wallRadius`).
+ */
+export interface TracedQuality extends QualityBase {
+  picture?: 'traced';
+  /** Light bounces off walls and floors on maps whose longer side is at most this many pixels; 0 never. */
+  bounceMaxSide: number;
+  /** Flickering lights are redrawn at most this often, in milliseconds. */
+  flickerMs: number;
+  /**
+   * Rays a light's tile traces across its flame where a texel sees only part of it (at most
+   * `TILE_RAYS`): fewer make soft shadow edges coarser and a light's tile that much cheaper to
+   * build. What a wall blocks is the same with any number.
+   */
+  tileRays: number;
+}
+
+/**
+ * The picture drawn from the polygons the rules work out on the CPU (`PolygonWorld`): each
+ * light's reach as a mesh in the light map, with the traced picture's falloff, nothing traced on
+ * the graphics device. Flames are steady and nothing bounces.
+ */
+export interface PolygonQuality extends QualityBase {
+  picture: 'polygons';
+}
+
+export type LightingQuality = TracedQuality | PolygonQuality;
+
 export const LIGHTING_QUALITY_LEVELS = ['high', 'balanced', 'saver'] as const;
 export type LightingQualityLevel = (typeof LIGHTING_QUALITY_LEVELS)[number];
 
 /** The levels the GM picks from; `high` is the lighting as it always was. */
-export const LIGHTING_QUALITY: Record<LightingQualityLevel, LightingQuality> = {
+export const LIGHTING_QUALITY: { high: TracedQuality; balanced: TracedQuality; saver: PolygonQuality } = {
   high: { maxTexels: MAX_TEXELS, bounceMaxSide: Infinity, flickerMs: FLICKER_INTERVAL_MS, tileRays: TILE_RAYS, liquidFps: 30 },
   balanced: { maxTexels: 2048, bounceMaxSide: 6144, flickerMs: 66, tileRays: 16, liquidFps: 15, compositePixelRatio: 1 },
-  saver: { maxTexels: 1024, bounceMaxSide: 0, flickerMs: null, tileRays: 8, liquidFps: 10, compositePixelRatio: 1 },
+  saver: { picture: 'polygons', maxTexels: 1024, liquidFps: 10, compositePixelRatio: 1 },
 };
 
-export const DEFAULT_LIGHTING_QUALITY: LightingQuality = LIGHTING_QUALITY.high;
+export const DEFAULT_LIGHTING_QUALITY: TracedQuality = LIGHTING_QUALITY.high;
 
-/**
- * A level below the view seen through its openings: `balanced` without bounce under `high`, its
- * lights flickering 4 times a second (each redraw draws the level's snapshot and the view's stage
- * anew, and the flicker shows only through the openings, dimmed); else `saver`, steady.
- */
 /** How often flickering lights below are redrawn at `high`: each redraw draws the level's snapshot anew, and 4 a second reads as flicker through an opening. */
 const BELOW_FLICKER_MS = 250;
-const BELOW_HIGH: LightingQuality = { ...LIGHTING_QUALITY.balanced, bounceMaxSide: 0, flickerMs: BELOW_FLICKER_MS };
+const BELOW_HIGH: TracedQuality = { ...LIGHTING_QUALITY.balanced, bounceMaxSide: 0, flickerMs: BELOW_FLICKER_MS };
 
 /**
  * The quality a level below the view is lit at while the view is lit at `quality`: a tier lower,
@@ -71,7 +85,7 @@ export function isLightingQualityLevel(value: unknown): value is LightingQuality
 }
 
 /** Whether light bounces on a map of `bounds` at `quality`. */
-export function bouncesOn(quality: LightingQuality, bounds: { width: number; height: number }): boolean {
+export function bouncesOn(quality: TracedQuality, bounds: { width: number; height: number }): boolean {
   return Math.max(bounds.width, bounds.height) <= quality.bounceMaxSide;
 }
 

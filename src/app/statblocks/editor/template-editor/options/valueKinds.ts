@@ -12,17 +12,18 @@ import { updateField } from '../../../model/fieldOps';
 import { boundField, findBlock } from '../../../model/treeQueries';
 import { turnInto } from '../../../model/turnInto';
 import type { FieldType, StatblockTemplate, TemplateBlock, TemplateField } from '../../../model/templateTypes';
+import { t } from '../../../../i18n';
 
 export type ValueKind = 'number' | 'text' | 'dice' | 'rating' | 'choice' | 'words' | 'pairs';
 
 export const VALUE_KINDS: ReadonlyArray<{ kind: ValueKind; label: string }> = [
-  { kind: 'number', label: 'Number' },
-  { kind: 'text', label: 'Text' },
-  { kind: 'dice', label: 'Dice' },
-  { kind: 'rating', label: 'Rating' },
-  { kind: 'choice', label: 'One of a list' },
-  { kind: 'words', label: 'Words' },
-  { kind: 'pairs', label: 'Labels and values' },
+  { kind: 'number', label: t('templateEditor.look.number') },
+  { kind: 'text', label: t('templateEditor.fieldType.text') },
+  { kind: 'dice', label: t('templateEditor.fieldType.dice') },
+  { kind: 'rating', label: t('templateEditor.fieldType.rating') },
+  { kind: 'choice', label: t('templateEditor.fieldType.choice') },
+  { kind: 'words', label: t('templateEditor.fieldType.list') },
+  { kind: 'pairs', label: t('templateEditor.fieldType.pairs') },
 ];
 
 const FIELD_TYPES: Readonly<Record<ValueKind, FieldType>> = {

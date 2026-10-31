@@ -68,7 +68,7 @@ export class SceneDice {
       send: (body, to) => ports.send(body, to),
       now: () => ports.now(),
     });
-    this.speakers = new LogSpeakers((path) => ports.readImage(path));
+    this.speakers = new LogSpeakers((path) => ports.readImage(path), ports.stored);
   }
 
   start(): void {
@@ -77,6 +77,11 @@ export class SceneDice {
 
   stop(): void {
     this.share.stop();
+  }
+
+  /** Reads the speakers' artwork again: its reference may go out another way now (without a stored id). */
+  refreshArt(): void {
+    this.speakers.clear();
   }
 
   receive(from: string, message: PlayerRoll): void {

@@ -2,6 +2,7 @@ import { foldToAscii } from './asciiFold';
 import { isCodeKey } from './fsCodeKeys';
 import { isReservedKey } from './reservedKeys';
 import type { FieldKey, TemplateField } from './templateTypes';
+import { t } from '../../i18n';
 
 /**
  * Labels whose conventional key is not their snake case, following FS's Basic
@@ -71,14 +72,14 @@ export function labelToKey(label: string, existingKeys: Iterable<FieldKey>): Fie
  * `existingKeys` are the other fields' keys (and former keys).
  */
 export function keyProblem(key: string, existingKeys: Iterable<FieldKey>): string | null {
-  if (key.trim() === '') return 'Give the field a key.';
-  if (!KEY_PATTERN.test(key)) return 'A key starts with a letter and holds only letters, digits, _ and -.';
-  if (key.toLowerCase() === 'tags') return 'Obsidian reads “tags” as the note’s tags. Choose another key.';
+  if (key.trim() === '') return t('statblockEditor.key.empty');
+  if (!KEY_PATTERN.test(key)) return t('statblockEditor.key.pattern');
+  if (key.toLowerCase() === 'tags') return t('statblockEditor.key.tags');
   if (isReservedKey(key) || isReservedKey(key.toLowerCase())) {
-    return `“${key}” is used by Obsidian, Fantasy Statblocks or Atlas. Choose another key.`;
+    return t('statblockEditor.key.reserved', { key });
   }
-  if (isCodeKey(key)) return `Fantasy Statblocks reads “${key}” as code. Choose another key.`;
-  if (lowerCaseSet(existingKeys).has(key.toLowerCase())) return `Another field already uses “${key}”.`;
+  if (isCodeKey(key)) return t('statblockEditor.key.code', { key });
+  if (lowerCaseSet(existingKeys).has(key.toLowerCase())) return t('statblockEditor.key.taken', { key });
   return null;
 }
 

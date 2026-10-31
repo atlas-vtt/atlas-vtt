@@ -50,14 +50,14 @@ export function inflateShape(shape: QShape, deltaQ: Q, join: 'round' | 'miter' =
   return canonicalOutput(union(grown, FillRule.NonZero));
 }
 
-/** Round caps/joins at one eighth-pixel arc tolerance; integer cleanup has its own rounding. */
-export function inflatePolyline(points: QPolygon, radiusQ: Q): QShape {
+/** Round caps/joins at one eighth-pixel arc tolerance (or `arcToleranceQ`); integer cleanup has its own rounding. */
+export function inflatePolyline(points: QPolygon, radiusQ: Q, arcToleranceQ = 1): QShape {
   const input = pathOf(points);
   assertQ(radiusQ);
   if (radiusQ < 0) throw new RangeError('A brush radius cannot be negative');
   const path = input.filter((point, index) => index === 0 || point.x !== input[index - 1]!.x || point.y !== input[index - 1]!.y);
   if (radiusQ === 0 || path.length === 0) return [];
-  const inflated = inflatePaths([path], radiusQ, JoinType.Round, EndType.Round, 2, 1);
+  const inflated = inflatePaths([path], radiusQ, JoinType.Round, EndType.Round, 2, arcToleranceQ);
   for (const ring of inflated) {
     for (const point of ring) {
       assertQ(point.x);

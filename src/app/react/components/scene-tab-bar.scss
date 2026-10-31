@@ -155,6 +155,17 @@ body.atlas-toolbar-grabbing .atlas-scene-tab {
     flex-shrink: 0;
   }
 
+  // The ring of a scene whose map image is being processed (`SceneTabProcessing`), as tall as the tab's icons.
+  &__processing {
+    display: flex;
+    flex-shrink: 0;
+
+    .atlas-processing-ring {
+      width: 12px;
+      height: 12px;
+    }
+  }
+
   &__action {
     // Hidden buttons keep their space so a tab never resizes on hover
     display: flex;

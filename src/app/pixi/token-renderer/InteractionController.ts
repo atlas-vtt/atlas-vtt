@@ -882,7 +882,8 @@ export class InteractionController implements ITokenInteractionController {
   }
 
   private showEditTokenModal(token: TokenEntity): void {
-    openEditTokenModal(token, this.store, this.obsApp, this.resourceDefsProvider());
+    const canvas = this.viewport.options?.events?.domElement;
+    openEditTokenModal(token, this.store, this.obsApp, this.resourceDefsProvider(), canvas?.ownerDocument);
   }
 
   destroyAll(): void {

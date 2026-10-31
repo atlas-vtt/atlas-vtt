@@ -2,6 +2,7 @@ import { Buffer, BufferImageSource, BufferUsage, Color, Geometry, Mesh, Texture,
 import type { LiquidKind, LiquidSurface } from '../../types/liquidTypes';
 import { fnv1a32 } from '../../utils/hashing';
 import { smoulder } from '../lighting/lightFlicker';
+import { courseFrame } from './liquidCourse';
 import { liquidField } from './liquidField';
 import { liquidDrifts, loopTime } from './liquidMotion';
 import { createLiquidShader, type LiquidDetail, type LiquidUniforms } from './liquidShader';
@@ -40,6 +41,7 @@ export class LiquidMesh {
   readonly bounds: WorldBox;
   private readonly geometry: Geometry;
   private readonly field: Texture;
+  private readonly course: Texture | null;
   private readonly uniforms: LiquidUniforms;
   private readonly lavaPhase: number;
   private readonly drifts = new Float32Array(8);
@@ -50,22 +52,33 @@ export class LiquidMesh {
       attributes: { aPosition: { buffer: new Buffer({ data: positions, usage: BufferUsage.VERTEX }), format: 'float32x2' } },
       indexBuffer: new Buffer({ data: indices, usage: BufferUsage.INDEX }),
     });
-    const field = liquidField(surface.polygon, cell, surface.holes);
+    const field = liquidField(surface.polygon, cell, surface.holes, surface.openEdges);
     this.field = new Texture({
       source: new BufferImageSource({
         resource: field.texels, width: field.width, height: field.height, format: 'rgba8unorm',
         alphaMode: 'no-premultiply-alpha', scaleMode: 'linear', addressMode: 'clamp-to-edge', autoGenerateMipmaps: false,
       }),
     });
-    const { shader, uniforms } = createLiquidShader(this.field);
+    const { course, flow } = surface;
+    const frame = course && flow ? courseFrame(course, cell, field) : null;
+    this.course = frame
+      ? new Texture({
+        source: new BufferImageSource({
+          resource: frame.values, width: frame.width, height: frame.height, format: 'rg32float',
+          alphaMode: 'no-premultiply-alpha', scaleMode: 'nearest', addressMode: 'clamp-to-edge', autoGenerateMipmaps: false,
+        }),
+      })
+      : null;
+    const { shader, uniforms } = createLiquidShader(this.field, this.course ?? this.field);
     this.uniforms = uniforms;
     uniforms.uFieldRect.set([field.origin.x, field.origin.y, field.width * field.texel, field.height * field.texel]);
     uniforms.uFieldCode.set([field.outside, field.near, field.far, 0]);
     uniforms.uCell = cell;
     uniforms.uKind = KIND_CODE[surface.liquid];
     uniforms.uEngraved = surface.art === 'engraved' ? 1 : 0;
-    const { flow } = surface;
+    uniforms.uCrayon = surface.art === 'crayon' ? 1 : 0;
     uniforms.uFlowing = flow ? 1 : 0;
+    uniforms.uCoursed = frame ? 1 : 0;
     // Its frame: across the flow, then along it; a still surface keeps the map's axes.
     uniforms.uFrame.set(flow ? [-flow.y, flow.x, flow.x, flow.y] : [1, 0, 0, 1]);
     const hash = fnv1a32(surface.id);
@@ -106,6 +119,7 @@ export class LiquidMesh {
     this.geometry.destroy(true);
     shader?.destroy();
     this.field.destroy(true);
+    this.course?.destroy(true);
   }
 }
 

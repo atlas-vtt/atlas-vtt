@@ -9,7 +9,7 @@ import { SpatialAudioEngine } from '../../src/app/audio/SpatialAudioEngine';
 import { objectsMovedWithMap } from '../../src/app/grid/mapStretchObjects';
 import { collectMapObjects, objectAnchors } from '../../src/app/clipboard/mapObjectContent';
 import { shownRollTokens } from '../../src/app/pixi/playerRollTokens';
-import { PlayerInstanceBadges } from '../../src/app/pixi/token-renderer/PlayerInstanceBadges';
+import { ShownBadgeNumbers } from '../../src/app/pixi/token-renderer/PlayerBadgeNumbers';
 import type { ViewAtlasState } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 
@@ -93,10 +93,10 @@ describe('a combatant kept beside the map is no part of it', () => {
     expect([...shown.keys()]).toEqual(['on']);
   });
 
-  it('takes a players\' number among look-alikes where their initiative list shows it, never where it is hidden', () => {
+  it('shows the players the GM\'s number of a look-alike where their initiative list shows it, never where it is hidden', () => {
     const goblin = (id: string, extra: Partial<TokenEntity>): TokenEntity => ({ id, kind: 'token', x: 0, y: 0, imagePath: 'art/goblin.png', ...extra } as TokenEntity);
     const tokens = tokensOf(goblin('on', { instanceNumber: 1 }), goblin('beside', { instanceNumber: 2, offMap: true }), goblin('secret', { instanceNumber: 3, offMap: true, isHidden: true }));
-    const badges = new PlayerInstanceBadges({ state: () => ({ mapPath: 'maps/cave.atlasmap', objects: { tokens } }), sprites: () => ({}) });
+    const badges = new ShownBadgeNumbers(() => ({ objects: { tokens } }) as never);
     badges.pass(() => true);
     expect([badges.numberOf('on'), badges.numberOf('beside'), badges.numberOf('secret')]).toEqual([1, 2, null]);
   });

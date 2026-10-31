@@ -1,13 +1,14 @@
 import { parseGmMessage, parseLogEntry, type GmMessage } from '../../../../src/app/online/protocol/index.ts';
 import { describe, expect, it } from 'vitest';
-import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
+import type { AssetStoring } from '../../../../src/app/online/gm/assets/assetUses.ts';
+import { fakeStoring, storedRef } from './fakeStoring.ts';
 import { ImageShare } from '../../../../src/app/online/gm/image/ImageShare.ts';
 import { lootCardOf } from '../../../../src/app/online/gm/log/lootCard.ts';
 import { TableLog } from '../../../../src/app/online/gm/log/TableLog.ts';
 import type { LootDraw } from '../../../../src/app/loot/lootRoller';
 
 const ANA = 'a'.repeat(20);
-const ART = { hash: 'f'.repeat(64), size: 10, mime: 'image/png' };
+const ART = { hash: 'f'.repeat(64), size: 10, mime: 'image/png', id: 'e'.repeat(64) };
 
 interface Sent {
   readonly body: GmMessage;
@@ -38,7 +39,7 @@ const DRAW: LootDraw = {
 };
 
 describe('what the GM showed or handed out', () => {
-  it('an image goes to everyone by hash, its file stays with the GM, and the log lets it be served', () => {
+  it('an image goes to everyone by its stored id, and its file stays with the GM', () => {
     const { log: table, sent } = log();
     table.imageShown({ image: ART, width: 640, height: 480 }, 'Handouts/map.png');
     const message = sent[0]?.body;
@@ -74,24 +75,27 @@ describe('what the GM showed or handed out', () => {
     expect(parseLogEntry({ ...base, who: 'gm', name: 'GM', kind: 'loot', item: { name: 'Rope', properties: 'many' } })).toBeNull();
   });
 
-  it('a shown image is served while the log holds it, as it was sent, and refused once it is gone', async () => {
+  it('a shown image goes to players by the id the store keeps it under and into the log with its file, and is not shown where the store refuses it', async () => {
     const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 13, 0x49, 0x48, 0x44, 0x52, 0, 0, 0, 2, 0, 0, 0, 3, 8, 6, 0, 0, 0, 0, 0, 0, 0]);
-    const hash = await sha256Hex(png);
-    const sent: Sent[] = [];
-    const logged = new Map<string, string>();
-    const share = new ImageShare({
-      send: (body, to) => void sent.push({ body, to }), now: () => 0, randomId: () => '1'.repeat(24), changed: () => undefined,
-      logShown: (shown, path) => void (path !== null && logged.set(shown.image.hash, path)),
-      loggedFile: (asked) => logged.get(asked),
-      readImage: () => Promise.resolve(null),
-    });
-    expect(await share.show(() => Promise.resolve({ bytes: png, mime: 'image/png' }), 'Handouts/a.png')).toBe('shown');
-    expect(logged.get(hash)).toBe('Handouts/a.png');
-    share.dismiss();
-    sent.length = 0;
-    expect(share.receive(ANA, { t: 'asset-request', hash })).toBe(true);
-    expect(sent.some(({ body }) => body.t === 'asset-chunk')).toBe(true);
-    logged.clear();
-    expect(share.receive(ANA, { t: 'asset-request', hash })).toBe(false);
+    const share = (stored: AssetStoring): { share: ImageShare; sent: Sent[]; logged: Map<string, string> } => {
+      const sent: Sent[] = [];
+      const logged = new Map<string, string>();
+      const made = new ImageShare({
+        send: (body, to) => void sent.push({ body, to }), now: () => 0, randomId: () => '1'.repeat(24), changed: () => undefined,
+        logShown: (shown, path) => void (path !== null && logged.set(shown.image.hash, path)),
+        stored,
+      });
+      return { share: made, sent, logged };
+    };
+    const kept = share(fakeStoring());
+    expect(await kept.share.show(() => Promise.resolve({ bytes: png, mime: 'image/png' }), 'Handouts/a.png')).toBe('shown');
+    const ref = await storedRef(png, 'image/png');
+    expect(kept.sent.map(({ body }) => body)).toEqual([{ t: 'shown-image', shown: { id: '1'.repeat(24), image: ref, width: 2, height: 3 } }]);
+    expect(kept.logged.get(ref.hash)).toBe('Handouts/a.png');
+
+    const refused = share(fakeStoring(() => true));
+    expect(await refused.share.show(() => Promise.resolve({ bytes: png, mime: 'image/png' }), 'Handouts/a.png')).toBe('unreadable');
+    expect(refused.sent).toEqual([]);
+    expect(refused.logged.size).toBe(0);
   });
 });

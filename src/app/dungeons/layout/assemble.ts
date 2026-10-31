@@ -109,6 +109,8 @@ export interface BuiltFloor {
   layout: CompactLayout;
   /** Keeps every rule; a floor that does not is the best attempt there was. */
   sound: boolean;
+  /** Keeps the rules between floors (`accept`), as every sound floor does; false only for a fallback none of whose attempts did. */
+  linked: boolean;
 }
 
 /** The first attempt that keeps every rule (after `passOver` such), else the best of them (`fallback`); null where no attempt found a place for its first room. */
@@ -121,12 +123,12 @@ export function buildFloorLayout(seed: number, request: FloorRequest): BuiltFloo
     const built = attempt(seed, request, index);
     if (!built) continue;
     if (built.kept === FLOOR_RULES && linked(built, request)) {
-      if (passed++ === (request.passOver ?? 0)) return { layout: built.layout, sound: true };
+      if (passed++ === (request.passOver ?? 0)) return { layout: built.layout, sound: true, linked: true };
       lastSound = built;
     }
     tried.push(built);
   }
-  if (lastSound) return { layout: lastSound.layout, sound: true };
+  if (lastSound) return { layout: lastSound.layout, sound: true, linked: true };
   const best = fallback(tried, request);
-  return best ? { layout: best.layout, sound: false } : null;
+  return best ? { layout: best.layout, sound: false, linked: linked(best, request) } : null;
 }

@@ -38,6 +38,8 @@ export interface AtlasSettings {
   laserPointer: LaserPointerSettings;
   /** How rolls show: a result card, or 3D dice at double or normal speed. Read with `getDiceDisplay`. */
   diceDisplay: DiceDisplay;
+  /** Loudness of dice sounds, 0 (silent) to 1. Read with `getDiceVolume`. */
+  diceVolume: number;
   /** Whether a new scene looks for the grid of its map. Off for tables that play without one. Read with `detectsGridOnNewScenes`. */
   detectGridOnNewScenes: boolean;
   /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
@@ -90,6 +92,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   navigation: { inputMode: defaultInputMode() },
   laserPointer: DEFAULT_LASER_POINTER_SETTINGS,
   diceDisplay: 'full',
+  diceVolume: 1,
   detectGridOnNewScenes: true,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,

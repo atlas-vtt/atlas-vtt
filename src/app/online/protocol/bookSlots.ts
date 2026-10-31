@@ -117,6 +117,12 @@ export function settledEquipped(equipped: readonly Equipped[], slots: BookSlots,
   return kept.length === equipped.length ? equipped : kept;
 }
 
+/** A book without the item of `id`, which leaves the slot it lay in; null where the book does not hold it. */
+export function withoutItem<B extends { readonly items: readonly { readonly id: string }[]; readonly equipped: readonly Equipped[] }>(book: B, id: string): B | null {
+  if (!book.items.some((item) => item.id === id)) return null;
+  return { ...book, items: book.items.filter((item) => item.id !== id), equipped: book.equipped.filter((entry) => entry.item !== id) };
+}
+
 /**
  * What is equipped once `item` is put into `slot`, or taken out where `slot` is null: it leaves the
  * slot it was in, and what lay in `slot` goes back to the bag. Checking that both exist is the caller's.

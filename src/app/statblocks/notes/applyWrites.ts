@@ -8,6 +8,7 @@ import { frontmatterBounds } from './frontmatterBounds';
 import { frontmatterProblem } from './frontmatterProblem';
 import type { NotePatch } from './patchTypes';
 import { readFrontmatterDoc, type FrontmatterModel } from './yamlDocument';
+import { t } from '../../i18n';
 
 /** Patches made from the frontmatter as the write finds it (the patcher's own reading); null where it cannot be read. */
 export type PatchBuilder = (frontmatter: FrontmatterModel | null) => readonly NotePatch[];
@@ -53,7 +54,7 @@ function rewriteOf(rewrite: NoteRewrite, text: string): ReturnType<NoteRewrite> 
   try {
     return rewrite(text);
   } catch (error) {
-    return { problem: error instanceof Error ? error.message : 'The change could not be prepared.' };
+    return { problem: error instanceof Error ? error.message : t('statblockEditor.changeUnprepared') };
   }
 }
 
@@ -62,7 +63,7 @@ function patchesOf(request: Exclude<WriteRequest, { rewrite: NoteRewrite }>, tex
   try {
     return { patches: request.build(frontmatterModel(text)) };
   } catch (error) {
-    return { problem: error instanceof Error ? error.message : 'The change could not be prepared.' };
+    return { problem: error instanceof Error ? error.message : t('statblockEditor.changeUnprepared') };
   }
 }
 

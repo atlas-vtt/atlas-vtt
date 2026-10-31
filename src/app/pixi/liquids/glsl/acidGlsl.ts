@@ -5,10 +5,11 @@
  * Three / two / one noise octaves at high / balanced / saver, one field sample, no extra pass.
  */
 export const ACID_GLSL = `
-vec4 acid(vec2 q, float d, float px, float near) {
-  float current = fbm((q - uDriftA.xy) * 0.75, vec2(TILE * 0.75), int(uDetail) + 1, px * 0.75);
-  float bank = 1.0 - smoothstep(0.08, 0.32, d + current * 0.06);
-
+/**
+ * The bubble at this pixel: its rim (x) and the dome it swells into (y), each as far as a live
+ * bubble shows them, and how far round towards its lit side the pixel lies (z).
+ */
+vec3 acidBubble(vec2 q, float d, float px) {
   // One candidate per jittered cell, fewer than the old 3x3 lattice. A new location at each
   // birth, changed only while invisible; integer paces and wrapped epochs keep LOOP seamless.
   vec2 b = (q - uDriftB.xy) * 1.5;
@@ -34,6 +35,15 @@ vec4 acid(vec2 q, float d, float px, float near) {
   // The stretched skin opens on one side, then settles. No one-frame jump at the pop.
   rim *= 1.0 - pop * smoothstep(-0.3, 0.7, at.x / max(radius, 0.001));
   float bubble = live * has;
+  float litSide = smoothstep(-0.8, 0.65, -(at.x + at.y) / max(radius, 0.001));
+  return vec3(rim * bubble, dome * bubble * (1.0 - smoothstep(0.70, 0.83, life)), litSide);
+}
+
+vec4 acid(vec2 q, float d, float px, float near) {
+  float current = fbm((q - uDriftA.xy) * 0.75, vec2(TILE * 0.75), int(uDetail) + 1, px * 0.75);
+  float bank = 1.0 - smoothstep(0.08, 0.32, d + current * 0.06);
+
+  vec3 bubble = acidBubble(q, d, px);
 
   if (uEngraved > 0.5) {
     // Static art uses a 45-degree burin hatch. Keep it still, let density breathe in slow
@@ -43,7 +53,7 @@ vec4 acid(vec2 q, float d, float px, float near) {
     float hatch = 1.0 - smoothstep(0.10, 0.10 + px * 31.0, abs(fract(hatchAt) - 0.5));
     hatch *= shown(1.0 / 31.0, px);
     float stain = hatch * bank * 0.14;
-    float outline = rim * bubble * 0.7;
+    float outline = bubble.x * 0.7;
     float alpha = clamp(stain + outline, 0.0, 0.78);
     return vec4(uDeep * alpha, alpha);
   }
@@ -51,10 +61,9 @@ vec4 acid(vec2 q, float d, float px, float near) {
   // Thin pigment layers let the painter's paper, depth and existing bubbles show through.
   float wash = 0.025 + bank * 0.12 + smoothstep(-0.18, 0.23, current) * 0.035;
   vec3 colour = mix(uDeep, uSurface, 0.18 + current * 0.22) * wash;
-  float body = dome * bubble * (1.0 - smoothstep(0.70, 0.83, life)) * 0.07;
-  float edge = rim * bubble * 0.48;
-  float litSide = smoothstep(-0.8, 0.65, -(at.x + at.y) / max(radius, 0.001));
-  vec3 pigment = mix(uDeep, uGlint, 0.35 + litSide * 0.5);
+  float body = bubble.y * 0.07;
+  float edge = bubble.x * 0.48;
+  vec3 pigment = mix(uDeep, uGlint, 0.35 + bubble.z * 0.5);
   colour = colour * (1.0 - body) + uSurface * body;
   float alpha = wash * (1.0 - body) + body;
   colour = colour * (1.0 - edge) + pigment * edge;

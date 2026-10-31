@@ -11,8 +11,6 @@ import type { ArtFloors } from '../../levels/levelSurfaces';
 
 export interface LightingViewHostDeps {
   store: ViewAtlasStore;
-  /** PIXI draws with Canvas 2D, which has no shaders: the fallback from the start, for good. */
-  canvasRenderer: boolean;
   /** The GPU engine's view; it calls `onUnavailable` once when it cannot light the map, and has stopped by then. */
   createEngineView: (onUnavailable: (reason: LightingUnavailable) => void) => SceneLightingView;
   createFallback: () => SceneLightingView;
@@ -63,7 +61,7 @@ export class LightingViewHost implements SceneLightingView {
   private readonly unsubscribe: () => void;
 
   constructor(private readonly deps: LightingViewHostDeps) {
-    this.view = deps.canvasRenderer ? deps.createFallback() : this.startEngine();
+    this.view = this.startEngine();
     this.unsubscribe = deps.store.subscribe((state, previous) => {
       if (!this.heldBack) return;
       if (state.isMapLoading) {

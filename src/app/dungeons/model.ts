@@ -162,6 +162,36 @@ export interface DungeonWater {
   outline: CellPoint[];
 }
 
+/** A bridge that carries a road over a river: its middle, the way its deck runs (across the river, a unit vector), its length and its deck's breadth, in cells. */
+export interface DungeonRiverBridge {
+  at: CellPoint;
+  along: CellPoint;
+  length: number;
+  breadth: number;
+}
+
+/** A road through a Forest, from beyond one edge of the map to beyond another: its middle line and width in cells, and whether carts have worn ruts in it (a cart road) or not (a footpath). */
+export interface DungeonRoad {
+  points: CellPoint[];
+  width: number;
+  ruts: boolean;
+}
+
+/** A river of a Forest: its middle line from where it enters to where it ends, its width there, and its bridges. */
+export interface DungeonRiver {
+  points: CellPoint[];
+  /** Bank to bank, by point, in cells; the water is narrower where a bar lies on the inside of a bend (`riverShape.ts`). */
+  widths: number[];
+  bridges: DungeonRiverBridge[];
+  /** Islands of gravel the river parts round, each an outline, in cells. */
+  islands?: CellPoint[][];
+}
+
+/** A lake a Forest's river flows into, and out of again where another river leaves it: its shore. */
+export interface DungeonLake {
+  outline: CellPoint[];
+}
+
 /** One floor of a dungeon. Room ids count from 0 on every floor; an entrance is a door with `from === null`. */
 export interface DungeonFloor {
   rooms: DungeonRoom[];
@@ -185,6 +215,16 @@ export interface DungeonFloor {
   hiddenWings?: number[];
   /** A Cavern floor's lane, heights, water and faults. */
   cave?: CaveFloor;
+  /** A Forest's entry floor: a cave floor drawn as glades in the woods (`forestFloor`). */
+  forest?: true;
+  /** A Forest's rivers, the first its main river, any after it tributaries that end where they join it (`forest/forestRivers.ts`). */
+  rivers?: DungeonRiver[];
+  /** The lakes its rivers flow into. */
+  lakes?: DungeonLake[];
+  /** A Forest's roads (`forest/forestRoads.ts`): its only bridges are where they cross a river. */
+  roads?: DungeonRoad[];
+  /** Open ground no room holds, traced with the rooms' floor: a Forest's meadows along its water and the ground its roads run on. */
+  openGround?: CellPoint[];
   /** Set on every floor of a house: walls on the edges between cells (`houseModel.ts`); unset, rooms are walled by whole cells. */
   walls?: FloorWalls;
   /** A house's windows, in its outer walls. */
@@ -198,7 +238,7 @@ export interface DungeonFloor {
 export interface DungeonModel {
   version: number;
   seed: number;
-  /** Fortress, Haunted Mansion or Cavern: one per dungeon. */
+  /** Fortress, Haunted Mansion, Cavern or Forest: one per dungeon. */
   theme: ThemeId;
   /** The tags the dungeon was built with: the GM's that its theme takes, and those added by chance (`dungeonTags`). */
   tags: string[];

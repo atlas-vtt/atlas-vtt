@@ -59,3 +59,12 @@ export function scatter(area: Bounds | readonly Vec[], per: number, seed: number
   else for (const c of area) scatterIn({ minX: c.x, minY: c.y, maxX: c.x + 1, maxY: c.y + 1 }, per, seed, out);
   return out;
 }
+
+/** Pebbles at `points`, each a small ring at least `size` across, in the context's stroke. */
+export function tracePebbles(ctx: Canvas2D, points: readonly Scattered[], size: number): void {
+  for (const p of points) {
+    const r = size + 0.012 * p.t;
+    ctx.moveTo(p.x + r, p.y);
+    ctx.ellipse(p.x, p.y, r, r * 0.75, p.t * 3, 0, Math.PI * 2);
+  }
+}

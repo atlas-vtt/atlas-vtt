@@ -6,6 +6,7 @@ import { useSceneTabStore } from '../hooks/useSceneTabStore';
 import { useTabStripOverflow } from '../hooks/useTabStripOverflow';
 import type { SceneTab } from '../../types/sceneTabTypes';
 import { LabelTooltip, TooltipProvider } from '../../packages/components/primitives/tooltip';
+import { SceneTabProcessing } from './SceneTabProcessing';
 import './scene-tab-bar.scss';
 import { t } from '../../i18n';
 import { useSceneTabReorder } from './scene-tabs/useSceneTabReorder';
@@ -152,6 +153,7 @@ export function SceneTabBar({ onSwitchTab, onMoveTab, onCloseTab, onAddTab, onPr
                 <LabelTooltip side="bottom" label={tab.filePath} suppressed={!!reorder.draggedId}>
                   <span className="atlas-scene-tab__name">{tab.displayName}</span>
                 </LabelTooltip>
+                <SceneTabProcessing scenePath={tab.filePath} suppressed={!!reorder.draggedId} />
                 {tab.isDirty && <span className="atlas-scene-tab__dirty" />}
                 <TabActionButton icon={X} suppressed={!!reorder.draggedId} label={t('tabs.close', { name: tab.displayName })} onClick={() => onCloseTab(tab.id)} />
               </div>

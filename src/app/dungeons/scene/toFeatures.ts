@@ -6,9 +6,14 @@ import { GROWTH_KINDS } from '../growthModel';
 import { PROP_SPECS, isCellPiece, propReach } from '../props/catalogue';
 import { propKey } from '../props/propKinds';
 import { propsAsDrawn } from '../render/propsAsDrawn';
+import { loneTrees, type LoneTree } from '../render/forest/loneTrees';
 import type { VisibleDungeon } from '../render/visibleDungeon';
 import type { DungeonView } from '../style';
+import { deckOf, floorWater, waterStretches } from '../forest/riverShape';
+import { intersectRings, subtractRings } from '../render/clipShapes';
+import { pointsBounds, signedArea2 } from '../render/geometry';
 import { cellOutlines } from './cellOutline';
+import { fitCorners, floorRingsOf } from './sceneRings';
 import { terrainName } from './terrainName';
 import type { DungeonPlacement } from './toWalls';
 
@@ -135,10 +140,38 @@ function columnDrafts(columns: readonly DungeonColumn[]): Draft[] {
   });
 }
 
+/** A Forest's lone trees, by their crowns: cover from their trunks, three quarters behind a thick one. */
+function treeDrafts(trees: readonly LoneTree[]): Draft[] {
+  return trees.map(tree => ({ polygon: discCorners(tree.x, tree.y, tree.radius), name: t('dungeonScene.feature.tree'), terrain: { cover: tree.thick ? 'three-quarters' : 'half' } }));
+}
+
+/**
+ * A Forest's rivers and lakes where they reach into the clearings: the water difficult ground stretch by
+ * stretch (a river is waded; a feature holds `MAX_FEATURE_CORNERS`, which a river's whole course
+ * would not keep to its banks), and each road's bridge a feature of its own, taken out of the water,
+ * so whoever crosses on it crosses dry. Islands stay in the water: a feature has no holes.
+ */
+function riverDrafts(dungeon: VisibleDungeon): Draft[] {
+  const rivers = dungeon.floor.rivers ?? [];
+  if (!rivers.length) return [];
+  const decks = rivers.flatMap(river => river.bridges.map(deckOf));
+  // The rivers within the clearings, clipped once; each stretch then only meets that.
+  const played = subtractRings(intersectRings(floorWater(rivers, dungeon.floor.lakes), floorRingsOf(dungeon)), decks);
+  const bridges = decks.map((polygon): Draft => ({ polygon, name: t('dungeonScene.feature.riverBridge') }));
+  if (!played.length) return bridges;
+  const reach = pointsBounds(played.flat());
+  const water = waterStretches(rivers, dungeon.floor.lakes)
+    .filter(({ rings }) => { const b = pointsBounds(rings.flat()); return b.minX <= reach.maxX && reach.minX <= b.maxX && b.minY <= reach.maxY && reach.minY <= b.maxY; })
+    .flatMap(({ rings, flow }) => intersectRings(rings, played)
+      .filter(ring => signedArea2(ring) > 0.1)
+      .map((ring): Draft => ({ polygon: fitCorners([ring], MAX_FEATURE_CORNERS)[0]!, name: t(flow ? 'dungeonScene.feature.river' : 'dungeonScene.feature.lake'), terrain: { difficult: true } })));
+  return [...water, ...bridges];
+}
+
 /**
  * The map features of one floor as shown, in world px on `level` (unset in a scene of one floor),
- * with ids beginning `id`: the first `MAX_MAP_FEATURES` of its terrain, props (where the view
- * shows them) and columns, in that order, and under them as much vegetation as fits. Only rooms
+ * with ids beginning `id`: the first `MAX_MAP_FEATURES` of its terrain, a Forest's rivers and
+ * bridges, props (where the view shows them), columns and lone trees, in that order, and under them as much vegetation as fits. Only rooms
  * the view shows have any. No feature names what a room was built for.
  */
 export function floorFeatures(dungeon: VisibleDungeon, view: Pick<DungeonView, 'props'>, placement: DungeonPlacement, id: string, level?: string): Record<string, MapFeature> {
@@ -146,9 +179,11 @@ export function floorFeatures(dungeon: VisibleDungeon, view: Pick<DungeonView, '
   const shown = floor.terrain.filter(piece => roomShapes.has(piece.room));
   const solid = [
     ...terrainDrafts(shown),
+    ...riverDrafts(dungeon),
     ...parapetDrafts(shown, cell => field.distance(cell.x + 0.5, cell.y + 0.5) < 0),
     ...(view.props ? propDrafts(propsAsDrawn(dungeon).filter(prop => roomShapes.has(prop.room))) : []),
     ...columnDrafts(floor.columns.filter(column => field.distance(column.x, column.y) < 0)),
+    ...treeDrafts(loneTrees(dungeon)),
   ].slice(0, MAX_MAP_FEATURES);
   // Vegetation lies under everything and takes what room the rest leaves.
   const growth = growthDrafts(floor.growth.filter(g => roomShapes.has(g.room))).slice(0, MAX_MAP_FEATURES - solid.length);

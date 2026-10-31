@@ -12,6 +12,7 @@ import { Scope, type App } from 'obsidian';
 import { OWNER_ATTRIBUTE } from '../interaction/chrome';
 import type { InlineMark } from '../markdown-typing/markdownMarks';
 import { toggleMarkIn } from '../markdown-typing/markIn';
+import { t } from '../../../i18n';
 
 export interface PanelScopeHost {
   /** The panel's element; null while hidden. */
@@ -89,8 +90,9 @@ export class PanelScope {
     const typing = active && (active.instanceOf(HTMLInputElement) || active.instanceOf(HTMLTextAreaElement) || (active.instanceOf(HTMLElement) && active.isContentEditable));
     if (typing && host?.contains(active)) return true;
     const name = this.panel.noteName();
-    const verb = kind === 'undo' ? 'Undid' : 'Redid';
-    this.panel.say(this.panel.noteHistory(kind) ? `${verb} in ${name}.` : `Switch ${name} to editing view to ${kind}.`);
+    const done = kind === 'undo' ? t('statblockEditor.undidIn', { name }) : t('statblockEditor.redidIn', { name });
+    const needEdit = kind === 'undo' ? t('statblockEditor.switchToUndo', { name }) : t('statblockEditor.switchToRedo', { name });
+    this.panel.say(this.panel.noteHistory(kind) ? done : needEdit);
     return false;
   }
 }

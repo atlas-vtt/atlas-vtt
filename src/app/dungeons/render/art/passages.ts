@@ -39,6 +39,11 @@ function doorSpan(door: DungeonDoor, dungeon: VisibleFloor): [number, number] {
 
 export function drawPassages(hand: Hand): void {
   const { env } = hand.scene;
+  // A Forest's clearings open into each other as the woods leave them: no narrows, crawls or doors; only its ways down.
+  if (env.dungeon.floor.forest) {
+    for (const part of ['pitch', 'aven', 'scree'] as const) caveWay(part, env)?.(hand);
+    return;
+  }
   // A cave's ways each by its registered drawing (`cave/caveArt.ts`); a part not drawn yet as below.
   const way = (part: CaveWayPart): CaveWayDraw | undefined => caveWay(part, env);
   const drawn = (part: CaveWayPart): boolean => way(part) !== undefined;

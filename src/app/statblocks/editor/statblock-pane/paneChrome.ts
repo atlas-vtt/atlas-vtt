@@ -5,6 +5,7 @@ import { METRIC_INDEX_ATTRIBUTE } from '../../render/blocks/MetricView';
 import { LIVE_TABLE_ATTRIBUTE } from '../table/EditableTable';
 import type { EditableSpots } from './editableSpots';
 import type { EditTarget } from './paneEditContext';
+import { t } from '../../../i18n';
 
 /**
  * Clicks on these keep their own meaning: a link opens, a die rolls, a section folds, a Table's cell is typed
@@ -88,7 +89,7 @@ export function paneChrome(
         className: 'atlas-sb-pane-value',
         tabIndex: 0,
         role: 'button',
-        attributes: { 'aria-label': `Edit ${fields.map((field) => field.label).join(', ')}` },
+        attributes: { 'aria-label': t('statblockEditor.editNamed', { name: fields.map((field) => field.label).join(', ') }) },
         handlers: {
           onClick: (event: MouseEvent<HTMLDivElement>) => {
             if (!clickedInside(event.target, OWN_CLICKS)) beginAt(event);

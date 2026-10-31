@@ -15,6 +15,8 @@ import type { DetectionReply, DetectionRequest } from './detectionProtocol';
 export interface DetectOptions {
   /** The grids a measurement or placement can stand for; without them the whole map is searched. */
   candidates?: AlignmentResult[];
+  /** Whether the outcome should say where the map's lines lie (`DetectionOutcome.lines`). */
+  lines?: boolean;
   /** Hears what the detection finds on its way. Asking makes it read the map's line evidence first. */
   onEvent?: (event: DetectionEvent) => void;
   /** Ends the detection: its promise rejects with the signal's reason. */
@@ -98,7 +100,7 @@ export class SpectralEngineClient {
   /** Hands `task` to the worker, with the map's pixels where the worker does not hold them yet. */
   private async send(task: Task): Promise<void> {
     const key = this.keyOf(task.pixels);
-    const request: DetectionRequest = { id: task.id, imageKey: key, ink: task.onEvent !== undefined, ...(task.candidates ? { candidates: task.candidates } : {}) };
+    const request: DetectionRequest = { id: task.id, imageKey: key, ink: task.onEvent !== undefined, lines: task.lines === true, ...(task.candidates ? { candidates: task.candidates } : {}) };
     const transfer: Transferable[] = [];
     if (this.heldKey !== key) {
       if ('image' in task.pixels) {
@@ -189,11 +191,11 @@ export class SpectralEngineClient {
   }
 
   private async detectHere(task: Task): Promise<void> {
-    const { candidates, onEvent } = task;
+    const { candidates, onEvent, lines } = task;
     try {
       const gray = await this.grayHere(task.pixels);
       if (this.running !== task) return;
-      const job: DetectionJob | null = gray && { gray, ink: onEvent !== undefined, ...(candidates ? { candidates } : {}) };
+      const job: DetectionJob | null = gray && { gray, ink: onEvent !== undefined, lines: lines === true, ...(candidates ? { candidates } : {}) };
       task.resolve(job ? runDetection(job, (event) => onEvent?.(event)) : NO_GRID);
     } catch (error) {
       if (this.running !== task) return;

@@ -4,7 +4,9 @@ import { CampaignPlay } from '../../src/app/campaigns/campaignPlay';
 import { QuestIndex } from '../../src/app/campaigns/quests/QuestIndex';
 import { sha256Hex } from '../../src/app/online/gm/assetServe';
 import { parseGmMessage } from '../../src/app/online/protocol/index.ts';
+import { StoredQuests } from '../../src/app/online/gm/book/storedQuests';
 import { campaignQuestGate } from '../../src/app/plugin/campaignQuestGate';
+import { fakeStoring, storedRef } from './online/gm/fakeStoring';
 import { memoryCampaigns } from '../mocks/memoryCampaigns';
 import { questVault } from '../mocks/questVault';
 
@@ -47,7 +49,7 @@ afterEach(() => {
 });
 
 describe('a quest note made from the campaign page', () => {
-  it('reaches a player\'s book whole, with the image it embeds, as the page reads the book', async () => {
+  it('reaches a player\'s book whole, with the image it embeds by its stored id, as the page reads the book', async () => {
     const image = webp();
     const vault = questVault({ [NOTE_PATH]: NOTE, [IMAGE_PATH]: 'image' });
     opened.push(vault.app);
@@ -72,9 +74,11 @@ describe('a quest note made from the campaign page', () => {
     })]);
     expect(quests[0]?.body).toContain('![[Goblin_Psionic_B3_01.webp]]');
 
-    // Sent as JSON to a player without a character, and read by the page's parser.
-    const book = { character: null, worldMap: null, items: [], notes: [], pins: [], quests, purse: [] };
+    // Stored for players, its image named by its id, sent as JSON to a player without a character and read by the page's parser.
+    const stored = await new StoredQuests(fakeStoring(undefined, (path) => (path === IMAGE_PATH ? image : undefined)), (hash) => gate.asset(hash)).of(quests);
+    expect(stored[0]?.images?.[0]?.image).toEqual(await storedRef(image, 'image/webp'));
+    const book = { character: null, worldMap: null, items: [], notes: [], pins: [], quests: stored, purse: [] };
     const read = parseGmMessage(JSON.parse(JSON.stringify({ t: 'book', book })));
-    expect(read?.t === 'book' ? read.book.quests : null).toEqual(JSON.parse(JSON.stringify(quests)));
+    expect(read?.t === 'book' ? read.book.quests : null).toEqual(JSON.parse(JSON.stringify(stored)));
   });
 });

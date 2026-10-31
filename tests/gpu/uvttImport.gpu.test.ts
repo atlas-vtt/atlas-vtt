@@ -118,15 +118,16 @@ describe('importing a Universal VTT file with the image workers', () => {
   it('puts the walls on the image as it is saved when the image is larger than a map keeps', async () => {
     const b = await bench();
 
-    const result = arrived(await importUvttFile(b.deps, await mapFile({ x: 200, y: 90 }, 100, 'image/jpeg'), COLLECTION));
+    // 34,000 px wide: more than a map's longest side, so the saved image is fit to 32,767 px and written as PNG.
+    const result = arrived(await importUvttFile(b.deps, await mapFile({ x: 340, y: 60 }, 100, 'image/jpeg'), COLLECTION));
 
     const scene = sceneOf(b, result);
-    const saved = await imageDimensions(new Blob([b.binaries.get(scene.background)!]));
-    expect(saved).toEqual({ width: 16383, height: 7372 });
-    expect(result.scaledDown).toEqual({ from: { width: 20000, height: 9000 }, to: { width: 16383, height: 7372 } });
-    const cell = 16383 / 200;
+    const saved = await imageHeader(new Blob([b.binaries.get(scene.background)!]));
+    expect(saved).toEqual({ format: 'png', width: 32767, height: 5782 });
+    expect(result.scaledDown).toEqual({ from: { width: 34000, height: 6000 }, to: { width: 32767, height: 5782 } });
+    const cell = 32767 / 340;
     expect(scene.grid.size).toBe(cell);
-    expect(scene.objects.walls.wall_uvtt_1).toMatchObject({ p1: { x: cell, y: cell }, p2: { x: 199 * cell, y: cell } });
+    expect(scene.objects.walls.wall_uvtt_1).toMatchObject({ p1: { x: cell, y: cell }, p2: { x: 339 * cell, y: cell } });
   });
 
   it('refuses a file whose image has a true header and a body no decoder reads, and leaves nothing', async () => {
@@ -197,18 +198,18 @@ describe('importing Universal VTT floors with the image workers', () => {
   it('fits a floor whose image was larger than a map keeps to the scene\'s grid, its wall on its art', async () => {
     const b = await bench();
     const cellar = await mapFile({ x: 10, y: 8 }, 100, 'image/jpeg', { name: 'Hall-_00.dd2vtt' });
-    const hall = await mapFile({ x: 200, y: 90 }, 100, 'image/jpeg', { name: 'Hall-_01.dd2vtt' });
+    const hall = await mapFile({ x: 340, y: 60 }, 100, 'image/jpeg', { name: 'Hall-_01.dd2vtt' });
 
     const { result, scene } = await importFloors(b, [cellar, hall]);
 
     expect(result.scaledDown).toEqual(['Hall-_01.dd2vtt']);
     const upper = scene.levels[1]!;
-    expect(await imageDimensions(new Blob([b.binaries.get(upper.background!)!]))).toEqual({ width: 16383, height: 7372 });
+    expect(await imageDimensions(new Blob([b.binaries.get(upper.background!)!]))).toMatchObject({ width: 32767, height: 5782 });
     expect(scene.grid.size).toBe(100);
-    expect(upper.alignment).toEqual({ offset: { x: 0, y: 0 }, scale: 100 / (16383 / 200), stretch: { x: 1, y: 1 } });
-    // Its wall begins a cell into its art, which the saved image holds at 16383 / 200 pixels a cell
+    expect(upper.alignment).toEqual({ offset: { x: 0, y: 0 }, scale: 100 / (32767 / 340), stretch: { x: 1, y: 1 } });
+    // Its wall begins a cell into its art, which the saved image holds at 32767 / 340 pixels a cell
     const wall = Object.values(scene.objects.walls).find((candidate) => candidate.levels[0] === upper.id)!;
-    const onArt = worldOf(scene, upper, { x: 16383 / 200, y: 16383 / 200 });
+    const onArt = worldOf(scene, upper, { x: 32767 / 340, y: 32767 / 340 });
     expect(wall.p1.x).toBeCloseTo(onArt.x, 6);
     expect(wall.p1.y).toBeCloseTo(onArt.y, 6);
   });

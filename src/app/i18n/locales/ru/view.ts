@@ -4,7 +4,6 @@ export const view: Translation = {
   'view.copyFailed': 'Не удалось скопировать путь',
   'view.copyPath': 'Копировать путь к файлу',
   'view.more': 'Другие действия',
-  'view.newWindow': 'Переместить в новое окно',
   'view.pathCopied': 'Путь к файлу скопирован',
   'view.rename': 'Переименовать...',
   'view.reveal': 'Показать в проводнике',
@@ -19,4 +18,5 @@ export const view: Translation = {
   'view.connecting': 'Подключение к игре…',
   'view.playerTitle': 'Экран игроков: {name}',
   'view.playerDefault': 'Экран игроков',
+  'view.noGraphics': 'Atlas нужно аппаратное ускорение графики, чтобы рисовать карты. Включите аппаратное ускорение в общих настройках Obsidian или проверьте драйверы видеокарты.',
 };

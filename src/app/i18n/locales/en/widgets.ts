@@ -24,6 +24,7 @@ export const widgets = {
   'widgets.showCountHint': 'Shows how many segments are filled in the clock\'s centre',
   'widgets.showInitiative': 'Show initiative tracker',
   'widgets.showToPlayers': 'Show to players',
+  'widgets.spreadStack': 'Show all {count} widgets',
   'widgets.switchOff': 'Switch off in this scene',
   'widgets.switchOn': 'Switch on in this scene',
   'widgets.type': 'Widget type',

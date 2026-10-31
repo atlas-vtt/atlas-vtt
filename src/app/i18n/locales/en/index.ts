@@ -30,11 +30,13 @@ import { initiative } from './initiative';
 import { initRules } from './initRules';
 import { loot } from './loot';
 import { tables } from './tables';
+import { templateEditor } from './templateEditor';
 import { lpv } from './lpv';
 import { map } from './map';
 import { mapFeature } from './mapFeature';
 import { menu } from './menu';
 import { notice } from './notice';
+import { online } from './online';
 import { palette } from './palette';
 import { picker } from './picker';
 import { settings } from './settings';
@@ -42,6 +44,7 @@ import { snapshots } from './snapshots';
 import { levels } from './levels';
 import { openings } from './openings';
 import { statblock } from './statblock';
+import { statblockEditor } from './statblockEditor';
 import { switcher } from './switcher';
 import { tabs } from './tabs';
 import { timer } from './timer';
@@ -96,6 +99,7 @@ import { encounter } from './encounter';
 import { migration } from './migration';
 import { wall } from './wall';
 import { sceneLight } from './sceneLight';
+import { graphics } from './graphics';
 import { vision } from './vision';
 import { videoMap } from './videoMap';
 import { uvttFloors } from './uvttFloors';
@@ -135,11 +139,13 @@ export const en = {
   ...initRules,
   ...loot,
   ...tables,
+  ...templateEditor,
   ...lpv,
   ...map,
   ...mapFeature,
   ...menu,
   ...notice,
+  ...online,
   ...palette,
   ...picker,
   ...settings,
@@ -147,6 +153,7 @@ export const en = {
   ...levels,
   ...openings,
   ...statblock,
+  ...statblockEditor,
   ...switcher,
   ...tabs,
   ...timer,
@@ -203,6 +210,7 @@ export const en = {
   ...migration,
   ...wall,
   ...sceneLight,
+  ...graphics,
   ...vision,
   ...videoMap,
   ...uvttFloors,

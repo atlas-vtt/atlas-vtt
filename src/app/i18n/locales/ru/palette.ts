@@ -44,4 +44,8 @@ export const palette: Translation = {
   'palette.tour.ownBody': 'Сетку, токены и виджеты настраивают в разделе «Настройки». На карте нажмите {key}, чтобы увидеть сочетания клавиш. Изменить их можно в настройках Obsidian: Atlas VTT → Горячие клавиши карты.',
   'palette.tour.ownTitle': 'Настройте карту под себя',
   'palette.widgetSettings': 'Настройки виджетов',
+  'palette.openPlayerWindow': 'Открыть окно игроков',
+  'palette.panel.levels': 'Уровни сцены',
+  'palette.sceneLevels': 'Уровни сцены',
+  'palette.replaceMapImage': 'Заменить изображение карты',
 };

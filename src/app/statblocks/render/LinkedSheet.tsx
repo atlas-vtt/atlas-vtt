@@ -15,6 +15,7 @@ import { withoutFormerKeys } from '../resolve/fieldMeanings';
 import { useTokenPortrait } from './shared/tokenPortrait';
 import type { SheetVariant, StatblockTokenContext } from './sheetTypes';
 import { StatblockSheet } from './StatblockSheet';
+import { t } from '../../i18n';
 import './linked-statblock.scss';
 
 /** A resolved statblock that Atlas draws itself: it has a template. */
@@ -47,14 +48,14 @@ function monsterOf({ fields, template }: DrawnStatblock): StatblockMonster {
 function TemplateNotice({ statblock, onChooseTemplate }: Pick<LinkedSheetProps, 'statblock' | 'onChooseTemplate'>): React.JSX.Element | null {
   switch (statblock.templateStatus) {
     case 'auto':
-      return <p className="atlas-linked-statblock__caption">Shown with Atlas&apos; field layout</p>;
+      return <p className="atlas-linked-statblock__caption">{t('statblockEditor.autoLayout')}</p>;
     case 'missing':
       return (
         <div className="atlas-linked-statblock__bar">
-          <span className="atlas-linked-statblock__bar-text">Template not found</span>
+          <span className="atlas-linked-statblock__bar-text">{t('statblockEditor.templateMissing')}</span>
           {onChooseTemplate && (
             <Button type="button" variant="ghost" size="sm" onClick={() => onChooseTemplate(statblock.path)}>
-              Choose a template
+              {t('statblockEditor.chooseTemplate')}
             </Button>
           )}
         </div>
@@ -62,7 +63,7 @@ function TemplateNotice({ statblock, onChooseTemplate }: Pick<LinkedSheetProps, 
     case 'newer':
       return (
         <div className="atlas-linked-statblock__bar">
-          <span className="atlas-linked-statblock__bar-text">Made with a newer Atlas</span>
+          <span className="atlas-linked-statblock__bar-text">{t('statblockEditor.newerAtlas')}</span>
         </div>
       );
     default:

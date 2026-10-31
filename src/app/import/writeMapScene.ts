@@ -1,6 +1,6 @@
 import { normalizePath, type App } from 'obsidian';
 import type { ProcessedImage } from '../imageProcessing/imageProcessing';
-import { prebuildMapImageAt } from '../pixi/mapImage/prebuildMapImage';
+import { prebuildMosaicCanvasAt } from '../pixi/mosaicCanvas/prebuildMosaicCanvas';
 import { AssetService, type CollectionMetadata, type MapAsset, type SceneAsset } from '../services/AssetService';
 import type { AssetThumbnailService } from '../services/AssetThumbnailService';
 import { discardAssetFiles, writeAssetImage } from '../services/assetImageFiles';
@@ -17,8 +17,9 @@ import type { MapFeature } from '../types/mapFeatureTypes';
 import type { LiquidSurface } from '../types/liquidTypes';
 import type { LevelLink, LevelSurface, SceneLevel } from '../types/sceneLevelTypes';
 import { sceneFileVersion } from '../levels/levelFile';
+import { t } from '../i18n';
 
-export const COLLECTION_GONE = 'The collection no longer exists. Choose another collection and try again.';
+export const COLLECTION_GONE = t('uvtt.collectionGone');
 
 /** What a scene file takes of a map Atlas made or imported: a grid that fits its image, and what stands on it, in world pixels. */
 export interface MapSceneParts {
@@ -169,7 +170,7 @@ export function writeMapScene({ app, assetService, thumbnails }: MapSceneDeps, p
         if (recordFile) await files.write(recordFile.path, recordFile.content);
       }
       await assetService.commitAssetTransfer({ collectionId: collection.id, records, tags: [] });
-      for (const map of maps) prebuildMapImageAt(app, map.mapFilePath);
+      for (const map of maps) prebuildMosaicCanvasAt(app, map.mapFilePath);
       return { ok: true, name, scenePath };
     } catch (error) {
       console.error('[Atlas] Saving a new scene and its maps failed', error);

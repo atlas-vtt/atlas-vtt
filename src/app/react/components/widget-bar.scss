@@ -25,6 +25,48 @@ $widget-bar-offset: $spacing-s;
   justify-content: flex-end;
 }
 
+// The stack's one control, over its whole box (`useWidgetStack`); the cards under it are inert.
+.atlas-widget-stack-opener {
+  @include atlas-panel-radius($radius-2xl);
+  @include atlas-focus-ring;
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  width: auto;
+  height: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+  pointer-events: auto;
+
+  &:hover {
+    background: transparent;
+    box-shadow: none;
+  }
+}
+
+// The number of cards, on the top card's corner.
+.atlas-widget-stack-count {
+  position: absolute;
+  top: -$spacing-xs;
+  right: -$spacing-xs;
+  box-sizing: border-box;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 $spacing-xs;
+  border-radius: $radius-full;
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+  font-size: $font-ui-smaller;
+  font-weight: $font-weight-bold;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-align: center;
+}
+
 // ── Widget card ──────────────────────────────────────────────────────────────
 
 .atlas-widget {
@@ -38,7 +80,9 @@ $widget-bar-offset: $spacing-s;
   pointer-events: auto;
   transition: border-color $transition-normal $transition-ease,
               box-shadow $transition-normal $transition-ease-out,
-              background-color $transition-normal $transition-ease;
+              background-color $transition-normal $transition-ease,
+              transform $transition-normal $transition-ease-out,
+              opacity $transition-normal $transition-ease;
 }
 
 .atlas-widget-icon-wrapper {

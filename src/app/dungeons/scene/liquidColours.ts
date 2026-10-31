@@ -2,6 +2,8 @@ import type { LiquidColors, LiquidKind } from '../../types/liquidTypes';
 import { lavaDuotone } from '../render/art/lavaPalette';
 import { mixColours, paletteOf, type Palette } from '../render/palette';
 import { stoneColours } from '../render/stone/colours';
+import { CRAYONS } from '../render/crayon/colours';
+import { vellumColours } from '../render/vellum';
 import type { DungeonStyle, DungeonView } from '../style';
 
 /**
@@ -11,7 +13,25 @@ import type { DungeonStyle, DungeonView } from '../style';
  * its two pigments.
  */
 export function liquidColours(style: DungeonStyle, view: DungeonView): Record<LiquidKind, LiquidColors> {
+  if (style.direction === 'crayon') return crayonLiquidColours(paletteOf(style, view), view.monochrome);
   return { water: waterColours(style, view), lava: lavaColours(style, view), acid: acidColours(style, view) };
+}
+
+/**
+ * Crayon's liquids in its crayons (`crayonGlsl`): `surface` the body's crayon, `deep` the graphite
+ * of lines, cracks and crust, `glint` the pale or hot strokes. Monochrome keeps to graphite and paper.
+ */
+function crayonLiquidColours(palette: Palette, mono: boolean): Record<LiquidKind, LiquidColors> {
+  if (mono) {
+    const kind = { surface: mixColours(palette.floor, palette.ink, 0.4), deep: palette.ink, glint: palette.floor };
+    return { water: kind, lava: kind, acid: kind };
+  }
+  const pale = mixColours(vellumColours(palette.paper).inner, '#ffffff', 0.5);
+  return {
+    water: { surface: CRAYONS.deepWater, deep: palette.ink, glint: pale },
+    lava: { surface: CRAYONS.ember, deep: mixColours(palette.ink, CRAYONS.ember, 0.2), glint: CRAYONS.flame },
+    acid: { surface: CRAYONS.acid, deep: palette.ink, glint: mixColours(pale, CRAYONS.acid, 0.3) },
+  };
 }
 
 /** The paper an engraved look draws its liquids on: the floor, tinted by its water unless monochrome. */

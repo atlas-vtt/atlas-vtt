@@ -1,6 +1,7 @@
 import { setIcon } from 'obsidian';
 import { openMenuBelow, type MenuEntry } from './dockMenu.ts';
 import type { Tone } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 /** How long a control says that it copied. */
 export const COPIED_MS = 1200;
@@ -70,7 +71,7 @@ export interface QrToggle {
 }
 
 /** The name of the control that shows the invite link as a code to scan. */
-const QR_LABEL = 'QR code';
+const QR_LABEL = t('online.qr');
 
 /**
  * "Copy invite link": the link itself is never shown. At the row's end a ghost button opens the link
@@ -79,11 +80,11 @@ const QR_LABEL = 'QR code';
  */
 export function inviteRow(parent: HTMLElement, copy: () => Promise<boolean>, qr: QrToggle, linkEntries: readonly MenuEntry[]): HTMLElement {
   const row = parent.createDiv({ cls: 'atlas-online-invite-row' });
-  copyRow(row, { icon: 'link', text: 'Copy invite link', copied: 'Link copied', focusKey: 'copy' }, copy);
+  copyRow(row, { icon: 'link', text: t('online.copyInvite'), copied: t('online.linkCopied'), focusKey: 'copy' }, copy);
   const button = row.createEl('button', { cls: ['atlas-online-icon-button', 'atlas-online-invite__qr', ...(qr.open ? ['is-open'] : [])], attr: { type: 'button', 'aria-label': QR_LABEL, 'aria-expanded': String(qr.open), 'data-focus-key': 'qr' } });
   setIcon(button, 'qr-code');
   button.addEventListener('click', () => qr.toggle());
-  const more = row.createEl('button', { cls: 'atlas-online-icon-button atlas-online-invite__more', attr: { type: 'button', 'aria-label': 'Link options', 'aria-haspopup': 'menu', 'data-focus-key': 'link-more' } });
+  const more = row.createEl('button', { cls: 'atlas-online-icon-button atlas-online-invite__more', attr: { type: 'button', 'aria-label': t('online.linkOptions'), 'aria-haspopup': 'menu', 'data-focus-key': 'link-more' } });
   setIcon(more, 'more-horizontal');
   more.addEventListener('click', () => openMenuBelow(linkEntries, more));
   return row;
@@ -97,15 +98,15 @@ export function surfaceHeader(layer: HTMLElement, title: string, status: { reado
   line.createSpan({ cls: 'atlas-online-status__dot', attr: { 'aria-hidden': 'true' } });
   line.createSpan({ cls: statusInWords === null ? 'atlas-online-sr-only' : 'atlas-online-status__text', text: statusInWords ?? status.text });
   if (entries.length > 0) {
-    const more = header.createEl('button', { cls: 'atlas-online-icon-button atlas-online-header__more', attr: { type: 'button', 'aria-label': 'More', 'aria-haspopup': 'menu', 'data-focus-key': 'more' } });
+    const more = header.createEl('button', { cls: 'atlas-online-icon-button atlas-online-header__more', attr: { type: 'button', 'aria-label': t('online.more'), 'aria-haspopup': 'menu', 'data-focus-key': 'more' } });
     setIcon(more, 'more-horizontal');
     more.addEventListener('click', () => openMenuBelow(entries, more));
   }
-  const stopButton = header.createEl('button', { cls: 'atlas-online-icon-button atlas-online-header__stop', attr: { type: 'button', 'aria-label': 'Stop table', 'data-focus-key': 'stop' } });
+  const stopButton = header.createEl('button', { cls: 'atlas-online-icon-button atlas-online-header__stop', attr: { type: 'button', 'aria-label': t('online.stop'), 'data-focus-key': 'stop' } });
   setIcon(stopButton, 'power');
   stopButton.addEventListener('click', stop);
   if (close !== null) {
-    const button = header.createEl('button', { cls: 'atlas-online-close', attr: { type: 'button', 'aria-label': 'Close', 'data-focus-key': 'close' } });
+    const button = header.createEl('button', { cls: 'atlas-online-close', attr: { type: 'button', 'aria-label': t('online.close'), 'data-focus-key': 'close' } });
     setIcon(button, 'x');
     button.addEventListener('click', close);
   }

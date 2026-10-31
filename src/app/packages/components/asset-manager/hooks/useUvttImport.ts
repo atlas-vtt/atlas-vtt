@@ -1,10 +1,11 @@
 import { useEffect, useRef } from 'react';
 import { type App } from 'obsidian';
 import { runUvttGroupImport, type ChooseFloors } from '../../../../import/uvtt/runUvttGroupImport';
+import { formatList, t } from '../../../../i18n';
 import { isUvttFileName } from '../../../../import/uvtt/uvttFileNames';
 import { openCreatedScene } from '../../../../import/openCreatedScene';
 import { runVideoMapImport } from '../../../../import/videoMaps/runVideoMapImport';
-import { isVideoMapPath } from '../../../../pixi/mapImage/video/videoMapFiles';
+import { isVideoMapPath } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
 import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 import type { AssetService } from '../../../../services/AssetService';
 import { showNotice } from '../../../../ui/notice';
@@ -58,15 +59,12 @@ function overManager(event: DragEvent): DataTransfer | null {
 }
 
 function sayNotMaps(files: readonly File[]): void {
-  const names = files.map((file) => file.name);
-  const last = names.pop();
-  const which = names.length > 0 ? `${names.join(', ')} and ${last} are not maps` : `${last} is not a map`;
-  showNotice(`${which} Atlas can import. Drop a .dd2vtt, .uvtt or .df2vtt file, or a WebM or MP4 video.`);
+  showNotice(t('uvtt.notMaps', { count: files.length, files: formatList(files.map((file) => file.name)) }));
 }
 
 /**
  * The asset manager's import of map files (Universal VTT maps and videos): the function its map
- * creator calls, and map files dropped anywhere on its window, a folder tile included. The scene of an import opens
+ * creator calls, and map files dropped anywhere on its window, a folder tessera included. The scene of an import opens
  * only for the asset manager that started it, while it is still open and nothing else is open
  * in it that the scene would close: an import takes seconds, and the GM may have moved on.
  */
@@ -99,7 +97,7 @@ export function useUvttImport(options: UvttImportOptions): ImportMaps {
     if (await openCreatedScene(app, last.scenePath, last.name)) now.onSceneOpened();
   });
 
-  // Listened for on the document, ahead of the manager's own handlers: a folder tile takes
+  // Listened for on the document, ahead of the manager's own handlers: a folder tessera takes
   // every drop on it for itself.
   useEffect(() => {
     if (!options.isOpen) return;

@@ -34,8 +34,8 @@ export function ResourceFan({ place, resource, onChange, onRemove }: ResourceFan
     {
       label: counting.label,
       icon: counting.icon,
-      // A static value is never spent, so it cannot defeat its token
-      onClick: () => onChange(next === 'static' ? { direction: next, defeatedWhenSpent: false } : { direction: next }),
+      // A static value cannot defeat its token, but the choice stays for when it counts again (`savedResources` drops it)
+      onClick: () => onChange({ direction: next }),
     },
     {
       label: fixed ? t('resource.fan.staticNeverDefeats') : defeats ? t('resource.fan.defeats') : t('resource.fan.doesNotDefeat'),

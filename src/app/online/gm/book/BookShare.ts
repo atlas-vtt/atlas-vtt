@@ -7,9 +7,7 @@ import { every } from '../companionTimers.ts';
 import { MoveRate } from '../moveCheck.ts';
 import { AskedAnswer } from './askedAnswer.ts';
 import { BookPasses, type PassScope } from './bookPasses.ts';
-import { BookAssetDesk } from './bookAssetDesk.ts';
 import { BookRests } from './bookRests.ts';
-import type { NamedAssets } from './bookAssets.ts';
 import { bookItemOf } from './bookItem.ts';
 import type { BookShelf } from './BookShelf.ts';
 import { sheetOf } from './bookSheet.ts';
@@ -58,9 +56,8 @@ const UNNAMED = 'Unnamed character';
  * with a character whose note is a native statblock is sent it after their book, and again
  * whenever it changes (`StatblockShare`), and changes its values and abilities in the note. A
  * player character's statblock carries its recovery buttons, and a rest the player asks for waits
- * for the GM's answer (`BookRests`). A
- * player is served by hash what their book names (`BookAssetDesk`), and nobody another character's
- * artwork or statblock.
+ * for the GM's answer (`BookRests`). What a book names is stored for players and named by its id,
+ * and a player is named only what their own book holds.
  */
 export class BookShare implements LootRecipientSource {
   private readonly ports: BookSharePorts;
@@ -70,7 +67,6 @@ export class BookShare implements LootRecipientSource {
   private readonly maps: WorldMaps;
   private readonly questList: AskedAnswer<readonly BookQuest[]>;
   private readonly questPlaces = new QuestPlaces();
-  private readonly assets: BookAssetDesk;
   private readonly statblocks: StatblockShare;
   /** The characters' recovery buttons, and the rests players ask for. */
   readonly rests: BookRests;
@@ -96,20 +92,20 @@ export class BookShare implements LootRecipientSource {
   constructor(ports: BookSharePorts, shelf: BookShelf) {
     this.ports = ports;
     this.shelf = shelf;
-    this.art = new ArtRefs((path) => ports.readImage(path), () => this.update());
-    this.maps = new WorldMaps({ stat: (path) => ports.stat(path), readImage: (path) => ports.readImage(path), source: () => ports.worldMap(), read: () => this.update() });
+    this.art = new ArtRefs((path) => ports.readImage(path), () => this.update(), ports.stored);
+    this.maps = new WorldMaps({ stat: (path) => ports.stat(path), readImage: (path) => ports.readImage(path), stored: ports.stored, source: () => ports.worldMap(), read: () => this.update() });
     this.owed = new OwedBooks(ports, (player) => this.sendBook(player));
     this.questList = new AskedAnswer(() => ports.quests(), NO_QUESTS, () => this.update());
     const panel = new SettledPanelWidth(() => ports.statblockPanelWidth?.(), () => ports.now());
     this.statblocks = new StatblockShare({
       read: (path) => ports.readStatblock(path), write: (path, patches) => ports.writeStatblock(path, patches), now: () => ports.now(),
       panelWidth: () => panel.get(),
+      stored: ports.stored,
       // What arrives once the table stopped is dropped: nothing more goes out.
       changed: (path) => this.whileRunning(() => this.passes.of(this.characters.playersOfNote(path))),
       answered: (player, asSent) => this.whileRunning(() => this.resendStatblock(player, asSent)),
       owe: (player) => this.whileRunning(() => this.owed.owe(player)),
     });
-    this.assets = new BookAssetDesk(ports, (player) => this.namedAssets(player));
     this.rests = new BookRests({
       rests: ports.rests, cards: ports.cards, randomId: () => ports.randomId(),
       answer: (player, request, outcome) => ports.send({ t: 'book-rest-answer', request, outcome }, player),
@@ -137,6 +133,15 @@ export class BookShare implements LootRecipientSource {
   worldMapChanged(): void {
     this.maps.forget();
     this.update();
+  }
+
+  /** References the books hand out may go another way now (the store refused ids): art, maps, quests and statblocks are read again. */
+  refreshAssets(): void {
+    this.art.clear();
+    this.maps.forgetImages();
+    this.maps.forget();
+    this.questList.forget();
+    this.statblockChanged(null);
   }
 
   /** The quests may be others now (the campaign played, a quest note written, added or gone): they are asked for anew. */
@@ -184,11 +189,10 @@ export class BookShare implements LootRecipientSource {
     this.tell();
   }
 
-  /** The books again, to one player or to all; sent to all, their assets may be asked for again at once. */
+  /** The books again, to one player or to all. */
   resend(to?: string): void {
     if (to === undefined) {
       this.sent.clear();
-      this.assets.forget();
       this.update();
     } else {
       this.sent.delete(to);
@@ -196,9 +200,8 @@ export class BookShare implements LootRecipientSource {
     }
   }
 
-  /** A player left the table: chunks queued for them are dropped, and they get their book anew when they are back. */
+  /** A player left the table: they get their book anew when they are back. */
   playerLeft(player: string): void {
-    this.assets.forget(player);
     this.sent.delete(player);
     this.statblocks.left(player);
     this.parts.delete(player);
@@ -207,8 +210,7 @@ export class BookShare implements LootRecipientSource {
 
   /**
    * A player's message: true when it was the book's, so nobody else reads it. That is a write into
-   * their book, the token their book follows, and a request for an asset only their book names
-   * (their character's artwork while the scene does not show it, the world map).
+   * their book, the token their book follows, or a rest they ask for.
    */
   receive(from: string, body: unknown): boolean {
     if (!isRecord(body)) return false;
@@ -216,7 +218,6 @@ export class BookShare implements LootRecipientSource {
       this.parts.add(from);
       return true;
     }
-    if (body.t === 'asset-request') return this.assets.receive(from, body);
     if (body.t === 'book-token') return this.follow(from, body);
     if (body.t === 'book-rest') {
       this.rests.receive(from, body);
@@ -374,15 +375,6 @@ export class BookShare implements LootRecipientSource {
       if (last !== undefined) this.sent.set(from, { ...last, sheet: '' });
       this.passes.of([from]);
     });
-  }
-
-  /** What a connected player's book names that they may fetch by hash (`bookAssetOf`). */
-  private namedAssets(player: string): NamedAssets | null {
-    if (!this.isOnline(player)) return null;
-    return {
-      worldMap: this.worldMap, character: this.characters.of(player), quests: this.sent.get(player)?.quests ?? NO_QUESTS,
-      statblockText: (asked: string) => this.statblocks.text(asked, player),
-    };
   }
 
   private whileRunning(run: () => void): void {

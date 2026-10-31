@@ -10,4 +10,5 @@ export const lpv: Translation = {
   'lpv.showInitiative': 'Показывать панель инициативы',
   'lpv.showWidgets': 'Показывать виджеты',
   'lpv.tokens': 'Токены',
+  'lpv.showCursors': 'Показывать курсоры всех',
 };

@@ -5,6 +5,8 @@ import { playImageEnter, playImageExit } from './imageDisplayMotion';
 import { ImageOverlayControls } from './imageOverlayControls';
 import './image-display.scss';
 import { t } from '../i18n';
+import { DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable } from '../imageProcessing/decodeLimits';
+import { imageHeader } from '../imageProcessing/imageDimensions';
 import { showNotice } from '../ui/notice';
 import { statblockImageAt } from './statblockImageTarget';
 
@@ -287,6 +289,12 @@ export class ImageDisplayService {
       // Read the image file
       const arrayBuffer = await this.app.vault.readBinary(file);
       const blob = new Blob([arrayBuffer], { type: this.getMimeType(file.extension) });
+      // An image the browser cannot open would end the player window; it is shown nowhere but as map tiles.
+      const header = await imageHeader(blob);
+      if (header && !decodable(header)) {
+        showNotice(t('image.tooLarge', { width: header.width, height: header.height, megapixels: Math.floor(DECODED_MAX_PIXELS / 1e6), side: DECODER_MAX_SIDE }));
+        return;
+      }
       const imageUrl = URL.createObjectURL(blob);
 
       // Get the player window

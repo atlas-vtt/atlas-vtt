@@ -1,6 +1,7 @@
 import { setIcon } from 'obsidian';
 import { MOTION_EASE_OUT, prefersReducedMotion } from '../../../utils/motion';
 import type { Badge } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 /** How long the badge pops when it appears or its number changes. */
 const BADGE_POP_MS = 160;
@@ -21,7 +22,7 @@ export class DockButton {
   constructor(root: HTMLElement, content: HTMLElement, onPress: (byKeyboard: boolean) => void) {
     this.button = content.createEl('button', { cls: 'atlas-online-dock__button', attr: { type: 'button', 'aria-haspopup': 'dialog', 'aria-expanded': 'false' } });
     setIcon(this.button.createSpan({ cls: 'atlas-online-dock__face' }), 'globe');
-    this.button.createSpan({ cls: 'sr-only', text: 'Online play' });
+    this.button.createSpan({ cls: 'sr-only', text: t('online.play') });
     this.pin = root.createDiv({ cls: 'atlas-online-dock__pin' });
     this.badge = this.pin.createSpan({ cls: 'atlas-online-badge', attr: { 'aria-hidden': 'true' } });
     this.badge.hidden = true;

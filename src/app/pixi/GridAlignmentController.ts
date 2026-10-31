@@ -17,7 +17,7 @@ import type { GridScanLayer } from './gridAlignment/GridScanLayer';
 import { getQuadrantBounds } from './gridAlignmentMath';
 import type { AlignmentPoint, AlignmentResult, MapBounds } from './gridAlignmentMath';
 import type { DetectionEvent, DetectionOutcome } from './spectralEngine/detectionJob';
-import type { DetectableMap } from './mapImage/mapImageView';
+import type { DetectableMap } from './mosaicCanvas/mosaicCanvasView';
 import { glideViewport } from './utils/viewportGlide';
 
 /** The part of the view's map image an alignment reads and tries its stretch on. */

@@ -1,10 +1,10 @@
 import { TFile, type App } from 'obsidian';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { importVideoMap, videoMapRefusal, type VideoMapImportDeps } from '../../../src/app/import/videoMaps/importVideoMap';
-import { MAX_VIDEO_MAP_BYTES } from '../../../src/app/pixi/mapImage/video/videoMapFiles';
+import { MAX_VIDEO_MAP_BYTES } from '../../../src/app/pixi/mosaicCanvas/video/videoMapFiles';
 import type { NewAsset } from '../../../src/app/services/AssetService';
 
-vi.mock('../../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
+vi.mock('../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', () => ({ prebuildMosaicCanvasAt: vi.fn() }));
 
 const BYTES = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 1, 2, 3, 4]);
 

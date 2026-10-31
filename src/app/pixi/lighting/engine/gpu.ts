@@ -1,4 +1,4 @@
-import { Buffer, BufferUsage, Geometry, GlProgram, RenderTexture, Shader, type Container, type Renderer, type TextureSource, type TEXTURE_FORMATS, type UniformGroup, type WebGLRenderer } from 'pixi.js';
+import { Buffer, BufferUsage, Geometry, GlProgram, RenderTexture, Shader, type BLEND_MODES, type Container, type Renderer, type TextureSource, type TEXTURE_FORMATS, type UniformGroup, type WebGLRenderer } from 'pixi.js';
 import type { EngineShaderSource } from './engineShaders';
 
 export const HIGHP = 'highp';
@@ -73,4 +73,24 @@ export function awaitGpu(renderer: Renderer): void {
 /** Renders `container` into `target` outside the stage's render, like `ExploredTexture` does. */
 export function renderInto(renderer: Renderer, container: Container, target: RenderTexture, clearColor?: [number, number, number, number]): void {
   renderer.render(clearColor ? { container, target, clear: true, clearColor } : { container, target, clear: false });
+}
+
+/** A blend PIXI has no name for: colour adds up, alpha keeps the larger (`LightMap`). */
+const ADD_KEEP_MAX = 'atlas-add-keep-max';
+
+/**
+ * The blend the light map draws its lights with: their colours add up and its alpha keeps the
+ * brightest light's, so the composite can tell one light from several (`LIGHT_CEILING`). Added to
+ * the WebGL renderer's own table of blends, which PIXI builds anew with every context; where it
+ * cannot be (no WebGL 2), lights add up in alpha too, as they did before.
+ */
+export function addKeepMaxBlend(renderer: Renderer): BLEND_MODES {
+  const state: unknown = Reflect.get(renderer, 'state');
+  const table: unknown = state && typeof state === 'object' ? Reflect.get(state, 'blendModesMap') : null;
+  const gl: unknown = Reflect.get(renderer, 'gl');
+  if (!table || typeof table !== 'object' || !gl || typeof gl !== 'object' || !('MAX' in gl)) return 'add';
+  const { ONE, FUNC_ADD, MAX } = gl as WebGL2RenderingContext;
+  if (!Reflect.has(table, ADD_KEEP_MAX)) Reflect.set(table, ADD_KEEP_MAX, [ONE, ONE, ONE, ONE, FUNC_ADD, MAX]);
+  const blend: string = ADD_KEEP_MAX;
+  return blend as BLEND_MODES;
 }

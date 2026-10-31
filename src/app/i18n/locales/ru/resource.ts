@@ -53,4 +53,25 @@ export const resource: Translation = {
   'resource.colour.brown': 'Коричневый',
   'resource.colour.steel': 'Стальной',
   'resource.colour.white': 'Белый',
+  'resource.changeSelection': {
+    one: '{label} у {count} токена',
+    few: '{label} у {count} токенов',
+    many: '{label} у {count} токенов',
+    other: '{label} у {count} токена',
+  },
+  'resource.changeSelectionEntry': {
+    one: 'Изменить {label} у {count} токена…',
+    few: 'Изменить {label} у {count} токенов…',
+    many: 'Изменить {label} у {count} токенов…',
+    other: 'Изменить {label} у {count} токена…',
+  },
+  'resource.changeSelectionMenu': {
+    one: 'Изменить значения у {count} токена',
+    few: 'Изменить значения у {count} токенов',
+    many: 'Изменить значения у {count} токенов',
+    other: 'Изменить значения у {count} токена',
+  },
+  'resource.changeAmount': 'Изменение: {label}',
+  'resource.changePlaceholder': '−8 или +5',
+  'resource.socket.named': '{name}: {where}',
 };

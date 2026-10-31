@@ -27,8 +27,9 @@ export interface EngineLight {
   cone?: VisionCone;
   /**
    * The area the rule counts for this light (its `LightReach`'s polygon), where one builder made
-   * both (`SceneModelBuilder`): a darkness source is drawn as it, and a light's says where the
-   * darkness swallows its light. Without it the engine works the area out the same way.
+   * both (`SceneModelBuilder`): a darkness source is drawn as it, a light's says where the
+   * darkness swallows its light, and the polygon picture draws every light as it. Without it the
+   * engine works the area out the same way.
    */
   area?: Polygon;
   /** Width in world pixels of the soft edge inside a beam's sides at most (`softEdge`); unset, `softEdge` of its dim radius. */

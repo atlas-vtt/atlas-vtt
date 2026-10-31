@@ -146,7 +146,7 @@ describe('pinning a statblock preview of a token on the map', () => {
     it('cannot be dragged so far that its capsule leaves the map view', () => {
       const viewEl = document.body.createDiv({ cls: 'workspace-leaf' });
       viewEl.getBoundingClientRect = (): DOMRect => rect(300, 40, 1000, 800);
-      manager.followView(viewEl);
+      manager.setViewElement(viewEl);
       const preview = openLaidOut();
 
       capsuleOf(preview).dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 920, clientY: 110 }));

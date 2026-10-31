@@ -7,6 +7,7 @@ import { gateEntries, renderCodeRow, renderPausedRow, type GateRowActions } from
 import { renderImageRow, type ImageRowActions } from './imageRow.ts';
 import type { MenuModel } from './panelModel.ts';
 import { addPlayerRow, linkEntries, type AddPlayerActions, type LinkActions } from './prompts.ts';
+import { t } from '../../../i18n';
 
 /** What the menu's buttons do. */
 export interface MenuActions extends AccountActions, GateRowActions, ImageRowActions, AddPlayerActions, LinkActions {
@@ -57,7 +58,7 @@ export function renderMenu(layer: HTMLElement, model: MenuModel, actions: MenuAc
   renderCodeRow(layer, model.gate, actions);
   addPlayerRow(layer, actions, redraw);
   if (!model.isShared) {
-    const share = textButton(layer, 'Show this map to players', () => actions.share());
+    const share = textButton(layer, t('online.share'), () => actions.share());
     share.dataset.focusKey = 'share';
     share.addClass('atlas-online-corner-button');
   }

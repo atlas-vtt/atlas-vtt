@@ -16,10 +16,10 @@ import type { HazardChoice } from '../terrain/hazards';
 import type { FeatureReason } from './features';
 import type { RoomTypeId } from './roomTypes';
 
-export type ThemeId = 'fortress' | 'mansion' | 'cavern';
+export type ThemeId = 'fortress' | 'mansion' | 'cavern' | 'forest';
 /** What a GM picks: a theme, or Any, which the seed decides. */
 export type ThemeChoice = ThemeId | 'any';
-export const THEME_IDS: readonly ThemeId[] = ['fortress', 'mansion', 'cavern'];
+export const THEME_IDS: readonly ThemeId[] = ['fortress', 'mansion', 'cavern', 'forest'];
 
 /**
  * How a piece finds its place: before the back wall, against a wall, in a row, in the middle, as a

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { blockSpec, type BlockIcon } from '../../model/blockCatalogue';
 import type { BlockType, FieldType } from '../../model/templateTypes';
+import { t } from '../../../i18n';
 
 const BLOCK_GLYPHS: Readonly<Record<BlockIcon, LucideIcon>> = {
   heading: Heading, text: Text, hash: Hash, subtitles: Subtitles, list: List, table: Table, gauge: Gauge, image: Image,
@@ -23,9 +24,9 @@ export function blockGlyph(type: BlockType): LucideIcon {
 
 /** What a field holds, in the words the editor uses. */
 export const FIELD_TYPE_LABELS: Readonly<Record<FieldType, string>> = {
-  text: 'Text', markdown: 'Paragraphs', number: 'Number', rating: 'Rating', dice: 'Dice', choice: 'One of a list',
-  list: 'Words', scores: 'Table values', entries: 'Names and text', pairs: 'Labels and values', image: 'Picture',
-  spells: 'Groups with items', counters: 'Counters',
+  text: t('templateEditor.fieldType.text'), markdown: t('templateEditor.fieldType.markdown'), number: t('templateEditor.look.number'), rating: t('templateEditor.fieldType.rating'), dice: t('templateEditor.fieldType.dice'), choice: t('templateEditor.fieldType.choice'),
+  list: t('templateEditor.fieldType.list'), scores: t('templateEditor.fieldType.scores'), entries: t('templateEditor.fieldType.entries'), pairs: t('templateEditor.fieldType.pairs'), image: t('templateEditor.primitive.picture'),
+  spells: t('templateEditor.fieldType.spells'), counters: t('templateEditor.primitive.counters'),
 };
 
 const FIELD_TYPE_GLYPHS: Readonly<Record<FieldType, LucideIcon>> = {

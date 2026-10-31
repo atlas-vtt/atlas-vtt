@@ -77,19 +77,11 @@ export class CapsuleField {
       renderInto(this.renderer, this.empty, this.texture, clear);
       return;
     }
-    const buffer = new Buffer({ data: new Float32Array(segments.flat()), usage: BufferUsage.VERTEX });
-    const geometry = new Geometry({
-      attributes: {
-        aPosition: { buffer: this.quad.vertices, format: 'float32x2' },
-        aSegment: { buffer, format: 'float32x4', instance: true },
-      },
-      indexBuffer: this.quad.indices,
-      instanceCount: segments.length,
-    });
-    this.mesh.geometry = geometry;
+    const built = segmentGeometry(this.quad, segments);
+    this.mesh.geometry = built.geometry;
     renderInto(this.renderer, this.scene, this.texture, clear);
     this.releaseBuilt();
-    this.built = { geometry, segments: buffer };
+    this.built = built;
   }
 
   /** The quad buffers are shared with every geometry, so only the segment buffer goes with its geometry. */
@@ -127,4 +119,22 @@ export class CapsuleField {
     this.shader.destroy();
     this.target.destroy(true);
   }
+}
+
+/**
+ * One instance of `quad` per segment (`aSegment`: its two ends), for a shader that places the quad
+ * around it (`capsuleFieldVertex`). The quad's buffers stay the caller's; destroy the geometry and
+ * `segments` together.
+ */
+export function segmentGeometry(quad: Quad, segments: readonly Seg[]): { geometry: Geometry; segments: Buffer } {
+  const buffer = new Buffer({ data: new Float32Array(segments.flat()), usage: BufferUsage.VERTEX });
+  const geometry = new Geometry({
+    attributes: {
+      aPosition: { buffer: quad.vertices, format: 'float32x2' },
+      aSegment: { buffer, format: 'float32x4', instance: true },
+    },
+    indexBuffer: quad.indices,
+    instanceCount: segments.length,
+  });
+  return { geometry, segments: buffer };
 }

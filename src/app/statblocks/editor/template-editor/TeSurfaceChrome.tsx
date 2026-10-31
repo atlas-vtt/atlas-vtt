@@ -26,6 +26,7 @@ import { addPart, removePart, tilePartsOf } from './tileParts';
 import { SelectionToolbar } from './toolbar/SelectionToolbar';
 import type { EditorState } from './useEditorState';
 import { runBlockCommand, type KeyboardTarget } from './useTemplateKeyboard';
+import { t } from '../../../i18n';
 import '../interaction/interaction.scss';
 
 export interface TeSurfaceChromeProps {
@@ -173,8 +174,8 @@ export function TeSurfaceChrome(props: TeSurfaceChromeProps): React.JSX.Element 
         layer={layer}
         glyphOf={(hovered) => (snapshot.readOnlyReason === 'newer' || !tileAt(hovered) ? 'lock' : 'grip')}
         labelOf={(hovered) => {
-          if (snapshot.readOnlyReason === 'newer') return 'From a newer Atlas';
-          return tileAt(hovered) ? 'Drag to move · Click for options' : 'Click for options';
+          if (snapshot.readOnlyReason === 'newer') return t('templateEditor.newerAtlas');
+          return tileAt(hovered) ? t('templateEditor.hint.dragOrClick') : t('templateEditor.hint.click');
         }}
         onMenu={(hovered: HoverTarget, handle) => open(menuOf(actsOn(hovered)), { from: handle }, hovered.element, focusToReturn(handle))}
         onPress={(hovered, event) => { if (editable && tileAt(hovered)) drag(hovered.blockId, event); }}
@@ -201,7 +202,7 @@ export function TeSurfaceChrome(props: TeSurfaceChromeProps): React.JSX.Element 
             else onOptions();
           } : undefined}
           addPart={single && parts ? {
-            label: `Add ${parts.noun}`,
+            label: t('templateEditor.addNumber'),
             canAdd: parts.canAdd,
             full: parts.full,
             onAdd: () => state.settle(addPart(target.session, single.id), true),

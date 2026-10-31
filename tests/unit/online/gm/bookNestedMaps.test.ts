@@ -1,10 +1,10 @@
 import { parseGmMessage, type BookWorldMap, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import type { WorldMapTree } from '../../../../src/app/online/gm/book/worldMapGate.ts';
 import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { FakeSocket, png, workspace } from './fakeTable.ts';
+import { storedRef } from './fakeStoring.ts';
 import { ANA, BEN, BRANNOCH_BOOK, delivered, nameWorldMapTree, ofType, openTable, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -47,11 +47,6 @@ function lastBook(messages: readonly Delivered[], player: string): PlayerBook | 
   }).at(-1);
 }
 
-function answers(messages: readonly Delivered[], hash: string): { readonly served: string[]; readonly refused: string[] } {
-  const of = (type: string): string[] => [...new Set(ofType(messages, type).filter(({ body }) => body.hash === hash).map(({ to }) => to))];
-  return { served: of('asset-chunk'), refused: of('asset-refused') };
-}
-
 describe('the maps the world map leads into', () => {
   beforeEach(() => {
     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance', 'Date'] });
@@ -92,23 +87,16 @@ describe('the maps the world map leads into', () => {
     online.stop();
   });
 
-  it('are served to everyone at the table by hash, and a map no pin leads to is not', async () => {
-    const { online, socket, from } = await openTable(new BookShelf(), PLAYERS);
+  it('name their images by the ids the store keeps them under, and leave out a map no pin leads to', async () => {
+    const { online, socket } = await openTable(new BookShelf(), PLAYERS);
     workspace.files.set(TOWN, png(400, 200));
     workspace.files.set(INN, png(100, 100));
     workspace.files.set(SECRET, png(50, 50));
     nameWorldMapTree(TREE);
     await advance(200);
-    const [town, inn, secret] = await Promise.all([TOWN, INN, SECRET].map((path) => sha256Hex(workspace.files.get(path) as Uint8Array<ArrayBuffer>)));
-    const since = delivered(socket).length;
-    from(ANA, { t: 'asset-request', hash: town });
-    from(BEN, { t: 'asset-request', hash: inn, maxSide: 1024 });
-    from(ANA, { t: 'asset-request', hash: secret });
-    await advance(500);
-    const sent = delivered(socket).slice(since);
-    expect(answers(sent, town!)).toEqual({ served: [ANA], refused: [] });
-    expect(answers(sent, inn!)).toEqual({ served: [BEN], refused: [] });
-    expect(answers(sent, secret!).served).toEqual([]);
+    const images = (lastBook(delivered(socket), ANA)?.worldMap?.maps ?? []).map((map) => map.image);
+    const [town, inn] = await Promise.all([TOWN, INN].map((path) => storedRef(workspace.files.get(path) as Uint8Array<ArrayBuffer>, 'image/png')));
+    expect(images).toEqual([town, inn]);
     online.stop();
   });
 

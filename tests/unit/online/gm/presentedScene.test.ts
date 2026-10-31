@@ -10,7 +10,7 @@ import { Ownership } from '../../../../src/app/online/gm/ownership.ts';
 import { boundOwnership, fakeCampaigns } from './fakeSeats.ts';
 import { findPresentedTab, PRESENT_COMMAND, presentedScene, readPresented, showPresentedElsewhere, showsPresented } from '../../../../src/app/online/gm/presentedScene.ts';
 import type { SavedTable } from '../../../../src/app/online/gm/savedTable.ts';
-import { app, atlasTab, FakeSocket, FakeTabs, png, present, switchScene, workspace } from './fakeTable.ts';
+import { app, atlasTab, FakeSocket, FakeTabs, png, present, switchScene, workspace, storedAccount } from './fakeTable.ts';
 import { sceneState } from './shareHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -62,7 +62,7 @@ const mapHash = (scene: unknown): unknown => (scene as { map?: { hash?: string }
 /** A running table restored from `SAVED`, welcomed by the relay with Ana at it. */
 async function running(): Promise<{ online: OnlineControl; socket: FakeSocket }> {
   const players = [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }];
-  const online = new OnlineControl(app, boundOwnership(players), fakeCampaigns(players));
+  const online = new OnlineControl(app, boundOwnership(players), fakeCampaigns(players), undefined, storedAccount());
   void online.resume(SAVED);
   await advance(0);
   const socket = FakeSocket.all.at(-1);

@@ -4,6 +4,7 @@ import { textButton } from './controls.ts';
 import { openMenuBelow } from './dockMenu.ts';
 import { playerTitle } from './playerList.ts';
 import type { OnlinePlayer, SelectionBar } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 export interface SelectionActions {
   mark(tokenIds: readonly string[]): void;
@@ -16,7 +17,7 @@ export interface SelectionActions {
 const SLIDE_PX = 6;
 const SLIDE_MS = 160;
 
-const tokensText = (count: number): string => `${count} selected`;
+const tokensText = (count: number): string => t('online.selected', { count });
 
 /**
  * The bar at the panel's foot, one row: how many tokens are selected on the shared map and what to do
@@ -26,15 +27,15 @@ export function renderSelectionBar(parent: HTMLElement, bar: SelectionBar, playe
   const el = parent.createDiv({ cls: 'atlas-online-selection' });
   if (bar.kind === 'share') {
     el.addClass('atlas-online-selection--share');
-    textButton(el, 'Show this map to players', () => actions.share()).dataset.focusKey = 'share';
+    textButton(el, t('online.share'), () => actions.share()).dataset.focusKey = 'share';
   } else {
     el.createSpan({ cls: 'atlas-online-selection__text', text: tokensText(bar.tokenIds.length) });
     const buttons = el.createDiv({ cls: 'atlas-online-selection__actions' });
     const mark = bar.action === 'mark'
-      ? textButton(buttons, 'Make player tokens', () => actions.mark(bar.tokenIds))
-      : textButton(buttons, 'Unmark', () => actions.unmark(bar.tokenIds));
+      ? textButton(buttons, t('online.makePlayer'), () => actions.mark(bar.tokenIds))
+      : textButton(buttons, t('online.unmark'), () => actions.unmark(bar.tokenIds));
     mark.dataset.focusKey = 'mark';
-    const assign = textButton(buttons, 'Assign', () => {
+    const assign = textButton(buttons, t('online.assign'), () => {
       openMenuBelow(players.map((player) => ({ title: playerTitle(player), run: () => actions.assign(bar.tokenIds, player.id) })), assign);
     });
     setIcon(assign.createSpan({ cls: 'atlas-online-chevron' }), 'chevron-down');

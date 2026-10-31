@@ -2,6 +2,7 @@ import React from 'react';
 import { ActionsMenuButton } from '../../../packages/components/shared/ActionsMenuButton';
 import type { ContextMenuEntry } from '../../../react/components/context-menu/AtlasContextMenu';
 import { alignedEntries } from '../interaction/surfaceActions';
+import { t } from '../../../i18n';
 
 /**
  * The statblock's ⋯ (§7.2), under the card at its right edge, so the card's
@@ -12,7 +13,7 @@ export function StatblockCardMenu({ entries }: { entries: ContextMenuEntry[] }):
   if (entries.length === 0) return null;
   return (
     <div className="atlas-sb-card-menu">
-      <ActionsMenuButton label="Statblock options" entries={alignedEntries(entries)} className="atlas-sb-card-menu__button" />
+      <ActionsMenuButton label={t('statblockEditor.statblockOptions')} entries={alignedEntries(entries)} className="atlas-sb-card-menu__button" />
     </div>
   );
 }

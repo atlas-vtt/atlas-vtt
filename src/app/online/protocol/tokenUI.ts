@@ -1,7 +1,9 @@
 import { isRecord } from './shape.ts';
 
-/** Bars a token shows below it: Atlas's two bar sockets. */
-export const MAX_TOKEN_BARS = 2;
+/** Resources a token shows: Atlas's six sockets, two bars below it and four wheels beside it. */
+export const MAX_TOKEN_BARS = 6;
+/** The last socket a resource may name. */
+const MAX_SLOT = MAX_TOKEN_BARS - 1;
 /** Condition badges one token may carry. */
 export const MAX_TOKEN_CONDITIONS = 64;
 /** The largest resource value or condition number sent. */
@@ -16,10 +18,15 @@ export const MAX_CONDITION_TEXT = 8;
 const HEX_COLOUR = /^#[0-9a-f]{6}$/;
 const DIRECTIONS: readonly unknown[] = ['drains', 'fills', 'static'];
 
-/** A resource bar as Atlas's player window draws it: its colour, how it counts, whether spending it defeats the token, and its value. */
+/**
+ * A resource as Atlas's player window draws it, a bar below the token or a wheel beside it by its
+ * socket: its colour, how it counts, whether spending it defeats the token, and its value.
+ */
 export interface SharedBar {
   /** The resource's own colour, `#rrggbb`; Atlas's warning colours are worked out from the value as it draws. */
   readonly colour: string;
+  /** Its socket (`ResourceDefinition.slot`): the first two are bars, the rest wheels. An older companion names none: its bars take the sockets in order. */
+  readonly slot?: number;
   readonly direction: 'drains' | 'fills' | 'static';
   readonly defeats: boolean;
   readonly current: number;
@@ -39,7 +46,7 @@ export interface SharedTokenUI {
   readonly nameplate: boolean;
   /** Greyed out with a skull: a resource that defeats it is spent. */
   readonly downed: boolean;
-  /** The bars of resources players may see, in socket order. */
+  /** The resources players may see, bars and wheels, in socket order. */
   readonly bars: readonly SharedBar[];
   readonly conditions: readonly SharedCondition[];
 }
@@ -51,10 +58,11 @@ const holdsValue = (direction: unknown, max: number): boolean => (direction === 
 
 function parseBar(value: unknown): SharedBar | null {
   if (!isRecord(value)) return null;
-  const { colour, direction, defeats, current, max } = value;
+  const { colour, direction, defeats, current, max, slot } = value;
   if (typeof colour !== 'string' || !HEX_COLOUR.test(colour) || !DIRECTIONS.includes(direction) || typeof defeats !== 'boolean') return null;
   if (!isValue(current) || !isValue(max) || !holdsValue(direction, max)) return null;
-  return { colour, direction: direction as SharedBar['direction'], defeats, current, max };
+  if (slot !== undefined && (typeof slot !== 'number' || !Number.isInteger(slot) || slot < 0 || slot > MAX_SLOT)) return null;
+  return { colour, direction: direction as SharedBar['direction'], defeats, current, max, ...(slot !== undefined && { slot }) };
 }
 
 function parseGlyph(value: unknown): SharedCondition['glyph'] | null {

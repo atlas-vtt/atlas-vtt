@@ -39,11 +39,11 @@ export function showLightMenu(context: LightingMenuContext, lightId: string, scr
 export function doorMenuEntries(store: ViewAtlasStore, wallId: string): ContextMenuEntry[] {
   const wall = readWall(levelObjects(store.getState()).walls[wallId]);
   if (!wall || (wall.type !== 'door' && wall.type !== 'secret-door')) return [];
-  if (wall.locked) return [{ type: 'item', label: 'Unlock door', icon: 'lock-open', onClick: () => store.getState().setDoorLocked(wallId, false) }];
+  if (wall.locked) return [{ type: 'item', label: t('wall.unlockDoor'), icon: 'lock-open', onClick: () => store.getState().setDoorLocked(wallId, false) }];
   const closed = wall.closed ?? true;
   return [
-    { type: 'item', label: closed ? 'Open door' : 'Close door', icon: closed ? 'door-open' : 'door-closed', onClick: () => store.getState().toggleDoor(wallId) },
-    { type: 'item', label: 'Lock door', icon: 'lock', onClick: () => store.getState().setDoorLocked(wallId, true) },
+    { type: 'item', label: closed ? t('wall.openDoor') : t('wall.closeDoor'), icon: closed ? 'door-open' : 'door-closed', onClick: () => store.getState().toggleDoor(wallId) },
+    { type: 'item', label: t('wall.lockDoor'), icon: 'lock', onClick: () => store.getState().setDoorLocked(wallId, true) },
   ];
 }
 
@@ -88,11 +88,11 @@ export function showWallMenu(context: LightingMenuContext, worldX: number, world
   if (segment) {
     entries.push(...doorMenuEntries(store, segment.id));
     const doorRemoval = removeDoor(allWalls, segment.id);
-    if (doorRemoval) entries.push({ type: 'item', label: 'Remove door', icon: 'brick-wall', onClick: () => walls.apply(doorRemoval) });
+    if (doorRemoval) entries.push({ type: 'item', label: t('wall.removeDoor'), icon: 'brick-wall', onClick: () => walls.apply(doorRemoval) });
   }
 
   const jointRemoval = joint ? removeJoint(allWalls, joint) : null;
-  if (jointRemoval) entries.push({ type: 'item', label: 'Remove point', icon: 'circle-minus', onClick: () => walls.apply(jointRemoval) });
+  if (jointRemoval) entries.push({ type: 'item', label: t('wall.removePoint'), icon: 'circle-minus', onClick: () => walls.apply(jointRemoval) });
 
   const direction = (label: string, value: 'left' | 'right' | undefined): ContextMenuEntry => ({
     type: 'item',
@@ -117,18 +117,18 @@ export function showWallMenu(context: LightingMenuContext, worldX: number, world
   });
   entries.push({
     type: 'submenu',
-    label: 'Blocks',
+    label: t('wall.blocks'),
     icon: 'eye-off',
-    children: [blocks('Sight and light', undefined), blocks('Sight only', 'sight'), blocks('Light only', 'light')],
+    children: [blocks(t('wall.blocksBoth'), undefined), blocks(t('wall.blocksSight'), 'sight'), blocks(t('wall.blocksLight'), 'light')],
   });
   // A hedge or a low wall: on while every selected wall is limited, and then takes it from all of them.
   if (LIMITED_WALLS) {
     const allLimited = selected.every((id) => readWall(allWalls[id])?.limited);
-    entries.push({ type: 'item', label: 'Limited (see past the first)', icon: 'grip-horizontal', checked: allLimited, onClick: () => walls.updateSelected({ limited: allLimited ? undefined : true }) });
+    entries.push({ type: 'item', label: t('wall.limited'), icon: 'grip-horizontal', checked: allLimited, onClick: () => walls.updateSelected({ limited: allLimited ? undefined : true }) });
   }
 
   if (segmentId && selected.length > 1) {
-    entries.push({ type: 'item', label: 'Delete this wall', icon: 'trash', onClick: () => walls.apply({ remove: [segmentId], add: [] }) });
+    entries.push({ type: 'item', label: t('wall.deleteOne'), icon: 'trash', onClick: () => walls.apply({ remove: [segmentId], add: [] }) });
   }
   entries.push({
     type: 'item',

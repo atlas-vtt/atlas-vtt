@@ -1,7 +1,8 @@
-import { BufferImageSource, Container, Graphics, Matrix, RenderTexture, Sprite, Texture, type Renderer } from 'pixi.js';
+import { BufferImageSource, Container, Graphics, Matrix, Mesh, MeshGeometry, RenderTexture, Sprite, Texture, type Renderer } from 'pixi.js';
 import type { TexelMask } from '../../levels/stackClip';
 import type { ExploredShapes } from '../../vision/exploredShapes';
 import { polygonBox } from '../../vision/polygonBounds';
+import type { Point } from '../../types/visionTypes';
 import type { Polygon } from '../../vision/visibility';
 import { destroyTree } from '../utils/destroyTree';
 
@@ -49,10 +50,11 @@ export function tilesOf(region: TexelRegion): { x: number; y: number }[] {
 export class StampScratch {
   private readonly target = RenderTexture.create({ width: TILE, height: TILE, antialias: true });
   private readonly stamp = new Container();
-  /** What a stamp paints: the ambient light of a scene with zones (`ambientPainter`), then one Graphics per polygon. */
+  /** What a stamp paints: the ambient light of a scene with zones (`ambientPainter`), then one shape per polygon. */
   private readonly painter = new Container();
   private readonly ambientPainter = new Graphics();
-  private readonly clip = new Graphics();
+  /** The clip's shapes, one per polygon, as a stencil mask over the painter. */
+  private readonly clip = new Container();
   /** Magical darkness: black over what was painted, so nothing of it is recorded. */
   private readonly hole = new Graphics();
   /** The darkness again, in white, shown only where a sense that sees in it perceives it. */
@@ -64,12 +66,13 @@ export class StampScratch {
   /** The texture `outsideTexels` shows, made for the mask it was made from. */
   private outside: { mask: TexelMask; texture: Texture } | null = null;
   /**
-   * The polygon each Graphics of `painter` fills, kept while the stamps hold it: a token's sight
-   * changes on every step of a drag while the lights' polygons it is drawn through stay the same
-   * objects (all but those of a light carried along), and drawing them again cut every one into
-   * triangles anew.
+   * The shape each polygon of `painter` and of the clip is drawn as, kept while the stamps hold it:
+   * a token's sight changes on every step of a drag while the lights' polygons it is drawn through
+   * stay the same objects (all but those of a light carried along), and drawing them again cut
+   * every one into triangles anew.
    */
-  private readonly painted = new Map<Polygon, Graphics>();
+  private readonly painted = new Map<Polygon, Container>();
+  private readonly clipped = new Map<Polygon, Container>();
 
   constructor(private readonly renderer: Renderer) {
     this.painter.addChild(this.ambientPainter);
@@ -80,11 +83,11 @@ export class StampScratch {
   }
 
   /** Builds the shapes once, for a memory stamped at `scale` texels per world pixel; `renderTile` then only moves them. */
-  begin({ polygons, clip, except, ambient, within }: ExploredShapes, scale = 1): void {
+  begin({ polygons, clip, except, ambient, within, fans }: ExploredShapes, scale = 1): void {
     this.ambientPainter.clear();
     if (ambient) this.paintAmbient(ambient, clip ?? []);
-    this.paint(polygons);
-    fillPolygons(this.clip.clear(), clip ?? []);
+    keepShapes(this.painted, this.painter, polygons, fans);
+    keepShapes(this.clipped, this.clip, clip ?? [], fans);
     this.painter.mask = clip ? this.clip : null;
     // The scratch is merged with `max`: black records nothing.
     fillPolygons(this.hole.clear(), except?.areas ?? [], 0x000000);
@@ -119,22 +122,6 @@ export class StampScratch {
       .rect(-far, top, left + far, bottom - top).rect(right, top, far, bottom - top).fill({ color: 0xffffff, alpha: 1 });
   }
 
-  /** One white Graphics per polygon after the ambient light's, those of polygons painted before kept as they were. */
-  private paint(polygons: readonly Polygon[]): void {
-    const wanted = new Set(polygons.filter((polygon) => polygon.length >= 3));
-    for (const [polygon, graphics] of this.painted) {
-      if (wanted.has(polygon)) continue;
-      this.painted.delete(polygon);
-      destroyTree(graphics);
-    }
-    for (const polygon of wanted) {
-      if (this.painted.has(polygon)) continue;
-      const graphics = fillPolygons(new Graphics(), [polygon]);
-      this.painted.set(polygon, graphics);
-      this.painter.addChild(graphics);
-    }
-  }
-
   /** Where the ambient light of a scene with zones is lit: the scene itself over the clip's bounds, then each zone in its order, lit or dark. */
   private paintAmbient({ base, zones }: NonNullable<ExploredShapes['ambient']>, clip: readonly Polygon[]): void {
     const bounds = boundsOf(clip);
@@ -159,6 +146,7 @@ export class StampScratch {
     this.outside?.texture.destroy(true);
     this.outside = null;
     this.painted.clear();
+    this.clipped.clear();
     destroyTree(this.stamp);
     this.target.destroy(true);
   }
@@ -177,6 +165,43 @@ function boundsOf(polygons: readonly Polygon[]): { minX: number; minY: number; m
     bounds.maxY = Math.max(bounds.maxY, box.maxY);
   }
   return bounds;
+}
+
+/**
+ * One shape per polygon in `parent`, white, those of polygons drawn before kept as they were (after
+ * the parent's first child, which stays: the painter's ambient light).
+ */
+function keepShapes(kept: Map<Polygon, Container>, parent: Container, polygons: readonly Polygon[], fans: ExploredShapes['fans']): void {
+  const wanted = new Set(polygons.filter((polygon) => polygon.length >= 3));
+  for (const [polygon, shape] of kept) {
+    if (wanted.has(polygon)) continue;
+    kept.delete(polygon);
+    destroyTree(shape);
+  }
+  for (const polygon of wanted) {
+    if (kept.has(polygon)) continue;
+    const shape = shapeOf(polygon, fans?.get(polygon));
+    kept.set(polygon, shape);
+    parent.addChild(shape);
+  }
+}
+
+/**
+ * A polygon filled in white: a fan from the point it is seen from where it is star-shaped around
+ * one (`ExploredShapes.fans`), which covers it exactly; otherwise cut into triangles.
+ */
+function shapeOf(polygon: Polygon, from: Point | undefined): Container {
+  if (!from) return fillPolygons(new Graphics(), [polygon]);
+  const positions = new Float32Array(2 * (polygon.length + 1));
+  positions[0] = from.x;
+  positions[1] = from.y;
+  polygon.forEach((p, i) => {
+    positions[2 + 2 * i] = p.x;
+    positions[3 + 2 * i] = p.y;
+  });
+  const indices = new Uint32Array(3 * polygon.length);
+  for (let i = 0; i < polygon.length; i++) indices.set([0, i + 1, ((i + 1) % polygon.length) + 1], 3 * i);
+  return new Mesh({ geometry: new MeshGeometry({ positions, uvs: new Float32Array(positions.length), indices }), texture: Texture.WHITE });
 }
 
 function fillPolygons(g: Graphics, polygons: readonly Polygon[], color = 0xffffff): Graphics {

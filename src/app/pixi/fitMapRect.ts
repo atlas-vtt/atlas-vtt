@@ -1,4 +1,4 @@
-import type { PixelRect } from './mapImage/pyramid';
+import type { PixelRect } from './mosaicCanvas/pyramid';
 import { MAX_ZOOM, MIN_ZOOM, setMapZoomFloor, type ZoomLimited } from './zoomRange';
 
 /** Share of the screen the fitted map takes along its tighter side. */

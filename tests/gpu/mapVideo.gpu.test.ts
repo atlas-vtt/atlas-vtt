@@ -1,17 +1,17 @@
 import { Container, RenderTexture, Ticker, WebGLRenderer } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { MapImage } from '../../src/app/pixi/mapImage/MapImage';
-import type { MapImageOpener } from '../../src/app/pixi/mapImage/mapImageTypes';
-import { pyramidOf, tileSourceRect, type TileRef } from '../../src/app/pixi/mapImage/pyramid';
-import type { MapVideoDeps, MapVideoProblem } from '../../src/app/pixi/mapImage/video/MapVideoSlot';
-import { openVideoElement, type OpenedVideo } from '../../src/app/pixi/mapImage/video/videoElement';
-import { videoPoster } from '../../src/app/pixi/mapImage/video/videoPoster';
+import { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
+import type { MosaicCanvasOpener } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
+import { pyramidOf, tesseraSourceRect, type TesseraRef } from '../../src/app/pixi/mosaicCanvas/pyramid';
+import type { MapVideoDeps, MapVideoProblem } from '../../src/app/pixi/mosaicCanvas/video/MapVideoSlot';
+import { openVideoElement, type OpenedVideo } from '../../src/app/pixi/mosaicCanvas/video/videoElement';
+import { videoPoster } from '../../src/app/pixi/mosaicCanvas/video/videoPoster';
 import { VIDEO_MAP_SIZE, videoMapWebm } from '../fixtures/videoMapFixture';
-import { requiredMainThreadDecode } from '../../src/app/pixi/mapImage/mainThreadDecode';
-import { TileDecoderClient } from '../../src/app/pixi/mapImage/TileDecoderClient';
-import { workerPort } from '../../src/app/pixi/mapImage/tilePorts';
-import TileWorker from '../../src/app/pixi/mapImage/tileWorker?worker&inline';
+import { requiredMainThreadDecode } from '../../src/app/pixi/mosaicCanvas/mainThreadDecode';
+import { TesseraDecoderClient } from '../../src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { workerPort } from '../../src/app/pixi/mosaicCanvas/tesseraPorts';
+import TileWorker from '../../src/app/pixi/mosaicCanvas/tesseraWorker?worker&inline';
 
 const { width: WIDTH, height: HEIGHT } = VIDEO_MAP_SIZE;
 const SCREEN = 240;
@@ -29,8 +29,8 @@ function nameOf([r, g, b]: [number, number, number]): Colour {
   return 'other';
 }
 
-/** A tile service serving `poster`'s pyramid, as the tile worker does for a video map. */
-function posterService(poster: ImageBitmap): MapImageOpener {
+/** A tessera service serving `poster`'s pyramid, as the tessera worker does for a video map. */
+function posterService(poster: ImageBitmap): MosaicCanvasOpener {
   const pyramid = pyramidOf(poster.width, poster.height);
   const levels = pyramid.levels.map((level) => {
     const canvas = new OffscreenCanvas(level.width, level.height);
@@ -39,8 +39,8 @@ function posterService(poster: ImageBitmap): MapImageOpener {
   });
   return {
     open: () => Promise.resolve({ handle: 1, hash: 'video-poster', pyramid }),
-    tile: (_handle: number, ref: TileRef) => {
-      const rect = tileSourceRect(pyramid, ref);
+    tessera: (_handle: number, ref: TesseraRef) => {
+      const rect = tesseraSourceRect(pyramid, ref);
       return createImageBitmap(levels[ref.level]!, rect.x, rect.y, rect.width, rect.height);
     },
     overview: () => createImageBitmap(levels[pyramid.overview]!),
@@ -77,8 +77,8 @@ describe('an animated map', () => {
     expect([at(WIDTH / 4), at((3 * WIDTH) / 4)]).toEqual(['blue', 'red']);
   });
 
-  it('has its tile pyramid built from the poster by the real tile worker', async () => {
-    const client = new TileDecoderClient({ appId: null, worker: workerPort(() => new TileWorker({ name: 'video map test' })) });
+  it('has its tessera pyramid built from the poster by the real tessera worker', async () => {
+    const client = new TesseraDecoderClient({ appId: null, worker: workerPort(() => new TileWorker({ name: 'video map test' })) });
     const file = videoFile();
     const opened = await client.open(videoMapWebm(), { path: file.path, size: 1, mtime: 2 }, requiredMainThreadDecode(file));
     expect({ width: opened.pyramid.width, height: opened.pyramid.height }).toEqual(VIDEO_MAP_SIZE);
@@ -113,7 +113,7 @@ describe('an animated map', () => {
       maxTextureSize: () => options.maxTextureSize ?? 4096,
       reportStill: (_file, problem) => problems.push(problem),
     };
-    const mapImage = new MapImage({ service: posterService(poster), viewport, ticker, renderer, requestRender: () => { renders++; }, drawAtOnce: () => true, video });
+    const mapImage = new MosaicCanvas({ service: posterService(poster), viewport, ticker, renderer, requestRender: () => { renders++; }, drawAtOnce: () => true, video });
     const stage = new Container();
     const camera = new Container({ scale: zoom });
     stage.addChild(camera);
@@ -156,10 +156,10 @@ describe('an animated map', () => {
     return ready();
   }
 
-  it('shows its poster while the video loads, then plays frame after frame over it, stretched like the tiles', async () => {
+  it('shows its poster while the video loads, then plays frame after frame over it, stretched like the tesserae', async () => {
     const map = await scene({ stretch: { x: 1.5, y: 1 } });
     map.mapImage.setVideoMode('play');
-    // The poster's tiles, stretched: the halves meet in the middle of the stretched rect, which they fill.
+    // The poster's tesserae, stretched: the halves meet in the middle of the stretched rect, which they fill.
     expect(map.look()).toEqual(['blue', 'red', 'red', 'black']);
 
     map.letOpen();

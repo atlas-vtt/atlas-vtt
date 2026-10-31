@@ -1,7 +1,132 @@
+import { LIGHT_CEILING } from '../../../lighting/lightingConstants';
 import { BOUNCE_GATHER_GLSL } from './cascadeShaders';
 import { GLSL_VERSION, SRGB_GLSL, TONEMAP_GLSL, TRACE_GLSL, fieldGlsl, traceGlsl } from './glsl';
 import { WALL_PUSH_GLSL, wallPushGlsl } from './wallPushGlsl';
 import { SHOWN_GLSL } from './compositeUpscaleShader';
+
+/** What only the traced picture reads: its wall fields, the traces through them, the faces of walls and the bounce. */
+const TRACED_GLSL = `
+uniform float uCore;
+uniform float uBand;
+uniform float uTexel;
+${fieldGlsl('uField')}
+${fieldGlsl('uSightField')}
+${fieldGlsl('uTwoWayField')}
+float clearance(vec2 w) { return uFieldClearance(w); }
+float sightClearance(vec2 w) { return uSightFieldClearance(w); }
+${TRACE_GLSL}
+${traceGlsl('sightReaches', 'sightClearance')}
+${WALL_PUSH_GLSL}
+${wallPushGlsl('uSightField', 'Sight')}
+${BOUNCE_GATHER_GLSL}`;
+
+const EXPLORED_TRACED_GLSL = `
+// Explored memory is stamped with hard-edged polygons: blur it over a disc of two memory texels,
+// shrunk to the pixel's clearance from the walls that stop sight, so memory never smears across one. 12 Vogel taps,
+// Gaussian in distance. A read takes in the memory texels around it, a diagonal of one at most,
+// so no tap comes nearer than that to a wall. On a large map that is wider than a wall: there a
+// wall's face remembers the floor in front of it, and where walls leave no room for that (on a
+// wall's centre line, in the corner of a junction), the one memory texel the pixel lies in, or
+// nothing where a wall lies between the pixel and that texel's middle.
+float exploredAt(vec2 w) {
+  // The memory's scale is set by the map's longer side, whose texel count rounds least.
+  vec2 size = vec2(textureSize(uExplored, 0));
+  float texel = size.x >= size.y ? uMapSize.x / size.x : uMapSize.y / size.y;
+  float footprint = 1.4143 * texel;
+  if (footprint > uSightFieldParams.y) {
+    w = climbFromWallSight(w, footprint);
+    if (uSightFieldDistance(w) < footprint) {
+      // No room: the one memory texel the pixel lies in, if the way to its middle is clear. A texel
+      // whose middle lies behind a wall was recorded from there, and one whose middle can be
+      // reached lies whole on this side of every wall (a wall is as thick as the texel is wide).
+      vec2 cell = clamp(floor(w / uMapSize * size), vec2(0.0), size - 1.0);
+      return sightReaches(w, (cell + 0.5) / size * uMapSize) ? texelFetch(uExplored, ivec2(cell), 0).r : 0.0;
+    }
+  }
+  float r = min(2.0 * texel, min(sightClearance(w), uSightFieldDistance(w) - footprint));
+  float sum = textureLod(uExplored, clamp(w / uMapSize, 0.0, 1.0), 0.0).r;
+  if (r < 0.25 * texel) return sum;
+  float weights = 1.0;
+  for (int i = 0; i < 12; i++) {
+    float t = sqrt((float(i) + 0.5) / 12.0);
+    float a = float(i) * 2.39996323;
+    float k = exp(-2.0 * t * t);
+    sum += k * textureLod(uExplored, clamp((w + vec2(cos(a), sin(a)) * t * r) / uMapSize, 0.0, 1.0), 0.0).r;
+    weights += k;
+  }
+  return sum / weights;
+}`;
+
+// The polygon picture has no wall field: the memory is read as it was stamped, through one
+// bilinear read, which carries it at most a memory texel past the line a stamp ended on.
+const EXPLORED_POLYGONS_GLSL = `
+float exploredAt(vec2 w) {
+  return textureLod(uExplored, clamp(w / uMapSize, 0.0, 1.0), 0.0).r;
+}`;
+
+const TRACED_BOUNCE_GLSL = `
+  // Without bounce (the lighting quality's choice) no probe is read or traced to.
+  bool bounces = uBounceGain > 0.0;
+  vec3 bounce = bounces ? bounceAt(world) : vec3(0.0);
+  // Tiles end at the capsule: from its core to the band a wall's face takes the light (direct
+  // and bounce alike) of the floor in front of it, on its own side, then blends back to its own
+  // over a texel, where its own is fully lit (blending earlier left a dark line along walls).
+  float d = wallDistance(world);
+  float front = clamp((d - uCore) / uPixelWorld + 0.5, 0.0, 1.0) * (1.0 - smoothstep(uBand, uBand + uTexel, d));`;
+
+const TRACED_ZONE_READ_GLSL = `
+    zone = textureLod(uZones, world / uLightWorld, 0.0);
+    zoneLifted = textureLod(uZonesLifted, world / uLightWorld, 0.0);`;
+
+// The polygon picture's zones are flat fills read at the texel a pixel lies in: a zone darker than
+// its scene fills the walls' band as far as that read reaches past its outline (`PolygonWorld`), so
+// it shows neither the scene's light inside its walls nor its own darkness a texel's half-diagonal past them.
+const POLYGON_ZONE_READ_GLSL = `
+    ivec2 zoneTexel = clamp(ivec2(floor(world / uLightWorld * vec2(textureSize(uZones, 0)))), ivec2(0), textureSize(uZones, 0) - 1);
+    zone = texelFetch(uZones, zoneTexel, 0);
+    zoneLifted = texelFetch(uZonesLifted, zoneTexel, 0);`;
+
+const TRACED_FACES_GLSL = `
+  // Nearer than the core a wall that stops light both ways keeps its own light, its ink. A one-way
+  // wall's core takes the darker of the floors on its two sides instead: on its blocking side the
+  // rule lights the floor up to the centre line, and a tile ending at the capsule drew a black
+  // line where a lit object's top meets its shadow. The darker side is never more than either
+  // side has, so no light crosses the line, whichever way the gradient points this close to it.
+  // Each side's floor is read a texel past the band, and only where no wall that stops light both
+  // ways comes within that reach of the pixel and the conservative field proves both floors a
+  // band (less a texel) from every centre line: no other wall lies between them and this one,
+  // so neither reads a neighbouring room.
+  float reach = uBand + uTexel;
+  vec2 n = vec2(0.0);
+  if (d < uCore + uPixelWorld && uTwoWayFieldDistance(world) + uTwoWayFieldParams.x > d + reach) n = wallNormal(world);
+  if (n != vec2(0.0)) {
+    vec2 sideA = world + n * (reach - d);
+    vec2 sideB = world - n * (reach + d);
+    if (min(uFieldDistance(sideA), uFieldDistance(sideB)) >= uBand - uTexel) {
+      vec4 lampsA = textureLod(uLightMap, sideA / uLightWorld, 0.0);
+      vec4 lampsB = textureLod(uLightMap, sideB / uLightWorld, 0.0);
+      vec3 bounceA = bounces ? bounceAt(sideA) : vec3(0.0);
+      vec3 bounceB = bounces ? bounceAt(sideB) : vec3(0.0);
+      bool darkerA = dot(lampsA.rgb + bounceA * uBounceGain, LUMA) <= dot(lampsB.rgb + bounceB * uBounceGain, LUMA);
+      vec2 floorAt = darkerA ? sideA : sideB;
+      lamps = darkerA ? lampsA : lampsB;
+      bounce = darkerA ? bounceA : bounceB;
+      if (uHasZones > 0.5) {
+        zone = textureLod(uZones, floorAt / uLightWorld, 0.0);
+        zoneLifted = textureLod(uZonesLifted, floorAt / uLightWorld, 0.0);
+      }
+    }
+  }
+  if (front > 0.0) {
+    vec2 floorAt = climbFromWall(world, uBand);
+    lamps = mix(lamps, textureLod(uLightMap, floorAt / uLightWorld, 0.0), front);
+    if (bounces) bounce = mix(bounce, bounceAt(floorAt), front);
+    // A wall's face has the ambient light of the floor in front of it, on its own side.
+    if (uHasZones > 0.5) {
+      zone = mix(zone, textureLod(uZones, floorAt / uLightWorld, 0.0), front);
+      zoneLifted = mix(zoneLifted, textureLod(uZonesLifted, floorAt / uLightWorld, 0.0), front);
+    }
+  }`;
 
 /**
  * The lighting layer's final pass. uTexture is the layer itself, what the vision tokens
@@ -58,8 +183,16 @@ import { SHOWN_GLSL } from './compositeUpscaleShader';
  * one of them covers; 0 while it is not, `CompositeUpscale`), the alpha says how much the pixel shows
  * of the map (`SHOWN_GLSL`), so that darkness wins as it is drawn up, and what the tokens perceive
  * is the least of the render's pixels it covers: a sliver they do not see is never drawn over.
+ *
+ * Two pictures share this pass (`picture`). The traced one (`LightingWorld`) reads its wall
+ * fields: a wall's face takes the light of the floor in front of it, the bounce is gathered, and
+ * the memory is blurred no further than the walls let it. The polygon one (`PolygonWorld`) has
+ * no field, no bounce and no faces: its light and zones leave the walls' band out, and the memory
+ * is one bilinear read.
  */
-export const compositeFragment = `${GLSL_VERSION}
+export function compositeFragmentFor(picture: 'traced' | 'polygons'): string {
+  const traced = picture === 'traced';
+  return `${GLSL_VERSION}
 in vec2 vTextureCoord;
 out vec4 finalColor;
 uniform sampler2D uTexture;
@@ -73,9 +206,6 @@ uniform sampler2D uExplored;
 uniform vec2 uAreaOrigin;
 uniform mat3 uScreenToWorld;
 uniform float uPixelWorld;
-uniform float uCore;
-uniform float uBand;
-uniform float uTexel;
 uniform vec2 uLightWorld;
 uniform vec2 uMapSize;
 uniform vec3 uAmbient;
@@ -116,22 +246,23 @@ uniform vec2 uBelowShown;
 uniform float uBelowDim;
 uniform vec3 uBelowGrid;
 uniform float uShownOut;
-${fieldGlsl('uField')}
-${fieldGlsl('uSightField')}
-${fieldGlsl('uTwoWayField')}
-float clearance(vec2 w) { return uFieldClearance(w); }
-float sightClearance(vec2 w) { return uSightFieldClearance(w); }
-${TRACE_GLSL}
-${traceGlsl('sightReaches', 'sightClearance')}
-${WALL_PUSH_GLSL}
-${wallPushGlsl('uSightField', 'Sight')}
-${BOUNCE_GATHER_GLSL}
+${traced ? TRACED_GLSL : ''}
 ${SRGB_GLSL}
 ${TONEMAP_GLSL}
 ${SHOWN_GLSL}
 
 // Share of its colour an area no token sees loses in the GM view.
 const float UNSEEN_FADE = 0.4;
+// How much the other lights here may add to the brightest one, as a share of it (LIGHT_CEILING).
+const float CEILING_REACH = ${LIGHT_CEILING.reach.toFixed(4)};
+
+// What all the lights here give, as a share of their sum, when the brightest gives \`strongest\` of
+// \`all\`: that one whole, what the others add easing towards CEILING_REACH of it.
+float underCeiling(float all, float strongest) {
+  float rest = all - strongest;
+  if (rest <= 0.0 || strongest <= 0.0) return 1.0;
+  return (strongest + rest / (1.0 + rest / (CEILING_REACH * strongest))) / all;
+}
 // Ambient light below which a grid coloured against the map is drawn white: a bright map lies too dark there for black lines.
 const float GRID_DARK_AMBIENT = 0.35;
 
@@ -168,41 +299,7 @@ vec4 sightHere() {
   return min(near, min(sightTexel(device + vec2(-h, h)), sightTexel(device + vec2(h, h))));
 }
 
-// Explored memory is stamped with hard-edged polygons: blur it over a disc of two memory texels,
-// shrunk to the pixel's clearance from the walls that stop sight, so memory never smears across one. 12 Vogel taps,
-// Gaussian in distance. A read takes in the memory texels around it, a diagonal of one at most,
-// so no tap comes nearer than that to a wall. On a large map that is wider than a wall: there a
-// wall's face remembers the floor in front of it, and where walls leave no room for that (on a
-// wall's centre line, in the corner of a junction), the one memory texel the pixel lies in, or
-// nothing where a wall lies between the pixel and that texel's middle.
-float exploredAt(vec2 w) {
-  // The memory's scale is set by the map's longer side, whose texel count rounds least.
-  vec2 size = vec2(textureSize(uExplored, 0));
-  float texel = size.x >= size.y ? uMapSize.x / size.x : uMapSize.y / size.y;
-  float footprint = 1.4143 * texel;
-  if (footprint > uSightFieldParams.y) {
-    w = climbFromWallSight(w, footprint);
-    if (uSightFieldDistance(w) < footprint) {
-      // No room: the one memory texel the pixel lies in, if the way to its middle is clear. A texel
-      // whose middle lies behind a wall was recorded from there, and one whose middle can be
-      // reached lies whole on this side of every wall (a wall is as thick as the texel is wide).
-      vec2 cell = clamp(floor(w / uMapSize * size), vec2(0.0), size - 1.0);
-      return sightReaches(w, (cell + 0.5) / size * uMapSize) ? texelFetch(uExplored, ivec2(cell), 0).r : 0.0;
-    }
-  }
-  float r = min(2.0 * texel, min(sightClearance(w), uSightFieldDistance(w) - footprint));
-  float sum = textureLod(uExplored, clamp(w / uMapSize, 0.0, 1.0), 0.0).r;
-  if (r < 0.25 * texel) return sum;
-  float weights = 1.0;
-  for (int i = 0; i < 12; i++) {
-    float t = sqrt((float(i) + 0.5) / 12.0);
-    float a = float(i) * 2.39996323;
-    float k = exp(-2.0 * t * t);
-    sum += k * textureLod(uExplored, clamp((w + vec2(cos(a), sin(a)) * t * r) / uMapSize, 0.0, 1.0), 0.0).r;
-    weights += k;
-  }
-  return sum / weights;
-}
+${traced ? EXPLORED_TRACED_GLSL : EXPLORED_POLYGONS_GLSL}
 
 // A colour in the hue of a tint, exactly as bright as it was: the tint says what the dark looks
 // like, never how much of it is seen. The tinted colour is scaled back to the colour's own
@@ -232,7 +329,7 @@ vec3 litAsBright(vec3 albedo, vec4 lamps, vec3 bounce, vec3 ambient) {
   vec3 direct = lamps.rgb * (lamps.a / max(dot(lamps.rgb, LUMA), 1e-4));
   vec3 light = ambient + (direct + bounce * uBounceGain) * uExposure;
   float level = dot(light, LUMA);
-  vec3 lit = neutral(albedo * light);
+  vec3 lit = neutral(albedo * light, dot(ambient, LUMA));
   float fill = 1.0 - lamps.a * uExposure / max(level, 1e-4);
   float night = (1.0 - smoothstep(0.03, 0.35, level)) * uPurkinje * fill;
   return nightShift(lit, night);
@@ -252,14 +349,7 @@ void main() {
   vec3 albedo = toLinear(uGrid > 0.5 || hole ? back.rgb / max(back.a, 1.0 / 255.0) : back.rgb);
   // rgb: the lights' light; alpha: its luminance had every light its bright level here.
   vec4 lamps = textureLod(uLightMap, world / uLightWorld, 0.0);
-  // Without bounce (the lighting quality's choice) no probe is read or traced to.
-  bool bounces = uBounceGain > 0.0;
-  vec3 bounce = bounces ? bounceAt(world) : vec3(0.0);
-  // Tiles end at the capsule: from its core to the band a wall's face takes the light (direct
-  // and bounce alike) of the floor in front of it, on its own side, then blends back to its own
-  // over a texel, where its own is fully lit (blending earlier left a dark line along walls).
-  float d = wallDistance(world);
-  float front = clamp((d - uCore) / uPixelWorld + 0.5, 0.0, 1.0) * (1.0 - smoothstep(uBand, uBand + uTexel, d));
+${traced ? TRACED_BOUNCE_GLSL : '  vec3 bounce = vec3(0.0);'}
   // r: the share of the light magical darkness swallows here; g: what sees in it, and how.
   // b: where a light it swallows would shine.
   vec3 dark = vec3(0.0);
@@ -268,49 +358,17 @@ void main() {
   vec4 zone = vec4(0.0);
   vec4 zoneLifted = vec4(0.0);
   if (uHasZones > 0.5) {
-    zone = textureLod(uZones, world / uLightWorld, 0.0);
-    zoneLifted = textureLod(uZonesLifted, world / uLightWorld, 0.0);
+${traced ? TRACED_ZONE_READ_GLSL : POLYGON_ZONE_READ_GLSL}
   }
-  // Nearer than the core a wall that stops light both ways keeps its own light, its ink. A one-way
-  // wall's core takes the darker of the floors on its two sides instead: on its blocking side the
-  // rule lights the floor up to the centre line, and a tile ending at the capsule drew a black
-  // line where a lit object's top meets its shadow. The darker side is never more than either
-  // side has, so no light crosses the line, whichever way the gradient points this close to it.
-  // Each side's floor is read a texel past the band, and only where no wall that stops light both
-  // ways comes within that reach of the pixel and the conservative field proves both floors a
-  // band (less a texel) from every centre line: no other wall lies between them and this one,
-  // so neither reads a neighbouring room.
-  float reach = uBand + uTexel;
-  vec2 n = vec2(0.0);
-  if (d < uCore + uPixelWorld && uTwoWayFieldDistance(world) + uTwoWayFieldParams.x > d + reach) n = wallNormal(world);
-  if (n != vec2(0.0)) {
-    vec2 sideA = world + n * (reach - d);
-    vec2 sideB = world - n * (reach + d);
-    if (min(uFieldDistance(sideA), uFieldDistance(sideB)) >= uBand - uTexel) {
-      vec4 lampsA = textureLod(uLightMap, sideA / uLightWorld, 0.0);
-      vec4 lampsB = textureLod(uLightMap, sideB / uLightWorld, 0.0);
-      vec3 bounceA = bounces ? bounceAt(sideA) : vec3(0.0);
-      vec3 bounceB = bounces ? bounceAt(sideB) : vec3(0.0);
-      bool darkerA = dot(lampsA.rgb + bounceA * uBounceGain, LUMA) <= dot(lampsB.rgb + bounceB * uBounceGain, LUMA);
-      vec2 floorAt = darkerA ? sideA : sideB;
-      lamps = darkerA ? lampsA : lampsB;
-      bounce = darkerA ? bounceA : bounceB;
-      if (uHasZones > 0.5) {
-        zone = textureLod(uZones, floorAt / uLightWorld, 0.0);
-        zoneLifted = textureLod(uZonesLifted, floorAt / uLightWorld, 0.0);
-      }
-    }
-  }
-  if (front > 0.0) {
-    vec2 floorAt = climbFromWall(world, uBand);
-    lamps = mix(lamps, textureLod(uLightMap, floorAt / uLightWorld, 0.0), front);
-    if (bounces) bounce = mix(bounce, bounceAt(floorAt), front);
-    // A wall's face has the ambient light of the floor in front of it, on its own side.
-    if (uHasZones > 0.5) {
-      zone = mix(zone, textureLod(uZones, floorAt / uLightWorld, 0.0), front);
-      zoneLifted = mix(zoneLifted, textureLod(uZonesLifted, floorAt / uLightWorld, 0.0), front);
-    }
-  }
+${traced ? TRACED_FACES_GLSL : ''}
+  // Lights add up in the light map's colour, and its alpha keeps the brightest one's level at its
+  // bright level, which is never below what that light gives here: so the brightest light gives at
+  // most that much, and one light alone is drawn as it always was. What the others add eases, and
+  // their bounce with them, so lights held together never whiten the floor.
+  float all = dot(lamps.rgb, LUMA);
+  float eased = underCeiling(all, min(lamps.a, all));
+  lamps.rgb *= eased;
+  bounce *= eased;
   // Magical darkness swallows the ambient light and the bounce; the lights it swallows are not in the light map.
   float lightLeft = 1.0 - dark.r;
   // The ambient light here before the darkness takes of it.
@@ -332,7 +390,7 @@ void main() {
   // dim range showed far below its share of the bright range. A light is tonemapped at its
   // bright level instead and the result scaled back to what it gives; without a light this is 1.
   float lift = 1.0 + max(lamps.a - dot(direct, LUMA), 0.0) * uExposure / max(level, 1e-4);
-  vec3 lit = neutral(albedo * light * lift) / lift;
+  vec3 lit = neutral(albedo * light * lift, dot(ambient, LUMA)) / lift;
   // Cool grey where the light is low, by the share of it that is no light's own (ambient and
   // bounce): shifting a light's fade to black drew a pale ring around it.
   float fill = 1.0 - dot(direct, LUMA) * uExposure / max(level, 1e-4);
@@ -420,3 +478,4 @@ void main() {
   float dither = (fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715)))) - 0.5) / 255.0;
   finalColor = vec4(shown + dither, uShownOut > 0.0 ? shownEncoded(shownHere) : 1.0);
 }`;
+}

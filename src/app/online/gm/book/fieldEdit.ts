@@ -8,8 +8,9 @@ import { textProblem, valueMisfit } from '../../../statblocks/values/valueFit';
 import { countersAfterEdit } from './counterEdit.ts';
 import { playerAccess } from './playerAccess.ts';
 import { noteMaxRoute } from './resourceMax.ts';
+import { withCell } from './tableCellEdit.ts';
 import {
-  amongOptions, clears, editableTemplate, inOptionOrder, isDice, isLine, isPlainList, isScalar, playerReferences, referencesSafeIn, sentFields, writtenValue,
+  amongOptions, clears, editableTemplate, inOptionOrder, isDice, isLine, isPlainList, playerReferences, referencesSafeIn, sentFields, writtenValue,
   type CheckedEdit, type EditInputs, type PlayerReferences,
 } from './statblockChecks.ts';
 
@@ -43,18 +44,6 @@ function fitsField(field: TemplateField, value: SheetRaw, references: PlayerRefe
   }
 }
 
-/** A table with one cell set: a stored list of lists is its rows, a flat list one row; undefined for any other shape or a cell it does not have. */
-function withCell(stored: FieldValue | undefined, [row, column]: readonly [number, number], value: SheetRaw): FieldValue[] | undefined {
-  if (!Array.isArray(stored) || !(value === null || isNumber(value) || isLine(value))) return undefined;
-  const set = (cells: readonly FieldValue[]): FieldValue[] | undefined => (column < cells.length && cells.every(isScalar) ? cells.map((cell, at) => (at === column ? value : cell)) : undefined);
-  if (stored.every((cells) => Array.isArray(cells))) {
-    const cells = stored[row];
-    const next = Array.isArray(cells) ? set(cells) : undefined;
-    return next === undefined ? undefined : stored.map((cells, at) => (at === row ? next : cells));
-  }
-  return row === 0 ? set(stored) : undefined;
-}
-
 /** The value a field holds once the edit is in (undefined: its key is deleted), or null where the edit does not fit it. */
 function newValue(field: TemplateField, stored: FieldValue | undefined, message: BookFieldMessage, references: PlayerReferences): { readonly value: FieldValue | undefined } | null {
   // Counters change only their uses, the whole list at once; they are never cleared or edited cell by cell.
@@ -64,9 +53,10 @@ function newValue(field: TemplateField, stored: FieldValue | undefined, message:
   }
   if (message.cell !== undefined) {
     if (!TABLED.has(field.type)) return null;
-    const value = withCell(stored, message.cell, message.value);
+    const next = withCell(field, stored, message.cell, message.value);
     // The whole new value is checked as any other: a cell may not make it something the field does not hold.
-    return value === undefined || !fitsField(field, value, references) ? null : { value };
+    if (next === null || next.value === undefined) return next;
+    return fitsField(field, next.value, references) ? next : null;
   }
   if (clears(message.value)) return { value: undefined };
   return fitsField(field, message.value, references) ? { value: message.value as FieldValue } : null;

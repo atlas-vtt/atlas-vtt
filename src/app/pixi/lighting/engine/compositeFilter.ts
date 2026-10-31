@@ -8,6 +8,7 @@ import { ENGINE_SHADERS } from './engineShaders';
 import type { DarknessMap } from './DarknessMap';
 import type { ZoneMap } from './ZoneMap';
 import { createPlaceholder, engineProgram } from './gpu';
+import type { EngineWorld } from './engineWorld';
 import type { LightingWorld } from './LightingWorld';
 import { DARK_SIGHT_LEVELS, darkLooks, type DarkLooks } from './senseDrawing';
 import { SEES_ALL } from '../../../vision/sight';
@@ -49,8 +50,10 @@ const PROBE_SPACING: number = BOUNCE.probe;
 /** Final pass of the lighting layer: lights the scene beneath it and hides what no one sees. */
 export interface CompositeFilter {
   filter: Filter;
-  /** Binds `world`'s textures; call before the previous world is destroyed. */
-  setWorld(world: LightingWorld): void;
+  /** The picture whose world it reads (`EngineWorld.picture`): a world of the other picture needs a composite of its own. */
+  readonly picture: EngineWorld['picture'];
+  /** Binds `world`'s textures, a world of this composite's picture; call before the previous world is destroyed. */
+  setWorld(world: EngineWorld): void;
   /**
    * The colour is picked in sRGB; the composite adds light in linear light. `lift` is how much
    * the ambient light is raised where dim light is perceived as bright (`ambientLift`).
@@ -90,7 +93,7 @@ export interface CompositeFilter {
   setPixelRatio(max: number | undefined): void;
 }
 
-export function createCompositeFilter(world: LightingWorld, explored: Texture): CompositeFilter {
+export function createCompositeFilter(world: EngineWorld, explored: Texture): CompositeFilter {
   const screenToWorld = new Matrix();
   const areaOrigin = new Float32Array(2);
   const lightWorld = new Float32Array(2);
@@ -154,20 +157,20 @@ export function createCompositeFilter(world: LightingWorld, explored: Texture): 
   const noDarkness = createPlaceholder();
   let darkness: DarknessMap | null = null;
   let zones: ZoneMap | null = null;
+  const traced = world.picture === 'traced';
   const filter = new CompositeUpscale({
-    glProgram: engineProgram(ENGINE_SHADERS.composite),
+    glProgram: engineProgram(traced ? ENGINE_SHADERS.composite : ENGINE_SHADERS.compositePolygons),
     resources: {
       compositeUniforms: group,
       uExplored: explored.source,
       uLightMap: world.lightMap.texture.source,
-      uFluence: (world.cascades?.fluence ?? noDarkness).source,
+      ...(world.picture === 'traced' ? tracedResources(world, noDarkness) : {}),
       uDarkness: noDarkness.source,
       uZones: noDarkness.source,
       uZonesLifted: noDarkness.source,
       uStack: noDarkness.source,
       uBelow1: noDarkness.source,
       uBelow2: noDarkness.source,
-      ...fieldResources(world),
     },
     blendRequired: true,
     resolution: 'inherit',
@@ -178,16 +181,22 @@ export function createCompositeFilter(world: LightingWorld, explored: Texture): 
   });
   const composite: CompositeFilter = {
     filter,
+    picture: world.picture,
     setWorld(next): void {
       lightWorld.set(next.lightMap.world);
       mapSize.set([next.bounds.width, next.bounds.height]);
-      u.uCore = wallCore(next.texel);
-      u.uBand = wallBand(next.texel);
-      u.uTexel = next.texel;
-      // A world without bounce: the composite reads none (gain 0) and binds the placeholder.
-      u.uBounceGain = next.cascades ? BOUNCE_GAIN : 0;
-      u.uFluSpacing = next.cascades?.probe ?? PROBE_SPACING;
-      Object.assign(filter.resources, { uLightMap: next.lightMap.texture.source, uFluence: (next.cascades?.fluence ?? noDarkness).source, ...fieldResources(next) });
+      filter.resources.uLightMap = next.lightMap.texture.source;
+      if (next.picture === 'traced') {
+        u.uCore = wallCore(next.texel);
+        u.uBand = wallBand(next.texel);
+        u.uTexel = next.texel;
+        // A world without bounce: the composite reads none (gain 0) and binds the placeholder.
+        u.uBounceGain = next.cascades ? BOUNCE_GAIN : 0;
+        u.uFluSpacing = next.cascades?.probe ?? PROBE_SPACING;
+        Object.assign(filter.resources, tracedResources(next, noDarkness));
+      } else {
+        u.uBounceGain = 0;
+      }
       group.update();
     },
     setAmbient(level, color, lift): void {
@@ -295,10 +304,14 @@ export function createCompositeFilter(world: LightingWorld, explored: Texture): 
   return composite;
 }
 
-/** The world's wall fields under the names the composite reads them by: the walls that stop light, those that stop sight, and those that stop light both ways. */
-function fieldResources(world: LightingWorld): ReturnType<LightingWorld['fields']['tiles']['resources']> {
+/**
+ * What the traced composite reads of its world beside the light map: the bounce (`placeholder`
+ * where the world has none), and the two wall fields under the names the composite reads them
+ * by, the walls that stop light, those that stop sight, and those that stop light both ways.
+ */
+function tracedResources(world: LightingWorld, placeholder: Texture): ReturnType<LightingWorld['fields']['tiles']['resources']> {
   const { light, sight } = world.fields.bound();
-  return { ...light.resources(), ...sight.resourcesAs('uSightField'), ...world.fields.tiles.resourcesAs('uTwoWayField') };
+  return { uFluence: (world.cascades?.fluence ?? placeholder).source, ...light.resources(), ...sight.resourcesAs('uSightField'), ...world.fields.tiles.resourcesAs('uTwoWayField') };
 }
 
 /** Writes an sRGB colour into `out` in linear light, scaled by `level`. */

@@ -3,15 +3,15 @@ import type { MapFile } from './services/MapPersistence';
 import { migrateMapFile, parseSceneFile } from './services/MapPersistence';
 import { SceneFileError } from './services/sceneFileProblems';
 import { AssetValidationService, type MissingAsset } from './services/AssetValidationService';
-import type { MapImageSource } from './pixi/mapImage/mapImageTypes';
+import type { MosaicCanvasSource } from './pixi/mosaicCanvas/mosaicCanvasTypes';
 import { resolveLevel } from './levels/sceneLevels';
 import { levelBackground } from './levels/levelEdits';
-import { isVideoMapPath } from './pixi/mapImage/video/videoMapFiles';
+import { isVideoMapPath } from './pixi/mosaicCanvas/video/videoMapFiles';
 
 export interface LoadedMap {
   mapData: MapFile;
   /** What the scene shows under its tokens on `level`; nothing of it is decoded yet. */
-  image: MapImageSource;
+  image: MosaicCanvasSource;
   /** The level shown: the one asked for where the scene has it, else the first; null for a scene without levels. */
   level: string | null;
   missingAssets?: MissingAsset[]; // Track missing assets for reporting
@@ -25,7 +25,7 @@ const EMPTY_MAP_CELLS = 20;
  * of an animated map, the missing-image placeholder when the file is gone, or an empty world of 20 × 20
  * cells without a background.
  */
-export function mapImageSourceFor(app: App, background: string | null | undefined, gridSize: number | undefined): MapImageSource {
+export function mapImageSourceFor(app: App, background: string | null | undefined, gridSize: number | undefined): MosaicCanvasSource {
   if (!background) {
     const side = (gridSize || 70) * EMPTY_MAP_CELLS;
     return { kind: 'none', width: side, height: side };

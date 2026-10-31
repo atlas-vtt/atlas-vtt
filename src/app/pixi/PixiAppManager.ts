@@ -3,14 +3,10 @@ import { Viewport } from "pixi-viewport";
 import { SmoothDecelerate } from "./SmoothDecelerate";
 import { RenderScheduler } from "./RenderScheduler";
 import { destroyTree } from "./utils/destroyTree";
-import { usesCanvasRenderer } from "./utils/rendererType";
-import { webglAvailable } from "./utils/webglAvailable";
 import { addRendererSystemsByEntry } from "./utils/rendererSystems";
-import { showSoftwareRenderingNotice } from "./softwareRenderingNotice";
+import { showNoGraphicsNotice } from './noGraphicsNotice';
 import { MAX_ZOOM, MIN_ZOOM } from "./zoomRange";
-import { bindPopoutCanvas } from "./popout/bindPopoutCanvas";
 
-type RendererPreference = 'webgl' | 'canvas';
 
 export class PixiAppManager {
   private _isDestroyed: boolean = false;
@@ -21,7 +17,6 @@ export class PixiAppManager {
   private height: number;
   private canvasEl: HTMLCanvasElement;
   private _canvasContextMenuPreventer: ((e: Event) => void) | null = null;
-  private unbindPopout: (() => void) | null = null;
   public onRecoverCallback?: () => void;
 
   constructor(initialWidth: number, initialHeight: number) {
@@ -38,8 +33,7 @@ export class PixiAppManager {
       return;
     }
     try {
-      await this.initRenderer(containerEl.win.devicePixelRatio || 1);
-      if (usesCanvasRenderer(this.app.renderer)) showSoftwareRenderingNotice();
+      await this.initRenderer();
 
       this.app.stage.eventMode = 'static'; // Or 'passive'. 'static' means it can be an event target.
       this.app.stage.interactiveChildren = true;
@@ -85,7 +79,6 @@ export class PixiAppManager {
       this.canvasEl.id = 'atlas-pixi-canvas-debug'; // For debugging
 
       this.initViewport(); // Initialize viewport and add to stage
-      this.unbindPopout = bindPopoutCanvas(this.app, containerEl);
       
       // Force a single render AFTER viewport is part of the stage
       if(this.app.renderer && this.app.stage) {
@@ -99,34 +92,22 @@ export class PixiAppManager {
   }
 
   /**
-   * Atlas ships GLSL shaders only; without WebGL it draws with Canvas 2D instead of WebGPU.
-   * PIXI picks Canvas 2D by itself only when WebGL is missing at its first check, whose answer
-   * it keeps, so Atlas asks again before every start (`webglAvailable`) and goes straight to
-   * Canvas 2D when WebGL is gone: PIXI never builds a WebGL renderer that cannot start.
-   *
-   * Should WebGL fail to start all the same, Canvas 2D gets one try of its own, on a new
-   * canvas, since one that was asked for WebGL may never give a 2D context. PIXI keeps no
-   * reference to the renderer whose start threw, so that one cannot be destroyed: its
-   * scheduler stays on PIXI's system ticker, with nothing to do.
+   * Atlas draws with WebGL alone: its grid, lights, lasers and liquids are GLSL programs, and a
+   * machine without WebGL (a blocklisted driver, some virtual machines) is not one it runs on.
+   * When WebGL cannot start the user is told what to turn on, and the view is left without a map.
    */
-  private async initRenderer(resolution: number): Promise<void> {
-    if (!webglAvailable()) {
-      await this.app.init(this.rendererOptions(['canvas'], resolution));
-      return;
-    }
+  private async initRenderer(): Promise<void> {
     try {
-      await this.app.init(this.rendererOptions(['webgl', 'canvas'], resolution));
+      await this.app.init(this.rendererOptions());
     } catch (error) {
-      console.error('[PixiAppManager] WebGL could not start, drawing with Canvas 2D instead:', error);
-      this.canvasEl = createEl('canvas');
-      await this.app.init(this.rendererOptions(['canvas'], resolution));
+      showNoGraphicsNotice();
+      throw error;
     }
   }
 
-  /** `resolution`: the device pixel ratio of the window the map opens in, which may be a popout's. */
-  private rendererOptions(preference: RendererPreference[], resolution: number): Partial<ApplicationOptions> {
+  private rendererOptions(): Partial<ApplicationOptions> {
     return {
-      preference,
+      preference: 'webgl',
       canvas: this.canvasEl,
       width: this.width,
       height: this.height,
@@ -139,7 +120,10 @@ export class PixiAppManager {
       // drew into. A scene that is not lit pays about 80 MB more than samples on the canvas would.
       useBackBuffer: true,
       autoDensity: true,
-      resolution,
+      resolution: window.devicePixelRatio || 1,
+      // Asks for the faster of two graphics chips, as Foundry and Owlbear Rodeo do; Chromium on
+      // Windows keeps the chip its GPU process started on whatever this says.
+      powerPreference: 'high-performance',
       // The map has no accessible display objects; since PIXI 8.22 Tab would otherwise
       // switch on its accessibility layer, which walks the whole stage after every render.
       accessibilityOptions: { activateOnTab: false },
@@ -251,8 +235,6 @@ export class PixiAppManager {
       return;
     }
     this._isDestroyed = true;
-    this.unbindPopout?.();
-    this.unbindPopout = null;
     if (this._canvasContextMenuPreventer && this.canvasEl) {
       this.canvasEl.removeEventListener('contextmenu', this._canvasContextMenuPreventer);
       this._canvasContextMenuPreventer = null;

@@ -6,6 +6,7 @@ import { SurfaceLayer } from '../interaction/SurfaceLayer';
 import { useSurfaceHover } from '../interaction/useSurfaceHover';
 import { usePaneEdit } from './paneEditContext';
 import { usePaneItemDrag } from './usePaneItemDrag';
+import { t } from '../../../i18n';
 import '../interaction/interaction.scss';
 
 export interface PaneHandlesProps {
@@ -59,7 +60,7 @@ export function PaneHandles({ paneRef, template }: PaneHandlesProps): React.JSX.
             store={store}
             layer={layer}
             glyphOf={(target) => (target.kind === 'item' ? 'grip' : null)}
-            labelOf={() => 'Drag to reorder'}
+            labelOf={() => t('statblockEditor.dragToReorder')}
             onPress={(target, event) => press(target, event.currentTarget, event.nativeEvent)}
           />
           {hint && <div className="atlas-sb-drag-hint" role="note">{hint}</div>}

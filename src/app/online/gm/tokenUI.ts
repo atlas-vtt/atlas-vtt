@@ -2,10 +2,10 @@ import { MAX_CONDITION_TEXT, MAX_TOKEN_CONDITIONS, MAX_TOKEN_VALUE, type SharedB
 import { resolveActiveConditions, type ActiveCondition } from '../../utils/activeConditions';
 import { isTokenDowned } from '../../pixi/token-renderer/isTokenDowned';
 import type { ResourceDefinition } from '../../resources/resourceTypes';
-import { shapeOf, visibleResources } from '../../resources/visibleResources';
+import { visibleResources } from '../../resources/visibleResources';
 import type { TokenEntity } from '../../types';
 import type { ConditionDefinition } from '../../types/collectionSettingsTypes';
-import { badgeNumberInView, numberTokensInView, type InstanceNumbers } from '../../vision/instanceNumbers';
+import { instanceBadgeNumbers } from '../../initiative/cardInstanceNumber';
 
 /** The map's resource and condition definitions, as the GM's token renderer reads them for its collection. */
 export interface TokenRules {
@@ -22,15 +22,15 @@ const hexColour = (colour: number): string => `#${(colour & 0xffffff).toString(1
 const finiteValue = (value: number): boolean => Number.isFinite(value) && Math.abs(value) <= MAX_TOKEN_VALUE;
 
 /**
- * The bars Atlas's player window draws below a token: the resources players see
- * (`visibleResources` for the viewer `player`) whose socket is a bar. Wheels never show there,
- * and nothing of a resource players may not see is read.
+ * The resources of the token Atlas's player window draws, bars below it and wheels beside it
+ * (`visibleResources` for the viewer `player`), each with its socket. Nothing of a resource
+ * players may not see is read.
  */
 function barsOf(token: TokenEntity, rules: TokenRules): SharedBar[] {
   return visibleResources(token, rules.resources, 'player').flatMap(({ definition, value, slot }): SharedBar[] => {
     const colour = definition.color.toLowerCase();
-    if (shapeOf(slot) !== 'bar' || !HEX_COLOUR.test(colour) || !finiteValue(value.current) || !finiteValue(value.max)) return [];
-    return [{ colour, direction: definition.direction, defeats: definition.defeatedWhenSpent === true, current: value.current, max: value.max }];
+    if (!HEX_COLOUR.test(colour) || !finiteValue(value.current) || !finiteValue(value.max)) return [];
+    return [{ colour, direction: definition.direction, defeats: definition.defeatedWhenSpent === true, current: value.current, max: value.max, slot }];
   });
 }
 
@@ -59,12 +59,10 @@ export function tokenUIOf(token: TokenEntity, rules: TokenRules, nameplate: bool
 }
 
 /**
- * Numbers the look-alikes the players see as their picture does (`numberTokensInView`, in the scene's
- * token order): a token that stays in view keeps its number. `badge` gives a token's number, or null
- * where it shows no badge (badges off, or fewer than two of its artwork in view).
+ * The GM's look-alike numbers (`instanceBadgeNumbers`) of the tokens `shown` lets players see, by
+ * token id: the number each one's badge shows them, the same on every screen. A token they do not
+ * see, or one without a badge (badges off, no look-alike on its level), is not listed.
  */
-export function numberShownTokens(previous: InstanceNumbers, tokens: Readonly<Record<string, TokenEntity>>, shown: (id: string) => boolean, badgesOn: boolean): { readonly numbers: InstanceNumbers; badge(id: string): number | null } {
-  const inView = Object.entries(tokens).flatMap(([id, token]) => (shown(id) ? [{ id, art: token.imagePath, rank: token.instanceNumber ?? 1 }] : []));
-  const numbers = numberTokensInView(previous, inView);
-  return { numbers, badge: (id) => badgeNumberInView(numbers, id, badgesOn) };
+export function shownBadgeNumbers(tokens: Readonly<Record<string, TokenEntity>>, shown: (id: string) => boolean, badgesOn: boolean): ReadonlyMap<string, number> {
+  return new Map([...instanceBadgeNumbers(tokens, badgesOn)].filter(([id]) => shown(id)));
 }

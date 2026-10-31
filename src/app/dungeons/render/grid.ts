@@ -23,8 +23,8 @@ export function drawGrid(env: RenderEnv): void {
   const lines: Line[] = [];
   for (const room of env.dungeon.rooms) lines.push(...roomLines(room, step));
   for (const door of env.dungeon.doors) lines.push(...doorLines(door, env.dungeon.wide));
-  // A cave's way out is floor as far as it is drawn as floor: its cells carry the grid there.
-  const { ways } = env.dungeon;
+  // A cave's way out is floor as far as it is drawn as floor: its cells carry the grid there. A Forest draws none (`drawForest`).
+  const ways = env.dungeon.floor.forest ? [] : env.dungeon.ways;
   const wayRings = ways.map(way => floorRing(env.dungeon.field, way));
   ways.forEach((way, k) => lines.push(...wayLines(way, pointsBounds(wayRings[k]!), step)));
   strokeGrid(env, lines, step, env.rng('grid'), () => clipToFloors(env, wayRings));

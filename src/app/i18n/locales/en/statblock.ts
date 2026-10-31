@@ -36,4 +36,6 @@ export const statblock = {
   'statblock.traitDescription': 'trait description',
   'statblock.traitName': 'trait name',
   'statblock.valueN': 'value {n}',
+  'statblock.deletedUndo': 'Deleted {what}. Press {keys} to undo.',
+  'statblock.removedUndo': 'Removed {what}. Press {keys} to undo.',
 } as const satisfies Record<string, Message>;

@@ -3,6 +3,7 @@ import { drawnStatblock, statblockSheet } from '../../../../../src/app/online/gm
 import { MAX_ABILITIES, MAX_GM_FRAME, MAX_SHEET_DEPTH, MAX_SHEET_NODES, MAX_SHEET_TEXT, parseBookStatblock, type SheetNode } from '../../../../../src/app/online/protocol/index.ts';
 import type { TemplateBlock, TemplateField } from '../../../../../src/app/statblocks/model/templateTypes';
 import { templateOf } from '../../../statblocks/render/sheetTestKit';
+import { fakeStoring } from '../fakeStoring.ts';
 import { resolvedOf } from './sheetKit';
 
 const bytes = (value: unknown): number => new TextEncoder().encode(JSON.stringify(value)).length;
@@ -32,7 +33,7 @@ describe('a drawn statblock within the protocol\'s limits', { timeout: 30_000 },
       ...Object.fromEntries(range(500).map((index) => [`v${index}`, `${index} ${HUGE.slice(0, 1500)}`])),
       actions: range(1000).map((index) => ({ name: `Ability ${index}`, desc: `${index} ${HUGE}` })),
     };
-    const { statblock, texts } = await drawnStatblock({ resolved: resolvedOf(templateOf(fields, blocks), note), definitions: [], resources: undefined });
+    const { statblock, texts } = await drawnStatblock({ resolved: resolvedOf(templateOf(fields, blocks), note), definitions: [], resources: undefined }, fakeStoring());
     expect(parseBookStatblock(statblock)).toEqual(statblock);
     expect(bytes({ t: 'book-statblock', statblock })).toBeLessThan(MAX_GM_FRAME);
     expect(statblock!.blocks.length).toBeGreaterThan(0);

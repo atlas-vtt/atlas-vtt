@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProcessedImage } from '../../../../imageProcessing/imageProcessing';
+import { ImageTooLargeError, ImageUnsupportedError } from '../../../../imageProcessing/imageProcessing';
 import { convertForPreview } from './tokenImages';
 import type { CreatorMode, EditTokenInput, PreviewImage, TokenPreview, TokenPreviewPatch } from './types';
 import { t } from '../../../../i18n';
@@ -181,8 +182,11 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
     } catch (error) {
       if (signal.aborted) return undefined;
       console.error(`[TokenCreator] Failed to optimize ${preview.name}:`, error);
-      // Show the upload itself so the user can see which image failed.
-      if (liveIds.current.has(preview.id)) queuePatch(preview.id, { previewUrl: URL.createObjectURL(file), isOptimizing: false });
+      if (!liveIds.current.has(preview.id)) return undefined;
+      // An image the browser cannot open is never shown as itself, which would end the window; the card says why instead.
+      if (error instanceof ImageTooLargeError || error instanceof ImageUnsupportedError) queuePatch(preview.id, { isOptimizing: false, refused: error.message });
+      // Otherwise the upload itself, so the user can see which image failed.
+      else queuePatch(preview.id, { previewUrl: URL.createObjectURL(file), isOptimizing: false });
       return undefined;
     }
   }, [mode, queuePatch]);

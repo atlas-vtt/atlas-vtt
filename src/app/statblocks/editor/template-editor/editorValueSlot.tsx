@@ -10,6 +10,7 @@ import type { ValueEditing } from '../../render/valueSlot';
 import { valueText } from '../../values/valueText';
 import { TokenSocketFace } from '../token-socket/TokenSocketFace';
 import { renderTemplateTable } from './TemplateTable';
+import { t } from '../../../i18n';
 import '../token-socket/token-socket.scss';
 
 /** The Image block as the note view draws it beside a note, without its panel: the template editor links no token. */
@@ -18,7 +19,7 @@ function ImageSocket({ block, art }: { block: ImageBlock; art: React.ReactNode }
   const named = valueText(state.reader(block.field));
   const src = app && named ? statblockImageSrc(app, named, sourcePath) : '';
   const shown = block.shape === 'token' && src ? <TokenPortrait className="atlas-sb-token-image" src={src} alt="" showRing /> : art;
-  return <TokenSocketFace shape={block.shape} art={src ? shown : null} prompt={named ? 'Art not found' : 'Add token art'} tabIndex={-1} />;
+  return <TokenSocketFace shape={block.shape} art={src ? shown : null} prompt={named ? t('templateEditor.art.missing') : t('templateEditor.art.add')} tabIndex={-1} />;
 }
 
 function slot(block: TemplateBlock, values: React.ReactNode): React.ReactNode {

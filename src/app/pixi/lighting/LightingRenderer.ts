@@ -103,6 +103,14 @@ export interface LightingRendererDeps {
   below?: BelowLevelsHost;
   /** How long a piece of a roof below takes to fade; unset, the motion of the canvas's window (none where it asks for reduced motion). */
   roofFadeMs?: number;
+  /**
+   * Stamp what the tokens see into the explored memory at most every `EXPLORED_STAMP_MS` for every
+   * change, not only while a drag holds tokens: for a view whose tokens are moved by something
+   * other than the pointer every frame (the players' page follows the tokens as they are drawn),
+   * which otherwise stamps on every write, a third of its lighting's time. What was seen last is
+   * never lost: the stamp still due is made on the next frame.
+   */
+  paceStamps?: boolean;
 }
 
 type SceneWithoutLook = Omit<EngineScene, keyof SceneLook | 'albedo'>;
@@ -282,6 +290,19 @@ export class LightingRenderer implements SceneLightingView {
     return this.memory.edit(edit);
   }
 
+  /**
+   * Takes in a memory of the level shown saved elsewhere (`ExploredMemory.take`): a player's page
+   * takes the GM's. False where it could not: a lost graphics context, a lighting that stopped.
+   */
+  takeExplored(mask: string | null, replace: boolean): boolean {
+    let taken = false;
+    this.run(() => {
+      this.memory.take(mask, replace);
+      taken = true;
+    });
+    return taken;
+  }
+
   /** Before the map unloads: save the scene's pending memory into it, then start the next scene blank. */
   beforeMapUnload(): void {
     this.run(() => {
@@ -364,7 +385,7 @@ export class LightingRenderer implements SceneLightingView {
     const { model, rebuilt } = this.model.update(state, bounds, this.deps.measurement, this.deps.rules, reach ?? bounds);
     const base = rebuilt || !this.lastScene ? (this.lastScene = this.takeModel(model, state, bounds)) : this.lastScene;
     // The drag ended: what its tokens saw last goes into the memory now.
-    if (!dragging(state)) this.memory.stampDue();
+    if (!dragging(state) && !this.deps.paceStamps) this.memory.stampDue();
     const spots = this.spots.update(model, state, this.deps.measurement, this.deps.rules);
     const gmSight = model.gmSight ?? model.sight;
     // Both pictures always show the same tokens (`GM_SIGHT_POLICY`), so the same sight gives the same footprints.
@@ -382,8 +403,8 @@ export class LightingRenderer implements SceneLightingView {
     this.sight = sight;
     this.zones = ambient.zones ?? [];
     this.sightChanged = true;
-    // A drag records what its tokens see at most every `EXPLORED_STAMP_MS`; any other change at once.
-    if (explored) this.memory.record(explored, dragging(state) ? this.clock() : undefined);
+    // A drag records what its tokens see at most every `EXPLORED_STAMP_MS` (every change, with `paceStamps`); any other change at once.
+    if (explored) this.memory.record(explored, dragging(state) || this.deps.paceStamps ? this.clock() : undefined);
     const cellSize = state.grid?.size ?? DEFAULT_CELL_SIZE;
     return { bounds, walls, lights, sight: gmSight, sightRadius: cellSize * 0.5, cellSize, zones };
   }

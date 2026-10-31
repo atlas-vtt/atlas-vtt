@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import { Button } from '../../../packages/components/primitives/button';
 import { EASE_OUT_CONTROL_POINTS, MOTION_NORMAL_MS } from '../../../utils/motion';
+import { t } from '../../../i18n';
 
 /** How long the toast stays (§7.8). */
 export const UNDO_TOAST_MS = 5000;
@@ -46,7 +47,7 @@ export function UndoToast({ text, onUndo, onDismiss }: UndoToastProps): React.JS
       onPointerLeave={() => { held.current = false; }}
     >
       <span className="atlas-te-toast__text">{text}</span>
-      <Button type="button" variant="ghost" size="sm" onClick={() => { onUndo(); onDismiss(); }}>Undo</Button>
+      <Button type="button" variant="ghost" size="sm" onClick={() => { onUndo(); onDismiss(); }}>{t('templateEditor.undo')}</Button>
     </motion.div>
   );
 }

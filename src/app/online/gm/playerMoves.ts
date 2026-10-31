@@ -74,6 +74,11 @@ export class PlayerMoves {
     return this.drags.starts();
   }
 
+  /** The player whose drag holds a token (by GM token id), or undefined while no player drags it. */
+  draggerOf(tokenId: string): string | undefined {
+    return this.drags.draggerOf(tokenId);
+  }
+
   /** The player let go of a drag without a drop: the token goes back, with no undo step. */
   dragCancel(from: string, cancel: PlayerDragCancel): void {
     this.drags.cancel(from, cancel);

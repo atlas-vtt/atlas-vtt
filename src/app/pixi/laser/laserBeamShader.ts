@@ -68,7 +68,7 @@ export interface LaserBeamShader {
 
 /**
  * Shader for the laser beam's capsules (`laserBeamGeometry.ts`). Atlas renders with WebGL, so it
- * ships a GLSL program only; without WebGL, `CanvasLaserBeam` draws the beam.
+ * ships a GLSL program only.
  */
 export function createLaserBeamShader(): LaserBeamShader {
   const laserUniforms = new UniformGroup({

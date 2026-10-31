@@ -2,7 +2,6 @@ import { useEffect, useRef } from 'react';
 import type { AtlasView } from '../atlas-view';
 import type { ViewAtlasStore } from '../storeFactory';
 import { useMapHotkeys } from '../keyboard/useMapHotkeys';
-import { useViewWindow } from '../react/useViewWindow';
 import { runInBackground } from '../utils/backgroundTask';
 import { copySelection, cutSelection, duplicateSelection, pasteClipboard } from './mapClipboardActions';
 import type { Point } from './mapObjectContent';
@@ -30,7 +29,6 @@ function pasteTarget(view: AtlasView | null, pointer: Point | null): Point | nul
 /** Copy, cut, paste and duplicate shortcuts for the map's selected objects. */
 export function useMapClipboardHotkeys(store: ViewAtlasStore, view: AtlasView | null, viewId?: string): void {
   const pointer = useRef<Point | null>(null);
-  const win = useViewWindow(view?.containerEl);
 
   useEffect(() => {
     const track = (event: PointerEvent): void => {
@@ -42,13 +40,13 @@ export function useMapClipboardHotkeys(store: ViewAtlasStore, view: AtlasView | 
       const canvas = mapCanvas(view);
       if (canvas && event.target === canvas) canvas.ownerDocument.getSelection()?.removeAllRanges();
     };
-    win.addEventListener('pointermove', track, { passive: true });
-    win.addEventListener('pointerdown', clearTextSelection, true);
+    window.addEventListener('pointermove', track, { passive: true });
+    window.addEventListener('pointerdown', clearTextSelection, true);
     return () => {
-      win.removeEventListener('pointermove', track);
-      win.removeEventListener('pointerdown', clearTextSelection, true);
+      window.removeEventListener('pointermove', track);
+      window.removeEventListener('pointerdown', clearTextSelection, true);
     };
-  }, [view, win]);
+  }, [view]);
 
   // The player view registers nothing, so its keys keep their native behaviour.
   useMapHotkeys(store.getState().isPlayerView ? {} : {

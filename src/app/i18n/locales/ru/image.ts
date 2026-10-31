@@ -11,4 +11,5 @@ export const image: Translation = {
   'image.windowUnavailable': 'Окно игроков недоступно',
   'image.displayFailed': 'Не удалось показать изображение игрокам',
   'image.closed': 'Показ изображения закрыт',
+  'image.tooLarge': 'Это изображение {width} × {height} px — больше, чем может открыть Obsidian: не более {megapixels} мегапикселей и {side} px по стороне. Экспортируйте его меньшего размера и импортируйте снова.',
 };

@@ -49,8 +49,9 @@ export function drawSquareGrid(
       graphics.moveTo(localX, 0).lineTo(localX, localHeight);
       continue;
     }
-    for (let y = 0; y < localHeight; y += size) {
-      drawDashedSegment(graphics, localX, y, localX, Math.min(y + size, localHeight));
+    // Dashes are centred on each cell edge, from one crossing line to the next.
+    for (let worldY = startWorldY; worldY < maxY; worldY += size) {
+      drawDashedSegment(graphics, localX, Math.max(worldY - minY, 0), localX, Math.min(worldY - minY + size, localHeight));
     }
   }
 
@@ -61,8 +62,8 @@ export function drawSquareGrid(
       graphics.moveTo(0, localY).lineTo(localWidth, localY);
       continue;
     }
-    for (let x = 0; x < localWidth; x += size) {
-      drawDashedSegment(graphics, x, localY, Math.min(x + size, localWidth), localY);
+    for (let worldX = startWorldX; worldX < maxX; worldX += size) {
+      drawDashedSegment(graphics, Math.max(worldX - minX, 0), localY, Math.min(worldX - minX + size, localWidth), localY);
     }
   }
 }

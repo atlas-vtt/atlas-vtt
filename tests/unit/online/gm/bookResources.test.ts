@@ -135,6 +135,21 @@ describe('a player\'s edit on the real Atlas store', () => {
     expect(history.getState().pastStates).toHaveLength(0);
   });
 
+  it('sets only the current value of a draining and a filling resource, its maximum kept (#522)', () => {
+    const { store, resources, answers } = writes();
+    const withDoom: PlayedCharacter = { ...ogre, sheet: { ...sheet, resources: [...sheet.resources, { key: 'doom', name: 'Doom', colour: '#111111', direction: 'fills', current: 3, max: 9, editable: true, maxEditable: true }] } };
+    const at = scene(Object.values(store.getState().objects.tokens));
+    for (const [key, current] of [['hp', 3], ['doom', 3]] as const) {
+      const checked = checkResourceEdit(ANA, withDoom, at, (tokenId) => OWNERS[tokenId], { t: 'book-resource', key, current });
+      expect(checked).toEqual({ kind: 'token', from: ANA, tokenId: 'ogre', key, current });
+      resources.write(checked as TokenResourceEdit, (taken, max) => answers.push(taken, max ?? null));
+    }
+    const ogreNow = store.getState().objects.tokens.ogre;
+    expect(ogreNow?.resources).toMatchObject({ hp: { current: 3, max: 12 }, doom: { current: 3, max: 9 } });
+    expect(ogreNow?.overriddenMax).toBeUndefined();
+    expect(answers).toEqual([3, null, 3, null]);
+  });
+
   it('writes a resource hidden from players to the player\'s own token', () => {
     const { store, history, resources, answers } = writes();
     resources.write(edit(5, 'doom'), (taken) => answers.push(taken));

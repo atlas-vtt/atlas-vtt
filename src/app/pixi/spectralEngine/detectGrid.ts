@@ -19,10 +19,10 @@ import { latticeSupport } from './latticeFit';
 import { isFinerCopy, sharesLinesOnly } from './subGrid';
 import { refineFromReduced, refineGrid } from './refineGrid';
 import type { RefinedGrid } from './refineGrid';
-import type { DetectableMap } from '../mapImage/mapImageView';
+import type { DetectableMap } from '../mosaicCanvas/mosaicCanvasView';
 import { MAX_ROTATION_DEGREES, MAX_STRETCH_FACTOR, NO_STRETCH, sameStretch, stretchForAspect, turnedBox } from '../../grid/mapStretch';
 
-export type { DetectableMap } from '../mapImage/mapImageView';
+export type { DetectableMap } from '../mosaicCanvas/mosaicCanvasView';
 
 /** Longest side of the analysed image; larger maps are scaled down before detection. */
 export const MAX_ANALYSIS_SIDE = 4096;
@@ -43,7 +43,7 @@ const SURE_CELL_SIZE = 12;
 /**
  * A square fit with cells further off regular than this has taken every fourth line one way and
  * every fifth the other for a grid: columns and rows of a square grid fit each on their own. Hexes
- * are found by three directions at once, and tile sets draw them up to a sixth off regular. A grid
+ * are found by three directions at once, and tessera sets draw them up to a sixth off regular. A grid
  * the GM measured says its own shape.
  */
 const MAX_DETECTED_SQUARE_ASPECT = 1.1;
@@ -135,7 +135,7 @@ interface Round {
 /**
  * The lines of a square grid run on across the map, so a real one is also found by edges of this
  * length (a quarter of the map's shorter side where that is less), which see fainter lines than
- * edges of one cell. What only looks like a grid cell by cell (floor boards, tiles, shelves) is not
+ * edges of one cell. What only looks like a grid cell by cell (floor boards, tesserae, shelves) is not
  * on one lattice over such a stretch.
  */
 const LONG_EDGE = 400;
@@ -225,7 +225,7 @@ function fitProposals(image: GrayImage, spectra: Spectra, proposals: Proposal[],
     const maxAspect = gridType === 'square' ? maxSquareAspect : MAX_STRETCH_FACTOR;
     if (!fitted || !(fitted.cellSize > 0) || isOffRegularBeyond(fitted.aspect, maxAspect) || Math.abs(fitted.rotation) > MAX_ROTATION) continue;
     const refined: RefinedGrid = { ...fitted, support: acceptedSupport(image, fitted) };
-    // Hexes further off regular than any print are a tile set's, whose lines agree with them all over the map.
+    // Hexes further off regular than any print are a tessera set's, whose lines agree with them all over the map.
     if (isOffRegularBeyond(fitted.aspect, maxSquareAspect) && refined.support < DECISIVE_SUPPORT) continue;
     if (refined.cellSize < sureSize && refined.support < DECISIVE_SUPPORT) continue;
     if (refined.support < minSupport) {

@@ -1,14 +1,17 @@
 import type { App } from 'obsidian';
 import type { NavigationInputMode } from './atlasSettings';
 import { isLightingQualityLevel, type LightingQualityLevel } from '../lighting/lightingQuality';
+import { parseGraphicsChoice, type GraphicsChoice } from '../lighting/graphicsSettings';
 
 /**
  * Facts about this device, which Atlas keeps in the vault's local storage: they never sync,
  * so a laptop with a trackpad and a desktop with a mouse each keep their own.
  */
 export const INPUT_MODE_STORAGE_KEY = 'atlas-vtt:input-mode';
-/** How much the lighting may ask of this device's graphics (`LightingQualityLevel`), as the GM chose it. */
+/** The lighting quality level as versions before the Graphics page stored the GM's choice; read where no `GRAPHICS_STORAGE_KEY` is stored. */
 export const LIGHTING_QUALITY_STORAGE_KEY = 'atlas-vtt:lighting-quality';
+/** The Graphics page's choice (`GraphicsChoice` as JSON): a preset and the knobs set away from it. */
+export const GRAPHICS_STORAGE_KEY = 'atlas-vtt:graphics';
 /** The lighting quality Atlas picked for this device the first time it was asked (`pickLightingQuality`), kept apart from the GM's choice. */
 export const PICKED_LIGHTING_QUALITY_STORAGE_KEY = 'atlas-vtt:lighting-quality-picked';
 /** Whether animated maps play on this device; unset follows the system's reduced motion (`animateMapsOn`). */
@@ -50,6 +53,27 @@ export function loadLightingQuality(storage: DeviceStorage): LightingQualityLeve
 
 export function saveLightingQuality(storage: DeviceStorage, level: LightingQualityLevel): void {
   saveQualityLevel(storage, LIGHTING_QUALITY_STORAGE_KEY, level);
+}
+
+/** The Graphics page's choice on this device, or null when none was made (an older stored level stands in, `loadLightingQuality`). */
+export function loadGraphicsChoice(storage: DeviceStorage): GraphicsChoice | null {
+  try {
+    const stored: unknown = storage.loadLocalStorage(GRAPHICS_STORAGE_KEY);
+    return typeof stored === 'string' ? parseGraphicsChoice(JSON.parse(stored)) : null;
+  } catch (error) {
+    console.error('[Atlas] Could not read the graphics choice of this device', error);
+    return null;
+  }
+}
+
+/** Stores the choice, its preset also under the older key for versions before the page; null forgets both, so the level Atlas picked for the device holds again. */
+export function saveGraphicsChoice(storage: DeviceStorage, choice: GraphicsChoice | null): void {
+  try {
+    storage.saveLocalStorage(GRAPHICS_STORAGE_KEY, choice === null ? null : JSON.stringify(choice));
+    storage.saveLocalStorage(LIGHTING_QUALITY_STORAGE_KEY, choice === null ? null : choice.preset);
+  } catch (error) {
+    console.error('[Atlas] Could not save the graphics choice of this device', error);
+  }
 }
 
 /** The lighting quality Atlas picked for this device, or null before it was asked. */

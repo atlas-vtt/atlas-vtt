@@ -12,6 +12,7 @@ import type { TemplateId } from '../../model/templateTypes';
 import { StatblockSheet } from '../../render/StatblockSheet';
 import type { FieldRecord } from '../../values/fieldValues';
 import { templateGroups, unshownKeys } from './templateChoices';
+import { t } from '../../../i18n';
 
 export interface ChangeTemplateDialogProps {
   app: App;
@@ -60,7 +61,7 @@ export function ChangeTemplateDialog(props: ChangeTemplateDialogProps): React.JS
     >
       <motion.div className="atlas-sb-change-template" variants={windowVariants} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="atlas-sb-change-template__header">
-          <h2 id={titleId}>Change template</h2>
+          <h2 id={titleId}>{t('statblockEditor.changeTemplate')}</h2>
           <CloseButton onClick={onClose} />
         </div>
         <div className="atlas-sb-change-template__body">
@@ -94,12 +95,12 @@ export function ChangeTemplateDialog(props: ChangeTemplateDialogProps): React.JS
               <StatblockSheet template={chosen.template} name={chosen.name} fields={record} variant="full" app={app} sourcePath={notePath} rollBonuses="preview" />
             )}
             {unshown.length > 0 && (
-              <p className="atlas-sb-change-template__unshown">Not shown with this template: {unshown.join(', ')}</p>
+              <p className="atlas-sb-change-template__unshown">{t('statblockEditor.unshown', { list: unshown.join(', ') })}</p>
             )}
           </div>
         </div>
         <div className="atlas-sb-change-template__footer">
-          <Button type="button" variant="outline" size="sm" onClick={onClose}>Cancel</Button>
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>{t('statblockEditor.cancel')}</Button>
           <Button
             type="button"
             variant="default"
@@ -107,7 +108,7 @@ export function ChangeTemplateDialog(props: ChangeTemplateDialogProps): React.JS
             disabled={!chosenId || chosenId === currentId}
             onClick={() => { if (chosenId) onApply(chosenId); }}
           >
-            Apply
+            {t('statblockEditor.apply')}
           </Button>
         </div>
       </motion.div>

@@ -3,6 +3,13 @@ import type { ImageJob, ImageJobRequest, ImageJobResponse, ImageJobResult } from
 /** Raised when a worker cannot read the source format; the caller may decode it on the main thread. */
 export class ImageDecodeError extends Error {}
 
+/** A band decoder refused the source; `reason` is a `BandUnsupportedReason`. */
+export class BandRefusedError extends Error {
+  constructor(message: string, readonly reason: string) {
+    super(message);
+  }
+}
+
 export interface ImageJobOptions {
   signal?: AbortSignal | undefined;
   /**
@@ -187,6 +194,7 @@ export class ImageWorkerPool {
     this.clearJobTimeout(slot);
     slot.job = null;
     if (response.ok) this.succeed(pending, response.result);
+    else if (response.unsupported !== undefined) this.fail(pending, new BandRefusedError(response.message, response.unsupported));
     else this.fail(pending, response.decodeFailed ? new ImageDecodeError(response.message) : new Error(response.message));
     this.pump();
   }

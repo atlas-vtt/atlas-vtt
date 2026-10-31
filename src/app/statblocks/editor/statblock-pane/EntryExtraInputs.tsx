@@ -4,6 +4,7 @@ import type { EntryExtraShape } from '../../model/templateTypes';
 import { choiceText, newPick, optionsLeft, readChoice, type ChoiceShape } from '../../values/choicePicks';
 import { useOptionList, type ChoiceOption } from './ChoiceOptionList';
 import { ChipRemove, UnreadChip } from './PaneChips';
+import { t } from '../../../i18n';
 
 /** Marks the input of each part, which Enter steps through after the name. */
 export const ENTRY_PART_CONTROL = 'data-entry-control';
@@ -127,7 +128,7 @@ function PartPicksInput({ extra, labelId, text, onChange }: PartInputProps): Rea
       {read.picks.map((pick, index) => (
         <span key={`${pick.option}-${index}`} className="atlas-sb-pane-chip atlas-sb-pane-pick">
           <span className="atlas-sb-pane-chip__text">{pick.option}</span>
-          <ChipRemove label={`Remove ${pick.option}`} onRemove={() => removePick(index)} />
+          <ChipRemove label={t('statblockEditor.removeNamed', { name: pick.option })} onRemove={() => removePick(index)} />
         </span>
       ))}
       {read.unread.map((part, index) => (

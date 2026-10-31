@@ -1,4 +1,5 @@
 import { format, isDeepStrictEqual } from 'node:util';
+import { lightsAsBefore } from './sceneModelLights';
 import { vi } from 'vitest';
 import { SightTokens, heldForSight } from '../../src/app/lighting/sightOnDrop';
 import { unitScaleOf } from '../../src/app/lighting/lightingUnits';
@@ -112,7 +113,7 @@ export function sightPolicyMismatches(scene: SightScene): SceneMismatch[] {
   const ours = now.value.model;
   const theirs = before.value.model;
   differ('scene model fields', Object.keys(ours).sort(), Object.keys(theirs).sort());
-  for (const field of Object.keys(theirs) as (keyof frozen.Model)[]) differ(`scene model ${field}`, ours[field], theirs[field]);
+  for (const field of Object.keys(theirs) as (keyof frozen.Model)[]) differ(`scene model ${field}`, field === 'lights' ? lightsAsBefore(ours.lights, ours.reaches, theirs.lights) : ours[field], theirs[field]);
   const gmNow = ours.gmSight ?? ours.sight;
   const gmBefore = theirs.gmSight ?? theirs.sight;
   differ('player sight identity', relations(ours.sight, gmNow, current), relations(theirs.sight, gmBefore, frozen));

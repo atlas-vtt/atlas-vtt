@@ -26,6 +26,8 @@ export interface ViewUIState {
   isAssetManagerOpen: boolean;
   assetManagerInitialTab?: 'scenes' | 'maps' | 'encounters' | 'tokens' | 'party' | undefined;
   isCommandPaletteOpen: boolean;
+  /** The page the palette opens on when it opens next (a menu's "Graphics settings…" row); taken when it opens. */
+  commandPalettePage: string | null;
   isDiceTrayOpen: boolean;
   /** The placed light whose popover is open, with its range rings on the map. */
   lightPopover: string | null;

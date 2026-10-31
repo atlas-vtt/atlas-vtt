@@ -226,14 +226,47 @@
       z-index: 100;
     }
 
+    // The left end holds the scene tabs and, directly below them, what hangs
+    // from them: online play's unread table log, which TableLogMount puts in
+    // `__below`. The end sizes and shrinks as the tab bar alone did; what hangs
+    // below the tabs takes no room in the row, as the dice rolls at the right
+    // end, and stays clear of the levels switch at the left edge. Without tabs
+    // it stands in their place, in the row, so the widgets keep clear of it.
+    > .atlas-top-bar-start {
+      position: relative;
+      flex: 0 1 auto;
+      min-width: 0;
+      display: flex;
+
+      // Only the tab bar gives way: what stands in its place never does.
+      &:not(:has(> .atlas-scene-tab-bar)) {
+        flex-shrink: 0;
+      }
+    }
+
+    .atlas-top-bar-start__below {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: $spacing-s;
+    }
+
+    .atlas-scene-tab-bar + .atlas-top-bar-start__below {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      margin-top: $spacing-s;
+    }
+
     // The right end holds the widget bar and, below it, the DM's dice rolls
     // (dice-roll.scss). Without widgets it is empty and the rolls start at the
     // top, as far from the top edge as from the right. When tabs and widgets
-    // do not fit side by side both give way, the widgets three times as much:
-    // the tabs scroll, the widgets wrap into rows, never narrower than a card.
+    // do not fit side by side the tabs scroll and the widgets stack
+    // (useWidgetStack), so the widgets never give way themselves.
     > .atlas-top-bar-end {
       position: relative;
-      flex: 0 3 auto;
+      flex: none;
+      max-width: 100%;
       margin-left: auto;
 
       // The row positions the widget bar here; its fixed placement in
@@ -252,15 +285,97 @@
       // stand where they would without it. A scroller clips its shadows at the
       // padding, and `--shadow-l` reaches 120px down and 90px aside (Obsidian's
       // `0 30px 90px`), so below and left get all of it; above and right the
-      // view's edge is closer than that anyway.
+      // view's edge is closer than that anyway. The rows scroll by wheel and
+      // touch without a scrollbar: one would take its width from the padding
+      // at the right, and the cards would end short of the view's edge.
       > .atlas-widget-bar > .atlas-widget-container {
         $shadow-room: 120px;
 
         max-height: 50vh;
         overflow: hidden auto;
         overscroll-behavior: contain;
+        scrollbar-width: none;
         padding: $spacing-xl $spacing-xl $shadow-room $shadow-room;
         margin: (-$spacing-xl) (-$spacing-xl) (-$shadow-room) (-$shadow-room);
+      }
+
+      // A copy of the bar, in one row, that useWidgetStack measures.
+      > .atlas-widget-bar--measuring {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: max-content;
+        max-width: none;
+        visibility: hidden;
+      }
+
+      // Stacked: the widget used last on top, two more showing their edges below
+      // it, and the rest under them unseen (`data-stack-depth`, useWidgetStack); the bar keeps room for those edges, so
+      // the dice rolls hang below them. A pointer over the stack fans them.
+      $stack-step: 5px;
+
+      > .atlas-widget-bar[data-stack='closed'] > .atlas-widget-container {
+        display: grid;
+        justify-items: end;
+        align-items: start;
+        max-height: none;
+        overflow: visible;
+        padding: 0 0 (2 * $stack-step);
+        margin: 0;
+
+        > .atlas-widget {
+          grid-area: 1 / 1;
+          opacity: 0;
+          transform: translateY(2 * $stack-step);
+          transform-origin: top right;
+
+          &[data-stack-depth='0'] {
+            z-index: 3;
+            opacity: 1;
+            transform: none;
+          }
+
+          &[data-stack-depth='1'] {
+            z-index: 2;
+            opacity: 1;
+            transform: translateY($stack-step) rotate(-1.6deg);
+          }
+
+          &[data-stack-depth='2'] {
+            z-index: 1;
+            opacity: 1;
+            transform: translateY(2 * $stack-step) rotate(1.2deg);
+          }
+
+          // A timer that ran out comes to the top by itself.
+          &.timer-expired {
+            z-index: 4;
+            opacity: 1;
+            transform: none;
+          }
+        }
+      }
+
+      > .atlas-widget-bar[data-stack='closed']:has(.atlas-widget-stack-opener:hover) > .atlas-widget-container > .atlas-widget {
+        &[data-stack-depth='1'] {
+          transform: translateY(2 * $stack-step) rotate(-3.5deg);
+        }
+
+        &[data-stack-depth='2'] {
+          transform: translateY(4 * $stack-step) rotate(2.6deg);
+        }
+      }
+
+      // Spread: right-aligned rows from the corner, over everything, for the moment the GM
+      // looks; the bar keeps the stack's size, so nothing else moves.
+      > .atlas-widget-bar[data-stack='open'] > .atlas-widget-container {
+        position: absolute;
+        top: 0;
+        right: 0;
+        box-sizing: content-box;
+        width: max-content;
+        max-width: var(--atlas-widget-room);
+        outline: none;
       }
     }
   }

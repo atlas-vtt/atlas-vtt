@@ -37,20 +37,23 @@ export interface LiquidField {
   far: number;
 }
 
-interface Edge { ax: number; ay: number; bx: number; by: number }
+export interface Edge { ax: number; ay: number; bx: number; by: number }
 
 /** Texels round the shore whose distance is measured exactly; the rest is carried on from them. */
 const SEED_TEXELS = 2;
 
-/** Where the nearest point of the shore lies for each texel, and how far it is (Infinity where none is known yet). */
-interface Nearest { x: Float64Array; y: Float64Array; distance: Float64Array }
+/**
+ * Where the nearest point of the lines lies for each texel, how far it is (Infinity where none is
+ * known yet) and which line it lies on (its index in the list measured).
+ */
+export interface Nearest { x: Float64Array; y: Float64Array; distance: Float64Array; line: Int32Array }
 
 /** Measures the texels within `SEED_TEXELS` of each edge exactly, keeping the nearest point of any edge. */
 function seedShore(edges: readonly Edge[], width: number, height: number, origin: Point, texel: number): Nearest {
   const count = width * height;
-  const nearest: Nearest = { x: new Float64Array(count), y: new Float64Array(count), distance: new Float64Array(count).fill(Infinity) };
+  const nearest: Nearest = { x: new Float64Array(count), y: new Float64Array(count), distance: new Float64Array(count).fill(Infinity), line: new Int32Array(count).fill(-1) };
   const band = SEED_TEXELS * texel;
-  for (const edge of edges) {
+  edges.forEach((edge, line) => {
     const dx = edge.bx - edge.ax;
     const dy = edge.by - edge.ay;
     const lengthSquared = dx * dx + dy * dy;
@@ -71,10 +74,11 @@ function seedShore(edges: readonly Edge[], width: number, height: number, origin
           nearest.distance[index] = distance;
           nearest.x[index] = cx;
           nearest.y[index] = cy;
+          nearest.line[index] = line;
         }
       }
     }
-  }
+  });
   return nearest;
 }
 
@@ -84,7 +88,7 @@ function seedShore(edges: readonly Edge[], width: number, height: number, origin
  * along straight shores and within a small part of a texel elsewhere, in time linear in the texels.
  */
 function carryOn(nearest: Nearest, width: number, height: number, origin: Point, texel: number): void {
-  const { x, y, distance } = nearest;
+  const { x, y, distance, line } = nearest;
   const visit = (i: number, j: number, ni: number, nj: number): void => {
     if (ni < 0 || nj < 0 || ni >= width || nj >= height) return;
     const from = nj * width + ni;
@@ -95,6 +99,7 @@ function carryOn(nearest: Nearest, width: number, height: number, origin: Point,
       distance[index] = d;
       x[index] = x[from]!;
       y[index] = y[from]!;
+      line[index] = line[from]!;
     }
   };
   for (let j = 0; j < height; j++) {
@@ -137,11 +142,22 @@ function insideRows(edges: readonly Edge[], width: number, height: number, origi
 }
 
 /**
+ * The nearest of `lines` for every texel of a field's grid: exact within `SEED_TEXELS` of them,
+ * carried on from there.
+ */
+export function nearestLines(lines: readonly Edge[], { width, height, origin, texel }: Pick<LiquidField, 'width' | 'height' | 'origin' | 'texel'>): Nearest {
+  const nearest = seedShore(lines, width, height, origin, texel);
+  carryOn(nearest, width, height, origin, texel);
+  return nearest;
+}
+
+/**
  * The distance field of `polygon` (world pixels) with `holes` cut from it, on a grid of `cell`
  * world pixels: measured exactly round the shore and carried on from there, so the work grows with
- * the surface's area and its shore, never with their product.
+ * the surface's area and its shore, never with their product. The edges of `polygon` listed in
+ * `open` are no shore (the water goes on past them): they bound the surface and are not measured.
  */
-export function liquidField(polygon: readonly Point[], cell: number, holes: readonly (readonly Point[])[] = []): LiquidField {
+export function liquidField(polygon: readonly Point[], cell: number, holes: readonly (readonly Point[])[] = [], open: readonly number[] = []): LiquidField {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -164,9 +180,13 @@ export function liquidField(polygon: readonly Point[], cell: number, holes: read
     return { ax: a.x, ay: a.y, bx: b.x, by: b.y };
   }));
   const inside = insideRows(edges, width, height, origin, texel);
-
-  const nearest = seedShore(edges, width, height, origin, texel);
-  carryOn(nearest, width, height, origin, texel);
+  const opened = new Set(open);
+  const shore = opened.size ? edges.filter((_, index) => !opened.has(index)) : edges;
+  const nearest = nearestLines(shore, { width, height, origin, texel });
+  // Just past an open edge the water goes on: those texels count as inside, so filtering at the
+  // edge reads the water's own distances and draws no shore along it.
+  const beyond = opened.size ? seedShore(edges.filter((_, index) => opened.has(index)), width, height, origin, texel).distance : null;
+  if (beyond) beyond.forEach((distance, index) => { if (distance < nearest.distance[index]!) inside[index] = 1; });
 
   const texels = new Uint8Array(width * height * 4);
   const nearSpan = outside + NEAR_RANGE_CELLS;

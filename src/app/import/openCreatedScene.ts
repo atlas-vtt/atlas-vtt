@@ -1,4 +1,5 @@
 import type { App, WorkspaceLeaf } from 'obsidian';
+import { t } from '../i18n';
 import { showNotice } from '../ui/notice';
 
 /** Where a created scene opens: in `leaf` where one is given, on `level` where the scene should show one first. */
@@ -20,7 +21,7 @@ export async function openCreatedScene(app: App, scenePath: string, name: string
     return true;
   } catch (error) {
     console.error('[Atlas] A new scene could not be opened', error);
-    showNotice(`"${name}" could not be opened. It is in the Scenes tab.`);
+    showNotice(t('uvtt.openFailed', { name }));
     return false;
   }
 }

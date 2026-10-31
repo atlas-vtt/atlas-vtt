@@ -26,8 +26,7 @@ import {
   UserCheck,
   History,
   Layers,
-  Replace,
-} from 'lucide-react';
+  Replace, Gauge } from 'lucide-react';
 import { runInBackground } from '../../utils/backgroundTask';
 import { viewedLevelId } from '../../levels/sceneLevels';
 import { collectionIdOfPath } from '../../services/assetPaths';
@@ -54,6 +53,7 @@ import { WidgetSettingsPanel } from './command-palette/WidgetSettingsPanel';
 import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewSettingsPanel';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
+import { GraphicsPanel } from './command-palette/GraphicsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
 import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
 import { replaceMapImage } from './levels/replaceMapImage';
@@ -97,6 +97,7 @@ const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.
   'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
+  'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
 };
 
 export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar }: CommandPaletteProps): React.ReactElement | null {
@@ -455,6 +456,23 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       ],
     },
     {
+      id: "graphics-settings",
+      icon: <Gauge />,
+      label: t('graphics.command'),
+      keywords: ["graphics", "quality", "performance", "lighting", "gpu", "battery", "fps", "bounce", "flicker", "saver", "balanced"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "graphics-all-settings",
+          icon: null,
+          label: t('graphics.commandHint'),
+          section: "graphics",
+          hasSubmenu: false,
+        },
+      ],
+    },
+    {
       id: "experimental-features",
       icon: <FlaskConical />,
       label: "Experimental features",
@@ -529,7 +547,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     if (!isOpen) return;
     setSearchQuery("");
     setActiveTab("all");
-    setActiveSubmenu(null);
+    // A page asked for with the opening (a menu's "Graphics settings…" row) is opened in place of the list.
+    const page = store.getState().commandPalettePage;
+    setActiveSubmenu(isSettingsPanelId(page) ? page : null);
     setSubmenuOptions([]);
     setIsTemporarilyHidden(false);
     if (filteredOptions.length > 0) {
@@ -873,6 +893,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         return <DiceSettingsPanel />;
       case 'experimental-features':
         return <ExperimentalFeaturesPanel />;
+      case 'graphics-settings':
+        return <GraphicsPanel />;
     }
   };
 

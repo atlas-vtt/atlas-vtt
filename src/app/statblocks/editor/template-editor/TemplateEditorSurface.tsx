@@ -3,6 +3,7 @@ import { StatblockSkeleton } from '../../../react/components/statblock/Statblock
 import { EditorBar } from './EditorBar';
 import type { EditorSession } from './sessionTypes';
 import { TemplateEditor, type TemplateEditorProps } from './TemplateEditor';
+import { t } from '../../../i18n';
 
 /** Why the view has no session to edit. */
 export type TemplateEditorProblem =
@@ -28,10 +29,10 @@ export interface TemplateEditorSurfaceProps extends Omit<TemplateEditorProps, 's
 }
 
 function problemText(problem: Exclude<TemplateEditorProblem, { kind: 'loading' }>): string {
-  if (problem.kind === 'off') return 'Turn on the statblock editor under Experimental features to edit templates.';
-  if (problem.kind === 'gone') return 'This template was never saved, and it closed.';
-  if (problem.kind === 'duplicate') return `This file has the same template id as ${problem.of}. Edit that one, or delete this copy.`;
-  return problem.problems[0] ? `This file can't be read as a statblock template: ${problem.problems[0]}` : "This file can't be read as a statblock template.";
+  if (problem.kind === 'off') return t('templateEditor.problem.off');
+  if (problem.kind === 'gone') return t('templateEditor.problem.gone');
+  if (problem.kind === 'duplicate') return t('templateEditor.problem.duplicate', { other: problem.of });
+  return problem.problems[0] ? t('templateEditor.problem.unreadableWhy', { problem: problem.problems[0] }) : t('templateEditor.problem.unreadable');
 }
 
 /**

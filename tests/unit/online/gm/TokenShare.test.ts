@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
 import { ringColour } from '../../../../src/app/online/gm/scenePicture.ts';
 import { TOKEN_INTERVAL_MS, TOKEN_POLL_MS } from '../../../../src/app/online/gm/TokenShare.ts';
+import { fakeStoring, storedRef } from './fakeStoring.ts';
 import { GRID_SIZE, sceneState, shareHarness, token, tokenLists, type ShareHarness } from './shareHarness.ts';
 
 const ART = new Map([
@@ -32,7 +33,7 @@ describe('the tokens players see', () => {
     expect(list?.tokens.map((entry) => entry.id).every((id) => TOKEN_ID_PATTERN.test(id))).toBe(true);
     const [b, a] = list?.tokens ?? [];
     expect(a).toMatchObject({ x: 210, y: 35, size: computeTokenPixelSize(GRID_SIZE, 1.5), rotation: 90, ring: { colour: '#ff8800' } });
-    expect(a?.art).toEqual({ hash: await sha256Hex(new Uint8Array([4, 5, 6])), size: 3, mime: 'image/webp' });
+    expect(a?.art).toEqual(await storedRef(new Uint8Array([4, 5, 6]), 'image/webp'));
     expect(b?.ring).toBeNull();
     expect(table.sent.every(({ body }) => parseGmMessage(JSON.parse(JSON.stringify(body))) !== null)).toBe(true);
     expect(JSON.stringify(table.sent)).not.toMatch(/"a"|"b"|art\//);
@@ -99,19 +100,15 @@ describe('the tokens players see', () => {
 });
 
 describe('token artwork', () => {
-  it('is served only while a token the players see shows it', async () => {
-    const table = await started();
-    const hash = await sha256Hex(new Uint8Array([4, 5, 6]));
-    table.sent.length = 0;
-    table.share.receive('alice', { t: 'asset-request', hash });
-    await table.settle();
-    expect(table.sent.map(({ body, to }) => [body.t, to])).toEqual([['asset-chunk', 'alice']]);
-    await table.set(withTokens(token('a', { isHidden: true }), token('b')));
+  it('is left out where the store does not keep it, and the token goes all the same', async () => {
+    const refused = await sha256Hex(new Uint8Array([4, 5, 6]));
+    const initial = withTokens(token('a'), token('b'));
+    const table = shareHarness(initial, ART, undefined, undefined, fakeStoring((hash) => hash === refused));
+    table.share.start();
+    await table.set(initial);
     await table.advance(TOKEN_INTERVAL_MS);
-    table.sent.length = 0;
-    table.share.receive('bob', { t: 'asset-request', hash });
-    await table.settle();
-    expect(table.sent).toEqual([{ body: { t: 'asset-refused', hash }, to: 'bob' }]);
+    const arts = lastList(table)?.tokens.map((entry) => entry.art) ?? [];
+    expect(arts).toEqual([null, await storedRef(new Uint8Array([7, 8, 9]), 'image/webp')]);
   });
 });
 

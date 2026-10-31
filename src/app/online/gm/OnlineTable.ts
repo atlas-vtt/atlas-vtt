@@ -3,7 +3,6 @@ import type { App, WorkspaceLeaf } from 'obsidian';
 import { showNotice } from '../../ui/notice';
 import { randomHex } from '../../utils/randomHex';
 import { ArmedCards } from './armedCards.ts';
-import { scaleInWindow } from './assetVariants.ts';
 import { ATLAS_VIEW_TYPE, type SceneStore } from './atlasView.ts';
 import type { BookRests } from './book/bookRests.ts';
 import type { BookShelf } from './book/BookShelf.ts';
@@ -25,8 +24,10 @@ import { CoveredPages } from './coveredPages.ts';
 import { TableConnection, type TableStatus } from './TableConnection.ts';
 import { TableRoster } from './tableRoster.ts';
 import { closingText, tableEndOf, tableEndText, type TableEnd } from './tableEnd.ts';
-import { readVaultImage, readVaultVideo } from './vaultImage.ts';
+import { readVaultImage } from './vaultImage.ts';
 import { LOST_NOTICES, type OnlineTableEvents } from './tableEvents.ts';
+import type { AssetPublisher } from './assets/AssetPublisher.ts';
+import { OpenScenes, tablePublisher, viewFocus, type TableAssets } from './assets/tableAssets.ts';
 
 export type { OnlineTableEvents };
 import { FoundShare } from './pins/FoundShare.ts';
@@ -70,11 +71,15 @@ export class OnlineTable {
   private readonly found: FoundShare;
   /** The pages whose book covers their map, which the table's activity leaves out. */
   private readonly covers: CoveredPages;
+  /** Keeps what players are shown in the asset store, while the account can; null where it cannot. */
+  private readonly assets: AssetPublisher | null;
+  /** The scenes open in Atlas's tabs, offered to the store ahead of their turn. */
+  private readonly openScenes: OpenScenes | null;
   /** The join link players open. */
   readonly link: string;
   private readonly stopOwnership: () => void;
 
-  constructor(app: App, origin: string, table: CreatedTable, mapPath: string | null, ownership: Ownership, seats: TableSeats, gate: GateSettings, events: OnlineTableEvents, shelf: BookShelf, savedLog?: unknown) {
+  constructor(app: App, origin: string, table: CreatedTable, mapPath: string | null, ownership: Ownership, seats: TableSeats, gate: GateSettings, events: OnlineTableEvents, shelf: BookShelf, savedLog?: unknown, assets?: TableAssets) {
     this.app = app;
     this.ownership = ownership;
     this.events = events;
@@ -91,6 +96,17 @@ export class OnlineTable {
       cards: this.cards,
     });
     const timers = companionTimers();
+    this.assets = assets === undefined ? null : tablePublisher({
+      app, origin, assets, timers,
+      send: (body, to) => this.connection.send(body, to),
+      sendLive: (body, key, to) => this.connection.sendLive(body, key, to),
+      connection: () => ({ players: this.connection.connected.size, latencyMs: this.connection.stats().latencyMs }),
+      connected: () => [...this.connection.connected],
+      withdrawn: () => this.refreshAssets(),
+      focus: () => viewFocus(this.watch.current?.renderer),
+    });
+    this.openScenes = this.assets === null ? null : new OpenScenes(app, this.assets.storing);
+    const stored = this.assets?.storing;
     this.log = new TableLog({
       send: (body, to) => this.connection.send(body, to),
       clock: () => Date.now(),
@@ -107,21 +123,20 @@ export class OnlineTable {
       send: (body, to) => this.connection.send(body, to),
       now: () => timers.now(),
       randomId: () => randomHex(12),
-      scaleImage: scaleInWindow,
       changed: () => events.changed(),
       logShown: (shown, path) => this.log.imageShown(shown, path),
-      loggedFile: (hash) => this.log.artFile(hash),
-      readImage: (path) => readVaultImage(app, path),
+      stored,
     });
     this.found = new FoundShare(this.log, {
       app, send: (body, to) => this.connection.send(body, to), now: () => timers.now(), nameOf: (player) => ownership.nameOf(player),
-      readImage: (path) => readVaultImage(app, path), scaleImage: scaleInWindow, layers: () => this.bound()?.share.layers ?? null,
+      layers: () => this.bound()?.share.layers ?? null, stored,
     });
     this.books = tableBook({
       app, shelf, ownership, randomId: () => randomHex(12),
       send: (body, to) => this.connection.send(body, to),
       scene: () => this.bound()?.book() ?? null,
       readImage: (path) => readVaultImage(app, path),
+      stored,
       tokenWrites: () => this.bound()?.resources ?? null,
       cards: this.cards,
       cardsChanged: () => events.changed(),
@@ -145,11 +160,10 @@ export class OnlineTable {
         send: (body, to) => this.connection.send(body, to),
         sendLive: (body, key, to) => this.covers.sendLive(body, key, to),
         readImage: (path) => readVaultImage(app, path),
-        readVideo: (path) => readVaultVideo(app, path),
+        stored,
         isLive: (binding) => this.watch.isLive(binding),
         randomId: () => randomHex(12),
         logRoll: (roll) => this.log.rolled(roll),
-        logArt: (hash) => this.log.artFile(hash),
         rollRequest: (from, answer) => this.log.requestOf(from, answer),
         foundPin: (map, pin) => this.found.entryOf(map, pin),
         nameOf: (player) => ownership.nameOf(player),
@@ -170,6 +184,7 @@ export class OnlineTable {
         this.log.welcome(players);
         // Pages say again with the books that follow whether theirs covers the map.
         this.covers.reset();
+        this.assets?.welcome();
         this.resend();
         ownership.welcome(players);
       },
@@ -183,16 +198,17 @@ export class OnlineTable {
       left: (player) => {
         this.covers.playerLeft(player);
         this.bound()?.share.playerLeft(player);
-        this.image.playerLeft(player);
         this.books.share.playerLeft(player);
-        this.found.playerLeft(player);
+        this.assets?.playerLeft(player);
         ownership.left(player);
         this.log.left(player);
       },
-      // The log, the shown image and the books are the table's, so they hear players while no scene is shared too.
-      message: (from, body) => void (this.bound()?.share.heard(from, body), this.covers.receive(from, body) || this.log.receive(from, body) || this.image.receive(from, body) || this.found.receive(from, body) || this.books.share.receive(from, body) || this.bound()?.share.receive(from, body)),
+      // The log, the found pins and the books are the table's, so they hear players while no scene is shared too.
+      message: (from, body) => void (this.bound()?.share.heard(from, body), this.covers.receive(from, body) || this.log.receive(from, body) || this.found.receive(from, body) || this.books.share.receive(from, body) || this.bound()?.share.receive(from, body)),
       access: (closesAt) => this.setClosing(closesAt),
     }, this.gate);
+    // Each player hears only how far the assets they were sent references of have come.
+    this.connection.onSent = (text, to) => this.assets?.sent(text, to);
     this.roster = new TableRoster(seats, this.connection, { kick: (player) => this.kick(player), turnAway: (player) => this.connection.kick(player), joinCode: () => this.gate.settings.code });
     this.stopOwnership = ownership.onChange(() => this.bound()?.share.ownersChanged());
   }
@@ -266,8 +282,8 @@ export class OnlineTable {
       const changePlayers = restChangeOwners(rest).map((id) => (id === rest.characterId ? [] : this.playersOfCharacter(id)));
       if (players.length > 0 || changePlayers.some((list) => list.length > 0)) this.log.rested(restRecordOf(rest), players, changePlayers);
     });
-    this.watch.check();
-    this.stopWatchTimer = every(companionTimers(), WATCH_MS, () => this.watch.check());
+    this.check();
+    this.stopWatchTimer = every(companionTimers(), WATCH_MS, () => this.check());
     // Atlas presenting another scene is followed at once; the timer catches everything else
     this.stopFollowingPresented = presentedSceneSource(this.app)?.onChange(() => this.watch.check()) ?? ((): void => undefined);
   }
@@ -275,6 +291,16 @@ export class OnlineTable {
   /** Looks at the presented and the shared tab again (the workspace's layout changed). */
   checkLeaf(): void {
     this.watch.check();
+  }
+
+  /** The account signs out: nothing more goes into the store from this table. */
+  suspendAssets(): void {
+    this.assets?.suspend();
+  }
+
+  /** The GM signed in again: what waits for the store is offered again. */
+  signedIn(): void {
+    this.assets?.signedIn();
   }
 
   /** Ends the table on the server and stops sharing. */
@@ -315,6 +341,7 @@ export class OnlineTable {
     this.books.stop();
     this.cards.dispose();
     this.covers.reset();
+    this.assets?.stop();
     this.closing = null;
     this.events.ended(end);
   }
@@ -330,7 +357,22 @@ export class OnlineTable {
     this.events.changed();
   }
 
+  /** Follows what Atlas presents, and offers the scenes open beside it. */
+  private check(): void {
+    this.watch.check();
+    this.openScenes?.check(this.app.workspace.getLeavesOfType(ATLAS_VIEW_TYPE), this.watch.mapPath);
+  }
+
+  /** Assets players were handed may no longer be stored: the shares read them again, and what the store will not keep is taken from players. */
+  private refreshAssets(): void {
+    this.bound()?.share.refreshAssets();
+    void this.image.refreshAssets();
+    this.books.refreshAssets();
+    this.found.refreshAssets();
+  }
+
   private stopWatch(): void {
+    this.assets?.stop();
     this.stopLoggingRests();
     this.found.stop();
     this.stopWatchTimer();
@@ -352,6 +394,7 @@ export class OnlineTable {
     this.log.resend(to);
     this.image.resend(to);
     this.books.share.resend(to);
+    this.assets?.resend(to);
   }
 
   /** Players see no scene while the shared tab is gone, so nothing of what they saw lingers or moves. */

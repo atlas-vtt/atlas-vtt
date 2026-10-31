@@ -5,6 +5,7 @@ import type { EntryExtraShape, TemplateField } from '../../../model/templateType
 import type { EditorSession } from '../sessionTypes';
 import { EntryPartRow } from './EntryPartRow';
 import { Setting } from './InspectorControls';
+import { t } from '../../../../i18n';
 
 export interface EntryPartsProps {
   /** The properties the component's lists show, one per tab; the first's parts are shown, and every edit is made to all. */
@@ -43,7 +44,7 @@ export function EntryParts({ fields, session, readOnly }: EntryPartsProps): Reac
   const named = new Set(extras.map((extra) => extra.label.trim().toLowerCase()));
   const suggestions = PART_SUGGESTIONS.filter((label) => !named.has(label.toLowerCase()));
   return (
-    <Setting label="Each item also has" wide>
+    <Setting label={t('templateEditor.eachItemHas')} wide>
       {(labelId) => (
         <div className="atlas-te-setting__list">
           {extras.map((extra, index) => (
@@ -61,7 +62,7 @@ export function EntryParts({ fields, session, readOnly }: EntryPartsProps): Reac
             type="text"
             className="atlas-te-input"
             aria-labelledby={labelId}
-            placeholder="Add a part, like Range"
+            placeholder={t('templateEditor.addPart')}
             disabled={readOnly}
             value={name}
             spellCheck={false}
@@ -74,7 +75,7 @@ export function EntryParts({ fields, session, readOnly }: EntryPartsProps): Reac
             }}
           />
           {suggestions.length > 0 && (
-            <div className="atlas-te-setting__suggestions" role="group" aria-label="Common parts">
+            <div className="atlas-te-setting__suggestions" role="group" aria-label={t('templateEditor.commonParts')}>
               {suggestions.map((label) => (
                 <button key={label} type="button" className="atlas-te-suggestion" disabled={readOnly} onClick={() => addPart(label, CHOICE_SUGGESTIONS.has(label) ? 'choice' : 'text')}>+ {label}</button>
               ))}

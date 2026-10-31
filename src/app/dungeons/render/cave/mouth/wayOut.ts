@@ -18,6 +18,8 @@ export interface WayOut {
   spread: number;
   /** How far its far end lies to one side of straight on, in cells. */
   bend: number;
+  /** How far a Forest's trail winds either way of its course, in cells; unset, a cave's way runs straight on. */
+  winds?: number;
   seed: number;
 }
 
@@ -32,11 +34,16 @@ interface Field {
   distance(x: number, y: number): number;
 }
 
-/** The ways out of a floor's entrances, `seed` its own: none but on a cave floor. */
+/** A Forest's trails: at least this many cells long, up to `more` longer, their far end up to half of `bend` to a side, winding about `winds` either way. */
+const TRAIL = { length: 7, more: 3, bend: 4, winds: 0.9 } as const;
+
+/** The ways out of a floor's entrances, `seed` its own: none but on a cave floor (a Forest's entry floor is one). */
 export function wayOutsOf(floor: DungeonFloor, doors: readonly DungeonDoor[], seed: number): WayOut[] {
   if (!floor.cave) return [];
   return mouthsOf({ doors }).map((mouth) => {
     const key = seed + Math.round(mouth.at.x * 7) * 131 + Math.round(mouth.at.y * 7) * 7919;
+    // A Forest's way out is a trail that winds off into the woods, longer and bending more than a cave's.
+    if (floor.forest) return { mouth, length: TRAIL.length + hash2(1, 0, key) * TRAIL.more, spread: -0.2 * mouth.width, bend: (hash2(3, 0, key) - 0.5) * TRAIL.bend, winds: TRAIL.winds * (0.5 + hash2(4, 0, key)), seed: key };
     return { mouth, length: 2.6 + hash2(1, 0, key) * 1.1, spread: 0.3 + hash2(2, 0, key) * 0.3, bend: (hash2(3, 0, key) - 0.5) * 0.7, seed: key };
   });
 }
@@ -58,10 +65,11 @@ function along(way: WayOut, u: number): number {
   return Math.min(1, Math.max(0, u) / way.length);
 }
 
-/** The middle of the way at `u` out. */
+/** The middle of the way at `u` out; a Forest's trail also winds a little either way as it goes (`WayOut.winds`). */
 export function wayCentre(way: WayOut, u: number): number {
   const t = Math.max(0, u) / way.length;
-  return way.bend * t * t;
+  const wind = way.winds ? way.winds * Math.sin(t * Math.PI * 1.6 + way.seed % 7) * Math.min(1, t * 3) : 0;
+  return way.bend * t * t + wind;
 }
 
 /** Half the way's width at `u` out on `side` (−1, 1): the mouth's at the mouth, wandering wider outwards. */

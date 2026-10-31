@@ -155,18 +155,18 @@ function trackNode(build: SheetBuild, block: TrackBlock, display: BlockDisplay, 
   if (held && held.max > 0) {
     // A tracked number counts the way its field says, which its value follows
     const counts = block.resource === undefined ? build.shown.tracked.get(block.field)?.counts ?? block.counts : block.counts;
-    return track(block, label, held.current, held.max, resource ?? null, null, counts);
+    return track(block, label, held.current, held.max, resource ?? null, counts);
   }
-  // The note holds a tracked number's maximum, which its boxes must never write
-  const writes = build.shown.tracked.has(block.field) ? null : field;
-  if (max !== null && max > 0) return track(block, label, block.counts === 'down' ? Math.floor(max) : 0, Math.floor(max), null, writes);
+  // A Track's field is its maximum, which its boxes must never write: it shows where it starts (#522)
+  if (max !== null && max > 0) return track(block, label, block.counts === 'down' ? Math.floor(max) : 0, Math.floor(max), null);
   const text = misfitText(build, block.field);
   return text === null ? null : { k: 'value', value: sheetValue(build, label, text, 'plain', field, null) };
 }
 
-function track(block: TrackBlock, label: string | null, current: number, max: number, resource: string | null, field: SheetField | null, counts = block.counts): SheetNode {
+/** A track as the page draws it: it sets its resource where it shows one, and never its field, which holds its maximum. */
+function track(block: TrackBlock, label: string | null, current: number, max: number, resource: string | null, counts = block.counts): SheetNode {
   const look = block.look === 'boxes' && max <= MAX_TRACK_BOXES ? 'boxes' : 'gauge';
-  return { k: 'track', label, look, counts, current: Math.max(0, Math.min(current, max)), max, resource, field };
+  return { k: 'track', label, look, counts, current: Math.max(0, Math.min(current, max)), max, resource, field: null };
 }
 
 /** Whether the protocol carries a line exactly as it is written. */

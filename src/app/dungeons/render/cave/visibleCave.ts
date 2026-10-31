@@ -70,7 +70,8 @@ export function caveFloorShapes(model: DungeonModel, index: number, rooms: reado
   const key = rooms.map((room) => room.id).join(',');
   let shapes = memo.get(owner)?.get(key);
   if (shapes) return shapes;
-  const cells = [...rooms.flatMap((room) => floorCellsOf(room)), ...doors.filter((door) => door.kind !== 'secret').flatMap(doorCells)];
+  // With the open ground no room holds (a Forest's meadows and roads).
+  const cells = [...rooms.flatMap((room) => floorCellsOf(room)), ...doors.filter((door) => door.kind !== 'secret').flatMap(doorCells), ...(floor?.openGround ?? [])];
   const own = new Set(cells.map((c) => cellKey(c.x, c.y)));
   const kept = keptCells(floor, doors);
   // Only floor as drawn is kept: a crawl's cell on the main path is rock in the drawing.

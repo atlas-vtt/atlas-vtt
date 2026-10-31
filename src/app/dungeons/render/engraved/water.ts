@@ -15,7 +15,7 @@ import type { Pens } from './pens';
  * deep water darkens towards its middle until the lines all but close, with a sounding's contours
  * stepping down to its depth.
  */
-export function drawPools(scene: ArtScene, pens: Pens): void {
+export function drawPools(scene: ArtScene, pens: Pens, paint: WaterPainter = paintWater): void {
   const corners = poolOutlines(scene);
   if (!corners.length) return;
   const trace = poolsPath(corners);
@@ -23,9 +23,12 @@ export function drawPools(scene: ArtScene, pens: Pens): void {
   const { ctx } = scene.env;
   ctx.save();
   clipOutBuiltWater(scene, ctx);
-  paintWater(scene, pens, trace, outlines, depthField(scene, trace, outlines.flat()), false, deepnessField(scene));
+  paint(scene, pens, trace, outlines, depthField(scene, trace, outlines.flat()), false, deepnessField(scene));
   ctx.restore();
 }
+
+/** What lays water over its shores: Engraved's burin lines, or another direction's water. */
+export type WaterPainter = (scene: ArtScene, pens: Pens, trace: PathFn, outlines: readonly Vec[][], depth: Field, deep: boolean, deepness?: Field | null) => void;
 
 /** `deepness` (0..1) marks the deep part of a body that is shallow elsewhere: its lines thicken there as deep water's do, without a contour between. */
 export function paintWater(scene: ArtScene, pens: Pens, trace: PathFn, outlines: readonly Vec[][], depth: Field, deep: boolean, deepness: Field | null = null): void {
@@ -60,6 +63,12 @@ export function paintWater(scene: ArtScene, pens: Pens, trace: PathFn, outlines:
     },
   });
   ctx.restore();
+  inkShore(scene, pens, trace, outlines, deep);
+}
+
+/** Water's shore in ink, with the contours inside it that step down to its depth. */
+export function inkShore(scene: ArtScene, pens: Pens, trace: PathFn, outlines: readonly Vec[][], deep: boolean): void {
+  const { ctx } = scene.env;
   ctx.save();
   clipFloors(scene);
   ctx.beginPath();

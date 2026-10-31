@@ -1,16 +1,23 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ALL_PLAYERS, parseGmMessage, type BookStatblock } from '../../../../src/app/online/protocol/index.ts';
+import { ALL_PLAYERS, parseGmMessage, TEXT_MIME_TYPE, type BookStatblock } from '../../../../src/app/online/protocol/index.ts';
 import { BOOK_POLL_MS } from '../../../../src/app/online/gm/book/BookShare.ts';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { setStatblockGate } from '../../../../src/app/online/gm/book/statblockGate.ts';
 import type { StatblockTemplate, TemplateBlock, TemplateField } from '../../../../src/app/statblocks/model/templateTypes';
 import { FakeSocket, workspace } from './fakeTable.ts';
+import { storedRef } from './fakeStoring.ts';
 import { ANA, BEN, BRANNOCH, CAL, cave, delivered, MIRA_ART, ofType, openTable, traffic, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 import { StatblockNotes, templateOf } from './statblockNotes.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
 // The GM's marks draw with PIXI over Atlas's canvas, which a table of books has no use for.
+// Node has no tile worker: a map's pyramid is still being cut for as long as the test runs, as on a slow device.
+vi.mock('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', async (original) => ({ ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas')>()), buildMapPyramid: () => new Promise(() => undefined) }));
+vi.mock('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient', async (original) => ({
+  ...(await original<typeof import('../../../../src/app/pixi/mosaicCanvas/TesseraDecoderClient')>()),
+  TesseraDecoderClient: { forApp: () => ({ levelReady: () => new Promise(() => undefined), tesseraBlobs: () => Promise.resolve([]) }), release: () => undefined },
+}));
 vi.mock('../../../../src/app/online/gm/gmMarks.ts', () => ({
   GmMarks: class {
     source(): null {
@@ -182,21 +189,12 @@ describe('a player\'s own character\'s statblock at a running table', () => {
     online.stop();
   });
 
-  it('serves the whole text of a long value to its player and refuses it to anyone else', async () => {
-    const { online, socket, from } = await linkedTable();
+  it('names the whole text of a long value by the id the store keeps it under, to its player alone', async () => {
+    const { online, socket } = await linkedTable();
     const story = statblocks(delivered(socket), ANA)[0]?.blocks.find((block) => block.k === 'value' && block.value.look === 'markdown');
-    const hash = story?.k === 'value' ? story.value.text.whole?.hash : undefined;
-    expect(hash).toMatch(/^[0-9a-f]{64}$/);
-    const since = delivered(socket).length;
-    from(BEN, { t: 'asset-request', hash });
-    from(ANA, { t: 'asset-request', hash });
-    await advance(500);
-    const sent = delivered(socket).slice(since);
-    const of = (type: string): string[] => [...new Set(ofType(sent, type).filter(({ body }) => body.hash === hash).map(({ to }) => to))];
-    expect(of('asset-chunk')).toEqual([ANA]);
-    expect(of('asset-refused')).toEqual([BEN]);
-    const bytes = Buffer.concat(ofType(sent, 'asset-chunk').map(({ body }) => Buffer.from(String(body.data), 'base64'))).toString('utf8');
-    expect(bytes).toBe(STORY);
+    const whole = story?.k === 'value' ? story.value.text.whole : undefined;
+    expect(whole).toEqual(await storedRef(new TextEncoder().encode(STORY).slice(), TEXT_MIME_TYPE));
+    expect(JSON.stringify(delivered(socket).filter(({ to }) => to !== ANA))).not.toContain(whole?.hash);
     online.stop();
   });
 });

@@ -54,24 +54,24 @@ export function TemplateDiceDialog(props: TemplateDiceDialogProps): React.JSX.El
   return (
     <EditorDialog
       anchor={anchor}
-      title="Dice rolls"
+      title={t('templateEditor.dice.title')}
       className="atlas-te-dice"
       onClose={onClose}
       initialFocus={doneRef}
       footer={(
         <>
-          <Button type="button" variant="outline" size="sm" onClick={() => setLab(true)}>Dice lab…</Button>
-          <Button ref={doneRef} type="button" variant="default" size="sm" onClick={onClose}>Done</Button>
+          <Button type="button" variant="outline" size="sm" onClick={() => setLab(true)}>{t('templateEditor.dice.lab')}</Button>
+          <Button ref={doneRef} type="button" variant="default" size="sm" onClick={onClose}>{t('templateEditor.done')}</Button>
         </>
       )}
     >
       {lab && <DiceLabDialog anchor={anchor} diceSets={diceSets} initialId={picked || collectionSet.id || undefined} onClose={() => setLab(false)} />}
       <div className="atlas-te-dialog__field">
         <p className="atlas-te-dice__intro">
-          <span>A bonus without dice, such as +6, rolls with these dice.</span>
-          <InfoMark label="Dice written out, such as 2d6 + 3, roll as written." />
+          <span>{t('templateEditor.dice.intro')}</span>
+          <InfoMark label={t('templateEditor.dice.written')} />
         </p>
-        <DiceSetPicker choices={choices} value={picked} leading={1} disabled={readOnly} label="Dice rolls"
+        <DiceSetPicker choices={choices} value={picked} leading={1} disabled={readOnly} label={t('templateEditor.dice.title')}
           onPick={(id) => onPick(id === COLLECTION ? null : id)} />
       </div>
     </EditorDialog>

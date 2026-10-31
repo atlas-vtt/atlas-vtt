@@ -6,6 +6,8 @@ import type { WallSegment } from '../../../../src/app/types/wallTypes';
 import { describe, expect, it } from 'vitest';
 import { fakeLayers } from './fakeAtlasTab.ts';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
+import { assetIdOf } from '../../../../src/app/online/gm/assets/assetIds.ts';
+import { SALT } from './fakeAssetStore.ts';
 import { MAP_LAYER_INTERVAL_MS } from '../../../../src/app/online/gm/MapLayerShare.ts';
 import { roundPlace } from '../../../../src/app/online/gm/scenePicture.ts';
 import { GENERIC_SOURCE, gmPerception } from './gmLighting.ts';
@@ -58,7 +60,7 @@ function walls(random: () => number): Record<string, WallSegment> {
   }));
 }
 
-const traffic = (sent: readonly Sent[]): string => sent.filter(({ body }) => body.t !== 'asset-refused').map(({ body }) => JSON.stringify(body)).join('\n');
+const traffic = (sent: readonly Sent[]): string => sent.map(({ body }) => JSON.stringify(body)).join('\n');
 const ofKind = <T extends GmMessage['t']>(sent: readonly Sent[], t: T): Extract<GmMessage, { t: T }>[] =>
   sent.flatMap(({ body }) => (body.t === t ? [body as Extract<GmMessage, { t: T }>] : []));
 
@@ -71,6 +73,7 @@ describe("what players are sent of the map's layers", () => {
         return { id: `tok_${key}`, mark: `Name ${key}`, hidden: random() < 0.4, path: `art/${key}.webp`, bytes: new Uint8Array(24).map(() => Math.floor(random() * 256)) };
       });
       const hashes = new Map(await Promise.all(tokens.map(async (entry) => [entry.id, await sha256Hex(entry.bytes)] as const)));
+      const artIds = new Map(await Promise.all([...hashes].map(async ([id, hash]) => [id, await assetIdOf(SALT, hash)] as const)));
       const images = new Map([['maps/cave.webp', new Uint8Array([9, 9, 9])], ...tokens.map((entry) => [entry.path, entry.bytes] as const)]);
       const pins: Record<string, NotePin> = Object.fromEntries(Array.from({ length: 4 }, () => {
         const key = word(random);
@@ -117,8 +120,6 @@ describe("what players are sent of the map's layers", () => {
         table.perception = gmPerception(current, GENERIC_SOURCE, MAP);
         await table.set(current);
         await table.advance(MAP_LAYER_INTERVAL_MS);
-        for (const hash of hashes.values()) table.share.receive('alice', { t: 'asset-request', hash });
-        await table.settle();
       }
 
       const sent = traffic(table.sent);
@@ -139,17 +140,16 @@ describe("what players are sent of the map's layers", () => {
       expect(sent, `${label}: a drawing fog covers`).not.toContain(fogged.colour);
       expect(sent, `${label}: a text fog covers`).not.toContain(fogged.text);
       expect(sent, `${label}: a text players see`).toContain('Tavern');
-      const served = new Set(ofKind(table.sent, 'asset-chunk').map((chunk) => chunk.hash));
       for (const entry of tokens) {
         expect(sent, `${label}: a GM token id`).not.toContain(entry.id);
         expect(sent, `${label}: a token's vault path`).not.toContain(entry.path);
         if (entry.hidden) {
           expect(sent, `${label}: a hidden token's name`).not.toContain(entry.mark);
           expect(sent, `${label}: a hidden token's portrait`).not.toContain(hashes.get(entry.id));
-          expect(served.has(hashes.get(entry.id) ?? ''), `${label}: a hidden token's art served`).toBe(false);
+          expect(sent, `${label}: a hidden token's art named`).not.toContain(artIds.get(entry.id));
         } else {
           expect(sent.includes(entry.mark), `${label}: a listed name only with nameplates`).toBe(showNames);
-          expect(served.has(hashes.get(entry.id) ?? ''), `${label}: a listed portrait served`).toBe(true);
+          expect(sent, `${label}: a listed portrait named`).toContain(artIds.get(entry.id));
         }
       }
       for (const message of ofKind(table.sent, 'sensed')) {

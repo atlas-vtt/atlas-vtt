@@ -16,16 +16,23 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 
 /**
  * What creating a dungeon scene costs, from the click to the files written, with the real dungeon
- * worker and image workers: printed to `out/perf-gen/`, asked for with `VITE_PERF_GEN=1`. The tiles
+ * worker and image workers: printed to `out/perf-gen/`, asked for with `VITE_PERF_GEN=1`. The tesserae
  * are built after the scene is written and are left out.
  */
 
-vi.mock('../../src/app/pixi/mapImage/prebuildMapImage', () => ({ prebuildMapImageAt: vi.fn() }));
+vi.mock('../../src/app/pixi/mosaicCanvas/prebuildMosaicCanvas', () => ({ prebuildMosaicCanvasAt: vi.fn() }));
 
 const run = import.meta.env.VITE_PERF_GEN === '1';
+/** Draws every case in one look instead of its own, to compare looks: `VITE_PERF_STYLE=crayon`. */
+const lookOverride = import.meta.env.VITE_PERF_STYLE as DungeonStyleId | undefined;
 const req = (seed: number, tags: string[], floors = 1): DungeonRequest => ({ seed, tags: tags as DungeonTag[], floors });
 /** The most a cave's or a house's scene may take, from the click to the files written, in ms. */
 const LIMITS: Readonly<Record<string, number>> = { 'medium mansion': 3000, 'large 3 floors mansion with cellar overgrown': 7000, 'cavern medium': 3000, 'cavern large 3 floors lava overgrown': 7000, 'cavern underdark 3 floors flooded': 7000 };
+/**
+ * The same in the crayon look. Its coats encode slowly: a medium forest 3 s, a large two-floor one 14 s (2026-10-28);
+ * since every floor is coloured in, a large three-floor mansion 13 s and a large cavern 11 s (M4 Pro, 2026-10-30).
+ */
+const CRAYON_LIMITS: Readonly<Record<string, number>> = { ...LIMITS, 'forest medium': 4500, 'forest large 2 floors wet': 18000, 'large 3 floors mansion with cellar overgrown': 18000, 'cavern large 3 floors lava overgrown': 15000 };
 
 const CASES: [string, DungeonRequest, DungeonStyleId][] = [
   ['small', req(11, ['small']), 'parchment'],
@@ -38,6 +45,8 @@ const CASES: [string, DungeonRequest, DungeonStyleId][] = [
   ['large 3 floors rising fortress', { ...req(3, ['large', 'ruined', 'overgrown'], 3), theme: 'fortress' }, 'masonry'],
   ['large 3 floors mansion with cellar overgrown', { ...req(2, ['large', 'overgrown'], 3), theme: 'mansion' }, 'parchment'],
   ['cavern medium', { ...req(7, ['medium']), theme: 'cavern' }, 'parchment'],
+  ['forest medium', { ...req(7, ['medium']), theme: 'forest' }, 'crayon'],
+  ['forest large 2 floors wet', { ...req(3, ['large', 'wet'], 2), theme: 'forest' }, 'crayon'],
   ['cavern large 3 floors lava overgrown', { ...req(3, ['large', 'lava', 'overgrown'], 3), theme: 'cavern' }, 'volcanic'],
   ['cavern underdark 3 floors flooded', { ...req(5, ['deep', 'spacious', 'flooded'], 3), theme: 'cavern' }, 'masonry'],
 ];
@@ -81,13 +90,14 @@ describe.skipIf(!run)('what creating a dungeon scene costs', () => {
         thumbnails: new AssetThumbnailService(vault.app, assetService),
       };
       const model = generateDungeon(request);
-      const result = await createDungeonSceneWith(deps, { name: `Perf Gen ${name}`, request, model, style: dungeonStyle(styleId), view: DEFAULT_VIEW, collectionId: 'Perf' });
+      const look = lookOverride ?? styleId;
+      const result = await createDungeonSceneWith(deps, { name: `Perf Gen ${name}`, request, model, style: dungeonStyle(look), view: DEFAULT_VIEW, collectionId: 'Perf' });
       const total = at();
       observer.disconnect();
       if (!result.ok) throw new Error(result.problem);
       rows.push(`${name}: total ${total} ms, longest main-thread task ${Math.round(longest)} ms, maps ${sizes.map((s) => (s / 1e6).toFixed(1)).join(' / ')} MB\n  ${events.join('\n  ')}`);
       await commands.writeFile('out/perf-gen/scene.txt', rows.join('\n'));
-      const limit = LIMITS[name];
+      const limit = (look === 'crayon' ? CRAYON_LIMITS : LIMITS)[name];
       if (limit !== undefined) expect(total, `${name}: ${total} ms`).toBeLessThan(limit);
     });
   }

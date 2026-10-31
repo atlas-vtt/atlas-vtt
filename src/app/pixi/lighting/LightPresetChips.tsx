@@ -3,14 +3,15 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { ChevronDown, Ellipsis } from 'lucide-react';
 import { LIGHT_GLYPH_PATHS, LIGHT_GLYPH_VIEW_BOX } from '../../lighting/lightGlyphs';
 import { asCustomLight, emissionOf, lightPresetChips, lightPresetOf } from '../../lighting/lightPresetChoice';
+import { lightPresetName } from '../../lighting/lightPresetNames';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { useExclusiveDropdown } from '../../packages/components/primitives/useExclusiveDropdown';
 import { renderEntries, type ContextMenuEntry } from '../../react/components/context-menu/AtlasContextMenu';
 import type { LightPresetDefinition } from '../../types/lightPresetTypes';
 import type { LightEmission, LightKind } from '../../types/lightingTypes';
 import { lightMarkerLook, lightMarkerTheme } from './lightMarker';
+import { t } from '../../i18n';
 
-const CUSTOM_LIGHT = 'Custom light';
 const AT_REST = { hovered: false, selected: false, dragging: false };
 
 const cssColor = (color: number): string => `#${color.toString(16).padStart(6, '0')}`;
@@ -48,9 +49,9 @@ export function LightPresetChips({ emission, presets, onChange }: LightPresetChi
   const style = { '--atlas-light-badge': cssColor(theme.background), '--atlas-light-tint': cssColor(look.glyphTint) } as React.CSSProperties;
   return (
     <div className="atlas-light-popover__kinds" role="group" aria-labelledby={labelId} style={style}>
-      <span id={labelId} hidden>Kind of light</span>
+      <span id={labelId} hidden>{t('light.kind')}</span>
       {chips.map((preset) => (
-        <LabelTooltip key={preset.id} label={preset.name}>
+        <LabelTooltip key={preset.id} label={lightPresetName(preset)}>
           <button type="button" className="atlas-light-kind" aria-pressed={preset === current} onClick={() => onChange(emissionOf(preset))}>
             <LightGlyph kind={preset.kind} />
           </button>
@@ -59,7 +60,7 @@ export function LightPresetChips({ emission, presets, onChange }: LightPresetChi
       {more.length > 0 ? (
         <MoreLights more={more} current={current} onPick={(preset) => onChange(emissionOf(preset))} onCustom={makeCustom} />
       ) : (
-        <LabelTooltip label={CUSTOM_LIGHT}>
+        <LabelTooltip label={t('light.custom')}>
           <button type="button" className="atlas-light-kind" aria-pressed={current === null} onClick={makeCustom}>
             <LightGlyph kind="custom" />
           </button>
@@ -84,16 +85,16 @@ interface MoreLightsProps {
 function MoreLights({ more, current, onPick, onCustom }: MoreLightsProps): React.ReactElement {
   const [trigger, setTrigger] = useState<HTMLButtonElement | null>(null);
   const { isOpen, setIsOpen, onCloseAutoFocus } = useExclusiveDropdown();
-  const chosen = current === null ? { name: CUSTOM_LIGHT, kind: 'custom' as const } : more.find((preset) => preset === current);
+  const chosen = current === null ? { name: t('light.custom'), kind: 'custom' as const } : more.find((preset) => preset === current);
   const entries: ContextMenuEntry[] = [
     ...more.map((preset): ContextMenuEntry => ({
-      type: 'item', label: preset.name, leading: <LightGlyph kind={preset.kind} />, checked: preset === current, onClick: () => onPick(preset),
+      type: 'item', label: lightPresetName(preset), leading: <LightGlyph kind={preset.kind} />, checked: preset === current, onClick: () => onPick(preset),
     })),
-    { type: 'item', label: CUSTOM_LIGHT, leading: <LightGlyph kind="custom" />, checked: current === null, onClick: onCustom },
+    { type: 'item', label: t('light.custom'), leading: <LightGlyph kind="custom" />, checked: current === null, onClick: onCustom },
   ];
   return (
     <DropdownMenu.Root open={isOpen} onOpenChange={setIsOpen} modal={false}>
-      <LabelTooltip label={chosen ? `${chosen.name}, more lights` : 'More lights'}>
+      <LabelTooltip label={chosen ? t('light.moreLightsChosen', { name: lightPresetName(chosen) }) : t('light.moreLights')}>
         <DropdownMenu.Trigger asChild>
           <button ref={setTrigger} type="button" className="atlas-light-kind atlas-light-kind--more" aria-pressed={chosen !== undefined}>
             {chosen ? <LightGlyph kind={chosen.kind} /> : <Ellipsis className="atlas-light-kind__dots" aria-hidden="true" />}

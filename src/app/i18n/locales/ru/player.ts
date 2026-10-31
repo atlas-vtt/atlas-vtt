@@ -9,4 +9,5 @@ export const player: Translation = {
   'player.paused': 'Камера на паузе',
   'player.title': 'Atlas: экран игроков',
   'player.setupFailed': 'Не удалось подготовить окно игроков',
+  'player.nothingToFreeze': 'Игрокам эта сцена ещё не показана, так что замораживать нечего',
 };

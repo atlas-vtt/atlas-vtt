@@ -2,6 +2,8 @@
 
 Status: implemented and automatically verified on 2026-10-23; native Obsidian test-vault acceptance remains pending.
 
+Update approved on 2026-10-31: merge current upstream beta (0.11.1-beta.0, `fdb1bab6`) into the published PR branch, preserving history. Keep upstream's top-bar layout and map-processing indicator; suppress its tooltip while dragging and cancel if processing changes tab dimensions. Atlas now keeps map views in the main window: native popout dragging is no longer an acceptance target. Verify instead that a restored popout returns to the main window with its reordered tabs, active scene and cameras. The second-document browser test remains a gesture ownership regression, not a claim of native popout support. After verification, push the PR branch and refresh PR #520; merging the PR is outside this task.
+
 ## Intent and boundaries
 
 Let a DM arrange the open Atlas scene tabs by dragging them left or right. Keep the chosen order when Obsidian restores the workspace. This concerns the scene strip inside an Atlas view; it does not rearrange Obsidian's own workspace tabs.
@@ -47,8 +49,8 @@ This is a bounded UI change with two implementation tasks: persistent ordering a
 
 ## Acceptance and PR preparation
 
-Test moves in both directions and across the whole strip; no-op and stale IDs; identity/metadata preservation; workspace JSON save/restore; independent views; keyboard focus and announcements; normal clicks and action buttons; canceled and interrupted drags; stationary-pointer edge scrolling; and an overflowed strip in a popout document. Confirm local and online presented scenes remain unchanged.
+Test moves in both directions and across the whole strip; no-op and stale IDs; identity/metadata preservation; workspace JSON save/restore; independent views; keyboard focus and announcements; normal clicks and action buttons; canceled and interrupted drags; stationary-pointer edge scrolling; and an overflowed strip in a second browser document. Confirm local and online presented scenes remain unchanged. Confirm workspace relocation into the main window preserves reordered tabs and cameras.
 
 Inspect actual browser drags at narrow and wide widths and with reduced motion. Verify no map-input side effects or scene loads. Establish a fresh dependency/test baseline on current beta: the older merchant branch's test results do not establish this branch's status.
 
-Add a user-facing entry to `changelog/Unreleased.md`, run the repository's type, lint, boundary, unit, browser, changelog, and build checks, and obtain one fresh final code review. Build a separately named test-vault ZIP, `dist/atlas-vtt-scene-tabs-test.zip`, containing the standard `atlas-vtt/main.js`, `atlas-vtt/styles.css`, and `atlas-vtt/manifest.json`. Preserve the earlier merchant test ZIP. Prepare a local PR description using `.github/pull_request_template.md`, with Obsidian reproduction steps and actual verification results. Target `atlas-vtt/atlas-vtt:beta` later; pushing and opening the PR remain separate user actions.
+Add a user-facing entry to `changelog/Unreleased.md`, run the repository's type, lint, boundary, unit, browser, changelog, and build checks, and obtain one fresh final code review. Build a separately named test-vault ZIP, `dist/atlas-vtt-scene-tabs-test.zip`, containing the standard `atlas-vtt/main.js`, `atlas-vtt/styles.css`, and `atlas-vtt/manifest.json`. Preserve the earlier merchant test ZIP. Update the existing PR #520 against `atlas-vtt/atlas-vtt:beta`, using `.github/pull_request_template.md` with current Obsidian reproduction steps and actual verification results. The 2026-10-31 approval authorizes pushing the updated feature branch and editing the PR description after verification; it does not authorize merging the PR.

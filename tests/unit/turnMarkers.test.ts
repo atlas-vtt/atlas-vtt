@@ -203,7 +203,7 @@ describe('the turn flash', () => {
     expect(full.markers.tokenIds).toEqual(['hero']);
   });
 
-  it('keeps the spotlight off the art with an inverse alpha mask, and leaves only the rim where the renderer has no masks', () => {
+  it('keeps the spotlight off the art with an inverse alpha mask', () => {
     const textures = new TurnTextures();
     const marker = new TurnMarker(textures, FLASH.full, 0);
     cleanups.push(() => { marker.destroy(); textures.destroy(); });
@@ -212,9 +212,6 @@ describe('the turn flash', () => {
     expect(spot.mask).toBe(marker.view.getChildByLabel('turnFigure'));
     expect(spot).toMatchObject({ _maskOptions: { inverse: true, channel: 'alpha' } });
     expect(pool.visible).toBe(true);
-    marker.keepOffArt(false);
-    expect(spot.mask).toBeFalsy();
-    expect(pool.visible).toBe(false);
   });
 
   it('keeps a framed token\'s spotlight off the disc its ring encloses, and unframed art off its own shape', () => {

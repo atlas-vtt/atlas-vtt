@@ -50,10 +50,12 @@ export const POOLS = {
   bell: [bell0, bell1],
 };
 
-/** The resting volume every roll fades in to. */
-export const MASTER = 0.5;
+/** The resting volume every roll fades in to, at full dice volume. */
+const MASTER = 0.5;
 
 let ctx: AudioContext | null = null;
+/** The user's dice volume, 0 to 1 (`SettingsService.getDiceVolume`). */
+let volume = 1;
 let master: GainNode | null = null;
 /** Decoded samples, data URL to buffer. Filled by `prime()`. */
 const decoded = new Map<string, AudioBuffer>();
@@ -70,11 +72,22 @@ export function audio(): AudioContext | null {
       return null;
     }
     master = ctx.createGain();
-    master.gain.value = MASTER;
+    master.gain.value = masterLevel();
     master.connect(ctx.destination);
   }
   if (ctx.state === 'suspended') void ctx.resume().catch(() => undefined);
   return ctx;
+}
+
+/** The resting volume every roll fades in to: `MASTER` scaled by the user's dice volume. */
+export function masterLevel(): number {
+  return MASTER * volume;
+}
+
+/** Sets the user's dice volume, 0 to 1; sounds already playing take it at once. */
+export function setDiceVolume(next: number): void {
+  volume = Math.min(1, Math.max(0, next));
+  if (ctx && master) master.gain.setValueAtTime(masterLevel(), ctx.currentTime);
 }
 
 /** The gain every voice ends in; `null` until `audio()` created the context. */

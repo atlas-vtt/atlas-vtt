@@ -141,6 +141,39 @@ describe('the rulers of players\' drags', () => {
   });
 });
 
+describe('whose pointer holds a drag, as players get it', () => {
+  const seats: SeatSource = { onlinePlayers: () => [ANA], ownerOf: (id) => (id === 'a' ? ANA : undefined), claimOf: () => 'taken' };
+
+  it('names the player dragging and the GM while everyone sees cursors, so pages draw each token with its cursor', async () => {
+    const table = await started([token('a', { x: 35, y: 35 })], seats);
+    table.settings = { ...table.settings, showCursors: true };
+    const alias = aliasOf(table, 35) ?? '';
+    for (const x of [100, 160]) {
+      table.share.receive(ANA, { t: 'drag', scene: sceneId(table), id: alias, x, y: 40 });
+      await table.advance(STEP_MS);
+    }
+    expect(table.share.draggerOf('a')).toBe(ANA);
+    expect(places(table).at(-1)).toMatchObject({ id: alias, by: ANA });
+    table.share.receive(ANA, { t: 'move', scene: sceneId(table), id: alias, x: 175, y: 35 });
+    await table.advance(STEP_MS);
+    expect(table.share.draggerOf('a')).toBeUndefined();
+    // The end names its holder too, so pages play the drop out with that cursor.
+    expect(places(table).at(-1)).toMatchObject({ id: alias, end: true, by: ANA });
+    const before = places(table).length;
+    await gmDrag(table, { steps: 2 });
+    const gm = places(table).slice(before);
+    expect(gm.at(-1)).toMatchObject({ end: true, by: 'gm' });
+    expect(gm.every((place) => place.by === 'gm')).toBe(true);
+  });
+
+  it('names nobody while cursors are not shared', async () => {
+    const table = await started([token('a', { x: 35, y: 35 })], seats);
+    await gmDrag(table, { steps: 2 });
+    expect(places(table).length).toBeGreaterThan(0);
+    expect(places(table).every((place) => place.by === undefined)).toBe(true);
+  });
+});
+
 describe('dragRulerPaths', () => {
   const state = scene([token('a', { x: 300, y: 40, size: 1.5 }), token('b', { x: 105, y: 105 })]);
 

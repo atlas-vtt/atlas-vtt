@@ -24,11 +24,14 @@ let visibleTokenIds: string[] = [];
 let settings: {
   getToolbarLayout: () => StoredToolbarLayout;
   getLaserPointerSettings: () => LaserPointerSettings;
+  getLightingQuality: () => 'high';
+  isLightingQualityPicked: () => boolean;
+  setLightingQuality: () => void;
 } | undefined;
 let viewType = 'atlas-vtt';
 
 function settingsWithLayout(layout: StoredToolbarLayout): typeof settings {
-  return { getToolbarLayout: () => layout, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS };
+  return { getToolbarLayout: () => layout, getLaserPointerSettings: () => DEFAULT_LASER_POINTER_SETTINGS, getLightingQuality: () => 'high', isLightingQualityPicked: () => false, setLightingQuality: () => undefined };
 }
 
 const storeState = {

@@ -19,6 +19,7 @@ import type { EditorSession, SessionSnapshot } from './sessionTypes';
 import type { CollectionFieldKeys } from './useCollectionFieldKeys';
 import { useLabelEditing, type LabelEditingState } from './useLabelEditing';
 import { useBlockNaming, type NamePrompt } from './naming/useBlockNaming';
+import { t } from '../../../i18n';
 
 export interface InsertMenuState {
   /** Counts the openings: each is a fresh menu, even while the last one is still fading out. */
@@ -65,7 +66,7 @@ export interface EditorState extends LabelEditingState {
 
 /** "Speed" → "Deleted Speed."; "3 blocks" → "Deleted 3 blocks.", as the note panel says it. */
 function deletedText(what: string): string {
-  return `Deleted ${what}.`;
+  return t('templateEditor.deletedWhat', { what });
 }
 
 export function useEditorState(input: EditorStateInput): EditorState {

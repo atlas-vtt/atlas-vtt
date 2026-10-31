@@ -3,16 +3,17 @@ import type { ExploredBrushOptions, ExploredEditMode } from "../../../lighting/e
 import type { StrokeMode } from "../../../tools/shapeStroke"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { SegmentedControl, type SegmentedOption } from "../primitives/SegmentedControl"
+import { t } from "../../../i18n"
 
 const MODES: readonly SegmentedOption<ExploredEditMode>[] = [
-  { value: 'reveal', label: 'Reveal' },
-  { value: 'forget', label: 'Forget' },
+  { value: 'reveal', label: t('sceneLight.memory.reveal') },
+  { value: 'forget', label: t('sceneLight.memory.forget') },
 ]
 
 const SHAPES: readonly SegmentedOption<StrokeMode>[] = [
-  { value: 'brush', label: 'Brush' },
-  { value: 'lasso', label: 'Lasso' },
-  { value: 'rectangle', label: 'Rectangle' },
+  { value: 'brush', label: t('sceneLight.memory.brush') },
+  { value: 'lasso', label: t('sceneLight.memory.lasso') },
+  { value: 'rectangle', label: t('sceneLight.memory.rectangle') },
 ]
 
 interface ExploredMemorySectionProps {
@@ -27,10 +28,10 @@ interface ExploredMemorySectionProps {
 export function ExploredMemorySection({ options, onChange }: ExploredMemorySectionProps): React.ReactElement {
   return (
     <div className="atlas-dropdown-section atlas-explored-brush">
-      <SegmentedControl value={options.mode} options={MODES} ariaLabel="What a stroke does" onChange={(mode) => onChange({ mode })} />
-      <SegmentedControl value={options.shape} options={SHAPES} ariaLabel="Shape of a stroke" onChange={(shape) => onChange({ shape })} />
+      <SegmentedControl value={options.mode} options={MODES} ariaLabel={t('sceneLight.memory.strokeMode')} onChange={(mode) => onChange({ mode })} />
+      <SegmentedControl value={options.shape} options={SHAPES} ariaLabel={t('sceneLight.memory.strokeShape')} onChange={(shape) => onChange({ shape })} />
       {options.shape === 'brush' && (
-        <DropdownSliderRow label="Brush size" value={options.brushSize} min={10} max={200} onChange={(brushSize) => onChange({ brushSize })} />
+        <DropdownSliderRow label={t('sceneLight.memory.brushSize')} value={options.brushSize} min={10} max={200} onChange={(brushSize) => onChange({ brushSize })} />
       )}
     </div>
   )

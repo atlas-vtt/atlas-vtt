@@ -35,7 +35,7 @@ export function beamWidth(size: number, zoom: number): BeamWidth {
   return { halfWidth: radius / zoom, bodyShare: body / radius };
 }
 
-/** Draws the laser beam; `LaserBeam` on the GPU, `CanvasLaserBeam` without one. */
+/** Draws the laser beam. */
 export interface LaserBeamView {
   /** Add this to the scene. */
   readonly view: Container;
