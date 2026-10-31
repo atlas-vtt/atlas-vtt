@@ -7,7 +7,7 @@
  * in that continuous space, so a cell's centre is (x + 0.5, y + 0.5) and columns stand on grid vertices.
  */
 
-import type { CaveFloor, CaveModel, StairWay } from './caveModel';
+import type { CaveFloor, CaveModel, CaveSizeTier, CaveVerticalExits, CaveWay, StairWay } from './caveModel';
 import type { DungeonGrowth } from './growthModel';
 import type { DungeonStack, DungeonWindow, FloorWalls, HouseGrounds } from './houseModel';
 import type { PropKind } from './props/propKinds';
@@ -18,7 +18,7 @@ import type { DungeonTerrain, FiveRoomStage } from './terrainModel';
 export type { CoverLevel, DungeonTerrain, FiveRoomStage, HazardKind, TerrainKind, TerrainOpening, TerrainTraits } from './terrainModel';
 export { FIVE_ROOM_STAGES } from './terrainModel';
 export type { DungeonGrowth, GrowthKind } from './growthModel';
-export type { CaveFault, CaveFloor, CaveModel, CaveVariant, StairWay } from './caveModel';
+export type { CaveAlwaysTrait, CaveCharacter, CaveFault, CaveFloor, CaveModel, CaveNeverTrait, CaveSizeTier, CaveVariant, CaveVerticalExits, CaveWay, StairWay } from './caveModel';
 export type { DungeonStack, DungeonWindow, FloorWalls, GroundsKind, GroundsPiece, HouseGrounds, OutbuildingUse, WindowSize } from './houseModel';
 export type { PropKind } from './props/propKinds';
 
@@ -74,6 +74,10 @@ export interface DungeonRoom {
    * to one cell past it. Unset, the floor is the rectangle (`floorCellsOf`).
    */
   cells?: CellPoint[];
+  /** A cave chamber's size tier (`CaveSizeTier`); unset outside a cave and on passages. */
+  tier?: CaveSizeTier;
+  /** A cave chamber's exits in its roof and floor, from its exit roll; unset where it rolled none. */
+  vertical?: CaveVerticalExits;
 }
 
 /**
@@ -96,6 +100,10 @@ export interface DungeonDoor {
   descends?: true;
   /** Two cells wide, a cave's narrows or an opening between two wide passages: this cell and the one at `x + wide.x, y + wide.y` (`doorCells`). */
   wide?: CellDir;
+  /** In a cave, how the way through is passed (`CaveWay`); unset on a cave floor reads as a walk. Never set outside a cave. */
+  way?: CaveWay;
+  /** In a cave, the way's width (or height) in feet as the exit roll gave it; unset outside a cave. */
+  width?: number;
   /**
    * On a floor whose walls stand on cell edges (`DungeonFloor.walls`): the door stands on the edge
    * between `(x, y)`, the cell on its `from` side (outside, for an entrance), and the cell across it

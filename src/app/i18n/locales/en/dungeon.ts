@@ -200,6 +200,7 @@ export const dungeon = {
   'dungeon.terrain.shaftFloor': 'Foot of a shaft',
   'dungeon.terrain.chasm': 'Chasm',
   'dungeon.terrain.shaft': 'Shaft',
+  'dungeon.terrain.aven': 'Aven',
   'dungeon.terrain.lavaChannel': 'Lava channel',
   'dungeon.terrain.acidChannel': 'Acid channel',
   'dungeon.terrain.waterChannel': 'Water channel',

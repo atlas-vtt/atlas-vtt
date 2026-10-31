@@ -19,11 +19,70 @@ export interface CaveFault {
   y: number;
 }
 
+/**
+ * How a way between two caves is passed, by its size against a human body (Veins of the Earth's
+ * routes): a walk stands upright (over 4 ft), a crawl goes on all fours (about 3 ft), a squeeze on
+ * the belly (1 to 2 ft), a letterbox squeeze flat with an arm forward (1 ft); a traverse, a sump
+ * and a breakdown are the special routes a doubles roll gives, opposite the way in.
+ */
+export type CaveWay = 'walk' | 'crawl' | 'squeeze' | 'letterbox' | 'traverse' | 'sump' | 'breakdown';
+
+export const CAVE_WAYS: readonly CaveWay[] = ['walk', 'crawl', 'squeeze', 'letterbox', 'traverse', 'sump', 'breakdown'];
+
+/** The special routes: what a doubles roll makes of a cave's largest exit. */
+export const SPECIAL_WAYS: readonly CaveWay[] = ['traverse', 'sump', 'letterbox', 'breakdown'];
+
+/**
+ * A cave's size, the book's eight tiers by how far the two dice land apart: a junction (cupboard
+ * sized), a room (10 ft a side), two, three and four rooms (20, 30, 40 ft), a house (about 50 ft),
+ * a hall (an office building, 80 to 100 ft) and a gargantuan cave (an environment in itself).
+ */
+export type CaveSizeTier = 'junction' | 'room' | 'double' | 'triple' | 'quadruple' | 'house' | 'hall' | 'gargantuan';
+
+export const CAVE_SIZE_TIERS: readonly CaveSizeTier[] = ['junction', 'room', 'double', 'triple', 'quadruple', 'house', 'hall', 'gargantuan'];
+
+/** The exits a chamber's roll put in its roof and floor, each its width in feet: roof exits lead up, floor exits down. */
+export interface CaveVerticalExits {
+  up: number[];
+  down: number[];
+}
+
+/** What the cave always does, one trait per cave: the first half of its character. */
+export type CaveAlwaysTrait =
+  | 'curves-back'
+  | 'narrows-then-opens'
+  | 'low-roofs'
+  | 'maximum-size'
+  | 'shifting-scale'
+  | 'floor-exits'
+  | 'roof-exits'
+  | 'still-pools'
+  | 'balanced-boulders'
+  | 'flowstone-crust'
+  | 'cracks-everywhere'
+  | 'endless-drips'
+  | 'up-and-down'
+  | 'blocked-ways';
+
+/** What the cave never does, one trait per cave: the second half of its character. */
+export type CaveNeverTrait = 'dead-passages' | 'standing-room' | 'regular-caves' | 'calm-water' | 'sloped-walls' | 'plain-walk';
+
+export const CAVE_ALWAYS_TRAITS: readonly CaveAlwaysTrait[] = ['curves-back', 'narrows-then-opens', 'low-roofs', 'maximum-size', 'shifting-scale', 'floor-exits', 'roof-exits', 'still-pools', 'balanced-boulders', 'flowstone-crust', 'cracks-everywhere', 'endless-drips', 'up-and-down', 'blocked-ways'];
+export const CAVE_NEVER_TRAITS: readonly CaveNeverTrait[] = ['dead-passages', 'standing-room', 'regular-caves', 'calm-water', 'sloped-walls', 'plain-walk'];
+
+/** A cave system's character, the book's "always ... but never ...": two rules every cave of it follows. */
+export interface CaveCharacter {
+  always: CaveAlwaysTrait;
+  never: CaveNeverTrait;
+}
+
 /** The whole cave's geology. Whether it is lived in shows in its room types (a guard post at the mouth). */
 export interface CaveModel {
   variant: CaveVariant;
   /** The one or two directions every fault of the cave runs in, radians from +x. */
   faults: number[];
+  /** The cave's character; unset in a model made before caves had one, which reads as none. */
+  character?: CaveCharacter;
 }
 
 export interface CaveFloor {

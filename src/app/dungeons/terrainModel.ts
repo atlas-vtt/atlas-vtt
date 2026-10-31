@@ -32,6 +32,8 @@ export type TerrainKind =
   | 'boulder-choke'
   // Where a fall from a hole above ends: loose rubble, difficult terrain.
   | 'chasm-floor'
+  // A cave's aven: a chimney in the roof over this cell, rising to the floor above or into the dark; walked under.
+  | 'aven'
   // Hazards.
   | 'chasm'
   | 'shaft'
