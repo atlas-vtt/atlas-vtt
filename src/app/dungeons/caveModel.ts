@@ -41,10 +41,23 @@ export type CaveSizeTier = 'junction' | 'room' | 'double' | 'triple' | 'quadrupl
 
 export const CAVE_SIZE_TIERS: readonly CaveSizeTier[] = ['junction', 'room', 'double', 'triple', 'quadruple', 'house', 'hall', 'gargantuan'];
 
-/** The exits a chamber's roll put in its roof and floor, each its width in feet: roof exits lead up, floor exits down. */
+/**
+ * How a way up or down is passed, by its width as a way across is: a shaft (a walk's width, 5 ft
+ * or more) is climbed or abseiled, a chimney (a crawl's) by bracing back against one wall and feet
+ * against the other, and anything narrower is a vertical squeeze, as slow as one across.
+ */
+export type VerticalKind = 'shaft' | 'chimney' | 'squeeze';
+
+/** A roof or floor exit, in feet: how wide it is, which says how it is passed, and how far it rises or drops (10 ft a turn of descent). */
+export interface VerticalWay {
+  width: number;
+  depth: number;
+}
+
+/** The exits a chamber's roll put in its roof and floor, widest first: roof exits lead up, floor exits down. */
 export interface CaveVerticalExits {
-  up: number[];
-  down: number[];
+  up: VerticalWay[];
+  down: VerticalWay[];
 }
 
 /** What the cave always does, one trait per cave: the first half of its character. */

@@ -3,18 +3,21 @@
  * exit as many feet wide as they show together, and as many smaller exits as they lie apart, each
  * half the one before. A double makes the largest exit special and puts it opposite the way in.
  * Each exit leads through a wall, or up through the roof or down through the floor; its size against
- * a human body says how it is passed.
+ * a human body says how it is passed, and one up or down also how far it rises or drops.
  */
 
 import { type CaveWay, SPECIAL_WAYS } from '../../../caveModel';
-import type { CaveVerticalExits } from '../../../model';
+import type { CaveVerticalExits, VerticalKind, VerticalWay } from '../../../model';
 import { type Rng, chance, int, pick, weighted } from '../../../rng';
+import { verticalDepth } from './routeLength';
 
 /** One exit of a chamber: its width (or height) in feet and how it is passed; a roof or floor exit leads up or down. */
 export interface CaveExit {
   width: number;
   way: CaveWay;
   vertical?: 'up' | 'down';
+  /** How far a roof or floor exit rises or drops, in feet; set on every one a roll makes. */
+  depth?: number;
   /** The largest exit of a double: a traverse, sump, letterbox or breakdown, opposite the way in. */
   special?: true;
 }
@@ -58,6 +61,13 @@ export function wayOfWidth(ft: number): CaveWay {
   return ft >= 2 ? 'squeeze' : 'letterbox';
 }
 
+/** How a way up or down of this many feet is passed, as `wayOfWidth` says of one across: a walk's width is a shaft, a crawl's a chimney, narrower a vertical squeeze. */
+export function verticalKindOf(ft: number): VerticalKind {
+  const way = wayOfWidth(ft);
+  if (way === 'walk') return 'shaft';
+  return way === 'crawl' ? 'chimney' : 'squeeze';
+}
+
 /** The exit widths of a roll, largest first: each half the one before, rounded up; an exit of 1 ft is left out, but once kept as a letterbox after one of 2 ft. */
 export function exitWidths(d1: number, d2: number): number[] {
   const widths = [d1 + d2];
@@ -92,17 +102,23 @@ function specialWay(rng: Rng, rules: ExitRules): CaveWay {
   return weighted(rng, SPECIAL_WAYS.map((way) => [way, way === 'breakdown' ? 2 : 1] as const));
 }
 
-/** A chamber's exits, largest first. A double's special exit leads on through the wall opposite the way in, never up or down. */
-export function rollExits(rng: Rng, rules: ExitRules = PLAIN_EXITS): CaveExit[] {
+/**
+ * A chamber's exits, largest first. A double's special exit leads on through the wall opposite the
+ * way in, never up or down. The depths of roof and floor exits come from `depths`, after every exit
+ * is rolled: the planner hands a stream of their own, so a chamber's widths and directions, and all
+ * it draws after its exits, are what they were before ways up and down had a depth.
+ */
+export function rollExits(rng: Rng, rules: ExitRules = PLAIN_EXITS, depths: Rng = rng): CaveExit[] {
   const d1 = int(rng, 1, 6);
   const d2 = int(rng, 1, 6);
   const special = d1 === d2 ? specialWay(rng, rules) : undefined;
-  return exitWidths(d1, d2).map((rolled, k): CaveExit => {
+  const exits = exitWidths(d1, d2).map((rolled, k): CaveExit => {
     const width = bentWidth(rng, rolled, rules);
     const vertical = verticalOf(rng, rules);
     if (k === 0 && special) return { width, way: special, special: true };
     return { width, way: wayOfWidth(width), ...(vertical && { vertical }) };
   });
+  return exits.map((exit) => (exit.vertical ? { ...exit, depth: verticalDepth(depths) } : exit));
 }
 
 /** A loop's way through: one exit's size, 2d6 ft, bent by the cave's character. */
@@ -111,9 +127,14 @@ export function rollLoopWay(rng: Rng, rules: ExitRules = PLAIN_EXITS): WayRoll {
   return { width, way: wayOfWidth(width) };
 }
 
-/** The roof and floor exits of a roll, by their widths; undefined where it rolled none. */
+/** The ways a roll's exits in one direction make, each with its width and depth. */
+function waysOf(exits: readonly CaveExit[], direction: 'up' | 'down'): VerticalWay[] {
+  return exits.flatMap((exit) => (exit.vertical === direction && exit.depth !== undefined ? [{ width: exit.width, depth: exit.depth }] : []));
+}
+
+/** The roof and floor exits of a roll, by their widths and depths; undefined where it rolled none. */
 export function verticalExits(exits: readonly CaveExit[]): CaveVerticalExits | undefined {
-  const up = exits.filter((exit) => exit.vertical === 'up').map((exit) => exit.width);
-  const down = exits.filter((exit) => exit.vertical === 'down').map((exit) => exit.width);
+  const up = waysOf(exits, 'up');
+  const down = waysOf(exits, 'down');
   return up.length || down.length ? { up, down } : undefined;
 }

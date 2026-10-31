@@ -1,3 +1,4 @@
+import type { VerticalKind } from '../../../model';
 import type { Vec } from '../../geometry';
 import { TO_LIGHT } from '../../art/light';
 import { valueNoise } from '../../art/noise';
@@ -18,6 +19,13 @@ export interface ShaftMouth {
   /** Half its size across and along the way, in cells. */
   half: { u: number; v: number };
 }
+
+/**
+ * How wide a cave's way up or down opens against its cell, as a radius in cells about the cell's
+ * middle, by how it is passed: a shaft (wide enough to stand in), a chimney a body braces across,
+ * a vertical squeeze barely a body wide.
+ */
+export const OPENING_RADIUS: Readonly<Record<VerticalKind, number>> = { shaft: 0.6, chimney: 0.4, squeeze: 0.28 };
 
 /** Each ring's size against the rim's. */
 const RING_SCALES = [1, 0.79, 0.6, 0.43];

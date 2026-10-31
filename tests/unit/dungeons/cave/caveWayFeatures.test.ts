@@ -4,6 +4,8 @@ import type { CaveWay, DungeonModel } from '../../../../src/app/dungeons/model';
 import { mapLayout } from '../../../../src/app/dungeons/render/layoutSize';
 import { visibleDungeon } from '../../../../src/app/dungeons/render/visibleDungeon';
 import { floorFeatures } from '../../../../src/app/dungeons/scene/toFeatures';
+import { floorCellsOf } from '../../../../src/app/dungeons/geometry';
+import { draft } from '../../../../src/app/dungeons/terrain/catalog';
 import { DEFAULT_VIEW } from '../../../../src/app/dungeons/style';
 import { MAX_MAP_FEATURES } from '../../../../src/app/mapFeatures/mapFeatures';
 import type { MapFeature } from '../../../../src/app/types/mapFeatureTypes';
@@ -50,6 +52,25 @@ describe('a cave\'s ways as map features', () => {
     for (const door of model.floors[0]!.doors) door.way = 'walk';
     const names = new Set(EXPECTED.map(([, name]) => name));
     expect(featuresOf(model).filter((f) => names.has(f.name))).toEqual([]);
+  });
+
+  it('names a way up or down by how it is passed, with its depth', () => {
+    const model = generateDungeon({ seed: 5_151, theme: 'cavern', tags: [], floors: 1 });
+    const floor = model.floors[0]!;
+    floor.terrain = floor.terrain.filter((p) => p.kind !== 'aven' && p.kind !== 'shaft');
+    const room = floor.rooms.find((r) => r.kind === 'room' && floorCellsOf(r).length >= 4)!;
+    const cells = floorCellsOf(room);
+    const pieces = [
+      ['shaft', 30, 'shaft', 'Shaft, 30 ft'],
+      ['shaft', 20, 'chimney', 'Chimney, 20 ft'],
+      ['aven', 40, 'shaft', 'Aven, 40 ft'],
+      ['aven', 10, 'squeeze', 'Vertical squeeze, 10 ft'],
+    ] as const;
+    pieces.forEach(([kind, depth, way], k) => {
+      floor.terrain.push({ ...draft(kind, room.id, [cells[k]!], { traits: { drop: { depth, kind: way } } }), ...(kind === 'shaft' && { opening: { bottom: null, link: 90 + k } }), id: floor.terrain.length });
+    });
+    const names = featuresOf(model).map((f) => f.name);
+    for (const [, , , name] of pieces) expect(names).toContain(name);
   });
 
   it('keeps a large cave within the features a level holds', () => {

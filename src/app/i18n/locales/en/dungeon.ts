@@ -209,6 +209,11 @@ export const dungeon = {
   'dungeon.terrain.chasm': 'Chasm',
   'dungeon.terrain.shaft': 'Shaft',
   'dungeon.terrain.aven': 'Aven',
+  // A cave's way up or down on hover: how it is passed, and how far it rises or drops in feet.
+  'dungeon.terrain.depth.shaft': 'Shaft, {depth} ft',
+  'dungeon.terrain.depth.aven': 'Aven, {depth} ft',
+  'dungeon.terrain.depth.chimney': 'Chimney, {depth} ft',
+  'dungeon.terrain.depth.squeeze': 'Vertical squeeze, {depth} ft',
   'dungeon.terrain.lavaChannel': 'Lava channel',
   'dungeon.terrain.acidChannel': 'Acid channel',
   'dungeon.terrain.waterChannel': 'Water channel',

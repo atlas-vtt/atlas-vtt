@@ -3,7 +3,8 @@
  * explodes (a 4 rolls 1d6 more, a 6 then 1d8, an 8 then 1d10). A turn is drawn as two cells of
  * passage up to four turns, so most ways run a few cells; past that the floor would not hold a
  * way drawn to scale, so each further turn adds less, and a way that exploded twice or three
- * times still runs longer than one that exploded once.
+ * times still runs longer than one that exploded once. A way up or down is the same dice read as
+ * its depth: the book's turn is ten feet of descent, so most drop 10 to 30 ft and a few far deeper.
  */
 
 import { type Rng, int } from '../../../rng';
@@ -18,6 +19,11 @@ const TO_SCALE = 4;
 const WALLS = 2;
 /** The deepest a cave's corridor is drawn, walls included: the longest way the dice give, 28 turns. */
 export const MAX_ROUTE_DEPTH = WALLS + CELLS_PER_TURN * TO_SCALE + Math.ceil(Math.sqrt(DICE.reduce((sum, sides) => sum + sides, 0) - TO_SCALE));
+
+/** Feet of descent a turn is. */
+export const FEET_PER_TURN = 10;
+/** The deepest a way up or down is told as, in feet: past it the dice tell nothing a party can see. */
+export const MAX_VERTICAL_DEPTH = 150;
 
 /** The turns a way takes: 1d4, exploding up to 1d10. */
 export function routeTurns(rng: Rng): number {
@@ -35,4 +41,9 @@ export function routeDepth(rng: Rng): number {
   const turns = routeTurns(rng);
   const beyond = Math.max(0, turns - TO_SCALE);
   return WALLS + CELLS_PER_TURN * Math.min(turns, TO_SCALE) + Math.ceil(Math.sqrt(beyond));
+}
+
+/** How far a way up or down rises or drops, in feet: ten a turn, at most `MAX_VERTICAL_DEPTH`. */
+export function verticalDepth(rng: Rng): number {
+  return Math.min(MAX_VERTICAL_DEPTH, FEET_PER_TURN * routeTurns(rng));
 }

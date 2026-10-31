@@ -113,11 +113,15 @@ function wayThrough(layout: WorkLayout, room: WorkRoom, item: QueuedRoom): WayRo
   return item.exit.special && !fromChamber ? undefined : item.exit;
 }
 
-/** A cave's branching for a placed room: a chamber rolls its exits (and keeps those in its roof and floor), a passage runs on the way it was entered. */
-function caveBranching(rng: Rng, params: DungeonParams, layout: WorkLayout, room: WorkRoom, item: QueuedRoom): CaveBranching | undefined {
+/**
+ * A cave's branching for a placed room: a chamber rolls its exits (and keeps those in its roof and
+ * floor, their depths from a stream of the room's own, so the room's own stream runs on as before
+ * ways up and down had depths), a passage runs on the way it was entered.
+ */
+function caveBranching(rng: Rng, depths: Rng, params: DungeonParams, layout: WorkLayout, room: WorkRoom, item: QueuedRoom): CaveBranching | undefined {
   const rules = params.cave?.veins?.rules;
   if (!rules) return undefined;
-  const exits: CaveExit[] | null = isNormal(room) ? rollExits(rng, rules.exits) : null;
+  const exits: CaveExit[] | null = isNormal(room) ? rollExits(rng, rules.exits, depths) : null;
   const vertical = exits && verticalExits(exits);
   if (vertical) room.vertical = vertical;
   const through = wayThrough(layout, room, item);
@@ -159,7 +163,7 @@ export function growTree(rngOf: KeyedRng, params: DungeonParams, root: FloorRoot
       layout.doors.push({ x: item.origin.x, y: item.origin.y, dir: item.axis, kind: 'opening', from: null, to: room.id, loop: false });
     }
     if (isNormal(room)) normals++;
-    for (const group of branchesOf(rng, room, item.flip, params, caveBranching(rng, params, layout, room, item))) {
+    for (const group of branchesOf(rng, room, item.flip, params, caveBranching(rng, rngOf(`depths:${item.seed}`), params, layout, room, item))) {
       const id = groups++;
       group.forEach((branch) => queue.push({ ...branch, parent: room.id, group: id }));
     }

@@ -7,7 +7,7 @@ import { room } from '../plannedFloorFixtures';
 
 /** A short stairwell's end in a chamber of cells 1..8 × 1..8 on each floor, leading to `to`. */
 const end = (to: number): DungeonStair => ({ x: 3, y: 3, w: 2, h: 1, down: { x: 1, y: 0 }, to, link: 1 });
-const chamber = (down: number[]): DungeonRoom => ({ ...room(0, { x: 0, y: 0, w: 10, h: 10 }), vertical: { up: [], down } });
+const chamber = (down: number[]): DungeonRoom => ({ ...room(0, { x: 0, y: 0, w: 10, h: 10 }), vertical: { up: [], down: down.map((width) => ({ width, depth: 10 })) } });
 
 describe('the way between two cave floors', () => {
   it('is a pitch wherever the chamber at its upper end rolled a shaft wide enough to stand in, whichever way the floors are stacked', () => {

@@ -103,8 +103,8 @@ describe('a dungeon of several floors as one scene', () => {
     expect(headings).toEqual(parts.rooms.map(room => room.heading));
     for (const pin of Object.values(roomPins(parts.rooms, 'n.md'))) expect(headings).toContain(pin.notePath.slice('n.md#'.length));
     // A cave's ways between floors are pitches and scree slopes.
-    expect(note).toMatch(/(A pitch drops|A scree slope leads down) to floor B\./);
-    expect(note).toMatch(/(An aven rises|A scree slope leads up) to floor A\./);
+    expect(note).toMatch(/(A (?:pitch|chimney|vertical squeeze) drops \d+ ft|A scree slope leads down) to floor B\./);
+    expect(note).toMatch(/((?:An aven|A chimney|A vertical squeeze) rises \d+ ft|A scree slope leads up) to floor A\./);
   });
 
   it('names every terrain piece, piece of furniture and column a map feature on its floor\'s level', () => {
@@ -436,12 +436,12 @@ describe('a cavern\'s note', () => {
         for (const room of floor.rooms) {
           const facts = roomFacts(visible, room, DEFAULT_VIEW);
           expect(facts, `seed ${model.seed}`).not.toMatch(/\bdoors?\b|\bopenings?\b|\bsteps\b|\bstairs\b/i);
-          if (/A pitch drops to floor/.test(facts)) pitches++;
-          if (/An aven rises to floor/.test(facts)) avens++;
+          if (/A (?:pitch|chimney|vertical squeeze) drops \d+ ft to floor/.test(facts)) pitches++;
+          if (/(?:An aven|A chimney|A vertical squeeze) rises \d+ ft to floor/.test(facts)) avens++;
         }
         for (const stair of floor.stairs.filter((s) => s.way === 'pitch')) {
           const room = floor.rooms.find((r) => r.kind === 'room' && cellsOfStair(stair).every((c) => holdsCell(r, c.x, c.y)));
-          if (room) expect(roomFacts(visible, room, DEFAULT_VIEW)).toMatch(stair.to > index ? /A pitch drops to floor/ : /An aven rises to floor/);
+          if (room) expect(roomFacts(visible, room, DEFAULT_VIEW)).toMatch(stair.to > index ? /A (?:pitch|chimney|vertical squeeze) drops \d+ ft to floor/ : /(?:An aven|A chimney|A vertical squeeze) rises \d+ ft to floor/);
         }
       });
     }

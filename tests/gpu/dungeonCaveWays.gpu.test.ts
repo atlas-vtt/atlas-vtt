@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DungeonModel } from '../../src/app/dungeons/model';
+import type { DungeonModel, TerrainDrop } from '../../src/app/dungeons/model';
 import { continuingCell } from '../../src/app/dungeons/layout/cavern/veins/continuing';
 import { renderMap } from '../../src/app/dungeons/render/renderMap';
 import { DEFAULT_VIEW } from '../../src/app/dungeons/style';
@@ -127,6 +127,42 @@ describe('the ways between caves as drawn', () => {
       let changed = 0;
       for (let i = 0; i < plain.data.length; i++) if (plain.data[i] !== walks.data[i]) changed++;
       expect(changed).toBe(0);
+    });
+  }
+
+  /** The cave without its ways, with one aven or bottomless hole of `kind` on `cell`. */
+  function withVertical(piece: 'aven' | 'shaft', cell: { x: number; y: number }, drop: TerrainDrop): DungeonModel {
+    const model = caveVeinWaysModel(false);
+    const floor = model.floors[0]!;
+    const opening = piece === 'shaft' ? { opening: { bottom: null, link: 40 } } : {};
+    floor.terrain.push({ id: floor.terrain.length, room: 0, kind: piece, name: `dungeon.terrain.${piece}`, cells: [cell], traits: { drop }, ...opening });
+    return model;
+  }
+
+  /** How many pixels of the picture `model` makes differ from the plain cave's, and the farthest of them from `cell`, in cells. */
+  function inked(model: DungeonModel, plain: Picture, look: DungeonStyleId, cell: { x: number; y: number }): { count: number; reach: number } {
+    const drawn = draw(model, look);
+    let count = 0;
+    let reach = 0;
+    for (let y = 0; y < drawn.size; y++) for (let x = 0; x < drawn.size; x++) {
+      if (!differs(drawn, plain, (y * drawn.size + x) * 4)) continue;
+      count++;
+      reach = Math.max(reach, beyond(cellAt(x, y), cell));
+    }
+    return { count, reach };
+  }
+
+  for (const look of LOOKS) {
+    it(`opens a chimney narrower than a shaft and a vertical squeeze narrower still, overhead and underfoot, in ${look}`, () => {
+      const plain = draw(caveVeinWaysModel(false), look);
+      const hole = { x: 6, y: 8 };
+      for (const [piece, cell] of [['aven', AVEN_CELL], ['shaft', hole]] as const) {
+        const [shaft, chimney, squeeze] = (['shaft', 'chimney', 'squeeze'] as const).map(kind => inked(withVertical(piece, cell, { depth: 30, kind }), plain, look, cell));
+        expect(chimney!.count, `${look} ${piece}: a chimney against a shaft`).toBeLessThan(shaft!.count * 0.85);
+        expect(squeeze!.count, `${look} ${piece}: a squeeze against a chimney`).toBeLessThan(chimney!.count * 0.9);
+        expect(squeeze!.count, `${look} ${piece}: a squeeze is drawn`).toBeGreaterThan(PX);
+        for (const way of [shaft, chimney, squeeze]) expect(way!.reach, `${look} ${piece}: ink near its cell`).toBeLessThanOrEqual(REACH);
+      }
     });
   }
 

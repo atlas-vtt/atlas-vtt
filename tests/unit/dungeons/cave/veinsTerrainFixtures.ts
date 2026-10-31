@@ -1,7 +1,7 @@
 import { caveSites } from '../../../../src/app/dungeons/layout/cavern/caveSites';
 import { floorStack } from '../../../../src/app/dungeons/floors/floorStack';
 import { cellsOf } from '../../../../src/app/dungeons/geometry';
-import type { CaveCharacter, CaveFloor, CaveWay, CellPoint, DungeonDoor, DungeonFloor, DungeonRoom, DungeonStair } from '../../../../src/app/dungeons/model';
+import type { CaveCharacter, CaveFloor, CaveVerticalExits, CaveWay, CellPoint, DungeonDoor, DungeonFloor, DungeonRoom, DungeonStair, VerticalWay } from '../../../../src/app/dungeons/model';
 import { readTags } from '../../../../src/app/dungeons/tags';
 import { ALL_TERRAIN_KINDS } from '../../../../src/app/dungeons/terrain/catalog';
 import { type FloorPlan, FloorTerrain } from '../../../../src/app/dungeons/terrain/floorTerrain';
@@ -85,6 +85,12 @@ function topFloor(options: HandCaveOptions): FloorPlan {
 function lowerFloor(options: HandCaveOptions): FloorPlan {
   const under: DungeonRoom = { ...room(0, { x: -1, y: -1, w: 10, h: 10, axis: { x: 1, y: 0 } }), cells: square(0, 0, 7, 7) };
   return { rooms: [under], doors: [], stairs: options.pitch ? [pitchEnd(0)] : [], columns: [], offeredTerrain: ALL_TERRAIN_KINDS, cave: caveFloor([]) };
+}
+
+/** A chamber's roof and floor exits by their widths, each as deep as ten times its width in feet, so a test can tell them apart. */
+export function waysOf(up: readonly number[], down: readonly number[]): CaveVerticalExits {
+  const ways = (widths: readonly number[]): VerticalWay[] => widths.map((width) => ({ width, depth: width * 10 }));
+  return { up: ways(up), down: ways(down) };
 }
 
 /** The hand-built cave, ready for a terrain pass on floor 0. */

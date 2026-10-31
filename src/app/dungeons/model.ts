@@ -15,10 +15,10 @@ import type { RoomTypeId } from './themes/roomTypes';
 import type { ThemeChoice, ThemeId } from './themes/themeTypes';
 import type { DungeonTerrain, FiveRoomStage } from './terrainModel';
 
-export type { CoverLevel, DungeonTerrain, FiveRoomStage, HazardKind, TerrainKind, TerrainOpening, TerrainTraits } from './terrainModel';
+export type { CoverLevel, DungeonTerrain, FiveRoomStage, HazardKind, TerrainDrop, TerrainKind, TerrainOpening, TerrainTraits } from './terrainModel';
 export { FIVE_ROOM_STAGES } from './terrainModel';
 export type { DungeonGrowth, GrowthKind } from './growthModel';
-export type { CaveAlwaysTrait, CaveCharacter, CaveFault, CaveFloor, CaveModel, CaveNeverTrait, CaveSizeTier, CaveVariant, CaveVerticalExits, CaveWay, StairWay } from './caveModel';
+export type { CaveAlwaysTrait, CaveCharacter, CaveFault, CaveFloor, CaveModel, CaveNeverTrait, CaveSizeTier, CaveVariant, CaveVerticalExits, CaveWay, StairWay, VerticalKind, VerticalWay } from './caveModel';
 export type { DungeonStack, DungeonWindow, FloorWalls, GroundsKind, GroundsPiece, HouseGrounds, OutbuildingUse, WindowSize } from './houseModel';
 export type { PropKind } from './props/propKinds';
 

@@ -30,9 +30,8 @@ export function dropDepth(hand: Hand, rings: readonly Vec[][]): { depth: Field; 
   return { depth, inward };
 }
 
-/** How dark the drop is at a point, 0..1: its face by the way it looks, then its bottom. */
-export function dropTone(depth: Field, inward: (x: number, y: number) => Vec, bottom: DropBottom): Field {
-  const face = FACE[bottom];
+/** How dark the drop is at a point, 0..1: its face by the way it looks (`face` cells deep, narrower in a narrow hole), then its bottom. */
+export function dropTone(depth: Field, inward: (x: number, y: number) => Vec, bottom: DropBottom, face = FACE[bottom]): Field {
   return (x, y) => {
     const d = depth(x, y);
     if (d <= 0) return 0;
@@ -47,17 +46,17 @@ export function dropTone(depth: Field, inward: (x: number, y: number) => Vec, bo
   };
 }
 
-/** A drop drawn whole: rock face, depth, ledges, lip. `built` drops (a gallery's well) have dressed faces and no ledges. */
-export function drawDrop(hand: Hand, rings: Vec[][], bottom: DropBottom, built = false): void {
+/** A drop drawn whole: rock face (`face` cells wide), depth, ledges, lip. `built` drops (a gallery's well) have dressed faces and no ledges. */
+export function drawDrop(hand: Hand, rings: Vec[][], bottom: DropBottom, built = false, face = FACE[bottom]): void {
   const path = polysPath(rings);
   const bounds = grown(pointsBounds(rings.flat()), 0.1);
   const { depth, inward } = dropDepth(hand, rings);
   hand.surface(path, built ? 'dressed' : 'rock');
   if (bottom !== 'void') {
     // The bottom: floor far below, seen through the dark.
-    hand.surface(polysPath(rings.flatMap(r => insetRuns(r, FACE[bottom]).filter(run => run.length > 2))), 'floor');
+    hand.surface(polysPath(rings.flatMap(r => insetRuns(r, face).filter(run => run.length > 2))), 'floor');
   }
-  hand.tone(dropTone(depth, inward, bottom), bounds, path, 'depth');
+  hand.tone(dropTone(depth, inward, bottom, face), bounds, path, 'depth');
   if (!built) hand.line(ledges(rings, bottom), 'fine');
   for (const ring of rings) hand.edges(ring, false);
 }

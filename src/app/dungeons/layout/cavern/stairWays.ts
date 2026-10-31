@@ -7,19 +7,29 @@
 
 import { type FloorStack, stairEnd } from '../../floors/floorStack';
 import { contains, floorRect } from '../../geometry';
-import type { DungeonRoom, DungeonStair, StairWay } from '../../model';
+import type { DungeonRoom, DungeonStair, StairWay, VerticalWay } from '../../model';
 import { type Rng, chance } from '../../rng';
+import { verticalKindOf } from './veins/caveExits';
 
 /** The share of long stairwells that are scree, and of short ones that are pitches. */
 const LIKELY = 0.7;
-/** The narrowest floor exit, in feet, that is a shaft a body goes down upright. */
-const SHAFT_WIDTH = 5;
+/** The chamber a stairwell's end on `floor` stands in. */
+function chamberHolding(stair: DungeonStair, floor: { rooms?: readonly DungeonRoom[] }): DungeonRoom | undefined {
+  const spot = { x0: stair.x, y0: stair.y, x1: stair.x + stair.w - 1, y1: stair.y + stair.h - 1 };
+  return floor.rooms?.find((r) => r.kind === 'room' && contains(floorRect(r), spot));
+}
 
 /** Whether the chamber holding this stairwell's upper end on `floor` rolled a floor exit a body can go down upright. */
 function shaftAbove(stair: DungeonStair, floor: { rooms?: readonly DungeonRoom[] }): boolean {
-  const spot = { x0: stair.x, y0: stair.y, x1: stair.x + stair.w - 1, y1: stair.y + stair.h - 1 };
-  const room = floor.rooms?.find((r) => r.kind === 'room' && contains(floorRect(r), spot));
-  return (room?.vertical?.down ?? []).some((width) => width >= SHAFT_WIDTH);
+  return (chamberHolding(stair, floor)?.vertical?.down ?? []).some((way) => verticalKindOf(way.width) === 'shaft');
+}
+
+/**
+ * The floor exit a pitch goes down, given its upper end on `floor`: the widest the chamber there
+ * rolled, which the chamber's shafts leave to it; none where the chamber rolled no floor exit.
+ */
+export function pitchExit(upper: DungeonStair, floor: { rooms?: readonly DungeonRoom[] }): VerticalWay | undefined {
+  return chamberHolding(upper, floor)?.vertical?.down[0];
 }
 
 /**

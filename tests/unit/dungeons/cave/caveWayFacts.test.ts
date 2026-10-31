@@ -93,6 +93,56 @@ describe('the note names a cave\'s ways', () => {
     expect(facts).not.toContain('bottomless');
   });
 
+  it('says how deep each way up or down is and how it is passed, counting ways alike together', () => {
+    const one = plainCave(1);
+    const { room } = chamberWithWay(one);
+    const cells = floorCellsOf(room);
+    const terrain = one.floors[0]!.terrain;
+    const piece = (kind: 'aven' | 'shaft', at: number, depth: number, way: 'shaft' | 'chimney' | 'squeeze'): void => {
+      terrain.push({ ...draft(kind, room.id, [cells[at]!], { traits: { drop: { depth, kind: way } } }), ...(kind === 'shaft' && { opening: { bottom: null, link: 50 + at } }), id: terrain.length });
+    };
+    piece('shaft', 0, 30, 'shaft');
+    piece('shaft', 1, 20, 'chimney');
+    piece('shaft', 2, 20, 'chimney');
+    piece('aven', 3, 20, 'squeeze');
+    piece('aven', 4, 40, 'shaft');
+    piece('aven', 5, 10, 'chimney');
+    const facts = factsOf(one, room);
+    expect(facts).toContain('A shaft drops 30 ft into the dark.');
+    expect(facts).toContain('2 chimneys drop 20 ft into the dark.');
+    expect(facts).toContain('A vertical squeeze rises 20 ft into the dark.');
+    expect(facts).toContain('An aven rises 40 ft into the dark.');
+    expect(facts).toContain('A chimney rises 10 ft into the dark.');
+    expect(facts).not.toMatch(/Terrain: .*(Shaft|Chimney|Aven)/);
+
+    const two = plainCave(2);
+    const upper = two.floors[0]!;
+    const lower = two.floors[1]!;
+    const over = (c: { x: number; y: number }): boolean => upper.rooms.some((r) => floorCellsOf(r).some((d) => d.x === c.x && d.y === c.y));
+    const chamber = lower.rooms.find((r) => r.kind === 'room' && floorCellsOf(r).some(over))!;
+    lower.terrain.push({ ...draft('aven', chamber.id, [floorCellsOf(chamber).find(over)!], { traits: { drop: { depth: 30, kind: 'shaft' } } }), id: lower.terrain.length });
+    expect(factsOf(two, chamber, 1)).toContain('An aven rises 30 ft to floor A.');
+    const top = upper.rooms.find((r) => r.kind === 'room')!;
+    upper.terrain.push({ ...draft('shaft', top.id, [floorCellsOf(top)[0]!], { traits: { drop: { depth: 40, kind: 'chimney' } } }), opening: { bottom: 1, link: 77 }, id: upper.terrain.length });
+    expect(factsOf(two, top, 0)).toContain('A chimney drops 40 ft to floor B.');
+  });
+
+  it('says how far a pitch between floors drops and how it is passed, from either end', () => {
+    let found = 0;
+    for (let seed = 1; seed <= 8; seed++) {
+      const model = generateDungeon({ seed: seed * 919, theme: 'cavern', tags: [], floors: 2 });
+      model.floors.forEach((floor, index) => {
+        for (const stair of floor.stairs.filter((s) => s.way === 'pitch')) {
+          const room = floor.rooms.find((r) => r.kind === 'room' && floorCellsOf(r).some((c) => c.x === stair.x && c.y === stair.y));
+          if (!room) continue;
+          found++;
+          expect(factsOf(model, room, index)).toMatch(stair.to > index ? /A (pitch|chimney|vertical squeeze) drops 10 ft to floor B\./ : /(An aven|A chimney|A vertical squeeze) rises 10 ft to floor A\./);
+        }
+      });
+    }
+    expect(found).toBeGreaterThan(0);
+  });
+
   it('names a squeeze that leads on too tight to follow', () => {
     const model = plainCave(1);
     const { room } = chamberWithWay(model);

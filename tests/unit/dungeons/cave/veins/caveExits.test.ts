@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { SPECIAL_WAYS } from '../../../../../src/app/dungeons/caveModel';
-import { type CaveExit, PLAIN_EXITS, exitWidths, rollExits, rollLoopWay, verticalExits, wayOfWidth } from '../../../../../src/app/dungeons/layout/cavern/veins/caveExits';
+import { type CaveExit, PLAIN_EXITS, exitWidths, rollExits, rollLoopWay, verticalExits, verticalKindOf, wayOfWidth } from '../../../../../src/app/dungeons/layout/cavern/veins/caveExits';
+import { MAX_VERTICAL_DEPTH, verticalDepth } from '../../../../../src/app/dungeons/layout/cavern/veins/routeLength';
 import { rngFrom } from '../../../../../src/app/dungeons/rng';
 
 const ROLLS = 10_000;
@@ -77,8 +78,31 @@ describe('a chamber’s exits', () => {
     expect(ways.every((w) => w.width >= 2 && w.width <= 12 && w.way === wayOfWidth(w.width))).toBe(true);
   });
 
-  it('record the roof and floor exits by width, none where none was rolled', () => {
+  it('record the roof and floor exits by width and depth, none where none was rolled', () => {
     expect(verticalExits([{ width: 7, way: 'walk' }])).toBeUndefined();
-    expect(verticalExits([{ width: 7, way: 'walk', vertical: 'down' }, { width: 4, way: 'crawl', vertical: 'up' }, { width: 2, way: 'squeeze', vertical: 'down' }])).toEqual({ up: [4], down: [7, 2] });
+    expect(verticalExits([{ width: 7, way: 'walk', vertical: 'down', depth: 30 }, { width: 4, way: 'crawl', vertical: 'up', depth: 10 }, { width: 2, way: 'squeeze', vertical: 'down', depth: 60 }]))
+      .toEqual({ up: [{ width: 4, depth: 10 }], down: [{ width: 7, depth: 30 }, { width: 2, depth: 60 }] });
+  });
+
+  it('give every roof and floor exit a depth and no other exit one', () => {
+    for (const exits of rolls(31)) for (const exit of exits) expect(exit.depth !== undefined, JSON.stringify(exit)).toBe(exit.vertical !== undefined);
+  });
+
+  it('pass a way up or down by its width: a shaft from 5 ft, a chimney at 3 to 4, narrower a vertical squeeze', () => {
+    expect([12, 5, 4, 3, 2, 1].map(verticalKindOf)).toEqual(['shaft', 'shaft', 'chimney', 'chimney', 'squeeze', 'squeeze']);
+  });
+});
+
+describe('a way up or down', () => {
+  it('drops ten feet a turn of the exploding 1d4: 10, 20 and 30 ft a quarter each, the rest deeper, never past the cap', () => {
+    const rng = rngFrom(41);
+    const depths = Array.from({ length: ROLLS }, () => verticalDepth(rng));
+    const share = (test: (d: number) => boolean): number => depths.filter(test).length / ROLLS;
+    for (const depth of [10, 20, 30]) expect(Math.abs(share((d) => d === depth) - 0.25), `${depth} ft`).toBeLessThan(0.015);
+    expect(Math.abs(share((d) => d > 30) - 0.25)).toBeLessThan(0.015);
+    // A 4 explodes, so no way is 40 ft; the deeper ones start at 50.
+    expect(share((d) => d === 40)).toBe(0);
+    expect(depths.every((d) => d % 10 === 0 && d >= 10 && d <= MAX_VERTICAL_DEPTH)).toBe(true);
+    expect(depths).toContain(MAX_VERTICAL_DEPTH);
   });
 });

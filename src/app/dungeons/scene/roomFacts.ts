@@ -1,5 +1,5 @@
 import { formatList, type MessageKey, t } from '../../i18n';
-import { floorAbove, isAbove, stackOf } from '../floors/floorStack';
+import { isAbove, stackOf } from '../floors/floorStack';
 import { continuingCell } from '../layout/cavern/veins/continuing';
 import type { CaveWay, CellDir, CellPoint, DoorKind, DungeonDoor, DungeonRoom, DungeonStair, DungeonTerrain, GrowthKind, TerrainKind } from '../model';
 import { PROP_KINDS, propKey } from '../props/propKinds';
@@ -8,6 +8,7 @@ import type { VisibleFloor } from '../render/visibleDungeon';
 import type { DungeonView } from '../style';
 import { floorLetter } from './roomKeys';
 import { terrainName } from './terrainName';
+import { pitchSentence, saidApart, verticalWaySentences } from './verticalWayFacts';
 
 /**
  * The one line of physical facts a room's heading in the note carries: what someone standing in
@@ -92,17 +93,17 @@ function exitSentences(room: DungeonRoom, doors: readonly DungeonDoor[], cave: b
 
 const inRoom = (room: DungeonRoom, p: CellPoint): boolean => p.x >= room.x && p.x <= room.x + room.w && p.y >= room.y && p.y <= room.y + room.h;
 
-/** What a stairwell is from this end: stairs, or in a cave a pitch (an aven from below) or a scree slope. */
+/** What a stairwell that is no pitch is from this end: stairs, or in a cave a scree slope. */
 function stairKey(stair: DungeonStair, down: boolean): MessageKey {
-  if (stair.way === 'pitch') return down ? 'dungeonScene.pitchDown' : 'dungeonScene.avenUp';
   if (stair.way === 'scree') return down ? 'dungeonScene.screeDown' : 'dungeonScene.screeUp';
   return down ? 'dungeonScene.stairsDown' : 'dungeonScene.stairsUp';
 }
 
+/** Each stairwell of the room from this end; a pitch says how far it drops and how it is passed. */
 function stairSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
   return visible.floor.stairs
     .filter(stair => inRoom(room, { x: stair.x + stair.w / 2, y: stair.y + stair.h / 2 }))
-    .map(stair => t(stairKey(stair, isAbove(stackOf(visible.model), visible.index, stair.to)), { floor: floorLetter(stair.to) }));
+    .map(stair => (stair.way === 'pitch' ? pitchSentence(visible, stair) : t(stairKey(stair, isAbove(stackOf(visible.model), visible.index, stair.to)), { floor: floorLetter(stair.to) })));
 }
 
 function contents(visible: VisibleFloor, room: DungeonRoom, view: Pick<DungeonView, 'props'>): string[] {
@@ -158,31 +159,6 @@ function terrainSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
   return items.length ? [t('dungeonScene.terrain', { list: formatList(items) })] : [];
 }
 
-/** Whether a piece has a sentence of its own rather than a place in the terrain's list: a cave's avens, and its shafts into the dark. */
-function saidApart(visible: VisibleFloor, piece: DungeonTerrain): boolean {
-  return visible.floor.cave !== undefined && (piece.kind === 'aven' || (piece.kind === 'shaft' && piece.opening?.bottom === null));
-}
-
-/**
- * A cave chamber's ways up and down that are no stairwell: each aven, rising to the floor above
- * where a room of it lies over the aven and into the dark where none does, and the shafts that
- * drop into the dark (a shaft to a floor below is named with the terrain).
- */
-function shaftSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
-  if (!visible.floor.cave) return [];
-  const pieces = visible.floor.terrain.filter(piece => piece.room === room.id);
-  const above = floorAbove(stackOf(visible.model), visible.index);
-  const over = above === null ? [] : (visible.model.floors[above]?.rooms ?? []);
-  const rising = new Map<number | null, number>();
-  for (const aven of pieces.filter(piece => piece.kind === 'aven')) {
-    const to = aven.cells.every(c => over.some(r => holdsCell(r, c.x, c.y))) ? above : null;
-    rising.set(to, (rising.get(to) ?? 0) + 1);
-  }
-  const avens = [...rising].map(([to, count]) => (to === null ? t('dungeonScene.avenDark', { count }) : t('dungeonScene.avensUp', { count, floor: floorLetter(to) })));
-  const dark = pieces.filter(piece => piece.kind === 'shaft' && piece.opening?.bottom === null).length;
-  return [...avens, ...(dark ? [t('dungeonScene.shaftDark', { count: dark })] : [])];
-}
-
 /**
  * A cave chamber's way on that nobody can follow: a squeeze too tight to pass, named only where
  * the drawing has a cell to draw it from (`continuingCell`), so the note never names one the map lacks.
@@ -207,7 +183,7 @@ export function roomFacts(visible: VisibleFloor, room: DungeonRoom, view: Pick<D
     ...exitSentences(room, visible.doors, visible.floor.cave !== undefined),
     ...continuingSentences(visible, room),
     ...stairSentences(visible, room),
-    ...shaftSentences(visible, room),
+    ...verticalWaySentences(visible, room),
     ...contents(visible, room, view),
     ...terrainSentences(visible, room),
     ...waterSentences(visible, room, view),

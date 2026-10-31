@@ -7,13 +7,14 @@ import { placeVerticalExits } from '../../../../src/app/dungeons/terrain/cavern/
 import { holeProblems } from '../holeInvariants';
 import { routeProblems } from '../terrainInvariants';
 import { physicsProblems } from '../themeTerrainInvariants';
-import { CHAMBER_A, asFloor, handCave } from './veinsTerrainFixtures';
+import { pitchDrop } from '../../../../src/app/dungeons/scene/verticalWayFacts';
+import { CHAMBER_A, asFloor, handCave, waysOf } from './veinsTerrainFixtures';
 
 const inA = (c: { x: number; y: number }): boolean => CHAMBER_A.some((a) => a.x === c.x && a.y === c.y);
 
 describe('a chamber\'s exits in roof and floor, built by hand', () => {
   it('opens a shaft into the dark where no floor lies below, and an aven over a cell of the chamber for each roof exit, two at most', () => {
-    const { work, floors } = handCave({ vertical: { up: [6, 3, 2], down: [5, 3, 2] } });
+    const { work, floors } = handCave({ vertical: waysOf([6, 3, 2], [5, 3, 2]) });
     placeVerticalExits(work, 0);
     const shafts = floors[0]!.pieces.filter((p) => p.kind === 'shaft');
     const avens = floors[0]!.pieces.filter((p) => p.kind === 'aven');
@@ -27,13 +28,34 @@ describe('a chamber\'s exits in roof and floor, built by hand', () => {
     for (const aven of avens) {
       expect(aven.cells).toHaveLength(1);
       expect(aven.cells.every(inA)).toBe(true);
-      expect(aven.traits).toEqual({});
+      expect(aven.traits.hazard).toBeUndefined();
     }
     expect(routeProblems(asFloor(floors[0]!))).toEqual([]);
   });
 
+  it('gives each shaft and aven its way\'s depth and the kind its width makes of it, widest first', () => {
+    const { work, floors } = handCave({ vertical: waysOf([6, 3, 2], [5, 3, 2]) });
+    placeVerticalExits(work, 0);
+    const drops = (kind: string): unknown[] => floors[0]!.pieces.filter((p) => p.kind === kind).map((p) => p.traits.drop);
+    expect(drops('aven')).toEqual([{ depth: 60, kind: 'shaft' }, { depth: 30, kind: 'chimney' }]);
+    expect(drops('shaft')).toEqual([{ depth: 50, kind: 'shaft' }, { depth: 30, kind: 'chimney' }]);
+    // A bottomless shaft keeps the drop its catalog gives it.
+    for (const shaft of floors[0]!.pieces.filter((p) => p.kind === 'shaft')) expect(shaft.traits.elevation).toBe(-2);
+    const narrow = handCave({ vertical: waysOf([2], [2]) });
+    placeVerticalExits(narrow.work, 0);
+    expect(narrow.floors[0]!.pieces.map((p) => p.traits.drop?.kind)).toEqual(['squeeze', 'squeeze']);
+  });
+
+  it('makes a pitch as deep as the floors lie apart, passed as the floor exit it goes down is wide, a shaft where the chamber rolled none', () => {
+    for (const [down, kind] of [[[6], 'shaft'], [[4, 2], 'chimney'], [[2], 'squeeze'], [[], 'shaft']] as const) {
+      const { floors } = handCave({ vertical: waysOf([], down), below: true, pitch: true });
+      const model = { theme: 'cavern' as const, floors: floors.map(asFloor) };
+      for (const index of [0, 1]) expect(pitchDrop(model, index, model.floors[index]!.stairs[0]!), `${down} floor ${index}`).toEqual({ depth: 10, kind });
+    }
+  });
+
   it('drops a shaft into the chamber of the floor below, with its rubble there', () => {
-    const { work, floors } = handCave({ vertical: { up: [], down: [9] }, below: true });
+    const { work, floors } = handCave({ vertical: waysOf([], [9]), below: true });
     placeVerticalExits(work, 0);
     const shaft = floors[0]!.pieces.find((p) => p.kind === 'shaft');
     expect(shaft?.opening?.bottom).toBe(1);
@@ -43,7 +65,7 @@ describe('a chamber\'s exits in roof and floor, built by hand', () => {
   });
 
   it('counts a shaft its chamber already holds as one of its two', () => {
-    const { work, floors } = handCave({ vertical: { up: [], down: [5, 4, 2] } });
+    const { work, floors } = handCave({ vertical: waysOf([], [5, 4, 2]) });
     floors[0]!.place({ ...draft('shaft', 0, [{ x: 3, y: 3 }]), opening: { bottom: null, link: 99 } });
     placeVerticalExits(work, 0);
     expect(floors[0]!.pieces.filter((p) => p.kind === 'shaft')).toHaveLength(2);
@@ -51,11 +73,11 @@ describe('a chamber\'s exits in roof and floor, built by hand', () => {
 
   it('takes a pitch whose upper end the chamber holds for one of its floor exits: the way down is that pitch, not a shaft beside it', () => {
     for (let seed = 1; seed <= 12; seed++) {
-      const { work, floors } = handCave({ vertical: { up: [], down: [6] }, below: true, pitch: true }, seed);
+      const { work, floors } = handCave({ vertical: waysOf([], [6]), below: true, pitch: true }, seed);
       placeVerticalExits(work, 0);
       expect(floors[0]!.pieces.filter((p) => p.kind === 'shaft'), `seed ${seed}`).toEqual([]);
     }
-    const { work, floors } = handCave({ vertical: { up: [], down: [6, 3] }, below: true, pitch: true });
+    const { work, floors } = handCave({ vertical: waysOf([], [6, 3]), below: true, pitch: true });
     placeVerticalExits(work, 0);
     expect(floors[0]!.pieces.filter((p) => p.kind === 'shaft')).toHaveLength(1);
   });
@@ -63,7 +85,7 @@ describe('a chamber\'s exits in roof and floor, built by hand', () => {
   it('keeps shafts and avens off the lane, the doors and the cells before them', () => {
     const lane = CHAMBER_A.filter((c) => c.y === 3 || c.y === 4);
     for (let seed = 1; seed <= 12; seed++) {
-      const { work, floors } = handCave({ vertical: { up: [3, 2], down: [4, 2] }, lane }, seed);
+      const { work, floors } = handCave({ vertical: waysOf([3, 2], [4, 2]), lane }, seed);
       placeVerticalExits(work, 0);
       const laneKeys = keysOf(lane);
       const kept = keysOf([{ x: 1, y: 3 }, { x: 6, y: 3 }, ...floors[0]!.plan.doors.flatMap((d) => doorCells(d))]);
