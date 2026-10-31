@@ -80,10 +80,13 @@ function pinchesLane(door: DungeonFloor['doors'][number], lane: ReadonlySet<stri
   return door.kind === 'opening' && !door.wide && PINCHING.has(door.way ?? 'walk') && lane.has(key(door));
 }
 
-/** The lane cells beside the doors where the main path pinches: rock, which the main path's two cells pass there alone. */
-function pinchCells(floor: DungeonFloor): string[] {
+/**
+ * The rock beside the doors where the main path pinches, which the main path's two cells pass there
+ * alone. The lane leaves that cell out, as nobody walks it, so either side of the door may be it.
+ */
+function pinchCells(floor: DungeonFloor, cells: ReadonlySet<string>): string[] {
   const lane = new Set((floor.cave?.lane ?? []).map(key));
-  return floor.doors.filter((d) => pinchesLane(d, lane)).flatMap((d) => [-1, 1].map((s) => cellKey(d.x + s * d.dir.y, d.y + s * d.dir.x))).filter((k) => lane.has(k));
+  return floor.doors.filter((d) => pinchesLane(d, lane)).flatMap((d) => [-1, 1].map((s) => cellKey(d.x + s * d.dir.y, d.y + s * d.dir.x))).filter((k) => !cells.has(k));
 }
 
 /** Rule 10: no thin spur, no corner pinch, a 3 × 3 block in every chamber, the main path two cells wide but where it pinches through a crawl. */
@@ -104,7 +107,7 @@ export function guardProblems(model: DungeonModel, index: number): string[] {
     }
   }
   const ends = laneEnds(model, index);
-  if (ends && !wideWay(new Set([...cells, ...pinchCells(floor)]), ends[0], ends[1])) out.push('the main path is narrower than two cells');
+  if (ends && !wideWay(new Set([...cells, ...pinchCells(floor, cells)]), ends[0], ends[1])) out.push('the main path is narrower than two cells');
   return out;
 }
 

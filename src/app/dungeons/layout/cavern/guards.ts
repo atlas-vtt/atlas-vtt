@@ -60,6 +60,18 @@ export function pinchCells(doors: readonly DungeonDoor[], lane: readonly CellPoi
   );
 }
 
+/**
+ * The lane as the model keeps it: the cells a token walks, so a pinch's wall cell, rock where the
+ * path narrows to one cell, leaves it. Whatever reads the lane after shaping (the drawing's kept
+ * cells, the scene's checks) would otherwise take that rock for floor.
+ */
+export function walkedLane(grid: CaveGrid, doors: readonly DungeonDoor[], lane: readonly CellPoint[]): CellPoint[] {
+  const pinches = pinchCells(doors, lane);
+  if (pinches.size === 0) return [...lane];
+  const isFloor = floorOf(grid, doors);
+  return lane.filter((c) => !pinches.has(cellKey(c.x, c.y)) || isFloor(c.x, c.y));
+}
+
 export function guardProblems(grid: CaveGrid, floor: PlannedFloor, lane: readonly CellPoint[]): GuardProblem[] {
   const isFloor = floorOf(grid, floor.doors);
   const out: GuardProblem[] = [];

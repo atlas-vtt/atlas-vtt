@@ -16,7 +16,7 @@ import { swellChamber, widenNoise, widenTunnel } from './bulges';
 import type { ChamberField } from './chamberField';
 import { chamberSeeds, growChamber, reserveCores, smoothChamber } from './chambers';
 import { faultDirections, faultLines } from './faults';
-import { repairGuards } from './guards';
+import { repairGuards, walkedLane } from './guards';
 import { basinCount, caveHeights, hydrology, lowRooms, springByTheMouth } from './hydrology';
 import { caveSites } from './caveSites';
 import { type LaneWay, claimLane, laneEnds, mainRoute, wideLane, windingWay } from './mainPath';
@@ -165,7 +165,7 @@ function shapeFloor(how: FloorShaping, floors: readonly PlannedFloor[], index: n
   const cells = floor.rooms.map((room) => ({ ...room, cells: grid.cellsOf(room.id) }));
   const rooms = veins ? withContinuing(floorStream(seed, 'cave', index, 'continuing'), cells, { doors, stairs: floor.stairs }, veins.continuing) : cells;
   const lines = faultLines(floorStream(seed, 'cave', index, 'faults'), { rooms }, faults, veins?.faultLines);
-  const cave: CaveFloor = { lane, heights: caveHeights(seed, index, rooms), faults: lines, basins: [], streams: [], dams: [] };
+  const cave: CaveFloor = { lane: walkedLane(grid, doors, lane), heights: caveHeights(seed, index, rooms), faults: lines, basins: [], streams: [], dams: [] };
   return { rooms, doors, stairs: floor.stairs.map((stair) => ({ ...stair })), cave };
 }
 
