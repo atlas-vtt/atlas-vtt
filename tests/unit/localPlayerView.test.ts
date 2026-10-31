@@ -37,6 +37,15 @@ describe('restorable local player view', () => {
     expect(restored.getState().camera).toEqual({ centerX: 100, centerY: 200, scale: 1.5, width: 800, height: 450 });
   });
 
+  it('round-trips the frames the GM set per map, leaving out any that is no camera', async () => {
+    const original = createView();
+    const frames = { 'maps/tavern.atlasmap': { centerX: 100, centerY: 200, scale: 1.5, width: 800, height: 450 } };
+    original.updateSession({ tabId: 'tavern', filePath: 'maps/tavern.atlasmap', frozen: false, frames });
+    const restored = createView();
+    await restored.setState({ ...JSON.parse(JSON.stringify(original.getState())), frames: { ...frames, 'maps/cave.atlasmap': { centerX: 'x' } } }, {});
+    expect(restored.getState().frames).toEqual(frames);
+  });
+
   it.each([
     ['half a rectangle', { width: 800 }],
     ['a width of zero', { width: 0, height: 450 }],

@@ -3,6 +3,15 @@ const CLICK_TOLERANCE = 5;
 const MIN_SCALE = 0.1;
 const MAX_SCALE = 5;
 
+/** A move on screen as it is in a layer turned clockwise by `degrees` (a table TV's turn). */
+export function unturned(dx: number, dy: number, degrees: number): { x: number; y: number } {
+  const radians = (degrees * Math.PI) / 180;
+  // Rounded, so a quarter turn moves along one axis exactly
+  const cos = Math.round(Math.cos(radians) * 1e9) / 1e9;
+  const sin = Math.round(Math.sin(radians) * 1e9) / 1e9;
+  return { x: dx * cos + dy * sin, y: -dx * sin + dy * cos };
+}
+
 interface Press {
   x: number;
   y: number;
@@ -20,13 +29,16 @@ export class ImageOverlayControls {
   private x = 0;
   private y = 0;
   private press: Press | null = null;
-  private dragOrigin: { x: number; y: number } | null = null;
+  /** Where a drag began, on screen and in the image's offset. */
+  private drag: { clientX: number; clientY: number; x: number; y: number } | null = null;
 
   constructor(
     private readonly container: HTMLElement,
     private readonly image: HTMLImageElement,
     private readonly win: Window,
     private readonly onDismiss: () => void,
+    /** How far the image's layer is turned, in degrees clockwise, so a drag follows the pointer. */
+    private readonly turn: () => number = () => 0,
   ) {
     this.applyTransform();
     container.addEventListener('wheel', this.onWheel);
@@ -46,7 +58,7 @@ export class ImageOverlayControls {
     this.win.document.removeEventListener('mouseup', this.onMouseUp);
     this.win.removeEventListener('keydown', this.onKeyDown, true);
     this.press = null;
-    this.dragOrigin = null;
+    this.drag = null;
   }
 
   private applyTransform(): void {
@@ -70,21 +82,22 @@ export class ImageOverlayControls {
     // The close button handles its own click
     if (this.container.querySelector('.atlas-image-display__close')?.contains(event.target as Node)) return;
     this.press = { x: event.clientX, y: event.clientY, outsideImage: !this.isOnImage(event.clientX, event.clientY) };
-    this.dragOrigin = { x: event.clientX - this.x, y: event.clientY - this.y };
+    this.drag = { clientX: event.clientX, clientY: event.clientY, x: this.x, y: this.y };
     this.container.addClass('is-dragging');
   };
 
   private readonly onMouseMove = (event: MouseEvent): void => {
-    if (!this.dragOrigin) return;
-    this.x = event.clientX - this.dragOrigin.x;
-    this.y = event.clientY - this.dragOrigin.y;
+    if (!this.drag) return;
+    const moved = unturned(event.clientX - this.drag.clientX, event.clientY - this.drag.clientY, this.turn());
+    this.x = this.drag.x + moved.x;
+    this.y = this.drag.y + moved.y;
     this.applyTransform();
   };
 
   private readonly onMouseUp = (event: MouseEvent): void => {
     const press = this.press;
     this.press = null;
-    this.dragOrigin = null;
+    this.drag = null;
     this.container.removeClass('is-dragging');
     if (!press?.outsideImage) return;
     if (Math.hypot(event.clientX - press.x, event.clientY - press.y) <= CLICK_TOLERANCE) this.onDismiss();

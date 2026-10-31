@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_FRAME_PIECES } from '../../src/app/pixi/PlayerFrameTexture';
-import { framedCamera, playerFrame, PLAYER_FRAME_PIXEL_BUDGET, viewOf } from '../../src/app/services/playerFrame';
+import { framedCamera, playerFrame, PLAYER_FRAME_4K_PIXEL_BUDGET, PLAYER_FRAME_PIXEL_BUDGET, viewOf } from '../../src/app/services/playerFrame';
 import type { PlayerFrame, Screen, WorldView } from '../../src/app/types/playerFrame';
 
 function screen(width: number, height: number, resolution = 1): Screen {
@@ -82,6 +82,17 @@ describe('the players\' frame for a window', () => {
     // In the window's points the frame is the window: the pane's height fills it
     expect(frame.scale).toBeCloseTo(2160 / 800, 10);
     expect(contains(frame, view)).toBe(true);
+  });
+
+  it('gives a 4K window every pixel of its own where the device allows 4K, an ultrawide too', () => {
+    const view = paneView(1200, 800);
+    const tv = playerFrame(screen(3840, 2160), view, screen(1200, 800), PLAYER_FRAME_4K_PIXEL_BUDGET)!;
+    expect([tv.width, tv.height, tv.resolution]).toEqual([3840, 2160, 1]);
+    const ultrawide = playerFrame(screen(3440, 1440), view, screen(1200, 800), PLAYER_FRAME_4K_PIXEL_BUDGET)!;
+    expect([ultrawide.width, ultrawide.height]).toEqual([3440, 1440]);
+    // Beyond 4K the frame keeps its shape within that budget
+    const larger = playerFrame(screen(7680, 4320), view, screen(1200, 800), PLAYER_FRAME_4K_PIXEL_BUDGET)!;
+    expect([larger.width, larger.height]).toEqual([3840, 2160]);
   });
 
   it('keeps the window\'s shape under the budget, to the pixel', () => {

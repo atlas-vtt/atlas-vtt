@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, test, vi, beforeEach } from 'vitest';
+import { DEFAULT_TABLE_TV_SETTINGS } from '../../src/app/services/tableTvSettings';
 
 
 import { PlayerWindowService } from '../../src/app/services/PlayerWindowService';
@@ -37,7 +38,9 @@ describe('PlayerWindowService cleanup', () => {
     };
 
     const settings = {
-      getLocalPlayerViewSettings: () => ({ showWidgets: true }), onChange: () => vi.fn(),
+      getLocalPlayerViewSettings: () => ({ showWidgets: true }),
+      getTableTvSettings: () => DEFAULT_TABLE_TV_SETTINGS,
+      onChange: () => vi.fn(),
       initiativeLayout: () => ({ fromTurn: true, dock: 'right', collapsed: false }),
     };
     const service = new PlayerWindowService({ workspace: {} } as any, store as any, settings as any);

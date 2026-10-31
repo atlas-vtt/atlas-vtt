@@ -4,9 +4,9 @@ import type { PlayerCameraState } from '../local-player-view';
 import type { ViewAtlasState } from '../storeFactory';
 import type { AtlasSettings } from './SettingsService';
 import type { FramePiece, PlayerFrame, Screen } from '../types/playerFrame';
-import { playerFrame, viewOf } from './playerFrame';
 import type { PlayerRollSources } from './playerRollSource';
 import { PlayerFrameDemand, type DemandRegions } from './playerFrameDemand';
+import { drawCalibrationRuler, tableTvPlayerFrame, type TableTv } from './tableTvFrame';
 import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
 
 type PlayerViewSettings = AtlasSettings['localPlayerView'];
@@ -66,6 +66,8 @@ export interface PlayerFrameSource extends DemandRegions {
   beforeRender?: BeforeRenderCapture;
   /** Gives back what the source holds for players' frames, once the window shows it no longer. */
   release?(): void;
+  /** Grid cell size in world units, for showing cells at a real-world size; undefined when the scene opts out. */
+  getGridSize?(): number | undefined;
 }
 
 /**
@@ -83,6 +85,10 @@ export interface MirrorInputs {
   window(): Screen | null;
   /** A still frame to show instead of the live canvas. */
   heldFrame(): HTMLCanvasElement | null;
+  /** The table TV the window is: true scale, and the calibration ruler. Without it frames are `playerFrame`'s. */
+  tableTv?(): TableTv | undefined;
+  /** Most pixels a frame is rendered with (`playerFrame`); its default without. */
+  pixelBudget?(): number;
   /**
    * The camera players stay on while the DM's own moves. One with a world rectangle (`width`,
    * `height`) keeps showing that rectangle; one without is centred in the DM's screen as it is now.
@@ -236,9 +242,7 @@ export class PlayerFrameMirror {
   private frameOf(source: PlayerFrameSource): PlayerFrame | null {
     const window = this.inputs.window();
     const camera = this.cameraOf(source);
-    const screen = source.getScreen?.();
-    const view = camera ? viewOf(camera, screen) : null;
-    return window && view ? playerFrame(window, view, screen) : null;
+    return window && camera ? tableTvPlayerFrame(window, camera, source.getScreen?.(), this.inputs.tableTv?.(), source.getGridSize?.(), this.inputs.pixelBudget?.()) : null;
   }
 
   /** Bring a live frame of `source`, rendered through `frames`, onto the players' canvas. */
@@ -265,6 +269,8 @@ export class PlayerFrameMirror {
       this.stale = true;
       return;
     }
+    const tv = this.inputs.tableTv?.();
+    if (tv?.settings.showCalibration) drawCalibrationRuler(this.context, frame, tv);
     this.inputs.onFrame(this.cameraOf(source));
     this.failing = false;
   }

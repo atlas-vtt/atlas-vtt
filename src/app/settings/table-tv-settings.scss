@@ -1,0 +1,7 @@
+// The free field beside a preset dropdown (tableTvSettingsSection.ts): as wide as what it holds,
+// so the row's name and description keep the room
+.setting-item-control .atlas-preset-input {
+  width: auto;
+  field-sizing: content;
+  min-width: 4em;
+}

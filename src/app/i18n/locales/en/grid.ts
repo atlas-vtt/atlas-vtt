@@ -22,6 +22,8 @@ export const grid = {
   'grid.distanceFromCampaign': "Empty uses the campaign's {distance}",
   'grid.distanceFromGrid': "Empty uses the grid's {distance}",
   'grid.type': 'Grid type',
+  'grid.tableTvTrueScale': 'True scale on table TV',
+  'grid.tableTvTrueScaleHint': 'Off for maps without an aligned grid, such as region maps: the TV then follows your zoom',
   'grid.unit': 'Unit',
   'grid.unitOfCampaign': 'For every map while the campaign is played',
   'grid.unitOfCollection': 'For every scene of the collection',

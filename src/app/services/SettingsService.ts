@@ -19,7 +19,10 @@ import {
   type TutorialId,
   TUTORIAL_IDS,
 } from './atlasSettings';
-import { loadAnimateMaps, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, saveAnimateMaps, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality } from './deviceSettings';
+import {
+  loadAnimateMaps, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
+  saveAnimateMaps, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
+} from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
 import { pickLightingQuality } from '../lighting/deviceTier';
 import { readDock, type InitiativeLayout } from '../initiative/initiativeLayout';
@@ -27,6 +30,7 @@ import type { InitiativeTurnOptions } from '../initiative/turnOptions';
 import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
 import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
 import { readDungeonGeneratorSettings, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import type { TableTvSettings } from './tableTvSettings';
 
 export { TUTORIAL_IDS } from './atlasSettings';
 export type { AtlasSettings, NavigationInputMode, NavigationSettings, TutorialId } from './atlasSettings';
@@ -287,6 +291,18 @@ export class SettingsService {
     this.notify();
   }
 
+  /** Whether this device renders the player view with up to 4K pixels instead of 1440p. */
+  isPlayerView4k(): boolean {
+    return loadPlayerView4k(this.app);
+  }
+
+  /** The player view's resolution is this device's, as its graphics card pays for it: local storage, not the synced settings. */
+  setPlayerView4k(on: boolean): void {
+    if (this.isPlayerView4k() === on) return;
+    savePlayerView4k(this.app, on);
+    this.notify();
+  }
+
   getLaserPointerSettings(): LaserPointerSettings {
     return resolveLaserPointerSettings(this.settings.laserPointer);
   }
@@ -454,6 +470,15 @@ export class SettingsService {
     const stored: Record<string, unknown> = this.settings.localPlayerView;
     stored.tokenBarsCarriedOver = true;
     this.scheduleSave();
+  }
+
+  getTableTvSettings(): TableTvSettings {
+    return { ...this.settings.tableTv };
+  }
+
+  setTableTvSettings(changes: Partial<TableTvSettings>): void {
+    this.settings.tableTv = { ...this.settings.tableTv, ...changes };
+    this.commit();
   }
 
   getLocalPlayerViewSettings(): AtlasSettings['localPlayerView'] {

@@ -18,6 +18,8 @@ export const PICKED_LIGHTING_QUALITY_STORAGE_KEY = 'atlas-vtt:lighting-quality-p
 export const ANIMATE_MAPS_STORAGE_KEY = 'atlas-vtt:animate-maps';
 /** Whether the initiative tracker is collapsed on this device: `collapsed` or `expanded`, never a falsy value Obsidian would drop. */
 export const INITIATIVE_COLLAPSED_STORAGE_KEY = 'atlas-vtt:initiative-tracker';
+/** Whether this device renders the player view with up to 4K pixels: `4k`, else the default budget. */
+export const PLAYER_VIEW_4K_STORAGE_KEY = 'atlas-vtt:player-view-4k';
 
 /**
  * The vault's local storage. Obsidian stores a value only when it is truthy: `false`, `0` and `''`
@@ -125,6 +127,25 @@ export function saveAnimateMaps(storage: DeviceStorage, on: boolean): void {
     storage.saveLocalStorage(ANIMATE_MAPS_STORAGE_KEY, on ? ANIMATE_ON : ANIMATE_OFF);
   } catch (error) {
     console.error('[Atlas] Could not save whether this device animates maps', error);
+  }
+}
+
+/** Whether this device renders the player view with up to 4K pixels; off until chosen. */
+export function loadPlayerView4k(storage: DeviceStorage): boolean {
+  try {
+    return storage.loadLocalStorage(PLAYER_VIEW_4K_STORAGE_KEY) === '4k';
+  } catch (error) {
+    console.error('[Atlas] Could not read the player view resolution of this device', error);
+    return false;
+  }
+}
+
+export function savePlayerView4k(storage: DeviceStorage, on: boolean): void {
+  try {
+    // Off removes the key: the default budget again
+    storage.saveLocalStorage(PLAYER_VIEW_4K_STORAGE_KEY, on ? '4k' : null);
+  } catch (error) {
+    console.error('[Atlas] Could not save the player view resolution of this device', error);
   }
 }
 

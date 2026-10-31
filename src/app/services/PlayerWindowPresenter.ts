@@ -1,6 +1,6 @@
 import { App, View } from 'obsidian';
 import type { StoreApi } from 'zustand';
-import type { LocalPlayerView } from '../local-player-view';
+import type { LocalPlayerView, PlayerCameraState } from '../local-player-view';
 import type { AtlasView } from '../atlas-view';
 import { ATLAS_VIEW_TYPE, isAtlasView } from '../atlasViewType';
 import type { ViewAtlasState } from '../storeFactory';
@@ -27,6 +27,8 @@ let watchedView: AtlasView | null = null;
 export interface PresentOptions {
   /** Open the player window on this device even where another plugin shows players the scene (`showElsewhere`). */
   openWindow?: boolean;
+  /** Freeze players on this camera instead of following the DM's (Frame player view). */
+  camera?: PlayerCameraState;
   /** Show this level of the scene (the tab shows it first); without one, the level the tab shows. */
   levelId?: string;
 }
@@ -49,7 +51,7 @@ export async function presentActiveTab(app: App, options: PresentOptions = {}): 
  * keeps showing it while the DM browses other tabs, and so does a plugin that shows the presented
  * scene elsewhere (`showElsewhere`). With neither, or with `openWindow`, the player window is opened on it.
  */
-export async function presentTab(app: App, view: AtlasView, tabId: string, { openWindow = false, levelId }: PresentOptions = {}): Promise<void> {
+export async function presentTab(app: App, view: AtlasView, tabId: string, { openWindow = false, camera, levelId }: PresentOptions = {}): Promise<void> {
   const tab = findTab(view, tabId);
   if (!tab) return;
 
@@ -68,7 +70,7 @@ export async function presentTab(app: App, view: AtlasView, tabId: string, { ope
   presented.set({ tabId, filePath: tab.filePath, ...(level ? { levelId: level } : {}) });
   const service = PlayerWindowService.getInstance();
   if (service?.isWindowOpen()) {
-    service.presentCanvas(source, tabId, tab.filePath);
+    service.presentCanvas(source, tabId, tab.filePath, camera);
     watchPresentedTab(view, service);
   } else {
     // A window still waiting for its scene (restored, but its scene was not open) takes this one
@@ -287,6 +289,11 @@ function findTab(view: AtlasView, tabId: string): SceneTab | undefined {
 async function waitForRenderedFrameSource(view: AtlasView): Promise<PlayerFrameSource | null> {
   await waitForMapLoaded(view.atlasStore);
   await nextAnimationFrames(2);
+  return frameSourceOf(view);
+}
+
+/** The view's canvas as players would get it, or null while it shows no loaded scene. */
+export function frameSourceOf(view: AtlasView): PlayerFrameSource | null {
   // A scene that failed to load leaves a canvas without fog and tokens; players must not see it
   if (!view.atlasStore.getState().mapLoaded) return null;
   const renderer = view.serviceManager.getRendererService().getRenderer();
@@ -303,6 +310,8 @@ async function waitForRenderedFrameSource(view: AtlasView): Promise<PlayerFrameS
       rollSources: { viewId: view.viewId, mapPath, shownTokens: (tokenIds) => renderer.playerRollTokens(mapPath, tokenIds) },
     } : {}),
     withPlayerSafeFrame: (copy, settings, frame) => renderer.withPlayerSafeFrame(copy, settings, frame),
+    // Hex sizes are flat-to-flat, so true scale sizes a hex across its flats
+    getGridSize: () => (view.atlasStore.getState().grid?.tableTvTrueScale === false ? undefined : renderer.getGridOptions()?.size),
     ...(badgeNumbers ? { badgeNumbers } : {}),
     ...(rendersOnChange(app) ? {
       beforeRender: {

@@ -1,0 +1,7 @@
+## New
+- TrueScale, a new section of Atlas' settings for a TV lying on the table: turn the player view by 90, 180 or 270° to match the TV, lock the players' zoom so one grid cell measures the size of a miniature's base on the glass (worked out from the TV's size and resolution, with a ruler of 10 squares to measure and correct it; a scene can switch it off in its grid settings), and choose where the widgets and a displayed image sit on the player view and how large they are
+- Frame player view, a toolbar button beside the GM view switch while the player window is open: an outline shows what the players' screen covers, with what they see now dotted; move it over the map and click to freeze the players there. On a map they are not seeing yet, it presents that map already framed
+- Render up to 4K, in the command palette's player view settings: a 4K TV or an ultrawide screen gets a rendered pixel for every pixel of its screen instead of an upscaled 1440p picture, at up to 2.25 times the graphics work for the player view. It applies to this device only
+
+## Important changes
+- Presenting a scene no longer always unfreezes the players. A map you framed with Frame player view brings them back to that frame when it is presented again; players who are frozen stay frozen, gliding to your view on the same map (Pushed view glide in Atlas' settings, TrueScale) and taking your view of a new map at once. Players who are not frozen follow you as before; unfreeze them from the command palette

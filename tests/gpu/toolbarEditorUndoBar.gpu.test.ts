@@ -8,7 +8,7 @@ import {
 import type { StoredToolbarLayout } from '../../src/app/toolbar/toolbarLayout';
 
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: {} }));
-vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ openPlayerWindow: vi.fn(), presentActiveTab: vi.fn() }));
+vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ openPlayerWindow: vi.fn(), presentActiveTab: vi.fn(), presentTab: vi.fn(), frameSourceOf: vi.fn() }));
 vi.mock('../../src/app/react/components/command-palette/GridSettingsPanel', () => ({ GridSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/TokenSettingsPanel', () => ({ TokenSettingsPanel: () => null }));
 vi.mock('../../src/app/react/components/command-palette/WidgetSettingsPanel', () => ({ WidgetSettingsPanel: () => null }));
