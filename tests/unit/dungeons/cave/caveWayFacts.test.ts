@@ -174,10 +174,10 @@ describe('the note names a cave\'s ways', () => {
     model.cave!.variant = 'limestone';
     expect(caveCharacterLine(model)).toBeNull();
     model.cave!.character = { always: 'curves-back', never: 'dead-passages' };
-    expect(caveCharacterLine(model)).toBe('Water cut these caves. The passages curve back on themselves; no passage ends blind.');
-    expect(dungeonNote('The Vein', [], model)).toBe('# The Vein\n\nWater cut these caves. The passages curve back on themselves; no passage ends blind.\n');
+    expect(caveCharacterLine(model)).toBe('Water cut these caves. The passages curve back on themselves; its passages loop back into one another.');
+    expect(dungeonNote('The Vein', [], model)).toBe('# The Vein\n\nWater cut these caves. The passages curve back on themselves; its passages loop back into one another.\n');
     model.cave!.variant = 'fault';
-    expect(caveCharacterLine(model)).toBe('A fault tore these caves open. The passages curve back on themselves; no passage ends blind.');
+    expect(caveCharacterLine(model)).toBe('A fault tore these caves open. The passages curve back on themselves; its passages loop back into one another.');
     expect(dungeonNote('The Vein', [])).toBe('# The Vein\n');
   });
 
