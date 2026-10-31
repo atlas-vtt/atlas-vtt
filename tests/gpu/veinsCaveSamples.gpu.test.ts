@@ -33,12 +33,18 @@ const SAMPLES: readonly Sample[] = [
   { name: 'large-wet-11', request: { seed: 11, theme: 'cavern', tags: ['large', 'wet'], floors: 2 }, floors: [0, 1] },
   { name: 'small-cramped-winding-42', request: { seed: 42, theme: 'cavern', tags: ['small', 'cramped', 'winding'], floors: 1 }, floors: [0] },
   { name: 'medium-flooded-deep-7', request: { seed: 7, theme: 'cavern', tags: ['medium', 'flooded', 'deep'], floors: 3 }, floors: [0, 2] },
+  // One cave of each formation the tags name: sulphuric, fungal, a burrow, a fault.
+  { name: 'sulphuric-acid-3', request: { seed: 3, theme: 'cavern', tags: ['acid'], floors: 1 }, floors: [0] },
+  { name: 'fungal-overgrown-3', request: { seed: 3, theme: 'cavern', tags: ['overgrown'], floors: 1 }, floors: [0] },
+  { name: 'burrow-string-3', request: { seed: 3, theme: 'cavern', tags: ['string'], floors: 1 }, floors: [0] },
+  { name: 'fault-dry-crumbling-3', request: { seed: 3, theme: 'cavern', tags: ['dry', 'crumbling'], floors: 1 }, floors: [0] },
 ];
 
 /** What a summary says of each floor: its rooms, its doors and the terrain of each room. */
 function summary(model: DungeonModel): unknown {
   return {
     seed: model.seed,
+    formation: model.cave?.variant ?? null,
     character: model.cave?.character ?? null,
     floors: model.floors.map((floor, index) => ({
       floor: floorLetter(index),

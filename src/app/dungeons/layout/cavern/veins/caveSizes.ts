@@ -63,6 +63,10 @@ export interface TierRules {
   cap: ChamberTier;
   /** Every tier as likely as any other, and the tiniest and gargantuan caves twice that: a cave that changes scale unpredictably. */
   flat: boolean;
+  /** The chambers of each tier per hundred, where the cave's formation holds other sizes than the book's; unset, `TIER_WEIGHTS`. */
+  weights?: Readonly<Record<ChamberTier, number>>;
+  /** How many tiers from the common size a chamber may be drawn: a burrow is as wide as its maker throughout. Unset, any. */
+  reach?: number;
 }
 
 /** One draw's own circumstances on its floor. */
@@ -97,10 +101,11 @@ function across(from: ChamberTier, tier: ChamberTier): boolean {
 
 function tierWeights(rules: TierRules, draw: TierDraw): (readonly [ChamberTier, number])[] {
   return CHAMBER_TIERS.map((tier) => {
-    const base = rules.flat ? (FLAT_EXTREMES.has(tier) ? 2 : 1) : TIER_WEIGHTS[tier];
+    const base = rules.flat ? (FLAT_EXTREMES.has(tier) ? 2 : 1) : (rules.weights ?? TIER_WEIGHTS)[tier];
     const common = tier === rules.common ? (rules.commonWeight ?? COMMON_WEIGHT) : 1;
     const lean = draw.awayFrom !== undefined && across(draw.awayFrom, tier) ? LEAN_WEIGHT : 1;
-    return [tier, base * common * lean] as const;
+    const within = rules.reach === undefined || rules.common === undefined || Math.abs(tierIndex(tier) - tierIndex(rules.common)) <= rules.reach ? 1 : 0;
+    return [tier, base * common * lean * within] as const;
   });
 }
 
@@ -118,9 +123,9 @@ export function tierSize(rng: Rng, tier: ChamberTier): { width: number; depth: n
   return { width: pick(rng, floor.across) + 2, depth: int(rng, floor.along[0], floor.along[1]) + 2 };
 }
 
-/** The cave's most common size, drawn once as any chamber's is. */
-export function drawCommonTier(rng: Rng): ChamberTier {
-  return weighted(rng, CHAMBER_TIERS.map((tier) => [tier, TIER_WEIGHTS[tier]] as const));
+/** The cave's most common size, drawn once as any chamber's is, among the sizes its formation holds. */
+export function drawCommonTier(rng: Rng, weights: Readonly<Record<ChamberTier, number>> = TIER_WEIGHTS): ChamberTier {
+  return weighted(rng, CHAMBER_TIERS.map((tier) => [tier, weights[tier]] as const));
 }
 
 /** Whether a floor of `across` × `along` cells is one a chamber of `tier` is drawn at. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { generateDungeon } from '../../../../src/app/dungeons/generate';
-import { CAVE_ALWAYS_TRAITS, CAVE_NEVER_TRAITS } from '../../../../src/app/dungeons/caveModel';
+import { CAVE_ALWAYS_TRAITS, CAVE_NEVER_TRAITS, CAVE_VARIANTS } from '../../../../src/app/dungeons/caveModel';
 import { floorCellsOf } from '../../../../src/app/dungeons/geometry';
 import type { CaveWay, DungeonDoor, DungeonModel, DungeonRoom } from '../../../../src/app/dungeons/model';
 import { draft } from '../../../../src/app/dungeons/terrain/catalog';
@@ -150,19 +150,27 @@ describe('the note names a cave\'s ways', () => {
     expect(factsOf(model, room)).toContain('A squeeze leads on to the north, too tight to follow.');
   });
 
-  it('opens the note of a cave with a character with what it always and never does, in one sentence', () => {
+  it('opens the note of a cave with a character with what made it, then what it always and never does', () => {
     const model = plainCave(1);
+    model.cave!.variant = 'limestone';
     expect(caveCharacterLine(model)).toBeNull();
     model.cave!.character = { always: 'curves-back', never: 'dead-passages' };
-    expect(caveCharacterLine(model)).toBe('The passages curve back on themselves; no passage ends blind.');
-    expect(dungeonNote('The Vein', [], model)).toBe('# The Vein\n\nThe passages curve back on themselves; no passage ends blind.\n');
+    expect(caveCharacterLine(model)).toBe('Water cut these caves. The passages curve back on themselves; no passage ends blind.');
+    expect(dungeonNote('The Vein', [], model)).toBe('# The Vein\n\nWater cut these caves. The passages curve back on themselves; no passage ends blind.\n');
+    model.cave!.variant = 'fault';
+    expect(caveCharacterLine(model)).toBe('A fault tore these caves open. The passages curve back on themselves; no passage ends blind.');
     expect(dungeonNote('The Vein', [])).toBe('# The Vein\n');
   });
 
-  it('has a sentence for every character', () => {
+  it('has a sentence for every character and every formation', () => {
     for (const always of CAVE_ALWAYS_TRAITS) for (const never of CAVE_NEVER_TRAITS) {
       const line = caveCharacterLine({ cave: { variant: 'limestone', faults: [], character: { always, never } } });
-      expect(line).toMatch(/^[A-Z][^;]+; [a-z][^;]+\.$/);
+      expect(line).toMatch(/^Water cut these caves\. [A-Z][^;]+; [a-z][^;]+\.$/);
+      expect(line).not.toContain('dungeonScene');
+    }
+    for (const variant of CAVE_VARIANTS) {
+      const line = caveCharacterLine({ cave: { variant, faults: [], character: { always: 'low-roofs', never: 'calm-water' } } });
+      expect(line).toMatch(/^[A-Z][^.;]+\. The roofs hang low/);
       expect(line).not.toContain('dungeonScene');
     }
   });

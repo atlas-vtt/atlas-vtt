@@ -19,6 +19,7 @@ import { bankLedge } from './caveLedge';
 import { besideHole, besideWater, naturalPool } from './cavePools';
 import { crustAround } from './caveTextures';
 import { faultBand } from './faultBand';
+import { acidRises } from '../../layout/cavern/veins/caveFormation';
 
 const LAVA: Substance = { hazard: 'lava', name: 'dungeon.terrain.lavaFlow' };
 const ACID: Substance = { hazard: 'acid', name: 'dungeon.terrain.acidPool' };
@@ -47,14 +48,14 @@ export function holdsWater(work: TerrainWork, k: number, room: number): boolean 
   return (cave?.basins.includes(room) ?? false) || (cave?.dams.includes(room) ?? false);
 }
 
-/** What may run in a channel in this room of a cave: water where a stream runs on, lava deep down with `lava`, acid deep on a fault with `acid`. */
+/** What may run in a channel in this room of a cave: water where a stream runs on, lava deep down with `lava`, acid deep on a fault with `acid` or in a sulphuric cave. */
 function substancesIn(work: TerrainWork, k: number, room: number): Substance[] {
   const site = siteOf(work, k);
   if (!site) return [];
   const out: Substance[] = [];
   if (downstream(work, k, room) !== null) out.push(STREAM);
   if (work.tags.has('lava') && site.deep(room)) out.push(LAVA);
-  if (work.tags.has('acid') && site.deep(room) && site.faultOf(room)) out.push(ACID);
+  if (acidRises(work.tags, work.cave?.variant) && site.deep(room) && site.faultOf(room)) out.push(ACID);
   return out;
 }
 

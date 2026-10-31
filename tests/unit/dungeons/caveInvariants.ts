@@ -168,7 +168,7 @@ export function describeCaveInvariants(floors: number): void {
 
     it('keep hazards, blocking terrain and furniture off the lane and furniture off them, holes off water, and shape natural features as nature does', () => {
       expect(failures(eachFloor((run, i) => laneProblems(run.model.floors[i]!)))).toEqual([]);
-      expect(failures((run) => [...physicsProblems(run.model), ...shapeProblems(run.model, cavernProgramme(new Set(readTags(run.model.tags)))), ...mirrorProblems(run.model)])).toEqual([]);
+      expect(failures((run) => [...physicsProblems(run.model), ...shapeProblems(run.model, cavernProgramme(new Set(readTags(run.model.tags)), run.model.cave?.variant)), ...mirrorProblems(run.model)])).toEqual([]);
     });
 
     it('rule 1: stand water only where it gathers, run it downhill, never on raised rock; a dry cave none', () => {

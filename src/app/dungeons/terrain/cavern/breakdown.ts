@@ -2,7 +2,9 @@
  * Breakdown: what falls from a cave's roof where rock cannot hold. Under the widest span of each
  * floor (its largest chamber) a heap of fallen blocks in the middle third, loose rubble where a
  * pitch or a shaft comes down, and in a collapse chamber a choke of boulders at one of its ways out.
- * A cave whose boulders lie balanced everywhere (`balanced-boulders`) has both twice.
+ * A cave whose boulders lie balanced everywhere (`balanced-boulders`), and a fault's chasms, which
+ * still shift, have both twice. A burrow's maker tore the rock loose where it turned: loose rubble
+ * lies off the way through wherever the tube bends.
  */
 
 import { spotRect } from '../../floors/stairSpots';
@@ -91,8 +93,9 @@ export function placeBreakdown(work: TerrainWork, k: number, rc: RoomCells, rng:
   const room = rc.room;
   const chambers = floor.plan.rooms.filter((r) => r.kind === 'room');
   const largest = chambers.reduce((best, r) => (roomArea(r) > roomArea(best) ? r : best), chambers[0]!);
-  // A cave whose boulders lie balanced everywhere drops them under its two widest spans, and chokes its collapses twice.
-  const balanced = work.cave?.character?.always === 'balanced-boulders';
+  if (work.cave?.variant === 'burrow') rubbleAtBend(floor, rc, rng);
+  // A cave whose boulders lie balanced everywhere, or a fault, drops them under its two widest spans, and chokes its collapses twice.
+  const balanced = work.cave?.character?.always === 'balanced-boulders' || work.cave?.variant === 'fault';
   const spans = balanced ? [largest, ...secondLargest(chambers, largest)] : [largest];
   if (spans.some((span) => span.id === room.id)) {
     const middle = middleThird(floorCellsOf(room));
@@ -103,6 +106,19 @@ export function placeBreakdown(work: TerrainWork, k: number, rc: RoomCells, rng:
   if (work.typed(k, room.id)?.spec.id !== 'collapse-chamber') return;
   choke(work, k, rc, rng);
   if (balanced) choke(work, k, rc, rng);
+}
+
+/** The most cells of loose rubble a bend of a burrow holds. */
+const BEND_RUBBLE = 3;
+
+/** Loose rubble in the middle of a room whose ways lie on walls at right angles, off the main path. */
+function rubbleAtBend(floor: FloorTerrain, rc: RoomCells, rng: Rng): void {
+  const room = rc.room.id;
+  const doors = floor.plan.doors.filter((d) => d.kind !== 'secret' && (d.from === room || d.to === room));
+  const bends = doors.some((a, k) => doors.slice(k + 1).some((b) => a.dir.x * b.dir.x + a.dir.y * b.dir.y === 0));
+  if (!bends) return;
+  const cells = shuffled(rng, middleThird(floorCellsOf(rc.room)).filter((c) => rc.fits([c]) && !rc.inLane(c))).slice(0, BEND_RUBBLE);
+  if (cells.length > 0) layLoose(floor, rc, 'rubble-field', cells);
 }
 
 /** The largest chamber after `largest`, if there is one. */

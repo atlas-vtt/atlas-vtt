@@ -73,7 +73,7 @@ function choices(g: Great, type: string | undefined): (readonly [GreatPattern, n
     if (chasm && pattern !== 'boulders' && pattern !== 'columns') return 0;
     if (FORMATIONS.has(pattern) && !forms) return 0;
     let w = BASE[pattern];
-    if (always === 'balanced-boulders' && (pattern === 'boulders' || pattern === 'breakdown')) w *= FAVOURED;
+    if ((always === 'balanced-boulders' || work.cave?.variant === 'fault') && (pattern === 'boulders' || pattern === 'breakdown')) w *= FAVOURED;
     if (always === 'flowstone-crust' && (pattern === 'forest' || pattern === 'ring')) w *= FAVOURED;
     if (type === 'collapse-chamber' && (pattern === 'boulders' || pattern === 'breakdown')) w *= FAVOURED;
     if (type === 'grand-cavern' && (pattern === 'columns' || pattern === 'ring')) w *= FAVOURED;

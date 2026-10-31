@@ -11,11 +11,23 @@ const tags = (list: string[]): ReadonlySet<DungeonTag> => new Set(readTags(list)
 const TAG_SETS: string[][] = [[], ['small'], ['large'], ['round', 'colonnades'], ['deep', 'winding'], ['cramped'], ['lava']];
 
 describe('a cavern’s params', () => {
-  it('pick the variant by the tags', () => {
+  it('pick the formation by the tags, lava and the Underdark first; none where they name none', () => {
     expect(caveVariant(tags(['lava', 'large']))).toBe('lava-tube');
     expect(caveVariant(tags(['deep']))).toBe('underdark');
-    expect(caveVariant(tags(['spacious']))).toBe('underdark');
-    expect(caveVariant(tags([]))).toBe('limestone');
+    expect(caveVariant(tags(['spacious', 'acid']))).toBe('underdark');
+    expect(caveVariant(tags(['acid', 'overgrown']))).toBe('sulphuric');
+    expect(caveVariant(tags(['overgrown', 'string']))).toBe('fungal');
+    expect(caveVariant(tags(['string']))).toBe('burrow');
+    expect(caveVariant(tags(['dry', 'crumbling']))).toBe('fault');
+    expect(caveVariant(tags(['dry']))).toBeNull();
+    expect(caveVariant(tags([]))).toBeNull();
+  });
+
+  it('lay a cave without the book’s rules out as a river’s, a lava tube or the Underdark', () => {
+    expect(caveParams(dungeonParams(readTags(['overgrown', 'acid']))).cave?.variant).toBe('limestone');
+    expect(caveParams(dungeonParams(readTags(['string']))).cave?.variant).toBe('limestone');
+    expect(caveParams(dungeonParams(readTags(['lava']))).cave?.variant).toBe('lava-tube');
+    expect(caveParams(dungeonParams(readTags(['large']))).cave?.variant).toBe('underdark');
   });
 
   it('build no round rooms and no colonnades, and mark the params as a cave’s', () => {

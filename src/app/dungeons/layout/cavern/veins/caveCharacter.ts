@@ -80,7 +80,7 @@ export function characterModifiers(character: CaveCharacter): CharacterModifiers
   return {
     loops: (always === 'curves-back' ? 2 : 1) * (never === 'dead-passages' ? 2 : 1),
     passageSides: always === 'curves-back' ? 0.75 : 0.5,
-    exits: { shrink: always === 'low-roofs' ? 2 : 0, squeezes: always === 'narrows-then-opens', noWalk, vertical, breakdowns: always === 'balanced-boulders' },
+    exits: { shrink: always === 'low-roofs' ? 2 : 0, squeezes: always === 'narrows-then-opens', noWalk, vertical, upShare: 0.5, breakdowns: always === 'balanced-boulders' },
     tierStep: always === 'maximum-size' ? 1 : 0,
     shiftingScale: always === 'shifting-scale',
     leanAway: never === 'regular-caves',

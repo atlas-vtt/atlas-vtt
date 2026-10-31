@@ -9,3 +9,4 @@
 - Passages run as long as the route takes, from a few steps to long galleries
 - Every cave has a character of its own that shapes it, such as passages that curve back on themselves, roofs kept low, exits hidden in the floor, still pools wherever they can lie, or no passage that ends blind; the scene note says what the cave does
 - A dead-end chamber usually has a squeeze leading on, too tight to follow
+- Caves come from what made them: a river, a fault, rot, fungus or a burrowing beast, each with its own passages, rock and water; the note says which

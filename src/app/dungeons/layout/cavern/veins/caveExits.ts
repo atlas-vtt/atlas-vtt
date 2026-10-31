@@ -40,11 +40,13 @@ export interface ExitRules {
   noWalk: boolean;
   /** Where roof and floor exits go: either, or all down (exits hidden in the floor), or all up. */
   vertical: 'any' | 'up' | 'down';
+  /** Where either may be, the share that leads up: a half, less in a fault that falls away, more where gas rots the rock upward. */
+  upShare: number;
   /** A double's special way is a breakdown twice as often as any other: a cave whose boulders lie balanced everywhere. */
   breakdowns: boolean;
 }
 
-export const PLAIN_EXITS: ExitRules = { shrink: 0, squeezes: false, noWalk: false, vertical: 'any', breakdowns: false };
+export const PLAIN_EXITS: ExitRules = { shrink: 0, squeezes: false, noWalk: false, vertical: 'any', upShare: 0.5, breakdowns: false };
 
 /** A face of the die in six is the roof, one the floor: a third of exits lead up or down. */
 export const VERTICAL_CHANCE = 1 / 3;
@@ -91,7 +93,7 @@ function bentWidth(rng: Rng, width: number, rules: ExitRules): number {
 /** Up or down for a roof or floor exit, a third of the time; its draws are made whatever the rules say. */
 function verticalOf(rng: Rng, rules: ExitRules): 'up' | 'down' | undefined {
   const vertical = chance(rng, VERTICAL_CHANCE);
-  const up = chance(rng, 0.5);
+  const up = chance(rng, rules.upShare);
   if (!vertical) return undefined;
   return rules.vertical === 'any' ? (up ? 'up' : 'down') : rules.vertical;
 }

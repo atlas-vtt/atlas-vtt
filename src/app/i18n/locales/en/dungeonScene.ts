@@ -65,6 +65,15 @@ export const dungeonScene = {
 
   // A cave's character, the note's first line: what it always does, then what it never does, as one sentence.
   'dungeonScene.character': '{always}; {never}.',
+  // What made the cave, said first as a fact of the rock, then its character.
+  'dungeonScene.formationLine': '{formation} {character}',
+  'dungeonScene.formation.limestone': 'Water cut these caves.',
+  'dungeonScene.formation.lavaTube': 'Molten rock ran through these tubes and drained away.',
+  'dungeonScene.formation.underdark': 'These caves reach down into the vast halls of the deep.',
+  'dungeonScene.formation.fault': 'A fault tore these caves open.',
+  'dungeonScene.formation.sulphuric': 'Rot ate these caves upward.',
+  'dungeonScene.formation.fungal': 'Fungus split and widened these caves.',
+  'dungeonScene.formation.burrow': 'Something huge dug this tube.',
   'dungeonScene.character.always.curvesBack': 'The passages curve back on themselves',
   'dungeonScene.character.always.narrowsThenOpens': 'Its ways pinch to squeezes and open out again beyond',
   'dungeonScene.character.always.lowRoofs': 'The roofs hang low over every way',

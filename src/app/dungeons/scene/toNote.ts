@@ -1,6 +1,6 @@
 import { t, type MessageKey } from '../../i18n';
 import type { NotePin } from '../../types';
-import type { CaveAlwaysTrait, CaveNeverTrait, DungeonModel } from '../model';
+import type { CaveAlwaysTrait, CaveNeverTrait, CaveVariant, DungeonModel } from '../model';
 import { visibleFloor } from '../render/visibleDungeon';
 import type { DungeonView } from '../style';
 import { roomFacts } from './roomFacts';
@@ -66,10 +66,29 @@ const NEVER: Readonly<Record<CaveNeverTrait, MessageKey>> = {
   'plain-walk': 'dungeonScene.character.never.plainWalk',
 };
 
-/** A cave's character as someone who walked it would put it, in one sentence; null for a model without one. */
+/** What made the cave, said as a fact of the rock. */
+const FORMATION: Readonly<Record<CaveVariant, MessageKey>> = {
+  limestone: 'dungeonScene.formation.limestone',
+  'lava-tube': 'dungeonScene.formation.lavaTube',
+  underdark: 'dungeonScene.formation.underdark',
+  fault: 'dungeonScene.formation.fault',
+  sulphuric: 'dungeonScene.formation.sulphuric',
+  fungal: 'dungeonScene.formation.fungal',
+  burrow: 'dungeonScene.formation.burrow',
+};
+
+/**
+ * A cave's character as someone who walked it would put it: what made it, then what it always and
+ * never does; null for a model without a character. A formation this Atlas does not know (a model
+ * from a newer one) is left out.
+ */
 export function caveCharacterLine(model: Pick<DungeonModel, 'cave'>): string | null {
-  const character = model.cave?.character;
-  return character ? t('dungeonScene.character', { always: t(ALWAYS[character.always]), never: t(NEVER[character.never]) }) : null;
+  const cave = model.cave;
+  const character = cave?.character;
+  if (!cave || !character) return null;
+  const line = t('dungeonScene.character', { always: t(ALWAYS[character.always]), never: t(NEVER[character.never]) });
+  const formation: MessageKey | undefined = FORMATION[cave.variant];
+  return formation ? t('dungeonScene.formationLine', { formation: t(formation), character: line }) : line;
 }
 
 /** The scene's note: the GM's name, a cave's character, then a heading per room with its line of facts. */

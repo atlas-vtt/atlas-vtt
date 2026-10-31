@@ -6,8 +6,17 @@
 
 import type { CellPoint } from './model';
 
-/** Limestone (karst) by default, a lava tube with `lava`, the Underdark for large, spacious or deep caves. */
-export type CaveVariant = 'limestone' | 'lava-tube' | 'underdark';
+/**
+ * What made the cave, and so what its passages, rock and water are like. The natural formations
+ * are Veins of the Earth's: `limestone` is the river-cut cave (wet, smooth, dripstone; the id is
+ * kept, saved models name it), a `fault` a dry jagged chasm system, `sulphuric` rock rotted upward
+ * by gas, `fungal` passages split and widened by fungus, a `burrow` one tube some huge thing dug.
+ * A lava tube comes with `lava`, the Underdark with large, spacious or deep caves. The book's built
+ * routes (a mine, war works, a sunken gigastructure) are no caves: they are the Fortress's to build.
+ */
+export type CaveVariant = 'limestone' | 'lava-tube' | 'underdark' | 'fault' | 'sulphuric' | 'fungal' | 'burrow';
+
+export const CAVE_VARIANTS: readonly CaveVariant[] = ['limestone', 'lava-tube', 'underdark', 'fault', 'sulphuric', 'fungal', 'burrow'];
 
 /** How a stairwell joins two cave floors: a pitch (a shaft on a rope, an aven seen from below) or a scree slope. */
 export type StairWay = 'pitch' | 'scree';

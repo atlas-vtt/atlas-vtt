@@ -89,7 +89,7 @@ function finishFloor(seed: number, index: number, parts: FloorParts, terrain: Fl
   const outside = house && ((x: number, y: number): boolean => !house.has(cellKey(x, y)));
   addShallowWater(terrain, waterCells);
   // A cave's life keeps to its zones: daylight by the mouth, fungi by water and roosts, nothing where lava runs.
-  const life = site && caveLife(site, { rooms, doors, terrain: terrain.pieces });
+  const life = site && caveLife(site, { rooms, doors, terrain: terrain.pieces }, params.cave?.variant);
   const pieces = addUndergrowth(seed, terrain, waterCells, flora, { built: parts.water !== null, ruined: params.tags.has('ruined'), aboveGround, openAbove: parts.openAbove, ...(life && { mayGrow: life }), ...(outside && { outside }) });
   // Pieces come after every piece of terrain, water and undergrowth: none of them waits on what is drawn.
   terrain.placePieces();
@@ -111,7 +111,8 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const base = definition.params?.(plain) ?? plain;
   const sized = fiveRoom ? fiveRoomParams(base) : base;
   // A Cavern follows the book's cave rules, its character drawn once; a Forest's glades keep their own.
-  const params = theme === 'cavern' ? withVeins(sized, stream(seed, 'cave', 'character')) : sized;
+  // Its formation comes from the tags, else from a stream of its own, so every other roll stays.
+  const params = theme === 'cavern' ? withVeins(sized, stream(seed, 'cave', 'character'), stream(seed, 'cave', 'formation')) : sized;
   const chosen = chooseWaterLevel(seed, request.waterLevel, params.waterLevel);
   // A lived-in cave has water to live by, and one that holds still pools wherever it can has some, unless the GM asked for none.
   const least = params.cave && request.waterLevel === undefined ? Math.max(params.tags.has('inhabited') ? LIVED_IN_WATER : 0, params.cave.veins?.rules.leastWater ?? 0) : 0;
@@ -127,7 +128,7 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const shaped = params.cave ? shapeCaves(seed, params, laid, boss, rolled, stack) : null;
   const planned = shaped?.floors ?? laid;
   const sites = shaped ? caveSites(planned) : null;
-  const themed = typeDungeon(seed, theme, params.tags, planned, below, shaped?.cave.character);
+  const themed = typeDungeon(seed, theme, params.tags, planned, below, shaped?.cave);
   const { typed } = themed;
   // A built theme's floors are dry unless the GM or the tags ask for water; then it stands only where its rooms have it.
   const { built } = themed.theme.definition;

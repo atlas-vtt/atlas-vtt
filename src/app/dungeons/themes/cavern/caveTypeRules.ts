@@ -1,12 +1,13 @@
 /**
  * What a Cavern knows of its rooms beyond their traits, read from its geology (`caveSites`), and
  * which rooms a type may take there: a lake only where water gathers, a gallery along a fault,
- * lava and acid only deep and with their tags, a lived-in cave's hollows near the mouth and water.
+ * lava and acid only deep and with their tags (acid in a sulphuric cave without), a lived-in cave's hollows near the mouth and water.
  */
 
 import { floorRect, intersection, roomArea } from '../../geometry';
 import type { CaveSites } from '../../layout/cavern/caveSites';
 import { caveVariant } from '../../layout/cavern/caveParams';
+import { acidRises } from '../../layout/cavern/veins/caveFormation';
 import { nearFault } from '../../layout/cavern/faults';
 import type { CaveCharacter, CaveVariant, DungeonFloor } from '../../model';
 import { neighbours } from '../../roomGraph';
@@ -29,7 +30,7 @@ export interface CaveFacts {
 
 export function caveFacts(input: ThemeFactsInput, sites: readonly CaveSites[]): CaveFacts {
   const faults = [...new Set(input.floors.flatMap((floor) => floor.cave?.faults.map((f) => f.angle) ?? []))];
-  return { sites: [...sites], variant: caveVariant(input.tags), inhabited: isInhabited(input.tags, sites), tags: input.tags, floors: input.floors, faults, ...(input.character && { character: input.character }) };
+  return { sites: [...sites], variant: input.variant ?? caveVariant(input.tags) ?? 'limestone', inhabited: isInhabited(input.tags, sites), tags: input.tags, floors: input.floors, faults, ...(input.character && { character: input.character }) };
 }
 
 /** A lava flow or an acid spring needs this much floor: room beside the way through for it and a bank to stand on. */
@@ -109,13 +110,14 @@ export function allowsType(facts: CaveFacts, type: RoomTypeId, ref: RoomRef): bo
     case 'collapse-chamber':
       return doors(facts, ref) >= 3 || underPitch(facts, ref);
     case 'fungus-grove':
-      return site.nearWater(ref.room, 1);
+      // Fungus made a fungal cave, and grows wherever it opened the rock.
+      return facts.variant === 'fungal' || site.nearWater(ref.room, 1);
     case 'crystal-grotto':
       return basin || (neighbours(floor.rooms.length, floor.doors)[ref.room] ?? []).some((n) => cave?.basins.includes(n));
     case 'lava-tube':
       return facts.tags.has('lava') && site.deep(ref.room) && roomArea(room) >= MOLTEN_AREA;
     case 'sulphur-spring':
-      return facts.tags.has('acid') && site.deep(ref.room) && site.faultOf(ref.room) !== null && roomArea(room) >= MOLTEN_AREA;
+      return acidRises(facts.tags, facts.variant) && site.deep(ref.room) && site.faultOf(ref.room) !== null && roomArea(room) >= MOLTEN_AREA;
     case 'roost':
       return (site.hopsFromMouth[ref.room] ?? Infinity) <= 1;
     default:
