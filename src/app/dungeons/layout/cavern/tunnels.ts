@@ -109,18 +109,23 @@ function besideOtherFloor(grid: CaveGrid, room: DungeonRoom, c: CellPoint): bool
  * the walls round it, keeping the lane cells it holds and widening to `width`. With `spareWalls`
  * it leaves a wall it shares with another room's rectangle to that room: a cell taken there
  * stands beside the other's floor, which can then no longer be taken, and a long passage laid
- * along it would be cut in two.
+ * along it would be cut in two. Where sparing them leaves no way between the passage's ends (its
+ * own rectangle crowded by a neighbour's, the way round it only past another's wall), it spares none.
  */
 export function carveTunnel(rng: Rng, grid: CaveGrid, room: DungeonRoom, ends: readonly CellPoint[], width: TunnelWidth, lane: ReadonlySet<string>, rooms: readonly DungeonRoom[] = [room], spareWalls = false): void {
   const reach = tunnelReach(room);
   const own = floorRect(room);
-  const spared = (c: CellPoint): boolean => spareWalls && !inRect(own, c.x, c.y) && besideOtherFloor(grid, room, c);
-  const may = new Set(
-    cellsOf(reach)
-      .filter((c) => grid.holds(c.x, c.y, room.id) || (inTunnelReach({ rooms, doors: grid.doors }, room, c.x, c.y) && [ROCK, room.id].includes(grid.envelope(c.x, c.y)) && grid.mayClaim(c.x, c.y, room.id) && !spared(c)))
-      .map(key),
-  );
-  const keep = [...new Set([...ends.map(key), ...grid.required(room.id), ...lane])].filter((k) => may.has(k));
+  const mayOf = (spare: boolean): Set<string> =>
+    new Set(
+      cellsOf(reach)
+        .filter((c) => grid.holds(c.x, c.y, room.id) || (inTunnelReach({ rooms, doors: grid.doors }, room, c.x, c.y) && [ROCK, room.id].includes(grid.envelope(c.x, c.y)) && grid.mayClaim(c.x, c.y, room.id) && !(spare && !inRect(own, c.x, c.y) && besideOtherFloor(grid, room, c))))
+        .map(key),
+    );
+  const wanted = [...new Set([...ends.map(key), ...grid.required(room.id), ...lane])];
+  const keepOf = (cells: ReadonlySet<string>): string[] => wanted.filter((k) => cells.has(k));
+  const spared = mayOf(spareWalls);
+  const may = spareWalls && !witness(spared, keepOf(spared)) ? mayOf(false) : spared;
+  const keep = keepOf(may);
   const kept = new Set(keep);
   const alive = new Set(may);
   let way = witness(alive, keep);

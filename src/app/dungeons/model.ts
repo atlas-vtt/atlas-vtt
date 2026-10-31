@@ -7,7 +7,7 @@
  * in that continuous space, so a cell's centre is (x + 0.5, y + 0.5) and columns stand on grid vertices.
  */
 
-import type { CaveFloor, CaveModel, CaveSizeTier, CaveVerticalExits, CaveWay, StairWay } from './caveModel';
+import type { CaveFloor, CaveModel, CaveSizeTier, CaveVerticalExits, CaveWay, NarrowWay, StairWay } from './caveModel';
 import type { DungeonGrowth } from './growthModel';
 import type { DungeonStack, DungeonWindow, FloorWalls, HouseGrounds } from './houseModel';
 import type { PropKind } from './props/propKinds';
@@ -18,7 +18,7 @@ import type { DungeonTerrain, FiveRoomStage, TerrainDrop } from './terrainModel'
 export type { CoverLevel, DungeonTerrain, FiveRoomStage, HazardKind, TerrainDrop, TerrainKind, TerrainOpening, TerrainTraits } from './terrainModel';
 export { FIVE_ROOM_STAGES } from './terrainModel';
 export type { DungeonGrowth, GrowthKind } from './growthModel';
-export type { CaveAlwaysTrait, CaveCharacter, CaveFault, CaveFloor, CaveModel, CaveNeverTrait, CaveSizeTier, CaveVariant, CaveVerticalExits, CaveWay, StairWay, VerticalKind, VerticalWay } from './caveModel';
+export type { CaveAlwaysTrait, CaveCharacter, CaveFault, CaveFloor, CaveModel, CaveNeverTrait, CaveSizeTier, CaveVariant, CaveVerticalExits, CaveWay, NarrowWay, StairWay, VerticalKind, VerticalWay } from './caveModel';
 export type { DungeonStack, DungeonWindow, FloorWalls, GroundsKind, GroundsPiece, HouseGrounds, OutbuildingUse, WindowSize } from './houseModel';
 export type { PropKind } from './props/propKinds';
 
@@ -84,10 +84,10 @@ export interface DungeonRoom {
    */
   tight?: true;
   /**
-   * A cave's leaf chamber's way on that nobody can follow: a squeeze leaving by this side from the
-   * chamber's rim cell furthest that way, too tight to pass. Unset where the chamber has none.
+   * A cave passage off the main path entered by a crawl, a squeeze or a letterbox: one cell wide and
+   * low up to its next door, passed this way along its whole length (`narrowRoutes`).
    */
-  continuing?: CellDir;
+  narrow?: NarrowWay;
 }
 
 /**

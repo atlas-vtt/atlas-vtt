@@ -12,6 +12,7 @@ import { dungeonScene } from '../../src/app/dungeons/scene/toScene';
 import { groundsWalls } from '../../src/app/dungeons/scene/toGroundsWalls';
 import { dungeonWalls } from '../../src/app/dungeons/scene/toWalls';
 import { wallInkWidth } from '../../src/app/dungeons/render/wallInk';
+import { NARROW_SHARE, narrowMargin } from '../../src/app/dungeons/render/cave/outlineGuard';
 import { DEFAULT_VIEW, type DungeonView } from '../../src/app/dungeons/style';
 import { dungeonStyle, type DungeonStyleId } from '../../src/app/dungeons/styleCatalog';
 import { alphaAt, changedMask, gridAgreement, inkEdgesFromWalls, inkMask, outlinesOffObjects, wallsInTerrain, wallsOnInk, type Picture } from './dungeonFidelityChecks';
@@ -123,9 +124,22 @@ function draw(model: DungeonModel, look: DungeonStyleId, view: DungeonView, floo
 }
 
 /** Walls that pass through the inside of a narrows or a lane cell, more than `inset` px from its edges, as `x,y` of the first point found. */
-function wallsInWay(floor: DungeonModel['floors'][number], walls: readonly WallSegment[], placement: { originCell: { x: number; y: number }; pxPerCell: number }, inset: number): string[] {
-  const cells = [...(floor.cave?.lane ?? []), ...floor.doors.filter(d => d.kind !== 'secret' && d.from !== null).flatMap(d => [{ x: d.x, y: d.y }, ...(d.wide ? [{ x: d.x + d.wide.x, y: d.y + d.wide.y }] : [])])];
+/**
+ * The walls inside a narrows or on the main path, `inset` from each cell's edges. A narrow way's
+ * cell (its door's, its passage's) is drawn narrower than itself, the rock closing in, so only a
+ * middle square half as wide as its share is held open there (`narrowMargin`), where a token stands.
+ */
+function wallsInWay(floor: DungeonModel['floors'][number], walls: readonly WallSegment[], placement: { originCell: { x: number; y: number }; pxPerCell: number }, inset: number, halfInk: number): string[] {
+  const narrowShare = new Map<string, number>();
+  for (const room of floor.rooms) if (room.narrow) for (const c of floorCellsOf(room)) narrowShare.set(cellKey(c.x, c.y), NARROW_SHARE[room.narrow]);
+  for (const d of floor.doors) if (d.kind === 'opening' && d.from !== null && d.to !== null && (d.way === 'crawl' || d.way === 'squeeze' || d.way === 'letterbox')) narrowShare.set(cellKey(d.x, d.y), Math.min(NARROW_SHARE[d.way], narrowShare.get(cellKey(d.x, d.y)) ?? 1));
+  const narrowCells = floor.rooms.filter(room => room.narrow).flatMap(floorCellsOf);
+  const cells = [...(floor.cave?.lane ?? []), ...floor.doors.filter(d => d.kind !== 'secret' && d.from !== null).flatMap(d => [{ x: d.x, y: d.y }, ...(d.wide ? [{ x: d.x + d.wide.x, y: d.y + d.wide.y }] : [])]), ...narrowCells];
   const { originCell, pxPerCell } = placement;
+  const insetOf = (c: { x: number; y: number }): number => {
+    const share = narrowShare.get(cellKey(c.x, c.y));
+    return share === undefined ? inset : pxPerCell * narrowMargin(share) + halfInk;
+  };
   const out: string[] = [];
   for (const wall of walls.filter(w => w.type !== 'door')) {
     for (let t = 0; t <= 1; t += 0.05) {
@@ -134,7 +148,8 @@ function wallsInWay(floor: DungeonModel['floors'][number], walls: readonly WallS
       const inside = cells.some(c => {
         const x0 = (c.x - originCell.x) * pxPerCell;
         const y0 = (c.y - originCell.y) * pxPerCell;
-        return x > x0 + inset && x < x0 + pxPerCell - inset && y > y0 + inset && y < y0 + pxPerCell - inset;
+        const within = insetOf(c);
+        return x > x0 + within && x < x0 + pxPerCell - within && y > y0 + within && y < y0 + pxPerCell - within;
       });
       if (inside) {
         out.push(`${Math.round(x)},${Math.round(y)}`);
@@ -223,7 +238,7 @@ describe('a dungeon scene and its map image', () => {
 
         // No wall stands inside a cave's narrows or on its main path: the way two cells wide stays open.
         // A cell's edge may wander a fifth of a cell in (the outline keeps the middle 0.6 of every such cell, `CELL_CORE` in `outlineGuard.ts`).
-        if (floor.cave) expect(wallsInWay(floor, walls, placement, px * 0.2 + halfInk), `${where}: walls in a narrows or on the lane`).toEqual([]);
+        if (floor.cave) expect(wallsInWay(floor, walls, placement, px * 0.2 + halfInk, halfInk), `${where}: walls in a narrows or on the lane`).toEqual([]);
 
         // No wall stands in a hole or on a bridge: sight passes over a chasm. A hole over a floor below is cut out of the image; a bridge is not
         expect(wallsInTerrain(floor, walls, placement), `${where}: walls in holes or on bridges`).toEqual([]);

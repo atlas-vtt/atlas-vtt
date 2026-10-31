@@ -3,13 +3,18 @@
  * is free, but the grid and the drawing must agree for movement: a floor cell has its middle on
  * drawn floor and at least `FLOOR_SHARE` of it drawn floor; a rock cell has its middle on rock and
  * at most `ROCK_SHARE` of it drawn floor. In a kept cell (the way through, where something stands)
- * no wall enters the middle `CELL_CORE` at all. And the outline is one clean ring per piece: no
- * ring crosses itself or another.
+ * no wall enters the middle `CELL_CORE` at all. A cell of a narrow way (a crawl, a squeeze, a
+ * letterbox) is drawn narrower than itself, the rock closing in on both sides, so it needs only its
+ * way's share drawn floor (`NARROW_SHARE`), measured exactly, and no wall in a middle square half as
+ * wide as that, where a token stands. And the outline is one clean ring per piece: no ring crosses
+ * itself or another.
  */
 
+import type { NarrowWay } from '../../caveModel';
 import type { CellPoint } from '../../model';
 import type { CellGrid } from '../../water/wetGrid';
 import type { Vec } from '../geometry';
+import { cellFloorShare, ringIndex } from './cellArea';
 
 /** Samples a cell is read with, each way; odd, so one lies on the cell's middle. */
 const SAMPLES = 7;
@@ -22,7 +27,12 @@ const EPS = 1e-12;
 export const CELL_CORE = 0.6;
 const CORE_MARGIN = (1 - CELL_CORE) / 2;
 
+/** The least share of a narrow way's cell drawn floor: the way is as narrow as it is low. */
+export const NARROW_SHARE: Readonly<Record<NarrowWay, number>> = { crawl: 0.6, squeeze: 0.45, letterbox: 0.3 };
+
 type IsFloor = (x: number, y: number) => boolean;
+/** The least share of a narrow way's cell drawn floor (`NARROW_SHARE`), undefined for any other cell. */
+export type NarrowShare = (x: number, y: number) => number | undefined;
 
 /** Where the outline misleads: cells drawn as the other kind, and the corners of segments that cross. */
 export interface OutlineFaults {
@@ -113,17 +123,25 @@ function drawnSamples(rings: readonly Vec[][], box: CellGrid): { counts: Uint16A
   return { counts, middles, x0, y0, w, h };
 }
 
-/** The cells drawn as the other kind. */
-function misdrawnCells(rings: readonly Vec[][], isFloor: IsFloor, box: CellGrid): CellPoint[] {
+/** The cells drawn as the other kind; a narrow way's cell drawn floor by less than its share. */
+function misdrawnCells(rings: readonly Vec[][], isFloor: IsFloor, box: CellGrid, narrow?: NarrowShare): CellPoint[] {
   const { counts, middles, x0, y0, w, h } = drawnSamples(rings, box);
   const most = SAMPLES * SAMPLES;
+  const index = narrow && ringIndex(rings);
   const out: CellPoint[] = [];
   for (let gy = 0; gy < h; gy++) {
     for (let gx = 0; gx < w; gx++) {
       const i = gy * w + gx;
+      const x = x0 + gx;
+      const y = y0 + gy;
+      const floor = isFloor(x, y);
+      const least = floor ? narrow?.(x, y) : undefined;
+      if (least !== undefined && index) {
+        if (!middles[i] || cellFloorShare(rings, index, x, y) < least) out.push({ x, y });
+        continue;
+      }
       const share = counts[i]! / most;
-      const floor = isFloor(x0 + gx, y0 + gy);
-      if (floor ? share < FLOOR_SHARE || !middles[i] : share > ROCK_SHARE || middles[i]) out.push({ x: x0 + gx, y: y0 + gy });
+      if (floor ? share < FLOOR_SHARE || !middles[i] : share > ROCK_SHARE || middles[i]) out.push({ x, y });
     }
   }
   return out;
@@ -202,7 +220,7 @@ function entersSquare(a: Vec, b: Vec, x0: number, y0: number, x1: number, y1: nu
 }
 
 /** The kept cells whose middle `CELL_CORE` a segment of the outline enters. */
-function breachedCores(rings: readonly Vec[][], kept: IsFloor): CellPoint[] {
+function breachedCores(rings: readonly Vec[][], margin: (x: number, y: number) => number | undefined): CellPoint[] {
   const out = new Map<number, CellPoint>();
   for (const ring of rings) {
     for (let i = 0; i < ring.length; i++) {
@@ -210,7 +228,8 @@ function breachedCores(rings: readonly Vec[][], kept: IsFloor): CellPoint[] {
       const b = ring[(i + 1) % ring.length]!;
       for (let y = Math.floor(Math.min(a.y, b.y)); y <= Math.floor(Math.max(a.y, b.y)); y++) {
         for (let x = Math.floor(Math.min(a.x, b.x)); x <= Math.floor(Math.max(a.x, b.x)); x++) {
-          if (kept(x, y) && entersSquare(a, b, x + CORE_MARGIN, y + CORE_MARGIN, x + 1 - CORE_MARGIN, y + 1 - CORE_MARGIN)) out.set((x + 32768) * 65536 + (y + 32768), { x, y });
+          const m = margin(x, y);
+          if (m !== undefined && entersSquare(a, b, x + m, y + m, x + 1 - m, y + 1 - m)) out.set((x + 32768) * 65536 + (y + 32768), { x, y });
         }
       }
     }
@@ -218,10 +237,24 @@ function breachedCores(rings: readonly Vec[][], kept: IsFloor): CellPoint[] {
   return [...out.values()];
 }
 
-/** Everything wrong with the outline: misdrawn cells, kept cells whose middle a wall enters, and crossing segments. */
-export function outlineFaults(rings: readonly Vec[][], isFloor: IsFloor, box: CellGrid, kept?: IsFloor): OutlineFaults {
-  const cells = misdrawnCells(rings, isFloor, box);
-  return { cells: kept ? [...cells, ...breachedCores(rings, kept)] : cells, crossings: crossingSegments(rings) };
+/**
+ * Everything wrong with the outline: misdrawn cells, kept cells whose middle a wall enters (a
+ * narrow way's cell, kept or not, only its middle half as wide as its share, where a token stands),
+ * and crossing segments.
+ */
+export function outlineFaults(rings: readonly Vec[][], isFloor: IsFloor, box: CellGrid, kept?: IsFloor, narrow?: NarrowShare): OutlineFaults {
+  const cells = misdrawnCells(rings, isFloor, box, narrow);
+  const margin = (x: number, y: number): number | undefined => {
+    const share = narrow?.(x, y);
+    if (share !== undefined) return isFloor(x, y) ? narrowMargin(share) : undefined;
+    return kept?.(x, y) ? CORE_MARGIN : undefined;
+  };
+  return { cells: kept || narrow ? [...cells, ...breachedCores(rings, margin)] : cells, crossings: crossingSegments(rings) };
+}
+
+/** How far from a narrow way's cell's edges no wall may come: its middle square, half as wide as its share. */
+export function narrowMargin(share: number): number {
+  return (1 - share / 2) / 2;
 }
 
 export function faultless(faults: OutlineFaults): boolean {

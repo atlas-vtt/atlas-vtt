@@ -55,7 +55,6 @@ function summary(model: DungeonModel): unknown {
         size: `${room.w}×${room.h}`,
         up: room.vertical?.up ?? [],
         down: room.vertical?.down ?? [],
-        continuing: room.continuing ?? null,
         terrain: [...new Set(floor.terrain.filter((piece) => piece.room === room.id).map((piece) => piece.kind))],
       })),
       doors: floor.doors.map((door) => ({ from: door.from, to: door.to, kind: door.kind, way: door.way ?? null, width: door.width ?? null, wide: Boolean(door.wide) })),

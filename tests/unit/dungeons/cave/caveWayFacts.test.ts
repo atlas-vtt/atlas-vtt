@@ -15,7 +15,6 @@ function plainCave(floors: number): DungeonModel {
   delete model.cave?.character;
   for (const floor of model.floors) {
     for (const door of floor.doors) delete door.way;
-    for (const room of floor.rooms) delete room.continuing;
     floor.terrain = floor.terrain.filter((p) => p.kind !== 'aven' && !(p.kind === 'shaft' && p.opening?.bottom === null));
   }
   return model;
@@ -168,13 +167,6 @@ describe('the note names a cave\'s ways', () => {
       });
     }
     expect(found).toBeGreaterThan(0);
-  });
-
-  it('names a squeeze that leads on too tight to follow', () => {
-    const model = plainCave(1);
-    const { room } = chamberWithWay(model);
-    room.continuing = { x: 0, y: -1 };
-    expect(factsOf(model, room)).toContain('A squeeze leads on to the north, too tight to follow.');
   });
 
   it('opens the note of a cave with a character with what made it, then what it always and never does', () => {

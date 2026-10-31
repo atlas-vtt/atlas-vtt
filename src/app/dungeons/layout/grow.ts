@@ -6,7 +6,7 @@
 
 import type { CellDir, CellPoint } from '../model';
 import type { DungeonParams } from '../params';
-import { type CellRect, contains, rectsClash, rectsTouch } from '../geometry';
+import { type CellRect, contains, dir, rectsClash, rectsTouch } from '../geometry';
 import type { KeyedRng, Rng } from '../rng';
 import { type Branch, type CaveBranching, branchesOf } from './branches';
 import { type CaveExit, type WayRoll, onlyCrawlsOn, rollExits, verticalExits } from './cavern/veins/caveExits';
@@ -14,7 +14,7 @@ import { GARGANTUAN_FLOOR_ROOMS, type TierDraw } from './cavern/veins/caveSizes'
 import { RoomIndex } from './roomIndex';
 import { type RoomSize, drawDoorKind, drawSize, routePassage } from './sizes';
 import { chainedBranches } from './cavern/veins/routeChain';
-import { REGULAR_ZONE, type WorkLayout, type WorkRoom, doorMayOpen, isNormal, roomAt, roomRect } from './workLayout';
+import { REGULAR_ZONE, type WorkLayout, type WorkRoom, doorMayOpen, isNormal, rectPastMouth, roomAt, roomRect } from './workLayout';
 
 /** Corridors do not count towards size; this keeps a corridor maze from growing forever. */
 const MAX_TOTAL_ROOMS = 400;
@@ -46,12 +46,21 @@ interface QueuedRoom {
 }
 
 /**
- * Whether a room of this shape may stand here: walls may be shared, floors never, and the reserved
- * ground stays clear. `index`, where given, holds every room of the layout as it stands (while the
- * tree grows), and is asked instead of each room.
+ * How far past a cave's mouth door a room's walls may reach, the way the mouth faces: its floor no
+ * further out than the door's line, so the floor shaped round it (a cell of swell) reaches the
+ * ground's line at most and a passage along it keeps its winding room there (`holdPastMouths`).
+ */
+const MOUTH_WALL_REACH = 1;
+
+/**
+ * Whether a room of this shape may stand here: walls may be shared, floors never, the reserved
+ * ground stays clear, and in a cave no floor lies further out than the mouth's door
+ * (`WorkLayout.mouth`). `index`, where given, holds every room of the layout as it stands (while
+ * the tree grows), and is asked instead of each room.
  */
 export function roomFits(layout: WorkLayout, rect: CellRect, ignore: ReadonlySet<number>, first: boolean, index?: RoomIndex): boolean {
   if (!first && layout.reserved && rectsTouch(rect, layout.reserved)) return false;
+  if (!first && layout.mouth && rectPastMouth(layout.mouth, rect) > MOUTH_WALL_REACH) return false;
   if (layout.within && !contains(layout.within, rect)) return false;
   if (index) return !index.clashes(rect, ignore);
   return layout.rooms.every((room) => room.removed || ignore.has(room.id) || !rectsClash(rect, roomRect(room)));
@@ -175,6 +184,7 @@ export function growTree(rngOf: KeyedRng, params: DungeonParams, root: FloorRoot
       layout.doors.push({ x: item.origin.x, y: item.origin.y, dir: item.axis, kind: drawDoorKind(rng, !isNormal(parent) && !isNormal(room)), from: item.parent, to: room.id, loop: false, ...way });
     } else if (!root.landing) {
       layout.doors.push({ x: item.origin.x, y: item.origin.y, dir: item.axis, kind: 'opening', from: null, to: room.id, loop: false });
+      if (params.cave?.veins) layout.mouth = { origin: item.origin, out: dir(-item.axis.x, -item.axis.y) };
     }
     if (isNormal(room)) normals++;
     for (const group of roomBranches(rng, rngOf, params, layout, room, item, item.route ? item.route.slice(1) : (drawn.route ?? []))) {

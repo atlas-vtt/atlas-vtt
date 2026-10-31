@@ -54,7 +54,6 @@ describe('a cave’s character', () => {
     expect(plain.oneWayOn).toBe(false);
     expect(of('curves-back', 'regular-caves').exits.breakdowns).toBe(false);
     expect(plain.leanAway).toBe(true);
-    expect(plain.continuing).toBe(0.5);
     expect(of('curves-back', 'dead-passages').loops).toBe(4);
     expect(of('curves-back', 'calm-water').passageSides).toBeGreaterThan(0.5);
     expect(of('low-roofs', 'calm-water').exits.shrink).toBe(2);
@@ -66,7 +65,7 @@ describe('a cave’s character', () => {
     expect(of('up-and-down', 'plain-walk')).toMatchObject({ steps: 6, exits: { noWalk: true } });
     expect(of('up-and-down', 'sloped-walls')).toMatchObject({ steps: 0, pitchesOnly: true });
     expect(of('blocked-ways', 'standing-room')).toMatchObject({ blockedWays: 1 / 3, exits: { noWalk: true } });
-    expect(of('narrows-then-opens', 'dead-passages')).toMatchObject({ opensPastSqueeze: true, continuing: 1, exits: { squeezes: true } });
+    expect(of('narrows-then-opens', 'dead-passages')).toMatchObject({ opensPastSqueeze: true, exits: { squeezes: true } });
     expect(of('shifting-scale', 'calm-water').shiftingScale).toBe(true);
     // A formation sets the share of roof and floor exits leading up; a floor-exits or roof-exits cave sends them all one way whatever it is.
     const formed = (always: (typeof CAVE_ALWAYS_TRAITS)[number], variant: 'fault' | 'sulphuric' | 'burrow'): ReturnType<typeof characterModifiers> => withFormation(of(always, 'calm-water'), FORMATIONS[variant], false);

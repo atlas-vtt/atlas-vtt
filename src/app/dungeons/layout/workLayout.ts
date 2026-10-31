@@ -66,6 +66,27 @@ export interface WorkLayout {
   blocked: ReadonlySet<string>;
   /** A cave whose chambers are sized by tier: every chamber gets one, a chamber sized another way the one its floor reaches. */
   tiered?: true;
+  /**
+   * A cave's mouth on the entry floor: its door and the way it faces out. No room grows past it,
+   * so the mouth opens on the floor's edge and not into a bay the cave closes round.
+   */
+  mouth?: Mouth;
+}
+
+/** A cave's way in from outside: its door cell, and the way out through it. */
+export interface Mouth {
+  origin: CellPoint;
+  out: CellDir;
+}
+
+/** How far the cell lies past the mouth's door, the way the mouth faces out: 1 is the ground before it. */
+export function pastMouth(mouth: Mouth, cell: CellPoint): number {
+  return (cell.x - mouth.origin.x) * mouth.out.x + (cell.y - mouth.origin.y) * mouth.out.y;
+}
+
+/** The furthest any cell of the rectangle lies past the mouth's door, the way it faces out. */
+export function rectPastMouth(mouth: Mouth, rect: CellRect): number {
+  return Math.max(pastMouth(mouth, { x: rect.x0, y: rect.y0 }), pastMouth(mouth, { x: rect.x1, y: rect.y1 }));
 }
 
 export const REGULAR_ZONE = 0;

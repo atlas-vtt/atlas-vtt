@@ -16,7 +16,7 @@ import { type BuiltFloor, type FloorRequest, buildFloorLayout } from '../layout/
 import type { CompactLayout } from '../layout/compact';
 import { dir, floorRect } from '../geometry';
 import type { CaveFloorPlan } from '../layout/cavern/caveGrid';
-import { caveFits, furtherStairFits } from '../layout/cavern/caveFits';
+import { caveFits, furtherStairFits, mouthsOnEdge } from '../layout/cavern/caveFits';
 import { type LaneEnd, finalEnd } from '../layout/cavern/mainPath';
 import { TWO_CONNECTIONS_FROM, type FloorShape, type PlacedStair, chooseOnward, extraConnection, normalRooms } from './connections';
 import { type FloorStack, floorStack, isAbove, stairEnd } from './floorStack';
@@ -113,10 +113,12 @@ function linkFloor(seed: number, earlier: FloorShape, later: FloorShape, index: 
 /**
  * Whether a cave floor can be shaped: a 3 × 3 block in every chamber, and its main path two cells
  * wide from where it is entered to its way down (`descent`), or on the last floor to its boss room
- * or farthest room. Always, for any other theme.
+ * or farthest room; on the entry floor every way in opens on the floor's edge (`mouthsOnEdge`).
+ * Always, for any other theme.
  */
 function laneHolds(params: DungeonParams, floor: CaveFloorPlan, index: number, from: LaneEnd, descent: PlacedStair | null, boss: boolean): boolean {
   if (!params.cave) return true;
+  if (from.kind === 'entrance' && params.cave.veins && !mouthsOnEdge(floor)) return false;
   if (!descent) return caveFits(floor, from, finalEnd(floor, from, boss), index);
   return caveFits({ ...floor, stairs: [...floor.stairs, { ...descent.spot, to: index + 1 }] }, from, { kind: 'stair', spot: descent.spot }, index);
 }

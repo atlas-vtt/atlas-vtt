@@ -36,7 +36,7 @@ describe('cave sites', () => {
     expect(found).toBeGreaterThan(20);
   });
 
-  it('call deep the deepest floor of several, and the last third by hops of one', () => {
+  it('call deep the deepest floor of several, and of one its last third by hops and its boss room', () => {
     for (const model of models) {
       const sites = caveSites(model.floors);
       model.floors.forEach((floor, f) => {
@@ -45,7 +45,7 @@ describe('cave sites', () => {
         const far = Math.max(...hops);
         for (const room of floor.rooms) {
           const h = site.hopsFromMouth[room.id] ?? Infinity;
-          const expected = model.floors.length > 1 ? f === model.floors.length - 1 : Number.isFinite(h) && h >= (far * 2) / 3;
+          const expected = model.floors.length > 1 ? f === model.floors.length - 1 : room.boss || (Number.isFinite(h) && h >= (far * 2) / 3);
           expect(site.deep(room.id)).toBe(expected);
         }
       });

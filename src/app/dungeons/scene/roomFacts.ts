@@ -1,6 +1,5 @@
 import { formatList, type MessageKey, t } from '../../i18n';
 import { isAbove, stackOf } from '../floors/floorStack';
-import { continuingCell } from '../layout/cavern/veins/continuing';
 import type { CaveWay, CellDir, CellPoint, DoorKind, DungeonDoor, DungeonRoom, DungeonStair, DungeonTerrain, GrowthKind, TerrainKind } from '../model';
 import { PROP_KINDS, propKey } from '../props/propKinds';
 import { dir, floorCellsOf, holdsCell } from '../geometry';
@@ -185,15 +184,6 @@ function onlyWaySentences(visible: VisibleFloor, room: DungeonRoom): string[] {
   return key ? [t(key)] : [];
 }
 
-/**
- * A cave chamber's way on that nobody can follow: a squeeze too tight to pass, named only where
- * the drawing has a cell to draw it from (`continuingCell`), so the note never names one the map lacks.
- */
-function continuingSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
-  if (!visible.floor.cave || !room.continuing || !continuingCell(room)) return [];
-  return [t('dungeonScene.continuing', { direction: t(`dungeonScene.direction.${directionOf(room.continuing)}`) })];
-}
-
 /** Vegetation in the order the note names it: what climbs the walls first. */
 const GROWTH_ORDER: readonly GrowthKind[] = ['ivy', 'vine', 'creeper', 'roots', 'fern', 'moss', 'fungi', 'grass'];
 
@@ -208,7 +198,6 @@ export function roomFacts(visible: VisibleFloor, room: DungeonRoom, view: Pick<D
   return [
     ...exitSentences(room, visible.doors, visible.floor.cave !== undefined),
     ...onlyWaySentences(visible, room),
-    ...continuingSentences(visible, room),
     ...stairSentences(visible, room),
     ...verticalWaySentences(visible, room),
     ...contents(visible, room, view),

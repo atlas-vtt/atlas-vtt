@@ -10,6 +10,7 @@ import { CHAMBER_SWELL } from '../../../src/app/dungeons/layout/cavern/laneCells
 import { tunnelReach } from '../../../src/app/dungeons/layout/cavern/laneCells';
 import type { CellPoint, DungeonFloor, DungeonModel, DungeonRoom, DungeonStair } from '../../../src/app/dungeons/model';
 import { fitsTier, tierOfFloor } from '../../../src/app/dungeons/layout/cavern/veins/caveSizes';
+import { NARROW_SHARE } from '../../../src/app/dungeons/render/cave/outlineGuard';
 
 const key = (c: CellPoint): string => cellKey(c.x, c.y);
 const NEAR4: readonly (readonly [number, number])[] = [
@@ -20,6 +21,20 @@ const NEAR4: readonly (readonly [number, number])[] = [
 ];
 
 /** The floor as the cave is drawn: every room's cells and the cells of every narrows (a crawl is rock). */
+/**
+ * The least share of each narrow way's cell drawn floor (`NARROW_SHARE`): its door's cells and its
+ * route's cells, which the drawing makes narrower than themselves.
+ */
+export function narrowShares(floor: DungeonFloor): Map<string, number> {
+  const out = new Map<string, number>();
+  const add = (c: CellPoint, share: number): void => void out.set(key(c), Math.min(share, out.get(key(c)) ?? 1));
+  for (const room of floor.rooms) if (room.narrow) for (const c of room.cells ?? []) add(c, NARROW_SHARE[room.narrow]);
+  for (const door of floor.doors) {
+    if ((door.kind === 'opening' || door.kind === 'door') && door.from !== null && door.to !== null && (door.way === 'crawl' || door.way === 'squeeze' || door.way === 'letterbox')) for (const c of doorCells(door)) add(c, NARROW_SHARE[door.way]);
+  }
+  return out;
+}
+
 export function caveFloorCells(floor: DungeonFloor): Set<string> {
   const out = new Set<string>();
   for (const room of floor.rooms) for (const c of room.cells ?? []) out.add(key(c));
@@ -232,8 +247,7 @@ function sizedElsewhere(room: DungeonRoom, index: number): boolean {
  * The book's cave rules a floor keeps: every door is passed some way; the main path is walked
  * (no special route or climb on it) but where it pinches through a crawl or tighter; every
  * chamber has its size tier and the floor that tier gives (a
- * chamber sized elsewhere, the tier its floor reaches); in a cave that never has dead passages
- * every dead end without a stairwell has its squeeze leading on.
+ * chamber sized elsewhere, the tier its floor reaches).
  */
 export function veinsProblems(model: DungeonModel, index: number): string[] {
   const floor = model.floors[index]!;
@@ -243,17 +257,12 @@ export function veinsProblems(model: DungeonModel, index: number): string[] {
     if (!door.way) out.push(`a door at ${key(door)} without a way`);
     if (door.kind !== 'secret' && lane.has(key(door)) && door.way !== 'walk' && !pinchesLane(door, lane)) out.push(`a ${door.way} at ${key(door)} on the main path`);
   }
-  const stairKeys = new Set(floor.stairs.flatMap(stairCellsOf).map(key));
-  const deadPassages = model.cave?.character?.never === 'dead-passages';
   for (const room of floor.rooms.filter((r) => r.kind === 'room')) {
     const across = room.axis.x !== 0 ? room.h : room.w;
     const along = room.axis.x !== 0 ? room.w : room.h;
     const { tier } = room;
     if (!tier || tier === 'junction') out.push(`chamber ${room.id} without a tier`);
     else if (sizedElsewhere(room, index) ? tier !== tierOfFloor(across, along) : !fitsTier(tier, across, along)) out.push(`chamber ${room.id} (${across} × ${along}) is no ${tier}`);
-    const ways = floor.doors.filter((d) => d.from === room.id || d.to === room.id).length;
-    const stairs = (room.cells ?? []).some((c) => stairKeys.has(key(c)));
-    if (deadPassages && ways === 1 && !stairs && !room.continuing) out.push(`dead end ${room.id} leads nowhere in a cave that never has dead passages`);
   }
   return out;
 }

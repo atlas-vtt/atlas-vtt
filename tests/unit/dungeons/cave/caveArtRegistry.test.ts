@@ -22,7 +22,7 @@ describe('the cave art registry', () => {
   it('names as drawn exactly the parts registered, in the order of CAVE_PARTS', () => {
     const registered = CAVE_PARTS.filter((part) => (part in CAVE_GROUND ? CAVE_GROUND[part as keyof typeof CAVE_GROUND] : CAVE_WAYS[part as keyof typeof CAVE_WAYS]) !== undefined);
     expect(drawnCaveParts()).toEqual(registered);
-    expect(CAVE_PARTS).toHaveLength(17);
+    expect(CAVE_PARTS).toHaveLength(16);
   });
 
   it('is asked on a cave floor, in either painter, and never on a built one', () => {

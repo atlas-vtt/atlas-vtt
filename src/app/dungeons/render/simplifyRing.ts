@@ -35,16 +35,16 @@ export function simplifyRing(ring: readonly Vec[], tolerance: number): Vec[] {
 /**
  * The ring without the corners it hardly bends at: a corner goes where it lies within `tolerance`
  * of the line between its neighbours and nearer it than either of them does to theirs, so no two
- * neighbours go together; `rounds` times.
+ * neighbours go together; `rounds` times. A corner `kept` names always stays.
  */
-export function thinCorners(ring: readonly Vec[], tolerance: number, rounds: number): Vec[] {
+export function thinCorners(ring: readonly Vec[], tolerance: number, rounds: number, kept?: (p: Vec) => boolean): Vec[] {
   let points = [...ring];
   for (let round = 0; round < rounds && points.length > 8; round++) {
     const n = points.length;
     const bend = points.map((p, i) => segmentDistance(p, points[(i - 1 + n) % n]!, points[(i + 1) % n]!));
     // Ties go by place, so the choice never hangs on where the ring starts.
     const before = (i: number, j: number): boolean => bend[i]! < bend[j]! || (bend[i] === bend[j] && (points[i]!.x < points[j]!.x || (points[i]!.x === points[j]!.x && points[i]!.y < points[j]!.y)));
-    points = points.filter((_, i) => !(bend[i]! < tolerance && before(i, (i - 1 + n) % n) && before(i, (i + 1) % n)));
+    points = points.filter((p, i) => !(bend[i]! < tolerance && before(i, (i - 1 + n) % n) && before(i, (i + 1) % n)) || kept?.(p) === true);
   }
   return points;
 }

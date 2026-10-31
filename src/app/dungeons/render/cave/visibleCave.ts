@@ -3,7 +3,9 @@
  * the cells of every shown narrows. A crawl (a secret door) is rock in the drawing; its two mouths
  * stay straight on its cell's edges, as an entrance's outer mouth does, so the walls the scene
  * puts round the crawl meet the cave's exactly. A scree slope's sides and a stairwell's edges
- * stay straight too: their treads are drawn across their whole cells; and so do a hole's.
+ * stay straight too: their treads are drawn across their whole cells; and so do a hole's. A narrow
+ * way (a crawl, a squeeze, a letterbox) is drawn narrower than its cells: its door cell, and every
+ * cell of a passage it leads into (`DungeonRoom.narrow`).
  */
 
 import { spotRect } from '../../floors/stairSpots';
@@ -12,6 +14,7 @@ import type { CellDir, CellPoint, DungeonDoor, DungeonFloor, DungeonModel, Dunge
 import { gridOver } from '../../water/wetGrid';
 import type { FloorShape } from '../geometry';
 import { caveOutline, type PinnedEdge } from './caveOutline';
+import { NARROW_SHARE, type NarrowShare } from './outlineGuard';
 
 const memo = new WeakMap<object, Map<string, FloorShape[]>>();
 
@@ -68,6 +71,23 @@ function keptCells(floor: DungeonFloor | undefined, doors: readonly DungeonDoor[
   return new Set([...way, ...standing, ...pieces].map((c) => cellKey(c.x, c.y)));
 }
 
+/** The narrow ways' cells shown, each with the least share of it drawn floor: a door cell of a narrow way, and a narrow route's cells. */
+function narrowCells(rooms: readonly DungeonRoom[], doors: readonly DungeonDoor[]): NarrowShare {
+  const shares = new Map<string, number>();
+  const add = (c: CellPoint, share: number): void => {
+    const key = cellKey(c.x, c.y);
+    shares.set(key, Math.min(share, shares.get(key) ?? 1));
+  };
+  for (const room of rooms) if (room.narrow) for (const c of floorCellsOf(room)) add(c, NARROW_SHARE[room.narrow]);
+  for (const door of doors) {
+    const way = door.way;
+    if (door.kind !== 'opening' && door.kind !== 'door') continue;
+    if (door.from === null || door.to === null || (way !== 'crawl' && way !== 'squeeze' && way !== 'letterbox')) continue;
+    for (const c of doorCells(door)) add(c, NARROW_SHARE[way]);
+  }
+  return (x, y) => shares.get(cellKey(x, y));
+}
+
 /**
  * The floor shapes of a cave floor showing `rooms` and `doors`: one poly per piece of floor,
  * kept for the next call on the same floor and the same rooms shown.
@@ -83,7 +103,8 @@ export function caveFloorShapes(model: DungeonModel, index: number, rooms: reado
   const own = new Set(cells.map((c) => cellKey(c.x, c.y)));
   const kept = keptCells(floor, doors);
   // Only floor as drawn is kept: a crawl's cell on the main path is rock in the drawing.
-  shapes = cells.length ? caveOutline(model.seed, index, (x, y) => own.has(cellKey(x, y)), gridOver(cells, 1), [...pinnedEdges(doors), ...stairEdges(floor?.stairs ?? []), ...holeEdges(floor?.terrain ?? [])], (x, y) => own.has(cellKey(x, y)) && kept.has(cellKey(x, y))) : [];
+  const pinned = [...pinnedEdges(doors), ...stairEdges(floor?.stairs ?? []), ...holeEdges(floor?.terrain ?? [])];
+  shapes = cells.length ? caveOutline(model.seed, index, (x, y) => own.has(cellKey(x, y)), gridOver(cells, 1), pinned, (x, y) => own.has(cellKey(x, y)) && kept.has(cellKey(x, y)), narrowCells(rooms, doors)) : [];
   const byRooms = memo.get(owner) ?? new Map<string, FloorShape[]>();
   byRooms.set(key, shapes);
   memo.set(owner, byRooms);

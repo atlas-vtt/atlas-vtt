@@ -67,14 +67,14 @@ export function sourceChamber(rooms: readonly DungeonRoom[], id: number | null):
 }
 
 /**
- * How many cells across a cave passage runs by the way it was entered: one for a crawl, a squeeze
- * or a letterbox, two for a walk ten feet wide, three for one wider still between two chambers of
- * four rooms or larger (the chamber it was rolled at and one it opens into); undefined for a
- * narrower walk, which runs one or two.
+ * How many cells across a cave passage entered by a walk runs: two for a walk ten feet wide,
+ * three for one wider still between two chambers of four rooms or larger (the chamber it was
+ * rolled at and one it opens into); undefined for a narrower walk, which runs one or two, and for
+ * any other way. A narrow route is one cell (`DungeonRoom.narrow`), decided apart: a door narrowed
+ * as the route's far end leads into a passage that opens again.
  */
-export function passageCells(entered: DungeonDoor, room: DungeonRoom, rooms: readonly DungeonRoom[], doors: readonly DungeonDoor[]): 1 | 2 | 3 | undefined {
+export function passageCells(entered: DungeonDoor, room: DungeonRoom, rooms: readonly DungeonRoom[], doors: readonly DungeonDoor[]): 2 | 3 | undefined {
   const way = entered.way ?? 'walk';
-  if (NARROW_WAYS.has(way)) return 1;
   if (way !== 'walk' || (entered.width ?? 0) < LANE_WIDTH) return undefined;
   const great = atLeast(rooms, sourceChamber(rooms, entered.from)?.id, GREAT_TIER) && doors.some((door) => door.from === room.id && door.to !== null && rooms[door.to]?.kind === 'room' && atLeast(rooms, door.to, GREAT_TIER));
   return great && (entered.width ?? 0) > LANE_WIDTH ? 3 : 2;

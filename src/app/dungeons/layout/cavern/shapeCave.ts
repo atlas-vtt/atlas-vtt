@@ -25,10 +25,10 @@ import { holdNecks } from './necks';
 import { stairWays } from './stairWays';
 import { type TunnelWidth, carveTunnel, doorOnLane, pinchLane, shapeDoors, tunnelEnds } from './tunnels';
 import { inFloorClimbs } from './veins/climbs';
-import { withContinuing } from './veins/continuing';
 import { blockWays, passageCells, streamFalls } from './veins/doorWays';
+import { narrowRoutes, settleNarrowRoutes } from './veins/narrowRoutes';
 import { fillPockets, warpCave } from './caveWarp';
-import { stairsJoin } from './caveFits';
+import { holdPastMouths, stairsJoin } from './caveFits';
 
 export interface ShapedCaves {
   floors: PlannedFloor[];
@@ -63,20 +63,22 @@ function swellRooms(seed: number, index: number, floor: PlannedFloor, grid: Cave
   for (const room of floor.rooms) {
     const field = fields.get(room);
     if (field) swellChamber(grid, floor.doors, room, field);
-    else widenTunnel(noise, grid, floor, room);
+    // A narrow route stays one cell across its whole length.
+    else if (!room.narrow) widenTunnel(noise, grid, floor, room);
   }
 }
 
 /**
  * How many cells across a tunnel runs: the lane's two on the main path; off it two now and then
- * (`sideWide`). With the book's rules a passage is as wide as the way it was entered by
- * (`passageCells`): a crawl, a squeeze or a letterbox one cell, a walk ten feet wide two, a broader
- * walk between two great chambers three, on the main path too; a narrower walk one or two. Every
- * tunnel still swells here and there (`widenTunnel`), as rock breaks.
+ * (`sideWide`). With the book's rules a passage is as wide as the way it was entered by: a narrow
+ * route (`DungeonRoom.narrow`) one cell, a walk ten feet wide two, a broader walk between two great
+ * chambers three, on the main path too (`passageCells`); a narrower walk one or two. Every tunnel
+ * but a narrow route still swells here and there (`widenTunnel`), as rock breaks.
  */
 function tunnelWidth(rng: () => number, shaping: CaveShaping, floor: PlannedFloor, room: DungeonRoom, onLane: boolean, entered: DungeonDoor | undefined): TunnelWidth {
   const way = shaping.veins && entered ? passageCells(entered, room, floor.rooms, floor.doors) : undefined;
   if (onLane) return way === 3 ? 3 : 2;
+  if (room.narrow) return 1;
   const wide = rng() < shaping.sideWide;
   return way ?? (wide ? 2 : 1);
 }
@@ -128,14 +130,17 @@ function laneGrid(seed: number, index: number, floor: PlannedFloor, boss: boolea
   const lanes = new Map<LaneWay | undefined, CellPoint[] | null>();
   const laid = (way: LaneWay | undefined, out: boolean): { grid: CaveGrid; lane: CellPoint[] | null; pinched: Set<number>; floor: PlannedFloor; fits: boolean } => {
     const grid = new CaveGrid(floor, index);
+    if (necks && index === 0) holdPastMouths(grid, floor);
     if (!lanes.has(way)) lanes.set(way, wideLane(grid, floor, route, from, to, way));
     const lane = lanes.get(way)!;
     if (lane) claimLane(grid, floor, route, lane, way?.swell);
     const laneKeys = new Set((lane ?? []).map((c) => cellKey(c.x, c.y)));
     const pinched = necks ? pinchLane(grid, floor, laneKeys) : new Set<number>();
-    const loose = necks ? holdNecks(floorStream(seed, 'cave', index, 'necks'), grid, floor, laneKeys, pinched) : new Set<number>();
+    const onLane = (k: number): boolean => doorOnLane(floor.doors[k]!, k, laneKeys, grid);
+    const routed = necks ? narrowRoutes(floor, (room) => grid.cellsOf(room.id).some((c) => laneKeys.has(cellKey(c.x, c.y))), onLane) : floor;
+    const loose = necks ? holdNecks(floorStream(seed, 'cave', index, 'necks'), grid, routed, laneKeys, pinched) : new Set<number>();
     // A way whose neck could not be held is walked, and the lane walks a pinch among them two cells wide.
-    const walked = walkLooseNecks(floor, loose, (k) => doorOnLane(floor.doors[k]!, k, laneKeys, grid));
+    const walked = settleNarrowRoutes(walkLooseNecks(routed, loose, onLane));
     for (const k of loose) pinched.delete(k);
     return { grid, lane, pinched, floor: walked, fits: lane !== null && reserveCores(grid, floor.rooms, out) && stairsJoin(grid, floor) };
   };
@@ -171,8 +176,7 @@ function shapeFloor(how: FloorShaping, floors: readonly PlannedFloor[], index: n
   const doors = veins ? blockWays(floorStream(seed, 'cave', index, 'blocked'), shaped, floor.rooms, (k) => doorOnLane(floor.doors[k]!, k, laneKeys, grid), veins.blockedWays) : shaped;
   const left = repairGuards(grid, { ...floor, doors }, lane, veins !== undefined);
   if (left.length > 0) console.debug(`[Atlas] cave floor ${index} of seed ${seed} keeps ${left.length} token-fit problems`, left.map((p) => p.kind));
-  const cells = floor.rooms.map((room) => ({ ...room, cells: grid.cellsOf(room.id) }));
-  const rooms = veins ? withContinuing(floorStream(seed, 'cave', index, 'continuing'), cells, { doors, stairs: floor.stairs }, veins.continuing) : cells;
+  const rooms = settleNarrowRoutes({ rooms: floor.rooms, doors }).rooms.map((room) => ({ ...room, cells: grid.cellsOf(room.id) }));
   const lines = faultLines(floorStream(seed, 'cave', index, 'faults'), { rooms }, faults, veins?.faultLines);
   const cave: CaveFloor = { lane: walkedLane(grid, doors, lane), heights: caveHeights(seed, index, rooms), faults: lines, basins: [], streams: [], dams: [] };
   return { rooms, doors, stairs: floor.stairs.map((stair) => ({ ...stair })), cave };

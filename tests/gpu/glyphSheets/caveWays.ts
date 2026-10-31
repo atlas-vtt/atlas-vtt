@@ -140,7 +140,7 @@ describe.skipIf(Boolean(import.meta.env.VITE_GLYPH_FAMILY) && import.meta.env.VI
       }
       const limit = Math.max(...reference.values()) * 2;
       for (const [kind, ms] of reference) rows.push(`${look}\t${kind}\t${ms.toFixed(2)}\treference`);
-      for (const part of ['narrows', 'crawl', 'pitch', 'aven', 'scree', 'lowWay', 'squeeze', 'letterbox', 'sumpWay', 'traverseWay', 'breakdownWay', 'continuing'] as const) {
+      for (const part of ['narrows', 'crawl', 'pitch', 'aven', 'scree', 'lowWay', 'squeeze', 'letterbox', 'sumpWay', 'traverseWay', 'breakdownWay'] as const) {
         const { hand, ctx } = costHand(look, part);
         CAVE_WAYS[part]!(hand);
         // Since the organic outline, an engraved look's wider ink covers the narrows' shoulders in this small model: timed all the same (open, see the context note).
@@ -169,13 +169,11 @@ function costHand(look: string, part?: CaveWayPart): { hand: ReturnType<typeof s
   if (part === 'narrows') {
     addRoom(floor, { x: 0, y: 0, w: 2, h: 5 });
     addRoom(floor, { x: 3, y: 0, w: 2, h: 5 });
-  } else if (part === 'continuing') addRoom(floor, { x: 0, y: 0, w: 5, h: 2 });
-  else addRoom(floor, { x: 0, y: 0, w: 5, h: 5 });
+  } else addRoom(floor, { x: 0, y: 0, w: 5, h: 5 });
   floor.cave = { lane: [], heights: [0], faults: [], streams: [], basins: [], dams: [] };
   if (part === 'narrows' || part === 'crawl') addDoor(floor, 2, 2, { x: 1, y: 0 }, part === 'crawl' ? 'secret' : 'opening', 0, part === 'narrows' ? 1 : 0);
   const way = part ? DOOR_WAYS[part] : undefined;
   if (way) addDoor(floor, 2, 2, { x: 1, y: 0 }, 'opening', 0, 0).way = way;
-  if (part === 'continuing') floor.rooms[0]!.continuing = { x: 0, y: 1 };
   if (part === 'pitch' || part === 'aven' || part === 'scree') floor.stairs = [{ x: 1, y: 1, w: 2, h: 3, down: { x: 0, y: 1 }, way: part === 'scree' ? 'scree' : 'pitch', to: 1 - index, link: 0 }];
   const ctx = new OffscreenCanvas(750, 750).getContext('2d')!;
   ctx.scale(150, 150);

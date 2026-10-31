@@ -62,8 +62,6 @@ export interface CharacterModifiers {
   faultLines: number;
   /** The chance a chamber's widest exit off the main path is choked by breakdown. */
   blockedWays: number;
-  /** The chance a chamber with one way in has a squeeze leading on that no one can follow. */
-  continuing: number;
   /** Every door on a stream is a fall: a cave whose water never runs calm. */
   streamFalls: boolean;
   /** Floors are joined by pitches alone, never scree: a cave whose walls are never sloped. */
@@ -71,9 +69,6 @@ export interface CharacterModifiers {
   /** One way on from every room and one loop, on the main way: a burrow's tube (set by its formation, never by a character). */
   oneWayOn: boolean;
 }
-
-/** The chance a chamber with one way in shows that the cave leads on past it, as the book's caves always do. */
-const CONTINUING_CHANCE = 0.5;
 
 export function characterModifiers(character: CaveCharacter): CharacterModifiers {
   const { always, never } = character;
@@ -92,7 +87,6 @@ export function characterModifiers(character: CaveCharacter): CharacterModifiers
     basins: always === 'still-pools' ? 1.5 : 1,
     faultLines: always === 'cracks-everywhere' ? 2 : 1,
     blockedWays: always === 'blocked-ways' ? 1 / 3 : 0,
-    continuing: never === 'dead-passages' ? 1 : CONTINUING_CHANCE,
     streamFalls: never === 'calm-water',
     pitchesOnly: never === 'sloped-walls',
     oneWayOn: false,

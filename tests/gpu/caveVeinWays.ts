@@ -28,8 +28,6 @@ export const WAY_SPOTS: readonly WaySpot[] = [
 
 /** The aven's cell, in the chamber. */
 export const AVEN_CELL: CellPoint = { x: 8, y: 8 };
-/** The side the chamber's squeeze leads on from, and the rim cell it leaves (the middle of the chamber's bottom row). */
-export const CONTINUING: { dir: CellDir; cell: CellPoint } = { dir: { x: 0, y: 1 }, cell: { x: 8, y: 12 } };
 
 /** What lies in the passages behind the special ways, as the terrain puts it there; the same with the ways or without. */
 function passageTerrain(): DungeonTerrain[] {
@@ -60,9 +58,6 @@ export function caveVeinWaysModel(ways = true): DungeonModel {
   }
   floor.cave = { lane: [], heights: floor.rooms.map(() => 0), faults: [], basins: [], streams: [], dams: [] };
   floor.terrain = passageTerrain();
-  if (ways) {
-    floor.terrain.push({ id: 3, room: chamber.id, kind: 'aven', name: 'dungeon.terrain.aven', cells: [AVEN_CELL], traits: {} });
-    chamber.continuing = CONTINUING.dir;
-  }
+  if (ways) floor.terrain.push({ id: 3, room: chamber.id, kind: 'aven', name: 'dungeon.terrain.aven', cells: [AVEN_CELL], traits: {} });
   return model;
 }

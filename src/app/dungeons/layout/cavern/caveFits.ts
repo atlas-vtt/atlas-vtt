@@ -8,7 +8,7 @@
 import { type StairEnd, type StairSpot, approachCells, spotRect } from '../../floors/stairSpots';
 import { cellKey, cellsOf, contains, floorRect } from '../../geometry';
 import type { DungeonRoom } from '../../model';
-import { CaveGrid, type CaveFloorPlan } from './caveGrid';
+import { CaveGrid, type CaveFloorPlan, ROCK } from './caveGrid';
 import { type Takes, reserveCores, stairsJoinRound, takesOf } from './chambers';
 import { type LaneEnd, claimLane, clearOfLane, laneEnds, mainRoute, wideLane } from './mainPath';
 
@@ -33,6 +33,42 @@ function laidGrid(floor: CaveFloorPlan, from: LaneEnd, to: LaneEnd, index: numbe
 export function stairsJoin(grid: CaveGrid, floor: CaveFloorPlan): boolean {
   const holders = new Set(floor.stairs.flatMap((spot) => chamberOf(floor.rooms, spot) ?? []));
   return [...holders].every((room) => stairsJoinRound(grid, room));
+}
+
+/**
+ * Whether every way in from outside opens on the floor's edge: the ground before it (the cell
+ * outside its door) has no room's floor beyond it the way it faces, anywhere across the floor.
+ * The first room grows at the origin and the floor round it, so a mouth could open into a bay
+ * the rest of the cave closes round, and "opens to the outside to the west" then pointed into
+ * more cave. Read from the rooms' rectangles, whose floor keeps to the door's line: the shaping
+ * swells a cell past it at most, to the ground's line, and holds the rock beyond (`holdPastMouths`).
+ */
+export function mouthsOnEdge(floor: Pick<CaveFloorPlan, 'rooms' | 'doors'>): boolean {
+  return floor.doors.every((door) => {
+    if (door.from !== null) return true;
+    // How far along the way out a point lies; the ground before the door lies one further than the door.
+    const along = (x: number, y: number): number => -(x * door.dir.x + y * door.dir.y);
+    const ground = along(door.x, door.y) + 1;
+    return floor.rooms.every((room) => {
+      const r = floorRect(room);
+      return Math.max(along(r.x0, r.y0), along(r.x1, r.y1)) < ground;
+    });
+  });
+}
+
+/**
+ * Holds every cell further out than the ground before a way in from outside as rock, across the
+ * whole grid, so no chamber swells or tunnel winds past it: the rooms' rectangles keep to the line
+ * (`mouthsOnEdge`), and the floor shaped round them must too.
+ */
+export function holdPastMouths(grid: CaveGrid, floor: Pick<CaveFloorPlan, 'doors'>): void {
+  const { x0, y0, w, h } = grid.box();
+  for (const door of floor.doors) {
+    if (door.from !== null) continue;
+    const along = (x: number, y: number): number => -(x * door.dir.x + y * door.dir.y);
+    const ground = along(door.x, door.y) + 1;
+    for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (along(x, y) > ground && grid.owner(x, y) === ROCK) grid.holdAsRock(x, y);
+  }
 }
 
 export function caveFits(floor: CaveFloorPlan, from: LaneEnd, to: LaneEnd, index: number): boolean {

@@ -62,8 +62,35 @@ describe('a cave\'s ways as map features', () => {
     // A dry cave: no sump's water carries a way's name.
     const model = generateDungeon({ seed: 5_151, theme: 'cavern', tags: ['dry'], floors: 1 });
     for (const door of model.floors[0]!.doors) door.way = 'walk';
+    for (const room of model.floors[0]!.rooms) delete room.narrow;
     const names = new Set(EXPECTED.map(([, name]) => name));
     expect(featuresOf(model).filter((f) => names.has(f.name))).toEqual([]);
+  });
+
+  it('names a narrow route along its whole passage, one difficult stretch with its doors', () => {
+    let found = 0;
+    for (const seed of [5_151, 6_262, 7_373, 8_484]) {
+      const model = generateDungeon({ seed, theme: 'cavern', tags: ['dry'], floors: 1 });
+      const { originCell } = mapLayout(model, PX, DEFAULT_VIEW);
+      const features = featuresOf(model);
+      for (const room of model.floors[0]!.rooms.filter((r) => r.narrow)) {
+        const name = EXPECTED.find(([way]) => way === room.narrow)![1];
+        const inside = (f: MapFeature, c: { x: number; y: number }): boolean => {
+          const x = (c.x + 0.5 - originCell.x) * PX;
+          const y = (c.y + 0.5 - originCell.y) * PX;
+          let odd = false;
+          for (let i = 0, j = f.polygon.length - 1; i < f.polygon.length; j = i++) {
+            const a = f.polygon[i]!;
+            const b = f.polygon[j]!;
+            if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) odd = !odd;
+          }
+          return odd;
+        };
+        for (const c of floorCellsOf(room)) expect(features.some((f) => f.name === name && f.terrain?.difficult === true && inside(f, c)), `${seed} room ${room.id} at ${c.x},${c.y}`).toBe(true);
+        found++;
+      }
+    }
+    expect(found).toBeGreaterThan(0);
   });
 
   it('names a way up or down by how it is passed, with its depth', () => {

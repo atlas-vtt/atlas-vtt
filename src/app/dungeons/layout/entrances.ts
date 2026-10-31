@@ -5,14 +5,14 @@
  * room far from the first (a secret wing's too), and sometimes a door or a secret door.
  */
 
-import type { CellDir } from '../model';
+import type { CellDir, CellPoint } from '../model';
 import type { DungeonParams } from '../params';
 import { dir } from '../geometry';
 import { type KeyedRng, chance, pick, weighted } from '../rng';
 import { hops, neighbours } from '../roomGraph';
 import { normalCount } from './grow';
 import { freeOuterCells, openGround } from './outerDoors';
-import { type WorkLayout, isNormal, liveRooms } from './workLayout';
+import { type WorkLayout, floorOf, isNormal, liveRooms, pastMouth, rectPastMouth } from './workLayout';
 
 /** From this many normal rooms a floor has two ways in. */
 export const TWO_ENTRANCES_FROM = 6;
@@ -20,6 +20,17 @@ export const TWO_ENTRANCES_FROM = 6;
 const SMALL_SECOND_CHANCE = 0.3;
 /** The second entrance's room lies at least this share of the floor's farthest way from the first room. */
 export const SECOND_ENTRANCE_REACH = 0.5;
+
+/**
+ * Whether a second way into a cave opens on the floor's edge, as its mouth does: no room's floor
+ * lies as far out as the ground before it, the way it faces. Always outside a cave.
+ */
+function opensOnEdge(layout: WorkLayout, cell: CellPoint, out: CellDir): boolean {
+  if (!layout.mouth) return true;
+  const mouth = { origin: cell, out };
+  const ground = pastMouth(mouth, { x: cell.x + out.x, y: cell.y + out.y });
+  return liveRooms(layout).every((room) => rectPastMouth(mouth, floorOf(room)) < ground);
+}
 
 function sameDir(a: CellDir, b: CellDir): boolean {
   return a.x === b.x && a.y === b.y;
@@ -44,7 +55,7 @@ export function placeEntrances(rngOf: KeyedRng, layout: WorkLayout, params: Dung
   const near = Math.max(2, Math.ceil(reach * SECOND_ENTRANCE_REACH));
   const options = liveRooms(layout)
     .filter((room) => room.id !== 0 && !room.boss && isNormal(room) && (distances[room.id] ?? 0) >= near)
-    .map((room) => ({ room, cells: freeOuterCells(layout, room, ground).filter(({ out }) => !sameDir(out, away)) }))
+    .map((room) => ({ room, cells: freeOuterCells(layout, room, ground).filter(({ cell, out }) => !sameDir(out, away) && opensOnEdge(layout, cell, out)) }))
     .filter((option) => option.cells.length > 0);
   if (options.length === 0) return normalCount(layout) < TWO_ENTRANCES_FROM;
   const { room, cells } = weighted(rng, options.map((option) => [option, (distances[option.room.id] ?? 0) ** 2] as const));

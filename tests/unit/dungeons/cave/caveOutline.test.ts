@@ -3,6 +3,7 @@ import { cellKey } from '../../../../src/app/dungeons/geometry';
 import type { CellPoint } from '../../../../src/app/dungeons/model';
 import { type Rng, rngFrom } from '../../../../src/app/dungeons/rng';
 import { caveOutline, type PinnedEdge } from '../../../../src/app/dungeons/render/cave/caveOutline';
+import { NARROW_SHARE } from '../../../../src/app/dungeons/render/cave/outlineGuard';
 import { type FloorShape, type Vec, pointInPolygon } from '../../../../src/app/dungeons/render/geometry';
 import type { CellGrid } from '../../../../src/app/dungeons/water/wetGrid';
 import { blob } from '../../../helpers/caveMasks';
@@ -167,5 +168,39 @@ describe('a cave outline', () => {
     const shapes = outline(island(14));
     expect(shapes).toHaveLength(1);
     expect(shapes[0]!.kind === 'poly' && shapes[0]!.rings).toHaveLength(2);
+  });
+
+  it('draws a narrow way narrower than its cells: never less than its share, its middle on the floor', () => {
+    const shares = [NARROW_SHARE.crawl, NARROW_SHARE.squeeze, NARROW_SHARE.letterbox];
+    const wrong: string[] = [];
+    all.filter((_, k) => k % 4 === 1).slice(0, 45).forEach((mask, k) => {
+      const share = shares[k % 3]!;
+      // A narrow route: the tunnel's cells but those at its ends, which open into rock at the box's edge.
+      const narrow = (x: number, y: number): number | undefined => (has(mask, x, y) && x > 2 && x < 10 ? share : undefined);
+      const rings = ringsOf(caveOutline(5, 0, (x, y) => has(mask, x, y), BOX, [], undefined, narrow));
+      for (let y = BOX.y0; y < BOX.y0 + BOX.h; y++) {
+        for (let x = BOX.x0; x < BOX.x0 + BOX.w; x++) {
+          if (narrow(x, y) === undefined) continue;
+          let inside = 0;
+          for (let i = 0; i < 20; i++) for (let j = 0; j < 20; j++) if (insideAll(rings, x + (i + 0.5) / 20, y + (j + 0.5) / 20)) inside++;
+          if (inside / 400 < share - 0.03 || !insideAll(rings, x + 0.5, y + 0.5)) wrong.push(`${x},${y}: ${inside / 400} < ${share}`);
+        }
+      }
+    });
+    expect(wrong.slice(0, 10)).toEqual([]);
+  });
+
+  it('draws a straight narrow way about its share across, and the cells past it as before', () => {
+    const mask: Mask = new Set(Array.from({ length: 14 }, (_, x) => cellKey(x, 6)));
+    const plain = ringsOf(outline(mask));
+    for (const share of [NARROW_SHARE.crawl, NARROW_SHARE.squeeze, NARROW_SHARE.letterbox]) {
+      const rings = ringsOf(caveOutline(5, 0, (x, y) => has(mask, x, y), BOX, [], undefined, (x, y) => (has(mask, x, y) && x >= 4 && x <= 9 ? share : undefined)));
+      for (let x = 5; x <= 7; x++) {
+        let across = 0;
+        for (let j = 0; j < 200; j++) if (insideAll(rings, x + 0.5, 6 + (j + 0.5) / 200)) across++;
+        expect(Math.abs(across / 200 - share - 0.03), `${share} at ${x}`).toBeLessThan(0.03);
+      }
+      for (const p of rings.flat().filter((q) => q.x < 1.5)) expect(plain.flat().some((q) => q.x === p.x && q.y === p.y), 'the outline two cells off the way').toBe(true);
+    }
   });
 });

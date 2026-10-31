@@ -16,10 +16,9 @@ import { CAVE_WAYS } from './ways';
 const GROUND_PARTS = ['floor', 'edge', 'surround', 'mouth'] as const;
 /**
  * `crawl` is the hidden crawl (a secret door, drawn as rock); `lowWay` an open crawl. The ways after
- * `scree` are the ways a door names (`DungeonDoor.way`), a leaf chamber's squeeze that leads on and
- * a climb within the floor.
+ * `scree` are the ways a door names (`DungeonDoor.way`), the last a climb within the floor.
  */
-const WAY_PARTS = ['narrows', 'crawl', 'pitch', 'aven', 'scree', 'lowWay', 'squeeze', 'letterbox', 'sumpWay', 'traverseWay', 'breakdownWay', 'continuing', 'climbWay'] as const;
+const WAY_PARTS = ['narrows', 'crawl', 'pitch', 'aven', 'scree', 'lowWay', 'squeeze', 'letterbox', 'sumpWay', 'traverseWay', 'breakdownWay', 'climbWay'] as const;
 export const CAVE_PARTS = [...GROUND_PARTS, ...WAY_PARTS] as const;
 export type CavePart = (typeof CAVE_PARTS)[number];
 export type CaveGroundPart = (typeof GROUND_PARTS)[number];

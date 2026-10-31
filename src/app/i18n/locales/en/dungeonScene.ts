@@ -66,7 +66,6 @@ export const dungeonScene = {
   'dungeonScene.drop.chimneyToFloor': { one: 'A chimney drops {depth} ft to floor {floor}.', other: '{count} chimneys drop {depth} ft to floor {floor}.' },
   'dungeonScene.drop.squeezeDark': { one: 'A vertical squeeze drops {depth} ft into the dark.', other: '{count} vertical squeezes drop {depth} ft into the dark.' },
   'dungeonScene.drop.squeezeToFloor': { one: 'A vertical squeeze drops {depth} ft to floor {floor}.', other: '{count} vertical squeezes drop {depth} ft to floor {floor}.' },
-  'dungeonScene.continuing': 'A squeeze leads on to the {direction}, too tight to follow.',
 
   // A cave's character, the note's first line: what it always does, then what it never does, as one sentence.
   'dungeonScene.character': '{always}; {never}.',
@@ -93,7 +92,7 @@ export const dungeonScene = {
   'dungeonScene.character.always.endlessDrips': 'Water drips from every roof',
   'dungeonScene.character.always.upAndDown': 'The floor climbs and drops in slopes of scree',
   'dungeonScene.character.always.blockedWays': 'Rockfalls choke many of its ways',
-  'dungeonScene.character.never.deadPassages': 'no passage ends blind',
+  'dungeonScene.character.never.deadPassages': 'its passages loop back into one another',
   'dungeonScene.character.never.standingRoom': 'off the main way, no passage is high enough to stand in',
   'dungeonScene.character.never.regularCaves': 'no cave is the size of the one beside it',
   'dungeonScene.character.never.calmWater': 'no stream runs level, each falls from cave to cave',

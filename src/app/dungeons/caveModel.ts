@@ -39,6 +39,9 @@ export type CaveWay = 'walk' | 'crawl' | 'squeeze' | 'letterbox' | 'traverse' | 
 
 export const CAVE_WAYS: readonly CaveWay[] = ['walk', 'crawl', 'squeeze', 'letterbox', 'traverse', 'sump', 'breakdown', 'climb'];
 
+/** The ways too low or tight to walk, which a passage is along its whole length (`DungeonRoom.narrow`). */
+export type NarrowWay = Extract<CaveWay, 'crawl' | 'squeeze' | 'letterbox'>;
+
 /** The special routes: what a doubles roll makes of a cave's largest exit. */
 export const SPECIAL_WAYS: readonly CaveWay[] = ['traverse', 'sump', 'letterbox', 'breakdown'];
 

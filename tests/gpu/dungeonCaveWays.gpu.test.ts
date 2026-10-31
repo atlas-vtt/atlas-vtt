@@ -1,18 +1,21 @@
 import { describe, expect, it } from 'vitest';
 import type { DungeonModel, TerrainDrop, VerticalKind } from '../../src/app/dungeons/model';
-import { continuingCell } from '../../src/app/dungeons/layout/cavern/veins/continuing';
+import type { CaveWayPart } from '../../src/app/dungeons/render/cave/caveArt';
+import { CAVE_WAYS } from '../../src/app/dungeons/render/cave/ways';
 import { renderMap } from '../../src/app/dungeons/render/renderMap';
 import { DEFAULT_VIEW } from '../../src/app/dungeons/style';
 import { dungeonStyle, type DungeonStyleId } from '../../src/app/dungeons/styleCatalog';
-import { AVEN_CELL, CONTINUING, WAY_SPOTS, caveVeinWaysModel } from './caveVeinWays';
+import { AVEN_CELL, WAY_SPOTS, caveVeinWaysModel } from './caveVeinWays';
 import { savePng, withoutText } from './dungeonRenderHarness';
 
 /**
  * The ways between caves as drawn, in each painter (parchment is Stone, print Engraved, crayon
- * Crayon): each way's ink lies within two cells of its door, an aven's of its cell and a squeeze
- * leading on of its rim cell; nothing else on the map changes; a squeeze, a letterbox and a crawl
- * keep the middle of their way clear of ink; a door that names a walk draws as one without a way;
- * and a climb within the floor stays in its door cell and half a cell either side.
+ * Crayon): each way's marks lie within two cells of its door and an aven's of its cell; nothing
+ * else on the map changes; a squeeze, a letterbox and a crawl keep the middle of their way clear of
+ * ink; a door that names a walk draws as one without a way; and a climb within the floor stays in
+ * its door cell and half a cell either side. A narrow way's walls close in on it
+ * (`narrowPinch.ts`), and the rock's hatching follows the walls, so the marks are compared with the
+ * same cave drawn without them (`withoutMarks`).
  */
 
 const PX = 60;
@@ -32,6 +35,22 @@ function draw(model: DungeonModel, look: DungeonStyleId, px = PX): Picture {
   renderMap(ctx, model, dungeonStyle(look), DEFAULT_VIEW, { pxPerCell: px, floor: 0, openings: 'drawn', window: { originCell: ORIGIN, widthPx: size, heightPx: size } });
   expect(texts).toEqual([]);
   return { data: canvas.getContext('2d')!.getImageData(0, 0, size, size).data, size, canvas };
+}
+
+/** The parts that draw a door's way's marks. */
+const MARK_PARTS: readonly CaveWayPart[] = ['lowWay', 'squeeze', 'letterbox', 'sumpWay', 'traverseWay', 'breakdownWay', 'climbWay'];
+
+/** The cave with its ways, drawn without their marks and without the aven: what the marks are drawn over. */
+function withoutMarks(look: DungeonStyleId): Picture {
+  const kept = MARK_PARTS.map((part) => [part, CAVE_WAYS[part]] as const);
+  for (const part of MARK_PARTS) CAVE_WAYS[part] = (): void => undefined;
+  try {
+    const model = caveVeinWaysModel();
+    model.floors[0]!.terrain = model.floors[0]!.terrain.filter((piece) => piece.kind !== 'aven');
+    return draw(model, look);
+  } finally {
+    for (const [part, painter] of kept) CAVE_WAYS[part] = painter;
+  }
 }
 
 const differs = (a: Picture, b: Picture, i: number): boolean =>
@@ -82,19 +101,13 @@ function middleStrip(spot: (typeof WAY_SPOTS)[number], half: number): number[] {
 }
 
 describe('the ways between caves as drawn', () => {
-  it('finds the rim cell a squeeze leads on from', () => {
-    const chamber = caveVeinWaysModel().floors[0]!.rooms[0]!;
-    expect(continuingCell(chamber, CONTINUING.dir)).toEqual(CONTINUING.cell);
-  });
-
   for (const look of LOOKS) {
     it(`draws every way near its door and nothing elsewhere in ${look}`, () => {
       const drawn = draw(caveVeinWaysModel(), look);
-      const plain = draw(caveVeinWaysModel(false), look);
+      const plain = withoutMarks(look);
       const places = [
         ...WAY_SPOTS.filter(spot => spot.way !== 'walk').map(spot => ({ name: spot.way, cell: spot.door })),
         { name: 'aven', cell: AVEN_CELL },
-        { name: 'continuing', cell: CONTINUING.cell },
       ];
       const counts = new Map<string, number>(places.map(place => [place.name, 0]));
       const strays: string[] = [];
@@ -107,12 +120,14 @@ describe('the ways between caves as drawn', () => {
         if (!near.length && !nearEdge(plain, x, y)) strays.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`);
       }
       expect(strays.slice(0, 8), `${look}: changed pixels beyond two cells of every way`).toEqual([]);
-      for (const [name, count] of counts) expect(count, `${look} ${name}: drawn`).toBeGreaterThan(PX * 2);
+      // A narrow way's marks are small, its narrowed walls saying the rest: a crawl one short pair of roof ticks on its door cell.
+      const least: Record<string, number> = { crawl: PX / 4, squeeze: PX, letterbox: PX };
+      for (const [name, count] of counts) expect(count, `${look} ${name}: drawn`).toBeGreaterThan(least[name] ?? PX * 2);
     });
 
     it(`keeps the middle of a squeeze, a letterbox and a crawl clear in ${look}`, () => {
       const drawn = draw(caveVeinWaysModel(), look);
-      const plain = draw(caveVeinWaysModel(false), look);
+      const plain = withoutMarks(look);
       for (const [way, half] of [['squeeze', 0.07], ['letterbox', 0.035], ['crawl', 0.12]] as const) {
         const spot = WAY_SPOTS.find(s => s.way === way)!;
         const changed = middleStrip(spot, half).filter(i => differs(drawn, plain, i)).length;

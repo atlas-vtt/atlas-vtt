@@ -4,7 +4,7 @@ import type { DungeonModel } from '../../../src/app/dungeons/model';
 import { visibleFloor } from '../../../src/app/dungeons/render/visibleDungeon';
 import { shapeDistance } from '../../../src/app/dungeons/render/geometry';
 import { DEFAULT_VIEW } from '../../../src/app/dungeons/style';
-import { caveFloorCells, chamberExits, columnProblems, faultStretch, guardProblems, laneNarrowsProblems, maskProblems, narrowsProblems, veinsProblems } from './caveChecks';
+import { caveFloorCells, chamberExits, narrowShares, columnProblems, faultStretch, guardProblems, laneNarrowsProblems, maskProblems, narrowsProblems, veinsProblems } from './caveChecks';
 import { breakdownProblems, namedHazardProblems, formationDensity, formationProblems, geologyProblems, lifeZoneProblems, livedInProblems, waterProblems, waterShare, hazardFurnishProblems, laneProblems, lifeProblems, liquidProblems, rimstoneProblems } from './caveRules';
 import { mirrorProblems, physicsProblems, shapeProblems } from './themeTerrainInvariants';
 import { cavernProgramme } from '../../../src/app/dungeons/themes/cavern';
@@ -94,13 +94,17 @@ export function describeCaveInvariants(floors: number): void {
       expect(stretch.reduce((sum, s) => sum + s.along, 0) / stretch.reduce((sum, s) => sum + s.long, 0)).toBeGreaterThanOrEqual(0.6);
     });
 
-    it('rule 10: draw floor over at least 60 % of every floor cell', () => {
+    // A narrow way's cell is drawn narrower than itself, the rock closing in: only its way's share (`NARROW_SHARE`, which the
+    // guard measures exactly), less a row of these ten samples, which a band across the cell covers by whole rows.
+    it('rule 10: draw floor over at least 60 % of every floor cell, a narrow way\'s its share', () => {
       for (const run of runs.slice(0, 100)) {
         run.model.floors.forEach((floor, index) => {
           const shapes = visibleFloor(run.model, DEFAULT_VIEW, index).floors;
+          const narrow = narrowShares(floor);
           for (const k of caveFloorCells(floor)) {
             const [x, y] = k.split(',').map(Number) as [number, number];
-            expect(drawnShare(shapes, x, y), `seed ${run.seed} floor ${index} cell ${k}`).toBeGreaterThanOrEqual(0.6);
+            const least = narrow.has(k) ? narrow.get(k)! - 0.1 : 0.6;
+            expect(drawnShare(shapes, x, y), `seed ${run.seed} floor ${index} cell ${k}`).toBeGreaterThanOrEqual(least);
           }
         });
       }

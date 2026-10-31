@@ -63,7 +63,6 @@ export const dungeonScene: Translation = {
   'dungeonScene.drop.chimneyToFloor': { one: '{count} расщелина-камин глубиной {depth} фт уходит вниз, на этаж {floor}.', few: '{count} расщелины-камина глубиной {depth} фт уходят вниз, на этаж {floor}.', many: '{count} расщелин-каминов глубиной {depth} фт уходят вниз, на этаж {floor}.', other: '{count} расщелины-камина глубиной {depth} фт уходят вниз, на этаж {floor}.' },
   'dungeonScene.drop.squeezeDark': { one: '{count} вертикальный лаз глубиной {depth} фт уходит вниз, во тьму.', few: '{count} вертикальных лаза глубиной {depth} фт уходят вниз, во тьму.', many: '{count} вертикальных лазов глубиной {depth} фт уходят вниз, во тьму.', other: '{count} вертикальных лаза глубиной {depth} фт уходят вниз, во тьму.' },
   'dungeonScene.drop.squeezeToFloor': { one: '{count} вертикальный лаз глубиной {depth} фт уходит вниз, на этаж {floor}.', few: '{count} вертикальных лаза глубиной {depth} фт уходят вниз, на этаж {floor}.', many: '{count} вертикальных лазов глубиной {depth} фт уходят вниз, на этаж {floor}.', other: '{count} вертикальных лаза глубиной {depth} фт уходят вниз, на этаж {floor}.' },
-  'dungeonScene.continuing': 'На {direction} уходит шкуродёр, слишком узкий, чтобы пролезть.',
 
   'dungeonScene.character': '{always}; {never}.',
   'dungeonScene.formationLine': '{formation} {character}',
@@ -88,7 +87,7 @@ export const dungeonScene: Translation = {
   'dungeonScene.character.always.endlessDrips': 'С каждого свода капает вода',
   'dungeonScene.character.always.upAndDown': 'Пол то поднимается, то опускается осыпями',
   'dungeonScene.character.always.blockedWays': 'Многие ходы перекрыты обвалами',
-  'dungeonScene.character.never.deadPassages': 'ни один ход не кончается тупиком',
+  'dungeonScene.character.never.deadPassages': 'его ходы смыкаются друг с другом',
   'dungeonScene.character.never.standingRoom': 'в стороне от главного пути нигде не встать в полный рост',
   'dungeonScene.character.never.regularCaves': 'ни одна пещера не равна по размеру соседней',
   'dungeonScene.character.never.calmWater': 'ни один ручей не течёт ровно, каждый срывается из пещеры в пещеру',
