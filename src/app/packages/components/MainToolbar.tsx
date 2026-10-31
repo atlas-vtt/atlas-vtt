@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useLayoutEffect, useRef, useMemo, forwardRef } from "react"
 import { useAtlasStore, useViewStoreHook } from "src/app/react/ViewStoreContext"
 import { AnimatePresence, MotionConfig } from "framer-motion"
+import { createPortal } from "react-dom"
 import { useStore } from "zustand"
 import { Eye, EyeOff } from "lucide-react"
 
@@ -209,11 +210,17 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
         toolbarRef={toolbarRef}
         {...(dm && { onCustomizeToolbar: startEditing })}
       />
-      <AssetManager
-        isOpen={isAssetManagerOpen}
-        onClose={handleCloseAssetManager}
-        {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
-      />
+      {/* On the main window's body (the map lives there only), as the command palette opens it:
+          inside the map's leaf the overlay is composited with the map's WebGL canvas, which on
+          some Macs drew the manager without its backgrounds and cards. */}
+      {createPortal(
+        <AssetManager
+          isOpen={isAssetManagerOpen}
+          onClose={handleCloseAssetManager}
+          {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
+        />,
+        document.body,
+      )}
       {isDiceTrayOpen && !diceTool && (
         <div style={{
           position: 'fixed',

@@ -2,6 +2,11 @@
   "version": "0.11.1-beta.0",
   "releases": [
     {
+      "version": "0.11.1-beta.0",
+      "title": "Coming in 0.11.1",
+      "markdown": "## Fixed\n- On some Macs the asset manager opened from the toolbar lost its backgrounds and cards over the map. It now covers the whole window, as it does when opened from the command palette"
+    },
+    {
       "version": "0.11.0",
       "date": "2026-10-30",
       "title": "Mosaic Canvas, procedural forest maps and new crayon style",
