@@ -145,12 +145,13 @@ export function mainWay(layout: WorkLayout): number[] {
 /**
  * How many loops a floor of this many normal rooms gets: about one per eight, at least one past
  * five rooms; a cave whose character asks for more loops (it curves back, it leaves no passage
- * dead) gets that many times as many.
+ * dead) gets that many times as many. A string and a burrow, one way on throughout, get only the
+ * loop their main way needs.
  */
 function loopTarget(rng: Rng, normals: number, params: DungeonParams): number {
   const roll = rng();
   if (normals <= SMALL_FLOOR) return roll < 0.5 ? 1 : 0;
-  if (params.string) return 1;
+  if (params.string || params.cave?.veins?.rules.oneWayOn) return 1;
   const perLoop = ROOMS_PER_LOOP / (params.cave?.veins?.rules.loops ?? 1);
   return Math.max(1, Math.round(normals / perLoop + roll * 0.8 - 0.4));
 }

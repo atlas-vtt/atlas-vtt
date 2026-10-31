@@ -1,13 +1,12 @@
 /**
  * What a Cavern knows of its rooms beyond their traits, read from its geology (`caveSites`), and
  * which rooms a type may take there: a lake only where water gathers, a gallery along a fault,
- * lava and acid only deep and with their tags (acid in a sulphuric cave without), a lived-in cave's hollows near the mouth and water.
+ * lava and acid only deep and with their tags, a lived-in cave's hollows near the mouth and water.
  */
 
 import { floorRect, intersection, roomArea } from '../../geometry';
 import type { CaveSites } from '../../layout/cavern/caveSites';
 import { caveVariant } from '../../layout/cavern/caveParams';
-import { acidRises } from '../../layout/cavern/veins/caveFormation';
 import { nearFault } from '../../layout/cavern/faults';
 import type { CaveCharacter, CaveVariant, DungeonFloor } from '../../model';
 import { neighbours } from '../../roomGraph';
@@ -117,7 +116,7 @@ export function allowsType(facts: CaveFacts, type: RoomTypeId, ref: RoomRef): bo
     case 'lava-tube':
       return facts.tags.has('lava') && site.deep(ref.room) && roomArea(room) >= MOLTEN_AREA;
     case 'sulphur-spring':
-      return acidRises(facts.tags, facts.variant) && site.deep(ref.room) && site.faultOf(ref.room) !== null && roomArea(room) >= MOLTEN_AREA;
+      return facts.tags.has('acid') && site.deep(ref.room) && site.faultOf(ref.room) !== null && roomArea(room) >= MOLTEN_AREA;
     case 'roost':
       return (site.hopsFromMouth[ref.room] ?? Infinity) <= 1;
     default:

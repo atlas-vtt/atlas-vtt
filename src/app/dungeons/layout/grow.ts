@@ -125,7 +125,7 @@ function caveBranching(rng: Rng, depths: Rng, params: DungeonParams, layout: Wor
   const vertical = exits && verticalExits(exits);
   if (vertical) room.vertical = vertical;
   const through = wayThrough(layout, room, item);
-  return { exits, passageSides: rules.passageSides, ...(through && { through }) };
+  return { exits, passageSides: rules.passageSides, ...(through && { through }), ...(rules.oneWayOn && { oneWayOn: true }) };
 }
 
 /**

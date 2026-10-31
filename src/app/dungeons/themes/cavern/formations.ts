@@ -10,7 +10,6 @@
 import { cellKey, floorCellsOf } from '../../geometry';
 import type { CaveVariant, CellPoint, PropKind } from '../../model';
 import type { RoomRef } from '../themeTypes';
-import { acidRises } from '../../layout/cavern/veins/caveFormation';
 import { type CaveFacts, allowsType } from './caveTypeRules';
 
 /** Formations of dripping water: stalagmites and the columns where they meet the roof. */
@@ -42,7 +41,7 @@ const acidReach = new WeakMap<CaveFacts, Map<number, Set<string>>>();
 
 /** Whether `at` lies within reach of a room of the floor that may hold an acid spring. */
 function byAcid(facts: CaveFacts, ref: RoomRef, at: CellPoint): boolean {
-  if (!acidRises(facts.tags, facts.variant)) return false;
+  if (!facts.tags.has('acid')) return false;
   const floors = acidReach.get(facts) ?? new Map<number, Set<string>>();
   acidReach.set(facts, floors);
   let near = floors.get(ref.floor);

@@ -108,8 +108,7 @@ export function caveParams(params: DungeonParams): DungeonParams {
  * and no mirrored branches: a cave grows as its exits fall, never in matching pairs. A cave that
  * changes scale unpredictably does so in its chambers' tiers alone: more junctions left no room for
  * the main path's two-cell lane where they turned one after another. Its character sets how often a
- * door is a scree step. A burrow runs on one way, as a string does; a fungal cave the tags chose no
- * sizes for winds through more passages.
+ * door is a scree step. A fungal cave the tags chose no sizes for winds through more passages.
  */
 export function withVeins(params: DungeonParams, rng: Rng, formation?: Rng): DungeonParams {
   const { cave } = params;
@@ -132,7 +131,6 @@ export function withVeins(params: DungeonParams, rng: Rng, formation?: Rng): Dun
   const shape = { ...cave, ...SHAPING[variant] };
   return {
     ...params,
-    ...(shaped.string && { string: true }),
     ...(variant === 'fungal' && params.sizeStyles === DEFAULT_SIZES && { sizeStyles: WINDING_SIZES }),
     symmetry: params.symmetry.map(() => false),
     stepsChance: Math.min(MOST_STEPS, params.stepsChance * rules.steps),

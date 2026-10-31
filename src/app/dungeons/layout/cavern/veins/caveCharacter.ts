@@ -68,6 +68,8 @@ export interface CharacterModifiers {
   streamFalls: boolean;
   /** Floors are joined by pitches alone, never scree: a cave whose walls are never sloped. */
   pitchesOnly: boolean;
+  /** One way on from every room and one loop, on the main way: a burrow's tube (set by its formation, never by a character). */
+  oneWayOn: boolean;
 }
 
 /** The chance a chamber with one way in shows that the cave leads on past it, as the book's caves always do. */
@@ -93,5 +95,6 @@ export function characterModifiers(character: CaveCharacter): CharacterModifiers
     continuing: never === 'dead-passages' ? 1 : CONTINUING_CHANCE,
     streamFalls: never === 'calm-water',
     pitchesOnly: never === 'sloped-walls',
+    oneWayOn: false,
   };
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CAVE_ALWAYS_TRAITS, CAVE_NEVER_TRAITS } from '../../../../../src/app/dungeons/caveModel';
 import { characterModifiers, drawCharacter } from '../../../../../src/app/dungeons/layout/cavern/veins/caveCharacter';
+import { FORMATIONS, withFormation } from '../../../../../src/app/dungeons/layout/cavern/veins/caveFormation';
 import { caveParams, withVeins } from '../../../../../src/app/dungeons/layout/cavern/caveParams';
 import { dungeonParams } from '../../../../../src/app/dungeons/params';
 import { rngFrom, stream } from '../../../../../src/app/dungeons/rng';
@@ -49,7 +50,8 @@ describe('a cave’s character', () => {
     const of = (always: (typeof CAVE_ALWAYS_TRAITS)[number], never: (typeof CAVE_NEVER_TRAITS)[number]): ReturnType<typeof characterModifiers> => characterModifiers({ always, never });
     const plain = of('balanced-boulders', 'regular-caves');
     expect(plain.loops).toBe(1);
-    expect(plain.exits).toEqual({ shrink: 0, squeezes: false, noWalk: false, vertical: 'any', breakdowns: true });
+    expect(plain.exits).toEqual({ shrink: 0, squeezes: false, noWalk: false, vertical: 'any', upShare: 0.5, breakdowns: true });
+    expect(plain.oneWayOn).toBe(false);
     expect(of('curves-back', 'regular-caves').exits.breakdowns).toBe(false);
     expect(plain.leanAway).toBe(true);
     expect(plain.continuing).toBe(0.5);
@@ -66,6 +68,13 @@ describe('a cave’s character', () => {
     expect(of('blocked-ways', 'standing-room')).toMatchObject({ blockedWays: 1 / 3, exits: { noWalk: true } });
     expect(of('narrows-then-opens', 'dead-passages')).toMatchObject({ opensPastSqueeze: true, continuing: 1, exits: { squeezes: true } });
     expect(of('shifting-scale', 'calm-water').shiftingScale).toBe(true);
+    // A formation sets the share of roof and floor exits leading up; a floor-exits or roof-exits cave sends them all one way whatever it is.
+    const formed = (always: (typeof CAVE_ALWAYS_TRAITS)[number], variant: 'fault' | 'sulphuric' | 'burrow'): ReturnType<typeof characterModifiers> => withFormation(of(always, 'calm-water'), FORMATIONS[variant], false);
+    expect(formed('balanced-boulders', 'sulphuric').exits).toMatchObject({ vertical: 'any', upShare: 0.75 });
+    expect(formed('balanced-boulders', 'fault').exits).toMatchObject({ vertical: 'any', upShare: 0.25 });
+    expect(formed('floor-exits', 'sulphuric').exits.vertical).toBe('down');
+    expect(formed('roof-exits', 'fault').exits.vertical).toBe('up');
+    expect(formed('curves-back', 'burrow')).toMatchObject({ oneWayOn: true, passageSides: 0 });
   });
 
   it('changes scale by its chambers alone, never by the planner’s passages: a cave that changes scale has the size styles of any other', () => {

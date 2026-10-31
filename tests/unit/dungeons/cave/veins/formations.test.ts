@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CAVE_VARIANTS, type CaveVariant } from '../../../../../src/app/dungeons/caveModel';
 import { generateDungeon } from '../../../../../src/app/dungeons/generate';
 import { caveParams, caveVariant, withVeins } from '../../../../../src/app/dungeons/layout/cavern/caveParams';
-import { SULPHURIC_CHANCE, drawFormation } from '../../../../../src/app/dungeons/layout/cavern/veins/caveFormation';
+import { drawFormation } from '../../../../../src/app/dungeons/layout/cavern/veins/caveFormation';
 import { CHAMBER_TIERS, type ChamberTier } from '../../../../../src/app/dungeons/layout/cavern/veins/caveSizes';
 import type { DungeonModel } from '../../../../../src/app/dungeons/model';
 import { dungeonParams, dungeonTags } from '../../../../../src/app/dungeons/params';
@@ -31,7 +31,11 @@ function seedsOf(variant: CaveVariant, count: number): number[] {
   return out;
 }
 
-const cavesOf = (variant: CaveVariant): DungeonModel[] => seedsOf(variant, CAVES).map((seed) => generateDungeon({ seed, theme: 'cavern', tags: [], floors: 1 }));
+/** A hundred caves of `variant`: drawn by the seed, a sulphuric one asked for by its tag, the only way to one. */
+const cavesOf = (variant: CaveVariant): DungeonModel[] =>
+  variant === 'sulphuric'
+    ? seedsOf('limestone', CAVES).map((seed) => generateDungeon({ seed, theme: 'cavern', tags: ['acid'], floors: 1 }))
+    : seedsOf(variant, CAVES).map((seed) => generateDungeon({ seed, theme: 'cavern', tags: [], floors: 1 }));
 const mean = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0) / Math.max(1, xs.length);
 const chambers = (model: DungeonModel): DungeonModel['floors'][number]['rooms'] => model.floors.flatMap((floor) => floor.rooms.filter((r) => r.kind === 'room'));
 
@@ -54,15 +58,13 @@ const tierSpread = (model: DungeonModel): number => {
 };
 
 describe('a cave’s formation', () => {
-  it('is drawn in the book’s odds: a river 5, a fault 4, fungus 2, a burrow 1, sulphuric blooms 1 in 20', () => {
+  it('is drawn in the book’s odds: a river 5, a fault 4, fungus 2, a burrow 1, and never sulphuric without its tag', () => {
     const counts = new Map<CaveVariant, number>();
     for (let seed = 1; seed <= 10_000; seed++) counts.set(formationOf(seed), (counts.get(formationOf(seed)) ?? 0) + 1);
     const share = (v: CaveVariant): number => (counts.get(v) ?? 0) / 10_000;
     console.log(`formations of 10,000 seeds: ${[...counts].map(([v, n]) => `${v} ${n}`).join(', ')}`);
-    const rest = 1 - SULPHURIC_CHANCE;
-    expect(share('sulphuric')).toBeCloseTo(SULPHURIC_CHANCE, 1);
-    for (const [variant, odds] of [['limestone', 5], ['fault', 4], ['fungal', 2], ['burrow', 1]] as const) expect(Math.abs(share(variant) - (rest * odds) / 12)).toBeLessThan(0.015);
-    expect(counts.has('lava-tube') || counts.has('underdark')).toBe(false);
+    for (const [variant, odds] of [['limestone', 5], ['fault', 4], ['fungal', 2], ['burrow', 1]] as const) expect(Math.abs(share(variant) - odds / 12)).toBeLessThan(0.015);
+    expect(counts.has('lava-tube') || counts.has('underdark') || counts.has('sulphuric')).toBe(false);
   });
 
   it('comes from the tags where they name it, before the seed, lava and the Underdark first', () => {
@@ -84,7 +86,7 @@ describe('a cave’s formation', () => {
   it('reaches every formation, by the seed or by the tags, and keeps the cave’s other rolls', () => {
     const reached = new Set<CaveVariant>();
     for (let seed = 1; seed <= 400; seed++) reached.add(formationOf(seed));
-    for (const list of [['lava'], ['large']]) reached.add(variantOf(1, list)!);
+    for (const list of [['lava'], ['large'], ['acid']]) reached.add(variantOf(1, list)!);
     expect([...reached].sort()).toEqual([...CAVE_VARIANTS].sort());
     // The formation's stream is its own: the character drawn beside it is the one the seed drew before formations.
     const seed = seedsOf('fault', 1)[0]!;

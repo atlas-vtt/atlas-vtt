@@ -131,6 +131,8 @@ export interface CaveBranching {
   through?: WayRoll;
   /** The chance of each side way off a passage. */
   passageSides: number;
+  /** One way on from every room (a burrow), by a chamber's widest wall exit. */
+  oneWayOn?: boolean;
 }
 
 function withExit(groups: Branch[][], exit: WayRoll): Branch[][] {
@@ -147,6 +149,26 @@ function onThrough(groups: Branch[][], room: WorkRoom, exit: WayRoll | undefined
   return groups.map((group) => group.map((branch) => ({ ...onward(branch), fallbacks: branch.fallbacks.map(onward) })));
 }
 
+/**
+ * A burrow's one way on: a chamber leaves by its special exit straight on, else by its widest wall
+ * exit through any wall, a passage runs straight on; the other walls are tried in turn where the
+ * way is blocked, so the tube runs on to its end (a string must not end early, and neither may a
+ * burrow, whose end is its maker's den). A blocked special way is no longer opposite the way in,
+ * so the walls tried instead take the chamber's next exit. A chamber whose exits all lead up or
+ * down still leads on by a plain way, as a string's does.
+ */
+function oneWayOn(rng: Rng, room: WorkRoom, flip: boolean, cave: CaveBranching): Branch[][] {
+  const wall = cave.exits?.filter((exit) => !exit.vertical) ?? [];
+  const special = wall.find((exit) => exit.special);
+  const plain = wall.find((exit) => !exit.special);
+  const turns = shuffled<Exit>(rng, ['left', 'right']);
+  const order: Exit[] = isNormal(room) && !special ? shuffled<Exit>(rng, ['forward', ...turns]) : ['forward', ...turns];
+  const [first, ...rest] = order.map((exit, k) => (k === 0 && special ? forwardBranch(room, 0, flip, newSeed(rng)) : exitBranch(rng, room, exit, flip)));
+  if (!cave.exits) return onThrough([[{ ...first!, fallbacks: rest }]], room, cave.through);
+  const by = (exit: CaveExit | undefined, branch: Branch): Branch => (exit ? { ...branch, exit: wayRollOf(exit) } : branch);
+  return [[{ ...by(special ?? plain, first!), fallbacks: rest.map((branch) => by(plain, branch)) }]];
+}
+
 /** The branches of a placed room, grouped: branches of one group share a seed and a mirror group. */
 export function branchesOf(rng: Rng, room: WorkRoom, flip: boolean, params: DungeonParams, cave?: CaveBranching): Branch[][] {
   if (params.string) {
@@ -155,6 +177,7 @@ export function branchesOf(rng: Rng, room: WorkRoom, flip: boolean, params: Dung
     // A chamber's one way on is its exit, whichever wall it leaves by.
     return lead ? withExit(groups, wayRollOf(lead)) : onThrough(groups, room, cave?.through);
   }
+  if (cave?.oneWayOn) return oneWayOn(rng, room, flip, cave);
   if (cave?.exits) return caveBranches(rng, room, flip, cave.exits);
   if (cave) return onThrough(pick(rng, params.symmetry) ? mirroredBranches(rng, room, flip) : freeBranches(rng, room, flip, cave.passageSides), room, cave.through);
   return pick(rng, params.symmetry) ? mirroredBranches(rng, room, flip) : freeBranches(rng, room, flip);
