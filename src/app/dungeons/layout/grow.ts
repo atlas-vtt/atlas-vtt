@@ -11,11 +11,13 @@ import type { KeyedRng, Rng } from '../rng';
 import { type Branch, type CaveBranching, branchesOf } from './branches';
 import { type CaveExit, type WayRoll, rollExits, verticalExits } from './cavern/veins/caveExits';
 import { GARGANTUAN_FLOOR_ROOMS, type TierDraw } from './cavern/veins/caveSizes';
+import { RoomIndex } from './roomIndex';
 import { type RoomSize, drawDoorKind, drawSize } from './sizes';
 import { REGULAR_ZONE, type WorkLayout, type WorkRoom, doorMayOpen, isNormal, roomAt, roomRect } from './workLayout';
 
 /** Corridors do not count towards size; this keeps a corridor maze from growing forever. */
 const MAX_TOTAL_ROOMS = 400;
+const NONE: ReadonlySet<number> = new Set();
 
 /** Where a floor's first room stands, and on a floor below the entry its size, fixed by the landing. */
 export interface FloorRoot {
@@ -40,10 +42,15 @@ interface QueuedRoom {
   exit?: WayRoll;
 }
 
-/** Whether a room of this shape may stand here: walls may be shared, floors never, and the reserved ground stays clear. */
-export function roomFits(layout: WorkLayout, rect: CellRect, ignore: ReadonlySet<number>, first: boolean): boolean {
+/**
+ * Whether a room of this shape may stand here: walls may be shared, floors never, and the reserved
+ * ground stays clear. `index`, where given, holds every room of the layout as it stands (while the
+ * tree grows), and is asked instead of each room.
+ */
+export function roomFits(layout: WorkLayout, rect: CellRect, ignore: ReadonlySet<number>, first: boolean, index?: RoomIndex): boolean {
   if (!first && layout.reserved && rectsTouch(rect, layout.reserved)) return false;
   if (layout.within && !contains(layout.within, rect)) return false;
+  if (index) return !index.clashes(rect, ignore);
   return layout.rooms.every((room) => room.removed || ignore.has(room.id) || !rectsClash(rect, roomRect(room)));
 }
 
@@ -114,6 +121,7 @@ export function growTree(rngOf: KeyedRng, params: DungeonParams, root: FloorRoot
   const queue: QueuedRoom[] = [{ parent: null, origin: root.origin, axis: root.axis, flip: false, seed: root.seed, group: 0, fallbacks: [] }];
   let groups = 1;
   let normals = 0;
+  const index = new RoomIndex();
   for (let head = 0; head < queue.length; head++) {
     if (normals >= params.maxRooms || layout.rooms.length >= MAX_TOTAL_ROOMS) break;
     const item = queue[head] as QueuedRoom;
@@ -122,13 +130,15 @@ export function growTree(rngOf: KeyedRng, params: DungeonParams, root: FloorRoot
     const drawn = first && root.landing ? root.landing : drawSize(rng, params, params.cave?.veins && tierDraw(layout, params, item));
     const size = first && root.minDepth !== undefined && isNormal(drawn) ? { ...drawn, depth: Math.max(drawn.depth, root.minDepth) } : drawn;
     const room = newRoom(layout, item, size, first && root.landing !== undefined);
-    const fits = first || (roomFits(layout, roomRect(room), new Set(), false) && doorMayOpen(layout, item.origin, item.axis));
+    const rect = roomRect(room);
+    const fits = first || (roomFits(layout, rect, NONE, false, index) && doorMayOpen(layout, item.origin, item.axis));
     if (!fits) {
       const [next, ...rest] = item.fallbacks;
       if (next) queue.push({ ...next, fallbacks: rest, parent: item.parent, group: item.group });
       continue;
     }
     layout.rooms.push(room);
+    index.add(room.id, rect);
     if (item.parent !== null) {
       const parent = roomAt(layout, item.parent);
       const way = item.exit && { way: item.exit.way, width: item.exit.width };

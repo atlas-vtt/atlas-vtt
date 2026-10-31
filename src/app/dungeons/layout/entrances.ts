@@ -7,7 +7,7 @@
 
 import type { CellDir } from '../model';
 import type { DungeonParams } from '../params';
-import { cellKey, dir } from '../geometry';
+import { dir } from '../geometry';
 import { type KeyedRng, chance, pick, weighted } from '../rng';
 import { hops, neighbours } from '../roomGraph';
 import { normalCount } from './grow';
@@ -35,7 +35,7 @@ export function placeEntrances(rngOf: KeyedRng, layout: WorkLayout, params: Dung
   const rng = rngOf('entrances');
   const first = layout.doors.find((door) => door.from === null);
   const ground = openGround(layout);
-  if (!first || !ground.has(cellKey(first.x - first.dir.x, first.y - first.dir.y))) return false;
+  if (!first || !ground.has(first.x - first.dir.x, first.y - first.dir.y)) return false;
   const wanted = second && (normalCount(layout) >= TWO_ENTRANCES_FROM || chance(rng, SMALL_SECOND_CHANCE));
   if (!wanted) return true;
   const away = dir(-first.dir.x, -first.dir.y);

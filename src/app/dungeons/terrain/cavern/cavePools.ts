@@ -42,7 +42,7 @@ const STEPS = [
 ] as const;
 
 /** The most cells one pool fills, however large its chamber: a lake of 1,500 square feet is plenty, and a larger one costs every later check its size. */
-const MOST_POOL_CELLS = 60;
+export const MOST_POOL_CELLS = 60;
 
 /**
  * A pool of about `share` of the room's floor (at most `MOST_POOL_CELLS`), grown cell by cell from

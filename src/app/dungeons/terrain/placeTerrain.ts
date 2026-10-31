@@ -17,6 +17,7 @@ import { furnishArena } from './arena';
 import { placeBreakdown, rubbleAtFeet } from './cavern/breakdown';
 import { withoutItsHazard } from './cavern/unnamedRoom';
 import { floorTextures } from './cavern/caveTextures';
+import { placeGreatChambers } from './cavern/greatChambers';
 import { placeSpecialRoutes } from './cavern/specialRoutes';
 import { placeVerticalExits } from './cavern/verticalExits';
 import { draft } from './catalog';
@@ -74,7 +75,11 @@ function furnishFloor(work: TerrainWork, k: number, input: TerrainFloorInput): v
     const typed = types.get(room.id);
     if (typed && !room.stage && !hazarded.has(room.id)) types.set(room.id, withoutItsHazard(work, room, typed));
   }
-  if (work.cave) for (const room of rooms) caveGround(work, k, room.id, 'breakdown');
+  // A cave's great chambers take their interiors once their types are settled, before the breakdown and cover that find them there.
+  if (work.cave) {
+    placeGreatChambers(work, k, rooms, types);
+    for (const room of rooms) caveGround(work, k, room.id, 'breakdown');
+  }
   for (const room of rooms) {
     if (room.boss || room.stage) continue;
     const typed = types.get(room.id);

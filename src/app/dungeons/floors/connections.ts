@@ -11,7 +11,7 @@ import { cellKey, cellsOf, contains, floorRect, intersection, stepsWithin } from
 import { type Rng, pick, weighted } from '../rng';
 import { hops, neighbours } from '../roomGraph';
 import { type FloorStack, stairEnd } from './floorStack';
-import { type FloorSpace, type StairSpot, approachCells, spotFits, spotRect, spotsWithin } from './stairSpots';
+import { type FloorSpace, type StairSpot, approachCells, spotFitter, spotRect, spotsWithin } from './stairSpots';
 
 /** Two ways between floors from this many normal rooms on each. */
 export const TWO_CONNECTIONS_FROM = 6;
@@ -84,7 +84,8 @@ export function chooseOnward(rng: Rng, floor: FloorShape, index: number, stack: 
   const end = stairEnd(stack, index, index + 1);
   const firstRoom = fromEntrance ? entranceRoom(floor) : undefined;
   if (firstRoom && holdsStairs(firstRoom)) {
-    const spots = spotsWithin(floorRect(firstRoom), across).filter((spot) => spotFits(firstRoom, space, spot, end) && lands(spot));
+    const fits = spotFitter(firstRoom, space, end);
+    const spots = spotsWithin(floorRect(firstRoom), across).filter((spot) => fits(spot) && lands(spot));
     // The stairs stand beside the way in, never across it, on either floor.
     const way = new Set(wayIn(firstRoom, floor.doors).map((c) => cellKey(c.x, c.y)));
     const off = spots.filter((spot) => ![...cellsOf(spotRect(spot)), ...approachCells(spot, 'upper'), ...approachCells(spot, 'lower')].some((c) => way.has(cellKey(c.x, c.y))));
@@ -95,7 +96,8 @@ export function chooseOnward(rng: Rng, floor: FloorShape, index: number, stack: 
   let options = floor.rooms.filter(holdsStairs).map((room) => [room, ((distance[room.id] ?? 0) + 1) ** 2 * (room.vertical?.down.length ? SHAFT_WEIGHT : 1)] as const);
   while (options.length > 0) {
     const room = weighted(rng, options);
-    const spots = spotsWithin(floorRect(room), across).filter((spot) => spotFits(room, space, spot, end) && lands(spot));
+    const fits = spotFitter(room, space, end);
+    const spots = spotsWithin(floorRect(room), across).filter((spot) => fits(spot) && lands(spot));
     if (spots.length > 0) return { room: room.id, spot: pick(rng, spots) };
     options = options.filter(([other]) => other !== room);
   }
@@ -131,7 +133,9 @@ export function extraConnection(rng: Rng, earlier: FloorShape, later: FloorShape
   for (const { a, b, spread } of overlappingPairs(earlier, later)) {
     if (spots.length > 0 && spread < widest * 0.75) break;
     const shared = intersection(floorRect(a), floorRect(b));
-    const fitting = shared ? spotsWithin(shared).filter((spot) => spotFits(a, earlierSpace, spot, earlierEnd) && spotFits(b, laterSpace, spot, laterEnd) && allowed(spot)) : [];
+    const fitsA = spotFitter(a, earlierSpace, earlierEnd);
+    const fitsB = spotFitter(b, laterSpace, laterEnd);
+    const fitting = shared ? spotsWithin(shared).filter((spot) => fitsA(spot) && fitsB(spot) && allowed(spot)) : [];
     if (fitting.length === 0) continue;
     if (spots.length === 0) widest = spread;
     spots.push(...fitting);

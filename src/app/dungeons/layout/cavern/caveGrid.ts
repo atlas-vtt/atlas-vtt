@@ -5,8 +5,8 @@
  * rows they are reached from are claimed from the start and never given up.
  */
 
-import { approachCells, doorApproaches, type StairSpot, spotRect, stairwellCells } from '../../floors/stairSpots';
-import { cellKey, cellsOf, doorCells, floorRect, inRect, wallRect } from '../../geometry';
+import { approachCells, type StairSpot, spotRect, stairwellCells } from '../../floors/stairSpots';
+import { cellKey, cellsOf, doorCells, doorSide, floorRect, inRect, wallRect } from '../../geometry';
 import type { CellPoint, DungeonDoor, DungeonRoom } from '../../model';
 
 /** A floor as shaping reads it, planned or being planned: its stairwells by their rectangles (and the floor each leads to, where known). */
@@ -40,8 +40,8 @@ export const NEAR8: readonly (readonly [number, number])[] = [...NEAR4, [1, 1], 
 
 /** The cell a `cellKey` names. */
 export function unkey(key: string): CellPoint {
-  const [x, y] = key.split(',').map(Number) as [number, number];
-  return { x, y };
+  const comma = key.indexOf(',');
+  return { x: Number(key.slice(0, comma)), y: Number(key.slice(comma + 1)) };
 }
 
 /** The rows a stairwell is reached from on this floor. */
@@ -80,11 +80,21 @@ export class CaveGrid {
     floor.doors.forEach((door, k) => {
       for (const c of doorCells(door)) this.claim(c.x, c.y, doorOwner(k));
     });
+    // Each room's door approaches (`doorApproaches`), in the doors' order, read in one pass over the doors.
+    const approaches = new Map<number, CellPoint[]>();
+    for (const door of floor.doors) {
+      for (const id of door.from === door.to ? [door.from] : [door.from, door.to]) {
+        if (id === null) continue;
+        const list = approaches.get(id) ?? [];
+        list.push(...doorSide(door, id));
+        approaches.set(id, list);
+      }
+    }
     for (const room of floor.rooms) {
       const rect = floorRect(room);
       const stairs = floor.stairs.filter((s) => cellsOf(spotRect(s)).every((c) => inRect(rect, c.x, c.y)));
       const own = [
-        ...doorApproaches(room, floor.doors),
+        ...(approaches.get(room.id) ?? []),
         ...stairs.flatMap((s) => [...cellsOf(spotRect(s)), ...stairRows(s, index)]),
       ].filter((c) => inRect(rect, c.x, c.y));
       this.require(room.id, own);

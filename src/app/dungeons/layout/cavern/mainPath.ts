@@ -100,6 +100,9 @@ function endArea(floor: CaveFloorPlan, end: LaneEnd, side: 'upper' | 'lower'): {
   return { area: keys([...row, ...row.map((c) => ({ x: c.x + door.dir.x, y: c.y + door.dir.y }))]), touch: keys([{ x: door.x, y: door.y }]) };
 }
 
+/** The cells a grid's box covers. */
+type Box = ReturnType<CaveGrid['box']>;
+
 const blockCells = (ax: number, ay: number): CellPoint[] => [
   { x: ax, y: ay },
   { x: ax + 1, y: ay },
@@ -107,93 +110,109 @@ const blockCells = (ax: number, ay: number): CellPoint[] => [
   { x: ax + 1, y: ay + 1 },
 ];
 
-/** Blocks lying in the end's area and holding one of its touch cells. */
+/** Blocks lying in the end's area and holding one of its touch cells; a chamber's touch is every cell of it, so its cells are read once. */
 function endBlocks(end: { area: Set<string>; touch: Set<string> }, ok: (x: number, y: number) => boolean): string[] {
+  const fits = new Map<string, boolean>();
+  const fitsAt = (x: number, y: number): boolean => {
+    const key = cellKey(x, y);
+    let f = fits.get(key);
+    if (f === undefined) {
+      f = end.area.has(key) && ok(x, y);
+      fits.set(key, f);
+    }
+    return f;
+  };
   const out = new Set<string>();
   for (const key of end.touch) {
     const { x, y } = unkey(key);
     for (const [ax, ay] of [[x - 1, y - 1], [x, y - 1], [x - 1, y], [x, y]] as const) {
-      const cells = blockCells(ax, ay);
-      if (cells.every((c) => end.area.has(cellKey(c.x, c.y)) && ok(c.x, c.y))) out.add(cellKey(ax, ay));
+      if (fitsAt(ax, ay) && fitsAt(ax + 1, ay) && fitsAt(ax, ay + 1) && fitsAt(ax + 1, ay + 1)) out.add(cellKey(ax, ay));
     }
   }
   return [...out];
 }
 
-/** A block's number: its corner's place, for the walk's maps. */
-const blockId = (ax: number, ay: number): number => (ax + 32768) * 65536 + (ay + 32768);
-const blockAt = (id: number): CellPoint => ({ x: Math.floor(id / 65536) - 32768, y: (id % 65536) - 32768 });
-
 /**
  * A walk of 2 × 2 blocks from the start's blocks to the goal's over cells `owners` allow; its
  * cells, or null. It goes the cheapest way over a gently varying cost (`price`), so where a
- * tunnel leaves it room the lane winds from side to side rather than running straight.
+ * tunnel leaves it room the lane winds from side to side rather than running straight. Only blocks
+ * within `box` can fit (`owners` allows no cell outside the grid's box), so the walk keeps what it
+ * learns of each block in arrays over the box: most walks a floor's layout is checked with find no
+ * lane, and look at every block within reach first.
  */
-function blockWalk(start: { area: Set<string>; touch: Set<string> }, goal: { area: Set<string>; touch: Set<string> }, owners: LaneOwner, price: LaneWay['cost'], guided = false): CellPoint[] | null {
+function blockWalk(box: Box, start: { area: Set<string>; touch: Set<string> }, goal: { area: Set<string>; touch: Set<string> }, owners: LaneOwner, price: LaneWay['cost'], guided = false): CellPoint[] | null {
+  const { x0, y0, w, h } = box;
   const ok = (x: number, y: number): boolean => owners(x, y) !== null;
+  const blockId = (ax: number, ay: number): number => (ax < x0 || ay < y0 || ax >= x0 + w - 1 || ay >= y0 + h - 1 ? -1 : (ay - y0) * w + (ax - x0));
+  const blockX = (id: number): number => (id % w) + x0;
+  const blockY = (id: number): number => Math.floor(id / w) + y0;
   const ids = (keys: readonly string[]): number[] => keys.map((key) => {
     const { x, y } = unkey(key);
     return blockId(x, y);
   });
   const goals = new Set(ids(endBlocks(goal, ok)));
-  // The cost of stepping onto each block met, Infinity where it does not fit: worked out once a block.
-  const weights = new Map<number, number>();
-  const weightOf = (id: number, ax: number, ay: number): number => {
-    let w = weights.get(id);
-    if (w === undefined) {
-      w = ok(ax, ay) && ok(ax + 1, ay) && ok(ax, ay + 1) && ok(ax + 1, ay + 1) ? price(ax, ay) : Infinity;
-      weights.set(id, w);
+  // The cost of stepping onto each block met, Infinity where it does not fit, NaN until worked out.
+  const weights = new Float64Array(w * h).fill(NaN);
+  const weightOf = (id: number): number => {
+    let weight = weights[id] as number;
+    if (Number.isNaN(weight)) {
+      const ax = blockX(id);
+      const ay = blockY(id);
+      weight = ok(ax, ay) && ok(ax + 1, ay) && ok(ax, ay + 1) && ok(ax + 1, ay + 1) ? price(ax, ay) : Infinity;
+      weights[id] = weight;
     }
-    return w;
+    return weight;
   };
   // Guided, the walk goes first where the steps left can be fewest (every step costs 1 at least), as A* does.
-  const goalBlocks = [...goals].map(blockAt);
+  const goalBlocks = [...goals].map((id) => ({ x: blockX(id), y: blockY(id) }));
   const lefts = new Map<number, number>();
   const left = (id: number): number => {
     if (!guided) return 0;
     let steps = lefts.get(id);
     if (steps === undefined) {
-      const { x, y } = blockAt(id);
+      const x = blockX(id);
+      const y = blockY(id);
       steps = Infinity;
       for (const g of goalBlocks) steps = Math.min(steps, Math.abs(g.x - x) + Math.abs(g.y - y));
       lefts.set(id, steps);
     }
     return steps;
   };
-  const back = new Map<number, number>();
-  const cost = new Map<number, number>();
+  const back = new Int32Array(w * h).fill(-1);
+  const cost = new Float64Array(w * h).fill(Infinity);
   const open = new MinHeap<number>();
   for (const id of ids(endBlocks(start, ok))) {
-    back.set(id, id);
-    cost.set(id, 0);
+    back[id] = id;
+    cost[id] = 0;
     open.push(id, left(id));
   }
   let found: number | null = null;
   for (let next = open.pop(); next && found === null; next = open.pop()) {
     const at = next.item;
-    const spent = cost.get(at)!;
+    const spent = cost[at] as number;
     if (next.cost > spent + left(at)) continue;
     if (goals.has(at)) {
       found = at;
       break;
     }
-    const { x: ax, y: ay } = blockAt(at);
+    const ax = blockX(at);
+    const ay = blockY(at);
     for (const [dx, dy] of NEAR4) {
       const id = blockId(ax + dx, ay + dy);
-      const w = weightOf(id, ax + dx, ay + dy);
-      const step = spent + w;
-      if (w === Infinity || step >= (cost.get(id) ?? Infinity)) continue;
-      back.set(id, at);
-      cost.set(id, step);
+      if (id < 0) continue;
+      const weight = weightOf(id);
+      const step = spent + weight;
+      if (weight === Infinity || step >= (cost[id] as number)) continue;
+      back[id] = at;
+      cost[id] = step;
       open.push(id, step + left(id));
     }
   }
   if (found === null) return null;
   const lane = new Map<string, CellPoint>();
-  for (let id = found; ; id = back.get(id)!) {
-    const { x: ax, y: ay } = blockAt(id);
-    for (const c of blockCells(ax, ay)) lane.set(cellKey(c.x, c.y), c);
-    if (back.get(id) === id) break;
+  for (let id = found; ; id = back[id] as number) {
+    for (const c of blockCells(blockX(id), blockY(id))) lane.set(cellKey(c.x, c.y), c);
+    if (back[id] === id) break;
   }
   return [...lane.values()].reverse();
 }
@@ -213,7 +232,7 @@ export function wideLane(grid: CaveGrid, floor: CaveFloorPlan, route: readonly n
   const banned = new Set<string>();
   const owners = laneOwners(grid, floor, route, [start.area, goal.area], banned, undefined, way.swell);
   for (let tries = 0; tries <= LANE_RETRIES; tries++) {
-    const lane = blockWalk(start, goal, owners, way.cost, way.guided);
+    const lane = blockWalk(grid.box(), start, goal, owners, way.cost, way.guided);
     if (!lane) return null;
     const conflict = crossingConflict(grid, floor, route, lane) ?? laneConflict(grid, lane, owners);
     if (conflict === null) return lane;

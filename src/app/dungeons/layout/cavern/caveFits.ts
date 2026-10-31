@@ -9,7 +9,7 @@ import { type StairEnd, type StairSpot, approachCells, spotRect } from '../../fl
 import { cellKey, cellsOf, contains, floorRect } from '../../geometry';
 import type { DungeonRoom } from '../../model';
 import { CaveGrid, type CaveFloorPlan } from './caveGrid';
-import { reserveCores, stairsJoinRound } from './chambers';
+import { type Takes, reserveCores, stairsJoinRound, takesOf } from './chambers';
 import { type LaneEnd, claimLane, clearOfLane, laneEnds, mainRoute, wideLane } from './mainPath';
 
 const keysOf = (cells: readonly { x: number; y: number }[]): string[] => cells.map((c) => cellKey(c.x, c.y));
@@ -49,11 +49,29 @@ export function furtherStairFits(floor: CaveFloorPlan, index: number, end: Stair
   const clear = clearOfLane(floor, index);
   const [from, to] = laneEnds(index, index + 2, floor, false);
   const grid = laidGrid(floor, from, to, index);
-  return (spot) => {
+  // The floor stays as laid: what each chamber may take is worked out once, and each spot's answer
+  // is kept, since every attempt at the next floor asks of the same spots again.
+  const takes = new Map<number, Takes>();
+  const known = new Map<string, boolean>();
+  const fits = (spot: StairSpot): boolean => {
     if (!clear(spot)) return false;
     const room = chamberOf(floor.rooms, spot);
     // A floor whose own main path or cores do not fit takes no further way: nothing could be checked.
     if (!grid || !room) return false;
-    return stairsJoinRound(grid, room, { cells: keysOf(cellsOf(spotRect(spot))), row: keysOf(approachCells(spot, end)) });
+    let own = takes.get(room.id);
+    if (!own) {
+      own = takesOf(grid, room);
+      takes.set(room.id, own);
+    }
+    return stairsJoinRound(grid, room, { cells: keysOf(cellsOf(spotRect(spot))), row: keysOf(approachCells(spot, end)) }, own);
+  };
+  return (spot) => {
+    const key = `${spot.x},${spot.y},${spot.w},${spot.h},${spot.down.x},${spot.down.y}`;
+    let answer = known.get(key);
+    if (answer === undefined) {
+      answer = fits(spot);
+      known.set(key, answer);
+    }
+    return answer;
   };
 }

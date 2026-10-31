@@ -8,13 +8,14 @@
 
 import type { CellDir, CellPoint } from '../model';
 import type { DungeonParams } from '../params';
-import { type CellRect, inRect, intersection, rectsTouch } from '../geometry';
+import { type CellRect, inRect, intersection } from '../geometry';
 import { type KeyedRng, type Rng, chance, pick } from '../rng';
 import { farthestRoom, hops, neighbours, openDoor, shortestPath } from '../roomGraph';
 import { rollLoopWay } from './cavern/veins/caveExits';
 import { layoutEdges } from './costs';
 import { pathCosts } from './graph';
 import { normalCount } from './grow';
+import { RoomIndex } from './roomIndex';
 import { drawDoorKind } from './sizes';
 import { REGULAR_ZONE, type WorkLayout, type WorkRoom, doorMayOpen, floorOf, isNormal, liveRooms, roomRect } from './workLayout';
 
@@ -26,6 +27,14 @@ const MIN_MAIN_LOOP_COST = 3;
 const ROOMS_PER_LOOP = 8;
 /** Floors this small may have no loop at all. */
 const SMALL_FLOOR = 5;
+/** A loop door keeps off the cells of other doors and those beside them. */
+const NEAR_DOOR: readonly (readonly [number, number])[] = [
+  [0, 0],
+  [1, 0],
+  [-1, 0],
+  [0, 1],
+  [0, -1],
+];
 
 interface LoopSpot {
   cell: CellPoint;
@@ -70,15 +79,17 @@ function sharedWallSpots(a: WorkRoom, b: WorkRoom): LoopSpot[] {
 export function loopCandidates(layout: WorkLayout, allow: (a: WorkRoom, b: WorkRoom) => boolean, relink = false): LoopCandidate[] {
   const linked = new Set(layout.doors.map((d) => `${Math.min(d.from ?? -1, d.to ?? -1)}:${Math.max(d.from ?? -1, d.to ?? -1)}`));
   const doorCells = new Set(layout.doors.map((d) => `${d.x},${d.y}`));
-  const nearDoor = (c: CellPoint): boolean =>
-    [0, 1, -1].some((dx) => [0, 1, -1].some((dy) => Math.abs(dx) + Math.abs(dy) <= 1 && doorCells.has(`${c.x + dx},${c.y + dy}`)));
+  const nearDoor = (c: CellPoint): boolean => NEAR_DOOR.some(([dx, dy]) => doorCells.has(`${c.x + dx},${c.y + dy}`));
   const rooms = liveRooms(layout);
   const rects = rooms.map(roomRect);
+  const index = new RoomIndex();
+  rects.forEach((rect, k) => index.add(k, rect));
   const out: LoopCandidate[] = [];
   rooms.forEach((a, k) => {
-    for (let m = k + 1; m < rooms.length; m++) {
+    for (const m of index.touching(rects[k] as CellRect)) {
+      if (m <= k) continue;
       const b = rooms[m] as WorkRoom;
-      if (!rectsTouch(rects[k] as CellRect, rects[m] as CellRect) || !allow(a, b)) continue;
+      if (!allow(a, b)) continue;
       if (!relink && linked.has(`${Math.min(a.id, b.id)}:${Math.max(a.id, b.id)}`)) continue;
       const spots = sharedWallSpots(a, b).filter((spot) => !nearDoor(spot.cell) && doorMayOpen(layout, spot.cell, spot.dir));
       if (spots.length > 0) out.push({ a: a.id, b: b.id, spots });
@@ -87,9 +98,30 @@ export function loopCandidates(layout: WorkLayout, allow: (a: WorkRoom, b: WorkR
   return out;
 }
 
-/** The walking cost between a candidate's rooms as the doors stand now. */
-export function costBetween(layout: WorkLayout, candidate: LoopCandidate): number {
-  return pathCosts(layoutEdges(layout), candidate.a)[candidate.b] ?? Infinity;
+/**
+ * The walking cost between each candidate's rooms as the doors stand now: the doors read once, and
+ * the costs from a room worked out once, from whichever end of a pair more candidates share (doors
+ * are walked both ways at one cost). A cave floor has hundreds of candidates, and working the costs
+ * out anew for each took most of a floor's attempt.
+ */
+function costsBetween(layout: WorkLayout, candidates: readonly LoopCandidate[]): number[] {
+  const edges = layoutEdges(layout);
+  const shared = new Map<number, number>();
+  for (const { a, b } of candidates) for (const id of [a, b]) shared.set(id, (shared.get(id) ?? 0) + 1);
+  const from = new Map<number, number[]>();
+  const costsFrom = (id: number): number[] => {
+    let costs = from.get(id);
+    if (!costs) {
+      costs = pathCosts(edges, id);
+      from.set(id, costs);
+    }
+    return costs;
+  };
+  return candidates.map(({ a, b }) => {
+    if (from.has(a)) return costsFrom(a)[b] ?? Infinity;
+    if (from.has(b) || (shared.get(b) ?? 0) > (shared.get(a) ?? 0)) return costsFrom(b)[a] ?? Infinity;
+    return costsFrom(a)[b] ?? Infinity;
+  });
 }
 
 /** Places a loop door at one of the candidate's spots, and drops the candidates whose spots it crowds. */
@@ -125,16 +157,31 @@ function loopTarget(rng: Rng, normals: number, params: DungeonParams): number {
 
 /** A candidate among those whose ways are longest (within a fifth of the longest), so loops vary. */
 function longCandidate(rng: Rng, layout: WorkLayout, candidates: readonly LoopCandidate[], minCost: number): LoopCandidate | null {
-  const ranked = candidates.map((candidate) => ({ candidate, cost: costBetween(layout, candidate) })).filter((r) => Number.isFinite(r.cost) && r.cost > minCost);
+  const costs = costsBetween(layout, candidates);
+  const ranked = candidates.map((candidate, k) => ({ candidate, cost: costs[k] ?? Infinity })).filter((r) => Number.isFinite(r.cost) && r.cost > minCost);
   if (ranked.length === 0) return null;
   const longest = Math.max(...ranked.map((r) => r.cost));
   return pick(rng, ranked.filter((r) => r.cost >= longest * 0.8)).candidate;
 }
 
-/** Whether the ring a door between the candidate's rooms would close passes through a room of `way`. */
-function ringMeets(layout: WorkLayout, candidate: LoopCandidate, way: ReadonlySet<number>): boolean {
+/**
+ * Whether the ring a door between a candidate's rooms would close passes through a room of `way`,
+ * the rooms joined by the open doors; the walk from each room is worked out once for every candidate.
+ */
+function ringsMeeting(layout: WorkLayout, way: ReadonlySet<number>): (candidate: LoopCandidate) => boolean {
   const adjacent = neighbours(layout.rooms.length, layout.doors, openDoor);
-  return shortestPath(adjacent, candidate.a, candidate.b).some((id) => way.has(id));
+  const fromEnd = new Map<number, number[]>();
+  return ({ a, b }) => {
+    let toB = fromEnd.get(b);
+    if (!toB) {
+      toB = hops(adjacent, b);
+      fromEnd.set(b, toB);
+    }
+    // The way begins and ends at the pair's rooms, so either on `way` settles it without walking it.
+    if (!Number.isFinite(toB[a])) return false;
+    if (way.has(a) || way.has(b)) return true;
+    return shortestPath(adjacent, a, b, toB).some((id) => way.has(id));
+  };
 }
 
 /** The loops of a floor and, in a cave, the way each is passed: one exit's size rolled for it, from a stream of its own. */
@@ -152,8 +199,7 @@ function placeLoops(rngOf: KeyedRng, layout: WorkLayout, params: DungeonParams):
   const target = loopTarget(rng, normalCount(layout), params);
   let pending = loopCandidates(layout, (a, b) => a.zone === REGULAR_ZONE && b.zone === REGULAR_ZONE && !a.boss && !b.boss);
   if (target === 0 || pending.length === 0) return;
-  const way = new Set(mainWay(layout));
-  const main = longCandidate(rng, layout, pending.filter((c) => ringMeets(layout, c, way)), MIN_MAIN_LOOP_COST - 1);
+  const main = longCandidate(rng, layout, pending.filter(ringsMeeting(layout, new Set(mainWay(layout)))), MIN_MAIN_LOOP_COST - 1);
   let placed = 0;
   if (main) {
     pending = placeLoop(rng, layout, main, null, pending);
