@@ -33,6 +33,8 @@ export interface HandCaveOptions {
   below?: boolean;
   tags?: string[];
   character?: CaveCharacter;
+  /** Chambers west and east of A instead of the passage, each joined to A by a sump way at mirrored places; the way in from the north. */
+  twinSumps?: boolean;
 }
 
 const square = (x0: number, y0: number, x1: number, y1: number): CellPoint[] => cellsOf({ x0, y0, x1, y1 });
@@ -50,6 +52,16 @@ function topFloor(options: HandCaveOptions): FloorPlan {
   const a: DungeonRoom = { ...room(0, { x: 0, y: 0, w: 8, h: 8, axis: { x: 1, y: 0 } }), cells: CHAMBER_A, ...(options.vertical && { vertical: options.vertical }) };
   const way = options.way ? { way: options.way } : {};
   const entrance: DungeonDoor = { x: 0, y: 3, dir: { x: 1, y: 0 }, kind: 'opening', from: null, to: 0 };
+  if (options.twinSumps) {
+    const west: DungeonRoom = { ...room(1, { x: -7, y: 0, w: 8, h: 8, axis: { x: -1, y: 0 } }), cells: square(-6, 1, -1, 6) };
+    const east: DungeonRoom = { ...room(2, { x: 7, y: 0, w: 8, h: 8, axis: { x: 1, y: 0 } }), cells: square(8, 1, 13, 6) };
+    const doors: DungeonDoor[] = [
+      { x: 3, y: 0, dir: { x: 0, y: 1 }, kind: 'opening', from: null, to: 0 },
+      { x: 0, y: 3, dir: { x: 1, y: 0 }, kind: 'opening', from: 1, to: 0, way: 'sump' },
+      { x: 7, y: 3, dir: { x: -1, y: 0 }, kind: 'opening', from: 2, to: 0, way: 'sump' },
+    ];
+    return { rooms: [a, west, east], doors, stairs: [], columns: [], offeredTerrain: ALL_TERRAIN_KINDS, cave: caveFloor(options.lane ?? []) };
+  }
   if (options.noPassage) {
     const b: DungeonRoom = { ...room(1, { x: 7, y: 0, w: 8, h: 8, axis: { x: 1, y: 0 } }), cells: square(8, 1, 13, 6) };
     const doors: DungeonDoor[] = [entrance, { x: 7, y: 3, dir: { x: 1, y: 0 }, kind: 'opening', from: 0, to: 1, ...way }];

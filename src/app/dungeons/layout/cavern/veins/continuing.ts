@@ -6,7 +6,7 @@
  * them in any other.
  */
 
-import { cellKey, doorCells } from '../../../geometry';
+import { cellKey, doorCells, floorCellsOf } from '../../../geometry';
 import type { CellDir, CellPoint, DungeonDoor, DungeonRoom, DungeonStair } from '../../../model';
 import { type Rng, chance, shuffled } from '../../../rng';
 
@@ -43,10 +43,11 @@ function floorKeys(floor: ContinuingFloor): Set<string> {
 /**
  * The cell the squeeze leaves `room` from towards `dir` (unset, the room's own `continuing`): of
  * the chamber's cells furthest that way, the middle one across that side, so the squeeze stands
- * where the wall faces that way. Undefined where the chamber has no squeeze or no cells.
+ * where the wall faces that way. The one answer the layout, the note and the drawing read, so all
+ * three put the squeeze on the same cell. Undefined where the chamber has no squeeze or no cells.
  */
-export function continuingCell(room: Pick<DungeonRoom, 'cells' | 'continuing'>, dir: CellDir | undefined = room.continuing): CellPoint | undefined {
-  const cells = room.cells ?? [];
+export function continuingCell(room: Pick<DungeonRoom, 'x' | 'y' | 'w' | 'h' | 'cells' | 'continuing'>, dir: CellDir | undefined = room.continuing): CellPoint | undefined {
+  const cells = floorCellsOf(room);
   if (cells.length === 0 || !dir) return undefined;
   const reach = (c: CellPoint): number => c.x * dir.x + c.y * dir.y;
   const far = Math.max(...cells.map(reach));

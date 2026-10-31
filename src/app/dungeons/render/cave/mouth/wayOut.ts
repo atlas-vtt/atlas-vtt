@@ -26,6 +26,14 @@ export interface WayOut {
 /** Below the floor field's reach (`FloorField`, 3 cells), so a point farther out than it reads as clear of other floors. */
 const FIELD_REACH = 2.5;
 
+/**
+ * How much nearer than the mouth a floor may lie before the ground has given way to it, in cells:
+ * whole where no floor is nearer than the mouth, gone this much nearer. A chamber that flanks the
+ * way just past its mouth stands that close to the ground beside it; given more, the ground ran
+ * over that chamber's wall, and the scene's wall there stood in ground drawn as floor.
+ */
+const CLEAR_FADE = -0.15;
+
 /** The ground's strength above which it reads as floor: the grid is drawn there. */
 export const FLOOR_STRENGTH = 0.5;
 
@@ -97,7 +105,7 @@ export function wayStrength(way: WayOut, p: Vec, distance?: (p: Vec) => number):
   const ragged = valueNoise(across * 2.6 + 5.1, u * 0.4, way.seed + 1) * 0.9 * t;
   const fade = 1 - smoothstep(way.length * 0.18, way.length, Math.max(0, u) + ragged);
   if (fade <= 0) return 0;
-  const clear = distance ? smoothstep(-0.55, -0.15, distance(p) - Math.min(Math.max(0, u), FIELD_REACH)) : 1;
+  const clear = distance ? smoothstep(CLEAR_FADE, 0, distance(p) - Math.min(Math.max(0, u), FIELD_REACH)) : 1;
   return sides * fade * clear;
 }
 

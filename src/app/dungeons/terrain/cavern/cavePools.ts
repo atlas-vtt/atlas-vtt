@@ -41,10 +41,14 @@ const STEPS = [
   { x: 0, y: -1 },
 ] as const;
 
+/** The most cells one pool fills, however large its chamber: a lake of 1,500 square feet is plenty, and a larger one costs every later check its size. */
+const MOST_POOL_CELLS = 60;
+
 /**
- * A pool of about `share` of the room's floor, grown cell by cell from the free cell farthest from
- * the cells the room keeps reachable, of the cells `may` lets in, off the lane and the stairs; the
- * largest that leaves the room whole and is no rectangle, at least four cells. Null where none is.
+ * A pool of about `share` of the room's floor (at most `MOST_POOL_CELLS`), grown cell by cell from
+ * the free cell farthest from the cells the room keeps reachable, of the cells `may` lets in, off
+ * the lane and the stairs; the largest that leaves the room whole and is no rectangle, at least four
+ * cells. Null where none is.
  */
 export function naturalPool(rc: RoomCells, rng: Rng, share: number, may: (c: CellPoint) => boolean): CellPoint[] | null {
   const open = floorCellsOf(rc.room).filter((c) => rc.fits([c]) && !rc.inLane(c) && !rc.nearStairs(c) && may(c));
@@ -55,17 +59,29 @@ export function naturalPool(rc: RoomCells, rng: Rng, share: number, may: (c: Cel
   const allowed = new Set(open.map((c) => cellKey(c.x, c.y)));
   const grown: CellPoint[] = [start];
   const seen = new Set([cellKey(start.x, start.y)]);
-  const target = Math.max(4, Math.floor(rc.floorCount * share));
-  while (grown.length < target) {
-    const frontier = grown.flatMap((c) => STEPS.map((d) => ({ x: c.x + d.x, y: c.y + d.y }))).filter((c) => allowed.has(cellKey(c.x, c.y)) && !seen.has(cellKey(c.x, c.y)));
-    if (frontier.length === 0) break;
+  const target = Math.min(MOST_POOL_CELLS, Math.max(4, Math.floor(rc.floorCount * share)));
+  // Every free neighbour of every grown cell, in the order the grown cells came and once per cell it borders.
+  const frontier: CellPoint[] = [];
+  const border = (c: CellPoint): void => {
+    for (const d of STEPS) {
+      const n = { x: c.x + d.x, y: c.y + d.y };
+      if (allowed.has(cellKey(n.x, n.y)) && !seen.has(cellKey(n.x, n.y))) frontier.push(n);
+    }
+  };
+  border(start);
+  while (grown.length < target && frontier.length > 0) {
     const next = frontier[Math.floor(rng() * frontier.length)]!;
     seen.add(cellKey(next.x, next.y));
     grown.push(next);
+    const kept = frontier.filter((c) => c.x !== next.x || c.y !== next.y);
+    frontier.length = 0;
+    frontier.push(...kept);
+    border(next);
   }
+  // Whether the room stays whole is the cheaper question, and a pool that splits it never keeps a place for cover.
   for (let size = grown.length; size >= 4; size--) {
     const cells = grown.slice(0, size);
-    if (!rectangular(cells) && leavesRoom(rc, cells) && rc.allows(cells, 'block')) return cells;
+    if (!rectangular(cells) && rc.allows(cells, 'block') && leavesRoom(rc, cells)) return cells;
   }
   return null;
 }

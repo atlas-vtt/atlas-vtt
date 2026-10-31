@@ -11,8 +11,8 @@ import type { RoomCells } from './roomCells';
 
 const STEPS: readonly CellDir[] = [dir(0, -1), dir(1, 0), dir(0, 1), dir(-1, 0)];
 
-/** A shortest 4-connected way over the room's walkable floor from `from` to `to`, both included; [] where none leads. */
-function lane(rc: RoomCells, from: CellPoint, to: CellPoint): CellPoint[] {
+/** A shortest 4-connected way over the room's walkable floor (but `blocked`) from `from` to `to`, both included; [] where none leads. */
+function lane(rc: RoomCells, from: CellPoint, to: CellPoint, blocked: ReadonlySet<string>): CellPoint[] {
   const back = new Map<string, CellPoint | null>([[cellKey(from.x, from.y), null]]);
   const queue = [from];
   for (let head = 0; head < queue.length; head++) {
@@ -25,7 +25,7 @@ function lane(rc: RoomCells, from: CellPoint, to: CellPoint): CellPoint[] {
     for (const d of STEPS) {
       const next = { x: at.x + d.x, y: at.y + d.y };
       const key = cellKey(next.x, next.y);
-      if (back.has(key) || !rc.isFloor(next) || rc.isBlocked(next)) continue;
+      if (back.has(key) || !rc.isFloor(next) || rc.isBlocked(next) || blocked.has(key)) continue;
       back.set(key, at);
       queue.push(next);
     }
@@ -33,12 +33,19 @@ function lane(rc: RoomCells, from: CellPoint, to: CellPoint): CellPoint[] {
   return [];
 }
 
+/** The cells of a straight-as-it-gets lane between every pair of the room's needed cells, with `blocked` blocked too. */
+export function laneCells(rc: RoomCells, blocked: ReadonlySet<string> = new Set()): CellPoint[] {
+  const needed = rc.needed;
+  const out: CellPoint[] = [];
+  for (let a = 0; a < needed.length; a++) {
+    for (let b = a + 1; b < needed.length; b++) out.push(...lane(rc, needed[a] as CellPoint, needed[b] as CellPoint, blocked));
+  }
+  return out;
+}
+
 /** Keeps a straight-as-it-gets lane clear between every pair of the room's needed cells, so nothing stands between doors and stairs. */
 export function reserveLanes(rc: RoomCells): void {
-  const needed = rc.needed;
-  for (let a = 0; a < needed.length; a++) {
-    for (let b = a + 1; b < needed.length; b++) rc.keepClear(lane(rc, needed[a] as CellPoint, needed[b] as CellPoint));
-  }
+  rc.keepClear(laneCells(rc));
 }
 
 /**

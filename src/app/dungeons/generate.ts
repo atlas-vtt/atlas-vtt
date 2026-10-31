@@ -30,7 +30,7 @@ import { pickTheme, themeOf, themedTags } from './themes/themes';
 import type { ThemeId } from './themes/themeTypes';
 import { typeDungeon } from './themes/typeDungeon';
 import { themeWater, type ThemeWater } from './themes/themeWater';
-import { chooseWaterLevel, drainCells, placeWater, poolRooms } from './water';
+import { chooseWaterLevel, drainCells, placeWater, poolRooms, sumpMouths } from './water';
 
 interface FloorParts {
   planned: PlannedFloor;
@@ -77,7 +77,7 @@ function finishFloor(seed: number, index: number, parts: FloorParts, terrain: Fl
   const wet = cave && caveWater(cave, rooms, terrain.pieces);
   const pools = dry ? new Set<number>() : (wet?.pools ?? poolRooms(floorStream(seed, 'water', index, 'pools'), rooms, doors, params.poolChance, mayPool));
   // A cave's deep water is part of its water: one body with the floor's water where they meet, its own shore where not.
-  const deep = cave ? terrain.pieces.filter((p) => p.traits.hazard === 'deep-water').flatMap((p) => p.cells) : [];
+  const deep = cave ? [...terrain.pieces.filter((p) => p.traits.hazard === 'deep-water').flatMap((p) => p.cells), ...sumpMouths(doors, terrain.pieces)] : [];
   // Its rimstone dams lie where water steps down, at a lake's edge: water may lie over them, never round them as an island.
   const wetted = new Set([...deep, ...(cave ? terrain.pieces.filter((p) => p.kind === 'rimstone').flatMap((p) => p.cells) : [])].map((c) => cellKey(c.x, c.y)));
   const kept = [...[...terrain.takenCells()].filter((key) => !wetted.has(key)), ...drainCells(terrain.pieces), ...stairsAndAround(stairs), ...(cave ? entrancesAndAround(doors) : []), ...(parts.water?.dry ?? [])];

@@ -1,5 +1,4 @@
-import { floorCellsOf } from '../../../geometry';
-import type { CellDir, CellPoint, DungeonRoom } from '../../../model';
+import { continuingCell } from '../../../layout/cavern/veins/continuing';
 import type { Hand } from '../../art/hand';
 import { polyPath } from '../../art/paths';
 import type { Vec } from '../../geometry';
@@ -14,19 +13,6 @@ const LENGTH = 1.3;
 const MOUTH = 0.36;
 
 /**
- * The rim cell a chamber's continuing squeeze leaves from: of its floor cells furthest towards
- * `dir`, the middle one across that side, so the mark stands where the wall faces that way.
- */
-export function continuingCell(room: Pick<DungeonRoom, 'x' | 'y' | 'w' | 'h' | 'cells'>, dir: CellDir): CellPoint | null {
-  const cells = floorCellsOf(room);
-  if (!cells.length) return null;
-  const reach = (c: CellPoint): number => c.x * dir.x + c.y * dir.y;
-  const far = Math.max(...cells.map(reach));
-  const rim = cells.filter(c => reach(c) === far).sort((a, b) => (a.x * -dir.y + a.y * dir.x) - (b.x * -dir.y + b.y * dir.x));
-  return rim[Math.floor((rim.length - 1) / 2)] ?? null;
-}
-
-/**
  * A squeeze that leads on, too tight to follow, from a chamber that would otherwise end blind: a
  * sliver of floor running into the rock past the wall and closing to nothing, its sides the
  * squeeze's zig-zag, solid where it leaves the wall and broken as it fades. The wall stays whole:
@@ -37,7 +23,7 @@ export function drawContinuing(hand: Hand): void {
   const slivers: Vec[][] = [];
   for (const room of hand.scene.env.dungeon.rooms) {
     const dir = room.continuing;
-    const cell = dir && continuingCell(room, dir);
+    const cell = continuingCell(room);
     if (!dir || !cell) continue;
     const at = (u: number, v: number): Vec => ({ x: cell.x + 0.5 - dir.y * u + dir.x * v, y: cell.y + 0.5 + dir.x * u + dir.y * v });
     const end = at(0, START + LENGTH);

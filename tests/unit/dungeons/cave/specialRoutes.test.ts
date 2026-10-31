@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { generateDungeon } from '../../../../src/app/dungeons/generate';
 import { cellKey, doorCells } from '../../../../src/app/dungeons/geometry';
-import type { CellPoint, DungeonFloor, DungeonTerrain } from '../../../../src/app/dungeons/model';
+import type { CellPoint, DungeonFloor, DungeonModel, DungeonTerrain } from '../../../../src/app/dungeons/model';
 import { placeSpecialRoutes } from '../../../../src/app/dungeons/terrain/cavern/specialRoutes';
 import { cellProblems, clearanceProblems, routeProblems } from '../terrainInvariants';
 import { breakdownProblems, geologyProblems, laneProblems, waterProblems } from '../caveRules';
-import { physicsProblems } from '../themeTerrainInvariants';
+import { mirrorProblems, physicsProblems } from '../themeTerrainInvariants';
 import { floorStack } from '../../../../src/app/dungeons/floors/floorStack';
 import { CHAMBER_A, PASSAGE, asFloor, handCave } from './veinsTerrainFixtures';
 
@@ -33,6 +33,16 @@ describe('the ground of a special way, built by hand', () => {
     expect(water[0]!.traits.hazard).toBe('deep-water');
     expect(water[0]!.room).toBe(1);
     expect(sound(asFloor(floors[0]!))).toEqual([]);
+  });
+
+  it('never lays two sumps as mirror images of each other in one chamber', () => {
+    // Two sump ways at mirrored places once filled the cells nearest each as the other's mirror image: nature makes no such pair.
+    const { work, floors } = handCave({ twinSumps: true });
+    placeSpecialRoutes(work, 0);
+    const floor = asFloor(floors[0]!);
+    expect(floor.terrain.filter((p) => p.name === 'dungeon.terrain.sump' && p.room === 0)).toHaveLength(2);
+    const model = { version: 1, seed: 1, theme: 'cavern', tags: [], floors: [{ ...floor, rooms: floor.rooms.map((r) => ({ ...r, type: 'passage-chamber' })) }] } as unknown as DungeonModel;
+    expect(mirrorProblems(model)).toEqual([]);
   });
 
   it('lays no sump in a dry cave', () => {

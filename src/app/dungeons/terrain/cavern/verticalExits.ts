@@ -4,18 +4,23 @@
  * wide, a cell clear of the walls, falling into the room of the floor below where one lies under
  * it and into the dark where no floor does. A roof exit is an aven: a chimney rising over a cell
  * of the floor, walked under, to the floor above where one lies over it, into the dark where not.
- * At most two of each in a chamber, and a shaft or chasm its type already cut counts as one. No two
- * shafts lie as mirror images of each other, above or where they land: nature makes no such pair.
+ * At most two of each in a chamber, and a shaft or chasm its type already cut counts as one; in a
+ * small chamber one piece in all, since every exit takes floor its cover needs. Neither takes the
+ * last place for cover. No two shafts lie as mirror images of each other, above or where they land:
+ * nature makes no such pair.
  */
 
 import { cellKey, floorCellsOf } from '../../geometry';
 import type { CellPoint, DungeonRoom } from '../../model';
 import { type Rng, shuffled } from '../../rng';
 import { LIVED_IN } from '../../themes/cavern/formations';
-import { draft } from '../catalog';
+import { type Footing, draft } from '../catalog';
+import { FIGHT_AREA } from '../cover';
+import type { FloorTerrain } from '../floorTerrain';
 import { leavesRoom } from '../hazards';
 import { type Drop, cutHole, dropBelow } from '../holes';
 import type { RoomCells } from '../roomCells';
+import { laneCells } from '../roomLanes';
 import type { TerrainWork } from '../work';
 import { holdsWater, shaftShapes } from './caveHazards';
 import { besideHole, besideWater } from './cavePools';
@@ -26,6 +31,8 @@ const MOST_PER_CHAMBER = 2;
 const WIDE_SHAFT = 8;
 /** How many of a room's shapes a shaft tries before it gives up. */
 const TRIES = 24;
+/** A chamber of fewer floor cells takes one exit in roof or floor at most, its type's own hole counted. */
+const SMALL_CHAMBER = 16;
 
 /**
  * Whether a hole may open in the room: a regular chamber that is no arena or stage, nobody lives in
@@ -36,6 +43,20 @@ export function mayOpenHole(work: TerrainWork, k: number, room: DungeonRoom): bo
   if (LIVED_IN.has(work.typed(k, room.id)?.spec.id ?? '')) return false;
   const cave = work.floors[k]?.plan.cave;
   return !holdsWater(work, k, room.id) && !(cave?.streams.some((chain) => chain.includes(room.id)) ?? false);
+}
+
+/**
+ * Whether, with an exit on `cells`, a room that can hold a fight still has a place for its cover
+ * off the lanes its furnishing will keep between doors and stairs (laid after the exits, so they are
+ * worked out here as they will run): the cover pass needs one cell that can be blocked.
+ */
+function keepsPlaceForCover(floor: FloorTerrain, rc: RoomCells, cells: readonly CellPoint[], footing: Footing): boolean {
+  if (rc.floorCount - floor.stairCellsIn(rc).length < FIGHT_AREA) return true;
+  if (!rc.keepsCover(cells)) return false;
+  const own = new Set(cells.map((c) => cellKey(c.x, c.y)));
+  const lanes = new Set(laneCells(rc, footing === 'block' ? own : new Set()).map((c) => cellKey(c.x, c.y)));
+  const blocked = footing === 'block' ? cells : [];
+  return floorCellsOf(rc.room).some((c) => !own.has(cellKey(c.x, c.y)) && !lanes.has(cellKey(c.x, c.y)) && !rc.inLane(c) && rc.allows([...blocked, c], 'block'));
 }
 
 /** Whether the room already holds a shaft or chasm of its own type's (a shaft room's pitch, a chasm hall's chasm). */
@@ -53,6 +74,7 @@ function shaftIn(work: TerrainWork, k: number, rc: RoomCells, rng: Rng, width: n
   return shuffled(rng, shapes).slice(0, TRIES).some((cells) => {
     if (!rc.allows(cells, 'block') || !leavesRoom(rc, cells)) return false;
     if (cells.some((c) => rc.nearStairs(c) || wet(c) || hole(c) || !rc.clearOfRock(c)) || floor.mirrorsAnother(rc.room, 'shaft', cells)) return false;
+    if (!keepsPlaceForCover(floor, rc, cells, 'block')) return false;
     const drop = dropBelow(work, k, cells, rng, false);
     return drop !== null && !mirroredBelow(work, drop, cells) && cutHole(work, k, rc, 'shaft', cells, drop) !== null;
   });
@@ -73,7 +95,8 @@ function avenIn(work: TerrainWork, k: number, rc: RoomCells, rng: Rng): boolean 
   const open = shuffled(rng, floorCellsOf(rc.room).filter((c) => rc.fits([c]) && !rc.inLane(c) && !rc.nearStairs(c) && apart(c)));
   // A chimney rises from the middle of a roof more often than from its edge.
   const ordered = [...open.filter((c) => rc.clearOfRock(c)), ...open.filter((c) => !rc.clearOfRock(c))];
-  return ordered.some((c) => floor.place(draft('aven', rc.room.id, [c])) !== null);
+  // Walked under, but no cover stands where a chimney comes down: the room keeps a place for its own.
+  return ordered.some((c) => keepsPlaceForCover(floor, rc, [c], 'walk') && floor.place(draft('aven', rc.room.id, [c])) !== null);
 }
 
 /** The shafts and avens of every chamber of floor `k` whose roll gave it exits in its floor or roof. */
@@ -84,14 +107,19 @@ export function placeVerticalExits(work: TerrainWork, k: number): void {
     const rc = floor.room(room.id);
     if (!rc || !room.vertical) continue;
     const { up, down } = room.vertical;
+    const held = holdsHole(work, k, room.id);
+    let left = rc.floorCount < SMALL_CHAMBER ? (held ? 0 : 1) : Infinity;
     if (down.length > 0 && mayOpenHole(work, k, room)) {
       const rng = work.rng(k, `shafts:${room.id}`);
-      const wanted = Math.min(MOST_PER_CHAMBER, down.length) - (holdsHole(work, k, room.id) ? 1 : 0);
-      for (const width of down.slice(0, Math.max(0, wanted))) if (!shaftIn(work, k, rc, rng, width)) break;
+      const wanted = Math.min(MOST_PER_CHAMBER, down.length, left + (held ? 1 : 0)) - (held ? 1 : 0);
+      for (const width of down.slice(0, Math.max(0, wanted))) {
+        if (!shaftIn(work, k, rc, rng, width)) break;
+        left--;
+      }
     }
     if (up.length > 0) {
       const rng = work.rng(k, `avens:${room.id}`);
-      for (let n = 0; n < Math.min(MOST_PER_CHAMBER, up.length); n++) if (!avenIn(work, k, rc, rng)) break;
+      for (let n = 0; n < Math.min(MOST_PER_CHAMBER, up.length, left); n++) if (!avenIn(work, k, rc, rng)) break;
     }
   }
 }

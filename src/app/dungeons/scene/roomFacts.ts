@@ -1,5 +1,6 @@
 import { formatList, type MessageKey, t } from '../../i18n';
 import { floorAbove, isAbove, stackOf } from '../floors/floorStack';
+import { continuingCell } from '../layout/cavern/veins/continuing';
 import type { CaveWay, CellDir, CellPoint, DoorKind, DungeonDoor, DungeonRoom, DungeonStair, DungeonTerrain, GrowthKind, TerrainKind } from '../model';
 import { PROP_KINDS, propKey } from '../props/propKinds';
 import { dir, floorCellsOf, holdsCell } from '../geometry';
@@ -182,9 +183,13 @@ function shaftSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
   return [...avens, ...(dark ? [t('dungeonScene.shaftDark', { count: dark })] : [])];
 }
 
-/** A cave chamber's way on that nobody can follow: a squeeze too tight to pass. */
+/**
+ * A cave chamber's way on that nobody can follow: a squeeze too tight to pass, named only where
+ * the drawing has a cell to draw it from (`continuingCell`), so the note never names one the map lacks.
+ */
 function continuingSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
-  return visible.floor.cave && room.continuing ? [t('dungeonScene.continuing', { direction: t(`dungeonScene.direction.${directionOf(room.continuing)}`) })] : [];
+  if (!visible.floor.cave || !room.continuing || !continuingCell(room)) return [];
+  return [t('dungeonScene.continuing', { direction: t(`dungeonScene.direction.${directionOf(room.continuing)}`) })];
 }
 
 /** Vegetation in the order the note names it: what climbs the walls first. */

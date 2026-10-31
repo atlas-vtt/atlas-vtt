@@ -11,7 +11,7 @@ import { unionRings } from './render/clipShapes';
 import { traceLoops } from './water/contour';
 import { fractalNoise } from './water/noise';
 import { chaikin, jitter, resample, wobble } from './water/smooth';
-import { cellKey, holdsCell } from './geometry';
+import { cellKey, doorSide, doorwayCells, holdsCell } from './geometry';
 import { type CellGrid, DRY, WET, dropPuddles, floorCells, floorMarks, gridAround, indexOf, wetGrid } from './water/wetGrid';
 
 export interface WaterResult {
@@ -156,6 +156,22 @@ function ringArea(ring: readonly CellPoint[]): number {
     sum += p.x * q.y - q.x * p.y;
   });
   return sum / 2;
+}
+
+/**
+ * Where a cave's sumps meet their ways: the doorway of each sump way and the cell before it on the
+ * side of the sump laid beside it. That cell stays clear of terrain (every way through a room is
+ * walked), so without it the water stopped a cell short of the door it dives under, a pool apart
+ * from the way the map draws flooded; as deep water it joins the two into one body.
+ */
+export function sumpMouths(doors: readonly DungeonDoor[], pieces: readonly DungeonTerrain[]): CellPoint[] {
+  const sumps = pieces.filter((p) => p.name === 'dungeon.terrain.sump');
+  return doors.filter((door) => door.way === 'sump').flatMap((door) => [door.from, door.to].flatMap((room) => {
+    if (room === null) return [];
+    const mouth = doorSide(door, room);
+    const beside = sumps.some((p) => p.room === room && p.cells.some((c) => mouth.some((m) => Math.abs(m.x - c.x) + Math.abs(m.y - c.y) <= 1)));
+    return beside ? [...doorwayCells(door), ...mouth] : [];
+  }));
 }
 
 export function placeWater(seed: number, floor: number, rooms: readonly DungeonRoom[], request: WaterRequest): WaterResult {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { DungeonModel } from '../../src/app/dungeons/model';
-import { continuingCell } from '../../src/app/dungeons/render/cave/ways/continuing';
+import { continuingCell } from '../../src/app/dungeons/layout/cavern/veins/continuing';
 import { renderMap } from '../../src/app/dungeons/render/renderMap';
 import { DEFAULT_VIEW } from '../../src/app/dungeons/style';
 import { dungeonStyle, type DungeonStyleId } from '../../src/app/dungeons/styleCatalog';

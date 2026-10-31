@@ -4,8 +4,9 @@
  * a ledge to edge across by, a breakdown's boulders choking it. The passage is the tunnel on the
  * door's far side from its chamber; where the door joins two chambers, or the tunnel has no room for
  * it, the few cells of a chamber nearest the door. Nothing lies on the lane, before a door or by a
- * stairwell, no hole beside water nor water beside a hole, and every room and passage stays whole:
- * the floor's way through is still walked, as every floor's must be.
+ * stairwell, no hole beside water nor water beside a hole, no route's ground as the mirror image of
+ * another's, and every room and passage stays whole: the floor's way through is still walked, as
+ * every floor's must be.
  */
 
 import { cellKey, doorCells, floorCellsOf } from '../../geometry';
@@ -85,7 +86,9 @@ function sump(work: TerrainWork, k: number, ground: RouteGround, door: DungeonDo
   // A short passage fills whole; a longer one only near the door.
   const reach = nearDoor(rc, door, passage ? Infinity : MOST_IN_CHAMBER, (c) => !hole(c));
   const most = passage && reach.length > MOST_IN_PASSAGE ? int(rng, 2, MOST_IN_PASSAGE) : reach.length;
-  return largestOf(reach.slice(0, most), 1, (cells) => (passage || leavesRoom(rc, cells)) && floor.place(draft('deep-water', rc.room.id, cells, { name: 'dungeon.terrain.sump' })) !== null);
+  // Two sump ways at mirrored places would fill the cells nearest each as the other's mirror image: nature makes no such pair.
+  const lay = (cells: CellPoint[]): boolean => (passage || leavesRoom(rc, cells)) && !floor.mirrorsAnother(rc.room, 'deep-water', cells) && floor.place(draft('deep-water', rc.room.id, cells, { name: 'dungeon.terrain.sump' })) !== null;
+  return largestOf(reach.slice(0, most), 1, lay);
 }
 
 /** Whether every cell of the drop has a cell of the ledge beside it: the ledge runs the drop's whole length. */
