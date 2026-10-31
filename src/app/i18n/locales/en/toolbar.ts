@@ -17,6 +17,8 @@ export const toolbar = {
   'toolbar.fogEraser': 'Fog Eraser',
   'toolbar.fogOptions': 'Fog Tool Options',
   'toolbar.fogTool': 'Fog Tool',
+  'toolbar.fogLassoSnap': 'Snap to Grid',
+  'toolbar.fogLassoHint': 'Click to place corners. Right-click or click the first corner to finish. Escape cancels.',
   'toolbar.iconStamp': 'Icon Stamp',
   'toolbar.ink': 'Ink',
   'toolbar.laser': 'Laser Pointer',

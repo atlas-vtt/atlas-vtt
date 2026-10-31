@@ -2,6 +2,11 @@
   "version": "0.11.1-beta.0",
   "releases": [
     {
+      "version": "0.11.1-beta.0",
+      "title": "Coming in 0.11.1",
+      "markdown": "## New\n\n- In the Fog tool's Lasso mode, turn on Snap to Grid and click to place corners when painting or erasing fog. Right-click or click the first corner to finish; Escape cancels. Double-click and Enter also finish the shape. Turn snapping off to draw freehand."
+    },
+    {
       "version": "0.11.0",
       "date": "2026-10-30",
       "title": "Mosaic Canvas, procedural forest maps and new crayon style",

@@ -371,3 +371,12 @@
 .atlas-swatch-check {
   @include atlas-swatch-check(14px);
 }
+
+/* Instructions for the click-placed fog outline. */
+.atlas-fog-lasso-hint {
+  max-width: 240px;
+  padding: $spacing-s;
+  color: var(--text-muted);
+  font-size: var(--font-ui-smaller);
+  white-space: normal;
+}

@@ -27,6 +27,8 @@ import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
 import { STROKE_COLORS, ShapeStroke, type StrokeMode } from '../../tools/shapeStroke';
 import { drawStrokeArea } from '../utils/strokePreview';
 import { t } from '../../i18n';
+import { FogPolygonLasso } from './FogPolygonLasso';
+import { snapFogLassoPoint } from './fogLassoSnap';
 import { everyLevelObjects, levelObjects } from '../../levels/levelObjects';
 import { levelMapKey, placedOnViewedLevel } from '../../levels/sceneLevels';
 
@@ -62,6 +64,12 @@ export class FogOfWarRenderer {
 
   // Drawing state: the stroke under way, with the brush, lasso or rectangle
   private readonly stroke = new ShapeStroke();
+  private polygonLasso?: FogPolygonLasso;
+  private lassoSnapToGrid = false;
+  private readonly fogLassoSnapChangedHandler = (enabled: boolean): void => {
+    this.setFogMode(this.stroke.mode);
+    this.lassoSnapToGrid = enabled;
+  };
   private isErasing = false;
 
   // Store subscriptions
@@ -282,6 +290,7 @@ export class FogOfWarRenderer {
   }
 
   destroy(): void {
+    this.polygonLasso?.cancel();
     this.unsubscribe?.();
 
     this.viewport.off('pointerdown', this.pointerDownHandler);
@@ -293,6 +302,7 @@ export class FogOfWarRenderer {
     this.eventBus.off('fog-brush-size-changed', this.fogBrushSizeChangedHandler);
     this.eventBus.off('fog-clear-all', this.fogClearAllHandler);
     this.eventBus.off('fog-mode-changed', this.fogModeChangedHandler);
+    this.eventBus.off('fog-lasso-snap-changed', this.fogLassoSnapChangedHandler);
     this.eventBus.off('map-image-updated', this.mapImageUpdatedHandler);
 
     this.cursorPreview.destroy();
@@ -361,6 +371,7 @@ export class FogOfWarRenderer {
     this.eventBus.on('fog-brush-size-changed', this.fogBrushSizeChangedHandler);
     this.eventBus.on('fog-clear-all', this.fogClearAllHandler);
     this.eventBus.on('fog-mode-changed', this.fogModeChangedHandler);
+    this.eventBus.on('fog-lasso-snap-changed', this.fogLassoSnapChangedHandler);
     this.eventBus.on('map-image-updated', this.mapImageUpdatedHandler);
   }
 
@@ -384,6 +395,7 @@ export class FogOfWarRenderer {
 
       // Tool changes → enable/disable fog mode or toggle interaction
       if (state.activeTool !== prevTool) {
+        this.resetDrawingState();
         prevTool = state.activeTool;
         if (state.activeTool === 'fog' || state.activeTool === 'eraser') {
           this.isErasing = state.activeTool === 'eraser';
@@ -408,6 +420,7 @@ export class FogOfWarRenderer {
       if (state.isMapLoading !== prevLoading) {
         prevLoading = state.isMapLoading;
         if (state.isMapLoading) {
+          this.resetDrawingState();
           this.container.visible = false;
         } else {
           this.refreshBounds();
@@ -702,6 +715,10 @@ export class FogOfWarRenderer {
     if (isHandled(event)) return;
 
     this.previewSprite.visible = true;
+    if (this.stroke.mode === 'lasso' && this.lassoSnapToGrid) {
+      this.placeLassoCorner(this.strokePoint(event));
+      return;
+    }
     this.stroke.begin(this.strokePoint(event));
     this.previewStroke();
   }
@@ -709,7 +726,27 @@ export class FogOfWarRenderer {
   /** Where the pointer is on the map; a rectangle's corners snap to the grid's. */
   private strokePoint(event: PIXI.FederatedPointerEvent): { x: number; y: number } {
     const { x, y } = this.viewport.toWorld(event.global);
+    if (this.stroke.mode === 'lasso') return snapFogLassoPoint({ x, y }, this.store.getState().grid, this.lassoSnapToGrid);
     return this.stroke.mode === 'rectangle' ? this.snapToGridCorner(x, y) : { x, y };
+  }
+
+  private placeLassoCorner(point: { x: number; y: number }): void {
+    this.polygonLasso ??= new FogPolygonLasso(this._pixiApp.canvas,
+      (points) => {
+        this.stroke.cancel();
+        if (points[0]) {
+          this.stroke.begin(points[0]);
+          for (const corner of points.slice(1)) this.stroke.extend(corner);
+        }
+        this.previewStroke();
+        requestRender(this._pixiApp);
+      },
+      (points) => {
+        if (points) this.store.getState().addFogOperation({
+          type: 'lasso', isErasing: this.store.getState().activeTool === 'eraser', points,
+        });
+      });
+    this.polygonLasso.click(point);
   }
 
   private snapToGridCorner(x: number, y: number): { x: number; y: number } {
@@ -733,6 +770,10 @@ export class FogOfWarRenderer {
     }
 
     if (!this.stroke.active) return;
+    if (this.stroke.mode === 'lasso' && this.lassoSnapToGrid) {
+      this.polygonLasso?.move(this.strokePoint(event));
+      return;
+    }
     this.stroke.extend(this.strokePoint(event));
     this.previewStroke();
   }
@@ -743,6 +784,7 @@ export class FogOfWarRenderer {
   }
 
   private onPointerUp(): void {
+    if (this.stroke.mode === 'lasso' && this.lassoSnapToGrid) return;
     if (!this.stroke.active) return;
     const shape = this.stroke.finish();
     this.clearPreviewGraphics();
@@ -896,6 +938,7 @@ export class FogOfWarRenderer {
   // ═══════════════════════════════════════════════════════════════════
 
   private resetDrawingState(): void {
+    this.polygonLasso?.cancel();
     this.stroke.cancel();
     this.clearPreviewGraphics();
   }
