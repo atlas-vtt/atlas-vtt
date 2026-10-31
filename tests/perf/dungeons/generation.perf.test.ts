@@ -32,8 +32,10 @@ describe('the generator’s time budget', () => {
     const times = timesOf(requests);
     const of = (cavern: boolean): number[] => times.filter((_, i) => (requests[i]!.theme === 'cavern') === cavern);
     expect(p95(of(false))).toBeLessThan(timeBound(25 * floors));
-    // A cave also shapes its chambers and tunnels, and grows a floor anew until its main path fits two cells wide.
-    expect(p95(of(true))).toBeLessThan(timeBound(75 * floors));
+    // A cave also shapes its chambers and tunnels, and grows a floor anew until its main path fits two cells
+    // wide and its mouths open on the map's edge (about 10 attempts a floor): 79 ms at the 95th percentile of
+    // one-floor caves on an M4 Pro (2026-10-31), under a tenth of a second in the wizard.
+    expect(p95(of(true))).toBeLessThan(timeBound(90 * floors));
   });
 
   it.each([1, 2, 3])('makes a %i-floor cave at little more than a Fortress of the same seed costs', (floors) => {
