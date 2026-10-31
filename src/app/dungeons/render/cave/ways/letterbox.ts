@@ -1,22 +1,24 @@
 import type { Hand } from '../../art/hand';
-import { drawPinch, pinchFrame, slotFace } from './pinch';
-import { doorsOfWay } from './wayDoors';
+import { INTO_ROCK, neckFaces, pinchFrame } from './pinch';
+import { clipped, clipToFloor, doorsOfWay } from './wayDoors';
 
-/** The slit a letterbox leaves, in cells: the tightest of the ways. */
-const OPENING = 0.2;
-/** Half the slot's length along the way. */
-const SLOT = 0.28;
+/** Where the slit's roof comes down, along the way from the door cell's middle: at the cell's mouth towards the room it is entered from. */
+const ROOF = -0.46;
+/** The farthest out the bar reaches, in cells: the door cell's side, where a room opens out round the mouth. */
+const CELL = 0.5;
 
 /**
- * A letterbox squeeze (a flat slot passed with an arm forward): both walls close in as two flat
- * slabs with straight faces and a thin slit between them, each slab marked with one straight bar,
- * its bedding plane, where the squeeze's faces are jagged.
+ * A letterbox squeeze (a flat slot passed with an arm forward): the rock's own walls close in round
+ * the door cell, and the roof of the slit is one straight bar across it from wall to wall where it
+ * comes down, in the walls' ink and never past the cell: the survey's mark for a roof that drops,
+ * at the cell's mouth, so the slit itself stays clear.
  */
 export function drawLetterboxes(hand: Hand): void {
   for (const door of doorsOfWay(hand, 'letterbox')) {
     const frame = pinchFrame(door);
-    const face = slotFace(OPENING, SLOT);
-    const bar = OPENING / 2 + 0.08;
-    drawPinch(hand, frame, [face, face], side => [[frame.at(side * bar, -SLOT + 0.04), frame.at(side * bar, SLOT - 0.04)]]);
+    const face = neckFaces(hand, frame);
+    const end = (side: number): number => side * Math.min(CELL, face(side, ROOF) + INTO_ROCK);
+    const bar = [frame.at(end(-1), ROOF), frame.at(end(1), ROOF)];
+    clipped(hand, clipToFloor, () => hand.line([bar], 'outline'));
   }
 }

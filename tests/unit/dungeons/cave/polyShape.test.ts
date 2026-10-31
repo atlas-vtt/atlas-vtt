@@ -9,8 +9,8 @@ import { renderMapSvg } from '../../../../src/app/dungeons/render/renderMap';
 import { wallRings } from '../../../../src/app/dungeons/scene/wallOutline';
 import { DEFAULT_VIEW } from '../../../../src/app/dungeons/style';
 import { dungeonStyle } from '../../../../src/app/dungeons/styleCatalog';
-import { chaikin } from '../../../../src/app/dungeons/water/smooth';
 import { addDoor, addRoom, emptyModel, entryFloor } from '../../../fixtures/dungeonModelBuilder';
+import { wobblyRing } from '../../../helpers/caveMasks';
 
 const square = (x0: number, y0: number, x1: number, y1: number): Vec[] => [
   { x: x0, y: y0 },
@@ -67,21 +67,11 @@ describe('a poly floor shape', () => {
 
   it('PolyField agrees with brute force', () => {
     const rng = rngFrom(11);
-    const blob = chaikin(
-      Array.from({ length: 50 }, (_, k) => {
-        const a = (k / 50) * Math.PI * 2;
-        const r = 8 + rng() * 4;
-        return { x: 15 + Math.cos(a) * r, y: 15 + Math.sin(a) * r };
-      }),
-      3,
-    );
+    const blob = wobblyRing(rng);
     expect(blob).toHaveLength(400);
     const field = new PolyField([blob]);
     const points = Array.from({ length: 2000 }, () => ({ x: rng() * 34 - 2, y: rng() * 34 - 2 }));
     for (const p of points) expect(field.distance(p.x, p.y)).toBeCloseTo(bruteDistance([blob], p.x, p.y), 9);
-    const start = performance.now();
-    for (let round = 0; round < 5; round++) for (const p of points) field.distance(p.x, p.y);
-    expect((performance.now() - start) / (points.length * 5)).toBeLessThan(0.02);
   });
 
   it('grownRings keeps holes', () => {

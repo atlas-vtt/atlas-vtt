@@ -190,13 +190,17 @@ export interface ChamberSeeds {
 
 /**
  * What a chamber must keep, joined into one piece round its stairwells (`joinRound`): its core,
- * its kept cells, the lane in it and, for the boss, the arena's platform.
+ * its kept cells, the lane in it (but where a neck took it) and, for the boss, the arena's platform.
  */
 export function chamberSeeds(grid: CaveGrid, room: DungeonRoom, lane: ReadonlySet<string>): ChamberSeeds {
   const r = floorRect(room);
   // The core is kept already (`reserveCores`), with the rest the room needs.
   const seeds = new Set<string>(grid.required(room.id));
-  for (const k of lane) if (inRect(r, unkey(k).x, unkey(k).y)) seeds.add(k);
+  // A lane cell given to a neck's rock (`holdNecks`) is no longer the room's.
+  for (const k of lane) {
+    const c = unkey(k);
+    if (inRect(r, c.x, c.y) && !grid.heldAsRock(c.x, c.y)) seeds.add(k);
+  }
   if (room.boss) for (const c of arenaSeeds(room)) if (mayTake(grid, room, c)) seeds.add(key(c));
   const { joined, whole } = joinRound(takesOf(grid, room), seeds, grid.stairCells);
   for (const k of seeds) joined.add(k);

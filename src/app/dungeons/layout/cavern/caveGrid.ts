@@ -175,10 +175,10 @@ export class CaveGrid {
     return this.doors.some((door, k) => door.kind !== 'secret' && ((door.from === owner && door.to === other) || (door.from === other && door.to === owner)) && byDoor(k, x, y) && byDoor(k, nx, ny));
   }
 
-  /** Whether `owner` may take the rock cell: nothing it may not touch lies beside it or at its corners. */
+  /** Whether `owner` may take the rock cell: nothing it may not touch lies beside it or at its corners, and it is not held as rock. */
   mayClaim(x: number, y: number, owner: number): boolean {
     const i = this.index(x, y);
-    if (i < 0 || (this.owners[i] !== ROCK && this.owners[i] !== owner)) return false;
+    if (i < 0 || this.held.has(i) || (this.owners[i] !== ROCK && this.owners[i] !== owner)) return false;
     return NEAR8.every(([dx, dy]) => this.mayTouchAt(owner, this.owner(x + dx, y + dy), x, y, x + dx, y + dy));
   }
 
@@ -201,7 +201,21 @@ export class CaveGrid {
     if (i >= 0) this.held.add(i);
   }
 
-  /** Whether the cell is held as rock (`holdAsRock`). */
+  /**
+   * Gives the cell to the rock for good: no owner, needed by no one, and held so nothing takes it
+   * again (`mayClaim`): the rock either side of a narrow way's neck (`holdNecks`), which every pass
+   * that shapes the floor must leave alone.
+   */
+  turnToRock(x: number, y: number): void {
+    const i = this.index(x, y);
+    if (i < 0) return;
+    this.release(x, y);
+    const k = cellKey(x, y);
+    for (const set of this.needed.values()) set.delete(k);
+    this.held.add(i);
+  }
+
+  /** Whether the cell is held as rock (`holdAsRock`, `turnToRock`). */
   heldAsRock(x: number, y: number): boolean {
     const i = this.index(x, y);
     return i >= 0 && this.held.has(i);

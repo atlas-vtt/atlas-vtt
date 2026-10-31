@@ -20,6 +20,7 @@ import { repairGuards, walkedLane } from './guards';
 import { basinCount, caveHeights, hydrology, lowRooms, springByTheMouth } from './hydrology';
 import { caveSites } from './caveSites';
 import { type LaneWay, claimLane, laneEnds, mainRoute, wideLane, windingWay } from './mainPath';
+import { holdNecks } from './necks';
 import { stairWays } from './stairWays';
 import { type TunnelWidth, carveTunnel, doorOnLane, pinchLane, shapeDoors, tunnelEnds } from './tunnels';
 import { inFloorClimbs } from './veins/climbs';
@@ -115,18 +116,23 @@ function basinsPerFloor(floors: readonly PlannedFloor[], level: number, dry: boo
  * the plain lane with cores inside their rectangles, as the layout made sure of. A try counts only
  * where every chamber holding a stairwell can also join the row it is entered from round it
  * (`stairsJoin`): a winding lane or a core out in the swell may take the cells that way needs.
+ * With the book's rules (`necks`) the main path's pinches and the rock round every narrow way are
+ * held before the cores, so a core keeps off a neck rather than the neck off the core.
  */
-function laneGrid(seed: number, index: number, floor: PlannedFloor, boss: boolean, count: number): { grid: CaveGrid; lane: CellPoint[] } {
+function laneGrid(seed: number, index: number, floor: PlannedFloor, boss: boolean, count: number, necks: boolean): { grid: CaveGrid; lane: CellPoint[]; pinched: Set<number> } {
   const [from, to] = laneEnds(index, count, floor, boss);
   const route = mainRoute(floor, from, to);
   // A lane does not hang on the cores, so the plain one is found once for both tries that take it.
   const lanes = new Map<LaneWay | undefined, CellPoint[] | null>();
-  const laid = (way: LaneWay | undefined, out: boolean): { grid: CaveGrid; lane: CellPoint[] | null; fits: boolean } => {
+  const laid = (way: LaneWay | undefined, out: boolean): { grid: CaveGrid; lane: CellPoint[] | null; pinched: Set<number>; fits: boolean } => {
     const grid = new CaveGrid(floor, index);
     if (!lanes.has(way)) lanes.set(way, wideLane(grid, floor, route, from, to, way));
     const lane = lanes.get(way)!;
     if (lane) claimLane(grid, floor, route, lane, way?.swell);
-    return { grid, lane, fits: lane !== null && reserveCores(grid, floor.rooms, out) && stairsJoin(grid, floor) };
+    const laneKeys = new Set((lane ?? []).map((c) => cellKey(c.x, c.y)));
+    const pinched = necks ? pinchLane(grid, floor, laneKeys) : new Set<number>();
+    if (necks) holdNecks(grid, floor, laneKeys, pinched);
+    return { grid, lane, pinched, fits: lane !== null && reserveCores(grid, floor.rooms, out) && stairsJoin(grid, floor) };
   };
   // The last try is the layout's own, which it made sure of.
   const tries: readonly [LaneWay | undefined, boolean][] = [[windingWay(floorStream(seed, 'cave', index, 'lane')), true], [undefined, true], [undefined, false]];
@@ -135,7 +141,7 @@ function laneGrid(seed: number, index: number, floor: PlannedFloor, boss: boolea
     if (tried.fits) break;
     tried = laid(...next);
   }
-  return { grid: tried.grid, lane: tried.lane ?? [] };
+  return { grid: tried.grid, lane: tried.lane ?? [], pinched: tried.pinched };
 }
 
 interface FloorShaping {
@@ -149,10 +155,9 @@ interface FloorShaping {
 function shapeFloor(how: FloorShaping, floors: readonly PlannedFloor[], index: number): PlannedFloor {
   const { seed, shaping, faults, boss } = how;
   const floor = floors[index]!;
-  const { grid, lane } = laneGrid(seed, index, floor, boss, floors.length);
-  const laneKeys = new Set(lane.map((c) => cellKey(c.x, c.y)));
   const veins = shaping.veins?.rules;
-  const pinched = veins ? pinchLane(grid, floor, laneKeys) : new Set<number>();
+  const { grid, lane, pinched } = laneGrid(seed, index, floor, boss, floors.length, veins !== undefined);
+  const laneKeys = new Set(lane.map((c) => cellKey(c.x, c.y)));
   const fields = shapeChambers(seed, index, shaping, faults, floor, grid, laneKeys);
   shapeTunnels(seed, index, shaping, floor, grid, laneKeys);
   swellRooms(seed, index, floor, grid, fields);

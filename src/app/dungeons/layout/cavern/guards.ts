@@ -47,15 +47,16 @@ function wideWay(isFloor: (x: number, y: number) => boolean, from: CellPoint, to
 
 /**
  * The lane cells beside the doors where the main path pinches to one cell (a crawl, a squeeze or a
- * letterbox on it, `onlyNarrowWaysOn`): rock, which the two-cell walk of the path passes there and
- * nowhere else.
+ * letterbox on it, `onlyNarrowWaysOn`), in the door's row and the rows either side of it, its neck
+ * (`holdNecks`): rock, which the two-cell walk of the path passes there and nowhere else.
  */
 export function pinchCells(doors: readonly DungeonDoor[], lane: readonly CellPoint[]): Set<string> {
   const keys = new Set(lane.map((c) => cellKey(c.x, c.y)));
+  const neck = (door: DungeonDoor): string[] => [-1, 0, 1].flatMap((t) => [-1, 1].map((s) => cellKey(door.x + t * door.dir.x + s * door.dir.y, door.y + t * door.dir.y + s * door.dir.x)));
   return new Set(
     doors
       .filter((door) => door.kind === 'opening' && !door.wide && NARROW_WAYS.has(door.way ?? 'walk') && keys.has(cellKey(door.x, door.y)))
-      .flatMap((door) => [-1, 1].map((s) => cellKey(door.x + s * door.dir.y, door.y + s * door.dir.x)))
+      .flatMap(neck)
       .filter((k) => keys.has(k)),
   );
 }

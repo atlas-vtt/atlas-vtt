@@ -15,50 +15,27 @@ import { bridgeProblems, cellProblems, routeProblems, stairClearanceProblems } f
 import { holeProblems } from './holeInvariants';
 import { uncoveredFightRooms } from './coverInvariants';
 import { stackOf } from '../../../src/app/dungeons/floors/floorStack';
+import { shareBound } from '../../helpers/dungeonSeeds';
+import { caveRequests } from './invariantRequests';
 
 /**
- * Every rule of a Cavern's geometry, held over many caves of one floor count: 400 seeds, each with
- * two of the tag sets below; on one floor 200 five-room caves besides. The layout's and terrain's
- * own rules are held on the same runs.
+ * Every rule of a Cavern's geometry, held over many caves of one floor count: `CAVE_SEEDS` seeds
+ * (400 with `VITE_DUNGEON_SEEDS=full`, 100 otherwise), each with two tag sets; on one floor
+ * `FIVE_ROOM_CAVE_SEEDS` five-room caves besides. The layout's and terrain's own rules are held on the
+ * same runs. How long a cave takes is the perf project's (`tests/perf/dungeons/generation.perf.test.ts`).
  */
 
-const SEEDS = 400;
 /** Cases that draw or regenerate a hundred caves take this long at most beside the whole suite. */
 const HEAVY = 300_000;
-const TAG_SETS: readonly string[][] = [
-  [],
-  ['small'],
-  ['large'],
-  ['lava', 'deep'],
-  ['wet', 'winding'],
-  ['flooded', 'spacious'],
-  ['cramped', 'compact', 'dry'],
-  ['string', 'no-secrets'],
-  ['acid', 'overgrown'],
-  ['overgrown', 'wet'],
-  ['inhabited', 'wet'],
-];
 
 export interface CaveRun {
   seed: number;
   tags: string[];
   model: DungeonModel;
-  ms: number;
 }
 
 function runsOf(floors: number, fiveRoom: boolean): CaveRun[] {
-  const out: CaveRun[] = [];
-  const count = fiveRoom ? 200 : SEEDS;
-  for (let k = 1; k <= count; k++) {
-    const seed = k * 6_131 + floors + (fiveRoom ? 7 : 0);
-    for (const offset of fiveRoom ? [0] : [0, 4]) {
-      const tags = TAG_SETS[(k + offset) % TAG_SETS.length] ?? [];
-      const start = performance.now();
-      const model = generateDungeon({ seed, tags, floors, theme: 'cavern', fiveRoom });
-      out.push({ seed, tags, model, ms: performance.now() - start });
-    }
-  }
-  return out;
+  return caveRequests(floors, fiveRoom).map((request) => ({ seed: request.seed, tags: request.tags, model: generateDungeon(request) }));
 }
 
 /** The share of the cell's 10 × 10 samples the drawn floor covers. */
@@ -94,8 +71,11 @@ export function describeCaveInvariants(floors: number): void {
 
     it('lead about a third of the chambers’ exits up or down', () => {
       const exits = runs.flatMap((run) => run.model.floors.map(chamberExits));
-      const share = exits.reduce((s, e) => s + e.vertical, 0) / exits.reduce((s, e) => s + e.all, 0);
-      expect(Math.abs(share - 1 / 3)).toBeLessThanOrEqual(0.08);
+      const all = exits.reduce((s, e) => s + e.all, 0);
+      const share = exits.reduce((s, e) => s + e.vertical, 0) / all;
+      // Measured at full seeds: 0.272, 0.285 and 0.290 over one to three floors.
+      expect(share).toBeGreaterThan(shareBound(0.272, all));
+      expect(share).toBeLessThanOrEqual(1 / 3 + 0.08);
     });
 
     it('keep chambers within two cells of their rectangle, tunnels within their reach, nothing on another room’s', () => {
@@ -109,7 +89,8 @@ export function describeCaveInvariants(floors: number): void {
     it('rule 9: stretch most chambers along a fault, in most caves and over all', () => {
       const stretch = runs.map((run) => faultStretch(run.model));
       const counted = stretch.filter((s) => s.long >= 3);
-      expect(counted.filter((s) => s.along / s.long >= 0.6).length / counted.length).toBeGreaterThanOrEqual(0.9);
+      // Measured at full seeds: 0.910, 0.958 and 0.971 of caves over one to three floors; 0.79 to 0.80 of all chambers.
+      expect(counted.filter((s) => s.along / s.long >= 0.6).length / counted.length).toBeGreaterThanOrEqual(shareBound(0.91, counted.length));
       expect(stretch.reduce((sum, s) => sum + s.along, 0) / stretch.reduce((sum, s) => sum + s.long, 0)).toBeGreaterThanOrEqual(0.6);
     });
 
@@ -180,7 +161,8 @@ export function describeCaveInvariants(floors: number): void {
           const shares = run.model.floors.map(waterShare);
           return shares.at(-1)! >= Math.max(...shares);
         });
-        expect(deepest.length / wet.length).toBeGreaterThanOrEqual(0.85);
+        // Measured at full seeds: 0.968 over two floors, 0.871 over three.
+        expect(deepest.length / wet.length).toBeGreaterThanOrEqual(shareBound(0.871, wet.length));
       }
     });
 
@@ -211,19 +193,6 @@ export function describeCaveInvariants(floors: number): void {
       expect(failures(eachFloor((run, i) => unreachableRooms(run.model.floors[i]!).map((id) => `room ${id} unreachable`)))).toEqual([]);
       expect(failures((run) => [...stairProblems(run.model), ...connectionProblems(run.model), ...entranceProblems(run.model), ...holeProblems(run.model)])).toEqual([]);
       expect(failures(eachFloor((run, i) => [...cellProblems(run.model.floors[i]!), ...routeProblems(run.model.floors[i]!), ...bridgeProblems(run.model.floors[i]!), ...stairClearanceProblems(run.model.floors[i]!, i, stackOf(run.model))]))).toEqual([]);
-    });
-
-    it('generate quickly: a cave costs little more than a Fortress of the same seed', () => {
-      const sample = runs.slice(0, 100);
-      const fortress = sample.map((run) => {
-        const start = performance.now();
-        generateDungeon({ seed: run.seed, tags: run.tags, floors, theme: 'fortress' });
-        return performance.now() - start;
-      });
-      const mean = (xs: readonly number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
-      const ratio = mean(sample.map((run) => run.ms)) / mean(fortress);
-      console.log(`cave generation ${floors} floor(s): ${mean(sample.map((r) => r.ms)).toFixed(1)} ms against ${mean(fortress).toFixed(1)} ms for a Fortress (${ratio.toFixed(2)}×)`);
-      if (import.meta.env.VITE_PERF_STRICT === '1') expect(ratio).toBeLessThanOrEqual(1.6);
     });
   });
 }

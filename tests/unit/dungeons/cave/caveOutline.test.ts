@@ -5,7 +5,7 @@ import { type Rng, rngFrom } from '../../../../src/app/dungeons/rng';
 import { caveOutline, type PinnedEdge } from '../../../../src/app/dungeons/render/cave/caveOutline';
 import { type FloorShape, type Vec, pointInPolygon } from '../../../../src/app/dungeons/render/geometry';
 import type { CellGrid } from '../../../../src/app/dungeons/water/wetGrid';
-import { timeBound } from '../../../helpers/timeBound';
+import { blob } from '../../../helpers/caveMasks';
 
 type Mask = Set<string>;
 
@@ -23,20 +23,6 @@ function touchesDiagonally(mask: Mask, box: CellGrid): boolean {
     }
   }
   return false;
-}
-
-function blob(rng: Rng, size: number): Mask {
-  const mask: Mask = new Set([cellKey(size >> 1, size >> 1)]);
-  const target = Math.floor(size * size * (0.2 + rng() * 0.3));
-  while (mask.size < target) {
-    const cells = [...mask];
-    const [x, y] = cells[Math.floor(rng() * cells.length)]!.split(',').map(Number) as [number, number];
-    const [dx, dy] = [[1, 0], [-1, 0], [0, 1], [0, -1]][Math.floor(rng() * 4)]!;
-    const nx = x + dx!;
-    const ny = y + dy!;
-    if (nx > 0 && ny > 0 && nx < size - 1 && ny < size - 1) mask.add(cellKey(nx, ny));
-  }
-  return mask;
 }
 
 function tunnel(rng: Rng, size: number, width: 1 | 2): Mask {
@@ -181,27 +167,5 @@ describe('a cave outline', () => {
     const shapes = outline(island(14));
     expect(shapes).toHaveLength(1);
     expect(shapes[0]!.kind === 'poly' && shapes[0]!.rings).toHaveLength(2);
-  });
-
-  it('traces a 120 × 120 cave in under 40 ms', () => {
-    const rng = rngFrom(5);
-    const mask: Mask = new Set();
-    for (let k = 0; k < 30; k++) {
-      const ox = Math.floor(rng() * 104);
-      const oy = Math.floor(rng() * 104);
-      for (const key of blob(rng, 16)) {
-        const [x, y] = key.split(',').map(Number) as [number, number];
-        mask.add(cellKey(x + ox, y + oy));
-      }
-    }
-    const box: CellGrid = { x0: -1, y0: -1, w: 122, h: 122 };
-    const times: number[] = [];
-    for (let run = 0; run < 5; run++) {
-      const start = performance.now();
-      caveOutline(run, 0, (x, y) => has(mask, x, y), box, []);
-      times.push(performance.now() - start);
-    }
-    times.sort((a, b) => a - b);
-    expect(times[2]).toBeLessThan(timeBound(40));
   });
 });

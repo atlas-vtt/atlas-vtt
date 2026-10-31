@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { cellsOf } from '../../../../src/app/dungeons/geometry';
-import { generateDungeon } from '../../../../src/app/dungeons/generate';
 import type { CellPoint, DungeonDoor } from '../../../../src/app/dungeons/model';
 import { int, stream } from '../../../../src/app/dungeons/rng';
 import { naturalPool } from '../../../../src/app/dungeons/terrain/cavern/cavePools';
@@ -46,14 +45,5 @@ describe('the cost of a cave chamber’s terrain', () => {
   it('fills a large chamber with a lake of at most sixty cells', () => {
     const pool = naturalPool(chamber(23, 26), stream(2, 'terrain'), 0.38, () => true);
     expect(pool?.length).toBe(60);
-  });
-
-  it('lays the terrain of the largest chambers in a moment', () => {
-    // These took 6.8 s and 4.7 s while every free cell was tried with a flood fill of its own.
-    for (const seed of [285_084, 324_679]) {
-      const start = performance.now();
-      generateDungeon({ seed, theme: 'cavern', tags: [], floors: 1 });
-      expect(performance.now() - start, `seed ${seed}`).toBeLessThan(1_500);
-    }
   });
 });

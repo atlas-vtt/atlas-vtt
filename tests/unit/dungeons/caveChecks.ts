@@ -86,7 +86,8 @@ function pinchesLane(door: DungeonFloor['doors'][number], lane: ReadonlySet<stri
  */
 function pinchCells(floor: DungeonFloor, cells: ReadonlySet<string>): string[] {
   const lane = new Set((floor.cave?.lane ?? []).map(key));
-  return floor.doors.filter((d) => pinchesLane(d, lane)).flatMap((d) => [-1, 1].map((s) => cellKey(d.x + s * d.dir.y, d.y + s * d.dir.x))).filter((k) => !cells.has(k));
+  // The neck's rock: the door row and the rows either side of it, which `holdNecks` turns to rock.
+  return floor.doors.filter((d) => pinchesLane(d, lane)).flatMap((d) => [-1, 0, 1].flatMap((t) => [-1, 1].map((s) => cellKey(d.x + t * d.dir.x + s * d.dir.y, d.y + t * d.dir.y + s * d.dir.x)))).filter((k) => !cells.has(k));
 }
 
 /** Rule 10: no thin spur, no corner pinch, a 3 × 3 block in every chamber, the main path two cells wide but where it pinches through a crawl. */
