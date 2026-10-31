@@ -69,6 +69,11 @@ function isCrack(env: RenderEnv, piece: DungeonTerrain): boolean {
   return piece.kind === 'chasm' || (piece.kind === 'shaft' && piece.opening?.bottom === null && narrowRadius(piece) === null);
 }
 
+/** Whether a bottomless hole in a cave's floor is drawn as a crack: a crack's own outline, or a chimney's or squeeze's round mouth, so ink falls with the width of the way down. */
+function drawsAsCrack(env: RenderEnv, piece: DungeonTerrain): boolean {
+  return isCrack(env, piece) || (onCaveFloor(env) && narrowRadius(piece) !== null);
+}
+
 /**
  * A hole's outline: a crack in a cave's floor (given the floor), chiselled rock, the straight edges
  * of a built well, a narrow way's round mouth, or a murder hole's small square in the middle of its cell.
@@ -104,7 +109,7 @@ export function drawHoles(hand: Hand): void {
     const share = faceShare(hole);
     const bottom = hole.opening?.bottom === null || !hasFloorBelow(env) ? 'void' : 'floor';
     if (cut) cutHole(hand, rings, built(hole), (hole.kind === 'murder-hole' ? MURDER_HOLE_FACE : CUT_FACE) * share);
-    else if (bottom === 'void' && isCrack(env, hole)) drawCrack(hand, rings, FACE.void * share);
+    else if (bottom === 'void' && drawsAsCrack(env, hole)) drawCrack(hand, rings, FACE.void * share);
     else drawDrop(hand, rings, bottom, built(hole), FACE[bottom] * share);
   }
   if (cave) env.ctx.restore();

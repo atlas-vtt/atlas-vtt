@@ -24,7 +24,7 @@ import { chiselled } from './stones';
 
 /** Softer than a rubble patch, its swell shorter, pulled a little in: a crack's lip follows its cells but never a cell line for long. */
 const CRACK: RaggedShape = { sigma: 1.8, waves: 1.7, swell: 0.18, rag: 0.1, outwards: -0.04 };
-/** How soft a small ring's corners may be at most, per cell round it: a one-cell shaft stays nearly as wide as its cell. */
+/** How soft a small ring's corners may be at most, per cell round it; its swell and rag shrink alike, so a one-cell shaft stays nearly as wide as its cell. */
 const SIGMA_PER_CELL = 0.3;
 /** How long the facets of a crack's lip are before they are chipped, in cells: split rock breaks in short flat faces. */
 const FACET = 0.3;
@@ -75,7 +75,8 @@ export function crackRings(env: RenderEnv, piece: DungeonTerrain): Vec[][] {
   const seed = env.dungeon.model.seed + piece.id * 17 + 811;
   const cells = cellSet(piece.cells);
   return cellRings(piece.cells).map((ring) => {
-    const shape = { ...CRACK, sigma: Math.min(CRACK.sigma, perimeter(ring) * SIGMA_PER_CELL) };
+    const k = Math.min(1, (perimeter(ring) * SIGMA_PER_CELL) / CRACK.sigma);
+    const shape = { ...CRACK, sigma: CRACK.sigma * k, swell: CRACK.swell * k, rag: CRACK.rag * k, outwards: CRACK.outwards * k };
     return chiselled(resample(raggedRing(ring, seed, shape), FACET, 5), seed + 2, CHIP).map((p) => heldToCells(p, cells));
   });
 }
