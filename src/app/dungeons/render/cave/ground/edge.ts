@@ -9,7 +9,7 @@ import { withAlpha } from '../../palette';
 import type { StoneColours } from '../../stone/colours';
 import { FacetBatch, rockTones } from '../../stone/rockFacets';
 import { lipChips } from './lipChips';
-import { wallInkWidth } from '../../wallInk';
+import { mouthInkReach, wallInkWidth } from '../../wallInk';
 
 interface Lip {
   outer: Vec[][];
@@ -22,7 +22,7 @@ interface Lip {
 const LIP = { least: 0.08, more: 0.12 };
 /** How far the rock lip and its strokes reach past the floor's edge at most, in cells. */
 const LIP_REACH = LIP.least + LIP.more + 0.02;
-/** How far an engraved cave's lip lines and wall ink reach past the floor's edge, in cells. */
+/** How far an engraved cave's lip lines reach past the floor's edge, in cells. */
 const ENGRAVED_REACH = 0.23;
 
 function lipWidth(p: Vec, seed: number): number {
@@ -122,13 +122,17 @@ export function engravedEdge(scene: ArtScene, pens: Pens): void {
   const lip = rockLip(scene);
   const width = wallInkWidth(style);
   ctx.save();
-  clipOutsideMouths(scene, ENGRAVED_REACH);
   ctx.beginPath();
   traceRings(ctx, grownRings(scene, ENGRAVED_REACH));
   traceRings(ctx, scene.floorRings);
   ctx.clip('evenodd');
+  ctx.save();
+  clipOutsideMouths(scene, ENGRAVED_REACH);
   stroke(scene, lip.ledges, withAlpha(pens.ink, 0.65), 0.009);
   stroke(scene, lip.hachures, withAlpha(pens.ink, 0.5), 0.009);
+  ctx.restore();
+  // The ink is cleared from before a mouth only as deep as it reaches: a floor flanking that ground keeps its wall.
+  clipOutsideMouths(scene, mouthInkReach(style));
   ctx.beginPath();
   traceWallInk(ctx, scene, width);
   ctx.strokeStyle = pens.ink;

@@ -40,14 +40,35 @@ export interface DungeonSceneParts {
 /** The map is lit by its own drawing until the GM lowers the light. */
 const DAYLIGHT = 1;
 
+/** How far a crowded floor's walls are straightened at first, in texels of the scene's lighting; doubled until they fit. */
+const FIRST_STRAIGHTENING = 0.5;
+/** Straightened farther than this, in texels, the walls would no longer follow the drawing: the floor is given up. */
+const MOST_STRAIGHTENING = 8;
+
 /** The walls of one floor: its own and the outlines of its tall objects (`objectShadows`), on its level where the scene has several. */
-function floorWalls(dungeon: VisibleDungeon, style: DungeonStyle, view: DungeonView, placement: DungeonPlacement, image: { width: number; height: number }, level: string | undefined): DungeonWalls {
+function floorWallsOf(dungeon: VisibleDungeon, style: DungeonStyle, view: DungeonView, placement: DungeonPlacement, image: { width: number; height: number }, level: string | undefined, straighten: number): DungeonWalls {
   const levels = level ? [level] : undefined;
   const id = level ? `dungeon_${floorLetter(dungeon.index).toLowerCase()}` : 'dungeon';
-  const own = dungeonWalls(dungeon.model, style, view, placement, dungeon.index, { id, ...(levels && { levels }) });
+  const own = dungeonWalls(dungeon.model, style, view, placement, dungeon.index, { id, ...(levels && { levels }) }, straighten);
   const tolerance = sealTolerance(worldTexel(image));
   const shadows = objectShadows(tallObjects(dungeon, view), Object.values(own.walls), placement, tolerance, `wall_${id}_shadow`, levels);
   return { ...own, walls: { ...own.walls, ...shadows, ...groundsWalls(dungeon.floor.grounds, placement, { id, ...(levels && { levels }) }) } };
+}
+
+/**
+ * The floor's walls as drawn where they can be joined in good time (`wallsCrowd`), else
+ * straightened as little as it takes. A cave's walls run in steps of about a tenth of a cell,
+ * and on a large map the lighting's texel, and with it the gap sealing closes, grows past that:
+ * every wall end then lies within sealing reach of the next ends along its outline, and a
+ * gargantuan cave's scene was refused. Null where even the most straightening leaves them crowded.
+ */
+function floorWalls(dungeon: VisibleDungeon, style: DungeonStyle, view: DungeonView, placement: DungeonPlacement, image: { width: number; height: number }, level: string | undefined): DungeonWalls | null {
+  const texel = worldTexel(image) / placement.pxPerCell;
+  for (let straighten = 0; straighten <= MOST_STRAIGHTENING; straighten = straighten ? straighten * 2 : FIRST_STRAIGHTENING) {
+    const floor = floorWallsOf(dungeon, style, view, placement, image, level, straighten * texel);
+    if (!wallsCrowd(Object.values(floor.walls), image)) return floor;
+  }
+  return null;
 }
 
 /**
@@ -58,7 +79,7 @@ function floorWalls(dungeon: VisibleDungeon, style: DungeonStyle, view: DungeonV
  * map features of every floor's terrain and props, its water, lava and acid with the light lava
  * and acid give off over their whole surface, a light in every fire and on every wall light of a lived-in dungeon, the rooms of its note, and dynamic lighting in
  * daylight, so nothing changes until the GM dims it. Light ranges are in `unit`. A dungeon of several floors gets a level per floor; one of one floor none. Null when
- * the walls of a floor would crowd too much to be joined (`wallsCrowd`); a generated dungeon never does.
+ * the walls of a floor would crowd too much to be joined even straightened (`floorWalls`); a generated dungeon never does.
  */
 export function dungeonScene(
   model: DungeonModel,
@@ -80,7 +101,7 @@ export function dungeonScene(
     const level = levelIds?.[index];
     const dungeon = visibleDungeon(model, view, index);
     const floor = floorWalls(dungeon, style, view, placement, image, level);
-    if (wallsCrowd(Object.values(floor.walls), image)) return null;
+    if (!floor) return null;
     Object.assign(walls, floor.walls);
     const letter = floorLetter(index).toLowerCase();
     Object.assign(features, floorFeatures(dungeon, view, placement, `feature_dungeon_${letter}`, level));

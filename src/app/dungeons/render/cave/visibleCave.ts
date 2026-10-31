@@ -3,12 +3,12 @@
  * the cells of every shown narrows. A crawl (a secret door) is rock in the drawing; its two mouths
  * stay straight on its cell's edges, as an entrance's outer mouth does, so the walls the scene
  * puts round the crawl meet the cave's exactly. A scree slope's sides and a stairwell's edges
- * stay straight too: their treads are drawn across their whole cells.
+ * stay straight too: their treads are drawn across their whole cells; and so do a hole's.
  */
 
 import { spotRect } from '../../floors/stairSpots';
 import { cellKey, cellsOf, doorCells, floorCellsOf } from '../../geometry';
-import type { CellDir, CellPoint, DungeonDoor, DungeonFloor, DungeonModel, DungeonRoom, DungeonStair } from '../../model';
+import type { CellDir, CellPoint, DungeonDoor, DungeonFloor, DungeonModel, DungeonRoom, DungeonStair, DungeonTerrain } from '../../model';
 import { gridOver } from '../../water/wetGrid';
 import type { FloorShape } from '../geometry';
 import { caveOutline, type PinnedEdge } from './caveOutline';
@@ -50,6 +50,14 @@ function stairEdges(stairs: readonly DungeonStair[]): PinnedEdge[] {
 }
 
 /**
+ * Every edge of a hole's cells: sight passes over a hole, so no wall may wander into one, and a
+ * passage's hole (a traverse's drop) lies against its rock, where the outline keeps to its edge.
+ */
+function holeEdges(terrain: readonly DungeonTerrain[]): PinnedEdge[] {
+  return terrain.filter((piece) => piece.opening).flatMap((piece) => piece.cells.flatMap((c) => SIDES.map((side) => edgeOn(c, side))));
+}
+
+/**
  * The cells whose middle no wall wanders into: the way through (every narrows, the main path),
  * and where something stands (terrain that is no hazard, a piece), drawn round its cell's middle.
  */
@@ -75,7 +83,7 @@ export function caveFloorShapes(model: DungeonModel, index: number, rooms: reado
   const own = new Set(cells.map((c) => cellKey(c.x, c.y)));
   const kept = keptCells(floor, doors);
   // Only floor as drawn is kept: a crawl's cell on the main path is rock in the drawing.
-  shapes = cells.length ? caveOutline(model.seed, index, (x, y) => own.has(cellKey(x, y)), gridOver(cells, 1), [...pinnedEdges(doors), ...stairEdges(floor?.stairs ?? [])], (x, y) => own.has(cellKey(x, y)) && kept.has(cellKey(x, y))) : [];
+  shapes = cells.length ? caveOutline(model.seed, index, (x, y) => own.has(cellKey(x, y)), gridOver(cells, 1), [...pinnedEdges(doors), ...stairEdges(floor?.stairs ?? []), ...holeEdges(floor?.terrain ?? [])], (x, y) => own.has(cellKey(x, y)) && kept.has(cellKey(x, y))) : [];
   const byRooms = memo.get(owner) ?? new Map<string, FloorShape[]>();
   byRooms.set(key, shapes);
   memo.set(owner, byRooms);

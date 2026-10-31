@@ -18,7 +18,7 @@ const alias = {
  * when the code they cover changes. Never in CI: they held the unit shards at their 15 minute limit.
  */
 const SLOW_TEST_FILES = [
-  'tests/unit/dungeons/**',
+  'tests/unit/dungeons/**/*.test.{ts,tsx}',
   'tests/unit/dungeonWizard.test.tsx',
   'tests/unit/spectralEngine/{drawnGrids,irregularGrids,askewMaps,detectGridInImage,printedMaps}.test.ts',
   'tests/unit/visibility{Culling,CullingLarge,CullingControls,Timing,Rules}.test.ts',

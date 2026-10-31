@@ -46,12 +46,14 @@ describe('rock the rooms close in on', () => {
   });
 
   it('in a cave, fills the rock the band closes off however wide, but never the open paper round it', () => {
-    // Seed 606: a lozenge of rock the passages ring, open to the outer rock by a neck narrower than two bands.
-    const cave = visibleDungeon(generateDungeon({ seed: 606, theme: 'cavern', tags: ['medium', 'wet'], floors: 2 }), DEFAULT_VIEW);
+    // Seed 10: a lozenge of rock the passages ring, open to the outer rock by a neck narrower than two bands.
+    const cave = visibleDungeon(generateDungeon({ seed: 10, theme: 'cavern', tags: ['medium', 'wet'], floors: 2 }), DEFAULT_VIEW);
     const filled = filledPockets(cave, 0.62);
-    expect(cave.field.distance(-16, -8)).toBeGreaterThan(1.24);
-    expect(inPocket(filled, -16, -8)).toBe(true);
+    expect(cave.field.distance(-2, 10)).toBeGreaterThan(1.24);
+    expect(inPocket(filled, -2, 10)).toBe(true);
     expect(inPocket(filled, cave.bounds.minX - 1, cave.bounds.minY - 1)).toBe(false);
-    expect(inPocket(filled, -23, -23)).toBe(false);
+    // A bay of rock between the passages that opens wide onto the outer rock.
+    expect(cave.field.distance(14, 6)).toBeGreaterThan(1.24);
+    expect(inPocket(filled, 14, 6)).toBe(false);
   });
 });

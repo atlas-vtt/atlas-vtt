@@ -14,6 +14,7 @@ import { arenaSeeds } from '../../terrain/arena';
 import { type CaveGrid, NEAR4, NEAR8, ROCK, unkey } from './caveGrid';
 import { inSwell } from './laneCells';
 import { type ChamberField, chamberField } from './chamberField';
+import { type Option, neighboursIn, readingIndex } from './chamberFrontier';
 
 export interface ChamberShape {
   gamma: number;
@@ -228,22 +229,29 @@ export function growChamber(rng: Rng, grid: CaveGrid, room: DungeonRoom, seeds: 
   const mask = new Set(grid.cellsOf(room.id).filter((c) => inRect(rect, c.x, c.y)).map(key));
   const target = Math.min(room.w * room.h, Math.max(Math.round(shape.fill * room.w * room.h), seeds.length + FLOOR_EXTRA));
   // The cells beside the chamber it may take, kept as it grows (a cell it may take stays so: only this room claims meanwhile).
-  const weight = (n: CellPoint): number => NEAR8.filter(([ax, ay]) => mask.has(cellKey(n.x + ax, n.y + ay))).length ** shape.gamma * Math.exp(FOLLOW_FIELD * field(n.x, n.y));
-  const frontier = new Map<string, [CellPoint, number]>();
+  const weight = (n: CellPoint): number => neighboursIn(mask, n) ** shape.gamma * Math.exp(FOLLOW_FIELD * field(n.x, n.y));
+  const frontier = new Map<string, Option>();
+  // The same options in reading order, which the pick walks: kept sorted as they come, not sorted anew at every step.
+  const options: Option[] = [];
   const reach = (c: CellPoint): void => {
     for (const [dx, dy] of NEAR4) {
       const n = { x: c.x + dx, y: c.y + dy };
       const nk = key(n);
-      if (!mask.has(nk) && !frontier.has(nk) && mayTake(grid, room, n)) frontier.set(nk, [n, weight(n)]);
+      if (mask.has(nk) || frontier.has(nk) || !mayTake(grid, room, n)) continue;
+      const option: Option = [n, weight(n)];
+      frontier.set(nk, option);
+      options.splice(readingIndex(options, n), 0, option);
     }
   };
   for (const k of mask) reach(unkey(k));
   while (mask.size < target) {
     if (frontier.size === 0) break;
-    const options = [...frontier.values()].sort(([a], [b]) => a.y - b.y || a.x - b.x);
     const total = options.reduce((sum, [, w]) => sum + w, 0);
     let pickAt = rng() * total;
-    const chosen = options.find(([, w]) => (pickAt -= w) < 0)?.[0] ?? options[options.length - 1]![0];
+    const found = options.findIndex(([, w]) => (pickAt -= w) < 0);
+    const at = found < 0 ? options.length - 1 : found;
+    const chosen = options[at]![0];
+    options.splice(at, 1);
     grid.claim(chosen.x, chosen.y, room.id);
     mask.add(key(chosen));
     frontier.delete(key(chosen));
@@ -268,10 +276,9 @@ export function smoothChamber(grid: CaveGrid, room: DungeonRoom, keep: ReadonlyS
   const r = floorRect(room);
   for (let pass = 0; pass < passes; pass++) {
     const mask = new Set(grid.cellsOf(room.id).filter((c) => inRect(r, c.x, c.y)).map(key));
-    const count = (c: CellPoint): number => NEAR8.filter(([dx, dy]) => mask.has(cellKey(c.x + dx, c.y + dy))).length;
     for (const c of cellsOf(r)) {
       const k = key(c);
-      const n = count(c);
+      const n = neighboursIn(mask, c);
       if (!mask.has(k) && n >= 5 && grid.mayClaim(c.x, c.y, room.id)) {
         grid.claim(c.x, c.y, room.id);
         mask.add(k);
