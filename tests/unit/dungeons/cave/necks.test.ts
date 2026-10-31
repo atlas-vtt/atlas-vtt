@@ -8,6 +8,7 @@ import { claimLane, laneEnds, mainRoute, wideLane } from '../../../../src/app/du
 import { holdNecks } from '../../../../src/app/dungeons/layout/cavern/necks';
 import type { CellPoint, DungeonDoor, DungeonFloor, DungeonModel, DungeonRoom } from '../../../../src/app/dungeons/model';
 import { dungeonParams, dungeonTags } from '../../../../src/app/dungeons/params';
+import { rngFrom } from '../../../../src/app/dungeons/rng';
 
 /**
  * A crawl, a squeeze or a letterbox is a neck of the cave's own rock, measured apart from the
@@ -79,6 +80,19 @@ function necksOf(floor: DungeonFloor, name: string): { doors: { door: DungeonDoo
   return { doors: out, sides };
 }
 
+/**
+ * How many cells across the floor runs through the door's row (`t` 0), or the row `t` along the way,
+ * counting every floor there is: any room's cells and every open door's.
+ */
+function crossSection(floor: DungeonFloor, door: DungeonDoor, t: number): number {
+  const open = new Set([...floor.rooms.flatMap((room) => (room.cells ?? []).map(key)), ...floor.doors.filter((d) => d.kind !== 'secret').flatMap((d) => doorCells(d).map(key))]);
+  const cell = neckCell(door);
+  if (!open.has(key(cell(t, 0)))) return 0;
+  let n = 1;
+  for (const s of [-1, 1]) for (let j = 1; open.has(key(cell(t, s * j))); j++) n++;
+  return n;
+}
+
 /** Whether every room with cells is reached over the floor from the first: rooms, narrows and hidden crawls alike. */
 function allReached(floor: DungeonFloor): boolean {
   const owner = new Map<string, number>();
@@ -110,6 +124,18 @@ describe('the necks of the narrow ways', () => {
   it('stand one cell across in the door’s row, the rock either side', () => {
     expect(doors.length).toBeGreaterThan(1_000);
     expect(doors.filter((d) => d.across(0) !== 1).map((d) => d.where)).toEqual([]);
+  });
+
+  it('stand one floor cell across at the door, and before it on a chamber’s side, without exception: a chamber that cannot give up the cells gives up the way', () => {
+    const wide = all.flatMap(({ floor, name }) =>
+      floor.doors
+        .filter((d) => d.kind === 'opening' && d.from !== null && d.to !== null && NARROW.has(d.way ?? 'walk'))
+        .flatMap((door) => {
+          const chamberSides = [-1, 1].filter((side) => floor.rooms[(side < 0 ? door.from : door.to)!]?.kind === 'room');
+          return [0, ...chamberSides].filter((t) => crossSection(floor, door, t) !== 1).map((t) => `${name} ${door.way} at ${key(door)} row ${t}: ${crossSection(floor, door, t)} across`);
+        }),
+    );
+    expect(wide).toEqual([]);
   });
 
   it('cut a passage that runs on to one cell either side of the door and to two the row after', () => {
@@ -145,7 +171,7 @@ describe('the necks of the narrow ways', () => {
         const route = mainRoute(floor, from, to);
         const lane = wideLane(grid, floor, route, from, to) ?? [];
         claimLane(grid, floor, route, lane);
-        holdNecks(grid, floor, new Set(lane.map(key)), new Set());
+        holdNecks(rngFrom(seed), grid, floor, new Set(lane.map(key)), new Set());
         const { x0, y0, w, h } = grid.box();
         let held = 0;
         for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (grid.heldAsRock(x, y)) held++;

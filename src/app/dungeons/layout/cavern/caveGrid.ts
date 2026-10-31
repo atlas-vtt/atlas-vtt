@@ -60,6 +60,10 @@ export class CaveGrid {
   private readonly cells = new Map<number, Set<number>>();
   private readonly needed = new Map<number, Set<string>>();
   private readonly held = new Set<number>();
+  /** Cells held as rock against some rooms only (`turnToRock`'s `against`), by index: any other room may take them. */
+  private readonly heldAgainst = new Map<number, ReadonlySet<number>>();
+  /** The cells claimed from the start, by key: before each door, every stairwell and the row it is reached from. */
+  private readonly anchors = new Set<string>();
   readonly doors: readonly DungeonDoor[];
   /** Every stairwell's cells, by key: kept floor that no way between the room's other floor may cross. */
   readonly stairCells: ReadonlySet<string>;
@@ -99,6 +103,7 @@ export class CaveGrid {
         ...stairs.flatMap((s) => [...cellsOf(spotRect(s)), ...stairRows(s, index)]),
       ].filter((c) => inRect(rect, c.x, c.y));
       this.require(room.id, own);
+      for (const c of own) this.anchors.add(cellKey(c.x, c.y));
     }
   }
 
@@ -128,6 +133,8 @@ export class CaveGrid {
   claim(x: number, y: number, owner: number): void {
     const i = this.index(x, y);
     if (i < 0) return;
+    // A room another hold let take the cell (`mayClaim`) makes it floor.
+    if (this.heldAgainst.delete(i)) this.held.delete(i);
     const before = this.owners[i] ?? ROCK;
     if (before !== ROCK) this.cells.get(before)?.delete(i);
     this.owners[i] = owner;
@@ -175,10 +182,16 @@ export class CaveGrid {
     return this.doors.some((door, k) => door.kind !== 'secret' && ((door.from === owner && door.to === other) || (door.from === other && door.to === owner)) && byDoor(k, x, y) && byDoor(k, nx, ny));
   }
 
-  /** Whether `owner` may take the rock cell: nothing it may not touch lies beside it or at its corners, and it is not held as rock. */
+  /** Whether `owner`, a room, may take the cell at index `i` though it is held: it is held against other rooms only. */
+  private mayBite(i: number, owner: number): boolean {
+    const against = this.heldAgainst.get(i);
+    return against !== undefined && owner >= 0 && !against.has(owner);
+  }
+
+  /** Whether `owner` may take the rock cell: nothing it may not touch lies beside it or at its corners, and it is not held as rock (against it). */
   mayClaim(x: number, y: number, owner: number): boolean {
     const i = this.index(x, y);
-    if (i < 0 || this.held.has(i) || (this.owners[i] !== ROCK && this.owners[i] !== owner)) return false;
+    if (i < 0 || (this.held.has(i) && !this.mayBite(i, owner)) || (this.owners[i] !== ROCK && this.owners[i] !== owner)) return false;
     return NEAR8.every(([dx, dy]) => this.mayTouchAt(owner, this.owner(x + dx, y + dy), x, y, x + dx, y + dy));
   }
 
@@ -204,15 +217,46 @@ export class CaveGrid {
   /**
    * Gives the cell to the rock for good: no owner, needed by no one, and held so nothing takes it
    * again (`mayClaim`): the rock either side of a narrow way's neck (`holdNecks`), which every pass
-   * that shapes the floor must leave alone.
+   * that shapes the floor must leave alone. Held only `against` some rooms (the neck's own, kept
+   * from winding back), any other room may still bite into it as it swells, so the rock round a
+   * neck never stands as a straight wall beside another passage; a later hold against all wins.
    */
-  turnToRock(x: number, y: number): void {
+  turnToRock(x: number, y: number, against?: readonly number[]): void {
     const i = this.index(x, y);
     if (i < 0) return;
+    const before = this.held.has(i) ? (this.heldAgainst.get(i) ?? null) : undefined;
     this.release(x, y);
     const k = cellKey(x, y);
     for (const set of this.needed.values()) set.delete(k);
     this.held.add(i);
+    if (!against || before === null) this.heldAgainst.delete(i);
+    else this.heldAgainst.set(i, new Set([...(before ?? []), ...against]));
+  }
+
+  /**
+   * Gives back a cell `holdAsRock` held, still its owner's: the wall cell beside a pinch of the main
+   * path whose neck could not be held, which the lane then passes two cells wide.
+   */
+  letGo(x: number, y: number): void {
+    const i = this.index(x, y);
+    if (i < 0) return;
+    this.held.delete(i);
+    this.heldAgainst.delete(i);
+  }
+
+  /**
+   * Whether the cell was claimed from the start: the cell before a door, a stairwell or the row it is
+   * reached from, which the terrain keeps clear and the stairs are walked across, so no neck may
+   * turn it to rock (`turnToRock`).
+   */
+  anchored(x: number, y: number): boolean {
+    return this.anchors.has(cellKey(x, y));
+  }
+
+  /** Whether the cell is held as rock against every room (`holdAsRock`, `turnToRock` without `against`). */
+  heldFirmly(x: number, y: number): boolean {
+    const i = this.index(x, y);
+    return i >= 0 && this.held.has(i) && !this.heldAgainst.has(i);
   }
 
   /** Whether the cell is held as rock (`holdAsRock`, `turnToRock`). */

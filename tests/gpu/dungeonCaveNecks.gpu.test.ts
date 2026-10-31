@@ -32,7 +32,8 @@ const cave = (seed: number, tags: string[]) => (): DungeonModel => generateDunge
 
 const SPOTS: readonly Spot[] = [
   { name: 'fixture', model: () => caveVeinWaysModel(), origin: { x: -1, y: -1 }, cells: { w: 19, h: 19 } },
-  // Squeezes at (29, −18) and (34, −18), the way running east: what the maintainer saw.
+  // Squeezes at (29, −18) and (34, −18), the way running east: what the maintainer saw. The chamber between
+  // them cannot give up the cells beside the second, which is walked now (`walkLooseNecks`).
   { name: 'pair-1394744', model: cave(1_394_744, ['large']), origin: { x: 24, y: -23 }, cells: { w: 16, h: 10 } },
   // A squeeze at (−14, −14), the way running west from a passage three cells wide into a one-cell one.
   { name: 'wide-784981', model: cave(784_981, ['winding']), origin: { x: -20, y: -19 }, cells: { w: 12, h: 10 } },

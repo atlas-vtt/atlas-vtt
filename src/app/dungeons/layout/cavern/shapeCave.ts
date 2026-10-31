@@ -20,6 +20,7 @@ import { repairGuards, walkedLane } from './guards';
 import { basinCount, caveHeights, hydrology, lowRooms, springByTheMouth } from './hydrology';
 import { caveSites } from './caveSites';
 import { type LaneWay, claimLane, laneEnds, mainRoute, wideLane, windingWay } from './mainPath';
+import { walkLooseNecks } from './looseNecks';
 import { holdNecks } from './necks';
 import { stairWays } from './stairWays';
 import { type TunnelWidth, carveTunnel, doorOnLane, pinchLane, shapeDoors, tunnelEnds } from './tunnels';
@@ -117,22 +118,26 @@ function basinsPerFloor(floors: readonly PlannedFloor[], level: number, dry: boo
  * where every chamber holding a stairwell can also join the row it is entered from round it
  * (`stairsJoin`): a winding lane or a core out in the swell may take the cells that way needs.
  * With the book's rules (`necks`) the main path's pinches and the rock round every narrow way are
- * held before the cores, so a core keeps off a neck rather than the neck off the core.
+ * held before the cores, so a core keeps off a neck rather than the neck off the core; the floor it
+ * returns walks every narrow way whose neck could not be held (`walkLooseNecks`).
  */
-function laneGrid(seed: number, index: number, floor: PlannedFloor, boss: boolean, count: number, necks: boolean): { grid: CaveGrid; lane: CellPoint[]; pinched: Set<number> } {
+function laneGrid(seed: number, index: number, floor: PlannedFloor, boss: boolean, count: number, necks: boolean): { grid: CaveGrid; lane: CellPoint[]; pinched: Set<number>; floor: PlannedFloor } {
   const [from, to] = laneEnds(index, count, floor, boss);
   const route = mainRoute(floor, from, to);
   // A lane does not hang on the cores, so the plain one is found once for both tries that take it.
   const lanes = new Map<LaneWay | undefined, CellPoint[] | null>();
-  const laid = (way: LaneWay | undefined, out: boolean): { grid: CaveGrid; lane: CellPoint[] | null; pinched: Set<number>; fits: boolean } => {
+  const laid = (way: LaneWay | undefined, out: boolean): { grid: CaveGrid; lane: CellPoint[] | null; pinched: Set<number>; floor: PlannedFloor; fits: boolean } => {
     const grid = new CaveGrid(floor, index);
     if (!lanes.has(way)) lanes.set(way, wideLane(grid, floor, route, from, to, way));
     const lane = lanes.get(way)!;
     if (lane) claimLane(grid, floor, route, lane, way?.swell);
     const laneKeys = new Set((lane ?? []).map((c) => cellKey(c.x, c.y)));
     const pinched = necks ? pinchLane(grid, floor, laneKeys) : new Set<number>();
-    if (necks) holdNecks(grid, floor, laneKeys, pinched);
-    return { grid, lane, pinched, fits: lane !== null && reserveCores(grid, floor.rooms, out) && stairsJoin(grid, floor) };
+    const loose = necks ? holdNecks(floorStream(seed, 'cave', index, 'necks'), grid, floor, laneKeys, pinched) : new Set<number>();
+    // A way whose neck could not be held is walked, and the lane walks a pinch among them two cells wide.
+    const walked = walkLooseNecks(floor, loose, (k) => doorOnLane(floor.doors[k]!, k, laneKeys, grid));
+    for (const k of loose) pinched.delete(k);
+    return { grid, lane, pinched, floor: walked, fits: lane !== null && reserveCores(grid, floor.rooms, out) && stairsJoin(grid, floor) };
   };
   // The last try is the layout's own, which it made sure of.
   const tries: readonly [LaneWay | undefined, boolean][] = [[windingWay(floorStream(seed, 'cave', index, 'lane')), true], [undefined, true], [undefined, false]];
@@ -141,7 +146,7 @@ function laneGrid(seed: number, index: number, floor: PlannedFloor, boss: boolea
     if (tried.fits) break;
     tried = laid(...next);
   }
-  return { grid: tried.grid, lane: tried.lane ?? [], pinched: tried.pinched };
+  return { grid: tried.grid, lane: tried.lane ?? [], pinched: tried.pinched, floor: tried.floor };
 }
 
 interface FloorShaping {
@@ -154,9 +159,8 @@ interface FloorShaping {
 
 function shapeFloor(how: FloorShaping, floors: readonly PlannedFloor[], index: number): PlannedFloor {
   const { seed, shaping, faults, boss } = how;
-  const floor = floors[index]!;
   const veins = shaping.veins?.rules;
-  const { grid, lane, pinched } = laneGrid(seed, index, floor, boss, floors.length, veins !== undefined);
+  const { grid, lane, pinched, floor } = laneGrid(seed, index, floors[index]!, boss, floors.length, veins !== undefined);
   const laneKeys = new Set(lane.map((c) => cellKey(c.x, c.y)));
   const fields = shapeChambers(seed, index, shaping, faults, floor, grid, laneKeys);
   shapeTunnels(seed, index, shaping, floor, grid, laneKeys);
