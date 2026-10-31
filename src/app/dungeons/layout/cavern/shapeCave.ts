@@ -20,7 +20,9 @@ import { basinCount, caveHeights, hydrology, lowRooms, springByTheMouth } from '
 import { caveSites } from './caveSites';
 import { type LaneWay, claimLane, laneEnds, mainRoute, wideLane, windingWay } from './mainPath';
 import { stairWays } from './stairWays';
-import { carveTunnel, shapeDoors, tunnelEnds } from './tunnels';
+import { carveTunnel, doorOnLane, shapeDoors, tunnelEnds } from './tunnels';
+import { withContinuing } from './veins/continuing';
+import { LANE_WIDTH, blockWays, streamFalls } from './veins/doorWays';
 import { fillPockets, warpCave } from './caveWarp';
 import { stairsJoin } from './caveFits';
 
@@ -61,12 +63,24 @@ function swellRooms(seed: number, index: number, floor: PlannedFloor, grid: Cave
   }
 }
 
+/**
+ * How wide a side tunnel runs: two cells now and then (`sideWide`), and with the book's rules
+ * always where it was entered by a walk ten feet wide. A crawl or squeeze is low or tight, not
+ * narrow: its tunnel swells and pinches like any other, and only its narrows shows how it is passed.
+ */
+function sideWidth(rng: () => number, shaping: CaveShaping, floor: PlannedFloor, room: DungeonRoom): 1 | 2 {
+  const wide = rng() < shaping.sideWide;
+  const entered = shaping.veins && floor.doors.find((door) => door.to === room.id && door.from === room.parent);
+  return wide || (entered && entered.way === 'walk' && (entered.width ?? 0) >= LANE_WIDTH) ? 2 : 1;
+}
+
 function shapeTunnels(seed: number, index: number, shaping: CaveShaping, floor: PlannedFloor, grid: CaveGrid, lane: ReadonlySet<string>): void {
   for (const room of floor.rooms) {
     if (room.kind === 'room') continue;
     const rng = floorStream(seed, 'cave', index, `tunnel:${room.id}`);
     const onLane = grid.cellsOf(room.id).some((c) => lane.has(cellKey(c.x, c.y)));
-    carveTunnel(rng, grid, room, tunnelEnds(grid, room, floor.doors), onLane || rng() < shaping.sideWide ? 2 : 1, lane, floor.rooms);
+    // A cave with the book's rules runs long passages, which keep clear of the walls they share.
+    carveTunnel(rng, grid, room, tunnelEnds(grid, room, floor.doors), onLane ? 2 : sideWidth(rng, shaping, floor, room), lane, floor.rooms, shaping.veins !== undefined);
   }
 }
 
@@ -74,10 +88,12 @@ function shapeTunnels(seed: number, index: number, shaping: CaveShaping, floor: 
  * How many basins each floor holds: the cave's share of all its low rooms, given to the deepest
  * floor first, and no floor above holding more than the deepest: water runs down.
  */
-function basinsPerFloor(floors: readonly PlannedFloor[], level: number, dry: boolean): number[] {
+function basinsPerFloor(floors: readonly PlannedFloor[], level: number, dry: boolean, more = 1): number[] {
   const last = floors.length - 1;
   const lows = floors.map((floor, index) => lowRooms(floor, floor.cave?.heights ?? [], index === last).length);
-  let left = dry ? 0 : basinCount(lows.reduce((a, b) => a + b, 0), level);
+  const total = lows.reduce((a, b) => a + b, 0);
+  // A cave that holds still pools wherever it can fills more of its low rooms.
+  let left = dry ? 0 : Math.min(total, Math.round(basinCount(total, level) * more));
   const out = lows.map(() => 0);
   for (let index = last; index >= 0; index--) {
     out[index] = Math.min(lows[index]!, left, index === last ? Infinity : out[last]!);
@@ -133,11 +149,15 @@ function shapeFloor(how: FloorShaping, floors: readonly PlannedFloor[], index: n
   swellRooms(seed, index, floor, grid, fields);
   warpCave(floorStream(seed, 'cave', index, 'warp'), grid, floor, faults);
   fillPockets(grid);
-  const doors = shapeDoors(floor.doors, laneKeys, grid);
-  const left = repairGuards(grid, { ...floor, doors }, lane);
+  const veins = shaping.veins?.rules;
+  const shaped = shapeDoors(floor.doors, laneKeys, grid, veins && floor.rooms);
+  const doors = veins ? blockWays(floorStream(seed, 'cave', index, 'blocked'), shaped, floor.rooms, (k) => doorOnLane(floor.doors[k]!, k, laneKeys, grid), veins.blockedWays) : shaped;
+  const left = repairGuards(grid, { ...floor, doors }, lane, veins !== undefined);
   if (left.length > 0) console.debug(`[Atlas] cave floor ${index} of seed ${seed} keeps ${left.length} token-fit problems`, left.map((p) => p.kind));
-  const rooms = floor.rooms.map((room) => ({ ...room, cells: grid.cellsOf(room.id) }));
-  const cave: CaveFloor = { lane, heights: caveHeights(seed, index, rooms), faults: faultLines(floorStream(seed, 'cave', index, 'faults'), { rooms }, faults), basins: [], streams: [], dams: [] };
+  const cells = floor.rooms.map((room) => ({ ...room, cells: grid.cellsOf(room.id) }));
+  const rooms = veins ? withContinuing(floorStream(seed, 'cave', index, 'continuing'), cells, { doors, stairs: floor.stairs }, veins.continuing) : cells;
+  const lines = faultLines(floorStream(seed, 'cave', index, 'faults'), { rooms }, faults, veins?.faultLines);
+  const cave: CaveFloor = { lane, heights: caveHeights(seed, index, rooms), faults: lines, basins: [], streams: [], dams: [] };
   return { rooms, doors, stairs: floor.stairs.map((stair) => ({ ...stair })), cave };
 }
 
@@ -152,12 +172,15 @@ export function shapeCaves(seed: number, params: DungeonParams, floors: readonly
   // The GM's water level wins over the tags, as in every theme: a cave is dry where the level is nothing.
   const how: FloorShaping = { seed, shaping, faults, boss, dry: level <= 0 };
   const shaped = floors.map((_, index) => shapeFloor(how, floors, index));
-  const takes = basinsPerFloor(shaped, level, how.dry);
+  const veins = shaping.veins;
+  const takes = basinsPerFloor(shaped, level, how.dry, veins?.rules.basins);
   shaped.forEach((floor, index) => {
     const cave = floor.cave!;
     Object.assign(cave, hydrology(floorStream(seed, 'cave', index, 'water'), floor, cave.heights, level, how.dry, takes[index], index === shaped.length - 1));
+    // A cave whose water never runs calm drops every stream over falls.
+    if (veins?.rules.streamFalls) floor.doors = streamFalls(floor.doors, cave.streams);
   });
-  stairWays(stream(seed, 'cave', 'ways'), shaped);
+  stairWays(stream(seed, 'cave', 'ways'), shaped, veins?.rules.pitchesOnly);
   if (params.tags.has('inhabited') && !how.dry && shaped[0]) springByTheMouth(shaped[0], caveSites(shaped)[0]!);
-  return { floors: shaped, cave: { variant: shaping.variant, faults } };
+  return { floors: shaped, cave: { variant: shaping.variant, faults, ...(veins && { character: veins.character }) } };
 }

@@ -198,27 +198,32 @@ export function growChamber(rng: Rng, grid: CaveGrid, room: DungeonRoom, seeds: 
   const field = chamberField(rng, room, shape.faults, shape.stretch, doorApproaches(room, grid.doors).filter((c) => inRect(rect, c.x, c.y)));
   const mask = new Set(grid.cellsOf(room.id).filter((c) => inRect(rect, c.x, c.y)).map(key));
   const target = Math.min(room.w * room.h, Math.max(Math.round(shape.fill * room.w * room.h), seeds.length + FLOOR_EXTRA));
-  while (mask.size < target) {
-    const options: [CellPoint, number][] = [];
-    const seen = new Set<string>();
-    for (const k of mask) {
-      const c = unkey(k);
-      for (const [dx, dy] of NEAR4) {
-        const n = { x: c.x + dx, y: c.y + dy };
-        const nk = key(n);
-        if (mask.has(nk) || seen.has(nk) || !mayTake(grid, room, n)) continue;
-        seen.add(nk);
-        const around = NEAR8.filter(([ax, ay]) => mask.has(cellKey(n.x + ax, n.y + ay))).length;
-        options.push([n, around ** shape.gamma * Math.exp(FOLLOW_FIELD * field(n.x, n.y))]);
-      }
+  // The cells beside the chamber it may take, kept as it grows (a cell it may take stays so: only this room claims meanwhile).
+  const weight = (n: CellPoint): number => NEAR8.filter(([ax, ay]) => mask.has(cellKey(n.x + ax, n.y + ay))).length ** shape.gamma * Math.exp(FOLLOW_FIELD * field(n.x, n.y));
+  const frontier = new Map<string, [CellPoint, number]>();
+  const reach = (c: CellPoint): void => {
+    for (const [dx, dy] of NEAR4) {
+      const n = { x: c.x + dx, y: c.y + dy };
+      const nk = key(n);
+      if (!mask.has(nk) && !frontier.has(nk) && mayTake(grid, room, n)) frontier.set(nk, [n, weight(n)]);
     }
-    if (options.length === 0) break;
-    options.sort(([a], [b]) => a.y - b.y || a.x - b.x);
+  };
+  for (const k of mask) reach(unkey(k));
+  while (mask.size < target) {
+    if (frontier.size === 0) break;
+    const options = [...frontier.values()].sort(([a], [b]) => a.y - b.y || a.x - b.x);
     const total = options.reduce((sum, [, w]) => sum + w, 0);
     let pickAt = rng() * total;
     const chosen = options.find(([, w]) => (pickAt -= w) < 0)?.[0] ?? options[options.length - 1]![0];
     grid.claim(chosen.x, chosen.y, room.id);
     mask.add(key(chosen));
+    frontier.delete(key(chosen));
+    for (const [dx, dy] of NEAR8) {
+      const nk = cellKey(chosen.x + dx, chosen.y + dy);
+      const entry = frontier.get(nk);
+      if (entry) entry[1] = weight(entry[0]);
+    }
+    reach(chosen);
   }
   return field;
 }

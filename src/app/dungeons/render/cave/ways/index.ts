@@ -1,8 +1,15 @@
 import type { CaveWayDraw, CaveWayPart } from '../caveArt';
+import { drawBreakdowns } from './breakdownWay';
+import { drawContinuing } from './continuing';
 import { drawCrawls } from './crawl';
+import { drawLetterboxes } from './letterbox';
+import { drawLowWays } from './lowWay';
 import { drawNarrows } from './narrows';
 import { drawScree } from './scree';
 import { drawAvens, drawPitches } from './shafts';
+import { drawSqueezes } from './squeeze';
+import { drawSumps } from './sumpWay';
+import { drawTraverses } from './traverseWay';
 
 /** Natural cave ways, drawn through each look's hand in map coordinates. */
 export const CAVE_WAYS: Partial<Record<CaveWayPart, CaveWayDraw>> = {
@@ -11,4 +18,11 @@ export const CAVE_WAYS: Partial<Record<CaveWayPart, CaveWayDraw>> = {
   pitch: drawPitches,
   aven: drawAvens,
   scree: drawScree,
+  lowWay: drawLowWays,
+  squeeze: drawSqueezes,
+  letterbox: drawLetterboxes,
+  sumpWay: drawSumps,
+  traverseWay: drawTraverses,
+  breakdownWay: drawBreakdowns,
+  continuing: drawContinuing,
 };

@@ -74,7 +74,8 @@ function pitch(hand: Hand, frame: WayFrame, mouth: ShaftMouth): void {
   hand.edges(rim, false);
 }
 
-function aven(hand: Hand, frame: WayFrame, mouth: ShaftMouth): void {
+/** An opening overhead seen from the floor below it: the light it lets down, the rubble under it and its dashed rings. */
+export function drawAvenOpening(hand: Hand, frame: WayFrame, mouth: ShaftMouth): void {
   const { rings, half } = mouth;
   layAvenLight(hand, frame, mouth);
   // What came down the chimney lies where its light lands: a heap in the middle, stones thrown wider.
@@ -107,7 +108,7 @@ function drawEnds(hand: Hand, end: StairEnd): void {
     const frame = wayFrame(stair, stair.down);
     const mouth = shaftMouth(frame, mouthSeed(hand, stair));
     if (end === 'upper') pitch(hand, frame, mouth);
-    else aven(hand, frame, mouth);
+    else drawAvenOpening(hand, frame, mouth);
   }
 }
 

@@ -2,7 +2,7 @@
 
 import type { FloorStack } from '../floors/floorStack';
 import type { CaveSites } from '../layout/cavern/caveSites';
-import type { CaveVariant } from '../model';
+import type { CaveCharacter, CaveVariant } from '../model';
 import { type Rng, floorStream } from '../rng';
 import type { DungeonTag } from '../tags';
 import type { ThemeContext } from '../themes/themes';
@@ -32,6 +32,8 @@ export interface TerrainWork {
 export interface TerrainCave {
   sites: readonly CaveSites[];
   variant: CaveVariant;
+  /** The cave's character (`CaveModel.character`); unset, the cave keeps to no rule beyond its geology. */
+  character?: CaveCharacter;
 }
 
 /** What the theme typed: each floor's typed rooms and the rooms that stand empty. */

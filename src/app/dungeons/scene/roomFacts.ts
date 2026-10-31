@@ -1,6 +1,6 @@
 import { formatList, type MessageKey, t } from '../../i18n';
-import { isAbove, stackOf } from '../floors/floorStack';
-import type { CellDir, CellPoint, DoorKind, DungeonDoor, DungeonRoom, DungeonStair, DungeonTerrain, GrowthKind, TerrainKind } from '../model';
+import { floorAbove, isAbove, stackOf } from '../floors/floorStack';
+import type { CaveWay, CellDir, CellPoint, DoorKind, DungeonDoor, DungeonRoom, DungeonStair, DungeonTerrain, GrowthKind, TerrainKind } from '../model';
 import { PROP_KINDS, propKey } from '../props/propKinds';
 import { dir, floorCellsOf, holdsCell } from '../geometry';
 import type { VisibleFloor } from '../render/visibleDungeon';
@@ -15,12 +15,29 @@ import { terrainName } from './terrainName';
  */
 
 type Direction = 'north' | 'east' | 'south' | 'west';
-type ExitKind = 'door' | 'opening' | 'secret' | 'stepsUp' | 'stepsDown' | 'narrows' | 'crawl' | 'screeUp' | 'screeDown';
+type ExitKind =
+  | 'door'
+  | 'opening'
+  | 'secret'
+  | 'stepsUp'
+  | 'stepsDown'
+  | 'narrows'
+  | 'crawl'
+  | 'screeUp'
+  | 'screeDown'
+  | 'lowCrawl'
+  | 'squeeze'
+  | 'letterbox'
+  | 'sump'
+  | 'traverse'
+  | 'breakdown';
 
 const DIRECTIONS: readonly Direction[] = ['north', 'east', 'south', 'west'];
-const EXIT_KINDS: readonly ExitKind[] = ['door', 'opening', 'narrows', 'secret', 'crawl', 'stepsUp', 'screeUp', 'stepsDown', 'screeDown'];
+const EXIT_KINDS: readonly ExitKind[] = ['door', 'opening', 'narrows', 'lowCrawl', 'squeeze', 'letterbox', 'traverse', 'sump', 'breakdown', 'secret', 'crawl', 'stepsUp', 'screeUp', 'stepsDown', 'screeDown'];
 /** What a way out is in a cave: its narrows, its hidden crawls, its scree slopes. */
 const CAVE_EXITS: Readonly<Partial<Record<ExitKind, ExitKind>>> = { door: 'narrows', opening: 'narrows', secret: 'crawl', stepsUp: 'screeUp', stepsDown: 'screeDown' };
+/** How an open way between caves is passed, by its size against a body: a walk is the narrows of every cave. */
+const WAY_EXITS: Readonly<Record<CaveWay, ExitKind>> = { walk: 'narrows', crawl: 'lowCrawl', squeeze: 'squeeze', letterbox: 'letterbox', traverse: 'traverse', sump: 'sump', breakdown: 'breakdown' };
 
 function directionOf(d: CellDir): Direction {
   if (d.y < 0) return 'north';
@@ -35,7 +52,9 @@ function exitOf(door: DungeonDoor, room: number, cave: boolean): { direction: Di
   // Steps that descend from `from` to `to` lead down from `from`, up from `to`
   const down = leaving === (door.descends === true);
   const kind: ExitKind = door.kind === 'steps' ? (down ? 'stepsDown' : 'stepsUp') : door.kind;
-  return { direction: directionOf(way), kind: (cave && CAVE_EXITS[kind]) || kind, outside: (leaving ? door.to : door.from) === null };
+  // A hidden crawl and a scree slope stay what they are; any other way in a cave is read from how it is passed.
+  const passed = cave && door.way && door.kind !== 'secret' && door.kind !== 'steps' ? WAY_EXITS[door.way] : undefined;
+  return { direction: directionOf(way), kind: passed ?? ((cave && CAVE_EXITS[kind]) || kind), outside: (leaving ? door.to : door.from) === null };
 }
 
 const ENTRANCE_KEYS: Record<DoorKind, 'dungeonScene.entrance.door' | 'dungeonScene.entrance.opening' | 'dungeonScene.entrance.secret' | 'dungeonScene.entrance.steps'> = {
@@ -130,12 +149,42 @@ function terrainPhrase(piece: DungeonTerrain): string {
 function terrainSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
   const counts = new Map<string, number>();
   for (const piece of visible.floor.terrain) {
-    if (piece.room !== room.id) continue;
+    if (piece.room !== room.id || saidApart(visible, piece)) continue;
     const phrase = terrainPhrase(piece);
     counts.set(phrase, (counts.get(phrase) ?? 0) + 1);
   }
   const items = [...counts].map(([phrase, count]) => (count > 1 ? t('dungeonScene.terrain.count', { name: phrase, count }) : phrase));
   return items.length ? [t('dungeonScene.terrain', { list: formatList(items) })] : [];
+}
+
+/** Whether a piece has a sentence of its own rather than a place in the terrain's list: a cave's avens, and its shafts into the dark. */
+function saidApart(visible: VisibleFloor, piece: DungeonTerrain): boolean {
+  return visible.floor.cave !== undefined && (piece.kind === 'aven' || (piece.kind === 'shaft' && piece.opening?.bottom === null));
+}
+
+/**
+ * A cave chamber's ways up and down that are no stairwell: each aven, rising to the floor above
+ * where a room of it lies over the aven and into the dark where none does, and the shafts that
+ * drop into the dark (a shaft to a floor below is named with the terrain).
+ */
+function shaftSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
+  if (!visible.floor.cave) return [];
+  const pieces = visible.floor.terrain.filter(piece => piece.room === room.id);
+  const above = floorAbove(stackOf(visible.model), visible.index);
+  const over = above === null ? [] : (visible.model.floors[above]?.rooms ?? []);
+  const rising = new Map<number | null, number>();
+  for (const aven of pieces.filter(piece => piece.kind === 'aven')) {
+    const to = aven.cells.every(c => over.some(r => holdsCell(r, c.x, c.y))) ? above : null;
+    rising.set(to, (rising.get(to) ?? 0) + 1);
+  }
+  const avens = [...rising].map(([to, count]) => (to === null ? t('dungeonScene.avenDark', { count }) : t('dungeonScene.avensUp', { count, floor: floorLetter(to) })));
+  const dark = pieces.filter(piece => piece.kind === 'shaft' && piece.opening?.bottom === null).length;
+  return [...avens, ...(dark ? [t('dungeonScene.shaftDark', { count: dark })] : [])];
+}
+
+/** A cave chamber's way on that nobody can follow: a squeeze too tight to pass. */
+function continuingSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
+  return visible.floor.cave && room.continuing ? [t('dungeonScene.continuing', { direction: t(`dungeonScene.direction.${directionOf(room.continuing)}`) })] : [];
 }
 
 /** Vegetation in the order the note names it: what climbs the walls first. */
@@ -151,7 +200,9 @@ function growthSentences(visible: VisibleFloor, room: DungeonRoom): string[] {
 export function roomFacts(visible: VisibleFloor, room: DungeonRoom, view: Pick<DungeonView, 'props' | 'water'>): string {
   return [
     ...exitSentences(room, visible.doors, visible.floor.cave !== undefined),
+    ...continuingSentences(visible, room),
     ...stairSentences(visible, room),
+    ...shaftSentences(visible, room),
     ...contents(visible, room, view),
     ...terrainSentences(visible, room),
     ...waterSentences(visible, room, view),

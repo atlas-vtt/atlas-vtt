@@ -42,7 +42,7 @@ function downstream(work: TerrainWork, k: number, room: number): number | null {
 }
 
 /** Whether a room holds standing water: a basin, or one its dam holds. */
-function holdsWater(work: TerrainWork, k: number, room: number): boolean {
+export function holdsWater(work: TerrainWork, k: number, room: number): boolean {
   const cave = work.floors[k]?.plan.cave;
   return (cave?.basins.includes(room) ?? false) || (cave?.dams.includes(room) ?? false);
 }
@@ -126,15 +126,21 @@ export function faultChasm(work: TerrainWork, k: number, rc: RoomCells, rng: Rng
   return false;
 }
 
-/** A natural shaft, a cell or three in an L, a cell clear of the walls, straight down into a room of the floor below. */
-function pitchShaft(work: TerrainWork, k: number, rc: RoomCells, rng: Rng): boolean {
-  const floor = work.floors[k];
-  if (!floor || k + 1 >= work.floors.length || rc.depth < 3 || rc.width < 3) return false;
+/** The shapes a natural shaft may take in the room, a cell clear of its walls: a single cell, or three in an L. */
+export function shaftShapes(rc: RoomCells): CellPoint[][] {
   const shapes: CellPoint[][] = [];
   for (let i = 1; i < rc.depth - 1; i++) for (let j = 1; j < rc.width - 1; j++) {
     shapes.push([rc.cell(i, j)]);
     if (i + 1 < rc.depth - 1 && j + 1 < rc.width - 1) shapes.push([rc.cell(i, j), rc.cell(i + 1, j), rc.cell(i, j + 1)]);
   }
+  return shapes;
+}
+
+/** A natural shaft, a cell or three in an L, a cell clear of the walls, straight down into a room of the floor below. */
+function pitchShaft(work: TerrainWork, k: number, rc: RoomCells, rng: Rng): boolean {
+  const floor = work.floors[k];
+  if (!floor || k + 1 >= work.floors.length || rc.depth < 3 || rc.width < 3) return false;
+  const shapes = shaftShapes(rc);
   const wet = besideWater(floor);
   return shuffled(rng, shapes).slice(0, 24).some((cells) => {
     if (!rc.allows(cells, 'block') || cells.some((c) => rc.nearStairs(c) || wet(c) || !rc.clearOfRock(c))) return false;

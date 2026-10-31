@@ -17,6 +17,8 @@ import { furnishArena } from './arena';
 import { placeBreakdown, rubbleAtFeet } from './cavern/breakdown';
 import { withoutItsHazard } from './cavern/unnamedRoom';
 import { floorTextures } from './cavern/caveTextures';
+import { placeSpecialRoutes } from './cavern/specialRoutes';
+import { placeVerticalExits } from './cavern/verticalExits';
 import { draft } from './catalog';
 import { type FloorPlan, FloorTerrain } from './floorTerrain';
 import { furnishStage } from './stages';
@@ -62,6 +64,11 @@ function furnishFloor(work: TerrainWork, k: number, input: TerrainFloorInput): v
   }
   shaftDown(work, k, work.rng(k, 'shaft'));
   const hazarded = placeTypeHazards(work, k, rooms);
+  // A cave's special ways and the exits in its chambers' roofs and floors, after the hazards their types gave them.
+  if (work.cave) {
+    placeSpecialRoutes(work, k);
+    placeVerticalExits(work, k);
+  }
   const types = new Map(input.types);
   for (const room of rooms) {
     const typed = types.get(room.id);

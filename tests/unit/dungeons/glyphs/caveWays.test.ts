@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { CaveWay } from '../../../../src/app/dungeons/caveModel';
 import type { CellDir, DungeonDoor, DungeonModel, DungeonStair } from '../../../../src/app/dungeons/model';
 import { buildArtScene } from '../../../../src/app/dungeons/render/art/artScene';
 import type { Canvas2D } from '../../../../src/app/dungeons/render/geometry';
@@ -18,6 +19,8 @@ import { dungeonStyle } from '../../../../src/app/dungeons/styleCatalog';
 import { addRoom, emptyFloor, emptyModel } from '../../../fixtures/dungeonModelBuilder';
 
 const PARTS: CaveWayPart[] = ['narrows', 'crawl', 'pitch', 'aven', 'scree'];
+/** The parts a door's way draws, by the way it names. */
+const WAY_PARTS: [CaveWayPart, CaveWay][] = [['lowWay', 'crawl'], ['squeeze', 'squeeze'], ['letterbox', 'letterbox'], ['sumpWay', 'sump'], ['traverseWay', 'traverse'], ['breakdownWay', 'breakdown']];
 const DIRS: CellDir[] = [{ x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }];
 const STAIR: DungeonStair = { x: 2, y: 2, w: 2, h: 3, down: { x: 0, y: 1 }, to: 1, link: 0, way: 'pitch' };
 
@@ -71,7 +74,7 @@ function pathPoints(path: PathFn): { x: number; y: number }[] {
 
 describe('cave ways', () => {
   it('draws every way kind it is given and nothing else', () => {
-    expect(Object.keys(CAVE_WAYS).sort()).toEqual([...PARTS].sort());
+    expect(Object.keys(CAVE_WAYS).sort()).toEqual([...PARTS, ...WAY_PARTS.map(([part]) => part), 'continuing'].sort());
     for (const part of PARTS) {
       const empty = record(modelWith());
       draw(part, empty);
@@ -171,6 +174,60 @@ describe('cave ways', () => {
       const hand = record(modelWith([], [{ ...STAIR, to: 1 - floor, way: 'scree' }]), floor);
       draw('scree', hand);
       expect(operations(hand)).toBeGreaterThan(0);
+    }
+  });
+
+  it('draws each way a door names on that door alone, and the narrows only where the way keeps them', () => {
+    for (const look of ['parchment', 'print']) for (const [part, way] of WAY_PARTS) for (const dir of DIRS) {
+      const door: DungeonDoor = { x: 3, y: 3, dir, kind: 'opening', from: 0, to: 0, way };
+      const empty = record(modelWith());
+      draw(part, empty);
+      expect(operations(empty), `${part}: empty floor`).toBe(0);
+      const hand = record(modelWith([door]));
+      hand.scene.env.style = dungeonStyle(look);
+      draw(part, hand);
+      expect(operations(hand), `${look} ${part}`).toBeGreaterThan(0);
+      for (const [other] of WAY_PARTS.filter(([p]) => p !== part)) {
+        const wrong = record(modelWith([door]));
+        draw(other, wrong);
+        expect(operations(wrong), `${other} drawing ${part}`).toBe(0);
+      }
+      const narrows = record(modelWith([door]));
+      draw('narrows', narrows);
+      expect(operations(narrows) > 0, `narrows beside ${way}`).toBe(way !== 'squeeze' && way !== 'letterbox');
+      const secret = record(modelWith([{ ...door, kind: 'secret' }]));
+      draw(part, secret);
+      expect(operations(secret), `${part} on a hidden crawl`).toBe(0);
+    }
+  });
+
+  it('keeps the middle of a squeeze and a letterbox clear and their ink within the door cell', () => {
+    for (const [part, way, gap] of [['squeeze', 'squeeze', 0.12], ['letterbox', 'letterbox', 0.09]] as const) for (const dir of DIRS) {
+      const hand = record(modelWith([{ x: 3, y: 3, dir, kind: 'opening', from: 0, to: 0, way }]));
+      draw(part, hand);
+      const points = [...vi.mocked(hand.edges).mock.calls.flatMap(([poly]) => poly), ...vi.mocked(hand.line).mock.calls.flatMap(([runs]) => runs.flat())];
+      expect(points.length).toBeGreaterThan(0);
+      for (const p of points) {
+        const u = (p.x - 3.5) * -dir.y + (p.y - 3.5) * dir.x;
+        const v = (p.x - 3.5) * dir.x + (p.y - 3.5) * dir.y;
+        expect(Math.abs(u), `${part}: the way stays open`).toBeGreaterThan(gap);
+        expect(Math.abs(v)).toBeLessThanOrEqual(0.5);
+      }
+    }
+  });
+
+  it('draws a squeeze leading on from a chamber only where the chamber has one', () => {
+    const model = modelWith();
+    const plain = record(model);
+    draw('continuing', plain);
+    expect(operations(plain)).toBe(0);
+    model.floors[0]!.rooms[0]!.continuing = { x: 1, y: 0 };
+    const hand = record(model);
+    draw('continuing', hand);
+    expect(operations(hand)).toBeGreaterThan(0);
+    for (const p of vi.mocked(hand.line).mock.calls.flatMap(([runs]) => runs.flat())) {
+      expect(p.x).toBeGreaterThan(7.5);
+      expect(p.x).toBeLessThan(9.5);
     }
   });
 });

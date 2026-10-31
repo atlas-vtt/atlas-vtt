@@ -7,6 +7,7 @@ import type { CellDir, CellPoint } from '../model';
 import type { DungeonParams } from '../params';
 import { dir, perpendicular } from '../geometry';
 import { MAX_SEED, type Rng, chance, int, pick, shuffled } from '../rng';
+import type { CaveExit, WayRoll } from './cavern/veins/caveExits';
 import { type WorkRoom, isNormal, kindOf, localCell } from './workLayout';
 
 export interface Branch {
@@ -17,6 +18,8 @@ export interface Branch {
   seed: number;
   /** Tried in turn when this branch finds no room: a string must not end early. */
   fallbacks: Branch[];
+  /** In a cave, the exit this branch leads out by: the door it opens is passed this way. */
+  exit?: WayRoll;
 }
 
 type Exit = 'left' | 'right' | 'forward';
@@ -89,10 +92,10 @@ function exitBranch(rng: Rng, room: WorkRoom, exit: Exit, flip: boolean): Branch
   return sideBranch(room, exit === 'left' ? 1 : -1, k, flip, newSeed(rng));
 }
 
-function freeBranches(rng: Rng, room: WorkRoom, flip: boolean): Branch[][] {
+function freeBranches(rng: Rng, room: WorkRoom, flip: boolean, sides = 0.5): Branch[][] {
   const exits: Exit[] = [];
-  if (chance(rng, 0.5)) exits.push('left');
-  if (chance(rng, 0.5)) exits.push('right');
+  if (chance(rng, sides)) exits.push('left');
+  if (chance(rng, sides)) exits.push('right');
   if (chance(rng, forwardChance(room))) exits.push('forward');
   if (exits.length === 0) exits.push(pick(rng, ['left', 'right', 'forward']));
   return exits.map((exit) => [exitBranch(rng, room, exit, flip)]);
@@ -108,8 +111,40 @@ function stringBranches(rng: Rng, room: WorkRoom, flip: boolean, tags: ReadonlyS
   return [[{ ...exitBranch(rng, room, first, flip), fallbacks }]];
 }
 
+/**
+ * A cave chamber's ways on through its walls, from its exit roll: a double's special exit straight
+ * on, opposite the way in; the others to the left, the right and on, in a seeded order, three at
+ * most. Exits in the roof and floor lead to no room of this floor.
+ */
+function caveBranches(rng: Rng, room: WorkRoom, flip: boolean, exits: readonly CaveExit[]): Branch[][] {
+  const wall = exits.filter((exit) => !exit.vertical);
+  const special = wall.find((exit) => exit.special);
+  const sides = shuffled<Exit>(rng, special ? ['left', 'right'] : ['left', 'right', 'forward']);
+  const placed = wall.filter((exit) => exit !== special).slice(0, sides.length).map((exit, k) => ({ exit, branch: exitBranch(rng, room, sides[k]!, flip) }));
+  const ahead = special ? [{ exit: special, branch: forwardBranch(room, 0, flip, newSeed(rng)) }] : [];
+  return [...ahead, ...placed].map(({ exit, branch }) => [{ ...branch, exit: { way: exit.way, width: exit.width } }]);
+}
+
+/** What a cave lends a room's branches: a chamber's exit roll, else the way a passage was entered by, which runs on through it. */
+export interface CaveBranching {
+  exits: readonly CaveExit[] | null;
+  through?: WayRoll;
+  /** The chance of each side way off a passage. */
+  passageSides: number;
+}
+
+function withExit(groups: Branch[][], exit: WayRoll | undefined): Branch[][] {
+  if (!exit) return groups;
+  return groups.map((group) => group.map((branch) => ({ ...branch, exit, fallbacks: branch.fallbacks.map((fallback) => ({ ...fallback, exit })) })));
+}
+
 /** The branches of a placed room, grouped: branches of one group share a seed and a mirror group. */
-export function branchesOf(rng: Rng, room: WorkRoom, flip: boolean, params: DungeonParams): Branch[][] {
-  if (params.string) return stringBranches(rng, room, flip, params.tags);
+export function branchesOf(rng: Rng, room: WorkRoom, flip: boolean, params: DungeonParams, cave?: CaveBranching): Branch[][] {
+  if (params.string) {
+    const lead = cave?.exits?.find((exit) => !exit.vertical);
+    return withExit(stringBranches(rng, room, flip, params.tags), lead ? { way: lead.way, width: lead.width } : cave?.through);
+  }
+  if (cave?.exits) return caveBranches(rng, room, flip, cave.exits);
+  if (cave) return withExit(pick(rng, params.symmetry) ? mirroredBranches(rng, room, flip) : freeBranches(rng, room, flip, cave.passageSides), cave.through);
   return pick(rng, params.symmetry) ? mirroredBranches(rng, room, flip) : freeBranches(rng, room, flip);
 }

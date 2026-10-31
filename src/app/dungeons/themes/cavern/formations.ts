@@ -15,10 +15,13 @@ import { type CaveFacts, allowsType } from './caveTypeRules';
 const DRIPSTONE: ReadonlySet<PropKind> = new Set<PropKind>(['stalagmites', 'column-formation']);
 /** Everything that grows of calcite. */
 const CALCITE: ReadonlySet<PropKind> = new Set<PropKind>(['stalagmites', 'column-formation', 'flowstone', 'curtain', 'crystals']);
+/** How much richer a cave crusted in flowstone is decorated, and the dry rooms of one where water drips from every roof. */
+const FLOWSTONE_CRUST = 1.5;
+const ENDLESS_DRIPS = 1.3;
 /** Acid eats calcite this far from its spring. */
 const ACID_REACH = 3;
 /** The rooms of a lived-in cave, furnished by those who live there. */
-const LIVED_IN = new Set(['guard-post', 'lived-in-hollow', 'fire-hollow', 'pen', 'store-hollow', 'chief-den']);
+export const LIVED_IN: ReadonlySet<string> = new Set(['guard-post', 'lived-in-hollow', 'fire-hollow', 'pen', 'store-hollow', 'chief-den']);
 
 function roomOf(facts: CaveFacts, ref: RoomRef): CaveFacts['floors'][number]['rooms'][number] | undefined {
   return facts.floors[ref.floor]?.rooms[ref.room];
@@ -70,5 +73,13 @@ export function formationRichness(ref: RoomRef, facts: CaveFacts): number {
   const deadEnd = floor.doors.filter((d) => d.from === ref.room || d.to === ref.room).length <= 1;
   let richness = 0.6 + (deadEnd ? 0.25 : 0) + (site.deepest ? 0 : 0.15);
   if (wet(facts, ref)) richness -= 0.35;
-  return Math.max(0.15, Math.min(1, richness));
+  return Math.max(0.15, Math.min(1, richness * characterRichness(facts, ref)));
+}
+
+/** How much richer the cave's character makes a room: crusted in flowstone everywhere, or dripping onto every dry floor. */
+function characterRichness(facts: CaveFacts, ref: RoomRef): number {
+  const always = facts.character?.always;
+  if (always === 'flowstone-crust') return FLOWSTONE_CRUST;
+  if (always === 'endless-drips' && !wet(facts, ref)) return ENDLESS_DRIPS;
+  return 1;
 }

@@ -163,6 +163,13 @@ export const dungeon: Translation = {
   'dungeon.tag.ruined': 'Давно заброшено: обломки, провалы в полу и рухнувшие стены',
   'dungeon.tag.inhabited': 'Здесь кто-то живёт: горит несколько костров',
 
+  'dungeon.way.crawl': 'Лаз',
+  'dungeon.way.squeeze': 'Шкуродёр',
+  'dungeon.way.letterbox': 'Плоская щель',
+  'dungeon.way.sump': 'Сифон',
+  'dungeon.way.traverse': 'Траверс',
+  'dungeon.way.breakdown': 'Завал',
+
   'dungeon.terrain.lowWall': 'Низкая стена',
   'dungeon.terrain.rubbleHeap': 'Груда обломков',
   'dungeon.terrain.pillar': 'Столб',
@@ -197,6 +204,7 @@ export const dungeon: Translation = {
   'dungeon.terrain.shaftFloor': 'Дно колодца',
   'dungeon.terrain.chasm': 'Расщелина',
   'dungeon.terrain.shaft': 'Колодец',
+  'dungeon.terrain.aven': 'Камин',
   'dungeon.terrain.lavaChannel': 'Русло лавы',
   'dungeon.terrain.acidChannel': 'Русло кислоты',
   'dungeon.terrain.waterChannel': 'Водный канал',

@@ -56,6 +56,15 @@ export function liquidProblems(floor: DungeonFloor): string[] {
 const keyOf = (c: CellPoint): string => `${c.x},${c.y}`;
 const within = (a: CellPoint, cells: readonly CellPoint[], d: number): boolean => cells.some((b) => Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y)) <= d);
 
+/** How far from its door the ground of a special way may reach: a passage's few cells, or a long drop's ledge. */
+const ROUTE_REACH = 6;
+
+/** Whether a piece is the ground of a way of `way` behind a door of its room: a sump's water, a traverse's drop, a breakdown's boulders. */
+function ofWay(floor: DungeonFloor, piece: DungeonFloor['terrain'][number], way: string): boolean {
+  const doors = floor.doors.filter((d) => d.way === way && (d.from === piece.room || d.to === piece.room));
+  return piece.cells.every((c) => doors.some((d) => within(c, [{ x: d.x, y: d.y }], ROUTE_REACH)));
+}
+
 /** The direction cells run along, in [0, π), and how many times longer than wide they lie; worked out apart from the generator. */
 function runOf(cells: readonly CellPoint[]): { angle: number; ratio: number } {
   const n = cells.length;
@@ -97,7 +106,7 @@ export function geologyProblems(model: DungeonModel, crust: boolean): string[] {
         if (crust && !floor.terrain.some((p) => p.room === piece.room && p.kind === 'sulphur-crust')) out.push(`floor ${f}: acid in room ${piece.room} without its crust`);
       }
       if (piece.kind === 'sulphur-crust' && !floor.terrain.some((p) => p.traits.hazard === 'acid' && piece.cells.every((c) => within(c, p.cells, 1)))) out.push(`floor ${f}: sulphur crust away from acid`);
-      if (piece.kind === 'chasm' && piece.cells.length >= 4) {
+      if (piece.kind === 'chasm' && piece.cells.length >= 4 && !ofWay(floor, piece, 'traverse')) {
         const { angle } = runOf(piece.cells);
         if (!faults.some((fault) => lineGap(angle, fault) <= Math.PI / 12)) out.push(`floor ${f}: chasm ${piece.id} runs at ${Math.round((angle * 180) / Math.PI)}°, along no fault`);
       }
@@ -141,7 +150,7 @@ export function breakdownProblems(model: DungeonModel): { problems: string[]; sp
     for (const choke of floor.terrain.filter((p) => p.kind === 'boulder-choke')) {
       const room = floor.rooms[choke.room];
       const doors = floor.doors.filter((d) => d.from === choke.room || d.to === choke.room);
-      if (room?.type !== 'collapse-chamber') out.push(`floor ${f}: a boulder choke in a ${room?.type}`);
+      if (room?.type !== 'collapse-chamber' && !ofWay(floor, choke, 'breakdown')) out.push(`floor ${f}: a boulder choke in a ${room?.type}`);
       if (!choke.cells.every((c) => doors.some((d) => Math.abs(d.x - c.x) + Math.abs(d.y - c.y) <= 3))) out.push(`floor ${f}: a boulder choke away from its door`);
       if (!choke.traits.difficult || choke.traits.cover || choke.traits.hazard) out.push(`floor ${f}: a boulder choke that is not walked`);
     }
@@ -194,7 +203,7 @@ export function waterProblems(model: DungeonModel): string[] {
       if (room === undefined || (!standing.has(room) && !running.has(room))) out.push(`floor ${f}: water at ${keyOf(c)} in room ${room}, where none gathers`);
     }
     for (const piece of floor.terrain) {
-      if (piece.traits.hazard === 'deep-water' && piece.kind !== 'channel' && !standing.has(piece.room)) out.push(`floor ${f}: deep water in room ${piece.room}, no basin`);
+      if (piece.traits.hazard === 'deep-water' && piece.kind !== 'channel' && !standing.has(piece.room) && !ofWay(floor, piece, 'sump')) out.push(`floor ${f}: deep water in room ${piece.room}, no basin`);
       if (piece.kind === 'channel' && piece.traits.hazard === 'deep-water') {
         const chain = cave?.streams.find((s) => s.slice(0, -1).includes(piece.room));
         const next = chain ? floor.rooms[chain[chain.indexOf(piece.room) + 1]!] : undefined;

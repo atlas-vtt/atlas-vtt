@@ -4,8 +4,9 @@
  * the model's floor rectangles once it is done.
  */
 
-import type { CellDir, CellPoint, DoorKind, RoomKind, Wing } from '../model';
+import type { CaveVerticalExits, CaveWay, CellDir, CellPoint, DoorKind, RoomKind, Wing } from '../model';
 import { type CellRect, cellKey, perpendicular } from '../geometry';
+import type { ChamberTier } from './cavern/veins/caveSizes';
 
 export interface WorkRoom {
   id: number;
@@ -29,6 +30,10 @@ export interface WorkRoom {
   boss: boolean;
   /** A passage grown wider than a cell (`DungeonParams.passageFloor`): its kind, which its size alone would not tell. */
   passage?: PassageKind;
+  /** A cave chamber drawn at a size tier: the tier, which its size keeps (it is never deepened). */
+  tier?: ChamberTier;
+  /** A cave chamber's roof and floor exits, from its exit roll. */
+  vertical?: CaveVerticalExits;
 }
 
 export type PassageKind = Exclude<RoomKind, 'room'>;
@@ -43,6 +48,9 @@ export interface WorkDoor {
   descends?: true;
   /** Added by the loop pass, not part of the grown tree. */
   loop: boolean;
+  /** In a cave, how the way through is passed and its width in feet, from the exit roll that made it. */
+  way?: CaveWay;
+  width?: number;
 }
 
 export interface WorkLayout {
@@ -54,6 +62,8 @@ export interface WorkLayout {
   within: CellRect | null;
   /** Floor cells no door may open onto: a stairwell's, and the cells it is reached from. */
   blocked: ReadonlySet<string>;
+  /** A cave whose chambers are sized by tier: every chamber gets one, a chamber sized another way the one its floor reaches. */
+  tiered?: true;
 }
 
 export const REGULAR_ZONE = 0;

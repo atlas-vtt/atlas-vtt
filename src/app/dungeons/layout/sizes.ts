@@ -1,6 +1,8 @@
 import type { DoorKind } from '../model';
 import type { DungeonParams, SizeStyle } from '../params';
 import { type Rng, chance, int, pick, weighted } from '../rng';
+import { type ChamberTier, type TierDraw, drawTier, tierSize } from './cavern/veins/caveSizes';
+import { routeDepth } from './cavern/veins/routeLength';
 import type { PassageKind } from './workLayout';
 
 export interface RoomSize {
@@ -10,6 +12,8 @@ export interface RoomSize {
   depth: number;
   /** A passage wider than a cell: its kind. */
   passage?: PassageKind;
+  /** A cave chamber's size tier, where the size was drawn by tier. */
+  tier?: ChamberTier;
 }
 
 function sizeOfStyle(rng: Rng, style: SizeStyle): RoomSize {
@@ -40,11 +44,20 @@ function widePassage(depth: number, style: SizeStyle, floor: number): RoomSize {
 /**
  * A new room's size; with `round`, half of the rooms come out square so they may be round. A
  * normal room grows to `minRoomFloor` after the draw, and a passage to `passageFloor`, so the rolls
- * stay as they were.
+ * stay as they were. In a Cavern with the book's rules a chamber is drawn at a size tier (`cave`
+ * says what its floor allows, and whether the room must be a chamber) and a corridor runs as long
+ * as its way takes.
  */
-export function drawSize(rng: Rng, params: DungeonParams): RoomSize {
+export function drawSize(rng: Rng, params: DungeonParams, cave: TierDraw = { gargantuan: false }): RoomSize {
   const style = pick(rng, params.sizeStyles);
-  const drawn = sizeOfStyle(rng, style);
+  const veins = params.cave?.veins;
+  if (veins && (style <= 1 || cave.chamber)) {
+    const tier = drawTier(rng, veins.tiers, cave);
+    const size = tierSize(rng, tier);
+    // A round cave's chambers come out square half the time, as long as they are wide: every tier's floor allows it.
+    return { ...size, ...(params.squareRooms && chance(rng, 0.5) && { depth: size.width }), tier };
+  }
+  const drawn = veins && style === 2 ? { width: 3, depth: routeDepth(rng) } : sizeOfStyle(rng, style);
   if (style >= 2) return params.passageFloor ? widePassage(drawn.depth, style, params.passageFloor) : drawn;
   const size = params.squareRooms && chance(rng, 0.5) ? { width: drawn.width, depth: drawn.width } : drawn;
   return params.minRoomFloor ? atLeast(size, params.minRoomFloor) : size;

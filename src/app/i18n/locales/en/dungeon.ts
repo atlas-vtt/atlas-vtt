@@ -165,6 +165,14 @@ export const dungeon = {
   'dungeon.tag.ruined': 'Long abandoned: rubble, broken floors and fallen walls',
   'dungeon.tag.inhabited': 'Someone lives here: a few fires burn',
 
+  // A cave's ways that are no walk, as the GM's hover label over their door names them.
+  'dungeon.way.crawl': 'Crawl',
+  'dungeon.way.squeeze': 'Squeeze',
+  'dungeon.way.letterbox': 'Letterbox squeeze',
+  'dungeon.way.sump': 'Sump',
+  'dungeon.way.traverse': 'Traverse',
+  'dungeon.way.breakdown': 'Breakdown choke',
+
   // Terrain: what the GM's hover label and the room's note name a piece (`DungeonTerrain.name`).
   'dungeon.terrain.lowWall': 'Low wall',
   'dungeon.terrain.rubbleHeap': 'Rubble heap',

@@ -2,11 +2,12 @@
  * Breakdown: what falls from a cave's roof where rock cannot hold. Under the widest span of each
  * floor (its largest chamber) a heap of fallen blocks in the middle third, loose rubble where a
  * pitch or a shaft comes down, and in a collapse chamber a choke of boulders at one of its ways out.
+ * A cave whose boulders lie balanced everywhere (`balanced-boulders`) has both twice.
  */
 
 import { spotRect } from '../../floors/stairSpots';
 import { cellKey, cellsOf, floorCellsOf, roomArea } from '../../geometry';
-import type { CellPoint, TerrainKind } from '../../model';
+import type { CellPoint, DungeonRoom, TerrainKind } from '../../model';
 import { type Rng, shuffled } from '../../rng';
 import { draft } from '../catalog';
 import type { FloorTerrain } from '../floorTerrain';
@@ -90,13 +91,24 @@ export function placeBreakdown(work: TerrainWork, k: number, rc: RoomCells, rng:
   const room = rc.room;
   const chambers = floor.plan.rooms.filter((r) => r.kind === 'room');
   const largest = chambers.reduce((best, r) => (roomArea(r) > roomArea(best) ? r : best), chambers[0]!);
-  if (largest.id === room.id) {
+  // A cave whose boulders lie balanced everywhere drops them under its two widest spans, and chokes its collapses twice.
+  const balanced = work.cave?.character?.always === 'balanced-boulders';
+  const spans = balanced ? [largest, ...secondLargest(chambers, largest)] : [largest];
+  if (spans.some((span) => span.id === room.id)) {
     const middle = middleThird(floorCellsOf(room));
     const keys = new Set(middle.map((c) => cellKey(c.x, c.y)));
     const has = floor.inRoom(room.id).some((p) => BREAKDOWN.has(p.kind) && p.cells.some((c) => keys.has(cellKey(c.x, c.y))));
     if (!has) fallen(floor, rc, rng, middle);
   }
-  if (work.typed(k, room.id)?.spec.id === 'collapse-chamber') choke(work, k, rc, rng);
+  if (work.typed(k, room.id)?.spec.id !== 'collapse-chamber') return;
+  choke(work, k, rc, rng);
+  if (balanced) choke(work, k, rc, rng);
+}
+
+/** The largest chamber after `largest`, if there is one. */
+function secondLargest(chambers: readonly DungeonRoom[], largest: DungeonRoom): DungeonRoom[] {
+  const rest = chambers.filter((r) => r.id !== largest.id);
+  return rest.length ? [rest.reduce((best, r) => (roomArea(r) > roomArea(best) ? r : best))] : [];
 }
 
 /**

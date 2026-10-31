@@ -13,6 +13,7 @@ import { type CaveSites, caveSites } from './layout/cavern/caveSites';
 import { caveLife } from './themes/cavern/caveLife';
 import { forestFloor } from './themes/forest/forestFloor';
 import { shapeCaves } from './layout/cavern/shapeCave';
+import { withVeins } from './layout/cavern/caveParams';
 import { fiveRoomParams } from './layout/fiveRoom';
 import { floraOf } from './growth/flora';
 import { placeGrowth } from './growth/placeGrowth';
@@ -21,7 +22,7 @@ import { entrancesAndAround, stairsAndAround } from './floors/stairSpots';
 import { type CaveFloor, DUNGEON_GENERATOR_VERSION, type DungeonFloor, type DungeonModel, type DungeonRequest, type DungeonRoom, type DungeonTerrain, requestedFloors } from './model';
 import { type DungeonParams, dungeonParams, dungeonTags, floorParams } from './params';
 import { floorColumns, placeScatter } from './props';
-import { floorStream } from './rng';
+import { floorStream, stream } from './rng';
 import { readTags } from './tags';
 import type { FloorTerrain } from './terrain/floorTerrain';
 import { addShallowWater, planTerrain } from './terrain/placeTerrain';
@@ -106,10 +107,13 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const definition = themeOf(theme);
   const plain = dungeonParams(tags);
   const base = definition.params?.(plain) ?? plain;
-  const params = fiveRoom ? fiveRoomParams(base) : base;
+  const sized = fiveRoom ? fiveRoomParams(base) : base;
+  // A Cavern follows the book's cave rules, its character drawn once; a Forest's glades keep their own.
+  const params = theme === 'cavern' ? withVeins(sized, stream(seed, 'cave', 'character')) : sized;
   const chosen = chooseWaterLevel(seed, request.waterLevel, params.waterLevel);
-  // A lived-in cave has water to live by, unless the GM asked for none.
-  const rolled = params.cave && params.tags.has('inhabited') && request.waterLevel === undefined ? Math.max(chosen, LIVED_IN_WATER) : chosen;
+  // A lived-in cave has water to live by, and one that holds still pools wherever it can has some, unless the GM asked for none.
+  const least = params.cave && request.waterLevel === undefined ? Math.max(params.tags.has('inhabited') ? LIVED_IN_WATER : 0, params.cave.veins?.rules.leastWater ?? 0) : 0;
+  const rolled = Math.max(chosen, least);
   const count = requestedFloors(request);
   const boss = fiveRoom || request.bossRoom !== false;
   const { rise } = definition;
@@ -120,7 +124,7 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const shaped = params.cave ? shapeCaves(seed, params, laid, boss, rolled) : null;
   const planned = shaped?.floors ?? laid;
   const sites = shaped ? caveSites(planned) : null;
-  const themed = typeDungeon(seed, theme, params.tags, planned, below);
+  const themed = typeDungeon(seed, theme, params.tags, planned, below, shaped?.cave.character);
   const { typed } = themed;
   // A built theme's floors are dry unless the GM or the tags ask for water; then it stands only where its rooms have it.
   const { built } = themed.theme.definition;
@@ -144,7 +148,7 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
     params.tags,
     themed.theme,
     stack,
-    shaped && sites ? { sites, variant: shaped.cave.variant } : undefined,
+    shaped && sites ? { sites, variant: shaped.cave.variant, ...(shaped.cave.character && { character: shaped.cave.character }) } : undefined,
   );
   const openAbove = (index: number): Set<string> => {
     const holes = terrain[floorAbove(stack, index) ?? -1]?.pieces.filter((piece) => piece.opening) ?? [];

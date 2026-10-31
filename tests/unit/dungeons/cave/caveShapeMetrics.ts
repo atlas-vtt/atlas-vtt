@@ -165,9 +165,12 @@ export interface PassageProfile {
   centre: Vec[];
 }
 
-/** A passage: a tunnel, or a chamber whose rectangle is three cells across at most and at least four long. */
+/**
+ * A passage: a tunnel four cells long or more, or a chamber whose rectangle is three cells across
+ * at most and at least five long. A chamber of 3 × 4 is the book's smallest cave, a room, not a gallery.
+ */
 function isPassage(room: DungeonRoom): boolean {
-  return Math.max(room.w, room.h) >= 4 && (room.kind !== 'room' || Math.min(room.w, room.h) <= 3);
+  return room.kind !== 'room' ? Math.max(room.w, room.h) >= 4 : Math.min(room.w, room.h) <= 3 && Math.max(room.w, room.h) >= 5;
 }
 
 /** Samples along a passage per cell, and the step across it the drawn floor is read with, in cells. */

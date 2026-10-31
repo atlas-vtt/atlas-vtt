@@ -162,7 +162,7 @@ async function create(deps: DungeonSceneDeps, options: DungeonSceneOptions): Pro
     collection,
     baseName: dungeonSceneName(options.name),
     maps,
-    note: { text: () => dungeonNote(options.name.trim() || dungeonSceneName(options.name), rooms) },
+    note: { text: () => dungeonNote(options.name.trim() || dungeonSceneName(options.name), rooms, model) },
     content: (paths, notePath) => {
       const levels = levelIds && floorLevels(levelIds, paths, stackOf(model));
       // The first level's map is the scene's background

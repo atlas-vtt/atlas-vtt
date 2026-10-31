@@ -4,7 +4,7 @@ import type { DungeonModel } from '../../../src/app/dungeons/model';
 import { visibleFloor } from '../../../src/app/dungeons/render/visibleDungeon';
 import { shapeDistance } from '../../../src/app/dungeons/render/geometry';
 import { DEFAULT_VIEW } from '../../../src/app/dungeons/style';
-import { caveFloorCells, columnProblems, faultStretch, guardProblems, laneNarrowsProblems, maskProblems, narrowsProblems } from './caveChecks';
+import { caveFloorCells, chamberExits, columnProblems, faultStretch, guardProblems, laneNarrowsProblems, maskProblems, narrowsProblems, veinsProblems } from './caveChecks';
 import { breakdownProblems, namedHazardProblems, formationDensity, formationProblems, geologyProblems, lifeZoneProblems, livedInProblems, waterProblems, waterShare, hazardFurnishProblems, laneProblems, lifeProblems, liquidProblems, rimstoneProblems } from './caveRules';
 import { mirrorProblems, physicsProblems, shapeProblems } from './themeTerrainInvariants';
 import { cavernProgramme } from '../../../src/app/dungeons/themes/cavern';
@@ -86,6 +86,16 @@ export function describeCaveInvariants(floors: number): void {
 
     it('lay one-cell narrows off the main path only', () => {
       expect(failures(eachFloor((run, i) => laneNarrowsProblems(run.model.floors[i]!)))).toEqual([]);
+    });
+
+    it('pass every way by the book: a walk on the main path, a way on every door, every chamber at its tier, no dead end in a cave that never has one', () => {
+      expect(failures(eachFloor((run, i) => veinsProblems(run.model, i)))).toEqual([]);
+    });
+
+    it('lead about a third of the chambers’ exits up or down', () => {
+      const exits = runs.flatMap((run) => run.model.floors.map(chamberExits));
+      const share = exits.reduce((s, e) => s + e.vertical, 0) / exits.reduce((s, e) => s + e.all, 0);
+      expect(Math.abs(share - 1 / 3)).toBeLessThanOrEqual(0.08);
     });
 
     it('keep chambers within two cells of their rectangle, tunnels within their reach, nothing on another room’s', () => {

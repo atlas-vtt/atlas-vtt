@@ -9,7 +9,7 @@
 import type { FloorRise } from '../floors/floorStack';
 import type { PlannedFloor } from '../floors/planFloors';
 import type { DungeonParams } from '../params';
-import type { CellPoint, FiveRoomStage, TerrainKind } from '../model';
+import type { CaveCharacter, CellPoint, FiveRoomStage, TerrainKind } from '../model';
 import type { PropKind } from '../props/propKinds';
 import type { DungeonTag } from '../tags';
 import type { HazardChoice } from '../terrain/hazards';
@@ -190,6 +190,8 @@ export interface ThemeFactsInput {
   seed: number;
   tags: ReadonlySet<DungeonTag>;
   floors: readonly PlannedFloor[];
+  /** A Cavern's character (`CaveModel.character`), where it has one. */
+  character?: CaveCharacter;
 }
 
 /**

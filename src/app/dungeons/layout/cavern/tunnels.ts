@@ -8,10 +8,11 @@
 
 import { doorApproaches } from '../../floors/stairSpots';
 import { cellKey, cellsOf, dir, floorRect, inRect } from '../../geometry';
-import type { CellPoint, DungeonDoor, DungeonRoom } from '../../model';
+import type { CellDir, CellPoint, DungeonDoor, DungeonRoom } from '../../model';
 import type { Rng } from '../../rng';
-import { type CaveGrid, NEAR4, ROCK, doorOwner, unkey } from './caveGrid';
+import { type CaveGrid, NEAR4, NEAR8, ROCK, doorOwner, unkey } from './caveGrid';
 import { inTunnelReach, tunnelReach } from './laneCells';
+import { caveDoorWay, mayWalkWide } from './veins/doorWays';
 
 /** How strongly the cells off the winding way go first, so what is left follows it. */
 const WIGGLE = 1.5;
@@ -91,15 +92,25 @@ function widen(alive: Set<string>, may: ReadonlySet<string>): void {
   }
 }
 
+/** Whether a cell lies beside (or at the corner of) another room's floor rectangle: a wall it shares with that room. */
+function besideOtherFloor(grid: CaveGrid, room: DungeonRoom, c: CellPoint): boolean {
+  return NEAR8.some(([dx, dy]) => ![ROCK, room.id].includes(grid.envelope(c.x + dx, c.y + dy)));
+}
+
 /**
  * Carves the tunnel of `room` (a corridor or junction) between `ends`, within its rectangle and
- * the walls round it, keeping the lane cells it holds and widening to `width`.
+ * the walls round it, keeping the lane cells it holds and widening to `width`. With `spareWalls`
+ * it leaves a wall it shares with another room's rectangle to that room: a cell taken there
+ * stands beside the other's floor, which can then no longer be taken, and a long passage laid
+ * along it would be cut in two.
  */
-export function carveTunnel(rng: Rng, grid: CaveGrid, room: DungeonRoom, ends: readonly CellPoint[], width: 1 | 2, lane: ReadonlySet<string>, rooms: readonly DungeonRoom[] = [room]): void {
+export function carveTunnel(rng: Rng, grid: CaveGrid, room: DungeonRoom, ends: readonly CellPoint[], width: 1 | 2, lane: ReadonlySet<string>, rooms: readonly DungeonRoom[] = [room], spareWalls = false): void {
   const reach = tunnelReach(room);
+  const own = floorRect(room);
+  const spared = (c: CellPoint): boolean => spareWalls && !inRect(own, c.x, c.y) && besideOtherFloor(grid, room, c);
   const may = new Set(
     cellsOf(reach)
-      .filter((c) => grid.holds(c.x, c.y, room.id) || (inTunnelReach({ rooms, doors: grid.doors }, room, c.x, c.y) && [ROCK, room.id].includes(grid.envelope(c.x, c.y)) && grid.mayClaim(c.x, c.y, room.id)))
+      .filter((c) => grid.holds(c.x, c.y, room.id) || (inTunnelReach({ rooms, doors: grid.doors }, room, c.x, c.y) && [ROCK, room.id].includes(grid.envelope(c.x, c.y)) && grid.mayClaim(c.x, c.y, room.id) && !spared(c)))
       .map(key),
   );
   const keep = [...new Set([...ends.map(key), ...grid.required(room.id), ...lane])].filter((k) => may.has(k));
@@ -128,17 +139,46 @@ export function carveTunnel(rng: Rng, grid: CaveGrid, room: DungeonRoom, ends: r
   }
 }
 
+/** Whether the main path passes the door: its lane runs through the door's cell, which the grid (where given) gave this door. */
+export function doorOnLane(door: DungeonDoor, k: number, lane: ReadonlySet<string>, grid?: Pick<CaveGrid, 'owner'>): boolean {
+  return lane.has(cellKey(door.x, door.y)) && (!grid || grid.owner(door.x, door.y) === doorOwner(k));
+}
+
+/**
+ * The cell beside a door that a walk two cells wide off the main path takes, claimed for it: rock
+ * between the two rooms' floor, which the door may take without touching anything else.
+ */
+function widenWalk(grid: CaveGrid, door: DungeonDoor, k: number): CellDir | undefined {
+  if (door.from === null || door.to === null) return undefined;
+  const along = [dir(door.dir.y, door.dir.x), dir(-door.dir.y, -door.dir.x)];
+  const side = along.find((d) => {
+    const x = door.x + d.x;
+    const y = door.y + d.y;
+    return grid.owner(x, y) === ROCK && grid.owner(x - door.dir.x, y - door.dir.y) === door.from && grid.owner(x + door.dir.x, y + door.dir.y) === door.to && grid.mayClaim(x, y, doorOwner(k));
+  });
+  if (side) grid.claim(door.x + side.x, door.y + side.y, doorOwner(k));
+  return side;
+}
+
 /**
  * The doors as a cave has them: every door a narrows (an opening), two cells wide where the lane
  * passes it and the wall cell beside it (and the grid, where given, gave that cell to this door);
- * secret doors stay crawls and steps a scree slope.
+ * secret doors stay crawls and steps a scree slope. With `rooms` (a cave with the book's rules)
+ * every door is given its way: a walk on the main path, else what its exit rolled
+ * (`caveDoorWay`); a walk of ten feet between two large chambers also stands two cells wide off
+ * the main path, where the grid lets the door take the cell beside it.
  */
-export function shapeDoors(doors: readonly DungeonDoor[], lane: ReadonlySet<string>, grid?: Pick<CaveGrid, 'owner'>): DungeonDoor[] {
+export function shapeDoors(doors: readonly DungeonDoor[], lane: ReadonlySet<string>, grid?: CaveGrid, rooms?: readonly DungeonRoom[]): DungeonDoor[] {
   return doors.map((door, k) => {
     const kind = door.kind === 'door' ? 'opening' : door.kind;
     const along = [dir(door.dir.y, door.dir.x), dir(-door.dir.y, -door.dir.x)];
     const ours = (x: number, y: number): boolean => lane.has(cellKey(x, y)) && (!grid || grid.owner(x, y) === doorOwner(k));
-    const wide = ours(door.x, door.y) ? along.find((d) => ours(door.x + d.x, door.y + d.y)) : undefined;
-    return { ...door, kind, ...(wide && kind !== 'secret' && { wide }) };
+    const onLane = doorOnLane(door, k, lane, grid);
+    const wide = onLane ? along.find((d) => ours(door.x + d.x, door.y + d.y)) : undefined;
+    const shaped = { ...door, kind, ...(wide && kind !== 'secret' && { wide }) };
+    if (!rooms) return shaped;
+    const way = caveDoorWay(shaped, onLane);
+    const besides = !onLane && grid && kind === 'opening' && mayWalkWide(way, rooms) ? widenWalk(grid, way, k) : undefined;
+    return besides ? { ...way, wide: besides } : way;
   });
 }

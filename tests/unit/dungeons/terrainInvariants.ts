@@ -96,7 +96,7 @@ function wholeOnFloor(room: DungeonRoom, c: CellPoint): boolean {
   return [0, 1].every((dx) => [0, 1].every((dy) => Math.hypot(c.x + dx - cx, c.y + dy - cy) <= r));
 }
 
-/** Pieces fill whole cells of their room, each cell once (a bridge lies on what it spans), ids are their places. */
+/** Pieces fill whole cells of their room (a normal room, or a cave's passage), each cell once (a bridge lies on what it spans), ids are their places. */
 export function cellProblems(floor: DungeonFloor): string[] {
   const out: string[] = [];
   const owner = new Map<string, DungeonTerrain>();
@@ -104,7 +104,8 @@ export function cellProblems(floor: DungeonFloor): string[] {
     const where = `${piece.kind} ${piece.id} in room ${piece.room}`;
     if (piece.id !== index) out.push(`${where}: id is not its place`);
     const room = floor.rooms[piece.room];
-    if (!room || room.kind !== 'room') out.push(`${where}: not in a normal room`);
+    // A cave's passage holds the ground of the way it is passed by: a sump's water, a traverse's drop, a breakdown's boulders.
+    if (!room || (room.kind !== 'room' && !floor.cave)) out.push(`${where}: not in a normal room`);
     if (piece.cells.length === 0) out.push(`${where}: no cells`);
     for (const c of piece.cells) {
       if (!Number.isInteger(c.x) || !Number.isInteger(c.y)) out.push(`${where}: a cell that is no whole cell`);

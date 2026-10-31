@@ -141,13 +141,13 @@ export function wholeWithout(grid: CaveGrid, room: DungeonRoom, c: CellPoint): b
  * where nothing needs it; else, where it must stay (a stairwell, a door's approach), widened once
  * another room's swing that crowds the cell beside it is given back.
  */
-function repairThin(grid: CaveGrid, floor: PlannedFloor, room: DungeonRoom, at: CellPoint): void {
+function repairThin(grid: CaveGrid, floor: PlannedFloor, room: DungeonRoom, at: CellPoint, pairs: boolean): void {
   const isFloor = floorOf(grid, floor.doors);
   const beside = NEAR4.map(([dx, dy]) => ({ x: at.x + dx, y: at.y + dy }));
   const held = (c: CellPoint): boolean => NEAR4.filter(([dx, dy]) => isFloor(c.x + dx, c.y + dy)).length >= 2;
   // Back into its rectangle, else out into rock it may swell into.
   const widen = (): boolean => beside.some((c) => held(c) && (giveBack(grid, room, c) || swellBack(grid, floor, room, c)));
-  if (widen()) return;
+  if (widen() || (pairs && widenByTwo(grid, room, at, held))) return;
   if (!grid.required(room.id).has(cellKey(at.x, at.y))) {
     if (wholeWithout(grid, room, at)) grid.release(at.x, at.y);
     return;
@@ -159,10 +159,33 @@ function repairThin(grid: CaveGrid, floor: PlannedFloor, room: DungeonRoom, at: 
   widen();
 }
 
-function repairOne(grid: CaveGrid, floor: PlannedFloor, problem: GuardProblem): void {
+/**
+ * A spur no one cell beside it can widen, widened by two of its rectangle's cells: one beside it
+ * and one beside that which holds once both are taken. A required cell in a corner of its room's
+ * rectangle (the cell before a hidden entrance there) may need it.
+ */
+function widenByTwo(grid: CaveGrid, room: DungeonRoom, at: CellPoint, held: (c: CellPoint) => boolean): boolean {
+  const free = (c: CellPoint): boolean => grid.owner(c.x, c.y) === ROCK && grid.envelope(c.x, c.y) === room.id && grid.mayClaim(c.x, c.y, room.id);
+  for (const [dx, dy] of NEAR4) {
+    const c = { x: at.x + dx, y: at.y + dy };
+    if (!free(c)) continue;
+    for (const [ex, ey] of NEAR4) {
+      const d = { x: c.x + ex, y: c.y + ey };
+      if ((d.x === at.x && d.y === at.y) || !free(d)) continue;
+      grid.claim(c.x, c.y, room.id);
+      grid.claim(d.x, d.y, room.id);
+      if (held(c) && held(d)) return true;
+      grid.release(d.x, d.y);
+      grid.release(c.x, c.y);
+    }
+  }
+  return false;
+}
+
+function repairOne(grid: CaveGrid, floor: PlannedFloor, problem: GuardProblem, pairs: boolean): void {
   const room = problem.room === undefined ? undefined : floor.rooms[problem.room];
   if (problem.kind === 'no-block' && room) completeBlock(grid, room);
-  if (problem.kind === 'thin' && room) repairThin(grid, floor, room, problem.at);
+  if (problem.kind === 'thin' && room) repairThin(grid, floor, room, problem.at, pairs);
   if (problem.kind === 'corner') {
     const { x, y } = problem.at;
     const square = [{ x: x + 1, y }, { x, y: y + 1 }, { x, y }, { x: x + 1, y: y + 1 }];
@@ -191,11 +214,15 @@ function releaseSwung(grid: CaveGrid, floor: PlannedFloor, c: CellPoint): boolea
   return true;
 }
 
-/** Repairs what it can, the cells nearest each problem first, and checks again; the problems left. */
-export function repairGuards(grid: CaveGrid, floor: PlannedFloor, lane: readonly CellPoint[]): GuardProblem[] {
+/**
+ * Repairs what it can, the cells nearest each problem first, and checks again; the problems left.
+ * With `pairs` (a cave with the book's rules, whose large chambers leave more corners bare) a thin
+ * spur may also be widened by two cells at once.
+ */
+export function repairGuards(grid: CaveGrid, floor: PlannedFloor, lane: readonly CellPoint[], pairs = false): GuardProblem[] {
   let problems = guardProblems(grid, floor, lane);
   for (let round = 0; round < 6 && problems.length > 0; round++) {
-    for (const problem of problems) repairOne(grid, floor, problem);
+    for (const problem of problems) repairOne(grid, floor, problem, pairs);
     problems = guardProblems(grid, floor, lane);
   }
   return problems;

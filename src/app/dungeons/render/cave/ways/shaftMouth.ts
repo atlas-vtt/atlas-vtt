@@ -38,8 +38,20 @@ export function shaftMouth(frame: WayFrame, seed: number): ShaftMouth {
   const half = { u: across / 2 - SIDE_MARGIN, v: (along / 2 - FAR_MARGIN - near) / 2 };
   const middle = near + half.v;
   const centre = at(0, middle);
+  const rings = mouthRings((u, v) => at(u, middle + v), half, seed);
+  return { rings, centre, near, half };
+}
+
+/** A round mouth `radius` cells wide about `centre`, as an aven in a chamber's roof opens over one cell. */
+export function roundMouth(centre: Vec, radius: number, seed: number): ShaftMouth {
+  const half = { u: radius, v: radius };
+  return { rings: mouthRings((u, v) => ({ x: centre.x + u, y: centre.y + v }), half, seed), centre, near: -radius, half };
+}
+
+/** The rim and the rings stepping down inside it, placed by `place` (across, along) about the mouth's middle. */
+function mouthRings(place: (u: number, v: number) => Vec, half: { u: number; v: number }, seed: number): Vec[][] {
   const reach = Math.min(half.u, half.v);
-  const rings = RING_SCALES.map((scale, k) => {
+  return RING_SCALES.map((scale, k) => {
     const back = (1 - scale) * reach * DRAWN_BACK;
     const shift = { x: TO_LIGHT.x * back, y: TO_LIGHT.y * back };
     const points: Vec[] = [];
@@ -53,12 +65,11 @@ export function shaftMouth(frame: WayFrame, seed: number): ShaftMouth {
       const wander = 1 + 0.16 * (valueNoise(cos * 1.6 + k * 2.3, sin * 1.6 + 7, seed) - 0.5) + (k === 0 ? 0.06 * (valueNoise(i * 0.9, 3, seed + 9) - 0.5) : 0);
       const u = Math.sign(cos) * Math.abs(cos) ** 0.8 * half.u * scale * wander;
       const v = Math.sign(sin) * Math.abs(sin) ** 0.8 * half.v * scale * wander;
-      const p = at(u, middle + v);
+      const p = place(u, v);
       points.push({ x: p.x + shift.x, y: p.y + shift.y });
     }
     return points;
   });
-  return { rings, centre, near, half };
 }
 
 /** The ring moved by `d` cells along `dir`, wound the other way: with the ring itself, nonzero fills what it no longer covers. */

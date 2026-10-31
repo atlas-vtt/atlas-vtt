@@ -6,6 +6,7 @@
 
 import { floorAbove, floorStack } from '../floors/floorStack';
 import type { PlannedFloor } from '../floors/planFloors';
+import type { CaveCharacter } from '../model';
 import type { DungeonTag } from '../tags';
 import { type TypedRoom, depthRanks } from '../terrain/typeTerrain';
 import { assignRoomTypes, type RoomTypes } from './assign/assignRoomTypes';
@@ -22,10 +23,10 @@ export interface ThemedFloors {
   rooms: ReadonlyMap<number, TypedRoom>[];
 }
 
-export function typeDungeon(seed: number, id: ThemeId, tags: ReadonlySet<DungeonTag>, floors: readonly PlannedFloor[], below = 0): ThemedFloors {
+export function typeDungeon(seed: number, id: ThemeId, tags: ReadonlySet<DungeonTag>, floors: readonly PlannedFloor[], below = 0, character?: CaveCharacter): ThemedFloors {
   const definition = themeOf(id);
   const ruined = tags.has('ruined');
-  const facts = definition.facts?.({ seed, tags, floors }) ?? NO_FACTS;
+  const facts = definition.facts?.({ seed, tags, floors, ...(character && { character }) }) ?? NO_FACTS;
   const theme: ThemeContext = { definition, ruined, facts };
   const programme = programmeOf(definition, tags);
   const stack = floorStack(definition.rise, floors.length, below);

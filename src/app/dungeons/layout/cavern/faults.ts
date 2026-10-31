@@ -45,11 +45,11 @@ export function faultDirections(rng: Rng, rooms: readonly DungeonRoom[]): number
   return second ? [first, axial(first + toward * apart)] : [first];
 }
 
-/** A floor's fault lines, each through a random normal room's middle, the directions in turn. */
-export function faultLines(rng: Rng, floor: Pick<DungeonFloor, 'rooms'>, angles: readonly number[]): CaveFault[] {
+/** A floor's fault lines, each through a random normal room's middle, the directions in turn; `more` times as many in a cave cracked everywhere. */
+export function faultLines(rng: Rng, floor: Pick<DungeonFloor, 'rooms'>, angles: readonly number[], more = 1): CaveFault[] {
   const normal = floor.rooms.filter((room) => room.kind === 'room');
   if (normal.length === 0 || angles.length === 0) return [];
-  const count = 1 + Math.floor(normal.length / ROOMS_PER_LINE);
+  const count = (1 + Math.floor(normal.length / ROOMS_PER_LINE)) * more;
   return Array.from({ length: count }, (_, k) => {
     const room = normal[Math.floor(rng() * normal.length)]!;
     return { angle: angles[k % angles.length]!, x: room.x + room.w / 2, y: room.y + room.h / 2 };

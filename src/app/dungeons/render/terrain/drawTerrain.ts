@@ -2,6 +2,7 @@ import type { DungeonTerrain, TerrainKind } from '../../model';
 import { HOLE_KINDS } from '../../terrain/catalog';
 import type { Hand } from '../art/hand';
 import { UNDERGROWTH } from '../growth/growthForms';
+import { drawAven } from './aven';
 import { drawBridges } from './bridges';
 import { drawBoneLitter, drawGuano, drawSulphurCrust } from './caveStains';
 import { drawBoulderChoke, drawRimstone } from './caveStones';
@@ -41,6 +42,7 @@ const GROUND: Partial<Record<TerrainKind, Draw>> = {
   pit: drawPit,
   'deep-water': drawDeepWater,
   channel: drawChannel,
+  aven: drawAven,
 };
 
 const RAISED: Partial<Record<TerrainKind, Draw>> = { platform: drawRaised, ledge: drawRaised };

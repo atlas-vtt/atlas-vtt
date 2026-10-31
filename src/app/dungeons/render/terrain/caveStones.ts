@@ -15,7 +15,7 @@ export function drawBoulderChoke(hand: Hand, piece: DungeonTerrain): void {
   const rng = pieceRng(hand.scene.env, piece);
   const rings = coverRings(piece);
   hand.tone(() => 0.24, pointsBounds(rings.flat()), polysPath(rings), 'depth');
-  const stones: { poly: Vec[]; centre: Vec; radius: number }[] = [];
+  const stones: Block[] = [];
   for (const cell of piece.cells) {
     for (const [dx, dy] of [[0.32, 0.32], [0.68, 0.32], [0.32, 0.68], [0.68, 0.68]]) {
       const centre = { x: cell.x + dx! + (rng() - 0.5) * 0.04, y: cell.y + dy! + (rng() - 0.5) * 0.04 };
@@ -23,7 +23,22 @@ export function drawBoulderChoke(hand: Hand, piece: DungeonTerrain): void {
       stones.push({ poly: stoneOutline(rng, centre, radius), centre, radius });
     }
   }
-  stones.sort((a, b) => a.centre.y - b.centre.y);
+  drawBlocks(hand, stones);
+}
+
+/** A fallen block: its outline, middle and radius, in cells. */
+export interface Block {
+  poly: Vec[];
+  centre: Vec;
+  radius: number;
+}
+
+/**
+ * Fallen blocks, back to front: each modelled as a solid with a single fracture, or the hand's own
+ * pile where it models each stone whole. A choke's cells and a breakdown's narrows draw them alike.
+ */
+export function drawBlocks(hand: Hand, blocks: Block[]): void {
+  const stones = [...blocks].sort((a, b) => a.centre.y - b.centre.y);
   if (hand.pile) {
     // Each block's own facets carry its fractures.
     hand.pile(stones.map(({ poly, centre, radius }) => ({ poly, c: centre, r: radius })), () => 'outline');

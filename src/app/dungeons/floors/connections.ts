@@ -17,6 +17,8 @@ import { type FloorSpace, type StairSpot, approachCells, spotFits, spotRect, spo
 export const TWO_CONNECTIONS_FROM = 6;
 /** A second stairwell's rooms lie at least this many doors from the first's, on both floors. */
 export const MIN_CONNECTION_SPREAD = 2;
+/** How much likelier a cave chamber with an exit in its floor holds the way down: the way is already there. */
+const SHAFT_WEIGHT = 3;
 
 export interface FloorShape {
   rooms: readonly DungeonRoom[];
@@ -73,7 +75,8 @@ export function entranceRoom(floor: Pick<FloorShape, 'rooms' | 'doors'>): Dungeo
 /**
  * Where the first stairwell on from floor `index` to the next stands: in the room the floor is
  * entered by where `fromEntrance` and it can hold one (a gate tower's stair, a grand staircase),
- * else a room the farther from its entry and other stairs, the likelier; only where the next
+ * else a room the farther from its entry and other stairs, the likelier (a cave chamber with an exit
+ * in its floor three times as likely); only where the next
  * floor's landing can stand round it (`lands`), and at least `across` cells wide.
  */
 export function chooseOnward(rng: Rng, floor: FloorShape, index: number, stack: FloorStack, fromEntrance = false, lands: (spot: StairSpot) => boolean = () => true, across = 1): PlacedStair | null {
@@ -89,7 +92,7 @@ export function chooseOnward(rng: Rng, floor: FloorShape, index: number, stack: 
     if (chosen.length > 0) return { room: firstRoom.id, spot: pick(rng, chosen) };
   }
   const distance = distanceFrom(floor, anchors(floor));
-  let options = floor.rooms.filter(holdsStairs).map((room) => [room, ((distance[room.id] ?? 0) + 1) ** 2] as const);
+  let options = floor.rooms.filter(holdsStairs).map((room) => [room, ((distance[room.id] ?? 0) + 1) ** 2 * (room.vertical?.down.length ? SHAFT_WEIGHT : 1)] as const);
   while (options.length > 0) {
     const room = weighted(rng, options);
     const spots = spotsWithin(floorRect(room), across).filter((spot) => spotFits(room, space, spot, end) && lands(spot));

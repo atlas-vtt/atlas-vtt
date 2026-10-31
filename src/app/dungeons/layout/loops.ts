@@ -11,6 +11,7 @@ import type { DungeonParams } from '../params';
 import { type CellRect, inRect, intersection, rectsTouch } from '../geometry';
 import { type KeyedRng, type Rng, chance, pick } from '../rng';
 import { farthestRoom, hops, neighbours, openDoor, shortestPath } from '../roomGraph';
+import { rollLoopWay } from './cavern/veins/caveExits';
 import { layoutEdges } from './costs';
 import { pathCosts } from './graph';
 import { normalCount } from './grow';
@@ -109,12 +110,17 @@ export function mainWay(layout: WorkLayout): number[] {
   return shortestPath(adjacent, 0, farthestRoom(hops(adjacent, 0)));
 }
 
-/** How many loops a floor of this many normal rooms gets: about one per eight, at least one past five rooms. */
+/**
+ * How many loops a floor of this many normal rooms gets: about one per eight, at least one past
+ * five rooms; a cave whose character asks for more loops (it curves back, it leaves no passage
+ * dead) gets that many times as many.
+ */
 function loopTarget(rng: Rng, normals: number, params: DungeonParams): number {
   const roll = rng();
   if (normals <= SMALL_FLOOR) return roll < 0.5 ? 1 : 0;
   if (params.string) return 1;
-  return Math.max(1, Math.round(normals / ROOMS_PER_LOOP + roll * 0.8 - 0.4));
+  const perLoop = ROOMS_PER_LOOP / (params.cave?.veins?.rules.loops ?? 1);
+  return Math.max(1, Math.round(normals / perLoop + roll * 0.8 - 0.4));
 }
 
 /** A candidate among those whose ways are longest (within a fifth of the longest), so loops vary. */
@@ -131,7 +137,17 @@ function ringMeets(layout: WorkLayout, candidate: LoopCandidate, way: ReadonlySe
   return shortestPath(adjacent, candidate.a, candidate.b).some((id) => way.has(id));
 }
 
+/** The loops of a floor and, in a cave, the way each is passed: one exit's size rolled for it, from a stream of its own. */
 export function addLoops(rngOf: KeyedRng, layout: WorkLayout, params: DungeonParams): void {
+  const before = layout.doors.length;
+  placeLoops(rngOf, layout, params);
+  const rules = params.cave?.veins?.rules;
+  if (!rules) return;
+  const rng = rngOf('loop-ways');
+  for (const door of layout.doors.slice(before)) Object.assign(door, rollLoopWay(rng, rules.exits));
+}
+
+function placeLoops(rngOf: KeyedRng, layout: WorkLayout, params: DungeonParams): void {
   const rng = rngOf('loops');
   const target = loopTarget(rng, normalCount(layout), params);
   let pending = loopCandidates(layout, (a, b) => a.zone === REGULAR_ZONE && b.zone === REGULAR_ZONE && !a.boss && !b.boss);

@@ -78,6 +78,11 @@ export interface DungeonRoom {
   tier?: CaveSizeTier;
   /** A cave chamber's exits in its roof and floor, from its exit roll; unset where it rolled none. */
   vertical?: CaveVerticalExits;
+  /**
+   * A cave's leaf chamber's way on that nobody can follow: a squeeze leaving by this side from the
+   * chamber's rim cell furthest that way, too tight to pass. Unset where the chamber has none.
+   */
+  continuing?: CellDir;
 }
 
 /**

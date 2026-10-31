@@ -1,11 +1,17 @@
 /** Turns the finished work layout into the model's rooms and doors, numbering rooms afresh. */
 
 import type { DungeonDoor, DungeonRoom } from '../model';
-import { type WorkLayout, floorOf, kindOf, liveRooms } from './workLayout';
+import { type ChamberTier, tierOfFloor } from './cavern/veins/caveSizes';
+import { type WorkLayout, type WorkRoom, floorOf, kindOf, liveRooms } from './workLayout';
 
 export interface CompactLayout {
   rooms: DungeonRoom[];
   doors: DungeonDoor[];
+}
+
+/** A tiered cave's chamber's tier: the one it was drawn at, else (a boss room grown, a landing's room, a reward room) the one its floor reaches. */
+function chamberTier(room: WorkRoom): ChamberTier {
+  return room.tier !== undefined && !room.boss ? room.tier : tierOfFloor(room.width - 2, room.depth - 2);
 }
 
 export function compactLayout(layout: WorkLayout): CompactLayout {
@@ -28,6 +34,8 @@ export function compactLayout(layout: WorkLayout): CompactLayout {
       axis: room.axis,
       colonnade: room.colonnade,
       boss: room.boss,
+      ...(layout.tiered && kindOf(room) === 'room' && { tier: chamberTier(room) }),
+      ...(room.vertical && { vertical: room.vertical }),
     };
   });
   const doors = layout.doors.map(
@@ -39,6 +47,8 @@ export function compactLayout(layout: WorkLayout): CompactLayout {
       from: renumber(door.from),
       to: renumber(door.to),
       ...(door.descends && { descends: true }),
+      ...(door.way && { way: door.way }),
+      ...(door.width !== undefined && { width: door.width }),
     }),
   );
   return { rooms, doors };

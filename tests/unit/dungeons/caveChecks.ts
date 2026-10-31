@@ -9,6 +9,7 @@ import { cellKey, doorCells, floorRect, inRect } from '../../../src/app/dungeons
 import { CHAMBER_SWELL } from '../../../src/app/dungeons/layout/cavern/laneCells';
 import { tunnelReach } from '../../../src/app/dungeons/layout/cavern/laneCells';
 import type { CellPoint, DungeonFloor, DungeonModel, DungeonRoom, DungeonStair } from '../../../src/app/dungeons/model';
+import { fitsTier, tierOfFloor } from '../../../src/app/dungeons/layout/cavern/veins/caveSizes';
 
 const key = (c: CellPoint): string => cellKey(c.x, c.y);
 const NEAR4: readonly (readonly [number, number])[] = [
@@ -123,12 +124,20 @@ export function narrowsProblems(floor: DungeonFloor): string[] {
   return out;
 }
 
-/** One-cell narrows lie off the main path: where the lane passes a narrows it has two cells across the wall. */
+const LARGE_TIERS: ReadonlySet<string> = new Set(['triple', 'quadruple', 'house', 'hall', 'gargantuan']);
+
+/** Whether a narrows off the main path may be two cells wide: a way ten feet wide or more (rolled as a walk; breakdown may choke it since, or a fall drop through it) between two chambers of three rooms or larger. */
+function wideWalk(floor: DungeonFloor, door: DungeonFloor['doors'][number]): boolean {
+  const large = (id: number | null): boolean => id !== null && LARGE_TIERS.has(floor.rooms[id]?.tier ?? '');
+  return (door.width ?? 0) >= 10 && large(door.from) && large(door.to);
+}
+
+/** One-cell narrows lie off the main path: where the lane passes a narrows it has two cells across the wall. Off it a narrows is one cell, but a wide walk between two large chambers. */
 export function laneNarrowsProblems(floor: DungeonFloor): string[] {
   const lane = new Set((floor.cave?.lane ?? []).map(key));
   const doorCell = new Set(floor.doors.flatMap((d) => (d.kind === 'secret' ? [] : doorCells(d))).map(key));
   return floor.doors.flatMap((door) => {
-    if (door.kind === 'secret' || !lane.has(key(door))) return door.wide && !lane.has(key(door)) ? [`a wide narrows at ${key(door)} off the main path`] : [];
+    if (door.kind === 'secret' || !lane.has(key(door))) return door.wide && !lane.has(key(door)) && !wideWalk(floor, door) ? [`a wide narrows at ${key(door)} off the main path`] : [];
     const beside = [-1, 1].map((s) => ({ x: door.x + s * door.dir.y, y: door.y + s * door.dir.x }));
     return beside.some((c) => lane.has(key(c)) && doorCell.has(key(c))) ? [] : [`a one-cell narrows at ${key(door)} on the main path`];
   });
@@ -189,4 +198,50 @@ export function faultStretch(model: DungeonModel): { long: number; along: number
     }
   }
   return { long, along };
+}
+
+/** Whether a chamber's size came from elsewhere than its tier draw: the boss room (grown), a later floor's first room (round the landing), a reward room. */
+function sizedElsewhere(room: DungeonRoom, index: number): boolean {
+  return room.boss || (index > 0 && room.parent === null) || room.stage === 'reward';
+}
+
+/**
+ * The book's cave rules a floor keeps: every door is passed some way; the main path is walked
+ * (no special route on it); every chamber has its size tier and the floor that tier gives (a
+ * chamber sized elsewhere, the tier its floor reaches); in a cave that never has dead passages
+ * every dead end without a stairwell has its squeeze leading on.
+ */
+export function veinsProblems(model: DungeonModel, index: number): string[] {
+  const floor = model.floors[index]!;
+  const lane = new Set((floor.cave?.lane ?? []).map(key));
+  const out: string[] = [];
+  for (const door of floor.doors) {
+    if (!door.way) out.push(`a door at ${key(door)} without a way`);
+    if (door.kind !== 'secret' && lane.has(key(door)) && door.way !== 'walk') out.push(`a ${door.way} at ${key(door)} on the main path`);
+  }
+  const stairKeys = new Set(floor.stairs.flatMap(stairCellsOf).map(key));
+  const deadPassages = model.cave?.character?.never === 'dead-passages';
+  for (const room of floor.rooms.filter((r) => r.kind === 'room')) {
+    const across = room.axis.x !== 0 ? room.h : room.w;
+    const along = room.axis.x !== 0 ? room.w : room.h;
+    const { tier } = room;
+    if (!tier || tier === 'junction') out.push(`chamber ${room.id} without a tier`);
+    else if (sizedElsewhere(room, index) ? tier !== tierOfFloor(across, along) : !fitsTier(tier, across, along)) out.push(`chamber ${room.id} (${across} × ${along}) is no ${tier}`);
+    const ways = floor.doors.filter((d) => d.from === room.id || d.to === room.id).length;
+    const stairs = (room.cells ?? []).some((c) => stairKeys.has(key(c)));
+    if (deadPassages && ways === 1 && !stairs && !room.continuing) out.push(`dead end ${room.id} leads nowhere in a cave that never has dead passages`);
+  }
+  return out;
+}
+
+/** A floor's chamber exits: those in roofs and floors, and all of them (every door of a chamber, and those). */
+export function chamberExits(floor: DungeonFloor): { vertical: number; all: number } {
+  let vertical = 0;
+  let all = 0;
+  for (const room of floor.rooms.filter((r) => r.kind === 'room')) {
+    const v = (room.vertical?.up.length ?? 0) + (room.vertical?.down.length ?? 0);
+    vertical += v;
+    all += v + floor.doors.filter((d) => d.from === room.id || d.to === room.id).length;
+  }
+  return { vertical, all };
 }
