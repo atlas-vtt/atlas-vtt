@@ -4,6 +4,7 @@ import { useAtlasUI } from "src/app/react/root/AtlasUIContext"
 import { useHotkeyLabels } from "../../../keyboard/useMapHotkeys"
 import { DropdownMenuItem } from "../primitives/DropdownMenuItem"
 import { DropdownModeSelector } from "../primitives/DropdownModeSelector"
+import { DropdownToggleRow } from "../primitives/DropdownToggleRow"
 import { DropdownSliderRow } from "../primitives/DropdownSliderRow"
 import { ToolGroup, type ToolGroupControls } from "./ToolGroup"
 import { fogToolFace } from "./toolFaces"
@@ -19,11 +20,13 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
   const emit = useEmitViewEvent()
   const [fogMode, setFogMode] = useState<FogMode>('brush')
   const [brushSize, setBrushSize] = useState(50)
+  const [lassoSnapToGrid, setLassoSnapToGrid] = useState(false)
   const face = fogToolFace(activeTool)
 
   // The fog renderer starts in brush mode, like this menu.
   useEffect(() => {
     emit('fog-mode-changed', 'brush');
+    emit('fog-lasso-snap-changed', false);
   }, [emit]);
 
   return (
@@ -66,6 +69,23 @@ export function FogToolGroup({ activeTool, selectTool, menuOpen, toggleMenu, clo
               emit('fog-mode-changed', mode);
             }}
           />
+
+          {fogMode === 'lasso' && (
+            <>
+              <DropdownToggleRow
+                label={t('toolbar.fogLassoSnap')}
+                value={lassoSnapToGrid}
+                onChange={() => {
+                  const enabled = !lassoSnapToGrid;
+                  setLassoSnapToGrid(enabled);
+                  emit('fog-lasso-snap-changed', enabled);
+                }}
+              />
+              {lassoSnapToGrid && (
+                <div className="atlas-fog-lasso-hint">{t('toolbar.fogLassoHint')}</div>
+              )}
+            </>
+          )}
 
           <DropdownSliderRow
             label={t('toolbar.brushSize')}
