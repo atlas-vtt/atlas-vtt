@@ -82,7 +82,7 @@ describe('going from one mood to another', () => {
       seconds: 6,
       at: [[3, (player): void => player.setState({ ...second, layers: [] })]],
     });
-    expect(sineAt(samples, secondsToFrames(2.5), 12_000, 220).amplitude).toBeLessThan(0.002);
+    expect(sineAt(samples, secondsToFrames(2.4), 24_000, 220).amplitude).toBeLessThan(0.002);
     expect(sineAt(samples, secondsToFrames(5), secondsToFrames(0.5), 220).amplitude).toBeGreaterThan(0.2);
   });
 
