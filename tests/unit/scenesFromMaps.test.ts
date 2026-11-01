@@ -60,6 +60,51 @@ describe('scenes from several maps', () => {
   });
 });
 
+describe('several maps made into scenes (#555)', () => {
+  const sceneFiles = (vault: InMemoryApp): string[] => [...vault.files.keys()].filter((path) => path.endsWith('.atlasmap')).sort();
+  const sceneNames = async (assets: AssetService): Promise<string[]> => (await scenes(assets)).map((scene) => scene.name).sort();
+
+  it('makes no second record of a scene when the vault check runs while they are written', async () => {
+    const { vault, assets } = await library();
+    const create = vi.mocked(vault.app.vault.create);
+    const original = create.getMockImplementation()!;
+    const checks: Promise<unknown>[] = [];
+    create.mockImplementation(async (path: string, data: string) => {
+      const file = await original(path, data);
+      if (path.endsWith('.atlasmap')) {
+        checks.push(assets.reconcileWithVault());
+        // Time for a check that is not held back to find the map before its record is added
+        await new Promise((resolve) => setTimeout(resolve, 10));
+      }
+      return file;
+    });
+
+    await createScenesFromMaps(vault.app, assets, COLLECTION, [mapCard('Cave'), mapCard('Tower'), mapCard('Crypt')]);
+    await Promise.all(checks);
+
+    expect(await sceneNames(assets)).toEqual(['Cave', 'Crypt', 'Tower']);
+    expect(sceneFiles(vault)).toEqual([`${SCENES}/Cave.atlasmap`, `${SCENES}/Crypt.atlasmap`, `${SCENES}/Tower.atlasmap`]);
+  });
+
+  it('keeps a deleted one deleted, through the vault check and a restart, and leaves the others', async () => {
+    const { vault, assets } = await library();
+    const made = await createScenesFromMaps(vault.app, assets, COLLECTION, [mapCard('Cave'), mapCard('Tower')]);
+    const cave = made.find((scene) => scene.name === 'Cave')!;
+
+    await assets.deleteAsset(cave.id);
+    await assets.reconcileWithVault(new Set([`${SCENES}/Cave.atlasmap`]));
+    expect(await sceneNames(assets)).toEqual(['Tower']);
+
+    AssetService.resetInstance();
+    const restarted = AssetService.getInstance(vault.app);
+    await restarted.initialize();
+    await restarted.reconcileWithVault();
+
+    expect(await sceneNames(restarted)).toEqual(['Tower']);
+    expect(sceneFiles(vault)).toEqual([`${SCENES}/Tower.atlasmap`]);
+  });
+});
+
 describe('deleting a scene', () => {
   it('waits for the vault check: the map is never taken in again as a scene of its own', async () => {
     const { vault, assets } = await library();
