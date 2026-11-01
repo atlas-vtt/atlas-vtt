@@ -15,6 +15,7 @@ import type { AssetService } from '../../../../services/AssetService';
 import { renameScene } from '../../../../services/sceneRename';
 import { hasAssetTag } from '../../../../services/tagGroups';
 import { TagSearchModal } from '../TagSearchModal';
+import type { AssetTagChange } from '../utils/assetTags';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { confirmAction } from '../../../../ui/confirmDialog';
 import type { AtlasView } from '../../../../atlas-view';
@@ -46,7 +47,7 @@ export interface AssetContextMenuDeps {
   setSelectedAssetIds: React.Dispatch<React.SetStateAction<string[]>>;
   loadAssetsForActiveTab: () => Promise<void>;
   handleCreateTag: (tag: string) => Promise<TagType | null>;
-  setAssetTags: (asset: AnyAsset, tags: string[]) => Promise<void>;
+  setTagsOfAssets: (changes: AssetTagChange[]) => Promise<void>;
   handleSaveAsEncounter: (tokenAssets: AnyAsset[]) => Promise<void>;
   openStatblockLinkModal: (asset: AnyAsset) => void;
   unlinkStatblock: (asset: AnyAsset) => Promise<void>;
@@ -256,14 +257,14 @@ export function buildAssetContextMenuEntries(
         selectedAssets: assetsToTag,
         availableTags: deps.availableTags,
         allAssets: deps.assets,
-        onSetAssetTags: (taggedAsset: AnyAsset, tags: string[]) => { void deps.setAssetTags(taggedAsset, tags); },
+        onSetTags: (changes: AssetTagChange[]) => { void deps.setTagsOfAssets(changes); },
         onCreateTag: (tagName: string, modalSelectedAssets: AnyAsset[]) => {
           const applyNewTag = async (): Promise<void> => {
             const tag = await deps.handleCreateTag(tagName);
             if (!tag) return;
-            await Promise.all(modalSelectedAssets
+            await deps.setTagsOfAssets(modalSelectedAssets
               .filter((sa) => !hasAssetTag(sa.tags, tag))
-              .map((sa) => deps.setAssetTags(sa, [...(sa.tags || []), tag.name])));
+              .map((sa) => ({ asset: sa, tags: [...(sa.tags || []), tag.name] })));
           };
           runInBackground(applyNewTag(), `Creating tag ${tagName}`);
         },

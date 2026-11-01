@@ -4,6 +4,7 @@
 - Player window: showing a saved frame glides there, also when players were following you, and changing the scene dips through black instead of jumping
 
 ## Fixed
+- Tags in a selection of several assets: a tag only some of them have now goes to all of them when pressed, and from all of them when pressed again
 - The confirmation for deleting a collection in Manage no longer opens behind the asset manager
 
 - The player window can be moved by dragging it again
