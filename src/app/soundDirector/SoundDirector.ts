@@ -132,13 +132,9 @@ export class SoundDirector {
 
   now(): number { return this.table.now(); }
 
-  joinView(viewId: string, store: FightStore): void {
-    this.fights.join(viewId, store);
-  }
+  joinView(viewId: string, store: FightStore): void { this.fights.join(viewId, store); }
 
-  leaveView(viewId: string): void {
-    this.fights.leave(viewId);
-  }
+  leaveView(viewId: string): void { this.fights.leave(viewId); }
 
   /** A mood the GM pressed: it stands until the table next changes scene or fight. */
   press(collectionId: string, mood: Mood): void {
@@ -172,9 +168,7 @@ export class SoundDirector {
   }
 
   /** The GM's press after the context would not start by itself. */
-  tap(): void {
-    this.output.unlock();
-  }
+  tap(): void { this.output.unlock(); }
 
   /** A sound to the GM alone, in no state anyone else gets. The same sound again, or null, ends it. */
   preview(record: SoundRecord | null): void {
