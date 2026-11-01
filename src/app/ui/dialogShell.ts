@@ -6,7 +6,8 @@ export interface DialogShell {
 
 /**
  * Mounts a centred, titled dialog on `document.body`. It stacks above Atlas
- * overlays such as the asset manager, which Obsidian's own modals do not.
+ * overlays such as the asset manager and the dialogs opened from it, which
+ * Obsidian's own modals do not.
  */
 export function createDialogShell(title: string): DialogShell {
   const root = document.body.createDiv({ cls: 'atlas-vtt-plugin atlas-text-dialog-backdrop' });
