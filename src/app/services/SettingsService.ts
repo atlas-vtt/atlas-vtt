@@ -19,7 +19,10 @@ import {
   type TutorialId,
   TUTORIAL_IDS,
 } from './atlasSettings';
-import { loadAnimateMaps, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, saveAnimateMaps, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality } from './deviceSettings';
+import {
+  loadAnimateMaps, loadGraphicsChoice, loadInitiativeCollapsed, loadInputMode, loadLightingQuality, loadPickedLightingQuality, loadPlayerView4k,
+  saveAnimateMaps, saveGraphicsChoice, saveInitiativeCollapsed, saveInputMode, savePickedLightingQuality, savePlayerView4k,
+} from './deviceSettings';
 import { readGpuFacts } from './gpuFacts';
 import { pickLightingQuality } from '../lighting/deviceTier';
 import { readDock, type InitiativeLayout } from '../initiative/initiativeLayout';
@@ -27,6 +30,8 @@ import type { InitiativeTurnOptions } from '../initiative/turnOptions';
 import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
 import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
 import { readDungeonGeneratorSettings, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import type { TableTvSettings } from './tableTvSettings';
+import { loadTableTvDevice, saveTableTvDevice, type TableTvDevice, type TvScreenRecord, type TvScreenSetup } from './tableTvDevice';
 
 export { TUTORIAL_IDS } from './atlasSettings';
 export type { AtlasSettings, NavigationInputMode, NavigationSettings, TutorialId } from './atlasSettings';
@@ -287,6 +292,18 @@ export class SettingsService {
     this.notify();
   }
 
+  /** Whether this device renders the player view with up to 4K pixels instead of 1440p. */
+  isPlayerView4k(): boolean {
+    return loadPlayerView4k(this.app);
+  }
+
+  /** The player view's resolution is this device's, as its graphics card pays for it: local storage, not the synced settings. */
+  setPlayerView4k(on: boolean): void {
+    if (this.isPlayerView4k() === on) return;
+    savePlayerView4k(this.app, on);
+    this.notify();
+  }
+
   getLaserPointerSettings(): LaserPointerSettings {
     return resolveLaserPointerSettings(this.settings.laserPointer);
   }
@@ -454,6 +471,38 @@ export class SettingsService {
     const stored: Record<string, unknown> = this.settings.localPlayerView;
     stored.tokenBarsCarriedOver = true;
     this.scheduleSave();
+  }
+
+  getTableTvSettings(): TableTvSettings {
+    return { ...this.settings.tableTv };
+  }
+
+  setTableTvSettings(changes: Partial<TableTvSettings>): void {
+    this.settings.tableTv = { ...this.settings.tableTv, ...changes };
+    this.commit();
+  }
+
+  /** TrueScale's facts about this device's TVs: local storage, since a TV belongs to the computer it is plugged into. */
+  getTableTvDevice(): TableTvDevice {
+    return loadTableTvDevice(this.app);
+  }
+
+  setTableTvDevice(patch: Partial<TableTvDevice>): void {
+    saveTableTvDevice(this.app, { ...this.getTableTvDevice(), ...patch });
+    this.notify();
+  }
+
+  /**
+   * Changes what this device keeps of the screen `key`. A screen is stored from its first
+   * change: turned at once (rotation 0 until one is given), set up only once it holds a
+   * positive `pxPerMm` (`setupOf`); a `pxPerMm` that is none leaves the one it had.
+   */
+  setTvScreenSetup(key: string, patch: Partial<TvScreenSetup>): void {
+    const device = this.getTableTvDevice();
+    const { pxPerMm, ...rest } = patch;
+    const screen: TvScreenRecord = { rotation: 0, ...device.screens[key], ...rest };
+    if (pxPerMm !== undefined && Number.isFinite(pxPerMm) && pxPerMm > 0) screen.pxPerMm = pxPerMm;
+    this.setTableTvDevice({ screens: { ...device.screens, [key]: screen } });
   }
 
   getLocalPlayerViewSettings(): AtlasSettings['localPlayerView'] {

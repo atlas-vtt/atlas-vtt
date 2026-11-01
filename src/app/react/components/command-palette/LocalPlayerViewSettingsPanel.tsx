@@ -83,10 +83,16 @@ export function LocalPlayerViewSettingsPanel(): React.ReactElement {
     () => settingsService?.getLocalPlayerViewSettings() || DEFAULT_LOCAL_PLAYER_VIEW_SETTINGS,
   );
 
+  const [view4k, setView4k] = useState(() => settingsService?.isPlayerView4k() ?? false);
+
   useEffect(() => {
     if (!settingsService) return;
     setLocalSettings(settingsService.getLocalPlayerViewSettings());
-    return settingsService.onChange(settings => setLocalSettings(settings.localPlayerView));
+    setView4k(settingsService.isPlayerView4k());
+    return settingsService.onChange((settings) => {
+      setLocalSettings(settings.localPlayerView);
+      setView4k(settingsService.isPlayerView4k());
+    });
   }, [settingsService]);
 
   const updateSettings = useCallback(
@@ -113,6 +119,12 @@ export function LocalPlayerViewSettingsPanel(): React.ReactElement {
         <h3 className="atlas-command-palette-panel-heading">{t('lpv.interface')}</h3>
         {UI_TOGGLES.map(renderToggle)}
         {onlinePlay && ONLINE_TOGGLES.map(renderToggle)}
+        <SettingToggleRow
+          label={t('lpv.view4k')}
+          hint={t('lpv.view4kHint')}
+          value={view4k}
+          onToggle={() => settingsService?.setPlayerView4k(!view4k)}
+        />
       </div>
 
       <div className="atlas-command-palette-panel-column">
