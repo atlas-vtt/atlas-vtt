@@ -1,6 +1,6 @@
 import type { DiceCrit } from '../tools/diceCrit';
 import { dataUrlToArrayBuffer } from './dataUrl';
-import { followOutputDevice, forgetOutputFollower } from './outputDevice';
+import { followOutputDevice, forgetOutputFollower } from '../sound/engine/outputDevice';
 import throw1 from '../sounds/dice-sfx/dice-throw-1.mp3?inline';
 import throw2 from '../sounds/dice-sfx/dice-throw-2.mp3?inline';
 import throw3 from '../sounds/dice-sfx/dice-throw-3.mp3?inline';

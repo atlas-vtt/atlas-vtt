@@ -6,6 +6,8 @@ import { SoundDirector } from '../soundDirector/SoundDirector';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
 
+const STATUS_REFRESH_MS = 5000;
+
 /** Commands exist only while sound is switched on, and each mood is one: the palette is where a mood is searched for. */
 function moodCommandId(moodId: string): string {
   return `sound-mood-${moodId}`;
@@ -122,7 +124,7 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
       item.hide();
       return;
     }
-    label.setText(name);
+    if (label.getText() !== name) label.setText(name);
     if (shownSilenced !== mix.table.silenced) {
       shownSilenced = mix.table.silenced;
       silence.empty();
@@ -132,12 +134,14 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
     item.show();
   };
   render();
+  // A list goes on through its tracks with nobody telling it to.
+  plugin.registerInterval(window.setInterval(render, STATUS_REFRESH_MS));
   return director.subscribe(render);
 }
 
 /**
  * Opens the app's sound owner before the views, so every restored map view joins it. Its context and
- * copies exist only while sound is switched on; the palette commands work without a map.
+ * copies exist only while sound is switched on; the palette commands work without a map. `onunload` releases it.
  */
 export function registerSoundDirector(plugin: Plugin): SoundDirector {
   const { app } = plugin;
@@ -146,6 +150,5 @@ export function registerSoundDirector(plugin: Plugin): SoundDirector {
   registerSoundCommands(plugin, director, assets);
   plugin.register(registerMoodCommands(plugin, director, assets));
   plugin.register(registerSoundStatusBar(plugin, director));
-  plugin.register(() => SoundDirector.release(app));
   return director;
 }

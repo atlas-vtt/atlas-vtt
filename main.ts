@@ -69,6 +69,7 @@ import { nameQuestCampaigns } from './src/app/campaigns/quests/nameQuestCampaign
 import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
 import { registerSoundDirector } from './src/app/plugin/soundDirector';
+import { SoundDirector } from './src/app/soundDirector/SoundDirector';
 import { soundSettingsSection } from './src/app/settings/soundSettingsSection';
 import { registerOnlinePlay, type OnlinePlay } from './src/app/plugin/onlinePlay';
 import type { TableChat } from './src/app/online/gm/tableChat';
@@ -275,6 +276,7 @@ export default class AtlasVTTPlugin extends Plugin {
     CampaignPlayers.release(this.app);
     CampaignFiles.release(this.app);
     QuestIndex.release(this.app);
+    SoundDirector.release(this.app);
     MoodStore.release(this.app);
     DiceSetFiles.release(this.app);
     this.widgetSyncService?.destroy();

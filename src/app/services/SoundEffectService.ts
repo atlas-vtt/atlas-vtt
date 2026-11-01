@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { Howl, Howler } from 'howler';
 import { disposeDiceRevealSound, playDiceReveal } from '../audio/diceRevealSound';
-import { followOutputDevice } from '../audio/outputDevice';
+import { followOutputDevice } from '../sound/engine/outputDevice';
 import { disposeDiceSounds } from '../dice3d/audio/diceSounds';
 import type { DiceCrit } from '../tools/diceCrit';
 import timerDingSoundUrl from '../sounds/timer-ding.wav?inline';

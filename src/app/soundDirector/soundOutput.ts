@@ -1,4 +1,4 @@
-import { followOutputDevice, forgetOutputFollower } from '../audio/outputDevice';
+import { followOutputDevice, forgetOutputFollower } from '../sound/engine/outputDevice';
 import type { SoundContext } from '../sound/engine/audioNodes';
 import type { LocalLevels } from '../sound/engine/mixerGraph';
 import { SoundPlayer } from '../sound/engine/soundPlayer';

@@ -88,6 +88,33 @@ describe('the DM screen’s Sound page', () => {
     expect(notes.width).toBeGreaterThan(300);
   });
 
+  it('leaves statblock feeds where they are while their page is hidden', async () => {
+    await page.viewport(1280, 820);
+    const { createElement } = await import('react');
+    const { createRoot } = await import('react-dom/client');
+    const { StatblockFeeds } = await import('../../src/app/react/components/dm-screen/StatblockFeeds');
+    tab = await openSoundTab(DARK, viewport);
+    viewport.innerHTML = '';
+    const pane = viewport.createDiv({ cls: 'atlas-dm-statblocks-grid' });
+    pane.style.cssText = 'width: 1000px; height: 600px';
+    const root = createRoot(pane);
+    act(() => root.render(createElement(StatblockFeeds, null, [200, 300, 100, 250].map((height) => createElement('div', { key: height, style: { height } })))));
+    const places = (): string[] => [...pane.querySelectorAll<HTMLElement>('.atlas-dm-statblock-feed-item')].map((item) => `${item.style.left} ${item.style.top} ${item.style.width}`);
+    await expect.poll(() => pane.querySelector('[data-measured="true"]')).not.toBeNull();
+    await sleep(100);
+    const shown = places();
+    expect(new Set(shown.map((place) => place.split(' ')[0])).size).toBeGreaterThan(1);
+    pane.hidden = true;
+    pane.style.display = 'none';
+    await sleep(150);
+    expect(places()).toEqual(shown);
+    pane.hidden = false;
+    pane.style.display = '';
+    await sleep(150);
+    expect(places()).toEqual(shown);
+    act(() => root.unmount());
+  });
+
   it('reaches every mood by keyboard alone, with Tab left to open and close the screen', async () => {
     await page.viewport(1280, 820);
     tab = await openSoundTab(DARK, viewport);
@@ -155,6 +182,22 @@ describe('the DM screen’s Sound page', () => {
     expect(tab.store.getState().dmScreenPage).toBe('sound');
   });
 
+  it('moves a mood by dragging, and a drag presses nothing', async () => {
+    await page.viewport(1280, 820);
+    tab = await openSoundTab(DARK, viewport);
+    seedMoods(tab);
+    await expect.poll(() => document.querySelectorAll('[data-sound-mood]').length).toBe(11);
+    const before = tab.moodsOf().map((mood) => mood.id);
+    const first = page.elementLocator(document.querySelector(`[data-sound-mood="${before[0]}"]`)!);
+    const third = page.elementLocator(document.querySelector(`[data-sound-mood="${before[2]}"]`)!);
+    await userEvent.dragAndDrop(first, third);
+    await expect.poll(() => tab?.moodsOf().map((mood) => mood.id)).toEqual([before[1], before[2], before[0], ...before.slice(3)]);
+    expect(tab.director.snapshot().mix.mood).toBeNull();
+    // The press after a drag is a press again.
+    await userEvent.click(document.querySelector<HTMLElement>(`[data-sound-mood="${before[1]}"]`)!);
+    expect(tab.director.snapshot().mix.mood?.id).toBe(before[1]);
+  });
+
   it('marks a sound that cannot play on its mood before anyone presses it', async () => {
     await page.viewport(1280, 820);
     tab = await openSoundTab(DARK, viewport);
@@ -201,6 +244,14 @@ describe('the DM screen’s Sound page', () => {
       await sleep(400);
       await page.screenshot({ path: `${SHOTS}/sound-${name}-silenced.png` });
       await userEvent.keyboard('{Backspace}');
+
+      act(() => document.querySelector<HTMLElement>('[data-sound-mood]')?.focus());
+      await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+      await expect.poll(() => document.querySelector('[role="menu"]')).not.toBeNull();
+      await sleep(250);
+      await page.screenshot({ path: `${SHOTS}/sound-${name}-menu.png` });
+      expect(parseFloat(getComputedStyle(document.querySelector('[role="menu"]')!).zIndex || '0') || parseFloat(getComputedStyle(document.querySelector('[role="menu"]')!.parentElement!).zIndex)).toBeGreaterThan(1000);
+      await userEvent.keyboard('{Escape}');
 
       await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-now__add')!);
       await sleep(250);

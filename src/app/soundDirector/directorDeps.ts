@@ -33,7 +33,7 @@ export interface SoundDirectorDeps {
   moods: DirectorMoods;
   presented: Pick<PresentedSceneSource, 'get' | 'onChange'>;
   files: SoundFileAccess;
-  createCache(): CopyCache;
+  createCache(): CopyCache & { close(): Promise<void> };
   createMaker(): CopyMaker & { dispose(): void };
   createContext(): OutputContext;
   provideConversion(source: SoundConversionState): () => void;

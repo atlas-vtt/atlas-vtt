@@ -1,5 +1,5 @@
 import type { App } from 'obsidian';
-import { setOutputDevice } from '../audio/outputDevice';
+import { setOutputDevice } from '../sound/engine/outputDevice';
 import { t } from '../i18n';
 import { loadOutput, saveOutput, type StoredOutput } from './deviceFacts';
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Speaker } from 'lucide-react';
-import { listOutputDevices } from '../../../../audio/outputDevice';
+import { listOutputDevices } from '../../../../sound/engine/outputDevice';
 import { t } from '../../../../i18n';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { useContextMenu } from '../../../root/ContextMenuContext';

@@ -77,7 +77,7 @@ export class SoundDirector {
       tableNow: () => this.table.now(),
       resolve: (key) => this.shelf.bytes(key),
       levels: () => this.levels,
-      onSoundError: (key, error) => console.error(`[Atlas] Could not play the sound ${key}`, error),
+      onSoundError: (key, error) => this.soundFailed(key, error),
       onLifecycle: (lifecycle) => this.publish({ lifecycle }),
       wait: (ms) => new Promise((resolve) => { window.setTimeout(resolve, ms); }),
     });
@@ -272,6 +272,13 @@ export class SoundDirector {
     this.desk.joinWaiting();
     this.previews.copiesChanged();
     this.publish({ shelfRevision: this.current.shelfRevision + 1 });
+  }
+
+  /** A copy the cache gave up under a sound is made again; the player keeps asking in the meantime. */
+  private soundFailed(key: string, error: unknown): void {
+    console.error(`[Atlas] Could not play the sound ${key}`, error);
+    const record = this.shelf.recordOfKey(key);
+    if (record) this.shelf.request([record], true);
   }
 
   private lastMixNow(): LastMix {

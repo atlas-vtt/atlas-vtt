@@ -1,5 +1,5 @@
 import { t } from '../i18n';
-import { listOutputDevices, type OutputDeviceChoice } from '../audio/outputDevice';
+import { listOutputDevices, type OutputDeviceChoice } from '../sound/engine/outputDevice';
 import type { SettingsService } from '../services/SettingsService';
 import { CHANNEL_DB_RANGE, MAX_FADE_SECONDS } from '../services/soundSettings';
 import type { SoundDirector } from '../soundDirector/SoundDirector';
@@ -25,6 +25,15 @@ function outputLabel(device: OutputDeviceChoice, index: number): string {
   return device.label || t('audio.outputNumbered', { n: index + 1 });
 }
 
+/** The list that was asked to open when its names were not here yet; where a browser refuses, the next click opens it. */
+function openPicker(select: HTMLSelectElement): void {
+  try {
+    select.showPicker();
+  } catch (error) {
+    console.debug('[Atlas] The list of outputs opens on the next click', error);
+  }
+}
+
 function outputRow(director: SoundDirector): AtlasSettingRow {
   return {
     name: t('audio.output'),
@@ -45,9 +54,11 @@ function outputRow(director: SoundDirector): AtlasSettingRow {
           event.preventDefault();
           void listOutputDevices().then((found) => {
             devices = found;
-            found.forEach((device, index) => dropdown.addOption(device.id, outputLabel(device, index)));
+            found.forEach((device, index) => {
+              dropdown.addOption(device.id, outputLabel(device, index));
+            });
             dropdown.setValue(director.snapshot().output?.id ?? DEFAULT_OUTPUT);
-            dropdown.selectEl.showPicker();
+            openPicker(dropdown.selectEl);
           });
         });
         dropdown.onChange((id) => {

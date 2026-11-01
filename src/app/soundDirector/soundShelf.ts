@@ -13,6 +13,7 @@ export class SoundShelf {
   private read = false;
   private copies: SoundCopies | null = null;
   private maker: { dispose(): void } | null = null;
+  private cache: { close(): Promise<void> } | null = null;
 
   constructor(
     private readonly deps: Pick<SoundDirectorDeps, 'files' | 'createCache' | 'createMaker' | 'readRecords'>,
@@ -21,8 +22,10 @@ export class SoundShelf {
 
   open(): SoundCopies {
     const maker = this.deps.createMaker();
+    const cache = this.deps.createCache();
     this.maker = maker;
-    this.copies = new SoundCopies(this.deps.files, this.deps.createCache(), maker, this.onRefused);
+    this.cache = cache;
+    this.copies = new SoundCopies(this.deps.files, cache, maker, this.onRefused);
     return this.copies;
   }
 
@@ -31,6 +34,8 @@ export class SoundShelf {
     this.copies = null;
     this.maker?.dispose();
     this.maker = null;
+    void this.cache?.close();
+    this.cache = null;
   }
 
   recordOf(id: string): SoundRecord | null {

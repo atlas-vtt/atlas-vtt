@@ -50,6 +50,8 @@ export function useMoodDrag(gridRef: RefObject<HTMLElement | null>, moods: reado
       doc.removeEventListener('keydown', key, true);
       win.removeEventListener('blur', cancel);
       setDrag(null);
+      // The click of this press, if it has one, comes right after the release; the next press owes it nothing.
+      win.setTimeout(() => { draggedRef.current = false; }, 0);
     };
     const cancel = (): void => end();
     const move = (moved: PointerEvent): void => {

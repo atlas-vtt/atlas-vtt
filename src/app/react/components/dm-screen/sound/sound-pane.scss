@@ -549,6 +549,10 @@
     margin: 0;
     padding-inline-start: $spacing-l;
   }
+
+  a {
+    color: var(--text-accent);
+  }
 }
 
 .atlas-sound-dialog-layer {

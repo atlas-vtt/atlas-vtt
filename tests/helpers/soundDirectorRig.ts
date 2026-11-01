@@ -142,7 +142,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       statOf: (path) => (files.has(path) ? { size: 1, mtime: 1 } : null),
       read: (path) => Promise.resolve(new TextEncoder().encode(path).buffer),
     },
-    createCache: () => cache,
+    createCache: () => ({ ...cache, close: () => Promise.resolve() }),
     createMaker: () => ({
       run: (job) => new Promise((resolve, reject) => {
         conversions.push({
@@ -159,7 +159,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       return context;
     },
     provideConversion: () => () => undefined,
-    readRecords: () => Promise.resolve(rig.records),
+    readRecords: () => Promise.resolve(records),
     onLibraryChange: (listener) => {
       libraryListeners.add(listener);
       return () => libraryListeners.delete(listener);
@@ -172,8 +172,9 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
     collectionOf: () => 'c',
     notify: (message) => notices.push(message),
   };
+  const director = new SoundDirector(deps);
   const rig: DirectorRig = {
-    director: null as unknown as SoundDirector,
+    director,
     contexts,
     files,
     copies,
@@ -192,7 +193,6 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
     fireFileChange: () => { for (const listener of fileListeners) listener(); },
     fireSettings: () => { for (const listener of settingsListeners) listener(); },
   };
-  rig.director = new SoundDirector(deps);
   return rig;
 }
 
