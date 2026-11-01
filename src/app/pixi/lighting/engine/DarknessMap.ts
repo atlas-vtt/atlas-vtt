@@ -79,7 +79,7 @@ export function setDarknessMesh(slot: DarknessMesh, darkness: DrawnDarkness): vo
 }
 
 function holdsDarkness(slot: DarknessMesh, darkness: DrawnDarkness): boolean {
-  return slot.polygon === darkness.polygon && slot.light[0] === darkness.origin.x && slot.light[1] === darkness.origin.y
+  return slot.polygon === darkness.polygon && slot.light[0] === Math.fround(darkness.origin.x) && slot.light[1] === Math.fround(darkness.origin.y)
     && slot.uniforms.uniforms.uDim === darkness.dim && slot.uniforms.uniforms.uSoft === darkness.soft;
 }
 
