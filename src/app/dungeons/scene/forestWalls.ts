@@ -14,8 +14,9 @@ import type { DungeonPlacement, DungeonWalls, WallsOf } from './toWalls';
 
 /**
  * A Forest floor's walls: the drawn edge of the very trees its map shows (`forestMass`, the curves
- * of every crown's outline, a bare tree's where its limbs end), not the clearing's outline those
- * trees overhang, so light, sight and tokens stop on the line where the woods begin. Clearings,
+ * of every crown's outline, tip to tip on a conifer; a bare tree draws no crown and walls the clump
+ * it stands for, or the woods would have gaps), not the clearing's outline those trees overhang, so
+ * light, sight and tokens stop on the line where the woods begin. Clearings,
  * roads, rivers and lakes are open wherever the trees leave them open, and they run on to the map's
  * edge, where no wall stands.
  */
@@ -26,8 +27,8 @@ const EDGE_DEPTH = 0.6;
 const NECK = { wide: 1.2, shaved: 0.12, sliver: 0.08 } as const;
 /** Scraps smaller than this, of open ground or of woods, get no wall, in square cells. */
 const SMALLEST = 0.1;
-/** How far a wall may stray from the trees' edge to save a corner, in cells: two pixels of a scene's map, the drawn line's width. Finer costs more than it shows: bridges between the corners multiply the walls sight goes by. */
-const STRAY = 0.015;
+/** How far a wall may stray from the trees' edge to save a corner, in cells: 4.5 pixels of a scene's map. It follows a crown's outline and rounds its small scallops; finer costs far more than it shows, since corners under the sealing's tolerance apart each get bridges (0.015 tripled the walls sight goes by). */
+const STRAY = 0.03;
 /** How near the map's edge a corner lies on it, in cells: a crown's tip that grazes the edge makes no wall along it. */
 const ON_EDGE = 0.01;
 /** How much of a road's middle a crown may not close, in cells either way: enough to pass, and only the crowns that reach it are cut. */

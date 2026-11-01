@@ -7,11 +7,12 @@ import type { DungeonModel } from '../../../../src/app/dungeons/model';
 import { viewBounds } from '../../../../src/app/dungeons/render/art/artScene';
 import { unionRings } from '../../../../src/app/dungeons/render/clipShapes';
 import { forestMass, woodsOutside } from '../../../../src/app/dungeons/render/forest/forestMass';
-import { massEdge } from '../../../../src/app/dungeons/render/grounds/crowns';
+import { leafyMass, massEdge, needledRing, traceShape } from '../../../../src/app/dungeons/render/grounds/crowns';
 import { pointInPolygon, pointSegmentDistance, signedArea2, type Bounds, type Vec } from '../../../../src/app/dungeons/render/geometry';
 import { mapLayout } from '../../../../src/app/dungeons/render/layoutSize';
 import { visibleDungeon } from '../../../../src/app/dungeons/render/visibleDungeon';
 import { necksOf, treeLine } from '../../../../src/app/dungeons/scene/forestWalls';
+import { sealedWalls } from '../../../../src/app/lighting/sealWalls';
 import { DEFAULT_VIEW } from '../../../../src/app/dungeons/style';
 import { dungeonStyle, type DungeonStyleId } from '../../../../src/app/dungeons/styleCatalog';
 import type { DungeonTag } from '../../../../src/app/dungeons/tags';
@@ -40,8 +41,11 @@ function pictureOf(model: DungeonModel): { map: Bounds; drawn: Bounds } {
   return { map: viewBounds(layout, 0), drawn: viewBounds(layout, 1) };
 }
 
-/** How far from each other a wall and the crowns' drawn edge may lie, in cells: about a drawn line's width, what thinning may leave. */
-const ON_THE_EDGE = 0.02;
+/** How far from each other a wall and what it follows may lie, in cells: what thinning may leave, and no more. */
+const ON_THE_EDGE = 0.035;
+
+/** How many walls sight may go by for each drawn, sealing's bridges included. */
+const MOST_SEALED = 1.3;
 
 /** The distance from a point to the nearest of `lines`, up to a cell off. */
 function distanceTo(lines: readonly (readonly [Vec, Vec])[]): (p: Vec) => number {
@@ -67,6 +71,48 @@ function along([a, b]: readonly [Vec, Vec]): Vec[] {
   const steps = Math.max(1, Math.ceil(Math.hypot(b.x - a.x, b.y - a.y) / 0.05));
   return Array.from({ length: steps }, (_, k) => ({ x: a.x + ((b.x - a.x) * (k + 0.5)) / steps, y: a.y + ((b.y - a.y) * (k + 0.5)) / steps }));
 }
+
+describe('the edge a wall follows on a crown', () => {
+  it('lies on the curves a broadleaf mass is drawn with', () => {
+    const { shape } = leafyMass({ x: 3, y: 4 }, 0.5, 0, 77);
+    const start = shape.points[0]!;
+    const curves: { from: Vec; control: Vec; to: Vec }[] = [];
+    let from = start;
+    const recorder = {
+      moveTo: (x: number, y: number): void => { from = { x, y }; },
+      quadraticCurveTo: (cx: number, cy: number, x: number, y: number): void => {
+        curves.push({ from, control: { x: cx, y: cy }, to: { x, y } });
+        from = { x, y };
+      },
+      closePath: (): void => {},
+    };
+    traceShape(recorder as unknown as CanvasPath, shape);
+
+    const edge = massEdge(shape);
+    expect(edge).toHaveLength(curves.length * 4);
+    curves.forEach(({ from: q, control: c, to: p }, k) => {
+      expect(edge[k * 4]!.x).toBeCloseTo(q.x, 9);
+      expect(edge[k * 4]!.y).toBeCloseTo(q.y, 9);
+      expect(edge[k * 4 + 2]!.x).toBeCloseTo((q.x + p.x) / 4 + c.x / 2, 9);
+      expect(edge[k * 4 + 2]!.y).toBeCloseTo((q.y + p.y) / 4 + c.y / 2, 9);
+    });
+  });
+
+  it('runs along a conifer whorl\'s branch tips and over its notches', () => {
+    const centre = { x: 3, y: 4 };
+    const r = 0.5;
+    const branches = 20;
+    const reach = (p: Vec): number => Math.hypot(p.x - centre.x, p.y - centre.y);
+    const ring = needledRing(centre, r, branches, 0.4, 77);
+    const tips = massEdge({ points: ring });
+    expect(tips).toHaveLength(branches);
+    // Each is the farthest point of its branch, and of what it leaves out no point stands beyond it.
+    tips.forEach((tip, k) => {
+      for (const p of ring.slice(k * 4, k * 4 + 4)) expect(reach(p)).toBeLessThanOrEqual(reach(tip));
+      expect(reach(tip)).toBeGreaterThanOrEqual(r * 0.84);
+    });
+  });
+});
 
 describe('the necks a crown may not close', () => {
   const box = (x: number, y: number, w: number, h: number): Vec[] => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
@@ -98,6 +144,9 @@ describe('a Forest\'s walls', () => {
       const line = treeLine(dungeon, style, map);
       const segments = line.flatMap((run) => run.slice(1).map((b, k) => [run[k]!, b] as const));
       expect(segments.length).toBeGreaterThan(100);
+      // Few corners lie closer than the sealing's tolerance: each such pair is a bridge sight has to go by too, so a finer line costs far more than its corners.
+      const walls = segments.map(([a, b], k) => ({ id: `w${k}`, kind: 'wall' as const, type: 'solid' as const, p1: { x: a.x * 150, y: a.y * 150 }, p2: { x: b.x * 150, y: b.y * 150 } }));
+      expect(sealedWalls(walls, 2).length / walls.length).toBeLessThan(MOST_SEALED);
       const crowns = unionRings(forestMass(dungeon, style, drawn).map(({ clump }) => massEdge(clump.shape)));
       const stack = stackOf(model);
       const ways = dungeon.floor.stairs.flatMap((stair) => [spotRect(stair), ...approachCells(stair, stairEnd(stack, 0, stair.to)).map((c) => ({ x0: c.x, y0: c.y, x1: c.x, y1: c.y }))]);
@@ -107,7 +156,7 @@ describe('a Forest\'s walls', () => {
       const toCrowns = distanceTo(crowns.flatMap(sidesOf));
       const points = segments.flatMap(along);
       const off = points.filter((p) => toCrowns(p) > ON_THE_EDGE);
-      expect(off.filter((p) => !atWay(p, 0.01) && dungeon.field.distance(p.x, p.y) > 0.02)).toEqual([]);
+      expect(off.filter((p) => !atWay(p, 0.01) && dungeon.field.distance(p.x, p.y) > ON_THE_EDGE)).toEqual([]);
       expect(off.length / points.length).toBeLessThan(0.03);
 
       // And the drawn edge a token can come to has a wall on it. An inlet too narrow to walk in, or a stand of trees too small, is passed over.
@@ -121,7 +170,7 @@ describe('a Forest\'s walls', () => {
 
     it(`leave every clearing and way down to be walked to, sealing included: ${name}`, () => {
       const model = forest(test);
-      const scene = sceneOf(model);
+      const scene = sceneOf(model, test.look);
       const own = scene.levelIds[0] ? Object.fromEntries(Object.entries(scene.walls).filter(([, wall]) => wall.levels?.includes(scene.levelIds[0]!))) : scene.walls;
       const walk = new Walkable(scene, movementWalls(wallList(own), scene.image), 0);
       const floor = model.floors[0]!;
