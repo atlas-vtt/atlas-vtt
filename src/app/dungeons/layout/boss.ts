@@ -11,6 +11,7 @@ import { costsFromStart } from './costs';
 import { roomFits } from './grow';
 import { type LoopCandidate, loopCandidates, placeLoop } from './loops';
 import type { RoomSize } from './sizes';
+import type { RoomScale } from '../roomScale';
 import { type WorkLayout, type WorkRoom, childrenOf, floorArea, isNormal, liveRooms, roomRect } from './workLayout';
 
 /** How much wider (walls included, so in steps of two) and deeper the boss room may grow. */
@@ -26,15 +27,14 @@ const GALLERY_BONUS = 16;
 /** How much of a boss room's floor must lie under such a room's for a gallery. */
 const GALLERY_CELLS = 4;
 
-/**
- * The largest size the room may grow to: it has no doors but the one it grew through, in its near
- * wall's middle. A room already past the largest a boss room grows to (a cave's hall) keeps its size.
- */
-function largest(layout: WorkLayout, room: WorkRoom): RoomSize {
+/** The largest size the room may grow to: it has no doors but the one it grew through, in its near wall's middle. */
+function largest(layout: WorkLayout, room: WorkRoom, scale?: RoomScale): RoomSize | null {
   const grown = (size: number, more: number, most: number): number => Math.max(size, Math.min(most, size + more));
-  const options = MORE_WIDTH.flatMap((w) => MORE_DEPTH.map((d) => ({ width: grown(room.width, w, MAX_WIDTH), depth: grown(room.depth, d, MAX_DEPTH) })));
+  const options = scale === 'tactical'
+    ? [21, 19].flatMap(width => [22, 21, 20, 19, 18].map(depth => ({ width: Math.max(room.width, width), depth: Math.max(room.depth, depth) })))
+    : MORE_WIDTH.flatMap((w) => MORE_DEPTH.map((d) => ({ width: grown(room.width, w, MAX_WIDTH), depth: grown(room.depth, d, MAX_DEPTH) })));
   options.sort((a, b) => b.width * b.depth - a.width * a.depth);
-  return options.find((size) => roomFits(layout, roomRect({ ...room, ...size }), new Set([room.id]), false)) ?? room;
+  return options.find((size) => roomFits(layout, roomRect({ ...room, ...size }), new Set([room.id]), false)) ?? (scale === 'tactical' ? null : room);
 }
 
 /** Whether a gallery from the floor above could look into a room of this size: its floor lies under a room's. */
@@ -51,13 +51,25 @@ function underGallery(room: WorkRoom, size: RoomSize, galleries: readonly CellRe
  * Makes the boss room; false where the floor has no room it can be. Of rooms about as large, one a
  * gallery above could look into (`galleries`) is chosen first.
  */
-export function placeBossRoom(layout: WorkLayout, galleries: readonly CellRect[] = []): boolean {
+export function placeBossRoom(layout: WorkLayout, galleries: readonly CellRect[] = [], scale?: RoomScale, keepSmaller = false): boolean {
   const costs = costsFromStart(layout);
   const leaves = liveRooms(layout).filter((room) => room.id !== 0 && isNormal(room) && !room.fixed && childrenOf(layout, room.id).length === 0 && Number.isFinite(costs[room.id]));
   const far = Math.max(0, ...leaves.map((room) => costs[room.id] ?? 0));
-  const grown = leaves.filter((room) => (costs[room.id] ?? 0) >= far * FAR_SHARE).map((room) => ({ room, size: largest(layout, room) }));
+  const grown = leaves.filter((room) => (costs[room.id] ?? 0) >= far * FAR_SHARE).flatMap((room) => {
+    const size = largest(layout, room, scale);
+    return size ? [{ room, size }] : [];
+  });
   const area = ({ room, size }: { room: WorkRoom; size: RoomSize }): number => floorArea(size) + (underGallery(room, size, galleries) ? GALLERY_BONUS : 0);
-  const best = grown.sort((a, b) => area(b) - area(a) || (costs[b.room.id] ?? 0) - (costs[a.room.id] ?? 0) || a.room.id - b.room.id)[0];
+  const rank = (a: { room: WorkRoom; size: RoomSize }, b: { room: WorkRoom; size: RoomSize }): number => area(b) - area(a) || (costs[b.room.id] ?? 0) - (costs[a.room.id] ?? 0) || a.room.id - b.room.id;
+  const best = grown.sort(rank)[0];
+  if (!best && keepSmaller && scale === 'tactical') {
+    // Upper storeys cannot exceed the footprint below. Keep their largest available encounter
+    // as the boss while reporting the missed arena target, so the planner still tries again.
+    const available = leaves.length ? leaves : liveRooms(layout).filter(isNormal);
+    const smaller = available.map(room => ({ room, size: room })).sort(rank)[0];
+    if (smaller) smaller.room.boss = true;
+    return false;
+  }
   if (!best) return false;
   Object.assign(best.room, best.size, { boss: true });
   return true;

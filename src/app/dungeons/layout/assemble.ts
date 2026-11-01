@@ -20,6 +20,7 @@ import { shapeRooms } from './roomShapes';
 import { placeSecretWings } from './secrets';
 import { addSteps } from './steps';
 import { fitPassages } from './passageWidths';
+import { widenEncounterDoors } from './tacticalDoors';
 
 const MAX_ATTEMPTS = 120;
 /** A cave's floor must also fit its chambers' blocks and a lane two cells wide, so it may take more attempts. */
@@ -93,7 +94,7 @@ function attempt(seed: number, request: FloorRequest, index: number, whole: bool
   const work = growTree(rngOf, params, root, { reserved: request.reserved, within: request.within, blocked: request.blocked });
   const normals = normalCount(work);
   growPass(rngOf, work);
-  const placed = !request.boss || placeBossRoom(work, request.galleries ?? []);
+  const placed = !request.boss || placeBossRoom(work, request.galleries ?? [], params.roomScale, !request.fiveRoom);
   if (!whole && (normals < params.minRooms || !placed)) return index;
   if (!request.fiveRoom) addLoops(rngOf, work, params);
   addBossDoor(rngOf, work);
@@ -108,7 +109,8 @@ function attempt(seed: number, request: FloorRequest, index: number, whole: bool
   shapeRooms(rngOf, work, params);
   const compacted = compactLayout(work);
   const compact = params.passageFloor ? fitPassages(compacted) : compacted;
-  const layout = request.fiveRoom ? withStages(compact) : compact;
+  const staged = request.fiveRoom ? withStages(compact) : compact;
+  const layout = params.roomScale === 'tactical' && !params.cave ? widenEncounterDoors(staged) : staged;
   const kept = [normals >= params.minRooms, entrances, boss, floorRulesHold(layout)].filter(Boolean).length;
   return { layout, normals, linked: null, kept };
 }

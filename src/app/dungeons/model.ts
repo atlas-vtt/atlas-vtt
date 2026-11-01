@@ -14,6 +14,7 @@ import type { PropKind } from './props/propKinds';
 import type { RoomTypeId } from './themes/roomTypes';
 import type { ThemeChoice, ThemeId } from './themes/themeTypes';
 import type { DungeonTerrain, FiveRoomStage, TerrainDrop } from './terrainModel';
+import type { RoomScale } from './roomScale';
 
 export type { CoverLevel, DungeonTerrain, FiveRoomStage, HazardKind, TerrainDrop, TerrainKind, TerrainOpening, TerrainTraits } from './terrainModel';
 export { FIVE_ROOM_STAGES } from './terrainModel';
@@ -275,6 +276,8 @@ export interface DungeonModel {
 
 /** What a GM asks for: everything else follows from it. */
 export interface DungeonRequest {
+  /** Physical encounter space; unset preserves the original room sizes. */
+  roomScale?: RoomScale;
   seed: number;
   /** The theme asked for; unset is Any, which the seed decides (`pickTheme`). */
   theme?: ThemeChoice;

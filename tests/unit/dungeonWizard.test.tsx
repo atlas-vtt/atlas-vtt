@@ -86,6 +86,20 @@ const exportButton = (): HTMLElement => within(preview()).getByRole('button', { 
 const thumbnailJobs = (group: string): DungeonJob[] => worker.thumbnail.mock.calls.filter((call) => call[1] === group).map((call) => call[0] as DungeonJob);
 
 describe('the dungeon wizard', () => {
+  it('changes physical room scale without changing seed or five-room mode and remembers it when reopened', async () => {
+    settings.setDungeonGenerator({ theme: 'fortress', fiveRoom: true });
+    renderPanel(vi.fn(), 'Tactical vault', 'Layout');
+    await waitFor(() => expect(worker.preview).toHaveBeenCalled());
+    const seed = lastJob().request.seed;
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Room scale' })).getByRole('radio', { name: 'Tactical' }));
+    await waitFor(() => expect(lastJob().request).toMatchObject({ roomScale: 'tactical', seed, fiveRoom: true }));
+    expect(settings.getDungeonGenerator()).toHaveProperty('roomScale', 'tactical');
+    cleanup();
+    renderPanel(vi.fn(), 'Another vault', 'Layout');
+    expect(within(screen.getByRole('radiogroup', { name: 'Room scale' })).getByRole('radio', { name: 'Tactical' }).getAttribute('aria-checked')).toBe('true');
+    fireEvent.click(within(screen.getByRole('radiogroup', { name: 'Room scale' })).getByRole('radio', { name: 'Standard' }));
+    await waitFor(() => expect(lastJob().request).toMatchObject({ roomScale: 'standard', fiveRoom: true }));
+  });
   it('draws the map fitted into the card beside the panel, off the main thread', async () => {
     renderPanel();
     await waitFor(() => expect(worker.preview).toHaveBeenCalled());

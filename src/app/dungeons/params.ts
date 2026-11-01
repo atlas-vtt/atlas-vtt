@@ -7,6 +7,7 @@ import type { FloorRise } from './floors/floorStack';
 import type { CaveShaping } from './layout/cavern/caveParams';
 import { chance, stream } from './rng';
 import { readTags, rivalsOf, withTag, type DungeonTag } from './tags';
+import type { RoomScale } from './roomScale';
 
 /**
  * Room sizes, walls included: 0 small room, 1 large room, 2 corridor, 3 junction.
@@ -15,6 +16,7 @@ import { readTags, rivalsOf, withTag, type DungeonTag } from './tags';
 export type SizeStyle = 0 | 1 | 2 | 3;
 
 export interface DungeonParams {
+  roomScale?: RoomScale;
   tags: ReadonlySet<DungeonTag>;
   /** Normal rooms (not corridors or junctions). */
   minRooms: number;

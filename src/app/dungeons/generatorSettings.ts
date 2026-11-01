@@ -5,6 +5,7 @@ import { DEFAULT_STYLE_ID, isDungeonStyleId, type DungeonStyleId } from './style
 import { readTags, type DungeonTag } from './tags';
 import { readThemeChoice } from './themes/themes';
 import type { ThemeChoice } from './themes/themeTypes';
+import { readRoomScale, type RoomScale } from './roomScale';
 
 /**
  * The GM's preferences for the dungeon generator, kept in Atlas' settings: the style dungeons are
@@ -20,6 +21,7 @@ export interface DungeonGeneratorSettings {
   floors: number;
   bossRoom: boolean;
   fiveRoom: boolean;
+  roomScale: RoomScale;
 }
 
 export const DEFAULT_DUNGEON_GENERATOR_SETTINGS: DungeonGeneratorSettings = {
@@ -30,6 +32,7 @@ export const DEFAULT_DUNGEON_GENERATOR_SETTINGS: DungeonGeneratorSettings = {
   floors: 1,
   bossRoom: true,
   fiveRoom: false,
+  roomScale: 'standard',
 };
 
 function oneOf<T extends string>(value: unknown, options: readonly T[], base: T): T {
@@ -70,5 +73,6 @@ export function readDungeonGeneratorSettings(stored: unknown): DungeonGeneratorS
     floors: floorCount(record.floors),
     bossRoom: flag(record.bossRoom, true),
     fiveRoom: flag(record.fiveRoom, false),
+    roomScale: readRoomScale(record.roomScale),
   };
 }
