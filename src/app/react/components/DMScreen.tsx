@@ -5,6 +5,7 @@ import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { SegmentedControl, type SegmentedOption } from '../../packages/components/primitives/SegmentedControl';
 import { SettingsService } from '../../services/SettingsService';
 import type { DMScreenPage } from '../../types/viewUIState';
+import { isShortcutScopeActive } from '../../utils/activeLeafGuard';
 import { useExperimentalFeature } from '../hooks/useExperimentalFeature';
 import { useAtlasUI } from '../root/AtlasUIContext';
 import { useAtlasStore } from '../ViewStoreContext';
@@ -72,7 +73,11 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
     if (!isOpen) return undefined;
     const handleKeyDown = (e: KeyboardEvent): void => {
       // A focused note keeps its keys (they stop at the note's own section).
-      if (isNoteFocused || !screenTakesKey(e, screenRef.current, view?.viewId)) return;
+      if (isNoteFocused) return;
+      if (e.defaultPrevented || !isShortcutScopeActive(screenRef.current, view?.viewId)) return;
+      if (document.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container')) return;
+      const target = e.target as Element | null;
+      if (target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return;
       if (matchesMapHotkey(e, 'dashboard', SettingsService.forApp(app))) {
         e.preventDefault();
         handleClose();

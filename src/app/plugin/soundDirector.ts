@@ -52,12 +52,20 @@ function registerMoodCommands(plugin: Plugin, director: SoundDirector, assets: A
     collections = await collectionsOf(assets);
     sync();
   };
-  void readCollections();
-  const refresh = plugin.app.workspace.on('atlas-vtt:refresh-assets', () => void readCollections());
-  const stopMoods = moods.onChange(sync);
-  const stopDirector = director.subscribe(() => {
-    if (director.isOn !== (added.size > 0 || !director.isOn)) sync();
+  // The index is read only once sound is on, which is after the storage is ready.
+  let wasOn = false;
+  const followSwitch = (): void => {
+    if (director.isOn === wasOn) return;
+    wasOn = director.isOn;
+    if (wasOn) void readCollections();
+    else sync();
+  };
+  followSwitch();
+  const refresh = plugin.app.workspace.on('atlas-vtt:refresh-assets', () => {
+    if (wasOn) void readCollections();
   });
+  const stopMoods = moods.onChange(sync);
+  const stopDirector = director.subscribe(followSwitch);
   return () => {
     plugin.app.workspace.offref(refresh);
     stopMoods();

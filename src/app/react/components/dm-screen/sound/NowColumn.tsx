@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Plus, RotateCcw, VolumeX, Volume2 } from 'lucide-react';
+import { Plus, RotateCcw, Square, VolumeX, Volume2 } from 'lucide-react';
 import type { App } from 'obsidian';
 import { t } from '../../../../i18n';
 import { Button } from '../../../../packages/components/primitives/button';
@@ -11,7 +11,9 @@ import { isPlaying } from '../../../../soundDirector/tableSound';
 import { showNotice } from '../../../../ui/notice';
 import { useContextMenu } from '../../../root/ContextMenuContext';
 import { useAtlasStore } from '../../../ViewStoreContext';
+import { MoodStore } from '../../../../soundLibrary/MoodStore';
 import { AddSoundList } from './AddSoundList';
+import { IconAction } from './IconAction';
 import { LayerRow, WaitingLayerRow } from './LayerRow';
 import { LevelSlider } from './LevelSlider';
 import { MusicRow } from './MusicRow';
@@ -68,11 +70,12 @@ export function NowColumn({ app, director, collectionId, moods, sounds }: NowCol
       type: 'item' as const,
       label: mood.name,
       checked: mood.id === active,
+      disabled: MoodStore.forApp(app).isReadOnly(collectionId, mood.id),
       onClick: () => {
         if (director.desk.saveToMood(collectionId, mood)) showNotice(t('audio.saved', { name: mood.name }));
       },
     })), { x: box.left, y: box.bottom }, { returnFocus: anchor });
-  }, [collectionId, director, menu, mix.mood, moods]);
+  }, [app, collectionId, director, menu, mix.mood, moods]);
 
   return (
     <section className="atlas-sound-now" aria-label={t('audio.now')}>
@@ -80,6 +83,7 @@ export function NowColumn({ app, director, collectionId, moods, sounds }: NowCol
         <h3>{t('audio.now')}</h3>
         <Button type="button" variant="ghost" disabled={!holdsSound || collectionId === null} onClick={() => setNamingMood(true)}>{t('audio.saveAs')}</Button>
         <Button type="button" variant="ghost" disabled={!holdsSound || moods.length === 0} onClick={(event) => saveTo(event.currentTarget)}>{t('audio.saveTo')}</Button>
+        <IconAction label={t('audio.stop')} icon={Square} disabled={!holdsSound} onClick={() => director.stop()} />
       </header>
       {lifecycle === 'needs-tap' && <button type="button" className="atlas-sound-banner" onClick={() => director.tap()}>{t('audio.needsTap')}</button>}
       {!holdsSound && lastMix && <button type="button" className="atlas-sound-banner" onClick={() => director.resume()}><RotateCcw aria-hidden="true" />{t('audio.resume')}</button>}
@@ -89,7 +93,7 @@ export function NowColumn({ app, director, collectionId, moods, sounds }: NowCol
         {waitingLayers.map((layer) => <WaitingLayerRow key={layer.sound} director={director} soundId={layer.sound} />)}
         {adding
           ? <AddSoundList director={director} sounds={sounds} onLibrary={() => openAssetManager()} onClose={() => setAdding(false)} />
-          : <Button type="button" variant="ghost" className="atlas-sound-now__add" onClick={() => { app.workspace.trigger('atlas-vtt:refresh-assets'); setAdding(true); }}><Plus aria-hidden="true" />{t('audio.add.open')}</Button>}
+          : <Button type="button" variant="ghost" className="atlas-sound-now__add" onClick={() => setAdding(true)}><Plus aria-hidden="true" />{t('audio.add.open')}</Button>}
       </div>
       <footer className="atlas-sound-now__footer">
         <ChannelLevels director={director} />

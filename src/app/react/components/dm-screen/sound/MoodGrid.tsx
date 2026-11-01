@@ -5,7 +5,6 @@ import type { Mood } from '../../../../sound/soundTypes';
 import { moodProblems, type MoodProblem } from '../../../../soundDirector/moodReadiness';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { MoodStore } from '../../../../soundLibrary/MoodStore';
-import { orderForMove } from '../../../../soundLibrary/moodOrdering';
 import { confirmAction } from '../../../../ui/confirmDialog';
 import { useContextMenu } from '../../../root/ContextMenuContext';
 import { useAtlasStore } from '../../../ViewStoreContext';
@@ -21,12 +20,13 @@ interface MoodGridProps {
   moods: readonly Mood[];
   /** Whether the open map belongs to this collection, so its scene may link these moods. */
   sameCollectionAsMap: boolean;
+  moveMood: (mood: Mood, index: number) => void;
 }
 
 const NO_PROBLEMS: readonly MoodProblem[] = [];
 
 /** The moods in their fixed places, numbered as the keys that press them. */
-export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsMap }: MoodGridProps): React.JSX.Element {
+export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsMap, moveMood }: MoodGridProps): React.JSX.Element {
   const store = MoodStore.forApp(app);
   const gridRef = useRef<HTMLDivElement>(null);
   const menu = useContextMenu();
@@ -36,13 +36,8 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
   const activeId = useSoundValue(director, (snapshot) => (snapshot.mix.mood?.collectionId === collectionId ? snapshot.mix.mood.id : null));
   const shelfRevision = useSoundValue(director, (snapshot) => snapshot.shelfRevision);
 
-  const move = useCallback((mood: Mood, index: number): void => {
-    const order = orderForMove(moods, mood.id, index);
-    if (order !== null) store.saveMood(collectionId, { ...mood, order });
-  }, [collectionId, moods, store]);
-
   const canMove = useCallback((mood: Mood) => !store.isReadOnly(collectionId, mood.id), [collectionId, store]);
-  const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canMove, move);
+  const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canMove, moveMood);
 
   const press = useCallback((mood: Mood): void => {
     if (!consumeClick()) director.press(collectionId, mood);

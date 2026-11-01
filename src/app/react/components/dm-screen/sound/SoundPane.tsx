@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useId, useRef } from 'react';
-import { t } from '../../../../i18n';
+import { formatList, t } from '../../../../i18n';
 import { Select } from '../../../../packages/components/primitives/Select';
 import { AssetService } from '../../../../services/AssetService';
 import type { Mood } from '../../../../sound/soundTypes';
@@ -51,7 +51,8 @@ export function SoundPane({ active }: { active: boolean }): React.JSX.Element {
   const drop = (event: React.DragEvent): void => {
     if (!mayCarryAudio(event.dataTransfer) || collectionId === null) return;
     event.preventDefault();
-    runInBackground(runSoundImport(app, AssetService.getInstance(app), [...event.dataTransfer.files], collectionId), 'Adding sounds', t('audio.couldNotAdd', { files: '' }));
+    const files = [...event.dataTransfer.files];
+    runInBackground(runSoundImport(app, AssetService.getInstance(app), files, collectionId), 'Adding sounds', t('audio.couldNotAdd', { files: formatList(files.map((file) => file.name)) }));
   };
 
   return (
@@ -75,7 +76,7 @@ export function SoundPane({ active }: { active: boolean }): React.JSX.Element {
             </div>
           )}
         </header>
-        {moods.length === 0 ? <SoundSources /> : collectionId !== null && <MoodGrid app={app} director={director} collectionId={collectionId} moods={moods} sameCollectionAsMap={sameCollectionAsMap} />}
+        {moods.length === 0 ? <SoundSources /> : collectionId !== null && <MoodGrid app={app} director={director} collectionId={collectionId} moods={moods} sameCollectionAsMap={sameCollectionAsMap} moveMood={moveMood} />}
       </section>
       <NowColumn app={app} director={director} collectionId={collectionId} moods={moods} sounds={sounds} />
     </div>

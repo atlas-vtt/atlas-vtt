@@ -20,6 +20,12 @@ import { stopFade } from './tableSound';
 import { stopAll } from './liveEdits';
 import type { AudienceLine, TableClock } from './tableClock';
 
+/** A window coming back is when a context turns out to have stopped. */
+function watchVisibility(changed: () => void): () => void {
+  document.addEventListener('visibilitychange', changed);
+  return () => document.removeEventListener('visibilitychange', changed);
+}
+
 /** What the tab and the status bar draw. A new object whenever something in it changed. */
 export interface SoundSnapshot {
   mix: SoundMix;
@@ -250,6 +256,7 @@ export class SoundDirector {
       deps.presented.onChange(() => this.fights.follow.presentedChanged()),
       deps.onLibraryChange(() => void this.refreshShelf()),
       deps.onAudioFileChange(() => this.desk.requestWaiting()),
+      watchVisibility(() => void this.output.check()),
     ];
     this.publish({ lastMix: loadLastMix(deps.storage), output: this.choice.apply() });
     void this.refreshShelf();

@@ -9,7 +9,7 @@ export const audio = {
   'audio.loop': 'Loop',
 
   'audio.experimental.label': 'Sound',
-  'audio.experimental.hint': 'Music and ambience from your vault: the Sounds tab of the asset manager. While off, the tab stays hidden.',
+  'audio.experimental.hint': 'Music and ambience from your vault: moods on the DM screen, and the Sounds tab of the asset manager. While off, both stay hidden.',
 
   'audio.tab': 'Sounds',
   'audio.tags': 'Sound tags',
@@ -129,7 +129,7 @@ export const audio = {
   'audio.stopPreview': 'Stop preview',
   'audio.silence': 'Silence',
   'audio.bringBack': 'Bring back',
-  'audio.stop': 'Stop',
+  'audio.stop': 'Stop everything',
   'audio.resume': 'Bring back what played last',
   'audio.needsTap': 'Sound stopped. Press to start it.',
   'audio.empty.moods': 'Add sounds on the right, then save what plays as a mood.',
