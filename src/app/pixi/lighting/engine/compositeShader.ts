@@ -151,10 +151,12 @@ const TRACED_FACES_GLSL = `
  * light magical darkness swallows (the lights it swallows are gone from the light map already;
  * here the ambient light and the bounce go too, and what is perceived without light), green
  * what a sense that sees in magical darkness perceives of it (0.5 as dim light, 1 as bright),
- * blue where a light it swallows would shine. Where it swallows something the players would see
- * (ambient light, a light, what a sense shows) they see a faint cool veil in its place (uVeil),
- * so that magical darkness tells apart from the unlit dark; where it swallows nothing there is
- * none. The GM sees the dim map under a stronger veil everywhere in it (uGmVeil).
+ * blue where a light it swallows would shine, alpha where the party looks at it from outside.
+ * Where it swallows something the players would see (ambient light, a light, what a sense shows)
+ * and they look from outside, they see a faint cool veil in its place (uVeil), so that magical
+ * darkness tells apart from the unlit dark; where it swallows nothing there is none, and a token
+ * standing in it, in a light that outshines it, sees no veil: it would draw the whole darkness.
+ * The GM sees the dim map under a stronger veil everywhere in it (uGmVeil).
  * uZones (read only while uHasZones is set) is the zone map: the ambient light of the scene's
  * zones, premultiplied by their share of the pixel in alpha, which is 1 inside a zone, where the
  * rule counts it; uZonesLifted is the same where dim light is perceived as bright.
@@ -351,9 +353,9 @@ void main() {
   vec4 lamps = textureLod(uLightMap, world / uLightWorld, 0.0);
 ${traced ? TRACED_BOUNCE_GLSL : '  vec3 bounce = vec3(0.0);'}
   // r: the share of the light magical darkness swallows here; g: what sees in it, and how.
-  // b: where a light it swallows would shine.
-  vec3 dark = vec3(0.0);
-  if (uHasDarkness > 0.5) dark = textureLod(uDarkness, world / uLightWorld, 0.0).rgb;
+  // b: where a light it swallows would shine; a: where the party looks at it from outside.
+  vec4 dark = vec4(0.0);
+  if (uHasDarkness > 0.5) dark = textureLod(uDarkness, world / uLightWorld, 0.0);
   // The ambient light of the zones here, and their share of the pixel.
   vec4 zone = vec4(0.0);
   vec4 zoneLifted = vec4(0.0);
@@ -435,8 +437,9 @@ ${traced ? TRACED_FACES_GLSL : ''}
   // The players see the veil only where the darkness takes something from their picture: ambient
   // light, a light's light (blue of the darkness map), or what a sense that does not see in it
   // would show. Over unlit floor and over memory there is none: it would give away where the
-  // darkness is although nothing is swallowed there.
-  float taken = max(max(clamp(dot(ambientGiven, LUMA) * 50.0, 0.0, 1.0), dark.b), max(sight.g, sight.b) * (1.0 - clamp(dark.g * 2.0, 0.0, 1.0)));
+  // darkness is although nothing is swallowed there. Nor for a token looking out from within it.
+  float swallowed = max(max(clamp(dot(ambientGiven, LUMA) * 50.0, 0.0, 1.0), dark.b), max(sight.g, sight.b) * (1.0 - clamp(dark.g * 2.0, 0.0, 1.0)));
+  float taken = max(uAllSeen, dark.a) * swallowed;
   vec3 player = mix(memory, inSight + uVeil * (dark.r * taken), seen);
   visible += uVeil * dark.r;
 

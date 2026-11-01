@@ -12,13 +12,16 @@ export interface DrawnDarkness {
   /** Width of the rim, in world pixels, over which the light comes back before the radius. */
   soft: number;
   polygon: Polygon;
+  darkness: true;
 }
 
-/** What a sense that sees in magical darkness perceives, and how: 1 as bright light, 0.5 as dim. */
+/** What a sense that sees in magical darkness perceives, and how: 1 as bright light, 0.5 as dim, 0 not at all. */
 export interface PierceShape {
   origin: Point;
   polygon: Polygon;
   level: number;
+  /** The party looks at the darkness here from outside it (`sightFromOutside`). */
+  fromOutside?: true;
 }
 
 /** Where a light would shine but for the darkness: the area the rule counts as lit by it. */
@@ -75,11 +78,11 @@ export function destroyDarknessMesh({ mesh }: DarknessMesh): void {
  * Where the map is magically dark, in world space like the light map (`rgba8unorm`): red is how
  * much of the light the darkness sources swallow there, green what a sense that sees in magical
  * darkness perceives of it (0.5 as dim light, 1 as bright), blue where a light would shine
- * (the lights the darkness swallows are not in the light map, so nothing else tells). The
- * composite takes the ambient light, the bounce and the senses that do not see in magical
- * darkness out by red, lets the senses in green through, and shows the players the veil only
- * where something is swallowed (blue is one of the three things that can be). It exists only on
- * maps that have had a darkness source.
+ * (the lights the darkness swallows are not in the light map, so nothing else tells), alpha where
+ * the party looks at it from outside. The composite takes the ambient light, the bounce and the
+ * senses that do not see in magical darkness out by red, lets the senses in green through, and
+ * shows the players the veil only where something is swallowed (blue is one of the three things
+ * that can be) and they look from outside. It exists only on maps that have had a darkness source.
  */
 export class DarknessMap {
   readonly texture: RenderTexture;
@@ -103,7 +106,7 @@ export class DarknessMap {
     });
     this.releasePierce();
     for (const shape of shapes) {
-      if (shape.polygon.length >= 3) this.pierce.addChild(this.createShape(shape, [0, shape.level, 0, 0]));
+      if (shape.polygon.length >= 3) this.pierce.addChild(this.createShape(shape, [0, shape.level, 0, shape.fromOutside ? 1 : 0]));
     }
     for (const shape of lit) {
       if (shape.polygon.length >= 3) this.pierce.addChild(this.createShape(shape, [0, 0, 1, 0]));

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUILT_IN_SENSES, GENERIC_SENSES } from '../../../../gameSystems/senses';
 import type { TokenEntity } from '../../../../types';
 import { computeSight, sightSources, type Sight } from '../../../../vision/sight';
-import { DARK_SIGHT_LEVELS, ambientLift, darkLooks, darkSightTint, pierceShapes, sightChannels } from '../senseDrawing';
+import { DARK_SIGHT_LEVELS, ambientLift, darkLooks, darkSightTint, pierceShapes, sightChannels, sightFromOutside } from '../senseDrawing';
 
 const ALL_SENSES = [...GENERIC_SENSES, ...Object.values(BUILT_IN_SENSES).flat()];
 const scale = { unitDistance: 5, cellSize: 5 };
@@ -211,5 +211,22 @@ describe('pierceShapes', () => {
     const spot = { x: 10, y: 20, radius: 31, polygon: [{ x: 0, y: 0 }, { x: 20, y: 0 }, { x: 20, y: 40 }] };
     expect(pierceShapes(sightWith(), [spot])).toEqual([{ origin: spot, polygon: spot.polygon, level: 1 }]);
     expect(pierceShapes({ all: true, regions: [] })).toEqual([]);
+  });
+});
+
+describe('sightFromOutside', () => {
+  it('is the area a token looks at the map through, once per polygon', () => {
+    const sight = sightWith();
+    const region = sight.regions[0]!;
+    const shape = { origin: region.origin, polygon: region.polygon, level: 0, fromOutside: true };
+    expect(sightFromOutside(sight)).toEqual([shape]);
+    expect(sightFromOutside({ all: false, regions: [region, { ...region }] })).toEqual([shape]);
+    expect(sightFromOutside({ all: true, regions: [] })).toEqual([]);
+  });
+
+  it('leaves out a sense that shows no map', () => {
+    const sight = sightWith('dnd5e-tremorsense');
+    expect(sight.regions).toHaveLength(2);
+    expect(sightFromOutside(sight).map((shape) => shape.polygon)).toEqual([sight.regions[0]!.polygon]);
   });
 });

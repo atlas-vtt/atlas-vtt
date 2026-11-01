@@ -3,7 +3,7 @@ import type { Sight } from '../../../vision/sight';
 import { destroyTree } from '../../utils/destroyTree';
 import type { PierceShape } from './DarknessMap';
 import type { LightingMode } from './compositeFilter';
-import { pierceShapes } from './senseDrawing';
+import { pierceShapes, sightFromOutside } from './senseDrawing';
 import { SightMeshes } from './SightMeshes';
 import type { EngineScene } from './types';
 
@@ -18,6 +18,11 @@ interface FrameSight {
 /** What a sense without a range is given on a map of `bounds`: its diagonal (`sightSources`). */
 function unlimitedOn(bounds: EngineScene['bounds']): number {
   return Math.hypot(bounds.width, bounds.height);
+}
+
+/** What a frame's sight draws into the darkness map. */
+function darknessShapes(sight: Sight, spots: EngineScene['spots']): PierceShape[] {
+  return [...pierceShapes(sight, sight.all ? [] : spots), ...sightFromOutside(sight)];
 }
 
 /** Keeps both current frame pictures ready, so mirroring switches no geometry. */
@@ -65,13 +70,13 @@ export class SceneSightLayers {
       this.view.addChild(meshes.view);
       meshes.draw(sight, radius, unlimited);
       meshes.drawSpots(sight.all ? [] : spots ?? []);
-      return { meshes, sight, spots, radius, pierce: pierceShapes(sight, sight.all ? [] : spots) };
+      return { meshes, sight, spots, radius, pierce: darknessShapes(sight, spots) };
     }
     const sightChanged = sight !== frame.sight;
     const spotsChanged = spots !== frame.spots;
     if (sightChanged || radius !== frame.radius) frame.meshes.draw(sight, radius, unlimited);
     if (spotsChanged || sight.all !== frame.sight.all) frame.meshes.drawSpots(sight.all ? [] : spots ?? []);
-    if (sightChanged || spotsChanged) frame.pierce = pierceShapes(sight, sight.all ? [] : spots);
+    if (sightChanged || spotsChanged) frame.pierce = darknessShapes(sight, spots);
     frame.sight = sight;
     frame.spots = spots;
     frame.radius = radius;
