@@ -5,16 +5,17 @@ import { FIVE_ROOM_STAGES, type DungeonFloor, type DungeonModel, type FiveRoomSt
 import type { ThemeChoice } from '../../../src/app/dungeons/themes/themeTypes';
 import { distances, doorProblems, secretProblems, unreachableRooms } from './dungeonInvariants';
 import { holeProblems } from './holeInvariants';
+import { dungeonSeeds } from '../../helpers/dungeonSeeds';
 import { bridgeProblems, cellProblems, clearanceProblems, hasCover, routeProblems, stairClearanceProblems } from './terrainInvariants';
 
 /**
- * Five-room dungeons (Johnn Four's structure) over 1,000 seeds: one floor whatever was asked, five
+ * Five-room dungeons (Johnn Four's structure) over 1,000 seeds (250 unless `VITE_DUNGEON_SEEDS=full`): one floor whatever was asked, five
  * main rooms in their order along the way in, the climax the boss room, the reward beyond it, each
  * stage built as architecture, and every terrain rule kept.
  */
 
 const ONE_FLOOR = floorStack('down', 1);
-const SEEDS = 1000;
+const SEEDS = dungeonSeeds(1000, 250);
 const TAG_SETS: readonly string[][] = [[], ['colonnades'], ['crumbling'], ['wet'], ['dry'], ['large'], ['small'], ['round']];
 /** The theme each tag set is asked with: what the retired temple, tomb and dwelling tags stood for, else Any. */
 const THEMES: readonly (ThemeChoice | undefined)[] = [undefined, 'fortress', undefined, 'cavern', 'fortress', undefined, undefined, undefined];

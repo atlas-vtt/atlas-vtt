@@ -129,6 +129,7 @@ export const online = {
   'online.renameNamed': 'Rename {name}',
   'online.requireCode': 'Require code',
   'online.seats.full': 'The campaign has no room for {name}.',
+  'online.seats.nameTaken': 'A player of this campaign already goes by {name}.',
   'online.seats.loading': 'The campaigns are still loading. Try again in a moment.',
   'online.seats.newer': 'This campaign\'s players file is from a newer Atlas.',
   'online.seats.noCampaign': 'Choose a campaign first.',

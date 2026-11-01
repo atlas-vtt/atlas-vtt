@@ -11,7 +11,7 @@ import { unionRings } from './render/clipShapes';
 import { traceLoops } from './water/contour';
 import { fractalNoise } from './water/noise';
 import { chaikin, jitter, resample, wobble } from './water/smooth';
-import { cellKey, holdsCell } from './geometry';
+import { cellKey, doorSide, doorwayCells, holdsCell } from './geometry';
 import { type CellGrid, DRY, WET, dropPuddles, floorCells, floorMarks, gridAround, indexOf, wetGrid } from './water/wetGrid';
 
 export interface WaterResult {
@@ -38,6 +38,18 @@ export interface WaterRequest {
   deep?: readonly CellPoint[];
   /** Natural water (a cave's): a puddle beside a larger body is dropped (`dropPuddles`). */
   natural?: boolean;
+  /**
+   * Ground that takes the water it borders, each as a whole (a cave's rimstone dams: the pools they
+   * hold are the water they step away from): where a cell of it, or one beside it in its room, lies
+   * under water, every cell of it does that no dry cell keeps dry, as one body with that water.
+   */
+  floods?: readonly Flooding[];
+}
+
+/** Ground that floods with the water beside it: its room and cells. */
+export interface Flooding {
+  room: number;
+  cells: readonly CellPoint[];
 }
 
 /**
@@ -76,6 +88,27 @@ export function chooseWaterLevel(seed: number, requested: number | undefined, fr
   if (requested !== undefined) return Math.min(1, Math.max(0, requested));
   if (fromTags !== null) return fromTags;
   return int(stream(seed, 'water', 'level'), 0, 4) / 10;
+}
+
+/**
+ * Floods each piece of `floods` where a cell of it, or one beside it in its room, is wet already:
+ * by the level in a room that takes water, or the deep water of a lake, stream or sump in any room,
+ * so in a room that takes none too. Cells `dry` keeps dry stay so.
+ */
+function floodBeside(grid: CellGrid, rooms: readonly DungeonRoom[], floods: readonly Flooding[], wet: Uint8Array, keepDry: Uint8Array, dry: ReadonlySet<string>): void {
+  const wetAt = (x: number, y: number): boolean => wet[indexOf(grid, x, y)] === WET;
+  for (const { room: id, cells } of floods) {
+    const room = rooms.find((r) => r.id === id);
+    if (!room) continue;
+    const touches = cells.some((c) => wetAt(c.x, c.y) || [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => holdsCell(room, c.x + dx!, c.y + dy!) && wetAt(c.x + dx!, c.y + dy!)));
+    if (!touches) continue;
+    for (const c of cells) {
+      const i = indexOf(grid, c.x, c.y);
+      if (i < 0 || dry.has(cellKey(c.x, c.y))) continue;
+      wet[i] = WET;
+      keepDry[i] = 0;
+    }
+  }
 }
 
 /** Over how many steps a room's water thins out towards a room beside that takes none, so it never ends on their straight edge. */
@@ -158,6 +191,27 @@ function ringArea(ring: readonly CellPoint[]): number {
   return sum / 2;
 }
 
+/**
+ * Where a cave's sumps meet their ways: the doorway of each sump way and the cell before it on the
+ * side of the sump laid beside either. That cell stays clear of terrain (every way through a room is
+ * walked), so without it the water stopped a cell short of the door it dives under; and a sump laid
+ * beside the doorway itself (a chamber's cells along a wide opening) ran beside the door rather than
+ * through it. As deep water they join the sump and its way into one body with one shore, which the
+ * way draws no water of its own over. Deep water wins over every dry cell, so a mouth any of whose
+ * cells must stay walkable (`dry`: the main path's lane, the ground round a stairwell or an
+ * entrance) is left dry, doorway and all.
+ */
+export function sumpMouths(doors: readonly DungeonDoor[], pieces: readonly DungeonTerrain[], dry: ReadonlySet<string>): CellPoint[] {
+  const sumps = pieces.filter((p) => p.name === 'dungeon.terrain.sump');
+  return doors.filter((door) => door.way === 'sump').flatMap((door) => [door.from, door.to].flatMap((room) => {
+    if (room === null) return [];
+    const mouth = doorSide(door, room);
+    const cells = [...doorwayCells(door), ...mouth];
+    const beside = sumps.some((p) => p.room === room && p.cells.some((c) => cells.some((m) => Math.abs(m.x - c.x) + Math.abs(m.y - c.y) <= 1)));
+    return beside && !cells.some((c) => dry.has(cellKey(c.x, c.y))) ? cells : [];
+  }));
+}
+
 export function placeWater(seed: number, floor: number, rooms: readonly DungeonRoom[], request: WaterRequest): WaterResult {
   const deep = request.deep ?? [];
   if (rooms.length === 0 || (request.level <= 0 && request.pools.size === 0 && deep.length === 0)) return { water: [], waterCells: [] };
@@ -189,6 +243,7 @@ export function placeWater(seed: number, floor: number, rooms: readonly DungeonR
     keepDry[i] = 0;
     deepMarks[i] = 1;
   }
+  floodBeside(grid, rooms, request.floods ?? [], wetFloor, keepDry, request.dry ?? new Set());
   const wet = wetGrid(grid, floorMarks(grid, rooms), wetFloor, keepDry);
   if (request.natural) dropPuddles(grid, wet, deepMarks);
   const deepKeys = new Set(deep.map((c) => cellKey(c.x, c.y)));

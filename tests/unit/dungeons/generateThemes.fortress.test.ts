@@ -5,10 +5,11 @@ import { FORTRESS } from '../../../src/app/dungeons/themes/fortress';
 import { normals } from './dungeonInvariants';
 import { apartProblems, entranceRoom, floorDepth, nearRooms, nextRooms, onOuterWall, type Place, roomsOfType, typeOf, typingProblems, wayAvoids } from './themeInvariants';
 import { failuresOf, shareOf, themeRuns } from './themeRuns';
+import { shareBound } from '../../helpers/dungeonSeeds';
 import { passageProblems, towerProblems } from './fortressLayoutInvariants';
 import { describeThemeTerrain } from './themeTerrainRules';
 
-/** The rules of a Fortress (report §3.2), each held over 500 dungeons of one to three floors. */
+/** The rules of a Fortress (report §3.2), each held over `THEME_SEEDS` dungeons of one to three floors (500 with full seeds, 125 otherwise). */
 describe('generated Fortresses', () => {
   const runs = themeRuns('fortress');
   const doorsOf = (model: DungeonModel, p: Place): number => model.floors[p.floor]!.doors.filter((d) => d.from === p.room || d.to === p.room).length;
@@ -23,7 +24,8 @@ describe('generated Fortresses', () => {
     const frontHub = (m: DungeonModel, p: Place): boolean => doorsOf(m, p) >= 3 && floorDepth(m.floors[0]!, p.room) < 2 / 3;
     // Where the entrance room is the floor's only hub in front, no hall can be one.
     const hasHub = (m: DungeonModel): boolean => normals(m.floors[0]!).some((room) => room.id !== entranceRoom(m).room && !room.boss && frontHub(m, { floor: 0, room: room.id }));
-    expect(shareOf(runs, () => true, (m) => halls(m).length > 0)).toBeGreaterThan(0.97);
+    // Measured 0.988 at full seeds.
+    expect(shareOf(runs, () => true, (m) => halls(m).length > 0)).toBeGreaterThan(shareBound(0.988, runs.length));
     expect(shareOf(runs, hasHub, (m) => halls(m).some((p) => frontHub(m, p)))).toBeGreaterThan(0.9);
   });
 
@@ -35,7 +37,8 @@ describe('generated Fortresses', () => {
 
   it('keeps the way from the hall to the solar clear of the kitchen', () => {
     const all = (m: DungeonModel): boolean => halls(m).length > 0 && roomsOfType(m, 'solar').length > 0 && roomsOfType(m, 'kitchen').length > 0;
-    expect(shareOf(runs, all, (m) => wayAvoids(m, halls(m)[0]!, roomsOfType(m, 'solar')[0]!, roomsOfType(m, 'kitchen')[0]!))).toBeGreaterThan(0.85);
+    // Measured 0.894 at full seeds.
+    expect(shareOf(runs, all, (m) => wayAvoids(m, halls(m)[0]!, roomsOfType(m, 'solar')[0]!, roomsOfType(m, 'kitchen')[0]!))).toBeGreaterThan(shareBound(0.894, runs.filter((run) => all(run.model)).length));
   });
 
   it('ends the chapel off the hall', () => {

@@ -2,15 +2,15 @@ import { MAX_AREA_CORNERS } from '../../lighting/lightArea';
 import type { LightEmission, LightSource } from '../../types/lightingTypes';
 import { MAX_LIQUID_CORNERS } from '../../liquids/liquids';
 import type { LiquidKind, LiquidSurface } from '../../types/liquidTypes';
-import type { CellPoint, DungeonColumn, DungeonFloor, DungeonTerrain } from '../model';
+import type { CellPoint, DungeonColumn, DungeonTerrain } from '../model';
 import { intersectRings, subtractRings, unionRings } from '../render/clipShapes';
 import { smoothClosedPoints, type Vec } from '../render/geometry';
 import type { VisibleDungeon } from '../render/visibleDungeon';
 import type { DungeonStyle, DungeonView } from '../style';
 import { cellsToUnits, type SceneUnit } from './gameUnits';
 import { liquidColours } from './liquidColours';
-import { isBuiltWater, isNaturalDeepWater, isSubmergedRimstone, naturalDeepRings } from '../render/art/pools';
-import { rimstoneShelves } from '../render/terrain/caveStones';
+import { isBuiltWater, isNaturalDeepWater, naturalDeepRings } from '../render/art/pools';
+import { isMolten, moltenRings } from '../render/terrain/moltenShape';
 import { deckOf, floorWater, waterCourses } from '../forest/riverShape';
 import { rectPoly } from '../render/art/paths';
 import { mapLayout } from '../render/layoutSize';
@@ -52,7 +52,9 @@ function terrainLiquids(dungeon: VisibleDungeon, pieces: readonly DungeonTerrain
     const natural = isNaturalDeepWater(dungeon.floor, piece);
     if (natural && poolsShown) return [];
     const flow = piece.kind === 'channel' && piece.facing ? { x: piece.facing.x, y: piece.facing.y } : undefined;
-    const rings = natural ? naturalDeepRings(piece.cells, dungeon.model.seed + piece.id) : cellRings(piece.cells);
+    // A cave's lava and acid lie on the ragged shore the map draws them with.
+    const ragged = dungeon.floor.cave !== undefined && isMolten(piece);
+    const rings = natural ? naturalDeepRings(piece.cells, dungeon.model.seed + piece.id) : ragged ? moltenRings(dungeon.model.seed, piece) : cellRings(piece.cells);
     return withHoles(floorRings ? intersectRings(rings, floorRings) : rings).map(({ ring, holes }): Liquid => ({ liquid, ring, ...(holes.length && { holes }), ...(flow && { flow }) }));
   });
 }
@@ -133,24 +135,21 @@ function streamThrough(ring: readonly Vec[], streams: readonly DungeonTerrain[])
 /** Terrain that is part of the water itself, not drawn over it. */
 const UNDER_WATER: ReadonlySet<string> = new Set(['shallow-water']);
 
-/** The outline a piece of terrain is drawn with over the water: rimstone as its dams, none where it lies submerged. */
-function terrainOver(floor: DungeonFloor, view: DungeonView, piece: DungeonTerrain): Vec[][] {
-  if (piece.kind !== 'rimstone') return cellRings(piece.cells);
-  if (view.water && isSubmergedRimstone(floor, piece)) return [];
-  return unionRings(rimstoneShelves(floor, piece).rims);
+/** The outline a piece of terrain is drawn with over the water: none for rimstone, whose dams are lines of ink on the water they hold. */
+function terrainOver(piece: DungeonTerrain): Vec[][] {
+  return piece.kind === 'rimstone' ? [] : cellRings(piece.cells);
 }
 
 /**
  * What the map draws over its water: stairwells, every piece of terrain that is no liquid (bridges
- * among them; rimstone as its dams, none where the water lies over it and the map draws only their
- * lips), props, columns and a Forest road's bridges. Cut out of the surfaces, so the motion never runs over them.
+ * among them; rimstone not, its dams being lines on the water), props, columns and a Forest road's bridges. Cut out of the surfaces, so the motion never runs over them.
  */
 function drawnOver(dungeon: VisibleDungeon, view: DungeonView): Vec[][] {
   const { floor, roomShapes } = dungeon;
   const stairs = floor.stairs.map(({ x, y, w, h }) => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }]);
   const terrain = floor.terrain
     .filter(piece => roomShapes.has(piece.room) && !UNDER_WATER.has(piece.kind) && !(piece.traits.hazard && HAZARD_LIQUID[piece.traits.hazard]))
-    .flatMap(piece => terrainOver(floor, view, piece));
+    .flatMap(terrainOver);
   const props = view.props ? floor.props.filter(prop => roomShapes.has(prop.room)).map(propPolygon) : [];
   const decks = (floor.rivers ?? []).flatMap(river => river.bridges.map(deckOf));
   return [...stairs, ...terrain, ...props, ...floor.columns.map(columnRing), ...decks];

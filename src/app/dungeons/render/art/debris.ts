@@ -12,7 +12,8 @@ import { wallInkWidth } from '../wallInk';
 export function drawDebris(hand: Hand): void {
   const { dungeon, view } = hand.scene.env;
   if (!view.props) return;
-  const stones = dungeon.floor.walls === 'edges' ? dungeon.floor.rubble.filter(s => clearOfWalls(hand, s.points)) : dungeon.floor.rubble;
+  const held = dungeon.floor.walls === 'edges' || dungeon.floor.cave !== undefined;
+  const stones = held ? dungeon.floor.rubble.filter(s => clearOfWalls(hand, s.points)) : dungeon.floor.rubble;
   if (stones.length) {
     const all: PathFn = path => stones.forEach(s => traceSmoothClosed(path, s.points));
     castShadow(hand, all, 0.05, pointsBounds(stones.flatMap(s => s.points)), 0.5);
@@ -28,7 +29,8 @@ export function drawDebris(hand: Hand): void {
 
 /**
  * Whether a stone lies wholly on the floor, clear of the wall's ink: a house's rubble is laid by its
- * cells, and its outer walls are thick enough to stand where a stone by the cell's edge would lie.
+ * cells, and its outer walls are thick enough to stand where a stone by the cell's edge would lie;
+ * a cave's is laid by its cells too, and its outline wanders into them.
  */
 function clearOfWalls(hand: Hand, points: readonly Vec[]): boolean {
   const { dungeon, style } = hand.scene.env;

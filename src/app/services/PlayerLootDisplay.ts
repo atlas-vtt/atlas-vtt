@@ -48,6 +48,11 @@ export class PlayerLootDisplay {
     return new Set([...this.items.map((item) => item.id), ...this.handed]);
   }
 
+  /** Whether the player window shows the loot window now; `close` takes it away. */
+  showsInWindow(): boolean {
+    return this.items.length > 0;
+  }
+
   /** Hands every item out through `outlet` too, besides the player window; null takes it away. */
   setOutlet(outlet: LootOutlet | null): void {
     this.outlet = outlet;

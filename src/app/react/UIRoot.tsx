@@ -6,6 +6,8 @@ import { SceneLightingPanelHost } from '../pixi/lighting/SceneLightingPanel';
 import { App } from 'obsidian';
 import { Application } from 'pixi.js';
 import { MainToolbar } from '../packages/components/MainToolbar';
+import { PlayerWindowBar } from '../packages/components/player-window-bar/PlayerWindowBar';
+import { GlassChip } from '../packages/components/true-scale/GlassChip';
 import { GridSettingsModal } from './components/GridSettingsModalSimple';
 import { GridAlignmentOverlay } from './components/GridAlignmentOverlay';
 import { ResponsiveWidgetBar } from './components/ResponsiveWidgetBar';
@@ -174,7 +176,9 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
                   />
                 </PanelBoundary>
               )}
-              <div className="atlas-top-bar-start__below" />
+              <div className="atlas-top-bar-start__below">
+                {!isPlayerView && <PanelBoundary name="the player window bar"><PlayerWindowBar view={view} /></PanelBoundary>}
+              </div>
             </div>
             {/* Widgets and the DM's dice rolls share the right end; rolls hang below the widgets */}
             <div className="atlas-top-bar-end">
@@ -239,6 +243,7 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
 
           {/* Loot Roller - floating window, DM only */}
           {!isPlayerView && <PanelBoundary name="the random tables"><RandomTables /></PanelBoundary>}
+          {!isPlayerView && <PanelBoundary name="the players' glass"><GlassChip view={view} /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the light settings"><LightPopoverHost /><LightZonePopoverHost /><LevelSurfacePopoverHost /></PanelBoundary>}
           {!isPlayerView && <PanelBoundary name="the scene lighting"><SceneLightingPanelHost /></PanelBoundary>}
 

@@ -23,12 +23,12 @@ const WIDEN_PERIOD = 2.5;
 
 type Score = (x: number, y: number) => number;
 
-/** Whether the cell is floor as drawn: owned, and not a crawl. */
+/** Whether the cell is floor as drawn: owned, and neither a crawl nor held as rock beside a pinch of the main path. */
 export function floorOf(grid: CaveGrid, doors: readonly DungeonDoor[]): (x: number, y: number) => boolean {
   const crawls = new Set(doors.flatMap((door, k) => (door.kind === 'secret' ? [doorOwner(k)] : [])));
   return (x, y) => {
     const owner = grid.owner(x, y);
-    return owner !== ROCK && !crawls.has(owner);
+    return owner !== ROCK && !crawls.has(owner) && !grid.heldAsRock(x, y);
   };
 }
 

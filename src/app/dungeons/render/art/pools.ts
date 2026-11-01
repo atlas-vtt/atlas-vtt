@@ -9,13 +9,6 @@ import { smoothstep, type Field, type PathFn } from './paths';
 import { blurField, fieldOf, gridOver, insideDistance, pathMask, sampleField } from './raster';
 import { pointsBounds } from '../geometry';
 
-/** Whether the floor's water lies over all of a piece of rimstone, as it may at a lake's edge: the map then draws only its dams' lips, through the water. */
-export function isSubmergedRimstone(floor: DungeonFloor, piece: DungeonTerrain): boolean {
-  if (piece.kind !== 'rimstone') return false;
-  const wet = new Set(floor.waterCells.map(c => `${c.x},${c.y}`));
-  return piece.cells.every(c => wet.has(`${c.x},${c.y}`));
-}
-
 /** The pools of the floor as drawn: their smoothed outlines, or none where the view hides water. */
 export function poolOutlines(scene: ArtScene): Vec[][] {
   const { env } = scene;

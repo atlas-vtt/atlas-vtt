@@ -13,6 +13,7 @@ import { t } from '../../i18n';
 import { INVALID_NAME_CHARACTERS } from '../../services/assetPaths';
 import type { DungeonModel, DungeonRequest } from '../model';
 import { DEFAULT_PX_PER_CELL, SCENE_MAP_PIXELS, SCENE_MAP_QUALITY, type MapLayout } from '../render/layoutSize';
+import type { Vec } from '../render/geometry';
 import type { DungeonStyle, DungeonView } from '../style';
 import { DungeonWorkerClient } from '../worker/DungeonWorkerClient';
 import type { DungeonJob, DungeonRendered } from '../worker/dungeonJob';
@@ -91,6 +92,8 @@ interface DrawnFloors {
   layout: MapLayout;
   /** Each floor's map as a map stores it, the entry floor first. */
   images: ProcessedImage[];
+  /** A Forest's trees' edge, on its entry floor. */
+  treeLine?: Vec[][];
 }
 
 /** Raised where the dungeon worker answered a floor with something else than asked for. */
@@ -111,7 +114,8 @@ async function drawFloors(deps: DungeonSceneDeps, options: DungeonSceneOptions):
     view: options.view,
     output,
   });
-  const mapOf = (floor: number): DungeonJob['output'] => ({ kind: 'map', ...size, bitmap: true, ...(floor > 0 && { floor }) });
+  // The entry floor's job also answers with the trees' edge of a Forest, whose walls take too long for this thread.
+  const mapOf = (floor: number): DungeonJob['output'] => ({ kind: 'map', ...size, bitmap: true, ...(floor > 0 ? { floor } : { treeLine: true }) });
   // Every bitmap that arrives goes to a conversion, which takes it over.
   const converted = (drawn: Promise<DungeonRendered>): Promise<ProcessedImage> => drawn.then(({ image }) => {
     if (image.type !== 'bitmap') throw new NotDrawn();
@@ -121,10 +125,10 @@ async function drawFloors(deps: DungeonSceneDeps, options: DungeonSceneOptions):
   const firstImage = converted(first);
   const pending: Promise<unknown>[] = [firstImage];
   try {
-    const { model, map: layout } = await first;
+    const { model, map: layout, treeLine } = await first;
     const images = [firstImage, ...model.floors.slice(1).map((_, i) => converted(deps.render(job(model, mapOf(i + 1)))))];
     pending.push(...images.slice(1));
-    return { model, layout, images: await Promise.all(images) };
+    return { model, layout, images: await Promise.all(images), ...(treeLine && { treeLine }) };
   } catch (error) {
     if (error instanceof NotDrawn) return null;
     throw error;
@@ -141,7 +145,7 @@ async function create(deps: DungeonSceneDeps, options: DungeonSceneOptions): Pro
 
   const drawn = await drawFloors(deps, options);
   if (!drawn) return refused(t('dungeon.problem.notDrawn'));
-  const { model, layout, images } = drawn;
+  const { model, layout, images, treeLine } = drawn;
   // A map within the limits is kept as drawn; one the workers scaled down has smaller cells
   const sizes = await Promise.all(images.map(async (image) => (await imageDimensions(image.image)) ?? image.scaledDown?.to ?? { width: layout.widthPx, height: layout.heightPx }));
   const saved = sizes[0]!;
@@ -149,7 +153,7 @@ async function create(deps: DungeonSceneDeps, options: DungeonSceneOptions): Pro
   if (sizes.some((size) => size.width !== saved.width || size.height !== saved.height)) return refused(t('dungeon.problem.notDrawn'));
   const placement = placementOn(layout, saved);
   const settings = deps.assetService.getCollectionSettings(collection.id);
-  const parts = dungeonScene(model, style, view, placement, saved, resolveMeasurementSettings(settings.gridDefaults, null));
+  const parts = dungeonScene(model, style, view, placement, saved, resolveMeasurementSettings(settings.gridDefaults, null), treeLine);
   if (!parts) return refused(t('dungeon.problem.crowdedWalls'));
   if (parts.unplaced > 0) console.debug(`[Atlas] ${options.name}: ${parts.unplaced} doors had no walls beside them and were left open`);
 
@@ -162,7 +166,7 @@ async function create(deps: DungeonSceneDeps, options: DungeonSceneOptions): Pro
     collection,
     baseName: dungeonSceneName(options.name),
     maps,
-    note: { text: () => dungeonNote(options.name.trim() || dungeonSceneName(options.name), rooms) },
+    note: { text: () => dungeonNote(options.name.trim() || dungeonSceneName(options.name), rooms, model) },
     content: (paths, notePath) => {
       const levels = levelIds && floorLevels(levelIds, paths, stackOf(model));
       // The first level's map is the scene's background

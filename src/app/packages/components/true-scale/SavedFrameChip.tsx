@@ -1,0 +1,28 @@
+import React from "react"
+import { Bookmark, Play, Trash2 } from "lucide-react"
+import { ToolButton } from "../primitives/ToolButton"
+import { t } from "../../../i18n"
+import type { SavedFrameControls } from "./useGlass"
+
+/**
+ * The chip of a frame the GM saved, inside its top-left corner while the pointer is over the
+ * frame or the chip: its number, Show players here and Remove. Dragging it moves the frame.
+ */
+export function SavedFrameChip({ controls, ref }: { controls: SavedFrameControls; ref: React.Ref<HTMLDivElement> }): React.ReactElement {
+  const { shown } = controls
+  return (
+    <div
+      ref={ref}
+      className="atlas-vtt-toolbar atlas-glass-chip"
+      hidden={shown === null}
+      onPointerDown={controls.pointerDown}
+      onPointerEnter={() => controls.hover(true)}
+      onPointerLeave={() => controls.hover(false)}
+    >
+      <Bookmark className="atlas-glass-chip__icon" aria-hidden="true" />
+      <span className="atlas-glass-chip__label">{t("glass.frameNumber", { number: (shown ?? 0) + 1 })}</span>
+      <ToolButton icon={Play} label={t("glass.show")} isActive={false} onClick={controls.show} tooltipSide="bottom" />
+      <ToolButton icon={Trash2} label={t("glass.remove")} isActive={false} onClick={controls.remove} tooltipSide="bottom" />
+    </div>
+  )
+}

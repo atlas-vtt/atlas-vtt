@@ -1,10 +1,10 @@
 import { doorCells } from '../../../geometry';
 import type { CellDir, DungeonDoor } from '../../../model';
 import type { Hand } from '../../art/hand';
-import { traceRings } from '../../art/outline';
+import type { CaveWay } from '../../../caveModel';
 import { polyPath } from '../../art/paths';
-import { pointsBounds, shapeRings, type Bounds, type Vec } from '../../geometry';
-import { wallInkWidth } from '../../wallInk';
+import { pointsBounds, type Bounds, type Vec } from '../../geometry';
+import { clipToRock, drawnWay } from './wayDoors';
 
 /** Across (u) and along (v), in map coordinates: the hand's light never turns with the way. */
 export interface WayFrame {
@@ -36,22 +36,21 @@ export function doorFrame(door: DungeonDoor, down = door.dir): WayFrame {
   return wayFrame({ x: b.minX, y: b.minY, w: b.maxX - b.minX + 1, h: b.maxY - b.minY + 1 }, down);
 }
 
+/** The ways that keep the narrows' shoulders: a crawl, a squeeze and a letterbox stand in a neck of the cave's own rock (`holdNecks`). */
+const SHOULDERED = new Set<CaveWay>(['walk', 'sump', 'traverse', 'breakdown', 'climb']);
+
 /** Rock shoulders outside the full-width route, with a chipped face towards the opening. */
 export function drawNarrows(hand: Hand): void {
   const { scene } = hand;
-  const doors = scene.env.dungeon.doors.filter(door => door.kind === 'opening' || door.kind === 'door');
+  const doors = scene.env.dungeon.doors.filter(door => {
+    const way = drawnWay(door);
+    return way !== null && SHOULDERED.has(way);
+  });
   if (!doors.length) return;
-  const { ctx, style } = scene.env;
-  const { grid } = scene;
+  const { ctx } = scene.env;
   ctx.save();
   // The floor outline bends inside a cell: preserve its ink, including Engraved's second cut.
-  // Intersect the outside of each floor piece; their grown outlines are already shared geometry.
-  for (const shape of scene.floors) {
-    ctx.beginPath();
-    ctx.rect(grid.x0, grid.y0, grid.w / grid.res, grid.h / grid.res);
-    traceRings(ctx, shapeRings(shape, wallInkWidth(style) + 0.05, scene.frame.pxPerCell));
-    ctx.clip('evenodd');
-  }
+  clipToRock(scene);
   for (const door of doors) {
     const { at, across } = doorFrame(door);
     for (const side of [-1, 1]) {

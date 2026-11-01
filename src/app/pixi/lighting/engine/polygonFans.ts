@@ -2,6 +2,7 @@ import { Buffer, BufferUsage, Geometry, UniformGroup } from 'pixi.js';
 import { HALO, LIGHT_LEVELS, softEdge } from '../../../lighting/lightingConstants';
 import type { Point } from '../../../types/visionTypes';
 import type { Polygon } from '../../../vision/visibility';
+import { fanTriangles } from './fanTriangles';
 import type { EngineLight } from './types';
 
 /** A polygon star-shaped around `origin`: a light's reach, a part of an area light's, a convex piece around its middle. */
@@ -10,8 +11,11 @@ export interface Fan {
   polygon: Polygon;
 }
 
-/** Every fan of `fans` in one geometry (world px in `aPosition`): a triangle fan from each origin covers its polygon exactly. */
-export function fansGeometry(fans: readonly Fan[]): Geometry {
+/** Of a texel of the target, how far a corner may lie off a ray and count as on it: wider than any rasteriser's rounding (at least four bits), and too thin to matter. */
+const ON_RAY_TEXELS = 1 / 8;
+
+/** Every fan of `fans` in one geometry (world px in `aPosition`), for a target of `texel` world px: triangles from each origin that cover its polygon exactly, each texel once (`fanTriangles`). */
+export function fansGeometry(fans: readonly Fan[], texel: number): Geometry {
   const positions: number[] = [];
   const indices: number[] = [];
   for (const { origin, polygon } of fans) {
@@ -19,7 +23,7 @@ export function fansGeometry(fans: readonly Fan[]): Geometry {
     const first = positions.length / 2;
     positions.push(origin.x, origin.y);
     for (const p of polygon) positions.push(p.x, p.y);
-    for (let i = 1; i <= polygon.length; i++) indices.push(first, first + i, first + (i % polygon.length) + 1);
+    for (const index of fanTriangles(origin, polygon, texel * ON_RAY_TEXELS)) indices.push(first + index);
   }
   // A geometry without a triangle draws nothing.
   if (indices.length === 0) {

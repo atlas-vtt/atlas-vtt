@@ -7,7 +7,7 @@ import type { CellPoint, DungeonModel, DungeonRequest, DungeonStair } from '../.
 import { dungeonScene } from '../../../src/app/dungeons/scene/toScene';
 import { DEFAULT_PX_PER_CELL, mapLayout } from '../../../src/app/dungeons/render/layoutSize';
 import { DEFAULT_VIEW } from '../../../src/app/dungeons/style';
-import { DEFAULT_STYLE_ID, dungeonStyle } from '../../../src/app/dungeons/styleCatalog';
+import { DEFAULT_STYLE_ID, dungeonStyle, type DungeonStyleId } from '../../../src/app/dungeons/styleCatalog';
 import type { ThemeId } from '../../../src/app/dungeons/themes/themeTypes';
 import { flightSides, levelLinkList, linkAt } from '../../../src/app/levels/levelLinks';
 import { onLevel } from '../../../src/app/levels/sceneLevels';
@@ -45,13 +45,13 @@ interface Scene {
   size: { w: number; h: number };
 }
 
-function sceneOf(model: DungeonModel): Scene {
+export function sceneOf(model: DungeonModel, look: DungeonStyleId = DEFAULT_STYLE_ID): Scene {
   const layout = mapLayout(model, PX, DEFAULT_VIEW);
   const placement = { originCell: layout.originCell, pxPerCell: PX };
   const image = { width: layout.widthPx, height: layout.heightPx };
-  const parts = dungeonScene(model, dungeonStyle(DEFAULT_STYLE_ID), DEFAULT_VIEW, placement, image, { unitType: 'feet', ruleDistance: 5 });
-  if (!parts?.levelIds) throw new Error(`seed ${model.seed}: no scene of levels`);
-  const levelIds = parts.levelIds;
+  const parts = dungeonScene(model, dungeonStyle(look), DEFAULT_VIEW, placement, image, { unitType: 'feet', ruleDistance: 5 });
+  if (!parts) throw new Error(`seed ${model.seed}: no scene`);
+  const levelIds = parts.levelIds ?? [];
   const levels = bottomUp(stackOf(model)).map((index): SceneLevel => ({ id: levelIds[index]!, elevation: { bottom: 0, top: 10 }, background: null }));
   return { model, levels, levelIds, links: levelLinkList(parts.scene.levelLinks), walls: parts.scene.walls ?? {}, image, origin: layout.originCell, size: { w: layout.cellsWide, h: layout.cellsHigh } };
 }
@@ -80,7 +80,7 @@ function wallsByCell(walls: MoveWalls, scene: Scene): (x: number, y: number) => 
 }
 
 /** A level's lattice of sample points, by component: which points a token's centre walks between. */
-class Walkable {
+export class Walkable {
   private readonly n: number;
   private readonly comp: Int32Array;
   private readonly main: number;

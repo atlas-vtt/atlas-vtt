@@ -2,6 +2,7 @@ import { doorAnchor } from '../geometry';
 import type { CellDir, DungeonDoor } from '../model';
 import { unionRings } from '../render/clipShapes';
 import { doorShape, shapePolygon, shapeRings, type FloorShape, type Vec } from '../render/geometry';
+import { simplifyRing } from '../render/simplifyRing';
 
 /**
  * The centre line of a dungeon's drawn walls, in cells. The renderer strokes every floor shape at
@@ -47,6 +48,19 @@ function ringOf(shape: Exclude<FloorShape, { kind: 'poly' }>, grow: number): Vec
 export function wallRings(floors: readonly FloorShape[], secretDoors: readonly DungeonDoor[], grow: number): Vec[][] {
   const g = snap(grow);
   return unionRings([...floors.flatMap(shape => ringsOf(shape, g)), ...secretDoors.map(door => ringOf(doorShape(door), g))]);
+}
+
+/**
+ * The rings straightened within `tolerance` cells (Douglas–Peucker), none below a triangle: a
+ * cave's outline is traced finer than the lighting of a large map tells apart (`toScene.ts`).
+ * Every corner kept is one of the ring's, so it stays on the grid. None straightened at 0.
+ */
+export function straightenRings(rings: Vec[][], tolerance: number): Vec[][] {
+  if (tolerance <= 0) return rings;
+  return rings.map(ring => {
+    const fewer = simplifyRing(ring, tolerance);
+    return fewer.length >= 3 ? fewer : ring;
+  });
 }
 
 /** A line across a door cell: through `at`, along the door's width (perpendicular to its direction). */

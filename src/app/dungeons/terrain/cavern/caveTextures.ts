@@ -21,6 +21,9 @@ const STEPS = [
   { x: 0, y: -1 },
 ] as const;
 
+/** How often rimstone lies where water steps down. */
+const RIMSTONE_CHANCE = 0.6;
+
 const around = (cells: readonly CellPoint[]): CellPoint[] => cells.flatMap((c) => STEPS.map((d) => ({ x: c.x + d.x, y: c.y + d.y })));
 
 /** Sulphur crust on every free cell beside the acid. */
@@ -75,7 +78,9 @@ export function floorTextures(work: TerrainWork, k: number, rc: RoomCells, rng: 
   if (!floor) return;
   const type = work.typed(k, rc.room.id)?.spec.id;
   const rimstone = rimstoneSpots(work, k, rc);
-  if (rimstone.length > 0 && chance(rng, 0.6)) {
+  // Where water drips from every roof, it builds dams wherever it steps down.
+  const drips = work.cave?.character?.always === 'endless-drips';
+  if (rimstone.length > 0 && chance(rng, drips ? 1 : RIMSTONE_CHANCE)) {
     const allowed = new Set(rimstone.map((c) => cellKey(c.x, c.y)));
     lay(floor, rc, 'rimstone', patch(rc, rng, rimstone, int(rng, 2, 4), (c) => allowed.has(cellKey(c.x, c.y))));
   }

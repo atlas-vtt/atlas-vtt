@@ -10,4 +10,5 @@ export const player = {
   'player.paused': 'Camera paused',
   'player.title': 'Atlas player view',
   'player.setupFailed': 'Failed to set up player window',
+  'player.toggleFullScreen': 'Toggle player window full screen',
 } as const satisfies Record<string, Message>;

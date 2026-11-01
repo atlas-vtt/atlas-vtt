@@ -6,6 +6,8 @@ import { MOTION_EASE_OUT, MOTION_SLOW_MS, prefersReducedMotion } from '../../uti
  * smallest and the tab bar's buttons, so a row never pushes the tabs out of the view.
  */
 const TAB_BAR_KEEPS = 240;
+/** The slot below the scene tabs, where the player window bar hangs. */
+const BELOW_TABS = ':scope > .atlas-top-bar-start > .atlas-top-bar-start__below';
 /** The delay between one card and the next as the stack spreads or gathers. */
 const CARD_STAGGER_MS = 18;
 const MAX_STAGGER_MS = 200;
@@ -45,10 +47,15 @@ function widestRow(bar: HTMLElement): number {
   return width;
 }
 
-/** The room a row of widgets has in the top bar: the view's width, less what the left end keeps. */
-function roomForRow(topBar: HTMLElement): number {
+/**
+ * The room a row of widgets has in the top bar: the view's width, less what the left end keeps.
+ * With scene tabs that is what the tabs keep, or more where the slot below them (the player
+ * window bar) is wider: it hangs beside a row of widgets that reaches down to it.
+ */
+export function roomForRow(topBar: HTMLElement): number {
   const start = topBar.querySelector<HTMLElement>(':scope > .atlas-top-bar-start');
-  const keeps = start?.querySelector('.atlas-scene-tab-bar') ? TAB_BAR_KEEPS : start?.offsetWidth ?? 0;
+  const below = topBar.querySelector<HTMLElement>(BELOW_TABS)?.offsetWidth ?? 0;
+  const keeps = start?.querySelector('.atlas-scene-tab-bar') ? Math.max(TAB_BAR_KEEPS, below) : start?.offsetWidth ?? 0;
   return topBar.clientWidth - keeps - parseFloat(getComputedStyle(topBar).columnGap);
 }
 
@@ -129,6 +136,9 @@ export function useWidgetStack(ids: readonly string[], content: unknown): Widget
     if (!topBar) return undefined;
     const observer = new ResizeObserver(measure);
     observer.observe(topBar);
+    // The slot below the tabs takes no room in the row, so the row does not resize when it fills
+    const below = topBar.querySelector(BELOW_TABS);
+    if (below) observer.observe(below);
     return () => observer.disconnect();
   }, [topBar, measure]);
 

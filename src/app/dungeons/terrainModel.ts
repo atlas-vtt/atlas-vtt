@@ -5,7 +5,7 @@
  * platform is where something could stand, not who stands there.
  */
 
-import type { CellDir, CellPoint } from './model';
+import type { CellDir, CellPoint, VerticalKind } from './model';
 
 export type TerrainKind =
   // Half cover: low enough to shoot over.
@@ -32,6 +32,8 @@ export type TerrainKind =
   | 'boulder-choke'
   // Where a fall from a hole above ends: loose rubble, difficult terrain.
   | 'chasm-floor'
+  // A cave's aven: a chimney in the roof over this cell, rising to the floor above or into the dark; walked under.
+  | 'aven'
   // Hazards.
   | 'chasm'
   | 'shaft'
@@ -56,6 +58,16 @@ export type CoverLevel = 'half' | 'three-quarters' | 'total';
 /** What a hazard is, for its name and the room's note: a fall, something that burns or drowns. */
 export type HazardKind = 'chasm' | 'shaft' | 'lava' | 'acid' | 'deep-water' | 'pit';
 
+/**
+ * A cave's way up or down on the piece that opens it (a shaft in the floor, an aven in the roof),
+ * so the note and the hover label can say how far it goes and how it is passed: feet, rolled as
+ * the book times a descent, and the kind its width makes of it.
+ */
+export interface TerrainDrop {
+  depth: number;
+  kind: VerticalKind;
+}
+
 /** What the DM's hover label and the room's note read of a piece. */
 export interface TerrainTraits {
   difficult?: true;
@@ -65,6 +77,8 @@ export interface TerrainTraits {
   elevation?: number;
   /** Something a party can look at or poke at: a mosaic, a basin, a ring of standing stones. */
   interactive?: true;
+  /** A cave's vertical way: how far it rises or drops, and how it is passed. */
+  drop?: TerrainDrop;
 }
 
 /**

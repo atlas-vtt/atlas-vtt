@@ -38,6 +38,7 @@ export const TERRAIN_KINDS: Readonly<Record<TerrainKind, KindInfo>> = {
   rimstone: { name: 'dungeon.terrain.rimstone', traits: difficult, footing: 'walk' },
   'boulder-choke': { name: 'dungeon.terrain.boulderChoke', traits: difficult, footing: 'walk' },
   'chasm-floor': { name: 'dungeon.terrain.chasmFloor', traits: difficult, footing: 'walk' },
+  aven: { name: 'dungeon.terrain.aven', traits: {}, footing: 'walk' },
   chasm: { name: 'dungeon.terrain.chasm', traits: { hazard: 'chasm' }, footing: 'block' },
   shaft: { name: 'dungeon.terrain.shaft', traits: { hazard: 'shaft', elevation: -2 }, footing: 'block' },
   channel: { name: 'dungeon.terrain.lavaChannel', traits: { hazard: 'lava' }, footing: 'block' },

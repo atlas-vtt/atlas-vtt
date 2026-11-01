@@ -1,7 +1,9 @@
 import type { DungeonTerrain, TerrainKind } from '../../model';
 import { HOLE_KINDS } from '../../terrain/catalog';
 import type { Hand } from '../art/hand';
+import { onCaveFloor } from '../cave/caveArt';
 import { UNDERGROWTH } from '../growth/growthForms';
+import { drawAven } from './aven';
 import { drawBridges } from './bridges';
 import { drawBoneLitter, drawGuano, drawSulphurCrust } from './caveStains';
 import { drawBoulderChoke, drawRimstone } from './caveStones';
@@ -12,6 +14,10 @@ import { drawHoles } from './holes';
 import { drawPool, drawPortalRing } from './interest';
 import { shownPieces } from './pieces';
 import { drawRaised } from './raised';
+import { drawCaveTerrace } from './caveTerrace';
+import { openingAbove } from '../vertical/openings';
+import { drawOverhead } from '../vertical/overhead';
+import { raggedGround } from './scatterPatch';
 import { drawObelisk, drawPillar, drawStatue, drawWallFragment } from './tall';
 
 /**
@@ -34,16 +40,21 @@ const GROUND: Partial<Record<TerrainKind, Draw>> = {
   'sulphur-crust': drawSulphurCrust,
   rimstone: drawRimstone,
   'boulder-choke': drawBoulderChoke,
-  'rubble-field': (hand, piece) => drawScatter(hand, piece, 0.05, 15),
-  'chasm-floor': (hand, piece) => drawScatter(hand, piece, 0.075, 9),
+  // On a cave's floor the field is one ragged patch; on a built floor it keeps its whole cells.
+  'rubble-field': (hand, piece) => drawScatter(hand, piece, 0.05, 15, onCaveFloor(hand.scene.env) ? raggedGround(hand.scene, piece) : undefined),
+  'chasm-floor': drawChasmFloor,
   'broken-floor': drawBrokenFloor,
   mosaic: drawMosaic,
   pit: drawPit,
   'deep-water': drawDeepWater,
   channel: drawChannel,
+  aven: drawAven,
 };
 
-const RAISED: Partial<Record<TerrainKind, Draw>> = { platform: drawRaised, ledge: drawRaised };
+/** On a cave's floor a raised floor is a terrace in the rock, its edge drawn where it steps down; elsewhere a dressed platform. */
+const drawRaisedFloor: Draw = (hand, piece) => (onCaveFloor(hand.scene.env) ? drawCaveTerrace(hand, piece) : drawRaised(hand, piece));
+
+const RAISED: Partial<Record<TerrainKind, Draw>> = { platform: drawRaisedFloor, ledge: drawRaisedFloor };
 
 const STANDING: Partial<Record<TerrainKind, Draw>> = {
   'low-wall': drawLowWall,
@@ -55,6 +66,13 @@ const STANDING: Partial<Record<TerrainKind, Draw>> = {
   pool: drawPool,
   'portal-ring': drawPortalRing,
 };
+
+/** The floor under a hole above: what fell, and on a cave's floor the hole's outline overhead, dashed. */
+function drawChasmFloor(hand: Hand, piece: DungeonTerrain): void {
+  drawScatter(hand, piece, 0.075, 9);
+  if (!onCaveFloor(hand.scene.env)) return;
+  for (const ring of openingAbove(hand.scene.env, piece)) drawOverhead(hand, ring, { seed: piece.id, narrows: false, under: 'none' });
+}
 
 /** Kinds drawn outside these tables: holes (`holes.ts`), bridges (`bridges.ts`), undergrowth (`growthForms.ts`) and shallow water, which the water draws. */
 const DRAWN_ELSEWHERE: readonly TerrainKind[] = [...HOLE_KINDS, 'bridge', ...UNDERGROWTH, 'shallow-water'];

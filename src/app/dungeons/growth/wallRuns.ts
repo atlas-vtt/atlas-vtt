@@ -16,6 +16,8 @@ export const RUN_STEP = 0.25;
 export const HANG = 0.3;
 /** How far a run keeps from a doorway's cell, in cells. */
 const DOOR_CLEARANCE = 0.2;
+/** How much farther a door may lie from the edge's box and still be asked: rounding never drops one that bars. */
+const NEAR_SLACK = 1;
 
 type EdgePoint = { at: CellPoint; inward: CellPoint };
 
@@ -84,6 +86,26 @@ function toDoor(p: CellPoint, door: DungeonDoor): number {
   return Math.hypot(dx, dy);
 }
 
+/**
+ * The doors that may come within `DOOR_CLEARANCE` of a point of `edge`: a cave floor has many doors
+ * and a large chamber's edge many points, so a door whose cell, or the edge it stands on, lies
+ * farther than that from the box round the edge is never asked. A door set aslant is always kept.
+ */
+function doorsNear(edge: readonly EdgePoint[], doors: readonly DungeonDoor[]): DungeonDoor[] {
+  const xs = edge.map((p) => p.at.x);
+  const ys = edge.map((p) => p.at.y);
+  const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+  const gap = (lo: number, hi: number, from: number, to: number): number => Math.max(lo - to, from - hi, 0);
+  return doors.filter((door) => {
+    if (door.edge && door.dir.x !== 0 && door.dir.y !== 0) return true;
+    const half = door.edge ? doorCells(door).length / 2 : 0;
+    const m = door.edge ? doorMiddle(door) : { x: door.x + 0.5, y: door.y + 0.5 };
+    // A cell door is its cell; a door on an edge the stretch of that edge it spans.
+    const [rx, ry] = door.edge ? [half * Math.abs(door.dir.y), half * Math.abs(door.dir.x)] : [0.5, 0.5];
+    return Math.hypot(gap(x0, x1, m.x - rx, m.x + rx), gap(y0, y1, m.y - ry, m.y + ry)) <= DOOR_CLEARANCE + NEAR_SLACK;
+  });
+}
+
 /** The cell a climber hangs over at a point of the edge. */
 export function hangCell(at: CellPoint, inward: CellPoint): CellPoint {
   return { x: Math.floor(at.x + inward.x * HANG), y: Math.floor(at.y + inward.y * HANG) };
@@ -98,7 +120,7 @@ export interface WallRun {
 /** The runs of `room`'s wall a climber may take, at least `least` points long, in order round the room. */
 export function wallRuns(room: DungeonRoom, doors: readonly DungeonDoor[], space: GrowthSpace, least = 4): WallRun[] {
   const edge = edgeOf(room);
-  const ways = doors.filter((d) => d.kind !== 'secret');
+  const ways = doorsNear(edge, doors.filter((d) => d.kind !== 'secret'));
   const open = edge.map(({ at, inward }) => space.forClimber(hangCell(at, inward)) && ways.every((door) => toDoor(at, door) > DOOR_CLEARANCE));
   const n = edge.length;
   // Start the walk at a barred point, so a run is never cut where the ring closes.

@@ -53,6 +53,7 @@ export const DRAWN_TERRAIN_KINDS: ReadonlySet<TerrainKind> = new Set<TerrainKind
   'mosaic',
   'pool',
   'portal-ring',
+  'aven',
 ]);
 
 /** The pieces of a house's grounds with a drawing (`houseModel.ts`, drawn in `render/grounds/`). */

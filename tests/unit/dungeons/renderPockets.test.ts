@@ -1,9 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import { generateDungeon } from '../../../src/app/dungeons/generate';
+import { cellsOf } from '../../../src/app/dungeons/geometry';
+import type { CellPoint, DungeonModel, DungeonRoom } from '../../../src/app/dungeons/model';
 import { inPocket, filledPockets } from '../../../src/app/dungeons/render/pockets';
 import { visibleDungeon } from '../../../src/app/dungeons/render/visibleDungeon';
 import { DEFAULT_VIEW } from '../../../src/app/dungeons/style';
 import { addDoor, addRoom, emptyModel, entryFloor } from '../../fixtures/dungeonModelBuilder';
+
+/** Cells x0..x1 × y0..y1, both ends included. */
+const block = (x0: number, y0: number, x1: number, y1: number): CellPoint[] => cellsOf({ x0, y0, x1, y1 });
+
+/**
+ * A cave of two passages, built by hand so the generator's changes never move it. A ring round a
+ * 4 × 4 lozenge of rock, broken by one cell of rock (5, 4) at its south-east corner: a neck one
+ * cell wide, which bands 0.62 wide close. East of it a U whose arms stand seven cells apart round
+ * a bay of rock, open to the south.
+ */
+function bandedCave(): DungeonModel {
+  const model: DungeonModel = { ...emptyModel(10), theme: 'cavern' };
+  const floor = entryFloor(model);
+  floor.cave = { lane: [], heights: [], faults: [], basins: [], streams: [], dams: [] };
+  const ring = [...block(0, 0, 5, 0), ...block(0, 5, 5, 5), ...block(0, 1, 0, 4), ...block(5, 1, 5, 3)];
+  const u = [...block(6, 0, 16, 0), ...block(8, 1, 8, 6), ...block(16, 1, 16, 6)];
+  addRoom(floor, { x: 0, y: 0, w: 6, h: 6, axis: { x: 0, y: 1 }, cells: ring } as DungeonRoom);
+  addRoom(floor, { x: 6, y: 0, w: 11, h: 7, axis: { x: 1, y: 0 }, parent: 0, cells: u } as DungeonRoom);
+  addDoor(floor, 2, -1, { x: 0, y: 1 }, 'opening', null, 0);
+  addDoor(floor, 6, 0, { x: 1, y: 0 }, 'opening', 0, 1);
+  return model;
+}
 
 describe('rock the rooms close in on', () => {
   // A dungeon with rock walled in between its rooms.
@@ -46,12 +70,14 @@ describe('rock the rooms close in on', () => {
   });
 
   it('in a cave, fills the rock the band closes off however wide, but never the open paper round it', () => {
-    // Seed 606: a lozenge of rock the passages ring, open to the outer rock by a neck narrower than two bands.
-    const cave = visibleDungeon(generateDungeon({ seed: 606, theme: 'cavern', tags: ['medium', 'wet'], floors: 2 }), DEFAULT_VIEW);
+    const cave = visibleDungeon(bandedCave(), DEFAULT_VIEW);
     const filled = filledPockets(cave, 0.62);
-    expect(cave.field.distance(-16, -8)).toBeGreaterThan(1.24);
-    expect(inPocket(filled, -16, -8)).toBe(true);
+    // The lozenge the ring walls in, two cells from its floor, open to the outer rock by a neck narrower than two bands.
+    expect(cave.field.distance(3, 3)).toBeGreaterThan(1.24);
+    expect(inPocket(filled, 3, 3)).toBe(true);
     expect(inPocket(filled, cave.bounds.minX - 1, cave.bounds.minY - 1)).toBe(false);
-    expect(inPocket(filled, -23, -23)).toBe(false);
+    // The bay between the arms of the U, open wide onto the outer rock.
+    expect(cave.field.distance(12.5, 4)).toBeGreaterThan(1.24);
+    expect(inPocket(filled, 12.5, 4)).toBe(false);
   });
 });

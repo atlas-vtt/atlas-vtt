@@ -24,7 +24,7 @@ const PLAIN_ARENA: ArenaSpec = { setPieces: [], mirrored: ['pillar', 'wall-fragm
 
 /** The arena of a typed boss room: its climax type's, else a plain one. */
 export function arenaOf(work: TerrainWork, typed: TypedRoom): ArenaSpec {
-  return programmeOf(work.theme.definition, work.tags)?.climax.find((c) => c.type === typed.spec.id)?.arena ?? PLAIN_ARENA;
+  return programmeOf(work.theme.definition, work.tags, work.cave?.variant)?.climax.find((c) => c.type === typed.spec.id)?.arena ?? PLAIN_ARENA;
 }
 
 /** The arena of its climax type, then the type's pieces besides the one it is built round (a throne room's statues), keeping the arena open. */

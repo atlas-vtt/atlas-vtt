@@ -5,8 +5,8 @@ import switcherCss from '../../src/app/react/components/levels/level-switcher.sc
 
 /**
  * The map UI as `UIRoot` lays it out, reduced to what decides the stacking: the main toolbar's
- * row, which holds the toolbar's overlays (the asset manager and with it the map creator and the
- * New scene dialog, the command palette), and the level switcher after it, at the map's left edge.
+ * row, which holds the command palette, and the level switcher after it, at the map's left edge.
+ * (The asset manager the toolbar opens is drawn on the document's body, outside the leaf.)
  * Styled by the plugin's real stylesheets.
  */
 const MAP_UI = (overlay: string): string => `
@@ -21,13 +21,6 @@ const MAP_UI = (overlay: string): string => `
       </div>
       <div class="atlas-level-switcher"><div class="atlas-level-switcher__level">Ground</div></div>
     </div>
-  </div>
-`;
-
-const ASSET_MANAGER = `
-  <div class="atlas-asset-manager-modal">
-    <div class="atlas-asset-manager-backdrop"></div>
-    <div class="atlas-asset-manager-window"></div>
   </div>
 `;
 
@@ -66,12 +59,9 @@ describe('the layer of the level switcher', () => {
     expect(onTopOf('.atlas-level-switcher__level')?.className).toBe('atlas-level-switcher__level');
   });
 
-  it.each([
-    ['the asset manager', ASSET_MANAGER, 'atlas-asset-manager-window'],
-    ['the command palette', COMMAND_PALETTE, 'atlas-command-palette-overlay'],
-  ])('lies below %s', (_name, overlay, onTop) => {
-    leaf.innerHTML = MAP_UI(overlay);
+  it('lies below the command palette', () => {
+    leaf.innerHTML = MAP_UI(COMMAND_PALETTE);
 
-    expect(onTopOf('.atlas-level-switcher__level')?.className).toBe(onTop);
+    expect(onTopOf('.atlas-level-switcher__level')?.className).toBe('atlas-command-palette-overlay');
   });
 });

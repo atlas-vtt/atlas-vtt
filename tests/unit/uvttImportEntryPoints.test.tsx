@@ -5,7 +5,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { TFile, type App } from 'obsidian';
 import type { UvttImported } from '../../src/app/import/uvtt/importUvttFile';
 import { runUvttImport } from '../../src/app/import/uvtt/runUvttImport';
-import { runVideoMapImport } from '../../src/app/import/videoMaps/runVideoMapImport';
 import { TokenCreator } from '../../src/app/packages/components/asset-manager/TokenCreator';
 import { FolderGridItem } from '../../src/app/packages/components/asset-manager/components/FolderGridItem';
 import { mapFilesAmong, mayCarryMapFile, useUvttImport, type ImportMaps } from '../../src/app/packages/components/asset-manager/hooks/useUvttImport';
@@ -25,7 +24,6 @@ vi.mock('obsidian', async (importOriginal) => {
   return { ...await importOriginal<typeof import('obsidian')>(), Notice };
 });
 vi.mock('../../src/app/import/uvtt/runUvttImport', () => ({ runUvttImport: vi.fn() }));
-vi.mock('../../src/app/import/videoMaps/runVideoMapImport', () => ({ runVideoMapImport: vi.fn() }));
 vi.mock('../../src/app/packages/components/asset-manager/token-creator/TokenPreviewCard', () => ({ TokenPreviewCard: () => null }));
 vi.mock('../../src/app/packages/components/asset-manager/token-creator/tokenImages', () => {
   const converted = { image: new Blob(), thumbnail: null, preview: null, sourcePreview: null };
@@ -56,7 +54,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   notices.shown.length = 0;
   vi.mocked(runUvttImport).mockResolvedValue([]);
-  vi.mocked(runVideoMapImport).mockResolvedValue(1);
   vi.stubGlobal('ResizeObserver', class { observe(): void {} unobserve(): void {} disconnect(): void {} });
   URL.createObjectURL = vi.fn(() => 'blob:art');
   URL.revokeObjectURL = vi.fn();
@@ -104,11 +101,12 @@ describe('importing maps in the asset manager', () => {
   interface Props { isOpen: boolean; isMapCreatorOpen: boolean; isBusy: boolean }
   const OPEN: Props = { isOpen: true, isMapCreatorOpen: false, isBusy: false };
 
-  function manager(initial: Props = OPEN): { importMaps: () => ImportMaps; set: (props: Partial<Props>) => void; onSceneOpened: ReturnType<typeof vi.fn> } {
+  function manager(initial: Props = OPEN): { importMaps: () => ImportMaps; set: (props: Partial<Props>) => void; onSceneOpened: ReturnType<typeof vi.fn>; onVideos: ReturnType<typeof vi.fn> } {
     const onSceneOpened = vi.fn();
+    const onVideos = vi.fn();
     let current = initial;
-    const { result, rerender } = renderHook((props: Props) => useUvttImport({ app, assetService: assets, collectionId: 'Dungeons', onSceneOpened, ...props }), { initialProps: initial });
-    return { importMaps: () => result.current, onSceneOpened, set: (props) => { current = { ...current, ...props }; rerender(current); } };
+    const { result, rerender } = renderHook((props: Props) => useUvttImport({ app, assetService: assets, collectionId: 'Dungeons', onSceneOpened, onVideos, ...props }), { initialProps: initial });
+    return { importMaps: () => result.current, onSceneOpened, onVideos, set: (props) => { current = { ...current, ...props }; rerender(current); } };
   }
 
   /** Fires a native drag event at `target` and tells whether it was taken (default prevented). */
@@ -127,12 +125,12 @@ describe('importing maps in the asset manager', () => {
     return (result) => finish(result);
   }
 
-  it('adds dropped videos to the collection as animated maps, opening no scene', async () => {
-    const { onSceneOpened } = manager();
+  it('hands dropped videos to the map creator and imports nothing by itself', async () => {
+    const { onSceneOpened, onVideos } = manager();
 
     expect(drag('drop', container, [river, cave]).taken).toBe(true);
 
-    await waitFor(() => expect(runVideoMapImport).toHaveBeenCalledWith(app, assets, [river], 'Dungeons'));
+    expect(onVideos).toHaveBeenCalledExactlyOnceWith([river]);
     expect(runUvttImport).not.toHaveBeenCalled();
     expect(onSceneOpened).not.toHaveBeenCalled();
   });
@@ -344,6 +342,30 @@ describe('adding maps with the map creator', () => {
     expect(onImportMaps).toHaveBeenCalledWith([crypt], 'Dungeons', expect.any(Function));
     expect(onImportMaps.mock.calls[0]![2]!()).toBe(false);
     expect(screen.getByText('No maps yet')).toBeTruthy();
+  });
+
+  it('shows a picked video as a preview to name, tag and create, and imports nothing yet', async () => {
+    const onImportMaps = vi.fn<ImportMaps>(async () => {});
+    mount(<TokenCreator isOpen onClose={() => {}} mode="map" selectedCollection="Dungeons" onImportMaps={onImportMaps} />);
+
+    pick([river]);
+
+    await waitFor(() => expect(screen.getByText('1 map')).toBeTruthy());
+    expect(onImportMaps).not.toHaveBeenCalled();
+  });
+
+  it('shows the videos it was opened with', async () => {
+    mount(<TokenCreator isOpen onClose={() => {}} mode="map" selectedCollection="Dungeons" onImportMaps={vi.fn<ImportMaps>()} initialFiles={[river]} />);
+
+    await waitFor(() => expect(screen.getByText('1 map')).toBeTruthy());
+  });
+
+  it('never takes a video as a token', async () => {
+    mount(<TokenCreator isOpen onClose={() => {}} mode="token" selectedCollection="Dungeons" />);
+
+    pick([river, cave]);
+
+    await waitFor(() => expect(screen.getByText('1 token')).toBeTruthy());
   });
 
   it('keeps images as previews and stays open for them', async () => {

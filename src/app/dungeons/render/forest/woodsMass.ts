@@ -19,7 +19,7 @@ const APART = 0.5;
 const COVER_STEP = 0.12;
 
 /**
- * The woods as Watabou's glades and Reprieve draw them: one mass of small leafy clumps packed in
+ * The woods as Reprieve draws them: one mass of small leafy clumps packed in
  * layers along every clearing, its silhouette the clumps' edge (never the outline's), reaching
  * `MASS_DEPTH` into the woods (lone trees in the clearings are `loneTrees`). `outside` is the
  * distance outside every clearing (cells, negative inside). Deepest first, then top to bottom, the

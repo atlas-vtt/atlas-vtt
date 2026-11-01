@@ -1,10 +1,11 @@
 import { generateDungeon } from '../../../src/app/dungeons/generate';
 import type { DungeonModel } from '../../../src/app/dungeons/model';
 import type { ThemeId } from '../../../src/app/dungeons/themes/themeTypes';
+import { dungeonSeeds } from '../../helpers/dungeonSeeds';
 
-/** Themed dungeons over many seeds: 500 seeds, one to three floors, each with one of the tag sets below. */
+/** Themed dungeons over many seeds: 500 seeds (125 unless `VITE_DUNGEON_SEEDS=full`), one to three floors, each with one of the tag sets below. */
 
-export const THEME_SEEDS = 500;
+export const THEME_SEEDS = dungeonSeeds(500, 125);
 export const THEME_TAG_SETS: readonly string[][] = [[], ['small'], ['large'], ['wet'], ['ruined'], ['secret', 'round'], ['crumbling', 'overgrown']];
 
 export interface ThemeRun {

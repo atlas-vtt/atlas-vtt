@@ -5,7 +5,7 @@ import type { WorldMapTree } from '../../../../src/app/online/gm/book/worldMapGa
 import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { FakeSocket, png, workspace } from './fakeTable.ts';
 import { storedRef } from './fakeStoring.ts';
-import { ANA, BEN, BRANNOCH_BOOK, delivered, nameWorldMapTree, ofType, openTable, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
+import { ANA, ANA_OWN, BEN, delivered, nameWorldMapTree, ofType, openTable, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
@@ -112,7 +112,7 @@ describe('the maps the world map leads into', () => {
     from(ANA, { t: 'book-pin', pin: { id: 'b'.repeat(24), x: 0.4, y: 0.6, kind: 'note', title: 'Road', body: '' } });
     from(ANA, { t: 'book-pin', pin: { id: 'c'.repeat(24), map: 'not a map', x: 0.4, y: 0.6, kind: 'note', title: 'Bad', body: '' } });
     await advance(200);
-    expect(shelf.of(BRANNOCH_BOOK).pins).toEqual([
+    expect(shelf.of(ANA_OWN).pins).toEqual([
       { id: 'a'.repeat(24), map: town, x: 0.2, y: 0.3, kind: 'treasure', title: 'Well', body: '' },
       { id: 'b'.repeat(24), x: 0.4, y: 0.6, kind: 'note', title: 'Road', body: '' },
     ]);

@@ -11,34 +11,54 @@ import type { RoomCells } from './roomCells';
 
 const STEPS: readonly CellDir[] = [dir(0, -1), dir(1, 0), dir(0, 1), dir(-1, 0)];
 
-/** A shortest 4-connected way over the room's walkable floor from `from` to `to`, both included; [] where none leads. */
-function lane(rc: RoomCells, from: CellPoint, to: CellPoint): CellPoint[] {
+/**
+ * The shortest 4-connected ways over the room's walkable floor (but `blocked`) from `from` to
+ * every cell of `to`: each cell's step back towards `from`. A breadth-first search gives a cell its
+ * step when it first meets it and never changes it, so one search serves the way to every cell,
+ * and it stops once it has met them all.
+ */
+function waysFrom(rc: RoomCells, from: CellPoint, to: readonly CellPoint[], blocked: ReadonlySet<string>): Map<string, CellPoint | null> {
   const back = new Map<string, CellPoint | null>([[cellKey(from.x, from.y), null]]);
   const queue = [from];
+  const unmet = new Set(to.map((c) => cellKey(c.x, c.y)));
   for (let head = 0; head < queue.length; head++) {
     const at = queue[head] as CellPoint;
-    if (at.x === to.x && at.y === to.y) {
-      const path: CellPoint[] = [];
-      for (let c: CellPoint | null = at; c; c = back.get(cellKey(c.x, c.y)) ?? null) path.push(c);
-      return path.reverse();
-    }
+    unmet.delete(cellKey(at.x, at.y));
+    if (unmet.size === 0) break;
     for (const d of STEPS) {
       const next = { x: at.x + d.x, y: at.y + d.y };
       const key = cellKey(next.x, next.y);
-      if (back.has(key) || !rc.isFloor(next) || rc.isBlocked(next)) continue;
+      if (back.has(key) || !rc.isFloor(next) || rc.isBlocked(next) || blocked.has(key)) continue;
       back.set(key, at);
       queue.push(next);
     }
   }
-  return [];
+  return back;
+}
+
+/** The way from the search's start to `to`, both included; [] where none leads. */
+function wayTo(back: ReadonlyMap<string, CellPoint | null>, to: CellPoint): CellPoint[] {
+  if (!back.has(cellKey(to.x, to.y))) return [];
+  const path: CellPoint[] = [];
+  for (let c: CellPoint | null = to; c; c = back.get(cellKey(c.x, c.y)) ?? null) path.push(c);
+  return path.reverse();
+}
+
+/** The cells of a straight-as-it-gets lane between every pair of the room's needed cells, with `blocked` blocked too. */
+export function laneCells(rc: RoomCells, blocked: ReadonlySet<string> = new Set()): CellPoint[] {
+  const needed = rc.needed;
+  const out: CellPoint[] = [];
+  for (let a = 0; a + 1 < needed.length; a++) {
+    const targets = needed.slice(a + 1);
+    const back = waysFrom(rc, needed[a] as CellPoint, targets, blocked);
+    for (const to of targets) out.push(...wayTo(back, to));
+  }
+  return out;
 }
 
 /** Keeps a straight-as-it-gets lane clear between every pair of the room's needed cells, so nothing stands between doors and stairs. */
 export function reserveLanes(rc: RoomCells): void {
-  const needed = rc.needed;
-  for (let a = 0; a < needed.length; a++) {
-    for (let b = a + 1; b < needed.length; b++) rc.keepClear(lane(rc, needed[a] as CellPoint, needed[b] as CellPoint));
-  }
+  rc.keepClear(laneCells(rc));
 }
 
 /**

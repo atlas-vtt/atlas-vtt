@@ -77,7 +77,7 @@ function directLevel(point: Point, light: LightReach): LightLevel {
  * The priority of the strongest darkness source that covers `point`; none covers it at -Infinity.
  * Its radius itself is not covered, where its picture swallows nothing, as a light's dim radius is not lit.
  */
-export function darknessAt(point: Point, lights: readonly LightReach[]): number {
+export function darknessAt(point: Point, lights: readonly Pick<LightReach, 'origin' | 'dim' | 'polygon' | 'darkness' | 'priority'>[]): number {
   let priority = -Infinity;
   for (const light of lights) {
     if (!light.darkness || (light.priority ?? 0) <= priority) continue;

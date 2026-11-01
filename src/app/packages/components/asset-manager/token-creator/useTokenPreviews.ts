@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ProcessedImage } from '../../../../imageProcessing/imageProcessing';
 import { ImageTooLargeError, ImageUnsupportedError } from '../../../../imageProcessing/imageProcessing';
+import { VideoMapRefusedError } from '../../../../import/videoMaps/videoMapConversion';
+import { isVideoMapPath } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
 import { convertForPreview } from './tokenImages';
 import type { CreatorMode, EditTokenInput, PreviewImage, TokenPreview, TokenPreviewPatch } from './types';
 import { t } from '../../../../i18n';
@@ -184,7 +186,7 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
       console.error(`[TokenCreator] Failed to optimize ${preview.name}:`, error);
       if (!liveIds.current.has(preview.id)) return undefined;
       // An image the browser cannot open is never shown as itself, which would end the window; the card says why instead.
-      if (error instanceof ImageTooLargeError || error instanceof ImageUnsupportedError) queuePatch(preview.id, { isOptimizing: false, refused: error.message });
+      if (error instanceof ImageTooLargeError || error instanceof ImageUnsupportedError || error instanceof VideoMapRefusedError) queuePatch(preview.id, { isOptimizing: false, refused: error.message });
       // Otherwise the upload itself, so the user can see which image failed.
       else queuePatch(preview.id, { previewUrl: URL.createObjectURL(file), isOptimizing: false });
       return undefined;
@@ -197,7 +199,8 @@ export function useTokenPreviews(mode: CreatorMode): TokenPreviewsApi {
     const paths = new Set(previewsRef.current.flatMap(p => sourceOf(p) ?? []));
     const fresh = images.filter(image => {
       const source = sourceOf(image);
-      if (!image.file.type.startsWith('image/') || (source && paths.has(source))) return false;
+      const takes = image.file.type.startsWith('image/') || (mode === 'map' && isVideoMapPath(image.file.name));
+      if (!takes || (source && paths.has(source))) return false;
       if (source) paths.add(source);
       return true;
     }).map(image => ({ ...previewFromFile(image.file), ...image, tags: image.tags ?? [], showRing: image.showRing ?? defaultRing }));

@@ -242,6 +242,12 @@
       &:not(:has(> .atlas-scene-tab-bar)) {
         flex-shrink: 0;
       }
+
+      // A menu or TrueScale's panel open from the player window bar stands over the level
+      // switcher and the toolbar row, as their menus do
+      &:has(.atlas-player-window-bar .atlas-dropdown-content) {
+        z-index: $z-atlas-dropdown;
+      }
     }
 
     .atlas-top-bar-start__below {
@@ -645,23 +651,6 @@
       background: transparent !important;
     }
 
-    // States of the menu's buttons that the toolbar's button rules above would flatten
-    .atlas-dropdown-content button.btn {
-      &.atlas-dropdown-mode-btn--active {
-        background: transparent !important;
-        color: var(--interactive-accent) !important;
-        border: $border-width-s solid var(--interactive-accent) !important;
-      }
-
-      &.atlas-dropdown-btn--destructive {
-        color: var(--text-error) !important;
-
-        &:hover {
-          background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
-        }
-      }
-    }
-
     // Round only the outer edges of the tool button
     > .atlas-tool-button:first-child button.btn {
       border-top-left-radius: var(--atlas-bar-start-radius, #{$radius-l}) !important;
@@ -678,6 +667,24 @@
     .atlas-dropdown-trigger {
       height: $button-height-l; // match tool button height (40px)
       border-left: $border-width-s solid var(--divider-color);
+    }
+  }
+
+  // States of the buttons in a bar's menus (tool groups, the player window bar) that the bar's
+  // button rules above would flatten
+  #{$toolbars} .atlas-dropdown-content button.btn {
+    &.atlas-dropdown-mode-btn--active {
+      background: transparent !important;
+      color: var(--interactive-accent) !important;
+      border: $border-width-s solid var(--interactive-accent) !important;
+    }
+
+    &.atlas-dropdown-btn--destructive {
+      color: var(--text-error) !important;
+
+      &:hover {
+        background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
+      }
     }
   }
 
@@ -1080,6 +1087,29 @@
   .pin-header-level {
     color: var(--text-muted);
     background: var(--background-modifier-hover);
+  }
+
+  // The sections around a heading: those farthest up give way first, so the nearest stays readable
+  .pin-header-trail {
+    @include atlas-flex-row($gap: 0);
+    min-width: 0;
+    font-size: $font-ui-smaller;
+    color: var(--text-faint);
+  }
+
+  .pin-header-section {
+    flex: 0 1000 auto;
+    min-width: 0;
+    @include atlas-truncate;
+
+    &:last-child {
+      flex-shrink: 1;
+    }
+  }
+
+  .pin-header-separator {
+    flex-shrink: 0;
+    white-space: pre;
   }
 
   .pin-header-file {

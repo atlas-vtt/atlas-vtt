@@ -6,6 +6,8 @@ import { STANDING_LIST } from '../keyboard/tooltipEscape';
 import { runInBackground } from '../utils/backgroundTask';
 import type { PinCreateEntry, PinLinkTarget } from './pinCreateEntries';
 import { encounterFoldersOf, type EncounterFolder } from '../encounters/encounterFolders';
+import { headingLink } from '../services/headingLinks';
+import { fillHeadingRow, matchingHeadings } from './pinHeadingRows';
 
 const RESULT_LIMIT = 30;
 const BY_NAME = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
@@ -225,25 +227,23 @@ export function createPinNoteSearch(container: HTMLElement, options: PinNoteSear
     }
 
     const needle = headingQuery.toLowerCase();
-    const headings = app.metadataCache.getFileCache(targetFile)?.headings ?? [];
-    if (headings.length === 0) {
+    const cache = app.metadataCache.getFileCache(targetFile);
+    const headings = cache?.headings ?? [];
+    if (!cache || headings.length === 0) {
       addWholeNoteEntry(targetFile, t('pin.search.pinWhole'));
       return;
     }
 
     if (needle === '') addWholeNoteEntry(targetFile, t('pin.search.whole'));
 
-    const matching = headings.filter((h) => h.heading.toLowerCase().includes(needle));
+    const matching = matchingHeadings(headings, needle);
     if (matching.length === 0) {
       results.createDiv({ cls: 'pin-empty-state', text: t('pin.search.noHeaders') });
       return;
     }
-    matching.forEach((header) => {
-      const item = addEntry(() => pick(`${targetFile.path}#${header.heading}`));
-      item.addClass('pin-header-item');
-      item.createSpan({ cls: 'pin-header-level', text: `H${header.level}` });
-      item.createSpan({ cls: 'pin-result-name', text: header.heading });
-      item.createSpan({ cls: 'pin-header-file', text: noteLabel(targetFile) });
+    matching.forEach((entry) => {
+      const item = addEntry(() => pick(`${targetFile.path}#${headingLink(cache, entry.heading)}`));
+      fillHeadingRow(item, entry, noteLabel(targetFile));
     });
   };
 

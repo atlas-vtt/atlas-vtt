@@ -1,11 +1,11 @@
 import type { DungeonTerrain } from '../../model';
 import type { Vec } from '../geometry';
 import { castShadow, type Hand } from '../art/hand';
-import { valueNoise } from '../art/noise';
 import { grown, polyPath, polysPath, rectPoly, type PathFn } from '../art/paths';
 import { cellBox, cellRings } from './cellRings';
 import { clearOfCaveWall, pieceRng } from './pieces';
-import { chiselled, stoneOutline } from './stones';
+import { cellGround, type ScatterGround } from './scatterPatch';
+import { stoneOutline } from './stones';
 import { pointsBounds } from '../geometry';
 
 /**
@@ -13,19 +13,22 @@ import { pointsBounds } from '../geometry';
  * mosaics: whole cells, so a cell reads plainly as one thing (Map-Fu), drawn before the shadows.
  */
 
-/** Loose stones over whole cells (difficult ground): a faint tone over the zone and many small stones, none big enough to hide behind. */
-export function drawScatter(hand: Hand, piece: DungeonTerrain, size: number, perCell: number): void {
+/**
+ * Loose stones over whole cells (difficult ground): a faint tone over the zone and many small
+ * stones, none big enough to hide behind. The tone lies on `ground` (`scatterPatch.ts`): whole
+ * cells unless the caller gives it another shape.
+ */
+export function drawScatter(hand: Hand, piece: DungeonTerrain, size: number, perCell: number, ground: ScatterGround = cellGround(piece)): void {
   const rng = pieceRng(hand.scene.env, piece);
-  const rings = cellRings(piece.cells).map(r => chiselled(r, piece.id * 7 + 3, 0.06));
-  const bounds = pointsBounds(rings.flat());
-  hand.tone((x, y) => 0.06 + 0.08 * valueNoise(x * 3, y * 3, piece.id), grown(bounds, 0.1), polysPath(rings), 'shade');
+  const { bounds } = ground;
+  hand.tone(ground.field, grown(bounds, 0.1), ground.clip, 'shade');
   const stones: { poly: Vec[]; c: Vec; r: number }[] = [];
   for (const c of piece.cells) {
     for (let k = 0; k < perCell; k++) {
       const at = { x: c.x + 0.06 + rng() * 0.88, y: c.y + 0.06 + rng() * 0.88 };
       const r = size * (0.45 + rng() ** 2 * 1.4);
       const st = { poly: stoneOutline(rng, at, r), c: at, r };
-      if (clearOfCaveWall(hand.scene.env, at, r)) stones.push(st);
+      if (clearOfCaveWall(hand.scene.env, at, r) && (ground.holds?.(at.x, at.y) ?? true)) stones.push(st);
     }
   }
   const all: PathFn = path => stones.forEach(st => polyPath(st.poly)(path));

@@ -13,7 +13,7 @@ function caves(count: number, floors: (k: number) => number): DungeonModel[] {
   return Array.from({ length: count }, (_, k) => generateDungeon({ seed: 17 + k * 389, theme: 'cavern', tags: SETS[k % SETS.length]!, floors: floors(k) }));
 }
 
-const factsOf = (model: DungeonModel): ReturnType<typeof cavernFacts> => cavernFacts({ seed: model.seed, tags: new Set(readTags(model.tags)), floors: model.floors });
+const factsOf = (model: DungeonModel): ReturnType<typeof cavernFacts> => cavernFacts({ seed: model.seed, tags: new Set(readTags(model.tags)), floors: model.floors, ...(model.cave && { variant: model.cave.variant }) });
 const CALCITE = ['stalagmites', 'column-formation', 'flowstone', 'curtain', 'crystals'];
 
 function kinds(programme: RoomProgramme): string[] {
@@ -73,5 +73,22 @@ describe('the Cavern programme', () => {
       const base = CAVERN_PROGRAMME.rooms.find((s) => s.id === id)!;
       expect(deep.rooms.find((s) => s.id === id)!.count[1]).toBe(base.count[1] * 2);
     }
+  });
+  it('gives each formation its rooms: a fault more chasms and no calcite, gas more springs and no dripstone, fungus more groves, a burrow a den at its end', () => {
+    const count = (programme: RoomProgramme, id: string): number => programme.rooms.find((s) => s.id === id)?.count[1] ?? 0;
+    const base = (id: string): number => count(CAVERN_PROGRAMME, id);
+    expect(cavernProgramme(new Set(), 'limestone')).toBe(CAVERN_PROGRAMME);
+    const fault = cavernProgramme(new Set(), 'fault');
+    expect(count(fault, 'chasm-hall')).toBe(base('chasm-hall') * 2);
+    expect(count(fault, 'collapse-chamber')).toBe(base('collapse-chamber') * 2);
+    for (const kind of CALCITE) expect(kinds(fault)).not.toContain(kind);
+    const sulphuric = cavernProgramme(new Set(['acid']));
+    expect(count(sulphuric, 'sulphur-spring')).toBe(base('sulphur-spring') * 2);
+    for (const kind of ['stalagmites', 'column-formation']) expect(kinds(sulphuric)).not.toContain(kind);
+    expect(count(cavernProgramme(new Set(['overgrown'])), 'fungus-grove')).toBe(base('fungus-grove') * 2);
+    expect(count(cavernProgramme(new Set(['overgrown'])), 'lake-cavern')).toBeLessThan(base('lake-cavern'));
+    const burrow = cavernProgramme(new Set(['string']));
+    expect(burrow.climax.map((c) => c.type).sort()).toEqual(['chief-den', 'den']);
+    for (const kind of CALCITE) expect(kinds(burrow)).not.toContain(kind);
   });
 });

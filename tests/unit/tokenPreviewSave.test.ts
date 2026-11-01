@@ -67,3 +67,27 @@ it('builds the tesserae of a saved map ahead, and of no token', async () => {
   expect(saved!.mapFilePath).toMatch(/^atlas-vtt\/assets\/Crypt_.+\.webp$/);
   expect(prebuildMosaicCanvasAt).toHaveBeenCalledExactlyOnceWith(app, saved!.mapFilePath);
 });
+
+it('stores a video map byte for byte under its own extension, in the collection and with the tags chosen', async () => {
+  const { app, assetService, options, preview } = setup();
+  const file = new File([new Uint8Array([1, 2])], 'River.MP4', { type: 'video/mp4' });
+  const map = { ...preview, id: 'river', name: 'River', statblockPath: undefined, tags: ['Water'], file };
+  const video = { ...converted, image: { arrayBuffer: async () => new Uint8Array([1, 2]).buffer } as Blob };
+  expect(await saveTokenPreviews({ ...options, mode: 'map', previews: [map], waitForOptimized: async () => video })).toBe(1);
+  const [saved] = await assetService.getAssets(undefined, 'map');
+  expect(saved).toMatchObject({ name: 'River', tags: ['Water'], collection: 'Default' });
+  expect(saved!.mapFilePath).toMatch(/^atlas-vtt\/assets\/River_.+\.mp4$/);
+  expect(new Uint8Array(app.vault.createBinary.mock.calls[0]![1] as ArrayBuffer)).toEqual(new Uint8Array([1, 2]));
+  expect(prebuildMosaicCanvasAt).toHaveBeenCalledExactlyOnceWith(app, saved!.mapFilePath);
+});
+
+it('leaves no video behind when its map cannot be recorded', async () => {
+  const { app, assetService, options, preview, files } = setup();
+  const file = new File([new Uint8Array([1])], 'River.webm', { type: 'video/webm' });
+  const map = { ...preview, id: 'river', name: 'River', statblockPath: undefined, tags: [], file };
+  app.fileManager.trashFile = vi.fn(async (trashed: TFile) => { files.delete(trashed.path); });
+  vi.spyOn(assetService, 'addAssets').mockRejectedValue(new Error('index locked'));
+  expect(await saveTokenPreviews({ ...options, mode: 'map', previews: [map], waitForOptimized: async () => converted })).toBe(0);
+  expect(app.vault.createBinary.mock.calls.map(([path]: [string]) => path)).toEqual([expect.stringMatching(/\.webm$/)]);
+  expect([...files.keys()].filter((path) => path.endsWith('.webm'))).toEqual([]);
+});

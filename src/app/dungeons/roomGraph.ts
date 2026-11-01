@@ -70,13 +70,14 @@ export function farthestRoom(distances: readonly number[]): number {
   return best;
 }
 
-/** A shortest way from `start` to `end`, both included, or [] where none leads. */
-export function shortestPath(adjacent: readonly number[][], start: number, end: number): number[] {
-  const fromEnd = hops(adjacent, end);
+/** A shortest way from `start` to `end`, both included, or [] where none leads; `fromEnd`, where given, is `hops(adjacent, end)`. */
+export function shortestPath(adjacent: readonly number[][], start: number, end: number, fromEnd: readonly number[] = hops(adjacent, end)): number[] {
   if (!Number.isFinite(fromEnd[start])) return [];
   const path = [start];
   for (let at = start; at !== end; ) {
-    const next = (adjacent[at] ?? []).filter((n) => (fromEnd[n] ?? Infinity) === (fromEnd[at] ?? 0) - 1).sort((x, y) => x - y)[0];
+    // The lowest neighbour a door nearer the end: the same way every time.
+    let next: number | undefined;
+    for (const n of adjacent[at] ?? []) if ((fromEnd[n] ?? Infinity) === (fromEnd[at] ?? 0) - 1 && (next === undefined || n < next)) next = n;
     if (next === undefined) return [];
     path.push(next);
     at = next;

@@ -1,13 +1,14 @@
 /**
  * Where a cave's formations form (report §6.9 rule 5): stalagmites and columns where water drips
  * into air, so never in a room a stream runs through or water fills; crystals in a grotto or on a
- * shore; no calcite where lava runs, and no stalagmite near an acid spring, which eats it. How
- * richly a room is decorated follows the same: dry dead ends and upper floors richest, the mouth,
- * where air moves and the rock dries, poorest, and wet rooms poor.
+ * shore; no calcite where lava runs, nor in a fault or a burrow, no dripstone in a sulphuric
+ * cave, and no stalagmite near an acid spring, which eats it. How richly a room is decorated
+ * follows the same: dry dead ends and upper floors richest, the mouth, where air moves and the
+ * rock dries, poorest, and wet rooms poor.
  */
 
 import { cellKey, floorCellsOf } from '../../geometry';
-import type { CellPoint, PropKind } from '../../model';
+import type { CaveVariant, CellPoint, PropKind } from '../../model';
 import type { RoomRef } from '../themeTypes';
 import { type CaveFacts, allowsType } from './caveTypeRules';
 
@@ -15,10 +16,15 @@ import { type CaveFacts, allowsType } from './caveTypeRules';
 const DRIPSTONE: ReadonlySet<PropKind> = new Set<PropKind>(['stalagmites', 'column-formation']);
 /** Everything that grows of calcite. */
 const CALCITE: ReadonlySet<PropKind> = new Set<PropKind>(['stalagmites', 'column-formation', 'flowstone', 'curtain', 'crystals']);
+/** Caves no water seeped through: a dry fault's chasms and a beast's burrow grow no calcite at all. */
+const NO_CALCITE: ReadonlySet<CaveVariant> = new Set<CaveVariant>(['fault', 'burrow']);
+/** How much richer a cave crusted in flowstone is decorated, and the dry rooms of one where water drips from every roof. */
+const FLOWSTONE_CRUST = 1.5;
+const ENDLESS_DRIPS = 1.3;
 /** Acid eats calcite this far from its spring. */
 const ACID_REACH = 3;
 /** The rooms of a lived-in cave, furnished by those who live there. */
-const LIVED_IN = new Set(['guard-post', 'lived-in-hollow', 'fire-hollow', 'pen', 'store-hollow', 'chief-den']);
+export const LIVED_IN: ReadonlySet<string> = new Set(['guard-post', 'lived-in-hollow', 'fire-hollow', 'pen', 'store-hollow', 'chief-den']);
 
 function roomOf(facts: CaveFacts, ref: RoomRef): CaveFacts['floors'][number]['rooms'][number] | undefined {
   return facts.floors[ref.floor]?.rooms[ref.room];
@@ -54,7 +60,9 @@ function byAcid(facts: CaveFacts, ref: RoomRef, at: CellPoint): boolean {
 export function formationAllowed(kind: PropKind, at: CellPoint, ref: RoomRef, facts: CaveFacts): boolean {
   if (!CALCITE.has(kind)) return true;
   const type = roomOf(facts, ref)?.type;
-  if (type === 'lava-tube') return false;
+  if (type === 'lava-tube' || NO_CALCITE.has(facts.variant)) return false;
+  // Rotted rock holds no drip long enough to build on.
+  if (facts.variant === 'sulphuric' && DRIPSTONE.has(kind)) return false;
   if (DRIPSTONE.has(kind) && wet(facts, ref)) return false;
   if (kind === 'crystals' && type !== 'crystal-grotto' && !(facts.floors[ref.floor]?.cave?.basins.includes(ref.room) ?? false)) return false;
   return kind !== 'stalagmites' || !byAcid(facts, ref, at);
@@ -70,5 +78,13 @@ export function formationRichness(ref: RoomRef, facts: CaveFacts): number {
   const deadEnd = floor.doors.filter((d) => d.from === ref.room || d.to === ref.room).length <= 1;
   let richness = 0.6 + (deadEnd ? 0.25 : 0) + (site.deepest ? 0 : 0.15);
   if (wet(facts, ref)) richness -= 0.35;
-  return Math.max(0.15, Math.min(1, richness));
+  return Math.max(0.15, Math.min(1, richness * characterRichness(facts, ref)));
+}
+
+/** How much richer the cave's character makes a room: crusted in flowstone everywhere, or dripping onto every dry floor. */
+function characterRichness(facts: CaveFacts, ref: RoomRef): number {
+  const always = facts.character?.always;
+  if (always === 'flowstone-crust') return FLOWSTONE_CRUST;
+  if (always === 'endless-drips' && !wet(facts, ref)) return ENDLESS_DRIPS;
+  return 1;
 }

@@ -58,6 +58,8 @@ import { filters } from './filters';
 import { search } from './search';
 import { senses } from './senses';
 import { sort } from './sort';
+import { tableTv } from './tableTv';
+import { glass } from './glass';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
@@ -82,6 +84,7 @@ import { mapPreview } from './mapPreview';
 import { names } from './names';
 import { player } from './player';
 import { playerInit } from './playerInit';
+import { playerBar } from './playerBar';
 import { present } from './present';
 import { preview } from './preview';
 import { recovery } from './recovery';
@@ -167,6 +170,8 @@ export const en = {
   ...search,
   ...senses,
   ...sort,
+  ...tableTv,
+  ...glass,
   ...toolbar,
   ...toolbarEdit,
   ...hotkey,
@@ -193,6 +198,7 @@ export const en = {
   ...names,
   ...player,
   ...playerInit,
+  ...playerBar,
   ...present,
   ...preview,
   ...recovery,
