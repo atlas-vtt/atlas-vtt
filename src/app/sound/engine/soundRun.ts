@@ -179,7 +179,7 @@ export class BufferRun extends RunBase {
   }
 
   private start(buffer: SoundBuffer): void {
-    if (this.disposed) return;
+    if (this.disposed || this.finishing) return;
     const { span } = this;
     const onTime = this.ctxFrameOf(span.startPlayFrame);
     const startFrame = Math.max(onTime, this.notBefore, this.nowFrame());

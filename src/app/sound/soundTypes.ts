@@ -84,6 +84,10 @@ export interface LayerPlay {
   fade: SoundFade;
 }
 
+/**
+ * A fade on the table's clock. A play comes in from silence when its fade begins where it begins
+ * (`fade.at === startAt`); any other fade moves what already sounds to the play's `gainDb`.
+ */
 export interface SoundFade {
   at: number;
   ms: number;

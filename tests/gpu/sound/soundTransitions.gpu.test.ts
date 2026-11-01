@@ -115,6 +115,26 @@ describe('going from one mood to another', () => {
   });
 });
 
+describe('the listener\'s own levels', () => {
+  let fixtures: Fixtures;
+
+  beforeAll(async () => {
+    fixtures = await loadFixtures();
+  });
+
+  it('moves a channel, at once and with no click, and leaves the other', async () => {
+    const samples = await render(tableOf({ music: musicOf([fixtures.tone330]), layers: [layerOf(fixtures.tone220)] }), fixtures, {
+      seconds: 6,
+      at: [[3, (player): void => player.setLocalLevels({ musicDb: -Infinity, ambienceDb: -6, masterDb: 0 })]],
+    });
+    const before = sineAt(samples, secondsToFrames(1), secondsToFrames(1), 220).amplitude;
+    const after = sineAt(samples, secondsToFrames(4), secondsToFrames(1), 220).amplitude;
+    console.log(`local levels: ambience ${(20 * Math.log10(after / before)).toFixed(2)} dB for -6 dB, music left ${sineAt(samples, secondsToFrames(4), secondsToFrames(1), 330).amplitude.toFixed(5)}`);
+    expect(20 * Math.log10(after / before)).toBeCloseTo(-6, 0);
+    expect(sineAt(samples, secondsToFrames(4), secondsToFrames(1), 330).amplitude).toBeLessThan(0.001);
+  });
+});
+
 describe('Silence', () => {
   let fixtures: Fixtures;
 

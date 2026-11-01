@@ -3,6 +3,9 @@ export const SOUND_RATE = 48_000;
 
 export const FRAMES_PER_MS = SOUND_RATE / 1000;
 
+/** A context at any other rate still plays, but its window joins are no longer sample-exact. */
+export const SOUND_CONTEXT_OPTIONS: AudioContextOptions = { sampleRate: SOUND_RATE };
+
 /** No sound or level may raise the signal more than this, whatever a state from the wire says. */
 const MAX_GAIN_DB = 40;
 
@@ -11,7 +14,7 @@ export function dbToGain(db: number): number {
   return Number.isFinite(db) ? 10 ** (Math.min(db, MAX_GAIN_DB) / 20) : db === Infinity ? 10 ** (MAX_GAIN_DB / 20) : 0;
 }
 
-export function clamp01(value: number): number {
+function clamp01(value: number): number {
   return value < 0 ? 0 : value > 1 ? 1 : value;
 }
 

@@ -2,7 +2,7 @@ import type { SoundParam } from './audioNodes';
 import { fadeInGain, fadeOutGain } from './soundMath';
 
 /** A fader's time constant where no fade length is given. */
-export const FADER_SECONDS = 0.04;
+const FADER_SECONDS = 0.04;
 /** A curve may not overlap the value the hold leaves at its start. */
 const AFTER_HOLD_SECONDS = 1 / 375;
 const MIN_CURVE_POINTS = 16;
@@ -15,7 +15,7 @@ type Motion =
   | { kind: 'target'; from: number; to: number; at: number; constant: number };
 
 /** The curve from `from` to `to`, over the part of the fade from `fromProgress` on. */
-export function fadeCurve(from: number, to: number, seconds: number, fromProgress = 0): Float32Array<ArrayBuffer> {
+function fadeCurve(from: number, to: number, seconds: number, fromProgress = 0): Float32Array<ArrayBuffer> {
   const points = Math.min(MAX_CURVE_POINTS, Math.max(MIN_CURVE_POINTS, Math.ceil(seconds * CURVE_POINTS_PER_SECOND)));
   const values = new Float32Array(points);
   for (let i = 0; i < points; i++) {
