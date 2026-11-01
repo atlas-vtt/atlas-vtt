@@ -84,7 +84,7 @@ export class AreaLightPictures {
       uCorners: { value: corners, type: 'vec4<f32>', size: AREA_CORNER_VECTORS },
       uCount: { value: count, type: 'i32' },
     });
-    const geometry: Geometry = fansGeometry(fans);
+    const geometry: Geometry = fansGeometry(fans, this.texel);
     const shader: Shader = createShader(ENGINE_SHADERS.areaPicture, { falloffUniforms: falloff.uniforms, outlineUniforms: outline, ...this.band.resources() });
     const mesh = new Mesh({ geometry, shader });
     mesh.blendMode = 'max';

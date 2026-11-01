@@ -128,7 +128,7 @@ class LightLayer {
     if (slot.polygon !== polygon || slot.shadows !== shadows || slot.penumbra !== penumbra) {
       const origin = { x: light.x, y: light.y };
       const previous = slot.mesh.geometry;
-      slot.mesh.geometry = fansGeometry([{ origin, polygon }]);
+      slot.mesh.geometry = fansGeometry([{ origin, polygon }], this.texel);
       previous.destroy(true);
       // A beam's shadows are its light's all around (`shadows`): their edges have no cone to skip.
       const wedges = penumbra > 0 ? sightWedges(origin, shadows, penumbra, shadows === polygon ? light.cone?.apex ?? 0 : 0).slice(0, MAX_WEDGES) : [];
@@ -161,7 +161,7 @@ class LightLayer {
     const falloff = createFalloff(this.texel, [0, 0, this.world[0], this.world[1]]);
     const wedges = wedgeTexture([], { x: 0, y: 0 });
     const shader = createShader(ENGINE_SHADERS.polygonLight, { falloffUniforms: falloff.uniforms, uWedges: wedges, ...this.band.resources() });
-    const mesh = new Mesh({ geometry: fansGeometry([]), shader });
+    const mesh = new Mesh({ geometry: fansGeometry([], this.texel), shader });
     mesh.blendMode = 'add';
     this.scene.addChild(mesh);
     return { mesh, falloff, wedges, polygon: null, shadows: null, penumbra: 0 };

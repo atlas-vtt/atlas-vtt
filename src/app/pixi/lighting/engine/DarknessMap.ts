@@ -114,7 +114,7 @@ export class DarknessMap {
   private readonly layers = new Map<string, ShapeLayer>();
   private drawn = false;
 
-  constructor(private readonly renderer: Renderer, bounds: MapBounds, texel: number) {
+  constructor(private readonly renderer: Renderer, bounds: MapBounds, private readonly texel: number) {
     this.texture = createTarget(bounds.width / texel, bounds.height / texel, 'rgba8unorm');
     this.world = [this.texture.source.pixelWidth * texel, this.texture.source.pixelHeight * texel];
     this.scene.addChild(this.pierce);
@@ -162,7 +162,7 @@ export class DarknessMap {
   private fillLayer(layer: ShapeLayer, fans: readonly Fan[]): boolean {
     if (sameFans(layer.fans, fans)) return false;
     const previous = layer.mesh.geometry;
-    layer.mesh.geometry = fansGeometry(fans);
+    layer.mesh.geometry = fansGeometry(fans, this.texel);
     previous.destroy(true);
     layer.mesh.visible = fans.length > 0;
     layer.fans = fans;
@@ -181,7 +181,7 @@ export class DarknessMap {
       uMapWorld: { value: new Float32Array(this.world), type: 'vec2<f32>' },
       uOut: { value: new Float32Array(out), type: 'vec4<f32>' },
     });
-    const mesh = new Mesh({ geometry: fansGeometry([]), shader: createShader(ENGINE_SHADERS.pierce, { pierceUniforms: uniforms }) });
+    const mesh = new Mesh({ geometry: fansGeometry([], this.texel), shader: createShader(ENGINE_SHADERS.pierce, { pierceUniforms: uniforms }) });
     mesh.blendMode = 'max';
     mesh.visible = false;
     this.pierce.addChild(mesh);
