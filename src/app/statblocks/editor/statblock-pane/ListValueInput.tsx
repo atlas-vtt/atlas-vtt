@@ -4,6 +4,7 @@ import { handledByAnotherControl } from '../../../keyboard/tooltipEscape';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
 import type { TemplateField } from '../../model/templateTypes';
 import type { FieldRead } from '../../values/fieldValues';
+import { unescapeCommas } from '../../values/listText';
 import { valueText } from '../../values/valueText';
 import { usePaneEdit, type PaneEditController } from './paneEditContext';
 import type { ValueInputProps } from './TextValueInput';
@@ -49,7 +50,7 @@ export function ChipsEditor({ field, read, write, autoFocus, placeholder, onLeav
     const item = typedRef.current.trim();
     if (!item) return;
     type('');
-    void write(field, addItemPatches(read, field.key, item));
+    void write(field, addItemPatches(read, field.key, unescapeCommas(item)));
   };
   addRef.current = add;
   const remove = (index: number): void => {
