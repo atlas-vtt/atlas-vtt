@@ -1,44 +1,35 @@
 ## New
 
-**Caverns shaped by caving rules**
-- Cave chambers now come in eight sizes, from a junction no bigger than a cupboard to a gargantuan hall, and each cave has its own most common size
-- Every chamber rolls its exits as a caver would describe them: one main way, then smaller ones, each half the size of the last. A way is a walk, a crawl, a squeeze or a letterbox squeeze, and the map draws each so you can tell them apart; the GM reads what it is on hover, and crawls and squeezes count as difficult terrain
-- About a third of all exits lead up or down: avens rise into the roof and pits drop into the dark or to the floor below
-- Every pit, aven and pitch has a depth and a kind, shaft, chimney or vertical squeeze, read in the note and on hover
-- Some chambers have a special way out opposite the way in: a traverse along a drop, a sump under the wall, a breakdown choke of fallen boulders
-- Passages run from a few steps to long bending galleries, narrow to a crawl and open again, climb or drop within a floor, and sometimes the only way on is a squeeze
-- A crawl, squeeze or letterbox is the whole passage to the next cave, not just its door: the map draws it as narrow as it is, and the GM reads it on hover along its length
-- A cave's mouth opens on the edge of the map, never into a bay the cave closes round
-- Every cave has a character of its own that shapes it, such as passages that curve back on themselves, roofs kept low, exits hidden in the floor, still pools wherever they can lie, or no passage that ends blind; the scene note says what the cave does
-- Caves come from what made them: a river, a fault, rot, fungus or a burrowing beast, each with its own passages, rock and water; the note says which
+**New Feature: TrueScale**
+- For a TV lying on the table: the players' zoom locks so a grid cell measures an inch, or 25 or 30 mm, on the glass, on every map
+- Set up without typing a number: lay a bank card on the TV and turn one dial until the outline hugs it. Atlas remembers the set-up for that screen
+- The players' screen is a frame on your map that you can slide and pin, snapping to the grid
+- Saved frames: bookmark a frame on the scene and send the players back to it with a click
+- Contributions by ThatMattLatt
 
-**Player window bar**
-- The TrueScale button below the scene tabs is now a bar for the player window
-- Full screen on the TV: one click moves the player window to your second screen and fills it
-- Hide the map: the player window goes black at once, to set up the next scene or take a break. The map stays hidden when you present another scene, and after Obsidian restarts, until you reveal it. A command does the same
-- What players see: show or hide widgets, initiative, dice rolls, resource bars and nameplates on the player window from the bar. Its last row closes the player window
-- Take back the handout: while players see an image or loot, one click takes it away
+**New Feature: Player Window Bar**
+- Opening the local player view now reveals a toolbar
+- Full screen on the TV with one click
+- Hide the map: the player window goes black until you reveal it, also across scenes and restarts
+- Choose what players see: widgets, initiative, dice rolls, resource bars and nameplates
+- Take back a handout with one click
 
-- TrueScale, for a TV lying on the table: a button below the scene tabs while the player window is open. Set it up without typing a number: lay a bank card on the TV and turn one dial until the outline on the glass hugs it, pick which way is up with a big arrow on the TV, done. The players' zoom then locks so a grid cell measures an inch (or 25 or 30 mm, your choice) on the glass, on every map (a scene can switch it off in its grid settings). Atlas remembers the set-up for that screen. Grown from a contribution by ThatMattLatt
-- The glass: while the player window is open, the players' screen is drawn on your map as a frame you can grab and slide, snapping to the grid; the TV glides along. Pin it to keep the players there while you roam, unpin it to have them follow you again. On a map the players are not seeing, the glass offers to bring them there
-- Saved frames: a bookmark on the glass keeps a frame on the scene, as many as you like, numbered on your map. Hover one to send the players there with a click or to remove it. They are saved with the scene
-- Render up to 4K, in the command palette's player view settings: a 4K TV or an ultrawide screen gets a rendered pixel for every pixel of its screen instead of an upscaled 1440p picture, at up to 2.25 times the graphics work for the player view. It applies to this device only
-
-## Important changes
-- Presenting a scene no longer always unfreezes the players. A map you framed with the glass brings them back to that frame when it is presented again; pinned players stay pinned, gliding to your view on the same map and taking your view of a new map at once. Players who are not pinned follow you as before
+**General**
+- Improved Cave map generation with more varied rooms
+- Walls on forest maps follow the edge of the trees, and roads and rivers stay open
+- Render the player view up to 4K, in the command palette's player view settings, for a 4K TV or an ultrawide screen
 
 ## Fixed
-- At the Saver lighting quality, bright dots no longer flash on the floor while a light moves.
-- Video maps now open on the Create maps screen like any image, where you name them, tag them and choose their collection before creating them. They used to be added to the asset manager straight away, also when dropped on its window
-- Online play: a campaign can no longer hold two players with the same name. A newcomer whose name is taken is asked for their own code or another name, and the GM cannot add or rename a player to a name already in use.
-- A room of magical darkness showed its whole shape to players once a token with darkvision stood in a companion's light that outshines the darkness, for example when two tokens overlapped. The room's shape no longer shows, and a token looking at the darkness from outside still sees its veil
-- A note pin on a heading the note repeats, such as the many "Overview" sections of a long chapter, opened the first one whichever you chose. It now opens the one you picked, and the pin's heading list shows the sections around each heading ("Black Ivory Inn › Overview")
-- Roofs stay on the map at every zoom and pan, on the GM's screen, in session view and on the player view. They used to shrink into a rectangle that slid against the map, or vanish in parts of the screen, once the scene had saved its thumbnail
-- The Roofs switch hides the roofs from your own GM view at every zoom. In session view it now stands disabled and says why, since players always see their roofs
-- Walls on generated forest maps now follow the edge of the trees you see, and roads and rivers stay open where they run through the woods. They stop tokens and light, but you can see through the trees.
-- Lone trees on forest maps no longer cast a shadow across their own crowns.
-- Animated maps and water stood still on the player view while the Obsidian window was hidden behind it or minimised: the player window now keeps the clock running. Water also moves for players wherever their screen shows it, not only where your view does
-- On Windows and Linux the mouse wheel can now scroll a note or statblock that opens while you hold Ctrl, without pinning it first. Scrolling one no longer makes the toolbar grow or shrink
-- Online play: notes and pins a player set on the world map no longer vanish when you present another scene. They now belong to the player, whichever token of theirs the scene holds, or none. One set while you were away is kept when you come back
-- Online play: the online table panel now closes when you click outside it, as the menu before it does. Tokens you select with that click show in the panel when you open it again
-- On some Macs the asset manager opened from the toolbar lost its backgrounds and cards over the map. It now covers the whole window, as it does when opened from the command palette
+- Bright dots no longer flash on the floor at the Saver lighting quality while a light moves
+- Magical darkness no longer shows a room's shape to players when a token stands in a companion's light that outshines it
+- A note pin on a repeated heading opens the one you picked, and the heading list shows the sections around it
+- Roofs stay on the map at every zoom and pan
+- The Roofs switch hides roofs from your GM view at every zoom, and is disabled in session view
+- Animated maps and water keep moving on the player view while the Obsidian window is hidden or minimised
+- On Windows and Linux the mouse wheel scrolls a note or statblock opened with Ctrl held, and no longer resizes the toolbar
+- Fixed issue where Asset Manager would bug out on Mac
+## Atlas Online
+- A campaign can no longer hold two players with the same name
+- Notes and pins a player sets on the world map stay when you present another scene
+- The online table menu closes when you click outside it
+- Improved tooltip panel UI for abilities and inventory
