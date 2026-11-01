@@ -11,13 +11,14 @@ import { leafyMass, massEdge, needledRing, traceShape } from '../../../../src/ap
 import { pointInPolygon, pointSegmentDistance, signedArea2, type Bounds, type Vec } from '../../../../src/app/dungeons/render/geometry';
 import { DEFAULT_PX_PER_CELL, mapLayout, SCENE_MAP_PIXELS, suggestedPxPerCell } from '../../../../src/app/dungeons/render/layoutSize';
 import { visibleDungeon } from '../../../../src/app/dungeons/render/visibleDungeon';
-import { necksOf, treeLine } from '../../../../src/app/dungeons/scene/forestWalls';
+import { forestWalls, necksOf, treeLine } from '../../../../src/app/dungeons/scene/forestWalls';
 import { worldTexel } from '../../../../src/app/lighting/lightingConstants';
 import { sealedWalls } from '../../../../src/app/lighting/sealWalls';
 import { DEFAULT_VIEW } from '../../../../src/app/dungeons/style';
 import { dungeonStyle, type DungeonStyleId } from '../../../../src/app/dungeons/styleCatalog';
 import type { DungeonTag } from '../../../../src/app/dungeons/tags';
-import { movementWalls } from '../../../../src/app/online/movement/index.ts';
+import { movementWalls, stopAtWalls } from '../../../../src/app/online/movement/index.ts';
+import { computeVisibility } from '../../../../src/app/vision/visibility';
 import { wallList } from '../../../../src/app/vision/wallList';
 import { sceneOf, Walkable } from '../levelLinkAccess';
 
@@ -172,6 +173,31 @@ describe('a Forest\'s walls', () => {
       expect(edge.length).toBeGreaterThan(100);
       const toWalls = distanceTo(segments);
       expect(edge.filter((p) => toWalls(p) > ON_THE_EDGE).length / edge.length).toBeLessThan(0.05);
+    });
+
+    it(`stop a token and neither sight nor light, sealing included: ${name}`, () => {
+      const model = forest(test);
+      const dungeon = visibleDungeon(model, DEFAULT_VIEW, 0);
+      const { map } = pictureOf(model);
+      const placement = { originCell: { x: map.minX, y: map.minY }, pxPerCell: 150 };
+      const walls = Object.values(forestWalls(treeLine(dungeon, dungeonStyle(test.look), map), placement, { id: 'forest' }).walls);
+      const image = { width: (map.maxX - map.minX) * 150, height: (map.maxY - map.minY) * 150 };
+
+      // Nothing the sealing adds stops sight or light either, or the woods would be full of hairline shadows.
+      const sealed = sealedWalls(walls, worldTexel(image));
+      expect(sealed.filter((wall) => wall.blocks !== 'movement')).toEqual([]);
+      const open = { x: image.width / 2, y: image.height / 2 };
+      for (const channel of ['sight', 'light'] as const) expect(computeVisibility(open, 2000, sealed, undefined, channel)).toEqual(computeVisibility(open, 2000, [], undefined, channel));
+
+      // And a step across any wall ends before it.
+      const moves = movementWalls(wallList(Object.fromEntries(walls.map((wall) => [wall.id, wall]))), image);
+      for (const { p1, p2 } of walls.filter((_, k) => k % 25 === 0)) {
+        const length = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        const middle = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const across = { x: ((p2.y - p1.y) / length) * 20, y: (-(p2.x - p1.x) / length) * 20 };
+        const to = { x: middle.x + across.x, y: middle.y + across.y };
+        expect(stopAtWalls(moves, { x: middle.x - across.x, y: middle.y - across.y }, to)).not.toEqual(to);
+      }
     });
 
     it(`leave every clearing and way down to be walked to, sealing included: ${name}`, () => {

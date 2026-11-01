@@ -15,8 +15,9 @@ import type { DungeonPlacement, DungeonWalls, WallsOf } from './toWalls';
 /**
  * A Forest floor's walls: the drawn edge of the very trees its map shows (`forestMass`, the curves
  * of every crown's outline, tip to tip on a conifer; a bare tree draws no crown and walls the clump
- * it stands for, or the woods would have gaps), not the clearing's outline those trees overhang, so
- * light, sight and tokens stop on the line where the woods begin. Clearings,
+ * it stands for, or the woods would have gaps), not the clearing's outline those trees overhang.
+ * Tokens stop on the line where the woods begin; sight and light carry on, since trees do not close
+ * off a view as a wall does. Clearings,
  * roads, rivers and lakes are open wherever the trees leave them open, and they run on to the map's
  * edge, where no wall stands.
  */
@@ -156,7 +157,7 @@ export function forestWalls(line: readonly Vec[][], { originCell, pxPerCell }: D
     const chainId = `chain_${of.id}_${index + 1}`;
     for (let k = 1; k < run.length; k++) {
       const id = `wall_${of.id}_${++count}`;
-      walls[id] = { id, kind: 'wall', type: 'solid', chainId, p1: world(run[k - 1]!), p2: world(run[k]!), ...(of.levels && { levels: of.levels }) };
+      walls[id] = { id, kind: 'wall', type: 'solid', blocks: 'movement', chainId, p1: world(run[k - 1]!), p2: world(run[k]!), ...(of.levels && { levels: of.levels }) };
     }
   });
   return { walls, doors: {}, unplaced: 0 };
