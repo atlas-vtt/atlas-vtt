@@ -4,7 +4,7 @@ import type { AnyAsset, Tag } from '../types';
 import type { AssetService } from '../../../../services/AssetService';
 import { hasAssetTag, type TagGroup } from '../../../../services/tagGroups';
 import { showAtlasToast } from '../../../../react/components/AtlasToast';
-import { tagGroupOfTab, type TagsByGroup } from '../utils/assetTags';
+import { tagGroupOfTab, type AssetTagChange, type TagsByGroup } from '../utils/assetTags';
 import { t } from '../../../../i18n';
 
 export interface TagsAndCollectionsState {
@@ -15,7 +15,9 @@ export interface TagsAndCollectionsState {
   handleCreateTag: (group: TagGroup, tag: string) => Promise<Tag | null>;
   handleUpdateTag: (group: TagGroup, tagId: string, name: string) => Promise<void>;
   handleDeleteTag: (group: TagGroup, tagId: string) => Promise<void>;
-  /** Replaces an asset's tags: shown at once, restored if saving fails. */
+  /** Replaces the tags of several assets in one save: shown at once, restored if saving fails. */
+  setTagsOfAssets: (changes: AssetTagChange[]) => Promise<void>;
+  /** Replaces an asset's tags, as `setTagsOfAssets` does. */
   setAssetTags: (asset: AnyAsset, tags: string[]) => Promise<void>;
   // Collection CRUD
   handleUpdateCollection: (collectionId: string, name: string) => Promise<void>;
@@ -78,18 +80,30 @@ export function useTagsAndCollections(
     }
   }, [assetService, collection, tagsByGroup, retagAssets, reloadGlobalTags]);
 
-  const setAssetTags = useCallback(async (asset: AnyAsset, tags: string[]): Promise<void> => {
-    if (!assetService) return;
-    setAssets(prev => prev.map(a => a.id === asset.id ? { ...a, tags } : a));
+  const setTagsOfAssets = useCallback(async (changes: AssetTagChange[]): Promise<void> => {
+    if (!assetService || changes.length === 0) return;
+    const changeOf = new Map(changes.map((change) => [change.asset.id, change]));
+    setAssets(prev => prev.map(a => {
+      const change = changeOf.get(a.id);
+      return change ? { ...a, tags: change.tags } : a;
+    }));
     try {
-      await assetService.updateAssetTags(asset.id, tags);
+      await assetService.updateTagsOfAssets(changes.map(({ asset, tags }) => ({ id: asset.id, tags })));
     } catch (error) {
       console.error('[AssetManager] Failed to update asset tags:', error);
       // Restore the previous tags unless a later edit replaced these meanwhile.
-      setAssets(prev => prev.map(a => a.id === asset.id && a.tags === tags ? { ...a, tags: asset.tags ?? [] } : a));
+      setAssets(prev => prev.map(a => {
+        const change = changeOf.get(a.id);
+        return change && a.tags === change.tags ? { ...a, tags: change.asset.tags ?? [] } : a;
+      }));
       showAtlasToast(t('am.tag.saveFailed'));
     }
   }, [assetService, setAssets]);
+
+  const setAssetTags = useCallback(
+    (asset: AnyAsset, tags: string[]): Promise<void> => setTagsOfAssets([{ asset, tags }]),
+    [setTagsOfAssets],
+  );
 
   const handleUpdateCollection = useCallback(async (collectionId: string, name: string): Promise<void> => {
     if (!assetService) return;
@@ -119,7 +133,7 @@ export function useTagsAndCollections(
 
   return {
     isTagManagerOpen, setIsTagManagerOpen,
-    handleCreateTag, handleUpdateTag, handleDeleteTag, setAssetTags,
+    handleCreateTag, handleUpdateTag, handleDeleteTag, setTagsOfAssets, setAssetTags,
     handleUpdateCollection, handleDeleteCollection,
   };
 }
