@@ -31,4 +31,5 @@
 - Animated maps and water stood still on the player view while the Obsidian window was hidden behind it or minimised: the player window now keeps the clock running. Water also moves for players wherever their screen shows it, not only where your view does
 - On Windows and Linux the mouse wheel can now scroll a note or statblock that opens while you hold Ctrl, without pinning it first. Scrolling one no longer makes the toolbar grow or shrink
 - Online play: notes and pins a player set on the world map no longer vanish when you present another scene. They now belong to the player, whichever token of theirs the scene holds, or none. One set while you were away is kept when you come back
+- Online play: the online table panel now closes when you click outside it, as the menu before it does. Tokens you select with that click show in the panel when you open it again
 - On some Macs the asset manager opened from the toolbar lost its backgrounds and cards over the map. It now covers the whole window, as it does when opened from the command palette
