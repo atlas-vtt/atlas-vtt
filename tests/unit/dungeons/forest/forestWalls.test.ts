@@ -9,9 +9,10 @@ import { unionRings } from '../../../../src/app/dungeons/render/clipShapes';
 import { forestMass, woodsOutside } from '../../../../src/app/dungeons/render/forest/forestMass';
 import { leafyMass, massEdge, needledRing, traceShape } from '../../../../src/app/dungeons/render/grounds/crowns';
 import { pointInPolygon, pointSegmentDistance, signedArea2, type Bounds, type Vec } from '../../../../src/app/dungeons/render/geometry';
-import { mapLayout } from '../../../../src/app/dungeons/render/layoutSize';
+import { DEFAULT_PX_PER_CELL, mapLayout, SCENE_MAP_PIXELS, suggestedPxPerCell } from '../../../../src/app/dungeons/render/layoutSize';
 import { visibleDungeon } from '../../../../src/app/dungeons/render/visibleDungeon';
 import { necksOf, treeLine } from '../../../../src/app/dungeons/scene/forestWalls';
+import { worldTexel } from '../../../../src/app/lighting/lightingConstants';
 import { sealedWalls } from '../../../../src/app/lighting/sealWalls';
 import { DEFAULT_VIEW } from '../../../../src/app/dungeons/style';
 import { dungeonStyle, type DungeonStyleId } from '../../../../src/app/dungeons/styleCatalog';
@@ -46,6 +47,8 @@ const ON_THE_EDGE = 0.035;
 
 /** How many walls sight may go by for each drawn, sealing's bridges included. */
 const MOST_SEALED = 1.3;
+/** The walls a test case may have: what the cave outline under the crowns had. */
+const MOST_WALLS = 4500;
 
 /** The distance from a point to the nearest of `lines`, up to a cell off. */
 function distanceTo(lines: readonly (readonly [Vec, Vec])[]): (p: Vec) => number {
@@ -144,9 +147,12 @@ describe('a Forest\'s walls', () => {
       const line = treeLine(dungeon, style, map);
       const segments = line.flatMap((run) => run.slice(1).map((b, k) => [run[k]!, b] as const));
       expect(segments.length).toBeGreaterThan(100);
-      // Few corners lie closer than the sealing's tolerance: each such pair is a bridge sight has to go by too, so a finer line costs far more than its corners.
-      const walls = segments.map(([a, b], k) => ({ id: `w${k}`, kind: 'wall' as const, type: 'solid' as const, p1: { x: a.x * 150, y: a.y * 150 }, p2: { x: b.x * 150, y: b.y * 150 } }));
-      expect(sealedWalls(walls, 2).length / walls.length).toBeLessThan(MOST_SEALED);
+      expect(segments.length).toBeLessThan(MOST_WALLS);
+      // Few corners lie closer than the sealing's tolerance, in the pixels a scene draws at: each such pair is a bridge sight has to go by too, so a finer line costs far more than its corners.
+      const px = suggestedPxPerCell(model, DEFAULT_PX_PER_CELL, DEFAULT_VIEW, SCENE_MAP_PIXELS);
+      const layout = mapLayout(model, px, DEFAULT_VIEW);
+      const walls = segments.map(([a, b], k) => ({ id: `w${k}`, kind: 'wall' as const, type: 'solid' as const, p1: { x: a.x * px, y: a.y * px }, p2: { x: b.x * px, y: b.y * px } }));
+      expect(sealedWalls(walls, worldTexel({ width: layout.widthPx, height: layout.heightPx })).length / walls.length).toBeLessThan(MOST_SEALED);
       const crowns = unionRings(forestMass(dungeon, style, drawn).map(({ clump }) => massEdge(clump.shape)));
       const stack = stackOf(model);
       const ways = dungeon.floor.stairs.flatMap((stair) => [spotRect(stair), ...approachCells(stair, stairEnd(stack, 0, stair.to)).map((c) => ({ x0: c.x, y0: c.y, x1: c.x, y1: c.y }))]);
