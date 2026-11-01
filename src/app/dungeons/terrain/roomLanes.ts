@@ -61,6 +61,22 @@ export function reserveLanes(rc: RoomCells): void {
   rc.keepClear(laneCells(rc));
 }
 
+/** Keep a three-cell route from each entrance to open space near the center, clipped at irregular walls. */
+export function tacticalLaneCells(rc: RoomCells): CellPoint[] {
+  const middle = rc.cell(Math.floor((rc.depth - 1) / 2), Math.floor((rc.width - 1) / 2));
+  const floor = rc.block(0, 0, rc.depth, rc.width).filter(c => rc.isFloor(c) && !rc.isBlocked(c));
+  floor.sort((a, b) => Math.abs(a.x - middle.x) + Math.abs(a.y - middle.y) - Math.abs(b.x - middle.x) - Math.abs(b.y - middle.y));
+  const center = floor[0];
+  if (!center) return [];
+  const routes = [center, ...rc.needed.flatMap(from => wayTo(waysFrom(rc, from, [center], new Set()), center))];
+  const clear = routes.flatMap(c => [-1, 0, 1].flatMap(dx => [-1, 0, 1].map(dy => ({ x: c.x + dx, y: c.y + dy }))));
+  return [...new Map(clear.filter(c => rc.isFloor(c)).map(c => [cellKey(c.x, c.y), c])).values()];
+}
+
+export function reserveTacticalLanes(rc: RoomCells): void {
+  rc.keepClear(tacticalLaneCells(rc));
+}
+
 /**
  * The cells a piece standing on `cells` and facing `facing` keeps walkable: the row before it
  * (`front`) or every cell beside it (`ring`); only cells of the room's floor.

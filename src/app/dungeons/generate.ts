@@ -26,6 +26,7 @@ import { floorStream, stream } from './rng';
 import { readTags } from './tags';
 import type { FloorTerrain } from './terrain/floorTerrain';
 import { addShallowWater, planTerrain } from './terrain/placeTerrain';
+import { clearTacticalColumns } from './terrain/tacticalColumns';
 import { pickTheme, themeOf, themedTags } from './themes/themes';
 import type { ThemeId } from './themes/themeTypes';
 import { typeDungeon } from './themes/typeDungeon';
@@ -109,9 +110,11 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const theme = pickTheme(seed, request.theme ?? 'any', asked);
   const tags = dungeonTags(seed, themedTags(theme, asked));
   const definition = themeOf(theme);
-  const plain = dungeonParams(tags);
+  const plain = { ...dungeonParams(tags), ...(request.roomScale === 'tactical' && { roomScale: request.roomScale }) };
   const base = definition.params?.(plain) ?? plain;
   const sized = fiveRoom ? fiveRoomParams(base) : base;
+  // The five-stage preset must not hide a Tactical Forest's reward behind a secret wall.
+  if (theme === 'forest' && sized.roomScale === 'tactical') sized.secretReward = 0;
   // A Cavern follows the book's cave rules, its character drawn once; a Forest's glades keep their own.
   // Its formation comes from the tags, else from a stream of its own, so every other roll stays.
   const params = theme === 'cavern' ? withVeins(sized, stream(seed, 'cave', 'character'), stream(seed, 'cave', 'formation')) : sized;
@@ -122,7 +125,7 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const count = requestedFloors(request);
   const boss = fiveRoom || request.bossRoom !== false;
   const { rise } = definition;
-  const house = definition.layout === 'house' ? planHouse(seed, params.tags, count, boss, fiveRoom) : null;
+  const house = definition.layout === 'house' ? planHouse(seed, params.tags, count, boss, fiveRoom, params.roomScale) : null;
   const laid = house?.floors ?? planFloors(seed, params, count, boss, fiveRoom, definition);
   const below = house?.below ?? 0;
   const stack = floorStack(rise, laid.length, below);
@@ -138,18 +141,19 @@ export function generateDungeon(request: DungeonRequest): DungeonModel {
   const parts = planned.map((floor, index): Omit<FloorParts, 'stack' | 'openAbove'> => {
     // A cellar is built as a floor below ground.
     const floorPar = floorParams(params, index, storeyOf(stack, index) < 0 ? 'down' : rise);
+    const columns = floorColumns(seed, index, floor.rooms, floor.stairs, floorPar);
     return {
       planned: floor,
       params: floorPar,
       empty: new Set(typed.empty[index]),
-      columns: floorColumns(seed, index, floor.rooms, floor.stairs, floorPar),
+      columns: params.roomScale === 'tactical' ? clearTacticalColumns({ ...floor, columns }, stack, index) : columns,
       theme,
       water: built ? themeWater(floor.rooms, themed.rooms[index] ?? new Map(), params.tags.has('ruined')) : null,
     };
   });
   const terrain = planTerrain(
     seed,
-    parts.map(({ planned: floor, empty, columns }, index) => ({ ...floor, columns, empty, types: themed.rooms[index] ?? new Map() })),
+    parts.map(({ planned: floor, empty, columns }, index) => ({ ...floor, columns, empty, ...(params.roomScale && { roomScale: params.roomScale }), types: themed.rooms[index] ?? new Map() })),
     params.tags,
     themed.theme,
     stack,

@@ -2,6 +2,11 @@
   "version": "0.12.1-beta.0",
   "releases": [
     {
+      "version": "0.12.1-beta.0",
+      "title": "Coming in 0.12.1",
+      "markdown": "## New\n\n- Dungeon generator: choose **Layout ? Room scale ? Tactical** for larger encounters in Fortress, Mansion, Cavern and Forest maps, with more room to move around cover. The choice is remembered; Standard remains the default."
+    },
+    {
       "version": "0.12.0",
       "date": "2026-11-01",
       "title": "TrueScale and the player window bar",

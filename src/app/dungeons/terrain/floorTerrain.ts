@@ -12,8 +12,11 @@ import { type FloorStack, stairEnd } from '../floors/floorStack';
 import { type StairEnd, spotRect } from '../floors/stairSpots';
 import { type TerrainDraft, footingOf } from './catalog';
 import { RoomCells } from './roomCells';
+import { reserveTacticalLanes } from './roomLanes';
+import type { RoomScale } from '../roomScale';
 
 export interface FloorPlan {
+  roomScale?: RoomScale;
   rooms: readonly DungeonRoom[];
   doors: readonly DungeonDoor[];
   stairs: readonly DungeonStair[];
@@ -49,7 +52,9 @@ export class FloorTerrain {
     this.lane = new Set((plan.cave?.lane ?? []).map((c) => cellKey(c.x, c.y)));
     for (const room of plan.rooms) {
       if (room.kind !== 'room') continue;
-      this.cells.set(room.id, new RoomCells(room, plan.doors, plan.stairs, endOf, plan.columns, this.lane));
+      const cells = new RoomCells(room, plan.doors, plan.stairs, endOf, plan.columns, this.lane);
+      if (plan.roomScale === 'tactical') reserveTacticalLanes(cells);
+      this.cells.set(room.id, cells);
     }
   }
 
