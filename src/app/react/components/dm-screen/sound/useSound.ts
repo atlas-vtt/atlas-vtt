@@ -7,6 +7,8 @@ import { SoundDirector, type SoundSnapshot } from '../../../../soundDirector/Sou
 import { MoodStore } from '../../../../soundLibrary/MoodStore';
 import { soundRecordsOf } from '../../../../soundLibrary/soundRecords';
 
+const NO_MOODS: readonly Mood[] = [];
+
 /** One value of what the director shows; a part re-renders only when that value changes. */
 export function useSoundValue<T>(director: SoundDirector, select: (snapshot: SoundSnapshot) => T): T {
   return useSyncExternalStore(
@@ -22,8 +24,6 @@ export function useMoods(app: App, collectionId: string | null): readonly Mood[]
     () => (collectionId === null ? NO_MOODS : store.moodsOf(collectionId)),
   );
 }
-
-const NO_MOODS: readonly Mood[] = [];
 
 /** The sounds of a collection, read again whenever the library says it changed. */
 export function useCollectionSounds(app: App, collectionId: string | null): readonly SoundRecord[] {

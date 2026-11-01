@@ -1,6 +1,7 @@
 import { act } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { cdp, commands, page, userEvent } from 'vitest/browser';
+import { prepareSource } from '../../src/app/soundDirector/sourcePrepare';
 import { DARK, openSoundTab, seedMoods, type SoundTab } from './sound/soundTabHarness';
 
 vi.mock('../../src/app/react/components/dm-screen/DMStatblocksPane', async () => {
@@ -122,7 +123,21 @@ describe('what the sound costs a frame', () => {
     const fader = await measure(tab, 5, 0);
     window.clearInterval(held);
 
+    // A 400 MB source on its way to the importer, as a three-hour file is.
+    const big = new ArrayBuffer(400 * 1024 * 1024);
+    const longTasks: number[] = [];
+    const watcher = new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) longTasks.push(entry.duration);
+    });
+    watcher.observe({ entryTypes: ['longtask'] });
+    const preparing = performance.now();
+    await prepareSource(big);
+    const prepared = performance.now() - preparing;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    watcher.disconnect();
+
     const report = [
+      `400 MB source hashed and wrapped off the main thread: ${prepared.toFixed(0)} ms, long tasks ${longTasks.length}${longTasks.length > 0 ? ` (longest ${Math.max(...longTasks).toFixed(0)} ms)` : ''}`,
       `sound lifecycle ${tab.director.snapshot().lifecycle}, layers ${tab.director.snapshot().mix.table.layers.length}, waiting for bytes ${tab.director.snapshot().waitingKeys.length}`,
       row('tab open, nothing playing, nothing else', idle),
       row('tab open, nothing playing, 8 ms busy', baseline),

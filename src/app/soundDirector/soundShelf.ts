@@ -16,7 +16,7 @@ export class SoundShelf {
   private cache: { close(): Promise<void> } | null = null;
 
   constructor(
-    private readonly deps: Pick<SoundDirectorDeps, 'files' | 'createCache' | 'createMaker' | 'readRecords'>,
+    private readonly deps: Pick<SoundDirectorDeps, 'files' | 'createCache' | 'createMaker' | 'prepareSource' | 'readRecords'>,
     private readonly onRefused: (record: SoundRecord, reason: SoundRefusal) => void,
   ) {}
 
@@ -25,7 +25,7 @@ export class SoundShelf {
     const cache = this.deps.createCache();
     this.maker = maker;
     this.cache = cache;
-    this.copies = new SoundCopies(this.deps.files, cache, maker, this.onRefused);
+    this.copies = new SoundCopies(this.deps.files, cache, maker, (buffer) => this.deps.prepareSource(buffer), this.onRefused);
     return this.copies;
   }
 

@@ -15,7 +15,8 @@ import { showNotice } from '../ui/notice';
 import { isRecord } from '../utils/guards';
 import type { CopyCache, CopyMaker, SoundFileAccess } from './soundCopies';
 import type { OutputContext } from './soundOutput';
-import type { SoundSettings } from '../services/soundSettings';
+import { prepareSource, type PreparedSource } from './sourcePrepare';
+import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from '../services/soundSettings';
 
 export type DirectorSettings = {
   getSoundSettings(): SoundSettings;
@@ -35,6 +36,7 @@ export interface SoundDirectorDeps {
   files: SoundFileAccess;
   createCache(): CopyCache & { close(): Promise<void> };
   createMaker(): CopyMaker & { dispose(): void };
+  prepareSource(buffer: ArrayBuffer): Promise<PreparedSource>;
   createContext(): OutputContext;
   provideConversion(source: SoundConversionState): () => void;
   readRecords(): Promise<SoundRecord[]>;
@@ -78,7 +80,7 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
   return {
     storage: app,
     settings: {
-      getSoundSettings: () => settings()?.getSoundSettings() ?? { musicDb: 0, ambienceDb: -6, masterDb: 0, fadeSeconds: 4, followScenes: true },
+      getSoundSettings: () => settings()?.getSoundSettings() ?? DEFAULT_SOUND_SETTINGS,
       setSoundSettings: (changes) => settings()?.setSoundSettings(changes),
       isOn: () => settings()?.isExperimentalOn('sound') ?? false,
       onChange: (listener) => settings()?.onChange(listener) ?? (() => undefined),
@@ -88,6 +90,7 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
     files: fileAccess(app),
     createCache: () => new OpusCache(window.indexedDB, opusCacheDatabaseName(app.appId), () => opusCacheBudget(navigator.storage)),
     createMaker: () => new SoundImporter(),
+    prepareSource,
     createContext: () => new AudioContext({ ...SOUND_CONTEXT_OPTIONS, latencyHint: 'playback' }),
     provideConversion: (source) => provideSoundConversion(app, source),
     readRecords: async () => {

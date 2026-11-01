@@ -72,6 +72,7 @@ const TrackRow = React.memo(function TrackRow({ director, track }: { director: S
 });
 
 const NO_TRACKS: readonly SoundInfo[] = [];
+const NO_WAITING: readonly string[] = [];
 
 /** The music: what plays, the list, and its fader. It reads each value on its own, so a fader moving renders this row alone. */
 export const MusicRow = React.memo(function MusicRow({ director }: { director: SoundDirector }): React.JSX.Element {
@@ -120,5 +121,3 @@ export const MusicRow = React.memo(function MusicRow({ director }: { director: S
     </div>
   );
 });
-
-const NO_WAITING: readonly string[] = [];

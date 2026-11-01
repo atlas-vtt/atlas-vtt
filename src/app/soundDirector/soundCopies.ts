@@ -3,7 +3,7 @@ import { soundInfoOf, type SoundMeasure } from '../sound/codec/soundInfo';
 import type { CachedSound, SoundIdentity } from '../sound/codec/opusCache';
 import type { SoundBytes, SoundInfo, SoundRecord } from '../sound/soundTypes';
 import type { SoundConversion, SoundConversionState } from '../soundLibrary/soundConversion';
-import { sha256 } from '../utils/hashing';
+import type { PreparedSource } from './sourcePrepare';
 
 export interface SoundFileAccess {
   /** Null while the file is not in the vault. */
@@ -59,6 +59,7 @@ export class SoundCopies implements SoundConversionState {
     private readonly files: SoundFileAccess,
     private readonly cache: CopyCache,
     private readonly maker: CopyMaker,
+    private readonly prepare: (buffer: ArrayBuffer) => Promise<PreparedSource>,
     private readonly onRefused: (record: SoundRecord, reason: SoundImportError['reason']) => void,
   ) {}
 
@@ -177,8 +178,7 @@ export class SoundCopies implements SoundConversionState {
     this.set(entry, { state: 'converting', progress: null });
     try {
       const stat = this.files.statOf(record.filePath);
-      const source = await this.files.read(record.filePath);
-      const hash = await sha256(source);
+      const { hash, source } = await this.prepare(await this.files.read(record.filePath));
       if (stat) await this.cache.remember({ path: record.filePath, size: stat.size, mtime: stat.mtime, hash });
       const measure = (await this.cache.get(hash)) ?? (await this.made(record, entry, source, hash));
       if (!this.disposed) this.markReady(record, entry, hash, measure);
@@ -194,8 +194,8 @@ export class SoundCopies implements SoundConversionState {
     }
   }
 
-  private async made(record: SoundRecord, entry: CopyEntry, source: ArrayBuffer, hash: string): Promise<SoundMeasure> {
-    const result = await this.maker.run({ source: new Blob([source]), kind: record.kind, loop: record.kind === 'ambience' || record.loop !== undefined }, (share) => {
+  private async made(record: SoundRecord, entry: CopyEntry, source: Blob, hash: string): Promise<SoundMeasure> {
+    const result = await this.maker.run({ source, kind: record.kind, loop: record.kind === 'ambience' || record.loop !== undefined }, (share) => {
       if (entry.conversion.state === 'converting') this.set(entry, { state: 'converting', progress: share });
     });
     const copy = { bytes: result.bytes, frames: result.frames, channels: result.channels, lufs: result.lufs, truePeakDb: result.truePeakDb };

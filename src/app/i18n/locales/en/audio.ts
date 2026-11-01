@@ -70,7 +70,6 @@ export const audio = {
   'audio.screen.sound': 'Sound',
 
   'audio.moods': 'Moods',
-  'audio.collection': 'Collection',
   'audio.now': 'Now',
   'audio.nextTag': 'Next',
   'audio.playingTag': 'Playing',

@@ -7,6 +7,7 @@ import type { CachedSound, SoundIdentity } from '@/app/sound/codec/opusCache';
 import type { Mood, SceneSound, SoundRecord } from '@/app/sound/soundTypes';
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from '@/app/services/soundSettings';
 import type { PresentedScene } from '@/app/services/presentedScene';
+import { sha256 } from '@/app/utils/hashing';
 import { emptyBytes } from './soundPlayerRig';
 import { FakeSoundContext } from './fakeSoundContext';
 
@@ -153,6 +154,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       }),
       dispose: () => undefined,
     }),
+    prepareSource: async (buffer) => ({ hash: await sha256(buffer), source: new Blob([buffer]) }),
     createContext: () => {
       const context = new FakeOutputContext();
       contexts.push(context);

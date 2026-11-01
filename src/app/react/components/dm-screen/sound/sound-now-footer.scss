@@ -1,0 +1,152 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// What stays in the same place under the live mix, Silence last.
+.atlas-sound-now__footer {
+  @include atlas-flex-col($spacing-s);
+  align-items: stretch;
+  flex-shrink: 0;
+  padding: $spacing-s;
+  border-top: $border-width-s solid var(--divider-color);
+}
+
+.atlas-sound-channels {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $spacing-s;
+}
+
+.atlas-sound-channel {
+  @include atlas-flex-col(2px);
+  align-items: stretch;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-sound-output.atlas-sound-output {
+  @include atlas-flex-row($spacing-xs);
+  justify-content: flex-start;
+  height: auto;
+  padding: $spacing-xs;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: $radius-m;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  cursor: pointer;
+
+  span {
+    @include atlas-truncate;
+  }
+
+  svg {
+    flex-shrink: 0;
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+  }
+}
+
+.atlas-sound-silence.atlas-sound-silence {
+  @include atlas-flex-row($spacing-s);
+  justify-content: center;
+  height: 52px;
+  padding: $spacing-s;
+  background: var(--background-secondary);
+  border: $border-width-s solid var(--background-modifier-border);
+  box-shadow: none;
+  border-radius: $radius-l;
+  color: var(--text-normal);
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-medium;
+  cursor: pointer;
+  transition: background-color $transition-fast $transition-ease-out, transform $transition-press $transition-ease-out;
+
+  svg {
+    width: $icon-m;
+    height: $icon-m;
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--background-modifier-hover);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.99);
+  }
+
+  &:disabled {
+    color: var(--text-faint);
+    cursor: default;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+  }
+
+  &[aria-pressed='true'] {
+    background: var(--background-modifier-error);
+    border-color: transparent;
+    color: var(--text-on-accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}
+
+.atlas-sound-banner.atlas-sound-banner {
+  @include atlas-flex-row($spacing-s);
+  justify-content: flex-start;
+  flex-shrink: 0;
+  height: auto;
+  margin: $spacing-s $spacing-m 0;
+  padding: $spacing-s;
+  background: var(--background-secondary);
+  border: $border-width-s solid var(--background-modifier-border);
+  box-shadow: none;
+  border-radius: $radius-l;
+  color: var(--text-normal);
+  cursor: pointer;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-sound-empty {
+  @include atlas-flex-col($spacing-s);
+  align-items: flex-start;
+  padding: $spacing-m;
+  color: var(--text-muted);
+
+  p {
+    margin: 0;
+  }
+
+  ul {
+    margin: 0;
+    padding-inline-start: $spacing-l;
+  }
+
+  a {
+    color: var(--text-accent);
+  }
+}
+

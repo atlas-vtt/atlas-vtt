@@ -162,8 +162,11 @@ describe('the DM screen’s Sound page', () => {
     await userEvent.keyboard('{Enter}');
     await expect.poll(() => tab?.director.snapshot().mix.mood?.id).toBe(ids[0]);
 
-    // Digits press moods wherever focus is, by their place; 0 is the tenth.
+    // Digits press moods wherever focus is, by their place; 0 is the tenth. No key of the tab goes on to the map's listeners.
     (document.activeElement as HTMLElement | null)?.blur();
+    const reachedMap: string[] = [];
+    const mapListener = (event: KeyboardEvent): void => { reachedMap.push(event.key); };
+    window.addEventListener('keydown', mapListener);
     await userEvent.keyboard('2');
     expect(tab.director.snapshot().mix.mood?.id).toBe(ids[1]);
     await userEvent.keyboard('0');
@@ -175,6 +178,8 @@ describe('the DM screen’s Sound page', () => {
     expect(tab.director.snapshot().mix.table.silenced).toBe(true);
     await userEvent.keyboard('{Backspace}');
     expect(tab.director.snapshot().mix.table.silenced).toBe(false);
+    window.removeEventListener('keydown', mapListener);
+    expect(reachedMap).toEqual([]);
     // Left and right with nothing focused change pages.
     await userEvent.keyboard('{ArrowLeft}');
     expect(tab.store.getState().dmScreenPage).toBe('statblocks');

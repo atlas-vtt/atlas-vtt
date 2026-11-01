@@ -27,12 +27,12 @@ export const EMPTY_TABLE_SOUND: TableSound = {
   outgoingLayers: [],
 };
 
+const isUnderWay = (fade: SoundFade, now: number): boolean => fadeProgress(fade.at, fade.ms, now) < 1;
+
 /** Whether anything sounds or may sound again: Silence holds a mix, and a fade out is still heard. */
 export function isPlaying(state: TableSound, now: number): boolean {
   return state.music !== null || state.layers.length > 0 || state.outgoing.some((play) => isUnderWay(play.fade, now)) || state.outgoingLayers.some((play) => isUnderWay(play.fade, now));
 }
-
-const isUnderWay = (fade: SoundFade, now: number): boolean => fadeProgress(fade.at, fade.ms, now) < 1;
 
 /** What has finished fading out is dropped, so a long session's state stays small. */
 export function withoutFinished(state: TableSound, now: number): TableSound {

@@ -1,0 +1,137 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// The moods in their fixed places.
+.atlas-sound-moods__grid {
+  @include atlas-scrollbar;
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-auto-rows: 84px;
+  align-content: start;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  overflow-y: auto;
+}
+
+.atlas-sound-mood {
+  position: relative;
+  min-width: 0;
+  border-radius: $radius-l;
+  @include atlas-corner-shape;
+
+  &[data-dragging] {
+    opacity: 0.6;
+  }
+}
+
+.atlas-sound-mood__press.atlas-sound-mood__press {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  align-items: start;
+  gap: $spacing-xs $spacing-s;
+  width: 100%;
+  height: 100%;
+  padding: $spacing-s;
+  text-align: start;
+  background: var(--background-secondary);
+  border: $border-width-s solid var(--background-modifier-border);
+  border-radius: $radius-l;
+  box-shadow: none;
+  color: var(--text-normal);
+  cursor: pointer;
+  touch-action: none;
+  transition: background-color $transition-fast $transition-ease-out, border-color $transition-fast $transition-ease-out, transform $transition-press $transition-ease-out;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &:active {
+      transform: none;
+    }
+  }
+}
+
+.atlas-sound-mood[data-playing] .atlas-sound-mood__press {
+  border-color: var(--interactive-accent);
+  background: color-mix(in oklch, var(--interactive-accent) 12%, var(--background-secondary));
+}
+
+.atlas-sound-mood__number {
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+  font-variant-numeric: tabular-nums;
+  line-height: var(--line-height-tight);
+}
+
+.atlas-sound-mood__name {
+  // Leaves the corner to the menu.
+  padding-inline-end: 20px;
+  font-weight: $font-weight-medium;
+  line-height: var(--line-height-tight);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.atlas-sound-mood__state {
+  grid-column: 2;
+  align-self: end;
+  min-height: 16px;
+}
+
+.atlas-sound-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  font-size: $font-ui-smaller;
+  line-height: 16px;
+  color: var(--text-muted);
+  white-space: nowrap;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+}
+
+.atlas-sound-tag--playing {
+  color: var(--interactive-accent);
+}
+
+.atlas-sound-tag--problem {
+  position: absolute;
+  bottom: $spacing-s;
+  right: $spacing-s;
+  color: var(--text-warning);
+}
+
+.atlas-sound-mood__menu.atlas-sound-mood__menu {
+  position: absolute;
+  top: $spacing-xs;
+  right: $spacing-xs;
+  opacity: 0;
+
+  .atlas-sound-mood:hover &,
+  .atlas-sound-mood:focus-within &,
+  &:focus-visible {
+    opacity: 1;
+  }
+}
+
