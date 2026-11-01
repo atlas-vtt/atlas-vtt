@@ -20,7 +20,7 @@ export interface RunDeps {
   context: SoundContext;
   sources: SoundSources;
   output: SoundGainNode;
-  onError(key: string, error: unknown): void;
+  onError: (key: string, error: unknown) => void;
 }
 
 export interface SoundRun {

@@ -56,7 +56,7 @@ export async function verifyOggOpus(file: Blob, frames: number, channels: number
           shown = share;
           onProgress(share);
         }
-        if (decoder.decodeQueueSize > MAX_QUEUE) await new Promise((resolve) => setTimeout(resolve, QUEUE_WAIT_MS));
+        if (decoder.decodeQueueSize > MAX_QUEUE) await new Promise((resolve) => self.setTimeout(resolve, QUEUE_WAIT_MS));
       }
       pageIndex++;
     }

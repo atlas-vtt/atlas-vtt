@@ -156,7 +156,7 @@ export class SilenceTrim {
     this.emitZeros(emit);
     this.started = true;
     this.held = frames - 1 - lastLoud;
-    emit(planes.map((plane) => plane.subarray(start, lastLoud + 1) as Float32Array<ArrayBuffer>));
+    emit(planes.map((plane) => plane.subarray(start, lastLoud + 1)));
   }
 
   private emitZeros(emit: (planes: Float32Array<ArrayBuffer>[]) => void): void {

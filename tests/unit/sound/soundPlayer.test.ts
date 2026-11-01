@@ -274,6 +274,43 @@ describe('drift', () => {
   });
 });
 
+describe('three hours of a clock that runs its own way', () => {
+  it('stays within the limit by small corrections, with no seek and no stop', async () => {
+    const context = new FakeSoundContext();
+    let table = 0;
+    const player = new SoundPlayer({ context, tableNow: () => table, resolve: () => emptyBytes });
+    const rain = layer(sound('rain', 40));
+    player.setState(table0(rain));
+    await player.settled();
+    const expectedPpm = 50;
+    const seconds = 3 * 3600;
+    let worst = 0;
+    for (let tick = 1; tick <= seconds * 4; tick++) {
+      context.currentTime = tick * 0.25;
+      table = tick * 250 * (1 + expectedPpm / 1e6);
+      player.tick();
+      if (tick % 16 === 0) await player.settled();
+      const current = context.playing().at(-1);
+      if (current?.started) {
+        const played = (context.currentTime - current.started.when + current.started.offset) % 40;
+        const wanted = (table / 1000) % 40;
+        const off = Math.min(Math.abs(played - wanted), 40 - Math.abs(played - wanted));
+        // Only a source that has begun says where the sound is.
+        if (current.started.when <= context.currentTime) worst = Math.max(worst, off);
+      }
+    }
+    // 50 ppm over three hours is 540 ms if nothing corrects it.
+    console.log(`drift: worst ${(worst * 1000).toFixed(0)} ms over 3 h at ${expectedPpm} ppm, ${context.sources.length} sources`);
+    expect(worst).toBeLessThan(0.15);
+    expect(context.sources.length).toBeLessThan(30);
+    expect(context.playing().length).toBeGreaterThanOrEqual(1);
+  }, 60_000);
+});
+
+function table0(play: LayerPlay): TableSound {
+  return table({ layers: [play] });
+}
+
 describe('a long sound', () => {
   async function tagged(seconds: number): Promise<SoundBytes> {
     const writer = new OggOpusWriter(writeOpusHead(2, 312));

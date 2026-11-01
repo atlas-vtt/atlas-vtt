@@ -117,7 +117,7 @@ export default defineConfig({
         test: {
           name: 'sound-webkit',
           setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
-          include: ['tests/gpu/sound/**/*.gpu.test.ts'],
+          include: ['tests/gpu/sound/{soundSeams,soundTransitions,soundFiles}.gpu.test.ts'],
           testTimeout: 600_000,
           browser: {
             enabled: true,

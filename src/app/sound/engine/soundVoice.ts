@@ -36,7 +36,7 @@ export interface VoiceDeps {
   context: SoundContext;
   sources: SoundSources;
   input: SoundGainNode;
-  onError(key: string, error: unknown): void;
+  onError: (key: string, error: unknown) => void;
 }
 
 /**

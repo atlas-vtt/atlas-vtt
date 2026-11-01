@@ -37,11 +37,11 @@ function queueRoom(queue: () => number, target: EventTarget): Promise<void> | nu
   if (queue() <= MAX_QUEUE) return null;
   return new Promise((resolve) => {
     const done = (): void => {
-      clearTimeout(timer);
+      self.clearTimeout(timer);
       target.removeEventListener('dequeue', done);
       resolve();
     };
-    const timer = setTimeout(done, QUEUE_WAIT_MS);
+    const timer = self.setTimeout(done, QUEUE_WAIT_MS);
     target.addEventListener('dequeue', done);
   });
 }
@@ -193,7 +193,7 @@ async function decodeEncoded(source: EncodedSource, path: PcmPath, progress: () 
       skip -= from;
       const count = Math.min(frames - from, left);
       left -= count;
-      if (count > 0) path.add(planes.map((plane) => plane.subarray(from, from + count) as Float32Array<ArrayBuffer>), rate);
+      if (count > 0) path.add(planes.map((plane) => plane.subarray(from, from + count)), rate);
     },
     error: (error) => {
       failures.push(error);

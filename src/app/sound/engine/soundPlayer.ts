@@ -12,14 +12,14 @@ export type { LocalLevels } from './mixerGraph';
 export interface SoundPlayerOptions {
   context: SoundContext;
   /** The table's clock, in ms. */
-  tableNow(): number;
+  tableNow: () => number;
   /** The bytes of a sound. A promise, a slow read or a failure holds up that sound and nothing else. */
   resolve: ResolveBytes;
   levels?: LocalLevels;
   /** Told when a sound cannot be had; it is tried again every few seconds. */
-  onSoundError?(key: string, error: unknown): void;
+  onSoundError?: (key: string, error: unknown) => void;
   /** Which decoder long sounds use. Unset: the best this runtime has. */
-  windowDecode?(context: SoundContext): WindowDecode;
+  windowDecode?: (context: SoundContext) => WindowDecode;
 }
 
 /** Below this the Silence fade is over and nothing need play. */
