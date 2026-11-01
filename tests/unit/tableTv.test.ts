@@ -97,10 +97,10 @@ describe('the table TV a window is', () => {
 describe('the TrueScale settings as stored', () => {
   it('reads the defaults for nothing and for values it cannot use, and keeps fields it does not know', () => {
     expect(readTableTvSettings(undefined)).toEqual(DEFAULT_TABLE_TV_SETTINGS);
-    expect(readTableTvSettings({ viewGlideMs: -1, widgetScale: 9, widgetPosition: 'middle' })).toEqual(DEFAULT_TABLE_TV_SETTINGS);
+    expect(readTableTvSettings({ viewGlideMs: -1 })).toEqual(DEFAULT_TABLE_TV_SETTINGS);
     // An earlier build's TV fields stay where they are, unread
-    expect(readTableTvSettings({ rotation: 270, trueScale: true, widgetScale: 1.5, later: 1 }))
-      .toEqual({ ...DEFAULT_TABLE_TV_SETTINGS, rotation: 270, trueScale: true, widgetScale: 1.5, later: 1 });
+    expect(readTableTvSettings({ rotation: 270, trueScale: true, widgetScale: 1.5, widgetPosition: 'bottom', later: 1 }))
+      .toEqual({ ...DEFAULT_TABLE_TV_SETTINGS, rotation: 270, trueScale: true, widgetScale: 1.5, widgetPosition: 'bottom', later: 1 });
   });
 });
 

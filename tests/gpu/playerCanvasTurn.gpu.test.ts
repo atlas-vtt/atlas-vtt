@@ -4,7 +4,7 @@ import playerCss from '../../src/app/services/player-window.scss?inline';
 import transitionCss from '../../src/app/pixi/scene-transition.scss?inline';
 import widgetCss from '../../src/app/react/components/widget-bar.scss?inline';
 import { applyTableTvLook, PLAYER_OVERLAYS_CLASS } from '../../src/app/services/playerWindowTurn';
-import { DEFAULT_TABLE_TV_SETTINGS, type PlayerWidgetPosition, type TvRotation } from '../../src/app/services/tableTvSettings';
+import { DEFAULT_TABLE_TV_SETTINGS, type TvRotation } from '../../src/app/services/tableTvSettings';
 
 describe('the player canvas on a turned table TV', () => {
   const style = document.createElement('style');
@@ -52,14 +52,14 @@ describe('the widgets on the player view', () => {
   });
 
   /** A 200 × 50 widget bar in the overlay layer as PlayerWindowService builds it. */
-  async function widgetBar(rotation: TvRotation, position: PlayerWidgetPosition, scale = 1): Promise<DOMRect> {
+  async function widgetBar(rotation: TvRotation): Promise<DOMRect> {
     document.head.append(style);
     await page.viewport(1200, 600);
     document.body.className = 'atlas-player-window atlas-player-window--live';
     const overlays = document.body.appendChild(document.createElement('div'));
     overlays.className = PLAYER_OVERLAYS_CLASS;
     applyTableTvLook(document.body, overlays, {
-      prefs: { ...DEFAULT_TABLE_TV_SETTINGS, widgetPosition: position, widgetScale: scale }, trueScale: false, cellMm: 25.4, setup: null, rotation,
+      prefs: DEFAULT_TABLE_TV_SETTINGS, trueScale: false, cellMm: 25.4, setup: null, rotation,
       devicePixelRatio: 1, screenKey: '1200x600',
     });
     const widgets = overlays.appendChild(document.createElement('div'));
@@ -71,18 +71,18 @@ describe('the widgets on the player view', () => {
     return bar.getBoundingClientRect();
   }
 
-  it('stand top right, as before these settings, by default', async () => {
-    const shown = await widgetBar(0, 'top-right');
+  it('stand top right', async () => {
+    const shown = await widgetBar(0);
     expect([shown.right, shown.top].map(Math.round)).toEqual([1192, 8]);
   });
 
-  it('stand where set as the players see the turned TV, at the size set', async () => {
-    // Turned half round, the players' bottom left is the window's top right
-    const turned = await widgetBar(180, 'bottom-left', 2);
-    expect([turned.right, turned.top, turned.width, turned.height].map(Math.round)).toEqual([1192, 8, 400, 100]);
+  it('stand top right as the players see the turned TV', async () => {
+    // Turned half round, the players' top right is the window's bottom left
+    const turned = await widgetBar(180);
+    expect([turned.left, turned.bottom, turned.width, turned.height].map(Math.round)).toEqual([8, 592, 200, 50]);
     document.body.replaceChildren();
-    // Sideways, the players' top runs along the window's right edge
-    const centred = await widgetBar(90, 'top', 2);
-    expect([centred.right, centred.top + centred.height / 2, centred.width, centred.height].map(Math.round)).toEqual([1192, 300, 100, 400]);
+    // Sideways (90° clockwise), the players' top runs along the window's right edge and their right is the window's bottom
+    const sideways = await widgetBar(90);
+    expect([sideways.right, sideways.bottom, sideways.width, sideways.height].map(Math.round)).toEqual([1192, 592, 50, 200]);
   });
 });

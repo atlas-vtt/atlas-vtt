@@ -13,7 +13,6 @@ const presentTab = vi.hoisted(() => vi.fn<(...args: unknown[]) => Promise<void>>
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentTab }));
 
 const { TrueScalePanel } = await import('../../src/app/packages/components/true-scale/TrueScalePanel');
-const { TvPlacementPicker } = await import('../../src/app/packages/components/true-scale/TvPlacementPicker');
 
 const KEY = '3840x2160';
 
@@ -108,70 +107,5 @@ describe('TrueScale panel', () => {
     expect(lastScreen()).toEqual({ kind: 'orientation' });
     act(() => { vi.advanceTimersByTime(1); });
     expect(lastScreen()).toBeNull();
-  });
-});
-
-describe('TvPlacementPicker', () => {
-  let settings: SettingsService;
-
-  beforeEach(() => {
-    // jsdom has no PointerEvent; the picker reads the pointer's button and position from it
-    vi.stubGlobal('PointerEvent', class extends MouseEvent {});
-    settings = new SettingsService(createInMemoryApp().app);
-    render(<TooltipProvider><TvPlacementPicker settings={settings} rotation={0} screenKey={KEY} /></TooltipProvider>);
-    const box = screen.getByTestId('true-scale-tv');
-    box.getBoundingClientRect = (): DOMRect => ({ left: 0, top: 0, width: 320, height: 180, right: 320, bottom: 180, x: 0, y: 0, toJSON: () => ({}) });
-  });
-  afterEach(() => {
-    cleanup();
-    vi.unstubAllGlobals();
-  });
-
-  const widgets = (): HTMLElement => screen.getByRole('button', { name: /^Widgets:/ });
-  const image = (): HTMLElement => screen.getByRole('button', { name: /^Image:/ });
-
-  it('drops a chip on the nearest place', () => {
-    fireEvent.pointerDown(widgets(), { clientX: 300, clientY: 10 });
-    fireEvent.pointerMove(document, { clientX: 150, clientY: 170 });
-    fireEvent.pointerUp(document);
-    expect(settings.getTableTvSettings().widgetPosition).toBe('bottom');
-    fireEvent.pointerDown(image(), { clientX: 160, clientY: 90 });
-    fireEvent.pointerMove(document, { clientX: 20, clientY: 80 });
-    fireEvent.pointerUp(document);
-    expect(settings.getSetting('shownImage')).toMatchObject({ place: 'left' });
-  });
-
-  it('moves a focused chip to the next place the arrow points to', () => {
-    fireEvent.keyDown(widgets(), { key: 'ArrowLeft' });
-    expect(settings.getTableTvSettings().widgetPosition).toBe('top');
-    fireEvent.keyDown(widgets(), { key: 'ArrowDown' });
-    expect(settings.getTableTvSettings().widgetPosition).toBe('bottom');
-    fireEvent.keyDown(widgets(), { key: 'ArrowDown' });
-    expect(settings.getTableTvSettings().widgetPosition).toBe('bottom');
-    fireEvent.keyDown(image(), { key: 'ArrowUp' });
-    expect(settings.getSetting('shownImage')).toMatchObject({ place: 'top' });
-  });
-
-  it('sizes a chip by its corner and with + and -, within its limits', () => {
-    const handle = screen.getByTestId('true-scale-widgets-handle');
-    // Top right: the handle is on the corner towards the middle, bottom left, so a drag left and down grows the chip
-    fireEvent.pointerDown(handle, { clientX: 250, clientY: 30 });
-    fireEvent.pointerMove(document, { clientX: 230, clientY: 35 });
-    const grown = settings.getTableTvSettings().widgetScale;
-    expect(grown).toBeGreaterThan(1);
-    fireEvent.pointerMove(document, { clientX: -2000, clientY: 2000 });
-    expect(settings.getTableTvSettings().widgetScale).toBe(2.5);
-    fireEvent.pointerMove(document, { clientX: 2000, clientY: -2000 });
-    expect(settings.getTableTvSettings().widgetScale).toBe(0.5);
-    fireEvent.pointerUp(document);
-    expect(settings.getTableTvSettings().widgetPosition).toBe('top-right');
-
-    fireEvent.keyDown(image(), { key: '+' });
-    expect(settings.getSetting('shownImage')).toMatchObject({ size: 0.95 });
-    fireEvent.keyDown(image(), { key: '+' });
-    fireEvent.keyDown(image(), { key: '+' });
-    expect(settings.getSetting('shownImage')).toMatchObject({ size: 1 });
-    fireEvent.keyDown(image(), { key: '-' });
-    expect(settings.getSetting('shownImage')).toMatchObject({ size: 0.95 });
   });
 });

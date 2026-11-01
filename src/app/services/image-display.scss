@@ -5,6 +5,8 @@
 // The player display is always dark, so the scrim and controls use fixed
 // black/white tints rather than theme variables. Enter/exit motion lives in
 // imageDisplayMotion.ts; a replaced overlay briefly fades out above the new one.
+$shown-image-share: 0.9;
+
 .atlas-image-display {
   position: fixed;
   top: 0;
@@ -49,36 +51,19 @@
     height: 100vw;
   }
 
-  // Animated by the entrance; the image inside keeps its own pan/zoom transform. Places the image
-  // where the settings say (`data-place`, shownImageLayout.ts).
+  // Animated by the entrance; the image inside keeps its own pan/zoom transform
   .atlas-image-display__stage {
-    --atlas-image-edge: 0px;
     position: absolute;
     inset: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: var(--atlas-image-edge);
   }
 
-  // Off centre, the image keeps clear of the window's edges and the close button
-  &[data-place]:not([data-place='center']) .atlas-image-display__stage { --atlas-image-edge: #{$spacing-2xl}; }
-  &[data-place^='top'] .atlas-image-display__stage { align-items: flex-start; }
-  &[data-place^='bottom'] .atlas-image-display__stage { align-items: flex-end; }
-  &[data-place$='left'] .atlas-image-display__stage { justify-content: flex-start; }
-  &[data-place$='right'] .atlas-image-display__stage { justify-content: flex-end; }
-
-  // At most the share of the view the settings give it each way (`--atlas-image-zone`, nine tenths
-  // unless set), as the players see it; smaller images keep their own size
+  // Centred, at most nine tenths of the view each way as the players see it; smaller images keep their own size
   .atlas-image-display__image {
-    max-width: min(
-      calc(var(--atlas-image-layer-w) * var(--atlas-image-zone, 0.9)),
-      calc(var(--atlas-image-layer-w) - 2 * var(--atlas-image-edge))
-    );
-    max-height: min(
-      calc(var(--atlas-image-layer-h) * var(--atlas-image-zone, 0.9)),
-      calc(var(--atlas-image-layer-h) - 2 * var(--atlas-image-edge))
-    );
+    max-width: calc(var(--atlas-image-layer-w) * #{$shown-image-share});
+    max-height: calc(var(--atlas-image-layer-h) * #{$shown-image-share});
     // The same corners as every floating surface; they scale with the image's zoom
     border-radius: $radius-2xl;
     @include atlas-corner-shape;

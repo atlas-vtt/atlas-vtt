@@ -15,7 +15,6 @@ import { LabelTooltip } from "../primitives/tooltip"
 import { t } from "../../../i18n"
 import { RotationControl } from "./RotationControl"
 import { TrueScaleSetup, type SetupScreenHost } from "./TrueScaleSetup"
-import { TvPlacementPicker } from "./TvPlacementPicker"
 
 /** What the panel needs of the player window: its screen, and the set-up screen it shows. */
 export interface TrueScaleHost extends SetupScreenHost {
@@ -139,9 +138,6 @@ export function TrueScalePanel({ settings, host, view }: TrueScalePanelProps): R
         />
       </div>
 
-      <div className="atlas-dropdown-section">
-        <TvPlacementPicker settings={settings} rotation={rotation} screenKey={key} />
-      </div>
     </>
   )
 }

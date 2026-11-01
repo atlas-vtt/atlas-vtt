@@ -260,7 +260,7 @@ describe('PlayerFrameMirror on a canvas without a render schedule', () => {
 
 describe("TrueScale's set-up screen", () => {
   const tv = {
-    prefs: { viewGlideMs: 800, widgetPosition: 'top-right', widgetScale: 1 }, trueScale: false, cellMm: 25.4, setup: null, rotation: 0,
+    prefs: { viewGlideMs: 800 }, trueScale: false, cellMm: 25.4, setup: null, rotation: 0,
     devicePixelRatio: 1, screenKey: '1600x1200',
   } as const;
 

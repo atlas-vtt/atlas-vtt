@@ -4,7 +4,6 @@ import { PlayerWindowService } from './PlayerWindowService';
 import { playImageEnter, playImageExit } from './imageDisplayMotion';
 import { ImageOverlayControls } from './imageOverlayControls';
 import { SettingsService } from './SettingsService';
-import { applyShownImageLayout, readShownImageLayout } from './shownImageLayout';
 import { tableTvOf } from './tableTvFrame';
 import './image-display.scss';
 import { t } from '../i18n';
@@ -31,8 +30,6 @@ export class ImageDisplayService {
   /** Overlays still fading out after being closed or replaced. */
   private leavingDisplays = new Set<ImageDisplay>();
   private controls: ImageOverlayControls | null = null;
-  /** Stops following the settings, which the shown image's size, place and turn come from. */
-  private stopLayout: (() => void) | null = null;
   private boundHandleContextMenu: (event: MouseEvent) => void;
   private boundStoreContextMenuTarget: (event: MouseEvent) => void;
   private lastContextMenuTarget: HTMLElement | null = null;
@@ -338,10 +335,6 @@ export class ImageDisplayService {
     closeButton.addEventListener('click', () => this.closeImageDisplay());
 
     const settings = SettingsService.forApp(this.app);
-    const container = this.imageContainer;
-    const applyLayout = (): void => applyShownImageLayout(container, readShownImageLayout(settings?.getSetting('shownImage')));
-    applyLayout();
-    this.stopLayout = settings?.onChange(applyLayout) ?? null;
     const turnOf = (): number => (settings ? tableTvOf(playerWindow, settings.getTableTvSettings(), settings.getTableTvDevice()).rotation : 0);
     this.controls = new ImageOverlayControls(this.imageContainer, this.currentImage, playerWindow, () => this.closeImageDisplay(), turnOf);
 
@@ -502,8 +495,6 @@ export class ImageDisplayService {
     if (!this.imageContainer || !this.imageStage || !this.currentImage) return null;
     this.controls?.detach();
     this.controls = null;
-    this.stopLayout?.();
-    this.stopLayout = null;
     const display: ImageDisplay = { container: this.imageContainer, stage: this.imageStage, imageUrl: this.currentImage.src };
     // A leaving overlay may sit above the next image; let input reach that one
     display.container.addClass('is-leaving');
