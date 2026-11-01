@@ -34,8 +34,8 @@ const A = { x: 700, y: 512 };
 /** In A's light (70 px), up and left of A, where no offset below puts B: 54 px from A and at least 49 px from B, whose footprint reaches 35 px. */
 const IN_A_LIGHT = { x: A.x - 38, y: A.y - 38 };
 
-function token(id: string, at: Point, senses: string[] = [], light?: LightEmission): TokenEntity {
-  return { id, kind: 'token', imagePath: `${id}.png`, ...at, size: 1, vision: { enabled: true, senses: senses.map((sense) => ({ id: sense })) }, ...(light && { light }) } as TokenEntity;
+function token(id: string, at: Point, senses: readonly (string | { id: string; range: number })[] = [], light?: LightEmission): TokenEntity {
+  return { id, kind: 'token', imagePath: `${id}.png`, ...at, size: 1, vision: { enabled: true, senses: senses.map((sense) => (typeof sense === 'string' ? { id: sense } : sense)) }, ...(light && { light }) } as TokenEntity;
 }
 
 function sceneOf(tokens: TokenEntity[], darkness: Point & { dim?: number } = { x: 512, y: 512 }, ambient = 0): SceneState {
@@ -122,6 +122,38 @@ describe('a token standing in a light that outshines magical darkness, in the pl
       expect(b).toBeGreaterThan(r + 3);
       expect(luminance(withViewer(inDarkness))).toBeLessThan(14);
       expect(isBlack(without(inDarkness))).toBe(true);
+    });
+
+    describe('with one token in the light and another looking at the darkness from outside', () => {
+      const DARKNESS_14 = { x: 300, y: 512, dim: 14 };
+      const IN_DARKNESS = { x: 300, y: 620 };
+      const C_AT = { x: 800, y: 512 };
+      const DARKVISION = 'dnd5e-darkvision';
+      const SHORT_DARKVISION = { id: DARKVISION, range: 10 };
+      const pocket = (senses: readonly string[]): TokenEntity[] => [token('a', { x: 300, y: 512 }, [], PURPLE), token('b', { x: 335, y: 512 }, senses)];
+
+      async function expectVeilWith(viewer: TokenEntity, ambient?: number): Promise<void> {
+        const [r, , b] = (await picture(sceneOf([...pocket([DARKVISION]), viewer], DARKNESS_14, ambient), quality))(IN_DARKNESS);
+        expect(b).toBeGreaterThan(r + 3);
+      }
+
+      it.each([
+        ['darkvision', 'only its eyes', [DARKVISION], []],
+        ['darkvision', 'darkvision that does not reach', [DARKVISION], [SHORT_DARKVISION]],
+        ['only its eyes', 'only its eyes', [], []],
+        ['only its eyes', 'darkvision that does not reach', [], [SHORT_DARKVISION]],
+      ] as const)('keeps it black with %s in the light and %s outside', async (_inside, _outside, inside, outside) => {
+        const at = await picture(sceneOf([...pocket(inside), token('c', C_AT, outside)], DARKNESS_14), quality);
+        expect(at(IN_DARKNESS)).toEqual([0, 0, 0]);
+      });
+
+      it('shows the veil where the outside token\'s own darkvision reaches, whoever stands in the light', async () => {
+        await expectVeilWith(token('c', C_AT, [DARKVISION]));
+      });
+
+      it('shows the veil to eyes outside where the darkness swallows the day', async () => {
+        await expectVeilWith(token('c', C_AT), 1);
+      });
     });
 
     it('lets a sense that sees in magical darkness see the room from the light as well', async () => {

@@ -218,10 +218,21 @@ describe('sightFromOutside', () => {
   it('is the area a token looks at the map through, once per polygon', () => {
     const sight = sightWith();
     const region = sight.regions[0]!;
-    const shape = { origin: region.origin, polygon: region.polygon, level: 0, fromOutside: true };
+    const shape = { origin: region.origin, polygon: region.polygon, level: 0, outside: 0.5 };
     expect(sightFromOutside(sight)).toEqual([shape]);
     expect(sightFromOutside({ all: false, regions: [region, { ...region }] })).toEqual([shape]);
     expect(sightFromOutside({ all: true, regions: [] })).toEqual([]);
+  });
+
+  it('marks an area where a sense perceives the dark, whichever of a polygon\'s regions comes first', () => {
+    const { regions } = sightWith('dnd5e-darkvision');
+    const eyes = regions[0]!;
+    const darkvision = regions[1]!;
+    const shared = { ...darkvision, polygon: eyes.polygon };
+    const outsideOf = (...list: Sight['regions']): (number | undefined)[] => sightFromOutside({ all: false, regions: list }).map((shape) => shape.outside);
+    expect(outsideOf(eyes, shared)).toEqual([1]);
+    expect(outsideOf(shared, eyes)).toEqual([1]);
+    expect(outsideOf(eyes, darkvision)).toEqual([0.5, 1]);
   });
 
   it('leaves out a sense that shows no map', () => {

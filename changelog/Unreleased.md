@@ -9,6 +9,6 @@
 - Presenting a scene no longer always unfreezes the players. A map you framed with the glass brings them back to that frame when it is presented again; pinned players stay pinned, gliding to your view on the same map and taking your view of a new map at once. Players who are not pinned follow you as before
 
 ## Fixed
-- A room of magical darkness showed its whole shape to players once a token with darkvision stood in a companion's light that outshines the darkness, for example when two tokens overlapped. A token inside the darkness now sees only the light around it
+- A room of magical darkness showed its whole shape to players once a token with darkvision stood in a companion's light that outshines the darkness, for example when two tokens overlapped. The room's shape no longer shows, and a token looking at the darkness from outside still sees its veil
 - Animated maps and water stood still on the player view while the Obsidian window was hidden behind it or minimised: the player window now keeps the clock running. Water also moves for players wherever their screen shows it, not only where your view does
 - On some Macs the asset manager opened from the toolbar lost its backgrounds and cards over the map. It now covers the whole window, as it does when opened from the command palette
