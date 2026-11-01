@@ -1,0 +1,420 @@
+// @vitest-environment jsdom
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { SceneSound, TableSound } from '@/app/sound/soundTypes';
+import { SCENE_FOLLOW_DELAY_MS } from '@/app/soundDirector/sceneFollow';
+import type { FightState, FightStore } from '@/app/soundDirector/fightWatch';
+import { directorRig, mood, record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
+
+const RAIN = record('rain');
+const WIND = record('wind');
+const FIRE = record('fire');
+const SONG = record('song', 'music');
+const ALL = [RAIN, WIND, FIRE, SONG];
+
+function fightStore(path: string, sound: SceneSound | null): FightStore & { set(change: Partial<FightState>): void } {
+  let state: FightState = { mapPath: path, isMapLoading: false, sound, initiative: { isActive: false } };
+  const listeners = new Set<(next: FightState, previous: FightState) => void>();
+  return {
+    getState: () => state,
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    set: (change) => {
+      const previous = state;
+      state = { ...state, ...change };
+      for (const listener of listeners) listener(state, previous);
+    },
+  };
+}
+
+async function ready(rig: DirectorRig): Promise<void> {
+  await settle();
+  for (const sound of rig.records) rig.director.shelf.stateOf(sound);
+  await settle();
+}
+
+const layersOf = (rig: DirectorRig): (string | undefined)[] => rig.director.snapshot().mix.table.layers.map((play) => play.sound.key);
+
+describe('the sound director', () => {
+  let rig: DirectorRig;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] });
+    vi.setSystemTime(1_000_000);
+  });
+
+  afterEach(() => {
+    rig?.director.destroy();
+    vi.useRealTimers();
+  });
+
+  it('makes no context until something plays, and one on the first press', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    expect(rig.contexts).toHaveLength(0);
+    rig.director.press('c', mood('tavern', ['rain']));
+    expect(rig.contexts).toHaveLength(1);
+    expect(layersOf(rig)).toEqual(['hash-audio/rain.ogg']);
+    expect(rig.contexts[0]?.sources.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('goes on through everything that is not the plugin: the DM screen, tabs and maps never touch it', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    const states: TableSound[] = [];
+    rig.director.onStateChanged((state) => states.push(state));
+    const subscriber = vi.fn();
+    const stop = rig.director.subscribe(subscriber);
+    rig.director.press('c', mood('tavern', ['rain']));
+    const context = rig.contexts[0];
+    const before = rig.director.snapshot().mix.table;
+    // A pane closing is a subscriber leaving; a map closing is a view leaving.
+    stop();
+    rig.director.joinView('v', fightStore('map', null));
+    rig.director.leaveView('v');
+    await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
+    expect(rig.director.snapshot().mix.table).toBe(before);
+    expect(context?.closed).toBe(false);
+    expect(rig.contexts).toHaveLength(1);
+    expect(states).toHaveLength(1);
+  });
+
+  it('closes every context when the plugin unloads', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.preview(WIND);
+    rig.director.destroy();
+    expect(rig.contexts.every((context) => context.closed)).toBe(true);
+  });
+
+  it('lets go of the context when the last fade has ended, and comes back on the next press', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.press('c', mood('tavern', ['rain'], 'keep', 1));
+    rig.director.stop();
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(rig.contexts[0]?.closed).toBe(true);
+    rig.director.press('c', mood('tavern', ['rain'], 'keep', 1));
+    expect(rig.contexts).toHaveLength(2);
+  });
+
+  it('switching off fades out, tears down, and asks nothing of what is off', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.press('c', mood('tavern', ['rain']));
+    rig.settings.on = false;
+    rig.fireSettings();
+    expect(rig.director.isOn).toBe(false);
+    expect(rig.director.snapshot().mix.table.layers).toEqual([]);
+    expect(rig.director.snapshot().mix.table.outgoingLayers).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(10_000);
+    expect(rig.contexts[0]?.closed).toBe(true);
+    rig.director.press('c', mood('tavern', ['rain']));
+    expect(rig.contexts).toHaveLength(1);
+  });
+
+  it('starts what is ready and joins the rest when its copy is made, what the GM pressed going first', async () => {
+    rig = directorRig([RAIN, WIND, FIRE], { ready: false });
+    await ready(rig);
+    rig.director.shelf.request([FIRE]);
+    await settle();
+    rig.director.press('c', mood('tavern', ['wind', 'rain']));
+    await settle();
+    expect(layersOf(rig)).toEqual([]);
+    expect(rig.director.snapshot().mix.waitingLayers.map((layer) => layer.sound)).toEqual(['wind', 'rain']);
+    // One queue: fire was under way already, then what was pressed.
+    expect(rig.conversions).toHaveLength(1);
+    rig.conversions[0]?.finish();
+    await settle();
+    expect(rig.conversions).toHaveLength(2);
+    rig.conversions[1]?.finish();
+    await settle();
+    const names = (): (string | undefined)[] => rig.director.snapshot().mix.table.layers.map((play) => rig.director.shelf.recordOfKey(play.sound.key)?.id);
+    expect(names()).toEqual(['wind']);
+    rig.conversions[2]?.finish();
+    await settle();
+    expect(names()).toEqual(['wind', 'rain']);
+    expect(rig.director.snapshot().mix.waitingLayers).toEqual([]);
+  });
+
+  it('tells a refusal once, and shows it on the sound', async () => {
+    rig = directorRig([RAIN], { ready: false });
+    await ready(rig);
+    const { SoundImportError } = await import('@/app/sound/codec/demux/demuxTypes');
+    rig.director.shelf.request([RAIN], true);
+    await settle();
+    rig.conversions[0]?.fail(new SoundImportError('unsupported-codec', 'alac'));
+    await settle();
+    expect(rig.director.shelf.stateOf(RAIN)).toEqual({ state: 'refused', reason: 'unsupported-codec' });
+    expect(rig.notices).toHaveLength(1);
+    rig.director.shelf.request([RAIN], true);
+    await settle();
+    expect(rig.conversions).toHaveLength(1);
+  });
+
+  it('never makes a copy of a file already copied elsewhere: the cache answers by hash', async () => {
+    rig = directorRig([RAIN], { ready: false });
+    rig.copies.set(await (await import('@/app/utils/hashing')).sha256(new TextEncoder().encode(RAIN.filePath).buffer), { hash: 'x', byteLength: 1, frames: 480000, channels: 2, lufs: -20, truePeakDb: -3, lastUsed: 0 });
+    await ready(rig);
+    rig.director.shelf.request([RAIN], true);
+    await settle();
+    expect(rig.director.shelf.stateOf(RAIN).state).toBe('ready');
+    expect(rig.conversions).toHaveLength(0);
+  });
+
+  it('a preview is no state of the table and reaches nobody listening to it', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    const states: TableSound[] = [];
+    rig.director.onStateChanged((state) => states.push(state));
+    rig.director.preview(WIND);
+    expect(rig.director.snapshot().previewing).toBe('wind');
+    expect(rig.director.snapshot().mix.table.layers).toEqual([]);
+    rig.director.preview(WIND);
+    expect(rig.director.snapshot().previewing).toBeNull();
+    expect(states).toEqual([]);
+  });
+
+  it('offers back what played after a restart, and plays nothing by itself', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.press('c', mood('tavern', ['rain']));
+    await vi.advanceTimersByTimeAsync(2000);
+    rig.director.destroy();
+    const saved = rig.storage.get('atlas-vtt:sound-last');
+    expect(saved).toMatchObject({ mood: { collectionId: 'c', id: 'tavern' } });
+
+    const next = directorRig(ALL);
+    next.storage.set('atlas-vtt:sound-last', saved);
+    next.settings.on = false;
+    next.fireSettings();
+    next.settings.on = true;
+    next.fireSettings();
+    await ready(next);
+    expect(next.contexts).toHaveLength(0);
+    expect(next.director.snapshot().lastMix?.mood?.id).toBe('tavern');
+    next.director.resume();
+    expect(layersOf(next)).toEqual(['hash-audio/rain.ogg']);
+    next.director.destroy();
+  });
+
+  it('stop leaves nothing to bring back', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.press('c', mood('tavern', ['rain']));
+    await vi.advanceTimersByTimeAsync(2000);
+    rig.director.stop();
+    expect(rig.storage.get('atlas-vtt:sound-last')).toBeNull();
+  });
+
+  describe('following the table', () => {
+    const tavern = mood('tavern', ['rain']);
+    const battle = mood('battle', ['fire']);
+
+    function followRig(): DirectorRig {
+      const made = directorRig(ALL);
+      made.moods.set('c', [tavern, battle]);
+      return made;
+    }
+
+    it('plays the presented scene’s mood after the wait, not before, and a scene without a link changes nothing', async () => {
+      rig = followRig();
+      await ready(rig);
+      rig.scenes.set('a.atlasmap', { mood: 'tavern' });
+      rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
+      await vi.advanceTimersByTimeAsync(SCENE_FOLLOW_DELAY_MS - 10);
+      expect(layersOf(rig)).toEqual([]);
+      await vi.advanceTimersByTimeAsync(20);
+      await settle();
+      expect(layersOf(rig)).toEqual(['hash-audio/rain.ogg']);
+      rig.setPresented({ tabId: 'u', filePath: 'b.atlasmap' });
+      await vi.advanceTimersByTimeAsync(SCENE_FOLLOW_DELAY_MS + 10);
+      await settle();
+      expect(layersOf(rig)).toEqual(['hash-audio/rain.ogg']);
+    });
+
+    it('passing through scenes plays only the last', async () => {
+      rig = followRig();
+      await ready(rig);
+      rig.scenes.set('a.atlasmap', { mood: 'tavern' });
+      rig.scenes.set('b.atlasmap', { mood: 'battle' });
+      rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
+      await vi.advanceTimersByTimeAsync(500);
+      rig.setPresented({ tabId: 'u', filePath: 'b.atlasmap' });
+      await vi.advanceTimersByTimeAsync(SCENE_FOLLOW_DELAY_MS + 10);
+      await settle();
+      expect(layersOf(rig)).toEqual(['hash-audio/fire.ogg']);
+    });
+
+    it('a press beats a scene’s mood on its way, and holds until the next change', async () => {
+      rig = followRig();
+      await ready(rig);
+      rig.scenes.set('a.atlasmap', { mood: 'tavern' });
+      rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
+      await vi.advanceTimersByTimeAsync(500);
+      rig.director.press('c', battle);
+      await vi.advanceTimersByTimeAsync(SCENE_FOLLOW_DELAY_MS * 2);
+      await settle();
+      expect(rig.director.snapshot().mix.mood?.id).toBe('battle');
+      rig.scenes.set('b.atlasmap', { mood: 'tavern' });
+      rig.setPresented({ tabId: 'u', filePath: 'b.atlasmap' });
+      await vi.advanceTimersByTimeAsync(SCENE_FOLLOW_DELAY_MS + 10);
+      await settle();
+      expect(rig.director.snapshot().mix.mood?.id).toBe('tavern');
+    });
+
+    it('the switch off turns all of it off', async () => {
+      rig = followRig();
+      await ready(rig);
+      rig.settings.followScenes = false;
+      rig.scenes.set('a.atlasmap', { mood: 'tavern', combatMood: 'battle' });
+      rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
+      await vi.advanceTimersByTimeAsync(SCENE_FOLLOW_DELAY_MS + 10);
+      const store = fightStore('a.atlasmap', { combatMood: 'battle' });
+      rig.director.joinView('v', store);
+      store.set({ initiative: { isActive: true } });
+      await settle();
+      expect(layersOf(rig)).toEqual([]);
+    });
+
+    it('a fight plays the combat mood, and its end goes back to what played before, live changes included', async () => {
+      rig = followRig();
+      await ready(rig);
+      rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
+      const store = fightStore('a.atlasmap', { combatMood: 'battle' });
+      rig.director.joinView('v', store);
+      rig.director.press('c', tavern);
+      rig.director.desk.addSound(WIND);
+      store.set({ initiative: { isActive: true } });
+      await settle();
+      expect(rig.director.snapshot().mix.mood?.id).toBe('battle');
+      expect(layersOf(rig)).toEqual(['hash-audio/fire.ogg']);
+      store.set({ initiative: { isActive: false } });
+      await settle();
+      expect(rig.director.snapshot().mix.mood?.id).toBe('tavern');
+      expect(layersOf(rig).sort()).toEqual(['hash-audio/rain.ogg', 'hash-audio/wind.ogg']);
+    });
+
+    it('a fight in a scene being prepared on another tab changes nothing, nor one a load brings', async () => {
+      rig = followRig();
+      await ready(rig);
+      rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
+      const other = fightStore('other.atlasmap', { combatMood: 'battle' });
+      rig.director.joinView('v', other);
+      other.set({ initiative: { isActive: true } });
+      const loading = fightStore('a.atlasmap', { combatMood: 'battle' });
+      rig.director.joinView('w', loading);
+      loading.set({ isMapLoading: true });
+      loading.set({ initiative: { isActive: true } });
+      loading.set({ isMapLoading: false });
+      await settle();
+      expect(layersOf(rig)).toEqual([]);
+    });
+
+    it('a link to a mood that is gone reads as no link', async () => {
+      rig = followRig();
+      await ready(rig);
+      rig.scenes.set('a.atlasmap', { mood: 'gone' });
+      rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
+      await vi.advanceTimersByTimeAsync(SCENE_FOLLOW_DELAY_MS + 10);
+      await settle();
+      expect(rig.contexts).toHaveLength(0);
+    });
+
+    it('a mood already playing is not pressed again, which would undo live changes', async () => {
+      rig = followRig();
+      await ready(rig);
+      rig.director.press('c', tavern);
+      rig.director.desk.setLayerLevel('hash-audio/rain.ogg', -20);
+      rig.scenes.set('a.atlasmap', { mood: 'tavern' });
+      rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
+      await vi.advanceTimersByTimeAsync(SCENE_FOLLOW_DELAY_MS + 10);
+      await settle();
+      expect(rig.director.snapshot().mix.table.layers[0]?.gainDb).toBe(-20);
+    });
+  });
+
+  it('next mood goes through the row and round', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.moods.set('c', [mood('a', ['rain']), mood('b', ['wind'])]);
+    rig.director.pressNext('c');
+    expect(rig.director.snapshot().mix.mood?.id).toBe('a');
+    rig.director.pressNext('c');
+    expect(rig.director.snapshot().mix.mood?.id).toBe('b');
+    rig.director.pressNext('c');
+    expect(rig.director.snapshot().mix.mood?.id).toBe('a');
+  });
+
+  it('Save as mood and Save to mood take what plays and leave the live mix as it is', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.desk.addSound(RAIN);
+    rig.director.desk.addSound(SONG);
+    rig.director.desk.setLayerLevel('hash-audio/rain.ogg', -9);
+    const made = rig.director.desk.saveAsMood('c', 'Rainy');
+    expect(made).toMatchObject({ name: 'Rainy', fadeSeconds: 4, layers: [{ sound: 'rain', levelDb: -9 }], music: { tracks: ['song'], shuffle: false } });
+    expect(rig.director.snapshot().mix.mood?.id).toBe(made.id);
+    rig.director.desk.addSound(WIND);
+    rig.director.desk.saveToMood('c', made);
+    expect(rig.moods.get('c')?.[0]?.layers.map((layer) => layer.sound)).toEqual(['rain', 'wind']);
+  });
+
+  it('a live change is not saved to the mood until the GM chooses', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    const saved = mood('tavern', ['rain']);
+    rig.moods.set('c', [saved]);
+    rig.director.press('c', saved);
+    rig.director.desk.setLayerLevel('hash-audio/rain.ogg', -30);
+    expect(rig.moods.get('c')?.[0]).toBe(saved);
+  });
+
+  it('refuses a sound already in the mix', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    expect(rig.director.desk.addSound(RAIN)).toBe(true);
+    expect(rig.director.desk.addSound(RAIN)).toBe(false);
+    expect(rig.director.desk.addSound(SONG)).toBe(true);
+    expect(rig.director.desk.addSound(SONG)).toBe(false);
+  });
+
+  it('the clock is a seam: a table clock and its lead place what starts', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.useTableClock({ now: () => 5_000_000, leadMs: 1000 });
+    rig.director.press('c', mood('tavern', ['rain']));
+    expect(rig.director.snapshot().mix.table.layers[0]?.startAt).toBe(5_001_000);
+  });
+
+  it('the audience line is a seam', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.useAudience({ line: () => '3 of 5 hearing', onChange: () => () => undefined });
+    expect(rig.director.snapshot().audience).toBe('3 of 5 hearing');
+  });
+
+  it('moves every context to the chosen output, and says once when it is gone', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.press('c', mood('tavern', ['rain']));
+    const context = rig.contexts[0];
+    if (!context) throw new Error('no context');
+    rig.director.setOutput({ id: 'usb', label: 'USB headset' });
+    await settle();
+    expect(context.sinkIds).toContain('usb');
+    context.setSinkId = (id: string): Promise<void> => {
+      if (id !== '') return Promise.reject(new DOMException('gone', 'NotFoundError'));
+      context.sinkIds.push(id);
+      return Promise.resolve();
+    };
+    rig.director.setOutput({ id: 'gone', label: 'Old speakers' });
+    await settle();
+    expect(context.sinkIds.at(-1)).toBe('');
+    expect(rig.notices).toHaveLength(1);
+    expect(rig.notices[0]).toContain('Old speakers');
+    expect(rig.storage.get('atlas-vtt:sound-output')).toEqual({ id: 'gone', label: 'Old speakers' });
+  });
+});
