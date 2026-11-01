@@ -212,13 +212,16 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
       />
       {/* On the main window's body (the map lives there only), as the command palette opens it:
           inside the map's leaf the overlay is composited with the map's WebGL canvas, which on
-          some Macs drew the manager without its backgrounds and cards. */}
+          some Macs drew the manager without its backgrounds and cards. The element around it is
+          the scope the stylesheet's rules look for above the overlay, which alone is not fixed. */}
       {createPortal(
-        <AssetManager
-          isOpen={isAssetManagerOpen}
-          onClose={handleCloseAssetManager}
-          {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
-        />,
+        <div className="atlas-vtt-plugin">
+          <AssetManager
+            isOpen={isAssetManagerOpen}
+            onClose={handleCloseAssetManager}
+            {...(assetManagerInitialTab && { initialTab: assetManagerInitialTab })}
+          />
+        </div>,
         document.body,
       )}
       {isDiceTrayOpen && !diceTool && (
