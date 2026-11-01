@@ -1,4 +1,4 @@
-import type { SoundRecord } from '../sound/soundTypes';
+import type { Mood, SoundRecord } from '../sound/soundTypes';
 
 /** The clock a table's sound runs on: one machine's own offline, a shared one online. */
 export interface TableClock {
@@ -25,4 +25,10 @@ export interface PlayersSounds {
   readonly sending: boolean;
   setSending(on: boolean): void;
   onChange(listener: () => void): () => void;
+}
+
+/** The moods a scene links, with the collection they and the rest of its moods lie in. */
+export interface SceneMoods {
+  collectionId: string;
+  linked: Mood[];
 }

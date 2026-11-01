@@ -1,6 +1,6 @@
 import { MAX_PREPARED_SOUNDS, type AssetRef, type GmMessage } from '../../protocol/index.ts';
 import type { Mood, SoundRecord } from '../../../sound/soundTypes';
-import type { SceneMoods } from '../../../soundDirector/playersSeam';
+import type { SceneMoods } from '../../../soundDirector/tableClock';
 import { ASSET_USES, type AssetUse } from '../assets/assetUses.ts';
 import type { SoundRefs } from './soundRefs.ts';
 

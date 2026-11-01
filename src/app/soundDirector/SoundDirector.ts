@@ -3,6 +3,7 @@ import { t } from '../i18n';
 import type { LocalLevels } from '../sound/engine/mixerGraph';
 import type { Mood, SoundRecord, TableSound } from '../sound/soundTypes';
 import { loadLastMix, type LastMix, type StoredOutput } from './deviceFacts';
+import { noteDirector, openedDirector } from './directorRegistry';
 import { LastMixKeeper } from './lastMixKeeper';
 import { OutputChoice } from './outputChoice';
 import { PlayersSeam } from './playersSeam';
@@ -31,25 +32,23 @@ const SHELF_AFTER_FADE_MS = 500;
  * history and no file, but for the device's note of what to offer back.
  */
 export class SoundDirector {
-  private static readonly instances = new WeakMap<App, SoundDirector>();
-
   static forApp(app: App): SoundDirector {
-    let director = SoundDirector.instances.get(app);
+    let director = openedDirector(app);
     if (!director) {
       director = new SoundDirector(realDirectorDeps(app));
-      SoundDirector.instances.set(app, director);
+      noteDirector(app, director);
     }
     return director;
   }
 
   /** The app's director if one was opened. */
   static existing(app: App): SoundDirector | undefined {
-    return SoundDirector.instances.get(app);
+    return openedDirector(app);
   }
 
   static release(app: App): void {
-    SoundDirector.instances.get(app)?.destroy();
-    SoundDirector.instances.delete(app);
+    openedDirector(app)?.destroy();
+    noteDirector(app, null);
   }
 
   readonly desk: MixDesk;

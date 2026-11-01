@@ -1,12 +1,6 @@
 import type { Mood } from '../sound/soundTypes';
 import type { SoundDirectorDeps } from './directorDeps';
-import type { AudienceLine, PlayersSounds } from './tableClock';
-
-/** The moods a scene links, with the collection they and the rest of its moods lie in. */
-export interface SceneMoods {
-  collectionId: string;
-  linked: Mood[];
-}
+import type { AudienceLine, PlayersSounds, SceneMoods } from './tableClock';
 
 /** What a table online reads of the library, and tells the Sound page while it runs. */
 export class PlayersSeam {

@@ -1,10 +1,10 @@
 import { Pacer } from '../../marks/index.ts';
 import { parsePlayerSoundState, isRecord, type AssetRef, type GmMessage } from '../../protocol/index.ts';
 import { JOIN_SAMPLES, TableClockSync } from '../../../sound/engine/tableClockSync';
-import type { SoundRecord, TableSound } from '../../../sound/soundTypes';
-import type { SoundDirector } from '../../../soundDirector/SoundDirector';
+import type { Mood, SoundBytes, SoundInfo, SoundRecord, TableSound } from '../../../sound/soundTypes';
+import type { SoundSnapshot } from '../../../soundDirector/soundSnapshot';
 import { stopAll } from '../../../soundDirector/liveEdits';
-import type { PlayersCopy, PlayersSounds } from '../../../soundDirector/tableClock';
+import type { AudienceLine, PlayersCopy, PlayersSounds, SceneMoods, TableClock } from '../../../soundDirector/tableClock';
 import { EMPTY_TABLE_SOUND, isPlaying } from '../../../soundDirector/tableSound';
 import { ASSET_USES } from '../assets/assetUses.ts';
 import type { CopyState } from '../assets/uploadQueue.ts';
@@ -23,7 +23,27 @@ const COPIES_SHOWN_MS = 500;
 /** What players hear when this device stops sending. */
 const SEND_OFF_FADE_MS = 1500;
 
-export type ShareDirector = Pick<SoundDirector, 'isOn' | 'snapshot' | 'subscribe' | 'onStateChanged' | 'useTableClock' | 'useAudience' | 'players' | 'shelf'>;
+/** What the share reads of the app's `SoundDirector`, its seams for a table online. */
+export interface ShareDirector {
+  readonly isOn: boolean;
+  snapshot(): Pick<SoundSnapshot, 'mix' | 'shelfRevision'>;
+  subscribe(listener: () => void): () => void;
+  onStateChanged(listener: (state: TableSound) => void): () => void;
+  useTableClock(clock: TableClock | null): void;
+  useAudience(audience: AudienceLine | null): void;
+  readonly players: {
+    use(sounds: PlayersSounds | null): void;
+    moodsOf(collectionId: string): readonly Mood[];
+    sceneMoods(scenePath: string): Promise<SceneMoods>;
+  };
+  readonly shelf: {
+    bytes(key: string): Promise<SoundBytes>;
+    infoOf(record: SoundRecord): SoundInfo | null;
+    recordOfKey(key: string): SoundRecord | null;
+    recordsOf(mix: Pick<Mood, 'music' | 'layers'>): SoundRecord[];
+    request(records: readonly SoundRecord[]): void;
+  };
+}
 
 export interface SoundSharePorts extends Pick<SoundRefsPorts, 'copyRef'> {
   readonly director: ShareDirector;
