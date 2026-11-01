@@ -27,6 +27,8 @@ export interface BookSharePorts extends Timers {
   players(): readonly KnownPlayer[];
   /** The owner of a token of the shared scene (`Ownership.ownerOf`). */
   ownerOf(tokenId: string, token: OwnedToken | undefined): string | undefined;
+  /** The characters (library token ids) the campaign gives a player (`Ownership.charactersOf`). */
+  charactersOf(player: string): readonly string[];
   readImage(path: string): Promise<VaultImage | null>;
   /** How players are handed assets the store keeps for them; without it they are handed none. */
   stored?: AssetStoring | undefined;

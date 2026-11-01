@@ -14,6 +14,7 @@ import { findEditorHeading, findRenderedHeading, linkedHeading, openPinNote } fr
 import { headingTitle } from '../utils/pathUtils';
 import { alignHeading, holdHeadingInView } from './headingScroll';
 import { isModKey } from '../keyboard/modKey';
+import { scrollOnCtrlWheel } from './previewWheel';
 
 // Styles imported via styles/main.scss → note-preview-window.scss
 
@@ -215,6 +216,7 @@ export class NotePreviewWindow {
     this.element.addEventListener('keyup', stopKeyPropagation);
     this.element.addEventListener('keypress', stopKeyPropagation);
 
+    scrollOnCtrlWheel(this.element);
     this.createResizeHandles();
 
   }

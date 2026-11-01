@@ -41,7 +41,7 @@ describe('the Forest', () => {
     expect(forest(11, 2, ['wet'])).toEqual(forest(11, 2, ['wet']));
   });
 
-  it('stands its lone trees inside the clearings, apart, and gives each a trunk that casts a shadow and gives cover', () => {
+  it('stands its lone trees inside the clearings, apart, each giving cover and no wall of its own', () => {
     let trees = 0;
     for (const seed of SEEDS.slice(0, 16)) {
       const model = forest(seed);
@@ -55,8 +55,13 @@ describe('the Forest', () => {
       const named = Object.values(parts.scene.mapFeatures ?? {}).filter((feature) => feature.name === 'Tree');
       expect(named).toHaveLength(lone.length);
       for (const feature of named) expect(['half', 'three-quarters']).toContain(feature.terrain?.cover);
-      const trunks = new Set(Object.values(parts.scene.walls ?? {}).filter((wall) => wall.id.includes('_shadow_')).map((wall) => wall.chainId));
-      expect(trunks.size).toBeGreaterThanOrEqual(lone.length);
+      // A trunk's outline cast its shadow over the crown the map draws above it, so no object outline stands on a tree.
+      const outlines = Object.values(parts.scene.walls ?? {}).filter((wall) => wall.id.includes('_shadow_'));
+      const world = (tree: { x: number; y: number }): { x: number; y: number } => ({ x: (tree.x - layout.originCell.x) * 70, y: (tree.y - layout.originCell.y) * 70 });
+      for (const tree of lone) {
+        const at = world(tree);
+        for (const wall of outlines) expect(Math.hypot(wall.p1.x - at.x, wall.p1.y - at.y)).toBeGreaterThan(0.2 * 70);
+      }
     }
     expect(trees).toBeGreaterThan(10);
   });

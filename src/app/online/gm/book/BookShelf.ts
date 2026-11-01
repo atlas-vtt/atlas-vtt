@@ -3,7 +3,7 @@ import { EMPTY_BOOK, isEmptyBook, type StoredBook } from './bookStore.ts';
 /** What names a character whose token was placed from no library token: its book lives in memory only. */
 export const UNPLACED_PREFIX = 'token:';
 
-/** Where the books of a campaign's characters are kept, by the character's library token id. */
+/** Where the books of a campaign are kept: a character's by its library token id, what a player wrote by `ownBookOf`. */
 export interface BookSource {
   /** A character's book as it is kept; undefined for none. */
   read(characterId: string): StoredBook | undefined;

@@ -36,6 +36,12 @@ $roofs-height: 28px;
   &--hidden {
     color: var(--text-faint);
   }
+
+  &[aria-disabled='true'] {
+    background: transparent;
+    color: var(--text-faint);
+    cursor: default;
+  }
 }
 
 .atlas-roofs-toggle__name {

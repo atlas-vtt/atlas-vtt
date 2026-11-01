@@ -16,6 +16,7 @@ import type { LevelSurface, SceneLevel } from '../../src/app/types/sceneLevelTyp
 import { SceneModelBuilder } from '../../src/app/vision/sceneModel';
 import { belowTokenPerception, sightBelow, type BelowSight } from '../../src/app/vision/throughSight';
 import { snapshotGrid } from '../../src/app/pixi/lighting/levels/belowSnapshot';
+import { getTokenRingOuterDiameter } from '../../src/app/pixi/token-renderer/tokenRingMetrics';
 import { fuzzRooms, rng, type P } from '../../src/app/pixi/lighting/engine/__tests__/fuzzRooms';
 import { fakeLevelArt, LEVELS, openLevelsView, paintedTexture, worldOf, type LevelsView } from '../helpers/levelsView';
 import { belowArt, cyan, inside, light, surface, token, wallsOn } from '../helpers/levelsFuzz';
@@ -28,6 +29,8 @@ const TRIALS = Number(import.meta.env.VITE_LEAK_TRIALS ?? 24);
 const SIDE_TRIALS = Math.max(8, Math.round(TRIALS / 3));
 /** A pixel this close (screen px) to an edge of the rule's decision may read either side: the GPU works in single precision. */
 const EDGE = 0.05;
+/** How far a token of size 1 below shows from its centre: its ring's outer edge, read off the snapshot's texels. */
+const TOKEN_REACH = getTokenRingOuterDiameter(70) / 2 + 2;
 const CYAN = paintedTexture(8, 8, () => [20, 230, 230]);
 
 interface Report {
@@ -207,7 +210,7 @@ async function fuzz({ seed, trials, map = 2048, below = false, ignoreFading = fa
           if (p.x < 0 || p.y < 0 || p.x >= map || p.y >= map) continue;
           const o = (sy * PANE + sx) * 4;
           const differs = frame[o] !== reference[o] || frame[o + 1] !== reference[o + 1] || frame[o + 2] !== reference[o + 2];
-          const near = (entry: TokenEntity): boolean => Math.hypot(entry.x - p.x, entry.y - p.y) < 33;
+          const near = (entry: TokenEntity): boolean => Math.hypot(entry.x - p.x, entry.y - p.y) < TOKEN_REACH;
           if (cyan(frame, o) && unseenBelow.some(near) && !seenBelow.some(near)) report.tokenLeaks++;
           if (lowerRule && stack) {
             const shown = (q: { x: number; y: number }): boolean => shownAt(stack!, q) === 1 && lowerRule!.drawnAt(q) && !upperDrawn(q);

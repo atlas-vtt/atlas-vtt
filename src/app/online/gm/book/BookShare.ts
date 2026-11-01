@@ -24,6 +24,7 @@ import type { BookSharePorts } from './bookSharePorts.ts';
 import { checkResourceEdit, type ResourceEdit } from './resourceEdit.ts';
 import { resourceMaxRoute } from './resourceMax.ts';
 import { OwedBooks } from './owedBooks.ts';
+import { isWriting, ownBookOf, writeWriting, writingsIn } from './playerWritings.ts';
 import { bookUpdate, NO_QUESTS, RESEND, sentOf, type SentBook } from './sentBook.ts';
 import { StatblockShare } from './statblockShare.ts';
 import { WORLD_MAP_PROBLEM_TEXT, WorldMaps, type MapImageProblem, type WorldMapFile } from './worldMap.ts';
@@ -46,11 +47,14 @@ const UNNAMED = 'Unnamed character';
  * with, among their own): the sheet is read from the shared scene, items, notes, pins and purse
  * are kept on the shelf, the world map of the campaign being played and its quests (the GM's
  * quest notes, which no player writes) go to everyone at the table, with a character or without;
- * notes on a quest name it by its id. It is the table's, not a scene's, so it hears players while
- * no scene is shared. What a player writes is taken as the protocol's parser cleaned it, only for a
- * player with a character and within their rate, and is not answered; a refused write is answered
- * with the whole book (`OwedBooks`). A page that reads its book in parts (`book-parts`) gets a
- * changed world map or quests alone, any other the whole book again. A player changes their own
+ * notes on a quest name it by its id. Notes and pins are the player's own writing: which token the
+ * scene holds must never cost them what they wrote, so they go to the player's own book, and are
+ * read from it and from their characters' books (`writingBooks`). It is the table's, not a scene's,
+ * so it hears players while no scene is shared. What a player writes is taken as the protocol's
+ * parser cleaned it, within their rate, only for a player with a character where it is no note or
+ * pin, and is not answered; a refused write is answered with the whole book (`OwedBooks`). A page
+ * that reads its book in parts (`book-parts`) gets a changed world map or quests alone, any other
+ * the whole book again. A player changes their own
  * character's resources through Atlas (`editResource`), and the sheet that follows tells them what
  * was taken. A player
  * with a character whose note is a native statblock is sent it after their book, and again
@@ -88,6 +92,8 @@ export class BookShare implements LootRecipientSource {
   /** The passes over the books asked for, made once per burst. */
   private readonly passes = new BookPasses((scope) => this.pass(scope));
   private stopPoll: (() => void) | null = null;
+  /** The writes that came before the first pass, when the quests a note may name and the characters were not read yet (a page sends what waited as soon as it reaches the GM); null from then on. */
+  private earlyWrites: { readonly from: string; readonly body: Record<string, unknown> }[] | null = [];
 
   constructor(ports: BookSharePorts, shelf: BookShelf) {
     this.ports = ports;
@@ -174,18 +180,23 @@ export class BookShare implements LootRecipientSource {
     const quests = this.questList.get();
     // Being looked up or read: the books go out once both are known, with them.
     if (map === undefined || quests === undefined) return;
+    const early = this.earlyWrites ?? [];
+    const reach = early.length > 0 ? 'all' : scope;
     this.tellMapProblem(map === null ? this.maps.problem() : null);
     this.worldMap = map;
     this.quests = this.questPlaces.of(quests, map?.questPlaces);
     const scene = this.ports.scene();
     const players = this.ports.players();
     const names = this.characters.names();
-    if (scene !== null) this.read(scene, new Set(players.map((player) => player.id)), scope === 'all' ? undefined : scope);
-    const renamed = scope !== 'all' && !sameNames(names, this.characters.names());
+    if (scene !== null) this.read(scene, new Set(players.map((player) => player.id)), reach === 'all' ? undefined : reach);
+    const renamed = reach !== 'all' && !sameNames(names, this.characters.names());
+    this.earlyWrites = null;
+    // They were online when these arrived and their page has let go of them, so leaving since loses nothing.
+    for (const { from, body } of early) if (!this.write(from, body, players.some((player) => player.id === from))) this.owed.owe(from);
     this.statblocks.retain(this.characters.statblockPaths());
     const online = new Set(players.filter((player) => player.online).map((player) => player.id));
     for (const player of [...this.sent.keys()]) if (!online.has(player)) this.sent.delete(player);
-    for (const player of online) if (scope === 'all' || renamed || scope.has(player)) this.sync(player);
+    for (const player of online) if (reach === 'all' || renamed || reach.has(player)) this.sync(player);
     this.tell();
   }
 
@@ -224,7 +235,9 @@ export class BookShare implements LootRecipientSource {
       return true;
     }
     if (!isPlayerBookType(body.t)) return false;
-    if (!this.write(from, body)) this.owed.owe(from);
+    if (!this.rate.take(from, this.ports.now())) this.owed.owe(from);
+    else if (this.earlyWrites !== null) this.earlyWrites.push({ from, body });
+    else if (!this.write(from, body)) this.owed.owe(from);
     return true;
   }
 
@@ -284,7 +297,7 @@ export class BookShare implements LootRecipientSource {
   private sync(player: string): void {
     const character = this.characters.of(player);
     const drawn = this.drawnFor(character);
-    const now = sentOf(character, this.worldMap, this.quests, drawn);
+    const now = sentOf(character, this.writingBooks(player, character), this.worldMap, this.quests, drawn);
     const last = this.sent.get(player);
     const update = bookUpdate(last, now, this.parts.has(player));
     if (last === undefined || update === 'whole') return this.sendBook(player);
@@ -321,9 +334,11 @@ export class BookShare implements LootRecipientSource {
     this.owed.paying(player);
     if (!this.isOnline(player)) return;
     const character = this.characters.of(player);
-    const { items, notes, pins, purse, slots, equipped } = character === null ? EMPTY_BOOK : this.shelf.of(character.key);
+    const { items, purse, slots, equipped } = character === null ? EMPTY_BOOK : this.shelf.of(character.key);
+    const writingBooks = this.writingBooks(player, character);
+    const { notes, pins } = writingsIn(writingBooks.map((key) => this.shelf.of(key)));
     const drawn = this.drawnFor(character);
-    const sent = sentOf(character, this.worldMap, this.quests, drawn);
+    const sent = sentOf(character, writingBooks, this.worldMap, this.quests, drawn);
     const book: PlayerBook = { character: character?.sheet ?? null, worldMap: this.worldMap?.map ?? null, items, notes, pins, quests: sent.quests, purse, slots, equipped };
     this.sent.set(player, sent);
     this.owed.sent(player);
@@ -333,17 +348,28 @@ export class BookShare implements LootRecipientSource {
     else this.statblocks.sent(player, character, null);
   }
 
-  /** Writes what a player sent into their character's book; false when it is refused. */
-  private write(from: string, body: Record<string, unknown>): boolean {
-    if (!this.rate.take(from, this.ports.now())) return false;
+  /** The books a player's notes and pins lie in: their own first, then their character's and those of the campaign's characters given to them, but a character someone else plays right now, whose book is that player's. */
+  private writingBooks(player: string, character: PlayedCharacter | null): readonly string[] {
+    const keys = new Set([ownBookOf(player), ...(character === null ? [] : [character.key]), ...this.ports.charactersOf(player)]);
+    return [...keys].filter((key) => this.characters.playersOf(key).every((holder) => holder === player));
+  }
+
+  /** Writes what a player sent: a note or pin into their books, anything else into their character's book; false when it is refused. */
+  private write(from: string, body: Record<string, unknown>, mayWrite = this.isOnline(from)): boolean {
     const character = this.characters.of(from);
     const message = parsePlayerBookMessage(body);
-    if (character === null || message === null || !this.isOnline(from)) return false;
+    if (message === null || !mayWrite) return false;
+    const quests = new Set(this.quests.map((quest) => quest.id));
+    if (isWriting(message)) {
+      const outcome = writeWriting(this.shelf, this.writingBooks(from, character), message, this.ports.clock(), quests);
+      if (outcome === 'page-full') this.owed.owe(from);
+      return outcome !== 'refused';
+    }
+    if (character === null) return false;
     if (message.t === 'book-resource') return this.editResource(from, character, message);
     // Recovery buttons replaced refills; a page of an older Atlas may still ask for one.
     if (message.t === 'book-refill') return false;
     if (message.t === 'book-field' || message.t === 'book-ability' || message.t === 'book-list') return this.statblocks.write(from, character, message);
-    const quests = new Set(this.quests.map((quest) => quest.id));
     const written = applyBookMessage(this.shelf.of(character.key), message, this.ports.clock(), quests);
     if (written === null) return false;
     this.shelf.keep(character.key, written);
