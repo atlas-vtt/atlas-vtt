@@ -92,6 +92,21 @@ function runsOffMapEdge(ring: readonly Vec[], onMapEdge: (a: Vec, b: Vec) => boo
   return runs;
 }
 
+/** An open run without the sides that lie on the map's edge: thinning a bump smaller than `STRAY` off a run can leave one. */
+function splitOnMapEdge(run: readonly Vec[], onMapEdge: (a: Vec, b: Vec) => boolean): Vec[][] {
+  const parts: Vec[][] = [];
+  let part: Vec[] = [run[0]!];
+  for (let k = 1; k < run.length; k++) {
+    if (onMapEdge(run[k - 1]!, run[k]!)) {
+      if (part.length > 1) parts.push(part);
+      part = [];
+    }
+    part.push(run[k]!);
+  }
+  if (part.length > 1) parts.push(part);
+  return parts;
+}
+
 /** A run thinned; one that closes on itself in two halves, so it is not thinned to a line. */
 function thinnedRun(run: readonly Vec[]): Vec[] {
   const first = run[0]!;
@@ -121,7 +136,7 @@ export function treeLine(dungeon: VisibleDungeon, style: DungeonStyle, bounds: B
   const outside = woodsOutside(dungeon);
   // The mass's far side lies deep in the woods, where nobody comes.
   const reached = (run: readonly Vec[]): boolean => run.filter((p) => outside(p.x, p.y) < EDGE_DEPTH).length * 2 > run.length;
-  return shown.filter((ring) => ringArea(ring) >= SMALLEST).flatMap((ring) => runsOffMapEdge(ring, onMapEdge)).filter(reached).map(thinnedRun);
+  return shown.filter((ring) => ringArea(ring) >= SMALLEST).flatMap((ring) => runsOffMapEdge(ring, onMapEdge)).filter(reached).map(thinnedRun).flatMap((run) => splitOnMapEdge(run, onMapEdge));
 }
 
 /** A Forest floor's walls in world pixels, each run of the trees' edge a chain. Pure. */
