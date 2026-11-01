@@ -89,8 +89,8 @@ export function GridSettingsPanel({
   // Held locally: the palette does not re-render when the store's grid changes
   const [hexNumbers, setHexNumbers] = React.useState<CellNumberFormat | undefined>(currentGrid?.cellNumbers);
   const [tableTvTrueScale, setTableTvTrueScale] = React.useState(currentGrid?.tableTvTrueScale !== false);
-  // Only asked where the player view is a table TV at true scale (Atlas' settings, TrueScale)
-  const usesTrueScale = SettingsService.forApp(view?.app)?.getTableTvSettings().trueScale === true;
+  // Only asked where the player view is a table TV at true scale (TrueScale)
+  const usesTrueScale = SettingsService.forApp(view?.app)?.getTableTvDevice().trueScale === true;
   const [hexNumberOpacity, setHexNumberOpacity] = React.useState(
     currentGrid?.cellNumberOpacity ?? DEFAULT_CELL_NUMBER_OPACITY,
   );

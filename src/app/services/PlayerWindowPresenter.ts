@@ -1,4 +1,5 @@
 import { App, View } from 'obsidian';
+import { Ticker } from 'pixi.js';
 import type { StoreApi } from 'zustand';
 import type { LocalPlayerView, PlayerCameraState } from '../local-player-view';
 import type { AtlasView } from '../atlas-view';
@@ -12,6 +13,7 @@ import { viewportCamera } from './playerFrame';
 import { PlayerWindowService } from './PlayerWindowService';
 import { presentedSceneOf, readPresentedScene, type PresentedScene, type PresentedSceneStore } from './presentedScene';
 import { rendersOnChange, requestRender, setBeforeRender } from '../pixi/RenderScheduler';
+import { TickerRelay } from '../pixi/tickerRelay';
 import { showNotice } from '../ui/notice';
 import { hasLevels, levelById, resolveLevel, viewedLevelId } from '../levels/sceneLevels';
 import { levelLabel } from '../react/components/levels/levelEditing';
@@ -303,6 +305,8 @@ export function frameSourceOf(view: AtlasView): PlayerFrameSource | null {
   // The scene rendered now: rolls are named by what its players' frame shows, never by a later scene
   const mapPath = view.atlasStore.getState().mapPath;
   const badgeNumbers = renderer.playerBadgeNumbers();
+  // The view's own ticker and the shared one its map image loads tesserae on
+  const clocks = new TickerRelay([app.ticker, Ticker.shared]);
   return {
     store: view.atlasStore,
     diceEvents: view.serviceManager.getEventBus(),
@@ -328,6 +332,7 @@ export function frameSourceOf(view: AtlasView): PlayerFrameSource | null {
       const viewport = view.serviceManager.getRendererService().getViewport();
       return viewport ? { width: viewport.screenWidth, height: viewport.screenHeight, resolution: app.renderer.resolution } : undefined;
     },
+    keepTime: (time) => clocks.frame(time),
     canRender: () => renderer.canRenderPlayerFrame() && showsPresentedLevel(view),
     release: () => renderer.releasePlayerFrame(),
     addDemandRegion: (region) => renderer.addMapDemandRegion(region),

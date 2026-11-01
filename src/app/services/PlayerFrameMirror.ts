@@ -6,8 +6,9 @@ import type { AtlasSettings } from './SettingsService';
 import type { FramePiece, PlayerFrame, Screen } from '../types/playerFrame';
 import type { PlayerRollSources } from './playerRollSource';
 import { PlayerFrameDemand, type DemandRegions } from './playerFrameDemand';
-import { drawCalibrationRuler, tableTvPlayerFrame, type TableTv } from './tableTvFrame';
+import { drawTvSetup, tableTvPlayerFrame, type TableTv, type TvSetupScreen } from './tableTvFrame';
 import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
+import { WINDOW_ASLEEP_AFTER_MS } from '../pixi/tickerRelay';
 
 type PlayerViewSettings = AtlasSettings['localPlayerView'];
 
@@ -17,11 +18,10 @@ const MIRROR_INTERVAL_MS = 1000 / PLAYER_MIRROR_FPS;
 /** A display frame may come this much early for its slot, so frames a full interval apart are never just short of it. */
 const FRAME_TIME_SLACK_MS = 1;
 /**
- * A window without a display frame for this long is hidden, and its animation frames sleep. A
- * hidden player window is mirrored nothing; for a hidden DM window, whose requested renders do
- * not come, the mirror renders the frame itself.
+ * A hidden player window is mirrored nothing; for a hidden DM window, whose requested renders do
+ * not come, the mirror renders the frame itself, and its clocks run on the player window's frames (`keepTime`).
  */
-const ASLEEP_AFTER_MS = 250;
+const ASLEEP_AFTER_MS = WINDOW_ASLEEP_AFTER_MS;
 
 /**
  * Renders `frame`, a picture that is safe to show players, at its own size and camera, and
@@ -64,6 +64,12 @@ export interface PlayerFrameSource extends DemandRegions {
   withPlayerSafeFrame: PlayerSafeFrame;
   /** Without it the scene is captured on every display frame of the player window. */
   beforeRender?: BeforeRenderCapture;
+  /**
+   * Run on every display frame of the player window that shows this canvas live, at the mirror's
+   * time: steps the canvas' clocks while its own window is hidden and they sleep (`TickerRelay`),
+   * so what moves by itself on the map moves for players too.
+   */
+  keepTime?(time: number): void;
   /** Gives back what the source holds for players' frames, once the window shows it no longer. */
   release?(): void;
   /** Grid cell size in world units, for showing cells at a real-world size; undefined when the scene opts out. */
@@ -85,8 +91,10 @@ export interface MirrorInputs {
   window(): Screen | null;
   /** A still frame to show instead of the live canvas. */
   heldFrame(): HTMLCanvasElement | null;
-  /** The table TV the window is: true scale, and the calibration ruler. Without it frames are `playerFrame`'s. */
+  /** The table TV the window is, for true scale. Without it frames are `playerFrame`'s. */
   tableTv?(): TableTv | undefined;
+  /** TrueScale's set-up screen, drawn over every frame while the GM sets the TV up; none without. */
+  setup?(): TvSetupScreen | null;
   /** Most pixels a frame is rendered with (`playerFrame`); its default without. */
   pixelBudget?(): number;
   /**
@@ -134,6 +142,8 @@ export class PlayerFrameMirror {
   /** Since when a requested render is awaited. */
   private requestedAt: number | null = null;
   private lastHeld: HTMLCanvasElement | null = null;
+  /** The set-up screen drawn over the held frame, which is drawn again when it changes. */
+  private heldSetup: TvSetupScreen | null = null;
   private watched: PlayerFrameSource | null = null;
   private stopListening: (() => void) | null = null;
   private failing = false;
@@ -163,14 +173,18 @@ export class PlayerFrameMirror {
     this.guarded(() => {
       const held = this.inputs.heldFrame();
       if (held) {
-        // A held frame is static: draw it once, then idle until it changes
-        if (held !== this.lastHeld) this.draw(held);
+        // A held frame is static: draw it once, then idle until it or the set-up screen over it changes
+        const setup = this.inputs.setup?.() ?? null;
+        if (held !== this.lastHeld || setup !== this.heldSetup) this.drawHeld(held, setup);
         this.lastHeld = held;
+        this.heldSetup = setup;
         this.demand.release();
         return;
       }
       if (this.lastHeld) this.stale = true;
       this.lastHeld = null;
+      // May render the canvas, and with it a players' frame (`beforeRender`)
+      source.keepTime?.(now);
       if (!sameScreen(this.inputs.window(), this.shown)) this.stale = true;
 
       if (cannotRender(source)) {
@@ -269,8 +283,7 @@ export class PlayerFrameMirror {
       this.stale = true;
       return;
     }
-    const tv = this.inputs.tableTv?.();
-    if (tv?.settings.showCalibration) drawCalibrationRuler(this.context, frame, tv);
+    this.drawSetup(frame);
     this.inputs.onFrame(this.cameraOf(source));
     this.failing = false;
   }
@@ -279,6 +292,22 @@ export class PlayerFrameMirror {
     if (this.target.width === width && this.target.height === height) return;
     this.target.width = width;
     this.target.height = height;
+  }
+
+  /** The set-up screen, if one is shown, over a picture of `frame`'s size. */
+  private drawSetup(frame: Pick<PlayerFrame, 'width' | 'height' | 'resolution'>): void {
+    const setup = this.inputs.setup?.();
+    const tv = this.inputs.tableTv?.();
+    if (setup && tv) drawTvSetup(this.context, frame, setup, tv);
+  }
+
+  /** A held frame with the set-up screen over it, which takes the held frame's pixels per point of the window. */
+  private drawHeld(image: HTMLCanvasElement, setup: TvSetupScreen | null): void {
+    this.draw(image);
+    const window = this.inputs.window();
+    if (setup && window && window.width > 0) {
+      this.drawSetup({ width: image.width, height: image.height, resolution: image.width / window.width });
+    }
   }
 
   /** A still frame, at its own size: the window fits it into itself. */

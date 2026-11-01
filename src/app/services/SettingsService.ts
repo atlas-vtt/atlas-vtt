@@ -31,6 +31,7 @@ import type { LightingQuality, LightingQualityLevel } from '../lighting/lighting
 import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
 import { readDungeonGeneratorSettings, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
 import type { TableTvSettings } from './tableTvSettings';
+import { loadTableTvDevice, saveTableTvDevice, type TableTvDevice, type TvScreenRecord, type TvScreenSetup } from './tableTvDevice';
 
 export { TUTORIAL_IDS } from './atlasSettings';
 export type { AtlasSettings, NavigationInputMode, NavigationSettings, TutorialId } from './atlasSettings';
@@ -479,6 +480,29 @@ export class SettingsService {
   setTableTvSettings(changes: Partial<TableTvSettings>): void {
     this.settings.tableTv = { ...this.settings.tableTv, ...changes };
     this.commit();
+  }
+
+  /** TrueScale's facts about this device's TVs: local storage, since a TV belongs to the computer it is plugged into. */
+  getTableTvDevice(): TableTvDevice {
+    return loadTableTvDevice(this.app);
+  }
+
+  setTableTvDevice(patch: Partial<TableTvDevice>): void {
+    saveTableTvDevice(this.app, { ...this.getTableTvDevice(), ...patch });
+    this.notify();
+  }
+
+  /**
+   * Changes what this device keeps of the screen `key`. A screen is stored from its first
+   * change: turned at once (rotation 0 until one is given), set up only once it holds a
+   * positive `pxPerMm` (`setupOf`); a `pxPerMm` that is none leaves the one it had.
+   */
+  setTvScreenSetup(key: string, patch: Partial<TvScreenSetup>): void {
+    const device = this.getTableTvDevice();
+    const { pxPerMm, ...rest } = patch;
+    const screen: TvScreenRecord = { rotation: 0, ...device.screens[key], ...rest };
+    if (pxPerMm !== undefined && Number.isFinite(pxPerMm) && pxPerMm > 0) screen.pxPerMm = pxPerMm;
+    this.setTableTvDevice({ screens: { ...device.screens, [key]: screen } });
   }
 
   getLocalPlayerViewSettings(): AtlasSettings['localPlayerView'] {

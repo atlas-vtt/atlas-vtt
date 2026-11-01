@@ -242,6 +242,11 @@
       &:not(:has(> .atlas-scene-tab-bar)) {
         flex-shrink: 0;
       }
+
+      // The open TrueScale panel stands over the level switcher and the toolbar row, as their menus do
+      &:has(.atlas-true-scale__panel) {
+        z-index: $z-atlas-dropdown;
+      }
     }
 
     .atlas-top-bar-start__below {
@@ -478,16 +483,6 @@
 
     &[hidden] {
       display: none;
-    }
-  }
-
-  // Frame player view stands before the GM view switch while the player window is open: the bar's
-  // gap between them, and only the switch takes the bar's end corners
-  .atlas-toolbar-end {
-    gap: $spacing-s;
-
-    > :not(:last-child) {
-      --atlas-bar-end-radius: initial;
     }
   }
 
@@ -1203,9 +1198,4 @@ input.atlas-offscreen-input {
 .atlas-color-probe {
   position: absolute;
   opacity: 0;
-}
-
-// While the GM picks a point for the player view (pickMapPoint): over whatever cursor the tool sets
-.atlas-picking-point > canvas {
-  cursor: crosshair !important;
 }

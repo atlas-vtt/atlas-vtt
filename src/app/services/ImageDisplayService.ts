@@ -5,6 +5,7 @@ import { playImageEnter, playImageExit } from './imageDisplayMotion';
 import { ImageOverlayControls } from './imageOverlayControls';
 import { SettingsService } from './SettingsService';
 import { applyShownImageLayout, readShownImageLayout } from './shownImageLayout';
+import { tableTvOf } from './tableTvFrame';
 import './image-display.scss';
 import { t } from '../i18n';
 import { DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable } from '../imageProcessing/decodeLimits';
@@ -340,7 +341,7 @@ export class ImageDisplayService {
     const applyLayout = (): void => applyShownImageLayout(container, readShownImageLayout(settings?.getSetting('shownImage')));
     applyLayout();
     this.stopLayout = settings?.onChange(applyLayout) ?? null;
-    const turnOf = (): number => settings?.getTableTvSettings().rotation ?? 0;
+    const turnOf = (): number => (settings ? tableTvOf(playerWindow, settings.getTableTvSettings(), settings.getTableTvDevice()).rotation : 0);
     this.controls = new ImageOverlayControls(this.imageContainer, this.currentImage, playerWindow, () => this.closeImageDisplay(), turnOf);
 
     // A replaced image leaves above the new one, so the scrim stays dark while they crossfade

@@ -14,7 +14,6 @@ import { Toggle } from "./primitives/Toggle"
 import { isAtlasToolAvailable } from "../../tools/toolAvailability"
 import { availableToolbarControls, DEFAULT_TOOLBAR_ORDER } from "../../toolbar/toolbarCatalog"
 import { ResponsiveToolbar } from "./toolbar/ResponsiveToolbar"
-import { FramePlayersButton } from "./toolbar/FramePlayersButton"
 import { useToolbarHotkeys } from "./toolbar/useToolbarHotkeys"
 import { useToolbarLayout } from "./toolbar/useToolbarLayout"
 import { TOOLBAR_CONTROL_ITEMS } from "./toolbar/toolbarControls"
@@ -178,8 +177,6 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
               {...(dm && { hiddenIds, motion: editor.motion })}
               // The GM view switch keeps the bar's last place, after "More tools".
               end={dm && (
-                <>
-                <FramePlayersButton view={view} />
                 <Toggle
                   value={isGMView}
                   onChange={toggleGMView}
@@ -188,7 +185,6 @@ export const MainToolbar = forwardRef<HTMLDivElement, MainToolbarProps>(({ viewI
                   tooltipOn={t('toolbar.gmView', { key: hotkeyLabel('gmView') })}
                   tooltipOff={t('toolbar.sessionView', { key: hotkeyLabel('gmView') })}
                 />
-                </>
               )}
             />
             <AnimatePresence>

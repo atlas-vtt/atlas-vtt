@@ -662,6 +662,50 @@ describe('the presented level', () => {
     stopFollowing();
   });
 
+  test('presents another level with the eye: players keep their frame until its map has loaded, then see it live', async () => {
+    const app = deviceApp();
+    const { view } = createFakeView();
+    view.app = app;
+    const store = createStore(subscribeWithSelector<Record<string, unknown>>(() => ({
+      isMapLoading: false, mapLoaded: true, mapPath: 'maps/tower.md', background: 'maps/ground.png', grid: null,
+      levels: [{ ...levels[0], background: 'maps/ground.png' }, { ...levels[1], background: 'maps/upper.png' }],
+      viewedLevel: 'upper', setViewedLevel: (id: string) => store.setState({ viewedLevel: id }),
+    })));
+    view.atlasStore = store;
+    const loads: Array<() => void> = [];
+    const mapImage = { load: vi.fn(() => new Promise<void>((done) => loads.push(done))), mapStretch: NO_STRETCH, setStretch: vi.fn() };
+    view.serviceManager.getRendererService().getRenderer().getMapImage = () => mapImage;
+    const vault = { vault: { getAbstractFileByPath: () => null } } as unknown as App;
+    const stopFollowing = MapController.followBackground(vault, store as never, mapImage as never);
+    const finishLoad = async (): Promise<void> => {
+      await vi.waitFor(() => expect(loads).toHaveLength(1));
+      loads.shift()?.();
+      await flush();
+    };
+    const tower = view.tabMetaStore.getState().addTab('maps/tower.md', 'Tower');
+    // Players see the ground floor live, its map shown
+    store.setState({ viewedLevel: 'ground' });
+    await finishLoad();
+    await presentTab(app, view, tower);
+    expect(shownSource().canRender?.()).toBe(true);
+    serviceMock.holdCurrentFrame.mockClear();
+    serviceMock.presentCanvas.mockClear();
+
+    // The eye on the upper floor: the view goes there, its map still loading
+    const presenting = presentTab(app, view, tower, { levelId: 'upper' });
+    await vi.waitFor(() => expect(loads).toHaveLength(1));
+    expect(serviceMock.holdCurrentFrame).toHaveBeenCalled();
+    await presenting;
+    expect(presentedSceneOf(app).get()?.levelId).toBe('upper');
+    expect(serviceMock.presentCanvas).toHaveBeenCalledTimes(1);
+    // Shown live again, but nothing is rendered while the ground floor's map stands under the upper floor's objects
+    expect(shownSource().canRender?.()).toBe(false);
+
+    await finishLoad();
+    expect(shownSource().canRender?.()).toBe(true);
+    stopFollowing();
+  });
+
   test('a restored window takes up its frozen camera only on the level it was frozen on', async () => {
     for (const [frozenOn, kept] of [['upper', true], ['ground', false]] as const) {
       Object.values(serviceMock).forEach((fn) => fn.mockClear());

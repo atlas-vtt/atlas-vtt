@@ -58,7 +58,10 @@ describe('the widgets on the player view', () => {
     document.body.className = 'atlas-player-window atlas-player-window--live';
     const overlays = document.body.appendChild(document.createElement('div'));
     overlays.className = PLAYER_OVERLAYS_CLASS;
-    applyTableTvLook(document.body, overlays, { ...DEFAULT_TABLE_TV_SETTINGS, rotation, widgetPosition: position, widgetScale: scale });
+    applyTableTvLook(document.body, overlays, {
+      prefs: { ...DEFAULT_TABLE_TV_SETTINGS, widgetPosition: position, widgetScale: scale }, trueScale: false, cellMm: 25.4, setup: null, rotation,
+      devicePixelRatio: 1, screenKey: '1200x600',
+    });
     const widgets = overlays.appendChild(document.createElement('div'));
     widgets.id = 'atlas-player-widgets';
     const bar = widgets.appendChild(document.createElement('div'));

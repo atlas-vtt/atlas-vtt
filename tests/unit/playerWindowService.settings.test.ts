@@ -9,7 +9,7 @@ import { attachFakePlayerWindow } from '../mocks/playerPopout';
 import { frameSource, sizePlayerWindow } from '../mocks/playerFrameSource';
 
 
-const app = { vault: { adapter: { exists: async () => true, write: async () => {} } } } as any;
+const app = { vault: { adapter: { exists: async () => true, write: async () => {} } }, loadLocalStorage: () => null, saveLocalStorage: () => {} } as any;
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 type CounterScene = Pick<ViewAtlasState, 'widgetValues' | 'widgetSettings'>;

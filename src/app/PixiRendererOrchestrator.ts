@@ -76,7 +76,7 @@ import { viewedLevelId } from './levels/sceneLevels';
 import { levelObjects } from './levels/levelObjects';
 import { watchMapVideoPlayback } from './pixi/mosaicCanvas/video/watchMapVideoPlayback';
 import type { LiquidLayer } from './pixi/liquids/LiquidLayer';
-import { createViewLiquids } from './pixi/liquids/viewLiquids';
+import { createViewLiquids, type PlayersView } from './pixi/liquids/viewLiquids';
 import { playerWindowStore } from './stores/playerWindowStore';
 import { PlayerWindowService } from './services/PlayerWindowService';
 import { fitZoomRange } from './pixi/fitMapRect';
@@ -687,9 +687,17 @@ export class PixiRendererOrchestrator { // Renamed class
   private placeLiquids(viewport: Viewport, mapImage: MosaicCanvas): void {
     const app = this.pixiAppManager.getApp();
     if (!app?.renderer || !app.ticker) return;
-    this.liquids ??= createViewLiquids(app, viewport, this.store, settingsLightingQuality(SettingsService.forApp(this.obsApp)));
+    this.liquids ??= createViewLiquids(app, viewport, this.store, settingsLightingQuality(SettingsService.forApp(this.obsApp)), () => this.playersView());
     this.liquids.container.zIndex = MAP_LAYER_Z.liquids;
     viewport.addChildAt(this.liquids.container, viewport.getChildIndex(mapImage.layer) + 1);
+  }
+
+  /** What the player window shows of this view while it shows it live: what moves only while seen moves for it too. */
+  private playersView(): PlayersView | null {
+    const frame = PlayerWindowService.getInstance()?.liveFrameOf(this.store);
+    if (!frame) return null;
+    const { rect } = frameView(frame);
+    return { view: { left: rect.x, top: rect.y, right: rect.x + rect.width, bottom: rect.y + rect.height }, scale: frame.scale };
   }
 
   /** Plays the map image's animated map and the liquids on it while someone sees them; returns the function that stops. */
