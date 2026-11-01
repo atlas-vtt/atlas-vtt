@@ -487,6 +487,7 @@ export const Platform = {
   isWin: false,
   isLinux: false,
   isDesktop: true,
+  isDesktopApp: true,
   isMobile: false,
 };
 

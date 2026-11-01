@@ -4,17 +4,15 @@ import { runUvttGroupImport, type ChooseFloors } from '../../../../import/uvtt/r
 import { formatList, t } from '../../../../i18n';
 import { isUvttFileName } from '../../../../import/uvtt/uvttFileNames';
 import { openCreatedScene } from '../../../../import/openCreatedScene';
-import { runVideoMapImport } from '../../../../import/videoMaps/runVideoMapImport';
 import { isVideoMapPath } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
 import { useStableCallback } from '../../../../react/hooks/useStableCallback';
 import type { AssetService } from '../../../../services/AssetService';
 import { showNotice } from '../../../../ui/notice';
 
 /**
- * Imports map files into a collection: videos become animated maps, and Universal VTT files
- * scenes (several files that share a grid, the floors of one if the GM chooses), of which the
- * last that arrived opens, as a new scene is opened. Where `stay` says so
- * once they arrived, the scenes are only added.
+ * Imports Universal VTT files into a collection as scenes (several files that share a grid, the
+ * floors of one if the GM chooses), of which the last that arrived opens, as a new scene is opened.
+ * Where `stay` says so once they arrived, the scenes are only added.
  */
 export type ImportMaps = (files: readonly File[], collectionId: string, stay?: () => boolean) => Promise<void>;
 
@@ -28,6 +26,8 @@ export interface UvttImportOptions {
   isBusy: boolean;
   /** Where a map file dropped on the asset manager goes. */
   collectionId: string;
+  /** Takes videos dropped on the asset manager's window: animated maps are named and tagged in the map creator, as images are. */
+  onVideos: (files: File[]) => void;
   /** Runs once an imported scene is open: the asset manager closes then, as after a new scene. */
   onSceneOpened: () => void;
   /** Asks how files that can be the floors of one scene are imported; without it each file is a scene. */
@@ -63,8 +63,9 @@ function sayNotMaps(files: readonly File[]): void {
 }
 
 /**
- * The asset manager's import of map files (Universal VTT maps and videos): the function its map
- * creator calls, and map files dropped anywhere on its window, a folder tessera included. The scene of an import opens
+ * The asset manager's import of map files: the function its map creator calls for Universal VTT
+ * maps, and map files dropped anywhere on its window, a folder tessera included, of which videos go
+ * to the map creator. The scene of an import opens
  * only for the asset manager that started it, while it is still open and nothing else is open
  * in it that the scene would close: an import takes seconds, and the GM may have moved on.
  */
@@ -83,11 +84,7 @@ export function useUvttImport(options: UvttImportOptions): ImportMaps {
     const manager = managerOpenings.current;
     const creator = latest.current.isMapCreatorOpen ? creatorOpenings.current : null;
 
-    const videos = files.filter((file) => isVideoMapPath(file.name));
-    if (videos.length > 0) await runVideoMapImport(app, assetService, videos, collectionId);
-    const uvttFiles = files.filter((file) => isUvttFileName(file.name));
-    if (uvttFiles.length === 0) return;
-    const imported = await runUvttGroupImport(app, assetService, uvttFiles, collectionId, latest.current.chooseFloors);
+    const imported = await runUvttGroupImport(app, assetService, files, collectionId, latest.current.chooseFloors);
     const last = imported[imported.length - 1];
     const now = latest.current;
     if (!last || !now.isOpen || managerOpenings.current !== manager || now.isBusy) return;
@@ -118,7 +115,10 @@ export function useUvttImport(options: UvttImportOptions): ImportMaps {
       event.preventDefault();
       event.stopPropagation();
       if (lookalikes.length > 0) sayNotMaps(lookalikes);
-      if (maps.length > 0) void importMaps(maps, latest.current.collectionId);
+      const videos = maps.filter((file) => isVideoMapPath(file.name));
+      if (videos.length > 0) latest.current.onVideos(videos);
+      const uvttFiles = maps.filter((file) => !videos.includes(file));
+      if (uvttFiles.length > 0) void importMaps(uvttFiles, latest.current.collectionId);
     };
     document.addEventListener('dragover', onDragOver, true);
     document.addEventListener('drop', onDrop, true);

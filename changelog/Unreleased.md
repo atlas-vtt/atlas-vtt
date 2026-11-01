@@ -12,6 +12,13 @@
 - Every cave has a character of its own that shapes it, such as passages that curve back on themselves, roofs kept low, exits hidden in the floor, still pools wherever they can lie, or no passage that ends blind; the scene note says what the cave does
 - Caves come from what made them: a river, a fault, rot, fungus or a burrowing beast, each with its own passages, rock and water; the note says which
 
+**Player window bar**
+- The TrueScale button below the scene tabs is now a bar for the player window
+- Full screen on the TV: one click moves the player window to your second screen and fills it
+- Hide the map: the player window goes black at once, to set up the next scene or take a break. The map stays hidden when you present another scene, and after Obsidian restarts, until you reveal it. A command does the same
+- What players see: show or hide widgets, initiative, dice rolls, resource bars and nameplates on the player window from the bar. Its last row closes the player window
+- Take back the handout: while players see an image or loot, one click takes it away
+
 - TrueScale, for a TV lying on the table: a button below the scene tabs while the player window is open. Set it up without typing a number: lay a bank card on the TV and turn one dial until the outline on the glass hugs it, pick which way is up with a big arrow on the TV, done. The players' zoom then locks so a grid cell measures an inch (or 25 or 30 mm, your choice) on the glass, on every map (a scene can switch it off in its grid settings). Atlas remembers the set-up for that screen. Grown from a contribution by ThatMattLatt
 - The glass: while the player window is open, the players' screen is drawn on your map as a frame you can grab and slide, snapping to the grid; the TV glides along. Pin it to keep the players there while you roam, unpin it to have them follow you again. On a map the players are not seeing, the glass offers to bring them there
 - Saved frames: a bookmark on the glass keeps a frame on the scene, as many as you like, numbered on your map. Hover one to send the players there with a click or to remove it. They are saved with the scene
@@ -23,6 +30,7 @@
 
 ## Fixed
 - At the Saver lighting quality, bright dots no longer flash on the floor while a light moves.
+- Video maps now open on the Create maps screen like any image, where you name them, tag them and choose their collection before creating them. They used to be added to the asset manager straight away, also when dropped on its window
 - Online play: a campaign can no longer hold two players with the same name. A newcomer whose name is taken is asked for their own code or another name, and the GM cannot add or rename a player to a name already in use.
 - A room of magical darkness showed its whole shape to players once a token with darkvision stood in a companion's light that outshines the darkness, for example when two tokens overlapped. The room's shape no longer shows, and a token looking at the darkness from outside still sees its veil
 - A note pin on a heading the note repeats, such as the many "Overview" sections of a long chapter, opened the first one whichever you chose. It now opens the one you picked, and the pin's heading list shows the sections around each heading ("Black Ivory Inn › Overview")

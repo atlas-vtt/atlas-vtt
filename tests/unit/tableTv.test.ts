@@ -185,7 +185,7 @@ describe('the set-up screen on the TV', () => {
     const ctx = context();
     // 4 device pixels per mm at a pixel ratio of 2 are 2 points, 4 frame pixels at a resolution of 2
     drawTvSetup(ctx, frame, { kind: 'fit', pxPerMm: 4 }, tv(false));
-    expect(ctx.texts).toEqual(['Lay a bank card in the outline', 'then make the outline hug the card']);
+    expect(ctx.texts).toEqual(['Lay a bank card inside the outline', 'Atlas measures this screen with it']);
     expect(ctx.calls).toContain('stroke');
     // The corners the path turns at: the outline is the card plus half its line (3 frame px: a 1.5 px line at resolution 2) on every side
     const xs = ctx.points.map(([x]) => x!);

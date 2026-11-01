@@ -243,8 +243,9 @@
         flex-shrink: 0;
       }
 
-      // The open TrueScale panel stands over the level switcher and the toolbar row, as their menus do
-      &:has(.atlas-true-scale__panel) {
+      // A menu or TrueScale's panel open from the player window bar stands over the level
+      // switcher and the toolbar row, as their menus do
+      &:has(.atlas-player-window-bar .atlas-dropdown-content) {
         z-index: $z-atlas-dropdown;
       }
     }
@@ -650,23 +651,6 @@
       background: transparent !important;
     }
 
-    // States of the menu's buttons that the toolbar's button rules above would flatten
-    .atlas-dropdown-content button.btn {
-      &.atlas-dropdown-mode-btn--active {
-        background: transparent !important;
-        color: var(--interactive-accent) !important;
-        border: $border-width-s solid var(--interactive-accent) !important;
-      }
-
-      &.atlas-dropdown-btn--destructive {
-        color: var(--text-error) !important;
-
-        &:hover {
-          background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
-        }
-      }
-    }
-
     // Round only the outer edges of the tool button
     > .atlas-tool-button:first-child button.btn {
       border-top-left-radius: var(--atlas-bar-start-radius, #{$radius-l}) !important;
@@ -683,6 +667,24 @@
     .atlas-dropdown-trigger {
       height: $button-height-l; // match tool button height (40px)
       border-left: $border-width-s solid var(--divider-color);
+    }
+  }
+
+  // States of the buttons in a bar's menus (tool groups, the player window bar) that the bar's
+  // button rules above would flatten
+  #{$toolbars} .atlas-dropdown-content button.btn {
+    &.atlas-dropdown-mode-btn--active {
+      background: transparent !important;
+      color: var(--interactive-accent) !important;
+      border: $border-width-s solid var(--interactive-accent) !important;
+    }
+
+    &.atlas-dropdown-btn--destructive {
+      color: var(--text-error) !important;
+
+      &:hover {
+        background: color-mix(in oklch, var(--background-modifier-error) 15%, transparent) !important;
+      }
     }
   }
 

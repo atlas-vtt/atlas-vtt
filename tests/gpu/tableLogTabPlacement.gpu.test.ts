@@ -6,6 +6,7 @@ import { page } from 'vitest/browser';
 import css from '../../styles/main.scss?inline';
 import tabsCss from '../../src/app/react/components/scene-tab-bar.scss?inline';
 import switcherCss from '../../src/app/react/components/levels/level-switcher.scss?inline';
+import barCss from '../../src/app/packages/components/player-window-bar/player-window-bar.scss?inline';
 import { roomAbove } from '../../src/app/online/gm/dock/dockDom';
 import { LogUnreadTab } from '../../src/app/online/tableLog/LogUnreadTab';
 import { DASHBOARD_THEME } from './dashboardTheme';
@@ -44,19 +45,31 @@ const LEVELS = `
     </div>
   </div>`;
 
+/** The player window bar as `PlayerWindowBar` renders it with every button: TrueScale, full screen, curtain, what players see, take back. */
+const toolButton = '<div class="atlas-tool-button"><span style="display: inline-flex"><button class="btn btn--toolbar btn--icon"><svg viewBox="0 0 24 24" width="24" height="24"></svg></button></span></div>';
+const PLAYER_WINDOW_BAR = `
+  <div class="atlas-player-window-bar">
+    <div class="atlas-vtt-toolbar">
+      ${toolButton.repeat(3)}
+      <div class="atlas-player-window-bar__menu">${toolButton}</div>
+      ${toolButton}
+    </div>
+  </div>`;
+
 interface Layout {
   readonly tabs: boolean;
   readonly widgets: number;
   readonly levels: boolean;
+  readonly bar?: boolean;
 }
 
-const mapUi = ({ tabs, widgets, levels }: Layout): string => `
+const mapUi = ({ tabs, widgets, levels, bar = false }: Layout): string => `
   <div class="atlas-vtt-plugin atlas-react-ui-container" style="position: absolute; inset: 0">
     <div class="atlas-ui" style="position: relative; width: 100%; height: 100%">
       <div class="atlas-top-bar-row">
         <div class="atlas-top-bar-start">
           ${tabs ? TABS : ''}
-          <div class="atlas-top-bar-start__below"><div class="atlas-online-log-tab-host"></div></div>
+          <div class="atlas-top-bar-start__below">${bar ? PLAYER_WINDOW_BAR : ''}<div class="atlas-online-log-tab-host"></div></div>
         </div>
         <div class="atlas-top-bar-end">
           ${widgets > 0 ? `<div class="atlas-widget-bar active"${widgets > 2 ? ' data-stack="closed"' : ''}><div class="atlas-widget-container">${LABELS.slice(0, widgets).map(card).join('')}</div></div>` : ''}
@@ -77,7 +90,7 @@ const overlaps = (a: DOMRect, b: DOMRect): boolean => a.left < b.right - 0.5 && 
 
 describe('the table log\'s unread tab on the GM\'s map', () => {
   const style = document.createElement('style');
-  style.textContent = DASHBOARD_THEME + css + tabsCss + switcherCss;
+  style.textContent = DASHBOARD_THEME + css + tabsCss + switcherCss + barCss;
   // Obsidian's workspace leaf: it holds the view's fixed elements and their stacking.
   const leaf = document.createElement('div');
   let root: Root | null = null;
@@ -137,6 +150,25 @@ describe('the table log\'s unread tab on the GM\'s map', () => {
       await page.screenshot({ path: `__screenshots__/atlas-online-log-tab-no-tabs-${width}.png`, element: leaf });
       expect(tab.left).toBeCloseTo(view.left + INSET, 0);
       expect(tab.top).toBeCloseTo(view.top + INSET, 0);
+      staysClear(tab);
+    });
+  }
+
+  for (const width of [1280, 640]) {
+    it(`hangs below the full player window bar, which stays clear of the tabs, widgets and dice rolls, in a view ${width} px wide`, async () => {
+      const { tab } = await mount(width, 600, { tabs: true, widgets: LABELS.length, levels: true, bar: true });
+      await page.screenshot({ path: `__screenshots__/atlas-player-window-bar-${width}.png`, element: leaf });
+      const tabs = boxOf('.atlas-scene-tab-bar');
+      const bar = boxOf('.atlas-player-window-bar .atlas-vtt-toolbar');
+      // Five buttons of 40 px with the bar's gaps and padding of 8 px, and its border
+      expect(bar.width).toBeCloseTo(250, -1);
+      expect(bar.left).toBeCloseTo(tabs.left, 0);
+      expect(bar.top).toBeCloseTo(tabs.bottom + INSET, 0);
+      expect(tab.left).toBeCloseTo(bar.left, 0);
+      expect(tab.top).toBeCloseTo(bar.bottom + INSET, 0);
+      for (const selector of ['.atlas-scene-tab-bar', '.atlas-widget', '.atlas-dice-roll__sheet', '.atlas-level-switcher']) {
+        for (const [index, box] of boxesOf(selector).entries()) expect.soft(overlaps(bar, box), `bar and ${selector} ${index}`).toBe(false);
+      }
       staysClear(tab);
     });
   }

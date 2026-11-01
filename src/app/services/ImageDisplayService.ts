@@ -12,6 +12,7 @@ import { DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable } from '../imageProcess
 import { imageHeader } from '../imageProcessing/imageDimensions';
 import { showNotice } from '../ui/notice';
 import { statblockImageAt } from './statblockImageTarget';
+import { playerWindowStore } from '../stores/playerWindowStore';
 
 /** An image overlay in the player window. */
 interface ImageDisplay {
@@ -346,18 +347,19 @@ export class ImageDisplayService {
 
     // A replaced image leaves above the new one, so the scrim stays dark while they crossfade
     previous?.container.before(this.imageContainer);
+    playerWindowStore.setState({ imageShown: true });
     const entrance = playImageEnter(this.imageContainer, this.imageStage, this.currentImage, previous !== null);
     // The previous image stays until the new one can paint, so the crossfade never shows an empty scrim
     if (previous) void this.leave(previous, entrance);
   }
 
   /**
-   * Close the image display
+   * Close the image display. `quiet` says nothing, for a control whose own change shows it (the player window bar).
    */
-  public closeImageDisplay(): void {
+  public closeImageDisplay(options?: { quiet?: boolean }): void {
     const display = this.detachImageDisplay();
     if (!display) return;
-    showNotice(t('image.closed'));
+    if (!options?.quiet) showNotice(t('image.closed'));
     void this.leave(display);
   }
   
@@ -508,6 +510,7 @@ export class ImageDisplayService {
     this.imageContainer = null;
     this.imageStage = null;
     this.currentImage = null;
+    playerWindowStore.setState({ imageShown: false });
     return display;
   }
 

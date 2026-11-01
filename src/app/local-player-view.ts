@@ -42,6 +42,8 @@ export interface LocalPlayerSession extends Record<string, unknown> {
   frames?: Record<string, PlayerCameraState>;
   /** The level of that scene players saw, whose camera `camera` is; unset for a scene without levels. */
   levelId?: string | undefined;
+  /** Whether the curtain was down: a restored window comes back black until the GM lifts it. */
+  curtain?: boolean;
 }
 
 /** A real workspace leaf lets Obsidian restore the presentation and window geometry. */
@@ -72,6 +74,7 @@ export class LocalPlayerView extends ItemView {
     const camera = 'camera' in state ? readPlayerCamera(state.camera) : null;
     if (camera) this.session.camera = camera;
     if ('levelId' in state && typeof state.levelId === 'string' && state.levelId !== '') this.session.levelId = state.levelId;
+    if ('curtain' in state && state.curtain === true) this.session.curtain = true;
     if ('frames' in state && isRecord(state.frames)) {
       this.session.frames = Object.fromEntries(Object.entries(state.frames).flatMap(([map, framed]): Array<[string, PlayerCameraState]> => {
         const camera = readPlayerCamera(framed);

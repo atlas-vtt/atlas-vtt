@@ -84,6 +84,7 @@ import { mapPreview } from './mapPreview';
 import { names } from './names';
 import { player } from './player';
 import { playerInit } from './playerInit';
+import { playerBar } from './playerBar';
 import { present } from './present';
 import { preview } from './preview';
 import { recovery } from './recovery';
@@ -197,6 +198,7 @@ export const en = {
   ...names,
   ...player,
   ...playerInit,
+  ...playerBar,
   ...present,
   ...preview,
   ...recovery,

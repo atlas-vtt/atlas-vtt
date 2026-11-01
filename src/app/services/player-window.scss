@@ -190,6 +190,27 @@ body.atlas-player-window {
     display: none !important;
   }
 
+  // The curtain (PlayerWindowService.setCurtain): black over everything players see, the image
+  // display (z 10000) and the loot handout (z 10001) included. The canvas is blacked as well.
+  .atlas-player-curtain {
+    position: fixed;
+    inset: 0;
+    z-index: 10002;
+    background: #000;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity $transition-normal $transition-ease-out;
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
+  }
+
+  &.atlas-player-window--curtain .atlas-player-curtain {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
   // Top left: the widgets hold the top right corner.
   #atlas-player-freeze-indicator {
     position: absolute;

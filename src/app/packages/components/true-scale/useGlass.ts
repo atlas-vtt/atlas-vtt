@@ -81,7 +81,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
 
     const outline = new GlassOutline(app, viewport, (overlay) => orchestrator.addDmScreenOverlay(overlay));
     const tabId = (): string | null => view.tabMetaStore.getState().activeTabId;
-    /** Where a dragged or just dropped ghost stands; null: in the middle of the GM's view. */
+    /** Where a ghost placed by hand stands; null: in the middle of the GM's view. */
     let ghostAt: { x: number; y: number } | null = null;
     let glass: Glass | null = null;
     let dragging: (() => void) | null = null;
@@ -170,9 +170,8 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
       cameraKey = key;
       follow(key !== heardKey);
     };
-    /** A pan or zoom by the GM lets a dropped ghost go back to the middle of the view; the next tick follows it. */
+    /** A ghost placed by hand keeps its place on the map through the GM's pans and zooms; the next tick follows them. */
     const onViewportMoved = (): void => {
-      if (!dragging) ghostAt = null;
       heardKey = keyOf();
     };
 
@@ -208,7 +207,6 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
             ghostAt = centre;
             follow(true);
           },
-          present: (camera) => present(id, camera),
         });
         const stop = trackGlassDrag(chip, event, {
           ...steps,

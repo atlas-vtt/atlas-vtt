@@ -5,7 +5,7 @@ export const glass = {
   'glass.bring': 'Bring players here',
   'glass.pin': 'Pin the players here',
   'glass.unpin': 'Let the players follow you',
-  'glass.bringHint': 'Show players this map, framed here',
+  'glass.bringHint': 'Show players this map',
   'glass.save': 'Save this frame',
   'glass.show': 'Show players here',
   'glass.remove': 'Remove',

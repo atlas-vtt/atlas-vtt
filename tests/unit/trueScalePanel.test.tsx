@@ -42,9 +42,9 @@ describe('TrueScale panel', () => {
 
   it('says whether this screen is set up, and that players are on another map', () => {
     renderPanel();
-    expect(screen.getByText('Not set up for this screen')).toBeTruthy();
+    expect(screen.getByText('This screen is not measured yet')).toBeTruthy();
     act(() => settings.setTvScreenSetup(KEY, { pxPerMm: 3 }));
-    expect(screen.getByText('Set up for 3840×2160')).toBeTruthy();
+    expect(screen.getByText('Measured · 3840×2160')).toBeTruthy();
     act(() => playerWindowStore.setState({ shownTabId: 'b' }));
     expect(screen.getByText('Players are on another map')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Show this map' }));
@@ -53,34 +53,34 @@ describe('TrueScale panel', () => {
 
   it('starts the set-up where True scale is switched on for a screen never set up', () => {
     renderPanel();
-    fireEvent.click(screen.getByRole('switch', { name: 'True scale' }));
+    fireEvent.click(screen.getByRole('switch', { name: 'Show the map at true scale' }));
     expect(screen.getByText('Which way is up?')).toBeTruthy();
     expect(lastScreen()).toEqual({ kind: 'orientation' });
     expect(settings.getTableTvDevice().trueScale).toBe(false);
   });
 
-  it('fits the card with the dial and stores the fit with Looks right', () => {
+  it('fits the card with the dial and stores the fit with Done', () => {
     settings.setTvScreenSetup(KEY, { pxPerMm: 3, rotation: 90 });
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: 'Fit a bank card again…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure the screen again…' }));
     expect(lastScreen()).toEqual({ kind: 'fit', pxPerMm: 3 });
     fireEvent.click(screen.getByRole('button', { name: 'Larger' }));
     const larger = lastScreen();
     expect(larger?.kind === 'fit' && larger.pxPerMm).toBeCloseTo(3.06);
     fireEvent.click(screen.getByRole('button', { name: 'Larger' }));
     expect((lastScreen() as { pxPerMm: number }).pxPerMm).toBeGreaterThan(3.06);
-    fireEvent.click(screen.getByRole('button', { name: 'Looks right' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Done' }));
     const device = settings.getTableTvDevice();
     expect(device.screens[KEY]?.pxPerMm).toBeCloseTo(3 * 1.02 ** 2);
     expect(device.screens[KEY]?.rotation).toBe(90);
     expect(device.trueScale).toBe(true);
     expect(lastScreen()).toBeNull();
-    expect(screen.getByText('Set up for 3840×2160')).toBeTruthy();
+    expect(screen.getByText('Measured · 3840×2160')).toBeTruthy();
   });
 
   it('turns the TV back and clears its screen on Cancel', () => {
     renderPanel();
-    fireEvent.click(screen.getByRole('button', { name: 'Fit a bank card…' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Measure the screen…' }));
     fireEvent.click(screen.getByRole('radio', { name: 'Right' }));
     expect(settings.getTableTvDevice().screens[KEY]?.rotation).toBe(90);
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
@@ -89,7 +89,7 @@ describe('TrueScale panel', () => {
     expect(settings.getTableTvDevice().screens[KEY]?.rotation).toBe(0);
     expect(settings.getTableTvDevice().screens[KEY]?.pxPerMm).toBeUndefined();
     expect(lastScreen()).toBeNull();
-    expect(screen.getByText('Not set up for this screen')).toBeTruthy();
+    expect(screen.getByText('This screen is not measured yet')).toBeTruthy();
   });
 
   it('writes the cell on the glass', () => {

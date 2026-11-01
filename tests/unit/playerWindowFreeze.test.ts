@@ -502,7 +502,7 @@ describe('player camera freeze', () => {
       fillText.mockClear();
       service.showSetup({ kind: 'fit', pxPerMm: 5.512 });
       nextFrame();
-      expect(fillText.mock.calls[0]).toEqual(['Lay a bank card in the outline', expect.any(Number), expect.any(Number)]);
+      expect(fillText.mock.calls[0]).toEqual(['Lay a bank card inside the outline', expect.any(Number), expect.any(Number)]);
       // A cell of 70 world pixels spans 25.4 mm of the dial's 5.512 device pixels (140), at a pixel ratio of 1
       expect(lastFrame().scale).toBeCloseTo(2);
 
