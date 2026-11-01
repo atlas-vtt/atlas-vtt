@@ -14,6 +14,7 @@ import { NotePinPreview } from './notePinPreview';
 import { nearestHexCenter, type HexLayout } from '../grid/hexGeometry';
 import { hexLinkAt } from '../grid/hexLinks';
 import { linkedSceneFile, mayLinkFromScene } from '../services/sceneLinks';
+import { openPinNote } from '../services/noteHeadings';
 import { pinSceneLevel } from '../levels/pinSceneLevel';
 import { showPinnedLevel } from '../links/openAtlasLink';
 import { t } from '../i18n';
@@ -318,8 +319,7 @@ export class NotePinTool {
     } else if (!mayLinkFromScene(mapPath, pin.notePath)) {
       showNotice(t('pin.crossCollection'));
     } else {
-      // Open the linked note normally - openLinkText handles headers automatically
-      runInBackground(this.obsidianApp.workspace.openLinkText(pin.notePath, '', true), `Opening ${pin.notePath}`, 'Could not open the linked note');
+      runInBackground(openPinNote(this.obsidianApp, pin.notePath, true), `Opening ${pin.notePath}`, 'Could not open the linked note');
     }
   }
   
@@ -391,7 +391,7 @@ export class NotePinTool {
     
     // For now, we'll just open the note directly
     // In the future, this could be enhanced to show a hovering preview window
-    runInBackground(this.obsidianApp.workspace.openLinkText(pin.notePath, '', true), `Opening ${pin.notePath}`, 'Could not open the linked note');
+    runInBackground(openPinNote(this.obsidianApp, pin.notePath, true), `Opening ${pin.notePath}`, 'Could not open the linked note');
   }
 
   /**

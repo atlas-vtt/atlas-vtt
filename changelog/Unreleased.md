@@ -9,5 +9,6 @@
 - Presenting a scene no longer always unfreezes the players. A map you framed with the glass brings them back to that frame when it is presented again; pinned players stay pinned, gliding to your view on the same map and taking your view of a new map at once. Players who are not pinned follow you as before
 
 ## Fixed
+- A note pin on a heading the note repeats, such as the many "Overview" sections of a long chapter, opened the first one whichever you chose. It now opens the one you picked, and the pin's heading list shows the sections around each heading ("Black Ivory Inn › Overview")
 - Animated maps and water stood still on the player view while the Obsidian window was hidden behind it or minimised: the player window now keeps the clock running. Water also moves for players wherever their screen shows it, not only where your view does
 - On some Macs the asset manager opened from the toolbar lost its backgrounds and cards over the map. It now covers the whole window, as it does when opened from the command palette

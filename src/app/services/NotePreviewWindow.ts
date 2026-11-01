@@ -10,7 +10,8 @@ import { viewFrame } from '../packages/components/primitives/useKeepInView';
 import { NOTE_PREVIEW_LAYER_CLASS } from './uiLayers';
 import { applyNoteScroll, readNoteViewState, toOpenViewState } from './noteViewState';
 import { t } from '../i18n';
-import { findEditorHeading, findRenderedHeading, headingLine } from './noteHeadings';
+import { findEditorHeading, findRenderedHeading, linkedHeading, openPinNote } from './noteHeadings';
+import { headingTitle } from '../utils/pathUtils';
 import { alignHeading, holdHeadingInView } from './headingScroll';
 import { isModKey } from '../keyboard/modKey';
 
@@ -247,7 +248,7 @@ export class NotePreviewWindow {
 
     if (this.titleElement) {
       const displayTitle = this.headerToScrollTo 
-        ? `${file.basename} > ${this.headerToScrollTo}`
+        ? `${file.basename} > ${headingTitle(this.headerToScrollTo)}`
         : file.basename || t('preview.loading');
       this.titleElement.setText(displayTitle);
     }
@@ -374,15 +375,16 @@ export class NotePreviewWindow {
 
     if (this.headerToScrollTo) {
       window.requestAnimationFrame(() => {
-        this.scrollRenderedMarkdownToHeader(contentContainer, this.headerToScrollTo!);
+        this.scrollRenderedMarkdownToHeader(file, contentContainer, this.headerToScrollTo!);
       });
     }
 
     this.interceptLinkClicks(contentContainer);
   }
 
-  private scrollRenderedMarkdownToHeader(container: HTMLElement, headerText: string): void {
-    const targetElement = findRenderedHeading(container, headerText);
+  private scrollRenderedMarkdownToHeader(file: TFile, container: HTMLElement, headerText: string): void {
+    const heading = linkedHeading(this.app, file, headerText);
+    const targetElement = heading && findRenderedHeading(container, heading);
     if (!targetElement) {
       console.warn('[NotePreviewWindow] Header not found in rendered markdown:', headerText);
       return;
@@ -722,8 +724,7 @@ export class NotePreviewWindow {
       
       // If we have a header to scroll to, handle it
       if (this.headerToScrollTo) {
-        // Use openLinkText which handles headers properly
-        runInBackground(this.app.workspace.openLinkText(this.originalNotePath, '', false), `Opening ${this.originalNotePath}`, t('loot.openFailed'));
+        runInBackground(openPinNote(this.app, this.originalNotePath, false), `Opening ${this.originalNotePath}`, t('loot.openFailed'));
       }
       this.close(); // Close the preview after opening the file
     }
@@ -778,8 +779,8 @@ export class NotePreviewWindow {
   private scrollToHeader(headerText: string): void {
     const view = this.leaf?.view;
     if (!(view instanceof MarkdownView) || !view.file) return;
-    const line = headingLine(this.app, view.file, headerText);
-    if (line === null) {
+    const linked = linkedHeading(this.app, view.file, headerText);
+    if (linked === null) {
       console.warn('[NotePreviewWindow] Heading not found in note:', headerText);
       return;
     }
@@ -787,11 +788,11 @@ export class NotePreviewWindow {
     const viewContent = view.containerEl;
     // Only the shown mode counts: the view keeps the other one in the DOM, hidden.
     const findHeading = view.getMode() === 'preview'
-      ? (): HTMLElement | null => findRenderedHeading(view.previewMode.containerEl, headerText)
-      : (): HTMLElement | null => findEditorHeading(viewContent, line);
+      ? (): HTMLElement | null => findRenderedHeading(view.previewMode.containerEl, linked, (element) => view.previewMode.renderer?.getSectionInfo(element)?.lineStart ?? null)
+      : (): HTMLElement | null => findEditorHeading(viewContent, linked.line);
     viewContent.classList.add(PENDING_SCROLL_CLASS);
     const stop = holdHeadingInView(
-      { container: viewContent, findHeading, scrollToLine: () => view.currentMode.applyScroll(line) },
+      { container: viewContent, findHeading, scrollToLine: () => view.currentMode.applyScroll(linked.line) },
       (heading) => {
         viewContent.classList.remove(PENDING_SCROLL_CLASS);
         if (heading) this.flashHeading(heading);

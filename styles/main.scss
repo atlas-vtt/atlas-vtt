@@ -1087,6 +1087,29 @@
     background: var(--background-modifier-hover);
   }
 
+  // The sections around a heading: those farthest up give way first, so the nearest stays readable
+  .pin-header-trail {
+    @include atlas-flex-row($gap: 0);
+    min-width: 0;
+    font-size: $font-ui-smaller;
+    color: var(--text-faint);
+  }
+
+  .pin-header-section {
+    flex: 0 1000 auto;
+    min-width: 0;
+    @include atlas-truncate;
+
+    &:last-child {
+      flex-shrink: 1;
+    }
+  }
+
+  .pin-header-separator {
+    flex-shrink: 0;
+    white-space: pre;
+  }
+
   .pin-header-file {
     flex-shrink: 0;
     max-width: 40%;
