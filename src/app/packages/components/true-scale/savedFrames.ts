@@ -10,8 +10,11 @@ import { trackGlassDrag } from './glassDrag';
 import { snapGlassCentre } from './glassSnap';
 import { savedChipPlace, type ChipRoom } from './glassState';
 
-/** How long a saved frame's chip stays after the pointer left the frame and the chip. */
+/** How long a saved frame's chip stays after the pointer left the frame and the chip, or came onto another frame. */
 export const SAVED_CHIP_HIDE_MS = 300;
+
+/** How close, in world px, a frame is to another to be the same frame. */
+const SAME_FRAME = 1;
 
 interface Point {
   x: number;
@@ -41,8 +44,12 @@ export interface SavedFramesDeps {
 export interface SavedFrames {
   /** Reads the saved frames anew and draws them. */
   refresh(): void;
-  /** Keeps the chip inside the corner of its frame: after the camera moved. */
+  /** Keeps the chip on its frame and asks again what lies under the pointer: after the camera moved. */
   place(): void;
+  /** The canvas may stand elsewhere in the window: after a resize. */
+  measure(): void;
+  /** The saved frame on the place of `frame`, the newest where several are; -1 where none is. */
+  indexOf(frame: WorldFrame): number;
   /** Sends players to the frame whose chip shows. */
   show(): void;
   remove(): void;
@@ -55,9 +62,11 @@ export interface SavedFrames {
 
 /**
  * The frames the GM saved on a map, drawn by the glass's outline, and the chip of the one under
- * the pointer. The pointer is followed on the canvas's container without taking anything from
- * the map: a move only tests the frames' rectangles of the last draw. The chip stays while the
- * pointer is over its frame or over it, and goes `SAVED_CHIP_HIDE_MS` after it left both.
+ * the pointer. The pointer is followed on the canvas's container, which holds the map's UI too,
+ * without taking anything from the map: a move only tests the frames' rectangles of the last draw,
+ * and only a move over the canvas is over a frame. The chip stays while the pointer is on it,
+ * whatever lies under it. With a chip up, what the pointer came to instead (another frame, none)
+ * takes over only `SAVED_CHIP_HIDE_MS` later, so the way to a chip may cross other frames.
  * Dragging the chip moves its frame, snapped like the glass, and the drop writes it.
  */
 export function savedFrames(deps: SavedFramesDeps): SavedFrames {
@@ -70,6 +79,10 @@ export function savedFrames(deps: SavedFramesDeps): SavedFrames {
   let overFrame = -1;
   let overChip = false;
   let hideTimer: number | null = null;
+  /** The pointer on the canvas, in the canvas's pixels; null while it is elsewhere. */
+  let pointer: Point | null = null;
+  /** A chip is being dragged: past the threshold, not merely pressed. */
+  let dragging = false;
   /** Where a frame being dragged stands now, before the drop writes it. */
   let moved: { index: number; centre: Point } | null = null;
   let stopDrag: (() => void) | null = null;
@@ -92,7 +105,7 @@ export function savedFrames(deps: SavedFramesDeps): SavedFrames {
     drawn = next;
     if (!same) outline.setSaved(drawn);
   };
-  const place = (): void => {
+  const placeChip = (): void => {
     const rect = shown >= 0 ? outline.savedRect(shown) : undefined;
     if (!rect) return;
     const at = savedChipPlace(rect, { width: chip.offsetWidth, height: chip.offsetHeight }, deps.room());
@@ -107,21 +120,31 @@ export function savedFrames(deps: SavedFramesDeps): SavedFrames {
     if (shown === index) return;
     shown = index;
     deps.setShown(index < 0 ? null : index);
-    place();
+    placeChip();
   };
-  /** Shows the chip of the frame under the pointer, or lets it go a moment after the pointer left frame and chip. */
+  /** Brings the chip in line with the frame under the pointer: at once where none shows, else a moment later. */
   const settle = (): void => {
-    if (stopDrag) return;
-    if (overFrame >= 0 || overChip) {
+    if (dragging) return;
+    if (overChip || overFrame === shown) {
       clearHide();
-      if (overFrame >= 0) showChip(overFrame);
       return;
     }
-    if (shown < 0 || hideTimer !== null) return;
+    if (shown < 0) {
+      showChip(overFrame);
+      return;
+    }
+    if (hideTimer !== null) return;
     hideTimer = win.setTimeout(() => {
       hideTimer = null;
-      if (overFrame < 0 && !overChip && !stopDrag) showChip(-1);
+      if (!overChip && !dragging) showChip(overFrame);
     }, SAVED_CHIP_HIDE_MS);
+  };
+  /** Asks what lies under the pointer, which changes with the frames and the camera as well as with the pointer. */
+  const hover = (): void => {
+    const index = pointer ? outline.savedAt(pointer.x, pointer.y) : -1;
+    if (index === overFrame) return;
+    overFrame = index;
+    settle();
   };
 
   const measure = (): void => {
@@ -131,15 +154,17 @@ export function savedFrames(deps: SavedFramesDeps): SavedFrames {
   };
   const onMove = (event: PointerEvent): void => {
     // A pan or a drag on the map is under way: no chip comes up under it
-    if (event.buttons !== 0) return;
-    const index = outline.savedAt(event.clientX - canvasLeft, event.clientY - canvasTop);
-    if (index === overFrame) return;
-    overFrame = index;
-    settle();
+    if (event.buttons !== 0) {
+      pointer = null;
+      return;
+    }
+    const onChip = event.composedPath().includes(chip);
+    pointer = onChip || event.target === deps.canvas ? { x: event.clientX - canvasLeft, y: event.clientY - canvasTop } : null;
+    if (!onChip) hover();
   };
   const onLeave = (): void => {
-    overFrame = -1;
-    settle();
+    pointer = null;
+    hover();
   };
   surface.addEventListener('pointerenter', measure, { passive: true });
   surface.addEventListener('pointermove', onMove, { passive: true });
@@ -151,9 +176,18 @@ export function savedFrames(deps: SavedFramesDeps): SavedFrames {
       frames = store.getState().playerFrames ?? [];
       if (shown >= frames.length) showChip(-1);
       draw();
-      place();
+      hover();
+      placeChip();
     },
-    place,
+    place: () => {
+      hover();
+      placeChip();
+    },
+    measure,
+    indexOf: (frame) => drawn.findLastIndex((other) => (
+      Math.abs(other.centerX - frame.centerX) < SAME_FRAME && Math.abs(other.centerY - frame.centerY) < SAME_FRAME
+      && Math.abs(other.width - frame.width) < SAME_FRAME && Math.abs(other.height - frame.height) < SAME_FRAME
+    )),
     show: () => {
       const id = deps.tabId();
       const frame = frames[shown];
@@ -173,7 +207,7 @@ export function savedFrames(deps: SavedFramesDeps): SavedFrames {
       stopDrag?.();
       let grab: Point | null = null;
       const done = (): void => {
-        stopDrag = null;
+        dragging = false;
         settle();
       };
       stopDrag = trackGlassDrag(chip, event, {
@@ -183,6 +217,7 @@ export function savedFrames(deps: SavedFramesDeps): SavedFrames {
           if (!at || !frame) return false;
           grab = { x: at.x - frame.centerX, y: at.y - frame.centerY };
           clearHide();
+          dragging = true;
           return true;
         },
         move: (clientX, clientY, free) => {
@@ -192,7 +227,7 @@ export function savedFrames(deps: SavedFramesDeps): SavedFrames {
           const centre = snapGlassCentre({ x: at.x - grab.x, y: at.y - grab.y }, frame, store.getState().grid, free);
           moved = { index, centre };
           draw();
-          place();
+          placeChip();
         },
         end: () => {
           const drop = moved;
@@ -203,7 +238,7 @@ export function savedFrames(deps: SavedFramesDeps): SavedFrames {
         cancel: () => {
           moved = null;
           draw();
-          place();
+          placeChip();
           done();
         },
       });

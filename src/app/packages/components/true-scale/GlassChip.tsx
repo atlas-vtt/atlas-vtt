@@ -14,8 +14,9 @@ import "./glass.scss"
  * The handle of the glass (GM only, while the player window is open): a capsule on the top edge
  * of what players see on this map. Dragging it moves the players, snapped to the grid's cells
  * (Alt frees it); its pin keeps them there or lets them follow the GM, and its bookmark saves the
- * frame on the scene. On a map players do not see, it stands on a dimmer ghost of their frame and
- * brings them here. Frames saved on the map have a chip of their own (`SavedFrameChip`).
+ * frame on the scene, and is lit while they see a saved frame, which it then takes back. On a map
+ * players do not see, it stands on a dimmer ghost of their frame and brings them here. Frames
+ * saved on the map have a chip of their own (`SavedFrameChip`).
  */
 export function GlassChip({ view }: { view: AtlasView | null }): React.ReactElement | null {
   const isOpen = useStore(playerWindowStore, (state) => state.isOpen)
@@ -44,7 +45,13 @@ function OpenGlassChip({ view }: { view: AtlasView }): React.ReactElement {
           <ToolButton icon={Play} label={t("glass.bringHint")} isActive={false} onClick={bring} tooltipSide="bottom" />
         ) : (
           <>
-            <ToolButton icon={Bookmark} label={t("glass.save")} isActive={false} onClick={save} tooltipSide="bottom" />
+            <ToolButton
+              icon={Bookmark}
+              label={shown?.saved ? t("glass.unsave") : t("glass.save")}
+              isActive={shown?.saved ?? false}
+              onClick={save}
+              tooltipSide="bottom"
+            />
             <ToolButton
               icon={shown?.pinned ? Pin : PinOff}
               label={shown?.pinned ? t("glass.unpin") : t("glass.pin")}

@@ -8,6 +8,8 @@ import { PlayerWindowService } from '../../../services/PlayerWindowService';
 import { SettingsService } from '../../../services/SettingsService';
 import { playerWindowStore } from '../../../stores/playerWindowStore';
 import { observeResize } from '../../../utils/observeResize';
+import { showNotice } from '../../../ui/notice';
+import { t } from '../../../i18n';
 import { trackGlassDrag } from './glassDrag';
 import { glassDragSteps } from './glassSession';
 import { chipPlace, readGlass, type ChipRoom, type Glass } from './glassState';
@@ -15,12 +17,15 @@ import { savedFrames, type SavedFrames } from './savedFrames';
 
 /** The bars of the map view the chip keeps clear of: scene tabs above, the toolbars below. */
 const TOP_BARS = '.atlas-scene-tab-bar';
+const TOP_START_BARS = `${TOP_BARS}, .atlas-player-window-bar`;
 const BOTTOM_BARS = '.atlas-bottom-toolbar-row .atlas-vtt-toolbar';
 
 /** What the chip shows. */
 export interface GlassShown {
   look: GlassLook;
   pinned: boolean;
+  /** The glass stands on a frame saved on this map: its bookmark takes that frame back. */
+  saved: boolean;
 }
 
 /** The chip of the saved frame under the pointer. */
@@ -37,7 +42,7 @@ export interface GlassControls {
   shown: GlassShown | null;
   /** Pins players where the glass is, or lets them follow the GM again. */
   togglePin: () => void;
-  /** Saves the frame players see as one of the scene's frames. */
+  /** Saves the frame players see as one of the scene's frames, or takes back the saved frame they see. */
   save: () => void;
   /** Shows players this map framed where the ghost stands. */
   bring: () => void;
@@ -96,6 +101,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
         width: area.width,
         height: area.height,
         top: Math.max(0, ...edges(TOP_BARS).map((rect) => rect.bottom - area.top)),
+        topStart: Math.max(0, ...edges(TOP_START_BARS).map((rect) => rect.bottom - area.top)),
         bottom: Math.max(0, ...edges(BOTTOM_BARS).map((rect) => area.bottom - rect.top)),
       };
     };
@@ -131,8 +137,8 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
     };
     const show = (): void => {
       outline.setGlass(glass?.frame ?? null, glass?.look);
-      const next = glass ? { look: glass.look, pinned: service.isFrozen() } : null;
-      setShown((now) => (now?.look === next?.look && now?.pinned === next?.pinned ? now : next));
+      const next = glass ? { look: glass.look, pinned: service.isFrozen(), saved: glass.look === 'live' && saved.indexOf(glass.frame) >= 0 } : null;
+      setShown((now) => (now?.look === next?.look && now?.pinned === next?.pinned && now?.saved === next?.saved ? now : next));
       place();
     };
     /** Reads the glass anew: after anything but the GM's camera moving. */
@@ -184,8 +190,17 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
         const id = tabId();
         const frame = id ? service.glassOf(id) : null;
         const camera = frame ? service.playerCameraAt(frame.centerX, frame.centerY) : null;
+        if (!frame || !camera) return;
+        const map = view.atlasStore.getState();
+        const index = saved.indexOf(frame);
+        if (index >= 0) {
+          map.removePlayerFrame(index);
+          return;
+        }
         // The rectangle players see, whose shape is the TV's: the camera's own is the GM's pane
-        if (frame && camera) view.atlasStore.getState().addPlayerFrame({ ...frame, scale: camera.scale });
+        map.addPlayerFrame({ ...frame, scale: camera.scale });
+        const count = view.atlasStore.getState().playerFrames.length;
+        if (count > map.playerFrames.length) showNotice(t('glass.frameSaved', { number: count }));
       },
       bring: () => {
         const id = tabId();
@@ -226,11 +241,10 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
       service.onPlayersCameraChange(refresh),
       view.tabMetaStore.subscribe((state, previous) => { if (state.activeTabId !== previous.activeTabId) refresh(); }),
       view.atlasStore.subscribe((state, previous) => {
-        if (state.grid !== previous.grid || state.mapLoaded !== previous.mapLoaded) refresh();
-        else if (state.playerFrames !== previous.playerFrames) saved.refresh();
+        if (state.grid !== previous.grid || state.mapLoaded !== previous.mapLoaded || state.playerFrames !== previous.playerFrames) refresh();
       }),
       settings?.onChange(refresh) ?? ((): void => undefined),
-      observeResize([pane, canvas, chip, savedChip], () => { room = measure(); place(); }),
+      observeResize([pane, canvas, chip, savedChip], () => { room = measure(); saved.measure(); place(); }),
     ];
     viewport.on('moved', onViewportMoved);
     viewport.on('zoomed', onViewportMoved);

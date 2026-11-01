@@ -173,5 +173,13 @@ describe('the glass on the GM map', () => {
       expect(outline.savedAt(150, 85)).toBe(-1);
       expect(outline.savedAt(95, 55)).toBe(0);
     });
+
+    it('finds a frame inside a larger one that was saved after it', () => {
+      const { outline } = setup();
+      outline.setSaved([FRAMES[0]!, { centerX: 10, centerY: 10, width: 200, height: 100 }]);
+      // The small one on screen (80, 50)–(160, 90), the large one around it
+      expect(outline.savedAt(120, 70)).toBe(0);
+      expect(outline.savedAt(200, 120)).toBe(1);
+    });
   });
 });
