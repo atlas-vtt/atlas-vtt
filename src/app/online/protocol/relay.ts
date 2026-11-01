@@ -56,10 +56,12 @@ export const CLOSE = {
   noAccess: 4015,
   /** The table ended because its account started another table. */
   superseded: 4016,
+  /** A newcomer's name is another player's in the GM's campaign: they come back with their own code, or under another name. */
+  nameTaken: 4017,
 } as const;
 
 /** The close codes of the join gates: the player's page stops and says why; only a new try by the player connects again. */
-export const GATE_CLOSE_CODES: readonly number[] = [CLOSE.wrongCode, CLOSE.paused, CLOSE.declined, CLOSE.noAnswer, CLOSE.tooManyKnocks];
+export const GATE_CLOSE_CODES: readonly number[] = [CLOSE.wrongCode, CLOSE.paused, CLOSE.declined, CLOSE.noAnswer, CLOSE.tooManyKnocks, CLOSE.nameTaken];
 
 /** Close codes after which a client gives up instead of reconnecting. */
 export const FINAL_CLOSE_CODES: readonly number[] = [CLOSE.badSecret, CLOSE.version, CLOSE.ended, CLOSE.replaced, CLOSE.kicked, CLOSE.noAccess, CLOSE.superseded, ...GATE_CLOSE_CODES];
