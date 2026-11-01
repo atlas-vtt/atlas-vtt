@@ -4,8 +4,9 @@
  * the model's floor rectangles once it is done.
  */
 
-import type { CellDir, CellPoint, DoorKind, RoomKind, Wing } from '../model';
+import type { CaveVerticalExits, CaveWay, CellDir, CellPoint, DoorKind, RoomKind, Wing } from '../model';
 import { type CellRect, cellKey, perpendicular } from '../geometry';
+import type { ChamberTier } from './cavern/veins/caveSizes';
 
 export interface WorkRoom {
   id: number;
@@ -29,6 +30,12 @@ export interface WorkRoom {
   boss: boolean;
   /** A passage grown wider than a cell (`DungeonParams.passageFloor`): its kind, which its size alone would not tell. */
   passage?: PassageKind;
+  /** A cave chamber drawn at a size tier: the tier, which its size keeps (it is never deepened). */
+  tier?: ChamberTier;
+  /** A cave chamber's roof and floor exits, from its exit roll. */
+  vertical?: CaveVerticalExits;
+  /** A cave chamber whose largest exit rolled four feet or less (`onlyCrawlsOn`). */
+  tight?: true;
 }
 
 export type PassageKind = Exclude<RoomKind, 'room'>;
@@ -43,6 +50,9 @@ export interface WorkDoor {
   descends?: true;
   /** Added by the loop pass, not part of the grown tree. */
   loop: boolean;
+  /** In a cave, how the way through is passed and its width in feet, from the exit roll that made it. */
+  way?: CaveWay;
+  width?: number;
 }
 
 export interface WorkLayout {
@@ -54,6 +64,29 @@ export interface WorkLayout {
   within: CellRect | null;
   /** Floor cells no door may open onto: a stairwell's, and the cells it is reached from. */
   blocked: ReadonlySet<string>;
+  /** A cave whose chambers are sized by tier: every chamber gets one, a chamber sized another way the one its floor reaches. */
+  tiered?: true;
+  /**
+   * A cave's mouth on the entry floor: its door and the way it faces out. No room grows past it,
+   * so the mouth opens on the floor's edge and not into a bay the cave closes round.
+   */
+  mouth?: Mouth;
+}
+
+/** A cave's way in from outside: its door cell, and the way out through it. */
+export interface Mouth {
+  origin: CellPoint;
+  out: CellDir;
+}
+
+/** How far the cell lies past the mouth's door, the way the mouth faces out: 1 is the ground before it. */
+export function pastMouth(mouth: Mouth, cell: CellPoint): number {
+  return (cell.x - mouth.origin.x) * mouth.out.x + (cell.y - mouth.origin.y) * mouth.out.y;
+}
+
+/** The furthest any cell of the rectangle lies past the mouth's door, the way it faces out. */
+export function rectPastMouth(mouth: Mouth, rect: CellRect): number {
+  return Math.max(pastMouth(mouth, { x: rect.x0, y: rect.y0 }), pastMouth(mouth, { x: rect.x1, y: rect.y1 }));
 }
 
 export const REGULAR_ZONE = 0;

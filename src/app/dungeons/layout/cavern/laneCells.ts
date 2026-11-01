@@ -78,6 +78,23 @@ function besideDoor(floor: Pick<CaveFloorPlan, 'doors'>, doors: readonly number[
 /** Whose a lane cell would be, or null where the lane may not go: off the route, on a stairwell other than `ends`', or `banned`. */
 export type LaneOwner = (x: number, y: number) => number | null;
 
+/** What the lane's owners hold for a cell not asked about yet, and for one the lane may not take: no owner is either. */
+const UNKNOWN = -0x80000000;
+const NO_OWNER = 0x7fffffff;
+
+/** How many rooms' walls (rectangles with their walls) hold each cell of the grid's box. */
+function wallCover(grid: Pick<CaveGrid, 'box'>, rooms: readonly DungeonRoom[]): (x: number, y: number) => number {
+  const { x0, y0, w, h } = grid.box();
+  const counts = new Uint16Array(w * h);
+  for (const room of rooms) {
+    const r = wallRect(room);
+    for (let y = Math.max(r.y0, y0); y <= Math.min(r.y1, y0 + h - 1); y++) {
+      for (let x = Math.max(r.x0, x0); x <= Math.min(r.x1, x0 + w - 1); x++) counts[(y - y0) * w + (x - x0)] = (counts[(y - y0) * w + (x - x0)] ?? 0) + 1;
+    }
+  }
+  return (x, y) => (x < x0 || y < y0 || x >= x0 + w || y >= y0 + h ? 0 : (counts[(y - y0) * w + (x - x0)] ?? 0));
+}
+
 /**
  * Whose a lane cell would be. With `swell`, a chamber's lane may also wind out into the rock its
  * chamber may swell into, and keeps off the rows every stairwell but its own ends is reached from.
@@ -87,8 +104,12 @@ export function laneOwners(grid: CaveGrid, floor: CaveFloorPlan, route: readonly
   const laneDoors = laneDoorsOf(floor, route);
   const stairCells = new Set(floor.stairs.flatMap((s: StairSpot) => [...cellsOf(spotRect(s)), ...(swell ? [...approachCells(s, 'upper'), ...approachCells(s, 'lower')] : [])]).map((c) => cellKey(c.x, c.y)));
   const routeRooms = route.map((id) => floor.rooms[id]).filter((room): room is DungeonRoom => room !== undefined);
-  const tunnels = routeRooms.filter((room) => room.kind !== 'room');
+  const tunnels = routeRooms.filter((room) => room.kind !== 'room').map((room) => ({ room, walls: wallRect(room), reach: tunnelReach(room) }));
+  const walled = wallCover(grid, floor.rooms);
   const chambers = routeRooms.filter((room) => room.kind === 'room');
+  // Every answer, by the cell's place in the grid's box (outside it, by key): the walk asks of every cell four times.
+  const { x0, y0, w, h } = grid.box();
+  const known = new Int32Array(w * h).fill(UNKNOWN);
   const memo = new Map<string, number | null>();
   // Out in the swell, the lane keeps two cells off every room's rectangle, so two rooms' lanes meet only at their narrows.
   const nearOtherRoom = (x: number, y: number, room: number): boolean => {
@@ -108,20 +129,33 @@ export function laneOwners(grid: CaveGrid, floor: CaveFloorPlan, route: readonly
     if (owner !== ROCK) return laneDoors.some((k) => owner === doorOwner(k)) ? owner : null;
     const beside = besideDoor(floor, laneDoors, x, y, (k) => lane?.has(cellKey(floor.doors[k]!.x, floor.doors[k]!.y)) ?? true);
     if (beside !== undefined) return grid.mayClaim(x, y, doorOwner(beside)) ? doorOwner(beside) : null;
-    const tunnel = tunnels.find((room) => inTunnelReach(floor, room, x, y) && grid.mayClaim(x, y, room.id));
+    // `inTunnelReach`, with the rooms' walls counted once for the floor: the cell is the tunnel's wall, or no room's wall at all.
+    let open: boolean | undefined;
+    const opens = (): boolean => (open ??= walled(x, y) === 0 && !besideEntrance(floor.doors, x, y));
+    const tunnel = tunnels.find(({ room, walls, reach }) => (inRect(walls, x, y) || (inRect(reach, x, y) && opens())) && grid.mayClaim(x, y, room.id))?.room;
     if (tunnel || !swell) return tunnel?.id ?? null;
     return chambers.find((room) => inSwell(grid, floor.doors, room, x, y) && !nearOtherRoom(x, y, room.id) && grid.mayClaim(x, y, room.id))?.id ?? null;
   };
   return (x, y) => {
-    const key = cellKey(x, y);
     // Read anew each time: a lane that is found again bans more cells.
-    if (banned.has(key)) return null;
-    let owner = memo.get(key);
-    if (owner === undefined) {
-      owner = ownerOf(x, y, key);
-      memo.set(key, owner);
+    if (banned.size > 0 && banned.has(cellKey(x, y))) return null;
+    const gx = x - x0;
+    const gy = y - y0;
+    if (gx < 0 || gy < 0 || gx >= w || gy >= h) {
+      const key = cellKey(x, y);
+      let owner = memo.get(key);
+      if (owner === undefined) {
+        owner = ownerOf(x, y, key);
+        memo.set(key, owner);
+      }
+      return owner;
     }
-    return owner;
+    let owner = known[gy * w + gx] as number;
+    if (owner === UNKNOWN) {
+      owner = ownerOf(x, y, cellKey(x, y)) ?? NO_OWNER;
+      known[gy * w + gx] = owner;
+    }
+    return owner === NO_OWNER ? null : owner;
   };
 }
 

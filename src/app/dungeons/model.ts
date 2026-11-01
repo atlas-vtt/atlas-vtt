@@ -7,23 +7,23 @@
  * in that continuous space, so a cell's centre is (x + 0.5, y + 0.5) and columns stand on grid vertices.
  */
 
-import type { CaveFloor, CaveModel, StairWay } from './caveModel';
+import type { CaveFloor, CaveModel, CaveSizeTier, CaveVerticalExits, CaveWay, NarrowWay, StairWay } from './caveModel';
 import type { DungeonGrowth } from './growthModel';
 import type { DungeonStack, DungeonWindow, FloorWalls, HouseGrounds } from './houseModel';
 import type { PropKind } from './props/propKinds';
 import type { RoomTypeId } from './themes/roomTypes';
 import type { ThemeChoice, ThemeId } from './themes/themeTypes';
-import type { DungeonTerrain, FiveRoomStage } from './terrainModel';
+import type { DungeonTerrain, FiveRoomStage, TerrainDrop } from './terrainModel';
 
-export type { CoverLevel, DungeonTerrain, FiveRoomStage, HazardKind, TerrainKind, TerrainOpening, TerrainTraits } from './terrainModel';
+export type { CoverLevel, DungeonTerrain, FiveRoomStage, HazardKind, TerrainDrop, TerrainKind, TerrainOpening, TerrainTraits } from './terrainModel';
 export { FIVE_ROOM_STAGES } from './terrainModel';
 export type { DungeonGrowth, GrowthKind } from './growthModel';
-export type { CaveFault, CaveFloor, CaveModel, CaveVariant, StairWay } from './caveModel';
+export type { CaveAlwaysTrait, CaveCharacter, CaveFault, CaveFloor, CaveModel, CaveNeverTrait, CaveSizeTier, CaveVariant, CaveVerticalExits, CaveWay, NarrowWay, StairWay, VerticalKind, VerticalWay } from './caveModel';
 export type { DungeonStack, DungeonWindow, FloorWalls, GroundsKind, GroundsPiece, HouseGrounds, OutbuildingUse, WindowSize } from './houseModel';
 export type { PropKind } from './props/propKinds';
 
 /** Bump when the same seed and tags would give another dungeon. */
-export const DUNGEON_GENERATOR_VERSION = 3;
+export const DUNGEON_GENERATOR_VERSION = 4;
 
 export interface CellPoint {
   x: number;
@@ -74,6 +74,20 @@ export interface DungeonRoom {
    * to one cell past it. Unset, the floor is the rectangle (`floorCellsOf`).
    */
   cells?: CellPoint[];
+  /** A cave chamber's size tier (`CaveSizeTier`); unset outside a cave and on passages. */
+  tier?: CaveSizeTier;
+  /** A cave chamber's exits in its roof and floor, from its exit roll; unset where it rolled none. */
+  vertical?: CaveVerticalExits;
+  /**
+   * A cave chamber whose largest exit rolled four feet or less: no way on from it stands high enough
+   * to walk, so the main path pinches to one cell through its door (`onlyNarrowWaysOn`).
+   */
+  tight?: true;
+  /**
+   * A cave passage off the main path entered by a crawl, a squeeze or a letterbox: one cell wide and
+   * low up to its next door, passed this way along its whole length (`narrowRoutes`).
+   */
+  narrow?: NarrowWay;
 }
 
 /**
@@ -92,10 +106,19 @@ export interface DungeonDoor {
   /** Room on each side; `from` is null for the outside of an entrance. */
   from: number | null;
   to: number | null;
-  /** Steps that lead down from `from` to `to`; unset, they lead up. */
+  /** Steps (or a cave's climb) that lead down from `from` to `to`; unset, they lead up. */
   descends?: true;
   /** Two cells wide, a cave's narrows or an opening between two wide passages: this cell and the one at `x + wide.x, y + wide.y` (`doorCells`). */
   wide?: CellDir;
+  /** In a cave, how the way through is passed (`CaveWay`); unset on a cave floor reads as a walk. Never set outside a cave. */
+  way?: CaveWay;
+  /** In a cave, the way's width (or height) in feet as the exit roll gave it; unset outside a cave. */
+  width?: number;
+  /**
+   * A cave's climb (`way` 'climb'): how far the way rises or drops within the floor, in feet, and how
+   * it is passed by its width (a pitch, a chimney); `descends` says which side is lower.
+   */
+  drop?: TerrainDrop;
   /**
    * On a floor whose walls stand on cell edges (`DungeonFloor.walls`): the door stands on the edge
    * between `(x, y)`, the cell on its `from` side (outside, for an entrance), and the cell across it

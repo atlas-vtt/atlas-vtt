@@ -3,14 +3,15 @@ import { doorCells, doorMiddle } from '../geometry';
 import type { DoorKind, DungeonDoor, DungeonModel } from '../model';
 import { visibleFloor, type VisibleFloor } from '../render/visibleDungeon';
 import type { DungeonStyle, DungeonView } from '../style';
-import { wallInkWidth } from '../render/wallInk';
-import type { Vec } from '../render/geometry';
+import { mouthInkReach, wallInkWidth } from '../render/wallInk';
+import { mouthClearing, mouthsOf } from '../render/art/mouths';
+import { pointsBounds, type Bounds, type Vec } from '../render/geometry';
 import { OUTER_WALL, mouthDepth } from '../render/houseShapes';
 import { shownWindows } from '../render/art/windows';
 import { fireSites, firesLit } from '../render/fireSites';
 import { acrossMouth, fireboxCut, recessWalls, type FireboxCut } from './fireboxWalls';
 import { onWindow, secretDoorways, windowCuts } from './houseWalls';
-import { STEPS, doorEnds, doorLine, splitRings, wallRings, type RingHit } from './wallOutline';
+import { STEPS, doorEnds, doorLine, splitRings, straightenRings, wallRings, type RingHit } from './wallOutline';
 
 /** Where a dungeon map lies in the world: its pixel (0, 0) is the corner of `originCell`. */
 export interface DungeonPlacement {
@@ -66,6 +67,37 @@ function entranceMouth(door: DungeonDoor, half: number, cave: boolean): (a: Vec,
 }
 
 /**
+ * The parts of the wall from `a` to `b` outside every box. A cave's floor may flank the ground
+ * before its mouth, which the map clears of wall ink (`mouthClearing`): the floor's wall there ends
+ * where its ink does, so no wall stands where none is drawn.
+ */
+function outsideBoxes(a: Vec, b: Vec, boxes: readonly Bounds[]): [Vec, Vec][] {
+  let kept: [number, number][] = [[0, 1]];
+  const d = { x: b.x - a.x, y: b.y - a.y };
+  for (const box of boxes) {
+    // Liang–Barsky: the stretch of the segment inside the box, as a range of t.
+    let t0 = 0;
+    let t1 = 1;
+    for (const [p, q] of [[-d.x, a.x - box.minX], [d.x, box.maxX - a.x], [-d.y, a.y - box.minY], [d.y, box.maxY - a.y]] as const) {
+      if (p === 0) {
+        if (q < 0) t1 = -1;
+        continue;
+      }
+      const t = q / p;
+      if (p < 0) t0 = Math.max(t0, t);
+      else t1 = Math.min(t1, t);
+    }
+    if (t1 <= t0) continue;
+    kept = kept.flatMap(([from, to]): [number, number][] => {
+      const parts: [number, number][] = [[from, Math.min(to, t0)], [Math.max(from, t1), to]];
+      return parts.filter(([start, end]) => end > start);
+    });
+  }
+  const at = (t: number): Vec => (t === 0 ? a : t === 1 ? b : { x: a.x + d.x * t, y: a.y + d.y * t });
+  return kept.map(([from, to]) => [at(from), at(to)]);
+}
+
+/**
  * The fireboxes of a lived-in house floor's fireplaces as cuts into its wall rings: their fires
  * burn, so each recess is open to its room (`fireboxWalls.ts`). None on other floors.
  */
@@ -98,7 +130,7 @@ export interface WallsOf {
  * a cell of rock apart), and every door ending exactly on a corner of the wall beside it, so
  * light and sight find no gap. Entrances stay open to the outside, and so do the fireboxes of a
  * lived-in house's fireplaces, walled round their recess (`wall_<id>_firebox_<n>`). Rooms the view hides (a secret
- * wing) have no walls. Pure.
+ * wing) have no walls. The outlines are straightened within `straighten` cells (`straightenRings`), none at 0. Pure.
  */
 export function dungeonWalls(
   model: DungeonModel,
@@ -107,13 +139,14 @@ export function dungeonWalls(
   placement: DungeonPlacement,
   floor = 0,
   of: WallsOf = { id: 'dungeon' },
+  straighten = 0,
 ): DungeonWalls {
   const visible = visibleFloor(model, view, floor);
   const { doors, floors, floor: shown } = visible;
   // A door on an edge closes its doorway on the edge itself, whatever its kind.
   const kinds = shown.cave || shown.walls === 'edges' ? ON_LINE_DOOR_WALLS : DOOR_WALLS;
   const half = wallInkWidth(style) / 2;
-  const rings = wallRings([...floors, ...secretDoorways(visible)], doors.filter(door => door.kind === 'secret' && !door.edge), half);
+  const rings = straightenRings(wallRings([...floors, ...secretDoorways(visible)], doors.filter(door => door.kind === 'secret' && !door.edge), half), straighten);
 
   const placed: { door: DungeonDoor; wall: DoorWall; ends: [RingHit, RingHit] }[] = [];
   let unplaced = 0;
@@ -153,12 +186,13 @@ export function dungeonWalls(
 
   const mouths = doors.filter(door => door.from === null).map(door => entranceMouth(door, half, shown.cave !== undefined));
   const onMouth = (a: Vec, b: Vec): boolean => mouths.some(mouth => mouth(a, b));
+  const cleared = shown.cave ? mouthsOf({ doors }).map(m => pointsBounds(mouthClearing(m, mouthInkReach(style)))) : [];
   outlines.forEach((ring, index) => {
     const chainId = `chain_${of.id}_${index + 1}`;
     ring.forEach((corner, i) => {
       const next = ring[(i + 1) % ring.length]!;
       if (onMouth(corner, next) || mouth(corner, next)) return;
-      add(corner, next, { type: 'solid', chainId, ...(glass(corner, next) && { blocks: 'movement' as const }) });
+      for (const [from, to] of outsideBoxes(corner, next, cleared)) add(from, to, { type: 'solid', chainId, ...(glass(corner, next) && { blocks: 'movement' as const }) });
     });
   });
   for (const firebox of fireboxes) {

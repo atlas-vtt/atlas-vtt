@@ -114,6 +114,16 @@ export function inkEdgesFromWalls(
   return out;
 }
 
+/** The box round a room's floor: its cells' where it has them (a cave's), else its rectangle. */
+function cellBounds(room: DungeonFloor['rooms'][number]): { x: number; y: number; w: number; h: number } {
+  if (!room.cells?.length) return room;
+  const xs = room.cells.map(c => c.x);
+  const ys = room.cells.map(c => c.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x + 1, h: Math.max(...ys) - y + 1 };
+}
+
 /**
  * Pixels of the grid's colour on the scene grid's lines and halfway between them, inside the
  * rooms (clear of their walls and stairwells): a scene grid that is the drawn one finds its lines
@@ -136,11 +146,13 @@ export function gridAgreement(floor: DungeonFloor, grid: Pick<GridState, 'size' 
   let on = 0;
   let off = 0;
   for (const room of floor.rooms.filter(r => r.kind === 'room' && !r.rotunda && !floor.stairs.some(s => s.x >= r.x && s.x < r.x + r.w && s.y >= r.y && s.y < r.y + r.h))) {
-    // A room terrain fills half of has too few grid lines left to count.
-    const x0 = (room.x + 0.3 - originCell.x) * pxPerCell;
-    const x1 = (room.x + room.w - 0.3 - originCell.x) * pxPerCell;
-    const y0 = (room.y + 0.3 - originCell.y) * pxPerCell;
-    const y1 = (room.y + room.h - 0.3 - originCell.y) * pxPerCell;
+    // A room terrain fills half of has too few grid lines left to count. A cave room's floor reaches past
+    // its rectangle, and where water fills the rectangle the floor beyond it is all that shows the grid.
+    const box = cellBounds(room);
+    const x0 = (box.x + 0.3 - originCell.x) * pxPerCell;
+    const x1 = (box.x + box.w - 0.3 - originCell.x) * pxPerCell;
+    const y0 = (box.y + 0.3 - originCell.y) * pxPerCell;
+    const y1 = (box.y + box.h - 0.3 - originCell.y) * pxPerCell;
     // A cave room's rectangle holds rock beside its cells, which is no floor for a grid line to cross.
     const onFloor = (x: number, y: number): boolean => holdsCell(room, Math.floor(x / pxPerCell + originCell.x), Math.floor(y / pxPerCell + originCell.y));
     const count = (line: number, along: [number, number], vertical: boolean): number => {
@@ -209,10 +221,16 @@ export function outlinesOffObjects(outlines: readonly (readonly Point[])[], chan
   return strays;
 }
 
-/** Walls of the scene that pass through a hole or a bridge more than a hair inside its cells: there are to be none. */
+/**
+ * Walls of the scene that pass through a hole or a bridge more than a hair inside its cells: there
+ * are to be none. An abyss at a chamber's edge runs on to the wall, which keeps the line the rock
+ * gives it there, so its cells against the rock are left out.
+ */
 export function wallsInTerrain(floor: DungeonFloor, walls: readonly WallSegment[], placement: DungeonPlacement): string[] {
   const { originCell, pxPerCell } = placement;
-  const cells = new Set(floor.terrain.filter(p => p.opening || p.kind === 'bridge').flatMap(p => p.cells.map(c => `${c.x},${c.y}`)));
+  const ground = new Set(floor.rooms.flatMap(room => room.cells ?? []).map(c => `${c.x},${c.y}`));
+  const againstRock = (c: { x: number; y: number }): boolean => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !ground.has(`${c.x + dx!},${c.y + dy!}`));
+  const cells = new Set(floor.terrain.filter(p => p.opening || p.kind === 'bridge').flatMap(p => p.cells.filter(c => !(p.facing && p.kind === 'chasm' && againstRock(c))).map(c => `${c.x},${c.y}`)));
   const out: string[] = [];
   for (const { p1, p2 } of walls) {
     const steps = Math.max(2, Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / 4));

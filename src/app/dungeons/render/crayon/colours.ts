@@ -20,6 +20,8 @@ export const CRAYONS = {
   ember: '#c9572d',
   flame: '#d8bc68',
   acid: '#96a63f',
+  /** Shade pressed in where the floor drops away: a deep, warm brown that never reads as ink. */
+  umber: '#54473b',
 } as const;
 
 /** What a plant is filled with before its graphite: the paper with a little leaf green in it; plants are too small to show the crayon's strokes. */

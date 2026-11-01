@@ -78,7 +78,14 @@ function fallback(built: readonly Built[], request: FloorRequest): Built | null 
   return ranked.find((b) => linked(b, request)) ?? ranked[0] ?? null;
 }
 
-function attempt(seed: number, request: FloorRequest, index: number): Built | null {
+/**
+ * Attempt `index` at the floor, or null where it finds no place for its first room. One whose tree
+ * grew too few rooms or has no room for the boss can keep no rule set it is asked to, so unless
+ * `whole` it stops there and is only its index: the passes after cost most of an attempt, and only
+ * a fallback ever reads such a floor. Its streams are keyed by its index, so finishing it later
+ * gives the floor it would have given.
+ */
+function attempt(seed: number, request: FloorRequest, index: number, whole: boolean): Built | number | null {
   const { floor, params } = request;
   const rngOf: KeyedRng = (key) => floorStream(seed, 'layout', floor, `${index}:${key}`);
   const root = request.rootOf(rngOf('root'));
@@ -87,6 +94,7 @@ function attempt(seed: number, request: FloorRequest, index: number): Built | nu
   const normals = normalCount(work);
   growPass(rngOf, work);
   const placed = !request.boss || placeBossRoom(work, request.galleries ?? []);
+  if (!whole && (normals < params.minRooms || !placed)) return index;
   if (!request.fiveRoom) addLoops(rngOf, work, params);
   addBossDoor(rngOf, work);
   const boss = placed && (!request.fiveRoom || addRewardRoom(rngOf, work, params));
@@ -105,6 +113,11 @@ function attempt(seed: number, request: FloorRequest, index: number): Built | nu
   return { layout, normals, linked: null, kept };
 }
 
+/** The attempts tried, in order, those left unfinished (`attempt`) finished now. */
+function finished(seed: number, request: FloorRequest, tried: readonly (Built | number)[]): Built[] {
+  return tried.map((built) => (typeof built === 'number' ? (attempt(seed, request, built, true) as Built) : built));
+}
+
 export interface BuiltFloor {
   layout: CompactLayout;
   /** Keeps every rule; a floor that does not is the best attempt there was. */
@@ -115,13 +128,17 @@ export interface BuiltFloor {
 
 /** The first attempt that keeps every rule (after `passOver` such), else the best of them (`fallback`); null where no attempt found a place for its first room. */
 export function buildFloorLayout(seed: number, request: FloorRequest): BuiltFloor | null {
-  const tried: Built[] = [];
+  const tried: (Built | number)[] = [];
   let lastSound: Built | null = null;
   let passed = 0;
   const attempts = request.params.cave ? MAX_CAVE_ATTEMPTS : MAX_ATTEMPTS;
   for (let index = 0; index < attempts; index++) {
-    const built = attempt(seed, request, index);
-    if (!built) continue;
+    const built = attempt(seed, request, index, false);
+    if (built === null) continue;
+    if (typeof built === 'number') {
+      tried.push(built);
+      continue;
+    }
     if (built.kept === FLOOR_RULES && linked(built, request)) {
       if (passed++ === (request.passOver ?? 0)) return { layout: built.layout, sound: true, linked: true };
       lastSound = built;
@@ -129,6 +146,6 @@ export function buildFloorLayout(seed: number, request: FloorRequest): BuiltFloo
     tried.push(built);
   }
   if (lastSound) return { layout: lastSound.layout, sound: true, linked: true };
-  const best = fallback(tried, request);
+  const best = fallback(finished(seed, request, tried), request);
   return best ? { layout: best.layout, sound: false, linked: linked(best, request) } : null;
 }

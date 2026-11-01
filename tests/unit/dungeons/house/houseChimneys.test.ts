@@ -1,14 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { generateDungeon } from '../../../../src/app/dungeons/generate';
+import { dungeonSeeds, shareBound } from '../../../helpers/dungeonSeeds';
 import type { DungeonModel } from '../../../../src/app/dungeons/model';
-import { BACK_TO_BACK, backToBack, chimneyStats, fireplacesOnStacks, fireplacesPerFloor, fireplacesWhereWarmed, mainRoomsWarm, stacksInside, stacksPerHouse } from './houseChimneyRules';
+import { backToBack, chimneyStats, fireplacesOnStacks, fireplacesPerFloor, fireplacesWhereWarmed, mainRoomsWarm, stacksInside, stacksPerHouse } from './houseChimneyRules';
 
 /**
  * Where a house's chimney stacks and fireplaces stand (report 2026-10-25-mansion-chimneys-research),
  * over many Haunted Mansions of one to four floors: every rule checked apart from the planner.
  */
 
-const SEEDS = 300;
+const SEEDS = dungeonSeeds(300, 75);
 const TAG_SETS: readonly string[][] = [[], ['small'], ['medium'], ['large'], ['ruined'], ['inhabited'], ['large', 'ruined', 'overgrown']];
 
 const MODELS: { label: string; model: DungeonModel }[] = Array.from({ length: SEEDS }, (_, i) => {
@@ -47,6 +48,8 @@ describe('a Haunted Mansion\'s chimneys', () => {
 
   it('keep rule C7: where both rooms beside a stack are heated, their fireplaces stand back to back', () => {
     const sums = MODELS.flatMap(({ model }) => model.floors.map(backToBack)).reduce((a, b) => ({ facing: a.facing + b.facing, paired: a.paired + b.paired }));
-    expect(sums.paired / sums.facing).toBeGreaterThan(BACK_TO_BACK);
+    // Of the fireplaces whose stack has a heated room on its far face, the share with a fireplace there too:
+    // measured 0.726 at full seeds (the research asks 0.7 at least).
+    expect(sums.paired / sums.facing).toBeGreaterThan(shareBound(0.726, sums.facing));
   });
 });

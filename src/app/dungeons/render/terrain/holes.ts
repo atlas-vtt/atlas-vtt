@@ -3,7 +3,13 @@ import { pointsBounds, type Vec } from '../geometry';
 import { castShadow, type Hand } from '../art/hand';
 import { polysPath, smoothstep } from '../art/paths';
 import { drawField, fieldOf, gridOver } from '../art/raster';
+import { onCaveFloor } from '../cave/caveArt';
+import { OPENING_RADIUS } from '../cave/ways/shaftMouth';
+import type { RenderEnv } from '../renderEnv';
 import { cellRings, edgesFacing, type CellEdge } from './cellRings';
+import { crackRings } from './crack';
+import { BOTTOMLESS } from '../vertical/marks';
+import { drawPit } from '../vertical/pit';
 import { drawDrop, dropDepth, dropTone, FACE } from './drops';
 import { cellSet, cutsHoles, hasFloorBelow, isHole, onFloor, shownPieces } from './pieces';
 import { chiselled } from './stones';
@@ -28,8 +34,51 @@ function built(piece: DungeonTerrain): boolean {
   return piece.kind === 'gallery' || piece.kind === 'murder-hole';
 }
 
-/** A hole's outline: chiselled rock, the straight edges of a built well, or a murder hole's small square in the middle of its cell. */
-export function holeRings(piece: DungeonTerrain): Vec[][] {
+/** The radius of a cave's chimney or vertical squeeze down through the floor, in cells; null for any other hole. */
+function narrowRadius(piece: DungeonTerrain): number | null {
+  const kind = piece.traits.drop?.kind;
+  return piece.kind !== 'shaft' || kind === undefined || kind === 'shaft' ? null : OPENING_RADIUS[kind];
+}
+
+/** Half a cell: how far a hole that fills its cell reaches from the middle. */
+const HALF_CELL = 0.5;
+
+/** A hole's face against a whole cell's: a narrow way's is as much narrower as its mouth, so its dark still opens in the middle. */
+function faceShare(piece: DungeonTerrain): number {
+  return (narrowRadius(piece) ?? HALF_CELL) / HALF_CELL;
+}
+
+/** Corners of the ring a narrow way down is drawn from, before the rock chisels it. */
+const NARROW_CORNERS = 16;
+
+/**
+ * A cave's chimney or vertical squeeze down through the floor: a round hole about each cell's
+ * middle, as wide as how it is passed allows (`OPENING_RADIUS`). A shaft's opening reaches past its
+ * cell's sides, so it is its cells' own outline, as every shaft was before ways had a kind.
+ */
+function narrowRings(piece: DungeonTerrain): Vec[][] | null {
+  const radius = narrowRadius(piece);
+  if (radius === null) return null;
+  return piece.cells.map(c => chiselled(Array.from({ length: NARROW_CORNERS }, (_, i): Vec => {
+    const a = (i / NARROW_CORNERS) * Math.PI * 2;
+    return { x: c.x + 0.5 + Math.cos(a) * radius, y: c.y + 0.5 + Math.sin(a) * radius };
+  }), piece.id * 13 + 5, 0.035));
+}
+
+/** Whether a hole is a crack in a cave's floor (`crack.ts`): a chasm, or a shaft as wide as its cells, bottomless or not; never along cell lines. */
+function isCrack(env: RenderEnv, piece: DungeonTerrain): boolean {
+  if (!onCaveFloor(env)) return false;
+  return piece.kind === 'chasm' || (piece.kind === 'shaft' && narrowRadius(piece) === null);
+}
+
+/**
+ * A hole's outline: a crack in a cave's floor (given the floor), chiselled rock, the straight edges
+ * of a built well, a narrow way's round mouth, or a murder hole's small square in the middle of its cell.
+ */
+export function holeRings(piece: DungeonTerrain, env?: RenderEnv): Vec[][] {
+  if (env && isCrack(env, piece)) return crackRings(env, piece);
+  const narrow = narrowRings(piece);
+  if (narrow) return narrow;
   if (piece.kind === 'murder-hole') {
     const [a, b] = [(1 - MURDER_HOLE) / 2, (1 + MURDER_HOLE) / 2];
     return piece.cells.map(c => [{ x: c.x + a, y: c.y + a }, { x: c.x + b, y: c.y + a }, { x: c.x + b, y: c.y + b }, { x: c.x + a, y: c.y + b }]);
@@ -53,11 +102,29 @@ export function drawHoles(hand: Hand): void {
   }
   for (const hole of holes) {
     if (hole.kind === 'gallery') balustrade(hand, edgesFacing(hole.cells, c => !cellSet(hole.cells).has(`${c.x},${c.y}`) && onFloor(env, c)));
-    const rings = holeRings(hole);
-    if (cut) cutHole(hand, rings, built(hole), hole.kind === 'murder-hole' ? MURDER_HOLE_FACE : CUT_FACE);
-    else drawDrop(hand, rings, hole.opening?.bottom === null || !hasFloorBelow(env) ? 'void' : 'floor', built(hole));
+    const rings = holeRings(hole, env);
+    const share = faceShare(hole);
+    const bottom = hole.opening?.bottom === null || !hasFloorBelow(env) ? 'void' : 'floor';
+    if (cave) drawCaveHole(hand, hole, rings, cut, share);
+    else if (cut) cutHole(hand, rings, built(hole), (hole.kind === 'murder-hole' ? MURDER_HOLE_FACE : CUT_FACE) * share);
+    else drawDrop(hand, rings, bottom, built(hole), FACE[bottom] * share);
   }
   if (cave) env.ctx.restore();
+}
+
+/**
+ * A hole in a cave's floor, as a pit or shaft is drawn (`vertical/pit.ts`): as deep as its way's
+ * drop says, else ten feet a floor to the floor it falls to, else bottomless; cut out of the map over
+ * a floor below, so the level below shows through it.
+ */
+function drawCaveHole(hand: Hand, hole: DungeonTerrain, rings: Vec[][], cut: boolean, share: number): void {
+  const { env } = hand.scene;
+  const below = hole.opening?.bottom ?? null;
+  const bottomless = below === null || !hasFloorBelow(env);
+  const feet = hole.traits.drop?.depth ?? (bottomless ? BOTTOMLESS : 10 * Math.max(1, below - env.dungeon.index));
+  const bottom = cut ? 'cut' : bottomless ? 'void' : 'floor';
+  const face = (cut ? CUT_FACE : FACE[bottomless ? 'void' : 'floor']) * share;
+  drawPit(hand, rings, { feet, bottom, seed: env.dungeon.model.seed + hole.id * 7, face });
 }
 
 /** A hole over a floor below: its lip and a narrow face, then nothing, so the level below shows. */

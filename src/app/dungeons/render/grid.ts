@@ -3,8 +3,9 @@ import { doorEdge } from './houseShapes';
 import type { DungeonDoor, DungeonRoom } from '../model';
 import type { Rng } from '../rng';
 import { clipToFloors } from './floors';
+import { caveOpenings } from './vertical/openings';
 import { floorRing, type WayOut } from './cave/mouth/wayOut';
-import { pointsBounds, type Bounds, type Vec } from './geometry';
+import { pointsBounds, tracePolygon, type Bounds, type Vec } from './geometry';
 import { polysPath } from './art/paths';
 import { groundsLayout } from './grounds/groundsShapes';
 import { strokeWidth, type RenderEnv } from './renderEnv';
@@ -27,7 +28,17 @@ export function drawGrid(env: RenderEnv): void {
   const ways = env.dungeon.floor.forest ? [] : env.dungeon.ways;
   const wayRings = ways.map(way => floorRing(env.dungeon.field, way));
   ways.forEach((way, k) => lines.push(...wayLines(way, pointsBounds(wayRings[k]!), step)));
-  strokeGrid(env, lines, step, env.rng('grid'), () => clipToFloors(env, wayRings));
+  const openings = caveOpenings(env);
+  strokeGrid(env, lines, step, env.rng('grid'), () => {
+    clipToFloors(env, wayRings);
+    if (!openings.length) return;
+    // Not across a cave's holes: the floor stops at their rims.
+    const { ctx } = env;
+    ctx.beginPath();
+    ctx.rect(-1e5, -1e5, 2e5, 2e5);
+    for (const ring of openings) tracePolygon(ctx, ring);
+    ctx.clip('evenodd');
+  });
   // A house's grounds are walked on as its floors are: the lawn and its ways take the grid too.
   const grounds = groundsLayout(env.dungeon.floor);
   if (grounds) {

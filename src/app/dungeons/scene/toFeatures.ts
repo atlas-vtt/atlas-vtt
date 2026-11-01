@@ -1,7 +1,8 @@
 import { type MessageKey, t } from '../../i18n';
 import { MAX_FEATURE_CORNERS, MAX_MAP_FEATURES } from '../../mapFeatures/mapFeatures';
 import type { FeatureTerrain, MapFeature } from '../../types/mapFeatureTypes';
-import type { CellPoint, DungeonColumn, DungeonGrowth, DungeonProp, DungeonTerrain, GrowthKind, PropKind } from '../model';
+import type { CaveWay, CellPoint, DungeonColumn, DungeonDoor, DungeonGrowth, DungeonProp, DungeonRoom, DungeonTerrain, GrowthKind, PropKind } from '../model';
+import { doorCells, floorCellsOf } from '../geometry';
 import { GROWTH_KINDS } from '../growthModel';
 import { PROP_SPECS, isCellPiece, propReach } from '../props/catalogue';
 import { propKey } from '../props/propKinds';
@@ -64,6 +65,45 @@ function parapetDrafts(pieces: readonly DungeonTerrain[], onFloor: (cell: CellPo
     }
     return cellOutlines([...rim.values()], MAX_FEATURE_CORNERS).map((polygon): Draft => ({ polygon, name: t('dungeon.terrain.parapet'), terrain: { cover: 'half' } }));
   });
+}
+
+/**
+ * What a cave's way that is no walk is on its door's cells: its name, and difficult ground where
+ * a body squeezes, crawls, climbs or swims through. A traverse's door is ground like any other: its
+ * drop lies in the passage beyond.
+ */
+const WAY_FEATURES: Readonly<Record<Exclude<CaveWay, 'walk'>, { name: MessageKey; terrain?: FeatureTerrain }>> = {
+  crawl: { name: 'dungeon.way.crawl', terrain: { difficult: true } },
+  squeeze: { name: 'dungeon.way.squeeze', terrain: { difficult: true } },
+  letterbox: { name: 'dungeon.way.letterbox', terrain: { difficult: true } },
+  sump: { name: 'dungeon.way.sump', terrain: { difficult: true } },
+  traverse: { name: 'dungeon.way.traverse' },
+  breakdown: { name: 'dungeon.way.breakdown', terrain: { difficult: true } },
+  climb: { name: 'dungeon.way.climb', terrain: { difficult: true } },
+};
+
+/**
+ * Every way of a cave floor that is no walk, so the GM reads it on hover and the movement cost
+ * applies: a narrow route on its passage's cells with its doors of the same way, one stretch;
+ * any other on its door's cells.
+ */
+function wayDrafts(doors: readonly DungeonDoor[], rooms: readonly DungeonRoom[]): Draft[] {
+  const joined = new Set<DungeonDoor>();
+  const routes = rooms.flatMap(room => {
+    if (!room.narrow) return [];
+    const way = WAY_FEATURES[room.narrow];
+    const ends = doors.filter(door => (door.from === room.id || door.to === room.id) && door.way === room.narrow);
+    for (const door of ends) joined.add(door);
+    return cellOutlines([...floorCellsOf(room), ...ends.flatMap(doorCells)], MAX_FEATURE_CORNERS).map(polygon => withTerrain({ polygon, name: t(way.name, { depth: 0 }) }, way.terrain));
+  });
+  return [
+    ...routes,
+    ...doors.flatMap(door => {
+      const way = door.way && door.way !== 'walk' && !joined.has(door) ? WAY_FEATURES[door.way] : undefined;
+      if (!way) return [];
+      return cellOutlines(doorCells(door), MAX_FEATURE_CORNERS).map(polygon => withTerrain({ polygon, name: t(way.name, { depth: door.drop?.depth ?? 0 }) }, way.terrain));
+    }),
+  ];
 }
 
 /** Growth a GM may want to name at the table: what can be climbed, hidden in or slipped on. Weeds are not worth a label. */
@@ -171,7 +211,8 @@ function riverDrafts(dungeon: VisibleDungeon): Draft[] {
 /**
  * The map features of one floor as shown, in world px on `level` (unset in a scene of one floor),
  * with ids beginning `id`: the first `MAX_MAP_FEATURES` of its terrain, a Forest's rivers and
- * bridges, props (where the view shows them), columns and lone trees, in that order, and under them as much vegetation as fits. Only rooms
+ * bridges, props (where the view shows them), columns, lone trees and a cave's ways that are no walk,
+ * in that order, and under them as much vegetation as fits. Only rooms
  * the view shows have any. No feature names what a room was built for.
  */
 export function floorFeatures(dungeon: VisibleDungeon, view: Pick<DungeonView, 'props'>, placement: DungeonPlacement, id: string, level?: string): Record<string, MapFeature> {
@@ -184,6 +225,7 @@ export function floorFeatures(dungeon: VisibleDungeon, view: Pick<DungeonView, '
     ...(view.props ? propDrafts(propsAsDrawn(dungeon).filter(prop => roomShapes.has(prop.room))) : []),
     ...columnDrafts(floor.columns.filter(column => field.distance(column.x, column.y) < 0)),
     ...treeDrafts(loneTrees(dungeon)),
+    ...(floor.cave ? wayDrafts(dungeon.doors, dungeon.rooms) : []),
   ].slice(0, MAX_MAP_FEATURES);
   // Vegetation lies under everything and takes what room the rest leaves.
   const growth = growthDrafts(floor.growth.filter(g => roomShapes.has(g.room))).slice(0, MAX_MAP_FEATURES - solid.length);

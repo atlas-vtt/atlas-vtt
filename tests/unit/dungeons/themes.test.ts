@@ -61,6 +61,6 @@ describe('themes', () => {
   it('builds a dungeon of the chosen theme', () => {
     const model = generateDungeon({ seed: 3, tags: [], floors: 1, theme: 'fortress' });
     expect(model.theme).toBe('fortress');
-    expect(model.version).toBe(3);
+    expect(model.version).toBe(4);
   });
 });

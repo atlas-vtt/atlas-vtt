@@ -17,8 +17,8 @@ export function cavernThemeFacts(facts: CaveFacts): ThemeFacts {
     score: (type, ref) => {
       if (type === 'lake-cavern' && facts.sites[ref.floor]?.deepest) return 2;
       if (type === 'crystal-grotto' && facts.floors[ref.floor]?.cave?.basins.includes(ref.room)) return 1;
-      // A lava cave shows its lava, an acid cave its spring, wherever they may lie.
-      if (type === 'lava-tube' || type === 'sulphur-spring') return 3;
+      // A lava cave shows its lava, an acid cave its spring, a fault its chasms, wherever they may lie.
+      if (type === 'lava-tube' || type === 'sulphur-spring' || (type === 'chasm-hall' && facts.variant === 'fault')) return 3;
       return 0;
     },
     placeAllowed: (kind, at, ref) => formationAllowed(kind, at, ref, facts),

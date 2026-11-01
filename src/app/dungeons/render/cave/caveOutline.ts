@@ -4,15 +4,17 @@
  * rock's relief (`outlineRelief.ts`) and rounded once more. The drawing is free of the cell grid,
  * held only to agree with it (`outlineGuard.ts`): where a cell would be drawn as the other kind,
  * or the outline would cross itself, the wall near it is eased back towards the cells' own edge,
- * as far as needed. Entrances, crawls and stairwells keep their pinned cell edges straight.
+ * as far as needed. Entrances, crawls and stairwells keep their pinned cell edges straight; a
+ * narrow way's cells are drawn narrower than themselves (`narrowPinch.ts`).
  */
 
-import type { CellPoint } from '../../model';
 import { traceLoops } from '../../water/contour';
 import { type CellGrid, WET } from '../../water/wetGrid';
 import { type FloorShape, type Vec, polysOf } from '../geometry';
 import { thinCorners } from '../simplifyRing';
-import { faultless, outlineFaults } from './outlineGuard';
+import { pinches, type Pinches } from './narrowPinch';
+import { type Cells, nearAny, readCells } from './outlineCells';
+import { faultless, type NarrowShare, outlineFaults } from './outlineGuard';
 import { outlineRelief, type Relief } from './outlineRelief';
 
 /** A cell edge that stays straight: an entrance's outer mouth. */
@@ -28,6 +30,8 @@ const REACH = 8;
 const SIGMA = 3.4;
 /** How far from a pinned edge the outline takes its full smoothing and relief, in cells. */
 const FADE = 1;
+/** How many times sooner a narrow way's pinch reaches its full depth past a pinned edge. */
+const PINCH_FADE = 4;
 /** How many times a misdrawn stretch is eased back, by this much each time, before it keeps to its cells. */
 const EASINGS = 8;
 const EASE = 0.6;
@@ -88,8 +92,11 @@ function fades(pinned: readonly boolean[]): number[] {
 const WEIGHTS = Array.from({ length: 2 * REACH + 1 }, (_, k) => Math.exp(-((k - REACH) ** 2) / (2 * SIGMA * SIGMA)));
 const WEIGHT_SUM = WEIGHTS.reduce((a, b) => a + b, 0);
 
-/** The free drawing of a walked loop: smoothed along the loop, then moved along its normal by the relief. */
-function freeDrawing(base: readonly Vec[], fade: readonly number[], relief: Relief): Vec[] {
+/**
+ * The free drawing of a walked loop: smoothed along the loop, then moved along its normal by the
+ * relief and, where a narrow way runs, into the floor (`narrowPinch.ts`).
+ */
+function freeDrawing(base: readonly Vec[], fade: readonly number[], relief: Relief, pinch: Pinches): Vec[] {
   const n = base.length;
   const smooth = base.map((b, i) => {
     let x = 0;
@@ -110,9 +117,13 @@ function freeDrawing(base: readonly Vec[], fade: readonly number[], relief: Reli
     const dy = after.y - before.y;
     const length = Math.hypot(dx, dy) || 1;
     // Floor lies on the right of the way round, so the rock lies on the left: (dy, −dx).
-    const moved = relief(s.x, s.y, dy / length, -dx / length);
+    const out = { x: dy / length, y: -dx / length };
+    const moved = relief(s.x, s.y, out.x, out.y);
     const f = fade[i]!;
-    return { x: s.x + f * (moved.x - s.x), y: s.y + f * (moved.y - s.y) };
+    const kept = f * pinch.relief[i]!;
+    // A narrow way keeps its width right up to a straight edge beside it (a scree step's side): it fades in within a quarter of the cell, not the whole.
+    const inward = Math.min(1, PINCH_FADE * f) * pinch.depth[i]!;
+    return { x: s.x + kept * (moved.x - s.x) - inward * out.x, y: s.y + kept * (moved.y - s.y) - inward * out.y };
   });
 }
 
@@ -172,42 +183,6 @@ function roundedOrigins(pinned: readonly boolean[]): number[] {
   });
 }
 
-/** The cells an outline is checked against, read once into grids over its box: floor (asked again outside the box), and those kept. */
-interface Cells {
-  box: CellGrid;
-  floor: IsFloor;
-  kept?: IsFloor;
-}
-
-function readCells(isFloor: IsFloor, box: CellGrid, kept?: IsFloor): Cells {
-  const read = (is: IsFloor): Uint8Array => {
-    const grid = new Uint8Array(box.w * box.h);
-    for (let gy = 0; gy < box.h; gy++) for (let gx = 0; gx < box.w; gx++) if (is(box.x0 + gx, box.y0 + gy)) grid[gy * box.w + gx] = 1;
-    return grid;
-  };
-  const at = (grid: Uint8Array, outside: IsFloor): IsFloor => (x, y) => {
-    const gx = x - box.x0;
-    const gy = y - box.y0;
-    return gx >= 0 && gy >= 0 && gx < box.w && gy < box.h ? grid[gy * box.w + gx] === 1 : outside(x, y);
-  };
-  return { box, floor: at(read(isFloor), isFloor), ...(kept && { kept: at(read(kept), () => false) }) };
-}
-
-/** The cells within one of any of `cells`, over the box grown by two: a corner there may have drawn them wrong. */
-function nearAny(cells: readonly CellPoint[], box: CellGrid): (p: Vec) => boolean {
-  const x0 = box.x0 - 2;
-  const y0 = box.y0 - 2;
-  const w = box.w + 4;
-  const h = box.h + 4;
-  const grid = new Uint8Array(w * h);
-  for (const c of cells) for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) grid[(c.y + dy - y0) * w + (c.x + dx - x0)] = 1;
-  return (p) => {
-    const gx = Math.floor(p.x) - x0;
-    const gy = Math.floor(p.y) - y0;
-    return gx >= 0 && gy >= 0 && gx < w && gy < h && grid[gy * w + gx] === 1;
-  };
-}
-
 /**
  * Eases the corners near every fault back towards their cell edges, only in the way that made it:
  * a floor cell drawn too thin (or a kept cell's middle entered) eases their moves onto the floor,
@@ -216,7 +191,7 @@ function nearAny(cells: readonly CellPoint[], box: CellGrid): (p: Vec) => boolea
  */
 function ease(walks: readonly Walk[], rounded: readonly Vec[][], origins: readonly number[][], cells: Cells, all: boolean): boolean {
   const { box } = cells;
-  const faults = outlineFaults(rounded, cells.floor, box, cells.kept);
+  const faults = outlineFaults(rounded, cells.floor, box, cells.kept, cells.narrow);
   if (faultless(faults)) return false;
   const nearThin = nearAny(faults.cells.filter((c) => cells.floor(c.x, c.y)), box);
   const nearFull = nearAny(faults.cells.filter((c) => !cells.floor(c.x, c.y)), box);
@@ -250,26 +225,38 @@ function ease(walks: readonly Walk[], rounded: readonly Vec[][], origins: readon
   return true;
 }
 
-/** The rings with the corners they hardly bend at left out, where that leaves them as true to their cells. */
+/** How near a narrow way's cell a corner keeps its place when corners are thinned, in cells. */
+const NARROW_KEEP = 0.25;
+
+/**
+ * The rings with the corners they hardly bend at left out, where that leaves them as true to their
+ * cells. A narrow way's walls keep every corner: its cells are drawn just over their share, which
+ * dropping one may take them under, and then the whole floor would keep its corners.
+ */
 function fewerCorners(rings: readonly Vec[][], cells: Cells): Vec[][] {
-  const fewer = rings.map((ring) => thinCorners(ring, SIMPLIFY, THINNINGS));
+  const { narrow } = cells;
+  const kept = narrow && ((p: Vec): boolean => [-NARROW_KEEP, NARROW_KEEP].some((dx) => [-NARROW_KEEP, NARROW_KEEP].some((dy) => narrow(Math.floor(p.x + dx), Math.floor(p.y + dy)) !== undefined)));
+  const fewer = rings.map((ring) => thinCorners(ring, SIMPLIFY, THINNINGS, kept));
   if (fewer.every((ring, k) => ring.length === rings[k]!.length)) return [...rings];
-  return faultless(outlineFaults(fewer, cells.floor, cells.box, cells.kept)) ? fewer : [...rings];
+  return faultless(outlineFaults(fewer, cells.floor, cells.box, cells.kept, cells.narrow)) ? fewer : [...rings];
 }
 
 /**
  * The traced, smoothed outline of the cells `isFloor` names in `box`, one poly per piece with its
- * holes. No wall enters the middle `CELL_CORE` of a cell `kept` names.
+ * holes. No wall enters the middle `CELL_CORE` of a cell `kept` names; a cell `narrow` gives a
+ * share is drawn about that narrow across, the rock closing in on both sides.
  */
-export function caveOutline(seed: number, floor: number, isFloor: IsFloor, box: CellGrid, pinned: readonly PinnedEdge[], kept?: IsFloor): FloorShape[] {
-  const cells = readCells(isFloor, box, kept);
+export function caveOutline(seed: number, floor: number, isFloor: IsFloor, box: CellGrid, pinned: readonly PinnedEdge[], kept?: IsFloor, narrow?: NarrowShare): FloorShape[] {
+  const cells = readCells(isFloor, box, kept, narrow);
   const marks = new Uint8Array(box.w * box.h);
   for (let gy = 0; gy < box.h; gy++) for (let gx = 0; gx < box.w; gx++) if (cells.floor(box.x0 + gx, box.y0 + gy)) marks[gy * box.w + gx] = WET;
   const relief = outlineRelief(seed, floor);
   const walks: Walk[] = traceLoops(box, marks).map((loop) => {
     const base = quarterSteps(loop);
     const pins = base.map((p) => pinned.some((edge) => onEdge(p, edge)));
-    return { base, pinned: pins, held: [...pins], free: freeDrawing(base, fades(pins), relief), normal: normals(base), keepIn: new Float64Array(base.length).fill(1), keepOut: new Float64Array(base.length).fill(1) };
+    const normal = normals(base);
+    const free = freeDrawing(base, fades(pins), relief, pinches(base, normal, cells.narrow));
+    return { base, pinned: pins, held: [...pins], free, normal, keepIn: new Float64Array(base.length).fill(1), keepOut: new Float64Array(base.length).fill(1) };
   });
   const draw = (): Vec[][] => walks.map((walk) => cutCorners(placed(walk), walk.held));
   let rounded = draw();
@@ -278,5 +265,5 @@ export function caveOutline(seed: number, floor: number, isFloor: IsFloor, box: 
     rounded = draw();
   }
   // Held to their cell edges where faults remained; should any be left, the cells' own outline.
-  return polysOf(faultless(outlineFaults(rounded, cells.floor, box, cells.kept)) ? rounded : walks.map((walk) => cutCorners(walk.base, walk.base.map(() => true))));
+  return polysOf(faultless(outlineFaults(rounded, cells.floor, box, cells.kept, cells.narrow)) ? rounded : walks.map((walk) => cutCorners(walk.base, walk.base.map(() => true))));
 }

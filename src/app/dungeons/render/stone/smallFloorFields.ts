@@ -1,11 +1,8 @@
 import type { Hand } from '../art/hand';
-import { noiseSampler } from '../art/noise';
-import { clipFloors } from '../art/outline';
-import { polysPath, smoothstep, type Field, type PathFn } from '../art/paths';
+import type { Field, PathFn } from '../art/paths';
 import { gridOver, type Grid } from '../art/raster';
-import { pointsBounds, type Bounds, type Canvas2D, type Vec } from '../geometry';
-import { mixColours, parseHex, withAlpha } from '../palette';
-import { insetRuns } from '../shore';
+import type { Bounds, Canvas2D } from '../geometry';
+import { parseHex } from '../palette';
 import { stoneColours, type StoneColours } from './colours';
 
 /** A wrapper per immutable painter hand, released with its scene. */
@@ -70,66 +67,5 @@ function stain(hand: Hand, c: StoneColours, field: Field, bounds: Bounds, clip: 
     pixels[offset + 2] = rgb[2];
     pixels[offset + 3] = Math.min(1, field(x, y)) * (deep ? 1 : 0.8) * 255;
   });
-  ctx.restore();
-}
-
-/**
- * A thin sheet of water: the hand's colours, seeded sheen and vector shore over the floor grain.
- * Constant base/depth are combined algebraically; sheen is bilinearly sampled at up to 12
- * samples/cell instead of the hand's full-resolution intermediate and high-quality smoothing.
- */
-export function smallShallowPools(hand: Hand, pools: readonly Vec[][], depth: number): void {
-  const { scene } = hand;
-  if (!scene.raster || scene.env.style.direction !== 'stone') {
-    hand.water(pools, () => depth, false);
-    return;
-  }
-  const c = stoneColours(scene.env.palette, scene.env.view.monochrome);
-  const { ctx } = scene.env;
-  const trace = polysPath(pools);
-  ctx.save();
-  clipFloors(scene);
-  ctx.beginPath();
-  trace(ctx);
-  ctx.strokeStyle = withAlpha(c.dark ? '#000000' : c.line, 0.1);
-  ctx.lineWidth = 0.14;
-  ctx.lineJoin = 'round';
-  ctx.stroke();
-  // These gours are too shallow for a depth gradient. Fold the hand's base and constant
-  // depth into one translucent fill; the floor's original grain shows through unchanged.
-  const body = smoothstep(0, 1.1, depth) ** 0.9 * (c.mono ? 0.3 : 0.75);
-  const base = c.mono ? 0.35 : 0.55;
-  const alpha = body + base * (1 - body);
-  const dark = c.mono ? c.line : mixColours(c.water, c.dark ? '#000000' : c.line, 0.42);
-  ctx.fillStyle = withAlpha(mixColours(c.water, dark, body / alpha), alpha);
-  ctx.fill();
-  if (!c.mono && depth > 0.05) {
-    const area = pointsBounds(pools.flat());
-    const grid = gridOver(area.minX - 0.1, area.minY - 0.1, area.maxX + 0.1, area.maxY + 0.1, Math.min(12, scene.grid.res));
-    const sheen = noiseSampler(scene.env.dungeon.model.seed + 41, 7, 2, 3);
-    const rgb = parseHex(c.dark ? c.light : '#ffffff');
-    ctx.save();
-    ctx.clip();
-    fieldImage(ctx, grid, (x, y, pixels, offset) => {
-      pixels[offset] = rgb[0];
-      pixels[offset + 1] = rgb[1];
-      pixels[offset + 2] = rgb[2];
-      pixels[offset + 3] = Math.max(0, sheen(x + y * 0.35, y) - 0.52) * (c.dark ? 0.25 : 0.55) * 255;
-    });
-    ctx.restore();
-  }
-  ctx.beginPath();
-  trace(ctx);
-  ctx.strokeStyle = withAlpha(c.dark ? '#000000' : c.line, 0.5);
-  ctx.lineWidth = 0.011;
-  ctx.stroke();
-  ctx.beginPath();
-  for (const pool of pools) for (const run of insetRuns(pool, 0.028)) {
-    ctx.moveTo(run[0]!.x, run[0]!.y);
-    for (const p of run.slice(1)) ctx.lineTo(p.x, p.y);
-  }
-  ctx.strokeStyle = withAlpha(c.light, c.dark ? 0.14 : 0.45);
-  ctx.lineWidth = 0.008;
-  ctx.stroke();
   ctx.restore();
 }

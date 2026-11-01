@@ -21,13 +21,15 @@ describe('a cave’s heights and water', () => {
 
   it('stand in low rooms, behind a dam, or at the low end of a stream, and run strictly downhill', () => {
     for (const model of caves(['wet'], 3, 60)) {
-      for (const floor of model.floors) {
+      for (const [index, floor] of model.floors.entries()) {
         const { basins, streams, dams, heights } = floor.cave!;
+        // Where the deepest floor has no low room (only a secret wing or the boss room lies lower), its lowest chamber is the cave's bottom.
+        const bottom = index === model.floors.length - 1 ? floor.rooms.filter((r) => r.kind === 'room' && r.wing === 'regular' && !r.boss).sort((a, b) => (heights[a.id] ?? 0) - (heights[b.id] ?? 0) || a.id - b.id)[0]?.id : undefined;
         const adjacent = neighbours(floor.rooms.length, floor.doors);
         const chambers = (id: number): number[] => { const out = new Set<number>(); const seen = new Set([id]); const queue = [...(adjacent[id] ?? [])]; for (let h = 0; h < queue.length; h++) { const at = queue[h]!; if (seen.has(at)) continue; seen.add(at); if (floor.rooms[at]?.kind === "room") out.add(at); else queue.push(...(adjacent[at] ?? [])); } return [...out]; };
         const minimum = (id: number): boolean => chambers(id).every((n) => (heights[n] ?? 0) > (heights[id] ?? 0));
         const lows = new Set(streams.map((s) => s[s.length - 1]!));
-        for (const b of basins) expect(minimum(b) || dams.includes(b) || lows.has(b)).toBe(true);
+        for (const b of basins) expect(minimum(b) || dams.includes(b) || lows.has(b) || (b === bottom && basins.length === 1)).toBe(true);
         for (const stream of streams) {
           expect(basins).toContain(stream[stream.length - 1]);
           for (let i = 1; i < stream.length; i++) expect(heights[stream[i]!]!).toBeLessThan(heights[stream[i - 1]!]!);

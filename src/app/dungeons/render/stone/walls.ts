@@ -3,7 +3,7 @@ import type { ArtScene } from '../art/artScene';
 import { hash2 } from '../art/noise';
 import { TO_LIGHT } from '../art/light';
 import { clipOutsideMouths, grownRings, rockSide, traceRings, traceWallInk } from '../art/outline';
-import { wallInkWidth } from '../wallInk';
+import { mouthInkReach, wallInkWidth } from '../wallInk';
 import type { StoneColours } from './colours';
 import { cellPattern } from './patterns';
 import { grainTile, tileTexels } from './textures';
@@ -112,7 +112,7 @@ export function drawWallEdge(scene: ArtScene, c: StoneColours): void {
   const { ctx, style } = scene.env;
   const ink = wallInkWidth(style);
   ctx.save();
-  clipOutsideMouths(scene, ink + 0.02);
+  clipOutsideMouths(scene, mouthInkReach(style));
   ctx.beginPath();
   traceRings(ctx, grownRings(scene, ink + 0.02));
   traceRings(ctx, scene.floorRings);

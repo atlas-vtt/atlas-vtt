@@ -14,6 +14,7 @@ import { arenaSeeds } from '../../terrain/arena';
 import { type CaveGrid, NEAR4, NEAR8, ROCK, unkey } from './caveGrid';
 import { inSwell } from './laneCells';
 import { type ChamberField, chamberField } from './chamberField';
+import { type Option, neighboursIn, readingIndex } from './chamberFrontier';
 
 export interface ChamberShape {
   gamma: number;
@@ -88,40 +89,67 @@ export function reserveCores(grid: CaveGrid, rooms: readonly DungeonRoom[], out 
   });
 }
 
-/** The fewest cells the room may take that join `from` to `reached` without crossing `blocked`, or none where no way leads. */
-function joinPath(grid: CaveGrid, room: DungeonRoom, from: CellPoint, reached: ReadonlySet<string>, blocked: ReadonlySet<string>): CellPoint[] | null {
-  const back = new Map<string, string>([[key(from), key(from)]]);
-  const queue = [key(from)];
+/**
+ * A cell by number rather than by key while chambers are joined: a join walks the same cells again
+ * for every piece and every stairwell asked about, and numbers are looked up faster than text.
+ */
+const SPAN = 1 << 15;
+const numberOf = (x: number, y: number): number => (x + SPAN / 2) * SPAN + (y + SPAN / 2);
+const cellOf = (n: number): CellPoint => ({ x: Math.floor(n / SPAN) - SPAN / 2, y: (n % SPAN) - SPAN / 2 });
+const fromKey = (k: string): number => {
+  const c = unkey(k);
+  return numberOf(c.x, c.y);
+};
+/** The four side neighbours of a cell's number, in `NEAR4`'s order. */
+const SIDE_STEPS = NEAR4.map(([dx, dy]) => dx * SPAN + dy);
+
+/** Whether the room may take each cell, worked out once a cell. Valid while the grid is not changed. */
+export type Takes = (c: CellPoint, n: number) => boolean;
+
+export function takesOf(grid: CaveGrid, room: DungeonRoom): Takes {
+  const known = new Map<number, boolean>();
+  return (c, n) => {
+    let may = known.get(n);
+    if (may === undefined) {
+      may = mayTake(grid, room, c);
+      known.set(n, may);
+    }
+    return may;
+  };
+}
+
+/** The fewest cells the room may take (`takes`) that join `from` to `reached` without crossing `blocked`, or none where no way leads. */
+function joinPath(takes: Takes, from: number, reached: ReadonlySet<number>, blocked: ReadonlySet<number>): CellPoint[] | null {
+  const back = new Map<number, number>([[from, from]]);
+  const queue = [from];
   for (let head = 0; head < queue.length; head++) {
     const at = queue[head]!;
     if (reached.has(at)) {
       const path: CellPoint[] = [];
-      for (let k = at; k !== key(from); k = back.get(k)!) path.push(unkey(k));
+      for (let k = at; k !== from; k = back.get(k)!) path.push(cellOf(k));
       return path;
     }
-    const c = unkey(at);
-    for (const [dx, dy] of NEAR4) {
-      const n = { x: c.x + dx, y: c.y + dy };
-      if (back.has(key(n)) || blocked.has(key(n)) || !mayTake(grid, room, n)) continue;
-      back.set(key(n), at);
-      queue.push(key(n));
+    for (const step of SIDE_STEPS) {
+      const n = at + step;
+      if (back.has(n) || blocked.has(n) || !takes(cellOf(n), n)) continue;
+      back.set(n, at);
+      queue.push(n);
     }
   }
   return null;
 }
 
 /** Groups of cells side by side. */
-function pieces(cells: ReadonlySet<string>): string[][] {
-  const seen = new Set<string>();
-  const out: string[][] = [];
+function pieces(cells: ReadonlySet<number>): number[][] {
+  const seen = new Set<number>();
+  const out: number[][] = [];
   for (const start of cells) {
     if (seen.has(start)) continue;
     const piece = [start];
     seen.add(start);
     for (let head = 0; head < piece.length; head++) {
-      const c = unkey(piece[head]!);
-      for (const [dx, dy] of NEAR4) {
-        const k = cellKey(c.x + dx, c.y + dy);
+      for (const step of SIDE_STEPS) {
+        const k = piece[head]! + step;
         if (cells.has(k) && !seen.has(k)) {
           seen.add(k);
           piece.push(k);
@@ -138,18 +166,20 @@ function pieces(cells: ReadonlySet<string>): string[][] {
  * stairwells: a token steps onto stairs only across their ground end, so they join nothing), and
  * whether every piece could be joined.
  */
-function joinRound(grid: CaveGrid, room: DungeonRoom, kept: ReadonlySet<string>, blocked: ReadonlySet<string>): { joined: Set<string>; whole: boolean } {
-  const walked = new Set([...kept].filter((k) => !blocked.has(k)));
+function joinRound(takes: Takes, kept: ReadonlySet<string>, blocked: ReadonlySet<string>): { joined: Set<string>; whole: boolean } {
+  const stops = new Set([...blocked].map(fromKey));
+  const walked = new Set([...kept].map(fromKey).filter((k) => !stops.has(k)));
   const [main, ...rest] = pieces(walked).sort((a, b) => b.length - a.length);
   const joined = new Set(main ?? []);
   let whole = true;
   for (const piece of rest) {
     for (const k of piece) joined.add(k);
-    const way = joinPath(grid, room, unkey(piece[0]!), new Set([...joined].filter((k) => !piece.includes(k))), blocked);
+    const own = new Set(piece);
+    const way = joinPath(takes, piece[0]!, new Set([...joined].filter((k) => !own.has(k))), stops);
     if (way === null) whole = false;
-    for (const c of way ?? []) joined.add(key(c));
+    for (const c of way ?? []) joined.add(numberOf(c.x, c.y));
   }
-  return { joined, whole };
+  return { joined: new Set([...joined].map((n) => key(cellOf(n)))), whole };
 }
 
 /** What a chamber grows from, and whether all of it could be joined into one piece. */
@@ -160,15 +190,19 @@ export interface ChamberSeeds {
 
 /**
  * What a chamber must keep, joined into one piece round its stairwells (`joinRound`): its core,
- * its kept cells, the lane in it and, for the boss, the arena's platform.
+ * its kept cells, the lane in it (but where a neck took it) and, for the boss, the arena's platform.
  */
 export function chamberSeeds(grid: CaveGrid, room: DungeonRoom, lane: ReadonlySet<string>): ChamberSeeds {
   const r = floorRect(room);
   // The core is kept already (`reserveCores`), with the rest the room needs.
   const seeds = new Set<string>(grid.required(room.id));
-  for (const k of lane) if (inRect(r, unkey(k).x, unkey(k).y)) seeds.add(k);
+  // A lane cell given to a neck's rock (`holdNecks`) is no longer the room's.
+  for (const k of lane) {
+    const c = unkey(k);
+    if (inRect(r, c.x, c.y) && !grid.heldAsRock(c.x, c.y)) seeds.add(k);
+  }
   if (room.boss) for (const c of arenaSeeds(room)) if (mayTake(grid, room, c)) seeds.add(key(c));
-  const { joined, whole } = joinRound(grid, room, seeds, grid.stairCells);
+  const { joined, whole } = joinRound(takesOf(grid, room), seeds, grid.stairCells);
   for (const k of seeds) joined.add(k);
   return { seeds: [...joined].map(unkey).sort((a, b) => a.y - b.y || a.x - b.x), whole };
 }
@@ -180,10 +214,10 @@ export function chamberSeeds(grid: CaveGrid, room: DungeonRoom, lane: ReadonlySe
  * may take, since a cave room keeps off every other room's. Asked where stairs are placed, so the
  * row each stairwell is entered from always reaches the rest of its floor.
  */
-export function stairsJoinRound(grid: CaveGrid, room: DungeonRoom, extra?: { cells: readonly string[]; row: readonly string[] }): boolean {
+export function stairsJoinRound(grid: CaveGrid, room: DungeonRoom, extra?: { cells: readonly string[]; row: readonly string[] }, takes: Takes = takesOf(grid, room)): boolean {
   const kept = new Set([...grid.required(room.id), ...(extra?.row ?? [])]);
   const blocked = extra ? new Set([...grid.stairCells, ...extra.cells]) : grid.stairCells;
-  return joinRound(grid, room, kept, blocked).whole;
+  return joinRound(takes, kept, blocked).whole;
 }
 
 /**
@@ -198,35 +232,46 @@ export function growChamber(rng: Rng, grid: CaveGrid, room: DungeonRoom, seeds: 
   const field = chamberField(rng, room, shape.faults, shape.stretch, doorApproaches(room, grid.doors).filter((c) => inRect(rect, c.x, c.y)));
   const mask = new Set(grid.cellsOf(room.id).filter((c) => inRect(rect, c.x, c.y)).map(key));
   const target = Math.min(room.w * room.h, Math.max(Math.round(shape.fill * room.w * room.h), seeds.length + FLOOR_EXTRA));
-  while (mask.size < target) {
-    const options: [CellPoint, number][] = [];
-    const seen = new Set<string>();
-    for (const k of mask) {
-      const c = unkey(k);
-      for (const [dx, dy] of NEAR4) {
-        const n = { x: c.x + dx, y: c.y + dy };
-        const nk = key(n);
-        if (mask.has(nk) || seen.has(nk) || !mayTake(grid, room, n)) continue;
-        seen.add(nk);
-        const around = NEAR8.filter(([ax, ay]) => mask.has(cellKey(n.x + ax, n.y + ay))).length;
-        options.push([n, around ** shape.gamma * Math.exp(FOLLOW_FIELD * field(n.x, n.y))]);
-      }
+  // The cells beside the chamber it may take, kept as it grows (a cell it may take stays so: only this room claims meanwhile).
+  const weight = (n: CellPoint): number => neighboursIn(mask, n) ** shape.gamma * Math.exp(FOLLOW_FIELD * field(n.x, n.y));
+  const frontier = new Map<string, Option>();
+  // The same options in reading order, which the pick walks: kept sorted as they come, not sorted anew at every step.
+  const options: Option[] = [];
+  const reach = (c: CellPoint): void => {
+    for (const [dx, dy] of NEAR4) {
+      const n = { x: c.x + dx, y: c.y + dy };
+      const nk = key(n);
+      if (mask.has(nk) || frontier.has(nk) || !mayTake(grid, room, n)) continue;
+      const option: Option = [n, weight(n)];
+      frontier.set(nk, option);
+      options.splice(readingIndex(options, n), 0, option);
     }
-    if (options.length === 0) break;
-    options.sort(([a], [b]) => a.y - b.y || a.x - b.x);
+  };
+  for (const k of mask) reach(unkey(k));
+  while (mask.size < target) {
+    if (frontier.size === 0) break;
     const total = options.reduce((sum, [, w]) => sum + w, 0);
     let pickAt = rng() * total;
-    const chosen = options.find(([, w]) => (pickAt -= w) < 0)?.[0] ?? options[options.length - 1]![0];
+    const found = options.findIndex(([, w]) => (pickAt -= w) < 0);
+    const at = found < 0 ? options.length - 1 : found;
+    const chosen = options[at]![0];
+    options.splice(at, 1);
     grid.claim(chosen.x, chosen.y, room.id);
     mask.add(key(chosen));
+    frontier.delete(key(chosen));
+    for (const [dx, dy] of NEAR8) {
+      const nk = cellKey(chosen.x + dx, chosen.y + dy);
+      const entry = frontier.get(nk);
+      if (entry) entry[1] = weight(entry[0]);
+    }
+    reach(chosen);
   }
   return field;
 }
 
 /** Whether the mask stays one piece without `without`, its stairwells joining nothing. */
 function stillWhole(grid: CaveGrid, mask: ReadonlySet<string>, without: string): boolean {
-  const rest = new Set([...mask].filter((k) => !grid.stairCells.has(k)));
-  rest.delete(without);
+  const rest = new Set([...mask].filter((k) => !grid.stairCells.has(k) && k !== without).map(fromKey));
   return pieces(rest).length <= 1;
 }
 
@@ -235,10 +280,9 @@ export function smoothChamber(grid: CaveGrid, room: DungeonRoom, keep: ReadonlyS
   const r = floorRect(room);
   for (let pass = 0; pass < passes; pass++) {
     const mask = new Set(grid.cellsOf(room.id).filter((c) => inRect(r, c.x, c.y)).map(key));
-    const count = (c: CellPoint): number => NEAR8.filter(([dx, dy]) => mask.has(cellKey(c.x + dx, c.y + dy))).length;
     for (const c of cellsOf(r)) {
       const k = key(c);
-      const n = count(c);
+      const n = neighboursIn(mask, c);
       if (!mask.has(k) && n >= 5 && grid.mayClaim(c.x, c.y, room.id)) {
         grid.claim(c.x, c.y, room.id);
         mask.add(k);

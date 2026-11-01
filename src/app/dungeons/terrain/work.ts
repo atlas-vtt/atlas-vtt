@@ -2,7 +2,7 @@
 
 import type { FloorStack } from '../floors/floorStack';
 import type { CaveSites } from '../layout/cavern/caveSites';
-import type { CaveVariant } from '../model';
+import type { CaveCharacter, CaveVariant } from '../model';
 import { type Rng, floorStream } from '../rng';
 import type { DungeonTag } from '../tags';
 import type { ThemeContext } from '../themes/themes';
@@ -25,6 +25,8 @@ export interface TerrainWork {
   rng: (floor: number, key: string) => Rng;
   /** The stream a floor's pieces (statues, fireplaces, formations) are placed from, split by `key`: its own, so the pieces drawn never move terrain. */
   furnishRng: (floor: number, key: string) => Rng;
+  /** A Cavern's own stream of a floor, split by `key`: what its geology lays (a great chamber's interior) moves no other terrain. */
+  caveRng: (floor: number, key: string) => Rng;
   /** A Cavern's geology: what each floor knows of its rooms, and its variant. */
   cave?: TerrainCave;
 }
@@ -32,6 +34,8 @@ export interface TerrainWork {
 export interface TerrainCave {
   sites: readonly CaveSites[];
   variant: CaveVariant;
+  /** The cave's character (`CaveModel.character`); unset, the cave keeps to no rule beyond its geology. */
+  character?: CaveCharacter;
 }
 
 /** What the theme typed: each floor's typed rooms and the rooms that stand empty. */
@@ -53,5 +57,6 @@ export function terrainWork(seed: number, floors: readonly FloorTerrain[], stack
     nextLink: () => link++,
     rng: (floor, key) => floorStream(seed, 'terrain', floor, key),
     furnishRng: (floor, key) => floorStream(seed, 'furnish', floor, key),
+    caveRng: (floor, key) => floorStream(seed, 'cave', floor, key),
   };
 }

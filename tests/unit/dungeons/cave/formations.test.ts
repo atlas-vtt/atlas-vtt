@@ -7,7 +7,7 @@ import { formationAllowed, formationRichness } from '../../../../src/app/dungeon
 import { caveSites } from '../../../../src/app/dungeons/layout/cavern/caveSites';
 
 const factsOf = (model: DungeonModel): ReturnType<typeof caveFacts> => {
-  const input = { seed: model.seed, tags: new Set(readTags(model.tags)), floors: model.floors };
+  const input = { seed: model.seed, tags: new Set(readTags(model.tags)), floors: model.floors, ...(model.cave && { variant: model.cave.variant }) };
   return caveFacts(input, caveSites(model.floors));
 };
 

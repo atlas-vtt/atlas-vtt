@@ -125,7 +125,7 @@ export function stoneHand(scene: ArtScene, c: StoneColours): Hand {
       ctx.restore();
     },
     water: (pools, depth, deep) => paintWater(scene, c, polysPath(pools), pools, depth, deep),
-    lava: (pools, tint) => (c.mono && tint === 'acid' ? paintWater(scene, c, polysPath(pools), pools, depthField(scene, polysPath(pools), pools.flat()), true) : drawLava(scene, c, pools, polysPath(pools), tint)),
+    lava: (pools, tint, flow) => (c.mono && tint === 'acid' ? paintWater(scene, c, polysPath(pools), pools, depthField(scene, polysPath(pools), pools.flat()), true) : drawLava(scene, c, pools, polysPath(pools), tint, flow)),
   };
   return hand;
 }

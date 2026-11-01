@@ -8,7 +8,7 @@
 import { cellKey, dir, floorCellsOf } from '../geometry';
 import type { CellDir, CellPoint, DungeonProp, PropKind } from '../model';
 import { shuffled } from '../rng';
-import { WALL_SIDES, type WallSide } from '../terrain/roomCells';
+import { WALL_SIDES, type WallSide } from '../terrain/roomFrame';
 import { PROP_SPECS, isCellPiece, propReach } from './catalogue';
 import { type FurnishSpace, hangPiece, placeDisc, placePiece } from './furnishSpace';
 import { facing } from './roomFrame';
