@@ -114,9 +114,10 @@ describe('headingNamed', () => {
     expect(headingNamed(edited, link)).toBe(headingsOf(edited)[7]);
   });
 
-  it('opens the last of its name where the count runs past them', () => {
+  it('names nothing where the count runs past the headings of that name, rather than another section', () => {
     const cache = noteOf([['Overview', 2], ['Overview', 2]]);
-    expect(headingNamed(cache, 'Overview#####')).toBe(headingsOf(cache)[1]);
+    expect(headingNamed(cache, 'Overview#')).toBe(headingsOf(cache)[1]);
+    expect(headingNamed(cache, 'Overview##')).toBeUndefined();
   });
 });
 

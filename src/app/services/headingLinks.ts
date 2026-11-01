@@ -33,7 +33,9 @@ function walked(cache: CachedMetadata, path: string): HeadingCache | undefined {
  * that text (pins store a heading as the cache does, and "Room #3" holds a `#`);
  * else Obsidian's reading of the link (`Keep#Cellar`), which takes every `#` as a
  * heading deeper than the last and passes over empty parts. Each `#` at the end
- * counts one further heading of that name, for repeats no path tells apart.
+ * counts one further heading of that name, for repeats no path tells apart. A
+ * count past the last of them names nothing: the heading is gone, and players must
+ * not be sent another section in its place.
  */
 export function headingNamed(cache: CachedMetadata, link: string): HeadingCache | undefined {
   const headings = cache.headings ?? [];
@@ -44,7 +46,7 @@ export function headingNamed(cache: CachedMetadata, link: string): HeadingCache 
   const count = link.length - path.length;
   if (!first || count === 0) return first;
   const same = sameInLinks(headings, first);
-  return same[Math.min(same.indexOf(first) + count, same.length - 1)];
+  return same[same.indexOf(first) + count];
 }
 
 /**

@@ -42,6 +42,10 @@ describe('what players read of a repeated heading', () => {
     expect(reading?.body.trim()).toBe(body);
   });
 
+  it('reads nothing once the counted heading is gone, so players are sent no other section', async () => {
+    expect(await readPinNote(appWithNote(), 'Book/Chapter.md#Stag#Overview##', 'map.atlasmap')).toBeNull();
+  });
+
   it('keeps a link of an older pin on the first of them', async () => {
     const reading = await readPinNote(appWithNote(), 'Book/Chapter.md#Overview', 'map.atlasmap');
     expect(reading?.body.trim()).toBe('Inn overview');
