@@ -242,6 +242,11 @@
       &:not(:has(> .atlas-scene-tab-bar)) {
         flex-shrink: 0;
       }
+
+      // The open TrueScale panel stands over the level switcher and the toolbar row, as their menus do
+      &:has(.atlas-true-scale__panel) {
+        z-index: $z-atlas-dropdown;
+      }
     }
 
     .atlas-top-bar-start__below {

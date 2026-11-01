@@ -7,6 +7,8 @@ export interface SegmentedOption<T extends string> {
   label: string;
   /** Drawn before the label. */
   icon?: React.ReactNode;
+  /** Names an option whose icon stands alone (an empty `label`) for assistive technology. */
+  ariaLabel?: string;
   /** Shown and focusable, but not to be chosen; `hint` says why. */
   disabled?: boolean;
   hint?: string;
@@ -67,6 +69,7 @@ export function SegmentedControl<T extends string>({ value, options, onChange, a
             variant="ghost"
             role="radio"
             aria-checked={chosen}
+            aria-label={option.ariaLabel}
             disabled={disabled}
             aria-disabled={option.disabled || undefined}
             tabIndex={roving && !chosen ? -1 : undefined}

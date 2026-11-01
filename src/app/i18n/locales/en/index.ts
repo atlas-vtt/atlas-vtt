@@ -58,6 +58,8 @@ import { filters } from './filters';
 import { search } from './search';
 import { senses } from './senses';
 import { sort } from './sort';
+import { tableTv } from './tableTv';
+import { glass } from './glass';
 import { toolbar } from './toolbar';
 import { toolbarEdit } from './toolbarEdit';
 import { hotkey } from './hotkey';
@@ -167,6 +169,8 @@ export const en = {
   ...search,
   ...senses,
   ...sort,
+  ...tableTv,
+  ...glass,
   ...toolbar,
   ...toolbarEdit,
   ...hotkey,

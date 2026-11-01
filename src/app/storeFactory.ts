@@ -52,6 +52,7 @@ import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } fr
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
 import { createLiquidsActions, type LiquidsSlice } from './stores/liquidsSlice';
+import { createPlayerFramesActions, readPlayerFrames, type PlayerFramesSlice } from './stores/playerFramesSlice';
 import { levelsForFile, readExploredMasks, readSceneLevels } from './levels/levelFile';
 import { levelAlignmentsOf, movesWithFrame, withoutAlignments } from './levels/levelAlignment';
 import { levelsCarriedWithGrid, type CarriedLevels, type GridCarryScene } from './levels/levelGridCarry';
@@ -239,6 +240,10 @@ export interface ViewAtlasState extends ViewState {
   // Water, lava and acid that move on animated maps (from liquidsSlice.ts)
   addLiquids: LiquidsSlice['addLiquids'];
   deleteLiquid: LiquidsSlice['deleteLiquid'];
+  // Frames saved for the players' TV (from playerFramesSlice.ts)
+  addPlayerFrame: PlayerFramesSlice['addPlayerFrame'];
+  movePlayerFrame: PlayerFramesSlice['movePlayerFrame'];
+  removePlayerFrame: PlayerFramesSlice['removePlayerFrame'];
 
   // Copy, paste and duplicate (from mapObjectsSlice.ts)
   insertMapObjects: MapObjectsSlice['insertMapObjects'];
@@ -330,8 +335,9 @@ export const DEFAULT_TOKEN_SETTINGS: Readonly<ViewAtlasState['tokenSettings']> =
   tokenRingSize: 1,
 };
 
-const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues'> => ({
+const createInitialState = (): Pick<ViewAtlasState, 'schema' | 'version' | 'mapPath' | 'background' | 'grid' | 'objects' | 'camera' | 'persistenceEnabled' | 'widgetSettings' | 'widgetValues' | 'dmNotePath' | 'tokenSettings' | 'initiative' | 'diceLog' | 'pinnedNotePreviews' | 'lootRoller' | 'lighting' | 'exploredMask' | 'exploredEdits' | 'partyValues' | 'playerFrames'> => ({
   lighting: { ...DEFAULT_SCENE_LIGHTING },
+  playerFrames: [],
   exploredMask: null,
   exploredEdits: 0,
   partyValues: {},
@@ -1388,6 +1394,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
             draft.pinnedNotePreviews = {};
             draft.lootRoller = createInitialLootRollerState();
             draft.lighting = { ...DEFAULT_SCENE_LIGHTING };
+            draft.playerFrames = [];
             draft.exploredMask = null;
             draft.exploredMasks = undefined;
             draft.exploredEdits = 0;
@@ -1512,6 +1519,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
           ...createLevelSurfacesActions(set),
           ...createMapFeaturesActions(set),
           ...createLiquidsActions(set),
+          ...createPlayerFramesActions(set),
 
           // --- Per-view UI visibility (from uiSlice.ts) ---
           ...createInitialUIState(),
@@ -1564,6 +1572,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               lighting: state.lighting,
               exploredMask: state.exploredMask,
               exploredMasks: state.exploredMasks,
+              // Left out until the GM saves one, so files of scenes without stay as they were
+              ...(state.playerFrames.length > 0 && { playerFrames: state.playerFrames }),
             };
           },
           
@@ -1580,6 +1590,7 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               exploredMasks: readExploredMasks(saved.exploredMasks, levels),
               lootRoller: readLootRollerState(saved.lootRoller),
               lighting: readSceneLighting(saved.lighting),
+              playerFrames: readPlayerFrames(saved.playerFrames),
               exploredMask: readExploredMask(saved.exploredMask),
               // Counted per session: a file never brings one.
               exploredEdits: current.exploredEdits,

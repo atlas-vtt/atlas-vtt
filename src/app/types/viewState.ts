@@ -12,6 +12,7 @@ import type { PartyValues } from './partyTypes';
 import type { LevelAlignment, LevelLink, LevelSurface, SceneLevel } from './sceneLevelTypes';
 import type { LiquidSurface } from './liquidTypes';
 import type { MapFeature } from './mapFeatureTypes';
+import type { SavedPlayerFrame } from './playerCamera';
 
 /** Data read from a map view, independent of the store and persistence services. */
 export interface ViewState extends ViewUIState {
@@ -85,6 +86,8 @@ export interface ViewState extends ViewUIState {
 
   /** Dynamic lighting of the scene; saved with the map, never undo-tracked. */
   lighting: SceneLighting;
+  /** Frames the GM saved for the players' TV, numbered in this order; saved with the map, never undo-tracked. */
+  playerFrames: SavedPlayerFrame[];
   /** What the players' tokens have explored, as a PNG data URL; saved with the map, never undo-tracked. */
   exploredMask: string | null;
   /** The explored memories of the levels above the first, by level id; the first level's is `exploredMask`. */
