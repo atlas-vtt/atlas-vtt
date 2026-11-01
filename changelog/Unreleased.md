@@ -10,5 +10,12 @@
 
 ## Fixed
 - A room of magical darkness showed its whole shape to players once a token with darkvision stood in a companion's light that outshines the darkness, for example when two tokens overlapped. The room's shape no longer shows, and a token looking at the darkness from outside still sees its veil
+- A note pin on a heading the note repeats, such as the many "Overview" sections of a long chapter, opened the first one whichever you chose. It now opens the one you picked, and the pin's heading list shows the sections around each heading ("Black Ivory Inn › Overview")
+- Roofs stay on the map at every zoom and pan, on the GM's screen, in session view and on the player view. They used to shrink into a rectangle that slid against the map, or vanish in parts of the screen, once the scene had saved its thumbnail
+- The Roofs switch hides the roofs from your own GM view at every zoom. In session view it now stands disabled and says why, since players always see their roofs
+- Walls on generated forest maps now follow the edge of the trees you see, and roads and rivers stay open where they run through the woods.
+- Lone trees on forest maps no longer cast a shadow across their own crowns.
 - Animated maps and water stood still on the player view while the Obsidian window was hidden behind it or minimised: the player window now keeps the clock running. Water also moves for players wherever their screen shows it, not only where your view does
+- On Windows and Linux the mouse wheel can now scroll a note or statblock that opens while you hold Ctrl, without pinning it first. Scrolling one no longer makes the toolbar grow or shrink
+- Online play: notes and pins a player set on the world map no longer vanish when you present another scene. They now belong to the player, whichever token of theirs the scene holds, or none. One set while you were away is kept when you come back
 - On some Macs the asset manager opened from the toolbar lost its backgrounds and cards over the map. It now covers the whole window, as it does when opened from the command palette

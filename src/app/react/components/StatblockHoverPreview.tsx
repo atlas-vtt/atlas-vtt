@@ -6,6 +6,7 @@ import type { TokenVitals } from '../../services/statblockVitalsSync';
 import type { TokenRollContext } from '../../types/diceRollOrigin';
 import { isModHeld, isModKey } from '../../keyboard/modKey';
 import { previewEdgeGaps, type PreviewEdgeGaps } from './statblock/previewEdgeGap';
+import { scrollOnCtrlWheel } from '../../services/previewWheel';
 import './statblock-hover-preview.scss';
 
 export interface StatblockHoverPreviewProps {
@@ -166,6 +167,8 @@ export function StatblockHoverPreview({
 
     return;
   }, [isVisible, isClosing, notePath, updateMeasured]);
+
+  useEffect(() => (containerRef.current ? scrollOnCtrlWheel(containerRef.current) : undefined), [isVisible, isClosing, notePath]);
 
   const positionStyles = useMemo(() => {
     if (!isVisible && !isClosing) return {};

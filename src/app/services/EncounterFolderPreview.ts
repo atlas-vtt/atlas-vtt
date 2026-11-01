@@ -6,6 +6,7 @@ import { encounterFolderName, encounterFolderTrail } from '../encounters/encount
 import { tokenCountText } from '../encounters/encounterTokenCount';
 import { animatePanelIn, animatePanelOutAndRemove } from '../ui/panelMotion';
 import { placeHoverCard } from './hoverCardPlacement';
+import { scrollOnCtrlWheel } from './previewWheel';
 import { t } from '../i18n';
 import './encounter-folder-preview.scss';
 
@@ -43,6 +44,7 @@ export class EncounterFolderPreview implements IPreviewWindow {
     // Atlas styles are scoped to `.atlas-vtt-plugin`.
     this.wrapper = options.doc.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
     this.card = this.wrapper.createDiv({ cls: 'atlas-encounter-folder-preview', attr: { role: 'dialog', 'aria-label': encounterFolderName(options.folder) } });
+    scrollOnCtrlWheel(this.card);
     this.build(this.card);
     this.escapeHandler = (event): void => {
       if (event.key !== 'Escape') return;
