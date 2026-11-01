@@ -1,3 +1,6 @@
+## Improved
+- The update notice no longer interrupts prep or play: it waits until no map, player window or online table is open, and shows after a week at the latest
+
 ## Fixed
 - The confirmation for deleting a collection in Manage no longer opens behind the asset manager
 

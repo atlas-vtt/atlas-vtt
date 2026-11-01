@@ -199,13 +199,13 @@ export default class AtlasVTTPlugin extends Plugin {
     });
     this.changelogService = changelogService;
     this.addCommand({ id: 'view-changelog', name: t('command.viewChangelog'), callback: () => changelogService.open() });
-    const updateWatch = registerUpdateWatch(this, this.settingsService);
 
     this.globalAssetManager = new GlobalAssetManagerService(this.app);
     this.imageDisplayService = new ImageDisplayService(this.app);
 
     const onlinePlay = registerOnlinePlay(this, this.settingsService);
     this.onlinePlay = onlinePlay;
+    const updateWatch = registerUpdateWatch(this, this.settingsService, () => onlinePlay.tableRunning());
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
