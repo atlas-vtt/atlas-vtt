@@ -3,7 +3,7 @@
  *
  * Every write picks its backend per note when it is flushed, whatever started it:
  * - **editor**: a loaded `MarkdownView` in an editing mode holds the note, in any window. The
- *   patches apply to its buffer and only the changed range goes in as one `editor.transaction`,
+ *   patches apply to its buffer and only the changed range goes in as one transaction (`writeToEditor`),
  *   at once: one undo step in the note, unsaved typing kept, other leaves following, Obsidian
  *   saving. Reading view and deferred leaves never count (spike S2).
  * - **vault**: otherwise `vault.process`, atomic against Obsidian's other writes. Disk writes of a

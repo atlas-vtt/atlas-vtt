@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { Editor } from 'obsidian';
 import { STATBLOCK_EDIT_ORIGIN, writeToEditor } from '../../../../src/app/statblocks/notes/editorWrite';
 import { FakeEditor } from './noteHarness';
@@ -6,39 +6,49 @@ import { FakeEditor } from './noteHarness';
 const BEFORE = '---\nname: Aboleth\nimage: art/aboleth.webp\ntoken-image: art/old.webp\n---\n';
 const AFTER = '---\nname: Aboleth\n---\n';
 
-/** An editor whose transactions a filter drops, as Live Preview drops deleting a property naming an image. */
-function filteringEditor(): { editor: FakeEditor & { cm: { dispatch: ReturnType<typeof vi.fn> } }; dispatched: unknown[] } {
-  const dispatched: unknown[] = [];
-  const editor = Object.assign(new FakeEditor(BEFORE, () => undefined), {
+type Spec = { changes: { from: number; to: number; insert: string }; filter?: false; userEvent: string };
+
+/** An editor with a CodeMirror view; `dropsFiltered` makes its filters drop what they may, as Live Preview drops deleting a property naming an image. */
+function editorWithView(dropsFiltered: boolean): { editor: FakeEditor; dispatched: Spec[] } {
+  const dispatched: Spec[] = [];
+  const editor: FakeEditor = Object.assign(new FakeEditor(BEFORE, () => undefined), {
     cm: {
-      dispatch: vi.fn((spec: { changes: { from: number; to: number; insert: string } }) => {
+      dispatch: (spec: Spec): void => {
         dispatched.push(spec);
+        if (dropsFiltered && spec.filter !== false) return;
         const { from, to, insert } = spec.changes;
         editor.text = editor.text.slice(0, from) + insert + editor.text.slice(to);
-      }),
+      },
     },
   });
-  editor.transaction = (): void => undefined;
   return { editor, dispatched };
 }
 
+const CHANGE = { from: BEFORE.indexOf('image:'), to: BEFORE.indexOf('---\n', 4), insert: '' };
+
 describe('writing into an editor', () => {
-  it('writes through the editor\'s transaction when the editor takes it', () => {
-    const editor = Object.assign(new FakeEditor(BEFORE, () => undefined), { cm: { dispatch: vi.fn() } });
+  it('goes to CodeMirror without asking to scroll, never through Obsidian\'s transaction, which always does', () => {
+    const { editor, dispatched } = editorWithView(false);
     writeToEditor(editor as unknown as Editor, BEFORE, AFTER);
     expect(editor.getValue()).toBe(AFTER);
-    expect(editor.transactions).toHaveLength(1);
-    expect(editor.cm.dispatch).not.toHaveBeenCalled();
+    expect(editor.transactions).toHaveLength(0);
+    expect(dispatched).toEqual([{ changes: CHANGE, userEvent: STATBLOCK_EDIT_ORIGIN }]);
   });
 
   it('passes a filter that drops the change by, once, as one change of Atlas\' origin', () => {
-    const { editor, dispatched } = filteringEditor();
+    const { editor, dispatched } = editorWithView(true);
     writeToEditor(editor as unknown as Editor, BEFORE, AFTER);
     expect(editor.getValue()).toBe(AFTER);
-    expect(dispatched).toEqual([{
-      changes: { from: BEFORE.indexOf('image:'), to: BEFORE.indexOf('---\n', 4), insert: '' },
-      filter: false,
-      userEvent: STATBLOCK_EDIT_ORIGIN,
-    }]);
+    expect(dispatched).toEqual([
+      { changes: CHANGE, userEvent: STATBLOCK_EDIT_ORIGIN },
+      { changes: CHANGE, filter: false, userEvent: STATBLOCK_EDIT_ORIGIN },
+    ]);
+  });
+
+  it('takes the editor\'s transaction where it has no CodeMirror view', () => {
+    const editor = new FakeEditor(BEFORE, () => undefined);
+    writeToEditor(editor as unknown as Editor, BEFORE, AFTER);
+    expect(editor.getValue()).toBe(AFTER);
+    expect(editor.transactions).toHaveLength(1);
   });
 });
