@@ -114,6 +114,7 @@ export function setupMirror(): MirrorHarness {
     // The set-up screen begins by shading the frame; the curtain fills it black
     fillRect: () => { events.push(context.fillStyle === '#000' ? 'draw:curtain' : 'draw:setup'); },
     clearRect: vi.fn(),
+    measureText: () => ({ width: 0 }),
     drawImage: (image: HTMLCanvasElement): void => {
       if (captureFails.value) throw new Error('lost context');
       events.push(image === state.held ? 'draw:held' : `capture:${onCanvas}`);
