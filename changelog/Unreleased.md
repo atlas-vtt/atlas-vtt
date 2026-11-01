@@ -9,6 +9,7 @@
 - Presenting a scene no longer always unfreezes the players. A map you framed with the glass brings them back to that frame when it is presented again; pinned players stay pinned, gliding to your view on the same map and taking your view of a new map at once. Players who are not pinned follow you as before
 
 ## Fixed
+- A room of magical darkness showed its whole shape to players once a token with darkvision stood in a companion's light that outshines the darkness, for example when two tokens overlapped. The room's shape no longer shows, and a token looking at the darkness from outside still sees its veil
 - A note pin on a heading the note repeats, such as the many "Overview" sections of a long chapter, opened the first one whichever you chose. It now opens the one you picked, and the pin's heading list shows the sections around each heading ("Black Ivory Inn › Overview")
 - Roofs stay on the map at every zoom and pan, on the GM's screen, in session view and on the player view. They used to shrink into a rectangle that slid against the map, or vanish in parts of the screen, once the scene had saved its thumbnail
 - The Roofs switch hides the roofs from your own GM view at every zoom. In session view it now stands disabled and says why, since players always see their roofs
