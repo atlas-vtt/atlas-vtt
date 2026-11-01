@@ -167,7 +167,7 @@ describe('what a player wrote on the world map, whichever scene the GM presents'
     again.online.stop();
   });
 
-  it('lets what arrives before the quests and the scene are read wait for them: a note on a quest, a purse', async () => {
+  it('lets what arrives before the quests are read wait for them: a note on a quest, a purse', async () => {
     const quest = 'd'.repeat(24);
     setQuestGate({ quests: () => Promise.resolve([{ id: quest, kind: 'main', state: 'open', title: 'The crown', body: '', place: null, xp: 0, rewards: [] }]), asset: () => undefined, onChange: () => () => {} });
     const release = holdWorldMap();
@@ -178,6 +178,19 @@ describe('what a player wrote on the world map, whichever scene the GM presents'
     release();
     await advance(1_000);
     expect(lastBook(table, ANA)).toMatchObject({ character: { name: 'Brannoch' }, notes: [{ body: 'Ask the abbot', quest }], purse: [{ name: 'Thorns', amount: 3 }] });
+    table.online.stop();
+  });
+
+  it('keeps what arrived before the first pass when its player has left since', async () => {
+    const release = holdWorldMap();
+    const shelf = new BookShelf(keptBooks());
+    const table = await openTable(shelf, PLAYERS);
+    table.from(ANA, { t: 'book-pin', pin: PIN });
+    await advance(100);
+    table.socket.relay({ t: 'player-left', id: ANA });
+    release();
+    await advance(1_000);
+    expect(shelf.of(ownBookOf(ANA)).pins).toMatchObject([{ id: PIN.id }]);
     table.online.stop();
   });
 

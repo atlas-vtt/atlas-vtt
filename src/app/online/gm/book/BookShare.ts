@@ -191,7 +191,8 @@ export class BookShare implements LootRecipientSource {
     if (scene !== null) this.read(scene, new Set(players.map((player) => player.id)), reach === 'all' ? undefined : reach);
     const renamed = reach !== 'all' && !sameNames(names, this.characters.names());
     this.earlyWrites = null;
-    for (const { from, body } of early) if (!this.write(from, body)) this.owed.owe(from);
+    // They were online when these arrived and their page has let go of them, so leaving since loses nothing.
+    for (const { from, body } of early) if (!this.write(from, body, players.some((player) => player.id === from))) this.owed.owe(from);
     this.statblocks.retain(this.characters.statblockPaths());
     const online = new Set(players.filter((player) => player.online).map((player) => player.id));
     for (const player of [...this.sent.keys()]) if (!online.has(player)) this.sent.delete(player);
@@ -354,10 +355,10 @@ export class BookShare implements LootRecipientSource {
   }
 
   /** Writes what a player sent: a note or pin into their books, anything else into their character's book; false when it is refused. */
-  private write(from: string, body: Record<string, unknown>): boolean {
+  private write(from: string, body: Record<string, unknown>, mayWrite = this.isOnline(from)): boolean {
     const character = this.characters.of(from);
     const message = parsePlayerBookMessage(body);
-    if (message === null || !this.isOnline(from)) return false;
+    if (message === null || !mayWrite) return false;
     const quests = new Set(this.quests.map((quest) => quest.id));
     if (isWriting(message)) {
       const outcome = writeWriting(this.shelf, this.writingBooks(from, character), message, this.ports.clock(), quests);
