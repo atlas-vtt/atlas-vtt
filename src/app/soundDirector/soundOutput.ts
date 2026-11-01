@@ -20,6 +20,7 @@ export interface SoundOutputDeps {
   onSoundError(key: string, error: unknown): void;
   onLifecycle(state: SoundLifecycle): void;
   wait(ms: number): Promise<void>;
+  spareDecodedBytes?: number;
 }
 
 /**
@@ -92,6 +93,10 @@ export class SoundOutput {
     return () => document.removeEventListener('visibilitychange', changed);
   }
 
+  decodedBytes(): number {
+    return this.player?.decodedBytes() ?? 0;
+  }
+
   waitingKeys(): string[] {
     return this.player?.waitingKeys() ?? [];
   }
@@ -129,6 +134,7 @@ export class SoundOutput {
       resolve: (key) => this.deps.resolve(key),
       levels,
       onSoundError: (key, error) => this.deps.onSoundError(key, error),
+      ...(this.deps.spareDecodedBytes !== undefined && { spareDecodedBytes: this.deps.spareDecodedBytes }),
     });
   }
 

@@ -20,6 +20,8 @@ export interface SoundPlayerOptions {
   onSoundError?: (key: string, error: unknown) => void;
   /** Which decoder long sounds use. Unset: the best this runtime has. */
   windowDecode?: (context: SoundContext) => WindowDecode;
+  /** Decoded short sounds no voice uses kept for later; a phone keeps few. */
+  spareDecodedBytes?: number;
 }
 
 /** Below this the Silence fade is over and nothing need play. */
@@ -45,7 +47,7 @@ export class SoundPlayer {
     this.context = options.context;
     this.levels = options.levels;
     this.graph = new MixerGraph(this.context, this.levels);
-    this.sources = new SoundSources(this.context, options.resolve, options.windowDecode ?? null);
+    this.sources = new SoundSources(this.context, options.resolve, options.windowDecode ?? null, options.spareDecodedBytes);
   }
 
   /** Takes a state, whole; giving the same one again changes nothing. */
@@ -90,6 +92,11 @@ export class SoundPlayer {
   /** Keys of the sounds a voice is waiting for: the bytes are still on their way or could not be had. */
   waitingKeys(): string[] {
     return [...new Set([...this.voices.values()].flatMap((voice) => voice.waitingKeys))];
+  }
+
+  /** What whole decoded sounds hold now; a long sound's windows are about 8 MB per voice besides. */
+  decodedBytes(): number {
+    return this.sources.decodedBytes();
   }
 
   /** Resolves once everything asked for so far has been read and decoded, and is in place. */

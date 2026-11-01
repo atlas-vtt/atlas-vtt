@@ -3,23 +3,27 @@ import { isBookType, isPlayerBookType, parseBookCover, parseBookMessage, parseBo
 import { parseBookRestMessage, type BookRestMessage } from './bookRest.ts';
 import { isDeltaOf, parseDelta, parseSeq, type DeltaMessage, type DeltaOf } from './delta.ts';
 import { parseFloor, type SharedFloor } from './floor.ts';
-import { parseFog, type SharedFog } from './fog.ts';
+import type { SharedFog } from './fog.ts';
 import { parseImageMessage, type ImageMessage } from './image.ts';
-import { parseInitiative, type SharedInitiative } from './initiative.ts';
-import { parseLightingScene, parseSight, type SharedLightingScene, type SharedSight } from './lighting.ts';
-import { parseLiquids, type SharedLiquid } from './liquids.ts';
-import { parseLive, type LiveMessage } from './live.ts';
+import type { SharedInitiative } from './initiative.ts';
+import type { SharedLightingScene, SharedSight } from './lighting.ts';
+import type { SharedLiquid } from './liquids.ts';
+import type { LiveMessage } from './live.ts';
 import type { LogMessage, PlayerLogMessage } from './log.ts';
 import { isPlayerLogType, parseLogMessage, parsePlayerLog } from './logParse.ts';
 import { parsePlayerRoll, parseRoll, parseRollDice, parseRollRefused, type PlayerRoll, type RollMessage, type RollRefused, type SharedRollDice } from './dice.ts';
-import { parseAnnotations, parseDoors, parseGrid, parsePinFound, parsePins, parseSensed, type PlayerPinFound, type SensedMark, type SharedAnnotations, type SharedDoor, type SharedGrid, type SharedPin } from './mapLayers.ts';
+import { parsePinFound, type PlayerPinFound, type SensedMark, type SharedAnnotations, type SharedDoor, type SharedGrid, type SharedPin } from './mapLayers.ts';
 import { parseMapPlacement, type SharedMapPlacement } from './mapPlacement.ts';
 import { parseMarks, parsePlayerMark, type MarksMessage, type PlayerCursor, type PlayerLaser, type PlayerMeasure } from './marks.ts';
 import { isRecord } from './shape.ts';
-import { MAX_SCENE_ID, parseDragCancel, parseMoveRefused, parsePlayerMove, parseSnapGrid, type MoveRefused, type PlayerDrag, type PlayerDragCancel, type PlayerMove, type SnapGrid } from './moves.ts';
+import { parseDragCancel, parseMoveRefused, parsePlayerMove, parseSnapGrid, type MoveRefused, type PlayerDrag, type PlayerDragCancel, type PlayerMove, type SnapGrid } from './moves.ts';
 import { parseRules, type RulesMessage } from './rules.ts';
+import { isSceneId, parseSceneInput } from './sceneInput.ts';
+import { parsePlayerSoundState, parseSoundMessage, parseSoundPrepare, type PlayerSoundState, type SoundMessage, type SoundPrepare } from './sound.ts';
 import { MAX_TOKEN_SIZE, MAX_TOKENS, parseTokens, TOKEN_ID_PATTERN, type SharedToken } from './tokens.ts';
-import { parseWidgetBar, type SharedWidgetBar } from './widgets.ts';
+import type { SharedWidgetBar } from './widgets.ts';
+
+export { EXPLORED_INLINE_BYTES, MAX_EXPLORED_SERIAL } from './sceneInput.ts';
 
 /** What the players see of the shared scene; null while nothing is shared. A scene with a map may say where it lies (`SharedMapPlacement`). */
 export interface SharedScene extends SharedMapPlacement {
@@ -46,13 +50,8 @@ export const PART_BYTES = 192 * 1024;
 /** Parts of one message a client puts together: at most this many, each of at most `PART_BYTES`. */
 export const MAX_PARTS = 64;
 
-/** The largest explored memory (a PNG) that goes inline in an `explored` message; a larger one is stored like any asset. */
-export const EXPLORED_INLINE_BYTES = 200 * 1024;
 /** The first GM level whose explored memories carry the GM's count of removals (`serial`): an older GM's always replace the players'. */
 export const EXPLORED_MERGE_GM_LEVEL = 10;
-/** The largest count of removals an `explored` message may carry. */
-export const MAX_EXPLORED_SERIAL = Number.MAX_SAFE_INTEGER;
-const EXPLORED_INLINE_BASE64 = 4 * Math.ceil(EXPLORED_INLINE_BYTES / 3);
 
 export type GmMessage =
   | { readonly t: 'scene'; readonly scene: SharedScene | null }
@@ -117,6 +116,9 @@ export type GmMessage =
   /** The table's log: chat, rolls, who came and went. It belongs to the table, not to a scene. */
   | LogMessage
   | ImageMessage
+  /** The table's sound, and what may be asked for next. They belong to the table, not to a scene. */
+  | SoundMessage
+  | SoundPrepare
   /** A player's own pages besides the table: character, items, notes, pins. It belongs to the table, not to a scene. */
   | BookMessage;
 
@@ -127,12 +129,10 @@ export interface PlayerResync {
   readonly of: DeltaOf;
 }
 
-export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound;
+export type PlayerMessage = PlayerResync | PlayerMove | PlayerDrag | PlayerDragCancel | PlayerRoll | PlayerLaser | PlayerMeasure | PlayerCursor | PlayerLogMessage | PlayerBookMessage | PlayerBookParts | PlayerBookCover | BookTokenMessage | BookRestMessage | PlayerPinFound | PlayerSoundState;
 
 const BASE64 = /^[A-Za-z0-9+/]*={0,2}$/;
 
-const isSceneId = (value: unknown): value is string => typeof value === 'string' && value.length <= MAX_SCENE_ID;
-const isInlinePng = (value: unknown): value is string => typeof value === 'string' && value.length <= EXPLORED_INLINE_BASE64 && value.length % 4 === 0 && BASE64.test(value);
 const isBase64Part = (value: unknown): value is string => typeof value === 'string' && value.length <= (PART_BYTES / 3) * 4 && BASE64.test(value);
 
 /** A scene's floor where it is given and well formed; a malformed one is left out, so the scene still shows. */
@@ -153,70 +153,6 @@ function parseScene(value: unknown): SharedScene | null | undefined {
   if (value.map === null) return { id: value.id, map: null, lit: value.lit, ...sceneExtras(value) };
   const map = parseAsset(value.map);
   return map === null ? undefined : { id: value.id, map, lit: value.lit, ...sceneExtras(value), ...parseMapPlacement(value), ...sceneVideo(value) };
-}
-
-/** A message about the scene's fog or lighting, or null for anything malformed. */
-function parseSceneInput(value: Record<string, unknown>, scene: string): GmMessage | null {
-  switch (value.t) {
-    case 'fog': {
-      const fog = parseFog(value.fog);
-      const seq = parseSeq(value.seq);
-      return fog === undefined || seq === null ? null : { t: 'fog', scene, ...(seq !== undefined && { seq }), fog };
-    }
-    case 'lighting': {
-      const lighting = parseLightingScene(value);
-      return lighting === null ? null : { t: 'lighting', scene, ...lighting };
-    }
-    case 'sight': {
-      const sight = parseSight(value);
-      const seq = parseSeq(value.seq);
-      return sight === null || seq === null ? null : { t: 'sight', scene, ...(seq !== undefined && { seq }), ...sight };
-    }
-    case 'live':
-      return parseLive(value, scene);
-    case 'explored': {
-      if (value.png !== undefined && !isInlinePng(value.png)) return null;
-      if (value.serial !== undefined && !isCount(value.serial, MAX_EXPLORED_SERIAL)) return null;
-      const serial = value.serial === undefined ? {} : { serial: value.serial };
-      if (value.mask === undefined) return { t: 'explored', scene, ...(value.png === undefined ? {} : { png: value.png }), ...serial };
-      const mask = parseAsset(value.mask);
-      return mask === null || mask.mime !== 'image/png' || value.png !== undefined ? null : { t: 'explored', scene, mask, ...serial };
-    }
-    case 'liquids': {
-      const liquids = parseLiquids(value.liquids);
-      return liquids === null ? null : { t: 'liquids', scene, liquids };
-    }
-    case 'grid': {
-      const grid = parseGrid(value.grid);
-      return grid === undefined ? null : { t: 'grid', scene, grid };
-    }
-    case 'doors': {
-      const doors = parseDoors(value.doors);
-      return doors === null ? null : { t: 'doors', scene, doors };
-    }
-    case 'sensed': {
-      const tokens = parseSensed(value.tokens);
-      return tokens === null ? null : { t: 'sensed', scene, tokens };
-    }
-    case 'pins': {
-      const pins = parsePins(value.pins);
-      return pins === null ? null : { t: 'pins', scene, pins };
-    }
-    case 'annotations': {
-      const annotations = parseAnnotations(value);
-      return annotations === null ? null : { t: 'annotations', scene, ...annotations };
-    }
-    case 'initiative': {
-      const list = parseInitiative(value.list);
-      return list === undefined ? null : { t: 'initiative', scene, list };
-    }
-    case 'widgets': {
-      const bar = parseWidgetBar(value.bar);
-      return bar === undefined ? null : { t: 'widgets', scene, bar };
-    }
-    default:
-      return null;
-  }
 }
 
 /** The dice of a player's tokens by id, only for tokens of `tokens`; entries that do not parse are left out, and so is a malformed whole. */
@@ -278,6 +214,10 @@ export function parseGmMessage(value: unknown): GmMessage | null {
       return parseLogMessage(value);
     case 'shown-image':
       return parseImageMessage(value);
+    case 'sound':
+      return parseSoundMessage(value);
+    case 'sound-prepare':
+      return parseSoundPrepare(value);
     default:
       if (isBookType(value.t)) return parseBookMessage(value);
       return isSceneId(value.scene) ? parseSceneInput(value, value.scene) : null;
@@ -298,6 +238,7 @@ export function parsePlayerMessage(value: unknown): PlayerMessage | null {
   if (value.t === 'book-rest') return parseBookRestMessage(value);
   if (value.t === 'book-parts') return { t: 'book-parts' };
   if (value.t === 'book-cover') return parseBookCover(value);
+  if (value.t === 'sound-state') return parsePlayerSoundState(value);
   if (value.t === 'resync') return isSceneId(value.scene) && isDeltaOf(value.of) ? { t: 'resync', scene: value.scene, of: value.of } : null;
   return null;
 }
