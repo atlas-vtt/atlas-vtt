@@ -12,13 +12,8 @@ import { showNotice } from '../../../ui/notice';
 import { t } from '../../../i18n';
 import { trackGlassDrag } from './glassDrag';
 import { glassDragSteps } from './glassSession';
-import { chipPlace, readGlass, type ChipRoom, type Glass } from './glassState';
+import { chipPlace, measureChipRoom, readGlass, type Glass } from './glassState';
 import { savedFrames, type SavedFrames } from './savedFrames';
-
-/** The bars of the map view the chip keeps clear of: scene tabs above, the toolbars below. */
-const TOP_BARS = '.atlas-scene-tab-bar';
-const TOP_START_BARS = `${TOP_BARS}, .atlas-player-window-bar`;
-const BOTTOM_BARS = '.atlas-bottom-toolbar-row .atlas-vtt-toolbar';
 
 /** What the chip shows. */
 export interface GlassShown {
@@ -86,26 +81,12 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
 
     const outline = new GlassOutline(app, viewport, (overlay) => orchestrator.addDmScreenOverlay(overlay));
     const tabId = (): string | null => view.tabMetaStore.getState().activeTabId;
-    /** Where a ghost placed by hand stands; null: in the middle of the GM's view. */
+    /** Where a ghost placed by hand stands, until another map is viewed or players come here; null: in the middle of the GM's view. */
     let ghostAt: { x: number; y: number } | null = null;
     let glass: Glass | null = null;
     let dragging: (() => void) | null = null;
 
-    const measure = (): ChipRoom => {
-      const area = pane.getBoundingClientRect();
-      const map = canvas.getBoundingClientRect();
-      const edges = (selector: string): DOMRect[] => [...pane.querySelectorAll(selector)].map((bar) => bar.getBoundingClientRect()).filter((rect) => rect.height > 0);
-      return {
-        canvasX: map.left - area.left,
-        canvasY: map.top - area.top,
-        width: area.width,
-        height: area.height,
-        top: Math.max(0, ...edges(TOP_BARS).map((rect) => rect.bottom - area.top)),
-        topStart: Math.max(0, ...edges(TOP_START_BARS).map((rect) => rect.bottom - area.top)),
-        bottom: Math.max(0, ...edges(BOTTOM_BARS).map((rect) => area.bottom - rect.top)),
-      };
-    };
-    let room = measure();
+    let room = measureChipRoom(pane, canvas);
 
     const toWorld = (clientX: number, clientY: number): { x: number; y: number } => {
       const rect = canvas.getBoundingClientRect();
@@ -149,7 +130,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
         size: () => service.playerViewWorldSize(frameSourceOf(view)),
         centre: () => ghostAt ?? viewport.center,
       });
-      if (glass?.look !== 'ghost') ghostAt = null;
+      if (playerWindowStore.getState().shownTabId === tabId()) ghostAt = null;
       show();
     };
     /**
@@ -218,6 +199,7 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
           glass: () => glass,
           grid: () => view.atlasStore.getState().grid,
           toWorld,
+          ghostPlace: () => ghostAt,
           moveGhost: (centre) => {
             ghostAt = centre;
             follow(true);
@@ -239,12 +221,17 @@ export function useGlass(view: AtlasView, chipRef: React.RefObject<HTMLElement |
     const unsubscribers = [
       playerWindowStore.subscribe(refresh),
       service.onPlayersCameraChange(refresh),
-      view.tabMetaStore.subscribe((state, previous) => { if (state.activeTabId !== previous.activeTabId) refresh(); }),
+      view.tabMetaStore.subscribe((state, previous) => {
+        if (state.activeTabId === previous.activeTabId) return;
+        ghostAt = null;
+        refresh();
+      }),
       view.atlasStore.subscribe((state, previous) => {
-        if (state.grid !== previous.grid || state.mapLoaded !== previous.mapLoaded || state.playerFrames !== previous.playerFrames) refresh();
+        if (state.mapPath !== previous.mapPath) ghostAt = null;
+        if (state.mapPath !== previous.mapPath || state.grid !== previous.grid || state.mapLoaded !== previous.mapLoaded || state.playerFrames !== previous.playerFrames) refresh();
       }),
       settings?.onChange(refresh) ?? ((): void => undefined),
-      observeResize([pane, canvas, chip, savedChip], () => { room = measure(); saved.measure(); place(); }),
+      observeResize([pane, canvas, chip, savedChip], () => { room = measureChipRoom(pane, canvas); saved.measure(); place(); }),
     ];
     viewport.on('moved', onViewportMoved);
     viewport.on('zoomed', onViewportMoved);

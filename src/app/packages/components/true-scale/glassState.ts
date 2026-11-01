@@ -9,7 +9,7 @@ export interface Glass {
   frame: WorldFrame;
 }
 
-/** Where the ghost stands when it is not being dragged: the middle of the GM's view, at the TV's size on this map. */
+/** Where the ghost stands: where the GM placed it, else the middle of the GM's view, at the TV's size on this map. */
 export interface GhostPlace {
   size(): Size | null;
   centre(): { x: number; y: number };
@@ -43,6 +43,27 @@ export interface ChipRoom {
   /** What the bars at the top of the pane's start take: the scene tabs and the player window bar below them. */
   topStart: number;
   bottom: number;
+}
+
+/** The bars of the map view the chip keeps clear of: scene tabs above, the toolbars below. */
+const TOP_BARS = '.atlas-scene-tab-bar';
+const TOP_START_BARS = `${TOP_BARS}, .atlas-player-window-bar`;
+const BOTTOM_BARS = '.atlas-bottom-toolbar-row .atlas-vtt-toolbar';
+
+/** The room in `pane` as it stands now, around `canvas` and the bars that show. */
+export function measureChipRoom(pane: Element, canvas: Element): ChipRoom {
+  const area = pane.getBoundingClientRect();
+  const map = canvas.getBoundingClientRect();
+  const edges = (selector: string): DOMRect[] => [...pane.querySelectorAll(selector)].map((bar) => bar.getBoundingClientRect()).filter((rect) => rect.height > 0);
+  return {
+    canvasX: map.left - area.left,
+    canvasY: map.top - area.top,
+    width: area.width,
+    height: area.height,
+    top: Math.max(0, ...edges(TOP_BARS).map((rect) => rect.bottom - area.top)),
+    topStart: Math.max(0, ...edges(TOP_START_BARS).map((rect) => rect.bottom - area.top)),
+    bottom: Math.max(0, ...edges(BOTTOM_BARS).map((rect) => area.bottom - rect.top)),
+  };
 }
 
 /** Between a chip and the pane's edges or bars, and between a saved frame's chip and the frame's corner. */

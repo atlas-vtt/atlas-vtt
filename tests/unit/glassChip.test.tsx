@@ -259,6 +259,84 @@ describe('the glass chip', () => {
       expect(fakes.presentTab).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'tab-a', { camera: { centerX: 550, centerY: 400, scale: 1 } });
     });
 
+    /** The ghost as last drawn, at the size players get. */
+    const ghostAt = (centerX: number, centerY: number): unknown[] => [{ centerX, centerY, width: 200, height: 100 }, 'ghost'];
+    const lastGlass = (): unknown[] => fakes.outlines[0]!.setGlass.mock.lastCall!;
+    const tabs = (view: AtlasView) => view.tabMetaStore as unknown as { setState(state: { activeTabId: string }): void };
+    const expectNothingSent = (): void => {
+      expect(fakes.presentTab).not.toHaveBeenCalled();
+      expect(service.dragPlayersTo).not.toHaveBeenCalled();
+      expect(service.framePlayersOn).not.toHaveBeenCalled();
+      expect(service.playersToCamera).not.toHaveBeenCalled();
+      expect(service.freezeCamera).not.toHaveBeenCalled();
+      expect(playerWindowStore.getState().shownTabId).toBe('tab-b');
+    };
+
+    it('sends players nothing while it is dragged, dropped or cancelled', () => {
+      render(<GlassChip view={fakeView()} />);
+      drag([{ x: 163, y: 72 }], false);
+      expectNothingSent();
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 163, clientY: 72 });
+      expectNothingSent();
+      drag([{ x: 163, y: 72 }], false);
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expectNothingSent();
+    });
+
+    it('does not take a drag begun on its button for a press of that button', () => {
+      render(<GlassChip view={fakeView()} />);
+      const bring = screen.getByRole('button', { name: 'Show players this map' });
+      fireEvent.pointerDown(bring, { pointerId: 1, button: 0, clientX: 100, clientY: 50 });
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 163, clientY: 72 });
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 163, clientY: 72 });
+      fireEvent.click(bring);
+      expectNothingSent();
+    });
+
+    it('goes back to where it stood when a later drag is cancelled', () => {
+      render(<GlassChip view={fakeView()} />);
+      drag([{ x: 163, y: 72 }]);
+      expect(lastGlass()).toEqual(ghostAt(550, 400));
+      drag([{ x: 163, y: 72 }], false);
+      expect(lastGlass()).toEqual(ghostAt(600, 400));
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(lastGlass()).toEqual(ghostAt(550, 400));
+    });
+
+    it('forgets its place when another scene tab is viewed', () => {
+      const view = fakeView();
+      render(<GlassChip view={view} />);
+      drag([{ x: 163, y: 72 }]);
+      act(() => { tabs(view).setState({ activeTabId: 'tab-c' }); });
+      expect(lastGlass()).toEqual(ghostAt(500, 400));
+    });
+
+    it('forgets its place when its tab loads another map', () => {
+      const view = fakeView();
+      render(<GlassChip view={view} />);
+      drag([{ x: 163, y: 72 }]);
+      act(() => { (view.atlasStore as unknown as { setState(state: { mapPath: string }): void }).setState({ mapPath: 'other.atlasmap' }); });
+      expect(lastGlass()).toEqual(ghostAt(500, 400));
+    });
+
+    it('forgets its place when players come here', () => {
+      render(<GlassChip view={fakeView()} />);
+      drag([{ x: 163, y: 72 }]);
+      act(() => { playerWindowStore.setState({ shownTabId: 'tab-a' }); });
+      act(() => { playerWindowStore.setState({ shownTabId: 'tab-b' }); });
+      expect(lastGlass()).toEqual(ghostAt(500, 400));
+    });
+
+    it('keeps its place while the size of the players\' frame cannot be read for a moment', () => {
+      render(<GlassChip view={fakeView()} />);
+      drag([{ x: 163, y: 72 }]);
+      service.playerViewWorldSize.mockReturnValueOnce(null);
+      act(() => { playerWindowStore.setState({}); });
+      expect(lastGlass()).toEqual([null, undefined]);
+      act(() => { playerWindowStore.setState({}); });
+      expect(lastGlass()).toEqual(ghostAt(550, 400));
+    });
+
     it('is not there while players are held on another level of this tab', () => {
       playerWindowStore.setState({ shownTabId: 'tab-a' });
       service.glassOf = () => null;
@@ -505,6 +583,24 @@ describe('saved frames', () => {
     fireEvent.pointerUp(window, { pointerId: 1, clientX: 262, clientY: 281 });
     expect(map(view).getState().playerFrames).toEqual([{ ...FRAME, centerX: 350 }]);
     expect(service.dragPlayersTo).not.toHaveBeenCalled();
+  });
+
+  it('shows players nothing while it is dragged, on the map they see or another', () => {
+    for (const shownTabId of ['tab-a', 'tab-b']) {
+      playerWindowStore.setState({ shownTabId });
+      const view = fakeView(SQUARE, [FRAME]);
+      render(<GlassChip view={view} />);
+      hover(view, 220, 280);
+      fireEvent.pointerDown(savedChip()!, { pointerId: 1, button: 0, clientX: 210, clientY: 260 });
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 262, clientY: 281 });
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 262, clientY: 281 });
+      expect(fakes.presentTab).not.toHaveBeenCalled();
+      expect(service.playersToCamera).not.toHaveBeenCalled();
+      expect(service.dragPlayersTo).not.toHaveBeenCalled();
+      expect(service.framePlayersOn).not.toHaveBeenCalled();
+      expect(playerWindowStore.getState().shownTabId).toBe(shownTabId);
+      cleanup();
+    }
   });
 
   it('puts a dragged frame back on Escape', () => {
