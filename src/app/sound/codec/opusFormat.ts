@@ -25,7 +25,7 @@ export function readOpusHead(packet: Uint8Array): OpusHead {
 }
 
 /** A family 0 head with output gain 0: gain is applied at playback, never baked in. */
-export function writeOpusHead(channels: number, preSkip: number): Uint8Array {
+export function writeOpusHead(channels: number, preSkip: number): Uint8Array<ArrayBuffer> {
   const bytes = new Uint8Array(19);
   const view = new DataView(bytes.buffer);
   bytes.set(new TextEncoder().encode(OPUS_HEAD), 0);

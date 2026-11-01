@@ -29,7 +29,7 @@ export function webCodecsWindowDecode(context: SoundContext): WindowDecode {
     if (!last) throw new Error('No audio at that position.');
     const planes = Array.from({ length: sound.channels }, () => [] as Float32Array<ArrayBuffer>[]);
     let total = 0;
-    let failure: DOMException | null = null;
+    const failures: DOMException[] = [];
     const decoder = new AudioDecoder({
       output: (data) => {
         const frames = data.numberOfFrames;
@@ -42,7 +42,7 @@ export function webCodecsWindowDecode(context: SoundContext): WindowDecode {
         data.close();
       },
       error: (error) => {
-        failure = error;
+        failures.push(error);
       },
     });
     decoder.configure({ codec: 'opus', sampleRate: SOUND_RATE, numberOfChannels: sound.channels, description: sound.head });
@@ -51,7 +51,7 @@ export function webCodecsWindowDecode(context: SoundContext): WindowDecode {
     }
     await decoder.flush();
     if (decoder.state !== 'closed') decoder.close();
-    if (failure) throw failure;
+    if (failures[0]) throw failures[0];
     const firstGranule = last.startGranule + last.frames - total;
     const skip = fromGranule - firstGranule;
     if (skip < 0 || skip + count > total) throw new Error('The decoder gave less audio than the window needs.');
