@@ -24,6 +24,7 @@ export const BOUNDARIES = {
       "src/app/pixi/laser/**/*.tsx",
       "src/app/pixi/utils/**/*.ts",
       "src/app/pixi/utils/**/*.tsx",
+      "src/app/sound/**/*.ts",
       "src/app/dice3d/**/*.ts",
       "src/app/dice3d/**/*.tsx",
       "src/app/packages/components/primitives/**/*.ts",
