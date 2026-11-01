@@ -2,15 +2,18 @@ import React from 'react';
 import { Volume2, VolumeX, Wind, X } from 'lucide-react';
 import { t } from '../../../../i18n';
 import type { LayerPlay } from '../../../../sound/soundTypes';
-import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
+import type { SoundDirector, SoundSnapshot } from '../../../../soundDirector/SoundDirector';
+import { useSoundValue } from './useSound';
 import { IconAction } from './IconAction';
 import { LevelSlider } from './LevelSlider';
 
 /** One ambience layer: only the row of the layer that moved renders when it does. */
-export const LayerRow = React.memo(function LayerRow({ director, play }: { director: SoundDirector; play: LayerPlay }): React.JSX.Element {
-  const record = director.shelf.recordOfKey(play.sound.key);
+export const LayerRow = React.memo(function LayerRow({ director, soundKey: key }: { director: SoundDirector; soundKey: string }): React.JSX.Element {
+  const record = director.shelf.recordOfKey(key);
   const name = record?.name ?? '';
-  const { key } = play.sound;
+  const layer = ({ mix }: SoundSnapshot): LayerPlay | undefined => mix.table.layers.find((play) => play.sound.key === key);
+  const gainDb = useSoundValue(director, (snapshot) => layer(snapshot)?.gainDb ?? 0);
+  const muted = useSoundValue(director, (snapshot) => layer(snapshot)?.muted === true);
   return (
     <div className="atlas-sound-row">
       <div className="atlas-sound-row__head">
@@ -20,12 +23,12 @@ export const LayerRow = React.memo(function LayerRow({ director, play }: { direc
       </div>
       <div className="atlas-sound-row__controls">
         <IconAction
-          label={play.muted ? t('audio.unmute', { name }) : t('audio.mute', { name })}
-          icon={play.muted ? VolumeX : Volume2}
-          pressed={play.muted === true}
-          onClick={() => director.desk.setLayerMuted(key, play.muted !== true)}
+          label={muted ? t('audio.unmute', { name }) : t('audio.mute', { name })}
+          icon={muted ? VolumeX : Volume2}
+          pressed={muted}
+          onClick={() => director.desk.setLayerMuted(key, !muted)}
         />
-        <LevelSlider label={t('audio.level', { name })} value={play.gainDb} onChange={(db) => director.desk.setLayerLevel(key, db)} />
+        <LevelSlider label={t('audio.level', { name })} value={gainDb} onChange={(db) => director.desk.setLayerLevel(key, db)} />
       </div>
     </div>
   );

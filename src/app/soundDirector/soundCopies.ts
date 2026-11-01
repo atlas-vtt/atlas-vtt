@@ -53,6 +53,7 @@ export class SoundCopies implements SoundConversionState {
   private running = false;
   private disposed = false;
   private pinned = new Set<string>();
+  private readonly toldRefused = new Set<string>();
 
   constructor(
     private readonly files: SoundFileAccess,
@@ -186,7 +187,10 @@ export class SoundCopies implements SoundConversionState {
       const reason = error instanceof SoundImportError ? error.reason : 'unreadable';
       if (!(error instanceof SoundImportError)) console.error(`[Atlas] Could not convert ${record.filePath}`, error);
       this.set(entry, { state: 'refused', reason });
-      this.onRefused(record, reason);
+      if (!this.toldRefused.has(record.id)) {
+        this.toldRefused.add(record.id);
+        this.onRefused(record, reason);
+      }
     }
   }
 

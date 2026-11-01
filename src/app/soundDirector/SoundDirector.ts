@@ -1,7 +1,5 @@
 import type { App } from 'obsidian';
 import { t } from '../i18n';
-import type { SoundLifecycle } from '../sound/engine/soundWatchdog';
-import type { SoundRefusal } from '../sound/codec/demux/demuxTypes';
 import type { LocalLevels } from '../sound/engine/mixerGraph';
 import type { Mood, SoundRecord, TableSound } from '../sound/soundTypes';
 import { loadLastMix, type LastMix, type StoredOutput } from './deviceFacts';
@@ -15,32 +13,15 @@ import { TableFights } from './tableFights';
 import { EMPTY_MIX, type SoundMix } from './soundMix';
 import { SoundOutput } from './soundOutput';
 import { SoundShelf } from './soundShelf';
+import type { SoundSnapshot } from './soundSnapshot';
 import { SoundTable } from './soundTable';
 import { stopFade } from './tableSound';
 import { stopAll } from './liveEdits';
 import type { AudienceLine, TableClock } from './tableClock';
 
-/** A window coming back is when a context turns out to have stopped. */
-function watchVisibility(changed: () => void): () => void {
-  document.addEventListener('visibilitychange', changed);
-  return () => document.removeEventListener('visibilitychange', changed);
-}
+export type { SoundSnapshot } from './soundSnapshot';
 
-/** What the tab and the status bar draw. A new object whenever something in it changed. */
-export interface SoundSnapshot {
-  mix: SoundMix;
-  lifecycle: SoundLifecycle;
-  /** What a press brings back after a restart. */
-  lastMix: LastMix | null;
-  /** The record id being previewed. */
-  previewing: string | null;
-  output: StoredOutput | null;
-  audience: string | null;
-  /** Keys whose bytes a voice waits for. */
-  waitingKeys: readonly string[];
-  /** The records were read again, or copies changed. */
-  shelfRevision: number;
-}
+const SHELF_AFTER_FADE_MS = 500;
 
 /**
  * The owner of a table's sound: one per app, from the plugin's load to its unload. It holds the context,
@@ -82,7 +63,7 @@ export class SoundDirector {
   private dropAudience: (() => void) | null = null;
   private levels: LocalLevels;
   private on = false;
-  private readonly toldRefused = new Set<string>();
+  private closeShelf = 0;
   private readonly lastMix: LastMixKeeper;
   private readonly choice: OutputChoice;
   private readonly previews: SoundPreview;
@@ -100,7 +81,7 @@ export class SoundDirector {
       onLifecycle: (lifecycle) => this.publish({ lifecycle }),
       wait: (ms) => new Promise((resolve) => { window.setTimeout(resolve, ms); }),
     });
-    this.shelf = new SoundShelf(deps, (record, reason) => this.tellRefused(record, reason));
+    this.shelf = new SoundShelf(deps, (record, reason) => deps.notify(t('audio.refusedNotice', { name: record.name, reason: t(`audio.refused.${reason}`) })));
     this.table = new SoundTable(this.output, this.shelf, {
       fadeMs: () => this.fadeSeconds() * 1000,
       isPreviewing: () => this.current.previewing !== null,
@@ -122,13 +103,9 @@ export class SoundDirector {
     this.sync();
   }
 
-  get isOn(): boolean {
-    return this.on;
-  }
+  get isOn(): boolean { return this.on; }
 
-  snapshot(): SoundSnapshot {
-    return this.current;
-  }
+  snapshot(): SoundSnapshot { return this.current; }
 
   subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
@@ -153,9 +130,7 @@ export class SoundDirector {
     this.publish({ audience: audience?.line() ?? null });
   }
 
-  now(): number {
-    return this.table.now();
-  }
+  now(): number { return this.table.now(); }
 
   joinView(viewId: string, store: FightStore): void {
     this.fights.join(viewId, store);
@@ -226,6 +201,8 @@ export class SoundDirector {
   destroy(): void {
     this.lastMix.flush();
     this.turnOff(true);
+    window.clearTimeout(this.closeShelf);
+    this.shelf.close();
     this.dropSettings();
     this.dropAudience?.();
     this.fights.dispose();
@@ -239,7 +216,7 @@ export class SoundDirector {
 
   private sync(): void {
     const { musicDb, ambienceDb, masterDb } = this.deps.settings.getSoundSettings();
-    if (musicDb !== this.levels.musicDb || ambienceDb !== this.levels.ambienceDb || masterDb !== this.levels.masterDb) this.setChannelLevels({ musicDb, ambienceDb, masterDb }, false);
+    this.setChannelLevels({ musicDb, ambienceDb, masterDb }, false);
     const wanted = this.deps.settings.isOn();
     if (wanted === this.on) return;
     if (wanted) this.turnOn();
@@ -249,6 +226,8 @@ export class SoundDirector {
   private turnOn(): void {
     this.on = true;
     const { deps } = this;
+    window.clearTimeout(this.closeShelf);
+    this.shelf.close();
     const copies = this.shelf.open();
     this.stops = [
       deps.provideConversion(copies),
@@ -256,7 +235,7 @@ export class SoundDirector {
       deps.presented.onChange(() => this.fights.follow.presentedChanged()),
       deps.onLibraryChange(() => void this.refreshShelf()),
       deps.onAudioFileChange(() => this.desk.requestWaiting()),
-      watchVisibility(() => void this.output.check()),
+      this.output.watchVisibility(),
     ];
     this.publish({ lastMix: loadLastMix(deps.storage), output: this.choice.apply() });
     void this.refreshShelf();
@@ -274,10 +253,13 @@ export class SoundDirector {
     this.choice.release();
     if (atOnce) {
       this.table.shut();
-    } else {
-      this.table.commit({ ...EMPTY_MIX, table: stopAll(this.table.mix.table, this.table.now(), stopFade(this.fadeSeconds() * 1000)) });
+      this.shelf.close();
+      return;
     }
-    this.shelf.close();
+    const fadeMs = stopFade(this.fadeSeconds() * 1000);
+    this.table.commit({ ...EMPTY_MIX, table: stopAll(this.table.mix.table, this.table.now(), fadeMs) });
+    // What fades out still reads its copy.
+    this.closeShelf = window.setTimeout(() => this.shelf.close(), fadeMs + SHELF_AFTER_FADE_MS);
   }
 
   private async refreshShelf(): Promise<void> {
@@ -311,11 +293,5 @@ export class SoundDirector {
   private isHeld(): boolean {
     const { table } = this.table.mix;
     return table.music !== null || table.layers.length > 0;
-  }
-
-  private tellRefused(record: SoundRecord, reason: SoundRefusal): void {
-    if (this.toldRefused.has(record.id)) return;
-    this.toldRefused.add(record.id);
-    this.deps.notify(t('audio.refusedNotice', { name: record.name, reason: t(`audio.refused.${reason}`) }));
   }
 }

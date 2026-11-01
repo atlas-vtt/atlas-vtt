@@ -5,7 +5,6 @@ import { t } from '../../../../i18n';
 import { Button } from '../../../../packages/components/primitives/button';
 import InputModal from '../../../../packages/components/primitives/InputModal';
 import type { Mood, SoundRecord } from '../../../../sound/soundTypes';
-import { soundingMusic } from '../../../../soundDirector/musicList';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { isPlaying } from '../../../../soundDirector/tableSound';
 import { showNotice } from '../../../../ui/notice';
@@ -28,7 +27,8 @@ interface NowColumnProps {
   sounds: readonly SoundRecord[];
 }
 
-function ChannelLevels({ director }: { director: SoundDirector }): React.JSX.Element {
+/** Faders of this table's own levels: they write through to the gain and reach the settings when let go. */
+const ChannelLevels = React.memo(function ChannelLevels({ director }: { director: SoundDirector }): React.JSX.Element {
   const levels = director.channelLevels();
   return (
     <div className="atlas-sound-channels">
@@ -45,37 +45,49 @@ function ChannelLevels({ director }: { director: SoundDirector }): React.JSX.Ele
       ))}
     </div>
   );
-}
+});
+
+const SilenceButton = React.memo(function SilenceButton({ director }: { director: SoundDirector }): React.JSX.Element {
+  const silenced = useSoundValue(director, ({ mix }) => mix.table.silenced);
+  const playing = useSoundValue(director, ({ mix }) => isPlaying(mix.table, director.now()));
+  return (
+    <button type="button" className="atlas-sound-silence" aria-pressed={silenced} disabled={!playing} onClick={() => director.desk.toggleSilence()}>
+      {silenced ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
+      {silenced ? t('audio.bringBack') : t('audio.silence')}
+    </button>
+  );
+});
+
+const SEPARATOR = '\n';
 
 /** The live mix, which is also the editor of moods: what plays here is what Save takes. */
 export function NowColumn({ app, director, collectionId, moods, sounds }: NowColumnProps): React.JSX.Element {
-  const mix = useSoundValue(director, (snapshot) => snapshot.mix);
+  // Which rows there are, not what they hold: a fader moving renders its own row, and none of this.
+  const layerKeys = useSoundValue(director, ({ mix }) => mix.table.layers.map((play) => play.sound.key).join(SEPARATOR));
+  const waitingLayers = useSoundValue(director, ({ mix }) => mix.waitingLayers.map((layer) => layer.sound).join(SEPARATOR));
+  const holdsSound = useSoundValue(director, ({ mix }) => mix.table.music !== null || mix.table.layers.length > 0 || mix.waitingMusic !== null || mix.waitingLayers.length > 0);
+  const activeMood = useSoundValue(director, ({ mix }) => (mix.mood?.collectionId === collectionId ? mix.mood.id : null));
   const lifecycle = useSoundValue(director, (snapshot) => snapshot.lifecycle);
   const lastMix = useSoundValue(director, (snapshot) => snapshot.lastMix);
   const openAssetManager = useAtlasStore((state) => state.openAssetManager);
   const menu = useContextMenu();
   const [adding, setAdding] = useState(false);
   const [namingMood, setNamingMood] = useState(false);
-  const { table, listChange, waitingMusic, waitingLayers } = mix;
-  const play = soundingMusic(table, director.now());
-  const list = listChange ?? play;
-  const holdsSound = table.music !== null || table.layers.length > 0 || waitingMusic !== null || waitingLayers.length > 0;
 
   const saveTo = useCallback((anchor: HTMLElement): void => {
     if (collectionId === null) return;
     const box = anchor.getBoundingClientRect();
-    const active = mix.mood?.collectionId === collectionId ? mix.mood.id : null;
-    const ordered = [...moods.filter((mood) => mood.id === active), ...moods.filter((mood) => mood.id !== active)];
+    const ordered = [...moods.filter((mood) => mood.id === activeMood), ...moods.filter((mood) => mood.id !== activeMood)];
     menu.open(ordered.map((mood) => ({
       type: 'item' as const,
       label: mood.name,
-      checked: mood.id === active,
+      checked: mood.id === activeMood,
       disabled: MoodStore.forApp(app).isReadOnly(collectionId, mood.id),
       onClick: () => {
         if (director.desk.saveToMood(collectionId, mood)) showNotice(t('audio.saved', { name: mood.name }));
       },
     })), { x: box.left, y: box.bottom }, { returnFocus: anchor });
-  }, [app, collectionId, director, menu, mix.mood, moods]);
+  }, [activeMood, app, collectionId, director, menu, moods]);
 
   return (
     <section className="atlas-sound-now" aria-label={t('audio.now')}>
@@ -88,9 +100,9 @@ export function NowColumn({ app, director, collectionId, moods, sounds }: NowCol
       {lifecycle === 'needs-tap' && <button type="button" className="atlas-sound-banner" onClick={() => director.tap()}>{t('audio.needsTap')}</button>}
       {!holdsSound && lastMix && <button type="button" className="atlas-sound-banner" onClick={() => director.resume()}><RotateCcw aria-hidden="true" />{t('audio.resume')}</button>}
       <div className="atlas-sound-now__rows">
-        <MusicRow director={director} music={table.music} tracks={list?.tracks ?? []} shuffle={list?.shuffle ?? false} waitingTracks={waitingMusic?.tracks ?? []} />
-        {table.layers.map((layer) => <LayerRow key={layer.sound.key} director={director} play={layer} />)}
-        {waitingLayers.map((layer) => <WaitingLayerRow key={layer.sound} director={director} soundId={layer.sound} />)}
+        <MusicRow director={director} />
+        {layerKeys !== '' && layerKeys.split(SEPARATOR).map((key) => <LayerRow key={key} director={director} soundKey={key} />)}
+        {waitingLayers !== '' && waitingLayers.split(SEPARATOR).map((id) => <WaitingLayerRow key={id} director={director} soundId={id} />)}
         {adding
           ? <AddSoundList director={director} sounds={sounds} onLibrary={() => openAssetManager()} onClose={() => setAdding(false)} />
           : <Button type="button" variant="ghost" className="atlas-sound-now__add" onClick={() => setAdding(true)}><Plus aria-hidden="true" />{t('audio.add.open')}</Button>}
@@ -98,16 +110,7 @@ export function NowColumn({ app, director, collectionId, moods, sounds }: NowCol
       <footer className="atlas-sound-now__footer">
         <ChannelLevels director={director} />
         <OutputLine director={director} />
-        <button
-          type="button"
-          className="atlas-sound-silence"
-          aria-pressed={table.silenced}
-          disabled={!isPlaying(table, director.now())}
-          onClick={() => director.desk.toggleSilence()}
-        >
-          {table.silenced ? <Volume2 aria-hidden="true" /> : <VolumeX aria-hidden="true" />}
-          {table.silenced ? t('audio.bringBack') : t('audio.silence')}
-        </button>
+        <SilenceButton director={director} />
       </footer>
       <InputModal
         isOpen={namingMood}

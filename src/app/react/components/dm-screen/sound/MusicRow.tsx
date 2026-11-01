@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronDown, ChevronRight, Music, Play, Shuffle, SkipForward, Volume2, VolumeX, X } from 'lucide-react';
 import { t } from '../../../../i18n';
 import { SOUND_RATE } from '../../../../sound/engine/soundMath';
-import type { MusicPlay, SoundInfo } from '../../../../sound/soundTypes';
+import type { SoundInfo } from '../../../../sound/soundTypes';
 import { musicPosition, soundingMusic } from '../../../../soundDirector/musicList';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { useSoundValue } from './useSound';
@@ -71,17 +71,17 @@ const TrackRow = React.memo(function TrackRow({ director, track }: { director: S
   );
 });
 
-interface MusicRowProps {
-  director: SoundDirector;
-  music: MusicPlay | null;
-  tracks: readonly SoundInfo[];
-  shuffle: boolean;
-  waitingTracks: readonly string[];
-}
+const NO_TRACKS: readonly SoundInfo[] = [];
 
-export function MusicRow({ director, music, tracks, shuffle, waitingTracks }: MusicRowProps): React.JSX.Element {
+/** The music: what plays, the list, and its fader. It reads each value on its own, so a fader moving renders this row alone. */
+export const MusicRow = React.memo(function MusicRow({ director }: { director: SoundDirector }): React.JSX.Element {
   const [open, setOpen] = useState(false);
-  const none = useSoundValue(director, (snapshot) => snapshot.mix.table.music === null);
+  const none = useSoundValue(director, ({ mix }) => mix.table.music === null);
+  const gainDb = useSoundValue(director, ({ mix }) => mix.table.music?.gainDb ?? 0);
+  const muted = useSoundValue(director, ({ mix }) => mix.table.music?.muted === true);
+  const tracks = useSoundValue(director, ({ mix }) => (mix.listChange ?? mix.table.music)?.tracks ?? NO_TRACKS);
+  const shuffle = useSoundValue(director, ({ mix }) => (mix.listChange ?? mix.table.music)?.shuffle ?? false);
+  const waitingTracks = useSoundValue(director, ({ mix }) => mix.waitingMusic?.tracks ?? NO_WAITING);
   const name = t('audio.music');
   return (
     <div className="atlas-sound-row atlas-sound-row--music">
@@ -94,13 +94,13 @@ export function MusicRow({ director, music, tracks, shuffle, waitingTracks }: Mu
       </div>
       <div className="atlas-sound-row__controls">
         <IconAction
-          label={music?.muted ? t('audio.unmute', { name }) : t('audio.mute', { name })}
-          icon={music?.muted ? VolumeX : Volume2}
-          pressed={music?.muted === true}
+          label={muted ? t('audio.unmute', { name }) : t('audio.mute', { name })}
+          icon={muted ? VolumeX : Volume2}
+          pressed={muted}
           disabled={none}
-          onClick={() => director.desk.setMusicMuted(music?.muted !== true)}
+          onClick={() => director.desk.setMusicMuted(!muted)}
         />
-        <LevelSlider label={t('audio.level', { name })} value={music?.gainDb ?? 0} disabled={none} onChange={(db) => director.desk.setMusicLevel(db)} />
+        <LevelSlider label={t('audio.level', { name })} value={gainDb} disabled={none} onChange={(db) => director.desk.setMusicLevel(db)} />
       </div>
       {open && (
         <ul className="atlas-sound-tracks">
@@ -119,4 +119,6 @@ export function MusicRow({ director, music, tracks, shuffle, waitingTracks }: Mu
       )}
     </div>
   );
-}
+});
+
+const NO_WAITING: readonly string[] = [];
