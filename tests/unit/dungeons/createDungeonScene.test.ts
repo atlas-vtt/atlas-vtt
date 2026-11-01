@@ -105,7 +105,7 @@ describe('creating a dungeon scene', () => {
 
     expect(result).toEqual({ ok: true, name: TITLE, scenePath: `${SCENES}/${TITLE}.atlasmap` });
     expect(b.jobs.map(job => job.output)).toEqual([
-      { kind: 'map', ...SIZE, bitmap: true },
+      { kind: 'map', ...SIZE, bitmap: true, treeLine: true },
     ]);
     const records = await recordsOf(b);
     expect(records.map(r => r.type).sort()).toEqual(['map', 'scene']);
@@ -137,7 +137,7 @@ describe('creating a dungeon scene', () => {
     const result = created(await createDungeonSceneWith(b.deps, options(model)));
 
     expect(b.jobs.map(job => job.output)).toEqual([
-      { kind: 'map', ...SIZE, bitmap: true },
+      { kind: 'map', ...SIZE, bitmap: true, treeLine: true },
       { kind: 'map', ...SIZE, bitmap: true, floor: 1 },
       { kind: 'map', ...SIZE, bitmap: true, floor: 2 },
     ]);
