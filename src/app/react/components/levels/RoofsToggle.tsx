@@ -22,7 +22,7 @@ export function RoofsToggle(): React.ReactElement {
   const sessionView = useAtlasStore((state) => !state.isGMView);
   const shown = sessionView || !hidden;
   return (
-    <LabelTooltip side="right" label={t(roofsLabel(sessionView, hidden))}>
+    <LabelTooltip side="right" multiline label={t(roofsLabel(sessionView, hidden))}>
       <button
         type="button"
         className={cn('atlas-roofs-toggle', !shown && 'atlas-roofs-toggle--hidden')}
