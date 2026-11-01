@@ -73,4 +73,5 @@ export const levels: Translation = {
   'levels.roofs': 'Крыши',
   'levels.roofsHide': 'Скрыть крыши у себя; игроки свои по-прежнему видят',
   'levels.roofsShow': 'Показать крыши у себя',
+  'levels.roofsInSession': 'Игроки всегда видят свои крыши; чтобы скрыть их у себя, перейдите в режим ГМ',
 };

@@ -1,5 +1,5 @@
 import type { Matrix } from 'pixi.js';
-import { sameStretch, type MapStretch } from '../../../grid/mapStretch';
+import { imageWorldRect, sameStretch, type MapStretch } from '../../../grid/mapStretch';
 import { ambientLevelOn, ambientRaster, type AmbientRaster } from '../../../lighting/ambientRaster';
 import { stackGrid } from '../../../levels/levelStack';
 import { levelImagePlacement, type AlignedScene } from '../../../levels/levelAlignment';
@@ -210,6 +210,7 @@ export class Roof {
     const first = !this.placement;
     this.placement = placement;
     this.transform = piecesTransform(read.pieces, read, placement);
+    this.layer.setArea(imageWorldRect(read, placement));
     if (first) {
       void this.image.load(this.wanted, scene.gridSize, placement).then(() => this.deps.requestRender());
       this.layer.setPieces(read.pieces, this.transform);

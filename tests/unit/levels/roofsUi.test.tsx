@@ -56,6 +56,21 @@ describe('the GM\'s Roofs on the level switcher', () => {
     expect(screen.getAllByRole('tab')).toHaveLength(2);
   });
 
+  it('hides nothing in session view, which shows the players\' roofs: it stands disabled and keeps the GM\'s choice', () => {
+    const store = mount([level('ground', 0, 'maps/roof.png')], <LevelSwitcher />);
+    act(() => store.getState().setRoofsHidden(true));
+    act(() => store.setState({ isGMView: false }));
+    const roofs = screen.getByRole('button', { name: /roofs/i });
+    expect(roofs.getAttribute('aria-disabled')).toBe('true');
+    expect(roofs.getAttribute('aria-pressed')).toBe('true');
+    act(() => fireEvent.click(roofs));
+    expect(store.getState().roofsHidden).toBe(true);
+    act(() => store.setState({ isGMView: true }));
+    const back = screen.getByRole('button', { name: /roofs/i });
+    expect(back.getAttribute('aria-disabled')).toBeNull();
+    expect(back.getAttribute('aria-pressed')).toBe('false');
+  });
+
   it('stands alone in a scene of one level with a roof, and is gone where the level shown has none', () => {
     mount([level('ground', 0, 'maps/roof.png')], <LevelSwitcher />);
     expect(screen.getByRole('button', { name: /roofs/i })).toBeTruthy();

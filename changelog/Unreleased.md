@@ -9,5 +9,7 @@
 - Presenting a scene no longer always unfreezes the players. A map you framed with the glass brings them back to that frame when it is presented again; pinned players stay pinned, gliding to your view on the same map and taking your view of a new map at once. Players who are not pinned follow you as before
 
 ## Fixed
+- Roofs stay on the map at every zoom and pan, on the GM's screen, in session view and on the player view. They used to shrink into a rectangle that slid against the map, or vanish in parts of the screen, once the scene had saved its thumbnail
+- The Roofs switch hides the roofs from your own GM view at every zoom. In session view it now stands disabled and says why, since players always see their roofs
 - Animated maps and water stood still on the player view while the Obsidian window was hidden behind it or minimised: the player window now keeps the clock running. Water also moves for players wherever their screen shows it, not only where your view does
 - On some Macs the asset manager opened from the toolbar lost its backgrounds and cards over the map. It now covers the whole window, as it does when opened from the command palette
