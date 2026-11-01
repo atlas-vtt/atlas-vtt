@@ -1,6 +1,6 @@
 import { EditorView } from '@codemirror/view';
-import { TFile, type App, type CachedMetadata } from 'obsidian';
-import { pinNoteLink } from '../tools/pinNoteLink';
+import { resolveSubpath, type App, type CachedMetadata, type TFile } from 'obsidian';
+import { noteFile, pinNoteLink } from '../tools/pinNoteLink';
 import { headingNamed } from './headingLinks';
 
 /** Heading lines of the editor, in source mode and live preview. */
@@ -27,16 +27,30 @@ export function linkedHeading(app: App, file: TFile, link: string): LinkedHeadin
 }
 
 /**
- * Opens a pin's note in a tab of the workspace. Obsidian finds the heading of the
- * link itself, save where the link counts past the first of a path, which it does
- * not read: that one opens at its line.
+ * Opens a pin's note in a tab of the workspace, from the map at `sourcePath` where
+ * the link is not a whole path. Obsidian finds the heading of the link itself, save
+ * where its reading goes elsewhere than the pin's (a count, a repeat that differs
+ * in case or marks, a `#` within the heading): that one opens at its line, and a
+ * link whose heading is gone opens the note rather than the section Obsidian walks on to.
  */
-export async function openPinNote(app: App, notePath: string, newLeaf: boolean): Promise<void> {
+export async function openPinNote(app: App, notePath: string, newLeaf: boolean, sourcePath = ''): Promise<void> {
   const { linkpath, heading } = pinNoteLink(notePath);
-  const file = app.vault.getAbstractFileByPath(linkpath);
-  const counted = heading?.endsWith('#') && file instanceof TFile ? linkedHeading(app, file, heading) : null;
-  if (counted) await app.workspace.openLinkText(linkpath, '', newLeaf, { eState: { line: counted.line } });
-  else await app.workspace.openLinkText(notePath, '', newLeaf);
+  const file = heading === null ? null : noteFile(app, linkpath, sourcePath);
+  const cache = file && app.metadataCache.getFileCache(file);
+  if (!file || !cache || heading === null) {
+    await app.workspace.openLinkText(notePath, sourcePath, newLeaf);
+    return;
+  }
+
+  const named = headingNamed(cache, heading);
+  const obsidianReads = resolveSubpath(cache, `#${heading}`);
+  if (named && obsidianReads?.start.line !== named.position.start.line) {
+    await app.workspace.openLinkText(file.path, sourcePath, newLeaf, { eState: { line: named.position.start.line } });
+  } else if (!named && obsidianReads?.type === 'heading') {
+    await app.workspace.openLinkText(file.path, sourcePath, newLeaf);
+  } else {
+    await app.workspace.openLinkText(notePath, sourcePath, newLeaf);
+  }
 }
 
 /** A heading's section as offsets into its note: from the end of the heading's line to the next heading of its level or higher (null: the note's end). */
@@ -70,8 +84,9 @@ export function findEditorHeading(container: HTMLElement, line: number): HTMLEle
  * The drawn heading a link names. `data-heading` holds the heading's source text,
  * exactly as the metadata cache stores it, and a note may repeat it: the view knows
  * which line an element is on (`lineOf`), else with all of them drawn their order
- * tells. A view that draws only the lines near the screen has been scrolled to the
- * heading, so the last resort is the one nearest the top. Null while it is not drawn.
+ * tells. A view that knows no lines and draws only those near the screen has been
+ * scrolled to the heading, so the last resort is the one nearest the top. Null while
+ * it is not drawn, also where the view knows the ones drawn lie on other lines.
  */
 export function findRenderedHeading(
   container: HTMLElement,
@@ -80,9 +95,11 @@ export function findRenderedHeading(
 ): HTMLElement | null {
   const drawn = Array.from(container.querySelectorAll<HTMLElement>(RENDERED_HEADING_SELECTOR))
     .filter((element) => element.dataset.heading === heading.text);
-  const onItsLine = lineOf && drawn.find((element) => lineOf(element) === heading.line);
+  const lines = lineOf ? drawn.map(lineOf) : [];
+  const onItsLine = drawn[lines.indexOf(heading.line)];
   if (onItsLine) return onItsLine;
   if (drawn.length === heading.count) return drawn[heading.occurrence] ?? null;
+  if (lines.some((line) => line !== null)) return null;
 
   const top = container.getBoundingClientRect().top;
   let nearest: HTMLElement | null = null;

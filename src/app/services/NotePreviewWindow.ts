@@ -248,7 +248,7 @@ export class NotePreviewWindow {
 
     if (this.titleElement) {
       const displayTitle = this.headerToScrollTo 
-        ? `${file.basename} > ${headingTitle(this.headerToScrollTo)}`
+        ? `${file.basename} > ${linkedHeading(this.app, file, this.headerToScrollTo)?.text ?? headingTitle(this.headerToScrollTo)}`
         : file.basename || t('preview.loading');
       this.titleElement.setText(displayTitle);
     }
@@ -792,7 +792,12 @@ export class NotePreviewWindow {
       : (): HTMLElement | null => findEditorHeading(viewContent, linked.line);
     viewContent.classList.add(PENDING_SCROLL_CLASS);
     const stop = holdHeadingInView(
-      { container: viewContent, findHeading, scrollToLine: () => view.currentMode.applyScroll(linked.line) },
+      {
+        container: viewContent,
+        findHeading,
+        scrollToLine: () => view.currentMode.applyScroll(linked.line),
+        scrollOnceDrawn: () => view.setEphemeralState({ line: linked.line }),
+      },
       (heading) => {
         viewContent.classList.remove(PENDING_SCROLL_CLASS);
         if (heading) this.flashHeading(heading);

@@ -7,6 +7,7 @@ import { obsidianHttp } from './account/obsidianHttp.ts';
 import { secretTokenStore } from './account/tokenStore.ts';
 import { activeAtlasLeaf } from './atlasView.ts';
 import { AssetService } from '../../services/AssetService';
+import { openPinNote } from '../../services/noteHeadings';
 import { CampaignBooks } from '../../campaigns/players/CampaignBooks';
 import { CampaignPlayers } from '../../campaigns/players/CampaignPlayers';
 import { BookShelf } from './book/BookShelf.ts';
@@ -215,7 +216,7 @@ export class OnlineFeature extends Component {
       table: () => this.online.table,
       imageSrc: (path) => this.app.vault.adapter.getResourcePath(path),
       opened: (leaf) => docks.dockOf(leaf)?.makeWay(),
-      openNote: (link, sourcePath) => runInBackground(this.app.workspace.openLinkText(link, sourcePath, true), `Opening ${link}`, 'Could not open the found note'),
+      openNote: (link, sourcePath) => runInBackground(openPinNote(this.app, link, true, sourcePath), `Opening ${link}`, 'Could not open the found note'),
     });
     this.logs = logs;
     this.register(this.online.onChange(() => (logs.sync(), logs.refresh(), images.sync(), this.chat.sync())));

@@ -23,10 +23,10 @@ function cacheOf(text: string): { headings: Array<{ heading: string; level: numb
   return { headings };
 }
 
-function appWithNote(): App {
+function appWithNote(text = TEXT): App {
   const app = new App();
-  app.vault = { getAbstractFileByPath: (path: string) => (path === NOTE.path ? NOTE : null), cachedRead: async () => TEXT };
-  app.metadataCache = { getFileCache: () => cacheOf(TEXT), getFirstLinkpathDest: () => null };
+  app.vault = { getAbstractFileByPath: (path: string) => (path === NOTE.path ? NOTE : null), cachedRead: async () => text };
+  app.metadataCache = { getFileCache: () => cacheOf(text), getFirstLinkpathDest: (link: string) => (link === 'Chapter' ? NOTE : null) };
   app.workspace = { openLinkText: vi.fn(async () => undefined) };
   return app;
 }
@@ -46,6 +46,13 @@ describe('what players read of a repeated heading', () => {
     expect(await readPinNote(appWithNote(), 'Book/Chapter.md#Stag#Overview##', 'map.atlasmap')).toBeNull();
   });
 
+  it.each([
+    ['a path whose section lost the heading', '# Inn\nInn text\n# Secrets\n## Overview\nThe secret\n', 'Book/Chapter.md#Inn#Overview'],
+    ['a count past the headings of its section', '# Inn\n## Overview\nInn overview\n# Secrets\n## Overview\nThe secret\n', 'Book/Chapter.md#Inn#Overview#'],
+  ])('reads nothing for %s, so players are sent no other section', async (_, text, link) => {
+    expect(await readPinNote(appWithNote(text), link, 'map.atlasmap')).toBeNull();
+  });
+
   it('keeps a link of an older pin on the first of them', async () => {
     const reading = await readPinNote(appWithNote(), 'Book/Chapter.md#Overview', 'map.atlasmap');
     expect(reading?.body.trim()).toBe('Inn overview');
@@ -63,6 +70,35 @@ describe('opening a pin in a tab', () => {
     const app = appWithNote();
     await openPinNote(app, 'Book/Chapter.md#Stag#Overview#', false);
     expect(app.workspace.openLinkText).toHaveBeenCalledWith('Book/Chapter.md', '', false, { eState: { line: 7 } });
+  });
+
+  it.each([
+    ['a heading in another case', '# Overview\ntext\n# overview\n', 'overview', 2],
+    ['a heading with other marks', '# Foo: Bar\ntext\n# Foo Bar\n', 'Foo Bar', 2],
+    ['the first of a repeated heading holding a #', '# Room #3\ntext\n# Room #3\n', 'Room #3', 0],
+    ['a unique heading holding a #', '# Keep\ntext\n# Room #3\n', 'Room #3', 2],
+  ])('opens %s at its line, as Obsidian reads the link elsewhere or nowhere', async (_, text, heading, line) => {
+    const app = appWithNote(text);
+    await openPinNote(app, `Book/Chapter.md#${heading}`, true);
+    expect(app.workspace.openLinkText).toHaveBeenCalledWith('Book/Chapter.md', '', true, { eState: { line } });
+  });
+
+  it('opens the note itself where a path names nothing Obsidian would walk on from', async () => {
+    const app = appWithNote('# Inn\ntext\n# Secrets\n## Overview\n');
+    await openPinNote(app, 'Book/Chapter.md#Inn#Overview', true);
+    expect(app.workspace.openLinkText).toHaveBeenCalledWith('Book/Chapter.md', '', true);
+  });
+
+  it('hands Obsidian a link to a heading the note does not hold, as ever', async () => {
+    const app = appWithNote();
+    await openPinNote(app, 'Book/Chapter.md#Tower', true);
+    expect(app.workspace.openLinkText).toHaveBeenCalledWith('Book/Chapter.md#Tower', '', true);
+  });
+
+  it('finds a note the link names from the map, and opens its counted heading at its line', async () => {
+    const app = appWithNote();
+    await openPinNote(app, 'Chapter#Stag#Overview#', true, 'Maps/map.atlasmap');
+    expect(app.workspace.openLinkText).toHaveBeenCalledWith('Book/Chapter.md', 'Maps/map.atlasmap', true, { eState: { line: 7 } });
   });
 });
 

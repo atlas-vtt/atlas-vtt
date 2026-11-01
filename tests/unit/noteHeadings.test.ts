@@ -117,4 +117,25 @@ describe('findRenderedHeading', () => {
     const lineOf = (element: HTMLElement): number | null => lines.get(element) ?? null;
     expect(findRenderedHeading(container, { text: 'Loot', line: 80, occurrence: 8, count: 9 }, lineOf)).toBe(second);
   });
+
+  it('finds nothing while the view knows the drawn ones lie on other lines, so the scroll goes on', () => {
+    const container = document.body.createDiv();
+    container.getBoundingClientRect = (): DOMRect => ({ top: 100 }) as DOMRect;
+    const first = rendered(container, 'Overview', 100);
+    const lineOf = (element: HTMLElement): number | null => (element === first ? 3 : null);
+    expect(findRenderedHeading(container, { text: 'Overview', line: 400, occurrence: 4, count: 9 }, lineOf)).toBeNull();
+  });
+
+  it('falls back on the nearest only where the view knows no line', () => {
+    const container = document.body.createDiv();
+    container.getBoundingClientRect = (): DOMRect => ({ top: 100 }) as DOMRect;
+    const near = rendered(container, 'Overview', 110);
+    expect(findRenderedHeading(container, { text: 'Overview', line: 400, occurrence: 4, count: 9 }, () => null)).toBe(near);
+  });
+
+  it('counts a unique heading in on its text, whatever line the view gives it', () => {
+    const container = document.body.createDiv();
+    const heading = rendered(container, 'Overview', 110);
+    expect(findRenderedHeading(container, { text: 'Overview', line: 400, occurrence: 0, count: 1 }, () => 3)).toBe(heading);
+  });
 });

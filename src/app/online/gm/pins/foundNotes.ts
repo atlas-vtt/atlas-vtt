@@ -1,9 +1,9 @@
-import { TFile, type App } from 'obsidian';
+import type { App } from 'obsidian';
 import { bookLine, MAX_FOUND_TITLE, type FoundNote, type QuestImage } from '../../protocol/index.ts';
 import { questBody, withoutComments } from '../../../campaigns/quests/questText';
 import type { QuestImages } from '../../../plugin/questImages';
 import { headingSection } from '../../../services/noteHeadings';
-import { pinNoteLink } from '../../../tools/pinNoteLink';
+import { noteFile, pinNoteLink } from '../../../tools/pinNoteLink';
 import { questTextParts } from '../book/questTexts.ts';
 import { storedRefOf } from '../book/storedQuests.ts';
 import type { AssetStoring } from '../assets/assetUses.ts';
@@ -19,12 +19,6 @@ export interface NoteReading {
 export interface FoundHandout {
   readonly note: FoundNote;
   readonly images: ReadonlySet<string>;
-}
-
-/** The note a pin's link names, from the map it is on: a path as written, else as Obsidian resolves the link; only Markdown. */
-export function noteFile(app: App, linkpath: string, mapPath: string): TFile | null {
-  const file = app.vault.getAbstractFileByPath(linkpath) ?? app.metadataCache.getFirstLinkpathDest(linkpath, mapPath);
-  return file instanceof TFile && file.extension === 'md' ? file : null;
 }
 
 /**

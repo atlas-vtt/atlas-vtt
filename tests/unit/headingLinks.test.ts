@@ -79,6 +79,8 @@ describe('headingLink', () => {
     ['nested repeats', [['A', 1], ['A', 2], ['A', 3], ['A', 2], ['A', 3], ['A', 1], ['A', 2]]],
     ['a heading written like a link', [['Inn', 1], ['Overview', 2], ['Inn#Overview', 1], ['Overview', 2]]],
     ['repeated names with marks', [['Room #3', 2], ['Room #3', 2], ['Room 3', 2]]],
+    ['two sections of one name, a third between them', [['Inn', 1], ['Overview', 2], ['Stag', 1], ['Overview', 2], ['Inn', 1], ['Overview', 2], ['Overview', 2]]],
+    ['a section that starts deeper than its repeat', [['Inn', 2], ['Other', 1], ['Inn', 2], ['Overview', 3], ['Overview', 3]]],
   ])('reads every heading of %s back as itself', (_, outline) => {
     const cache = noteOf(outline);
     for (const heading of headingsOf(cache)) expect(headingNamed(cache, headingLink(cache, heading))).toBe(heading);
@@ -118,6 +120,28 @@ describe('headingNamed', () => {
     const cache = noteOf([['Overview', 2], ['Overview', 2]]);
     expect(headingNamed(cache, 'Overview#')).toBe(headingsOf(cache)[1]);
     expect(headingNamed(cache, 'Overview##')).toBeUndefined();
+  });
+
+  it('names nothing once the section a path names has lost the heading, though Obsidian walks on into another', () => {
+    const cache = noteOf([['Inn', 1], ['Secrets', 1], ['Overview', 2]]);
+    expect(resolveSubpath(cache, '#Inn#Overview')?.start.line).toBe(6);
+    expect(headingNamed(cache, 'Inn#Overview')).toBeUndefined();
+  });
+
+  it('counts only the headings inside the section a path names', () => {
+    const cache = noteOf([['Inn', 1], ['Overview', 2], ['Secrets', 1], ['Overview', 2]]);
+    expect(headingNamed(cache, 'Inn#Overview#')).toBeUndefined();
+    expect(headingNamed(cache, 'Overview#')).toBe(headingsOf(cache)[3]);
+  });
+
+  it('counts past a section of another name to the next section of the path\'s', () => {
+    const cache = noteOf([['Inn', 1], ['Overview', 2], ['Stag', 1], ['Overview', 2], ['Inn', 1], ['Overview', 2]]);
+    expect(headingNamed(cache, 'Inn#Overview#')).toBe(headingsOf(cache)[5]);
+  });
+
+  it('keeps an old pin that names the heading alone on it, wherever it lies', () => {
+    const cache = noteOf([['Inn', 1], ['Secrets', 1], ['Overview', 2]]);
+    expect(headingNamed(cache, 'Overview')).toBe(headingsOf(cache)[2]);
   });
 });
 
