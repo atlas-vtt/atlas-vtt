@@ -2,14 +2,15 @@ import { stackOf, stairEnd } from '../floors/floorStack';
 import { approachCells, spotRect } from '../floors/stairSpots';
 import { cellsOf } from '../geometry';
 import { rectPoly } from '../render/art/paths';
-import { grownRings, intersectRings, subtractRings, unionRings } from '../render/clipShapes';
+import { intersectRings, lineRings, subtractRings, unionRings } from '../render/clipShapes';
 import { forestMass, woodsOutside } from '../render/forest/forestMass';
 import { roadBand } from '../render/forest/roads';
 import { massEdge } from '../render/grounds/crowns';
-import { outerTurn, shapeRings, signedArea2, type Bounds, type Vec } from '../render/geometry';
+import { shapeRings, signedArea2, type Bounds, type Vec } from '../render/geometry';
 import type { VisibleDungeon } from '../render/visibleDungeon';
 import type { DungeonStyle } from '../style';
 import type { WallSegment } from '../../types/wallTypes';
+import { necksOf, WAY_LANE } from './forestNecks';
 import type { DungeonPlacement, DungeonWalls, WallsOf } from './toWalls';
 
 /**
@@ -24,16 +25,12 @@ import type { DungeonPlacement, DungeonWalls, WallsOf } from './toWalls';
 
 /** How far a clump may stand behind the mass's edge and still shape it, in cells: every point deeper than this is covered by clumps nearer the edge. */
 const EDGE_DEPTH = 0.6;
-/** The floors' necks (`necksOf`), in cells: narrower than `wide` there is no room for the crowns of both sides and a way between; `shaved` is how far inside the floor a neck is looked for, and `sliver` the square cells that make one. */
-const NECK = { wide: 1.2, shaved: 0.12, sliver: 0.08 } as const;
 /** Scraps smaller than this, of open ground or of woods, get no wall, in square cells. */
 const SMALLEST = 0.1;
 /** How far a wall may stray from the trees' edge to save a corner, in cells: 4.5 pixels of a scene's map. It follows a crown's outline and rounds its small scallops; finer costs far more than it shows, since corners under the sealing's tolerance apart each get bridges (0.015 tripled the walls sight goes by). */
 const STRAY = 0.03;
 /** How near the map's edge a corner lies on it, in cells: a crown's tip that grazes the edge makes no wall along it. */
 const ON_EDGE = 0.01;
-/** How much of a road's middle a crown may not close, in cells either way: enough to pass, and only the crowns that reach it are cut. */
-const ROAD_LANE = 0.15;
 
 const ringArea = (ring: readonly Vec[]): number => Math.abs(signedArea2(ring)) / 2;
 
@@ -61,25 +58,6 @@ function thinned(run: readonly Vec[]): Vec[] {
     stack.push([from, far], [far, to]);
   }
   return run.filter((_, k) => keep[k] === 1);
-}
-
-/**
- * What a crown may not take of the floors, however far it overhangs, so two clearings joined on the
- * floor stay joined: a neck, too narrow to leave a way beside the crowns of both sides, between two
- * parts of the floor wide enough to. Anywhere else the walls keep to the crowns: a wide part keeps a
- * way round them, and a narrow bay off one part joins nothing. Slivers are no necks.
- */
-export function necksOf(floors: readonly Vec[][]): Vec[][] {
-  const { wide, shaved, sliver } = NECK;
-  const opened = grownRings(grownRings(floors, -wide / 2), wide / 2 - shaved);
-  const turn = outerTurn(opened);
-  const parts = opened.filter((ring) => Math.sign(signedArea2(ring)) === turn);
-  const joins = (neck: Vec[]): boolean => {
-    const reach = grownRings([neck], shaved / 2);
-    return parts.filter((part) => intersectRings(reach, [part]).length > 0).length >= 2;
-  };
-  const necks = subtractRings(grownRings(floors, -shaved), opened).filter((ring) => ringArea(ring) >= sliver && joins(ring));
-  return necks.length ? grownRings(necks, shaved) : [];
 }
 
 /** A ring as the runs of corners between its stretches on the map's edge (`onMapEdge`, asked of each side); the whole ring, closing on its first corner, where it has none. */
@@ -133,12 +111,18 @@ export function treeLine(dungeon: VisibleDungeon, style: DungeonStyle, bounds: B
   const mass = forestMass(dungeon, style, { minX: bounds.minX - 1, minY: bounds.minY - 1, maxX: bounds.maxX + 1, maxY: bounds.maxY + 1 });
   const edge = mass.filter(({ clump, depth }) => depth - clump.radius <= EDGE_DEPTH).map(({ clump }) => massEdge(clump.shape));
   const trees = unionRings(edge);
-  // A way down is drawn over the crowns that overhang it, and stays open with its approach.
+  // A way down is drawn over the crowns that overhang it, and is reached by a lane from the middle of each cell before it; the rest of its cells stays the crowns'.
   const stack = stackOf(dungeon.model);
-  const ways = dungeon.floor.stairs.flatMap((stair) => [...cellsOf(spotRect(stair)), ...approachCells(stair, stairEnd(stack, dungeon.index, stair.to))]).map((cell) => rectPoly({ ...cell, w: 1, h: 1 }));
-  const necks = necksOf(unionRings(dungeon.floors.flatMap((shape) => shapeRings(shape))));
+  const ways = dungeon.floor.stairs.flatMap((stair) => {
+    const spot = cellsOf(spotRect(stair));
+    return approachCells(stair, stairEnd(stack, dungeon.index, stair.to)).flatMap((cell) => {
+      const nearest = spot.reduce((best, c) => (Math.hypot(c.x - cell.x, c.y - cell.y) < Math.hypot(best.x - cell.x, best.y - cell.y) ? c : best));
+      return lineRings([{ x: nearest.x + 0.5, y: nearest.y + 0.5 }, { x: cell.x + 0.5, y: cell.y + 0.5 }], WAY_LANE);
+    });
+  });
+  const necks = necksOf(unionRings(dungeon.floors.flatMap((shape) => shapeRings(shape))), (x, y) => -dungeon.field.distance(x, y));
   const map = rectPoly({ x: bounds.minX, y: bounds.minY, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY });
-  const lanes = (dungeon.floor.roads ?? []).flatMap((road) => roadBand(road, ROAD_LANE));
+  const lanes = (dungeon.floor.roads ?? []).flatMap((road) => roadBand(road, WAY_LANE));
   const shown = intersectRings(subtractRings(trees, [...ways, ...necks, ...lanes]), [map]);
   const near = (value: number, edge: number): boolean => Math.abs(value - edge) < ON_EDGE;
   const onMapEdge = (a: Vec, b: Vec): boolean => (near(a.x, bounds.minX) && near(b.x, bounds.minX)) || (near(a.x, bounds.maxX) && near(b.x, bounds.maxX)) || (near(a.y, bounds.minY) && near(b.y, bounds.minY)) || (near(a.y, bounds.maxY) && near(b.y, bounds.maxY));
