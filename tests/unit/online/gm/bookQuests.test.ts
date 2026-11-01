@@ -2,11 +2,12 @@ import { parseGmMessage, type BookQuest, type PlayerBook } from '../../../../src
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { applyBookMessage, EMPTY_BOOK, readBooks } from '../../../../src/app/online/gm/book/bookStore.ts';
+import { ownBookOf } from '../../../../src/app/online/gm/book/playerWritings.ts';
 import { setQuestGate, type HandedQuest, type QuestAsset } from '../../../../src/app/online/gm/book/questGate.ts';
 import { sha256Hex } from '../../../../src/app/online/gm/assetServe.ts';
 import { storedRef } from './fakeStoring.ts';
 import { FakeSocket, png, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH_BOOK, CAL, delivered, keptBooks, MIRA_BOOK, nameWorldMap, nameWorldMapTree, ofType, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
+import { ANA, ANA_OWN, BEN, BEN_OWN, CAL, delivered, keptBooks, nameWorldMap, nameWorldMapTree, ofType, openTable, WORLD_MAP, type OpenTable } from './bookTableHarness.ts';
 import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -160,26 +161,26 @@ describe('quests at a running table', () => {
     const table = await openTable(shelf, [{ id: ANA, name: 'Ana' }, { id: BEN, name: 'Ben' }]);
     table.from(ANA, { t: 'book-note', note: { id: id(60), title: '', body: 'Ask the abbot.', quest: id(1) } });
     await advance(100);
-    expect(shelf.of(BRANNOCH_BOOK).notes).toMatchObject([{ id: id(60), quest: id(1), body: 'Ask the abbot.' }]);
+    expect(shelf.of(ANA_OWN).notes).toMatchObject([{ id: id(60), quest: id(1), body: 'Ask the abbot.' }]);
 
     const before = ofType(delivered(table.socket), 'book').filter(({ to }) => to === ANA).length;
     table.from(ANA, { t: 'book-note', note: { id: id(61), title: '', body: 'Not mine.', quest: id(9) } });
     // Answered with the whole book, at most one in five seconds.
     await advance(6_000);
-    expect(shelf.of(BRANNOCH_BOOK).notes.map((note) => note.id)).toEqual([id(60)]);
+    expect(shelf.of(ANA_OWN).notes.map((note) => note.id)).toEqual([id(60)]);
     expect(ofType(delivered(table.socket), 'book').filter(({ to }) => to === ANA).length).toBe(before + 1);
-    expect(shelf.of(MIRA_BOOK).notes).toEqual([]);
+    expect(shelf.of(BEN_OWN).notes).toEqual([]);
 
     // A quest written by a player, in any shape, changes nothing.
     for (const body of [{ t: 'book-quest', quest: quest(1, { body: 'Rewritten.' }) }, { t: 'book-note', note: { ...quest(1, { body: 'Rewritten.' }), quest: id(1) } }]) table.from(BEN, body);
     await advance(6_000);
     expect(lastBook(table, ANA)?.quests).toEqual(quests);
     expect(lastBook(table, BEN)?.quests).toEqual(quests);
-    expect(shelf.of(MIRA_BOOK)).not.toHaveProperty('quests');
+    expect(shelf.of(BEN_OWN)).not.toHaveProperty('quests');
     table.online.stop();
   });
 
-  it('sends the quests to a player without a character too, and takes no note on one from them', async () => {
+  it('sends the quests to a player without a character too, and keeps a note on one that reaches the GM from them', async () => {
     quests = [quest(1, { title: 'The crown under the root' })];
     const source = keptBooks();
     const shelf = new BookShelf(source);
@@ -191,12 +192,9 @@ describe('quests at a running table', () => {
     await advance(100);
     expect(lastBook(table, CAL)?.quests.map((kept) => kept.state)).toEqual(['active']);
 
-    const before = ofType(delivered(table.socket), 'book').filter(({ to }) => to === CAL).length;
     table.from(CAL, { t: 'book-note', note: { id: id(70), title: '', body: 'Mine?', quest: id(1) } });
     await advance(6_000);
-    expect(ofType(delivered(table.socket), 'book').filter(({ to }) => to === CAL).length).toBe(before + 1);
-    expect(lastBook(table, CAL)?.notes).toEqual([]);
-    expect(source.dump()).not.toContain('Mine?');
+    expect(shelf.of(ownBookOf(CAL)).notes).toMatchObject([{ body: 'Mine?', quest: id(1) }]);
     table.online.stop();
   });
 

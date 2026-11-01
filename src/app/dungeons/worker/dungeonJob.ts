@@ -3,6 +3,10 @@ import type { DungeonModel, DungeonRequest } from '../model';
 import { mapLayout, mapPixelSize, suggestedPxPerCell, type MapLayout } from '../render/layoutSize';
 import { fittedPxPerCell, renderMap, renderMapSvg } from '../render/renderMap';
 import { renderThumbnail, THUMBNAIL_CELLS_ACROSS } from '../render/thumbnail';
+import { viewBounds } from '../render/art/artScene';
+import type { Vec } from '../render/geometry';
+import { visibleDungeon } from '../render/visibleDungeon';
+import { treeLine } from '../scene/forestWalls';
 import type { DungeonStyle, DungeonView } from '../style';
 
 /**
@@ -19,8 +23,9 @@ export type DungeonOutput =
    * bitmap, or with `svg` an SVG document. `transparent` leaves the paper out. `floor` is the
    * floor drawn, by index (the entry floor where unset); every floor's image has the same layout.
    * `maxPixels` holds the image to fewer pixels than a map may have (`SCENE_MAP_PIXELS`).
+   * `treeLine` asks for a Forest floor's `treeLine` too, for its scene's walls.
    */
-  | { kind: 'map'; pxPerCell: number; maxPixels?: number; bitmap?: boolean; svg?: boolean; transparent?: boolean; floor?: number }
+  | { kind: 'map'; pxPerCell: number; maxPixels?: number; bitmap?: boolean; svg?: boolean; transparent?: boolean; floor?: number; treeLine?: boolean }
   /** The floor plan fitted into `width` × `height` pixels, as a bitmap: the preview. */
   | { kind: 'preview'; width: number; height: number; floor?: number }
   /** A window of the dungeon, as a bitmap: a style's card in the gallery (`renderThumbnail`). */
@@ -42,6 +47,8 @@ export interface DungeonRendered {
   image: RenderedImage;
   /** Where the image lies on the grid: its pixel (0, 0) is the corner of `originCell`. */
   map: MapLayout;
+  /** The trees' edge on a Forest floor, where the job asked for it (`treeLine`). */
+  treeLine?: Vec[][];
 }
 
 export interface DungeonWorkerMessage {
@@ -96,5 +103,7 @@ export async function runDungeonJob(job: DungeonJob): Promise<DungeonRendered> {
   const image: RenderedImage = output.bitmap
     ? { type: 'bitmap', bitmap: canvas.transferToImageBitmap() }
     : { type: 'png', blob: await canvas.convertToBlob({ type: 'image/png' }) };
-  return { model, map, image };
+  const floor = output.floor ?? 0;
+  const trees = output.treeLine && model.floors[floor]?.forest ? treeLine(visibleDungeon(model, view, floor), style, viewBounds(map, 0)) : undefined;
+  return { model, map, image, ...(trees && { treeLine: trees }) };
 }

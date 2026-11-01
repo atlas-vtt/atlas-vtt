@@ -5,7 +5,7 @@ import type { WorldMapFile } from './worldMapLevels.ts';
 
 /** What one player was last sent of their book, to compare with what they would be sent now. */
 export interface SentBook {
-  /** The character the book is of, by its key; empty for none. */
+  /** The character the book is of and the books the player's notes and pins were read from, by their keys. */
   readonly book: string;
   readonly map: string;
   /** The quests as the campaign handed them on: the same array while no quest changed, so compared by identity. */
@@ -38,9 +38,9 @@ function textOf(holder: object, value: unknown): string {
  * What a player is sent now of their book, to compare with what they were sent last. Quests are the
  * party's: every player gets them, with a character or without. A statblock not drawn yet (undefined) is ''.
  */
-export function sentOf(character: PlayedCharacter | null, worldMap: WorldMapFile | null, quests: readonly BookQuest[], drawn: DrawnStatblock | undefined): SentBook {
+export function sentOf(character: PlayedCharacter | null, writingBooks: readonly string[], worldMap: WorldMapFile | null, quests: readonly BookQuest[], drawn: DrawnStatblock | undefined): SentBook {
   return {
-    book: character === null ? '' : character.key,
+    book: [character?.key ?? '', ...writingBooks].join('\n'),
     map: worldMap === null ? '' : textOf(worldMap, worldMap.map),
     quests,
     sheet: JSON.stringify(character?.sheet ?? null),
@@ -57,7 +57,8 @@ export interface ChangedParts {
 
 /**
  * What a player is sent of their book now: the whole book when they were sent none, play another
- * character, or their page reads no parts (`readsParts`) and the world map or quests changed; else
+ * character, were given or lost one whose book holds their notes and pins, or their page reads no
+ * parts (`readsParts`) and the world map or quests changed; else
  * the parts that changed, or null for none.
  */
 export function bookUpdate(last: SentBook | undefined, now: SentBook, readsParts: boolean): 'whole' | ChangedParts | null {
