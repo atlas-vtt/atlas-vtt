@@ -5,7 +5,8 @@ import { Button } from '../../../../packages/components/primitives/button';
 import { ToggleSwitch } from '../../../../packages/components/primitives/Toggle';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import type { Mood, SoundRecord } from '../../../../sound/soundTypes';
-import { SoundDirector } from '../../../../soundDirector/SoundDirector';
+import { openedDirector } from '../../../../soundDirector/directorRegistry';
+import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import type { PlayersCopy, PlayersSounds } from '../../../../soundDirector/tableClock';
 import { useAtlasUI } from '../../../root/AtlasUIContext';
 import { useSoundValue } from './useSound';
@@ -51,7 +52,7 @@ export function MoodPlayersTag({ copy }: { copy: PlayersCopy }): React.JSX.Eleme
 /** On a sound's card, while a table runs. */
 export function PlayersCardLine({ record }: { record: SoundRecord }): React.JSX.Element | null {
   const { app } = useAtlasUI();
-  const director = SoundDirector.existing(app);
+  const director = openedDirector(app);
   const subscribe = useCallback((listener: () => void) => director?.subscribe(listener) ?? (() => undefined), [director]);
   const revision = useSyncExternalStore(subscribe, () => director?.snapshot().playersRevision ?? 0);
   const sounds = director?.players.sounds ?? null;
