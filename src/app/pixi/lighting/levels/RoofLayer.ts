@@ -1,4 +1,4 @@
-import { Color, Container, Matrix, Texture, UniformGroup } from 'pixi.js';
+import { Color, Container, Matrix, Rectangle, Texture, UniformGroup } from 'pixi.js';
 import { DEFAULT_AMBIENT_COLOR } from '../../../lighting/sceneLightingOptions';
 import { LEVEL_CODES, type AmbientRaster } from '../../../lighting/ambientRaster';
 import { PURKINJE } from '../../../lighting/lightingConstants';
@@ -114,6 +114,16 @@ export class RoofLayer {
   setTransform(transform: PiecesTransform): void {
     (this.group.uniforms.uWorldToPieces as Matrix).set(transform.a, transform.b, transform.c, transform.d, transform.tx, transform.ty);
     this.group.update();
+  }
+
+  /**
+   * The part of the world the roof draws on. Without it PIXI measures the filter's area from the map
+   * image's `boundsArea`, which it takes through the camera twice once the viewport is a render group,
+   * as it is for good after the first thumbnail: the roof then shows only in a rectangle that slides
+   * against the map.
+   */
+  setArea(area: { width: number; height: number }): void {
+    this.view.filterArea = new Rectangle(0, 0, area.width, area.height);
   }
 
   /** The pieces that fade in the players' picture and in the GM's; true where a table changed at once. */
