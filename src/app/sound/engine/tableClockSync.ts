@@ -97,7 +97,9 @@ export class TableClockSync {
   }
 
   private scheduleBurst(): void {
-    const wait = BURST_EVERY_MS - (((this.now() % BURST_EVERY_MS) + BURST_EVERY_MS) % BURST_EVERY_MS);
+    const toSlot = BURST_EVERY_MS - (((this.now() % BURST_EVERY_MS) + BURST_EVERY_MS) % BURST_EVERY_MS);
+    // A burst may move the clock back past the slot it fell on, which is no reason for another.
+    const wait = toSlot < BURST_EVERY_MS / 2 ? toSlot + BURST_EVERY_MS : toSlot;
     this.burstTimer = this.ports.setTimer(() => {
       this.burstTimer = null;
       this.measure(BURST_SAMPLES);
