@@ -175,6 +175,13 @@ body.atlas-player-window {
     pointer-events: none;
     transition: opacity $transition-normal $transition-ease-out;
 
+    // Obsidian makes all that follows its app container no-drag (`body.is-frameless > .app-container ~ *`,
+    // doubled here to win whatever the stylesheets' order), and a box's region counts whatever its
+    // opacity or pointer-events: as no-drag this sheet, lifted too, takes the whole window's drag away
+    &.atlas-player-curtain {
+      -webkit-app-region: initial;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       transition: none;
     }
