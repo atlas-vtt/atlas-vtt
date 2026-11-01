@@ -62,6 +62,11 @@ declare module 'obsidian' {
     revealInFolder(file: TAbstractFile): void;
   }
 
+  interface MarkdownPreviewView {
+    /** Knows which lines of the note a drawn element came from. */
+    renderer?: { getSectionInfo(element: HTMLElement): { lineStart: number } | null };
+  }
+
   interface WorkspaceLeaf {
     containerEl: HTMLElement;
     tabHeaderEl?: HTMLElement;

@@ -99,9 +99,14 @@ export const noteName = (path: string): string => baseName(path).replace(/\.md$/
 /** The folder of a vault path: `a/b/goblin.webp` → `a/b`; empty at the vault root. */
 export const parentPath = (path: string): string => path.slice(0, Math.max(0, path.lastIndexOf('/')));
 
+/** How the heading part of a pin's link reads: `Stag#Overview#` is "Stag > Overview", and a heading's own `#` stays ("Room #3"). */
+export const headingTitle = (heading: string): string => heading.replace(/#+$/, '').replace(/(?<=\S)#(?=\S)/g, ' > ');
+
 /** How a note link reads to people: "Keep" for `Places/Keep.md`, "Keep > Dungeon" for `Places/Keep#Dungeon`. */
 export function noteLinkTitle(notePath: string): string {
-  const [file = '', heading] = notePath.split('#', 2);
-  const name = baseName(file).replace(/\.md$/i, '');
+  const hash = notePath.indexOf('#');
+  if (hash < 0) return noteName(notePath);
+  const name = noteName(notePath.slice(0, hash));
+  const heading = headingTitle(notePath.slice(hash + 1));
   return heading ? `${name} > ${heading}` : name;
 }
