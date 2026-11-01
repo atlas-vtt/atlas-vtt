@@ -1,6 +1,7 @@
 ## Improved
 - The update notice no longer interrupts prep or play: it waits until no map, player window or online table is open, and shows after a week at the latest
 - TrueScale: the setup screen says what it is and which card to use (a bank or credit card, 85.6 × 54 mm), and the full screen button and the players' chip say what they do
+- Player window: showing a saved frame glides there, also when players were following you, and changing the scene dips through black instead of jumping
 
 ## Fixed
 - The confirmation for deleting a collection in Manage no longer opens behind the asset manager

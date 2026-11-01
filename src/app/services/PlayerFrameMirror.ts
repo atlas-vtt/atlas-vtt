@@ -99,6 +99,8 @@ export interface MirrorInputs {
   pixelBudget?(): number;
   /** Whether the curtain is down: players see black, and nothing is rendered for them. Never down without. */
   curtained?(): boolean;
+  /** Whether no new picture may reach the canvas at `time`, which keeps what it holds: the sheet is on its way down. Never without. */
+  withheld?(time: number): boolean;
   /**
    * The camera players stay on while the DM's own moves. One with a world rectangle (`width`,
    * `height`) keeps showing that rectangle; one without is centred in the DM's screen as it is now.
@@ -204,6 +206,12 @@ export class PlayerFrameMirror {
       }
       const frame = this.frameOf(source);
       this.demand.follow(source, frame);
+      // Its tiles load meanwhile, so the frame that comes after it is sharp
+      if (this.inputs.withheld?.(now)) {
+        this.stale = true;
+        this.requestedAt = null;
+        return;
+      }
       if (!source.beforeRender) {
         this.mirror(source, source, now);
         return;
@@ -230,7 +238,7 @@ export class PlayerFrameMirror {
     const source = this.watched;
     // A canvas that is no longer presented, or stands behind a held frame or the curtain, is not what players see
     if (!source?.beforeRender || source !== this.inputs.source() || this.inputs.heldFrame() || this.inputs.curtained?.()) return;
-    if (cannotRender(source) || !this.isDue(frameTime) || frameTime - this.lastFrameAt > ASLEEP_AFTER_MS) {
+    if (cannotRender(source) || this.inputs.withheld?.(frameTime) || !this.isDue(frameTime) || frameTime - this.lastFrameAt > ASLEEP_AFTER_MS) {
       this.stale = true;
       return;
     }

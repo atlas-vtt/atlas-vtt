@@ -36,25 +36,14 @@ export function captureSceneTransition(app: Application, previous: SceneTransiti
   }, previous);
 }
 
-export interface FreezeOptions {
-  /**
-   * Let the incoming map settle in with a slight scale (default). Turn it off for
-   * canvases displayed with nearest-neighbour sampling (`image-rendering: pixelated`
-   * or `crisp-edges`): a fractional scale there shifts which pixels are duplicated
-   * on every frame, so edges and grid lines crawl and the motion reads as stutter.
-   */
-  settle?: boolean;
-}
-
 /**
  * Layers a still frame, painted by `paint`, directly above `target` (same size,
  * below any later siblings such as UI overlays). Works in popout windows.
  */
-export function freezeCanvasFrame(
+function freezeCanvasFrame(
   target: HTMLCanvasElement,
   paint: (context: CanvasRenderingContext2D) => void,
   previous: SceneTransition | null,
-  { settle: shouldSettle = true }: FreezeOptions = {},
 ): SceneTransition | null {
   const parent = target.parentElement;
   if (!parent || target.width === 0 || target.height === 0) return null;
@@ -85,7 +74,7 @@ export function freezeCanvasFrame(
   };
 
   return {
-    play(motion: FrameMotion = crossfade(shouldSettle)): void {
+    play(motion: FrameMotion = crossfade): void {
       stop = motion(snapshot, target, cancel);
     },
     cancel,
@@ -96,20 +85,18 @@ export function freezeCanvasFrame(
 }
 
 /** The frame fades out while the new map settles in from a little closer. */
-function crossfade(shouldSettle: boolean): FrameMotion {
-  return (frame, target, done) => {
-    const timing: KeyframeAnimationOptions = { duration: MOTION_SLOW_MS, easing: MOTION_EASE_OUT };
-    const fade = frame.animate([{ opacity: 1 }, { opacity: 0 }], { ...timing, fill: 'forwards' });
-    fade.onfinish = done;
-    const settle = shouldSettle && !prefersReducedMotion(target)
-      ? target.animate([{ transform: `scale(${SETTLE_SCALE})` }, { transform: 'none' }], timing)
-      : null;
-    return (): void => {
-      fade.cancel();
-      settle?.cancel();
-    };
+const crossfade: FrameMotion = (frame, target, done) => {
+  const timing: KeyframeAnimationOptions = { duration: MOTION_SLOW_MS, easing: MOTION_EASE_OUT };
+  const fade = frame.animate([{ opacity: 1 }, { opacity: 0 }], { ...timing, fill: 'forwards' });
+  fade.onfinish = done;
+  const settle = prefersReducedMotion(target)
+    ? null
+    : target.animate([{ transform: `scale(${SETTLE_SCALE})` }, { transform: 'none' }], timing);
+  return (): void => {
+    fade.cancel();
+    settle?.cancel();
   };
-}
+};
 
 /**
  * Draws `element` into `context` as it shows right now: at its opacity and scaled about its centre,
@@ -117,8 +104,7 @@ function crossfade(shouldSettle: boolean): FrameMotion {
  */
 function drawAsShown(context: CanvasRenderingContext2D, element: HTMLCanvasElement): void {
   const style = element.win.getComputedStyle(element);
-  // A computed transform is `matrix(a, b, c, d, e, f)`, whose scale is the length of (a, b) also
-  // when a table TV turns the snapshot (player-window.scss); anything else (`none`) is unscaled
+  // A computed transform is `matrix(a, b, c, d, e, f)`, whose scale is the length of (a, b); anything else (`none`) is unscaled
   const matrix = /^matrix\(([^,]+),([^,]+),/.exec(style.transform);
   const scale = matrix ? Math.hypot(Number(matrix[1]), Number(matrix[2])) || 1 : 1;
   const { width, height } = element;
