@@ -175,7 +175,7 @@ describe('a Forest\'s walls', () => {
       expect(edge.filter((p) => toWalls(p) > ON_THE_EDGE).length / edge.length).toBeLessThan(0.05);
     });
 
-    it(`stop a token and neither sight nor light, sealing included: ${name}`, () => {
+    it(`stop a token and light and not sight, sealing included: ${name}`, () => {
       const model = forest(test);
       const dungeon = visibleDungeon(model, DEFAULT_VIEW, 0);
       const { map } = pictureOf(model);
@@ -183,20 +183,21 @@ describe('a Forest\'s walls', () => {
       const walls = Object.values(forestWalls(treeLine(dungeon, dungeonStyle(test.look), map), placement, { id: 'forest' }).walls);
       const image = { width: (map.maxX - map.minX) * 150, height: (map.maxY - map.minY) * 150 };
 
-      // Nothing the sealing adds stops sight or light either, or the woods would be full of hairline shadows.
+      // Nothing the sealing adds stops sight either, or the woods would be full of hairline shadows.
       const sealed = sealedWalls(walls, worldTexel(image));
-      expect(sealed.filter((wall) => wall.blocks !== 'movement')).toEqual([]);
-      const open = { x: image.width / 2, y: image.height / 2 };
-      for (const channel of ['sight', 'light'] as const) expect(computeVisibility(open, 2000, sealed, undefined, channel)).toEqual(computeVisibility(open, 2000, [], undefined, channel));
+      expect(sealed.filter((wall) => wall.blocks !== 'light')).toEqual([]);
 
-      // And a step across any wall ends before it.
       const moves = movementWalls(wallList(Object.fromEntries(walls.map((wall) => [wall.id, wall]))), image);
       for (const { p1, p2 } of walls.filter((_, k) => k % 25 === 0)) {
         const length = Math.hypot(p2.x - p1.x, p2.y - p1.y);
         const middle = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
         const across = { x: ((p2.y - p1.y) / length) * 20, y: (-(p2.x - p1.x) / length) * 20 };
+        const from = { x: middle.x - across.x, y: middle.y - across.y };
         const to = { x: middle.x + across.x, y: middle.y + across.y };
-        expect(stopAtWalls(moves, { x: middle.x - across.x, y: middle.y - across.y }, to)).not.toEqual(to);
+        // A step across a wall ends before it, sight from beside it runs on as if no wall stood there, and light does not.
+        expect(stopAtWalls(moves, from, to)).not.toEqual(to);
+        expect(computeVisibility(from, 300, sealed, undefined, 'sight')).toEqual(computeVisibility(from, 300, [], undefined, 'sight'));
+        expect(computeVisibility(from, 300, sealed, undefined, 'light')).not.toEqual(computeVisibility(from, 300, [], undefined, 'light'));
       }
     });
 
