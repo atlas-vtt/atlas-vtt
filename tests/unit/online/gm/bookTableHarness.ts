@@ -64,9 +64,9 @@ export const BRANNOCH = 'tok-brannoch';
 export const MIRA = 'tok-mira';
 export const BRANNOCH_ART = 'atlas-vtt/collections/Cairn/tokens/brannoch.png';
 export const MIRA_ART = 'atlas-vtt/collections/Cairn/tokens/mira.png';
-/** The keys of the two heroes' books: their tokens were placed from no library token. */
-export const BRANNOCH_BOOK = `token:${BRANNOCH}`;
-export const MIRA_BOOK = `token:${MIRA}`;
+/** The keys of the two heroes' books: their tokens were placed from no library token, so their players' ids. */
+export const BRANNOCH_BOOK = ANA;
+export const MIRA_BOOK = BEN;
 /** A source that keeps books in a map, as the campaign's file does: what was written is everything `dump` reads. */
 export interface KeptBooks extends BookSource {
   /** How many times a book was handed to the source to keep. */

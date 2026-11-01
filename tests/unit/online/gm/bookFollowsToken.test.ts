@@ -77,25 +77,29 @@ describe('a player\'s book follows the token they act with', () => {
     vi.unstubAllGlobals();
   });
 
-  it('switches to another token of theirs with its own sheet and pages, and back', async () => {
-    const table = await openTable(new BookShelf(), PLAYERS, { [BRANNOCH]: ANA, [MIRA]: ANA });
+  it('switches to another token of theirs with its own sheet and purse, and back; what the player wrote comes along', async () => {
+    const table = await openTable(new BookShelf(), PLAYERS, { [BRANNOCH]: ANA, [MIRA]: ANA }, undefined, { brannoch: { assetId: 'lib-brannoch' }, mira: { assetId: 'lib-mira' } });
+    table.ownership.give([BRANNOCH, MIRA], table.tab.store.getState().objects.tokens, ANA);
+    await advance(100);
     expect(bookOf(table, ANA)?.character?.name).toBe('Brannoch');
 
     table.from(ANA, { t: 'book-token', ...listed(table, MIRA) });
     await advance(100);
     expect(bookOf(table, ANA)?.character?.name).toBe('Mira');
     table.from(ANA, { t: 'book-note', note: { id: NOTE_ID, title: 'Mira\'s', body: 'kept in her book' } });
+    table.from(ANA, { t: 'book-purse', purse: [{ name: 'Thorns', amount: 3 }] });
     await advance(100);
 
     table.from(ANA, { t: 'book-token', ...listed(table, BRANNOCH) });
     await advance(100);
     expect(bookOf(table, ANA)?.character?.name).toBe('Brannoch');
-    expect(bookOf(table, ANA)?.notes).toEqual([]);
+    expect(bookOf(table, ANA)?.purse).toEqual([]);
+    expect(bookOf(table, ANA)?.notes.map((note) => note.title)).toEqual(['Mira\'s']);
 
     table.from(ANA, { t: 'book-token', ...listed(table, MIRA) });
     await advance(100);
     expect(bookOf(table, ANA)?.character?.name).toBe('Mira');
-    expect(bookOf(table, ANA)?.notes.map((note) => note.title)).toEqual(['Mira\'s']);
+    expect(bookOf(table, ANA)?.purse).toEqual([{ name: 'Thorns', amount: 3 }]);
     // Another reading of the scene keeps the choice.
     await advance(2_000);
     expect(bookOf(table, ANA)?.character?.name).toBe('Mira');

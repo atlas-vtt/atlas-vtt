@@ -24,6 +24,7 @@ import type { BookSharePorts } from './bookSharePorts.ts';
 import { checkResourceEdit, type ResourceEdit } from './resourceEdit.ts';
 import { resourceMaxRoute } from './resourceMax.ts';
 import { OwedBooks } from './owedBooks.ts';
+import { bookHolding, writingsIn } from './playerWritings.ts';
 import { bookUpdate, NO_QUESTS, RESEND, sentOf, type SentBook } from './sentBook.ts';
 import { StatblockShare } from './statblockShare.ts';
 import { WORLD_MAP_PROBLEM_TEXT, WorldMaps, type MapImageProblem, type WorldMapFile } from './worldMap.ts';
@@ -46,7 +47,9 @@ const UNNAMED = 'Unnamed character';
  * with, among their own): the sheet is read from the shared scene, items, notes, pins and purse
  * are kept on the shelf, the world map of the campaign being played and its quests (the GM's
  * quest notes, which no player writes) go to everyone at the table, with a character or without;
- * notes on a quest name it by its id. It is the table's, not a scene's, so it hears players while
+ * notes on a quest name it by its id. Which token the scene holds must never cost a player what
+ * they wrote, so they read the notes and pins of all their books (`writingBooks`). It is the
+ * table's, not a scene's, so it hears players while
  * no scene is shared. What a player writes is taken as the protocol's parser cleaned it, only for a
  * player with a character and within their rate, and is not answered; a refused write is answered
  * with the whole book (`OwedBooks`). A page that reads its book in parts (`book-parts`) gets a
@@ -245,7 +248,7 @@ export class BookShare implements LootRecipientSource {
     const character = this.isOnline(recipientId) ? this.characters.of(recipientId) : null;
     const item = character === null ? null : bookItemOf(draw, this.ports.randomId(), this.ports.clock());
     if (character === null || item === null) return false;
-    this.shelf.keep(character.key, withItem(this.shelf.of(character.key), item));
+    this.shelf.keep(character.book, withItem(this.shelf.of(character.book), item));
     this.ports.send({ t: 'book-item', item }, recipientId);
     return true;
   }
@@ -284,7 +287,7 @@ export class BookShare implements LootRecipientSource {
   private sync(player: string): void {
     const character = this.characters.of(player);
     const drawn = this.drawnFor(character);
-    const now = sentOf(character, this.worldMap, this.quests, drawn);
+    const now = sentOf(character, this.writingBooks(player, character), this.worldMap, this.quests, drawn);
     const last = this.sent.get(player);
     const update = bookUpdate(last, now, this.parts.has(player));
     if (last === undefined || update === 'whole') return this.sendBook(player);
@@ -321,9 +324,11 @@ export class BookShare implements LootRecipientSource {
     this.owed.paying(player);
     if (!this.isOnline(player)) return;
     const character = this.characters.of(player);
-    const { items, notes, pins, purse, slots, equipped } = character === null ? EMPTY_BOOK : this.shelf.of(character.key);
+    const { items, purse, slots, equipped } = character === null ? EMPTY_BOOK : this.shelf.of(character.book);
+    const writingBooks = this.writingBooks(player, character);
+    const { notes, pins } = writingsIn(writingBooks.map((key) => this.shelf.of(key)));
     const drawn = this.drawnFor(character);
-    const sent = sentOf(character, this.worldMap, this.quests, drawn);
+    const sent = sentOf(character, writingBooks, this.worldMap, this.quests, drawn);
     const book: PlayerBook = { character: character?.sheet ?? null, worldMap: this.worldMap?.map ?? null, items, notes, pins, quests: sent.quests, purse, slots, equipped };
     this.sent.set(player, sent);
     this.owed.sent(player);
@@ -333,7 +338,12 @@ export class BookShare implements LootRecipientSource {
     else this.statblocks.sent(player, character, null);
   }
 
-  /** Writes what a player sent into their character's book; false when it is refused. */
+  /** The books a player's notes and pins lie in: their character's first, then their own and those of the campaign's characters given to them. */
+  private writingBooks(player: string, character: PlayedCharacter | null): readonly string[] {
+    return [...new Set([character?.book ?? player, player, ...this.ports.charactersOf(player)])];
+  }
+
+  /** Writes what a player sent into their character's book, a note or pin where it lies already; false when it is refused. */
   private write(from: string, body: Record<string, unknown>): boolean {
     if (!this.rate.take(from, this.ports.now())) return false;
     const character = this.characters.of(from);
@@ -344,9 +354,10 @@ export class BookShare implements LootRecipientSource {
     if (message.t === 'book-refill') return false;
     if (message.t === 'book-field' || message.t === 'book-ability' || message.t === 'book-list') return this.statblocks.write(from, character, message);
     const quests = new Set(this.quests.map((quest) => quest.id));
-    const written = applyBookMessage(this.shelf.of(character.key), message, this.ports.clock(), quests);
+    const book = bookHolding(this.shelf, this.writingBooks(from, character), message) ?? character.book;
+    const written = applyBookMessage(this.shelf.of(book), message, this.ports.clock(), quests);
     if (written === null) return false;
-    this.shelf.keep(character.key, written);
+    this.shelf.keep(book, written);
     return true;
   }
 

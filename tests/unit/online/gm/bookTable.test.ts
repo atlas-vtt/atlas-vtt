@@ -145,16 +145,16 @@ describe('the players\' books at a running table', () => {
     expect(traffic(delivered(socket))).not.toContain('Betrayer');
     expect(lootRecipients()[0]).toEqual({ id: ANA, name: 'Ana', character: 'Brannoch' });
 
-    // The GM gives Brannoch to Ben: Ana's book is empty at once, and she can write nothing.
+    // The GM gives Brannoch to Ben: Ana's book is hers alone now, with what she wrote and no sheet, and she can write nothing.
     tab.store.set(cave());
     await advance(1_000);
     since = delivered(socket).length;
     ownership.give([BRANNOCH], {}, BEN);
     await advance(0);
-    expect(books(delivered(socket).slice(since), ANA)).toMatchObject([{ character: null, notes: [], items: [], pins: [], purse: [] }]);
+    expect(books(delivered(socket).slice(since), ANA)).toMatchObject([{ character: null, notes: [{ body: SECRET_NOTE }], items: [], pins: [], purse: [] }]);
     expect(books(delivered(socket).slice(since), ANA)[0]?.worldMap).not.toBeNull();
-    // Brannoch is the first token Ben has now, so its book is his: a book is its character's.
-    expect(books(delivered(socket).slice(since), BEN)).toMatchObject([{ character: { name: 'Brannoch' }, notes: [{ body: SECRET_NOTE }] }]);
+    // Brannoch is the first token Ben has now. Placed from no library token, it has no book to hand on: what Ana wrote stays hers.
+    expect(books(delivered(socket).slice(since), BEN)).toMatchObject([{ character: { name: 'Brannoch' }, notes: [] }]);
     from(ANA, { t: 'book-purse', purse: [{ name: 'Stolen', amount: 9 }] });
     await advance(3_000);
     expect(source.dump()).not.toContain('Stolen');

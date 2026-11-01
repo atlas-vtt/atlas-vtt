@@ -2,8 +2,8 @@
  * `books.json` in a campaign's folder: what the players of the campaign wrote into the books of
  * their characters. `{ format, campaignId, books: { <library token id>: { items, notes, pins,
  * purse, slots, equipped } } }`. A book is its character's, so whoever plays that character next
- * finds it again, and it follows the library token, not its artwork. Fields Atlas does not know
- * are kept.
+ * finds it again, and it follows the library token, not its artwork. A player's tokens placed from
+ * no library token share one book under the player's id. Fields Atlas does not know are kept.
  */
 
 import { isEmptyBook, readStoredBook, type StoredBook } from '../../online/gm/book/bookStore';
@@ -35,7 +35,7 @@ export const isWritable: (stored: StoredBooks) => boolean = FILE.isWritable;
 /** An empty books file for a campaign. */
 export const emptyBooks = (campaignId: string): StoredBooks => ({ id: campaignId, campaignId, books: {} });
 
-/** Whether a character's book can be kept in the file: only a library token's id names one. */
+/** Whether a book can be kept in the file under this key: a library token's id, or a player's. */
 export const isBookKey = isAssetId;
 
 /** The book of the character `characterId` the file holds; undefined for none. */

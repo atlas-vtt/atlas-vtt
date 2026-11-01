@@ -10,4 +10,5 @@
 
 ## Fixed
 - Animated maps and water stood still on the player view while the Obsidian window was hidden behind it or minimised: the player window now keeps the clock running. Water also moves for players wherever their screen shows it, not only where your view does
+- Online play: notes and pins a player set on the world map no longer vanish when you present another scene. Players see everything they wrote whichever token of theirs the scene holds, or none
 - On some Macs the asset manager opened from the toolbar lost its backgrounds and cards over the map. It now covers the whole window, as it does when opened from the command palette

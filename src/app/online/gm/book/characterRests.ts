@@ -5,8 +5,7 @@ import {
 } from '../../protocol/index.ts';
 import type { ActionOffer, ChoiceOffer, RestOffer, SpendOffer } from '../../../recovery/restOffer';
 import { cutLine } from '../shownText.ts';
-import { UNPLACED_PREFIX } from './BookShelf.ts';
-import type { PlayedCharacter } from './characters.ts';
+import { UNPLACED_PREFIX, type PlayedCharacter } from './characters.ts';
 import { jsonBytes, MAX_STATBLOCK_BYTES } from './sheetBudget.ts';
 import type { DrawnStatblock } from './statblockSheet.ts';
 

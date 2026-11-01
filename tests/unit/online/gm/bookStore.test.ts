@@ -136,15 +136,6 @@ describe('a book as the GM keeps it', () => {
     expect(shelf.of('lib-a')).toBe(EMPTY_BOOK);
   });
 
-  it('never hands a book of a token placed from no library token to its source', () => {
-    const source = fakeSource();
-    const shelf = new BookShelf(source);
-    const book = written([note(1)]);
-    shelf.keep('token:tok-1', book);
-    expect(source.written).toEqual([]);
-    expect(shelf.of('token:tok-1')).toBe(book);
-  });
-
   it('keeps a book in memory while its source cannot keep it, and with no source at all', () => {
     const source = fakeSource(false);
     const book = written([note(1)]);
@@ -157,14 +148,11 @@ describe('a book as the GM keeps it', () => {
     expect(alone.of('lib-b')).toBe(EMPTY_BOOK);
   });
 
-  it('forgets what it held in memory of library tokens once a campaign\'s file keeps their books, and keeps the rest', () => {
-    const book = written([note(1)]);
+  it('forgets what it held in memory once a campaign\'s file keeps the books', () => {
     const shelf = new BookShelf();
-    shelf.keep('lib-a', book);
-    shelf.keep('token:tok-1', book);
+    shelf.keep('lib-a', written([note(1)]));
     shelf.forgetKept();
     expect(shelf.of('lib-a')).toBe(EMPTY_BOOK);
-    expect(shelf.of('token:tok-1')).toBe(book);
   });
 });
 
