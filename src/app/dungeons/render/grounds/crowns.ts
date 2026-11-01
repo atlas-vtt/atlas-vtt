@@ -245,6 +245,23 @@ function crested(roots: readonly Vec[], controls: readonly Vec[]): Vec[] {
   });
 }
 
+/**
+ * The edge a wall follows on a mass's outline: its drawn curves, each in four, or a conifer whorl's
+ * branch tips, the second of `needledRing`'s four points a branch: going in and out of every notch
+ * made six times the walls, for notches nobody stands in.
+ */
+export function massEdge({ points, controls }: MassShape): Vec[] {
+  if (!controls) return points.filter((_, k) => k % 4 === 1);
+  return points.flatMap((q, k) => {
+    const p = points[(k + 1) % points.length]!;
+    const c = controls[k]!;
+    return [0, 0.25, 0.5, 0.75].map((t) => {
+      const u = 1 - t;
+      return { x: u * u * q.x + 2 * u * t * c.x + t * t * p.x, y: u * u * q.y + 2 * u * t * c.y + t * t * p.y };
+    });
+  });
+}
+
 /** Traces an outline: its curves where it has them (a canvas pays for a curve about as for two or three points), else its points. */
 export function traceShape(path: CanvasPath, { points, controls }: MassShape): void {
   if (!controls) {
