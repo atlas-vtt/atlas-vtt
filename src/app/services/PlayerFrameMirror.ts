@@ -97,6 +97,8 @@ export interface MirrorInputs {
   setup?(): TvSetupScreen | null;
   /** Most pixels a frame is rendered with (`playerFrame`); its default without. */
   pixelBudget?(): number;
+  /** Whether the curtain is down: players see black, and nothing is rendered for them. Never down without. */
+  curtained?(): boolean;
   /**
    * The camera players stay on while the DM's own moves. One with a world rectangle (`width`,
    * `height`) keeps showing that rectangle; one without is centred in the DM's screen as it is now.
@@ -147,6 +149,8 @@ export class PlayerFrameMirror {
   private watched: PlayerFrameSource | null = null;
   private stopListening: (() => void) | null = null;
   private failing = false;
+  /** Whether the canvas has been blacked for the curtain that is down. */
+  private blacked = false;
   /** The window the last frame was rendered for. */
   private shown: Screen | null = null;
   private readonly demand = new PlayerFrameDemand();
@@ -169,6 +173,11 @@ export class PlayerFrameMirror {
     this.lastFrameAt = now;
     const source = this.inputs.source();
     this.watch(source);
+    if (this.inputs.curtained?.()) {
+      this.guarded(() => this.drawCurtain());
+      return;
+    }
+    if (this.blacked) this.liftCurtain();
     if (!source) return;
     this.guarded(() => {
       const held = this.inputs.heldFrame();
@@ -219,8 +228,8 @@ export class PlayerFrameMirror {
     // A window asleep shows nothing, so its frame needs no tiles; its next display frame asks again
     if (frameTime - this.lastFrameAt > ASLEEP_AFTER_MS) this.demand.release();
     const source = this.watched;
-    // A canvas that is no longer presented, or stands behind a held frame, is not what players see
-    if (!source?.beforeRender || source !== this.inputs.source() || this.inputs.heldFrame()) return;
+    // A canvas that is no longer presented, or stands behind a held frame or the curtain, is not what players see
+    if (!source?.beforeRender || source !== this.inputs.source() || this.inputs.heldFrame() || this.inputs.curtained?.()) return;
     if (cannotRender(source) || !this.isDue(frameTime) || frameTime - this.lastFrameAt > ASLEEP_AFTER_MS) {
       this.stale = true;
       return;
@@ -315,6 +324,26 @@ export class PlayerFrameMirror {
     this.resize(image.width, image.height);
     this.context.clearRect(0, 0, image.width, image.height);
     this.context.drawImage(image, 0, 0);
+  }
+
+  /**
+   * The curtain: the canvas is blacked once, so no stylesheet is needed to hide the map, and
+   * nothing is rendered or asked for while it is down. Its tiles are let go.
+   */
+  private drawCurtain(): void {
+    this.demand.release();
+    this.requestedAt = null;
+    if (this.blacked) return;
+    this.context.fillStyle = '#000';
+    this.context.fillRect(0, 0, this.target.width, this.target.height);
+    this.blacked = true;
+  }
+
+  /** The curtain lifted: players are owed a frame, live or held. */
+  private liftCurtain(): void {
+    this.blacked = false;
+    this.stale = true;
+    this.lastHeld = null;
   }
 
   /** A failed frame must not stop the DM's render or the mirror; it is reported once until a frame succeeds. */

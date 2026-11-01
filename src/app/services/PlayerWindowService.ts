@@ -23,6 +23,8 @@ import { glideCamera } from './tableTv';
 import { prefersReducedMotion } from '../utils/motion';
 import { applyTableTvLook, PLAYER_OVERLAYS_CLASS } from './playerWindowTurn';
 import { glassFrame, PlayerGlass, sameCamera, withSetupScreen } from './playerGlass';
+import { removePlayerCurtain, showPlayerCurtain } from './playerCurtain';
+import { watchPlayerWindowDisplay } from './playerWindowDisplay';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
 const PLAYER_WINDOW_BODY_CLASS = 'atlas-player-window';
@@ -80,6 +82,10 @@ export class PlayerWindowService {
   private glideId = 0;
   /** The set-up screen on the TV and the followers of the players' camera. */
   private readonly glass = new PlayerGlass();
+  /** Whether the curtain is down: players see black until it is lifted, whatever is presented meanwhile. */
+  private curtained = false;
+  /** Stops keeping the store's `fullScreen` and `secondDisplay` current for the open popout. */
+  private stopDisplayWatch: (() => void) | null = null;
 
   constructor(app: App, store: StoreApi<ViewAtlasState>, settingsService: SettingsService) {
     this.app = app;
@@ -268,6 +274,26 @@ export class PlayerWindowService {
     return this.frozenCamera !== null;
   }
 
+  public isCurtained(): boolean {
+    return this.curtained;
+  }
+
+  /**
+   * Lowers the curtain, so players see black and nothing is rendered for them, or lifts it. It
+   * stays down across presents and levels, and in the window's session: a restored window comes
+   * back with the curtain down.
+   */
+  public setCurtain(down: boolean): void {
+    const win = this.getWindow();
+    if (!win || this.curtained === down) return;
+    this.curtained = down;
+    playerWindowStore.setState({ curtain: down });
+    this.playerView?.updateSession({ curtain: down });
+    showPlayerCurtain(win.document, down);
+    // Black at once, or the frame players are owed
+    this.mirror?.frame();
+  }
+
   public isWindowOpen(): boolean {
     return this.playerWindow !== null && !this.playerWindow.closed;
   }
@@ -398,9 +424,10 @@ export class PlayerWindowService {
     this.playerWindow = view.contentEl.win;
     this.streamSource = source;
     this.shownCamera = null;
+    this.curtained = view.getState().curtain === true;
     this.pinFrozenCamera();
     this.mirror?.markStale();
-    playerWindowStore.setState({ shownTabId: scene.tabId });
+    playerWindowStore.setState({ shownTabId: scene.tabId, curtain: this.curtained });
     view.updateSession({ tabId: scene.tabId, filePath: scene.filePath, levelId: scene.levelId });
     // Bind now: the popout may still be loading, and the DM can switch tabs before it has
     this.destroySceneOverlays();
@@ -521,6 +548,7 @@ export class PlayerWindowService {
       this.copyMainWindowStyles(doc);
       body.classList.add(PLAYER_WINDOW_BODY_CLASS);
       body.classList.remove(PLAYER_WINDOW_LIVE_CLASS);
+      showPlayerCurtain(doc, this.curtained);
 
       // Create our UI elements
       const loading = content.createDiv();
@@ -590,6 +618,8 @@ export class PlayerWindowService {
 
       // Start mirroring
       this.startMirroring();
+      this.stopDisplayWatch?.();
+      this.stopDisplayWatch = watchPlayerWindowDisplay(this.playerWindow, window);
       playerWindowStore.setState({ isOpen: true });
 
       // Cleanup on close
@@ -637,6 +667,7 @@ export class PlayerWindowService {
       tableTv: () => this.tableTv(),
       setup: () => this.glass.setupScreen(),
       pixelBudget: () => this.pixelBudget(),
+      curtained: () => this.curtained,
       onFrame: (camera) => this.recordPlayerCamera(camera),
     });
     this.mirror = mirror;
@@ -714,6 +745,10 @@ export class PlayerWindowService {
     this.mapTransition = null;
 
     this.playerWindow?.removeEventListener('beforeunload', this.boundHandleBeforeUnload);
+    if (this.playerWindow && !this.playerWindow.closed) removePlayerCurtain(this.playerWindow.document);
+    this.curtained = false;
+    this.stopDisplayWatch?.();
+    this.stopDisplayWatch = null;
     
     if (closeWindow && this.playerWindow && !this.playerWindow.closed) {
       this.playerWindow.close();
