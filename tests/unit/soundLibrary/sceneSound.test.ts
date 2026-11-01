@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { sceneAdoption } from '../../../src/app/services/assetTransfer/sceneAdoption';
 import { dropSceneSoundFromJson, linkedMoods, readSceneSound } from '../../../src/app/soundLibrary/sceneSound';
@@ -78,6 +79,23 @@ describe('the scene file\'s sound', () => {
     store.getState().setSceneSound({});
     expect(store.getState().sound).toBeNull();
     expect('sound' in saved(store)).toBe(false);
+  });
+
+  it('the setter reaches the scene\'s file, whose version stays 4', async () => {
+    const vault = createInMemoryApp();
+    const store = await load(vault, sceneFile({}));
+    store.setState({ mapLoaded: true });
+    store.getState().setPersistenceEnabled(true);
+    store.getState().setSceneSound({ mood: 'a', combatMood: 'b' });
+    await store.flushStorage();
+    const onDisk = (): { version: number; state: { version: number; sound?: unknown } } => JSON.parse(vault.files.get(SCENE)!) as { version: number; state: { version: number; sound?: unknown } };
+    await expect.poll(() => onDisk().state.sound).toBeDefined();
+    const file = onDisk();
+    expect(file.state.sound).toEqual({ mood: 'a', combatMood: 'b' });
+    expect(file.version).toBe(4);
+    expect(file.state.version).toBe(4);
+    const again = await load(createInMemoryApp(), vault.files.get(SCENE)!);
+    expect(again.getState().sound).toEqual({ mood: 'a', combatMood: 'b' });
   });
 
   it('is never an undo step', async () => {

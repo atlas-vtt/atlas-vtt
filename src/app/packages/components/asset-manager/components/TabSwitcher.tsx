@@ -4,6 +4,7 @@ import type { Tab } from '../types';
 import { getTabDisplayName } from '../types';
 import { HeaderMenu } from './HeaderMenu';
 import { Skeleton } from '../../primitives/Skeleton';
+import { shownTabs } from '../utils/tabKinds';
 import { t } from '../../../../i18n';
 
 export interface TabSwitcherProps {
@@ -11,8 +12,8 @@ export interface TabSwitcherProps {
   onTabChange: (tab: Tab) => void;
   /** How many assets each tab holds; null while they are being counted. */
   assetCounts: Record<Tab, number> | null;
-  /** The tabs offered, in their order. */
-  tabs: readonly Tab[];
+  /** The tabs offered, in their order; without it, those of the Sounds tab being off. */
+  tabs?: readonly Tab[];
 }
 
 /** A tab's count, or its placeholder while the collection is being counted: never a wrong 0. */
@@ -25,7 +26,7 @@ function TabCount({ count }: { count: number | undefined }): React.JSX.Element {
  * the current type as a menu button instead (the toolbar's `data-compact`
  * steps pick one), so the toolbar stays a single row.
  */
-export function TabSwitcher({ activeTab, onTabChange, assetCounts, tabs }: TabSwitcherProps): React.JSX.Element {
+export function TabSwitcher({ activeTab, onTabChange, assetCounts, tabs = shownTabs(false) }: TabSwitcherProps): React.JSX.Element {
   const labelId = useId();
   const activeName = getTabDisplayName(activeTab);
 

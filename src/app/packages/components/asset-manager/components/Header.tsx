@@ -34,7 +34,7 @@ export interface HeaderProps {
   onCreateCollection?: () => void;
   onCreateFolder: () => void;
   /** Set while the Sounds tab is switched on: adds sounds from outside the vault and from inside it. */
-  sounds: { onAddFiles: () => void; onAddFromVault: () => void } | null;
+  sounds?: { onAddFiles: () => void; onAddFromVault: () => void } | null;
   sidebarToggleLabel: string;
   onToggleSidebar: () => void;
   sel: Pick<
@@ -63,7 +63,7 @@ export function Header({
   onCreateEncounter,
   onCreateCollection,
   onCreateFolder,
-  sounds,
+  sounds = null,
   sidebarToggleLabel,
   onToggleSidebar,
   sel,

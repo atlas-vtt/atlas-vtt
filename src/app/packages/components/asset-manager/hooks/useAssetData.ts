@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { debounce, TFolder, App as ObsidianApp } from 'obsidian';
+import { TFolder, App as ObsidianApp } from 'obsidian';
 import type { AnyAsset, CollectionOption, Folder, Tag, Tab } from '../types';
 import { tabs } from '../types';
 import { AssetService } from '../../../../services/AssetService';
@@ -12,6 +12,7 @@ import { assetFolderId, formatServiceAsset, partitionByTab, tokenPreviewSources,
 import { tabHasFolders } from '../utils/tabKinds';
 import { nearestShownFolder, withoutPartyOnlyFolders } from '../utils/partyFolders';
 import { reconcileAssets } from '../utils/assetReconcile';
+import { useSoundFilesWatch } from './useSoundFilesWatch';
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext';
 import { useOptionalAtlasStore } from '../../../../react/ViewStoreContext';
 import { runInBackground } from '../../../../utils/backgroundTask';
@@ -59,9 +60,6 @@ interface LoadedPlace {
   tab: Tab;
   collection: string;
 }
-
-/** How long the vault stays quiet before the Sounds tab looks at its files again. */
-const SOUND_FILES_QUIET_MS = 500;
 
 function samePlace(a: LoadedPlace, b: LoadedPlace): boolean {
   return a.tab === b.tab && a.collection === b.collection;
@@ -186,16 +184,7 @@ export function useAssetData(
     return () => { app.workspace.offref(ref); };
   }, [app, activeTab, loadAssetsForActiveTab]);
 
-  // A card says whether its audio is here, and a sync may deliver a long track well after its record.
-  useEffect(() => {
-    if (!app || activeTab !== 'sounds') return;
-    const reload = debounce(() => { void loadAssetsForActiveTab(); }, SOUND_FILES_QUIET_MS, true);
-    const refs = [app.vault.on('create', reload), app.vault.on('delete', reload), app.vault.on('rename', reload)];
-    return () => {
-      reload.cancel();
-      for (const ref of refs) app.vault.offref(ref);
-    };
-  }, [app, activeTab, loadAssetsForActiveTab]);
+  useSoundFilesWatch(app, activeTab === 'sounds', loadAssetsForActiveTab);
 
   // ── Tags ──────────────────────────────────────────────────────
   const reloadGlobalTags = useCallback(async (): Promise<void> => {
