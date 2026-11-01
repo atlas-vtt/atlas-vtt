@@ -1,3 +1,4 @@
+import type { SoundKind } from '../sound/soundTypes';
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { Point } from './visionTypes';
 
@@ -18,6 +19,7 @@ export interface DungeonGeneratorRequest {
 
 /** Which page of the DM screen shows. */
 export type DMScreenPage = 'statblocks' | 'sound';
+export type SoundView = 'moods' | 'library';
 
 export interface ViewUIState {
 
@@ -25,6 +27,9 @@ export interface ViewUIState {
   isGridSettingsOpen: boolean;
   isDMScreenOpen: boolean;
   dmScreenPage: DMScreenPage;
+  soundView: SoundView;
+  /** Which of the two linked folders the library shows. */
+  soundLibraryRoot: SoundKind;
   isGridAlignmentOpen: boolean;
   isDiceLogOpen: boolean;
   isAssetManagerOpen: boolean;

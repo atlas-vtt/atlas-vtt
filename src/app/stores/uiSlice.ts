@@ -7,7 +7,8 @@
  */
 
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
-import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
+import type { SoundKind } from '../sound/soundTypes';
+import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, SoundView, ViewUIState } from '../types/viewUIState';
 
 /** State fields added to ViewAtlasState */
 export interface UISlice extends ViewUIState {
@@ -16,6 +17,8 @@ export interface UISlice extends ViewUIState {
   setGridSettingsOpen: (open: boolean) => void;
   setDMScreenOpen: (open: boolean) => void;
   setDMScreenPage: (page: DMScreenPage) => void;
+  setSoundView: (view: SoundView) => void;
+  showSoundLibrary: (root: SoundKind) => void;
   setGridAlignmentOpen: (open: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
   openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
@@ -49,6 +52,8 @@ export function createInitialUIState(): Pick<
   | 'isGridSettingsOpen'
   | 'isDMScreenOpen'
   | 'dmScreenPage'
+  | 'soundView'
+  | 'soundLibraryRoot'
   | 'isGridAlignmentOpen'
   | 'isDiceLogOpen'
   | 'isAssetManagerOpen'
@@ -71,6 +76,8 @@ export function createInitialUIState(): Pick<
     isGridSettingsOpen: false,
     isDMScreenOpen: false,
     dmScreenPage: 'statblocks',
+    soundView: 'moods',
+    soundLibraryRoot: 'music',
     isGridAlignmentOpen: false,
     isDiceLogOpen: false,
     isAssetManagerOpen: false,
@@ -99,6 +106,8 @@ export function createUIActions(
   | 'setGridSettingsOpen'
   | 'setDMScreenOpen'
   | 'setDMScreenPage'
+  | 'setSoundView'
+  | 'showSoundLibrary'
   | 'setGridAlignmentOpen'
   | 'setDiceLogOpen'
   | 'openAssetManager'
@@ -125,6 +134,11 @@ export function createUIActions(
     setGridSettingsOpen: (open) => set((draft) => { draft.isGridSettingsOpen = open; }),
     setDMScreenOpen: (open) => set((draft) => { draft.isDMScreenOpen = open; }),
     setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
+    setSoundView: (soundView) => set((draft) => { draft.soundView = soundView; }),
+    showSoundLibrary: (root) => set((draft) => {
+      draft.soundView = 'library';
+      draft.soundLibraryRoot = root;
+    }),
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
     setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
     // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.
