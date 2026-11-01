@@ -8,6 +8,7 @@
 .atlas-dm-notes-section {
   @include atlas-inset-surface;
   background: var(--background-primary);
+  @include atlas-panel-inset-radius($spacing-m, bottom-right);
   flex: 1 1 42%; // fill what the statblocks leave
   display: flex;
   flex-direction: column;

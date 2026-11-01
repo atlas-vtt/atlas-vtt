@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Plus, RotateCcw, Save, VolumeX, Volume2 } from 'lucide-react';
+import { Plus, RotateCcw, VolumeX, Volume2 } from 'lucide-react';
 import type { App } from 'obsidian';
 import { t } from '../../../../i18n';
 import { Button } from '../../../../packages/components/primitives/button';
@@ -78,7 +78,7 @@ export function NowColumn({ app, director, collectionId, moods, sounds }: NowCol
     <section className="atlas-sound-now" aria-label={t('audio.now')}>
       <header className="atlas-sound-now__header">
         <h3>{t('audio.now')}</h3>
-        <Button type="button" variant="ghost" disabled={!holdsSound || collectionId === null} onClick={() => setNamingMood(true)}><Save aria-hidden="true" />{t('audio.saveAs')}</Button>
+        <Button type="button" variant="ghost" disabled={!holdsSound || collectionId === null} onClick={() => setNamingMood(true)}>{t('audio.saveAs')}</Button>
         <Button type="button" variant="ghost" disabled={!holdsSound || moods.length === 0} onClick={(event) => saveTo(event.currentTarget)}>{t('audio.saveTo')}</Button>
       </header>
       {lifecycle === 'needs-tap' && <button type="button" className="atlas-sound-banner" onClick={() => director.tap()}>{t('audio.needsTap')}</button>}

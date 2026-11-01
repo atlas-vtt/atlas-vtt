@@ -68,6 +68,11 @@ export function useSoundKeys({ active, rootRef, viewId, director, collectionId, 
         return;
       }
       if (event.altKey || event.repeat) return;
+      if (target?.dataset?.soundMood && (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey))) {
+        taken();
+        target.closest('.atlas-sound-mood')?.querySelector<HTMLElement>('.atlas-sound-mood__menu')?.click();
+        return;
+      }
       const index = moodIndexOfCode(event.code);
       if (index !== null && !event.shiftKey) {
         const mood = moods[index];

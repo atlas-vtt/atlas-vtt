@@ -37,7 +37,7 @@ export function moveFocus(root: Element, from: Element, direction: Direction): b
   let best: HTMLElement | null = null;
   let bestScore = Infinity;
   for (const element of root.querySelectorAll<HTMLElement>(CONTROLS)) {
-    if (element === from || !isVisible(element) || element.hasAttribute('disabled')) continue;
+    if (element === from || !isVisible(element) || element.hasAttribute('disabled') || element.hasAttribute('data-focus-skip')) continue;
     const box = element.getBoundingClientRect();
     const horizontal = direction === 'left' || direction === 'right';
     const ahead = direction === 'left' ? start.left - box.right : direction === 'right' ? box.left - start.right : direction === 'up' ? start.top - box.bottom : box.top - start.bottom;

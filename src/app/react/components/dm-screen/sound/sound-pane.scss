@@ -40,8 +40,8 @@
 .atlas-sound-now__header {
   @include atlas-flex-row($spacing-s);
   flex-shrink: 0;
-  min-height: 44px;
-  padding: $spacing-s $spacing-m;
+  height: 44px;
+  padding: 0 $spacing-m;
   border-bottom: $border-width-s solid var(--divider-color);
 }
 
@@ -57,12 +57,6 @@
 .atlas-sound-now__header {
   h3 {
     flex: 1;
-  }
-
-  .btn svg {
-    width: $icon-xs;
-    height: $icon-xs;
-    margin-inline-end: $spacing-xs;
   }
 }
 
@@ -312,6 +306,10 @@
   min-width: 0;
 }
 
+.atlas-sound-level .slider-root[data-disabled] {
+  opacity: 0.4;
+}
+
 .atlas-sound-level__value {
   flex-shrink: 0;
   width: 28px;
@@ -473,7 +471,6 @@
   border: $border-width-s solid var(--background-modifier-border);
   box-shadow: none;
   border-radius: $radius-l;
-  @include atlas-panel-inset-radius(calc(#{$spacing-m} + #{$spacing-s}), bottom-right);
   color: var(--text-normal);
   font-size: $font-ui-medium;
   font-weight: $font-weight-medium;

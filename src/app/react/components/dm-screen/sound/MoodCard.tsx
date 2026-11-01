@@ -31,7 +31,15 @@ function problemText(problem: MoodProblem): string {
 /** A mood in its fixed place: one press changes the room. */
 export const MoodCard = React.memo(function MoodCard({ mood, number, playing, next, dragging, problems, onPress, onMenu, onDragStart }: MoodCardProps): React.JSX.Element {
   return (
-    <div className="atlas-sound-mood" data-playing={playing || undefined} data-dragging={dragging || undefined}>
+    <div
+      className="atlas-sound-mood"
+      data-playing={playing || undefined}
+      data-dragging={dragging || undefined}
+      onContextMenu={(event) => {
+        event.preventDefault();
+        onMenu(mood, event.currentTarget);
+      }}
+    >
       <button
         type="button"
         className="atlas-sound-mood__press"
@@ -55,7 +63,7 @@ export const MoodCard = React.memo(function MoodCard({ mood, number, playing, ne
           </span>
         </LabelTooltip>
       )}
-      <IconAction label={t('audio.moodMenu', { name: mood.name })} icon={MoreHorizontal} className="atlas-sound-mood__menu" onClick={(event) => onMenu(mood, event.currentTarget)} />
+      <IconAction label={t('audio.moodMenu', { name: mood.name })} icon={MoreHorizontal} className="atlas-sound-mood__menu" focusSkip onClick={(event) => onMenu(mood, event.currentTarget)} />
     </div>
   );
 });
