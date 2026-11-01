@@ -7,7 +7,7 @@ export const MAX_TRIM_DB = 24;
 
 /** Under this length a file named like a loop is ambience. */
 const AMBIENCE_MAX_SECONDS = 10 * 60;
-const LOOP_LOOKING_NAME = /\b(loops?|looped|looping|ambien[ct]e?|ambient|atmos|atmosphere|soundscape|drone|room ?tone|bed)\b|[_-]loop/i;
+const LOOP_LOOKING_NAME = /\b(loops?|looped|looping|ambien[ct]e?|ambient|atmos|atmosphere|soundscape|drone|room ?tone)\b|[_-]loop/i;
 
 const LICENCES: ReadonlySet<string> = new Set<SoundLicence>(['unknown', 'cc0', 'cc-by', 'other']);
 const STREAMING: ReadonlySet<string> = new Set<SoundStreaming>(['unknown', 'licensed', 'not-for-streaming']);

@@ -50,7 +50,7 @@ export function ModalLayer({
     app: data.app,
     assetService: data.assetService,
     isOpen,
-    takesDrops: activeTab !== 'sounds',
+    dropsGoElsewhere: activeTab === 'sounds',
     isMapCreatorOpen: crud.isMapCreatorOpen,
     // Every dialog of this layer but the map creator, which says for itself whether it stays
     isBusy: crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isCreateSceneModalOpen || crud.isMoveModalOpen || crud.isCreateFolderModalOpen
