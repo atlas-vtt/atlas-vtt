@@ -55,7 +55,7 @@ export function fillWith(hand: Hand, path: PathFn, colour: string): void {
   ctx.restore();
 }
 
-export function strokeWith(hand: Hand, runs: readonly (readonly Vec[])[], colour: string, width: number, closed = false): void {
+export function strokeWith(hand: Hand, runs: readonly (readonly Vec[])[], colour: string | CanvasPattern, width: number, closed = false): void {
   if (!runs.length) return;
   const { ctx } = hand.scene.env;
   ctx.save();
@@ -97,6 +97,8 @@ export interface BandOptions {
   corners?: boolean;
   /** How strong the band is, 0..1 (a lower terrace darker, a ghost of one fainter). */
   strength?: number;
+  /** Crayon's two layers' pressure, the whole band's and the foot's; unset, a light pair that leaves a slope or terrace soft. */
+  covers?: readonly [number, number];
 }
 
 /**
@@ -121,8 +123,9 @@ export function lowBand(hand: Hand, run: readonly Vec[], low: number, width: num
     const mean = run.reduce((sum, _, i) => sum + w(i), 0) / run.length;
     const along = (share: number): Vec[] => offsetRun(run, normals, i => 0.02 + w(i) * share / 2, low);
     const runs = (share: number): Vec[][] => [closed ? [...along(share), along(share)[0]!] : along(share)];
-    hand.waxStroke(runs(1), mean, 0.32 * strength);
-    hand.waxStroke(runs(0.5), mean * 0.5, 0.36 * strength);
+    const [whole, foot] = options.covers ?? [0.32, 0.36];
+    hand.waxStroke(runs(1), mean, whole * strength);
+    hand.waxStroke(runs(0.5), mean * 0.5, foot * strength);
     return;
   }
   // Ink and tone: darkest at the foot, fading out over the band.
@@ -172,14 +175,16 @@ export interface TickOptions {
   seed?: number;
   /** No tick within 0.14 cells of this point (where a rope goes over). */
   keepClear?: Vec;
+  /** Crayon's ticks apart and at their base, in cells, where an edge asks for fewer and fatter than the look's own. */
+  crayon?: { spacing: number; base: number };
 }
 
 /** Short tapering ticks from an edge into its low side, `length` cells long: fine and close in ink, finer in the engraving, fewer and fatter in crayon. */
 export function ticks(hand: Hand, run: readonly Vec[], low: number, length: number | ((p: Vec) => number), options: TickOptions = {}): void {
   const lengthAt = typeof length === 'number' ? (): number => length : length;
   const look = lookOf(hand);
-  const spacing = look === 'ink' ? 0.14 : look === 'engraving' ? 0.1 : 0.22;
-  const base = look === 'ink' ? 0.013 : look === 'engraving' ? 0.011 : 0.026;
+  const spacing = look === 'ink' ? 0.14 : look === 'engraving' ? 0.1 : (options.crayon?.spacing ?? 0.22);
+  const base = look === 'ink' ? 0.013 : look === 'engraving' ? 0.011 : (options.crayon?.base ?? 0.026);
   const seed = options.seed ?? 7;
   const fan = options.fan ?? 0.14;
   const wedges: Vec[][] = [];

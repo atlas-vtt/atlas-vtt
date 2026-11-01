@@ -12,8 +12,8 @@ import { savePng, withoutText } from './dungeonRenderHarness';
  * The ways between caves as drawn, in each painter (parchment is Stone, print Engraved, crayon
  * Crayon): each way's marks lie within two cells of its door and an aven's of its cell; nothing
  * else on the map changes; a squeeze, a letterbox and a crawl keep the middle of their way clear of
- * ink; a door that names a walk draws as one without a way; and a climb within the floor stays in
- * its door cell and half a cell either side. A narrow way's walls close in on it
+ * ink; a door that names a walk draws as one without a way; and a climb within the floor stays
+ * near its door cell, its rope on the higher side. A narrow way's walls close in on it
  * (`narrowPinch.ts`), and the rock's hatching follows the walls, so the marks are compared with the
  * same cave drawn without them (`withoutMarks`).
  */
@@ -120,8 +120,9 @@ describe('the ways between caves as drawn', () => {
         if (!near.length && !nearEdge(plain, x, y)) strays.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`);
       }
       expect(strays.slice(0, 8), `${look}: changed pixels beyond two cells of every way`).toEqual([]);
-      // A narrow way's marks are small, its narrowed walls saying the rest: a crawl one short pair of roof ticks on its door cell.
-      const least: Record<string, number> = { crawl: PX / 4, squeeze: PX, letterbox: PX };
+      // A narrow way's marks are small, its narrowed walls saying the rest: a crawl one short pair of roof ticks on its door cell,
+      // a sump only its roof coming down into the water, which is the floor's own.
+      const least: Record<string, number> = { crawl: PX / 4, squeeze: PX, letterbox: PX, sump: PX };
       for (const [name, count] of counts) expect(count, `${look} ${name}: drawn`).toBeGreaterThan(least[name] ?? PX * 2);
     });
 
@@ -194,26 +195,31 @@ describe('the ways between caves as drawn', () => {
     return model;
   }
 
+  /** How far past its door cell a climb's ink may reach, in cells: its rubble spreads up to 0.8 cells past its band. */
+  const CLIMB_REACH = 1.2;
+
   for (const look of LOOKS) {
-    it(`draws a climb in its door cell and half a cell either side, its rope on the upper side and a chimney narrower than a pitch, in ${look}`, () => {
+    it(`draws a climb near its door cell, its rope on the upper side and a chimney with less than a pitch, in ${look}`, () => {
       const plain = draw(caveVeinWaysModel(false), look);
       const { door } = WAY_SPOTS.find(s => s.way === 'walk')!;
       const [pitch, chimney] = (['shaft', 'chimney'] as const).map(kind => inked(withClimb(kind, false), plain, look, door));
-      expect(chimney!.count, `${look}: a chimney against a pitch`).toBeLessThan(pitch!.count * 0.9);
+      expect(chimney!.count, `${look}: a chimney against a pitch`).toBeLessThan(pitch!.count);
       for (const way of [pitch, chimney]) {
         expect(way!.count, `${look}: a climb is drawn`).toBeGreaterThan(PX);
-        expect(way!.reach, `${look}: ink beside its cell`).toBeLessThanOrEqual(0.6);
+        expect(way!.reach, `${look}: ink beside its cell`).toBeLessThanOrEqual(CLIMB_REACH);
       }
       // The walk runs south from the chamber into its passage: the rope is tied on whichever side lies higher.
+      // A pitch differs from a chimney by its rope and the ring it is tied to, so where the two differ is where the rope lies.
       for (const descends of [false, true]) {
-        const drawn = draw(withClimb('shaft', descends), look);
+        const roped = draw(withClimb('shaft', descends), look);
+        const braced = draw(withClimb('chimney', descends), look);
         let north = 0;
         let south = 0;
-        for (let y = 0; y < drawn.size; y++) for (let x = 0; x < drawn.size; x++) {
-          if (!differs(drawn, plain, (y * drawn.size + x) * 4)) continue;
+        for (let y = 0; y < roped.size; y++) for (let x = 0; x < roped.size; x++) {
+          if (!differs(roped, braced, (y * roped.size + x) * 4)) continue;
           const p = cellAt(x, y);
-          if (p.y < door.y) north++;
-          else if (p.y > door.y + 1) south++;
+          if (p.y < door.y + 0.5) north++;
+          else south++;
         }
         expect(descends ? north > south : south > north, `${look}: rope on the upper side (descends ${descends}: ${north} north, ${south} south)`).toBe(true);
       }

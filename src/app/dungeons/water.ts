@@ -160,19 +160,21 @@ function ringArea(ring: readonly CellPoint[]): number {
 
 /**
  * Where a cave's sumps meet their ways: the doorway of each sump way and the cell before it on the
- * side of the sump laid beside it. That cell stays clear of terrain (every way through a room is
- * walked), so without it the water stopped a cell short of the door it dives under, a pool apart
- * from the way the map draws flooded; as deep water it joins the two into one body. Deep water
- * wins over every dry cell, so a mouth any of whose cells must stay walkable (`dry`: the main
- * path's lane, the ground round a stairwell or an entrance) is left dry, doorway and all.
+ * side of the sump laid beside either. That cell stays clear of terrain (every way through a room is
+ * walked), so without it the water stopped a cell short of the door it dives under; and a sump laid
+ * beside the doorway itself (a chamber's cells along a wide opening) ran beside the door rather than
+ * through it. As deep water they join the sump and its way into one body with one shore, which the
+ * way draws no water of its own over. Deep water wins over every dry cell, so a mouth any of whose
+ * cells must stay walkable (`dry`: the main path's lane, the ground round a stairwell or an
+ * entrance) is left dry, doorway and all.
  */
 export function sumpMouths(doors: readonly DungeonDoor[], pieces: readonly DungeonTerrain[], dry: ReadonlySet<string>): CellPoint[] {
   const sumps = pieces.filter((p) => p.name === 'dungeon.terrain.sump');
   return doors.filter((door) => door.way === 'sump').flatMap((door) => [door.from, door.to].flatMap((room) => {
     if (room === null) return [];
     const mouth = doorSide(door, room);
-    const beside = sumps.some((p) => p.room === room && p.cells.some((c) => mouth.some((m) => Math.abs(m.x - c.x) + Math.abs(m.y - c.y) <= 1)));
     const cells = [...doorwayCells(door), ...mouth];
+    const beside = sumps.some((p) => p.room === room && p.cells.some((c) => cells.some((m) => Math.abs(m.x - c.x) + Math.abs(m.y - c.y) <= 1)));
     return beside && !cells.some((c) => dry.has(cellKey(c.x, c.y))) ? cells : [];
   }));
 }

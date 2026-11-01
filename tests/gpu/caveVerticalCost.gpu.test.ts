@@ -56,9 +56,16 @@ const SAMPLES: readonly Sample[] = [
     build: model => { addDoor(model.floors[0]!, 2, 2, { x: 0, y: 1 }, 'steps', 0, 0).descends = true; },
   },
   {
+    // A climb stands in a way between two caves and its edge runs from wall to wall: a doorway two cells wide, as a pitch's passage is.
     name: 'climb', floor: 0, draw: way('climbWay'),
     build: model => {
-      const door = addDoor(model.floors[0]!, 2, 2, { x: 0, y: 1 }, 'opening', 0, 0);
+      const floor = model.floors[0]!;
+      floor.rooms = [];
+      addRoom(floor, { x: 0, y: 0, w: 5, h: 2 });
+      addRoom(floor, { x: 0, y: 3, w: 5, h: 2 });
+      floor.cave!.heights = [0, 0];
+      const door = addDoor(floor, 2, 2, { x: 0, y: 1 }, 'opening', 0, 1);
+      door.wide = { x: 1, y: 0 };
       door.way = 'climb';
       door.descends = true;
       door.drop = { depth: 20, kind: 'shaft' };

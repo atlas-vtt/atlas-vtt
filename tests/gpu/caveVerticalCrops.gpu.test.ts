@@ -10,7 +10,7 @@ import { RENDER_OUT, savePng } from './dungeonRenderHarness';
 
 /**
  * Every way up and down a generated cave draws (shafts, avens, chasms, climbs, pitches and scree
- * between floors, ledges, platforms, the floor under a hole), cropped round it in every painter,
+ * between floors, ledges, platforms, the floor under a hole) and every sump, cropped round it in every painter,
  * for a person to judge by eye: written to `out/dungeon-render/vertical/<VITE_VERTICAL_LABEL>/`,
  * with one whole floor in Crayon. A hole over a floor below is cut out of the map, so each crop lies
  * on a grey the map's own paper never is, where the level below would show. They judge nothing,
@@ -69,6 +69,7 @@ function cropsOf(model: DungeonModel, request: number): Crop[] {
     }
     for (const door of floor.doors) {
       if (door.way === 'climb') crops.push({ feature: 'climb', request, floor: index, ...around(door.x, door.y, door.x + 1, door.y + 1, 3), what: `${door.drop?.depth} ft ${door.drop?.kind} ${door.descends ? 'down' : 'up'} towards ${door.dir.x},${door.dir.y}` });
+      else if (door.way === 'sump') crops.push({ feature: 'sump', request, floor: index, ...around(door.x, door.y, door.x + 1, door.y + 1, 3), what: `towards ${door.dir.x},${door.dir.y}` });
       else if (door.kind === 'steps') crops.push({ feature: 'steps', request, floor: index, ...around(door.x, door.y, door.x + 1, door.y + 1, 3), what: `${door.descends ? 'down' : 'up'} towards ${door.dir.x},${door.dir.y}` });
     }
     for (const stair of floor.stairs) {

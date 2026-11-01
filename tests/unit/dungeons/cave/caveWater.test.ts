@@ -41,6 +41,11 @@ describe('a sump’s mouth', () => {
     expect(sumpMouths([SUMP_DOOR], [SUMP], new Set())).toEqual([{ x: 7, y: 3 }, { x: 8, y: 3 }]);
   });
 
+  it('joins them too where the sump lies beside the doorway rather than before it, along a wide opening', () => {
+    const beside = { ...SUMP, cells: [{ x: 7, y: 4 }] } as DungeonTerrain;
+    expect(sumpMouths([SUMP_DOOR], [beside], new Set())).toEqual([{ x: 7, y: 3 }, { x: 8, y: 3 }]);
+  });
+
   it('stays dry, doorway and all, where its cells must stay walkable: the lane, a stairwell’s surroundings, an entrance’s', () => {
     expect(sumpMouths([SUMP_DOOR], [SUMP], new Set(['8,3']))).toEqual([]);
     expect(sumpMouths([SUMP_DOOR], [SUMP], new Set(['7,3']))).toEqual([]);
@@ -61,9 +66,10 @@ describe('a sump behind its door', () => {
         for (const door of floor.doors.filter((d) => d.way === 'sump')) {
           for (const room of [door.from, door.to]) {
             const mouth = room === null ? [] : doorSide(door, room);
-            const piece = floor.terrain.find((p) => p.room === room && p.name === 'dungeon.terrain.sump' && p.cells.some((c) => mouth.some((m) => Math.abs(m.x - c.x) + Math.abs(m.y - c.y) <= 1)));
+            const way = [...doorwayCells(door), ...mouth];
+            const piece = floor.terrain.find((p) => p.room === room && p.name === 'dungeon.terrain.sump' && p.cells.some((c) => way.some((m) => Math.abs(m.x - c.x) + Math.abs(m.y - c.y) <= 1)));
             const dry = keptDry(floor);
-            if (!piece || [...doorwayCells(door), ...mouth].some((c) => dry.has(cellKey(c.x, c.y)))) continue;
+            if (!piece || way.some((c) => dry.has(cellKey(c.x, c.y)))) continue;
             sumps++;
             for (const [what, cells] of [["doorway", doorwayCells(door)], ["mouth", mouth], ["piece", piece.cells]] as const) for (const c of cells) expect(underWater(floor, c), `seed ${model.seed} ${what} ${c.x},${c.y}`).toBe(true);
           }
