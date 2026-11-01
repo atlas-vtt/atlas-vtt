@@ -4,18 +4,14 @@ import type { ResourceDefinition, ResourceValue } from '../../../resources/resou
 import type { ShownRollToken } from '../../../services/playerRollSource';
 import type { TokenEntity } from '../../../types';
 import type { BookScene } from './bookScene.ts';
-
-/** What names a character whose token was placed from no library token. */
-export const UNPLACED_PREFIX = 'token:';
+import { UNPLACED_PREFIX } from './BookShelf.ts';
 
 /** The character a player plays, whose book is theirs for as long. */
 export interface PlayedCharacter {
   /** The collection of the scene the character was read from. */
   readonly collection: string;
-  /** The character: its library token's id, else `token:` and its token's id. It is never sent. */
+  /** The character: its library token's id, else `token:` and its token's id. It names the book and is never sent. */
   readonly key: string;
-  /** Where its book is kept: its library token's id, else its player's id, since such a token lasts for one scene and its player does not. It is never sent. */
-  readonly book: string;
   /** The artwork its token is shown with: what the character's picture is read from. It is never sent. */
   readonly imagePath: string;
   /** The token the character was read from. */
@@ -50,7 +46,7 @@ const placedOf = (token: TokenEntity): PlacedTokenSource => (token.assetId === u
 const statblockOf = (token: TokenEntity, inputs: CharacterInputs): string | null =>
   (token.kind === 'character' && token.statblockPath ? token.statblockPath : null) ?? inputs.libraryStatblock(placedOf(token));
 
-/** The key of a token's character: its library token, else the token itself. */
+/** The key of the book a token's character keeps: its library token, else the token itself, whose book lives in memory only. */
 export const characterKeyOf = (token: TokenEntity): string => token.assetId ?? `${UNPLACED_PREFIX}${token.id}`;
 
 /**
@@ -161,7 +157,7 @@ export class Characters {
       if (before !== undefined) holders.delete(before.key);
       holders.set(character.key, owner);
       const drawnWith = { definitions: scene.resources, resources: token.resources };
-      this.played.set(owner, { ...character, book: token.assetId ?? owner, tokenId, placed: placedOf(token), sheet, statblockPath, drawnWith });
+      this.played.set(owner, { ...character, tokenId, placed: placedOf(token), sheet, statblockPath, drawnWith });
       settled.add(owner);
     }
   }

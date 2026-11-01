@@ -12,6 +12,7 @@ import { fakeTokenSource } from './fakeTokenSource.ts';
 import { advanceSettled } from './settled.ts';
 import { sceneState } from './shareHarness.ts';
 import { setWorldMapGate, type WorldMapTree } from '../../../../src/app/online/gm/book/worldMapGate.ts';
+import { ownBookOf } from '../../../../src/app/online/gm/book/playerWritings.ts';
 import { NO_STRETCH } from '../../../../src/app/grid/mapStretch';
 
 /*
@@ -64,9 +65,12 @@ export const BRANNOCH = 'tok-brannoch';
 export const MIRA = 'tok-mira';
 export const BRANNOCH_ART = 'atlas-vtt/collections/Cairn/tokens/brannoch.png';
 export const MIRA_ART = 'atlas-vtt/collections/Cairn/tokens/mira.png';
-/** The keys of the two heroes' books: their tokens were placed from no library token, so their players' ids. */
-export const BRANNOCH_BOOK = ANA;
-export const MIRA_BOOK = BEN;
+/** The keys of the two heroes' books: their tokens were placed from no library token. */
+export const BRANNOCH_BOOK = `token:${BRANNOCH}`;
+export const MIRA_BOOK = `token:${MIRA}`;
+/** The keys of the books the two players' own notes and pins go to. */
+export const ANA_OWN = ownBookOf(ANA);
+export const BEN_OWN = ownBookOf(BEN);
 /** A source that keeps books in a map, as the campaign's file does: what was written is everything `dump` reads. */
 export interface KeptBooks extends BookSource {
   /** How many times a book was handed to the source to keep. */
@@ -124,6 +128,17 @@ let named: string | null = WORLD_MAP;
 /** The maps the world map leads into, where a test names them (`nameWorldMapTree`). */
 let tree: WorldMapTree | null = null;
 const worldMapListeners = new Set<() => void>();
+/** What the world map's answer waits for (`holdWorldMap`). */
+let worldMapWait: Promise<void> = Promise.resolve();
+
+/** The world map is not known until the returned function is called: what a GM's Atlas that just came back is like for a moment. */
+export function holdWorldMap(): () => void {
+  let release = (): void => {};
+  worldMapWait = new Promise((resolve) => {
+    release = resolve;
+  });
+  return release;
+}
 
 /**
  * The campaign being played names another world map, or none (another campaign is played, the
@@ -167,7 +182,7 @@ export async function openTable(shelf: BookShelf, players: readonly PlayerInfo[]
   named = WORLD_MAP;
   tree = null;
   setWorldMapGate({
-    worldMap: () => Promise.resolve(answer()),
+    worldMap: () => worldMapWait.then(answer),
     onChange: (listener) => {
       worldMapListeners.add(listener);
       return () => void worldMapListeners.delete(listener);

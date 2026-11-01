@@ -1,6 +1,9 @@
 import { EMPTY_BOOK, isEmptyBook, type StoredBook } from './bookStore.ts';
 
-/** Where the books of a campaign are kept: by the character's library token id, or by the player's id for tokens placed from no library token. */
+/** What names a character whose token was placed from no library token: its book lives in memory only. */
+export const UNPLACED_PREFIX = 'token:';
+
+/** Where the books of a campaign are kept: a character's by its library token id, what a player wrote by `ownBookOf`. */
 export interface BookSource {
   /** A character's book as it is kept; undefined for none. */
   read(characterId: string): StoredBook | undefined;
@@ -11,7 +14,8 @@ export interface BookSource {
 /**
  * The books the GM keeps, one per character. A book is its character's, so whoever plays that
  * character next finds it again. They are kept by the source (the campaign's books file); a book
- * that cannot be kept there stays in memory for as long as the shelf lives.
+ * that cannot be kept there, and one of a token that is no library token's, stays in memory for
+ * as long as the shelf lives.
  */
 export class BookShelf {
   private readonly memory = new Map<string, StoredBook>();
@@ -24,16 +28,16 @@ export class BookShelf {
   }
 
   /**
-   * Forgets the books held in memory for want of a source: from now on the source (a campaign's
-   * books file just bound) holds each character's.
+   * Forgets the books held in memory for want of a source, but those of tokens that are no library
+   * token's: from now on the source (a campaign's books file just bound) holds each character's.
    */
   forgetKept(): void {
-    this.memory.clear();
+    for (const characterId of [...this.memory.keys()]) if (!characterId.startsWith(UNPLACED_PREFIX)) this.memory.delete(characterId);
   }
 
   /** Keeps a character's book as it is now. */
   keep(characterId: string, book: StoredBook): void {
-    if (this.source.write(characterId, book)) {
+    if (!characterId.startsWith(UNPLACED_PREFIX) && this.source.write(characterId, book)) {
       this.memory.delete(characterId);
       return;
     }

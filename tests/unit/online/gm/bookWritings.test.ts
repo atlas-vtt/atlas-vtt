@@ -1,9 +1,13 @@
-import { parseGmMessage, type BookPin, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
+import { MAX_BOOK_NOTES, parseGmMessage, type BookNote, type BookPin, type PlayerBook } from '../../../../src/app/online/protocol/index.ts';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { REFUSAL_BOOK_MS } from '../../../../src/app/online/gm/book/BookShare.ts';
 import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
+import { EMPTY_BOOK, type StoredBook } from '../../../../src/app/online/gm/book/bookStore.ts';
+import { ownBookOf } from '../../../../src/app/online/gm/book/playerWritings.ts';
+import { setQuestGate } from '../../../../src/app/online/gm/book/questGate.ts';
 import type { TokenEntity } from '../../../../src/app/types';
 import { FakeSocket, present, switchScene, workspace, type FakeTab } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH, BRANNOCH_ART, cave, delivered, keptBooks, MIRA, ofType, openTable, type Delivered, type OpenTable } from './bookTableHarness.ts';
+import { ANA, BEN, BRANNOCH, BRANNOCH_ART, cave, delivered, holdWorldMap, keptBooks, MIRA, ofType, openTable, type OpenTable } from './bookTableHarness.ts';
 import { sceneState } from './shareHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
@@ -34,6 +38,11 @@ function fen(tokens: readonly TokenEntity[]): ReturnType<typeof sceneState> {
 
 const fenToken = (changes: Partial<TokenEntity> = {}): TokenEntity => ({ id: ENCOUNTER_TOKEN, kind: 'character', name: 'Brannoch', imagePath: BRANNOCH_ART, x: 70, y: 70, ...changes } as TokenEntity);
 
+const pinAt = (count: number): BookPin => ({ ...PIN, id: count.toString(16).padStart(24, '0'), title: `Pin ${count}` });
+const noteAt = (count: number): BookNote => ({ id: count.toString(16).padStart(24, '0'), title: `Note ${count}`, body: '', at: count });
+const bookWith = (changes: Partial<StoredBook>): StoredBook => ({ ...EMPTY_BOOK, ...changes });
+const HEROES = { brannoch: { assetId: 'lib-brannoch' }, mira: { assetId: 'lib-mira' } };
+
 /** The GM opens another scene in the tab and presents it. */
 function showNext(tab: FakeTab, next: ReturnType<typeof sceneState>): void {
   switchScene(tab, next);
@@ -41,8 +50,8 @@ function showNext(tab: FakeTab, next: ReturnType<typeof sceneState>): void {
 }
 
 /** The last whole book a player was sent, as the page reads it. */
-function lastBook(table: OpenTable, player: string, messages: readonly Delivered[] = delivered(table.socket)): PlayerBook | undefined {
-  return ofType(messages, 'book').filter(({ to }) => to === player).map(({ body }) => {
+function lastBook(table: OpenTable, player: string): PlayerBook | undefined {
+  return ofType(delivered(table.socket), 'book').filter(({ to }) => to === player).map(({ body }) => {
     const read = parseGmMessage(JSON.parse(JSON.stringify(body)));
     if (read?.t !== 'book') throw new Error('a book the page would not read');
     return read.book;
@@ -60,6 +69,7 @@ describe('what a player wrote on the world map, whichever scene the GM presents'
   });
 
   afterEach(() => {
+    setQuestGate(null);
     workspace.assets = null;
     vi.useRealTimers();
     vi.unstubAllGlobals();
@@ -123,19 +133,124 @@ describe('what a player wrote on the world map, whichever scene the GM presents'
     second.online.stop();
   });
 
-  it('leaves with a library character the GM gives to someone else, and reaches them', async () => {
-    const heroes = { brannoch: { assetId: 'lib-brannoch' }, mira: { assetId: 'lib-mira' } };
-    const table = await openTable(new BookShelf(keptBooks()), PLAYERS, {}, undefined, heroes);
-    const { tokens } = table.tab.store.getState().objects;
-    table.ownership.give([BRANNOCH, MIRA], tokens, ANA);
+  it('goes to the player\'s own book, so it stays when the GM takes a borrowed token back', async () => {
+    const source = keptBooks();
+    const table = await openTable(new BookShelf(source), PLAYERS, {}, undefined, { mira: { assetId: 'lib-hireling' } });
+    table.ownership.give([MIRA], table.tab.store.getState().objects.tokens, ANA);
     await advance(100);
+    expect(lastBook(table, ANA)?.character?.name).toBe('Mira');
     table.from(ANA, { t: 'book-pin', pin: PIN });
-    await advance(100);
+    await advance(3_000);
 
-    table.ownership.give([BRANNOCH], tokens, BEN);
+    table.ownership.give([MIRA], table.tab.store.getState().objects.tokens, BEN);
     await advance(100);
-    expect(lastBook(table, ANA)).toMatchObject({ character: { name: 'Mira' }, pins: [] });
+    expect(lastBook(table, ANA)).toMatchObject({ character: null, pins: [{ id: PIN.id }] });
+    expect(lastBook(table, BEN)).toMatchObject({ character: { name: 'Mira' }, pins: [] });
+    expect(new BookShelf(source).of(ownBookOf(ANA)).pins).toMatchObject([{ id: PIN.id }]);
+    table.online.stop();
+  });
+
+  it('keeps a pin that waited for the GM, who comes back on a scene without the player\'s token', async () => {
+    const source = keptBooks();
+    const table = await openTable(new BookShelf(source), PLAYERS, {});
+    expect(lastBook(table, ANA)?.character).toBeNull();
+
+    const before = delivered(table.socket).length;
+    table.from(ANA, { t: 'book-pin', pin: PIN });
+    table.from(ANA, { t: 'book-note', note: { id: 'c'.repeat(24), title: 'Waited', body: 'on the road' } });
+    await advance(1_000);
+    expect(ofType(delivered(table.socket).slice(before), 'book')).toEqual([]);
+    table.online.stop();
+
+    const again = await openTable(new BookShelf(source), PLAYERS, {});
+    expect(lastBook(again, ANA)).toMatchObject({ pins: [{ id: PIN.id }], notes: [{ title: 'Waited' }] });
+    again.online.stop();
+  });
+
+  it('lets what arrives before the quests and the scene are read wait for them: a note on a quest, a purse', async () => {
+    const quest = 'd'.repeat(24);
+    setQuestGate({ quests: () => Promise.resolve([{ id: quest, kind: 'main', state: 'open', title: 'The crown', body: '', place: null, xp: 0, rewards: [] }]), asset: () => undefined, onChange: () => () => {} });
+    const release = holdWorldMap();
+    const table = await openTable(new BookShelf(keptBooks()), PLAYERS);
+    table.from(ANA, { t: 'book-note', note: { id: 'c'.repeat(24), title: '', body: 'Ask the abbot', quest } });
+    table.from(ANA, { t: 'book-purse', purse: [{ name: 'Thorns', amount: 3 }] });
+    await advance(100);
+    release();
+    await advance(1_000);
+    expect(lastBook(table, ANA)).toMatchObject({ character: { name: 'Brannoch' }, notes: [{ body: 'Ask the abbot', quest }], purse: [{ name: 'Thorns', amount: 3 }] });
+    table.online.stop();
+  });
+
+  it('leaves a character another player plays right now to that player; a character handed over takes its older entries along', async () => {
+    const shelf = new BookShelf(keptBooks());
+    shelf.keep('lib-brannoch', bookWith({ pins: [PIN] }));
+    const table = await openTable(shelf, PLAYERS, {}, undefined, HEROES);
+    const cavern = table.tab.store.getState().objects.tokens;
+    table.ownership.give([BRANNOCH], cavern, ANA);
+    await advance(100);
+    expect(lastBook(table, ANA)).toMatchObject({ character: { name: 'Brannoch' }, pins: [{ id: PIN.id }] });
+
+    // A scene without the token, and it is Ben's now: Ana still plays it there, so its book is still hers alone.
+    showNext(table.tab, fen([]));
+    await advance(1_000);
+    table.ownership.give([BRANNOCH], cavern, BEN);
+    await advance(1_000);
+    expect(lastBook(table, ANA)).toMatchObject({ character: { name: 'Brannoch' }, pins: [{ id: PIN.id }] });
+    expect(JSON.stringify(lastBook(table, BEN))).not.toContain('The ford');
+    table.from(BEN, { t: 'book-pin-delete', id: PIN.id });
+    table.from(ANA, { t: 'book-pin', pin: { ...pinAt(1), title: 'Ana\'s own' } });
+    await advance(100);
+    expect(shelf.of('lib-brannoch').pins).toMatchObject([{ id: PIN.id }]);
+
+    // The token is back: the character is Ben's, with what it held, and Ana keeps what she wrote since.
+    showNext(table.tab, cave(HEROES));
+    await advance(1_000);
     expect(lastBook(table, BEN)).toMatchObject({ character: { name: 'Brannoch' }, pins: [{ id: PIN.id }] });
+    expect(JSON.stringify(lastBook(table, BEN))).not.toContain('Ana\'s own');
+    expect(lastBook(table, ANA)).toMatchObject({ pins: [{ title: 'Ana\'s own' }] });
+    table.online.stop();
+  });
+
+  it('takes a deleted entry out of every book of the player that holds it, and an edit into all of them', async () => {
+    const shelf = new BookShelf(keptBooks());
+    const twice = bookWith({ pins: [PIN, pinAt(1)], notes: [noteAt(2)] });
+    shelf.keep('lib-brannoch', twice);
+    shelf.keep('lib-mira', twice);
+    const table = await openTable(shelf, PLAYERS, {}, undefined, HEROES);
+    table.ownership.give([BRANNOCH, MIRA], table.tab.store.getState().objects.tokens, ANA);
+    await advance(100);
+    expect(lastBook(table, ANA)?.pins).toHaveLength(2);
+
+    table.from(ANA, { t: 'book-pin-delete', id: PIN.id });
+    table.from(ANA, { t: 'book-note-delete', id: noteAt(2).id });
+    table.from(ANA, { t: 'book-pin', pin: { ...pinAt(1), title: 'Moved' } });
+    await advance(100);
+    // Read in another order, the other book's copy would be the one to come back.
+    showNext(table.tab, fen([fenToken({ assetId: 'lib-mira', name: 'Mira' })]));
+    await advance(1_000);
+
+    expect(lastBook(table, ANA)).toMatchObject({ character: { name: 'Mira' }, notes: [], pins: [{ id: pinAt(1).id, title: 'Moved' }] });
+    for (const book of ['lib-brannoch', 'lib-mira']) expect(shelf.of(book)).toMatchObject({ notes: [], pins: [{ title: 'Moved' }] });
+    table.online.stop();
+  });
+
+  it('keeps the player able to write once their books hold more than a page takes, cutting the oldest of the characters\' books', async () => {
+    const shelf = new BookShelf(keptBooks());
+    shelf.keep('lib-brannoch', bookWith({ notes: Array.from({ length: 58 }, (_, count) => noteAt(count + 1)) }));
+    shelf.keep(ownBookOf(ANA), bookWith({ notes: [noteAt(100)] }));
+    const table = await openTable(shelf, PLAYERS, {}, undefined, HEROES);
+    table.ownership.give([BRANNOCH], table.tab.store.getState().objects.tokens, ANA);
+    await advance(100);
+    expect(lastBook(table, ANA)?.notes).toHaveLength(MAX_BOOK_NOTES - 1);
+
+    // The page now holds the most it takes: it is sent its book again, with room, and nothing kept was lost.
+    table.from(ANA, { t: 'book-note', note: { id: noteAt(101).id, title: 'Newest', body: '' } });
+    await advance(REFUSAL_BOOK_MS);
+    const titles = lastBook(table, ANA)?.notes.map((note) => note.title);
+    expect(titles).toHaveLength(MAX_BOOK_NOTES - 1);
+    expect(titles?.slice(-2)).toEqual(['Note 100', 'Newest']);
+    expect(titles).not.toContain('Note 1');
+    expect(shelf.of('lib-brannoch').notes).toHaveLength(58);
     table.online.stop();
   });
 

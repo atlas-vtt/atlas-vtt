@@ -5,7 +5,7 @@ import type { WorldMapFile } from './worldMapLevels.ts';
 
 /** What one player was last sent of their book, to compare with what they would be sent now. */
 export interface SentBook {
-  /** The character the book is of and the books its notes and pins were read from, by their keys. */
+  /** The character the book is of and the books the player's notes and pins were read from, by their keys. */
   readonly book: string;
   readonly map: string;
   /** The quests as the campaign handed them on: the same array while no quest changed, so compared by identity. */
