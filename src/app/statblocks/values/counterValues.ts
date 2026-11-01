@@ -82,9 +82,19 @@ function isUnset(value: FieldValue | undefined): boolean {
   return value === undefined || value === null || (Array.isArray(value) && value.length === 0);
 }
 
-/** The rows the card shows: the note's, else the template's preset rows where the note holds none; null where the note's value is no list of counters. */
+const sameRowName = (a: CounterRow, b: CounterRow): boolean => a.name.trim().toLowerCase() === b.name.trim().toLowerCase();
+
+/**
+ * The rows the card shows: the note's, then the template's preset rows it does not hold by name (a note keeps the
+ * list of its first press, so rows the template gained since would never show), none used until a change stores
+ * them; a preset row without uses adds nothing. Null where the note's value is no list of counters.
+ */
 export function shownCounterRows(field: Pick<TemplateField, 'counterRows'>, value: FieldValue | undefined): CounterRow[] | null {
-  return isUnset(value) ? presetCounterRows(field) : readCounterRows(value);
+  if (isUnset(value)) return presetCounterRows(field);
+  const own = readCounterRows(value);
+  if (!own) return null;
+  const gained = presetCounterRows(field).filter((preset) => isDrawnCounter(preset) && !own.some((row) => sameRowName(row, preset)));
+  return gained.length > 0 ? [...own, ...gained] : own;
 }
 
 /** Whether a row is drawn: one with no uses (a spell level not reached yet) is not. */
@@ -105,7 +115,7 @@ function storedRow(row: CounterRow, kept: Record<string, FieldValue> = {}): Fiel
   };
 }
 
-/** The stored list with each row passed through `change`; the note's own rows where it has them, else the preset rows. */
+/** The stored list with each row passed through `change`: every row the card shows, the note's own first, so an index names the same row in both. */
 function changedRows(field: Pick<TemplateField, 'counterRows'>, value: FieldValue | undefined, change: (row: CounterRow, index: number) => CounterRow): FieldValue | null {
   const rows = shownCounterRows(field, value);
   if (!rows) return null;
