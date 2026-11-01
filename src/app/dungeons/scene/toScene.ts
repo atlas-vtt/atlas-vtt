@@ -4,6 +4,8 @@ import type { MapSceneParts } from '../../import/writeMapScene';
 import { sealTolerance, worldTexel } from '../../lighting/lightingConstants';
 import type { WallSegment } from '../../types/wallTypes';
 import type { DoorKind, DungeonModel } from '../model';
+import { viewBounds } from '../render/art/artScene';
+import type { Vec } from '../render/geometry';
 import { visibleDungeon, type VisibleDungeon } from '../render/visibleDungeon';
 import type { DungeonStyle, DungeonView } from '../style';
 import { floorLetter } from './roomKeys';
@@ -21,6 +23,7 @@ import { objectShadows, tallObjects } from './objectShadows';
 import { noteRooms, type NoteRoom } from './toNote';
 import { stairLinks } from './toStairs';
 import { newLevelId } from '../../levels/levelEdits';
+import { forestWalls, treeLine } from './forestWalls';
 import { groundsWalls } from './toGroundsWalls';
 import { dungeonWalls, type DungeonPlacement, type DungeonWalls } from './toWalls';
 
@@ -41,13 +44,16 @@ export interface DungeonSceneParts {
 const DAYLIGHT = 1;
 
 /** The walls of one floor: its own and the outlines of its tall objects (`objectShadows`), on its level where the scene has several. */
-function floorWalls(dungeon: VisibleDungeon, style: DungeonStyle, view: DungeonView, placement: DungeonPlacement, image: { width: number; height: number }, level: string | undefined): DungeonWalls {
+function floorWalls(dungeon: VisibleDungeon, style: DungeonStyle, view: DungeonView, placement: DungeonPlacement, image: { width: number; height: number }, level: string | undefined, trees?: readonly Vec[][]): DungeonWalls {
   const levels = level ? [level] : undefined;
   const id = level ? `dungeon_${floorLetter(dungeon.index).toLowerCase()}` : 'dungeon';
-  const own = dungeonWalls(dungeon.model, style, view, placement, dungeon.index, { id, ...(levels && { levels }) });
+  const of = { id, ...(levels && { levels }) };
+  const own = dungeon.floor.forest
+    ? forestWalls(trees ?? treeLine(dungeon, style, viewBounds({ ...placement, widthPx: image.width, heightPx: image.height }, 0)), placement, of)
+    : dungeonWalls(dungeon.model, style, view, placement, dungeon.index, of);
   const tolerance = sealTolerance(worldTexel(image));
   const shadows = objectShadows(tallObjects(dungeon, view), Object.values(own.walls), placement, tolerance, `wall_${id}_shadow`, levels);
-  return { ...own, walls: { ...own.walls, ...shadows, ...groundsWalls(dungeon.floor.grounds, placement, { id, ...(levels && { levels }) }) } };
+  return { ...own, walls: { ...own.walls, ...shadows, ...groundsWalls(dungeon.floor.grounds, placement, of) } };
 }
 
 /**
@@ -59,6 +65,7 @@ function floorWalls(dungeon: VisibleDungeon, style: DungeonStyle, view: DungeonV
  * and acid give off over their whole surface, a light in every fire and on every wall light of a lived-in dungeon, the rooms of its note, and dynamic lighting in
  * daylight, so nothing changes until the GM dims it. Light ranges are in `unit`. A dungeon of several floors gets a level per floor; one of one floor none. Null when
  * the walls of a floor would crowd too much to be joined (`wallsCrowd`); a generated dungeon never does.
+ * `trees` is a Forest floor's `treeLine` where it was worked out off this thread; unset works it out here.
  */
 export function dungeonScene(
   model: DungeonModel,
@@ -67,6 +74,7 @@ export function dungeonScene(
   placement: DungeonPlacement,
   image: { width: number; height: number },
   unit: Pick<MeasurementSettings, 'unitType' | 'ruleDistance'>,
+  trees?: readonly Vec[][],
 ): DungeonSceneParts | null {
   const levelIds = model.floors.length > 1 ? model.floors.map(() => newLevelId()) : null;
   const walls: Record<string, WallSegment> = {};
@@ -79,7 +87,7 @@ export function dungeonScene(
   for (const index of model.floors.keys()) {
     const level = levelIds?.[index];
     const dungeon = visibleDungeon(model, view, index);
-    const floor = floorWalls(dungeon, style, view, placement, image, level);
+    const floor = floorWalls(dungeon, style, view, placement, image, level, trees);
     if (wallsCrowd(Object.values(floor.walls), image)) return null;
     Object.assign(walls, floor.walls);
     const letter = floorLetter(index).toLowerCase();
