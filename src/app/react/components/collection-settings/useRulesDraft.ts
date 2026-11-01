@@ -8,7 +8,7 @@ import { hasVisionDefaults } from '../../../gameSystems/visionDefaults';
 import { collectionResources } from '../../../resources/collectionResources';
 import { keepingPlayerVisibility, savedResources } from '../../../resources/resourceDefinitions';
 import type { ResourceDefinition } from '../../../resources/resourceTypes';
-import { withChangedBars } from '../../../resources/sceneVisibility';
+import { barsToShowOnScenes, withChangedBars } from '../../../resources/sceneVisibility';
 import type { CollectionGridDefaults, ConditionDefinition } from '../../../types/collectionSettingsTypes';
 import type { DiceRules } from '../../../types/diceRulesTypes';
 import type { DiceSet } from '../../../types/diceSetTypes';
@@ -55,6 +55,8 @@ export interface RulesDraft {
   clearSystem: () => void;
   /** The draft as the rules to save; a part that follows the preset is given as undefined. */
   toSettings: () => RulesSettings;
+  /** The bars that saving the draft shows on the scenes the rules' collection already has. */
+  barsToShowOnScenes: () => string[];
 }
 
 /** Game system rules as edited in a dialog; nothing is written until the caller saves `toSettings`. */
@@ -68,6 +70,8 @@ export function useRulesDraft(): RulesDraft {
   const [resources, setResources] = useState<ResourceDefinition[]>([]);
   /** The resources the rules had when the draft was loaded; a bar switch follows only a resource that came or went. */
   const loadedResources = useRef<readonly ResourceDefinition[]>([]);
+  /** Whether the GM picked or reset a system since the draft was loaded. */
+  const systemApplied = useRef(false);
   const [dice, setDice] = useState<DiceRules | undefined>(undefined);
   const [diceSetId, setDiceSetId] = useState<string | undefined>(undefined);
   const [initiative, setInitiative] = useState<InitiativeRules | undefined>(undefined);
@@ -84,6 +88,7 @@ export function useRulesDraft(): RulesDraft {
     setConditions(settings.conditions ?? []);
     const loaded = collectionResources(settings);
     loadedResources.current = loaded;
+    systemApplied.current = false;
     setResources(loaded);
     setDice(settings.dice);
     setDiceSetId(settings.diceSetId);
@@ -93,6 +98,7 @@ export function useRulesDraft(): RulesDraft {
 
   const applyPreset = (preset: SystemPreset): void => {
     const rules = rulesOfPreset(preset);
+    systemApplied.current = true;
     setGridDefaults(rules.gridDefaults);
     setConditions(rules.conditions);
     setResources(keepingPlayerVisibility(rules.resources, resources));
@@ -147,6 +153,12 @@ export function useRulesDraft(): RulesDraft {
     };
   };
 
+  const barsOnScenes = (): string[] => {
+    const saved = savedResources(resources);
+    const widgets = withChangedBars(defaultWidgets, loadedResources.current, saved);
+    return barsToShowOnScenes(widgets, loadedResources.current, saved, systemApplied.current);
+  };
+
   return {
     gridDefaults, setGridDefaults,
     defaultWidgets, setDefaultWidgets,
@@ -158,6 +170,6 @@ export function useRulesDraft(): RulesDraft {
     dice, diceSetId, pickDiceSet,
     initiative, setInitiative,
     systemPresetId, setSystemPresetId,
-    load, applyPreset, clearSystem, toSettings,
+    load, applyPreset, clearSystem, toSettings, barsToShowOnScenes: barsOnScenes,
   };
 }

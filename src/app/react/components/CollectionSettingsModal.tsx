@@ -12,6 +12,7 @@ import { useAtlasUI } from '../root/AtlasUIContext';
 import { AssetService } from '../../services/AssetService';
 import type { SystemPreset } from '../../types/systemPresetTypes';
 import { deleteSystemPreset } from '../../services/systemPresetDeletion';
+import { showBarsOnCollectionScenes } from '../../services/collectionBarVisibility';
 import { syncCollectionSystem } from '../../services/collectionSystemSync';
 import { useSystemPresets } from '../hooks/useSystemPresets';
 import { useDiceSets } from '../hooks/useDiceSets';
@@ -120,9 +121,11 @@ export function CollectionSettingsModal({
     if (!app || !assetService || !canSave) return false;
 
     try {
+      const bars = draft.barsToShowOnScenes();
       await assetService.updateCollectionSettings(collectionId, draft.toSettings());
       // Widgets and token conditions follow the saved game system in every scene.
       await syncCollectionSystem(app, collectionId, systemPresets.presets);
+      await showBarsOnCollectionScenes(app, collectionId, bars);
       onClose();
       return true;
     } catch (err) {
