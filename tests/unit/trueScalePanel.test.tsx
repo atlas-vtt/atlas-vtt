@@ -63,6 +63,7 @@ describe('TrueScale panel', () => {
     renderPanel();
     fireEvent.click(screen.getByRole('button', { name: 'Measure the screen again…' }));
     expect(lastScreen()).toEqual({ kind: 'fit', pxPerMm: 3 });
+    expect(screen.getByText('Bank card size: 85.6 × 54 mm. Not a playing card.')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Larger' }));
     const larger = lastScreen();
     expect(larger?.kind === 'fit' && larger.pxPerMm).toBeCloseTo(3.06);

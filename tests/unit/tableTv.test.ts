@@ -167,8 +167,11 @@ describe('the set-up screen on the TV', () => {
       if (name === 'fillText') texts.push(String(args[0]));
       if (name === 'arcTo') points.push((args as number[]).slice(0, 2));
     };
+    const measureText = function (this: { font: string }, text: string): { width: number } {
+      return { width: text.length * parseFloat(this.font.replace('600 ', '')) * 0.5 };
+    };
     const methods = ['save', 'restore', 'fillRect', 'fillText', 'beginPath', 'moveTo', 'lineTo', 'arcTo', 'closePath', 'fill', 'stroke'];
-    return Object.assign(Object.fromEntries(methods.map((name) => [name, record(name)])), { calls, texts, points }) as never;
+    return Object.assign(Object.fromEntries(methods.map((name) => [name, record(name)])), { calls, texts, points, font: '', measureText }) as never;
   }
   const frame = { width: 2560, height: 1440, resolution: 2 };
 
@@ -177,7 +180,7 @@ describe('the set-up screen on the TV', () => {
     drawTvSetup(ctx, frame, { kind: 'orientation' }, tv(false));
     expect(ctx.calls).toContain('fill');
     expect(ctx.calls.indexOf('fillRect')).toBeLessThan(ctx.calls.indexOf('fill'));
-    expect(ctx.texts).toEqual(['Which way is up?', 'Turn the picture until the arrow points away from the players']);
+    expect(ctx.texts).toEqual(['TrueScale setup · the map at real size on this screen', 'Which way is up?', 'Turn the picture until the arrow points away from the players']);
     expect(ctx.calls.at(-1)).toBe('restore');
   });
 
@@ -185,7 +188,11 @@ describe('the set-up screen on the TV', () => {
     const ctx = context();
     // 4 device pixels per mm at a pixel ratio of 2 are 2 points, 4 frame pixels at a resolution of 2
     drawTvSetup(ctx, frame, { kind: 'fit', pxPerMm: 4 }, tv(false));
-    expect(ctx.texts).toEqual(['Lay a bank card inside the outline', 'Atlas measures this screen with it']);
+    expect(ctx.texts).toEqual([
+      'TrueScale setup · the map at real size on this screen',
+      'Lay a bank or credit card inside the outline',
+      'Bank card size: 85.6 × 54 mm. Not a playing card.',
+    ]);
     expect(ctx.calls).toContain('stroke');
     // The corners the path turns at: the outline is the card plus half its line (3 frame px: a 1.5 px line at resolution 2) on every side
     const xs = ctx.points.map(([x]) => x!);
@@ -194,5 +201,18 @@ describe('the set-up screen on the TV', () => {
     expect(Math.max(...ys) - Math.min(...ys)).toBeCloseTo(CARD_MM.height * 4 + 3);
     expect((Math.max(...xs) + Math.min(...xs)) / 2).toBeCloseTo(1280);
     expect((Math.max(...ys) + Math.min(...ys)) / 2).toBeCloseTo(720);
+  });
+
+  it('keeps every line within a screen turned a quarter', () => {
+    const ctx = context();
+    const widths: number[] = [];
+    const fillText = ctx.fillText.bind(ctx);
+    ctx.fillText = (text: string, x: number, y: number): void => {
+      widths.push(ctx.measureText(text).width);
+      fillText(text, x, y);
+    };
+    drawTvSetup(ctx, { width: 1080, height: 1920, resolution: 1 }, { kind: 'fit', pxPerMm: 4 }, tv(false));
+    expect(widths).toHaveLength(3);
+    expect(Math.max(...widths)).toBeLessThanOrEqual(1080);
   });
 });
