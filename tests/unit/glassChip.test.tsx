@@ -22,6 +22,7 @@ const fakes = vi.hoisted(() => ({
   outlines: [] as FakeOutline[],
   service: null as unknown,
   presentTab: vi.fn(),
+  notices: [] as string[],
 }));
 
 vi.mock('../../src/app/pixi/glassOutline', () => ({
@@ -47,10 +48,12 @@ vi.mock('../../src/app/pixi/glassOutline', () => ({
   },
 }));
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: { getInstance: () => fakes.service } }));
+vi.mock('../../src/app/ui/notice', () => ({ showNotice: (message: string) => { fakes.notices.push(message); } }));
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentTab: fakes.presentTab, frameSourceOf: () => ({}) }));
 
 import { GlassChip } from '../../src/app/packages/components/true-scale/GlassChip';
-import { chipPlace } from '../../src/app/packages/components/true-scale/glassState';
+import { SAVED_CHIP_HIDE_MS } from '../../src/app/packages/components/true-scale/savedFrames';
+import { chipPlace, savedChipPlace } from '../../src/app/packages/components/true-scale/glassState';
 
 /** Stands in for the player window: players see `shownTabId` through a glass 200 × 100 around (100, 100), following unless pinned. */
 function fakeService() {
@@ -133,6 +136,7 @@ beforeEach(() => {
   fakes.service = service;
   fakes.outlines.length = 0;
   fakes.presentTab.mockClear();
+  fakes.notices.length = 0;
   playerWindowStore.setState({ isOpen: true, shownTabId: 'tab-a' });
 });
 afterEach(async () => {
@@ -300,6 +304,7 @@ describe('saved frames', () => {
       expect(screen.getByRole('button', { name: 'Show players here' })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
       hover(view, 300, 300);
+      act(() => { vi.advanceTimersByTime(300); });
       expect(screen.getByText('Frame 2')).toBeTruthy();
 
       // Out of the frames and onto the chip: it stays
@@ -316,6 +321,141 @@ describe('saved frames', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  /** Renders the chips where the map view holds them: inside the element the canvas lies in, so what moves over them bubbles past it. */
+  const renderInView = (view: AtlasView): void => {
+    const surface = view.serviceManager!.getRendererService()!.getApp()!.canvas.parentElement!;
+    render(<GlassChip view={view} />, { container: surface.appendChild(document.createElement('div')) });
+  };
+  const OTHER: SavedPlayerFrame = { ...FRAME, centerX: 900, centerY: 700 };
+
+  it('keeps following the pointer after a press on the chip that was no drag', () => {
+    vi.useFakeTimers();
+    try {
+      const view = fakeView(SQUARE, [FRAME, OTHER]);
+      renderInView(view);
+      hover(view, 220, 280);
+      fireEvent.pointerDown(savedChip()!, { pointerId: 1, button: 0, clientX: 210, clientY: 260 });
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 210, clientY: 260 });
+      fireEvent.click(screen.getByRole('button', { name: 'Show players here' }));
+
+      hover(view, 900, 700);
+      act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS); });
+      expect(screen.getByText('Frame 2')).toBeTruthy();
+
+      hover(view, 20, 20);
+      act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS); });
+      expect(savedChip()!.hidden).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows the chips of the others after one was removed through a press on its button', () => {
+    const view = fakeView(SQUARE, [FRAME, OTHER]);
+    renderInView(view);
+    hover(view, 220, 280);
+    const remove = screen.getByRole('button', { name: 'Remove' });
+    fireEvent.pointerDown(remove, { pointerId: 1, button: 0, clientX: 210, clientY: 260 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 210, clientY: 260 });
+    fireEvent.click(remove);
+    expect(map(view).getState().playerFrames).toEqual([OTHER]);
+
+    hover(view, 900, 700);
+    expect(screen.getByText('Frame 1')).toBeTruthy();
+    expect(savedChip()!.hidden).toBe(false);
+  });
+
+  it('offers the next frame under the pointer as soon as the one above it is removed', () => {
+    const view = fakeView(SQUARE, [FRAME, FRAME, FRAME]);
+    renderInView(view);
+    hover(view, 220, 280);
+    expect(screen.getByText('Frame 3')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(screen.getByText('Frame 2')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(map(view).getState().playerFrames).toEqual([]);
+    expect(savedChip()!.hidden).toBe(true);
+  });
+
+  it('stays the same chip while the pointer is on it, whatever frame lies under it', () => {
+    vi.useFakeTimers();
+    try {
+      // The first frame's corner, where its chip stands, lies inside the second
+      const view = fakeView(SQUARE, [FRAME, { ...FRAME, centerX: 200, centerY: 250 }]);
+      renderInView(view);
+      hover(view, 350, 330);
+      expect(screen.getByText('Frame 1')).toBeTruthy();
+
+      fireEvent.pointerEnter(savedChip()!);
+      fireEvent.pointerMove(savedChip()!, { clientX: 210, clientY: 260 });
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByText('Frame 1')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('lets the pointer cross another frame on its way to the chip', () => {
+    vi.useFakeTimers();
+    try {
+      const view = fakeView(SQUARE, [FRAME, { ...FRAME, centerX: 200, centerY: 250 }]);
+      renderInView(view);
+      hover(view, 350, 330);
+      hover(view, 250, 280);
+      act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS - 1); });
+      expect(screen.getByText('Frame 1')).toBeTruthy();
+      fireEvent.pointerEnter(savedChip()!);
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByText('Frame 1')).toBeTruthy();
+
+      // Stopping on the other frame instead brings up its chip
+      fireEvent.pointerLeave(savedChip()!);
+      hover(view, 250, 280);
+      act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS); });
+      expect(screen.getByText('Frame 2')).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('comes up for the map alone, not for what lies over it', () => {
+    const view = fakeView(SQUARE, [{ centerX: 100, centerY: 100, width: 200, height: 100, scale: 1 }]);
+    renderInView(view);
+    fireEvent.pointerMove(screen.getByText(/Players/).parentElement!, { clientX: 100, clientY: 60 });
+    expect(savedChip()!.hidden).toBe(true);
+  });
+
+  it('brings up no chip for what the camera moves under a pointer that is panning', () => {
+    const view = fakeView();
+    renderInView(view);
+    fireEvent.pointerMove(view.serviceManager!.getRendererService()!.getApp()!.canvas, { clientX: 220, clientY: 280, buttons: 2 });
+    act(() => { map(view).getState().addPlayerFrame(FRAME); });
+    expect(savedChip()!.hidden).toBe(true);
+  });
+
+  it('takes the save back with the same button, and does not save the same frame twice', () => {
+    const view = fakeView();
+    renderInView(view);
+    fireEvent.click(screen.getByRole('button', { name: 'Save this frame' }));
+    expect(fakes.notices).toEqual(['Frame 1 saved']);
+    expect(map(view).getState().playerFrames).toHaveLength(1);
+
+    const saved = screen.getByRole('button', { name: 'Remove this saved frame' });
+    expect(saved.classList.contains('is-active')).toBe(true);
+    fireEvent.click(saved);
+    expect(map(view).getState().playerFrames).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Save this frame' }).classList.contains('is-active')).toBe(false);
+  });
+
+  it('takes back the newest of frames saved over one another in an older version', () => {
+    const place = { centerX: 100, centerY: 100, width: 200, height: 100, scale: 1 };
+    const view = fakeView(SQUARE, [place, { ...place, scale: 2 }]);
+    renderInView(view);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove this saved frame' }));
+    expect(map(view).getState().playerFrames).toEqual([place]);
   });
 
   it('comes up under no pan or drag on the map', () => {
@@ -387,7 +527,7 @@ describe('saved frames', () => {
 });
 
 describe('where the chip stands', () => {
-  const room = { canvasX: 0, canvasY: 40, width: 800, height: 600, top: 48, bottom: 64 };
+  const room = { canvasX: 0, canvasY: 40, width: 800, height: 600, top: 48, topStart: 96, bottom: 64 };
 
   it('sits centred on the glass top edge', () => {
     expect(chipPlace({ x: 100, y: 200, width: 400, height: 300 }, { width: 160, height: 48 }, room)).toEqual({ x: 220, y: 216 });
@@ -400,5 +540,24 @@ describe('where the chip stands', () => {
 
   it('stays on a pinned glass and leaves the screen with it', () => {
     expect(chipPlace({ x: -900, y: -500, width: 400, height: 300 }, { width: 160, height: 48 }, room, false)).toEqual({ x: -780, y: -484 });
+  });
+
+  describe('of a saved frame', () => {
+    const chip = { width: 160, height: 48 };
+
+    it('sits inside the frame\'s top-left corner where that shows', () => {
+      expect(savedChipPlace({ x: 100, y: 200, width: 400, height: 300 }, chip, room)).toEqual({ x: 108, y: 248 });
+    });
+
+    it('stays on the part of the frame that shows, clear of the bars, where the corner does not', () => {
+      // A frame larger than the view, as one saved while players follow the GM
+      expect(savedChipPlace({ x: -300, y: -400, width: 2000, height: 1500 }, chip, room)).toEqual({ x: 8, y: 104 });
+      // Its corner shows, but too near the pane's far edges and the toolbars for the chip
+      expect(savedChipPlace({ x: 700, y: 450, width: 500, height: 500 }, chip, room)).toEqual({ x: 632, y: 480 });
+    });
+
+    it('does not wait on the screen for a frame that left it', () => {
+      expect(savedChipPlace({ x: -900, y: -800, width: 400, height: 300 }, chip, room)).toEqual({ x: -892, y: -752 });
+    });
   });
 });

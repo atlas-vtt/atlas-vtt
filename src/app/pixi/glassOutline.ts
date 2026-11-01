@@ -104,13 +104,21 @@ export class GlassOutline {
     this.redraw();
   }
 
-  /** The saved frame under the screen point (x, y), the last drawn where several overlap; -1 where none is. */
+  /**
+   * The saved frame under the screen point (x, y); -1 where none is. Where several overlap, the
+   * smallest, then the last drawn: a frame inside a larger one could not be reached otherwise.
+   */
   savedAt(x: number, y: number): number {
-    for (let index = this.savedRects.length - 1; index >= 0; index--) {
-      const rect = this.savedRects[index]!;
-      if (x >= rect.x && x <= rect.x + rect.width && y >= rect.y && y <= rect.y + rect.height) return index;
-    }
-    return -1;
+    let found = -1;
+    let foundArea = Infinity;
+    this.savedRects.forEach((rect, index) => {
+      if (x < rect.x || x > rect.x + rect.width || y < rect.y || y > rect.y + rect.height) return;
+      const area = rect.width * rect.height;
+      if (area > foundArea) return;
+      found = index;
+      foundArea = area;
+    });
+    return found;
   }
 
   /** Where saved frame `index` lay on screen when last drawn. */

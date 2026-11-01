@@ -40,6 +40,8 @@ export interface ChipRoom {
   height: number;
   /** What the bars at the pane's top and bottom take. */
   top: number;
+  /** What the bars at the top of the pane's start take: the scene tabs and the player window bar below them. */
+  topStart: number;
   bottom: number;
 }
 
@@ -58,13 +60,33 @@ export function chipPlace(rect: ScreenRect, chip: Size, room: ChipRoom, inPane =
   return inPane ? inRoom(x, y, chip, room) : { x, y };
 }
 
-/** The top-left corner in the pane of a saved frame's chip: inside the frame's top-left corner (`rect`), going with the frame. */
+/**
+ * The top-left corner in the pane of a saved frame's chip: inside the frame's top-left corner
+ * (`rect`), going with the frame. Where that corner lies under a bar or past the pane's edge (a
+ * frame saved while players follow the GM is larger than the view) it stands in the corner of the
+ * part of the frame that shows, so a chip that came up can be reached; it never leaves its frame
+ * for the GM's view, and goes off the pane with a frame that left it.
+ */
 export function savedChipPlace(rect: ScreenRect, chip: Size, room: ChipRoom): { x: number; y: number } {
-  return { x: room.canvasX + rect.x + MARGIN, y: room.canvasY + rect.y + MARGIN };
+  const left = room.canvasX + rect.x;
+  const top = room.canvasY + rect.y;
+  const right = left + rect.width;
+  const bottom = top + rect.height;
+  const paneBottom = room.height - room.bottom;
+  const x = left + MARGIN;
+  const y = top + MARGIN;
+  if (right <= 0 || left >= room.width || bottom <= room.topStart || top >= paneBottom) return { x, y };
+  return {
+    x: clamp(x, MARGIN, Math.min(right, room.width) - chip.width - MARGIN),
+    y: clamp(y, room.topStart + MARGIN, Math.min(bottom, paneBottom) - chip.height - MARGIN),
+  };
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.max(min, Math.min(Math.max(min, max), value));
 }
 
 function inRoom(x: number, y: number, chip: Size, room: ChipRoom): { x: number; y: number } {
-  const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(Math.max(min, max), value));
   return {
     x: clamp(x, MARGIN, room.width - chip.width - MARGIN),
     y: clamp(y, room.top + MARGIN, room.height - room.bottom - chip.height - MARGIN),
