@@ -10,4 +10,5 @@
 
 ## Fixed
 - Animated maps and water stood still on the player view while the Obsidian window was hidden behind it or minimised: the player window now keeps the clock running. Water also moves for players wherever their screen shows it, not only where your view does
+- On Windows and Linux the mouse wheel can now scroll a note or statblock that opens while you hold Ctrl, without pinning it first. Scrolling one no longer makes the toolbar grow or shrink
 - On some Macs the asset manager opened from the toolbar lost its backgrounds and cards over the map. It now covers the whole window, as it does when opened from the command palette

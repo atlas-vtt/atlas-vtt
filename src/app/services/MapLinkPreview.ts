@@ -6,6 +6,7 @@ import { t } from '../i18n';
 import { mapThumbnailPath } from '../utils/dataFileMigration';
 import { showPinnedLevel } from '../links/openAtlasLink';
 import { placeHoverCard } from './hoverCardPlacement';
+import { scrollOnCtrlWheel } from './previewWheel';
 
 /**
  * Lightweight tooltip-style preview for .atlasmap files linked via note pins.
@@ -88,6 +89,7 @@ export class MapLinkPreview {
 
     // Inner card — carries the actual visual styles
     this.cardEl = this.wrapperEl.createDiv({ cls: 'atlas-map-link-preview' });
+    scrollOnCtrlWheel(this.cardEl);
 
     // Mouse enter/leave for tooltip behaviour
     this.cardEl.addEventListener('mouseenter', () => this.clearHideTimeout());
