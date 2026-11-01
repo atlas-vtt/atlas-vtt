@@ -12,7 +12,7 @@ type MapState = NonNullable<PersistedMapEnvelope['state']>;
  * file a map lives in, the camera, the dice rolled at the table and the loot
  * roller with the loot it rolled.
  */
-const SESSION_KEYS = ['mapPath', 'camera', 'diceLog', 'lootRoller'] as const;
+const SESSION_KEYS = ['mapPath', 'camera', 'diceLog', 'lootRoller', 'sound'] as const;
 
 /** The scene's floors and their explored memories, which a snapshot that has none takes away on restoring. */
 const LEVEL_KEYS = ['levels', 'exploredMasks'] as const;

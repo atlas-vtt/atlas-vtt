@@ -25,6 +25,7 @@ import { playerCharacterEntry, setPlayerCharacters } from '../../../../react/com
 import type { TransferMode } from '../../../../services/assetTransfer/transferPlan';
 import type { CreateScenePrefill } from '../hooks/useAssetCrud';
 import { sceneMenuEntries } from './sceneMenuEntries';
+import { soundMenuEntries } from './soundMenuEntries';
 import { createStatblockEntry } from '../../../../statblocks/editor/create/entryPoints';
 import { copyAssetLink } from '../../../../links/atlasLinkText';
 import { t } from '../../../../i18n';
@@ -92,6 +93,8 @@ export function buildAssetContextMenuEntries(
       onClick: () => deps.handleSaveAsEncounter(tokenAssets),
     });
   }
+
+  entries.push(...soundMenuEntries(asset, selectedAssets, deps));
 
   // ── Edit / Rename ─────────────────────────────────────────────
   if (asset.type === 'encounters' && selectedAssets.length <= 1) {

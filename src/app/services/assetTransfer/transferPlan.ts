@@ -2,7 +2,7 @@ import type { Asset } from '../AssetService';
 import { collectionFolderPath } from '../assetPaths';
 import type { BundleFile } from '../collectionBundle/bundleFormat';
 import { besideMap, freePathIn, sceneMapOf, type PathMap } from '../collectionBundle/pathRemap';
-import { JSON_FOLDERS } from '../vault-sync/assetFiles';
+import { hasRecordFolder, JSON_FOLDERS } from '../vault-sync/assetFiles';
 import { sceneSnapshotFolder, snapshotOwnerOf } from '../../snapshots/snapshotPaths';
 import { baseName, parentPath } from '../../utils/pathUtils';
 
@@ -107,7 +107,7 @@ export function planTransfer(input: TransferPlanInput): TransferPlan {
     switch (kindOf(file)) {
       case 'record': {
         const owner = assetsById.get(file.owners?.[0] ?? '');
-        if (!owner || owner.type === 'token' || owner.type === 'note') return null;
+        if (!owner || hasRecordFolder(owner)) return null;
         const folder = JSON_FOLDERS[owner.type];
         const to = inTarget ?? `${targetPrefix}${folder}/${baseName(path)}`;
         const newId = newIds.get(owner.id);

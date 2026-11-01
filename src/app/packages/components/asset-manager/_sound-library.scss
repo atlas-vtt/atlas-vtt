@@ -1,0 +1,74 @@
+@use '../../../../../styles/tokens' as *;
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Asset Manager – Sounds
+// ═══════════════════════════════════════════════════════════════════════════
+
+// The well holds no picture: the kind in the middle, what is left to do at its foot.
+.atlas-sound-art {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+
+  > svg {
+    width: 36%;
+    height: 36%;
+    stroke-width: 1.5;
+  }
+}
+
+.atlas-sound-state {
+  position: absolute;
+  right: $spacing-s;
+  bottom: $spacing-s;
+  left: $spacing-s;
+  overflow: hidden;
+  padding: $spacing-xs;
+  border-radius: $radius-l;
+  background: var(--background-primary);
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+
+  &[data-state='missing'] {
+    color: var(--text-warning);
+  }
+
+  &[data-state='ready'] {
+    color: var(--text-success);
+  }
+}
+
+.atlas-sound-state__bar {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--interactive-accent);
+  transform: scaleX(var(--atlas-sound-progress, 0));
+  transform-origin: left;
+}
+
+// The one offer of a collection's music folder, above the grid.
+.atlas-sound-offer {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  padding: $spacing-s;
+  border-radius: $radius-l;
+  background: var(--background-secondary);
+  color: var(--text-normal);
+  font-size: $font-ui-small;
+
+  > span {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+}

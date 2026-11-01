@@ -14,7 +14,7 @@ import { collectionFolderName, collectionFolderPath, collectionIdOfFolder, colle
 import { planFolderNameFixes } from './collectionFolderNames';
 import { migrateInstallRecords } from './collectionBundle/installRecord';
 import { createCollectionRecord, derivedCollectionRecord, defaultCollectionIdOf, forgetCollection, INITIAL_COLLECTION_ID, moveCollectionRecord, numberedCollectionName, prettifyIdentifier } from './collectionRecords';
-import { assetFilePath, groupTokenRefs } from './vault-sync/assetFiles';
+import { assetFilePath, groupTokenRefs, hasRecordFolder } from './vault-sync/assetFiles';
 import { reconcileIndex, type VaultReconciliation } from './vault-sync/reconcileIndex';
 import { listVault, readVault } from './vault-sync/vaultListing';
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
@@ -31,6 +31,8 @@ import { isPayloadUnread, serializeRecord } from './library/recordFile';
 import { libraryClock, parseLibraryState } from './library/libraryState';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { showNotice } from '../ui/notice';
+import type { SoundRecord } from '../sound/soundTypes';
+import { soundsFolderOf } from '../soundLibrary/soundFiles';
 
 export interface BaseAsset {
   id: string;
@@ -153,7 +155,16 @@ export interface PlayerAsset extends BaseAsset {
   data?: PlayerAssetData;
 }
 
-export type Asset = TokenAsset | MapAsset | NoteAsset | StatblockAsset | CharacterAsset | SceneAsset | EncounterAsset | PlayerAsset;
+/**
+ * A music or ambience file of the vault. Its record file places it in a collection, wherever the
+ * audio lies. `soundRecordOf` reads one as the engine's `SoundRecord`, whose `filePath` is `audioPath`.
+ */
+export interface SoundAsset extends BaseAsset, Omit<SoundRecord, 'id' | 'name' | 'filePath' | 'tags'> {
+  type: 'sound';
+  audioPath: string;
+}
+
+export type Asset = TokenAsset | MapAsset | NoteAsset | StatblockAsset | CharacterAsset | SceneAsset | EncounterAsset | PlayerAsset | SoundAsset;
 
 export type AssetOfType<T extends Asset['type']> = Extract<Asset, { type: T }>;
 
@@ -1004,7 +1015,7 @@ export class AssetService {
     await this.ensureLoaded();
 
     for (const newAsset of newAssets) {
-      if (newAsset.type !== 'token' && newAsset.type !== 'note' && !newAsset.filePath) {
+      if (!hasRecordFolder(newAsset) && !newAsset.filePath) {
         newAsset.filePath = this.getAssetPath(newAsset);
       }
       await this.ensureCollectionRecord(newAsset.collection);
@@ -1181,12 +1192,21 @@ export class AssetService {
       await this.trashFileIfPresent(asset.thumbnailPath);
     }
     if (asset.type === 'encounter') await this.trashEncounterThumbnail(asset);
+    if (asset.type === 'sound') await this.trashOwnAudio(asset);
 
     // Remove from metadata
     delete this.metadata!.assets[id];
     await this.saveMetadata();
 
     await this.deleteEmptiedGroups(emptiedGroups);
+  }
+
+  /** A sound's audio goes with it only from its collection's `sounds/`, where Atlas puts it, and unless another record names it: anywhere else it is the GM's own file. */
+  private async trashOwnAudio(sound: SoundAsset): Promise<void> {
+    if (!sound.audioPath.startsWith(`${soundsFolderOf(sound.collection)}/`)) return;
+    const shared = Object.values(this.metadata!.assets)
+      .some((other) => other.id !== sound.id && other.type === 'sound' && other.audioPath === sound.audioPath);
+    if (!shared) await this.trashFileIfPresent(sound.audioPath);
   }
 
   /** An encounter's thumbnail goes with it, unless another encounter (a copy) still shows the same file. */

@@ -21,6 +21,8 @@ export interface UvttImportOptions {
   assetService: AssetService | null;
   /** The asset manager is open; map files dropped on its window are imported while it is. */
   isOpen: boolean;
+  /** Files dropped on the window are for another import while this is set: the Sounds tab takes its own. */
+  dropsGoElsewhere?: boolean;
   isMapCreatorOpen: boolean;
   /** Another dialog of the asset manager is open, which opening a scene would close with it. */
   isBusy: boolean;
@@ -97,7 +99,7 @@ export function useUvttImport(options: UvttImportOptions): ImportMaps {
   // Listened for on the document, ahead of the manager's own handlers: a folder tessera takes
   // every drop on it for itself.
   useEffect(() => {
-    if (!options.isOpen) return;
+    if (!options.isOpen || options.dropsGoElsewhere) return;
     const onDragOver = (event: DragEvent): void => {
       const transfer = overManager(event);
       if (!transfer || !mayCarryMapFile(transfer)) return;
@@ -126,7 +128,7 @@ export function useUvttImport(options: UvttImportOptions): ImportMaps {
       document.removeEventListener('dragover', onDragOver, true);
       document.removeEventListener('drop', onDrop, true);
     };
-  }, [options.isOpen, importMaps]);
+  }, [options.isOpen, options.dropsGoElsewhere, importMaps]);
 
   return importMaps;
 }

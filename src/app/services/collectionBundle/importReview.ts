@@ -60,6 +60,7 @@ export interface ImportReview {
 const ASSET_KINDS: Record<Asset['type'], string> = {
   token: t('review.kind.token'), map: t('review.kind.map'), note: t('review.kind.note'), statblock: t('review.kind.statblock'),
   character: t('review.kind.character'), scene: t('review.kind.scene'), encounter: t('review.kind.encounter'), player: t('review.kind.player'),
+  sound: t('audio.reviewKind'),
 };
 
 const FIELD_NAMES: Record<CollectionField, string> = {

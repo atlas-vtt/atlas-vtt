@@ -128,7 +128,7 @@ describe('partitionByTab', () => {
     ];
     const byTab = partitionByTab(assets);
     expect(Object.fromEntries(Object.entries(byTab).map(([tab, list]) => [tab, list.map((asset) => asset.id)]))).toEqual({
-      tokens: ['goblin'], party: ['ranger'], maps: ['map'], scenes: ['scene'], encounters: ['enc'],
+      tokens: ['goblin'], party: ['ranger'], maps: ['map'], scenes: ['scene'], encounters: ['enc'], sounds: [],
     });
   });
 });

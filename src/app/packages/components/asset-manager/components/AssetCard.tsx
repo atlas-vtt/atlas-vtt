@@ -9,6 +9,7 @@ import { ProcessingBadge } from './ProcessingBadge';
 import { RevealImage } from '../../primitives/RevealImage';
 import { Skeleton } from '../../primitives/Skeleton';
 import { encounterPreviewStyle } from '../utils/encounterPreviewLayout';
+import { SoundCardArt } from './SoundCardArt';
 import { t } from '../../../../i18n';
 
 export interface AssetCardProps extends AssetCardHandlers {
@@ -33,6 +34,7 @@ function ArtFallback({ asset }: { asset: AnyAsset }): React.JSX.Element {
  * mounts rows ahead of the view, so their art is there when they scroll in.
  */
 function Artwork({ asset }: { asset: AnyAsset }): React.JSX.Element {
+  if (asset.type === 'sounds') return <SoundCardArt asset={asset} />;
   if (asset.type === 'encounters' && asset.tokenPreviews.length > 0) {
     const overflow = Math.max(0, asset.tokens.length - asset.tokenPreviews.length);
     return (

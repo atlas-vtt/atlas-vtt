@@ -26,7 +26,7 @@ export interface AssetTransferResult {
 }
 
 /** The asset types the asset manager shows; only these go between collections. */
-const TRANSFERABLE_TYPES: ReadonlySet<Asset['type']> = new Set<Asset['type']>(['token', 'map', 'scene', 'encounter']);
+const TRANSFERABLE_TYPES: ReadonlySet<Asset['type']> = new Set<Asset['type']>(['token', 'map', 'scene', 'encounter', 'sound']);
 
 const decoder = new TextDecoder();
 

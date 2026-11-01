@@ -1,12 +1,13 @@
 import { App as ObsidianApp, Modal } from 'obsidian';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import type { CollectionMetadata, EncounterAsset as StoredEncounterAsset } from '../../../services/AssetService';
+import type { SoundRecord } from '../../../sound/soundTypes';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../../../ui/nativeModal';
 import { t } from '../../../i18n';
 
 // ─── Tab / View Constants ───────────────────────────────────────────
 
-export const tabs = ['scenes', 'maps', 'encounters', 'tokens', 'party'] as const;
+export const tabs = ['scenes', 'maps', 'encounters', 'tokens', 'party', 'sounds'] as const;
 export type Tab = (typeof tabs)[number];
 
 const tabDisplayNames: Record<Tab, string> = {
@@ -15,6 +16,7 @@ const tabDisplayNames: Record<Tab, string> = {
   encounters: t('am.tab.encounters'),
   tokens: t('am.tab.tokens'),
   party: t('am.tab.party'),
+  sounds: t('audio.tab'),
 };
 
 export const getTabDisplayName = (tab: Tab): string => tabDisplayNames[tab];
@@ -88,7 +90,14 @@ export interface EncounterAsset extends Asset {
   difficulty?: StoredEncounterAsset['difficulty'];
 }
 
-export type AnyAsset = TokenAsset | MapAsset | SceneAsset | EncounterAsset;
+export interface SoundAsset extends Asset {
+  type: 'sounds';
+  record: SoundRecord;
+  /** Its audio is not in this vault yet: a sync may deliver a record before a long track. */
+  fileMissing: boolean;
+}
+
+export type AnyAsset = TokenAsset | MapAsset | SceneAsset | EncounterAsset | SoundAsset;
 
 // ─── Folder ─────────────────────────────────────────────────────────
 

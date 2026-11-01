@@ -8,7 +8,7 @@ export const RECORD_KEY = 'atlasRecord';
 /** The record format this version writes. A file with a higher one comes from a newer Atlas and is never rewritten. */
 export const RECORD_FORMAT = 1;
 
-const ASSET_TYPES: ReadonlySet<string> = new Set(['token', 'map', 'note', 'statblock', 'character', 'scene', 'encounter', 'player']);
+const ASSET_TYPES: ReadonlySet<string> = new Set(['token', 'map', 'note', 'statblock', 'character', 'scene', 'encounter', 'player', 'sound']);
 
 /** Types whose payload is `data`, written at the top level of their JSON as older versions expect. */
 const PAYLOAD_TYPES: ReadonlySet<string> = new Set(['scene', 'encounter', 'player', 'character', 'statblock']);
@@ -95,6 +95,7 @@ function hasRequiredFields(record: Record<string, unknown>): boolean {
     case 'token': return typeof record.imagePath === 'string';
     case 'map': return typeof record.mapFilePath === 'string';
     case 'note': return typeof record.notePath === 'string';
+    case 'sound': return typeof record.audioPath === 'string';
     case 'encounter':
     case 'player': return Array.isArray(record.tokens);
     default: return true;
@@ -126,7 +127,7 @@ function assetFromEnvelope(envelope: Record<string, unknown>, payload: Record<st
     modifiedAt: numberOr(fields.modifiedAt, createdAt),
   };
   const type = typeof fields.type === 'string' ? fields.type : '';
-  if (type !== 'token' && type !== 'note') record.filePath = path;
+  if (type !== 'token' && type !== 'note' && type !== 'sound') record.filePath = path;
   if (PAYLOAD_TYPES.has(type)) {
     record.data = payload;
     for (const key of MIRRORED_FIELDS[type] ?? []) {

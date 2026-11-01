@@ -12,6 +12,7 @@ import { assetFolderId, formatServiceAsset, partitionByTab, tokenPreviewSources,
 import { tabHasFolders } from '../utils/tabKinds';
 import { nearestShownFolder, withoutPartyOnlyFolders } from '../utils/partyFolders';
 import { reconcileAssets } from '../utils/assetReconcile';
+import { useSoundFilesWatch } from './useSoundFilesWatch';
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext';
 import { useOptionalAtlasStore } from '../../../../react/ViewStoreContext';
 import { runInBackground } from '../../../../utils/backgroundTask';
@@ -80,7 +81,7 @@ export function useAssetData(
   const [isUnavailable, setIsUnavailable] = useState(false);
   const latestLoad = useRef(0);
   const latestTagsLoad = useRef(0);
-  const [tagsByGroup, setTagsByGroup] = useState<TagsByGroup>({ tokens: [], maps: [] });
+  const [tagsByGroup, setTagsByGroup] = useState<TagsByGroup>({ tokens: [], maps: [], sounds: [] });
   const [tagsCollection, setTagsCollection] = useState<string | null>(null);
   const availableTags = tagsByGroup[tagGroupOfTab(activeTab)];
   const [collections, setCollections] = useState<CollectionOption[]>([]);
@@ -159,6 +160,7 @@ export function useAssetData(
         encounters: byTab.encounters.length,
         tokens: byTab.tokens.length,
         party: byTab.party.length,
+        sounds: byTab.sounds.length,
       };
       setCounts((previous) => (previous && tabs.every((tab) => previous[tab] === loaded[tab]) ? previous : loaded));
     } catch (error) {
@@ -182,6 +184,8 @@ export function useAssetData(
     return () => { app.workspace.offref(ref); };
   }, [app, activeTab, loadAssetsForActiveTab]);
 
+  useSoundFilesWatch(app, activeTab === 'sounds', loadAssetsForActiveTab);
+
   // ── Tags ──────────────────────────────────────────────────────
   const reloadGlobalTags = useCallback(async (): Promise<void> => {
     if (!assetService) return;
@@ -189,7 +193,7 @@ export function useAssetData(
     try {
       const load = async (group: TagGroup): Promise<Tag[]> =>
         (await assetService.getCollectionTags(selectedCollection, group)).map((t) => ({ id: t.id, name: t.name }));
-      const loaded = { tokens: await load('tokens'), maps: await load('maps') };
+      const loaded = { tokens: await load('tokens'), maps: await load('maps'), sounds: await load('sounds') };
       if (request !== latestTagsLoad.current) return;
       setTagsByGroup(loaded);
       setTagsCollection(selectedCollection);

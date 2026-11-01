@@ -13,11 +13,12 @@ import { ENCOUNTER_PREVIEW_COUNT } from './encounterPreviewLayout';
 import { mapThumbnailPath } from '../../../../utils/dataFileMigration';
 import { isPlayerCharacter } from '../../../../characters/playerCharacters';
 import { isVideoMapPath } from '../../../../pixi/mosaicCanvas/video/videoMapFiles';
+import { soundRecordOf } from '../../../../soundLibrary/soundRecords';
 
 /** The stored asset types the asset manager shows, one per tab. */
-export type TabServiceAsset = AssetOfType<'token' | 'map' | 'scene' | 'encounter'>;
+export type TabServiceAsset = AssetOfType<'token' | 'map' | 'scene' | 'encounter' | 'sound'>;
 
-const TAB_ASSET_TYPES: ReadonlySet<ServiceAsset['type']> = new Set<TabServiceAsset['type']>(['token', 'map', 'scene', 'encounter']);
+const TAB_ASSET_TYPES: ReadonlySet<ServiceAsset['type']> = new Set<TabServiceAsset['type']>(['token', 'map', 'scene', 'encounter', 'sound']);
 
 export function isTabAsset(asset: ServiceAsset): asset is TabServiceAsset {
   return TAB_ASSET_TYPES.has(asset.type);
@@ -30,6 +31,7 @@ export interface AssetsByTab {
   maps: AssetOfType<'map'>[];
   scenes: AssetOfType<'scene'>[];
   encounters: AssetOfType<'encounter'>[];
+  sounds: AssetOfType<'sound'>[];
 }
 
 /** What an encounter preview needs from the token asset that shares its image. */
@@ -83,13 +85,14 @@ export function assetFolderId(asset: TabServiceAsset, tabBasePath: string): stri
 
 /** Groups stored assets by the tab that shows them; other asset types are left out. */
 export function partitionByTab(assets: readonly ServiceAsset[]): AssetsByTab {
-  const byTab: AssetsByTab = { tokens: [], party: [], maps: [], scenes: [], encounters: [] };
+  const byTab: AssetsByTab = { tokens: [], party: [], maps: [], scenes: [], encounters: [], sounds: [] };
   for (const asset of assets) {
     switch (asset.type) {
       case 'token': (isPlayerCharacter(asset) ? byTab.party : byTab.tokens).push(asset); break;
       case 'map': byTab.maps.push(asset); break;
       case 'scene': byTab.scenes.push(asset); break;
       case 'encounter': byTab.encounters.push(asset); break;
+      case 'sound': byTab.sounds.push(asset); break;
       default: break;
     }
   }
@@ -239,5 +242,7 @@ export function formatServiceAsset(
         ...(formation !== undefined && { formation }),
       };
     }
+    case 'sound':
+      return { ...base, type: 'sounds', record: soundRecordOf(asset), fileMissing: !app.vault.getFileByPath(asset.audioPath) };
   }
 }

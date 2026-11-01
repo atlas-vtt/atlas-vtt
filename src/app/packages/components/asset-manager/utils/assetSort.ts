@@ -44,7 +44,7 @@ function fileExtension(path: string): string {
 
 /**
  * Characters by size, then those with a linked statblock first; maps by file
- * format; encounters by difficulty.
+ * format; encounters by difficulty; sounds by kind.
  */
 const compareKinds: AssetComparator = (a, b) => {
   if (a.type === 'tokens' && b.type === 'tokens') {
@@ -57,6 +57,7 @@ const compareKinds: AssetComparator = (a, b) => {
     const rank = (asset: EncounterAsset): number => (asset.difficulty ? DIFFICULTY_RANK[asset.difficulty] : UNRANKED);
     return rank(a) - rank(b);
   }
+  if (a.type === 'sounds' && b.type === 'sounds') return nameCollator.compare(a.record.kind, b.record.kind);
   return 0;
 };
 
