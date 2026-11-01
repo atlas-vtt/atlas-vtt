@@ -197,6 +197,15 @@ describe('fades', () => {
   });
 });
 
+describe('a state that makes no sense', () => {
+  it('is silence or a bounded gain, never a value a param throws on', () => {
+    expect(dbToGain(Number.NaN)).toBe(0);
+    expect(dbToGain(-Infinity)).toBe(0);
+    expect(dbToGain(Infinity)).toBe(100);
+    expect(dbToGain(1000)).toBe(100);
+  });
+});
+
 describe('silence', () => {
   it('fades everything and lands where it would have been', () => {
     const play = layer(sound('rain', 10));

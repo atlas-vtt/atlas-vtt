@@ -3,8 +3,12 @@ export const SOUND_RATE = 48_000;
 
 export const FRAMES_PER_MS = SOUND_RATE / 1000;
 
+/** No sound or level may raise the signal more than this, whatever a state from the wire says. */
+const MAX_GAIN_DB = 40;
+
+/** -Infinity and anything that is no number are silence: a param throws on NaN. */
 export function dbToGain(db: number): number {
-  return db === -Infinity ? 0 : 10 ** (db / 20);
+  return Number.isFinite(db) ? 10 ** (Math.min(db, MAX_GAIN_DB) / 20) : db === Infinity ? 10 ** (MAX_GAIN_DB / 20) : 0;
 }
 
 export function clamp01(value: number): number {
@@ -23,7 +27,7 @@ export function fadeInGain(progress: number): number {
 }
 
 export function fadeOutGain(progress: number): number {
-  return Math.cos((progress * Math.PI) / 2);
+  return progress >= 1 ? 0 : Math.cos((progress * Math.PI) / 2);
 }
 
 export function median(values: readonly number[]): number {

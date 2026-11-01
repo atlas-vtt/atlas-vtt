@@ -4,6 +4,8 @@ import { isOpusHead, opusPacketFrames, readOpusComment, readOpusHead } from './o
 import { decodeSeekTable, SEEK_COMMENT, seekIndexFor, type SeekEntry } from './seekTable';
 
 const HEADER_READ_BYTES = 128 * 1024;
+/** Twice the most Opus can hold in the stretch a range covers, even where a table is coarse. */
+const MAX_RANGE_BYTES = 32 * 1024 * 1024;
 
 export interface OggOpusSound {
   head: Uint8Array;
@@ -43,7 +45,7 @@ export async function openOggOpus(source: SoundBytes): Promise<OggOpusSound> {
     offset = page.end;
   }
   const table = readOpusComment(tags, SEEK_COMMENT);
-  const seek = table ? decodeSeekTable(table) : [];
+  const seek = table ? decodeSeekTable(table).filter((entry) => offset + entry.byte < source.byteLength) : [];
   return {
     head: head.slice(),
     channels,
@@ -65,6 +67,7 @@ export async function readPacketRange(sound: OggOpusSound, source: SoundBytes, f
   const next = sound.seek[seekIndexFor(sound.seek, toGranule) + 1];
   const begin = sound.audioStart + start.byte;
   const end = next ? sound.audioStart + next.byte : sound.byteLength;
+  if (end - begin > MAX_RANGE_BYTES) throw new Error('The sound has no seek table that fits its length.');
   const bytes = await source.read(begin, end);
   const packets: PositionedPacket[] = [];
   let offset = 0;

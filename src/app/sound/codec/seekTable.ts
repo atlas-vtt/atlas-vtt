@@ -25,17 +25,20 @@ export function encodeSeekTable(entries: readonly SeekEntry[]): string {
   return parts.join(',');
 }
 
+/** The table of a file, which may be anything: anything but a table that begins at the start and only moves on reads as none. */
 export function decodeSeekTable(text: string): SeekEntry[] {
   let byte = 0;
   let granule = 0;
   const entries: SeekEntry[] = [];
   for (const part of text.split(',')) {
-    const [bytes, granules] = part.split(':');
-    const byteDelta = parseInt(bytes ?? '', 36);
-    const granuleDelta = parseInt(granules ?? '', 36);
-    if (!Number.isFinite(byteDelta) || !Number.isFinite(granuleDelta) || byteDelta < 0 || granuleDelta < 0) return [];
+    const match = /^([0-9a-z]{1,11}):([0-9a-z]{1,11})$/.exec(part);
+    if (!match) return [];
+    const byteDelta = parseInt(match[1] ?? '', 36);
+    const granuleDelta = parseInt(match[2] ?? '', 36);
+    if (entries.length === 0 ? byteDelta !== 0 || granuleDelta !== 0 : byteDelta <= 0 || granuleDelta <= 0) return [];
     byte += byteDelta;
     granule += granuleDelta;
+    if (!Number.isSafeInteger(byte) || !Number.isSafeInteger(granule)) return [];
     entries.push({ byte, granule });
   }
   return entries;

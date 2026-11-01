@@ -4,6 +4,12 @@ import type { SoundInfo } from '../soundTypes';
 export const TARGET_LUFS = -20;
 export const PEAK_CEILING_DB = -1;
 
+const MAX_TRIM_DB = 24;
+
+function clampTrim(trimDb: number): number {
+  return Math.max(-MAX_TRIM_DB, Math.min(MAX_TRIM_DB, trimDb));
+}
+
 /**
  * `min(-20 - lufs, -1 - truePeak) + trim`. A sound too short for a full measuring block has no loudness
  * and goes by its peak alone; a silent one has nothing to raise.
@@ -12,7 +18,7 @@ export function soundGainDb(lufs: number, truePeakDb: number, trimDb = 0): numbe
   const toTarget = Number.isFinite(lufs) ? TARGET_LUFS - lufs : Infinity;
   const toCeiling = Number.isFinite(truePeakDb) ? PEAK_CEILING_DB - truePeakDb : Infinity;
   const gain = Math.min(toTarget, toCeiling);
-  return (Number.isFinite(gain) ? gain : 0) + trimDb;
+  return (Number.isFinite(gain) ? gain : 0) + (Number.isFinite(trimDb) ? clampTrim(trimDb) : 0);
 }
 
 export interface SoundMeasure {

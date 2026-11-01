@@ -18,6 +18,8 @@ export interface DesiredVoice {
   channel: VoiceChannel;
   /** The sound filling this moment of the play. */
   span: TimelineSpan;
+  /** The list a music voice goes on through; null for a layer. */
+  list: MusicPlay | null;
   startAt: number;
   /** Frames since `startAt`; negative before it begins. */
   playFrame: number;
@@ -74,6 +76,7 @@ function voiceOf(
   id: string,
   channel: VoiceChannel,
   play: MusicPlay | LayerPlay,
+  list: MusicPlay | null,
   span: TimelineSpan,
   role: VoiceRole,
   muted: boolean,
@@ -88,6 +91,7 @@ function voiceOf(
     id,
     channel,
     span,
+    list,
     startAt: play.startAt,
     playFrame,
     frame: frameInSpan(span, playFrame),
@@ -111,12 +115,12 @@ export function layerVoiceId(play: LayerPlay): string {
 
 function musicVoice(play: MusicPlay, leaving: boolean, silence: number, tableMs: number): DesiredVoice | null {
   const span = musicSpanAt(play, playFrameAt(play.startAt, tableMs));
-  return span && voiceOf(musicVoiceId(play), 'music', play, span, roleOf(play, leaving), false, silence, tableMs);
+  return span && voiceOf(musicVoiceId(play), 'music', play, play, span, roleOf(play, leaving), false, silence, tableMs);
 }
 
 function layerVoice(play: LayerPlay, leaving: boolean, silence: number, tableMs: number): DesiredVoice | null {
   const span = layerSpan(play);
-  return span && voiceOf(layerVoiceId(play), 'ambience', play, span, roleOf(play, leaving), play.muted === true, silence, tableMs);
+  return span && voiceOf(layerVoiceId(play), 'ambience', play, null, span, roleOf(play, leaving), play.muted === true, silence, tableMs);
 }
 
 /**

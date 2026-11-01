@@ -111,6 +111,22 @@ export default defineConfig({
           },
         },
       },
+      {
+        extends: true,
+        // The sound engine's rendered proofs, on the other engine players' browsers use: local only, as the gpu project.
+        test: {
+          name: 'sound-webkit',
+          setupFiles: ['./tests/setup/obsidianDom.ts', './tests/setup/domHost.ts'],
+          include: ['tests/gpu/sound/**/*.gpu.test.ts'],
+          testTimeout: 600_000,
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: 'webkit' }],
+          },
+        },
+      },
     ],
   },
 });

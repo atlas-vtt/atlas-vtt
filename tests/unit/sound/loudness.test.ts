@@ -112,6 +112,11 @@ describe('the gain of a sound', () => {
     expect(soundGainDb(-Infinity, -Infinity, 3)).toBe(3);
   });
 
+  it('holds the trim to a sane range, and ignores one that is no number', () => {
+    expect(soundGainDb(-20, -6, 100)).toBe(24);
+    expect(soundGainDb(-20, -6, Number.NaN)).toBe(0);
+  });
+
   it('makes a SoundInfo', () => {
     const loop = { startFrame: 10, endFrame: 20 };
     expect(soundInfoOf('k', { frames: 30, lufs: -20, truePeakDb: -6 }, { trimDb: 1, loop })).toEqual({ key: 'k', frames: 30, gainDb: 1, loop });

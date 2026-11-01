@@ -86,7 +86,8 @@ export class OggCorruptError extends Error {}
 
 /**
  * The page at `offset`, null when the bytes end before it does. A page whose checksum does not match is
- * refused, which is what stands behind a range read that cannot be checked against the file's hash.
+ * refused. That catches damage, not forgery: a range read cannot be checked against the file's hash, so
+ * what it is worth rests on the store holding files under their hash.
  */
 export function readPage(bytes: Uint8Array, offset: number): OggPage | null {
   if (offset + PAGE_HEADER_BYTES > bytes.length) return null;

@@ -114,6 +114,10 @@ describe('the seek table', () => {
     expect(decodeSeekTable(encodeSeekTable(entries))).toEqual(entries);
     expect(decodeSeekTable('!?')).toEqual([]);
     expect(decodeSeekTable('')).toEqual([]);
+    expect(decodeSeekTable('1:0,5:5')).toEqual([]);
+    expect(decodeSeekTable('0:0,5:0')).toEqual([]);
+    expect(decodeSeekTable('0:0,-5:5')).toEqual([]);
+    expect(decodeSeekTable(`0:0,${'z'.repeat(11)}:5`)).toEqual([]);
   });
 
   it('finds the last entry at or before a position', () => {
