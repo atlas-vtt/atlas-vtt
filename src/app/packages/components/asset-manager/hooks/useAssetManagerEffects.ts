@@ -6,6 +6,7 @@ import type { SelectionState } from './useSelectionHandlers';
 import type { AssetCrudActions } from './useAssetCrud';
 import type { TagsAndCollectionsState } from './useTagsAndCollections';
 import type { StatblockLinkState } from './useStatblockLink';
+import { shownTabs } from '../utils/tabKinds';
 import { isShortcutScopeActive } from '../../../../utils/activeLeafGuard';
 import { matchesMapHotkey } from '../../../../keyboard/mapHotkeys';
 import { isTextEntryTarget } from '../../../../keyboard/textEntry';
@@ -17,8 +18,8 @@ interface EffectDeps {
   modalRef: React.RefObject<HTMLDivElement | null>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   activeTab: Tab;
-  /** The tabs offered, which the keys go through. */
-  tabs: readonly Tab[];
+  /** The tabs offered, which the keys go through; without it, those of the Sounds tab being off. */
+  tabs?: readonly Tab[];
   changeTab: (tab: Tab) => void;
   data: AssetData;
   sel: SelectionState;
@@ -30,7 +31,7 @@ interface EffectDeps {
 export function useAssetManagerEffects({
   isOpen, onClose,
   modalRef, containerRef,
-  activeTab, tabs, changeTab,
+  activeTab, tabs = shownTabs(false), changeTab,
   data, sel, crud, tags, statblock,
 }: EffectDeps): void {
   const isAnySubModalOpen =
