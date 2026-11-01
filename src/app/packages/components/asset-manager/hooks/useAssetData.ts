@@ -1,6 +1,6 @@
 import type * as React from 'react';
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { TFolder, App as ObsidianApp } from 'obsidian';
+import { debounce, TFolder, App as ObsidianApp } from 'obsidian';
 import type { AnyAsset, CollectionOption, Folder, Tag, Tab } from '../types';
 import { tabs } from '../types';
 import { AssetService } from '../../../../services/AssetService';
@@ -60,6 +60,9 @@ interface LoadedPlace {
   collection: string;
 }
 
+/** How long the vault stays quiet before the Sounds tab looks at its files again. */
+const SOUND_FILES_QUIET_MS = 500;
+
 function samePlace(a: LoadedPlace, b: LoadedPlace): boolean {
   return a.tab === b.tab && a.collection === b.collection;
 }
@@ -80,7 +83,7 @@ export function useAssetData(
   const [isUnavailable, setIsUnavailable] = useState(false);
   const latestLoad = useRef(0);
   const latestTagsLoad = useRef(0);
-  const [tagsByGroup, setTagsByGroup] = useState<TagsByGroup>({ tokens: [], maps: [] });
+  const [tagsByGroup, setTagsByGroup] = useState<TagsByGroup>({ tokens: [], maps: [], sounds: [] });
   const [tagsCollection, setTagsCollection] = useState<string | null>(null);
   const availableTags = tagsByGroup[tagGroupOfTab(activeTab)];
   const [collections, setCollections] = useState<CollectionOption[]>([]);
@@ -159,6 +162,7 @@ export function useAssetData(
         encounters: byTab.encounters.length,
         tokens: byTab.tokens.length,
         party: byTab.party.length,
+        sounds: byTab.sounds.length,
       };
       setCounts((previous) => (previous && tabs.every((tab) => previous[tab] === loaded[tab]) ? previous : loaded));
     } catch (error) {
@@ -182,6 +186,17 @@ export function useAssetData(
     return () => { app.workspace.offref(ref); };
   }, [app, activeTab, loadAssetsForActiveTab]);
 
+  // A card says whether its audio is here, and a sync may deliver a long track well after its record.
+  useEffect(() => {
+    if (!app || activeTab !== 'sounds') return;
+    const reload = debounce(() => { void loadAssetsForActiveTab(); }, SOUND_FILES_QUIET_MS, true);
+    const refs = [app.vault.on('create', reload), app.vault.on('delete', reload), app.vault.on('rename', reload)];
+    return () => {
+      reload.cancel();
+      for (const ref of refs) app.vault.offref(ref);
+    };
+  }, [app, activeTab, loadAssetsForActiveTab]);
+
   // ── Tags ──────────────────────────────────────────────────────
   const reloadGlobalTags = useCallback(async (): Promise<void> => {
     if (!assetService) return;
@@ -189,7 +204,7 @@ export function useAssetData(
     try {
       const load = async (group: TagGroup): Promise<Tag[]> =>
         (await assetService.getCollectionTags(selectedCollection, group)).map((t) => ({ id: t.id, name: t.name }));
-      const loaded = { tokens: await load('tokens'), maps: await load('maps') };
+      const loaded = { tokens: await load('tokens'), maps: await load('maps'), sounds: await load('sounds') };
       if (request !== latestTagsLoad.current) return;
       setTagsByGroup(loaded);
       setTagsCollection(selectedCollection);

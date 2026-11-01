@@ -5,8 +5,9 @@ import { isCharacterTab } from './tabKinds';
 /** A collection's tags, one list per tag group. */
 export type TagsByGroup = Record<TagGroup, Tag[]>;
 
-/** Characters share tags with encounters, maps with scenes. */
+/** Characters share tags with encounters, maps with scenes; sounds keep their own. */
 export function tagGroupOfTab(tab: Tab): TagGroup {
+  if (tab === 'sounds') return 'sounds';
   return isCharacterTab(tab) || tab === 'encounters' ? 'tokens' : 'maps';
 }
 

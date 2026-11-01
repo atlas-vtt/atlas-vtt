@@ -64,6 +64,7 @@ import { CampaignPlayers } from './src/app/campaigns/players/CampaignPlayers';
 import { releaseMapPictures } from './src/app/react/components/dashboard/mapPicture';
 import { PlayedRules } from './src/app/campaigns/playedRules';
 import { QuestIndex } from './src/app/campaigns/quests/QuestIndex';
+import { MoodStore } from './src/app/soundLibrary/MoodStore';
 import { nameQuestCampaigns } from './src/app/campaigns/quests/nameQuestCampaigns';
 import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
@@ -269,6 +270,7 @@ export default class AtlasVTTPlugin extends Plugin {
     CampaignPlayers.release(this.app);
     CampaignFiles.release(this.app);
     QuestIndex.release(this.app);
+    MoodStore.release(this.app);
     DiceSetFiles.release(this.app);
     this.widgetSyncService?.destroy();
     this.widgetSyncService = undefined;

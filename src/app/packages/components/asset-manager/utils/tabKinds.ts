@@ -1,4 +1,4 @@
-import type { Tab } from '../types';
+import { tabs, type Tab } from '../types';
 
 /**
  * Whether a tab lists library tokens: the Characters tab and the Player characters tab, which
@@ -13,5 +13,8 @@ export const isCharacterTab = (tab: Tab): boolean => tab === 'tokens' || tab ===
  */
 export const assetTypeOfTab = (tab: Tab): Exclude<Tab, 'party'> => (tab === 'party' ? 'tokens' : tab);
 
-/** Whether a tab shows folders. The party is a short list of its own, shown flat wherever its tokens lie. */
-export const tabHasFolders = (tab: Tab): boolean => tab !== 'party';
+/** Whether a tab shows folders. The party is a short list of its own, shown flat wherever its tokens lie, and so are sounds, whose audio lies anywhere in the vault. */
+export const tabHasFolders = (tab: Tab): boolean => tab !== 'party' && tab !== 'sounds';
+
+/** The tabs the asset manager offers: the Sounds tab only while the experimental switch is on. */
+export const shownTabs = (soundOn: boolean): readonly Tab[] => (soundOn ? tabs : tabs.filter((tab) => tab !== 'sounds'));

@@ -144,7 +144,7 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
             {props.onClearFilters ? (
               <Button variant="outline" className="atlas-empty-action" onClick={props.onClearFilters}>{t('am.empty.clearFilters')}</Button>
             ) : (
-              <p>{t(activeTab === 'party' ? 'am.empty.partyHint' : 'am.empty.hint')}</p>
+              <p>{t(activeTab === 'party' ? 'am.empty.partyHint' : activeTab === 'sounds' ? 'audio.empty' : 'am.empty.hint')}</p>
             )}
           </motion.div>
         ) : (

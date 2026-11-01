@@ -17,6 +17,7 @@ import { systemPresetsOf } from '../mapCollectionRules';
 import { templateIdMap, withSettingsTemplates, type PlannedTemplate, type TemplateIdMap } from '../../statblocks/bundles/bundleTemplateIds';
 import { presetsAfterImport } from '../systemPresets/bundlePresets';
 import { recordIdMap, type PlannedRecord } from '../vaultRecords/bundleRecords';
+import { hasRecordFolder } from '../vault-sync/assetFiles';
 
 /** Where the bundle's files and records go in this vault. */
 export interface ImportTargets {
@@ -74,7 +75,7 @@ export function installedAsset(asset: Asset, targets: ImportTargets): Asset {
 }
 
 /** Asset fields naming files that deleting the asset trashes; an import must never point them outside Atlas's folder. */
-const DELETABLE_PATH_FIELDS = ['imagePath', 'notePath', 'filePath', 'thumbnailPath', 'mapFilePath'] as const;
+const DELETABLE_PATH_FIELDS = ['imagePath', 'notePath', 'filePath', 'thumbnailPath', 'mapFilePath', 'audioPath'] as const;
 
 function deletablePaths(asset: Asset): string[] {
   const record: Record<string, unknown> = { ...asset };
@@ -188,7 +189,7 @@ export async function planTargets(
   for (const asset of manifest.assets) {
     const localId = assetIds.get(asset.id)!;
     // Records without an explicit file path find their file by id, so a renamed record takes its file along.
-    const derivesFile = asset.type !== 'token' && asset.type !== 'note' && !asset.filePath;
+    const derivesFile = !hasRecordFolder(asset) && !asset.filePath;
     const bundleFile = assets.getAssetFilePath({ ...asset, collection: manifest.collection.id });
     if (derivesFile && localId !== asset.id) {
       paths.set(bundleFile, assets.getAssetFilePath({ ...asset, id: localId, collection: collectionId }));
