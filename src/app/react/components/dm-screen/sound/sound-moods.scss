@@ -122,6 +122,21 @@
   color: var(--text-warning);
 }
 
+.atlas-sound-mood__players {
+  position: absolute;
+  bottom: $spacing-s;
+  right: $spacing-s;
+
+  &[data-players='nowhere'] {
+    color: var(--text-warning);
+  }
+}
+
+// Both in one corner: what keeps it from players stands above what keeps it from the GM.
+.atlas-sound-tag--problem ~ .atlas-sound-mood__players {
+  bottom: calc(#{$spacing-s} + 18px);
+}
+
 .atlas-sound-mood__menu.atlas-sound-mood__menu {
   position: absolute;
   top: $spacing-xs;

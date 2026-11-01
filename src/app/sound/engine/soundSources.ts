@@ -32,6 +32,7 @@ export class SoundSources {
     private context: SoundContext,
     private readonly resolve: ResolveBytes,
     private readonly forcedWindowDecode: ((context: SoundContext) => WindowDecode) | null = null,
+    private readonly spareBytes: number = SPARE_DECODED_BYTES,
   ) {}
 
   /** Decoded audio outlives a context; only what decodes for it moves to the new one. */
@@ -56,6 +57,11 @@ export class SoundSources {
     const held = this.buffers.get(key);
     if (held) held.uses--;
     this.evict();
+  }
+
+  /** What whole decoded sounds hold now, spare ones included. */
+  decodedBytes(): number {
+    return [...this.buffers.values()].reduce((sum, held) => sum + held.bytes, 0);
   }
 
   /** Forgets a sound that failed, so a later attempt asks again. */
@@ -144,7 +150,7 @@ export class SoundSources {
     const spare = [...this.buffers.entries()].filter(([, held]) => held.uses <= 0 && held.bytes > 0).sort((a, b) => a[1].lastUse - b[1].lastUse);
     let total = spare.reduce((sum, [, held]) => sum + held.bytes, 0);
     for (const [key, held] of spare) {
-      if (total <= SPARE_DECODED_BYTES) return;
+      if (total <= this.spareBytes) return;
       this.buffers.delete(key);
       total -= held.bytes;
     }

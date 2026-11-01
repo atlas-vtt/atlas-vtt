@@ -8,6 +8,8 @@ type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
 /** Facts of this device, never synced: which output it plays on, and what it played last. */
 const OUTPUT_KEY = 'atlas-vtt:sound-output';
 const LAST_MIX_KEY = 'atlas-vtt:sound-last';
+const SEND_TO_PLAYERS_KEY = 'atlas-vtt:sound-send-players';
+const LICENCE_NOTE_KEY = 'atlas-vtt:sound-licence-note';
 
 export interface StoredOutput {
   id: string;
@@ -49,6 +51,17 @@ export function loadOutput(storage: DeviceStorage): StoredOutput | null {
 /** Null is the system's default output. */
 export function saveOutput(storage: DeviceStorage, output: StoredOutput | null): void {
   write(storage, OUTPUT_KEY, output);
+}
+
+/** Whether this device sends its sound to players: off where phones at the table would echo the speaker. */
+export const loadSendToPlayers = (storage: DeviceStorage): boolean => read(storage, SEND_TO_PLAYERS_KEY) !== false;
+export const saveSendToPlayers = (storage: DeviceStorage, on: boolean): void => write(storage, SEND_TO_PLAYERS_KEY, on);
+
+/** The first sound that goes up on this device says what must hold for it, once. */
+export function licenceNoteDue(storage: DeviceStorage): boolean {
+  if (read(storage, LICENCE_NOTE_KEY) === true) return false;
+  write(storage, LICENCE_NOTE_KEY, true);
+  return true;
 }
 
 function readMusic(value: unknown): MoodMusic | null {

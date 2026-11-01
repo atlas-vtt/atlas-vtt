@@ -10,7 +10,7 @@ import { answerOffer } from './offerRound.ts';
 import { roomRetryMs } from './uploadPace.ts';
 import type { AssetPublisherPorts } from './publisherPorts.ts';
 import { PyramidPublishing } from './pyramidPublishing.ts';
-import { entryPyramid, UploadQueue, type QueueEntry } from './uploadQueue.ts';
+import { copyStateOf, entryPyramid, UploadQueue, type CopyState, type QueueEntry } from './uploadQueue.ts';
 import { UploadRunner } from './uploadRunner.ts';
 
 /** How long new assets gather before they are offered, so a scene's go in one request. */
@@ -129,6 +129,11 @@ export class AssetPublisher {
     this.progress.resend(to);
   }
 
+  /** How an asset stands in the store, for the GM to read. */
+  copyState(id: string): CopyState {
+    return copyStateOf(this.queue.get(id), this.progress.share(id) ?? 0);
+  }
+
   /** The account signs out: nothing more is offered or sent, and what goes up stops before its next request. */
   suspend(): void {
     this.halted = 'signed-out';
@@ -236,6 +241,7 @@ export class AssetPublisher {
   private stored(entry: QueueEntry): void {
     this.queue.stored(entry);
     if (entry.handed) this.progress.set(entry.id, 1);
+    else this.ports.shareChanged?.();
   }
 
   /** The store takes nothing more: every asset players were handed that is not stored is taken from them. */

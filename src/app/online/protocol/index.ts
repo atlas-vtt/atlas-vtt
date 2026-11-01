@@ -31,6 +31,7 @@ export * from './relay.ts';
 export * from './rules.ts';
 export * from './seat.ts';
 export { isRecord } from './shape.ts';
+export * from './sound.ts';
 export * from './stream.ts';
 export * from './tokens.ts';
 export * from './tokenUI.ts';

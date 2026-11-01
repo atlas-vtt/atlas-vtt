@@ -1,6 +1,7 @@
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
+import type { PlayersCopy } from '@/app/soundDirector/tableClock';
 import { COLLECTION, DARK, LIGHT, openSoundTab, seedMoods, type SoundTab } from './sound/soundTabHarness';
 
 // Statblocks reach Node's `events` through the token link service, which a browser test cannot import; this file is about the page beside them.
@@ -38,6 +39,59 @@ describe('the DM screen’s Sound page', () => {
     tab?.unmount();
     tab = null;
     viewport.remove();
+  });
+
+  it('says for a table online how each mood stands for players, and who hears', async () => {
+    await page.viewport(1280, 820);
+    tab = await openSoundTab(DARK, viewport);
+    seedMoods(tab);
+    await allReady(tab);
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-mood').length).toBe(11);
+    let sending = true;
+    const copies = new Map<string, PlayersCopy>();
+    const listeners = new Set<() => void>();
+    const prepared: string[] = [];
+    await act(async () => {
+      tab?.director.players.use({
+        copyOf: (record) => copies.get(record.name) ?? { state: 'ready' },
+        prepare: (collection) => void prepared.push(collection),
+        get sending() { return sending; },
+        setSending: (on) => {
+          sending = on;
+          for (const listener of listeners) listener();
+        },
+        onChange: (listener) => (listeners.add(listener), () => listeners.delete(listener)),
+      });
+      tab?.director.useAudience({ line: () => '3 of 5 hearing · 2 tracks still uploading', onChange: () => () => undefined });
+      await sleep(0);
+    });
+    copies.set('Rain', { state: 'uploading', share: 0.4 });
+    copies.set('Road to Wolfhaven', { state: 'nowhere' });
+    await act(async () => {
+      for (const listener of listeners) listener();
+      await sleep(0);
+    });
+    const tags = [...document.querySelectorAll<HTMLElement>('.atlas-sound-tag--players')].map((tag) => tag.dataset.players);
+    expect(tags).toContain('uploading');
+    expect(tags).toContain('nowhere');
+    expect(tags).toContain('ready');
+    expect(document.querySelector('.atlas-sound-output')?.textContent).toBe('3 of 5 hearing · 2 tracks still uploading');
+    for (const mood of document.querySelectorAll('.atlas-sound-mood')) {
+      const inner = mood.querySelector('.atlas-sound-tag--players')?.getBoundingClientRect();
+      if (inner) expect(inner.right).toBeLessThanOrEqual(mood.getBoundingClientRect().right + 1);
+    }
+    await page.screenshot({ path: `${SHOTS}/players-dark.png` });
+    const prepare = [...document.querySelectorAll('.atlas-sound-players button')].find((button) => button.textContent === 'Prepare for players');
+    await userEvent.click(prepare as HTMLElement);
+    expect(prepared).toEqual([COLLECTION]);
+    await userEvent.click(document.querySelector('.atlas-sound-players [role="switch"]') as HTMLElement);
+    expect(sending).toBe(false);
+    await expect.poll(() => document.querySelector('.atlas-sound-tag--players')).toBeNull();
+    await act(async () => {
+      tab?.director.players.use(null);
+      await sleep(0);
+    });
+    expect(document.querySelector('.atlas-sound-players')).toBeNull();
   });
 
   it('stands on the backdrop, with two panes at about 60 and 40, and the tab control', async () => {

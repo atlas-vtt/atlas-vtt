@@ -16,7 +16,7 @@ export const ASSET_CAPS = {
   image: 95 * 1024 * 1024,
   tiles: MAX_STORED_BYTES,
   video: 500 * 1024 * 1024,
-  audio: 100 * 1024 * 1024,
+  audio: 256 * 1024 * 1024,
   text: 1024 * 1024,
   book: 64 * 1024 * 1024,
 } as const;
@@ -27,6 +27,8 @@ export const isAssetKind = (value: unknown): value is AssetKind => typeof value 
 export const IMAGE_MIME_TYPES: readonly string[] = ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif'];
 /** Video types an animated map may have: a page plays it in its poster's place. */
 export const VIDEO_MIME_TYPES: readonly string[] = ['video/webm', 'video/mp4'];
+/** The one type a sound is stored as: Ogg Opus, as the GM's Atlas converts it. */
+export const AUDIO_MIME_TYPE = 'audio/ogg';
 /** The type of a text players are sent by hash (a quest's whole text): Markdown in UTF-8. */
 export const TEXT_MIME_TYPE = 'text/markdown';
 
@@ -63,6 +65,9 @@ export const parseVideoAsset = (value: unknown): AssetRef | null => parseRef(val
 
 /** A text's reference (`TEXT_MIME_TYPE`), or null for anything malformed or of another type. */
 export const parseTextAsset = (value: unknown): AssetRef | null => parseRef(value, [TEXT_MIME_TYPE]);
+
+/** A sound's reference (`AUDIO_MIME_TYPE`), or null for anything malformed or of another type. */
+export const parseAudioAsset = (value: unknown): AssetRef | null => parseRef(value, [AUDIO_MIME_TYPE]);
 
 /** A side of an image in pixels, as a message may name it. */
 export const isSide = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0 && value <= 1 << 20;

@@ -1,3 +1,5 @@
+import type { Mood, SoundRecord } from '../sound/soundTypes';
+
 /** The clock a table's sound runs on: one machine's own offline, a shared one online. */
 export interface TableClock {
   now(): number;
@@ -9,4 +11,24 @@ export interface TableClock {
 export interface AudienceLine {
   line(): string | null;
   onChange(listener: () => void): () => void;
+}
+
+/** How a sound stands for players at a table online: they can have it, it is on its way, or the store has none. */
+export type PlayersCopy = { readonly state: 'ready' } | { readonly state: 'uploading'; readonly share: number } | { readonly state: 'nowhere' };
+
+/** What a table online tells the Sound page, while one runs. */
+export interface PlayersSounds {
+  copyOf(record: SoundRecord): PlayersCopy;
+  /** Offers all that a collection's moods name, ahead of being pressed. */
+  prepare(collectionId: string): void;
+  /** This device's switch: off, players hear nothing from it. */
+  readonly sending: boolean;
+  setSending(on: boolean): void;
+  onChange(listener: () => void): () => void;
+}
+
+/** The moods a scene links, with the collection they and the rest of its moods lie in. */
+export interface SceneMoods {
+  collectionId: string;
+  linked: Mood[];
 }

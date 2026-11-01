@@ -43,9 +43,9 @@ export async function runJob(entry: QueueEntry, deps: JobDeps): Promise<JobEnd> 
     return run.end;
   }
   if (upload.upload === 'tiles') return 'changed';
-  const bytes = 'bytes' in source ? source.bytes : await deps.readFile(source.path).catch(() => null);
+  const bytes = 'bytes' in source ? source.bytes : await ('read' in source ? source.read() : deps.readFile(source.path)).catch(() => null);
   if (bytes === null) return 'changed';
   // Bytes kept since they were hashed, or a file unchanged since, are not hashed again whole.
-  const trusted = 'bytes' in source || deps.unchanged(source.path, entry.hash);
+  const trusted = 'bytes' in source || ('path' in source && deps.unchanged(source.path, entry.hash));
   return uploadAsset({ id: entry.id, hash: entry.hash, mime: entry.mime, upload: upload.upload, partBytes: upload.partBytes }, bytes, deps.client, deps.slot, deps.progress, { signal: deps.signal, trusted });
 }

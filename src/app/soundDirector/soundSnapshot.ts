@@ -16,4 +16,6 @@ export interface SoundSnapshot {
   waitingKeys: readonly string[];
   /** The records were read again, or copies changed. */
   shelfRevision: number;
+  /** A table online told the Sound page something new. */
+  playersRevision: number;
 }

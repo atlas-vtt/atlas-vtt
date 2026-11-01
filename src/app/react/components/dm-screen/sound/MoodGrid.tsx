@@ -10,6 +10,7 @@ import { useContextMenu } from '../../../root/ContextMenuContext';
 import { useAtlasStore } from '../../../ViewStoreContext';
 import { MoodCard } from './MoodCard';
 import { MoodEditDialog } from './MoodEditDialog';
+import { moodForPlayers } from './PlayersRow';
 import { useMoodDrag } from './useMoodDrag';
 import { useSoundValue } from './useSound';
 
@@ -35,6 +36,7 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
   const [editing, setEditing] = useState<Mood | null>(null);
   const activeId = useSoundValue(director, (snapshot) => (snapshot.mix.mood?.collectionId === collectionId ? snapshot.mix.mood.id : null));
   const shelfRevision = useSoundValue(director, (snapshot) => snapshot.shelfRevision);
+  const playersRevision = useSoundValue(director, (snapshot) => snapshot.playersRevision);
 
   const canMove = useCallback((mood: Mood) => !store.isReadOnly(collectionId, mood.id), [collectionId, store]);
   const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canMove, moveMood);
@@ -61,6 +63,7 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
   }, [director, moods, shelfRevision]);
 
   const problems = useMemo(() => new Map(moods.map((mood) => [mood.id, moodProblems(mood, director.shelf)])), [director, moods, shelfRevision]);
+  const forPlayers = useMemo(() => new Map(moods.map((mood) => [mood.id, moodForPlayers(mood, director)])), [director, moods, shelfRevision, playersRevision]);
   const activeAt = shown.findIndex((mood) => mood.id === activeId);
   const nextId = shown.length > 1 ? shown[(activeAt + 1) % shown.length]?.id : undefined;
 
@@ -75,6 +78,7 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
           next={mood.id === nextId}
           dragging={mood.id === draggingId}
           problems={problems.get(mood.id) ?? NO_PROBLEMS}
+          players={forPlayers.get(mood.id) ?? null}
           onPress={press}
           onMenu={openMenu}
           onDragStart={start}
