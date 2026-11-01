@@ -21,7 +21,7 @@ export function FullScreenButton(): React.ReactElement | null {
     <ToolButton
       icon={fullScreen ? Minimize : Maximize}
       label={fullScreen ? t("playerBar.leaveFullScreen") : t("playerBar.fullScreen")}
-      {...(disabled && { subtitle: t("playerBar.connectScreen") })}
+      {...(!fullScreen && { subtitle: t(secondDisplay ? "playerBar.fullScreenHint" : "playerBar.connectScreen") })}
       isActive={fullScreen}
       disabled={disabled}
       onClick={() => runInBackground(setPlayerWindowFullScreen(!fullScreen), "Changing the player window's full screen")}

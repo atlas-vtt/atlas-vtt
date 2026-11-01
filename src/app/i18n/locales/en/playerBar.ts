@@ -4,6 +4,7 @@ import type { Message } from '../../types';
 export const playerBar = {
   'playerBar.bar': 'Player window',
   'playerBar.fullScreen': 'Full screen on the TV',
+  'playerBar.fullScreenHint': 'Fills your second screen with the player window',
   'playerBar.leaveFullScreen': 'Leave full screen',
   'playerBar.connectScreen': 'Connect a second screen',
   'playerBar.curtainDown': 'Hide the map',

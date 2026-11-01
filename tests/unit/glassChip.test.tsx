@@ -204,6 +204,12 @@ describe('the glass chip', () => {
     expect(service.framePlayersOn).toHaveBeenLastCalledWith('tab-a', 163 + 63, 122 + 22);
   });
 
+  it('says on its label what a drag does and that Alt frees it', () => {
+    render(<GlassChip view={fakeView()} />);
+    const hint = screen.getByText('Drag to move. Snaps to a square grid unless you hold Alt.');
+    expect(screen.getByText('Players · following you').getAttribute('aria-describedby')).toBe(hint.id);
+  });
+
   it('does not drag below the threshold, so a press stays a click', () => {
     render(<GlassChip view={fakeView()} />);
     drag([{ x: 102, y: 51 }]);

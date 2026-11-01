@@ -1,3 +1,6 @@
+## Improved
+- TrueScale: the setup screen says what it is and which card to use (a bank or credit card, 85.6 × 54 mm), and the full screen button and the players' chip say what they do
+
 ## Fixed
 - The confirmation for deleting a collection in Manage no longer opens behind the asset manager
 

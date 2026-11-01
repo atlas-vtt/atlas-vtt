@@ -50,7 +50,7 @@ function setup({ attach: attachNow = true } = {}): Harness {
   const drawImage = vi.fn();
   const fillText = vi.fn();
   const drawing = Object.fromEntries(['save', 'restore', 'fillRect', 'beginPath', 'moveTo', 'lineTo', 'arcTo', 'closePath', 'fill', 'stroke'].map((name) => [name, vi.fn()]));
-  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ ...drawing, clearRect: vi.fn(), drawImage, fillText } as never);
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ ...drawing, clearRect: vi.fn(), drawImage, fillText, measureText: () => ({ width: 0 }) } as never);
   sizePlayerWindow();
   const { app } = createInMemoryApp();
   const store = createStore(() => ({})) as StoreApi<ViewAtlasState>;
@@ -496,13 +496,13 @@ describe('player camera freeze', () => {
 
       service.showSetup({ kind: 'orientation' });
       nextFrame();
-      expect(fillText.mock.calls.map(([text]) => text)).toEqual(['Which way is up?', 'Turn the picture until the arrow points away from the players']);
+      expect(fillText.mock.calls.map(([text]) => text)).toEqual(['TrueScale setup · the map at real size on this screen', 'Which way is up?', 'Turn the picture until the arrow points away from the players']);
       expect(lastFrame().scale).toBe(scale);
 
       fillText.mockClear();
       service.showSetup({ kind: 'fit', pxPerMm: 5.512 });
       nextFrame();
-      expect(fillText.mock.calls[0]).toEqual(['Lay a bank card inside the outline', expect.any(Number), expect.any(Number)]);
+      expect(fillText.mock.calls[1]).toEqual(['Lay a bank or credit card inside the outline', expect.any(Number), expect.any(Number)]);
       // A cell of 70 world pixels spans 25.4 mm of the dial's 5.512 device pixels (140), at a pixel ratio of 1
       expect(lastFrame().scale).toBeCloseTo(2);
 
