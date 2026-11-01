@@ -5,13 +5,15 @@ import { generateDungeon } from '../../../../src/app/dungeons/generate';
 import { floorCellsOf } from '../../../../src/app/dungeons/geometry';
 import type { DungeonModel } from '../../../../src/app/dungeons/model';
 import { viewBounds } from '../../../../src/app/dungeons/render/art/artScene';
-import { unionRings } from '../../../../src/app/dungeons/render/clipShapes';
+import { wayOutline } from '../../../../src/app/dungeons/render/cave/ways/wayOutline';
+import { grownRings, unionRings } from '../../../../src/app/dungeons/render/clipShapes';
 import { forestMass, woodsOutside } from '../../../../src/app/dungeons/render/forest/forestMass';
 import { leafyMass, massEdge, needledRing, traceShape } from '../../../../src/app/dungeons/render/grounds/crowns';
 import { pointInPolygon, pointSegmentDistance, signedArea2, type Bounds, type Vec } from '../../../../src/app/dungeons/render/geometry';
 import { DEFAULT_PX_PER_CELL, mapLayout, SCENE_MAP_PIXELS, suggestedPxPerCell } from '../../../../src/app/dungeons/render/layoutSize';
 import { visibleDungeon } from '../../../../src/app/dungeons/render/visibleDungeon';
-import { forestWalls, necksOf, treeLine } from '../../../../src/app/dungeons/scene/forestWalls';
+import { necksOf } from '../../../../src/app/dungeons/scene/forestNecks';
+import { forestWalls, treeLine } from '../../../../src/app/dungeons/scene/forestWalls';
 import { worldTexel } from '../../../../src/app/lighting/lightingConstants';
 import { sealedWalls } from '../../../../src/app/lighting/sealWalls';
 import { DEFAULT_VIEW } from '../../../../src/app/dungeons/style';
@@ -33,6 +35,9 @@ const CASES: { seed: number; tags: DungeonTag[]; floors: number; look: DungeonSt
   { seed: 5602, tags: ['winding'], floors: 2, look: 'crayon' },
   // A clearing whose neck the crowns closed: found by a sweep.
   { seed: 30066, tags: ['medium'], floors: 1, look: 'crayon' },
+  // The clipper's union of the crowns' raw curves drew sides dozens of cells long across these floors: found by a review.
+  { seed: 1314554, tags: ['flooded', 'deep'], floors: 1, look: 'crayon' },
+  { seed: 871090, tags: [], floors: 2, look: 'crayon' },
 ];
 
 const forest = ({ seed, tags, floors }: typeof CASES[number]): DungeonModel => generateDungeon({ seed, theme: 'forest', tags, floors });
@@ -48,6 +53,8 @@ const ON_THE_EDGE = 0.035;
 
 /** How many walls sight may go by for each drawn, sealing's bridges included. */
 const MOST_SEALED = 1.3;
+/** The longest side a wall may have, in cells: a crown's edge turns well within this, and a lane down a neck is about this straight at most. */
+const LONGEST_WALL = 6;
 /** The walls a test case may have: what the cave outline under the crowns had. */
 const MOST_WALLS = 4500;
 
@@ -122,11 +129,36 @@ describe('the necks a crown may not close', () => {
   const box = (x: number, y: number, w: number, h: number): Vec[] => [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
   // Two clearings joined by a passage a cell wide, the left one with a bay as narrow that leads nowhere.
   const floors = unionRings([box(0, 0, 4, 4), box(8, 0, 4, 4), box(4, 1.5, 4, 1), box(1.5, 4, 1, 3)]);
-  const necks = necksOf(floors);
+  /** How far inside hand-drawn floors a point lies, as a dungeon's distance field answers. */
+  const clearanceOf = (rings: readonly Vec[][]) => (x: number, y: number): number => {
+    const toSide = Math.min(...rings.flatMap(sidesOf).map(([a, b]) => pointSegmentDistance({ x, y }, a, b)));
+    return rings.some((ring) => pointInPolygon(ring, x, y)) ? toSide : -toSide;
+  };
+  const necks = necksOf(floors, clearanceOf(floors));
   const inNeck = (x: number, y: number): boolean => necks.some((ring) => pointInPolygon(ring, x, y));
 
-  it('hold the passage between two clearings', () => {
+  it('hold a lane down the middle of the passage between two clearings', () => {
     expect(inNeck(6, 2)).toBe(true);
+    expect(inNeck(6, 1.85)).toBe(true);
+    expect(inNeck(6, 2.15)).toBe(true);
+    // And it runs on into both clearings, whose mouths crowns can close too.
+    expect(inNeck(3.8, 2)).toBe(true);
+    expect(inNeck(8.2, 2)).toBe(true);
+  });
+
+  it('leave the sides of that passage to the crowns that lean into it', () => {
+    expect(inNeck(6, 1.65)).toBe(false);
+    expect(inNeck(6, 2.35)).toBe(false);
+  });
+
+  it('keep a lane of one width past a pinch, not a wider lane all along', () => {
+    const pinchedFloors = unionRings([box(0, 0, 4, 4), box(8, 0, 4, 4), box(4, 1.5, 1.8, 1), box(5.8, 1.85, 0.4, 0.3), box(6.2, 1.5, 1.8, 1)]);
+    const pinched = necksOf(pinchedFloors, clearanceOf(pinchedFloors));
+    const inLane = (x: number, y: number): boolean => pinched.some((ring) => pointInPolygon(ring, x, y));
+    expect(inLane(6, 2)).toBe(true);
+    expect(inLane(5, 2)).toBe(true);
+    expect(inLane(5, 1.65)).toBe(false);
+    expect(inLane(7, 2.35)).toBe(false);
   });
 
   it('leave a bay and the clearings themselves to the crowns', () => {
@@ -149,22 +181,23 @@ describe('a Forest\'s walls', () => {
       const segments = line.flatMap((run) => run.slice(1).map((b, k) => [run[k]!, b] as const));
       expect(segments.length).toBeGreaterThan(100);
       expect(segments.length).toBeLessThan(MOST_WALLS);
+      expect(Math.max(...segments.map(([a, b]) => Math.hypot(a.x - b.x, a.y - b.y)))).toBeLessThan(LONGEST_WALL);
       // Few corners lie closer than the sealing's tolerance, in the pixels a scene draws at: each such pair is a bridge sight has to go by too, so a finer line costs far more than its corners.
       const px = suggestedPxPerCell(model, DEFAULT_PX_PER_CELL, DEFAULT_VIEW, SCENE_MAP_PIXELS);
       const layout = mapLayout(model, px, DEFAULT_VIEW);
       const walls = segments.map(([a, b], k) => ({ id: `w${k}`, kind: 'wall' as const, type: 'solid' as const, p1: { x: a.x * px, y: a.y * px }, p2: { x: b.x * px, y: b.y * px } }));
       expect(sealedWalls(walls, worldTexel({ width: layout.widthPx, height: layout.heightPx })).length / walls.length).toBeLessThan(MOST_SEALED);
-      const crowns = unionRings(forestMass(dungeon, style, drawn).map(({ clump }) => massEdge(clump.shape)));
+      const crowns = unionRings(forestMass(dungeon, style, drawn).flatMap(({ clump }) => unionRings([massEdge(clump.shape)])));
       const stack = stackOf(model);
       const ways = dungeon.floor.stairs.flatMap((stair) => [spotRect(stair), ...approachCells(stair, stairEnd(stack, 0, stair.to)).map((c) => ({ x0: c.x, y0: c.y, x1: c.x, y1: c.y }))]);
       const atWay = (p: Vec, by: number): boolean => ways.some((r) => p.x >= r.x0 - by && p.x <= r.x1 + 1 + by && p.y >= r.y0 - by && p.y <= r.y1 + 1 + by);
 
-      // The walls lie on the drawn edge. They leave it only where it overhangs what stays walkable, a way down or a neck, and those are few.
+      // The walls lie on the drawn edge and go all round it. They leave it only where a crown reaches a lane that must stay open, which is seldom: a crown cut along a passage's side stands outside the walls.
       const toCrowns = distanceTo(crowns.flatMap(sidesOf));
       const points = segments.flatMap(along);
       const off = points.filter((p) => toCrowns(p) > ON_THE_EDGE);
       expect(off.filter((p) => !atWay(p, 0.01) && dungeon.field.distance(p.x, p.y) > ON_THE_EDGE)).toEqual([]);
-      expect(off.length / points.length).toBeLessThan(0.03);
+      expect(off.length / points.length).toBeLessThan(0.005);
 
       // And the drawn edge a token can come to has a wall on it. An inlet too narrow to walk in, or a stand of trees too small, is passed over.
       const outside = woodsOutside(dungeon);
@@ -172,7 +205,7 @@ describe('a Forest\'s walls', () => {
       const edge = stands.flat().filter((p) => outside(p.x, p.y) < 0.2 && p.x > map.minX + 0.3 && p.x < map.maxX - 0.3 && p.y > map.minY + 0.3 && p.y < map.maxY - 0.3 && !atWay(p, 0.4));
       expect(edge.length).toBeGreaterThan(100);
       const toWalls = distanceTo(segments);
-      expect(edge.filter((p) => toWalls(p) > ON_THE_EDGE).length / edge.length).toBeLessThan(0.05);
+      expect(edge.filter((p) => toWalls(p) > ON_THE_EDGE).length / edge.length).toBeLessThan(0.02);
     });
 
     it(`stop a token and light and not sight, sealing included: ${name}`, () => {
@@ -199,6 +232,18 @@ describe('a Forest\'s walls', () => {
         expect(computeVisibility(from, 300, sealed, undefined, 'sight')).toEqual(computeVisibility(from, 300, [], undefined, 'sight'));
         expect(computeVisibility(from, 300, sealed, undefined, 'light')).not.toEqual(computeVisibility(from, 300, [], undefined, 'light'));
       }
+    });
+
+    it(`stand on no way down, on what it draws: ${name}`, () => {
+      const model = forest(test);
+      model.floors.forEach((floor, index) => {
+        if (!floor.forest) return;
+        const dungeon = visibleDungeon(model, DEFAULT_VIEW, index);
+        const segments = treeLine(dungeon, dungeonStyle(test.look), pictureOf(model).map).flatMap((run) => run.slice(1).map((b, k) => [run[k]!, b] as const));
+        const drawn = floor.stairs.flatMap((stair) => wayOutline(stair, stairEnd(stackOf(model), index, stair.to), model.seed));
+        // A hair within the outline: the wall may run along it.
+        expect(segments.flatMap(along).filter((p) => drawn.some((ring) => pointInPolygon(grownRings([ring], -0.02).flat(), p.x, p.y)))).toEqual([]);
+      });
     });
 
     it(`leave every clearing and way down to be walked to, sealing included: ${name}`, () => {

@@ -2,13 +2,13 @@ import { stackOf, stairEnd } from '../../../floors/floorStack';
 import type { StairEnd } from '../../../floors/stairSpots';
 import type { CellDir } from '../../../model';
 import type { Hand } from '../../art/hand';
-import { hash2 } from '../../art/noise';
 import { polyPath, polysPath } from '../../art/paths';
 import { doorFrame, wayFrame, type WayFrame } from './narrows';
 import { screeShape } from './screeShape';
 import { dashes } from './shaftMouth';
 import { drawFaceTicks, layDepth, layFaces } from './slopeShading';
 import { stoneOf } from './wayColours';
+import { slopeSeed } from './wayOutline';
 import { withAlpha } from '../../palette';
 
 /**
@@ -30,7 +30,7 @@ function slope(hand: Hand, frame: WayFrame, end?: StairEnd): void {
 }
 
 function drawSlope(hand: Hand, frame: WayFrame, end?: StairEnd): void {
-  const seed = Math.floor(hash2(frame.bounds.minX, frame.bounds.minY, hand.scene.env.dungeon.model.seed) * 0x7fffffff);
+  const seed = slopeSeed(frame, hand.scene.env.dungeon.model.seed);
   const shape = screeShape(frame, seed, end);
   const stone = stoneOf(hand) !== null;
   // The stones lie on the ramp first, so the slope's depth darkens them with it.
