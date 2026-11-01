@@ -24,6 +24,22 @@ declare module 'obsidian' {
     };
     /** Renders `![[file]]` embeds and hover previews of non-markdown files, by extension. */
     embedRegistry?: EmbedRegistry;
+    /** Core plugin registry; read only to tell the GM what Obsidian Sync leaves out. */
+    internalPlugins?: {
+      getEnabledPluginById?(id: 'sync'): ObsidianSyncPlugin | null;
+    };
+  }
+
+  /** What Obsidian Sync's plugin holds; every member may be gone in another version of Obsidian. */
+  interface ObsidianSyncPlugin {
+    /** Set once its settings are read from its database, after the layout. */
+    dataLoaded?: boolean;
+    /** The remote vault; empty until Sync is set up on this device. */
+    vaultId?: string | null;
+    filter?: {
+      /** Whether Sync carries this path, by its file type and the excluded folders. */
+      allowSyncFile?(path: string, isFolder: boolean): boolean;
+    };
   }
 
   /** What Obsidian hands an embed creator: where to render and which link asked for it. */

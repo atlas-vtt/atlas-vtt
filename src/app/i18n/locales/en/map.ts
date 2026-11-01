@@ -16,6 +16,7 @@ export const map = {
   'map.finalizing': 'Finalizing...',
   'map.noGridFound': 'No grid was found on this map, so none is shown.',
   'map.openFailed': 'Atlas VTT could not open the scene {name} ({reason}).',
+  'map.syncLeavesOutFiles': 'Obsidian Sync leaves out Atlas scenes and maps on this device. To carry them, turn on "Sync all other types" in Settings → Sync on every device.',
   'map.imageUnshown': 'Atlas VTT could not show the map image {file}. {reason}',
   'map.videoTooLarge': 'The animated map {file} is {width} × {height} px, larger than this device can play ({side} px a side). It shows its first frame.',
   'map.videoUnplayable': 'The animated map {file} cannot play here, so it shows its first frame. {reason}',

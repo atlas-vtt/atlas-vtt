@@ -77,6 +77,7 @@ import { migrateSettingsToPluginData } from './src/app/plugin/settingsMigration'
 import { SystemPresetFiles } from './src/app/services/systemPresets/SystemPresetFiles';
 import { DiceSetFiles } from './src/app/services/diceSets/DiceSetFiles';
 import { registerStatusBarVisibility } from './src/app/plugin/statusBarVisibility';
+import { registerObsidianSyncNotice } from './src/app/plugin/obsidianSyncNotice';
 import { registerVaultSync } from './src/app/plugin/vaultSync';
 import { ChangelogService } from './src/app/changelog/ChangelogService';
 import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
@@ -168,6 +169,7 @@ export default class AtlasVTTPlugin extends Plugin {
     // Before the views: a restored map may start Atlas's first check of the vault,
     // whose folder renames reach map files only through these vault events.
     registerVaultSync(this);
+    registerObsidianSyncNotice(this);
     registerDiceStageRelease(this);
     registerMapProcessingStatus(this);
     registerAccentColorSync(this);
