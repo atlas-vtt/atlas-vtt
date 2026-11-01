@@ -115,7 +115,7 @@ export function layerVoiceId(play: LayerPlay): string {
 
 function musicVoice(play: MusicPlay, leaving: boolean, silence: number, tableMs: number): DesiredVoice | null {
   const span = musicSpanAt(play, playFrameAt(play.startAt, tableMs));
-  return span && voiceOf(musicVoiceId(play), 'music', play, play, span, roleOf(play, leaving), false, silence, tableMs);
+  return span && voiceOf(musicVoiceId(play), 'music', play, play, span, roleOf(play, leaving), play.muted === true, silence, tableMs);
 }
 
 function layerVoice(play: LayerPlay, leaving: boolean, silence: number, tableMs: number): DesiredVoice | null {

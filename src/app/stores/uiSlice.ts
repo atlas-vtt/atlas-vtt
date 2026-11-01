@@ -7,7 +7,7 @@
  */
 
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
-import type { DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
+import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
 
 /** State fields added to ViewAtlasState */
 export interface UISlice extends ViewUIState {
@@ -15,6 +15,7 @@ export interface UISlice extends ViewUIState {
   // Actions
   setGridSettingsOpen: (open: boolean) => void;
   setDMScreenOpen: (open: boolean) => void;
+  setDMScreenPage: (page: DMScreenPage) => void;
   setGridAlignmentOpen: (open: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
   openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
@@ -47,6 +48,7 @@ export function createInitialUIState(): Pick<
   UISlice,
   | 'isGridSettingsOpen'
   | 'isDMScreenOpen'
+  | 'dmScreenPage'
   | 'isGridAlignmentOpen'
   | 'isDiceLogOpen'
   | 'isAssetManagerOpen'
@@ -68,6 +70,7 @@ export function createInitialUIState(): Pick<
   return {
     isGridSettingsOpen: false,
     isDMScreenOpen: false,
+    dmScreenPage: 'statblocks',
     isGridAlignmentOpen: false,
     isDiceLogOpen: false,
     isAssetManagerOpen: false,
@@ -95,6 +98,7 @@ export function createUIActions(
   UISlice,
   | 'setGridSettingsOpen'
   | 'setDMScreenOpen'
+  | 'setDMScreenPage'
   | 'setGridAlignmentOpen'
   | 'setDiceLogOpen'
   | 'openAssetManager'
@@ -120,6 +124,7 @@ export function createUIActions(
   return {
     setGridSettingsOpen: (open) => set((draft) => { draft.isGridSettingsOpen = open; }),
     setDMScreenOpen: (open) => set((draft) => { draft.isDMScreenOpen = open; }),
+    setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),
     setDiceLogOpen: (open) => set((draft) => { draft.isDiceLogOpen = open; }),
     // The palette, the dice tray and the asset manager open where the toolbar editor's tray sits, or over the map: each ends edit mode.

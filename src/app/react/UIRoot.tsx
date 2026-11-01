@@ -38,6 +38,8 @@ import { defeatedOnMap } from '../initiative/defeatedOnMap';
 // Import the new context and hook
 import { AtlasUIContext, AtlasUIContextValue } from './root/AtlasUIContext';
 import { ContextMenuProvider } from './root/ContextMenuContext';
+import { SoundDirector } from '../soundDirector/SoundDirector';
+import { AssetService } from '../services/AssetService';
 import { PanelBoundary } from './root/PanelBoundary';
 import { useMapNavigationHotkeys } from './useMapNavigationHotkeys';
 import type { AtlasView } from '../atlas-view';
@@ -126,6 +128,21 @@ export const UIRoot: React.FC<UIRootProps> = ({ app, view, pixiApp }) => {
         e.preventDefault();
         store.getState().setDMScreenOpen(!store.getState().isDMScreenOpen);
         return;
+      }
+
+      if (!isPlayerView && settings?.isExperimentalOn('sound')) {
+        if (matchesMapHotkey(e, 'nextMood', settings)) {
+          e.preventDefault();
+          const mapPath = store.getState().mapPath;
+          const assets = AssetService.getInstance(app);
+          SoundDirector.forApp(app).pressNext((mapPath ? assets.getCollectionForMap(mapPath) : null) ?? assets.getDefaultCollectionId());
+          return;
+        }
+        if (matchesMapHotkey(e, 'silence', settings)) {
+          e.preventDefault();
+          SoundDirector.forApp(app).desk.toggleSilence();
+          return;
+        }
       }
 
       // Arrow Up/Down: Navigate initiative order (DM view, tracker open, combat active)

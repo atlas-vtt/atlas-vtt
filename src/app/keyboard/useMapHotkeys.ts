@@ -33,7 +33,7 @@ export function useMapHotkeys(handlers: Partial<Record<Exclude<MapHotkeyId, Held
   useEffect(() => {
     const handle = (event: KeyboardEvent): void => {
       if (!canRunMapHotkeys(event, id)) return;
-      const action = availableHotkeys().find(action => current.current[action.id] && matchesMapHotkey(event, action.id, settings));
+      const action = availableHotkeys(false, (feature) => settings?.isExperimentalOn(feature) ?? false).find(action => current.current[action.id] && matchesMapHotkey(event, action.id, settings));
       if (!action || ('yieldsToTextSelection' in action && hasTextSelection(event))) return;
       event.preventDefault();
       current.current[action.id]?.(event);

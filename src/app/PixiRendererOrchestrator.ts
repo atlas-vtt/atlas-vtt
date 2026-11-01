@@ -495,7 +495,7 @@ export class PixiRendererOrchestrator { // Renamed class
     const pluginDir = this.store.getState().plugin?.manifest?.dir ?? `${this.obsApp.vault.configDir}/plugins/atlas-vtt`;
     this.soundRegistry = new SoundRegistry(this.obsApp, pluginDir);
     void this.soundRegistry.scanCustomSounds();
-    this.bufferCache = new AudioBufferCache(new AudioContext(), this.obsApp, this.soundRegistry);
+    this.bufferCache = new AudioBufferCache(() => new AudioContext(), this.obsApp, this.soundRegistry);
     this.spatialAudioEngine = new SpatialAudioEngine(this.store, this.bufferCache);
 
 

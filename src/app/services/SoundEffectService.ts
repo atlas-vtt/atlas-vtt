@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
-import { Howl } from 'howler';
+import { Howl, Howler } from 'howler';
 import { disposeDiceRevealSound, playDiceReveal } from '../audio/diceRevealSound';
+import { followOutputDevice } from '../audio/outputDevice';
 import { disposeDiceSounds } from '../dice3d/audio/diceSounds';
 import type { DiceCrit } from '../tools/diceCrit';
 import timerDingSoundUrl from '../sounds/timer-ding.wav?inline';
@@ -22,6 +23,8 @@ export class SoundEffectService extends EventEmitter {
     constructor() {
         super();
         this.timerDingSound = this.loadSound('timerDing', timerDingSoundUrl, 'wav');
+        // Howler's one context, which exists once a sound is loaded; a build without Web Audio has none.
+        if (Howler.ctx) followOutputDevice(Howler.ctx);
     }
 
     private loadSound(name: keyof SoundEffect, src: string, format: string): Howl {

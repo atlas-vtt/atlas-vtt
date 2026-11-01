@@ -32,6 +32,8 @@ export function StatblockFeeds({ children }: StatblockFeedsProps): React.JSX.Ele
     if (!pane) return undefined;
 
     const measure = (): void => {
+      // A hidden page measures nothing: its statblocks keep their places until it shows again.
+      if (pane.clientWidth === 0) return;
       // Layout sizes ignore the DM screen's entrance animation, which scales the whole panel.
       setPaneWidth(pane.clientWidth);
       const feedItems = Array.from(pane.children).filter((item): item is HTMLElement => item.classList.contains('atlas-dm-statblock-feed-item'));

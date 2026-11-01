@@ -3,6 +3,7 @@ import { isActiveAtlasLeaf } from '../utils/activeLeafGuard';
 import { handledByAnotherControl } from './tooltipEscape';
 import { isTextEntryTarget } from './textEntry';
 import type { SettingsService } from '../services/SettingsService';
+import type { ExperimentalFeatureId } from '../experimental/experimentalFeatures';
 import { t } from '../i18n';
 
 export const MAP_HOTKEYS = [
@@ -18,6 +19,8 @@ export const MAP_HOTKEYS = [
   { id: 'fitToken', label: t('hotkey.fitToken'), group: t('hotkey.group.map'), defaultKey: 'Shift+2' },
   { id: 'levelUp', label: t('hotkey.levelUp'), group: t('hotkey.group.map'), defaultKey: 'PageUp', dmOnly: true },
   { id: 'levelDown', label: t('hotkey.levelDown'), group: t('hotkey.group.map'), defaultKey: 'PageDown', dmOnly: true },
+  { id: 'nextMood', label: t('hotkey.nextMood'), group: t('hotkey.group.map'), defaultKey: 'n', dmOnly: true, experimental: 'sound' },
+  { id: 'silence', label: t('hotkey.silence'), group: t('hotkey.group.map'), defaultKey: 'Shift+s', dmOnly: true, experimental: 'sound' },
   { id: 'move', label: t('hotkey.move'), group: t('hotkey.group.tools'), defaultKey: 'v' },
   { id: 'fog', label: t('hotkey.fog'), group: t('hotkey.group.tools'), defaultKey: 'f', dmOnly: true },
   { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },
@@ -57,9 +60,9 @@ export type MapHotkeyId = MapHotkey['id'];
 export type HeldWidgetHotkeyId = Extract<MapHotkey, { whileWidgetHeld: true }>['id'];
 export type MapHotkeys = Record<MapHotkeyId, string>;
 export const DEFAULT_MAP_HOTKEYS = Object.fromEntries(MAP_HOTKEYS.map(h => [h.id, h.defaultKey])) as MapHotkeys;
-/** The shortcuts on offer: those of the build (`enabled`), and only the players' in the player view. */
-export const availableHotkeys = (player = false) => MAP_HOTKEYS.filter(h =>
-  !('enabled' in h && !h.enabled) && !(player && 'dmOnly' in h && h.dmOnly));
+/** The shortcuts on offer: those of the build (`enabled`) and of the features switched on (`experimental`), and only the players' in the player view. */
+export const availableHotkeys = (player = false, isOn: (feature: ExperimentalFeatureId) => boolean = () => false) => MAP_HOTKEYS.filter(h =>
+  !('enabled' in h && !h.enabled) && !('experimental' in h && !isOn(h.experimental)) && !(player && 'dmOnly' in h && h.dmOnly));
 
 export const hotkeyAction = (id: MapHotkeyId): MapHotkey => MAP_HOTKEYS.find(action => action.id === id)!;
 const runsWhileWidgetHeld = (action: MapHotkey): boolean => 'whileWidgetHeld' in action;

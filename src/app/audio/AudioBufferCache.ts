@@ -8,12 +8,14 @@ import type { SoundRegistry } from './SoundRegistry';
 export class AudioBufferCache {
   private cache: Map<string, AudioBuffer> = new Map();
   private loading: Map<string, Promise<AudioBuffer>> = new Map();
-  private audioContext: AudioContext;
+  private audioContext: AudioContext | null = null;
+  private createContext: () => AudioContext;
   private app: App;
   private registry: SoundRegistry;
 
-  constructor(audioContext: AudioContext, app: App, registry: SoundRegistry) {
-    this.audioContext = audioContext;
+  /** The context is made with the first sound: most views never decode one, and each context costs an output stream. */
+  constructor(createContext: () => AudioContext, app: App, registry: SoundRegistry) {
+    this.createContext = createContext;
     this.app = app;
     this.registry = registry;
   }
@@ -61,6 +63,7 @@ export class AudioBufferCache {
       arrayBuffer = await this.app.vault.readBinary(file);
     }
 
+    this.audioContext ??= this.createContext();
     return this.audioContext.decodeAudioData(arrayBuffer);
   }
 
@@ -73,7 +76,7 @@ export class AudioBufferCache {
   dispose(): void {
     this.cache.clear();
     this.loading.clear();
-    if (this.audioContext.state !== 'closed') {
+    if (this.audioContext && this.audioContext.state !== 'closed') {
       this.audioContext.close().catch(() => undefined);
     }
   }

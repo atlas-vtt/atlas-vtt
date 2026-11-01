@@ -9,6 +9,7 @@ function stateText(conversion: SoundConversion, percent: number | null): string 
   switch (conversion.state) {
     case 'not-converted': return t('audio.state.notConverted');
     case 'ready': return t('audio.state.ready');
+    case 'refused': return t(`audio.refused.${conversion.reason}`);
     case 'converting': return percent === null ? t('audio.state.converting') : t('audio.state.convertingPercent', { percent });
   }
 }

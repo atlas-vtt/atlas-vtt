@@ -72,6 +72,7 @@ export interface MusicPlay {
   /** Table time in ms at which the list began. */
   startAt: number;
   gainDb: number;
+  muted?: boolean;
   /** Table time at which the fade towards this gain begins, and how long it runs. */
   fade: SoundFade;
 }

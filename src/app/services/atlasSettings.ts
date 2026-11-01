@@ -7,6 +7,7 @@ import { DEFAULT_DICE_LOOK, type DiceColour, type DiceFont } from '../dice3d/dic
 import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarLayout';
 import type { InitiativeDock } from '../initiative/initiativeLayout';
 import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
 
 /**
@@ -41,6 +42,8 @@ export interface AtlasSettings {
   diceDisplay: DiceDisplay;
   /** Loudness of dice sounds, 0 (silent) to 1. Read with `getDiceVolume`. */
   diceVolume: number;
+  /** Levels, default fade and following scenes for music and ambience. Read with `getSoundSettings`. */
+  sound: SoundSettings;
   /** Whether a new scene looks for the grid of its map. Off for tables that play without one. Read with `detectsGridOnNewScenes`. */
   detectGridOnNewScenes: boolean;
   /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */
@@ -96,6 +99,7 @@ export const DEFAULT_SETTINGS: AtlasSettings = {
   laserPointer: DEFAULT_LASER_POINTER_SETTINGS,
   diceDisplay: 'full',
   diceVolume: 1,
+  sound: DEFAULT_SOUND_SETTINGS,
   detectGridOnNewScenes: true,
   diceColour: DEFAULT_DICE_LOOK.colour,
   diceFont: DEFAULT_DICE_LOOK.font,

@@ -6,7 +6,8 @@
 // (title + actions) and either the note picker or the linked note itself.
 
 .atlas-dm-notes-section {
-  @include atlas-elevated-surface;
+  @include atlas-inset-surface;
+  background: var(--background-primary);
   flex: 1 1 42%; // fill what the statblocks leave
   display: flex;
   flex-direction: column;

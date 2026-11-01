@@ -68,6 +68,8 @@ import { MoodStore } from './src/app/soundLibrary/MoodStore';
 import { nameQuestCampaigns } from './src/app/campaigns/quests/nameQuestCampaigns';
 import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
+import { registerSoundDirector } from './src/app/plugin/soundDirector';
+import { soundSettingsSection } from './src/app/settings/soundSettingsSection';
 import { registerOnlinePlay, type OnlinePlay } from './src/app/plugin/onlinePlay';
 import type { TableChat } from './src/app/online/gm/tableChat';
 import { registerPlayerWindowReloadCleanup } from './src/app/plugin/playerWindowReload';
@@ -166,6 +168,8 @@ export default class AtlasVTTPlugin extends Plugin {
     // Created before the views so every restored tab shares it; it reads the
     // plugin's data only once the migration has put the settings there.
     this.settingsService = new SettingsService(this.app, settingsReady, this);
+    // Before the views too: every restored map view joins it, for its fights.
+    const soundDirector = registerSoundDirector(this);
 
     // Before the views: a restored map may start Atlas's first check of the vault,
     // whose folder renames reach map files only through these vault events.
@@ -210,6 +214,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
+      ...(this.settingsService.isExperimentalOn('sound') ? [soundSettingsSection(this.settingsService, soundDirector)] : []),
       mapsSettingsSection(this.settingsService),
       mapImageCacheSettingsSection(() => TesseraDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),

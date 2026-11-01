@@ -30,6 +30,7 @@ import type { InitiativeTurnOptions } from '../initiative/turnOptions';
 import type { LightingQuality, LightingQualityLevel } from '../lighting/lightingQuality';
 import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
 import { readDungeonGeneratorSettings, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
+import { readSoundSettings, type SoundSettings } from './soundSettings';
 import type { TableTvSettings } from './tableTvSettings';
 import { loadTableTvDevice, saveTableTvDevice, type TableTvDevice, type TvScreenRecord, type TvScreenSetup } from './tableTvDevice';
 
@@ -174,7 +175,7 @@ export class SettingsService {
 
   setHotkey(id: MapHotkeyId, key: string): void {
     const bindings = this.getHotkeys();
-    const conflict = key && availableHotkeys().find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
+    const conflict = key && availableHotkeys(false, (feature) => this.isExperimentalOn(feature)).find(action => action.id !== id && bindings[action.id] === key && !canShareHotkey(action.id, id));
     if (conflict) throw new Error(`Already assigned to ${conflict.label}. Clear that shortcut first.`);
     this.settings.hotkeys = withHotkey(this.settings.hotkeys, id, key);
     this.commit();
@@ -399,6 +400,19 @@ export class SettingsService {
     const next = Math.min(1, Math.max(0, volume));
     if (this.settings.diceVolume === next) return;
     this.settings.diceVolume = next;
+    this.commit();
+  }
+
+  /** Levels, default fade and following scenes for music and ambience; the default for whatever the file does not hold. */
+  getSoundSettings(): SoundSettings {
+    return readSoundSettings(this.settings.sound);
+  }
+
+  setSoundSettings(changes: Partial<SoundSettings>): void {
+    const current = this.getSoundSettings();
+    const next = readSoundSettings({ ...current, ...changes });
+    if (JSON.stringify(next) === JSON.stringify(current)) return;
+    this.settings.sound = { ...this.settings.sound, ...next };
     this.commit();
   }
 

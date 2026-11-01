@@ -34,7 +34,7 @@ export interface SoundSourceNode extends SoundNode {
   loop: boolean;
   loopStart: number;
   loopEnd: number;
-  onended: (() => void) | null;
+  onended: ((event: Event) => unknown) | null;
   start(when?: number, offset?: number, duration?: number): void;
   stop(when?: number): void;
 }
