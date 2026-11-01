@@ -5,6 +5,7 @@ import type { Mood, SoundRecord, TableSound } from '../sound/soundTypes';
 import { loadLastMix, type LastMix, type StoredOutput } from './deviceFacts';
 import { LastMixKeeper } from './lastMixKeeper';
 import { OutputChoice } from './outputChoice';
+import { PlayersSeam } from './playersSeam';
 import { SoundPreview } from './soundPreview';
 import { realDirectorDeps, type SoundDirectorDeps } from './directorDeps';
 import type { FightStore } from './fightWatch';
@@ -41,7 +42,7 @@ export class SoundDirector {
     return director;
   }
 
-  /** The app's director if one was opened, for code that also runs without it (a test's view). */
+  /** The app's director if one was opened. */
   static existing(app: App): SoundDirector | undefined {
     return SoundDirector.instances.get(app);
   }
@@ -53,14 +54,15 @@ export class SoundDirector {
 
   readonly desk: MixDesk;
   readonly shelf: SoundShelf;
+  /** A table online, while one runs. */
+  readonly players: PlayersSeam;
   private readonly output: SoundOutput;
   private readonly table: SoundTable;
   private readonly fights: TableFights;
-  private current: SoundSnapshot = { mix: EMPTY_MIX, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, waitingKeys: [], shelfRevision: 0 };
+  private current: SoundSnapshot = { mix: EMPTY_MIX, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, waitingKeys: [], shelfRevision: 0, playersRevision: 0 };
   private readonly listeners = new Set<() => void>();
   private readonly stateListeners = new Set<(state: TableSound) => void>();
   private stops: Array<() => void> = [];
-  private dropAudience: (() => void) | null = null;
   private levels: LocalLevels;
   private on = false;
   private closeShelf = 0;
@@ -99,6 +101,7 @@ export class SoundDirector {
     this.lastMix = new LastMixKeeper(deps.storage, () => (this.on && this.isHeld() ? this.lastMixNow() : null));
     this.choice = new OutputChoice(deps.storage, (message) => deps.notify(message));
     this.previews = new SoundPreview(this.output, this.shelf, this.table, (previewing) => this.publish({ previewing }));
+    this.players = new PlayersSeam(deps, () => this.publish({ playersRevision: this.current.playersRevision + 1 }));
     this.dropSettings = deps.settings.onChange(() => this.sync());
     this.sync();
   }
@@ -125,9 +128,7 @@ export class SoundDirector {
 
   /** Seam for a table online: who hears it, in one line. */
   useAudience(audience: AudienceLine | null): void {
-    this.dropAudience?.();
-    this.dropAudience = audience?.onChange(() => this.publish({ audience: audience.line() })) ?? null;
-    this.publish({ audience: audience?.line() ?? null });
+    this.players.useAudience(audience, (line) => this.publish({ audience: line }));
   }
 
   now(): number { return this.table.now(); }
@@ -198,7 +199,7 @@ export class SoundDirector {
     window.clearTimeout(this.closeShelf);
     this.shelf.close();
     this.dropSettings();
-    this.dropAudience?.();
+    this.players.useAudience(null, () => undefined);
     this.fights.dispose();
     this.listeners.clear();
     this.stateListeners.clear();

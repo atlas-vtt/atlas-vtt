@@ -5,9 +5,10 @@ import { retryMs } from './uploadPace.ts';
 
 /**
  * Where an upload reads an asset's bytes: kept in memory (a text, a poster, a drawing), a vault file
- * read again then, or a map's tile pyramid in this device's cache, uploaded level by level as it is cut.
+ * read again then, a copy this device keeps elsewhere (a sound's in its Opus cache), or a map's tile
+ * pyramid in this device's cache, uploaded level by level as it is cut.
  */
-export type AssetSource = { readonly bytes: Uint8Array<ArrayBuffer> } | { readonly path: string } | { readonly pyramid: LivePyramid };
+export type AssetSource = { readonly bytes: Uint8Array<ArrayBuffer> } | { readonly path: string } | { readonly read: () => Promise<Uint8Array<ArrayBuffer> | null> } | { readonly pyramid: LivePyramid };
 
 /** Whether the store refused an entry for room it said it would make: it is offered again after a while. */
 const roomAgain = (entry: QueueEntry): boolean => entry.state === 'refused' && entry.refusal === 'quota' && entry.quotaRetries > 0;
@@ -51,6 +52,15 @@ export interface QueueEntry {
   quotaRetries: number;
   /** When the store last answered an offer of it that it holds or wants it: the store lets go of what is not offered for a day. */
   offeredAt: number;
+}
+
+/** How an asset stands for the GM: players can have it, it is on its way, or the store has none. */
+export type CopyState = { readonly state: 'ready' } | { readonly state: 'uploading'; readonly share: number } | { readonly state: 'nowhere' };
+
+/** The state of a queue entry, with the share of it uploaded so far. */
+export function copyStateOf(entry: QueueEntry | undefined, share: number): CopyState {
+  if (entry?.state === 'stored') return { state: 'ready' };
+  return entry === undefined || entry.state === 'refused' || entry.state === 'failed' ? { state: 'nowhere' } : { state: 'uploading', share };
 }
 
 /** Bytes held for an asset after it was stored, so it can go up again once the store was emptied: texts and small drawings. */

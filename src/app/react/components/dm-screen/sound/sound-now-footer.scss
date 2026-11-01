@@ -150,3 +150,23 @@
   }
 }
 
+
+.atlas-sound-players {
+  @include atlas-flex-row($spacing-s);
+  justify-content: space-between;
+  color: var(--text-muted);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-sound-players__send {
+  @include atlas-flex-row($spacing-xs);
+  min-width: 0;
+}
+
+.atlas-sound-tag--players {
+  white-space: nowrap;
+
+  &[data-players='nowhere'] {
+    color: var(--text-warning);
+  }
+}

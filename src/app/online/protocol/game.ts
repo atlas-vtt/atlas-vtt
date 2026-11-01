@@ -16,7 +16,7 @@ import { parsePinFound, type PlayerPinFound, type SensedMark, type SharedAnnotat
 import { parseMapPlacement, type SharedMapPlacement } from './mapPlacement.ts';
 import { parseMarks, parsePlayerMark, type MarksMessage, type PlayerCursor, type PlayerLaser, type PlayerMeasure } from './marks.ts';
 import { isRecord } from './shape.ts';
-import { parseDragCancel, parseMoveRefused, parsePlayerMove, parseSnapGrid, type MoveRefused, type PlayerDrag, type PlayerDragCancel, type PlayerMove, type SnapGrid } from './moves.ts';
+import { MAX_SCENE_ID, parseDragCancel, parseMoveRefused, parsePlayerMove, parseSnapGrid, type MoveRefused, type PlayerDrag, type PlayerDragCancel, type PlayerMove, type SnapGrid } from './moves.ts';
 import { parseRules, type RulesMessage } from './rules.ts';
 import { isSceneId, parseSceneInput } from './sceneInput.ts';
 import { parsePlayerSoundState, parseSoundMessage, parseSoundPrepare, type PlayerSoundState, type SoundMessage, type SoundPrepare } from './sound.ts';

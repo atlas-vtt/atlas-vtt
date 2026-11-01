@@ -23,6 +23,8 @@ export interface ProgressPorts {
   /** The players connected now. */
   connected(): readonly string[];
   readonly timers: Timers;
+  /** A share moved or went. */
+  shareChanged?(): void;
 }
 
 /** Shares as messages of at most `MAX_PROGRESS_ENTRIES` each. */
@@ -72,6 +74,7 @@ export class AssetProgress {
     else this.doneAt.delete(id);
     this.changed.add(id);
     this.schedule();
+    this.ports.shareChanged?.();
   }
 
   share(id: string): number | undefined {
@@ -109,6 +112,7 @@ export class AssetProgress {
     this.doneAt.delete(id);
     this.changed.delete(id);
     for (const held of this.handed.values()) held.delete(id);
+    this.ports.shareChanged?.();
   }
 
   /** Every share a player holds, whole, to that player; to everyone, each their own. */

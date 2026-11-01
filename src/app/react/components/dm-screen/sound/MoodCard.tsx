@@ -3,8 +3,10 @@ import { AlertTriangle, MoreHorizontal } from 'lucide-react';
 import { t } from '../../../../i18n';
 import type { Mood } from '../../../../sound/soundTypes';
 import type { MoodProblem } from '../../../../soundDirector/moodReadiness';
+import type { PlayersCopy } from '../../../../soundDirector/tableClock';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import { IconAction } from './IconAction';
+import { PlayersTag } from './PlayersRow';
 
 interface MoodCardProps {
   mood: Mood;
@@ -13,6 +15,8 @@ interface MoodCardProps {
   next: boolean;
   dragging: boolean;
   problems: readonly MoodProblem[];
+  /** How the mood stands for players at a table online; null without one. */
+  players: PlayersCopy | null;
   onPress: (mood: Mood) => void;
   onMenu: (mood: Mood, anchor: HTMLElement) => void;
   onDragStart: (mood: Mood, event: React.PointerEvent<HTMLElement>) => void;
@@ -29,7 +33,7 @@ function problemText(problem: MoodProblem): string {
 }
 
 /** A mood in its fixed place: one press changes the room. */
-export const MoodCard = React.memo(function MoodCard({ mood, number, playing, next, dragging, problems, onPress, onMenu, onDragStart }: MoodCardProps): React.JSX.Element {
+export const MoodCard = React.memo(function MoodCard({ mood, number, playing, next, dragging, problems, players, onPress, onMenu, onDragStart }: MoodCardProps): React.JSX.Element {
   return (
     <div
       className="atlas-sound-mood"
@@ -63,6 +67,7 @@ export const MoodCard = React.memo(function MoodCard({ mood, number, playing, ne
           </span>
         </LabelTooltip>
       )}
+      {players !== null && <PlayersTag copy={players} />}
       <IconAction label={t('audio.moodMenu', { name: mood.name })} icon={MoreHorizontal} className="atlas-sound-mood__menu" focusSkip onClick={(event) => onMenu(mood, event.currentTarget)} />
     </div>
   );

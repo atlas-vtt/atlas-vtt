@@ -1,6 +1,7 @@
 import React, { useCallback, useSyncExternalStore } from 'react';
 import { Music, Wind } from 'lucide-react';
 import { t } from '../../../../i18n';
+import { PlayersCardLine } from '../../../../react/components/dm-screen/sound/PlayersRow';
 import { useAtlasUI } from '../../../../react/root/AtlasUIContext';
 import { soundConversionOf, type SoundConversion } from '../../../../soundLibrary/soundConversion';
 import type { SoundAsset } from '../types';
@@ -32,6 +33,7 @@ export function SoundCardArt({ asset }: { asset: SoundAsset }): React.JSX.Elemen
           <span className="atlas-sound-state__bar" style={{ '--atlas-sound-progress': progress } as React.CSSProperties} />
         )}
       </span>
+      <PlayersCardLine record={asset.record} />
     </div>
   );
 }

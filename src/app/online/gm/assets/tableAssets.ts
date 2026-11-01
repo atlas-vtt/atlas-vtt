@@ -40,6 +40,8 @@ export interface TablePublisherDeps {
   withdrawn(): void;
   /** Where the shared map is looked at now, as shares of it; null: its centre. */
   focus(): MapFocus | null;
+  /** How far an asset has come changed. */
+  storeChanged(): void;
 }
 
 /** Where a tab's renderer looks on its map, as shares of the map image's world rect; null while it cannot say. */
@@ -79,7 +81,8 @@ export function tablePublisher(deps: TablePublisherDeps): AssetPublisher {
     sendLive: (body, key, to) => deps.sendLive(body, key, to),
     notify: (text) => showNotice(text),
     signedOutByServer: () => assets.signedOutByServer(),
-    settled: () => assets.settled(),
+    settled: () => (assets.settled(), deps.storeChanged()),
+    shareChanged: () => deps.storeChanged(),
     withdrawn: () => deps.withdrawn(),
   });
 }

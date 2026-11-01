@@ -61,6 +61,12 @@ export class AssetRefs implements AssetStoring {
     return id === undefined ? null : { hash, size, mime, id };
   }
 
+  /** The reference of a copy kept outside the vault: named by its hash, read again for the upload, and named to players only where `handed` says so. */
+  async copyRef(copy: Pick<AssetRef, 'hash' | 'size' | 'mime'>, read: () => Promise<Uint8Array<ArrayBuffer> | null>, use: AssetUse, handed: boolean): Promise<AssetRef | null> {
+    const id = await this.deps.register({ key: copy.hash, ...copy, use, source: { read }, handed });
+    return id === undefined ? null : { ...copy, id };
+  }
+
   release(ref: AssetRef): void {
     this.deps.release(ref);
   }

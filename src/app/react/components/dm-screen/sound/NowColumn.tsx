@@ -17,6 +17,7 @@ import { LayerRow, WaitingLayerRow } from './LayerRow';
 import { LevelSlider } from './LevelSlider';
 import { MusicRow } from './MusicRow';
 import { OutputLine } from './OutputLine';
+import { PlayersRow } from './PlayersRow';
 import { useSoundValue } from './useSound';
 
 interface NowColumnProps {
@@ -110,6 +111,7 @@ export function NowColumn({ app, director, collectionId, moods, sounds }: NowCol
       <footer className="atlas-sound-now__footer">
         <ChannelLevels director={director} />
         <OutputLine director={director} />
+        <PlayersRow director={director} collectionId={collectionId} />
         <SilenceButton director={director} />
       </footer>
       <InputModal

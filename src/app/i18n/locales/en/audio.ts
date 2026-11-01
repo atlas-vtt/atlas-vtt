@@ -148,4 +148,15 @@ export const audio = {
   'audio.settings.fade': 'Default fade',
   'audio.settings.fadeHint': 'For a new mood, and for sounds added or removed by hand.',
   'audio.settings.levelHint': 'What you hear of it on this table, in dB.',
+
+  'audio.players.hearing': '{hearing} of {total} hearing',
+  'audio.players.uploading': { one: '{count} track still uploading', other: '{count} tracks still uploading' },
+  'audio.players.ready': 'Ready for players',
+  'audio.players.uploadingPercent': 'Uploading {percent}%',
+  'audio.players.nowhere': 'Not stored for players',
+  'audio.players.send': 'Send sound to players',
+  'audio.players.sendHint': 'Off where phones at the table would echo the speaker.',
+  'audio.players.prepare': 'Prepare for players',
+  'audio.players.note': 'Sounds you share must be yours or licensed for this use.',
+  'audio.players.noteLink': 'Licensed sources',
 } as const satisfies Record<string, Message>;
