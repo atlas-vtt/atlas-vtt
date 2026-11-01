@@ -4,7 +4,7 @@ import { BookShelf } from '../../../../src/app/online/gm/book/BookShelf.ts';
 import { BOOK_BURST, REFUSAL_BOOK_MS } from '../../../../src/app/online/gm/book/BookShare.ts';
 import { EMPTY_BOOK, withItem } from '../../../../src/app/online/gm/book/bookStore.ts';
 import { FakeSocket, png, workspace } from './fakeTable.ts';
-import { ANA, BEN, BRANNOCH_BOOK, CAL, cave, delivered, keptBooks, nameWorldMap, ofType, openTable, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
+import { ANA, ANA_OWN, BEN, BRANNOCH_BOOK, CAL, cave, delivered, keptBooks, nameWorldMap, ofType, openTable, WORLD_MAP, type Delivered } from './bookTableHarness.ts';
 import { advanceSettled as advance } from './settled.ts';
 
 vi.mock('obsidian', () => ({ Notice: class {}, normalizePath: (path: string) => path, requestUrl: () => Promise.resolve({ status: 201, json: null }), PluginSettingTab: class {}, Setting: class {} }));
@@ -43,7 +43,7 @@ describe('what a player\'s book lets them ask for and write', () => {
     vi.unstubAllGlobals();
   });
 
-  it('refuses a flood of writes, a write that is malformed and one of a player without a character, each answered with the whole book', async () => {
+  it('refuses a flood of writes, a write that is malformed and a purse of a player without a character, each answered with the whole book', async () => {
     const source = keptBooks();
     const shelf = new BookShelf(source);
     const { online, socket, from } = await openTable(shelf, PLAYERS, undefined, WITH_CAL);
@@ -53,7 +53,7 @@ describe('what a player\'s book lets them ask for and write', () => {
     let since = delivered(socket).length;
     for (let count = 0; count < 500; count += 1) from(ANA, { t: 'book-note', note: { id: id(count), title: `Note ${count}`, body: '' } });
     await advance(REFUSAL_BOOK_MS + 500);
-    expect(shelf.of(BRANNOCH_BOOK).notes.map((note) => note.id)).toEqual(Array.from({ length: BOOK_BURST }, (_, count) => id(count)));
+    expect(shelf.of(ANA_OWN).notes.map((note) => note.id)).toEqual(Array.from({ length: BOOK_BURST }, (_, count) => id(count)));
     // Two books for the whole flood, at its first refusal and once it is over, holding what was kept; the other players hear nothing.
     let books = ofType(delivered(socket).slice(since), 'book');
     expect(books.map(({ to }) => to)).toEqual([ANA, ANA]);
@@ -67,22 +67,24 @@ describe('what a player\'s book lets them ask for and write', () => {
     from(ANA, { t: 'book-purse', purse: [{ name: 'Gold', amount: 1.5 }] });
     from(ANA, { t: 'book-note', note: { id: id(901), title: 'Good', body: 'Kept' } });
     await advance(REFUSAL_BOOK_MS + 500);
-    const kept = shelf.of(BRANNOCH_BOOK);
-    expect(kept.notes).toHaveLength(BOOK_BURST + 1);
-    expect(kept.pins).toEqual([]);
-    expect(kept.purse).toEqual([]);
+    expect(shelf.of(ANA_OWN).notes).toHaveLength(BOOK_BURST + 1);
+    expect(shelf.of(ANA_OWN).pins).toEqual([]);
+    expect(shelf.of(BRANNOCH_BOOK).purse).toEqual([]);
     // The first refusal is answered at once, the others with one book later, which has the note written since.
     books = ofType(delivered(socket).slice(since), 'book');
     expect(books.map(({ to }) => to)).toEqual([ANA, ANA]);
     expect(JSON.stringify(books)).not.toContain('Bad');
     expect(JSON.stringify(books[1]?.body)).toContain('Kept');
 
-    // Cal plays nobody: what he writes is kept nowhere, and his book stays empty.
+    // Cal plays nobody: a purse is kept nowhere and answered with his book, while what he writes himself is his.
     since = delivered(socket).length;
-    from(CAL, { t: 'book-note', note: { id: id(950), title: 'Mine', body: 'Nobody keeps this' } });
+    from(CAL, { t: 'book-purse', purse: [{ name: 'Nobody keeps this', amount: 1 }] });
     await advance(REFUSAL_BOOK_MS + 500);
     expect(source.dump()).not.toContain('Nobody keeps this');
-    expect(ofType(delivered(socket).slice(since), 'book')).toMatchObject([{ to: CAL, body: { book: { character: null, notes: [] } } }]);
+    expect(ofType(delivered(socket).slice(since), 'book')).toMatchObject([{ to: CAL, body: { book: { character: null, notes: [], purse: [] } } }]);
+    from(CAL, { t: 'book-note', note: { id: id(950), title: 'Mine', body: 'Cal keeps this' } });
+    await advance(100);
+    expect(source.dump()).toContain('Cal keeps this');
     online.stop();
   });
 

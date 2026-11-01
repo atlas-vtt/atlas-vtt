@@ -7,7 +7,7 @@ import { noteNameProblem, type PinCreateEntry, type PinLinkTarget } from '../../
 let container: HTMLElement;
 
 interface SetupOptions {
-  headings?: Record<string, string[]>;
+  headings?: Record<string, Array<string | [heading: string, level: number]>>;
   paths?: string[];
   mapPath?: string | null;
   createEntries?: PinCreateEntry[];
@@ -21,7 +21,10 @@ function setup({ headings = {}, paths = ['Tavern.md', 'Temple.md', 'Town.atlasma
     vault: { getAllLoadedFiles: () => files, getAbstractFileByPath: (path: string) => folders[path] ?? null },
     metadataCache: {
       getFileCache: (file: TFile) => ({
-        headings: (headings[file.path] ?? headings[file.basename] ?? []).map((heading) => ({ heading, level: 2 })),
+        headings: (headings[file.path] ?? headings[file.basename] ?? []).map((entry, line) => {
+          const [heading, level] = typeof entry === 'string' ? [entry, 2] : entry;
+          return { heading, level, position: { start: { line } } };
+        }),
       }),
     },
   } as unknown as App;
@@ -171,6 +174,43 @@ describe('pin note search', () => {
     expect(activeName()).toBe('Gates');
     press('Enter');
     expect(onPick).toHaveBeenCalledWith('Notes/Town.md#Gates');
+  });
+
+  describe('in a note that repeats a heading', () => {
+    const CHAPTER: Array<[string, number]> = [['Chapter', 1], ['Black Ivory Inn', 2], ['Overview', 3], ['Silver Stag', 2], ['Overview', 3]];
+    const trails = (): Array<string | null | undefined> =>
+      [...container.querySelectorAll('.pin-header-item')].map((item) => item.querySelector('.pin-header-trail')?.textContent);
+
+    it('stores which one was picked', () => {
+      const { onPick } = setup({ headings: { Tavern: CHAPTER } });
+      type('Tavern#');
+      for (let step = 0; step < 5; step++) press('ArrowDown');
+      expect(activeName()).toBe('Overview');
+      press('Enter');
+      expect(onPick).toHaveBeenCalledWith('Tavern.md#Silver Stag#Overview');
+    });
+
+    it('shows the sections around each heading, and nothing above a top heading', () => {
+      setup({ headings: { Tavern: CHAPTER } });
+      type('Tavern#');
+      expect(trails()).toEqual([undefined, undefined, 'Chapter', 'Chapter › Black Ivory Inn', 'Chapter', 'Chapter › Silver Stag']);
+    });
+
+    it('finds a heading by the section it is in', () => {
+      const { onPick } = setup({ headings: { Tavern: CHAPTER } });
+      type('Tavern#silver');
+      expect(activeName()).toBe('Silver Stag');
+      press('ArrowDown');
+      expect(activeName()).toBe('Overview');
+      press('Enter');
+      expect(onPick).toHaveBeenCalledWith('Tavern.md#Silver Stag#Overview');
+    });
+
+    it('finds it by the path written as a link too', () => {
+      setup({ headings: { Tavern: CHAPTER } });
+      type('Tavern#inn#over');
+      expect([...container.querySelectorAll('.pin-result-name')].map((element) => element.textContent)).toEqual(['Overview']);
+    });
   });
 
   it('offers only scenes of the collection the map belongs to', () => {

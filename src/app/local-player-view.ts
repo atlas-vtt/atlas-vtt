@@ -3,6 +3,7 @@ import { PlayerWindowService } from './services/PlayerWindowService';
 import { restorePlayerWindow } from './services/PlayerWindowPresenter';
 import { t } from './i18n';
 import type { PlayerCameraState } from './types/playerCamera';
+import { isRecord } from './utils/guards';
 
 export type { PlayerCameraState } from './types/playerCamera';
 
@@ -37,6 +38,8 @@ export interface LocalPlayerSession extends Record<string, unknown> {
   frozen: boolean;
   /** The camera players saw the scene of `tabId` through last; null once another scene is presented, until a frame of it was shown. */
   camera?: PlayerCameraState | null;
+  /** The camera the GM framed players on, per map file; presenting the map again returns them to it. */
+  frames?: Record<string, PlayerCameraState>;
   /** The level of that scene players saw, whose camera `camera` is; unset for a scene without levels. */
   levelId?: string | undefined;
 }
@@ -69,6 +72,12 @@ export class LocalPlayerView extends ItemView {
     const camera = 'camera' in state ? readPlayerCamera(state.camera) : null;
     if (camera) this.session.camera = camera;
     if ('levelId' in state && typeof state.levelId === 'string' && state.levelId !== '') this.session.levelId = state.levelId;
+    if ('frames' in state && isRecord(state.frames)) {
+      this.session.frames = Object.fromEntries(Object.entries(state.frames).flatMap(([map, framed]): Array<[string, PlayerCameraState]> => {
+        const camera = readPlayerCamera(framed);
+        return camera ? [[map, camera]] : [];
+      }));
+    }
     this.app.workspace.onLayoutReady(() => {
       if (this.isClosed) return;
       if (this.restoreTimer !== null) window.clearTimeout(this.restoreTimer);

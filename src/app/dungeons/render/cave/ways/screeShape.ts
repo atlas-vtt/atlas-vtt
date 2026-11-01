@@ -138,3 +138,10 @@ function surface(frame: WayFrame, vAt: (t: number) => number, half: (t: number) 
   }
   return { contours, wedges, stones };
 }
+
+/** What the slope covers on the floor: its ring from above, its tone's area between rooms, else between its two sides. */
+export function slopeArea(slope: ScreeSlope): Vec[] {
+  if (slope.ring) return slope.ring;
+  if (slope.area) return slope.area;
+  return [...slope.sides[0]!.run, ...slope.sides[1]!.run.slice().reverse()];
+}

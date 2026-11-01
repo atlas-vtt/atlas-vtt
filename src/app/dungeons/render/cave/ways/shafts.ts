@@ -2,7 +2,6 @@ import { stackOf, stairEnd } from '../../../floors/floorStack';
 import type { StairEnd } from '../../../floors/stairSpots';
 import type { DungeonStair } from '../../../model';
 import type { Hand } from '../../art/hand';
-import { hash2 } from '../../art/noise';
 import type { Vec } from '../../geometry';
 import type { RenderEnv } from '../../renderEnv';
 import { band } from '../../vertical/marks';
@@ -11,6 +10,7 @@ import { drawMouthPit } from '../../vertical/mouthPit';
 import { drawAnchor, drawRope } from '../../vertical/rope';
 import { wayFrame, type WayFrame } from './narrows';
 import { approachLength, shaftMouth, type ShaftMouth } from './shaftMouth';
+import { mouthSeed } from './wayOutline';
 
 /**
  * A pitch between floors: on the floor above, a shaft in the floor drawn as every pit is, ten feet
@@ -22,11 +22,6 @@ import { approachLength, shaftMouth, type ShaftMouth } from './shaftMouth';
 /** How deep a stairwell drops, in feet: ten a floor. */
 function feetOf(env: RenderEnv, stair: DungeonStair): number {
   return 10 * Math.max(1, Math.abs(stair.to - env.dungeon.index));
-}
-
-/** One seed for both ends of a stairwell, so the aven's opening is the pitch's mouth. */
-function mouthSeed(env: RenderEnv, stair: DungeonStair): number {
-  return Math.floor(hash2(stair.link, 0, env.dungeon.model.seed) * 0x7fffffff);
 }
 
 function pitch(hand: Hand, frame: WayFrame, mouth: ShaftMouth, feet: number, seed: number): void {
@@ -55,7 +50,7 @@ export function pitchRims(env: RenderEnv): Vec[][] {
   const { dungeon } = env;
   return dungeon.floor.stairs
     .filter(stair => stair.way === 'pitch' && stairEnd(stackOf(dungeon.model), dungeon.index, stair.to) === 'upper')
-    .map(stair => shaftMouth(wayFrame(stair, stair.down), mouthSeed(env, stair)).rings[0]!);
+    .map(stair => shaftMouth(wayFrame(stair, stair.down), mouthSeed(stair, env.dungeon.model.seed)).rings[0]!);
 }
 
 function drawEnds(hand: Hand, end: StairEnd): void {
@@ -64,7 +59,7 @@ function drawEnds(hand: Hand, end: StairEnd): void {
   for (const stair of dungeon.floor.stairs) {
     if (stair.way !== 'pitch' || stairEnd(stackOf(dungeon.model), dungeon.index, stair.to) !== end) continue;
     const frame = wayFrame(stair, stair.down);
-    const seed = mouthSeed(env, stair);
+    const seed = mouthSeed(stair, env.dungeon.model.seed);
     const mouth = shaftMouth(frame, seed);
     const feet = feetOf(env, stair);
     if (end === 'upper') pitch(hand, frame, mouth, feet, seed);

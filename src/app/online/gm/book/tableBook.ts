@@ -69,6 +69,7 @@ export function tableBook(ports: TableBookPorts): TableBook {
     scene: () => ports.scene(),
     players: () => ownership.list(),
     ownerOf: (tokenId, token) => ownership.ownerOf(tokenId, token),
+    charactersOf: (player) => ownership.charactersOf(player),
     readImage: (path) => ports.readImage(path),
     stored: ports.stored,
     stat: (path) => {

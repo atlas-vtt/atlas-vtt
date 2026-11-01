@@ -26,6 +26,7 @@ import type { LevelLink, LevelSurface, SceneLevel } from '../types/sceneLevelTyp
 import { LEVELS_FILE_VERSION, readSceneLevels, sceneFileVersion } from '../levels/levelFile';
 
 import type { FogOperation } from '../types/fogTypes';
+import type { SavedPlayerFrame } from '../stores/playerFramesSlice';
 
 // Placeholder types until properly defined elsewhere
 export type FogPatch = FogOperation;
@@ -72,6 +73,8 @@ export interface MapFile {
     liquids?: Record<string, LiquidSurface>;
   };
   camera: CameraState;
+  /** Frames the GM saved for the players' TV; absent in older files and until a scene has one. Read with `readPlayerFrames`. */
+  playerFrames?: SavedPlayerFrame[];
 }
 
 /** A token as found in older map files, where conditions were still called `statuses`. */

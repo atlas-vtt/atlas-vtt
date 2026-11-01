@@ -1,4 +1,9 @@
+@use '../../../styles/tokens' as *;
+
 // Popout window that shows the presented scene to players.
+
+// Distance of the widgets from the player view's edges, as `widget-bar.scss` places them
+$player-widget-offset: $spacing-s;
 // Scoped to the popout body, which PlayerWindowService marks with this class.
 body.atlas-player-window {
   margin: 0;
@@ -13,16 +18,19 @@ body.atlas-player-window {
   -webkit-user-select: none;
   user-select: none;
 
+  // Turned about the window's centre by the TV's rotation (TrueScale, PlayerWindowService); a
+  // quarter turn swaps its sides, so its box is the window as the players see it
   #atlas-player-canvas {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+    left: 50%;
+    top: 50%;
+    width: 100vw;
+    height: 100vh;
+    transform: translate(-50%, -50%) rotate(var(--atlas-tv-rotation, 0deg));
     display: block;
-    // A live frame has the window's own shape, so nothing is fitted; one with fewer pixels than
-    // the window (its pixel budget) is scaled up smoothly. A frame held while the DM is on
-    // another scene tab keeps the shape it was taken with: it covers the window.
+    // A live frame has the window's own shape, as the players see it, so nothing is fitted; one
+    // with fewer pixels than the window (its pixel budget) is scaled up smoothly. A frame held
+    // while the DM is on another scene tab keeps the shape it was taken with: it covers the window.
     object-fit: cover;
     object-position: center;
     -webkit-app-region: drag;
@@ -34,10 +42,68 @@ body.atlas-player-window {
     text-align: center;
   }
 
-  // The outgoing map during a scene crossfade must sit exactly on the canvas
+  // What players see over the map, turned with it; a transformed box also contains the overlays' fixed children
+  .atlas-player-overlays {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 100vw;
+    height: 100vh;
+    transform: translate(-50%, -50%) rotate(var(--atlas-tv-rotation, 0deg));
+
+    &.atlas-player-overlays--sideways {
+      width: 100vh;
+      height: 100vw;
+    }
+
+    // Size and place of the widgets (TrueScale, data-widget-position), scaled from the edge or
+    // corner they stand at; top right at 1 is where `widget-bar.scss` puts them anyway
+    #atlas-player-widgets .atlas-widget-bar {
+      max-width: calc((100% - 2 * #{$player-widget-offset}) / var(--atlas-player-widget-scale, 1));
+    }
+
+    @each $position, $vertical, $horizontal in (
+      'top-left' top left, 'top' top center, 'top-right' top right,
+      'bottom-left' bottom left, 'bottom' bottom center, 'bottom-right' bottom right
+    ) {
+      &[data-widget-position='#{$position}'] #atlas-player-widgets .atlas-widget-bar {
+        top: auto;
+        bottom: auto;
+        left: auto;
+        right: auto;
+        #{$vertical}: $player-widget-offset;
+        transform: scale(var(--atlas-player-widget-scale, 1));
+        transform-origin: $vertical $horizontal;
+
+        @if $horizontal == center {
+          // Not left: 50%, which would leave the bar only the half beyond it to grow in
+          left: 0;
+          right: 0;
+          width: fit-content;
+          margin-inline: auto;
+        } @else {
+          #{$horizontal}: $player-widget-offset;
+        }
+      }
+    }
+  }
+
+  // The outgoing map during a scene crossfade must sit exactly on the canvas, turned with it
   .atlas-scene-transition-snapshot {
+    inset: auto;
+    left: 50%;
+    top: 50%;
+    width: 100vw;
+    height: 100vh;
+    transform: translate(-50%, -50%) rotate(var(--atlas-tv-rotation, 0deg));
     object-fit: cover;
     object-position: center;
+  }
+
+  &[data-tv-rotation='90'] :is(#atlas-player-canvas, .atlas-scene-transition-snapshot),
+  &[data-tv-rotation='270'] :is(#atlas-player-canvas, .atlas-scene-transition-snapshot) {
+    width: 100vh;
+    height: 100vw;
   }
 
   // Only the loading message shows until the first frame is mirrored.

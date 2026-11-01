@@ -15,7 +15,8 @@ import { drawGrid } from '../grid';
 import type { GroundsPaint } from '../grounds/paint';
 import { drawTerrainGround, drawTerrainOpenings, drawTerrainStanding } from '../terrain/drawTerrain';
 import { loneTrees } from './loneTrees';
-import { MASS_DEPTH, woodsMass, type WoodsClump } from './woodsMass';
+import { forestMass, woodsOutside } from './forestMass';
+import { MASS_DEPTH, type WoodsClump } from './woodsMass';
 import { crownClump, treeKind } from './treeShapes';
 import { forestLookOf } from '../../forestLooks';
 
@@ -36,13 +37,8 @@ export interface ForestArt {
   water(scene: ArtScene, trace: PathFn, outlines: readonly Vec[][], depth: Field, deepness: Field): void;
 }
 
-/** How far the mass keeps off a river's water, in cells: the trees stand on its banks and lean over it a little. */
-const RIVER_BANK = 0.3;
-/** How far the mass keeps off a road's edge, in cells: a verge either side. */
-const ROAD_VERGE = 0.35;
-
 /**
- * A Forest's entry floor, as Watabou's Glade view and Reprieve draw woods, bottom to top: the woods'
+ * A Forest's entry floor, as Reprieve draws woods, bottom to top: the woods'
  * colour over the whole frame, the clearings' ground (running on under the woods' mass, so a gap in
  * it shows ground and never the outline), water and terrain on the ground, one merged shadow of the
  * mass, the grid, the mass of leafy clumps from the deepest to the clearing's edge (its silhouette is
@@ -64,18 +60,11 @@ export function drawForest(scene: ArtScene, art: ForestArt): void {
     traceShapes(path, scene.floors, MASS_DEPTH, MASS_DEPTH);
     for (const ring of banks) tracePolygon(path, ring);
   };
-  // The rivers and roads run through the woods: the mass keeps off them as off a clearing.
-  // Asked a few million times: no allocation in it.
   const field = waterField(rivers, lakes);
   // The bridges: the woods keep off them too.
   const bridges = scene.env.view.water ? rivers.flatMap((river) => river.bridges) : [];
   // The roads run on to the map's edge through the woods, which part for them.
   const road = roadField(roads);
-  const outsideAt = (x: number, y: number): number => {
-    let best = Math.min(scene.sdfAt(x, y), field.distance(x, y) - RIVER_BANK);
-    best = Math.min(best, road.distance(x, y) - ROAD_VERGE);
-    return best;
-  };
   // The woods first and the ground over them, never the woods cut out of the frame: an even-odd cut turns back where two clearings' reaches overlap.
   art.woods();
   art.ground.lawn(ground, cellsOf(view));
@@ -90,7 +79,7 @@ export function drawForest(scene: ArtScene, art: ForestArt): void {
   if (bars.length) art.ground.gravel(polysPath(bars), cellsOf(pointsBounds(bars.flat())));
   drawTerrainGround(hand, art.colours);
   const look = forestLookOf(scene.env.style);
-  const mass = woodsMass(view, (p) => outsideAt(p.x, p.y), dungeon.model.seed, look);
+  const mass = forestMass(dungeon, scene.env.style, view);
   // The lone trees in the clearings, drawn as the mass's edge is, each a crown (or bare limbs) of its own.
   const lone = loneTrees(scene.env.dungeon).map((tree): WoodsClump => {
     const salt = Math.floor(tree.x * 7349 + tree.y * 3083);
@@ -103,6 +92,7 @@ export function drawForest(scene: ArtScene, art: ForestArt): void {
   if (rings.length) castShadow(hand, polysPath(rings), 0.55, pointsBounds(rings.flat()), art.ground.shade.tree, ground);
   drawGrid(scene.env);
   for (const entry of crowned(mass)) art.clump(entry);
+  const outsideAt = woodsOutside(dungeon, (x, y) => scene.sdfAt(x, y));
   const depth = (x: number, y: number): number => massShare(outsideAt(x, y));
   art.finish(crowned(mass), depth);
   for (const entry of crowned(lone)) art.clump(entry);

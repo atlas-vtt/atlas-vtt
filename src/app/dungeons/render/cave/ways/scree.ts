@@ -3,7 +3,6 @@ import type { StairEnd } from '../../../floors/stairSpots';
 import { doorCells } from '../../../geometry';
 import type { CellDir, DungeonDoor } from '../../../model';
 import type { Hand } from '../../art/hand';
-import { hash2 } from '../../art/noise';
 import { polyPath, polysPath, type PathFn } from '../../art/paths';
 import { pointsBounds, type Bounds, type Vec } from '../../geometry';
 import { withAlpha } from '../../palette';
@@ -11,9 +10,10 @@ import { band, edgeLine, fillWith, inkOf, litLip, lookOf, lowBands, strokeWith, 
 import { drawRubble, insideOf } from '../../vertical/rubble';
 import { wayFrame, type WayFrame } from './narrows';
 import { neckFaces } from './pinch';
-import { screeSlope, type ScreeSlope } from './screeShape';
+import { screeSlope, slopeArea, type ScreeSlope } from './screeShape';
 import { dashes } from './shaftMouth';
 import { stoneOf } from './wayColours';
+import { slopeSeed } from './wayOutline';
 import { boundedCached } from '../../boundedCache';
 
 const SLOPES = new Map<string, ScreeSlope>();
@@ -37,12 +37,6 @@ function slopeT(frame: WayFrame, slope: ScreeSlope): (p: Vec) => number {
 }
 
 /** The slope's own area: inside its edge from above, between its sides from below, across the passage between rooms. */
-function areaOf(frame: WayFrame, slope: ScreeSlope): Vec[] {
-  if (slope.ring) return slope.ring;
-  if (slope.area) return slope.area;
-  return [...slope.sides[0]!.run, ...slope.sides[1]!.run.slice().reverse()];
-}
-
 /** Darker down the slope, a tenth for every five feet it falls: a gradient in ink, pressure in crayon, hatching in the engraving. */
 function gradedSlope(hand: Hand, path: PathFn, bounds: Bounds, frame: WayFrame, slope: ScreeSlope, t: (p: Vec) => number, feet: number): void {
   const deepest = Math.min(0.5, 0.08 + 0.02 * feet);
@@ -100,7 +94,7 @@ function drawSlope(hand: Hand, frame: WayFrame, seed: number, feet: number, end?
   const key = `${hand.scene.env.dungeon.model.seed}:${hand.scene.env.dungeon.index}:${seed}:${end ?? 'steps'}:${frame.bounds.minX},${frame.bounds.minY},${frame.bounds.maxX},${frame.bounds.maxY}`;
   const slope = boundedCached(SLOPES, key, 64, () => screeSlope(frame, seed, end, end === undefined ? neckFaces(hand, frame) : undefined));
   const t = slopeT(frame, slope);
-  const area = areaOf(frame, slope);
+  const area = slopeArea(slope);
   const bounds = pointsBounds(area);
   gradedSlope(hand, polyPath(area), bounds, frame, slope, t, feet);
   // The edges' bands first, so the stones lie over them.
@@ -134,7 +128,7 @@ function ctxClip(hand: Hand, path: PathFn, draw: () => void): void {
 
 /** A slope's own seed, from where it lies, so one slope never moves when another changes. */
 function seedOf(hand: Hand, frame: WayFrame): number {
-  return Math.floor(hash2(frame.bounds.minX, frame.bounds.minY, hand.scene.env.dungeon.model.seed) * 0x7fffffff);
+  return slopeSeed(frame, hand.scene.env.dungeon.model.seed);
 }
 
 /** A steps door's slope: its cell and the next one down, the floor the slope spills onto. */

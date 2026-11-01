@@ -3,6 +3,8 @@ import type { WallSegment } from '../../../types/wallTypes';
 import { DARKNESS } from '../../../lighting/lightingConstants';
 import { areaRadius } from '../../../lighting/lightArea';
 import { filledPieces } from '../../../lighting/polygonFill';
+import { darknessAt } from '../../../vision/lightLevels';
+import { polygonBox, type Box } from '../../../vision/polygonBounds';
 import { lightReach } from '../../../vision/sight';
 import type { MapBounds, Polygon } from '../../../vision/visibility';
 import { sameCone } from '../../../vision/visionCone';
@@ -77,7 +79,18 @@ export class SceneMaps {
     this.darkness ??= new DarknessMap(this.renderer, this.bounds, this.texel);
     // Where a light near a darkness would shine: the darkness veils what it swallows there.
     const lit = this.lights.filter((light) => !light.darkness && sources.some((source) => Math.hypot(source.x - light.x, source.y - light.y) < source.dim + light.dim + (light.surface ? areaRadius(light.surface, light) : 0)));
-    this.darkness.draw(sources.map((light) => this.darknessOf(light)), this.pierce, lit.flatMap((light) => this.litShapes(light)));
+    const areas = sources.map((light) => this.darknessOf(light));
+    // The composite reads the map's other channels only where red is: an area that misses every
+    // darkness is drawn by nobody, so a token moving elsewhere draws nothing anew.
+    const boxes = areas.map(({ polygon }) => polygonBox(polygon));
+    const margin = 2 * this.texel;
+    // A token standing in a darkness, in a light that outshines it, looks out from within: the dark
+    // around it has no edge it could see, and the veil would draw the whole of it.
+    const shapes = this.pierce.filter((shape) => {
+      const box = polygonBox(shape.polygon);
+      return boxes.some((other) => boxesMeet(box, other, margin)) && (!shape.outside || darknessAt(shape.origin, areas) === -Infinity);
+    });
+    this.darkness.draw(areas, shapes, lit.flatMap((light) => this.litShapes(light)));
   }
 
   /**
@@ -86,7 +99,7 @@ export class SceneMaps {
    * and rule cannot differ.
    */
   darknessOf(light: EngineLight): DrawnDarkness {
-    return { origin: { x: light.x, y: light.y }, dim: light.dim, soft: Math.min(DARKNESS.rim, DARKNESS.rimShare * light.dim), polygon: this.areaOf(light) };
+    return { origin: { x: light.x, y: light.y }, dim: light.dim, soft: Math.min(DARKNESS.rim, DARKNESS.rimShare * light.dim), polygon: this.areaOf(light), darkness: true };
   }
 
   /** The area the rule counts for a light: the one it came with, else traced here and kept while the light and the walls stay. */
@@ -158,6 +171,10 @@ export class SceneMaps {
     const pieces = filledPieces(light.surface).map((piece) => ({ origin: middleOf(piece), polygon: piece }));
     return [...pieces, ...(light.parts ?? []), ...reflected];
   }
+}
+
+function boxesMeet(a: Box, b: Box, margin: number): boolean {
+  return a.minX <= b.maxX + margin && b.minX <= a.maxX + margin && a.minY <= b.maxY + margin && b.minY <= a.maxY + margin;
 }
 
 /**

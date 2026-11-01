@@ -62,7 +62,7 @@ export function paintStoneForest(scene: ArtScene): void {
     clump: ({ clump, depth }) => {
       const t = massShare(depth);
       const body = mixColours(mid, deep, t ** 0.7);
-      // Pointed leaves (or needles) round its edge, as Watabou draws a crown: the ring's crests, not its rounded scallops.
+      // Pointed leaves (or needles) round its edge: the ring's crests, not its rounded scallops.
       ctx.beginPath();
       clump.ring.forEach((p, k) => (k === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
       ctx.closePath();

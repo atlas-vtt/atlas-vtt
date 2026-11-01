@@ -242,6 +242,11 @@
       &:not(:has(> .atlas-scene-tab-bar)) {
         flex-shrink: 0;
       }
+
+      // The open TrueScale panel stands over the level switcher and the toolbar row, as their menus do
+      &:has(.atlas-true-scale__panel) {
+        z-index: $z-atlas-dropdown;
+      }
     }
 
     .atlas-top-bar-start__below {
@@ -1080,6 +1085,29 @@
   .pin-header-level {
     color: var(--text-muted);
     background: var(--background-modifier-hover);
+  }
+
+  // The sections around a heading: those farthest up give way first, so the nearest stays readable
+  .pin-header-trail {
+    @include atlas-flex-row($gap: 0);
+    min-width: 0;
+    font-size: $font-ui-smaller;
+    color: var(--text-faint);
+  }
+
+  .pin-header-section {
+    flex: 0 1000 auto;
+    min-width: 0;
+    @include atlas-truncate;
+
+    &:last-child {
+      flex-shrink: 1;
+    }
+  }
+
+  .pin-header-separator {
+    flex-shrink: 0;
+    white-space: pre;
   }
 
   .pin-header-file {
