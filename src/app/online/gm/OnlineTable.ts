@@ -316,6 +316,7 @@ export class OnlineTable {
   /** The GM signed in again: what waits for the store is offered again. */
   signedIn(): void {
     this.assets?.signedIn();
+    this.sound?.refreshAssets();
   }
 
   /** Ends the table on the server and stops sharing. */

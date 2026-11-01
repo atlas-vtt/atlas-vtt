@@ -1,7 +1,9 @@
 import React, { useCallback, useId, useSyncExternalStore } from 'react';
+import { Users } from 'lucide-react';
 import { t } from '../../../../i18n';
 import { Button } from '../../../../packages/components/primitives/button';
 import { ToggleSwitch } from '../../../../packages/components/primitives/Toggle';
+import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import type { Mood, SoundRecord } from '../../../../sound/soundTypes';
 import { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import type { PlayersCopy, PlayersSounds } from '../../../../soundDirector/tableClock';
@@ -24,9 +26,26 @@ export function moodForPlayers(mood: Pick<Mood, 'music' | 'layers'>, director: S
   return uploading.length > 0 ? { state: 'uploading', share: Math.min(...uploading) } : { state: 'ready' };
 }
 
-/** How a sound or a mood stands for players, in a tag. */
-export function PlayersTag({ copy }: { copy: PlayersCopy }): React.JSX.Element {
+function shortText(copy: PlayersCopy): string {
+  if (copy.state === 'ready') return t('audio.players.shortReady');
+  return copy.state === 'uploading' ? t('audio.players.shortPercent', { percent: Math.round(copy.share * 100) }) : t('audio.players.shortNowhere');
+}
+
+/** How a sound stands for players, in words. */
+function PlayersLine({ copy }: { copy: PlayersCopy }): React.JSX.Element {
   return <span className="atlas-sound-tag atlas-sound-tag--players" data-players={copy.state}>{copyText(copy)}</span>;
+}
+
+/** How a mood stands for players, small in the corner of its card; the whole sentence under the pointer. */
+export function MoodPlayersTag({ copy }: { copy: PlayersCopy }): React.JSX.Element {
+  return (
+    <LabelTooltip label={copyText(copy)} describe>
+      <span className="atlas-sound-tag atlas-sound-tag--players atlas-sound-mood__players" data-players={copy.state}>
+        <Users aria-hidden="true" />
+        {shortText(copy)}
+      </span>
+    </LabelTooltip>
+  );
 }
 
 /** On a sound's card, while a table runs. */
@@ -37,7 +56,7 @@ export function PlayersCardLine({ record }: { record: SoundRecord }): React.JSX.
   const revision = useSyncExternalStore(subscribe, () => director?.snapshot().playersRevision ?? 0);
   const sounds = director?.players.sounds ?? null;
   if (sounds === null || !sounds.sending || revision < 0) return null;
-  return <PlayersTag copy={sounds.copyOf(record)} />;
+  return <PlayersLine copy={sounds.copyOf(record)} />;
 }
 
 function SendSwitch({ sounds }: { sounds: PlayersSounds }): React.JSX.Element {
@@ -45,7 +64,7 @@ function SendSwitch({ sounds }: { sounds: PlayersSounds }): React.JSX.Element {
   return (
     <div className="atlas-sound-players__send">
       <span id={labelId} className="atlas-sound-players__label">{t('audio.players.send')}</span>
-      <ToggleSwitch value={sounds.sending} onChange={() => sounds.setSending(!sounds.sending)} labelledBy={labelId} />
+      <ToggleSwitch value={sounds.sending} onChange={() => sounds.setSending(!sounds.sending)} labelledBy={labelId} size="s" />
     </div>
   );
 }

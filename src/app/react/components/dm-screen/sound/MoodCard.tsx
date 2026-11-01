@@ -6,7 +6,7 @@ import type { MoodProblem } from '../../../../soundDirector/moodReadiness';
 import type { PlayersCopy } from '../../../../soundDirector/tableClock';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import { IconAction } from './IconAction';
-import { PlayersTag } from './PlayersRow';
+import { MoodPlayersTag } from './PlayersRow';
 
 interface MoodCardProps {
   mood: Mood;
@@ -67,7 +67,7 @@ export const MoodCard = React.memo(function MoodCard({ mood, number, playing, ne
           </span>
         </LabelTooltip>
       )}
-      {players !== null && <PlayersTag copy={players} />}
+      {players !== null && <MoodPlayersTag copy={players} />}
       <IconAction label={t('audio.moodMenu', { name: mood.name })} icon={MoreHorizontal} className="atlas-sound-mood__menu" focusSkip onClick={(event) => onMenu(mood, event.currentTarget)} />
     </div>
   );

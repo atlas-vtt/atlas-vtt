@@ -162,11 +162,3 @@
   @include atlas-flex-row($spacing-xs);
   min-width: 0;
 }
-
-.atlas-sound-tag--players {
-  white-space: nowrap;
-
-  &[data-players='nowhere'] {
-    color: var(--text-warning);
-  }
-}
