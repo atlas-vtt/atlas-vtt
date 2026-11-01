@@ -75,6 +75,8 @@ export interface RenderScript {
   options?: Partial<SoundPlayerOptions>;
   /** Table time at context time 0. */
   tableBase?: number;
+  /** Read at every look at the clock, for a test whose table clock moves its own way. */
+  tableShift?: () => number;
   tickSeconds?: number;
   /** False: time goes on without waiting for what the player reads, as with bytes that are late. */
   settle?: boolean;
@@ -90,7 +92,7 @@ export async function render(state: TableSound, fixtures: Fixtures, script: Rend
   const tableBase = script.tableBase ?? 0;
   const player = new SoundPlayer({
     context,
-    tableNow: () => context.currentTime * 1000 + tableBase,
+    tableNow: () => context.currentTime * 1000 + tableBase + (script.tableShift?.() ?? 0),
     resolve: (key) => {
       const bytes = fixtures.files.get(key);
       if (!bytes) throw new Error(`no fixture ${key}`);

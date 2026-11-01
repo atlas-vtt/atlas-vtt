@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { webCodecsWindowDecode, wholeFileWindowDecode, type WindowDecode } from '@/app/sound/engine/windowDecoder';
 import type { SoundContext } from '@/app/sound/engine/audioNodes';
-import { FIXTURE_FRAMES, largestStep, layerOf, loadFixtures, longestSilence, render, secondsToFrames, tableOf, type Fixtures } from './soundHarness';
+import { FIXTURE_FRAMES, largestStep, layerOf, loadFixtures, longestSilence, render, secondsToFrames, sineAt, tableOf, type Fixtures } from './soundHarness';
 
 /** A 0.25 sine at 220 Hz. */
 const NORMAL_STEP = 0.25 * Math.sin((2 * Math.PI * 220) / 48000);
@@ -10,9 +10,25 @@ const NORMAL_STEP = 0.25 * Math.sin((2 * Math.PI * 220) / 48000);
 function expectClean(samples: Float32Array, from: number, to: number, label: string): void {
   const silence = longestSilence(samples, from, to);
   const step = largestStep(samples, from, to);
-  console.log(`seam ${label}: longest silence ${silence} frames, largest step ${step.toFixed(5)} (${(step / NORMAL_STEP).toFixed(2)} x normal)`);
+  const slip = largestSlip(samples, from, to);
+  console.log(`seam ${label}: longest silence ${silence} frames, largest step ${step.toFixed(5)} (${(step / NORMAL_STEP).toFixed(2)} x normal), position within ${slip.toFixed(3)} frames`);
   expect(silence).toBeLessThanOrEqual(1);
   expect(step).toBeLessThanOrEqual(2 * NORMAL_STEP);
+  expect(slip).toBeLessThan(0.5);
+}
+
+/**
+ * Against the signal's own clock: every second of a sine of whole cycles has one phase if and only if no frame
+ * was lost or added. A step cannot show this: at 220 Hz one lost frame is no more than twice the normal step.
+ */
+function largestSlip(samples: Float32Array, from: number, to: number): number {
+  const reference = sineAt(samples, from, 48_000, 220).phase;
+  let largest = 0;
+  for (let at = from + 48_000; at + 48_000 <= to; at += 48_000) {
+    const gap = Math.abs(sineAt(samples, at, 48_000, 220).phase - reference) % (2 * Math.PI);
+    largest = Math.max(largest, ((gap > Math.PI ? 2 * Math.PI - gap : gap) / (2 * Math.PI * 220)) * 48000);
+  }
+  return largest;
 }
 
 describe('seams', () => {
@@ -30,6 +46,15 @@ describe('seams', () => {
       const buffer = await context.decodeAudioData(bytes.slice().buffer);
       expect(buffer.length).toBe(frames);
     }
+  });
+
+  it('notices a single lost frame, or the rest of this file proves nothing', async () => {
+    const whole = await render(tableOf({ layers: [layerOf(fixtures.tone220)] }), fixtures, { seconds: 4 });
+    const lost = new Float32Array(whole.length - 1);
+    lost.set(whole.subarray(0, 96_000));
+    lost.set(whole.subarray(96_001), 96_000);
+    expect(largestSlip(whole, secondsToFrames(0.5), whole.length)).toBeLessThan(0.5);
+    expect(largestSlip(lost, secondsToFrames(0.5), lost.length)).toBeGreaterThan(0.9);
   });
 
   it('loops a short sound through its seam without a mark', async () => {

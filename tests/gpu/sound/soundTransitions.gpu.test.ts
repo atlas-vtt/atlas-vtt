@@ -115,6 +115,40 @@ describe('going from one mood to another', () => {
   });
 });
 
+describe('a clock that moved', () => {
+  let fixtures: Fixtures;
+
+  beforeAll(async () => {
+    fixtures = await loadFixtures();
+  });
+
+  it.each([
+    ['a loop', 'tone220', 0.301],
+    ['windows, which holds what it has already scheduled', 'long', 0.301],
+    ['anything, far off', 'tone220', 5.001],
+  ] as const)('corrects %s without a click', async (_name, key, seconds) => {
+    let shift = 0;
+    const samples = await render(tableOf({ layers: [layerOf(key === 'long' ? fixtures.long : fixtures.tone220)] }), fixtures, {
+      seconds: 30,
+      tableShift: () => shift,
+      at: [[2, (): void => {
+        shift = seconds * 1000;
+      }]],
+    });
+    const step = largestStep(samples, secondsToFrames(0.5), samples.length);
+    const silence = longestSilence(samples, secondsToFrames(0.5), samples.length);
+    const before = sineAt(samples, secondsToFrames(1), secondsToFrames(1), 220);
+    const after = sineAt(samples, secondsToFrames(28.5), secondsToFrames(1), 220);
+    const moved = framesOfPhase(phaseGap(before.phase, after.phase));
+    // The sine's phase moves by the shift modulo its cycle.
+    const wanted = framesOfPhase(phaseGap(0, (2 * Math.PI * 220 * seconds) % (2 * Math.PI)));
+    console.log(`clock moved ${seconds} s, ${key}: largest step ${(step / NORMAL_STEP).toFixed(2)} x normal, silence ${silence} frames, phase moved ${moved.toFixed(1)} frames of ${wanted.toFixed(1)}`);
+    expect(silence).toBeLessThanOrEqual(1);
+    expect(step).toBeLessThanOrEqual(2 * NORMAL_STEP);
+    expect(Math.abs(moved - wanted)).toBeLessThan(2);
+  });
+});
+
 describe('the listener\'s own levels', () => {
   let fixtures: Fixtures;
 

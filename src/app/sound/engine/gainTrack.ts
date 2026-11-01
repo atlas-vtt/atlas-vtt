@@ -63,10 +63,10 @@ export class GainTrack {
     return high === undefined ? low : low + (high - low) * (position - index);
   }
 
-  /** An equal-power fade from whatever the gain will be at `at`. */
+  /** An equal-power fade from whatever the gain will be at `at`, over by `at + seconds`. */
   fade(to: number, at: number, seconds: number): void {
     const from = this.hold(at);
-    this.curve(fadeCurve(from, to, seconds), from, at + AFTER_HOLD_SECONDS, seconds);
+    this.curve(fadeCurve(from, to, seconds), from, at, seconds);
   }
 
   /** Comes in on a fade already under way: the part from `progress` on, starting at `at`. */
@@ -75,7 +75,7 @@ export class GainTrack {
     const first = values[0] ?? 0;
     this.param.cancelScheduledValues(at);
     this.param.setValueAtTime(first, at);
-    this.curve(values, first, at + AFTER_HOLD_SECONDS, seconds);
+    this.curve(values, first, at, seconds);
   }
 
   /** A fader: moves towards `to`, 95 % of the way over `seconds`. */
@@ -86,9 +86,12 @@ export class GainTrack {
     this.motion = { kind: 'target', from, to, at: at + AFTER_HOLD_SECONDS, constant };
   }
 
+  /** Starts just after `at`, where a value was just set, and ends when asked, which a stop may rely on. */
   private curve(values: Float32Array<ArrayBuffer>, before: number, at: number, seconds: number): void {
-    this.param.setValueCurveAtTime(values, at, seconds);
-    this.motion = { kind: 'curve', values, at, seconds, before };
+    const start = at + AFTER_HOLD_SECONDS;
+    const length = Math.max(AFTER_HOLD_SECONDS, seconds - AFTER_HOLD_SECONDS);
+    this.param.setValueCurveAtTime(values, start, length);
+    this.motion = { kind: 'curve', values, at: start, seconds: length, before };
   }
 
   /** Ends what is under way at `at`, holding the value it had reached. */
