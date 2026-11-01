@@ -1,5 +1,4 @@
 import type { GlassOutline } from '../../../pixi/glassOutline';
-import type { PlayerCameraState } from '../../../local-player-view';
 import type { PlayerWindowService } from '../../../services/PlayerWindowService';
 import type { GridState } from '../../../types/gridTypes';
 import type { GlassDragSteps } from './glassDrag';
@@ -20,17 +19,16 @@ export interface GlassDragDeps {
   /** The world point under a client point, on the GM's map. */
   toWorld(clientX: number, clientY: number): Point | null;
   outline: GlassOutline;
-  /** Puts the ghost at a centre while it is dragged, or back in the middle of the view (null). */
+  /** Puts the ghost at a centre, or back in the middle of the view (null). */
   moveGhost(centre: Point | null): void;
-  /** Shows players this map, through `camera`. */
-  present(camera: PlayerCameraState): void;
 }
 
 /**
  * What dragging the glass's chip does. The live glass moves players with it at once, pinned
  * (`dragPlayersTo`), while the place they saw stays dotted; the drop keeps the frame
  * (`framePlayersOn`), and a cancel puts players back as they were, pinned there or following.
- * The ghost moves alone and the drop presents this map framed there.
+ * The ghost moves alone and stays where it is dropped: only the chip's button presents this map
+ * framed there, so placing it never moves the players by itself.
  */
 export function glassDragSteps(deps: GlassDragDeps): GlassDragSteps {
   const { service, tabId, outline } = deps;
@@ -74,14 +72,8 @@ export function glassDragSteps(deps: GlassDragDeps): GlassDragSteps {
       const ended = session;
       session = null;
       outline.setOrigin(null);
-      if (!ended || !last) return;
-      if (ended.look === 'live') {
-        service.framePlayersOn(tabId, last.x, last.y);
-        return;
-      }
-      const camera = service.playerCameraAt(last.x, last.y);
-      if (camera) deps.present(camera);
-      else ended.restore();
+      if (!ended || !last || ended.look !== 'live') return;
+      service.framePlayersOn(tabId, last.x, last.y);
     },
     cancel(): void {
       const cancelled = session;

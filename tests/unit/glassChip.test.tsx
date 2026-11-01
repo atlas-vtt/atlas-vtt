@@ -237,16 +237,21 @@ describe('the glass chip', () => {
       expect(screen.getByText('Bring players here')).toBeTruthy();
       expect(fakes.outlines[0]!.setGlass).toHaveBeenLastCalledWith({ centerX: 500, centerY: 400, width: 200, height: 100 }, 'ghost');
 
-      fireEvent.click(screen.getByRole('button', { name: 'Show players this map, framed here' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Show players this map' }));
       expect(fakes.presentTab).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'tab-a', { camera: { centerX: 500, centerY: 400, scale: 1 } });
     });
 
-    it('is dragged first, alone, and presents the map where it was dropped', () => {
+    it('is dragged alone, stays where it was dropped, and presents the map there only from its button', async () => {
       render(<GlassChip view={fakeView()} />);
       drag([{ x: 163, y: 72 }]);
       // Grabbed at (100, 50), 400 left of and 350 above its centre: (563, 422) puts the corner at (463, 372), which lands on (450, 350)
       expect(service.dragPlayersTo).not.toHaveBeenCalled();
       expect(fakes.outlines[0]!.setGlass).toHaveBeenLastCalledWith({ centerX: 550, centerY: 400, width: 200, height: 100 }, 'ghost');
+      expect(fakes.presentTab).not.toHaveBeenCalled();
+
+      // The click a browser sends right after the drag's release is swallowed; a later press is not
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      fireEvent.click(screen.getByRole('button', { name: 'Show players this map' }));
       expect(fakes.presentTab).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'tab-a', { camera: { centerX: 550, centerY: 400, scale: 1 } });
     });
 
