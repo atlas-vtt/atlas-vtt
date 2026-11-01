@@ -247,8 +247,10 @@ export class NotePreviewWindow {
     }
 
     if (this.titleElement) {
-      const displayTitle = this.headerToScrollTo 
-        ? `${file.basename} > ${linkedHeading(this.app, file, this.headerToScrollTo)?.text ?? headingTitle(this.headerToScrollTo)}`
+      const header = this.headerToScrollTo;
+      // A link that is the heading's own text keeps a # it holds; one that names sections shows them.
+      const displayTitle = header
+        ? `${file.basename} > ${linkedHeading(this.app, file, header)?.text === header ? header : headingTitle(header)}`
         : file.basename || t('preview.loading');
       this.titleElement.setText(displayTitle);
     }

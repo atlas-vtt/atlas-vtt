@@ -118,6 +118,14 @@ describe('findRenderedHeading', () => {
     expect(findRenderedHeading(container, { text: 'Loot', line: 80, occurrence: 8, count: 9 }, lineOf)).toBe(second);
   });
 
+  it('does not take a heading an embed draws for a repeat of the note\'s own', () => {
+    const container = document.body.createDiv();
+    const own = rendered(container, 'Overview', 100);
+    rendered(container, 'Overview', 200);
+    const lineOf = (element: HTMLElement): number | null => (element === own ? 10 : null);
+    expect(findRenderedHeading(container, { text: 'Overview', line: 500, occurrence: 1, count: 2 }, lineOf)).toBeNull();
+  });
+
   it('finds nothing while the view knows the drawn ones lie on other lines, so the scroll goes on', () => {
     const container = document.body.createDiv();
     container.getBoundingClientRect = (): DOMRect => ({ top: 100 }) as DOMRect;

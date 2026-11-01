@@ -98,8 +98,10 @@ export function findRenderedHeading(
   const lines = lineOf ? drawn.map(lineOf) : [];
   const onItsLine = drawn[lines.indexOf(heading.line)];
   if (onItsLine) return onItsLine;
-  if (drawn.length === heading.count) return drawn[heading.occurrence] ?? null;
-  if (lines.some((line) => line !== null)) return null;
+  // Where the view knows the lines, the order can only be trusted for a unique heading: an embed draws headings of its own.
+  const linesKnown = lines.some((line) => line !== null);
+  if (drawn.length === heading.count && (heading.count === 1 || !linesKnown)) return drawn[heading.occurrence] ?? null;
+  if (linesKnown) return null;
 
   const top = container.getBoundingClientRect().top;
   let nearest: HTMLElement | null = null;
