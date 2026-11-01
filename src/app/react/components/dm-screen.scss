@@ -1,5 +1,4 @@
 @use '../../../../styles/tokens' as *;
-@use '../../../../styles/mixins' as *;
 
 // DM screen styles
 //
@@ -47,21 +46,14 @@
   position: absolute;
   top: 50%;
   left: 50%;
-  // The panel starts below the map's top bar row, and centres in what is left below it.
-  --atlas-dm-screen-top: 56px;
-  top: calc(50% + var(--atlas-dm-screen-top) / 2 - #{$spacing-xs});
   transform: translate(-50%, -50%) scale(0.97);
   width: 98%;
-  height: calc(100% - var(--atlas-dm-screen-top) - #{$spacing-s});
+  height: 88%;
   max-height: 900px;
   display: flex;
   flex-direction: column;
   pointer-events: auto;
   opacity: 0;
-  overflow: hidden;
-  color: var(--text-normal);
-  @include atlas-elevated-surface;
-  @include atlas-panel-radius($radius-2xl);
 
   &.is-visible {
     animation: atlas-dm-screen-enter 0.25s ease-out both;
@@ -71,9 +63,14 @@
     animation: atlas-dm-screen-exit 0.2s ease-in both;
   }
 
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    height: 90%;
+  }
+
   // Large views scale the whole DM screen up
   @container atlas-dm-screen (min-width: 1400px) {
     width: 96%;
+    height: 90%;
     max-height: 1200px;
     font-size: 110%;
   }
@@ -117,12 +114,23 @@
   display: flex;
   gap: 16px;
   overflow: hidden;
-  padding: 0 $spacing-m $spacing-m;
+  padding: 12px;
+  padding-top: 70px; // keeps the panes below the map's top bar row
   position: relative;
   min-height: 0;
 
+  @container atlas-dm-screen (min-width: 1400px) {
+    padding: 16px;
+    padding-top: 75px;
+  }
+
   &[hidden] {
     display: none;
+  }
+
+  // The page control already keeps it below the map's top bar row.
+  .atlas-dm-screen-header ~ & {
+    padding-top: $spacing-s;
   }
 
   // Narrow views stack the panes
@@ -133,25 +141,17 @@
 }
 
 .atlas-dm-screen-header {
-  @include atlas-flex-row($spacing-s);
-  @include atlas-close-header($close-button-gap);
-  justify-content: space-between;
   flex-shrink: 0;
+  display: flex;
+  padding: 70px 12px 0; // keeps the page control below the map's top bar row
 
-  > .atlas-close-btn {
-    margin-inline-start: auto;
+  @container atlas-dm-screen (min-width: 1400px) {
+    padding: 75px 16px 0;
   }
 }
 
 .atlas-dm-screen-pages {
   width: 240px;
-  border-top-left-radius: atlas-panel-inset-radius-value($close-button-gap);
-  @include atlas-corner-shape;
-
-  // Concentric inside the track, in the panel's corner.
-  > .atlas-segmented__option:first-of-type {
-    border-top-left-radius: atlas-panel-inset-radius-value(#{$close-button-gap} + #{$spacing-xs});
-  }
 }
 
 .atlas-dm-sound-page {

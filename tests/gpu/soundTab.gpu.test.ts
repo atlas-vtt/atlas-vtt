@@ -40,7 +40,7 @@ describe('the DM screen’s Sound page', () => {
     viewport.remove();
   });
 
-  it('has the panel conventions, two panes at about 60 and 40, and the tab control', async () => {
+  it('stands on the backdrop, with two panes at about 60 and 40, and the tab control', async () => {
     await page.viewport(1280, 820);
     tab = await openSoundTab(DARK, viewport);
     seedMoods(tab);
@@ -48,15 +48,8 @@ describe('the DM screen’s Sound page', () => {
     await sleep(350);
 
     const screen = box('.atlas-dm-screen');
-    const close = box('.atlas-dm-screen-header .atlas-close-btn');
-    const style = getComputedStyle(document.querySelector('.atlas-dm-screen')!);
-    expect(style.borderRadius).toBe('24px');
-    // The close button sits its gap from the border, above and beside, with a concentric corner.
-    const border = parseFloat(style.borderTopWidth);
-    expect(close.top - screen.top - border).toBeCloseTo(8, 0);
-    expect(screen.right - close.right - border).toBeCloseTo(8, 0);
-    // The panel's border is 1.5 px, which a screen of one pixel per point draws as 1.
-    expect(parseFloat(getComputedStyle(document.querySelector('.atlas-dm-screen-header .atlas-close-btn')!).borderTopRightRadius)).toBeCloseTo(24 - 1.5 - 8, 1);
+    // The screen is no panel of its own: its panes stand on the backdrop.
+    expect(getComputedStyle(document.querySelector('.atlas-dm-screen')!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
 
     const moods = box('.atlas-sound-moods');
     const now = box('.atlas-sound-now');
@@ -64,8 +57,10 @@ describe('the DM screen’s Sound page', () => {
     expect(moods.width / (moods.width + now.width)).toBeCloseTo(0.6, 1);
     expect(now.bottom).toBeLessThanOrEqual(screen.bottom);
 
+    // Below the map's top bar row, and the panes below it.
     const pages = box('.atlas-dm-screen-pages');
-    expect(pages.top - screen.top).toBeLessThan(20);
+    expect(pages.top - screen.top).toBeGreaterThanOrEqual(70);
+    expect(moods.top).toBeGreaterThanOrEqual(pages.bottom);
     expect(document.querySelectorAll('.atlas-dm-screen-pages [role="radio"]')).toHaveLength(2);
     // Silence stays in the corner of its column.
     const silence = box('.atlas-sound-silence');

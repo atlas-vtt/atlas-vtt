@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '../../i18n';
 import { matchesMapHotkey } from '../../keyboard/mapHotkeys';
-import { CloseButton } from '../../packages/components/primitives/CloseButton';
 import { SegmentedControl, type SegmentedOption } from '../../packages/components/primitives/SegmentedControl';
 import { SettingsService } from '../../services/SettingsService';
 import type { DMScreenPage } from '../../types/viewUIState';
@@ -115,10 +114,11 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
       <div className={`atlas-dm-screen-backdrop ${closing ? 'is-closing' : ''}`} onClick={handleClose} />
 
       <div className={`atlas-dm-screen ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
-        <div className="atlas-dm-screen-header">
-          {soundOn && <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />}
-          <CloseButton onClick={handleClose} />
-        </div>
+        {soundOn && (
+          <div className="atlas-dm-screen-header">
+            <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
+          </div>
+        )}
         {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}
         <div className="atlas-dm-screen-content" hidden={page !== 'statblocks'}>
           <DMStatblocksPane app={app} statblocks={statblocks} loading={loading} onClose={handleClose} />

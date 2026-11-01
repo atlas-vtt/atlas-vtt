@@ -9,8 +9,12 @@
   display: grid;
   grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
   gap: $spacing-m;
-  padding: 0 $spacing-m $spacing-m;
+  padding: $spacing-s 12px 12px;
   font-size: $font-ui-small;
+
+  @container atlas-dm-screen (min-width: 1400px) {
+    padding: $spacing-s 16px 16px;
+  }
 
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
     grid-template-columns: minmax(0, 1fr);
@@ -27,9 +31,7 @@
 
 .atlas-sound-moods,
 .atlas-sound-now {
-  @include atlas-inset-surface;
-  background: var(--background-primary);
-  @include atlas-panel-inset-radius($spacing-m, bottom-left, bottom-right);
+  @include atlas-elevated-surface;
   display: flex;
   flex-direction: column;
   min-height: 0;
