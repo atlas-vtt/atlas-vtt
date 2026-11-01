@@ -80,10 +80,12 @@ function finishFloor(seed: number, index: number, parts: FloorParts, terrain: Fl
   const walked = [...stairsAndAround(stairs), ...(cave ? entrancesAndAround(doors) : [])];
   // A cave's deep water is part of its water: one body with the floor's water where they meet, its own shore where not.
   const deep = cave ? [...terrain.pieces.filter((p) => p.traits.hazard === 'deep-water').flatMap((p) => p.cells), ...sumpMouths(doors, terrain.pieces, new Set([...walked, ...cave.lane.map((c) => cellKey(c.x, c.y))]))] : [];
-  // Its rimstone dams lie where water steps down, at a lake's edge: water may lie over them, never round them as an island.
-  const wetted = new Set([...deep, ...(cave ? terrain.pieces.filter((p) => p.kind === 'rimstone').flatMap((p) => p.cells) : [])].map((c) => cellKey(c.x, c.y)));
+  // Its rimstone dams lie where water steps down, at a lake's edge: the pools behind them are that water, one body with it.
+  const rimstone = cave ? terrain.pieces.filter((p) => p.kind === 'rimstone') : [];
+  const wetted = new Set([...deep, ...rimstone.flatMap((p) => p.cells)].map((c) => cellKey(c.x, c.y)));
   const kept = [...[...terrain.takenCells()].filter((key) => !wetted.has(key)), ...drainCells(terrain.pieces), ...walked, ...(parts.water?.dry ?? [])];
-  const { water, waterCells } = placeWater(seed, index, rooms, { level, pools, dry: new Set(kept), ...(deep.length && { deep }), ...(wet && { rooms: wet.rooms, shoreCorners: wet.shoreCorners, natural: true }) });
+  const floods = rimstone.map((p) => ({ room: p.room, cells: p.cells }));
+  const { water, waterCells } = placeWater(seed, index, rooms, { level, pools, dry: new Set(kept), ...(deep.length && { deep }), ...(floods.length && { floods }), ...(wet && { rooms: wet.rooms, shoreCorners: wet.shoreCorners, natural: true }) });
   const flora = floraOf(params.tags, parts.theme);
   const house = planned.house && houseCells({ rooms, stacks: planned.house.stacks });
   const outside = house && ((x: number, y: number): boolean => !house.has(cellKey(x, y)));

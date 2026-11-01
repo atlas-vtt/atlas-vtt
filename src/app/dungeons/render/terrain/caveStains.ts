@@ -4,8 +4,12 @@ import { smallFloorHand } from '../stone/smallFloorFields';
 import { valueNoise } from '../art/noise';
 import { polysPath, type Field } from '../art/paths';
 import { pointsBounds, type Vec } from '../geometry';
+import { onCaveFloor } from '../cave/caveArt';
+import { PolyField } from '../cave/polyField';
 import { cellRings, insetRing } from './cellRings';
+import { moltenRings } from './moltenShape';
 import { cellSet, pieceRng } from './pieces';
+import { raggedRing, type RaggedShape } from './scatterPatch';
 import { chiselled } from './stones';
 
 /** A floor coating stays off walls, with no ink along the internal cell seams. */
@@ -82,9 +86,12 @@ export function drawBoneLitter(hand: Hand, piece: DungeonTerrain): void {
   hand.line(splits, 'fine');
 }
 
-/** A pale mineral skin: scalloped edges and small, three-way craze fractures, not rubble. */
-export function drawSulphurCrust(hand: Hand, piece: DungeonTerrain): void {
-  const rings = cellRings(piece.cells).map(ring => {
+/** A crust's patch on a cave's floor: rounder than rubble, its edge close about its cells. */
+const CRUST: RaggedShape = { sigma: 2.2, waves: 1.1, swell: 0.2, rag: 0.06, outwards: -0.02 };
+
+/** A crust's outline on a built floor: its cells inset, their edges scalloped. */
+function scallopedRings(piece: DungeonTerrain): Vec[][] {
+  return cellRings(piece.cells).map(ring => {
     const inset = insetRing(ring, 0.12);
     return inset.flatMap((a, i) => {
       const b = inset[(i + 1) % inset.length]!;
@@ -97,14 +104,42 @@ export function drawSulphurCrust(hand: Hand, piece: DungeonTerrain): void {
       });
     });
   });
+}
+
+/** The acid a crust rings, on a cave's floor: what its patch is drawn round, never over. */
+function acidBeside(hand: Hand, piece: DungeonTerrain): Vec[][] {
+  const { env } = hand.scene;
+  return env.dungeon.floor.terrain.filter(p => p.room === piece.room && p.traits.hazard === 'acid').flatMap(p => moltenRings(env.dungeon.model.seed, p));
+}
+
+/**
+ * A pale mineral skin with small, three-way craze fractures, not rubble: on a cave's floor one
+ * ragged patch round its spring, as a rubble field lies, kept off the acid it rings; on a built
+ * floor its cells, their edges scalloped.
+ */
+export function drawSulphurCrust(hand: Hand, piece: DungeonTerrain): void {
+  const { env } = hand.scene;
+  const cave = onCaveFloor(env);
+  const rings = cave ? cellRings(piece.cells).map(ring => raggedRing(ring, env.dungeon.model.seed + piece.id * 19 + 607, CRUST)) : scallopedRings(piece);
+  const acid = cave ? acidBeside(hand, piece) : [];
+  const { ctx } = env;
+  ctx.save();
+  if (acid.length) {
+    ctx.beginPath();
+    ctx.rect(-1e5, -1e5, 2e5, 2e5);
+    polysPath(acid)(ctx);
+    ctx.clip('evenodd');
+  }
   hand.surface(polysPath(rings), 'stone');
   hand.line(rings, 'fine', true);
-  const rng = pieceRng(hand.scene.env, piece);
+  const inside = new PolyField(rings);
+  const rng = pieceRng(env, piece);
   const cracks: Vec[][] = [];
   for (const cell of piece.cells) for (let i = 0; i < 9; i++) {
     const x = cell.x + 0.25 + (i % 3) * 0.25 + (rng() - 0.5) * 0.08;
     const y = cell.y + 0.25 + Math.floor(i / 3) * 0.25 + (rng() - 0.5) * 0.08;
     const angle = rng() * Math.PI * 2;
+    if (cave && !inside.inside(x, y)) continue;
     for (let branch = 0; branch < 3; branch++) {
       const a = angle + branch * Math.PI * 2 / 3;
       const r = 0.065 + rng() * 0.045;
@@ -112,4 +147,5 @@ export function drawSulphurCrust(hand: Hand, piece: DungeonTerrain): void {
     }
   }
   hand.line(cracks, 'fine');
+  ctx.restore();
 }

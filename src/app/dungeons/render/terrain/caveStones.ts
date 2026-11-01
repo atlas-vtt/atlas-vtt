@@ -1,7 +1,6 @@
 import type { CellDir, DungeonFloor, DungeonTerrain } from '../../model';
 import type { Hand } from '../art/hand';
-import { isSubmergedRimstone } from '../art/pools';
-import { smallFloorHand, smallShallowPools } from '../stone/smallFloorFields';
+import { smallFloorHand } from '../stone/smallFloorFields';
 import { valueNoise } from '../art/noise';
 import { polyPath, polysPath } from '../art/paths';
 import { pointsBounds, type Vec } from '../geometry';
@@ -62,76 +61,75 @@ export function drawBlocks(hand: Hand, blocks: Block[]): void {
   hand.line(stones.map(stone => stone.poly), 'outline', true);
 }
 
-/** Face the nearest water, or the piece's given descent; everything stays in map coordinates. */
+/** How far the water a rimstone steps down to lies at most from its middle, in cells. */
+const NEAR_WATER = 4;
+/** The fewest and most dams a rimstone draws, how far each bows towards the water, and how far apart along a dam its points lie, in cells. */
+const DAMS = { least: 2, most: 4, bow: 0.28, step: 0.06 };
+/** How much of a dam's ink is left out in its breaks. */
+const BREAKS = 0.2;
+
+/** The middle of a piece's cells. */
+function middleOf(piece: DungeonTerrain): Vec {
+  return piece.cells.reduce((a, c) => ({ x: a.x + (c.x + 0.5) / piece.cells.length, y: a.y + (c.y + 0.5) / piece.cells.length }), { x: 0, y: 0 });
+}
+
+/**
+ * The way down a rimstone's terraces, towards the nearest water beside it (the pools behind its dams
+ * are that water's, so its own cells never count), else its given descent, else down the map.
+ */
 function downhill(floor: DungeonFloor, piece: DungeonTerrain): CellDir {
-  if (piece.facing) return piece.facing;
-  const water = [...floor.waterCells, ...floor.terrain.filter(p => p.kind === 'pool' || p.kind === 'shallow-water' || p.traits.hazard === 'deep-water').flatMap(p => p.cells)];
-  const centre = piece.cells.reduce((a, c) => ({ x: a.x + (c.x + 0.5) / piece.cells.length, y: a.y + (c.y + 0.5) / piece.cells.length }), { x: 0, y: 0 });
+  const own = new Set(piece.cells.map(c => `${c.x},${c.y}`));
+  const water = [...floor.waterCells, ...floor.terrain.filter(p => p.kind === 'pool' || p.kind === 'shallow-water' || p.traits.hazard === 'deep-water').flatMap(p => p.cells)].filter(c => !own.has(`${c.x},${c.y}`));
+  const centre = middleOf(piece);
   const near = water.reduce<Vec | undefined>((best, c) => !best || Math.hypot(c.x + 0.5 - centre.x, c.y + 0.5 - centre.y) < Math.hypot(best.x + 0.5 - centre.x, best.y + 0.5 - centre.y) ? c : best, undefined);
-  if (!near) return { x: 0, y: 1 };
+  if (!near || Math.hypot(near.x + 0.5 - centre.x, near.y + 0.5 - centre.y) > NEAR_WATER) return piece.facing ?? { x: 0, y: 1 };
   const x = near.x + 0.5 - centre.x;
   const y = near.y + 0.5 - centre.y;
   return Math.abs(x) > Math.abs(y) ? { x: x > 0 ? 1 : -1, y: 0 } : { x: 0, y: y >= 0 ? 1 : -1 };
 }
 
-/** A rimstone's dams as drawn: each dam's outline (`rims`), the gour inside it (`pools`) and its lip (`lips`). */
-export function rimstoneShelves(floor: DungeonFloor, piece: DungeonTerrain): { rims: Vec[][]; pools: Vec[][]; lips: Vec[][] } {
+/**
+ * A rimstone's dams as drawn: two to four crescents across its cells, one behind the other stepping
+ * away from the water it borders, each bowed towards that water as calcite dams bulge where they
+ * spill, wavering a little, broken where the dam is worn, and only over its own cells.
+ */
+export function rimstoneDams(floor: DungeonFloor, piece: DungeonTerrain): Vec[][] {
   const down = downhill(floor, piece);
   const across = { x: down.y, y: -down.x };
-  const local = (p: Vec): Vec => ({ x: p.x * across.x + p.y * across.y, y: p.x * down.x + p.y * down.y });
-  const world = (u: number, v: number): Vec => ({ x: u * across.x + v * down.x, y: u * across.y + v * down.y });
-  const rows = new Map<number, number[]>();
-  for (const c of piece.cells) {
-    const at = local({ x: c.x + 0.5, y: c.y + 0.5 });
-    const v = Math.floor(at.y);
-    let columns = rows.get(v);
-    if (!columns) rows.set(v, columns = []);
-    columns.push(Math.floor(at.x));
-  }
-  const rims: Vec[][] = [];
-  const pools: Vec[][] = [];
-  const lips: Vec[][] = [];
-  for (const [v, columns] of rows) {
-    columns.sort((a, b) => a - b);
-    for (let start = 0; start < columns.length;) {
-      let end = start;
-      while (columns[end + 1] === columns[end]! + 1) end++;
-      const left = columns[start]! + 0.12;
-      const right = columns[end]! + 0.88;
-      const top = v + 0.1;
-      const n = Math.ceil((right - left) / 0.08);
-      const shelf = (inset: number): Vec[] => {
-        const edge = (lower: boolean): Vec[] => Array.from({ length: n + 1 }, (_, k) => {
-          const t = k / n;
-          const u = left + inset + (right - left - inset * 2) * t;
-          const noise = valueNoise(u * 2.1, v * 3, piece.id + 17);
-          const scallop = 0.018 * Math.sin(u * 19 + noise * 7);
-          // Taper the ends; broad lobes vary each dam, with open water behind its lip.
-          const belly = Math.sin(Math.PI * t) ** 0.5;
-          const depth = 0.10 + belly * (0.48 + noise * 0.12);
-          return world(u, top + noise * 0.04 + scallop + (lower ? depth - inset : inset));
-        });
-        if (inset === 0) lips.push(edge(true));
-        return [...edge(false), ...edge(true).reverse()];
-      };
-      rims.push(shelf(0));
-      pools.push(shelf(0.035));
-      start = end + 1;
+  const at = (u: number, v: number): Vec => ({ x: u * across.x + v * down.x, y: u * across.y + v * down.y });
+  const own = new Set(piece.cells.map(c => `${c.x},${c.y}`));
+  const us = piece.cells.map(c => (c.x + 0.5) * across.x + (c.y + 0.5) * across.y);
+  const vs = piece.cells.map(c => (c.x + 0.5) * down.x + (c.y + 0.5) * down.y);
+  const [u0, u1] = [Math.min(...us) - 0.45, Math.max(...us) + 0.45];
+  const [v0, v1] = [Math.min(...vs) - 0.4, Math.max(...vs) + 0.4];
+  const count = Math.max(DAMS.least, Math.min(DAMS.most, Math.round(v1 - v0 + 1)));
+  const seed = piece.id * 31 + 7;
+  const dams: Vec[][] = [];
+  for (let k = 0; k < count; k++) {
+    // From the water back: the dam nearest the water lies at the downhill end.
+    const v = v1 - ((k + 0.5) * (v1 - v0)) / count - DAMS.bow / 2;
+    let run: Vec[] = [];
+    for (let u = u0; u <= u1; u += DAMS.step) {
+      const s = ((u - u0) / (u1 - u0)) * 2 - 1;
+      const wave = (valueNoise(u * 2.3, v * 3.1, seed) - 0.5) * 0.08;
+      const p = at(u, v + DAMS.bow * (1 - s * s) + wave);
+      const kept = own.has(`${Math.floor(p.x)},${Math.floor(p.y)}`) && valueNoise(u * 3.7, v * 5.3 + k, seed + 1) > BREAKS;
+      if (kept) run.push(p);
+      else if (run.length) {
+        if (run.length > 2) dams.push(run);
+        run = [];
+      }
     }
+    if (run.length > 2) dams.push(run);
   }
-  return { rims, pools, lips };
+  return dams;
 }
 
-/** Shallow gours behind scalloped calcite lips, in terraces spanning contiguous cells. */
+/**
+ * Rimstone: terraced calcite dams holding shallow pools, drawn as their dams alone, in the walls'
+ * ink, over whatever lies there: the floor's water where the pools behind them are flooded (one
+ * body with the water they step away from), the bare floor where they stand dry.
+ */
 export function drawRimstone(hand: Hand, piece: DungeonTerrain): void {
-  const { floor } = hand.scene.env.dungeon;
-  const { rims, pools, lips } = rimstoneShelves(floor, piece);
-  if (hand.scene.env.view.water && isSubmergedRimstone(floor, piece)) {
-    // Under a lake's shallows only the dams' lips show, stepping down through the water: no shelf or pool of its own.
-    hand.line(lips, 'fine');
-    return;
-  }
-  hand.surface(polysPath(rims), 'stone');
-  smallShallowPools(hand, pools, 0.12);
-  for (const rim of rims) hand.edges(rim, true);
+  hand.line(rimstoneDams(hand.scene.env.dungeon.floor, piece), 'heavy');
 }

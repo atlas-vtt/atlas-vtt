@@ -1,23 +1,26 @@
 /**
  * The hazards of a Cavern, each where its geology puts it (the spec's "Every feature has a
- * reason"): a chasm only along a fault crossing its room, deep water only where water gathers, a
+ * reason"): a chasm only along a fault crossing its room (or an abyss along a great chasm hall's
+ * side, `caveChasm`), deep water only where water gathers, a
  * stream only in a room it runs through, lava only deep down in a lava cave, acid only deep on a
  * fault, a natural shaft only down into a room below. Nothing lies on the lane, and no hole lies
  * within a cell of standing water, nor water within a cell of a hole.
  */
 
-import { floorCellsOf, floorRect, intersection } from '../../geometry';
-import type { CaveFault, CellDir, CellPoint, DungeonRoom } from '../../model';
-import { type Rng, chance, shuffled, weighted } from '../../rng';
+import { cellKey, floorCellsOf } from '../../geometry';
+import type { CaveFault, CellPoint, DungeonRoom } from '../../model';
+import { type Rng, shuffled, weighted } from '../../rng';
 import type { FeatureReason } from '../../themes/features';
 import { draft } from '../catalog';
-import { type HazardChoice, type Substance, leavesRoom, overRoomBelow } from '../hazards';
+import { type HazardChoice, type Substance, leavesRoom } from '../hazards';
 import { cutHole, dropBelow } from '../holes';
 import type { RoomCells } from '../roomCells';
 import type { TerrainWork } from '../work';
 import { bankLedge } from './caveLedge';
 import { besideHole, besideWater, naturalPool } from './cavePools';
 import { crustAround } from './caveTextures';
+import { snapped } from './bandShape';
+import { besideLine, caveChasm, faultChasm } from './caveChasm';
 import { faultBand } from './faultBand';
 
 const LAVA: Substance = { hazard: 'lava', name: 'dungeon.terrain.lavaFlow' };
@@ -84,46 +87,21 @@ function middleOf(rc: RoomCells): { x: number; y: number } {
   return { x: cells.reduce((s, c) => s + c.x + 0.5, 0) / cells.length, y: cells.reduce((s, c) => s + c.y + 0.5, 0) / cells.length };
 }
 
-/** `line`, then lines beside it up to `reach` cells to either side, in an order the stream gives. */
-function besideLine(line: CaveFault, rng: Rng, reach: number): CaveFault[] {
-  const [nx, ny] = [-Math.sin(line.angle), Math.cos(line.angle)];
-  const shifts = Array.from({ length: reach }, (_, d) => [-(d + 1), d + 1]).flat();
-  return [0, ...shuffled(rng, shifts)].map((d) => ({ x: line.x + nx * d, y: line.y + ny * d, angle: line.angle }));
-}
-
 /** Lines through the room at `angle`: through its middle, then a cell or two to either side. */
 function linesAcross(rc: RoomCells, rng: Rng, angle: number): CaveFault[] {
   return besideLine({ ...middleOf(rc), angle }, rng, 2);
 }
 
-/** The step of a cell grid nearest a direction. */
-function snapped(angle: number): CellDir {
-  const x = Math.cos(angle);
-  const y = Math.sin(angle);
-  return Math.abs(x) >= Math.abs(y) ? { x: Math.sign(x) as -1 | 1, y: 0 } : { x: 0, y: Math.sign(y) as -1 | 1 };
-}
-
-/** A chasm along the room's fault, opening onto the floor below where one lies there (`below`: only then). */
-export function faultChasm(work: TerrainWork, k: number, rc: RoomCells, rng: Rng, below = false): boolean {
-  const fault = siteOf(work, k)?.faultOf(rc.room.id);
-  const floor = work.floors[k];
-  if (!fault || !floor || (below && k + 1 >= work.floors.length)) return false;
-  const under = work.floors[k + 1];
-  const wet = besideWater(floor);
-  const thicknesses: (1 | 2)[] = rc.floorCount >= 40 && chance(rng, 0.5) ? [2, 1] : [1];
-  for (const thickness of thicknesses) {
-    // Over one room below only: the band keeps to the stretch above the room it lies over most.
-    const rooms = under?.plan.rooms.filter((room) => room.kind === 'room' && room.wing === 'regular' && intersection(floorRect(room), floorRect(rc.room)) !== null) ?? [];
-    const overs = under ? rooms.map((room) => (c: CellPoint): boolean => under.room(room.id)?.isFloor(c) === true) : [() => true];
-    for (const over of overs) for (const line of besideLine(fault, rng, 2)) {
-      const cells = faultBand(rc, rng, line, thickness, (c) => over(c) && !wet(c) && rc.clearOfRock(c));
-      if (!cells || !leavesRoom(rc, cells) || !overRoomBelow(work, k, cells)) continue;
-      const drop = dropBelow(work, k, cells, rng);
-      if (!drop || (below && drop.bottom === null && drop.through.length === 0)) continue;
-      if (cutHole(work, k, rc, 'chasm', cells, drop) !== null) return true;
-    }
-  }
-  return false;
+/**
+ * A channel's cells along `line`, a cell wide where it does not swell: the band less its rock
+ * bridge, so where it would cut the room in two the floor runs on between its two ends.
+ */
+function channelCells(rc: RoomCells, rng: Rng, line: CaveFault, may: (c: CellPoint) => boolean): CellPoint[] | null {
+  const band = faultBand(rc, rng, line, 1, may);
+  if (!band) return null;
+  const bridge = new Set((band.bridge?.cells ?? []).map((c) => cellKey(c.x, c.y)));
+  const cells = band.cells.filter((c) => !bridge.has(cellKey(c.x, c.y)));
+  return cells.length >= 3 && leavesRoom(rc, cells) ? cells : null;
 }
 
 /** The shapes a natural shaft may take in the room, a cell clear of its walls: a single cell, or three in an L. */
@@ -163,8 +141,8 @@ function channelAlong(work: TerrainWork, k: number, rc: RoomCells, rng: Rng, lin
   const floor = work.floors[k];
   if (!floor) return null;
   const near = what.hazard === 'deep-water' ? besideHole(floor) : besideWater(floor);
-  const cells = faultBand(rc, rng, line, 1, (c) => !near(c));
-  if (!cells || !leavesRoom(rc, cells)) return null;
+  const cells = channelCells(rc, rng, line, (c) => !near(c));
+  if (!cells) return null;
   return floor.place(draft('channel', rc.room.id, cells, { name: what.name, traits: { hazard: what.hazard }, facing: snapped(line.angle) })) !== null ? cells : null;
 }
 
@@ -186,8 +164,8 @@ function lavaFlow(work: TerrainWork, k: number, rc: RoomCells, rng: Rng): boolea
   // Down the tube's length, beside the way through it.
   const angle = rc.room.w >= rc.room.h ? 0 : Math.PI / 2;
   return linesAcross(rc, rng, angle).some((line) => {
-    const cells = faultBand(rc, rng, line, 1, (c) => !wet(c));
-    const bank = cells && leavesRoom(rc, cells) ? bankLedge(rc, rng, cells) : null;
+    const cells = channelCells(rc, rng, line, (c) => !wet(c));
+    const bank = cells ? bankLedge(rc, rng, cells) : null;
     if (!cells || !bank || floor.place(draft('channel', rc.room.id, cells, { name: LAVA.name, traits: { hazard: 'lava' }, facing: snapped(angle) })) === null) return false;
     floor.place(bank.ledge);
     rc.keepClear(bank.foot);
@@ -218,9 +196,9 @@ function sulphurSpring(work: TerrainWork, k: number, rc: RoomCells, rng: Rng): b
 export function placeCaveReason(work: TerrainWork, k: number, rc: RoomCells, reason: FeatureReason, rng: Rng): boolean {
   switch (reason) {
     case 'fault-chasm':
-      return faultChasm(work, k, rc, rng);
+      return caveChasm(work, k, rc, rng);
     case 'sinkhole':
-      return faultChasm(work, k, rc, rng, true);
+      return caveChasm(work, k, rc, rng, true);
     case 'pitch':
       return pitchShaft(work, k, rc, rng);
     case 'cave-lake':

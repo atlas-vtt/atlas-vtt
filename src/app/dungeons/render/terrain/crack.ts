@@ -1,4 +1,4 @@
-import type { DungeonTerrain } from '../../model';
+import type { CellPoint, DungeonTerrain } from '../../model';
 import { resample } from '../../water/smooth';
 import type { Vec } from '../geometry';
 import type { RenderEnv } from '../renderEnv';
@@ -12,7 +12,9 @@ import { chiselled } from './stones';
  * along cell lines. The cells' outline is traced and rounded as a cave's rubble patch is, then
  * broken into short chipped facets as split rock is, and held near its cells, since the scene's
  * walls stand on the cells and must never stand over drawn void. It is drawn as every pit is
- * (`vertical/pit.ts`).
+ * (`vertical/pit.ts`). An abyss at a chamber's edge (a chasm that says which side it falls away
+ * towards) reaches a cell on into the rock behind it, so the void meets the wall drawn round the
+ * floor, which clips it, and no sliver of floor is left between them.
  */
 
 /** Softer than a rubble patch, its swell shorter, pulled a little in: a crack's lip follows its cells but never a cell line for long. */
@@ -26,11 +28,11 @@ const CHIP = 0.04;
 /** How far past its cells a crack's lip may lie, in cells; the ink drawn on it reaches a little farther. */
 const REACH = 0.25;
 
-/** The point moved back to `REACH` cells from the nearest of the cells, where it lies farther out. */
-function heldToCells(p: Vec, cells: ReadonlySet<string>): Vec {
+/** The point moved back to `REACH` cells from the nearest of the cells, where it lies farther out and not on rock `free` lets it reach. */
+function heldToCells(p: Vec, cells: ReadonlySet<string>, free: (key: string) => boolean): Vec {
   const cx = Math.floor(p.x);
   const cy = Math.floor(p.y);
-  if (cells.has(`${cx},${cy}`)) return p;
+  if (cells.has(`${cx},${cy}`) || free(`${cx},${cy}`)) return p;
   let nearest: Vec | null = null;
   let distance = Infinity;
   for (let dy = -1; dy <= 1; dy++) {
@@ -50,13 +52,39 @@ function perimeter(ring: readonly Vec[]): number {
   return ring.reduce((sum, p, i) => sum + Math.hypot(ring[(i + 1) % ring.length]!.x - p.x, ring[(i + 1) % ring.length]!.y - p.y), 0);
 }
 
+/**
+ * The cells' outline, every ring walked and rounded and roughened by `shape` (softer on a small
+ * ring, so a single cell stays nearly its own size), finished by `finish`, then held near the cells
+ * (`held`, the cells themselves unless given), but where `free` lets a point lie.
+ */
+export function raggedCellRings(cells: readonly CellPoint[], seed: number, shape: RaggedShape, finish: (ring: Vec[]) => Vec[] = (ring) => ring, held: ReadonlySet<string> = cellSet(cells), free: (key: string) => boolean = () => false): Vec[][] {
+  return cellRings(cells).map((ring) => {
+    const k = Math.min(1, (perimeter(ring) * SIGMA_PER_CELL) / shape.sigma);
+    const scaled = { ...shape, sigma: shape.sigma * k, swell: shape.swell * k, rag: shape.rag * k, outwards: shape.outwards * k };
+    return finish(raggedRing(ring, seed, scaled)).map((p) => heldToCells(p, held, free));
+  });
+}
+
+/**
+ * The cells an abyss's crack is traced round, and the rock it may lie on: its cells and the rock
+ * cell behind each on the side it falls away towards, where that is no floor of its level; any other
+ * hole, its cells and no rock. The crack is still held near the hole's own cells over floor.
+ */
+function tracedCells(env: RenderEnv, piece: DungeonTerrain): { cells: CellPoint[]; rock: (key: string) => boolean } {
+  const { facing } = piece;
+  if (!facing) return { cells: piece.cells, rock: () => false };
+  const floor = env.dungeon.model.floors.find((f) => f.terrain.includes(piece)) ?? env.dungeon.floor;
+  const ground = new Set(floor.rooms.flatMap((room) => room.cells ?? []).map((c) => `${c.x},${c.y}`));
+  const own = cellSet(piece.cells);
+  const behind = piece.cells
+    .map((c) => ({ x: c.x + facing.x, y: c.y + facing.y }))
+    .filter((c) => !own.has(`${c.x},${c.y}`) && !ground.has(`${c.x},${c.y}`));
+  return { cells: [...piece.cells, ...behind], rock: (key) => !ground.has(key) };
+}
+
 /** The crack's outline: every ring of its cells walked, rounded and roughened, broken into chipped facets, then held near its cells. */
 export function crackRings(env: RenderEnv, piece: DungeonTerrain): Vec[][] {
   const seed = env.dungeon.model.seed + piece.id * 17 + 811;
-  const cells = cellSet(piece.cells);
-  return cellRings(piece.cells).map((ring) => {
-    const k = Math.min(1, (perimeter(ring) * SIGMA_PER_CELL) / CRACK.sigma);
-    const shape = { ...CRACK, sigma: CRACK.sigma * k, swell: CRACK.swell * k, rag: CRACK.rag * k, outwards: CRACK.outwards * k };
-    return chiselled(resample(raggedRing(ring, seed, shape), FACET, 5), seed + 2, CHIP).map((p) => heldToCells(p, cells));
-  });
+  const { cells, rock } = tracedCells(env, piece);
+  return raggedCellRings(cells, seed, CRACK, (ring) => chiselled(resample(ring, FACET, 5), seed + 2, CHIP), cellSet(piece.cells), rock);
 }

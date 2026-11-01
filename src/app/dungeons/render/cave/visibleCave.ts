@@ -55,9 +55,12 @@ function stairEdges(stairs: readonly DungeonStair[]): PinnedEdge[] {
 /**
  * Every edge of a hole's cells: sight passes over a hole, so no wall may wander into one, and a
  * passage's hole (a traverse's drop) lies against its rock, where the outline keeps to its edge.
+ * An abyss at a chamber's edge is the exception: its void runs on to the wall, so the wall keeps
+ * the line the rock gives it rather than the cells' steps, and no corner of its cells pins the wall
+ * where its lip meets it.
  */
 function holeEdges(terrain: readonly DungeonTerrain[]): PinnedEdge[] {
-  return terrain.filter((piece) => piece.opening).flatMap((piece) => piece.cells.flatMap((c) => SIDES.map((side) => edgeOn(c, side))));
+  return terrain.filter((piece) => piece.opening && !(piece.kind === 'chasm' && piece.facing)).flatMap((piece) => piece.cells.flatMap((c) => SIDES.map((side) => edgeOn(c, side))));
 }
 
 /**

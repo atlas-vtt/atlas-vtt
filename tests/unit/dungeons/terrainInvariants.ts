@@ -196,7 +196,11 @@ export function routeProblems(floor: DungeonFloor): string[] {
   return out;
 }
 
-/** Every bridge spans a chasm or channel: on its cells, straight, one cell wide, landing on open floor of the room at both ends. */
+/**
+ * Every bridge spans a chasm or channel: on its cells, straight, one cell wide (a cave's rock bridge
+ * over a chasm two at most, side by side), each of its lines landing on open floor of the room at
+ * both ends, and laid only where the way cannot lead round what it spans.
+ */
 export function bridgeProblems(floor: DungeonFloor): string[] {
   const open = walkable(floor);
   return floor.terrain.filter((p) => p.kind === 'bridge').flatMap((bridge) => {
@@ -205,26 +209,32 @@ export function bridgeProblems(floor: DungeonFloor): string[] {
     if (!under || !['chasm', 'channel'].includes(under.kind)) return [`${where} spans no chasm or channel`];
     const own = new Set(under.cells.map(key));
     if (!bridge.cells.every((c) => own.has(key(c)))) return [`${where} leaves what it spans`];
-    const xs = new Set(bridge.cells.map((c) => c.x));
-    const ys = new Set(bridge.cells.map((c) => c.y));
-    if (xs.size !== 1 && ys.size !== 1) return [`${where} is not one cell wide`];
     if (!bridge.facing || (bridge.facing.x !== 0) === (bridge.facing.y !== 0)) return [`${where} runs no way across`];
     const along = { x: Math.abs(bridge.facing.x), y: Math.abs(bridge.facing.y) };
-    if ((along.x === 1 && ys.size !== 1) || (along.y === 1 && xs.size !== 1)) return [`${where} runs across its own way`];
-    const sorted = [...bridge.cells].sort((a, b) => a.x * along.x + a.y * along.y - (b.x * along.x + b.y * along.y));
-    if (sorted.some((c, i) => i > 0 && c.x * along.x + c.y * along.y - (sorted[i - 1]!.x * along.x + sorted[i - 1]!.y * along.y) !== 1)) return [`${where} has a gap`];
-    const first = sorted[0]!;
-    const last = sorted[sorted.length - 1]!;
+    const lines = new Map<number, CellPoint[]>();
+    for (const c of bridge.cells) {
+      const at = c.x * along.y + c.y * along.x;
+      lines.set(at, [...(lines.get(at) ?? []), c]);
+    }
+    const widest = floor.cave && under.kind === 'chasm' ? 2 : 1;
+    const ats = [...lines.keys()].sort((a, b) => a - b);
+    if (ats.length > widest || ats.some((at, i) => i > 0 && at !== ats[i - 1]! + 1)) return [`${where} is not one cell wide`];
     const room = floor.rooms[bridge.room]!;
-    const ends = [
-      { x: first.x - along.x, y: first.y - along.y },
-      { x: last.x + along.x, y: last.y + along.y },
-    ];
-    const landing = ends.filter((c) => !inFloor(room, c) || !open.has(key(c)) || own.has(key(c))).map((c) => `${where} lands at ${key(c)}, which is no open floor`);
-    if (landing.length) return landing;
-    // A bridge is laid only where the way cannot lead round what it spans.
     const bridged = new Set(bridge.cells.map(key));
-    return linked(ends[0]!, ends[1]!, (c) => inFloor(room, c) && open.has(key(c)) && !bridged.has(key(c))) ? [`${where} crosses what the way leads round`] : [];
+    return [...lines.values()].flatMap((line) => {
+      const sorted = [...line].sort((a, b) => a.x * along.x + a.y * along.y - (b.x * along.x + b.y * along.y));
+      if (sorted.some((c, i) => i > 0 && c.x * along.x + c.y * along.y - (sorted[i - 1]!.x * along.x + sorted[i - 1]!.y * along.y) !== 1)) return [`${where} has a gap`];
+      const first = sorted[0]!;
+      const last = sorted[sorted.length - 1]!;
+      const ends = [
+        { x: first.x - along.x, y: first.y - along.y },
+        { x: last.x + along.x, y: last.y + along.y },
+      ];
+      const landing = ends.filter((c) => !inFloor(room, c) || !open.has(key(c)) || own.has(key(c))).map((c) => `${where} lands at ${key(c)}, which is no open floor`);
+      if (landing.length) return landing;
+      // A bridge is laid only where the way cannot lead round what it spans.
+      return linked(ends[0]!, ends[1]!, (c) => inFloor(room, c) && open.has(key(c)) && !bridged.has(key(c))) ? [`${where} crosses what the way leads round`] : [];
+    });
   });
 }
 

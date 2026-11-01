@@ -107,13 +107,29 @@ export function geologyProblems(model: DungeonModel, crust: boolean): string[] {
         if (crust && !floor.terrain.some((p) => p.room === piece.room && p.kind === 'sulphur-crust')) out.push(`floor ${f}: acid in room ${piece.room} without its crust`);
       }
       if (piece.kind === 'sulphur-crust' && !floor.terrain.some((p) => p.traits.hazard === 'acid' && piece.cells.every((c) => within(c, p.cells, 1)))) out.push(`floor ${f}: sulphur crust away from acid`);
-      if (piece.kind === 'chasm' && piece.cells.length >= 4 && !ofWay(floor, piece, 'traverse')) {
+      if (piece.kind === 'chasm' && piece.facing && !piece.under) out.push(...abyssProblems(floor, f, piece));
+      else if (piece.kind === 'chasm' && piece.cells.length >= 4 && !ofWay(floor, piece, 'traverse')) {
         const { angle } = runOf(piece.cells);
         if (!faults.some((fault) => lineGap(angle, fault) <= Math.PI / 12)) out.push(`floor ${f}: chasm ${piece.id} runs at ${Math.round((angle * 180) / Math.PI)}°, along no fault`);
       }
     }
     return out;
   });
+}
+
+/**
+ * An abyss at a great chamber's edge (the one chasm that follows no fault, so it says which side it
+ * falls towards): a hall's or a gargantuan cave's, reaching that side's wall, taking at most a third
+ * of the chamber.
+ */
+function abyssProblems(floor: DungeonFloor, f: number, piece: DungeonFloor['terrain'][number]): string[] {
+  const room = floor.rooms[piece.room]!;
+  const own = new Set(floorCellsOf(room).map(keyOf));
+  const out: string[] = [];
+  if (room.tier !== 'hall' && room.tier !== 'gargantuan') out.push(`floor ${f}: an abyss in room ${room.id}, a ${room.tier ?? 'no'} chamber`);
+  if (!piece.cells.some((c) => !own.has(keyOf({ x: c.x + piece.facing!.x, y: c.y + piece.facing!.y })))) out.push(`floor ${f}: abyss ${piece.id} reaches no wall`);
+  if (piece.cells.length > own.size / 3 + 1) out.push(`floor ${f}: abyss ${piece.id} takes ${piece.cells.length} of ${own.size} cells`);
+  return out;
 }
 
 const BREAKDOWN = new Set(['rubble-heap', 'rubble-field']);
@@ -189,6 +205,13 @@ export function laneProblems(floor: DungeonFloor): string[] {
 
 const WATER_TYPES = new Set(['lake-cavern', 'stream-passage', 'sump']);
 
+/** Whether a piece lies beside, or on, deep water of its own room. */
+function besideDeep(floor: DungeonFloor, piece: DungeonFloor['terrain'][number]): boolean {
+  const room = floor.rooms[piece.room]!;
+  const deep = floor.terrain.filter((p) => p.room === piece.room && p.traits.hazard === 'deep-water').flatMap((p) => p.cells);
+  return piece.cells.some((c) => deep.some((d) => holdsCell(room, d.x, d.y) && Math.abs(d.x - c.x) + Math.abs(d.y - c.y) <= 1));
+}
+
 /** Rule 1: water stands only where it gathers, runs only downhill, never on raised rock; a dry cave has none. */
 export function waterProblems(model: DungeonModel): string[] {
   const dry = model.tags.includes('dry');
@@ -199,8 +222,11 @@ export function waterProblems(model: DungeonModel): string[] {
     const standing = new Set([...(cave?.basins ?? []), ...(boss?.type === 'lake-cavern' ? [boss.id] : [])]);
     const running = new Set((cave?.streams ?? []).flat());
     const roomOf = (c: CellPoint): number | undefined => floor.rooms.find((r) => holdsCell(r, c.x, c.y))?.id;
+    // The pools behind rimstone dams that border a sump's or a lake's deep water are that water.
+    const dammed = new Set(floor.terrain.filter((p) => p.kind === 'rimstone' && besideDeep(floor, p)).flatMap((p) => p.cells.map(keyOf)));
     for (const c of floor.waterCells) {
       const room = roomOf(c);
+      if (dammed.has(keyOf(c))) continue;
       if (room === undefined || (!standing.has(room) && !running.has(room))) out.push(`floor ${f}: water at ${keyOf(c)} in room ${room}, where none gathers`);
     }
     for (const piece of floor.terrain) {

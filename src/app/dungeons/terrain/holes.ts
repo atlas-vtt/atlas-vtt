@@ -6,7 +6,7 @@
  * (`chasm-floor`, difficult). Below the lowest floor there is nothing: a bottomless void.
  */
 
-import type { CellPoint, TerrainKind, TerrainTraits } from '../model';
+import type { CellDir, CellPoint, TerrainKind, TerrainTraits } from '../model';
 import { type Rng, chance } from '../rng';
 import { floorBelow } from '../floors/floorStack';
 import { draft } from './catalog';
@@ -55,15 +55,16 @@ const FLOOR_UNDER: Readonly<Partial<Record<TerrainKind, string>>> = { shaft: 'du
 
 /**
  * Cuts a hole of `kind` over `cells` in room `rc` of floor `k`, `bridges` laid over it, and the
- * holes and the rubble below it as `drop` found them; `traits` add to its kind's. The hole's id,
- * or null where its own room cannot take it.
+ * holes and the rubble below it as `drop` found them; `traits` add to its kind's, and `facing` is
+ * the side an abyss at a chamber's edge falls away towards. The hole's id, or null where its own
+ * room cannot take it.
  */
-export function cutHole(work: TerrainWork, k: number, rc: RoomCells, kind: TerrainKind, cells: CellPoint[], drop: Drop, options: { bridge?: CellPoint[]; name?: string; traits?: TerrainTraits } = {}): number | null {
+export function cutHole(work: TerrainWork, k: number, rc: RoomCells, kind: TerrainKind, cells: CellPoint[], drop: Drop, options: { bridge?: CellPoint[]; name?: string; traits?: TerrainTraits; facing?: CellDir } = {}): number | null {
   const link = work.nextLink();
   const opening = { bottom: drop.bottom?.floor ?? null, link };
   const floor = work.floors[k];
   if (!floor) return null;
-  const id = floor.place({ ...draft(kind, rc.room.id, cells, { name: options.name, ...(options.traits && { traits: options.traits }) }), opening }, options.bridge);
+  const id = floor.place({ ...draft(kind, rc.room.id, cells, { name: options.name, ...(options.traits && { traits: options.traits }), ...(options.facing && { facing: options.facing }) }), opening }, options.bridge);
   if (id === null) return null;
   for (const { floor: below, rc: room } of drop.through) {
     work.floors[below]?.addHeld({ ...draft('chasm', room.room.id, cells.map((c) => ({ ...c }))), opening });

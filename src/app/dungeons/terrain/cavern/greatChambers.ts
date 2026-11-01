@@ -2,7 +2,7 @@
  * What fills a cave's great chambers. Veins of the Earth calls a gargantuan cave "an environment in
  * itself", and its hundred caves fill their great chambers with fallen blocks, broken rock, columns,
  * stalagmite fields, a ring round a cluster of giant stalagmites, lakes and the pools stepping down
- * from them; an empty floor of that size is what no cave is. So each hall and gargantuan chamber
+ * from them, and chambers that end at an abyss; an empty floor of that size is what no cave is. So each hall and gargantuan chamber
  * (and every other house-sized one, built smaller) takes one interior by what its rock and water
  * make likely, a gargantuan one a second where the two keep apart. Laid after the hazards, the
  * special ways and the exits in roof and floor, which it keeps clear of, and before the floor's
@@ -14,12 +14,13 @@ import { type Rng, chance, weighted } from '../../rng';
 import { LIVED_IN } from '../../themes/cavern/formations';
 import type { TypedRoom } from '../typeTerrain';
 import type { TerrainWork } from '../work';
+import { abyssHall } from './abyssEdge';
 import { boulderHall, breakdownField } from './greatBreakdown';
 import { rockColumns, ringCluster, stalagmiteForest } from './greatFormations';
 import { type Great, type GreatSize, apart, formsAt, furnishInterior, greatGround, openCells } from './greatGround';
 import { lakeHall, mayHoldLake } from './greatLake';
 
-export type GreatPattern = 'boulders' | 'breakdown' | 'columns' | 'forest' | 'ring' | 'lake';
+export type GreatPattern = 'boulders' | 'breakdown' | 'columns' | 'forest' | 'ring' | 'lake' | 'abyss';
 
 const LAY: Readonly<Record<GreatPattern, (g: Great) => void>> = {
   boulders: boulderHall,
@@ -28,10 +29,11 @@ const LAY: Readonly<Record<GreatPattern, (g: Great) => void>> = {
   forest: stalagmiteForest,
   ring: ringCluster,
   lake: lakeHall,
+  abyss: abyssHall,
 };
 
 /** How likely each interior is where nothing argues for another. */
-const BASE: Readonly<Record<GreatPattern, number>> = { boulders: 1, breakdown: 0.8, columns: 1, forest: 0.8, ring: 0.7, lake: 3 };
+const BASE: Readonly<Record<GreatPattern, number>> = { boulders: 1, breakdown: 0.8, columns: 1, forest: 0.8, ring: 0.7, lake: 3, abyss: 0.6 };
 /** How much a cave's character or a chamber's type favours an interior. */
 const FAVOURED = 3;
 /** How often a house-sized chamber is built as a small great one. */
@@ -70,6 +72,8 @@ function choices(g: Great, type: string | undefined): (readonly [GreatPattern, n
   const forms = formsIn(g);
   const weight = (pattern: GreatPattern): number => {
     if (pattern === 'lake') return mayHoldLake(work, k, rc.room.id) ? BASE.lake : 0;
+    // A chamber ending at an abyss is a hall's or a gargantuan cave's, and one chasm is enough.
+    if (pattern === 'abyss') return g.size !== 'house' && !chasm ? BASE.abyss : 0;
     if (chasm && pattern !== 'boulders' && pattern !== 'columns') return 0;
     if (FORMATIONS.has(pattern) && !forms) return 0;
     let w = BASE[pattern];

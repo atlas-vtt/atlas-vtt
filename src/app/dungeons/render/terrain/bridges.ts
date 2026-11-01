@@ -27,6 +27,8 @@ interface Span {
   t: Vec;
   n: Vec;
   len: number;
+  /** How many cells wide it is: a cave's rock bridge may be two. */
+  cells: number;
 }
 
 function spanOf(piece: DungeonTerrain): Span {
@@ -37,7 +39,7 @@ function spanOf(piece: DungeonTerrain): Span {
   const to = horizontal ? { x: box.x + box.w + REACH, y: box.y + box.h / 2 } : { x: box.x + box.w / 2, y: box.y + box.h + REACH };
   const len = Math.hypot(to.x - from.x, to.y - from.y);
   const t = { x: (to.x - from.x) / len, y: (to.y - from.y) / len };
-  return { from, to, t, n: { x: -t.y, y: t.x }, len };
+  return { from, to, t, n: { x: -t.y, y: t.x }, len, cells: horizontal ? box.h : box.w };
 }
 
 const at = (s: Span, u: number, v: number): Vec => ({ x: s.from.x + s.t.x * u + s.n.x * v, y: s.from.y + s.t.y * u + s.n.y * v });
@@ -116,9 +118,11 @@ function naturalBridge(hand: Hand, piece: DungeonTerrain, depths: PathFn): void 
   const rng = pieceRng(hand.scene.env, piece);
   const seed = piece.id * 37 + 11;
   const side = (v: number): Vec[] => wobbled(Array.from({ length: 9 }, (_, k) => at(s, (s.len * k) / 8, v)), seed + v * 10, 0.04);
+  // A bridge two cells wide keeps the same rim inside its outer cells.
+  const half = 0.38 + (s.cells - 1) / 2;
   // Along the span, a side's left is −v: the near side's outside, the far side's inside.
-  const near = side(-0.38);
-  const far = side(0.38);
+  const near = side(-half);
+  const far = side(half);
   const deck = [...near, ...far.slice().reverse()];
   const { ctx } = hand.scene.env;
   const drop = band(10);
@@ -127,7 +131,7 @@ function naturalBridge(hand: Hand, piece: DungeonTerrain, depths: PathFn): void 
   depths(ctx);
   ctx.clip();
   fillWith(hand, polyPath(deck.map(p => ({ x: p.x + SHADOW_DIR.x * drop, y: p.y + SHADOW_DIR.y * drop }))), withAlpha('#000000', 0.45));
-  const chock = at(s, s.len / 2 + (rng() - 0.5) * 0.3, (rng() < 0.5 ? -1 : 1) * 0.55);
+  const chock = at(s, s.len / 2 + (rng() - 0.5) * 0.3, (rng() < 0.5 ? -1 : 1) * (half + 0.17));
   drawRubble(hand, [rubbleStone(rng, chock, 0.11 + 0.04 * rng())]);
   ctx.restore();
   hand.fill(polyPath(deck), 'floor');

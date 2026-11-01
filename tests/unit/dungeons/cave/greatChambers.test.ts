@@ -116,7 +116,7 @@ describe('a cave’s great chambers', () => {
 
   it('builds every interior somewhere, a gargantuan chamber sometimes two', () => {
     const patterns = new Set(runs.flatMap((run) => run.chosen.flatMap((c) => c.patterns)));
-    expect([...patterns].sort()).toEqual(['boulders', 'breakdown', 'columns', 'forest', 'lake', 'ring']);
+    expect([...patterns].sort()).toEqual(['abyss', 'boulders', 'breakdown', 'columns', 'forest', 'lake', 'ring']);
     expect(runs.some((run) => run.chosen.some((c) => c.patterns.length === 2))).toBe(true);
   });
 

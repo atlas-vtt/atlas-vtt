@@ -221,10 +221,16 @@ export function outlinesOffObjects(outlines: readonly (readonly Point[])[], chan
   return strays;
 }
 
-/** Walls of the scene that pass through a hole or a bridge more than a hair inside its cells: there are to be none. */
+/**
+ * Walls of the scene that pass through a hole or a bridge more than a hair inside its cells: there
+ * are to be none. An abyss at a chamber's edge runs on to the wall, which keeps the line the rock
+ * gives it there, so its cells against the rock are left out.
+ */
 export function wallsInTerrain(floor: DungeonFloor, walls: readonly WallSegment[], placement: DungeonPlacement): string[] {
   const { originCell, pxPerCell } = placement;
-  const cells = new Set(floor.terrain.filter(p => p.opening || p.kind === 'bridge').flatMap(p => p.cells.map(c => `${c.x},${c.y}`)));
+  const ground = new Set(floor.rooms.flatMap(room => room.cells ?? []).map(c => `${c.x},${c.y}`));
+  const againstRock = (c: { x: number; y: number }): boolean => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => !ground.has(`${c.x + dx!},${c.y + dy!}`));
+  const cells = new Set(floor.terrain.filter(p => p.opening || p.kind === 'bridge').flatMap(p => p.cells.filter(c => !(p.facing && p.kind === 'chasm' && againstRock(c))).map(c => `${c.x},${c.y}`)));
   const out: string[] = [];
   for (const { p1, p2 } of walls) {
     const steps = Math.max(2, Math.ceil(Math.hypot(p2.x - p1.x, p2.y - p1.y) / 4));

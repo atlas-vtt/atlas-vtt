@@ -86,6 +86,10 @@ const CASES: readonly { seed: number; theme?: ThemeChoice; tags: string[]; floor
   { seed: 707, theme: 'cavern', tags: ['large', 'lava'], floors: 3, look: 'volcanic', view: {} },
   { seed: 808, theme: 'cavern', tags: ['small', 'secret', 'wet'], floors: 2, look: 'print', view: { monochrome: true } },
   { seed: 909, theme: 'cavern', tags: [], floors: 1, look: 'masonry', view: {}, fiveRoom: true },
+  // Great chambers that end at an abyss.
+  { seed: 259, theme: 'cavern', tags: ['medium'], floors: 1, look: 'parchment', view: {} },
+  { seed: 90, theme: 'cavern', tags: ['medium'], floors: 1, look: 'print', view: {} },
+  { seed: 149, theme: 'cavern', tags: [], floors: 1, look: 'parchment', view: {} },
 ];
 
 const TALL_TERRAIN = new Set(['pillar', 'obelisk', 'statue', 'wall-fragment']);

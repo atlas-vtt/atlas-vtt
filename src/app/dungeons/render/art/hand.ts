@@ -35,8 +35,8 @@ export interface Hand {
   solid(path: PathFn, centre: Vec, radius: number, strength?: number): void;
   /** Water in `pools`, its depth by `depth` (cells from the shore); deep water falls away steeply. */
   water(pools: readonly Vec[][], depth: Field, deep: boolean): void;
-  /** Molten rock in `pools`, its glow spilling onto the floor round it. */
-  lava(pools: readonly Vec[][], tint: 'lava' | 'acid'): void;
+  /** Molten rock in `pools`, its glow spilling onto the floor round it; `flow`, the way it runs, cools it downstream. */
+  lava(pools: readonly Vec[][], tint: 'lava' | 'acid', flow?: Vec): void;
   /** A glyph's colours in `material`: what it is filled with and inked in. */
   paint(material: Material): { fill: string; ink: string };
   /** What a glyph standing at (x, y) is filled with instead of `paint`'s fill, where the floor under it asks for another (Crayon's coloured floors). */
