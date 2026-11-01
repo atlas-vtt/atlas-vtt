@@ -25,7 +25,7 @@ const ROAD_CLEAR = 0.4;
 const APART = 1.6;
 
 /**
- * The lone trees of a Forest's entry floor, as Watabou's edge trees: rare single trees just inside a
+ * The lone trees of a Forest's entry floor: rare single trees just inside a
  * clearing's edge, cover for a fight in the open. Worked out from the floor's shape and seed alone,
  * so the drawing (`drawForest`) and the scene (their cover) find the same trees. None stands on a
  * way down, the row it is entered from or beside them (`stairsAndAround`), where its crown would

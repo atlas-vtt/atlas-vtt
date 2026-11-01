@@ -38,7 +38,7 @@ export interface ForestArt {
 }
 
 /**
- * A Forest's entry floor, as Watabou's Glade view and Reprieve draw woods, bottom to top: the woods'
+ * A Forest's entry floor, as Reprieve draws woods, bottom to top: the woods'
  * colour over the whole frame, the clearings' ground (running on under the woods' mass, so a gap in
  * it shows ground and never the outline), water and terrain on the ground, one merged shadow of the
  * mass, the grid, the mass of leafy clumps from the deepest to the clearing's edge (its silhouette is

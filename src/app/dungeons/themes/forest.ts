@@ -1,5 +1,5 @@
 /**
- * The Forest: glades in the woods, as Watabou's Glade view reads a cave. A Cavern's layout (its
+ * The Forest: glades in the woods. A Cavern's layout (its
  * chambers are the clearings, its passages the trails, its rock the woods, a rock island a copse)
  * whose entry floor is drawn as a forest (`forestFloor`), and whose floors below are caves, reached
  * from a clearing. Nature builds no ruins, a wood hides no secret rooms and holds no lava or acid.
