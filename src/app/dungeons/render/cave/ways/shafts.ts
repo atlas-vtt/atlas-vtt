@@ -1,6 +1,5 @@
 import { stackOf, stairEnd } from '../../../floors/floorStack';
 import type { StairEnd } from '../../../floors/stairSpots';
-import type { DungeonStair } from '../../../model';
 import { rngFrom } from '../../../rng';
 import type { Hand } from '../../art/hand';
 import { hash2 } from '../../art/noise';
@@ -10,6 +9,7 @@ import { stoneOutline } from '../../terrain/stones';
 import { wayFrame, type WayFrame } from './narrows';
 import { rope } from './rope';
 import { approachLength, dashes, shaftMouth, type ShaftMouth } from './shaftMouth';
+import { mouthSeed } from './wayOutline';
 import { layRubbleShadow } from './slopeShading';
 import { layDark, layDepth, ledge, rimSurface } from './shaftShading';
 import { layAvenLight, poolOf } from './avenLight';
@@ -105,15 +105,10 @@ function drawEnds(hand: Hand, end: StairEnd): void {
   for (const stair of dungeon.floor.stairs) {
     if (stair.way !== 'pitch' || stairEnd(stackOf(dungeon.model), dungeon.index, stair.to) !== end) continue;
     const frame = wayFrame(stair, stair.down);
-    const mouth = shaftMouth(frame, mouthSeed(hand, stair));
+    const mouth = shaftMouth(frame, mouthSeed(stair, dungeon.model.seed));
     if (end === 'upper') pitch(hand, frame, mouth);
     else aven(hand, frame, mouth);
   }
-}
-
-/** One seed for both ends of a stairwell, so the aven's opening is the pitch's mouth. */
-function mouthSeed(hand: Hand, stair: DungeonStair): number {
-  return Math.floor(hash2(stair.link, 0, hand.scene.env.dungeon.model.seed) * 0x7fffffff);
 }
 
 export function drawPitches(hand: Hand): void { drawEnds(hand, 'upper'); }

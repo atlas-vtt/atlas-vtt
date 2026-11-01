@@ -5,7 +5,8 @@ import { generateDungeon } from '../../../../src/app/dungeons/generate';
 import { floorCellsOf } from '../../../../src/app/dungeons/geometry';
 import type { DungeonModel } from '../../../../src/app/dungeons/model';
 import { viewBounds } from '../../../../src/app/dungeons/render/art/artScene';
-import { unionRings } from '../../../../src/app/dungeons/render/clipShapes';
+import { wayOutline } from '../../../../src/app/dungeons/render/cave/ways/wayOutline';
+import { grownRings, unionRings } from '../../../../src/app/dungeons/render/clipShapes';
 import { forestMass, woodsOutside } from '../../../../src/app/dungeons/render/forest/forestMass';
 import { leafyMass, massEdge, needledRing, traceShape } from '../../../../src/app/dungeons/render/grounds/crowns';
 import { pointInPolygon, pointSegmentDistance, signedArea2, type Bounds, type Vec } from '../../../../src/app/dungeons/render/geometry';
@@ -231,6 +232,18 @@ describe('a Forest\'s walls', () => {
         expect(computeVisibility(from, 300, sealed, undefined, 'sight')).toEqual(computeVisibility(from, 300, [], undefined, 'sight'));
         expect(computeVisibility(from, 300, sealed, undefined, 'light')).not.toEqual(computeVisibility(from, 300, [], undefined, 'light'));
       }
+    });
+
+    it(`stand on no way down, on what it draws: ${name}`, () => {
+      const model = forest(test);
+      model.floors.forEach((floor, index) => {
+        if (!floor.forest) return;
+        const dungeon = visibleDungeon(model, DEFAULT_VIEW, index);
+        const segments = treeLine(dungeon, dungeonStyle(test.look), pictureOf(model).map).flatMap((run) => run.slice(1).map((b, k) => [run[k]!, b] as const));
+        const drawn = floor.stairs.flatMap((stair) => wayOutline(stair, stairEnd(stackOf(model), index, stair.to), model.seed));
+        // A hair within the outline: the wall may run along it.
+        expect(segments.flatMap(along).filter((p) => drawn.some((ring) => pointInPolygon(grownRings([ring], -0.02).flat(), p.x, p.y)))).toEqual([]);
+      });
     });
 
     it(`leave every clearing and way down to be walked to, sealing included: ${name}`, () => {
