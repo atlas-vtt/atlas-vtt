@@ -4,33 +4,34 @@ import { cellsOf } from '../geometry';
 import { rectPoly } from '../render/art/paths';
 import { grownRings, intersectRings, subtractRings, unionRings } from '../render/clipShapes';
 import { forestMass, woodsOutside } from '../render/forest/forestMass';
-import { shapeRings, signedArea2, type Bounds, type Vec } from '../render/geometry';
+import { roadBand } from '../render/forest/roads';
+import { massEdge } from '../render/grounds/crowns';
+import { outerTurn, shapeRings, signedArea2, type Bounds, type Vec } from '../render/geometry';
 import type { VisibleDungeon } from '../render/visibleDungeon';
 import type { DungeonStyle } from '../style';
 import type { WallSegment } from '../../types/wallTypes';
 import type { DungeonPlacement, DungeonWalls, WallsOf } from './toWalls';
 
 /**
- * A Forest floor's walls: the edge of the very trees its map draws (`forestMass`), not the clearing's
- * outline those trees overhang, so light, sight and tokens stop where the woods begin. Clearings,
+ * A Forest floor's walls: the drawn edge of the very trees its map shows (`forestMass`, the curves
+ * of every crown's outline, a bare tree's where its limbs end), not the clearing's outline those
+ * trees overhang, so light, sight and tokens stop on the line where the woods begin. Clearings,
  * roads, rivers and lakes are open wherever the trees leave them open, and they run on to the map's
  * edge, where no wall stands.
  */
 
 /** How far a clump may stand behind the mass's edge and still shape it, in cells: every point deeper than this is covered by clumps nearer the edge. */
 const EDGE_DEPTH = 0.6;
-/** Notches between the crowns narrower than twice this are closed, in cells: nobody stands in them, and they would only make corners. */
-const NOTCH = 0.05;
-/** How far the walls stand within the crowns, in cells: players see the edge of the leaves, not a line where the trees are cut off. */
-const WITHIN_CROWNS = 0.1;
-/** What a crown leaves of a floor (`walkedFloor`), in cells; `shaved` is how far inside the floor a neck is looked for, and `sliver` the square cells that make one. */
-const NECK = { overhang: 0.35, left: 0.5, shaved: 0.12, sliver: 0.08 } as const;
+/** The floors' necks (`necksOf`), in cells: narrower than `wide` there is no room for the crowns of both sides and a way between; `shaved` is how far inside the floor a neck is looked for, and `sliver` the square cells that make one. */
+const NECK = { wide: 1.2, shaved: 0.12, sliver: 0.08 } as const;
 /** Scraps smaller than this, of open ground or of woods, get no wall, in square cells. */
 const SMALLEST = 0.1;
-/** How far a wall may stray from the trees' edge to save a corner, in cells. */
-const STRAY = 0.03;
-/** How near the map's edge a corner lies on it, in cells. */
-const ON_EDGE = 1 / 512;
+/** How far a wall may stray from the trees' edge to save a corner, in cells: two pixels of a scene's map, the drawn line's width. Finer costs more than it shows: bridges between the corners multiply the walls sight goes by. */
+const STRAY = 0.015;
+/** How near the map's edge a corner lies on it, in cells: a crown's tip that grazes the edge makes no wall along it. */
+const ON_EDGE = 0.01;
+/** How much of a road's middle a crown may not close, in cells either way: enough to pass, and only the crowns that reach it are cut. */
+const ROAD_LANE = 0.15;
 
 const ringArea = (ring: readonly Vec[]): number => Math.abs(signedArea2(ring)) / 2;
 
@@ -62,16 +63,21 @@ function thinned(run: readonly Vec[]): Vec[] {
 
 /**
  * What a crown may not take of the floors, however far it overhangs, so two clearings joined on the
- * floor stay joined: the middle of a clearing (`NECK.overhang`), and all of a neck, where the floor
- * is too narrow to leave `NECK.left` beside the crowns of both sides. Slivers a floor's corners
- * leave are no necks.
+ * floor stay joined: a neck, too narrow to leave a way beside the crowns of both sides, between two
+ * parts of the floor wide enough to. Anywhere else the walls keep to the crowns: a wide part keeps a
+ * way round them, and a narrow bay off one part joins nothing. Slivers are no necks.
  */
-function walkedFloor(floors: readonly Vec[][]): Vec[][] {
-  const { overhang, left, shaved, sliver } = NECK;
-  const middle = grownRings(floors, -overhang);
-  const wideEnough = overhang + left / 2;
-  const necks = subtractRings(grownRings(floors, -shaved), grownRings(grownRings(floors, -wideEnough), wideEnough - shaved)).filter((ring) => ringArea(ring) >= sliver);
-  return necks.length ? [...middle, ...grownRings(necks, shaved)] : middle;
+export function necksOf(floors: readonly Vec[][]): Vec[][] {
+  const { wide, shaved, sliver } = NECK;
+  const opened = grownRings(grownRings(floors, -wide / 2), wide / 2 - shaved);
+  const turn = outerTurn(opened);
+  const parts = opened.filter((ring) => Math.sign(signedArea2(ring)) === turn);
+  const joins = (neck: Vec[]): boolean => {
+    const reach = grownRings([neck], shaved / 2);
+    return parts.filter((part) => intersectRings(reach, [part]).length > 0).length >= 2;
+  };
+  const necks = subtractRings(grownRings(floors, -shaved), opened).filter((ring) => ringArea(ring) >= sliver && joins(ring));
+  return necks.length ? grownRings(necks, shaved) : [];
 }
 
 /** A ring as the runs of corners between its stretches on the map's edge (`onMapEdge`, asked of each side); the whole ring, closing on its first corner, where it has none. */
@@ -123,14 +129,15 @@ function thinnedRun(run: readonly Vec[]): Vec[] {
  */
 export function treeLine(dungeon: VisibleDungeon, style: DungeonStyle, bounds: Bounds): Vec[][] {
   const mass = forestMass(dungeon, style, { minX: bounds.minX - 1, minY: bounds.minY - 1, maxX: bounds.maxX + 1, maxY: bounds.maxY + 1 });
-  const edge = mass.filter(({ clump, depth }) => depth - clump.radius <= EDGE_DEPTH).map(({ clump }) => clump.ring);
-  const trees = grownRings(grownRings(unionRings(edge), NOTCH), -(NOTCH + WITHIN_CROWNS));
+  const edge = mass.filter(({ clump, depth }) => depth - clump.radius <= EDGE_DEPTH).map(({ clump }) => massEdge(clump.shape));
+  const trees = unionRings(edge);
   // A way down is drawn over the crowns that overhang it, and stays open with its approach.
   const stack = stackOf(dungeon.model);
   const ways = dungeon.floor.stairs.flatMap((stair) => [...cellsOf(spotRect(stair)), ...approachCells(stair, stairEnd(stack, dungeon.index, stair.to))]).map((cell) => rectPoly({ ...cell, w: 1, h: 1 }));
-  const free = walkedFloor(unionRings(dungeon.floors.flatMap((shape) => shapeRings(shape))));
+  const necks = necksOf(unionRings(dungeon.floors.flatMap((shape) => shapeRings(shape))));
   const map = rectPoly({ x: bounds.minX, y: bounds.minY, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY });
-  const shown = intersectRings(subtractRings(trees, [...ways, ...free]), [map]);
+  const lanes = (dungeon.floor.roads ?? []).flatMap((road) => roadBand(road, ROAD_LANE));
+  const shown = intersectRings(subtractRings(trees, [...ways, ...necks, ...lanes]), [map]);
   const near = (value: number, edge: number): boolean => Math.abs(value - edge) < ON_EDGE;
   const onMapEdge = (a: Vec, b: Vec): boolean => (near(a.x, bounds.minX) && near(b.x, bounds.minX)) || (near(a.x, bounds.maxX) && near(b.x, bounds.maxX)) || (near(a.y, bounds.minY) && near(b.y, bounds.minY)) || (near(a.y, bounds.maxY) && near(b.y, bounds.maxY));
   const outside = woodsOutside(dungeon);
