@@ -1,3 +1,6 @@
+## Improved
+- Player window: showing a saved frame glides there, also when players were following you, and changing the scene dips through black instead of jumping
+
 ## Fixed
 - The confirmation for deleting a collection in Manage no longer opens behind the asset manager
 

@@ -10,7 +10,6 @@ import type { PlayerOverlay } from './PlayerSceneOverlay';
 import { PlayerDiceRolls } from './PlayerDiceRolls';
 import { PlayerWidgetBar } from './PlayerWidgetBar';
 import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE, type PlayerCameraState } from '../local-player-view';
-import { freezeCanvasFrame, type SceneTransition } from '../pixi/sceneTransition';
 import { t } from '../i18n';
 import { cannotRender, PlayerFrameMirror, type PlayerFrameSource } from './PlayerFrameMirror';
 import { framedCamera, PLAYER_FRAME_4K_PIXEL_BUDGET, PLAYER_FRAME_PIXEL_BUDGET } from './playerFrame';
@@ -24,6 +23,7 @@ import { prefersReducedMotion } from '../utils/motion';
 import { applyTableTvLook, PLAYER_OVERLAYS_CLASS } from './playerWindowTurn';
 import { glassFrame, PlayerGlass, sameCamera, withSetupScreen } from './playerGlass';
 import { removePlayerCurtain, showPlayerCurtain } from './playerCurtain';
+import { PlayerSceneFade } from './playerSceneFade';
 import { watchPlayerWindowDisplay } from './playerWindowDisplay';
 
 /** Scopes the rules in `player-window.scss` to the popout document. */
@@ -64,8 +64,6 @@ export class PlayerWindowService {
   private shownLevelId: string | null = null;
   /** Last player frame, shown unchanged while the DM works on another scene tab. */
   private heldFrame: HTMLCanvasElement | null = null;
-  /** Crossfade from the previous map, still playing after the DM presented another scene. */
-  private mapTransition: SceneTransition | null = null;
   private static instance: PlayerWindowService | null = null;
   private settingsUnsubscribe: (() => void) | null = null;
   /** Widget bar, initiative panel and dice rolls, drawn over the presented scene. */
@@ -84,6 +82,11 @@ export class PlayerWindowService {
   private readonly glass = new PlayerGlass();
   /** Whether the curtain is down: players see black until it is lifted, whatever is presented meanwhile. */
   private curtained = false;
+  /** The dip to black while the presented scene changes; the curtain above wins over it. */
+  private readonly sceneFade = new PlayerSceneFade((down) => {
+    const win = this.getWindow();
+    if (win) showPlayerCurtain(win.document, down);
+  }, () => this.curtained);
   /** Stops keeping the store's `fullScreen` and `secondDisplay` current for the open popout. */
   private stopDisplayWatch: (() => void) | null = null;
 
@@ -193,15 +196,26 @@ export class PlayerWindowService {
     this.playerView?.updateSession({ frames: { ...frames, [map]: { ...camera } } });
   }
 
-  /** Freezes players on `to`, gliding there from a camera they are frozen on (TrueScale's Pushed view glide). */
+  /** Whether players' pictures may move on their way to the next: `viewGlideMs` is 0, or the window's OS setting says not, and they jump. */
+  private movesGently(win: Window): boolean {
+    return this.settingsService.getTableTvSettings().viewGlideMs > 0 && !prefersReducedMotion(win.document.body);
+  }
+
+  /**
+   * Freezes players on `to`, gliding there from the camera they see, frozen or following. Under
+   * the curtain there is nothing to see of it. Every step is an ordinary frame, fog and lighting included.
+   */
   private moveFrozenCamera(to: PlayerCameraState): void {
-    const from = this.frozenCamera;
+    const camera = this.frozenCamera ?? this.cameraPlayersSee();
     const win = this.playerWindow;
-    const { viewGlideMs } = this.settingsService.getTableTvSettings();
-    if (!from || !win || viewGlideMs <= 0 || sameCamera(from, to) || prefersReducedMotion(win.document.body)) {
+    if (!camera || !win || this.curtained || sameCamera(camera, to) || !this.movesGently(win)) {
       this.setFrozenCamera(to);
       return;
     }
+    // Players who followed the GM stop doing so here, not when the glide lands
+    if (!this.frozenCamera) this.setFrozenCamera(camera, false);
+    const from = this.frozenCamera ?? camera;
+    const { viewGlideMs } = this.settingsService.getTableTvSettings();
     const glide = ++this.glideId;
     const start = win.performance.now();
     const step = (now: number): void => {
@@ -287,6 +301,7 @@ export class PlayerWindowService {
     const win = this.getWindow();
     if (!win || this.curtained === down) return;
     this.curtained = down;
+    if (down) this.sceneFade.cancel();
     playerWindowStore.setState({ curtain: down });
     this.playerView?.updateSession({ curtain: down });
     showPlayerCurtain(win.document, down);
@@ -317,6 +332,8 @@ export class PlayerWindowService {
   public holdCurrentFrame(): void {
     if (!this.isWindowOpen()) return;
     this.sceneOverlays.forEach((overlay) => overlay.hold());
+    // No frame of the new scene comes while one is held: players are shown this one
+    this.sceneFade.finish();
     if (this.heldFrame) return;
     this.heldFrame = this.snapshotPlayerFrame();
     this.updateFreezeIndicator();
@@ -372,7 +389,7 @@ export class PlayerWindowService {
     const levelId = presentedSceneOf(this.app).get()?.levelId ?? null;
     const anotherScene = playerWindowStore.getState().shownTabId !== tabId || this.shownLevelId !== levelId;
     this.shownLevelId = levelId;
-    if (anotherScene) this.crossfadeToNextMap();
+    if (anotherScene) this.dipToNextScene();
     this.streamSource = source;
     this.mirror?.markStale();
     this.presentScene();
@@ -383,7 +400,8 @@ export class PlayerWindowService {
     const remembered = anotherScene ? this.playerView?.getState().frames?.[map] : undefined;
     if (camera) {
       this.rememberFrame(map, camera);
-      this.setFrozenCamera(camera);
+      if (anotherScene) this.setFrozenCamera(camera);
+      else this.moveFrozenCamera(camera);
     } else if (remembered) {
       this.setFrozenCamera(remembered);
     } else if (this.frozenCamera) {
@@ -425,6 +443,7 @@ export class PlayerWindowService {
     this.streamSource = source;
     this.shownCamera = null;
     this.curtained = view.getState().curtain === true;
+    this.sceneFade.cancel();
     this.pinFrozenCamera();
     this.mirror?.markStale();
     playerWindowStore.setState({ shownTabId: scene.tabId, curtain: this.curtained });
@@ -473,16 +492,10 @@ export class PlayerWindowService {
     }
   }
 
-  /** Fades the frame players see into the next scene, the same transition the DM view plays. */
-  private crossfadeToNextMap(): void {
-    const targetCanvas = this.playerWindow?.document.getElementById('atlas-player-canvas');
-    if (!targetCanvas?.instanceOf(HTMLCanvasElement)) return;
-    // A 2D canvas keeps its pixels, so the frame on screen can be copied at any time.
-    // Players get the crossfade without the scale settle, which would resample a frame of the window's own pixels at every step.
-    this.mapTransition = freezeCanvasFrame(
-      targetCanvas, (context) => context.drawImage(targetCanvas, 0, 0), this.mapTransition, { settle: false },
-    );
-    this.mapTransition?.play();
+  /** Dips what players see to black: the next scene waits behind the sheet (`PlayerSceneFade`). */
+  private dipToNextScene(): void {
+    const win = this.getWindow();
+    if (win && this.movesGently(win)) this.sceneFade.begin(performance.now());
   }
 
   /** Copy the frame players currently see so it can be held while the DM is elsewhere. */
@@ -668,7 +681,11 @@ export class PlayerWindowService {
       setup: () => this.glass.setupScreen(),
       pixelBudget: () => this.pixelBudget(),
       curtained: () => this.curtained,
-      onFrame: (camera) => this.recordPlayerCamera(camera),
+      withheld: (time) => this.sceneFade.withholds(time),
+      onFrame: (camera) => {
+        this.recordPlayerCamera(camera);
+        this.sceneFade.finish();
+      },
     });
     this.mirror = mirror;
 
@@ -680,6 +697,7 @@ export class PlayerWindowService {
       }
 
       this.animationFrame = this.playerWindow.requestAnimationFrame(mirrorFrame);
+      this.sceneFade.expire(performance.now());
       mirror.frame();
     };
 
@@ -741,8 +759,7 @@ export class PlayerWindowService {
     this.settingsUnsubscribe?.();
     this.settingsUnsubscribe = null;
     this.destroySceneOverlays();
-    this.mapTransition?.cancel();
-    this.mapTransition = null;
+    this.sceneFade.cancel();
 
     this.playerWindow?.removeEventListener('beforeunload', this.boundHandleBeforeUnload);
     if (this.playerWindow && !this.playerWindow.closed) removePlayerCurtain(this.playerWindow.document);

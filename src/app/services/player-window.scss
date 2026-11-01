@@ -62,20 +62,8 @@ body.atlas-player-window {
     }
   }
 
-  // The outgoing map during a scene crossfade must sit exactly on the canvas, turned with it
-  .atlas-scene-transition-snapshot {
-    inset: auto;
-    left: 50%;
-    top: 50%;
-    width: 100vw;
-    height: 100vh;
-    transform: translate(-50%, -50%) rotate(var(--atlas-tv-rotation, 0deg));
-    object-fit: cover;
-    object-position: center;
-  }
-
-  &[data-tv-rotation='90'] :is(#atlas-player-canvas, .atlas-scene-transition-snapshot),
-  &[data-tv-rotation='270'] :is(#atlas-player-canvas, .atlas-scene-transition-snapshot) {
+  &[data-tv-rotation='90'] #atlas-player-canvas,
+  &[data-tv-rotation='270'] #atlas-player-canvas {
     width: 100vh;
     height: 100vw;
   }
