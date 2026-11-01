@@ -46,6 +46,8 @@ abstract class RunBase implements SoundRun {
   protected readonly soundGain: number;
   protected finishFrame: number | null = null;
   protected disposed = false;
+  /** Takes over from a run that fades out, so it fades up even where it starts on its exact place. */
+  protected readonly replacing: boolean;
   private problemUntil = 0;
 
   constructor(
@@ -58,6 +60,7 @@ abstract class RunBase implements SoundRun {
     soundGain: number,
   ) {
     this.soundGain = soundGain;
+    this.replacing = notBefore > Math.ceil(deps.context.currentTime * deps.context.sampleRate);
     this.ratio = deps.context.sampleRate / SOUND_RATE;
     this.node = deps.context.createGain();
     this.gain = new GainTrack(this.node.gain, soundGain);
@@ -101,7 +104,7 @@ abstract class RunBase implements SoundRun {
 
   /** The gain for a source that comes in at some point of its audio, not on its exact place. */
   protected fadeUp(startFrame: number): void {
-    const seconds = startFrame === this.notBefore ? CROSSFADE_SECONDS : JOIN_SECONDS;
+    const seconds = this.replacing ? CROSSFADE_SECONDS : JOIN_SECONDS;
     this.gain.join(0, this.soundGain, this.secondsOf(startFrame), seconds, 0);
   }
 
@@ -189,7 +192,7 @@ export class BufferRun extends RunBase {
       source.loopStart = loop.startFrame / SOUND_RATE;
       source.loopEnd = loop.endFrame / SOUND_RATE;
     }
-    if (startFrame !== onTime) this.fadeUp(startFrame);
+    if (startFrame !== onTime || this.replacing) this.fadeUp(startFrame);
     source.start(this.secondsOf(startFrame), frameInSpan(span, this.playFrameOf(startFrame)) / SOUND_RATE);
     if (endFrame !== null) source.stop(this.secondsOf(endFrame));
     this.source = source;
@@ -272,7 +275,7 @@ export class WindowRun extends RunBase {
       this.sources.delete(source);
       source.disconnect();
     };
-    if (startFrame !== onTime) this.fadeUp(startFrame);
+    if (startFrame !== onTime || (this.replacing && !this.placed)) this.fadeUp(startFrame);
     source.start(this.secondsOf(startFrame), (startFrame - onTime) / this.deps.context.sampleRate);
     this.sources.add(source);
     this.placed = true;
