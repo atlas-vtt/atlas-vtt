@@ -13,4 +13,6 @@
 - TrueScale: a moved Bring players here frame goes back to its place when a drag is cancelled, and no longer carries its position over to the next map.
 
 - Picking or resetting a game system now shows its Stress bar on the scenes the collection already has
+- Statblocks: a backslash keeps a comma in a label or word (`Fire\, cold: 3` shows as Fire, cold)
+- Statblocks: rows added to a Counter block in a template now show on notes that already had some of its rows
 - Atlas now says so once when Obsidian Sync is set to leave out the files scenes and maps are made of, which kept them from reaching other devices
