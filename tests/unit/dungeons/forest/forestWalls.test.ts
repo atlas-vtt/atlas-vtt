@@ -34,6 +34,9 @@ const CASES: { seed: number; tags: DungeonTag[]; floors: number; look: DungeonSt
   { seed: 5602, tags: ['winding'], floors: 2, look: 'crayon' },
   // A clearing whose neck the crowns closed: found by a sweep.
   { seed: 30066, tags: ['medium'], floors: 1, look: 'crayon' },
+  // The clipper's union of the crowns' raw curves drew sides dozens of cells long across these floors: found by a review.
+  { seed: 1314554, tags: ['flooded', 'deep'], floors: 1, look: 'crayon' },
+  { seed: 871090, tags: [], floors: 2, look: 'crayon' },
 ];
 
 const forest = ({ seed, tags, floors }: typeof CASES[number]): DungeonModel => generateDungeon({ seed, theme: 'forest', tags, floors });
@@ -49,6 +52,8 @@ const ON_THE_EDGE = 0.035;
 
 /** How many walls sight may go by for each drawn, sealing's bridges included. */
 const MOST_SEALED = 1.3;
+/** The longest side a wall may have, in cells: a crown's edge turns well within this, and a lane down a neck is about this straight at most. */
+const LONGEST_WALL = 6;
 /** The walls a test case may have: what the cave outline under the crowns had. */
 const MOST_WALLS = 4500;
 
@@ -175,12 +180,13 @@ describe('a Forest\'s walls', () => {
       const segments = line.flatMap((run) => run.slice(1).map((b, k) => [run[k]!, b] as const));
       expect(segments.length).toBeGreaterThan(100);
       expect(segments.length).toBeLessThan(MOST_WALLS);
+      expect(Math.max(...segments.map(([a, b]) => Math.hypot(a.x - b.x, a.y - b.y)))).toBeLessThan(LONGEST_WALL);
       // Few corners lie closer than the sealing's tolerance, in the pixels a scene draws at: each such pair is a bridge sight has to go by too, so a finer line costs far more than its corners.
       const px = suggestedPxPerCell(model, DEFAULT_PX_PER_CELL, DEFAULT_VIEW, SCENE_MAP_PIXELS);
       const layout = mapLayout(model, px, DEFAULT_VIEW);
       const walls = segments.map(([a, b], k) => ({ id: `w${k}`, kind: 'wall' as const, type: 'solid' as const, p1: { x: a.x * px, y: a.y * px }, p2: { x: b.x * px, y: b.y * px } }));
       expect(sealedWalls(walls, worldTexel({ width: layout.widthPx, height: layout.heightPx })).length / walls.length).toBeLessThan(MOST_SEALED);
-      const crowns = unionRings(forestMass(dungeon, style, drawn).map(({ clump }) => massEdge(clump.shape)));
+      const crowns = unionRings(forestMass(dungeon, style, drawn).flatMap(({ clump }) => unionRings([massEdge(clump.shape)])));
       const stack = stackOf(model);
       const ways = dungeon.floor.stairs.flatMap((stair) => [spotRect(stair), ...approachCells(stair, stairEnd(stack, 0, stair.to)).map((c) => ({ x0: c.x, y0: c.y, x1: c.x, y1: c.y }))]);
       const atWay = (p: Vec, by: number): boolean => ways.some((r) => p.x >= r.x0 - by && p.x <= r.x1 + 1 + by && p.y >= r.y0 - by && p.y <= r.y1 + 1 + by);

@@ -1,4 +1,5 @@
 import { stackOf, stairEnd } from '../floors/floorStack';
+import type { DungeonStair } from '../model';
 import { approachCells, spotRect } from '../floors/stairSpots';
 import { cellsOf } from '../geometry';
 import { rectPoly } from '../render/art/paths';
@@ -29,6 +30,8 @@ const EDGE_DEPTH = 0.6;
 const SMALLEST = 0.1;
 /** How far a wall may stray from the trees' edge to save a corner, in cells: 4.5 pixels of a scene's map. It follows a crown's outline and rounds its small scallops; finer costs far more than it shows, since corners under the sealing's tolerance apart each get bridges (0.015 tripled the walls sight goes by). */
 const STRAY = 0.03;
+/** The corners of a way down's oval outline. */
+const OVAL_CORNERS = 24;
 /** How near the map's edge a corner lies on it, in cells: a crown's tip that grazes the edge makes no wall along it. */
 const ON_EDGE = 0.01;
 
@@ -102,6 +105,15 @@ function thinnedRun(run: readonly Vec[]): Vec[] {
   return [...thinned(run.slice(0, far + 1)), ...thinned(run.slice(far)).slice(1)];
 }
 
+/** What a way down's drawing covers: a flight of stairs its whole rectangle, a shaft or a scree slope about the oval within it. */
+function wayDownOutline({ x, y, w, h, way }: DungeonStair): Vec[] {
+  if (way !== 'scree' && way !== 'pitch') return rectPoly({ x, y, w, h });
+  return Array.from({ length: OVAL_CORNERS }, (_, k) => {
+    const angle = (k / OVAL_CORNERS) * Math.PI * 2;
+    return { x: x + (w / 2) * (1 + Math.cos(angle)), y: y + (h / 2) * (1 + Math.sin(angle)) };
+  });
+}
+
 /**
  * The trees' edge on a whole map as runs of corners in cells, a run that closes on itself (a stand of
  * trees in the open) ending on its first corner. `bounds` is the map's rectangle in cells. Costs up
@@ -110,15 +122,17 @@ function thinnedRun(run: readonly Vec[]): Vec[] {
 export function treeLine(dungeon: VisibleDungeon, style: DungeonStyle, bounds: Bounds): Vec[][] {
   const mass = forestMass(dungeon, style, { minX: bounds.minX - 1, minY: bounds.minY - 1, maxX: bounds.maxX + 1, maxY: bounds.maxY + 1 });
   const edge = mass.filter(({ clump, depth }) => depth - clump.radius <= EDGE_DEPTH).map(({ clump }) => massEdge(clump.shape));
-  const trees = unionRings(edge);
-  // A way down is drawn over the crowns that overhang it, and is reached by a lane from the middle of each cell before it; the rest of its cells stays the crowns'.
+  // Each outline cleaned first: the clipper's union of the raw curves, about two forests in a hundred, joined corners dozens of cells apart with a side across open floor.
+  const trees = unionRings(edge.flatMap((ring) => unionRings([ring])));
+  // A way down is drawn over the crowns that overhang it, and is reached by a lane from the middle of each cell before it; the rest of those cells stays the crowns'.
   const stack = stackOf(dungeon.model);
   const ways = dungeon.floor.stairs.flatMap((stair) => {
     const spot = cellsOf(spotRect(stair));
-    return approachCells(stair, stairEnd(stack, dungeon.index, stair.to)).flatMap((cell) => {
+    const lanes = approachCells(stair, stairEnd(stack, dungeon.index, stair.to)).flatMap((cell) => {
       const nearest = spot.reduce((best, c) => (Math.hypot(c.x - cell.x, c.y - cell.y) < Math.hypot(best.x - cell.x, best.y - cell.y) ? c : best));
       return lineRings([{ x: nearest.x + 0.5, y: nearest.y + 0.5 }, { x: cell.x + 0.5, y: cell.y + 0.5 }], WAY_LANE);
     });
+    return [wayDownOutline(stair), ...lanes];
   });
   const necks = necksOf(unionRings(dungeon.floors.flatMap((shape) => shapeRings(shape))), (x, y) => -dungeon.field.distance(x, y));
   const map = rectPoly({ x: bounds.minX, y: bounds.minY, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY });
