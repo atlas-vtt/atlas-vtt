@@ -122,7 +122,8 @@ export function treeLine(dungeon: VisibleDungeon, style: DungeonStyle, bounds: B
       const nearest = spot.reduce((best, c) => (Math.hypot(c.x - cell.x, c.y - cell.y) < Math.hypot(best.x - cell.x, best.y - cell.y) ? c : best));
       return lineRings([{ x: nearest.x + 0.5, y: nearest.y + 0.5 }, { x: cell.x + 0.5, y: cell.y + 0.5 }], WAY_LANE);
     });
-    return [...wayOutline(stair, end, dungeon.model.seed), ...lanes];
+    // Cleaned, so each winds as a lane does: where they overlap they would otherwise cancel.
+    return [...wayOutline(stair, end, dungeon.model.seed).flatMap((ring) => unionRings([ring])), ...lanes];
   });
   const necks = necksOf(unionRings(dungeon.floors.flatMap((shape) => shapeRings(shape))), (x, y) => -dungeon.field.distance(x, y));
   const map = rectPoly({ x: bounds.minX, y: bounds.minY, w: bounds.maxX - bounds.minX, h: bounds.maxY - bounds.minY });
