@@ -12,6 +12,11 @@ export class FakeSoundLocation implements SoundLocation {
   /** What a read gives; a read of a path it never answers stays unfinished, as a long conversion does. */
   blobOf: (path: string) => Promise<Blob> = async () => new Blob(['AUDIO']);
 
+  /** How many watch it now. */
+  get watching(): number {
+    return this.watchers.size;
+  }
+
   addFile(path: string, size = 5_000_000): void {
     for (let at = parentOfRelative(path); at !== ''; at = parentOfRelative(at)) this.folders.add(at);
     this.files.set(path, { name: nameOfRelative(path), path, size, mtime: 1 });

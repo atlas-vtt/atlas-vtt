@@ -47,6 +47,8 @@ export interface SoundDirectorDeps {
   onLibraryChange(listener: () => void): () => void;
   /** Calls back when an audio file arrived or changed in the vault. */
   onAudioFileChange(listener: () => void): () => void;
+  /** Lets go of the library while sound is off: its listeners and its watch on the disk. It comes back with `onAudioFileChange`. */
+  releaseLibrary(): void;
   readSceneSound(path: string): Promise<SceneSound | null>;
   notify(message: string): void;
 }
@@ -113,6 +115,7 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
         dropLibrary();
       };
     },
+    releaseLibrary: () => SoundLibrary.release(app),
     readSceneSound: (path) => sceneSoundInFile(app, path),
     notify: (message) => showNotice(message),
   };

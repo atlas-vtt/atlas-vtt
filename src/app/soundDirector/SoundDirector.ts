@@ -238,6 +238,7 @@ export class SoundDirector {
     this.fights.follow.dispose();
     for (const stop of this.stops) stop();
     this.stops = [];
+    this.deps.releaseLibrary();
     this.previews.reset();
     this.lastMix.cancel();
     this.choice.release();

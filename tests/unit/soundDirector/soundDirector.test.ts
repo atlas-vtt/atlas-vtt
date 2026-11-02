@@ -99,6 +99,20 @@ describe('the sound director', () => {
     expect(rig.contexts.every((context) => context.closed)).toBe(true);
   });
 
+  it('holds the library only while the switch is on', async () => {
+    rig = directorRig(ALL, { on: false });
+    expect(rig.library).toEqual({ opened: 0, released: 0 });
+    rig.settings.on = true;
+    rig.fireSettings();
+    expect(rig.library).toEqual({ opened: 1, released: 0 });
+    rig.settings.on = false;
+    rig.fireSettings();
+    expect(rig.library).toEqual({ opened: 1, released: 1 });
+    rig.settings.on = true;
+    rig.fireSettings();
+    expect(rig.library).toEqual({ opened: 2, released: 1 });
+  });
+
   it('closes the context an unload finds still fading after the switch went off, and stops its timer', async () => {
     rig = directorRig(ALL);
     await ready(rig);

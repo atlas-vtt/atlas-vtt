@@ -61,6 +61,8 @@ export interface DirectorRig {
   fireFileChange(): void;
   fireSettings(): void;
   records: SoundRecord[];
+  /** How often the library was opened (by listening to its files) and let go of. */
+  library: { opened: number; released: number };
 }
 
 /** A director with everything outside it replaced: its clock is the test's fake timers and Date. */
@@ -80,6 +82,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
   const settingsListeners = new Set<() => void>();
   const libraryListeners = new Set<() => void>();
   const fileListeners = new Set<() => void>();
+  const library = { opened: 0, released: 0 };
   const hashOfPath = (path: string): string => `hash-${path}`;
   const copy = (hash: string): CachedSound => ({ hash, byteLength: 10, frames: 48000 * 10, channels: 2, lufs: -20, truePeakDb: -3, lastUsed: 0 });
   if (ready) {
@@ -172,9 +175,11 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       return () => libraryListeners.delete(listener);
     },
     onAudioFileChange: (listener) => {
+      library.opened++;
       fileListeners.add(listener);
       return () => fileListeners.delete(listener);
     },
+    releaseLibrary: () => { library.released++; },
     readSceneSound: (path) => Promise.resolve(scenes.get(path) ?? null),
     notify: (message) => notices.push(message),
   };
@@ -191,6 +196,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
     notices,
     settings,
     records,
+    library,
     setPresented: (scene) => {
       presented = scene;
       for (const listener of presentedListeners) listener(scene);
