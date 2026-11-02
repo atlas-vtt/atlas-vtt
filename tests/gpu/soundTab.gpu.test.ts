@@ -193,6 +193,11 @@ describe('the DM screen’s Sound page', () => {
     expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
     const silence = box('.atlas-sound-silence');
 
+    // A window of the mockup's own size, where the screen takes 96 % of it, fits them as well.
+    viewport.style.width = '1644px';
+    await act(async () => { await sleep(100); });
+    expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
+
     viewport.style.width = '1200px';
     await act(async () => { await sleep(100); });
     expect(row.scrollWidth).toBeGreaterThan(row.clientWidth);

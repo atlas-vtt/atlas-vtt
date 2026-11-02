@@ -14,16 +14,11 @@ export function readMoodIcon(value: unknown): PinIconId | undefined {
 
 export const readMoodTone = (value: unknown): PinToneName | undefined => (isTone(value) ? value : undefined);
 
-let choices: readonly PinIconDefinition[] | null = null;
-
 /** What a mood's crest can be: every icon the pin palette offers. */
-export function moodIconChoices(): readonly PinIconDefinition[] {
-  choices ??= [
-    ...PIN_PALETTE.flatMap((slot) => (slot.kind === 'icon' ? [slot.icon] : [])),
-    ...PIN_PLACE_GROUPS.flatMap((group) => group.places),
-  ];
-  return choices;
-}
+export const MOOD_ICON_CHOICES: readonly PinIconDefinition[] = [
+  ...PIN_PALETTE.flatMap((slot) => (slot.kind === 'icon' ? [slot.icon] : [])),
+  ...PIN_PLACE_GROUPS.flatMap((group) => group.places),
+];
 
 export const moodIcon = (mood: Pick<Mood, 'icon'>): PinIconId => mood.icon ?? DEFAULT_MOOD_ICON;
 

@@ -16,6 +16,7 @@ interface DeskHeaderProps {
   director: SoundDirector;
   collectionId: string | null;
   moods: readonly Mood[];
+  holdsSound: boolean;
   onSaveAs: () => void;
 }
 
@@ -68,12 +69,11 @@ function OutputButton({ director }: { director: SoundDirector }): React.JSX.Elem
 }
 
 /** The mix's name and how it stands to its mood, what can be done with it, and who hears it. */
-export function DeskHeader({ app, director, collectionId, moods, onSaveAs }: DeskHeaderProps): React.JSX.Element {
+export function DeskHeader({ app, director, collectionId, moods, holdsSound, onSaveAs }: DeskHeaderProps): React.JSX.Element {
   const active = useSoundValue(director, ({ mix }) => mix.mood);
   const activeMoods = useMoods(app, active?.collectionId ?? null);
   const store = MoodStore.forApp(app);
   const mood = activeMoods.find((other) => other.id === active?.id) ?? null;
-  const holdsSound = useSoundValue(director, ({ mix }) => mix.table.music !== null || mix.table.layers.length > 0 || mix.waitingMusic !== null || mix.waitingLayers.length > 0);
   const changed = useSoundValue(director, () => mood !== null && director.desk.differsFrom(mood));
   const needsTap = useSoundValue(director, (snapshot) => snapshot.lifecycle === 'needs-tap');
   const lastMix = useSoundValue(director, (snapshot) => snapshot.lastMix !== null);
@@ -84,10 +84,10 @@ export function DeskHeader({ app, director, collectionId, moods, onSaveAs }: Des
   };
 
   const openMenu = (anchor: HTMLElement): void => {
-    const others = collectionId === null ? [] : moods.filter((other) => other.id !== mood?.id && !store.isReadOnly(collectionId, other.id));
     const entries: ContextMenuEntry[] = [];
-    if (others.length > 0 && collectionId !== null) {
-      entries.push({ type: 'submenu', label: t('audio.saveToOther'), children: others.map((other) => ({ type: 'item' as const, label: other.name, onClick: () => saveInto(other, collectionId) })) });
+    if (collectionId !== null) {
+      const others = moods.filter((other) => other.id !== mood?.id && !store.isReadOnly(collectionId, other.id));
+      if (others.length > 0) entries.push({ type: 'submenu', label: t('audio.saveToOther'), children: others.map((other) => ({ type: 'item' as const, label: other.name, onClick: () => saveInto(other, collectionId) })) });
     }
     entries.push({ type: 'item', label: t('audio.clearMix'), onClick: () => director.stop() });
     menu.open(entries, belowAnchor(anchor), { returnFocus: anchor });

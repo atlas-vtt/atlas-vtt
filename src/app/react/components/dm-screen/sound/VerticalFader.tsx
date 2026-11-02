@@ -23,9 +23,12 @@ const PAGE_DB = 6;
 const clampDb = (db: number): number => Math.max(MIN_DB, Math.min(MAX_DB, db));
 const shareOf = (db: number): number => (MAX_DB - clampDb(db)) / (MAX_DB - MIN_DB);
 
-export function formatDb(db: number): string {
+function formatDb(db: number): string {
   const rounded = Math.round(db);
-  return t('audio.dbValue', { value: `${rounded < 0 ? '−' : rounded > 0 ? '+' : ''}${Math.abs(rounded)}` });
+  let sign = '';
+  if (rounded < 0) sign = '−';
+  if (rounded > 0) sign = '+';
+  return t('audio.dbValue', { value: `${sign}${Math.abs(rounded)}` });
 }
 
 function keyedDb(event: React.KeyboardEvent, db: number): number | null {
@@ -54,30 +57,23 @@ function StripMeter({ strip }: { strip: string }): React.JSX.Element {
  */
 export const VerticalFader = React.memo(function VerticalFader({ label, value, meter, onChange, onCommit }: VerticalFaderProps): React.JSX.Element {
   const [held, setHeld] = useState<number | null>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
   const shown = held ?? value;
 
   const press = (event: React.PointerEvent<HTMLDivElement>): void => {
-    const track = trackRef.current;
-    if (event.button !== 0 || !track) return;
+    if (event.button !== 0) return;
     event.preventDefault();
-    const element = event.currentTarget;
+    const track = event.currentTarget;
     const thumb = track.querySelector<HTMLElement>('[role="slider"]');
     thumb?.focus();
     const box = track.getBoundingClientRect();
     const thumbBox = thumb?.getBoundingClientRect();
     const onThumb = thumbBox !== undefined && event.clientY >= thumbBox.top && event.clientY <= thumbBox.bottom;
-    const grab = onThumb && thumbBox ? event.clientY - (thumbBox.top + thumbBox.height / 2) : 0;
+    const grab = onThumb ? event.clientY - (thumbBox.top + thumbBox.height / 2) : 0;
     const at = (clientY: number): number => Math.round((MAX_DB - ((clientY - grab - box.top) / box.height) * (MAX_DB - MIN_DB)) * 2) / 2;
-    let current = clampDb(at(event.clientY));
-    element.setPointerCapture(event.pointerId);
-    if (!onThumb) {
-      setHeld(current);
-      onChange(current);
-    } else {
-      setHeld(shown);
-      current = shown;
-    }
+    let current = onThumb ? shown : clampDb(at(event.clientY));
+    track.setPointerCapture(event.pointerId);
+    setHeld(current);
+    if (!onThumb) onChange(current);
     const move = (moved: PointerEvent): void => {
       const db = clampDb(at(moved.clientY));
       if (db === current) return;
@@ -86,15 +82,15 @@ export const VerticalFader = React.memo(function VerticalFader({ label, value, m
       onChange(db);
     };
     const end = (): void => {
-      element.removeEventListener('pointermove', move);
-      element.removeEventListener('pointerup', end);
-      element.removeEventListener('pointercancel', end);
+      track.removeEventListener('pointermove', move);
+      track.removeEventListener('pointerup', end);
+      track.removeEventListener('pointercancel', end);
       setHeld(null);
       onCommit?.(current);
     };
-    element.addEventListener('pointermove', move);
-    element.addEventListener('pointerup', end);
-    element.addEventListener('pointercancel', end);
+    track.addEventListener('pointermove', move);
+    track.addEventListener('pointerup', end);
+    track.addEventListener('pointercancel', end);
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {
@@ -115,7 +111,7 @@ export const VerticalFader = React.memo(function VerticalFader({ label, value, m
 
   return (
     <>
-      <div className="atlas-sound-fader" ref={trackRef} onPointerDown={press}>
+      <div className="atlas-sound-fader" onPointerDown={press}>
         <StripMeter strip={meter} />
         <div className="atlas-sound-fader__rail" data-held={held !== null || undefined} style={{ '--atlas-sound-fader-at': shareOf(shown) } as React.CSSProperties}>
           <div

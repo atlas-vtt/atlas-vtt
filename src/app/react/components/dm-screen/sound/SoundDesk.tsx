@@ -1,7 +1,6 @@
 import React, { useCallback } from 'react';
 import type { App } from 'obsidian';
-import type { Mood } from '../../../../sound/soundTypes';
-import { MAX_MOOD_LAYERS } from '../../../../sound/soundTypes';
+import { MAX_MOOD_LAYERS, type Mood } from '../../../../sound/soundTypes';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { useAtlasStore } from '../../../ViewStoreContext';
 import { AddAmbience, LayerStrip, MasterStrip, WaitingStrip } from './DeskStrips';
@@ -36,7 +35,7 @@ export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: Soun
 
   return (
     <section className="atlas-sound-desk">
-      <DeskHeader app={app} director={director} collectionId={collectionId} moods={moods} onSaveAs={onSaveAs} />
+      <DeskHeader app={app} director={director} collectionId={collectionId} moods={moods} holdsSound={holdsSound} onSaveAs={onSaveAs} />
       <div className="atlas-sound-strips">
         <div className="atlas-sound-strips__mix">
           <MusicCard director={director} onChoose={chooseMusic} />

@@ -41,7 +41,10 @@ function problemText(problem: MoodProblem): string {
   }
 }
 
-const keyOf = (number: number): string | null => (number < 10 ? String(number) : number === 10 ? '0' : null);
+function keyOf(number: number): string | null {
+  if (number < 10) return String(number);
+  return number === 10 ? '0' : null;
+}
 
 function musicLine(mood: Mood, musicName: string | null): string {
   if (mood.music === 'keep') return t('audio.mood.musicKeep');
