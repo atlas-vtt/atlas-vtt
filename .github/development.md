@@ -141,11 +141,8 @@ install and update through BRAT as described in [beta-testing.md](beta-testing.m
 ## Review and merge
 
 Pull requests require a green `build-plugin` check and an up-to-date branch;
-`main` additionally requires the `atlas/pr-review` check. Automated review is
-provided by a private maintainer-managed service. Drafts are not automatically
-reviewed; external contributions require manual maintainer review. If the review
-status reports an error, contact the maintainer rather than bypassing or
-weakening CI.
+`main` additionally requires the `release-published` check, and these hold for
+administrators too. External contributions require manual maintainer review.
 
 The maintainer decides which fixes to implement, when to merge, and when to
 publish a release. Stable releases continue through the Prepare Plugin Release
