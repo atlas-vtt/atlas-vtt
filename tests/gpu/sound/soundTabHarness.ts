@@ -28,32 +28,85 @@ import { withSound } from '../../mocks/experimentalFeatures';
 const SHARED = `
   body { margin: 0; font: var(--font-ui-small)/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color: var(--text-normal); background: var(--background-secondary);
     --radius-s: 4px; --radius-m: 8px; --radius-l: 12px; --radius-xl: 24px; --corner-shape: squircle;
-    --font-ui-smaller: 12px; --font-ui-small: 13px; --font-ui-medium: 15px; --font-ui-large: 20px; --input-height: 30px; --line-height-tight: 1.3; }
+    --font-ui-smaller: 12px; --font-ui-small: 13px; --font-ui-medium: 15px; --font-ui-large: 20px; --input-height: 30px; --line-height-tight: 1.3;
+    --font-normal: 400; --font-medium: 500; --font-semibold: 600; --font-bold: 700; --shadow-l: 0 24px 60px rgba(0, 0, 0, 0.6); --shadow-s: 0 2px 8px rgba(0, 0, 0, 0.3); --color-green: #5cb860; --scrollbar-thumb-bg: rgba(128, 128, 128, 0.3); --scrollbar-active-thumb-bg: rgba(128, 128, 128, 0.5); }
   button, input { corner-shape: var(--corner-shape); font: inherit; color: inherit; }
   button { height: 30px; padding: 4px 12px; border: 0; border-radius: var(--radius-m); background: var(--interactive-normal); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); }
   input[type='text'], input[type='search'] { height: 30px; padding: 0 8px; border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); background: var(--background-modifier-form-field); }
 `;
 
 export const DARK = `${SHARED}
-  body { --mono-100: #fff; --background-primary: #1e1e1e; --background-secondary: #262626; --background-modifier-border: #363636; --background-modifier-border-focus: #7f6df2;
+  body { --mono-100: #fff; --background-primary: #1e1e1e; --background-primary-alt: #242424; --background-secondary: #262626; --background-modifier-border: #363636; --background-modifier-border-focus: #7f6df2;
     --background-modifier-hover: rgba(255, 255, 255, 0.06); --background-modifier-active-hover: rgba(127, 109, 242, 0.15); --background-modifier-form-field: #2a2a2a; --background-modifier-error: #b03a3a; --divider-color: #2f2f2f;
     --interactive-normal: #333; --interactive-accent: #8a7cf0; --text-normal: #dadada; --text-muted: #a8a8a8; --text-faint: #6e6e6e; --text-accent: #a99df5; --text-warning: #e0a750; --text-on-accent: #fff; }`;
 
 export const LIGHT = `${SHARED}
-  body { --mono-100: #000; --background-primary: #fff; --background-secondary: #f4f4f4; --background-modifier-border: #e0e0e0; --background-modifier-border-focus: #6a5ce0;
+  body { --mono-100: #000; --background-primary: #fff; --background-primary-alt: #fafafa; --background-secondary: #f4f4f4; --background-modifier-border: #e0e0e0; --background-modifier-border-focus: #6a5ce0;
     --background-modifier-hover: rgba(0, 0, 0, 0.05); --background-modifier-active-hover: rgba(106, 92, 224, 0.15); --background-modifier-form-field: #fff; --background-modifier-error: #d04545; --divider-color: #ebebeb;
     --interactive-normal: #fff; --interactive-accent: #6a5ce0; --text-normal: #222; --text-muted: #666; --text-faint: #999; --text-accent: #5a4cd0; --text-warning: #b0761c; --text-on-accent: #fff; }`;
 
+/** The Atlas VTT theme's own values, as the mockup has them. */
+export const ATLAS = `${SHARED}
+  body { --mono-100: #f0e6d0; --background-primary: #201b15; --background-primary-alt: #262019; --background-secondary: #2b241c; --background-secondary-alt: #322a20; --background-modifier-border: #4a4030; --background-modifier-border-focus: hsl(0, 69%, 57%);
+    --background-modifier-hover: rgba(240, 230, 208, 0.06); --background-modifier-active-hover: rgba(240, 230, 208, 0.1); --background-modifier-form-field: #2b241c; --background-modifier-error: #b03a3a; --divider-color: #4a4030;
+    --interactive-normal: #2b241c; --interactive-accent: hsl(0, 69%, 57%); --text-normal: #ded2b8; --text-muted: #a89878; --text-faint: #7d6f55; --text-accent: hsl(0, 69%, 67%); --text-warning: #e3b341; --text-on-accent: #fff;
+    --h3-font: 'Atlas Fantaisie Artistique'; }`;
+
 export const COLLECTION = 'Fen';
 
-export const SOUNDS: Record<string, { url: string; kind: SoundRecord['kind'] }> = {
+/** A sound of the tab: a fixture's URL, or written here in the shape of a real one. */
+interface TabSound {
+  url?: string;
+  /** Seconds of a sound with moments loud and quiet, each seed its own. */
+  synth?: { seconds: number; seed: number };
+  kind: SoundRecord['kind'];
+}
+
+export const SOUNDS: Record<string, TabSound> = {
   Rain: { url: tone220, kind: 'ambience' },
   'Wind in the reeds': { url: tone330, kind: 'ambience' },
   'Campfire crackle': { url: toneOpus, kind: 'ambience' },
   'Tavern crowd': { url: toneVorbis, kind: 'ambience' },
+  'Rain on shutters': { synth: { seconds: 4, seed: 11 }, kind: 'ambience' },
+  'Night crickets': { synth: { seconds: 4, seed: 12 }, kind: 'ambience' },
+  'Distant thunder': { synth: { seconds: 4, seed: 13 }, kind: 'ambience' },
+  'Low drone': { synth: { seconds: 4, seed: 14 }, kind: 'ambience' },
   'Road to Wolfhaven': { url: tone220Long, kind: 'music' },
   'The drowned chapel': { url: toneFlac, kind: 'music' },
 };
+
+/** A mono 16 bit WAV of noise under a slow swell: enough of a shape for a meter and a waveform. */
+function synthWav(seconds: number, seed: number): ArrayBuffer {
+  const rate = 48_000;
+  const frames = seconds * rate;
+  const bytes = new ArrayBuffer(44 + frames * 2);
+  const view = new DataView(bytes);
+  const text = (at: number, value: string): void => { for (let i = 0; i < value.length; i++) view.setUint8(at + i, value.charCodeAt(i)); };
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + frames * 2, true);
+  text(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, rate, true);
+  view.setUint32(28, rate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
+  text(36, 'data');
+  view.setUint32(40, frames * 2, true);
+  let state = seed * 16807 + 1;
+  let low = 0;
+  for (let frame = 0; frame < frames; frame++) {
+    state = (state * 16807) % 2147483647;
+    low += ((state / 2147483647) * 2 - 1 - low) * 0.05;
+    const place = frame / frames;
+    const swell = 0.28 + 0.5 * Math.sin(place * Math.PI * (3.2 + seed)) ** 2 + 0.2 * Math.abs(Math.sin(place * 90 + seed));
+    view.setInt16(44 + frame * 2, Math.round(Math.max(-1, Math.min(1, low * 4 * swell)) * 26000), true);
+  }
+  return bytes;
+}
+
+export type { TabSound };
 
 export interface SoundTab {
   director: SoundDirector;
@@ -70,19 +123,25 @@ export interface SoundTab {
  * The real DM screen with the real director, real copies in IndexedDB and a real context, over an
  * in-memory vault: all that is not Obsidian is the plugin's own. The theme is the variables Obsidian sets.
  */
-export async function openSoundTab(theme: string, viewport: HTMLElement, appId = `sound-tab-${Math.random()}`): Promise<SoundTab> {
+export async function openSoundTab(theme: string, viewport: HTMLElement, appId = `sound-tab-${Math.random()}`, sounds: Record<string, TabSound> = SOUNDS): Promise<SoundTab> {
   const style = document.createElement('style');
   style.id = 'sound-tab-theme';
   style.textContent = theme + css;
   document.getElementById('sound-tab-theme')?.remove();
   document.head.append(style);
+  document.body.classList.toggle('theme-light', theme === LIGHT);
+  document.body.classList.toggle('theme-dark', theme !== LIGHT);
 
-  const paths = Object.fromEntries(Object.keys(SOUNDS).map((name) => [`audio/${name}.ogg`, 'audio']));
+  const paths = Object.fromEntries(Object.keys(sounds).map((name) => [`audio/${name}.ogg`, 'audio']));
   const { app } = createInMemoryApp({ folders: ['atlas-vtt/collections'], files: paths });
   Object.assign(app, { appId });
   const bytes = new Map<string, ArrayBuffer>();
-  for (const [name, { url }] of Object.entries(SOUNDS)) bytes.set(`audio/${name}.ogg`, await (await fetch(url)).arrayBuffer());
-  app.vault.readBinary = vi.fn((file: { path: string }) => Promise.resolve(bytes.get(file.path)?.slice(0) ?? new ArrayBuffer(0))) as typeof app.vault.readBinary;
+  for (const [name, { url, synth }] of Object.entries(sounds)) bytes.set(`audio/${name}.ogg`, url ? await (await fetch(url)).arrayBuffer() : synthWav(synth?.seconds ?? 1, synth?.seed ?? 1));
+  // A file of no bytes never arrives: its copy stays on its way.
+  app.vault.readBinary = vi.fn((file: { path: string }) => {
+    const held = bytes.get(file.path);
+    return held && held.byteLength > 44 + 2 ? Promise.resolve(held.slice(0)) : new Promise<ArrayBuffer>(() => undefined);
+  }) as typeof app.vault.readBinary;
 
   new SettingsService(app);
   withSound(app);
@@ -90,7 +149,7 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
   const assets = AssetService.getInstance(app);
   await assets.initialize();
   await assets.createCollection(COLLECTION);
-  for (const [name, { kind }] of Object.entries(SOUNDS)) {
+  for (const [name, { kind }] of Object.entries(sounds)) {
     const sound: NewAsset = { type: 'sound', name, tags: [], collection: COLLECTION, audioPath: `audio/${name}.ogg`, kind, licence: 'unknown', streaming: 'unknown' };
     await assets.addAsset(sound);
   }

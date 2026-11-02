@@ -1,15 +1,12 @@
-import React, { useCallback, useId, useSyncExternalStore } from 'react';
+import React, { useCallback, useSyncExternalStore } from 'react';
 import { Users } from 'lucide-react';
 import { t } from '../../../../i18n';
-import { Button } from '../../../../packages/components/primitives/button';
-import { ToggleSwitch } from '../../../../packages/components/primitives/Toggle';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import type { Mood, SoundRecord } from '../../../../sound/soundTypes';
 import { openedDirector } from '../../../../soundDirector/directorRegistry';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
-import type { PlayersCopy, PlayersSounds } from '../../../../soundDirector/tableClock';
+import type { PlayersCopy } from '../../../../soundDirector/tableClock';
 import { useAtlasUI } from '../../../root/AtlasUIContext';
-import { useSoundValue } from './useSound';
 
 function copyText(copy: PlayersCopy): string {
   if (copy.state === 'ready') return t('audio.players.ready');
@@ -58,29 +55,4 @@ export function PlayersCardLine({ record }: { record: SoundRecord }): React.JSX.
   const sounds = director?.players.sounds ?? null;
   if (sounds === null || !sounds.sending || revision < 0) return null;
   return <PlayersLine copy={sounds.copyOf(record)} />;
-}
-
-function SendSwitch({ sounds }: { sounds: PlayersSounds }): React.JSX.Element {
-  const labelId = useId();
-  return (
-    <div className="atlas-sound-players__send">
-      <span id={labelId} className="atlas-sound-players__label">{t('audio.players.send')}</span>
-      <ToggleSwitch value={sounds.sending} onChange={() => sounds.setSending(!sounds.sending)} labelledBy={labelId} size="s" />
-    </div>
-  );
-}
-
-/** While a table runs: whether this device sends its sound, and offering a collection's moods before they are pressed. */
-export function PlayersRow({ director, collectionId }: { director: SoundDirector; collectionId: string | null }): React.JSX.Element | null {
-  useSoundValue(director, (snapshot) => snapshot.playersRevision);
-  const { sounds } = director.players;
-  if (sounds === null) return null;
-  return (
-    <div className="atlas-sound-players">
-      <SendSwitch sounds={sounds} />
-      {sounds.sending && (
-        <Button type="button" variant="ghost" disabled={collectionId === null} onClick={() => collectionId !== null && sounds.prepare(collectionId)}>{t('audio.players.prepare')}</Button>
-      )}
-    </div>
-  );
 }

@@ -1,6 +1,6 @@
 import type { SoundAnalyser, SoundNode } from './audioNodes';
 
-/** A little over one display frame at 48 kHz, so no peak falls between two readings. */
+/** A little over one display frame at 48 kHz, so no moment falls between two readings. */
 const WINDOW_FRAMES = 1024;
 
 export interface MeterPoint {
@@ -41,17 +41,18 @@ export class PlayerMeters {
     }
   }
 
-  /** The peak of the last moment per strip, linear; `silence` is what the Silence fade lets through now. */
+  /** How loud the last moment was per strip (root mean square, linear); `silence` is what the Silence fade lets through now. */
   read(into: Map<string, number>, silence: number): void {
     into.clear();
     for (const { analyser, strip, afterSilence } of this.taps.values()) {
       analyser.getFloatTimeDomainData(this.samples);
-      let peak = 0;
+      let energy = 0;
       for (let i = 0; i < WINDOW_FRAMES; i++) {
-        const sample = Math.abs(this.samples[i] ?? 0);
-        if (sample > peak) peak = sample;
+        const sample = this.samples[i] ?? 0;
+        energy += sample * sample;
       }
-      const level = afterSilence ? peak : peak * silence;
+      const rms = Math.sqrt(energy / WINDOW_FRAMES);
+      const level = afterSilence ? rms : rms * silence;
       into.set(strip, Math.max(level, into.get(strip) ?? 0));
     }
   }

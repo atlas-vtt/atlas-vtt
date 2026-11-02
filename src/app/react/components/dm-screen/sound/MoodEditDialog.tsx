@@ -7,6 +7,7 @@ import { Slider } from '../../../../packages/components/primitives/slider';
 import { useDialogEscape } from '../../../../packages/components/primitives/useDialogEscape';
 import { MAX_FADE_SECONDS } from '../../../../services/soundSettings';
 import type { Mood } from '../../../../sound/soundTypes';
+import { MoodLookPicker } from './MoodLookPicker';
 
 type MusicChoice = 'list' | 'keep' | 'none';
 
@@ -22,7 +23,7 @@ const MUSIC_OPTIONS = [
   { value: 'none', label: t('audio.mood.musicNone') },
 ] as const;
 
-/** A mood's own facts. What sounds in it is made in the Now column and saved from there. */
+/** A mood's own facts. What sounds in it is made on the desk and saved from there. */
 export function MoodEditDialog({ mood, onClose, onSave }: MoodEditDialogProps): React.JSX.Element {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
@@ -30,13 +31,14 @@ export function MoodEditDialog({ mood, onClose, onSave }: MoodEditDialogProps): 
   const [fade, setFade] = useState(mood.fadeSeconds);
   const hasList = typeof mood.music === 'object';
   const [music, setMusic] = useState<MusicChoice>(typeof mood.music === 'object' ? 'list' : mood.music);
+  const [look, setLook] = useState<Pick<Mood, 'icon' | 'tone'>>({ ...(mood.icon && { icon: mood.icon }), ...(mood.tone && { tone: mood.tone }) });
   useDialogEscape(ref, onClose);
 
   const save = (): void => {
     const trimmed = name.trim();
     if (trimmed === '') return;
     const listened = music === 'list' && typeof mood.music === 'object' ? mood.music : music === 'keep' ? 'keep' : 'none';
-    onSave({ ...mood, name: trimmed, fadeSeconds: fade, music: listened });
+    onSave({ ...mood, ...look, name: trimmed, fadeSeconds: fade, music: listened });
     onClose();
   };
 
@@ -52,6 +54,7 @@ export function MoodEditDialog({ mood, onClose, onSave }: MoodEditDialogProps): 
             <span>{t('audio.mood.name')}</span>
             <input type="text" value={name} autoFocus onChange={(event) => setName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter') save(); }} />
           </label>
+          <MoodLookPicker look={look} onChange={setLook} />
           <div className="atlas-sound-field">
             <span>{t('audio.mood.fade')}</span>
             <div className="atlas-sound-level">

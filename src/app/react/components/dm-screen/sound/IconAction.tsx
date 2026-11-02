@@ -1,5 +1,4 @@
 import React from 'react';
-import { Button } from '../../../../packages/components/primitives/button';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 
 interface IconActionProps {
@@ -13,13 +12,13 @@ interface IconActionProps {
   onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
 }
 
-/** A small icon button of a row, named by its tooltip. */
+/** A small icon button, named by its tooltip. */
 export function IconAction({ label, icon: Icon, pressed, disabled = false, className, focusSkip = false, onClick }: IconActionProps): React.JSX.Element {
   return (
     <LabelTooltip label={label}>
-      <Button type="button" variant="ghost" size="icon" disabled={disabled} aria-pressed={pressed} data-focus-skip={focusSkip || undefined} className={`atlas-sound-action${className ? ` ${className}` : ''}`} onClick={onClick}>
+      <button type="button" disabled={disabled} aria-pressed={pressed} data-focus-skip={focusSkip || undefined} className={`atlas-sound-icon${className ? ` ${className}` : ''}`} onClick={onClick}>
         <Icon />
-      </Button>
+      </button>
     </LabelTooltip>
   );
 }

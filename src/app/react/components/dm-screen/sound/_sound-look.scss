@@ -1,0 +1,50 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+
+// What every part of the Sound page shares. Only Obsidian's variables: a theme decides the colours.
+$hairline: color-mix(in oklch, var(--mono-100) 9%, transparent);
+$card-radius: calc(#{$radius-xl} + 2px);
+$control-radius: calc(#{$radius-m} + 1px);
+$cap-radius: calc(#{$radius-s} + 2px);
+$press-ease: cubic-bezier(0.2, 0, 0, 1);
+$press-ms: 120ms;
+
+@mixin bare-button {
+  height: auto;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  @include atlas-corner-shape;
+}
+
+@mixin focus-ring {
+  &:focus-visible {
+    outline: $border-width-l solid var(--background-modifier-border-focus);
+    outline-offset: -$border-width-l;
+    box-shadow: none;
+  }
+}
+
+@mixin pressable($scale: 0.96) {
+  &:active:not(:disabled) {
+    transform: scale($scale);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
+}
+
+@mixin hairline-tile {
+  border-radius: $card-radius;
+  box-shadow: inset 0 0 0 $border-width-s $hairline;
+  @include atlas-corner-shape;
+}

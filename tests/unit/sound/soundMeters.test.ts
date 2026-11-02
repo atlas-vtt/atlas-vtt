@@ -13,8 +13,7 @@ function analyserOf(peak: number): SoundAnalyser {
     connect: () => undefined,
     disconnect: () => undefined,
     getFloatTimeDomainData: (into) => {
-      into.fill(0);
-      into[7] = -peak;
+      into.fill(-peak);
     },
   };
 }
@@ -48,7 +47,7 @@ describe('reading levels', () => {
     expect([...music.outputs]).toEqual([keepsIts]);
   });
 
-  it('reads a peak, lets the Silence fade through only where a point lies before it', () => {
+  it('reads how loud a moment was, lets the Silence fade through only where a point lies before it', () => {
     const meters = new PlayerMeters(() => analyserOf(0.5));
     meters.follow(new Map([
       ['music', { strip: 'music', node: new Node(), afterSilence: true }],

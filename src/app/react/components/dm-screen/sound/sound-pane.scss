@@ -1,73 +1,162 @@
 @use '../../../../../../styles/tokens' as *;
 @use '../../../../../../styles/mixins' as *;
+@use './sound-look' as *;
 
-// The DM screen's Sound page: an instrument, quiet and dense. Moods stay put, the live mix is beside them,
-// Silence is always in the same corner.
+// The DM screen's Sound page: one surface, a stage that grows above a recessed desk.
 .atlas-sound-pane {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
+  // How deep the desk and a fader's slot lie: darkening is all that reads as lower, on any theme.
+  --atlas-sound-well: color-mix(in oklch, var(--background-primary) 93%, black);
+  --atlas-sound-slot: color-mix(in oklch, black 10%, transparent);
+  position: relative;
   flex: 1;
   min-width: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-  gap: $spacing-m;
-  padding: $spacing-s 12px 12px;
-  font-size: $font-ui-small;
-
-  @container atlas-dm-screen (min-width: 1400px) {
-    padding: $spacing-s 16px 16px;
-  }
-
-  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: minmax(0, 2fr) minmax(0, 3fr);
-  }
-
-  h3 {
-    margin: 0;
-    font-size: $font-ui-small;
-    font-weight: $font-weight-semibold;
-    color: var(--text-muted);
-  }
-}
-
-.atlas-sound-moods,
-.atlas-sound-now {
-  @include atlas-elevated-surface;
+  min-height: 0;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  margin: $spacing-s $spacing-m $spacing-m;
   overflow: hidden;
-}
+  font-size: $font-ui-small;
+  line-height: 1.35;
+  -webkit-font-smoothing: antialiased;
 
-.atlas-sound-moods__header,
-.atlas-sound-now__header {
-  @include atlas-flex-row($spacing-s);
-  flex-shrink: 0;
-  height: 44px;
-  padding: 0 $spacing-m;
-  border-bottom: $border-width-s solid var(--divider-color);
-}
+  .theme-dark & {
+    --atlas-sound-well: color-mix(in oklch, var(--background-primary) 82%, black);
+    --atlas-sound-slot: color-mix(in oklch, black 40%, transparent);
+  }
 
-.atlas-sound-moods__header {
-  justify-content: space-between;
-}
-
-.atlas-sound-moods__collection {
-  min-width: 0;
-  width: 200px;
-}
-
-.atlas-sound-now__header {
-  h3 {
-    flex: 1;
+  @container atlas-dm-screen (min-width: 1400px) {
+    margin: $spacing-s $spacing-l $spacing-l;
   }
 }
 
-.atlas-sound-action.atlas-sound-action {
-  @include atlas-control-icon-button;
+.atlas-sound-stage {
+  @include atlas-scrollbar;
+  flex: 1;
+  min-height: 0;
+  padding: $spacing-l;
+  overflow: auto;
+}
+
+.atlas-sound-no-moods {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-s;
+  text-align: center;
+
+  h2 {
+    margin: 0;
+    font: 400 32px/1.1 var(--h3-font, inherit);
+    color: var(--mono-100);
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 0;
+    max-width: 44ch;
+    color: var(--text-muted);
+    font-size: 14px;
+    text-wrap: pretty;
+  }
+}
+
+.atlas-sound-icon {
+  @include bare-button;
+  @include focus-ring;
+  position: relative;
   flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: $control-radius;
+  color: var(--text-muted);
+  transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease, transform $press-ms $press-ease;
+  @include pressable;
+
+  svg {
+    width: 17px;
+    height: 17px;
+    stroke-width: 1.6;
+  }
+
+  &:hover:not(:disabled) {
+    background: $hairline;
+    color: var(--text-normal);
+  }
 
   &[aria-pressed='true'] {
-    color: var(--interactive-accent);
+    color: var(--mono-100);
+  }
+
+  &:disabled {
+    color: var(--text-faint);
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.atlas-sound-button {
+  @include bare-button;
+  @include focus-ring;
+  flex-shrink: 0;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: $spacing-xs;
+  padding: 0 $spacing-m;
+  border-radius: $control-radius;
+  background: var(--background-secondary);
+  box-shadow: inset 0 0 0 $border-width-s $hairline;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+  transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease, transform $press-ms $press-ease;
+  @include pressable;
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+
+  &:hover {
+    background: color-mix(in oklch, var(--mono-100) 7%, var(--background-secondary));
+  }
+}
+
+.atlas-sound-button--quiet {
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+
+  &:hover {
+    background: $hairline;
+    color: var(--text-normal);
+  }
+}
+
+.atlas-sound-cap {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: $cap-radius;
+  background: color-mix(in oklch, black 18%, transparent);
+  box-shadow: inset 0 0 0 $border-width-s $hairline, 0 1px 0 color-mix(in oklch, black 40%, transparent);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: $font-weight-semibold;
+  font-variant-numeric: tabular-nums;
+  @include atlas-corner-shape;
+
+  svg {
+    width: 12px;
+    height: 12px;
   }
 }
 
@@ -82,7 +171,8 @@
 
 .atlas-sound-dialog {
   @include atlas-modal-window;
-  width: min(360px, 90%);
+  width: min(392px, 90%);
+  max-height: 90%;
 }
 
 .atlas-sound-dialog__header {
@@ -93,6 +183,7 @@
   @include atlas-flex-col($spacing-m);
   align-items: stretch;
   padding: $spacing-m;
+  overflow-y: auto;
 }
 
 .atlas-sound-field {
@@ -106,9 +197,160 @@
   }
 }
 
+.atlas-sound-level {
+  @include atlas-flex-row($spacing-s);
+}
+
+.atlas-sound-level__value {
+  flex-shrink: 0;
+  min-width: 32px;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
 .atlas-sound-dialog__actions {
   display: flex;
   justify-content: flex-end;
+}
+
+.atlas-sound-look {
+  @include atlas-flex-col($spacing-m);
+  align-items: stretch;
+}
+
+.atlas-sound-look__tones {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: $spacing-xs;
+}
+
+.atlas-sound-look__tone {
+  @include bare-button;
+  @include focus-ring;
+  --atlas-sound-tone: var(--atlas-sound-tone-light);
+  aspect-ratio: 1;
+  min-width: 0;
+  border-radius: $radius-full;
+  background: var(--atlas-sound-tone);
+  transition: box-shadow $transition-normal $press-ease;
+
+  .theme-dark & {
+    --atlas-sound-tone: var(--atlas-sound-tone-dark);
+  }
+
+  &[aria-checked='true'] {
+    box-shadow: 0 0 0 $border-width-l var(--background-primary), 0 0 0 calc(#{$border-width-l} * 2) var(--text-normal);
+  }
+}
+
+.atlas-sound-look__crests {
+  @include atlas-scrollbar;
+  --atlas-sound-tone: var(--atlas-sound-tone-light);
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: $spacing-xs;
+  max-height: 136px;
+  overflow-y: auto;
+
+  .theme-dark & {
+    --atlas-sound-tone: var(--atlas-sound-tone-dark);
+  }
+}
+
+.atlas-sound-look__crest {
+  @include bare-button;
+  @include focus-ring;
+  aspect-ratio: 1;
+  min-width: 0;
+  display: grid;
+  place-items: center;
+  border-radius: $control-radius;
+  color: var(--text-muted);
+  transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+
+  svg {
+    width: 70%;
+    height: 70%;
+    fill: currentColor;
+  }
+
+  &:hover {
+    background: $hairline;
+  }
+
+  &[aria-checked='true'] {
+    color: var(--atlas-sound-tone);
+    background: color-mix(in oklch, var(--atlas-sound-tone) 16%, transparent);
+    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--atlas-sound-tone) 55%, transparent);
+  }
+}
+
+// The list of sounds in the library view, until the library replaces it.
+.atlas-sound-stage--library {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-s;
+}
+
+.atlas-sound-add {
+  @include atlas-flex-col($spacing-s);
+  align-items: stretch;
+}
+
+.atlas-sound-add__search {
+  width: 100%;
+}
+
+.atlas-sound-add__list {
+  @include atlas-flex-col(0);
+  align-items: stretch;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.atlas-sound-add__row {
+  @include atlas-flex-row($spacing-xs);
+}
+
+.atlas-sound-add__name {
+  @include bare-button;
+  @include focus-ring;
+  @include atlas-flex-row($spacing-s);
+  flex: 1;
+  min-width: 0;
+  padding: $spacing-xs;
+  border-radius: $radius-m;
+  color: var(--text-normal);
+  text-align: start;
+
+  > span {
+    @include atlas-truncate;
+    flex: 1;
+    min-width: 0;
+  }
+
+  svg {
+    flex-shrink: 0;
+    width: $icon-xs;
+    height: $icon-xs;
+    color: var(--text-faint);
+  }
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+}
+
+.atlas-sound-add__none {
+  @include atlas-flex-col($spacing-xs);
+  align-items: flex-start;
+  color: var(--text-muted);
+}
+
+.atlas-sound-link {
+  @include bare-button;
+  color: var(--text-accent);
 }
 
 // The status bar item while something plays.

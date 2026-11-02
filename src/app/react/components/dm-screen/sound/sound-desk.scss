@@ -1,0 +1,355 @@
+@use '../../../../../../styles/tokens' as *;
+@use '../../../../../../styles/mixins' as *;
+@use './sound-look' as *;
+
+// The desk: what plays now, fixed under the stage in both views.
+.atlas-sound-desk {
+  flex-shrink: 0;
+  height: 336px;
+  display: flex;
+  flex-direction: column;
+  background: var(--atlas-sound-well);
+  box-shadow: inset 0 1px 0 $hairline, inset 0 12px 24px -16px color-mix(in oklch, black 60%, transparent);
+
+  @container atlas-dm-screen (max-height: 760px) {
+    height: 288px;
+  }
+
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    height: 264px;
+  }
+
+  @container atlas-dm-screen (max-height: 560px) {
+    height: 216px;
+  }
+}
+
+.atlas-sound-desk__head {
+  flex-shrink: 0;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  gap: $spacing-m;
+  padding: 0 $spacing-l;
+}
+
+.atlas-sound-desk__mix {
+  @include atlas-truncate;
+  min-width: 0;
+  flex-shrink: 1;
+  font-weight: $font-weight-semibold;
+  color: var(--text-normal);
+}
+
+.atlas-sound-desk__state {
+  flex-shrink: 0;
+  color: var(--text-muted);
+}
+
+.atlas-sound-desk__end {
+  min-width: 0;
+  margin-inline-start: auto;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--text-muted);
+}
+
+.atlas-sound-who,
+.atlas-sound-output {
+  @include bare-button;
+  @include focus-ring;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  border-radius: $radius-s;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.atlas-sound-who {
+  gap: 6px;
+
+  i {
+    flex-shrink: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: $radius-full;
+    background: var(--color-green, var(--text-success));
+  }
+
+  &[data-off] i {
+    background: var(--text-faint);
+  }
+}
+
+button.atlas-sound-who,
+.atlas-sound-output {
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color $transition-normal $press-ease;
+
+  &:hover {
+    color: var(--text-normal);
+  }
+}
+
+.atlas-sound-output {
+  flex-shrink: 0;
+  gap: 6px;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    stroke-width: 1.6;
+  }
+}
+
+.atlas-sound-strips {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: $spacing-s;
+  padding: 0 $spacing-l $spacing-l;
+}
+
+// What does not fit scrolls here, past the cards' lower edge, so a scrollbar never takes height from a fader.
+.atlas-sound-strips__mix {
+  @include atlas-scrollbar;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: $spacing-s;
+  margin-bottom: -$spacing-m;
+  padding-bottom: $spacing-m;
+  overflow: auto hidden;
+}
+
+.atlas-sound-card {
+  @include hairline-tile;
+  background: var(--background-primary-alt);
+}
+
+.atlas-sound-music {
+  flex: 0 1 500px;
+  min-width: 340px;
+  display: flex;
+  gap: $spacing-m;
+  padding: 14px $spacing-s $spacing-m $spacing-l;
+
+  @container atlas-dm-screen (min-width: 1700px) {
+    min-width: 380px;
+  }
+
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    min-width: 280px;
+  }
+
+  &[data-empty] {
+    padding: 0;
+  }
+}
+
+.atlas-sound-pick {
+  @include bare-button;
+  @include hairline-tile;
+  @include focus-ring;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  box-shadow: none;
+  color: var(--text-normal);
+  font-size: 15px;
+  font-weight: $font-weight-medium;
+  transition: background-color $transition-normal $press-ease;
+
+  svg {
+    width: 20px;
+    height: 20px;
+    stroke-width: 1.6;
+  }
+
+  &:hover {
+    background: var(--background-secondary);
+  }
+}
+
+.atlas-sound-music__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.atlas-sound-music__track {
+  @include atlas-truncate;
+  grid-column: 1 / -1;
+  min-height: 28px;
+  margin-top: 2px;
+  font-size: 21px;
+  font-weight: $font-weight-semibold;
+  letter-spacing: -0.01em;
+  color: var(--mono-100);
+}
+
+.atlas-sound-music__next {
+  @include atlas-truncate;
+  grid-column: 1 / -1;
+  min-height: 18px;
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
+.atlas-sound-music__wave {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  position: relative;
+  align-self: end;
+  height: 62px;
+  max-height: 100%;
+  color: var(--mono-100);
+
+  &[hidden] {
+    display: none;
+  }
+
+  canvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.atlas-sound-music__unplayed {
+  opacity: 0.18;
+}
+
+.atlas-sound-music__clock {
+  grid-row: 4;
+  margin-top: $spacing-s;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.atlas-sound-music__total {
+  margin-inline-start: $spacing-s;
+  opacity: 0.6;
+}
+
+.atlas-sound-music__actions {
+  grid-row: 4;
+  grid-column: 2;
+  display: flex;
+  gap: $spacing-xs;
+  margin-top: $spacing-s;
+}
+
+// The list stays out of sight until it is wanted, as a strip's remove does.
+.atlas-sound-music__list {
+  opacity: 0;
+  transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+
+  .atlas-sound-music:hover &,
+  .atlas-sound-music:focus-within &,
+  &[aria-pressed='true'] {
+    opacity: 1;
+  }
+}
+
+.atlas-sound-tracks {
+  @include atlas-scrollbar;
+  grid-column: 1 / -1;
+  grid-row: 3;
+  align-self: stretch;
+  min-height: 0;
+  margin: $spacing-xs 0 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.atlas-sound-track {
+  @include atlas-flex-row($spacing-xs);
+
+  > span {
+    @include atlas-truncate;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .atlas-sound-icon {
+    width: 28px;
+    height: 28px;
+  }
+
+  .atlas-sound-track__waiting {
+    flex: 0 0 auto;
+    padding-inline: $spacing-xs;
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+}
+
+.atlas-sound-silence {
+  @include bare-button;
+  @include hairline-tile;
+  @include focus-ring;
+  flex-shrink: 0;
+  width: 132px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--background-primary-alt);
+  color: var(--text-normal);
+  font-size: 15px;
+  font-weight: $font-weight-semibold;
+  transition: background-color $transition-normal $press-ease, color $transition-normal $press-ease, transform $press-ms $press-ease;
+  @include pressable(0.98);
+
+  > svg {
+    width: 24px;
+    height: 24px;
+    stroke-width: 1.6;
+  }
+
+  &:hover {
+    background: var(--background-secondary);
+  }
+
+  &[aria-pressed='true'] {
+    background: color-mix(in oklch, var(--interactive-accent) 82%, black);
+    color: var(--text-on-accent);
+
+    .atlas-sound-cap {
+      color: var(--text-on-accent);
+    }
+  }
+
+  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+    width: 88px;
+    font-size: $font-ui-small;
+
+    .atlas-sound-cap {
+      display: none;
+    }
+  }
+}
+
+@container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+  .atlas-sound-who,
+  .atlas-sound-output span {
+    display: none;
+  }
+
+  .atlas-sound-desk__state {
+    @include atlas-truncate;
+    flex-shrink: 1;
+  }
+}

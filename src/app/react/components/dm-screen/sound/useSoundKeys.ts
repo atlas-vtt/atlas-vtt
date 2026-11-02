@@ -50,8 +50,8 @@ export function useSoundKeys({ active, rootRef, viewId, director, collectionId, 
           }
           return;
         }
-        // A fader's own keys are left and right; up and down leave it.
-        if (target?.getAttribute?.('role') === 'slider' && (direction === 'left' || direction === 'right')) return;
+        // A fader's own keys are up and down; left and right leave it.
+        if (target?.getAttribute?.('role') === 'slider' && (direction === 'up' || direction === 'down')) return;
         const screen = root.closest('.atlas-dm-screen') ?? root;
         if (isControlTarget(target) && !target?.closest('.atlas-dm-screen-pages')) {
           taken();

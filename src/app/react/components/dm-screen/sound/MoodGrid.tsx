@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { App } from 'obsidian';
+import { Plus } from 'lucide-react';
 import { t } from '../../../../i18n';
 import type { Mood } from '../../../../sound/soundTypes';
 import { moodProblems, type MoodProblem } from '../../../../soundDirector/moodReadiness';
@@ -22,12 +23,13 @@ interface MoodGridProps {
   /** Whether the open map belongs to this collection, so its scene may link these moods. */
   sameCollectionAsMap: boolean;
   moveMood: (mood: Mood, index: number) => void;
+  onNewMood: () => void;
 }
 
 const NO_PROBLEMS: readonly MoodProblem[] = [];
 
 /** The moods in their fixed places, numbered as the keys that press them. */
-export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsMap, moveMood }: MoodGridProps): React.JSX.Element {
+export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsMap, moveMood, onNewMood }: MoodGridProps): React.JSX.Element {
   const store = MoodStore.forApp(app);
   const gridRef = useRef<HTMLDivElement>(null);
   const menu = useContextMenu();
@@ -37,6 +39,7 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
   const activeId = useSoundValue(director, (snapshot) => (snapshot.mix.mood?.collectionId === collectionId ? snapshot.mix.mood.id : null));
   const shelfRevision = useSoundValue(director, (snapshot) => snapshot.shelfRevision);
   const playersRevision = useSoundValue(director, (snapshot) => snapshot.playersRevision);
+  const silenced = useSoundValue(director, ({ mix }) => mix.table.silenced);
 
   const canMove = useCallback((mood: Mood) => !store.isReadOnly(collectionId, mood.id), [collectionId, store]);
   const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canMove, moveMood);
@@ -50,7 +53,7 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
     const readOnly = store.isReadOnly(collectionId, mood.id);
     menu.open([
       { type: 'item', label: t('audio.mood.edit'), disabled: readOnly, ...(readOnly && { description: t('audio.mood.readOnly') }), onClick: () => setEditing(mood) },
-      { type: 'item', label: t('audio.mood.duplicate'), onClick: () => store.createMood(collectionId, { name: t('audio.mood.copyName', { name: mood.name }), fadeSeconds: mood.fadeSeconds, music: mood.music, layers: mood.layers }) },
+      { type: 'item', label: t('audio.mood.duplicate'), onClick: () => store.createMood(collectionId, { ...moodMix(mood), name: t('audio.mood.copyName', { name: mood.name }) }) },
       { type: 'item', label: t('audio.mood.linkScene'), checked: sceneSound?.mood === mood.id, disabled: !sameCollectionAsMap, onClick: () => setSceneSound(withLink(sceneSound, 'mood', mood.id)) },
       { type: 'item', label: t('audio.mood.linkCombat'), checked: sceneSound?.combatMood === mood.id, disabled: !sameCollectionAsMap, onClick: () => setSceneSound(withLink(sceneSound, 'combatMood', mood.id)) },
       { type: 'item', label: t('audio.mood.delete'), destructive: true, disabled: readOnly, onClick: () => void confirmDelete(store, collectionId, mood) },
@@ -64,6 +67,7 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
 
   const problems = useMemo(() => new Map(moods.map((mood) => [mood.id, moodProblems(mood, director.shelf)])), [director, moods, shelfRevision]);
   const forPlayers = useMemo(() => new Map(moods.map((mood) => [mood.id, moodForPlayers(mood, director)])), [director, moods, shelfRevision, playersRevision]);
+  const musicNames = useMemo(() => new Map(moods.map((mood) => [mood.id, firstTrackName(mood, director)])), [director, moods, shelfRevision]);
   const activeAt = shown.findIndex((mood) => mood.id === activeId);
   const nextId = shown.length > 1 ? shown[(activeAt + 1) % shown.length]?.id : undefined;
 
@@ -75,6 +79,8 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
           mood={mood}
           number={index + 1}
           playing={mood.id === activeId}
+          silenced={silenced}
+          musicName={musicNames.get(mood.id) ?? null}
           next={mood.id === nextId}
           dragging={mood.id === draggingId}
           problems={problems.get(mood.id) ?? NO_PROBLEMS}
@@ -84,9 +90,20 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
           onDragStart={start}
         />
       ))}
+      <button type="button" className="atlas-sound-ghost" onClick={onNewMood}>
+        <Plus aria-hidden="true" />
+        {t('audio.mood.new')}
+      </button>
       {editing && <MoodEditDialog mood={editing} onClose={() => setEditing(null)} onSave={(changed) => store.saveMood(collectionId, changed)} />}
     </div>
   );
+}
+
+const moodMix = ({ id: _id, order: _order, ...mix }: Mood): Omit<Mood, 'id' | 'order'> => mix;
+
+function firstTrackName(mood: Mood, director: SoundDirector): string | null {
+  const first = typeof mood.music === 'object' ? mood.music.tracks[0] : undefined;
+  return first === undefined ? null : (director.shelf.recordOf(first)?.name ?? null);
 }
 
 function withLink(sound: { mood?: string; combatMood?: string } | null, key: 'mood' | 'combatMood', id: string): { mood?: string; combatMood?: string } | null {
