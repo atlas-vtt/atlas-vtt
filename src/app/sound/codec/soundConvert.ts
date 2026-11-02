@@ -1,25 +1,24 @@
 import { SOUND_RATE } from '../engine/soundMath';
 import { openSoundSource } from './demux/openSoundSource';
 import { SoundImportError, type EncodedSource, type PcmSource, type SoundSource } from './demux/demuxTypes';
+import { LoopEnds, type LoopFinish, type LoopSeam } from './loopEnds';
 import { LoudnessMeter, type LoudnessResult } from './loudness';
-import { OggOpusWriter } from './oggOpusWriter';
-import { readOpusHead, writeOpusHead } from './opusFormat';
+import { OpusOutput, queueRoom } from './opusOutput';
 import { Resampler, SilenceTrim, toStereo } from './pcmStages';
 import { verifyOggOpus } from './soundVerify';
 
 export type SoundImportKind = 'music' | 'ambience';
 
 const BITRATES: Record<SoundImportKind, number> = { music: 96_000, ambience: 80_000 };
-const MAX_QUEUE = 32;
-/** How long a queue may stand still before it is looked at again. */
-const QUEUE_WAIT_MS = 10;
 const PROGRESS_STEP = 0.01;
 const FILE_SHARE = 0.9;
+/** Where a file does not say: how far an MP3 or AAC encoder's padding reaches, in frames at the file's own rate. */
+const PADDING_REACH_FRAMES = 3072;
 
 export interface SoundImportJob {
   source: Blob;
   kind: SoundImportKind;
-  /** Marked as a loop: digital silence comes off both ends. */
+  /** Marked as a loop: nothing but sound at either end, and a wrap that goes on as the sound does. */
   loop: boolean;
 }
 
@@ -27,97 +26,13 @@ export interface SoundImportResult extends LoudnessResult {
   bytes: Blob;
   frames: number;
   channels: number;
+  /** Of a sound marked as a loop: what was done about its wrap. */
+  seam?: LoopSeam;
 }
 
 export type ImportProgress = (share: number) => void;
 
 type Planes = Float32Array<ArrayBuffer>[];
-
-function queueRoom(queue: () => number, target: EventTarget): Promise<void> | null {
-  if (queue() <= MAX_QUEUE) return null;
-  return new Promise((resolve) => {
-    const done = (): void => {
-      self.clearTimeout(timer);
-      target.removeEventListener('dequeue', done);
-      resolve();
-    };
-    const timer = self.setTimeout(done, QUEUE_WAIT_MS);
-    target.addEventListener('dequeue', done);
-  });
-}
-
-/** `AudioData` for the encoder, from planes that stay ours. */
-function audioData(planes: readonly Float32Array[], timestampFrames: number): AudioData {
-  const frames = planes[0]?.length ?? 0;
-  const data = new Float32Array(frames * planes.length);
-  planes.forEach((plane, channel) => data.set(plane, channel * frames));
-  return new AudioData({
-    format: 'f32-planar',
-    sampleRate: SOUND_RATE,
-    numberOfFrames: frames,
-    numberOfChannels: planes.length,
-    timestamp: Math.round((timestampFrames * 1e6) / SOUND_RATE),
-    data,
-  });
-}
-
-/** Opus at the kind's bitrate, written to Ogg as it comes. */
-class OpusOutput {
-  private readonly encoder: AudioEncoder;
-  private writer: OggOpusWriter | null = null;
-  private failure: Error | null = null;
-  frames = 0;
-
-  constructor(
-    readonly channels: number,
-    bitrate: number,
-  ) {
-    this.encoder = new AudioEncoder({
-      output: (chunk, metadata) => this.packet(chunk, metadata),
-      error: (error) => {
-        this.failure = error;
-      },
-    });
-    this.encoder.configure({ codec: 'opus', sampleRate: SOUND_RATE, numberOfChannels: channels, bitrate });
-  }
-
-  add(planes: readonly Float32Array[]): void {
-    const count = planes[0]?.length ?? 0;
-    if (count === 0) return;
-    const data = audioData(planes, this.frames);
-    this.encoder.encode(data);
-    data.close();
-    this.frames += count;
-  }
-
-  room(): Promise<void> | null {
-    return queueRoom(() => this.encoder.encodeQueueSize, this.encoder);
-  }
-
-  async finish(): Promise<Blob> {
-    await this.encoder.flush();
-    this.encoder.close();
-    if (this.failure) throw new SoundImportError('unreadable', `Encoding failed: ${this.failure.message}`);
-    if (!this.writer) throw new SoundImportError('empty', 'There is no audio in the file.');
-    return this.writer.finish(this.frames);
-  }
-
-  close(): void {
-    if (this.encoder.state !== 'closed') this.encoder.close();
-  }
-
-  private packet(chunk: EncodedAudioChunk, metadata?: EncodedAudioChunkMetadata): void {
-    if (!this.writer) {
-      const description = metadata?.decoderConfig?.description;
-      if (!description) throw new SoundImportError('no-encoder', 'The encoder gives no Opus header.');
-      const head = readOpusHead(description instanceof ArrayBuffer ? new Uint8Array(description) : new Uint8Array(description.buffer, description.byteOffset, description.byteLength));
-      this.writer = new OggOpusWriter(writeOpusHead(this.channels, head.preSkip));
-    }
-    const bytes = new Uint8Array(chunk.byteLength);
-    chunk.copyTo(bytes);
-    this.writer.addPacket(bytes);
-  }
-}
 
 /**
  * Everything between the source's samples and the encoder, one piece at a time. It is built from the first
@@ -126,10 +41,14 @@ class OpusOutput {
 class PcmPath {
   private resampler: Resampler | null = null;
   private trim: SilenceTrim | null = null;
+  private ends: LoopEnds | null = null;
   private meter: LoudnessMeter | null = null;
   private output: OpusOutput | null = null;
 
-  constructor(private readonly job: SoundImportJob) {}
+  constructor(
+    private readonly job: SoundImportJob,
+    private readonly primingHints: readonly number[] | null,
+  ) {}
 
   add(planes: Planes, sampleRate: number): void {
     const stereo = toStereo(planes);
@@ -137,8 +56,14 @@ class PcmPath {
       const channels = stereo.length;
       this.output = new OpusOutput(channels, BITRATES[this.job.kind]);
       this.meter = new LoudnessMeter(channels);
-      this.resampler = sampleRate === SOUND_RATE ? null : new Resampler(sampleRate, channels);
-      this.trim = this.job.loop ? new SilenceTrim(channels) : null;
+      // Where its ends are known a loop is resampled as the wrap it is. Elsewhere its ends are found only after this.
+      this.resampler = sampleRate === SOUND_RATE ? null : new Resampler(sampleRate, channels, this.job.loop && !this.primingHints);
+      if (this.job.loop) {
+        this.trim = new SilenceTrim(channels);
+        const toSoundRate = (frames: number): number => Math.round((frames * SOUND_RATE) / sampleRate);
+        const padding = this.primingHints ? { reach: toSoundRate(PADDING_REACH_FRAMES), priming: this.primingHints.map(toSoundRate) } : null;
+        this.ends = new LoopEnds(channels, padding, this.resampler?.wrapFrames ?? 0);
+      }
     }
     this.pass(this.resampler ? this.resampler.process(stereo) : stereo);
   }
@@ -150,9 +75,18 @@ class PcmPath {
   async finish(): Promise<SoundImportResult & { channels: number }> {
     const output = this.output;
     if (this.resampler) this.pass(this.resampler.flush());
+    const loop: LoopFinish | null = this.ends ? this.ends.finish((piece) => this.write(piece)) : null;
     if (!output || !this.meter || output.frames === 0) throw new SoundImportError('empty', 'There is no audio in the file.');
-    const bytes = await output.finish();
-    return { ...this.meter.result(), bytes, frames: output.frames, channels: output.channels };
+    const skipFrames = loop?.skipFrames ?? 0;
+    if (loop) {
+      output.add(loop.closing);
+      output.endHere();
+      output.add(loop.runOn);
+    }
+    const frames = (loop ? output.keptFrames : output.frames) - skipFrames;
+    const bytes = await output.finish(skipFrames);
+    const result = { ...this.meter.result(), bytes, frames, channels: output.channels };
+    return loop ? { ...result, seam: loop.seam } : result;
   }
 
   close(): void {
@@ -160,7 +94,8 @@ class PcmPath {
   }
 
   private pass(planes: Planes): void {
-    if (this.trim) this.trim.process(planes, (piece) => this.write(piece));
+    const { trim, ends } = this;
+    if (trim && ends) trim.process(planes, (piece) => ends.process(piece, (held) => this.write(held), trim.droppedFrames));
     else this.write(planes);
   }
 
@@ -171,9 +106,10 @@ class PcmPath {
   }
 }
 
-async function decodeEncoded(source: EncodedSource, path: PcmPath, progress: () => void): Promise<void> {
-  let skip = source.skipFrames;
-  let left = source.totalFrames ?? Infinity;
+async function decodeEncoded(source: EncodedSource, path: PcmPath, loop: boolean, progress: () => void): Promise<void> {
+  const ends = loop ? (source.loopEnds ?? source) : source;
+  let skip = ends.skipFrames;
+  let left = ends.totalFrames ?? Infinity;
   const failures: Error[] = [];
   const config: AudioDecoderConfig = { codec: source.codec, sampleRate: source.sampleRate, numberOfChannels: source.channels };
   if (source.description) config.description = source.description;
@@ -236,7 +172,7 @@ async function checkEncoder(bitrate: number): Promise<void> {
 export async function convertSound(job: SoundImportJob, onProgress: ImportProgress = () => undefined): Promise<SoundImportResult> {
   await checkEncoder(BITRATES[job.kind]);
   const source: SoundSource = await openSoundSource(job.source);
-  const path = new PcmPath(job);
+  const path = new PcmPath(job, source.type === 'encoded' ? (source.primingHints ?? null) : null);
   let shown = 0;
   const progress = (): void => {
     const share = source.progress() * FILE_SHARE;
@@ -247,7 +183,7 @@ export async function convertSound(job: SoundImportJob, onProgress: ImportProgre
   };
   try {
     if (source.type === 'pcm') await readPcm(source, path, progress);
-    else await decodeEncoded(source, path, progress);
+    else await decodeEncoded(source, path, job.loop, progress);
     const result = await path.finish();
     await verifyOggOpus(result.bytes, result.frames, result.channels, (share) => onProgress(FILE_SHARE + (1 - FILE_SHARE) * share));
     return result;

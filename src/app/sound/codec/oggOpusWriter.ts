@@ -1,6 +1,6 @@
 import { FLAG_FIRST, FLAG_LAST, lacingOf, MAX_SEGMENTS, writePage } from './oggPages';
 import { encodeSeekTable, SEEK_COMMENT, SEEK_INTERVAL_FRAMES, WHOLE_DECODE_FRAMES, type SeekEntry } from './seekTable';
-import { opusPacketFrames, readOpusHead, writeOpusTags } from './opusFormat';
+import { opusPacketFrames, readOpusHead, writeOpusHead, writeOpusTags } from './opusFormat';
 
 /** RFC 7845 recommends at most a second per page; at 20 ms a packet this is that. */
 const MAX_PAGE_FRAMES = 48_000;
@@ -29,7 +29,8 @@ function newPage(granule: number): PendingPage {
  * from the first audio page, so its own length moves nothing.
  */
 export class OggOpusWriter {
-  private readonly preSkip: number;
+  private preSkip: number;
+  private head: Uint8Array;
   private readonly pieces: Blob[] = [];
   private pending: Uint8Array[] = [];
   private pendingBytes = 0;
@@ -39,7 +40,8 @@ export class OggOpusWriter {
   private readonly seek: SeekEntry[] = [];
   private nextSeekGranule = 0;
 
-  constructor(private readonly head: Uint8Array) {
+  constructor(head: Uint8Array) {
+    this.head = head;
     this.preSkip = readOpusHead(head).preSkip;
   }
 
@@ -53,8 +55,16 @@ export class OggOpusWriter {
     this.page.granule += frames;
   }
 
-  /** Ends the stream at `frames` and returns the whole file. */
-  finish(frames: number): Blob {
+  /**
+   * Ends the stream at `frames` and returns the whole file. `skipFrames` of what was added before those come
+   * off the start: they stay in the stream, for the decoder to run in on.
+   */
+  finish(frames: number, skipFrames = 0): Blob {
+    if (skipFrames > 0) {
+      const { channels, preSkip } = readOpusHead(this.head);
+      this.preSkip = preSkip + skipFrames;
+      this.head = writeOpusHead(channels, this.preSkip);
+    }
     const finalGranule = this.preSkip + frames;
     if (this.page.granule < finalGranule) throw new Error('The encoder gave less audio than it was given.');
     this.dropPacketsPast(finalGranule);

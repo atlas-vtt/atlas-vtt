@@ -7,6 +7,8 @@ const RATES_V1 = [44100, 48000, 32000];
 /** A decoder's own delay: what a LAME tag's numbers leave out. */
 const DECODER_DELAY = 528 + 1;
 const HEADER_BYTES = 4;
+/** LAME's 576 and the decoder's own: every file from LAME or FFmpeg that lost its tag. */
+const LAME_PRIMING: readonly number[] = [576 + DECODER_DELAY];
 const MAX_FRAME_BYTES = 2881;
 
 interface FrameHeader {
@@ -118,6 +120,7 @@ export async function demuxMp3(window: BlobWindow): Promise<EncodedSource> {
     channels: header.channels,
     skipFrames,
     totalFrames,
+    ...(hasDelay ? {} : { primingHints: LAME_PRIMING }),
     progress: () => position / Math.max(1, window.size),
     async *packets() {
       while (position + HEADER_BYTES <= window.size) {
