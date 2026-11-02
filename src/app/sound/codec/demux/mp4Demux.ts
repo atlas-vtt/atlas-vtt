@@ -67,7 +67,7 @@ async function findMoov(window: BlobWindow): Promise<Uint8Array<ArrayBuffer>> {
   throw new SoundImportError('unreadable', 'An MP4 file without its index.');
 }
 
-/** The sound track: the first with an `smhd`, or failing a media header, the first track. */
+/** The sound track: the first with an `smhd`. */
 function audioTrack(moov: Uint8Array): Box | null {
   const root: Box = { name: 'moov', start: 8, end: moov.length };
   for (const trak of boxes(moov, root.start, root.end)) {
