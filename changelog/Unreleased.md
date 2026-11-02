@@ -7,6 +7,7 @@
 - The player window can be moved by dragging it again
 - TrueScale: saved frames can be shown and removed every time. Hover a frame on the map for its chip. The bookmark lights up when a frame is saved, and a second click takes the save back instead of adding a copy
 - TrueScale: a moved Bring players here frame goes back to its place when a drag is cancelled, and no longer carries its position over to the next map
+- TrueScale: the knob of the card fit's slider lies on its track
 - Editing a value in the statblock beside a note no longer jumps away from what you are editing
 - Picking or resetting a game system now shows its Stress bar on the scenes the collection already has
 - Atlas now says so once when Obsidian Sync is set to leave out the files scenes and maps are made of, which kept them from reaching other devices
