@@ -86,7 +86,7 @@ export interface RenderScript {
  * Renders a player through an offline context: time stands at each step while the player ticks and its
  * decoding finishes, as a real one has time to in the 250 ms between ticks.
  */
-export async function render(state: TableSound, fixtures: Fixtures, script: RenderScript): Promise<Float32Array> {
+export async function render(state: TableSound, fixtures: Pick<Fixtures, 'files'>, script: RenderScript): Promise<Float32Array> {
   const frames = Math.round(script.seconds * SOUND_RATE);
   const context = new OfflineAudioContext(2, frames, SOUND_RATE);
   const tableBase = script.tableBase ?? 0;
