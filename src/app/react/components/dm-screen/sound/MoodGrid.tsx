@@ -8,7 +8,7 @@ import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { MoodStore } from '../../../../soundLibrary/MoodStore';
 import { confirmAction } from '../../../../ui/confirmDialog';
 import { useContextMenu } from '../../../root/ContextMenuContext';
-import { useAtlasStore } from '../../../ViewStoreContext';
+import { useOptionalAtlasStore } from '../../../ViewStoreContext';
 import { MoodCard } from './MoodCard';
 import { MoodEditDialog } from './MoodEditDialog';
 import { moodForPlayers } from './PlayersRow';
@@ -30,9 +30,10 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
   const store = MoodStore.forApp(app);
   const gridRef = useRef<HTMLDivElement>(null);
   const menu = useContextMenu();
-  const hasScene = useAtlasStore((state) => state.mapPath !== null);
-  const sceneSound = useAtlasStore((state) => state.sound);
-  const setSceneSound = useAtlasStore((state) => state.setSceneSound);
+  // A scene's links are the map's: in the page's own tab there is none to link to.
+  const hasScene = useOptionalAtlasStore((state) => state.mapPath !== null, false);
+  const sceneSound = useOptionalAtlasStore((state) => state.sound, null);
+  const setSceneSound = useOptionalAtlasStore((state) => state.setSceneSound, null);
   const [editing, setEditing] = useState<Mood | null>(null);
   const activeId = useSoundValue(director, (snapshot) => snapshot.mix.mood?.id ?? null);
   const shelfRevision = useSoundValue(director, (snapshot) => snapshot.shelfRevision);
@@ -52,8 +53,8 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
     menu.open([
       { type: 'item', label: t('audio.mood.edit'), disabled: readOnly, ...(readOnly && { description: t('audio.mood.readOnly') }), onClick: () => setEditing(mood) },
       { type: 'item', label: t('audio.mood.duplicate'), onClick: () => store.createMood({ ...moodMix(mood), name: t('audio.mood.copyName', { name: mood.name }) }) },
-      { type: 'item', label: t('audio.mood.linkScene'), checked: sceneSound?.mood === mood.id, disabled: !hasScene, onClick: () => setSceneSound(withLink(sceneSound, 'mood', mood.id)) },
-      { type: 'item', label: t('audio.mood.linkCombat'), checked: sceneSound?.combatMood === mood.id, disabled: !hasScene, onClick: () => setSceneSound(withLink(sceneSound, 'combatMood', mood.id)) },
+      { type: 'item', label: t('audio.mood.linkScene'), checked: sceneSound?.mood === mood.id, disabled: !hasScene, onClick: () => setSceneSound?.(withLink(sceneSound, 'mood', mood.id)) },
+      { type: 'item', label: t('audio.mood.linkCombat'), checked: sceneSound?.combatMood === mood.id, disabled: !hasScene, onClick: () => setSceneSound?.(withLink(sceneSound, 'combatMood', mood.id)) },
       { type: 'item', label: t('audio.mood.delete'), destructive: true, disabled: readOnly, onClick: () => void confirmDelete(store, mood) },
     ], { x: box.left, y: box.bottom }, { returnFocus: anchor });
   }, [hasScene, menu, sceneSound, setSceneSound, store]);

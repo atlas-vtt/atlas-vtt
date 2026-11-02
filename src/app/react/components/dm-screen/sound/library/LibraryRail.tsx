@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronRight, MoreHorizontal } from 'lucide-react';
 import { t } from '../../../../../i18n';
 import type { SoundKind } from '../../../../../sound/soundTypes';
+import type { LibraryPlace } from '../../../../../soundLibrary/libraryPlace';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { isWithin } from '../../../../../soundLibrary/soundPaths';
 import { isLinked, type SoundRootState } from '../../../../../soundLibrary/SoundRoots';
@@ -11,11 +12,6 @@ import { arrowDirection, moveFocus } from '../../screenKeys';
 import { dropOnFolder, folderTakes } from './libraryDrop';
 import { AmbienceGlyph, FolderGlyph, MusicGlyph } from './libraryGlyphs';
 import type { LibraryActions } from './useLibraryActions';
-
-export interface LibraryPlace {
-  kind: SoundKind;
-  folder: string;
-}
 
 interface RailProps {
   library: SoundLibrary;

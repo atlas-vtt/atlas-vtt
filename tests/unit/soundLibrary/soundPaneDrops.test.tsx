@@ -92,7 +92,7 @@ describe('audio from outside dropped on the page', () => {
   const written = (kind: 'music' | 'ambience'): string[] => [...rig.locations[kind].files.keys()];
 
   it('goes to the library\'s open folder from anywhere on the page, and only once', async () => {
-    act(() => rig.store.getState().showSoundLibrary('music', 'Battle'));
+    act(() => rig.library.place.show('music', 'Battle'));
     await waitFor(() => expect(host.querySelector('.atlas-sound-lib__rows')).not.toBeNull());
     const write = vi.spyOn(rig.locations.music, 'write');
     fireEvent.drop(desk(), { dataTransfer: filesDrag('over-desk.mp3') });
@@ -137,7 +137,7 @@ describe('the keys of the page', () => {
     rows().focus();
     fireEvent.keyDown(rows(), { key: 'Enter', code: 'Enter' });
     expect(next).not.toHaveBeenCalled();
-    await waitFor(() => expect(rig.store.getState().soundLibraryFolder).toBe('Battle'));
+    await waitFor(() => expect(rig.library.place.current.folder).toBe('Battle'));
     expect(opened).not.toHaveBeenCalled();
     fireEvent.keyDown(document.body, { key: 'Enter', code: 'Enter' });
     expect(next).toHaveBeenCalledTimes(1);

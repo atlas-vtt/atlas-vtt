@@ -1,4 +1,3 @@
-import type { SoundKind } from '../sound/soundTypes';
 import type { ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { Point } from './visionTypes';
 
@@ -26,10 +25,6 @@ export interface ViewUIState {
   isGridSettingsOpen: boolean;
   isDMScreenOpen: boolean;
   dmScreenPage: DMScreenPage;
-  /** Which of the two linked folders the library shows. */
-  soundLibraryRoot: SoundKind;
-  /** The folder open in that root, relative to it. */
-  soundLibraryFolder: string;
   isGridAlignmentOpen: boolean;
   isDiceLogOpen: boolean;
   isAssetManagerOpen: boolean;

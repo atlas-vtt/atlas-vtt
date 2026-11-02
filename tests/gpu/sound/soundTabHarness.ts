@@ -17,9 +17,11 @@ import { ViewStoreProvider } from '@/app/react/ViewStoreContext';
 import { SettingsService } from '@/app/services/SettingsService';
 import { TooltipProvider } from '@/app/packages/components/primitives/tooltip';
 import type { Mood, SoundRecord } from '@/app/sound/soundTypes';
+import { SoundView } from '@/app/sound-view';
 import { SoundDirector } from '@/app/soundDirector/SoundDirector';
 import { MoodStore } from '@/app/soundLibrary/MoodStore';
 import { recordIdFor } from '@/app/soundLibrary/libraryRecords';
+import { SoundLibrary } from '@/app/soundLibrary/SoundLibrary';
 import { soundRecordOf } from '@/app/soundLibrary/soundRecords';
 import { SoundRecordStore } from '@/app/soundLibrary/SoundRecordStore';
 import { createViewAtlasStore, type ViewAtlasStore } from '@/app/storeFactory';
@@ -112,6 +114,7 @@ export type { TabSound };
 export interface SoundTab {
   appId: string;
   director: SoundDirector;
+  library: SoundLibrary;
   store: ViewAtlasStore;
   records: Map<string, SoundRecord>;
   /** Commits React has made since the last read. */
@@ -125,11 +128,8 @@ export interface SoundTab {
   unmount: () => void;
 }
 
-/**
- * The real DM screen with the real director, real copies in IndexedDB and a real context, over an
- * in-memory vault: all that is not Obsidian is the plugin's own. The theme is the variables Obsidian sets.
- */
-export async function openSoundTab(theme: string, viewport: HTMLElement, appId = `sound-tab-${Math.random()}`, sounds: Record<string, TabSound> = SOUNDS, linked = false): Promise<SoundTab> {
+/** The real director, real copies in IndexedDB and a real context, over an in-memory vault. The theme is the variables Obsidian sets. */
+async function soundApp(theme: string, appId: string, sounds: Record<string, TabSound>, linked: boolean) {
   const style = document.createElement('style');
   style.id = 'sound-tab-theme';
   style.textContent = theme + css;
@@ -161,7 +161,17 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
   await moods.whenLoaded();
   const director = SoundDirector.forApp(app);
   const records = new Map(stored.all().map(soundRecordOf).map((record) => [record.name, record]));
+  const release = (): void => {
+    SoundDirector.release(app);
+    MoodStore.release(app);
+    SoundRecordStore.release(app);
+  };
+  return { app, stored, held, moods, director, records, release, library: SoundLibrary.forApp(app) };
+}
 
+/** The real DM screen on `soundApp`: all that is not Obsidian is the plugin's own. */
+export async function openSoundTab(theme: string, viewport: HTMLElement, appId = `sound-tab-${Math.random()}`, sounds: Record<string, TabSound> = SOUNDS, linked = false): Promise<SoundTab> {
+  const { app, stored, held, moods, director, records, release, library } = await soundApp(theme, appId, sounds, linked);
   const store = createViewAtlasStore(app, `sound-tab-${Math.random()}`);
   store.setState({ persistenceEnabled: false, isDMScreenOpen: true, dmScreenPage: 'sound', mapPath: 'atlas-vtt/collections/Fen/scenes/a.atlasmap' });
   viewport.className = 'workspace-leaf mod-active';
@@ -184,6 +194,7 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
   return {
     appId,
     director,
+    library,
     store,
     records,
     commits,
@@ -197,9 +208,35 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
     moodsOf: () => moods.moods(),
     unmount: () => {
       act(() => root.unmount());
-      SoundDirector.release(app);
-      MoodStore.release(app);
-      SoundRecordStore.release(app);
+      release();
+    },
+  };
+}
+
+export type SoundViewTab = Pick<SoundTab, 'director' | 'moods' | 'records' | 'unmount'> & { contentEl: HTMLElement };
+
+/** The real tab of its own on `soundApp`, standing in a leaf as Obsidian lays one out, with no map and no store anywhere. */
+export async function openSoundView(theme: string, viewport: HTMLElement, sounds: Record<string, TabSound> = SOUNDS): Promise<SoundViewTab> {
+  const { app, director, moods, records, release } = await soundApp(theme, `sound-view-${Math.random()}`, sounds, false);
+  viewport.className = 'workspace-leaf mod-active';
+  viewport.innerHTML = '';
+  const leaf = { app } as never;
+  const view = new SoundView(leaf);
+  Object.assign(view, { app });
+  view.containerEl.style.cssText = 'display: flex; flex-direction: column; width: 100%; height: 100%';
+  view.contentEl.addClass('view-content');
+  view.contentEl.style.cssText = 'flex: 1; min-height: 0';
+  view.containerEl.append(view.contentEl);
+  viewport.append(view.containerEl);
+  await act(async () => { await view.onOpen(); });
+  return {
+    director,
+    moods,
+    records,
+    contentEl: view.contentEl,
+    unmount: () => {
+      act(() => { void view.onClose(); });
+      release();
     },
   };
 }

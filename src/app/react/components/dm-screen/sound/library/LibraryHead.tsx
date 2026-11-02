@@ -8,7 +8,7 @@ import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { SearchGlyph } from './libraryGlyphs';
 import { crumbsOf } from './rowModel';
-import type { LibraryPlace } from './LibraryRail';
+import type { LibraryPlace } from '../../../../../soundLibrary/libraryPlace';
 import type { LibraryActions } from './useLibraryActions';
 
 interface LibraryHeadProps {

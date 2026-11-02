@@ -3,17 +3,17 @@ import { t } from '../../../../../i18n';
 import { Button } from '../../../../../packages/components/primitives/button';
 import { useLoadingReveal } from '../../../../../packages/components/primitives/useLoadingReveal';
 import { SoundDirector } from '../../../../../soundDirector/SoundDirector';
+import type { LibraryPlace } from '../../../../../soundLibrary/libraryPlace';
 import { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import { parentOfRelative } from '../../../../../soundLibrary/soundPaths';
 import { isLinked } from '../../../../../soundLibrary/SoundRoots';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
-import { useAtlasStore } from '../../../../ViewStoreContext';
 import { arrowDirection, moveFocus } from '../../screenKeys';
-import { useSoundValue, useStoredSounds } from '../useSound';
+import { useSoundValue, useStoredSounds, useStoreValue } from '../useSound';
 import { LibraryHead } from './LibraryHead';
-import { LibraryRail, type LibraryPlace } from './LibraryRail';
+import { LibraryRail } from './LibraryRail';
 import { folderRows, searchRows, waitingIn, type LibraryRow } from './rowModel';
 import { LibraryRows } from './LibraryRows';
 import { useHeldInMix, useLibraryVersion } from './useLibrary';
@@ -42,9 +42,8 @@ export function LibraryView(): React.JSX.Element | null {
   const { app } = useAtlasUI();
   const library = SoundLibrary.forApp(app);
   const director = SoundDirector.forApp(app);
-  const kind = useAtlasStore((state) => state.soundLibraryRoot);
-  const folder = useAtlasStore((state) => state.soundLibraryFolder);
-  const place = useMemo<LibraryPlace>(() => ({ kind, folder }), [kind, folder]);
+  const place = useStoreValue(library.place, () => library.place.current);
+  const { kind, folder } = place;
   const version = useLibraryVersion(library);
   const sounds = useStoredSounds(app);
   const held = useHeldInMix(director);
@@ -54,11 +53,10 @@ export function LibraryView(): React.JSX.Element | null {
   const searching = useDeferredValue(query.trim());
   const root = useRef<HTMLDivElement>(null);
 
-  const showRoot = useAtlasStore((state) => state.showSoundLibrary);
   const goTo = useCallback((next: LibraryPlace): void => {
     setQuery('');
-    showRoot(next.kind, next.folder);
-  }, [showRoot]);
+    library.place.show(next.kind, next.folder);
+  }, [library]);
 
   // What changed on disk while the GM was elsewhere is read on opening the library and on returning to the window.
   useEffect(() => {
@@ -98,9 +96,9 @@ export function LibraryView(): React.JSX.Element | null {
 
   const parent = useCallback((): boolean => {
     if (folder === '') return false;
-    showRoot(kind, parentOfRelative(folder));
+    library.place.show(kind, parentOfRelative(folder));
     return true;
-  }, [showRoot, kind, folder]);
+  }, [library, kind, folder]);
 
   const noRoots = library.rootOf('music').status === 'unlinked' && library.rootOf('ambience').status === 'unlinked';
   const keep = (event: React.KeyboardEvent): void => {

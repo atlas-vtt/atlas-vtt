@@ -3,6 +3,7 @@ import type { SoundKind } from '../sound/soundTypes';
 import { realLibraryDeps } from './soundLibraryDeps';
 import { followMissingFiles } from './soundRelink';
 import { FolderTree } from './FolderTree';
+import { OpenPlace } from './libraryPlace';
 import { SoundLengths } from './soundLengths';
 import type { SoundFileEntry, SoundListing, SoundLocation } from './soundLocation';
 import { externalAudioPath, joinRelative, parentOfRelative, readExternalAudioPath, relativeBelow } from './soundPaths';
@@ -74,6 +75,7 @@ export class SoundLibrary {
     SoundLibrary.instances.delete(app);
   }
 
+  readonly place = new OpenPlace();
   private readonly open = new Map<SoundKind, OpenRoot>();
   private readonly viewListeners = new Set<() => void>();
   private readonly walkListeners = new Set<(kind: SoundKind) => void>();

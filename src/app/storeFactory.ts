@@ -311,7 +311,6 @@ export interface ViewAtlasState extends ViewState {
   setGridSettingsOpen: UISlice['setGridSettingsOpen'];
   setDMScreenOpen: UISlice['setDMScreenOpen'];
   setDMScreenPage: UISlice['setDMScreenPage'];
-  showSoundLibrary: UISlice['showSoundLibrary'];
   setGridAlignmentOpen: UISlice['setGridAlignmentOpen'];
   setDiceLogOpen: UISlice['setDiceLogOpen'];
   openAssetManager: UISlice['openAssetManager'];

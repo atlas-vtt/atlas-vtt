@@ -894,6 +894,20 @@
   overflow: hidden;
 }
 
+// The Sound page in a tab of its own. The page's rules measure the DM screen by name; here the tab is what it fills.
+.view-content.atlas-sound-view {
+  --atlas-dm-screen-inset: #{$dm-screen-inset};
+  container: atlas-dm-screen / size;
+  display: flex;
+  padding: 0;
+  overflow: hidden;
+
+  // No page control above it, so one inset on all four sides.
+  .atlas-sound-pane {
+    margin: var(--atlas-dm-screen-inset);
+  }
+}
+
 // Atlas VTT view styles - scoped to our plugin views only
 .workspace-leaf-content[data-type="atlas-vtt"] .atlas-vtt-view,
 .workspace-leaf-content[data-type="atlas-vtt-dashboard"] .atlas-vtt-view {
