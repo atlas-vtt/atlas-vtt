@@ -49,6 +49,16 @@ describe('the sound director', () => {
     vi.useRealTimers();
   });
 
+  it('works out the waveform of music once and of no ambience, and keeps it with the copy', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    await settle();
+    expect(rig.copies.get('hash-audio/song.ogg')?.peaks).toEqual(Uint8Array.of(10, 200, 30));
+    expect(rig.copies.get('hash-audio/rain.ogg')?.peaks).toBeUndefined();
+    expect(rig.director.shelf.peaksOfKey('hash-audio/song.ogg')).toEqual(Uint8Array.of(10, 200, 30));
+    expect(rig.director.shelf.peaksOfKey('hash-audio/rain.ogg')).toBeNull();
+  });
+
   it('makes no context until something plays, and one on the first press', async () => {
     rig = directorRig(ALL);
     await ready(rig);

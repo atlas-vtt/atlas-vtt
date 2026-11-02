@@ -58,13 +58,14 @@ export class SoundDirector {
   private readonly output: SoundOutput;
   private readonly table: SoundTable;
   private readonly fights: TableFights;
-  private current: SoundSnapshot = { mix: EMPTY_MIX, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, waitingKeys: [], shelfRevision: 0, playersRevision: 0 };
+  private current: SoundSnapshot = { mix: EMPTY_MIX, levels: { musicDb: 0, ambienceDb: 0, masterDb: 0 }, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, waitingKeys: [], shelfRevision: 0, playersRevision: 0 };
   private readonly listeners = new Set<() => void>();
   private readonly stateListeners = new Set<(state: TableSound) => void>();
   private stops: Array<() => void> = [];
   private levels: LocalLevels;
   private on = false;
   private closeShelf = 0;
+  private meterViews = 0;
   private readonly lastMix: LastMixKeeper;
   private readonly choice: OutputChoice;
   private readonly previews: SoundPreview;
@@ -179,10 +180,29 @@ export class SoundDirector {
     return this.levels;
   }
 
+  /** While the result has not been called, `readMeters` reads real levels. A view that shows none costs nothing. */
+  openMeters(): () => void {
+    this.meterViews++;
+    if (this.meterViews === 1) this.output.showMeters(true);
+    let open = true;
+    return () => {
+      if (!open) return;
+      open = false;
+      this.meterViews--;
+      if (this.meterViews === 0) this.output.showMeters(false);
+    };
+  }
+
+  /** The level of each strip now, linear: `music`, `master` and each layer's sound key. */
+  readMeters(into: Map<string, number>): void {
+    this.output.readMeters(into);
+  }
+
   /** A fader writes through at once; `save` is its release, which reaches the settings. */
   setChannelLevels(changes: Partial<LocalLevels>, save: boolean): void {
     this.levels = { ...this.levels, ...changes };
     this.output.setLevels(this.levels);
+    this.publish({ levels: this.levels });
     if (save) this.deps.settings.setSoundSettings(this.levels);
   }
 

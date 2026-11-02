@@ -113,6 +113,11 @@ export function layerVoiceId(play: LayerPlay): string {
   return `layer:${play.startAt}:${play.sound.key}`;
 }
 
+/** The sound key of a layer's voice; null for a music deck. */
+export function layerKeyOfVoice(id: string): string | null {
+  return id.startsWith('layer:') ? id.slice(id.indexOf(':', 'layer:'.length) + 1) : null;
+}
+
 function musicVoice(play: MusicPlay, leaving: boolean, silence: number, tableMs: number): DesiredVoice | null {
   const span = musicSpanAt(play, playFrameAt(play.startAt, tableMs));
   return span && voiceOf(musicVoiceId(play), 'music', play, play, span, roleOf(play, leaving), play.muted === true, silence, tableMs);

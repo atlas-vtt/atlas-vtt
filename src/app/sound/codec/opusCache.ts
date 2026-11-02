@@ -29,6 +29,8 @@ export interface CachedSound {
   lufs: number;
   truePeakDb: number;
   lastUsed: number;
+  /** How the sound goes over its length, once worked out (`soundPeaks`). */
+  peaks?: Uint8Array<ArrayBuffer>;
 }
 
 export interface SoundIdentity {
@@ -113,6 +115,24 @@ export class OpusCache {
       byteLength: value.size,
       read: async (start, end) => new Uint8Array(await value.slice(start, end).arrayBuffer()),
     };
+  }
+
+  /** The copy whole, as a file that can go to a worker. */
+  async blob(hash: string): Promise<Blob | null> {
+    const value = await this.read<unknown>(BYTES, (store) => store.get(hash));
+    return value instanceof Blob ? value : null;
+  }
+
+  /** Keeps a copy's waveform with what is known of it. */
+  async setPeaks(hash: string, peaks: Uint8Array<ArrayBuffer>): Promise<void> {
+    await this.write([SOUNDS], (tx) => {
+      const store = tx.objectStore(SOUNDS);
+      const read = store.get(hash);
+      read.onsuccess = (): void => {
+        const value: unknown = read.result;
+        if (isCachedSound(value)) store.put({ ...value, peaks });
+      };
+    });
   }
 
   pin(hash: string): void {
