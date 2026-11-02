@@ -18,3 +18,8 @@
 - Tags in a selection of several assets: a tag only some of them have now goes to all of them when pressed, and from all of them when pressed again
 - Statblocks: a backslash keeps a comma in a label or word (`Fire\, cold: 3` shows as Fire, cold)
 - Statblocks: rows added to a Counter block in a template now show on notes that already had some of its rows
+
+
+Thanks to my Patreon supporters Aaron, Aaron W Scott, Andrew, Anna B. Meyer, Bradley Bell, Carl Corneil, Chris Del Gigante, Daria Ambrose, Deus Ex Minima, Dewwww, George Young, Giodude, Hannes Pingel, Ionazh, Kevin Hait, Krangal, Markus Baumann, Michael Breuer, Pau Benazet Montobbio, Pavel Zinoviev, SamDark, Scaradeus, ShonkyMapCo, Silo Slate, Tim, Voider Elf, Xethgnur, z-lf and Zack Samuels. You mean everything to me :heart:
+
+Help me develop Atlas: https://www.patreon.com/cw/atlas_vtt
