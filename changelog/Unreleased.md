@@ -1,3 +1,13 @@
+## New
+
+**New Feature: Sound**
+- A Sound page on the DM screen for music and ambience, from your own folders in the vault or anywhere on disk
+- Moods: press one and the room crossfades to it, what both moods share keeps playing, and a mood is saved from whatever you have playing
+- Up to 8 ambience layers beside the music, each with its own fader, and every track evened out in loudness
+- Loops without a gap or a click, and Silence to fade it all and bring it back
+- Link a mood to a scene or a fight and it plays by itself
+- Online, your players hear it in time on their own devices, set their own levels and never see what a track is called
+
 ## Improved
 - The update notice no longer interrupts prep or play: it waits until no map, player window or online table is open, and shows after a week at the latest
 - TrueScale: the setup screen says what it is and which card to use (a bank or credit card, 85.6 × 54 mm), and the full screen button and the players' chip say what they do
