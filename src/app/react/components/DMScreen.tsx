@@ -114,7 +114,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
     <div className="atlas-dm-screen-wrapper" ref={screenRef} tabIndex={-1}>
       <div className={`atlas-dm-screen-backdrop ${closing ? 'is-closing' : ''}`} onClick={handleClose} />
 
-      <div className={`atlas-dm-screen ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
+      <div className={`atlas-dm-screen ${soundOn ? 'atlas-dm-screen--pages' : ''} ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
         {soundOn && (
           <div className="atlas-dm-screen-header">
             <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />

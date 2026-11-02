@@ -87,6 +87,15 @@
   }
 }
 
+// With pages it fills the view, and what it holds keeps one inset from all four edges: the map's top bar lies blurred
+// under the backdrop, nothing to clear. The panes' shadows need the room inside the screen, so the inset is padding of the rows.
+.atlas-dm-screen.atlas-dm-screen--pages {
+  --atlas-dm-screen-inset: clamp(#{$spacing-l}, 3cqi, 64px);
+  width: 100%;
+  height: 100%;
+  max-height: none;
+}
+
 @keyframes atlas-dm-screen-enter {
   from {
     opacity: 0;
@@ -128,11 +137,6 @@
     display: none;
   }
 
-  // The page control already keeps it below the map's top bar row.
-  .atlas-dm-screen-header ~ & {
-    padding-top: $spacing-s;
-  }
-
   // Narrow views stack the panes
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
     flex-direction: column;
@@ -140,16 +144,17 @@
   }
 }
 
+// A selector of its own: every sheet is imported inside `.atlas-vtt-plugin`, so `.x ~ &` would read `.x ~ .atlas-vtt-plugin …`.
+.atlas-dm-screen-header ~ .atlas-dm-screen-content {
+  padding: $spacing-l var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset);
+}
+
 .atlas-dm-screen-header {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: $spacing-s;
-  padding: 70px 12px 0; // keeps the page control below the map's top bar row
-
-  @container atlas-dm-screen (min-width: 1400px) {
-    padding: 75px 16px 0;
-  }
+  padding: var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset) 0;
 
   .atlas-segmented {
     flex-shrink: 0;
