@@ -13,6 +13,7 @@ import { DMStatblocksPane } from './dm-screen/DMStatblocksPane';
 import { arrowDirection, isControlTarget, screenTakesKey } from './dm-screen/screenKeys';
 import { SoundPane } from './dm-screen/sound/SoundPane';
 import { useDMScreenStatblocks } from './dm-screen/useDMScreenStatblocks';
+import { useFightStatblocks } from './dm-screen/useFightStatblocks';
 import { useNoteFocus } from './dm-screen/useNoteFocus';
 
 interface DMScreenProps {
@@ -36,6 +37,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
   const soundOn = useExperimentalFeature('sound', SettingsService.forApp(app));
   const page: DMScreenPage = soundOn ? storedPage : 'statblocks';
   const { statblocks, loading } = useDMScreenStatblocks(isOpen, app, { viewId: view?.viewId, mapPath, mapLoaded, isMapLoading, tokens });
+  const { shown, scopeSwitch } = useFightStatblocks(statblocks, tokens);
   const [contentReady, setContentReady] = useState(false);
   const [closing, setClosing] = useState(false);
   const screenRef = useRef<HTMLDivElement>(null);
@@ -121,7 +123,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
         )}
         {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}
         <div className="atlas-dm-screen-content" hidden={page !== 'statblocks'}>
-          <DMStatblocksPane app={app} statblocks={statblocks} loading={loading} onClose={handleClose} />
+          <DMStatblocksPane app={app} shown={shown} scopeSwitch={scopeSwitch} loading={loading} onClose={handleClose} />
           <DMNotePane app={app} onNoteFocus={() => setIsNoteFocused(true)} />
         </div>
         {soundOn && soundOpened && (

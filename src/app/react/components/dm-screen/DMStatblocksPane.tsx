@@ -11,22 +11,22 @@ import { useAtlasUI } from '../../root/AtlasUIContext';
 import { useAtlasStore } from '../../ViewStoreContext';
 import { StatblockFeeds } from './StatblockFeeds';
 import type { LoadedStatblock } from './useDMScreenStatblocks';
-import { useFightStatblocks } from './useFightStatblocks';
 
 interface DMStatblocksPaneProps {
   app: App;
-  statblocks: ReadonlyMap<string, LoadedStatblock>;
+  /** What `useFightStatblocks` shows, and its switch. */
+  shown: readonly [string, LoadedStatblock][];
+  scopeSwitch: React.ReactNode;
   loading: boolean;
   onClose: () => void;
 }
 
 /** Left side of the DM screen's first page: the statblocks of the tokens on the map. */
-export function DMStatblocksPane({ app, statblocks, loading, onClose }: DMStatblocksPaneProps): React.JSX.Element {
+export function DMStatblocksPane({ app, shown, scopeSwitch, loading, onClose }: DMStatblocksPaneProps): React.JSX.Element {
   const { view } = useAtlasUI();
   const tokens = useAtlasStore((state) => state.objects?.tokens || {});
   const updateToken = useAtlasStore((state) => state.updateToken);
   const definitions = useMapResources();
-  const { shown, scopeSwitch } = useFightStatblocks(statblocks, tokens);
   return (
     <div className="atlas-dm-statblocks-section">
       {loading ? (
