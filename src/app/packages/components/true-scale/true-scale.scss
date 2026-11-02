@@ -35,13 +35,6 @@
   }
 }
 
-// A line under a label, on the menu's text edge
-.atlas-true-scale__hint {
-  padding-inline: var(--atlas-menu-text-inset, 0px);
-  font-size: $font-ui-smaller;
-  color: var(--text-muted);
-}
-
 // The set-up's buttons, at the panel's end
 .atlas-true-scale__actions {
   display: flex;

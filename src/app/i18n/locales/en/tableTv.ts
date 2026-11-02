@@ -22,7 +22,7 @@ export const tableTv = {
   'tableTv.setup.upTitle': 'Which way is up?',
   'tableTv.setup.upHint': 'Turn the picture until the arrow points away from the players',
   'tableTv.setup.fitTitle': 'Lay a bank or credit card inside the outline',
-  'tableTv.setup.cardSize': 'Bank card size: 85.6 × 54 mm. Not a playing card.',
+  'tableTv.setup.fitHint': 'Atlas measures this screen with it',
   'tableTv.setup.fit': 'Fit the outline to a bank or credit card',
   'tableTv.setup.smaller': 'Smaller',
   'tableTv.setup.larger': 'Larger',
