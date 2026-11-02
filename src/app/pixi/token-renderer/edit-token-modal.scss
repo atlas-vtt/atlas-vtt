@@ -15,10 +15,13 @@ $one-column: 720px;
 $clear-button: $button-height-s;
 
 // Two columns of fields. As tall as its content up to most of the window; then the body
-// scrolls between the header and the footer.
+// scrolls between the header and the footer. It opens centred by its auto margins and then keeps
+// that top (`useAnchoredTop`), so switching a section on or off grows or shrinks it downward and
+// moves nothing above the change.
 .atlas-edit-token-modal {
   width: min(880px, 100%);
-  max-height: min(85vh, 100%);
+  max-height: min(85vh, calc(100% - var(--atlas-anchored-top, 0px)));
+  margin-block: var(--atlas-anchored-top, auto) auto;
   container-type: inline-size;
 }
 
@@ -121,6 +124,44 @@ $clear-button: $button-height-s;
   padding: 0;
   line-height: 1;
   color: var(--text-muted);
+}
+
+// The sounds are an inset list like the senses': one spacing for its padding and between its rows.
+// A row is the file's name and its volume side by side, then its play and remove buttons.
+$sound-gap: $spacing-s;
+
+.atlas-edit-token__sounds {
+  @include atlas-inset-surface;
+  @include atlas-flex-col($sound-gap);
+  margin: 0;
+  padding: $sound-gap;
+  list-style: none;
+}
+
+.atlas-edit-token__sound {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: $sound-gap;
+  min-height: $input-height-s;
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+}
+
+.atlas-edit-token__sound-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atlas-edit-token__sound-button.btn--icon {
+  width: $button-height-s;
+  height: $button-height-s;
+  color: var(--text-muted);
+}
+
+.atlas-edit-token__sound-actions {
+  @include atlas-flex-row($field-gap);
 }
 
 // The carried light's fields are the light popover's. In the dialog one spacing and the

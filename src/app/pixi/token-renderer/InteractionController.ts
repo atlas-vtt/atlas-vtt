@@ -38,6 +38,8 @@ import { runInBackground } from '../../utils/backgroundTask';
 import { tokenSizeSubmenu } from '../../react/components/context-menu/tokenSizeMenu';
 import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLevelMenu';
 import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
+import { tokenSoundsSubmenu } from '../../react/components/context-menu/tokenSoundsMenu';
+import { TokenSoundPlayer } from '../../audio/TokenSoundPlayer';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
 import { selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
@@ -631,6 +633,10 @@ export class InteractionController implements ITokenInteractionController {
       icon: 'edit',
       onClick: () => this.showEditTokenModal(token),
     });
+
+    // The token's sounds, played on the GM's computer
+    const sounds = tokenSoundsSubmenu(TokenSoundPlayer.forApp(this.obsApp), token);
+    if (sounds) entries.push(sounds);
 
     // Initiative, for the selection the token belongs to; the clicked token decides which way
     const initiativeEntries = this.store.getState().initiative?.entries || [];
