@@ -51,13 +51,11 @@ export class SoundRecordStore {
   }
 
   private readonly files: SoundRecordFiles;
-  private readonly listeners = new Set<() => void>();
   private readonly rename: EventRef;
   private started = false;
 
   private constructor(private readonly app: App) {
     this.files = new SoundRecordFiles(app);
-    this.files.onChange(() => this.changed());
     this.rename = app.vault.on('rename', (file: TAbstractFile, oldPath: string) => this.followRename(file.path, oldPath));
   }
 
@@ -106,8 +104,7 @@ export class SoundRecordStore {
   }
 
   onChange(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
+    return this.files.onChange(listener);
   }
 
   private change(id: string, change: (stored: StoredSound) => StoredSound): boolean {
@@ -122,13 +119,8 @@ export class SoundRecordStore {
     this.rewrite((stored) => soundAfterMove(stored, from, to, now));
   }
 
-  private changed(): void {
-    for (const listener of [...this.listeners]) listener();
-  }
-
   private destroy(): void {
     this.app.vault.offref(this.rename);
     this.files.destroy();
-    this.listeners.clear();
   }
 }

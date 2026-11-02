@@ -33,14 +33,12 @@ export class MoodStore {
   }
 
   private readonly files: MoodFiles;
-  private readonly listeners = new Set<() => void>();
   private entries: readonly StoredRecord[] | null = null;
   private shown: readonly Mood[] = NO_MOODS;
   private started = false;
 
   private constructor(app: App) {
     this.files = new MoodFiles(app);
-    this.files.onChange(() => this.changed());
   }
 
   private start(): void {
@@ -108,16 +106,10 @@ export class MoodStore {
   }
 
   onChange(listener: () => void): () => void {
-    this.listeners.add(listener);
-    return () => { this.listeners.delete(listener); };
-  }
-
-  private changed(): void {
-    for (const listener of [...this.listeners]) listener();
+    return this.files.onChange(listener);
   }
 
   private destroy(): void {
     this.files.destroy();
-    this.listeners.clear();
   }
 }

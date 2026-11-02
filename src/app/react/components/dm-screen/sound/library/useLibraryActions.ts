@@ -5,7 +5,7 @@ import { nativeFolderPicker } from '../../../../../services/electronRemote';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import { fileToMix, folderToMix, prepareFolder, takeFromMix, type HeldInMix, type LibraryDeskDeps, type MixIntent } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
-import { editFiles, recordOfFile, unrecordedSound } from '../../../../../soundLibrary/libraryRecords';
+import { editFiles, soundOfFile } from '../../../../../soundLibrary/libraryRecords';
 import { makeLibraryFolder, moveEntries, renameEntry, trashEntries, usesOf, type LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
 import { MoodStore } from '../../../../../soundLibrary/MoodStore';
 import { runLibraryImport } from '../../../../../soundLibrary/runLibraryImport';
@@ -15,7 +15,7 @@ import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/Soun
 import { SoundPathTakenError, TrashUnavailableError } from '../../../../../soundLibrary/soundLocation';
 import { safeName } from '../../../../../soundLibrary/soundPaths';
 import type { LinkOutcome } from '../../../../../soundLibrary/SoundRoots';
-import { defaultSoundKind, soundRecordOf, type SoundChanges, type StoredSound } from '../../../../../soundLibrary/soundRecords';
+import { defaultSoundKind, type SoundChanges, type StoredSound } from '../../../../../soundLibrary/soundRecords';
 import { SoundRecordStore } from '../../../../../soundLibrary/SoundRecordStore';
 import { confirmAction } from '../../../../../ui/confirmDialog';
 import { promptForText } from '../../../../../ui/textInputDialog';
@@ -68,7 +68,7 @@ function pickFiles(doc: Document, then: (files: File[]) => void): void {
 export function useLibraryActions(app: App, library: SoundLibrary, director: SoundDirector): LibraryActions {
   return useMemo(() => {
     const records = SoundRecordStore.forApp(app);
-    const deps: LibraryDeskDeps = { records, library, director, notify: (message) => showNotice(message) };
+    const deps: LibraryDeskDeps = { records, library, director, notify: showNotice };
     const context = { library, records };
     const run = (task: Promise<unknown>, what: string): void => {
       runInBackground(task.catch((error: unknown) => { showNotice(failure(error)); }), what);
@@ -85,8 +85,7 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
         const audioPath = library.audioPathOf(file.kind, file.path);
         if (audioPath === null) return;
         runInBackground(records.whenLoaded().then(() => {
-          const held = recordOfFile(records.all(), audioPath);
-          director.preview(held ? soundRecordOf(held) : unrecordedSound(file, audioPath));
+          director.preview(soundOfFile(records.all(), file, audioPath));
         }), 'Previewing a sound');
       },
       playFolder: (kind, folder, shuffle) => run(folderToMix(deps, kind, folder, shuffle), 'Playing a folder'),

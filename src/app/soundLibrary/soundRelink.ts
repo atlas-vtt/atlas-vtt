@@ -4,7 +4,6 @@ import type { SoundLibrary } from './SoundLibrary';
 import type { SoundKind } from '../sound/soundTypes';
 import type { StoredSound } from './soundRecords';
 import { SoundRecordStore } from './SoundRecordStore';
-import type { SoundFileEntry } from './soundLocation';
 import { nameOfRelative } from './soundPaths';
 
 /**
@@ -12,13 +11,8 @@ import { nameOfRelative } from './soundPaths';
  * the first in path order where several match, so every device with these files finds the same. A record
  * without a size is left to wait.
  */
-function relinksIn(
-  sounds: readonly StoredSound[],
-  kind: SoundKind,
-  files: readonly SoundFileEntry[],
-  fileOf: (audioPath: string) => { kind: SoundKind; path: string } | null,
-  audioPathOf: (path: string) => string | null,
-): Map<string, string> {
+function relinksIn(sounds: readonly StoredSound[], library: SoundLibrary, kind: SoundKind): Map<string, string> {
+  const files = library.filesOf(kind);
   const present = new Set(files.map((file) => file.path));
   const byIdentity = new Map<string, string>();
   for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
@@ -27,10 +21,10 @@ function relinksIn(
   }
   const moves = new Map<string, string>();
   for (const sound of sounds) {
-    const file = fileOf(sound.audioPath);
+    const file = library.fileOfAudioPath(sound.audioPath);
     if (file?.kind !== kind || present.has(file.path) || sound.audioSize === undefined) continue;
     const found = byIdentity.get(`${sound.audioSize}|${nameOfRelative(file.path)}`);
-    const audioPath = found === undefined ? null : audioPathOf(found);
+    const audioPath = found === undefined ? null : library.audioPathOf(kind, found);
     if (audioPath !== null) moves.set(sound.id, audioPath);
   }
   return moves;
@@ -40,7 +34,7 @@ function relinksIn(
 export async function relinkRecords(library: SoundLibrary, records: Pick<SoundRecordStore, 'whenLoaded' | 'all' | 'rewrite'>, kind: SoundKind, now = Date.now()): Promise<boolean> {
   if (!library.isWalked(kind)) return false;
   await records.whenLoaded();
-  const moves = relinksIn(records.all(), kind, library.filesOf(kind), (audioPath) => library.fileOfAudioPath(audioPath), (path) => library.audioPathOf(kind, path));
+  const moves = relinksIn(records.all(), library, kind);
   if (moves.size === 0) return false;
   return records.rewrite((stored) => {
     const audioPath = moves.get(stored.id);

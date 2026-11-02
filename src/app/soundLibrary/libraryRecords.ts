@@ -45,7 +45,13 @@ export function recordOfFile(sounds: readonly StoredSound[], audioPath: string):
   return sounds.filter((sound) => sound.audioPath === audioPath).sort(byAge)[0] ?? null;
 }
 
-type RecordsSeam = Pick<SoundRecordStore, 'whenLoaded' | 'all' | 'add'>;
+/** A file as the engine reads it: through its record where it has one. Writes nothing. */
+export function soundOfFile(sounds: readonly StoredSound[], file: LibraryFile, audioPath: string): SoundRecord {
+  const held = recordOfFile(sounds, audioPath);
+  return held ? soundRecordOf(held) : unrecordedSound(file, audioPath);
+}
+
+export type RecordsSeam = Pick<SoundRecordStore, 'whenLoaded' | 'all' | 'add'>;
 
 /** The records of files that enter the mix or a mood, made where missing. */
 export async function recordsForFiles(records: RecordsSeam, library: Pick<SoundLibrary, 'audioPathOf'>, files: readonly LibraryFile[], now = Date.now()): Promise<SoundRecord[]> {

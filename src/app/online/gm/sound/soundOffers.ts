@@ -1,7 +1,7 @@
 import { MAX_PREPARED_SOUNDS, type AssetRef, type GmMessage } from '../../protocol/index.ts';
 import type { Mood, SoundRecord } from '../../../sound/soundTypes';
 import { moodAfter } from '../../../soundLibrary/moodOrdering';
-import { ASSET_USES, type AssetUse } from '../assets/assetUses.ts';
+import { ASSET_USES } from '../assets/assetUses.ts';
 import type { SoundRefs } from './soundRefs.ts';
 
 export interface OffersPorts {
@@ -26,8 +26,8 @@ export interface OffersPorts {
  * copy here yet is asked for, and offered when the shelf says it has come.
  */
 export class SoundOffers {
-  /** Records waiting to be offered, with how. */
-  private readonly waiting = new Map<string, { readonly record: SoundRecord; readonly use: AssetUse; readonly handed: boolean }>();
+  /** Records waiting to be offered, and whether near at hand. */
+  private readonly waiting = new Map<string, { readonly record: SoundRecord; readonly handed: boolean }>();
   private hint: GmMessage | null = null;
   private generation = 0;
 
@@ -41,10 +41,9 @@ export class SoundOffers {
     if (generation !== this.generation) return;
     const moods = this.ports.moods();
     const next = moodAfter(moods, this.ports.activeMood()?.id ?? null);
-    const near = [...linked, ...(next ? [next] : [])];
-    const nearRecords = near.flatMap((mood) => this.ports.recordsOf(mood));
-    this.offer(nearRecords, ASSET_USES.audio, true);
-    this.offer(moods.flatMap((mood) => this.ports.recordsOf(mood)), ASSET_USES.stagedAudio, false);
+    const nearRecords = this.recordsOf([...linked, ...(next ? [next] : [])]);
+    this.offer(nearRecords, true);
+    this.offer(this.recordsOf(moods), false);
     await this.pump();
     if (generation !== this.generation) return;
     const keys = nearRecords.flatMap((record) => this.ports.copyKey(record) ?? []);
@@ -54,7 +53,7 @@ export class SoundOffers {
 
   /** Offers what the moods name, or the sounds given. */
   prepare(sounds?: readonly SoundRecord[]): void {
-    this.offer(sounds ?? this.ports.moods().flatMap((mood) => this.ports.recordsOf(mood)), ASSET_USES.stagedAudio, false);
+    this.offer(sounds ?? this.recordsOf(this.ports.moods()), false);
     void this.pump();
   }
 
@@ -67,18 +66,22 @@ export class SoundOffers {
     if (this.hint !== null) this.ports.send(this.hint, to);
   }
 
-  private offer(records: readonly SoundRecord[], use: AssetUse, handed: boolean): void {
+  private recordsOf(moods: readonly Mood[]): SoundRecord[] {
+    return moods.flatMap((mood) => this.ports.recordsOf(mood));
+  }
+
+  private offer(records: readonly SoundRecord[], handed: boolean): void {
     // Named near at hand beats offered with the rest.
-    for (const record of records) if (handed || !this.waiting.get(record.id)?.handed) this.waiting.set(record.id, { record, use, handed });
+    for (const record of records) if (handed || !this.waiting.get(record.id)?.handed) this.waiting.set(record.id, { record, handed });
   }
 
   /** One after the other: offering hashes a copy once, which is memory while it lasts. */
   private async pump(): Promise<void> {
-    for (const [id, { record, use, handed }] of [...this.waiting]) {
+    for (const [id, { record, handed }] of [...this.waiting]) {
       const key = this.ports.copyKey(record);
       if (key === null) continue;
       this.waiting.delete(id);
-      await this.ports.refs.ensure(key, use, handed);
+      await this.ports.refs.ensure(key, handed ? ASSET_USES.audio : ASSET_USES.stagedAudio, handed);
     }
   }
 

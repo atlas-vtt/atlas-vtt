@@ -7,11 +7,11 @@ import { whatPlays } from '../soundDirector/whatPlays';
 
 const STATUS_REFRESH_MS = 5000;
 
-/** Commands exist only while sound is switched on, and each mood is one: the palette is where a mood is searched for. */
 function moodCommandId(moodId: string): string {
   return `sound-mood-${moodId}`;
 }
 
+/** Commands exist only while sound is switched on, and each mood is one: the palette is where a mood is searched for. */
 function registerMoodCommands(plugin: Plugin, director: SoundDirector): () => void {
   const moods = MoodStore.forApp(plugin.app);
   const added = new Map<string, string>();
@@ -58,6 +58,7 @@ function registerMoodCommands(plugin: Plugin, director: SoundDirector): () => vo
 }
 
 function registerSoundCommands(plugin: Plugin, director: SoundDirector): void {
+  const playing = (): boolean => director.isOn && isPlaying(director.snapshot().mix.table, director.now());
   plugin.addCommand({
     id: 'sound-next-mood',
     name: t('audio.command.next'),
@@ -71,7 +72,7 @@ function registerSoundCommands(plugin: Plugin, director: SoundDirector): void {
     id: 'sound-silence',
     name: t('audio.command.silence'),
     checkCallback: (checking) => {
-      if (!director.isOn || !isPlaying(director.snapshot().mix.table, director.now())) return false;
+      if (!playing()) return false;
       if (!checking) director.desk.toggleSilence();
       return true;
     },
@@ -80,7 +81,7 @@ function registerSoundCommands(plugin: Plugin, director: SoundDirector): void {
     id: 'sound-stop',
     name: t('audio.command.stop'),
     checkCallback: (checking) => {
-      if (!director.isOn || !isPlaying(director.snapshot().mix.table, director.now())) return false;
+      if (!playing()) return false;
       if (!checking) director.stop();
       return true;
     },
@@ -101,7 +102,7 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
     const { mix } = director.snapshot();
     const now = director.now();
     const mood = mix.mood && moods.mood(mix.mood.id);
-    const name = isPlaying(mix.table, now) && (mix.table.music || mix.table.layers.length > 0) ? whatPlays(mix.table, mood ?? null, director.shelf, now) : null;
+    const name = isPlaying(mix.table, now) && (mix.table.music || mix.table.layers.length > 0) ? whatPlays(mix.table, mood, director.shelf, now) : null;
     if (name === null) {
       item.hide();
       return;
@@ -126,8 +127,7 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
  * copies exist only while sound is switched on; the palette commands work without a map. `onunload` releases it.
  */
 export function registerSoundDirector(plugin: Plugin): SoundDirector {
-  const { app } = plugin;
-  const director = SoundDirector.forApp(app);
+  const director = SoundDirector.forApp(plugin.app);
   registerSoundCommands(plugin, director);
   plugin.register(registerMoodCommands(plugin, director));
   plugin.register(registerSoundStatusBar(plugin, director));

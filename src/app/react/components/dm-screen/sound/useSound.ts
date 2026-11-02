@@ -15,13 +15,17 @@ export function useSoundValue<T>(director: SoundDirector, select: (snapshot: Sou
   );
 }
 
-export function useMoods(app: App): readonly Mood[] {
-  const store = MoodStore.forApp(app);
-  return useSyncExternalStore(useCallback((listener: () => void) => store.onChange(listener), [store]), () => store.moods());
+/** One value of a store that tells when it changed. */
+export function useStoreValue<T>(store: { onChange(listener: () => void): () => void }, read: () => T): T {
+  return useSyncExternalStore(useCallback((listener: () => void) => store.onChange(listener), [store]), read);
 }
 
-/** Every sound record. */
+export function useMoods(app: App): readonly Mood[] {
+  const store = MoodStore.forApp(app);
+  return useStoreValue(store, () => store.moods());
+}
+
 export function useStoredSounds(app: App): readonly StoredSound[] {
   const store = SoundRecordStore.forApp(app);
-  return useSyncExternalStore(useCallback((listener: () => void) => store.onChange(listener), [store]), () => store.all());
+  return useStoreValue(store, () => store.all());
 }
