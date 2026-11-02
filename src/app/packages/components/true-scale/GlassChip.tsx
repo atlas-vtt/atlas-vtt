@@ -11,8 +11,9 @@ import { SavedFrameChip } from "./SavedFrameChip"
 import "./glass.scss"
 
 /**
- * The handle of the glass (GM only, while the player window is open): a capsule on the top edge
- * of what players see on this map. Dragging it moves the players, snapped to the grid's cells
+ * The handle of the glass (GM only, while the player window is open): a small capsule on the top
+ * edge of what players see on this map, as small as it can be since it stands over the map at any
+ * zoom, so it holds words only on a ghost. Dragging it moves the players, snapped to the grid's cells
  * (Alt frees it); its pin keeps them there or lets them follow the GM, and its bookmark saves the
  * frame on the scene, and is lit while they see a saved frame, which it then takes back. On a map
  * players do not see, it stands on a dimmer ghost of their frame and brings them here. Frames
@@ -36,12 +37,16 @@ function OpenGlassChip({ view }: { view: AtlasView }): React.ReactElement {
       <div
         ref={chipRef}
         className="atlas-vtt-toolbar atlas-glass-chip"
+        role="group"
+        aria-label={label}
         hidden={!shown}
         onPointerDown={pointerDown}
       >
-        <Tv className="atlas-glass-chip__icon" aria-hidden="true" />
         <LabelTooltip label={t("glass.dragHint")} side="bottom" describe>
-          <span className="atlas-glass-chip__label">{label}</span>
+          <span className="atlas-glass-chip__grip">
+            <Tv className="atlas-glass-chip__icon" aria-hidden="true" />
+            {ghost && <span className="atlas-glass-chip__label">{label}</span>}
+          </span>
         </LabelTooltip>
         {ghost ? (
           <ToolButton icon={Play} label={t("glass.bringHint")} isActive={false} onClick={bring} tooltipSide="bottom" />

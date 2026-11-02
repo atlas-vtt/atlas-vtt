@@ -66,7 +66,10 @@ export function measureChipRoom(pane: Element, canvas: Element): ChipRoom {
   };
 }
 
-/** Between a chip and the pane's edges or bars, and between a saved frame's chip and the frame's corner. */
+/** How far a saved frame's chip starts from the frame's corner, past the number that lies on it. */
+const PAST_NUMBER = 14;
+
+/** Between a chip and the pane's edges or bars. */
 const MARGIN = 8;
 
 /**
@@ -82,8 +85,8 @@ export function chipPlace(rect: ScreenRect, chip: Size, room: ChipRoom, inPane =
 }
 
 /**
- * The top-left corner in the pane of a saved frame's chip: inside the frame's top-left corner
- * (`rect`), going with the frame. Where that corner lies under a bar or past the pane's edge (a
+ * The top-left corner in the pane of a saved frame's chip: on the frame's top edge (`rect`) beside
+ * its number, so it covers little of what the frame shows, going with the frame. Where that corner lies under a bar or past the pane's edge (a
  * frame saved while players follow the GM is larger than the view) it stands in the corner of the
  * part of the frame that shows, so a chip that came up can be reached; it never leaves its frame
  * for the GM's view, and goes off the pane with a frame that left it.
@@ -94,8 +97,8 @@ export function savedChipPlace(rect: ScreenRect, chip: Size, room: ChipRoom): { 
   const right = left + rect.width;
   const bottom = top + rect.height;
   const paneBottom = room.height - room.bottom;
-  const x = left + MARGIN;
-  const y = top + MARGIN;
+  const x = left + PAST_NUMBER;
+  const y = top - chip.height / 2;
   if (right <= 0 || left >= room.width || bottom <= room.topStart || top >= paneBottom) return { x, y };
   return {
     x: clamp(x, MARGIN, Math.min(right, room.width) - chip.width - MARGIN),
