@@ -2,14 +2,13 @@ import React, { useState } from 'react';
 import { ChevronRight, MoreHorizontal } from 'lucide-react';
 import { t } from '../../../../../i18n';
 import type { SoundKind } from '../../../../../sound/soundTypes';
-import { carriesSounds, readSoundDrag } from '../../../../../soundLibrary/soundDrag';
-import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { isWithin } from '../../../../../soundLibrary/soundPaths';
 import { isLinked, type SoundRootState } from '../../../../../soundLibrary/SoundRoots';
 import { cn } from '../../../../../../utils/cn';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { arrowDirection, moveFocus } from '../../screenKeys';
+import { dropOnFolder, folderTakes } from './libraryDrop';
 import { AmbienceGlyph, FolderGlyph, MusicGlyph } from './libraryGlyphs';
 import type { LibraryActions } from './useLibraryActions';
 
@@ -45,18 +44,14 @@ function useDropTarget(actions: LibraryActions, kind: SoundKind, folder: string)
     isTarget,
     props: {
       onDragOver: (event) => {
-        if (!carriesSounds(event.dataTransfer) && !mayCarryAudio(event.dataTransfer)) return;
+        if (!folderTakes(event)) return;
         event.preventDefault();
         setTarget(true);
       },
       onDragLeave: () => setTarget(false),
       onDrop: (event) => {
         setTarget(false);
-        event.preventDefault();
-        event.stopPropagation();
-        const drag = carriesSounds(event.dataTransfer) ? readSoundDrag(event.dataTransfer) : null;
-        if (drag) actions.move([...drag.files.map((file) => ({ kind: file.kind, path: file.path, isFolder: false })), ...drag.folders.map((one) => ({ ...one, isFolder: true }))], kind, folder);
-        else if (event.dataTransfer.files.length > 0) actions.importInto([...event.dataTransfer.files], kind, folder);
+        dropOnFolder(actions, event, kind, folder);
       },
     },
   };
@@ -155,9 +150,10 @@ export function LibraryRail(props: RailProps): React.JSX.Element {
       aria-label={t('audio.library.folders')}
       onKeyDown={(event) => {
         const direction = arrowDirection(event.key);
-        if (!direction || event.target instanceof HTMLElement === false) return;
+        const from = event.target as Node;
+        if (!direction || !from.instanceOf(Element)) return;
         event.preventDefault();
-        moveFocus(event.currentTarget, event.target as Element, direction);
+        moveFocus(event.currentTarget, from, direction);
       }}
     >
       <RailRoot {...props} kind="music" />

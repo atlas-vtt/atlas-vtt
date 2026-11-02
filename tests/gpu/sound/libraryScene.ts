@@ -34,12 +34,13 @@ export function stageFrame(theme: string, width = 1644, height = 960): { host: H
     .lib-stage { flex: 1; min-height: 0; display: flex; }
     .lib-desk { flex-shrink: 0; height: 336px; background: color-mix(in srgb, var(--background-primary) 72%, black); }`;
   document.head.append(style);
+  document.body.classList.toggle('theme-light', theme === OBSIDIAN_LIGHT);
   const frame = document.body.createDiv({ cls: 'atlas-vtt-plugin lib-frame' });
   frame.createDiv({ cls: 'lib-pages' });
   const sound = frame.createDiv({ cls: 'lib-sound' });
   const host = sound.createDiv({ cls: 'lib-stage' });
   sound.createDiv({ cls: 'lib-desk' });
-  return { host, remove: () => { frame.remove(); style.remove(); } };
+  return { host, remove: () => { frame.remove(); style.remove(); document.body.classList.remove('theme-light'); } };
 }
 
 const BATTLE: ReadonlyArray<[string, number]> = [['Blood on the ford', 222], ['Steel in the reeds', 258], ['The last gate', 365], ['Riders at the treeline', 178], ['Shield wall', 311], ['Under siege', 444], ['No quarter', 187], ['Horns over the ridge', 289]];

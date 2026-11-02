@@ -59,6 +59,15 @@ describe('linking a folder', () => {
     await expect(roots.linkChosen('ambience', '/home')).resolves.toBe('overlap');
   });
 
+  it('follows a linked vault folder that moves in the vault', async () => {
+    const roots = device({ roots: {} });
+    roots.linkVault('music', 'Audio/Music');
+    roots.followVaultMove('Audio', 'Sound');
+    expect(roots.stateOf('music')).toMatchObject({ status: 'vault', path: 'Sound/Music' });
+    roots.followVaultMove('Other', 'Elsewhere');
+    expect(roots.stateOf('music')).toMatchObject({ path: 'Sound/Music' });
+  });
+
   it('unlinks by forgetting', async () => {
     const shared = { roots: {} };
     const roots = device(shared);

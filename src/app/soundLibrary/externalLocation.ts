@@ -5,7 +5,7 @@ import { SoundPathError, SoundPathTakenError, sortedListing, TrashUnavailableErr
 import { readAsBlob, writeFromBlob } from './externalBytes';
 
 const isMissing = (error: unknown): boolean => {
-  const code = error instanceof Object ? Reflect.get(error, 'code') : undefined;
+  const code: unknown = error instanceof Object ? Reflect.get(error, 'code') : undefined;
   return code === 'ENOENT' || code === 'ENOTDIR';
 };
 

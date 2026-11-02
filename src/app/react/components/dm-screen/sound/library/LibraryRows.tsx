@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { t } from '../../../../../i18n';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packages/components/primitives/Skeleton';
+import { useScrollbarGutter } from '../../../../../packages/components/primitives/useScrollbarGutter';
 import type { SoundAsset } from '../../../../../services/AssetService';
 import type { HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
 import { unrecordedSound, recordOfFile } from '../../../../../soundLibrary/libraryRecords';
-import { carriesSounds, readSoundDrag, writeSoundDrag } from '../../../../../soundLibrary/soundDrag';
+import { carriesSounds, writeSoundDrag } from '../../../../../soundLibrary/soundDrag';
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { safeName } from '../../../../../soundLibrary/soundPaths';
@@ -15,7 +16,9 @@ import { showNotice } from '../../../../../ui/notice';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { useSoundValue } from '../useSound';
 import { LibraryRow, type RowHandlers } from './LibraryRow';
+import { dropOnFolder } from './libraryDrop';
 import { entryOfRow, selectionAfter, type LibraryRow as Row } from './rowModel';
+import { useRowKeys } from './useRowKeys';
 import { rowMenu } from './rowMenus';
 import type { LibraryActions } from './useLibraryActions';
 
@@ -58,6 +61,8 @@ function RowsSkeleton(): React.JSX.Element {
 /** The open folder's rows, or a search's: only those in view are mounted, so a folder of thousands scrolls like one of ten. */
 export function LibraryRows({ rows, loading, emptyText, library, director, actions, collectionId, sounds, held, onOpenFolder, onParent, onDropFiles }: LibraryRowsProps): React.JSX.Element {
   const scroller = useRef<HTMLDivElement>(null);
+  const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
+  useScrollbarGutter(scrollElement);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [anchor, setAnchor] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -161,18 +166,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
         folders: acting.flatMap((one) => (one.type === 'folder' ? [{ kind: one.kind, path: one.path }] : [])),
       });
     },
-    mayDrop: (event) => carriesSounds(event.dataTransfer) || mayCarryAudio(event.dataTransfer),
-    onDropOnFolder: (row, event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      const drag = carriesSounds(event.dataTransfer) ? readSoundDrag(event.dataTransfer) : null;
-      if (drag) {
-        actions.move([...drag.files.map((file) => ({ kind: file.kind, path: file.path, isFolder: false })), ...drag.folders.map((folder) => ({ ...folder, isFolder: true }))], row.kind, row.path);
-        return true;
-      }
-      if (event.dataTransfer.files.length > 0) actions.importInto([...event.dataTransfer.files], row.kind, row.path);
-      return true;
-    },
+    onDropOnFolder: (row, event) => dropOnFolder(actions, event, row.kind, row.path),
     onRename: (row, name) => {
       setRenaming(null);
       scroller.current?.focus();
@@ -188,68 +182,16 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     },
   }), [actions, anchor, inHand, openMenu, primary, rows, selected]);
 
-  const moveActive = (index: number, extend: boolean): void => {
-    const next = Math.max(0, Math.min(rows.length - 1, index));
-    const row = rows[next];
-    if (!row) return;
-    setActiveIndex(next);
-    virtualizer.scrollToIndex(next);
-    if (extend) {
-      setSelected(selectionAfter(rows, selected, anchor ?? rows[activeIndex]?.id ?? row.id, row.id, { toggle: false, range: true }).selected);
-      setAnchor((current) => current ?? rows[activeIndex]?.id ?? row.id);
-    } else {
-      setSelected(new Set([row.id]));
-      setAnchor(row.id);
-    }
-  };
-
-  const keyDown = (event: React.KeyboardEvent): void => {
-    const row = rows[activeIndex];
-    const mod = event.metaKey || event.ctrlKey;
-    const take = (): void => event.preventDefault();
-    switch (event.key) {
-      case 'ArrowDown': take(); moveActive(activeIndex + 1, event.shiftKey); return;
-      case 'ArrowUp': take(); moveActive(activeIndex - 1, event.shiftKey); return;
-      case 'Home': take(); moveActive(0, event.shiftKey); return;
-      case 'End': take(); moveActive(rows.length - 1, event.shiftKey); return;
-      case 'PageDown': take(); moveActive(activeIndex + 10, event.shiftKey); return;
-      case 'PageUp': take(); moveActive(activeIndex - 10, event.shiftKey); return;
-      case 'ArrowLeft': take(); onParent(); return;
-      case 'a': if (mod) { take(); setSelected(new Set(rows.map((one) => one.id))); } return;
-      case 'Escape': if (selected.size > 0) { event.stopPropagation(); setSelected(new Set()); } return;
-      default:
-    }
-    if (!row) return;
-    if (event.key === 'ArrowRight') {
-      take();
-      if (row.type === 'folder') onOpenFolder(row);
-    } else if (event.key === 'Enter') {
-      take();
-      if (mod && row.type === 'file' && row.file.kind === 'music') actions.toMix([row.file], 'now');
-      else primary(row);
-    } else if (event.key === ' ') {
-      take();
-      if (row.type === 'file') actions.preview(row.file);
-    } else if (event.key === 'Delete' || (event.key === 'Backspace' && mod)) {
-      take();
-      if (row.type === 'waiting') actions.forget(row.sound);
-      else actions.remove(inHand(row).flatMap((one) => entryOfRow(one) ?? []));
-    } else if (event.key === 'F2') {
-      take();
-      if (row.type !== 'waiting') setRenaming(row.id);
-    } else if (event.key === 'ContextMenu' || (event.key === 'F10' && event.shiftKey)) {
-      take();
-      const element = scroller.current?.querySelector('[data-active="true"]');
-      const box = element?.getBoundingClientRect();
-      openMenu(row, { x: (box?.left ?? 0) + 40, y: box?.bottom ?? 0 }, scroller.current);
-    }
-  };
+  const keyDown = useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo: (index) => virtualizer.scrollToIndex(index), actions, primary, inHand, onParent, onOpenFolder, setRenaming, openMenu, list: scroller });
 
   const activeId = rows[activeIndex]?.id;
 
   return (
     <div
-      ref={scroller}
+      ref={(element) => {
+        scroller.current = element;
+        setScrollElement(element);
+      }}
       className="atlas-sound-lib__rows"
       role="grid"
       aria-multiselectable="true"

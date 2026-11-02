@@ -32,26 +32,26 @@ function failure(error: unknown): string {
 }
 
 export interface LibraryActions {
-  toMix(files: readonly LibraryFile[], intent: MixIntent): void;
-  takeOut(held: HeldInMix): void;
-  preview(file: LibraryFile): void;
-  playFolder(kind: SoundKind, folder: string, shuffle: boolean): void;
-  prepare(kind: SoundKind, folder: string): void;
-  link(kind: SoundKind, anchor: Window): void;
-  unlink(kind: SoundKind): void;
-  askNewFolder(kind: SoundKind, folder: string): void;
-  importInto(files: readonly File[], kind: SoundKind, folder: string): void;
-  pickImport(doc: Document, kind: SoundKind, folder: string): void;
+  toMix: (files: readonly LibraryFile[], intent: MixIntent) => void;
+  takeOut: (held: HeldInMix) => void;
+  preview: (file: LibraryFile) => void;
+  playFolder: (kind: SoundKind, folder: string, shuffle: boolean) => void;
+  prepare: (kind: SoundKind, folder: string) => void;
+  link: (kind: SoundKind, anchor: Window) => void;
+  unlink: (kind: SoundKind) => void;
+  askNewFolder: (kind: SoundKind, folder: string) => void;
+  importInto: (files: readonly File[], kind: SoundKind, folder: string) => void;
+  pickImport: (doc: Document, kind: SoundKind, folder: string) => void;
   /** Files whose kind no root says yet: their names decide. */
-  importLoose(files: readonly File[]): void;
-  pickLoose(doc: Document): void;
-  rename(entry: LibraryEntry, name: string): void;
-  move(entries: readonly LibraryEntry[], kind: SoundKind, folder: string): void;
-  askMove(entries: readonly LibraryEntry[]): void;
-  remove(entries: readonly LibraryEntry[]): void;
-  forget(sound: SoundAsset): void;
-  edit(files: readonly LibraryFile[], changes: SoundChanges): void;
-  askCredit(files: readonly LibraryFile[], current: string, name: string): void;
+  importLoose: (files: readonly File[]) => void;
+  pickLoose: (doc: Document) => void;
+  rename: (entry: LibraryEntry, name: string) => void;
+  move: (entries: readonly LibraryEntry[], kind: SoundKind, folder: string) => void;
+  askMove: (entries: readonly LibraryEntry[]) => void;
+  remove: (entries: readonly LibraryEntry[]) => void;
+  forget: (sound: SoundAsset) => void;
+  edit: (files: readonly LibraryFile[], changes: SoundChanges) => void;
+  askCredit: (files: readonly LibraryFile[], current: string, name: string) => void;
 }
 
 function pickFiles(doc: Document, then: (files: File[]) => void): void {
@@ -71,7 +71,7 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
     const assets = AssetService.getInstance(app);
     const deps: LibraryDeskDeps = { assets, library, director, notify: (message) => showNotice(message) };
     const context = { library, assets };
-    const inUse = (): string => director.snapshot().mix.mood?.collectionId ?? collectionId ?? assets.getDefaultCollectionId();
+    const inUse = (): string => collectionId ?? assets.getDefaultCollectionId();
     const run = (task: Promise<unknown>, what: string): void => {
       runInBackground(task.then(() => refresh(app)).catch((error: unknown) => { showNotice(failure(error)); }), what);
     };

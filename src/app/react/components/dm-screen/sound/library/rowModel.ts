@@ -22,8 +22,11 @@ export function folderRows(kind: SoundKind, listing: SoundListing | null, waitin
   return rows;
 }
 
-export const searchRows = (hits: readonly LibraryFile[]): LibraryRow[] =>
-  hits.map((file) => ({ type: 'file', id: rowIdOf(file.kind, file.path), file, name: stemOf(file.name), where: parentOfRelative(file.path) }));
+export const searchRows = (hits: readonly LibraryFile[], rootName: (kind: SoundKind) => string): LibraryRow[] =>
+  hits.map((file) => {
+    const folder = parentOfRelative(file.path);
+    return { type: 'file', id: rowIdOf(file.kind, file.path), file, name: stemOf(file.name), where: [rootName(file.kind), ...(folder === '' ? [] : folder.split('/'))].join(' / ') };
+  });
 
 /** The records that say their file lies in this folder and that no listing holds. On a device without the root that is every record of it, shown together. */
 export function waitingIn(library: Pick<SoundLibrary, 'fileOfAudioPath'>, sounds: readonly SoundAsset[], kind: SoundKind, folder: string, listing: SoundListing | null, linked: boolean): SoundAsset[] {

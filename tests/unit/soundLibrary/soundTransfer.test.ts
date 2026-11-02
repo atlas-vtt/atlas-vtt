@@ -103,3 +103,19 @@ describe('copying a sound to another collection', () => {
     expect(moved).toMatchObject({ collection: 'target', audioPath: 'Library/rain.mp3' });
   });
 });
+
+describe('a sound whose file lies outside the vault', () => {
+  it('moves and copies by its record alone, and its path stays', async () => {
+    const audioPath = 'atlas-sound:music/Battle/rain.mp3';
+    const added = await assets.addAsset({ type: 'sound', name: 'Rain', collection: 'source', tags: [], audioPath, kind: 'music', licence: 'unknown', streaming: 'unknown' }) as SoundAsset;
+    const { assets: [copy] } = await transfer([added.id], 'copy');
+    expect(copy).toMatchObject({ audioPath, collection: 'target' });
+    expect(copy!.id).not.toBe(added.id);
+    const { assets: [moved] } = await transfer([added.id], 'move');
+    expect(moved).toMatchObject({ id: added.id, audioPath, collection: 'target' });
+    await assets.reconcileWithVault();
+    await assets.reconcileWithVault();
+    expect(await assets.getAssetById(added.id)).toMatchObject({ audioPath });
+    assets.cancelScheduledChecks();
+  });
+});

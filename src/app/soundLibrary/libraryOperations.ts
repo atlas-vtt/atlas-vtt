@@ -169,6 +169,6 @@ export async function importIntoLibrary(library: SoundLibrary, files: readonly F
       outcome.failed.push(file.name);
     }
   }
-  await library.settle(kind, [joinRelative(folder, 'x')]);
+  await library.reread(kind, folder);
   return outcome;
 }

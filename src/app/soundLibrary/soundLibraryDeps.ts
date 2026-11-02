@@ -1,4 +1,4 @@
-import { FileSystemAdapter, Platform, type App } from 'obsidian';
+import { FileSystemAdapter, Platform, TFolder, type App } from 'obsidian';
 import { systemTrash } from '../services/electronRemote';
 import { SettingsService } from '../services/SettingsService';
 import type { SoundKind } from '../sound/soundTypes';
@@ -37,8 +37,12 @@ function diskResourceUrl(absolute: string): string {
 
 /** What the library runs on in Obsidian. */
 export function realLibraryDeps(app: App): SoundLibraryDeps {
+  const roots = new SoundRoots(rootFacts(app));
+  const renamed = app.vault.on('rename', (file, oldPath) => {
+    if (file instanceof TFolder) roots.followVaultMove(oldPath, file.path);
+  });
   return {
-    roots: new SoundRoots(rootFacts(app)),
+    roots,
     open: (root) => {
       if (root.status === 'vault') return new VaultLocation(app, root.path);
       const files = nodeFilesOf(window);
@@ -46,5 +50,9 @@ export function realLibraryDeps(app: App): SoundLibraryDeps {
     },
     home: () => nodeFilesOf(window)?.home ?? null,
     probeSeconds: readAudioSecondsAt,
+    dispose: () => {
+      app.vault.offref(renamed);
+      roots.dispose();
+    },
   };
 }

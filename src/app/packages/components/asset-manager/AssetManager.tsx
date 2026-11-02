@@ -2,7 +2,7 @@ import { Tutorial } from '../../../onboarding/Tutorial';
 import { AssetService } from '../../../services/AssetService';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
 import { SettingsService } from '../../../services/SettingsService';
-import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { AnyAsset, AssetManagerProps, Tab } from './types';
 

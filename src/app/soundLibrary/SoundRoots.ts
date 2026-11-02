@@ -1,6 +1,6 @@
 import type { SoundKind } from '../sound/soundTypes';
 import type { SharedSoundRoot, SharedSoundRoots } from './soundRootsStore';
-import { isWithin, relativeBelow } from './soundPaths';
+import { isWithin, movedRelative, relativeBelow } from './soundPaths';
 
 export type SoundRootState =
   | { kind: SoundKind; status: 'unlinked' }
@@ -79,6 +79,15 @@ export class SoundRoots {
     this.facts.setLocal(kind, path);
     this.write(kind, { type: 'external' });
     return 'linked';
+  }
+
+  /** A linked vault folder renamed or moved in the vault stays linked. */
+  followVaultMove(from: string, to: string): void {
+    for (const kind of ['music', 'ambience'] as const) {
+      const shared = this.facts.shared()[kind];
+      const moved = shared?.type === 'vault' ? movedRelative(shared.path, from, to) : null;
+      if (moved !== null) this.write(kind, { type: 'vault', path: moved });
+    }
   }
 
   /** Forgets the link on this device and for the devices that share its settings. A device with a folder of its own keeps that. */

@@ -1,12 +1,17 @@
 import { isTextEntryTarget } from '../../../keyboard/textEntry';
 import { isShortcutScopeActive } from '../../../utils/activeLeafGuard';
 
+function isInLibrary(target: EventTarget | null): boolean {
+  const node = target as Node | null;
+  return !!node && typeof node.instanceOf === 'function' && node.instanceOf(Element) && node.closest('.atlas-sound-lib') !== null;
+}
+
 /** What a key on the DM screen must leave alone: another dialog, another leaf, or a field it types in. */
 export function screenTakesKey(event: KeyboardEvent, screen: Element | null, viewId: string | undefined): boolean {
   if (event.defaultPrevented || event.isComposing || !isShortcutScopeActive(screen, viewId)) return false;
   if (document.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container, [role="menu"], [aria-modal="true"]')) return false;
   // The sound library is a list with keys of its own: a digit there is no mood.
-  if (event.target instanceof Element && event.target.closest('.atlas-sound-lib')) return false;
+  if (isInLibrary(event.target)) return false;
   return !isTextEntryTarget(event.target);
 }
 

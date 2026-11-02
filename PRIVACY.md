@@ -28,7 +28,7 @@ Online play lets you host a table that your players join from their web browsers
 
 ## Files outside the vault
 
-Atlas VTT reads files outside your vault only when you choose them for import. Random-table imports read selected PDF, XLSX, CSV, TSV, Markdown and text files on your device and create Markdown notes inside your vault. The source files are not changed or uploaded. Atlas does not scan other files on your device.
+Atlas VTT reads files outside your vault only when you choose them for import, or link a folder of music or ambience on the Sound page. Atlas then lists that folder, reads the files you play, and on your command renames, moves or sends them to the system trash; nothing from it leaves your computer unless you share a sound at an online table. The link stays on this device. Random-table imports read selected PDF, XLSX, CSV, TSV, Markdown and text files on your device and create Markdown notes inside your vault. The source files are not changed or uploaded. Atlas does not scan other files on your device.
 
 PDF imports use Obsidian's bundled PDF reader. XLSX imports read XML parts locally; the Open XML namespace identifiers in those parts are format names, not network requests.
 

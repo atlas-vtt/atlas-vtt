@@ -157,7 +157,7 @@ export const audio = {
   'audio.library.forgetTitle': 'Forget {name}?',
   'audio.library.folderEmpty': 'Nothing in this folder.',
   'audio.library.noResults': 'Nothing found.',
-  'audio.library.linkHere': 'Link this folder on this device to play what lies in it.',
+  'audio.library.linkHere': 'Link a folder to see what lies in it.',
   'audio.library.loading': 'Loading folder',
   'audio.library.folders': 'Folders',
   'audio.library.overlap': 'The music and ambience folders cannot lie inside each other.',

@@ -28,6 +28,8 @@ export interface SoundLibraryDeps {
   home(): string | null;
   /** How long a file at a URL plays. */
   probeSeconds(url: string): Promise<number | null>;
+  /** Lets go of what the deps listen to. */
+  dispose?(): void;
 }
 
 interface OpenRoot {
@@ -204,6 +206,16 @@ export class SoundLibrary {
     if (opened) await Promise.all(paths.map((path) => opened.tree.changedAt(path)));
   }
 
+  /** Reads a folder again now. */
+  async reread(kind: SoundKind, folder: string): Promise<void> {
+    await this.opened(kind)?.tree.load(folder);
+  }
+
+  /** Whether a folder was asked for and is not there: the root's disk unplugged, the folder gone. */
+  isMissing(kind: SoundKind, folder: string): boolean {
+    return this.opened(kind)?.tree.isMissing(folder) ?? false;
+  }
+
   /** Settles once these folders were read, so what lies in them can be measured. */
   async ensureListed(kind: SoundKind, folders: readonly string[]): Promise<void> {
     const opened = this.opened(kind);
@@ -224,6 +236,7 @@ export class SoundLibrary {
 
   destroy(): void {
     this.dropRoots();
+    this.deps.dispose?.();
     this.lengths.stop();
     for (const kind of KINDS) this.close(kind);
     this.viewListeners.clear();

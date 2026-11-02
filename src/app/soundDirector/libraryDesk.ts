@@ -3,7 +3,8 @@ import type { SoundKind, SoundRecord } from '../sound/soundTypes';
 import { MAX_MOOD_LAYERS } from '../sound/soundTypes';
 import { t } from '../i18n';
 import { MOOD_LIMITS } from '../soundLibrary/moodFile';
-import { recordsForFiles, unrecordedSound } from '../soundLibrary/libraryRecords';
+import { recordOfFile, recordsForFiles, unrecordedSound } from '../soundLibrary/libraryRecords';
+import { soundRecordOf } from '../soundLibrary/soundRecords';
 import type { SoundDrag } from '../soundLibrary/soundDrag';
 import type { LibraryFile, SoundLibrary } from '../soundLibrary/SoundLibrary';
 import type { SoundLocation } from '../soundLibrary/soundLocation';
@@ -87,9 +88,12 @@ export async function prepareFolder(deps: LibraryDeskDeps, kind: SoundKind, fold
   const location = deps.library.locationOf(kind);
   if (!location) return 0;
   const files = await filesToPlay(location, kind, folder);
+  const records = await deps.assets.getAssets(undefined, 'sound');
   const sounds = files.flatMap((file) => {
     const audioPath = deps.library.audioPathOf(kind, file.path);
-    return audioPath === null ? [] : [unrecordedSound(file, audioPath, collectionId)];
+    if (audioPath === null) return [];
+    const held = recordOfFile(records, audioPath, collectionId);
+    return [held ? soundRecordOf(held) : unrecordedSound(file, audioPath, collectionId)];
   });
   await deps.library.ensureListed(kind, files.map((file) => parentOfRelative(file.path)));
   deps.director.shelf.request(sounds);

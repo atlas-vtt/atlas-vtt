@@ -1,7 +1,6 @@
 import { App as ObsidianApp, Modal } from 'obsidian';
 import type { KeyboardEvent, MouseEvent } from 'react';
 import type { CollectionMetadata, EncounterAsset as StoredEncounterAsset } from '../../../services/AssetService';
-import type { SoundRecord } from '../../../sound/soundTypes';
 import { ATLAS_NATIVE_MODAL_CLASSES } from '../../../ui/nativeModal';
 import { t } from '../../../i18n';
 

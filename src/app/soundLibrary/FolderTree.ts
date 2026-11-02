@@ -11,6 +11,8 @@ export interface IndexedFile {
   words: string;
 }
 
+const EMPTY_LISTING: SoundListing = { folders: [], files: [] };
+
 const sameListing = (a: SoundListing, b: SoundListing): boolean =>
   a.folders.length === b.folders.length && a.files.length === b.files.length
   && a.folders.every((folder, index) => folder.path === b.folders[index]?.path)
@@ -28,6 +30,7 @@ export class FolderTree {
   private readonly listings = new Map<string, SoundListing>();
   private readonly files = new Map<string, SoundFileEntry>();
   private readonly loading = new Map<string, Promise<void>>();
+  private readonly missing = new Set<string>();
   private counts: Map<string, number> | null = null;
   private indexed: IndexedFile[] | null = null;
   private walking = false;
@@ -49,6 +52,10 @@ export class FolderTree {
 
   listing(folder: string): SoundListing | null {
     return this.listings.get(folder) ?? null;
+  }
+
+  isMissing(folder: string): boolean {
+    return this.missing.has(folder);
   }
 
   fileAt(path: string): SoundFileEntry | null {
@@ -141,13 +148,13 @@ export class FolderTree {
     if (this.released) return false;
     const before = this.listings.get(folder);
     if (!listing) {
-      if (!before) {
-        this.listings.set(folder, { folders: [], files: [] });
-        return true;
-      }
+      if (this.missing.has(folder)) return false;
+      this.missing.add(folder);
       this.forget(folder);
+      this.listings.set(folder, EMPTY_LISTING);
       return true;
     }
+    this.missing.delete(folder);
     if (before && sameListing(before, listing)) return false;
     for (const file of before?.files ?? []) this.files.delete(file.path);
     for (const file of listing.files) this.files.set(file.path, file);

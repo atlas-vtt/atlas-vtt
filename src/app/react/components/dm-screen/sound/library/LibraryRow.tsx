@@ -5,6 +5,7 @@ import type { HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundConversion } from '../../../../../soundLibrary/soundConversion';
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { cn } from '../../../../../../utils/cn';
+import { folderTakes } from './libraryDrop';
 import { FolderGlyph, PlayGlyph } from './libraryGlyphs';
 import { formatLength, type LibraryRow as Row } from './rowModel';
 import { useFileSeconds } from './useLibrary';
@@ -25,8 +26,7 @@ export interface RowHandlers {
   onPreview: (row: Row) => void;
   onMenu: (row: Row, at: { x: number; y: number }, anchor: HTMLElement | null) => void;
   onDragStart: (row: Row, event: React.DragEvent) => void;
-  onDropOnFolder: (row: Extract<Row, { type: 'folder' }>, event: React.DragEvent) => boolean;
-  mayDrop: (event: React.DragEvent) => boolean;
+  onDropOnFolder: (row: Extract<Row, { type: 'folder' }>, event: React.DragEvent) => void;
   onRename: (row: Row, name: string | null) => void;
 }
 
@@ -98,7 +98,7 @@ export const LibraryRow = memo(function LibraryRow({ row, library, handlers, sel
       }}
       onDragStart={(event) => handlers.onDragStart(row, event)}
       onDragOver={(event) => {
-        if (row.type !== 'folder' || !handlers.mayDrop(event)) return;
+        if (row.type !== 'folder' || !folderTakes(event)) return;
         event.preventDefault();
         setDroppable(true);
       }}
