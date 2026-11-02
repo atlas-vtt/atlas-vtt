@@ -564,14 +564,17 @@ export class InteractionController implements ITokenInteractionController {
       entries.push(conditionsSubmenu(this.store, conditionDefs, this.contextMenuTargets(token.id)));
     }
 
-    // Size
+    // Size of the selection in one undo step; the clicked token's is ticked
+    const sizeTargets = this.contextMenuTargets(token.id);
     entries.push(tokenSizeSubmenu(token.size, size => {
       const state = this.store.getState();
-      const { grid, updateToken } = state;
-      const current = mapTokens(levelObjects(state))[token.id];
-      if (!current) return;
-      const center = resizedTokenCenter(current, current.size || 1, size, grid);
-      updateToken(token.id, { size, x: center.x, y: center.y });
+      const tokens = mapTokens(levelObjects(state));
+      state.updateTokens(sizeTargets.flatMap((id) => {
+        const current = tokens[id];
+        if (!current) return [];
+        const center = resizedTokenCenter(current, current.size || 1, size, state.grid);
+        return [{ id, changes: { size, x: center.x, y: center.y } }];
+      }));
     }));
 
     // Move to another level of the scene, the selection in one undo step
@@ -750,13 +753,14 @@ export class InteractionController implements ITokenInteractionController {
     );
     if (selectionChange) entries.push(selectionChange);
 
-    // Reset (only if the token tracks resources)
-    if (this.hasResources(character)) {
+    // Reset the selection (only if one of its tokens tracks resources)
+    const shownTargets = this.contextMenuTargets(token.id);
+    if (this.anyTracksResources(shownTargets)) {
       entries.push({
         type: 'item',
         label: resetLabel(this.resourceDefsProvider()),
         icon: 'rotate-ccw',
-        onClick: () => this.store.getState().resetTokens([token.id], this.resourceDefsProvider()),
+        onClick: () => this.store.getState().resetTokens(shownTargets, this.resourceDefsProvider()),
       });
     }
 
@@ -764,7 +768,7 @@ export class InteractionController implements ITokenInteractionController {
     // Destructive actions row (Kill + Delete side by side)
     entries.push({
       type: 'custom',
-      render: () => this.renderDestructiveRow(token),
+      render: () => this.renderDestructiveRow(shownTargets),
     });
 
     openContextMenuGlobal(entries, { x: e.clientX, y: e.clientY });
@@ -844,15 +848,24 @@ export class InteractionController implements ITokenInteractionController {
     };
   }
 
-  private hasResources(character: Character | undefined): boolean {
-    return character !== undefined && visibleResources(character, this.resourceDefsProvider(), 'dm').length > 0;
+  /** The characters among the tokens `ids`, as the store holds them now. */
+  private charactersOf(ids: string[]): Character[] {
+    const tokens = mapTokens(levelObjects(this.store.getState()));
+    return ids.flatMap((id) => {
+      const shown = tokens[id];
+      return shown?.kind === 'character' ? [shown] : [];
+    });
   }
 
-  private renderDestructiveRow(token: TokenEntity): React.ReactNode {
+  private anyTracksResources(ids: string[]): boolean {
+    return this.charactersOf(ids).some((character) => visibleResources(character, this.resourceDefsProvider(), 'dm').length > 0);
+  }
+
+  private renderDestructiveRow(tokenIds: string[]): React.ReactNode {
     return React.createElement(DestructiveActionRow, {
-      tokenId: token.id,
+      tokenIds,
       store: this.store,
-      canKill: token.kind === 'character' && isKillable(token, this.resourceDefsProvider()),
+      canKill: this.charactersOf(tokenIds).some((character) => isKillable(character, this.resourceDefsProvider())),
       definitions: this.resourceDefsProvider(),
       onClose: () => closeContextMenuGlobal(),
     });
