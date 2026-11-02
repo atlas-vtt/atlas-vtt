@@ -232,15 +232,15 @@ describe('a table\'s sound for players', () => {
     rig.share.receive('p2', { t: 'sound-state', state: 'needs-tap', waiting: [] });
     expect(rig.share.receive('p3', { t: 'something-else' })).toBe(false);
     expect(rig.share.receive('p3', { t: 'sound-state', state: 'playing', waiting: ['a'.repeat(64)] })).toBe(true);
-    expect(rig.audience?.line()).toBe('1 of 3 hearing');
+    expect(rig.audience?.line()).toBe('1 of 3 players hearing');
     const uploading = rig.sounds().at(-1);
     const id = uploading?.t === 'sound' ? uploading.state.layers[0]?.sound.key ?? '' : '';
     rig.copies.set(id, { state: 'uploading', share: 0.4 });
-    expect(rig.audience?.line()).toBe('1 of 3 hearing · 1 track still uploading');
+    expect(rig.audience?.line()).toBe('1 of 3 players hearing · 1 track still uploading');
     expect(rig.share.copyOf(record('a'))).toEqual({ state: 'uploading', share: 0.4 });
     rig.share.playerLeft('p1');
     rig.players = ['p2', 'p3'];
-    expect(rig.audience?.line()).toBe('0 of 2 hearing · 1 track still uploading');
+    expect(rig.audience?.line()).toBe('0 of 2 players hearing · 1 track still uploading');
     rig.share.storeChanged();
     await rig.advance(1000);
     expect(rig.noted).toBeGreaterThan(0);

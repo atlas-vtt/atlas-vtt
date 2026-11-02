@@ -1,5 +1,5 @@
 import { WHOLE_DECODE_FRAMES } from '../codec/seekTable';
-import type { SoundContext, SoundGainNode } from './audioNodes';
+import type { SoundContext, SoundGainNode, SoundNode } from './audioNodes';
 import type { DesiredVoice } from './desiredSound';
 import { GainTrack } from './gainTrack';
 import { followFade } from './mixerGraph';
@@ -58,6 +58,11 @@ export class SoundVoice {
     this.node = deps.context.createGain();
     this.gain = new GainTrack(this.node.gain, 0);
     this.node.connect(deps.input);
+  }
+
+  /** The voice past its level and fades. */
+  get output(): SoundNode {
+    return this.node;
   }
 
   /** The sounds this voice is still waiting for the bytes of. */

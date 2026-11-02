@@ -1,3 +1,4 @@
+import type { LocalLevels } from '../sound/engine/mixerGraph';
 import type { SoundLifecycle } from '../sound/engine/soundWatchdog';
 import type { LastMix, StoredOutput } from './deviceFacts';
 import type { SoundMix } from './soundMix';
@@ -5,6 +6,8 @@ import type { SoundMix } from './soundMix';
 /** What the tab and the status bar draw. A new object whenever something in it changed. */
 export interface SoundSnapshot {
   mix: SoundMix;
+  /** This table's own levels, which the settings hold. */
+  levels: LocalLevels;
   lifecycle: SoundLifecycle;
   /** What a press brings back after a restart. */
   lastMix: LastMix | null;

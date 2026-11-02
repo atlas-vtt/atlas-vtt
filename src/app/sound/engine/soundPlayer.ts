@@ -1,7 +1,8 @@
 import type { TableSound } from '../soundTypes';
 import type { SoundContext } from './audioNodes';
-import { desiredSound } from './desiredSound';
+import { desiredSound, layerKeyOfVoice } from './desiredSound';
 import { MixerGraph, type LocalLevels } from './mixerGraph';
+import { PlayerMeters, type MeterPoint } from './playerMeters';
 import { SoundClockMap } from './soundClockMap';
 import { SoundSources, type ResolveBytes } from './soundSources';
 import { SoundVoice, VOICE_END_SECONDS } from './soundVoice';
@@ -42,6 +43,8 @@ export class SoundPlayer {
   /** Voices fading out, with the context time to let go of them at. */
   private ending: Array<{ voice: SoundVoice; at: number }> = [];
   private levels: LocalLevels | undefined;
+  /** Null but while someone looks at meters, so a player nobody looks at costs nothing for them. */
+  private meters: PlayerMeters | null = null;
 
   constructor(private readonly options: SoundPlayerOptions) {
     this.context = options.context;
@@ -82,6 +85,23 @@ export class SoundPlayer {
       voice.dispose();
       return false;
     });
+    this.meters?.follow(this.meterPoints());
+  }
+
+  /** Starts or ends reading levels. A context that has no analysers has no meters. */
+  showMeters(on: boolean): void {
+    this.meters?.dispose();
+    this.meters = null;
+    const createAnalyser = this.context.createAnalyser?.bind(this.context);
+    if (!on || !createAnalyser) return;
+    this.meters = new PlayerMeters(createAnalyser);
+    this.meters.follow(this.meterPoints());
+  }
+
+  /** The level of each strip now, linear; nothing while no meters show. */
+  readMeters(into: Map<string, number>): void {
+    if (this.meters) this.meters.read(into, this.graph.silenceAt(this.context.currentTime));
+    else into.clear();
   }
 
   setLocalLevels(levels: LocalLevels): void {
@@ -107,18 +127,34 @@ export class SoundPlayer {
 
   /** Moves to a new context, after a rebuild: everything comes back from the state, in its place. */
   useContext(context: SoundContext): void {
+    const metered = this.meters !== null;
+    this.showMeters(false);
     this.dropAll();
     this.graph.disconnect();
     this.context = context;
     this.sources.useContext(context);
     this.graph = new MixerGraph(context, this.levels);
     this.tick();
+    this.showMeters(metered);
   }
 
   dispose(): void {
+    this.showMeters(false);
     this.state = null;
     this.dropAll();
     this.graph.disconnect();
+  }
+
+  private meterPoints(): Map<string, MeterPoint> {
+    const points = new Map<string, MeterPoint>([
+      ['music', { strip: 'music', node: this.graph.input('music'), afterSilence: true }],
+      ['master', { strip: 'master', node: this.graph.output, afterSilence: true }],
+    ]);
+    for (const [id, voice] of this.voices) {
+      const key = layerKeyOfVoice(id);
+      if (key !== null) points.set(id, { strip: key, node: voice.output, afterSilence: false });
+    }
+    return points;
   }
 
   private voice(id: string, channel: 'music' | 'ambience'): SoundVoice {

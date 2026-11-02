@@ -100,6 +100,12 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       identities.set(identity.path, identity);
       return Promise.resolve();
     },
+    blob: (hash) => Promise.resolve(copies.has(hash) ? new Blob([new Uint8Array(4)]) : null),
+    setPeaks: (hash, peaks) => {
+      const held = copies.get(hash);
+      if (held) copies.set(hash, { ...held, peaks });
+      return Promise.resolve();
+    },
     pin: () => undefined,
     unpin: () => undefined,
   };
@@ -155,6 +161,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       dispose: () => undefined,
     }),
     prepareSource: async (buffer) => ({ hash: await sha256(buffer), source: new Blob([buffer]) }),
+    readPeaks: () => Promise.resolve(Uint8Array.of(10, 200, 30)),
     createContext: () => {
       const context = new FakeOutputContext();
       contexts.push(context);

@@ -143,15 +143,52 @@
 .atlas-dm-screen-header {
   flex-shrink: 0;
   display: flex;
+  align-items: center;
+  gap: $spacing-s;
   padding: 70px 12px 0; // keeps the page control below the map's top bar row
 
   @container atlas-dm-screen (min-width: 1400px) {
     padding: 75px 16px 0;
   }
+
+  .atlas-segmented {
+    flex-shrink: 0;
+    gap: 2px;
+    padding: 3px;
+    border-radius: $radius-xl;
+    background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
+    box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 9%, transparent);
+  }
+
+  .atlas-segmented__option {
+    flex: 0 0 auto;
+    height: 32px;
+    padding: 0 $spacing-l;
+    border-radius: calc(#{$radius-m} + 1px);
+    box-shadow: none;
+    color: var(--text-muted);
+    transition: color $transition-normal, background-color $transition-normal;
+
+    &.atlas-active {
+      color: var(--text-normal);
+      box-shadow: 0 1px 2px color-mix(in oklch, black 40%, transparent);
+    }
+  }
 }
 
-.atlas-dm-screen-pages {
-  width: 240px;
+// The Sound page's own controls stand here, the collection at the row's end.
+.atlas-dm-screen-header__page {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+}
+
+.atlas-sound-collection {
+  flex: 0 1 200px;
+  min-width: 0;
+  margin-inline-start: auto;
 }
 
 .atlas-dm-sound-page {

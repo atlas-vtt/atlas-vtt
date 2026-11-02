@@ -16,6 +16,8 @@ export interface CopyCache {
   get(hash: string): Promise<CachedSound | null>;
   put(hash: string, copy: { bytes: Blob; frames: number; channels: number; lufs: number; truePeakDb: number }): Promise<void>;
   bytes(hash: string): Promise<SoundBytes | null>;
+  blob(hash: string): Promise<Blob | null>;
+  setPeaks(hash: string, peaks: Uint8Array<ArrayBuffer>): Promise<void>;
   hashOf(path: string, size: number, mtime: number): Promise<string | null>;
   remember(identity: SoundIdentity): Promise<void>;
   pin(hash: string): void;
@@ -34,6 +36,7 @@ interface CopyEntry {
   conversion: SoundConversion;
   key: string | null;
   measure: SoundMeasure | null;
+  peaks: Uint8Array<ArrayBuffer> | null;
   /** Settles once what the cache knows of the file has been read. */
   known: Promise<void>;
 }
@@ -54,6 +57,8 @@ export class SoundCopies implements SoundConversionState {
   private disposed = false;
   private pinned = new Set<string>();
   private readonly toldRefused = new Set<string>();
+  private peaksQueue: CopyEntry[] = [];
+  private readingPeaks = false;
 
   constructor(
     private readonly files: SoundFileAccess,
@@ -61,6 +66,7 @@ export class SoundCopies implements SoundConversionState {
     private readonly maker: CopyMaker,
     private readonly prepare: (buffer: ArrayBuffer) => Promise<PreparedSource>,
     private readonly onRefused: (record: SoundRecord, reason: SoundImportError['reason']) => void,
+    private readonly readPeaks: (copy: Blob, frames: number) => Promise<Uint8Array<ArrayBuffer>>,
   ) {}
 
   stateOf(sound: SoundRecord): SoundConversion {
@@ -76,6 +82,11 @@ export class SoundCopies implements SoundConversionState {
   infoFor(record: SoundRecord): SoundInfo | null {
     const entry = this.entryOf(record);
     return entry?.key && entry.measure ? soundInfoOf(entry.key, entry.measure, { ...(record.trimDb !== undefined && { trimDb: record.trimDb }), ...(record.loop && { loop: record.loop }) }) : null;
+  }
+
+  /** How a sound goes over its length; null until worked out, which only music is. */
+  peaksFor(record: SoundRecord): Uint8Array<ArrayBuffer> | null {
+    return this.entryOf(record)?.peaks ?? null;
   }
 
   /** The record a copy was last made or found for. */
@@ -110,6 +121,7 @@ export class SoundCopies implements SoundConversionState {
   dispose(): void {
     this.disposed = true;
     this.queue = [];
+    this.peaksQueue = [];
     this.listeners.clear();
   }
 
@@ -119,7 +131,7 @@ export class SoundCopies implements SoundConversionState {
     const identity = identityOf(record.filePath, stat);
     let entry = this.entries.get(record.id);
     if (entry?.identity !== identity) {
-      const fresh: CopyEntry = { identity, conversion: NOT_CONVERTED, key: null, measure: null, known: Promise.resolve() };
+      const fresh: CopyEntry = { identity, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, known: Promise.resolve() };
       fresh.known = this.lookUp(record, stat, fresh);
       this.entries.set(record.id, fresh);
       entry = fresh;
@@ -137,9 +149,14 @@ export class SoundCopies implements SoundConversionState {
     }
   }
 
-  private markReady(record: SoundRecord, entry: CopyEntry, key: string, measure: SoundMeasure): void {
+  private markReady(record: SoundRecord, entry: CopyEntry, key: string, measure: SoundMeasure & { peaks?: Uint8Array<ArrayBuffer> }): void {
     entry.key = key;
     entry.measure = measure;
+    entry.peaks = measure.peaks ?? null;
+    if (record.kind === 'music' && entry.peaks === null) {
+      this.peaksQueue.push(entry);
+      void this.drainPeaks();
+    }
     entry.conversion = READY;
     this.keys.set(key, record.id);
     this.changed();
@@ -155,6 +172,7 @@ export class SoundCopies implements SoundConversionState {
       if (entry.key !== key) continue;
       entry.key = null;
       entry.measure = null;
+      entry.peaks = null;
       entry.conversion = NOT_CONVERTED;
     }
     this.changed();
@@ -167,6 +185,31 @@ export class SoundCopies implements SoundConversionState {
       for (let record = this.queue.shift(); record && !this.disposed; record = this.queue.shift()) await this.convert(record);
     } finally {
       this.running = false;
+    }
+  }
+
+  /** One after another, in a worker each: a waveform is never worth holding up a conversion for. */
+  private async drainPeaks(): Promise<void> {
+    if (this.readingPeaks) return;
+    this.readingPeaks = true;
+    try {
+      for (let entry = this.peaksQueue.shift(); entry && !this.disposed; entry = this.peaksQueue.shift()) await this.workOutPeaks(entry);
+    } finally {
+      this.readingPeaks = false;
+    }
+  }
+
+  private async workOutPeaks({ key, measure }: CopyEntry): Promise<void> {
+    if (key === null || measure === null) return;
+    try {
+      const copy = await this.cache.blob(key);
+      if (!copy) return;
+      const peaks = await this.readPeaks(copy, measure.frames);
+      await this.cache.setPeaks(key, peaks);
+      for (const entry of this.entries.values()) if (entry.key === key) entry.peaks = peaks;
+      this.changed();
+    } catch (error) {
+      if (!this.disposed) console.error(`[Atlas] Could not read the waveform of ${key}`, error);
     }
   }
 

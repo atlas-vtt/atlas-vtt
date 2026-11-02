@@ -39,6 +39,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
   const [contentReady, setContentReady] = useState(false);
   const [closing, setClosing] = useState(false);
   const screenRef = useRef<HTMLDivElement>(null);
+  const [headerSlot, setHeaderSlot] = useState<HTMLElement | null>(null);
   const [isNoteFocused, setIsNoteFocused] = useNoteFocus(isOpen, screenRef);
   // Mounted on first open, and kept: what it shows lives in the sound's owner anyway.
   const [soundOpened, setSoundOpened] = useState(false);
@@ -117,6 +118,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
         {soundOn && (
           <div className="atlas-dm-screen-header">
             <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
+            <div className="atlas-dm-screen-header__page" ref={setHeaderSlot} />
           </div>
         )}
         {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}
@@ -126,7 +128,7 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
         </div>
         {soundOn && soundOpened && (
           <div className="atlas-dm-sound-page" hidden={page !== 'sound'}>
-            <SoundPane active={page === 'sound'} />
+            <SoundPane active={page === 'sound'} headerSlot={headerSlot} />
           </div>
         )}
       </div>

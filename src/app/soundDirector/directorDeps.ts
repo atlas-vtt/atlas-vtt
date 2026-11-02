@@ -4,6 +4,7 @@ import { presentedSceneOf, type PresentedSceneSource } from '../services/present
 import { SettingsService } from '../services/SettingsService';
 import { OpusCache, opusCacheBudget, opusCacheDatabaseName } from '../sound/codec/opusCache';
 import { SoundImporter } from '../sound/codec/soundImporter';
+import { readSoundPeaks } from '../sound/codec/soundPeaksClient';
 import { SOUND_CONTEXT_OPTIONS } from '../sound/engine/soundMath';
 import type { SceneSound, SoundRecord } from '../sound/soundTypes';
 import { MoodStore } from '../soundLibrary/MoodStore';
@@ -37,6 +38,7 @@ export interface SoundDirectorDeps {
   createCache(): CopyCache & { close(): Promise<void> };
   createMaker(): CopyMaker & { dispose(): void };
   prepareSource(buffer: ArrayBuffer): Promise<PreparedSource>;
+  readPeaks(copy: Blob, frames: number): Promise<Uint8Array<ArrayBuffer>>;
   createContext(): OutputContext;
   provideConversion(source: SoundConversionState): () => void;
   readRecords(): Promise<SoundRecord[]>;
@@ -91,6 +93,7 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
     createCache: () => new OpusCache(window.indexedDB, opusCacheDatabaseName(app.appId), () => opusCacheBudget(navigator.storage)),
     createMaker: () => new SoundImporter(),
     prepareSource,
+    readPeaks: readSoundPeaks,
     createContext: () => new AudioContext({ ...SOUND_CONTEXT_OPTIONS, latencyHint: 'playback' }),
     provideConversion: (source) => provideSoundConversion(app, source),
     readRecords: async () => {

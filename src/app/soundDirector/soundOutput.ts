@@ -33,6 +33,7 @@ export class SoundOutput {
   private player: SoundPlayer | null = null;
   private preview: SoundPlayer | null = null;
   private watchdog: SoundWatchdog | null = null;
+  private metersShown = false;
 
   constructor(private readonly deps: SoundOutputDeps) {}
 
@@ -77,6 +78,17 @@ export class SoundOutput {
     this.preview?.setLocalLevels({ musicDb: 0, ambienceDb: 0, masterDb: levels.masterDb });
   }
 
+  /** Levels are read only while the Sound page shows them. The preview is the GM's own and has none. */
+  showMeters(on: boolean): void {
+    this.metersShown = on;
+    this.player?.showMeters(on);
+  }
+
+  readMeters(into: Map<string, number>): void {
+    if (this.player) this.player.readMeters(into);
+    else into.clear();
+  }
+
   tick(): void {
     this.player?.tick();
     this.preview?.tick();
@@ -117,6 +129,7 @@ export class SoundOutput {
     followOutputDevice(context);
     this.context = context;
     this.player = this.playerOn(context, this.deps.levels());
+    this.player.showMeters(this.metersShown);
     this.watchdog = new SoundWatchdog({
       context: () => this.context ?? context,
       rebuild: () => this.rebuild(),

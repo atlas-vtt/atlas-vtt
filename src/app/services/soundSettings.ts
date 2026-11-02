@@ -11,7 +11,7 @@ export interface SoundSettings {
 
 export const DEFAULT_SOUND_SETTINGS: SoundSettings = { musicDb: 0, ambienceDb: -6, masterDb: 0, fadeSeconds: 4, followScenes: true };
 
-export const CHANNEL_DB_RANGE = { min: -40, max: 6 } as const;
+export const CHANNEL_DB_RANGE = { min: -60, max: 6 } as const;
 export const MAX_FADE_SECONDS = 30;
 
 function readDb(value: unknown, fallback: number): number {

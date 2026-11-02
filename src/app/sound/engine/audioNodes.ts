@@ -14,7 +14,14 @@ export interface SoundParam {
 
 export interface SoundNode {
   connect(destination: SoundNode): unknown;
-  disconnect(): void;
+  /** From one destination, or from all of them. */
+  disconnect(destination?: SoundNode): void;
+}
+
+/** Reads what passes it; hangs off a node and has no output of its own. */
+export interface SoundAnalyser extends SoundNode {
+  fftSize: number;
+  getFloatTimeDomainData(into: Float32Array<ArrayBuffer>): void;
 }
 
 export interface SoundGainNode extends SoundNode {
@@ -54,6 +61,8 @@ export interface SoundContext {
   createGain(): SoundGainNode;
   createBufferSource(): SoundSourceNode;
   createDynamicsCompressor(): SoundCompressorNode;
+  /** Only what shows meters asks for it. */
+  createAnalyser?(): SoundAnalyser;
   createBuffer(channels: number, length: number, sampleRate: number): SoundBuffer;
   decodeAudioData(bytes: ArrayBuffer): Promise<SoundBuffer>;
 }

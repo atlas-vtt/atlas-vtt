@@ -63,6 +63,16 @@ export class MixerGraph {
     return channel === 'music' ? this.musicGm.node : this.ambienceGm.node;
   }
 
+  /** The mix past every fader, before the compressor. */
+  get output(): SoundNode {
+    return this.master.node;
+  }
+
+  /** What the Silence fade lets through at a context time. */
+  silenceAt(time: number): number {
+    return this.ambienceGm.track.valueAt(time);
+  }
+
   setLocalLevels(levels: LocalLevels): void {
     const now = this.context.currentTime;
     this.musicLocal.track.move(dbToGain(levels.musicDb), now, 0);

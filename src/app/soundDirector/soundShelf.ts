@@ -16,7 +16,7 @@ export class SoundShelf {
   private cache: { close(): Promise<void> } | null = null;
 
   constructor(
-    private readonly deps: Pick<SoundDirectorDeps, 'files' | 'createCache' | 'createMaker' | 'prepareSource' | 'readRecords'>,
+    private readonly deps: Pick<SoundDirectorDeps, 'files' | 'createCache' | 'createMaker' | 'prepareSource' | 'readRecords' | 'readPeaks'>,
     private readonly onRefused: (record: SoundRecord, reason: SoundRefusal) => void,
   ) {}
 
@@ -25,7 +25,7 @@ export class SoundShelf {
     const cache = this.deps.createCache();
     this.maker = maker;
     this.cache = cache;
-    this.copies = new SoundCopies(this.deps.files, cache, maker, (buffer) => this.deps.prepareSource(buffer), this.onRefused);
+    this.copies = new SoundCopies(this.deps.files, cache, maker, (buffer) => this.deps.prepareSource(buffer), this.onRefused, (copy, frames) => this.deps.readPeaks(copy, frames));
     return this.copies;
   }
 
@@ -65,6 +65,12 @@ export class SoundShelf {
 
   infoOf(record: SoundRecord): SoundInfo | null {
     return this.copies?.infoFor(record) ?? null;
+  }
+
+  /** How the sound a key names goes over its length, once that is known. */
+  peaksOfKey(key: string): Uint8Array<ArrayBuffer> | null {
+    const record = this.recordOfKey(key);
+    return record && (this.copies?.peaksFor(record) ?? null);
   }
 
   /** What a mix names that has a record; a deleted sound is simply gone from it. */
