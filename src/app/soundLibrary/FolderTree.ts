@@ -100,7 +100,7 @@ export class FolderTree {
       seen.add(folder);
       if (await this.read(folder)) this.reportSoon();
       for (const sub of this.listings.get(folder)?.folders ?? []) stack.push(sub.path);
-      await slice();
+      if (!this.released) await slice();
     }
     if (this.released) return;
     this.dropAllBut(seen, from);

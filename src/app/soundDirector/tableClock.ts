@@ -1,4 +1,4 @@
-import type { Mood, SoundRecord } from '../sound/soundTypes';
+import type { SoundRecord } from '../sound/soundTypes';
 
 /** The clock a table's sound runs on: one machine's own offline, a shared one online. */
 export interface TableClock {

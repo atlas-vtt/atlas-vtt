@@ -39,7 +39,6 @@ import { defeatedOnMap } from '../initiative/defeatedOnMap';
 import { AtlasUIContext, AtlasUIContextValue } from './root/AtlasUIContext';
 import { ContextMenuProvider } from './root/ContextMenuContext';
 import { SoundDirector } from '../soundDirector/SoundDirector';
-import { AssetService } from '../services/AssetService';
 import { PanelBoundary } from './root/PanelBoundary';
 import { useMapNavigationHotkeys } from './useMapNavigationHotkeys';
 import type { AtlasView } from '../atlas-view';
