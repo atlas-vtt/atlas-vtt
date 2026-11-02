@@ -91,8 +91,8 @@ Plugin CI tests and builds every commit once. Its checks run as parallel jobs
 `build-plugin`, the required check, fails when any of them failed and otherwise
 builds the plugin. Successful runs attach an `atlas-vtt-<commit>` artifact
 containing `main.js`, `manifest.json`, `styles.css` and the release notes,
-retained for 14 days for pull requests and 90 days for pushes to `beta` and
-`main`, whose builds are the ones released. For pull requests, `<commit>` is the
+retained for 14 days for pull requests and 90 days for pushes to `beta`,
+`release/*` and `main`; those of `beta` and `release/*` are the ones released. For pull requests, `<commit>` is the
 PR head commit, but the build itself is that commit merged into the current base
 branch, so it may include base changes that are not in the branch. Install these files in an isolated test vault's
 `.obsidian/plugins/atlas-vtt/` directory and reload the plugin. Include practical
@@ -129,9 +129,11 @@ install and update through BRAT as described in [beta-testing.md](beta-testing.m
 2. Move the pending notes from `changelog/Unreleased.md` into
    `changelog/0.2.0.md`, run `npm run changelog:generate` and commit.
 3. `npm version 0.2.0` (this also updates `versions.json`) and push the branch.
-4. Open a pull request against `main`. CI verifies the stable version.
-5. After merging, wait for Plugin CI on the `main` push to pass, then run
-   **Prepare Plugin Release** on `main`, review the draft and publish it. See
+4. Open a pull request against `main`. CI verifies the stable version, and
+   **Release Gate** fails until the release is published.
+5. Wait for Plugin CI on the push of the branch to pass, then run **Prepare
+   Plugin Release** on `release/0.2.0`, review the draft and publish it. Merge
+   the pull request right after that, with a merge commit. See
    [releasing-obsidian-plugin.md](releasing-obsidian-plugin.md).
 6. Merge `main` back into `beta` and start the next beta cycle with
    `npm version preminor --preid beta`.
@@ -147,4 +149,5 @@ weakening CI.
 
 The maintainer decides which fixes to implement, when to merge, and when to
 publish a release. Stable releases continue through the Prepare Plugin Release
-workflow, which refuses beta versions and commits that are not on `main`.
+workflow, which refuses beta versions and anything but the version's release
+branch.
