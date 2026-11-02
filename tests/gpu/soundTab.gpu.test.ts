@@ -37,7 +37,7 @@ describe('the DM screen’s Sound page', () => {
     viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1280px; height: 820px; contain: strict; overflow: hidden';
   });
 
-  /** `.atlas-dm-screen` is 96 % of this wide and all of it high, the mockup's 1644 by 960, with its moods laid out. */
+  /** `.atlas-dm-screen` fills this, and its surface comes out about as wide as the mockup's, with its moods laid out. */
   async function open1644(): Promise<void> {
     await page.viewport(1713, 960);
     viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1713px; height: 960px; contain: strict; overflow: hidden';
@@ -119,15 +119,15 @@ describe('the DM screen’s Sound page', () => {
   it('stands on the backdrop: one surface, a stage over a desk of a fixed height, and the top row', async () => {
     await open1644();
     const screen = box('.atlas-dm-screen');
-    expect(screen.width).toBeCloseTo(1644, -1);
+    expect(screen.width).toBeCloseTo(1713, -1);
     expect(screen.height).toBeCloseTo(960, -1);
     expect(getComputedStyle(document.querySelector('.atlas-dm-screen')!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
 
-    // The top row at the top of the view, and the surface below it.
+    // The top row one inset from the view's edges, and the surface below it.
     const pages = box('.atlas-dm-screen-pages');
     const views = box('.atlas-sound-views');
     const surface = box('.atlas-sound-pane');
-    expect(pages.top - screen.top).toBeLessThanOrEqual(10);
+    expect(pages.top - screen.top).toBeCloseTo(pages.left - screen.left, 0);
     expect(views.left).toBeGreaterThan(pages.right);
     expect(views.top).toBe(pages.top);
     expect(surface.top).toBeGreaterThanOrEqual(pages.bottom);

@@ -18,7 +18,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  margin: $spacing-s $spacing-m $spacing-m;
+  margin: $spacing-l var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset);
   overflow: hidden;
   font-size: $font-ui-small;
   line-height: 1.35;
@@ -30,10 +30,6 @@
     --atlas-sound-cap: color-mix(in oklch, black 18%, transparent);
     --atlas-sound-cap-edge: color-mix(in oklch, black 40%, transparent);
     --atlas-sound-fill-top: var(--mono-100);
-  }
-
-  @container atlas-dm-screen (min-width: 1400px) {
-    margin: $spacing-s $spacing-l $spacing-l;
   }
 }
 

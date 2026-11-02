@@ -87,8 +87,11 @@
   }
 }
 
-// With pages it fills the view from top to bottom: the map's top bar lies blurred under the backdrop, nothing to clear.
+// With pages it fills the view, and what it holds keeps one inset from all four edges: the map's top bar lies blurred
+// under the backdrop, nothing to clear. The panes' shadows need the room inside the screen, so the inset is padding of the rows.
 .atlas-dm-screen.atlas-dm-screen--pages {
+  --atlas-dm-screen-inset: clamp(#{$spacing-l}, 3cqi, 64px);
+  width: 100%;
   height: 100%;
   max-height: none;
 }
@@ -143,7 +146,7 @@
 
 // A selector of its own: every sheet is imported inside `.atlas-vtt-plugin`, so `.x ~ &` would read `.x ~ .atlas-vtt-plugin …`.
 .atlas-dm-screen-header ~ .atlas-dm-screen-content {
-  padding-top: $spacing-s;
+  padding: $spacing-l var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset);
 }
 
 .atlas-dm-screen-header {
@@ -151,11 +154,7 @@
   display: flex;
   align-items: center;
   gap: $spacing-s;
-  padding: $spacing-s 12px 0;
-
-  @container atlas-dm-screen (min-width: 1400px) {
-    padding: $spacing-s 16px 0;
-  }
+  padding: var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset) 0;
 
   .atlas-segmented {
     flex-shrink: 0;
