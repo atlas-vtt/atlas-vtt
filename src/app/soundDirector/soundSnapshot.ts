@@ -17,6 +17,8 @@ export interface SoundSnapshot {
   audience: string | null;
   /** Keys whose bytes a voice waits for. */
   waitingKeys: readonly string[];
+  /** Keys of what played this session, the latest first. In memory on this side alone. */
+  played: readonly string[];
   /** The records were read again, or copies changed. */
   shelfRevision: number;
   /** A table online told the Sound page something new. */

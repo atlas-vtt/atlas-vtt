@@ -1,17 +1,18 @@
-import type { Mood, MoodMusic, SoundInfo, SoundRecord } from '../sound/soundTypes';
+import type { Mood, MoodMusic, MusicRepeat, SoundInfo, SoundRecord } from '../sound/soundTypes';
 import { applySoonest, readyToJoin } from './libraryMix';
 import type { DirectorMoods } from './directorDeps';
 import { addLayer, setLayerLevel, setLayerMuted, setMusicLevel, setMusicMuted, stopAll, toggleSilence } from './liveEdits';
 import { mixDiffersFrom } from './mixChange';
-import { nextTrack, playTrack, seekMusic, skipTrack, soundingTrack } from './musicList';
-import { addTrack, dropLayer, dropWaitingTrack, EMPTY_MIX, joinReady, mixAsMood, pressMood, removeTrack, setShuffle, withoutSoonest, type ActiveMood, type SoundMix } from './soundMix';
+import { backTrack, musicPosition, nextTrack, playTrack, seekMusic, skipTrack, soundingTrack } from './musicList';
+import { addTrack, clearComing, dropLayer, dropWaitingTrack, EMPTY_MIX, joinReady, mixAsMood, moveTrack, pressMood, removeTrack, setRepeat, setShuffle, withoutSoonest, type ActiveMood, type SoundMix } from './soundMix';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
 import type { SoundTable } from './soundTable';
 import { isPlaying, type MoodMix } from './tableSound';
 
 function withWaitingTracks(mix: SoundMix, ids: readonly string[]): SoundMix {
-  const base = mix.waitingMusic ?? { tracks: [], shuffle: mix.table.music?.shuffle ?? false, levelDb: mix.table.music?.gainDb ?? 0 };
+  const repeat = mix.table.music?.repeat;
+  const base = mix.waitingMusic ?? { tracks: [], shuffle: mix.table.music?.shuffle ?? false, levelDb: mix.table.music?.gainDb ?? 0, ...(repeat && { repeat }) };
   const tracks = [...base.tracks, ...ids.filter((id) => !base.tracks.includes(id))];
   return tracks.length === 0 ? mix : { ...mix, waitingMusic: { ...base, tracks } };
 }
@@ -165,6 +166,13 @@ export class MixDesk {
     this.table.commit({ ...mix, table: skipTrack(mix.table, this.table.now(), this.table.clock.leadMs, mix.listChange), listChange: null });
   }
 
+  /** Early in a track the one before it; otherwise this one from its start. */
+  back(): void {
+    const mix = this.table.mix;
+    const table = backTrack(mix.table, this.table.now(), this.table.clock.leadMs, mix.listChange);
+    this.table.commit({ ...mix, table, listChange: table.music === mix.table.music ? mix.listChange : null });
+  }
+
   playTrack(key: string): void {
     const mix = this.table.mix;
     this.table.commit({ ...mix, table: playTrack(mix.table, key, this.table.now(), this.table.clock.leadMs, mix.listChange), listChange: null });
@@ -187,6 +195,32 @@ export class MixDesk {
 
   setShuffle(shuffle: boolean): void {
     this.table.commit(setShuffle(this.table.mix, shuffle));
+  }
+
+  setRepeat(repeat: MusicRepeat | undefined): void {
+    this.table.commit(setRepeat(this.table.mix, repeat));
+  }
+
+  /** A track to another place on the list. What sounds goes on; the list shows it at once and plays it from the track's end. */
+  moveTrack(key: string, index: number): void {
+    this.table.commit(moveTrack(this.table.mix, key, index));
+  }
+
+  clearComing(): void {
+    this.table.commit(clearComing(this.table.mix, this.table.now()));
+  }
+
+  /** At this track's end the music stops. Another track taking its place ends the wish. */
+  setStopAfter(on: boolean): void {
+    const play = this.table.mix.table.music;
+    const key = on && play ? (musicPosition(play, this.table.now())?.track.key ?? null) : null;
+    this.table.commit({ ...this.table.mix, stopAfter: key });
+  }
+
+  /** What played earlier: gone to where it is on the list, in the place of what plays where it left it. */
+  playPlayed(key: string): void {
+    const record = this.shelf.recordOfKey(key);
+    if (record) this.playNow([record]);
   }
 
   nextTrack(): SoundInfo | null {

@@ -52,7 +52,7 @@ export class SoundDirector {
   private readonly output: SoundOutput;
   private readonly table: SoundTable;
   private readonly fights: TableFights;
-  private current: SoundSnapshot = { mix: EMPTY_MIX, levels: { musicDb: 0, ambienceDb: 0, masterDb: 0 }, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, waitingKeys: [], shelfRevision: 0, playersRevision: 0 };
+  private current: SoundSnapshot = { mix: EMPTY_MIX, levels: { musicDb: 0, ambienceDb: 0, masterDb: 0 }, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, waitingKeys: [], played: [], shelfRevision: 0, playersRevision: 0 };
   private readonly listeners = new Set<() => void>();
   private readonly stateListeners = new Set<(state: TableSound) => void>();
   private stops: Array<() => void> = [];
@@ -76,9 +76,11 @@ export class SoundDirector {
     this.shelf = new SoundShelf(deps, (record, reason) => deps.notify(t('audio.refusedNotice', { name: record.name, reason: t(`audio.refused.${reason}`) })));
     this.table = new SoundTable(this.output, this.shelf, {
       fadeMs: () => this.fadeSeconds() * 1000,
+      crossfadeMs: () => this.crossfadeMs(),
       isPreviewing: () => this.current.previewing !== null,
       onMix: (mix, tableChanged) => this.onMix(mix, tableChanged),
       onWaitingKeys: (waitingKeys) => this.publish({ waitingKeys }),
+      onPlayed: (played) => this.publish({ played }),
     });
     this.desk = new MixDesk(this.table, this.shelf, this.output, { isOn: () => this.on, fadeSeconds: () => this.fadeSeconds(), moods: deps.moods });
     this.fights = new TableFights(deps, {
@@ -127,6 +129,10 @@ export class SoundDirector {
   }
 
   now(): number { return this.table.now(); }
+
+  crossfadeMs(): number {
+    return this.deps.settings.getSoundSettings().crossfadeSeconds * 1000;
+  }
 
   joinView(viewId: string, store: FightStore): void { this.fights.join(viewId, store); }
 

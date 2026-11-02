@@ -1,4 +1,5 @@
 import type { SoundInfo } from '../sound/soundTypes';
+import { changeOf } from './listPlace';
 import { musicPosition, playTrack, soundingMusic, soundingTrack } from './musicList';
 import { fnv1a32 } from '../utils/hashing';
 import { startMusic } from './liveEdits';
@@ -38,7 +39,7 @@ export function playNext(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: n
   const base = mix.listChange ?? mix.table.music;
   const follows = after !== undefined && base.tracks.some((track) => track.key === after) ? after : soundingKey;
   const next = follows === soundingKey ? first.key : mix.listChange?.next;
-  return { ...mix, listChange: { tracks: withTracksAfter(base.tracks, group, follows), shuffle: base.shuffle, ...(next !== undefined && { next }) } };
+  return { ...mix, listChange: changeOf(base, withTracksAfter(base.tracks, group, follows), next) };
 }
 
 /**
@@ -57,7 +58,7 @@ export function playNow(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: nu
   const current = musicPosition(mix.table.music, timing.now)?.track.key;
   const replaced = base.tracks.findIndex((track) => track.key === current);
   const list = onList || replaced < 0 ? withTracksAfter(base.tracks, tracks, soundingKey) : [...base.tracks.slice(0, replaced), ...tracks, ...base.tracks.slice(replaced + 1)];
-  return { ...mix, table: playTrack(mix.table, first.key, timing.now, timing.leadMs, { tracks: list, shuffle: base.shuffle }, timing.fadeMs), listChange: null };
+  return { ...mix, table: playTrack(mix.table, first.key, timing.now, timing.leadMs, changeOf(base, list), timing.fadeMs), listChange: null };
 }
 
 /** How many of the selection, from its first on, have their copies. */

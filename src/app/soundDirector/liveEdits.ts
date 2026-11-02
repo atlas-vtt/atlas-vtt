@@ -1,4 +1,4 @@
-import type { LayerPlay, SoundInfo, TableSound } from '../sound/soundTypes';
+import type { LayerPlay, MusicRepeat, SoundInfo, TableSound } from '../sound/soundTypes';
 import { MAX_MOOD_LAYERS } from '../sound/soundTypes';
 import { changed, enteringLayer, enteringMusic, FADER_MS, leaving, OFFLINE_LEAD_MS, rampFade, SILENCE_FADE_MS, withoutFinished } from './tableSound';
 
@@ -68,11 +68,11 @@ export function setMusicMuted(state: TableSound, muted: boolean, now: number): T
 }
 
 /** Starts a list where none plays. */
-export function startMusic(state: TableSound, tracks: SoundInfo[], shuffle: boolean, gainDb: number, seed: number, now: number, fadeMs: number, leadMs = OFFLINE_LEAD_MS): TableSound {
+export function startMusic(state: TableSound, tracks: SoundInfo[], shuffle: boolean, gainDb: number, seed: number, now: number, fadeMs: number, leadMs = OFFLINE_LEAD_MS, repeat?: MusicRepeat): TableSound {
   const live = withoutFinished(state, now);
   const startAt = now + leadMs;
   const outgoing = live.music ? [...live.outgoing, leaving(live.music, startAt, fadeMs)] : live.outgoing;
-  return changed(live, { music: enteringMusic(tracks, shuffle, gainDb, seed, startAt, fadeMs), outgoing, ...liftedByFirstSound(live, now) });
+  return changed(live, { music: enteringMusic(tracks, shuffle, gainDb, seed, startAt, fadeMs, repeat), outgoing, ...liftedByFirstSound(live, now) });
 }
 
 export function stopMusic(state: TableSound, now: number, fadeMs: number): TableSound {

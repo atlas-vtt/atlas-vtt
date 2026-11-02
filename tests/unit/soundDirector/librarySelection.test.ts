@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { musicPosition, nextTrack } from '@/app/soundDirector/musicList';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SoundRecord } from '@/app/sound/soundTypes';
 import { fileToMix, type LibraryDeskDeps } from '@/app/soundDirector/libraryDesk';
@@ -72,8 +73,12 @@ describe('a selection sent to the mix', () => {
     await finishAll();
     await fileToMix(deps, select(), 'now');
     await finishAll();
-    expect(keys()).toEqual(['a', 'b', 'c', 's']);
-    expect(rig.director.snapshot().mix.soonest).toBeUndefined();
+    expect(keys()).toEqual(['s', 'a', 'b', 'c']);
+    const { table, soonest, listChange } = rig.director.snapshot().mix;
+    expect(soonest).toBeUndefined();
+    const position = musicPosition(table.music!, table.music!.startAt + 1)!;
+    expect(rig.director.shelf.recordOfKey(position.track.key)?.filePath).toBe('audio/a.ogg');
+    expect(rig.director.shelf.recordOfKey(nextTrack(table, table.music!.startAt + 1, listChange)!.key)?.filePath).toBe('audio/b.ogg');
   });
 
   it('is one state where every copy is here', async () => {

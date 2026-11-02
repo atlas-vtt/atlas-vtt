@@ -1,4 +1,4 @@
-import type { LayerPlay, MoodMusic, MusicPlay, SoundFade, SoundInfo, TableSound } from '../sound/soundTypes';
+import type { LayerPlay, MoodMusic, MusicPlay, MusicRepeat, SoundFade, SoundInfo, TableSound } from '../sound/soundTypes';
 import { fadeProgress } from '../sound/engine/soundMath';
 
 /** How far ahead of now a change begins on one machine; a table online asks for more. */
@@ -12,6 +12,8 @@ export const SKIP_FADE_MS = 1500;
 export const SEEK_FADE_MS = 150;
 /** Where a changed list takes over from the old one, at a track's end. */
 export const TRACK_JOIN_MS = 40;
+/** Stop after this track: how long before its end it starts to leave. */
+export const STOP_AFTER_FADE_MS = 1500;
 
 /** What a mood press needs of a mood, which a mix being restored has too. */
 export type MoodMix = { fadeSeconds: number; music: MoodMusic; layers: { sound: string; levelDb: number }[] };
@@ -51,8 +53,8 @@ export function rampFade(play: { startAt: number }, now: number, ms: number): So
   return { at: Math.max(now, play.startAt + 1), ms };
 }
 
-export function enteringMusic(tracks: SoundInfo[], shuffle: boolean, gainDb: number, seed: number, startAt: number, fadeMs: number): MusicPlay {
-  return { tracks, seed, shuffle, startAt, gainDb, fade: { at: startAt, ms: fadeMs } };
+export function enteringMusic(tracks: SoundInfo[], shuffle: boolean, gainDb: number, seed: number, startAt: number, fadeMs: number, repeat?: MusicRepeat): MusicPlay {
+  return { tracks, seed, shuffle, startAt, gainDb, fade: { at: startAt, ms: fadeMs }, ...(repeat && { repeat }) };
 }
 
 export function enteringLayer(sound: SoundInfo, gainDb: number, startAt: number, fadeMs: number): LayerPlay {

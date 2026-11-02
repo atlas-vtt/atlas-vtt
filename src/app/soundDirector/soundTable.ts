@@ -1,8 +1,11 @@
 import { LEAVE_DRIFT_MS } from '../sound/engine/soundVoice';
 import type { TableSound } from '../sound/soundTypes';
-import { applyDueListChange, EMPTY_MIX, type MixTiming, type SoundMix } from './soundMix';
+import { soundingTrack } from './musicList';
+import { notePlayed } from './playedTracks';
+import { EMPTY_MIX, withStopStillMeant, type MixTiming, type SoundMix } from './soundMix';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
+import { applyDueListChange } from './trackEnd';
 import { isPlaying, OFFLINE_LEAD_MS, onShiftedClock } from './tableSound';
 import type { TableClock } from './tableClock';
 
@@ -20,10 +23,12 @@ function keysOf(table: TableSound): Set<string> {
 
 export interface SoundTableHost {
   fadeMs(): number;
+  crossfadeMs(): number;
   /** Something is previewed: the context must stay though the table is quiet. */
   isPreviewing(): boolean;
   onMix(mix: SoundMix, tableChanged: boolean): void;
   onWaitingKeys(keys: readonly string[]): void;
+  onPlayed(keys: readonly string[]): void;
 }
 
 /** The mix and the clock it runs on, on a timer of its own that runs only while something plays. */
@@ -35,6 +40,8 @@ export class SoundTable {
   private waitingKeys = '';
   /** Presses still on their way to a commit: what they opened stands until then. */
   private holds = 0;
+  private soundingKey: string | null = null;
+  private played: readonly string[] = [];
 
   constructor(
     private readonly output: SoundOutput,
@@ -72,7 +79,8 @@ export class SoundTable {
     return { now: this.now(), leadMs: this.tableClock.leadMs, fadeMs: this.host.fadeMs() };
   }
 
-  commit(next: SoundMix): void {
+  commit(asked: SoundMix): void {
+    const next = withStopStillMeant(asked, this.now());
     if (next === this.current) return;
     const tableChanged = next.table !== this.current.table;
     this.current = next;
@@ -113,6 +121,17 @@ export class SoundTable {
     return isPlaying(table, this.now()) || [...(waitingMusic?.tracks ?? []), ...waitingLayers.map((layer) => layer.sound)].some((id) => this.shelf.mayCome(id));
   }
 
+  /** What has played this session, in memory and on this side alone; a list goes on by itself, so the clock tells. */
+  private noteSounding(): void {
+    const key = soundingTrack(this.current.table, this.now())?.key ?? null;
+    if (key === this.soundingKey) return;
+    if (this.soundingKey !== null) {
+      this.played = notePlayed(this.played, this.soundingKey);
+      this.host.onPlayed(this.played);
+    }
+    this.soundingKey = key;
+  }
+
   private stopPulsing(): void {
     if (this.timer !== null) window.clearInterval(this.timer);
     this.timer = null;
@@ -120,7 +139,9 @@ export class SoundTable {
 
   private pulse(): void {
     this.output.tick();
-    this.commit(applyDueListChange(this.current, this.now(), Math.max(LIST_CHANGE_AHEAD_MS, this.tableClock.leadMs * 2)));
+    const { leadMs } = this.tableClock;
+    this.commit(applyDueListChange(this.current, this.now(), Math.max(LIST_CHANGE_AHEAD_MS, leadMs * 2), { leadMs, crossfadeMs: this.host.crossfadeMs() }));
+    this.noteSounding();
     this.pulses++;
     if (this.pulses % WATCH_EVERY_PULSES !== 0) return;
     void this.output.check();
