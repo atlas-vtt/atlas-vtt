@@ -1,8 +1,8 @@
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { page, userEvent } from 'vitest/browser';
+import { cdp, page, userEvent } from 'vitest/browser';
 import type { PlayersCopy } from '@/app/soundDirector/tableClock';
-import { COLLECTION, DARK, LIGHT, openSoundTab, seedMoods, type SoundTab } from './sound/soundTabHarness';
+import { COLLECTION, DARK, LIGHT, openSoundTab, seedMoods, SOUNDS, type SoundTab } from './sound/soundTabHarness';
 
 // Statblocks reach Node's `events` through the token link service, which a browser test cannot import; this file is about the page beside them.
 vi.mock('../../src/app/react/components/dm-screen/DMStatblocksPane', async () => {
@@ -34,6 +34,16 @@ describe('the DM screen’s Sound page', () => {
     viewport = document.body.createDiv();
     viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1280px; height: 820px; contain: strict; overflow: hidden';
   });
+
+  /** `.atlas-dm-screen` is 96 % by 90 % of this, the mockup's 1644 by 960, with its moods laid out. */
+  async function open1644(): Promise<void> {
+    await page.viewport(1713, 1067);
+    viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1713px; height: 1067px; contain: strict; overflow: hidden';
+    tab = await openSoundTab(DARK, viewport);
+    seedMoods(tab);
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-mood').length).toBe(11);
+    await act(async () => { await sleep(350); });
+  }
 
   afterEach(() => {
     tab?.unmount();
@@ -75,51 +85,239 @@ describe('the DM screen’s Sound page', () => {
     expect(tags).toContain('uploading');
     expect(tags).toContain('nowhere');
     expect(tags).toContain('ready');
-    expect(document.querySelector('.atlas-sound-output')?.textContent).toBe('3 of 5 hearing · 2 tracks still uploading');
+    expect(document.querySelector('.atlas-sound-who')?.textContent).toBe('3 of 5 hearing · 2 tracks still uploading');
+    expect(document.querySelector('.atlas-sound-output')?.textContent).toBe('System output');
     for (const mood of document.querySelectorAll('.atlas-sound-mood')) {
       const inner = mood.querySelector('.atlas-sound-tag--players')?.getBoundingClientRect();
-      if (inner) expect(inner.right).toBeLessThanOrEqual(mood.getBoundingClientRect().right + 1);
+      if (inner) {
+        expect(inner.right).toBeLessThanOrEqual(mood.getBoundingClientRect().right);
+        expect(inner.bottom).toBeLessThanOrEqual(mood.getBoundingClientRect().bottom);
+      }
     }
     await page.screenshot({ path: `${SHOTS}/players-dark.png` });
-    const prepare = [...document.querySelectorAll('.atlas-sound-players button')].find((button) => button.textContent === 'Prepare for players');
-    await userEvent.click(prepare as HTMLElement);
+    const menuItem = async (text: string): Promise<HTMLElement> => {
+      await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-who')!);
+      await expect.poll(() => [...document.querySelectorAll('[role^="menuitem"]')].find((item) => item.textContent?.includes(text))).toBeDefined();
+      return [...document.querySelectorAll<HTMLElement>('[role^="menuitem"]')].find((item) => item.textContent?.includes(text))!;
+    };
+    await userEvent.click(await menuItem('Prepare for players'));
     expect(prepared).toEqual([COLLECTION]);
-    await userEvent.click(document.querySelector('.atlas-sound-players [role="switch"]') as HTMLElement);
+    await expect.poll(() => document.querySelector('[role="menu"]')).toBeNull();
+    await userEvent.click(await menuItem('Send sound to players'));
     expect(sending).toBe(false);
     await expect.poll(() => document.querySelector('.atlas-sound-tag--players')).toBeNull();
+    expect(document.querySelector('.atlas-sound-who')?.textContent).toBe('Not sent to players');
     await act(async () => {
       tab?.director.players.use(null);
       await sleep(0);
     });
-    expect(document.querySelector('.atlas-sound-players')).toBeNull();
+    expect(document.querySelector('button.atlas-sound-who')).toBeNull();
   });
 
-  it('stands on the backdrop, with two panes at about 60 and 40, and the tab control', async () => {
-    await page.viewport(1280, 820);
-    tab = await openSoundTab(DARK, viewport);
-    seedMoods(tab);
-    await expect.poll(() => document.querySelectorAll('.atlas-sound-mood').length).toBe(11);
-    await sleep(350);
-
+  it('stands on the backdrop: one surface, a stage over a desk of a fixed height, and the top row', async () => {
+    await open1644();
     const screen = box('.atlas-dm-screen');
-    // The screen is no panel of its own: its panes stand on the backdrop.
+    expect(screen.width).toBeCloseTo(1644, -1);
+    expect(screen.height).toBeCloseTo(960, -1);
     expect(getComputedStyle(document.querySelector('.atlas-dm-screen')!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
 
-    const moods = box('.atlas-sound-moods');
-    const now = box('.atlas-sound-now');
-    expect(now.left).toBeGreaterThan(moods.right);
-    expect(moods.width / (moods.width + now.width)).toBeCloseTo(0.6, 1);
-    expect(now.bottom).toBeLessThanOrEqual(screen.bottom);
-
-    // Below the map's top bar row, and the panes below it.
+    // The top row, below the map's top bar row, and the surface below it.
     const pages = box('.atlas-dm-screen-pages');
+    const views = box('.atlas-sound-views');
+    const surface = box('.atlas-sound-pane');
     expect(pages.top - screen.top).toBeGreaterThanOrEqual(70);
-    expect(moods.top).toBeGreaterThanOrEqual(pages.bottom);
+    expect(views.left).toBeGreaterThan(pages.right);
+    expect(views.top).toBe(pages.top);
+    expect(surface.top).toBeGreaterThanOrEqual(pages.bottom);
+    expect(box('.atlas-sound-collection').right).toBeCloseTo(surface.right, 0);
+    expect(parseFloat(getComputedStyle(document.querySelector('.atlas-sound-pane')!).borderRadius)).toBe(24);
     expect(document.querySelectorAll('.atlas-dm-screen-pages [role="radio"]')).toHaveLength(2);
-    // Silence stays in the corner of its column.
+
+    // Five across, all one height, the ghost in the next free place.
+    const tiles = [...document.querySelectorAll('.atlas-sound-mood')].map((tile) => tile.getBoundingClientRect());
+    expect(new Set(tiles.map((tile) => Math.round(tile.height)))).toEqual(new Set([136]));
+    expect(tiles.filter((tile) => tile.top === tiles[0]?.top)).toHaveLength(5);
+    const ghost = box('.atlas-sound-ghost');
+    expect(ghost.top).toBe(tiles[10]?.top);
+    expect(ghost.left).toBeGreaterThan(tiles[10]?.right ?? Infinity);
+
+    // The desk is its height, at the surface's foot.
+    const desk = box('.atlas-sound-desk');
+    expect(desk.height).toBe(336);
+    expect(desk.bottom).toBeCloseTo(surface.bottom - 1.5, 0);
+    expect(box('.atlas-sound-stage').bottom).toBeCloseTo(desk.top, 0);
+    expect(document.querySelector('.atlas-sound-master, .atlas-sound-silence')).toBeNull();
+  });
+
+  it('lines the strips up on one baseline, keeps Silence in place across moods, and overflows no text', async () => {
+    await open1644();
+    if (!tab) return;
+    await allReady(tab);
+    const places = new Set<string>();
+    for (const key of ['1', '8', '3', '2']) {
+      await userEvent.keyboard(key);
+      await expect.poll(() => document.querySelector('.atlas-sound-silence')).not.toBeNull();
+      await act(async () => { await sleep(400); });
+      const silence = box('.atlas-sound-silence');
+      places.add(`${silence.left} ${silence.top} ${silence.width} ${silence.height}`);
+      const master = box('.atlas-sound-strip--master');
+      expect(master.right).toBeLessThan(silence.left);
+      expect(new Set([...document.querySelectorAll('.atlas-sound-meter')].map((meter) => { const { top, bottom } = meter.getBoundingClientRect(); return `${top} ${bottom}`; })).size).toBe(1);
+      const values = [...document.querySelectorAll('.atlas-sound-fader__value')].map((value) => value.getBoundingClientRect().top);
+      expect(new Set(values).size).toBe(1);
+      for (const element of document.querySelectorAll<HTMLElement>('.atlas-sound-mood__name, .atlas-sound-strip, .atlas-sound-music__body, .atlas-sound-desk__head')) {
+        const isName = element.classList.contains('atlas-sound-mood__name');
+        if (!isName) expect(element.scrollWidth, element.className).toBeLessThanOrEqual(element.clientWidth);
+      }
+    }
+    expect(places.size).toBe(1);
+    expect(box('.atlas-sound-strip:not(.atlas-sound-strip--music):not(.atlas-sound-strip--master)').width).toBe(104);
+    expect(box('.atlas-sound-strip--master').width).toBe(96);
+  });
+
+  it('fits eight layers at this width; where they do not fit, they scroll and Master and Silence stay', async () => {
+    await open1644();
+    if (!tab) return;
+    await allReady(tab);
+    const { director, records } = tab;
+    await userEvent.keyboard('8');
+    for (const [name, { kind }] of Object.entries(SOUNDS)) {
+      const record = records.get(name);
+      if (kind === 'ambience' && record) act(() => { director.desk.addSound(record); });
+    }
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-strip[data-muted], .atlas-sound-strips__mix .atlas-sound-strip:not(.atlas-sound-strip--music)').length).toBe(8);
+    expect(document.querySelector('.atlas-sound-ambience-tile')).toBeNull();
+    const row = document.querySelector<HTMLElement>('.atlas-sound-strips__mix')!;
+    expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
     const silence = box('.atlas-sound-silence');
-    expect(now.bottom - silence.bottom).toBeLessThan(12);
-    expect(now.right - silence.right).toBeLessThan(12);
+
+    viewport.style.width = '1200px';
+    await act(async () => { await sleep(100); });
+    expect(row.scrollWidth).toBeGreaterThan(row.clientWidth);
+    expect(box('.atlas-sound-silence').right).toBeCloseTo(box('.atlas-sound-strips').right - 16, 0);
+    expect(box('.atlas-sound-strip--master').right).toBeLessThan(box('.atlas-sound-silence').left);
+    // A scrollbar takes no height from a fader.
+    expect(box('.atlas-sound-silence').height).toBe(silence.height);
+  });
+
+  it('shows the empty page: no moods yet, Choose music, Ambience and the output, and no Master or Silence', async () => {
+    await page.viewport(1713, 1067);
+    viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1713px; height: 1067px; contain: strict; overflow: hidden';
+    tab = await openSoundTab(DARK, viewport);
+    await act(async () => { await sleep(100); });
+    expect(document.querySelector('.atlas-sound-no-moods h2')?.textContent).toBe('No moods yet');
+    expect(document.querySelectorAll('.atlas-sound-no-moods p')).toHaveLength(1);
+    expect(document.querySelector('.atlas-sound-pick')?.textContent).toBe('Choose music');
+    expect(document.querySelector('.atlas-sound-ambience-tile')?.textContent).toBe('Ambience');
+    expect(document.querySelector('.atlas-sound-output')?.textContent).toBe('System output');
+    expect(document.querySelector('.atlas-sound-desk__head')?.textContent).toContain('Nothing playing');
+    expect(document.querySelector('.atlas-sound-strip--master')).toBeNull();
+    expect(document.querySelector('.atlas-sound-silence')).toBeNull();
+    expect(document.querySelector('.atlas-sound-ghost')).toBeNull();
+
+    // Both go to the library, at the root each belongs to.
+    await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-ambience-tile')!);
+    expect(tab.store.getState().soundView).toBe('library');
+    expect(tab.store.getState().soundLibraryRoot).toBe('ambience');
+    await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-pick')!);
+    expect(tab.store.getState().soundLibraryRoot).toBe('music');
+    // The desk stays in both views.
+    expect(box('.atlas-sound-desk').height).toBe(336);
+    await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-views [role="radio"]')[0]!);
+    expect(tab.store.getState().soundView).toBe('moods');
+  });
+
+  it('holds fewer columns as it narrows, and a smaller desk below the breakpoint', async () => {
+    await open1644();
+    const columns = (): number => { const first = box('.atlas-sound-mood'); return [...document.querySelectorAll('.atlas-sound-mood')].filter((tile) => tile.getBoundingClientRect().top === first.top).length; };
+    expect(columns()).toBe(5);
+    viewport.style.width = '1200px';
+    await act(async () => { await sleep(50); });
+    expect(columns()).toBe(4);
+    viewport.style.width = '700px';
+    await act(async () => { await sleep(50); });
+    expect(columns()).toBeLessThanOrEqual(3);
+    expect(box('.atlas-sound-desk').height).toBeLessThan(336);
+    expect(box('.atlas-sound-stage').height).toBeGreaterThan(100);
+  });
+
+  it('moves a fader by key and by drag, announces it, and leaves it with left and right', async () => {
+    await open1644();
+    if (!tab) return;
+    await allReady(tab);
+    await userEvent.keyboard('1');
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-strips__mix [role="slider"]').length).toBe(3);
+    const layerKey = (): number => tab?.director.snapshot().mix.table.layers[0]?.gainDb ?? NaN;
+    const thumb = document.querySelectorAll<HTMLElement>('.atlas-sound-strips__mix [role="slider"]')[1]!;
+    const before = layerKey();
+    act(() => thumb.focus());
+    await userEvent.keyboard('{ArrowUp}');
+    expect(layerKey()).toBe(before + 1);
+    await userEvent.keyboard('{ArrowDown}{ArrowDown}');
+    expect(layerKey()).toBe(before - 1);
+    expect(thumb.getAttribute('aria-valuetext')).toBe(`\u2212${Math.abs(before - 1)} dB`);
+    expect(thumb.getAttribute('aria-orientation')).toBe('vertical');
+    expect(thumb.getAttribute('title')).toBeNull();
+    expect(tab.store.getState().dmScreenPage).toBe('sound');
+    await userEvent.keyboard('{ArrowRight}');
+    expect(document.activeElement).not.toBe(thumb);
+    await expect.poll(() => document.activeElement?.closest('.atlas-sound-desk')).not.toBeNull();
+
+    // A press on the track puts the thumb there; the release leaves it there.
+    const track = thumb.closest<HTMLElement>('.atlas-sound-fader')!;
+    const { left, top, width, height } = track.getBoundingClientRect();
+    const session = cdp();
+    const mouse = (type: string, y: number): Promise<unknown> => session.send('Input.dispatchMouseEvent', { type, x: left + width / 2, y, button: 'left', buttons: 1, clickCount: 1 });
+    await mouse('mousePressed', top + height / 2);
+    await mouse('mouseMoved', top + height * 0.75);
+    await mouse('mouseReleased', top + height * 0.75);
+    await expect.poll(layerKey).toBeCloseTo(6 - 0.75 * 66, -1);
+  });
+
+  it('says changed once the mix differs, saves to the mood, and offers clearing it in a menu', async () => {
+    await open1644();
+    if (!tab) return;
+    await allReady(tab);
+    await userEvent.keyboard('1');
+    await expect.poll(() => document.querySelector('.atlas-sound-desk__mix')?.textContent).toBe('Tavern at night');
+    const head = (): string => document.querySelector('.atlas-sound-desk__head')?.textContent ?? '';
+    await act(async () => { await sleep(50); });
+    expect(head()).not.toContain('changed');
+    expect(head()).not.toContain('Save to mood');
+    expect(head()).toContain('Save as new mood');
+    const layer = tab.director.snapshot().mix.table.layers[0];
+    act(() => tab?.director.desk.setLayerLevel(layer?.sound.key ?? '', -20));
+    await expect.poll(head).toContain('changed');
+    await userEvent.click([...document.querySelectorAll<HTMLElement>('.atlas-sound-desk__head button')].find((button) => button.textContent === 'Save to mood')!);
+    await expect.poll(head).not.toContain('changed');
+    expect(tab.moodsOf()[0]?.layers.some((saved) => saved.levelDb === -20)).toBe(true);
+
+    await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-desk__head .atlas-sound-icon')!);
+    await expect.poll(() => document.querySelector('[role="menu"]')).not.toBeNull();
+    const clear = [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent?.includes('Clear the mix'))!;
+    await userEvent.click(clear);
+    await expect.poll(() => tab?.director.snapshot().mix.table.layers.length).toBe(0);
+    await expect.poll(() => document.querySelector('.atlas-sound-silence')).toBeNull();
+  });
+
+  it('runs a thin bar along the tile for the crossfade, and meters from real levels while the page shows', async () => {
+    await open1644();
+    if (!tab) return;
+    await allReady(tab);
+    const opened = vi.spyOn(tab.director, 'openMeters');
+    await userEvent.keyboard('1');
+    await expect.poll(() => document.querySelector('.atlas-sound-mood[data-playing]')).not.toBeNull();
+    expect(document.querySelector('.atlas-sound-mood[data-playing] .atlas-sound-mood__fade')?.getAnimations()).toHaveLength(1);
+    await expect.poll(() => opened.mock.calls.length).toBe(1);
+    const scales = (): number[] => [...document.querySelectorAll<HTMLElement>('.atlas-sound-meter i')].map((fill) => new DOMMatrix(getComputedStyle(fill).transform).d);
+    await expect.poll(() => Math.max(...scales()), { timeout: 5000 }).toBeGreaterThan(0.2);
+    const levels = new Map<string, number>();
+    tab.director.readMeters(levels);
+    expect(levels.has('master')).toBe(true);
+
+    // Leaving the page gives the analysers back, and silences the reading.
+    act(() => tab?.store.getState().setDMScreenPage('statblocks'));
+    await expect.poll(() => { tab?.director.readMeters(levels); return levels.size; }).toBe(0);
   });
 
   it('keeps the statblocks mounted and unmeasured while hidden, and the page in the UI slice', async () => {
@@ -271,10 +469,15 @@ describe('the DM screen’s Sound page', () => {
     await userEvent.keyboard('1');
     await sleep(500);
     tab.commits.count = 0;
-    const before = document.querySelector('.atlas-sound-position__time')?.textContent;
+    const before = document.querySelector('.atlas-sound-music__time')?.textContent;
+    const meter = document.querySelector<HTMLElement>('.atlas-sound-strip--master .atlas-sound-meter i')!;
+    const drawn = new Set<string>();
+    const watch = window.setInterval(() => drawn.add(meter.style.transform), 50);
     await sleep(3000);
+    window.clearInterval(watch);
     expect(tab.commits.count, 'commits in 3 s of playing').toBeLessThan(6);
-    expect(document.querySelector('.atlas-sound-position__time')?.textContent).not.toBe(before);
+    expect(drawn.size, 'the meter moved all the while').toBeGreaterThan(1);
+    expect(document.querySelector('.atlas-sound-music__time')?.textContent).not.toBe(before);
   });
 
   for (const [name, theme] of [['dark', DARK], ['light', LIGHT]] as const) {
@@ -307,9 +510,9 @@ describe('the DM screen’s Sound page', () => {
       expect(parseFloat(getComputedStyle(document.querySelector('[role="menu"]')!).zIndex || '0') || parseFloat(getComputedStyle(document.querySelector('[role="menu"]')!.parentElement!).zIndex)).toBeGreaterThan(1000);
       await userEvent.keyboard('{Escape}');
 
-      await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-now__add')!);
+      await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-views [role="radio"]')[1]!);
       await sleep(250);
-      await page.screenshot({ path: `${SHOTS}/sound-${name}-add.png` });
+      await page.screenshot({ path: `${SHOTS}/sound-${name}-library.png` });
 
       await userEvent.click(document.querySelector<HTMLElement>('.atlas-dm-screen-pages [role="radio"]')!);
       await sleep(250);

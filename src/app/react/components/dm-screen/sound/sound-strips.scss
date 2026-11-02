@@ -126,8 +126,8 @@
     background: linear-gradient(
       to top,
       color-mix(in oklch, var(--text-muted) 82%, var(--background-primary)),
-      color-mix(in oklch, var(--text-muted) 45%, var(--mono-100)) 70%,
-      var(--mono-100)
+      color-mix(in oklch, var(--text-muted) 45%, var(--atlas-sound-fill-top)) 70%,
+      var(--atlas-sound-fill-top)
     );
     transform: scaleY(0);
     transform-origin: bottom;

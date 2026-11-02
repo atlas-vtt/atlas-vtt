@@ -64,7 +64,7 @@ function seed(tab: SoundTab): void {
       fadeSeconds: 3,
       ...(icon && { icon }),
       tone,
-      music: tracks.length > 0 ? { tracks: tracks.map(id), shuffle: true, levelDb: -3 } : 'none',
+      music: tracks.length > 0 ? { tracks: tracks.map(id), shuffle: false, levelDb: -3 } : 'none',
       layers: layers.map((layer, index) => ({ sound: id(layer), levelDb: LEVELS[index] ?? -6 })),
     });
   }

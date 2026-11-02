@@ -1,6 +1,7 @@
 import type { Mood, MoodMusic, SoundInfo, SoundRecord } from '../sound/soundTypes';
 import type { DirectorMoods } from './directorDeps';
 import { addLayer, setLayerLevel, setLayerMuted, setMusicLevel, setMusicMuted, stopAll, toggleSilence } from './liveEdits';
+import { mixDiffersFrom } from './mixChange';
 import { musicPosition, nextTrack, playTrack, skipTrack, soundingMusic } from './musicList';
 import { addTrack, dropLayer, dropWaitingTrack, EMPTY_MIX, joinReady, mixAsMood, pressMood, removeTrack, setShuffle, type ActiveMood } from './soundMix';
 import type { SoundOutput } from './soundOutput';
@@ -144,8 +145,13 @@ export class MixDesk {
   }
 
   /** What the mix would save as. */
-  mixNow(fadeSeconds: number): { fadeSeconds: number; music: MoodMusic; layers: { sound: string; levelDb: number }[] } {
-    return mixAsMood(this.table.mix, (key) => this.shelf.idOfKey(key), fadeSeconds, this.table.now());
+  mixNow(fadeSeconds: number, at = this.table.now()): { fadeSeconds: number; music: MoodMusic; layers: { sound: string; levelDb: number }[] } {
+    return mixAsMood(this.table.mix, (key) => this.shelf.idOfKey(key), fadeSeconds, at);
+  }
+
+  /** Whether the mix is no longer `mood`, once what was just asked for has begun: nothing else tells when that is. */
+  differsFrom(mood: Mood): boolean {
+    return mixDiffersFrom(mood, this.mixNow(mood.fadeSeconds, this.table.now() + this.table.clock.leadMs), (id) => this.shelf.has(id));
   }
 
   /** Takes the mix as it is now as a new mood. */

@@ -11,8 +11,9 @@ function sameMusic(saved: MoodMusic, now: MoodMusic, known: (id: string) => bool
   if (saved === 'none' || now === 'none' || now === 'keep') return saved === now;
   const tracks = saved.tracks.filter(known);
   if (tracks.length === 0) return now.tracks.length === 0;
+  // A mix's list takes each track as its copy comes, so its order says nothing yet.
   return tracks.length === now.tracks.length
-    && tracks.every((track, index) => track === now.tracks[index])
+    && tracks.every((track) => now.tracks.includes(track))
     && saved.shuffle === now.shuffle
     && sameLevel(saved.levelDb, now.levelDb);
 }

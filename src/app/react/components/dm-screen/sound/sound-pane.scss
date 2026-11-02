@@ -9,6 +9,9 @@
   // How deep the desk and a fader's slot lie: darkening is all that reads as lower, on any theme.
   --atlas-sound-well: color-mix(in oklch, var(--background-primary) 93%, black);
   --atlas-sound-slot: color-mix(in oklch, black 10%, transparent);
+  --atlas-sound-cap: color-mix(in oklch, black 4%, transparent);
+  --atlas-sound-cap-edge: color-mix(in oklch, black 12%, transparent);
+  --atlas-sound-fill-top: color-mix(in oklch, var(--mono-100) 72%, var(--background-primary));
   position: relative;
   flex: 1;
   min-width: 0;
@@ -24,6 +27,9 @@
   .theme-dark & {
     --atlas-sound-well: color-mix(in oklch, var(--background-primary) 82%, black);
     --atlas-sound-slot: color-mix(in oklch, black 40%, transparent);
+    --atlas-sound-cap: color-mix(in oklch, black 18%, transparent);
+    --atlas-sound-cap-edge: color-mix(in oklch, black 40%, transparent);
+    --atlas-sound-fill-top: var(--mono-100);
   }
 
   @container atlas-dm-screen (min-width: 1400px) {
@@ -146,8 +152,8 @@
   place-items: center;
   padding: 0 5px;
   border-radius: $cap-radius;
-  background: color-mix(in oklch, black 18%, transparent);
-  box-shadow: inset 0 0 0 $border-width-s $hairline, 0 1px 0 color-mix(in oklch, black 40%, transparent);
+  background: var(--atlas-sound-cap);
+  box-shadow: inset 0 0 0 $border-width-s $hairline, 0 1px 0 var(--atlas-sound-cap-edge);
   color: var(--text-muted);
   font-size: 11px;
   font-weight: $font-weight-semibold;

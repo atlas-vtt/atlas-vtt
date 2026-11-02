@@ -4,7 +4,6 @@ import type { App } from 'obsidian';
 import { t } from '../../../../i18n';
 import { listOutputDevices } from '../../../../sound/engine/outputDevice';
 import type { Mood } from '../../../../sound/soundTypes';
-import { mixDiffersFrom } from '../../../../soundDirector/mixChange';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { MoodStore } from '../../../../soundLibrary/MoodStore';
 import { showNotice } from '../../../../ui/notice';
@@ -71,11 +70,11 @@ function OutputButton({ director }: { director: SoundDirector }): React.JSX.Elem
 /** The mix's name and how it stands to its mood, what can be done with it, and who hears it. */
 export function DeskHeader({ app, director, collectionId, moods, onSaveAs }: DeskHeaderProps): React.JSX.Element {
   const active = useSoundValue(director, ({ mix }) => mix.mood);
-  useMoods(app, active?.collectionId ?? null);
+  const activeMoods = useMoods(app, active?.collectionId ?? null);
   const store = MoodStore.forApp(app);
-  const mood = active && store.mood(active.collectionId, active.id);
+  const mood = activeMoods.find((other) => other.id === active?.id) ?? null;
   const holdsSound = useSoundValue(director, ({ mix }) => mix.table.music !== null || mix.table.layers.length > 0 || mix.waitingMusic !== null || mix.waitingLayers.length > 0);
-  const changed = useSoundValue(director, () => mood !== null && mixDiffersFrom(mood, director.desk.mixNow(mood.fadeSeconds), (id) => director.shelf.has(id)));
+  const changed = useSoundValue(director, () => mood !== null && director.desk.differsFrom(mood));
   const needsTap = useSoundValue(director, (snapshot) => snapshot.lifecycle === 'needs-tap');
   const lastMix = useSoundValue(director, (snapshot) => snapshot.lastMix !== null);
   const menu = useContextMenu();
