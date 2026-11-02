@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { commands, page, userEvent } from 'vitest/browser';
 import { ATLAS_DARK, mockLibrary, OBSIDIAN_LIGHT, settled, stageFrame } from './sound/libraryScene';
 import { SoundPane } from '@/app/react/components/dm-screen/sound/SoundPane';
+import { MoodStore } from '@/app/soundLibrary/MoodStore';
 import type { LibraryRig } from '../helpers/libraryRig';
 
 const SHOTS = '__screenshots__/sound-library';
@@ -40,9 +41,32 @@ const LIBRARY_SHOT = (host: HTMLElement): HTMLElement => host.closest<HTMLElemen
 
 /** No side of the page leaves its text hanging: all it holds is laid out inside it, or hidden. */
 function expectNoOverflow(): void {
-  for (const element of document.querySelectorAll<HTMLElement>('.atlas-sound-lib__head, .atlas-sound-lib__crumb, .atlas-sound-lib__row, .atlas-sound-lib__length, .atlas-sound-lib__state, .atlas-sound-lib__rows, .atlas-sound-moods, .atlas-sound-mood__press, .atlas-sound-mood__foot')) {
+  for (const element of document.querySelectorAll<HTMLElement>('.atlas-sound-lib__head, .atlas-sound-lib__crumb, .atlas-sound-lib__row, .atlas-sound-lib__length, .atlas-sound-lib__state, .atlas-sound-lib__rows, .atlas-sound-moods, .atlas-sound-mood__foot')) {
     if (getComputedStyle(element).visibility === 'hidden') continue;
     expect(element.scrollWidth, element.className).toBeLessThanOrEqual(element.clientWidth + 1);
+  }
+}
+
+const TILE_NAMES = ['Tavern at night', 'Rain on the road', 'Sewers', 'Ambush at the bridge', 'Quiet camp', 'The chapel', 'Market day', 'Storm over the fen', 'The barrow', 'Boss', 'Dawn'];
+
+async function withMoods(opened: LibraryRig): Promise<void> {
+  const moods = MoodStore.forApp(opened.app);
+  for (const name of TILE_NAMES) moods.createMood({ name, fadeSeconds: 2, music: 'none', layers: [{ sound: `sound-${name}`, levelDb: -3 }, { sound: `other-${name}`, levelDb: -3 }] });
+  await expect.poll(() => document.querySelectorAll('.atlas-sound-mood').length).toBe(TILE_NAMES.length);
+  await settled();
+}
+
+function expectTilesRead(columns: number): void {
+  const tiles = [...document.querySelectorAll('.atlas-sound-mood')].map((tile) => tile.getBoundingClientRect());
+  expect(tiles.filter((tile) => tile.top === tiles[0]?.top)).toHaveLength(columns);
+  expect(new Set(tiles.map((tile) => Math.round(tile.height)))).toEqual(new Set([116]));
+  for (const tile of document.querySelectorAll<HTMLElement>('.atlas-sound-mood')) {
+    const crest = box('.atlas-sound-mood__crest', tile);
+    for (const text of tile.querySelectorAll<HTMLElement>('.atlas-sound-mood__what span, .atlas-sound-mood__foot > *')) {
+      expect(text.getBoundingClientRect().right, text.textContent ?? '').toBeLessThanOrEqual(crest.left + 1);
+      expect(text.scrollWidth, text.textContent ?? '').toBeLessThanOrEqual(text.clientWidth + 1);
+    }
+    expect(box('.atlas-sound-mood__name', tile).right).toBeLessThanOrEqual(tile.getBoundingClientRect().right);
   }
 }
 
@@ -96,6 +120,10 @@ describe('the sound library', () => {
     expectNoOverflow();
     const title = rowNamed('Riders at the treeline').querySelector<HTMLElement>('.atlas-sound-lib__title')!;
     expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+    await withMoods(rig!);
+    expectTilesRead(3);
+    expectNoOverflow();
+    expect(box('.atlas-sound-moods').width / 1644).toBeCloseTo(0.42, 1);
   });
 
   it('keeps name, state and length readable at 1280, the action over the state, and what does not fit in the head in a menu', async () => {
@@ -113,6 +141,9 @@ describe('the sound library', () => {
     expect(box('.atlas-sound-lib__act', row).left).toBeGreaterThan(box('.atlas-sound-lib__title', row).left);
     expect(box('.atlas-sound-lib__act', row).right).toBeLessThanOrEqual(box('.atlas-sound-lib__length', row).left + 1);
     expect(getComputedStyle(document.querySelector('.atlas-sound-lib__btn--folds')!).display).toBe('none');
+    await withMoods(rig!);
+    expectTilesRead(2);
+    expectNoOverflow();
     await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-lib__head-more')!);
     await expect.poll(() => [...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(['New folder', 'Import']);
     await userEvent.keyboard('{Escape}');

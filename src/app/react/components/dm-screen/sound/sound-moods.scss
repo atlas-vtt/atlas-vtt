@@ -76,7 +76,8 @@
 .atlas-sound-mood__what {
   position: relative;
   display: block;
-  max-width: 66%;
+  // Clear of the crest.
+  max-width: calc(100% - 68px);
   margin-top: $spacing-xs;
   color: var(--text-muted);
   line-height: 1.3;
