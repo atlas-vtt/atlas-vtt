@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
+import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { useHeldInMix } from '@/app/react/components/dm-screen/sound/library/useLibrary';
 import { MAX_MOOD_LAYERS, type SoundRecord } from '@/app/sound/soundTypes';
 import { dragToMix, fileToMix, filesToPlay, folderToMix, heldInMix, prepareFolder, takeFromMix, type LibraryDeskDeps } from '@/app/soundDirector/libraryDesk';
 import { MOOD_LIMITS } from '@/app/soundLibrary/moodFile';
@@ -233,4 +235,28 @@ describe('a drag of library rows', () => {
     expect(add).toHaveBeenCalledTimes(1);
     expect(list).toHaveBeenCalledTimes(1);
   });
+});
+
+it('what the library shows of the mix stays the same map while a fader moves, and changes when the mix holds something else', async () => {
+  setUp([record('rain'), record('wind')]);
+  await settle();
+  await rig.director.shelf.refresh();
+  await settle();
+  rig.director.press({ id: 'm', name: 'm', order: 1, fadeSeconds: 0, music: 'none', layers: [{ sound: 'rain', levelDb: 0 }] });
+  await act(async () => { await settle(); });
+  const { result } = renderHook(() => useHeldInMix(rig.director));
+  const shown = result.current;
+  expect([...shown.keys()]).toEqual(['audio/rain.ogg']);
+  const key = rig.director.snapshot().mix.table.layers[0]?.sound.key ?? '';
+  await act(async () => {
+    rig.director.desk.setLayerLevel(key, -20);
+    await settle();
+  });
+  expect(result.current).toBe(shown);
+  await act(async () => {
+    rig.director.desk.addSound(record('wind'));
+    await settle();
+  });
+  expect(result.current).not.toBe(shown);
+  expect([...result.current.keys()].sort()).toEqual(['audio/rain.ogg', 'audio/wind.ogg']);
 });

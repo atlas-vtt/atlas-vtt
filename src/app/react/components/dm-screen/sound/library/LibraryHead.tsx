@@ -39,7 +39,7 @@ export function LibraryHead({ library, actions, place, onPlace, query, onQuery, 
   return (
     <header className="atlas-sound-lib__head">
       <nav className="atlas-sound-lib__crumb" aria-label={label}>
-        <button type="button" onClick={() => onPlace({ kind, folder: '' })}>{label}</button>
+        <button type="button" aria-current={folder === '' ? 'true' : undefined} onClick={() => onPlace({ kind, folder: '' })}>{label}</button>
         {crumbsOf(folder).map((crumb) => (
           <React.Fragment key={crumb.path}>
             <i aria-hidden="true">/</i>

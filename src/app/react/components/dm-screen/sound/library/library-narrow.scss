@@ -11,6 +11,10 @@
     display: grid;
   }
 
+  .atlas-sound-lib__crumb > :not([aria-current]) {
+    display: none;
+  }
+
   .atlas-sound-lib__row {
     grid-template-columns: 32px minmax(0, 1fr) 88px 44px 28px;
 

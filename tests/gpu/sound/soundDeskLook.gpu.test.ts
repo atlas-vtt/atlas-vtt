@@ -2,6 +2,7 @@ import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cdp, page, userEvent } from 'vitest/browser';
 import type { Mood } from '@/app/sound/soundTypes';
+import { recordIdFor } from '@/app/soundLibrary/libraryRecords';
 import { ATLAS, LIGHT, openSoundTab, type SoundTab, type TabSound } from './soundTabHarness';
 
 vi.mock('../../../src/app/react/components/dm-screen/DMStatblocksPane', async () => {
@@ -35,7 +36,6 @@ const TABLE: Record<string, TabSound> = {
   'Low drone': ambience(26),
   Rats: ambience(27),
   'River rush': ambience(28),
-  'Cave wind': { synth: { seconds: 0, seed: 1 }, kind: 'ambience' },
 };
 
 type Spec = [string, Mood['icon'], string, string[], string[]];
@@ -57,7 +57,7 @@ const MOODS: Spec[] = [
 const LEVELS = [-12, -3, -8, -9, -5, -6, -7, -10];
 
 function seed(tab: SoundTab): void {
-  const id = (name: string): string => tab.records.get(name)?.id ?? name;
+  const id = (name: string): string => tab.records.get(name)?.id ?? recordIdFor(`audio/${name}.ogg`);
   for (const [name, icon, tone, tracks, layers] of MOODS) {
     tab.moods.createMood({
       name,
@@ -71,7 +71,7 @@ function seed(tab: SoundTab): void {
 }
 
 async function ready(tab: SoundTab): Promise<void> {
-  const records = [...tab.records.values()].filter((record) => record.name !== 'Cave wind');
+  const records = [...tab.records.values()];
   tab.director.shelf.request(records);
   await expect.poll(() => records.every((record) => tab.director.shelf.stateOf(record).state === 'ready'), { timeout: 120_000, interval: 200 }).toBe(true);
   const road = tab.records.get('Road to Wolfhaven');
@@ -109,6 +109,7 @@ describe('how the Sound page looks', () => {
     seed(opened);
     await expect.poll(() => document.querySelectorAll('[data-sound-mood]').length).toBe(MOODS.length);
     await ready(opened);
+    await opened.addUnfinished('Cave wind', 'ambience');
     opened.director.players.use(null);
     await userEvent.keyboard('1');
     await act(async () => { await sleep(3400); });

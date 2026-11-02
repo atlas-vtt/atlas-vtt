@@ -9,11 +9,10 @@ export function useLibraryVersion(library: SoundLibrary): number {
   return useSyncExternalStore(useCallback((listener: () => void) => library.onChange(listener), [library]), () => library.version);
 }
 
-/** What the mix holds, by file. It changes only when a commit or a copy does, so a fader's move renders no row. */
+/** What the mix holds, by file; the same map while that does, so a fader's move renders nothing of the library that stands beside it. */
 export function useHeldInMix(director: SoundDirector): ReadonlyMap<string, HeldInMix> {
-  const list = useSoundValue(director, ({ mix }) => mix);
-  const copies = useSoundValue(director, (snapshot) => snapshot.shelfRevision);
-  return useMemo(() => heldInMix(director), [director, list, copies]);
+  const held = useSoundValue(director, () => JSON.stringify([...heldInMix(director)]));
+  return useMemo(() => new Map<string, HeldInMix>(JSON.parse(held) as [string, HeldInMix][]), [held]);
 }
 
 /** A row's length, once it is known. */

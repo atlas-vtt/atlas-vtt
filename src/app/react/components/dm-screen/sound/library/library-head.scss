@@ -47,6 +47,11 @@
     margin: 0 6px;
   }
 
+  // The open folder and the one above it are as much as this line tells; the rail has the rest.
+  > :nth-last-child(n + 4) {
+    display: none;
+  }
+
   button {
     font-family: inherit;
     font-size: inherit;
@@ -86,6 +91,7 @@
     box-shadow: none;
     color: var(--text-normal);
     font-size: inherit;
+    text-overflow: ellipsis;
 
     &::placeholder {
       color: var(--text-faint);

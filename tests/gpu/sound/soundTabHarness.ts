@@ -118,6 +118,8 @@ export interface SoundTab {
   commits: { count: number };
   moods: MoodStore;
   moodsOf: () => readonly Mood[];
+  /** A record of a file whose bytes never arrive, so its copy stays on its way. */
+  addUnfinished(name: string, kind: SoundRecord['kind']): Promise<void>;
   /** The linked folders, with the mock's files, where the tab was opened with them. */
   locations: LibraryRig['locations'] | null;
   unmount: () => void;
@@ -141,7 +143,7 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
   Object.assign(app, { appId });
   const bytes = new Map<string, ArrayBuffer>();
   for (const [name, { url, synth }] of Object.entries(sounds)) bytes.set(`audio/${name}.ogg`, url ? await (await fetch(url)).arrayBuffer() : synthWav(synth?.seconds ?? 1, synth?.seed ?? 1));
-  // A file of no bytes never arrives: its copy stays on its way.
+  // A file of no bytes never arrives: its copy stays on its way, and those after it, as copies are made one at a time.
   app.vault.readBinary = vi.fn((file: { path: string }) => {
     const held = bytes.get(file.path);
     return held && held.byteLength > 44 + 2 ? Promise.resolve(held.slice(0)) : new Promise<ArrayBuffer>(() => undefined);
@@ -187,6 +189,11 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
     commits,
     moods,
     locations: held?.locations ?? null,
+    addUnfinished: async (name, kind) => {
+      const audioPath = `audio/${name}.ogg`;
+      await app.vault.adapter.write(audioPath, '');
+      stored.add([{ id: recordIdFor(audioPath), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath, kind, licence: 'unknown', streaming: 'unknown' }]);
+    },
     moodsOf: () => moods.moods(),
     unmount: () => {
       act(() => root.unmount());
