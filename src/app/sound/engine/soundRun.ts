@@ -130,26 +130,25 @@ abstract class RunBase implements SoundRun {
 /** A sound up to 60 s: decoded once and looped by the source itself, which is sample-exact. */
 export class BufferRun extends RunBase {
   private source: SoundSourceNode | null = null;
-  private loading = false;
+  /** Holds its buffer from the first pump to `dispose`, or until a failure says to ask again. */
   private retained = false;
+  /** Its bytes came and no place was left to start in: nothing more will come of this run. */
+  private tooLate = false;
 
   get waiting(): boolean {
-    return this.source === null && !this.finishing;
+    return this.source === null && !this.finishing && !this.tooLate;
   }
 
   pump(): void {
-    if (this.source || this.loading || this.disposed || this.backingOff) return;
-    this.loading = true;
+    if (this.retained || this.disposed || this.finishing || this.backingOff) return;
     const key = this.span.sound.key;
     this.retained = true;
     this.deps.sources.retain(key).then(
       (buffer) => {
-        this.loading = false;
         this.start(buffer);
       },
       (error: unknown) => {
-        this.loading = false;
-        this.deps.sources.release(key);
+        if (this.retained) this.deps.sources.release(key);
         this.retained = false;
         this.failed(error);
       },
@@ -184,7 +183,10 @@ export class BufferRun extends RunBase {
     const onTime = this.ctxFrameOf(span.startPlayFrame);
     const startFrame = Math.max(onTime, this.notBefore, this.nowFrame());
     const endFrame = span.endPlayFrame === null ? null : this.ctxFrameOf(span.endPlayFrame);
-    if (endFrame !== null && startFrame >= endFrame) return;
+    if (endFrame !== null && startFrame >= endFrame) {
+      this.tooLate = true;
+      return;
+    }
     const source = this.newSource(buffer);
     const loop = span.loop;
     if (loop) {
