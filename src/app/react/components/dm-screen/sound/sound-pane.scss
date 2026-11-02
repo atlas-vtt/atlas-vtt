@@ -11,7 +11,6 @@
   --atlas-sound-slot: color-mix(in oklch, black 10%, transparent);
   --atlas-sound-cap: color-mix(in oklch, black 4%, transparent);
   --atlas-sound-cap-edge: color-mix(in oklch, black 12%, transparent);
-  --atlas-sound-fill-top: color-mix(in oklch, var(--mono-100) 72%, var(--background-primary));
   position: relative;
   flex: 1;
   min-width: 0;
@@ -29,7 +28,6 @@
     --atlas-sound-slot: color-mix(in oklch, black 40%, transparent);
     --atlas-sound-cap: color-mix(in oklch, black 18%, transparent);
     --atlas-sound-cap-edge: color-mix(in oklch, black 40%, transparent);
-    --atlas-sound-fill-top: var(--mono-100);
   }
 }
 
@@ -115,7 +113,7 @@
   }
 
   &[aria-pressed='true'] {
-    color: var(--mono-100);
+    color: var(--interactive-accent);
   }
 
   &:disabled {

@@ -194,7 +194,7 @@ describe('the sound library', () => {
     await userEvent.hover(rowNamed('The last gate'));
     await settled();
     const solid = getComputedStyle(document.querySelector('.atlas-sound-lib__btn--solid')!);
-    expect(solid.backgroundColor).toBe('rgb(0, 0, 0)');
+    expect(solid.backgroundColor).toBe('rgb(112, 93, 207)');
     expect(solid.color).toBe('rgb(255, 255, 255)');
     await page.screenshot({ path: `${SHOTS}/library-light.png`, element: LIBRARY_SHOT(frame!.host) });
   });

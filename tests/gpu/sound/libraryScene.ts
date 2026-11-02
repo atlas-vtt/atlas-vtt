@@ -17,12 +17,12 @@ const SHARED = `
 export const ATLAS_DARK = `${SHARED}
   body { --background-primary: #201b15; --background-primary-alt: #262019; --background-secondary: #2b241c; --background-secondary-alt: #322a20; --background-modifier-border: #4a4030; --background-modifier-border-focus: #a89878;
     --background-modifier-hover: rgba(240, 230, 208, 0.08); --background-modifier-form-field: #17130e; --interactive-normal: #2b241c; --text-normal: #ded2b8; --text-muted: #a89878; --text-faint: #7d6f55; --text-warning: #e3b341; --mono-100: #f0e6d0;
-    --interactive-accent: hsl(0, 69%, 57%); --h3-font: 'Atlas Fantaisie Artistique', Georgia, serif; }`;
+    --text-on-accent: #fff; --interactive-accent: hsl(0, 69%, 57%); --h3-font: 'Atlas Fantaisie Artistique', Georgia, serif; }`;
 
 export const OBSIDIAN_LIGHT = `${SHARED}
   body { background: #e9e9e9; --background-primary: #ffffff; --background-primary-alt: #fafafa; --background-secondary: #f2f2f2; --background-secondary-alt: #e3e3e3; --background-modifier-border: #e0e0e0; --background-modifier-border-focus: #9f8cf0;
     --background-modifier-hover: rgba(0, 0, 0, 0.05); --background-modifier-form-field: #ffffff; --interactive-normal: #ffffff; --text-normal: #222222; --text-muted: #5c5c5c; --text-faint: #8a8a8a; --text-warning: #b8791a; --mono-100: #000000;
-    --interactive-accent: #705dcf; --h3-font: 'Atlas Fantaisie Artistique', Georgia, serif; }`;
+    --text-on-accent: #fff; --interactive-accent: #705dcf; --h3-font: 'Atlas Fantaisie Artistique', Georgia, serif; }`;
 
 /** The page's room: the DM screen's container, with no inset, so the surface is as wide as asked. */
 export function stageFrame(theme: string, width = 1644, height = 960): { host: HTMLElement; remove: () => void } {

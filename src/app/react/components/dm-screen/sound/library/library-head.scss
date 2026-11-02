@@ -137,13 +137,12 @@
 }
 
 .atlas-sound-lib .atlas-sound-lib__btn--solid {
-  background: var(--mono-100);
-  color: var(--background-primary);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
   box-shadow: none;
 
   &:hover:not(:disabled) {
-    background: var(--mono-100);
-    opacity: 0.9;
+    background: var(--interactive-accent-hover);
   }
 }
 

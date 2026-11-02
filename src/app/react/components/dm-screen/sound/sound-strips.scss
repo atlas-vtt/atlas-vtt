@@ -125,9 +125,8 @@
     inset: 0;
     background: linear-gradient(
       to top,
-      color-mix(in oklch, var(--text-muted) 82%, var(--background-primary)),
-      color-mix(in oklch, var(--text-muted) 60%, var(--atlas-sound-fill-top)) 70%,
-      var(--atlas-sound-fill-top)
+      color-mix(in oklch, var(--interactive-accent) 55%, var(--background-primary)),
+      var(--interactive-accent)
     );
     transform: scaleY(0);
     transform-origin: bottom;
@@ -175,7 +174,7 @@
     position: absolute;
     inset: 6.5px 7px auto;
     height: 1px;
-    background: color-mix(in oklch, var(--mono-100) 73%, transparent);
+    background: var(--interactive-accent);
   }
 
   &:active {

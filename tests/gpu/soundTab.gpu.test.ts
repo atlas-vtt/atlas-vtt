@@ -300,6 +300,14 @@ describe('the DM screen’s Sound page', () => {
     await expect.poll(place).toBeGreaterThan(0);
     const wave = document.querySelector<HTMLElement>('.atlas-sound-music__wave')!;
     const { width, height } = wave.getBoundingClientRect();
+    // What shows state takes the GM's accent, and what is still to play stays neutral.
+    const accent = getComputedStyle(wave).getPropertyValue('--interactive-accent').trim();
+    const probe = wave.ownerDocument.body.createDiv();
+    probe.style.color = accent;
+    const accentColor = getComputedStyle(probe).color;
+    probe.remove();
+    expect(getComputedStyle(wave.querySelector('.atlas-sound-music__played')!).color).toBe(accentColor);
+    expect(getComputedStyle(wave.querySelector('.atlas-sound-music__unplayed')!).color).not.toBe(accentColor);
     await userEvent.click(wave, { position: { x: width * 0.75, y: height / 2 } });
     await expect.poll(place).toBeCloseTo(0.75, 1);
     await userEvent.dragAndDrop(page.elementLocator(wave), page.elementLocator(wave), { sourcePosition: { x: width * 0.75, y: height / 2 }, targetPosition: { x: width * 0.25, y: height / 2 } });

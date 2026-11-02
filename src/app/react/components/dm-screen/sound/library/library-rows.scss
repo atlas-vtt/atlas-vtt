@@ -63,7 +63,7 @@
   }
 
   &[aria-pressed='true'] {
-    color: var(--mono-100);
+    color: var(--interactive-accent);
 
     svg {
       width: 12px;
@@ -106,7 +106,7 @@
 }
 
 .atlas-sound-lib__row--mix .atlas-sound-lib__title {
-  color: var(--mono-100);
+  color: var(--text-accent);
   font-weight: $font-weight-semibold;
 }
 
