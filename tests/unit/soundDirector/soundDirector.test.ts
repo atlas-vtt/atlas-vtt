@@ -63,7 +63,7 @@ describe('the sound director', () => {
     rig = directorRig(ALL);
     await ready(rig);
     expect(rig.contexts).toHaveLength(0);
-    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.press(mood('tavern', ['rain']));
     expect(rig.contexts).toHaveLength(1);
     expect(layersOf(rig)).toEqual(['hash-audio/rain.ogg']);
     expect(rig.contexts[0]?.sources.length).toBeGreaterThanOrEqual(1);
@@ -76,7 +76,7 @@ describe('the sound director', () => {
     rig.director.onStateChanged((state) => states.push(state));
     const subscriber = vi.fn();
     const stop = rig.director.subscribe(subscriber);
-    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.press(mood('tavern', ['rain']));
     const context = rig.contexts[0];
     const before = rig.director.snapshot().mix.table;
     // A pane closing is a subscriber leaving; a map closing is a view leaving.
@@ -93,7 +93,7 @@ describe('the sound director', () => {
   it('closes every context when the plugin unloads', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.press(mood('tavern', ['rain']));
     rig.director.preview(WIND);
     rig.director.destroy();
     expect(rig.contexts.every((context) => context.closed)).toBe(true);
@@ -102,18 +102,18 @@ describe('the sound director', () => {
   it('lets go of the context when the last fade has ended, and comes back on the next press', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    rig.director.press('c', mood('tavern', ['rain'], 'keep', 1));
+    rig.director.press(mood('tavern', ['rain'], 'keep', 1));
     rig.director.stop();
     await vi.advanceTimersByTimeAsync(10_000);
     expect(rig.contexts[0]?.closed).toBe(true);
-    rig.director.press('c', mood('tavern', ['rain'], 'keep', 1));
+    rig.director.press(mood('tavern', ['rain'], 'keep', 1));
     expect(rig.contexts).toHaveLength(2);
   });
 
   it('switching off fades out, tears down, and asks nothing of what is off', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.press(mood('tavern', ['rain']));
     rig.settings.on = false;
     rig.fireSettings();
     expect(rig.director.isOn).toBe(false);
@@ -121,7 +121,7 @@ describe('the sound director', () => {
     expect(rig.director.snapshot().mix.table.outgoingLayers).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(10_000);
     expect(rig.contexts[0]?.closed).toBe(true);
-    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.press(mood('tavern', ['rain']));
     expect(rig.contexts).toHaveLength(1);
   });
 
@@ -130,7 +130,7 @@ describe('the sound director', () => {
     await ready(rig);
     rig.director.shelf.request([FIRE]);
     await settle();
-    rig.director.press('c', mood('tavern', ['wind', 'rain']));
+    rig.director.press(mood('tavern', ['wind', 'rain']));
     await settle();
     expect(layersOf(rig)).toEqual([]);
     expect(rig.director.snapshot().mix.waitingLayers.map((layer) => layer.sound)).toEqual(['wind', 'rain']);
@@ -190,11 +190,11 @@ describe('the sound director', () => {
   it('offers back what played after a restart, and plays nothing by itself', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.press(mood('tavern', ['rain']));
     await vi.advanceTimersByTimeAsync(2000);
     rig.director.destroy();
     const saved = rig.storage.get('atlas-vtt:sound-last');
-    expect(saved).toMatchObject({ mood: { collectionId: 'c', id: 'tavern' } });
+    expect(saved).toMatchObject({ mood: { id: 'tavern' } });
 
     const next = directorRig(ALL);
     next.storage.set('atlas-vtt:sound-last', saved);
@@ -213,7 +213,7 @@ describe('the sound director', () => {
   it('stop leaves nothing to bring back', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.press(mood('tavern', ['rain']));
     await vi.advanceTimersByTimeAsync(2000);
     rig.director.stop();
     expect(rig.storage.get('atlas-vtt:sound-last')).toBeNull();
@@ -225,7 +225,7 @@ describe('the sound director', () => {
 
     function followRig(): DirectorRig {
       const made = directorRig(ALL);
-      made.moods.set('c', [tavern, battle]);
+      made.moods.current = [tavern, battle];
       return made;
     }
 
@@ -264,7 +264,7 @@ describe('the sound director', () => {
       rig.scenes.set('a.atlasmap', { mood: 'tavern' });
       rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
       await vi.advanceTimersByTimeAsync(500);
-      rig.director.press('c', battle);
+      rig.director.press(battle);
       await vi.advanceTimersByTimeAsync(SCENE_FOLLOW_DELAY_MS * 2);
       await settle();
       expect(rig.director.snapshot().mix.mood?.id).toBe('battle');
@@ -295,7 +295,7 @@ describe('the sound director', () => {
       rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
       const store = fightStore('a.atlasmap', { combatMood: 'battle' });
       rig.director.joinView('v', store);
-      rig.director.press('c', tavern);
+      rig.director.press(tavern);
       rig.director.desk.addSound(WIND);
       store.set({ initiative: { isActive: true } });
       await settle();
@@ -336,7 +336,7 @@ describe('the sound director', () => {
     it('a mood already playing is not pressed again, which would undo live changes', async () => {
       rig = followRig();
       await ready(rig);
-      rig.director.press('c', tavern);
+      rig.director.press(tavern);
       rig.director.desk.setLayerLevel('hash-audio/rain.ogg', -20);
       rig.scenes.set('a.atlasmap', { mood: 'tavern' });
       rig.setPresented({ tabId: 't', filePath: 'a.atlasmap' });
@@ -349,12 +349,12 @@ describe('the sound director', () => {
   it('next mood goes through the row and round', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    rig.moods.set('c', [mood('a', ['rain']), mood('b', ['wind'])]);
-    rig.director.pressNext('c');
+    rig.moods.current = [mood('a', ['rain']), mood('b', ['wind'])];
+    rig.director.pressNext();
     expect(rig.director.snapshot().mix.mood?.id).toBe('a');
-    rig.director.pressNext('c');
+    rig.director.pressNext();
     expect(rig.director.snapshot().mix.mood?.id).toBe('b');
-    rig.director.pressNext('c');
+    rig.director.pressNext();
     expect(rig.director.snapshot().mix.mood?.id).toBe('a');
   });
 
@@ -364,22 +364,22 @@ describe('the sound director', () => {
     rig.director.desk.addSound(RAIN);
     rig.director.desk.addSound(SONG);
     rig.director.desk.setLayerLevel('hash-audio/rain.ogg', -9);
-    const made = rig.director.desk.saveAsMood('c', 'Rainy');
+    const made = rig.director.desk.saveAsMood('Rainy');
     expect(made).toMatchObject({ name: 'Rainy', fadeSeconds: 4, layers: [{ sound: 'rain', levelDb: -9 }], music: { tracks: ['song'], shuffle: false } });
     expect(rig.director.snapshot().mix.mood?.id).toBe(made.id);
     rig.director.desk.addSound(WIND);
-    rig.director.desk.saveToMood('c', made);
-    expect(rig.moods.get('c')?.[0]?.layers.map((layer) => layer.sound)).toEqual(['rain', 'wind']);
+    rig.director.desk.saveToMood(made);
+    expect(rig.moods.current[0]?.layers.map((layer) => layer.sound)).toEqual(['rain', 'wind']);
   });
 
   it('a live change is not saved to the mood until the GM chooses', async () => {
     rig = directorRig(ALL);
     await ready(rig);
     const saved = mood('tavern', ['rain']);
-    rig.moods.set('c', [saved]);
-    rig.director.press('c', saved);
+    rig.moods.current = [saved];
+    rig.director.press(saved);
     rig.director.desk.setLayerLevel('hash-audio/rain.ogg', -30);
-    expect(rig.moods.get('c')?.[0]).toBe(saved);
+    expect(rig.moods.current[0]).toBe(saved);
   });
 
   it('refuses a sound already in the mix', async () => {
@@ -395,7 +395,7 @@ describe('the sound director', () => {
     rig = directorRig(ALL);
     await ready(rig);
     rig.director.useTableClock({ now: () => 5_000_000, leadMs: 1000 });
-    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.press(mood('tavern', ['rain']));
     expect(rig.director.snapshot().mix.table.layers[0]?.startAt).toBe(5_001_000);
   });
 
@@ -409,7 +409,7 @@ describe('the sound director', () => {
   it('moves every context to the chosen output, and says once when it is gone', async () => {
     rig = directorRig(ALL);
     await ready(rig);
-    rig.director.press('c', mood('tavern', ['rain']));
+    rig.director.press(mood('tavern', ['rain']));
     const context = rig.contexts[0];
     if (!context) throw new Error('no context');
     rig.director.setOutput({ id: 'usb', label: 'USB headset' });

@@ -1,18 +1,17 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AssetService, SoundAsset } from '@/app/services/AssetService';
 import { MAX_MOOD_LAYERS, type SoundRecord } from '@/app/sound/soundTypes';
 import { dragToMix, fileToMix, filesToPlay, folderToMix, heldInMix, prepareFolder, takeFromMix, type LibraryDeskDeps } from '@/app/soundDirector/libraryDesk';
 import { MOOD_LIMITS } from '@/app/soundLibrary/moodFile';
 import type { SoundLibrary } from '@/app/soundLibrary/SoundLibrary';
-import { soundRecordOf } from '@/app/soundLibrary/soundRecords';
+import { soundRecordOf, type StoredSound } from '@/app/soundLibrary/soundRecords';
 import { carriesSounds, readSoundDrag, SOUND_DRAG_TYPE, writeSoundDrag } from '@/app/soundLibrary/soundDrag';
 import { directorRig, record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
 import { FakeSoundLocation } from '../../helpers/fakeSoundLocation';
 
 let rig: DirectorRig;
 let location: FakeSoundLocation;
-let stored: SoundAsset[];
+let stored: StoredSound[];
 let deps: LibraryDeskDeps;
 
 /** A desk over real records: what `recordsForFiles` made is what the shelf reads next. */
@@ -25,15 +24,15 @@ function setUp(records: SoundRecord[]): void {
     audioPathOf: (_kind: string, path: string) => `audio/${path}`,
     ensureListed: async () => undefined,
   } as unknown as SoundLibrary;
-  const assets = {
-    runExclusive: <T>(work: () => Promise<T>) => work(),
-    getAssets: async () => stored,
-    addIdentifiedAssets: async (fresh: SoundAsset[]) => {
+  const seam: LibraryDeskDeps['records'] = {
+    whenLoaded: () => Promise.resolve(),
+    all: () => stored,
+    add: (fresh) => {
       stored.push(...fresh);
       rig.records.push(...fresh.map(soundRecordOf));
     },
-  } as unknown as AssetService;
-  deps = { assets, library, director: rig.director, notify: (message) => rig.notices.push(message) };
+  };
+  deps = { records: seam, library, director: rig.director, notify: (message) => rig.notices.push(message) };
 }
 
 beforeEach(() => {
@@ -55,7 +54,7 @@ describe('the desk from the library', () => {
     await settle();
     await rig.director.shelf.refresh();
     await settle();
-    rig.director.press('c', { id: 'm', name: 'm', order: 1, fadeSeconds: 0, music: { tracks: ['a'], shuffle: false, levelDb: 0 }, layers: [] });
+    rig.director.press({ id: 'm', name: 'm', order: 1, fadeSeconds: 0, music: { tracks: ['a'], shuffle: false, levelDb: 0 }, layers: [] });
     await settle();
     await fileToMix(deps, [file('b.ogg')], 'now', 'Fen');
     const waiting = rig.director.snapshot().mix;

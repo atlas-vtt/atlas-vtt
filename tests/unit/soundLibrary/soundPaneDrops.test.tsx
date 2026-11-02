@@ -37,7 +37,7 @@ beforeEach(async () => {
   rig.locations.music.addFile('Battle/a.mp3');
   rig.locations.ambience.addFile('Rain.ogg');
   host = document.body.createDiv({ cls: 'workspace-leaf mod-active' });
-  await act(async () => rig.mount(host, <SoundPane active headerSlot={null} />));
+  await act(async () => rig.mount(host, <SoundPane active />));
 });
 
 afterEach(() => {
@@ -49,10 +49,7 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-const moodIn = (of: LibraryRig): Mood => {
-  const stored = MoodStore.forApp(of.app);
-  return stored.createMood(of.assets.getDefaultCollectionId(), { name: 'Tavern', fadeSeconds: 2, music: 'none', layers: [] });
-};
+const moodIn = (of: LibraryRig): Mood => MoodStore.forApp(of.app).createMood({ name: 'Tavern', fadeSeconds: 2, music: 'none', layers: [] });
 
 const aFile = (kind: 'music' | 'ambience', path: string): SoundDrag['files'][number] => ({ kind, path, name: path.split('/').pop()!, size: 5, mtime: 1 });
 
@@ -68,7 +65,7 @@ describe('rows of the library dropped on the desk', () => {
     expect(strips().dataset.dropTarget).toBeUndefined();
     await waitFor(() => expect(add).toHaveBeenCalledTimes(1));
     expect(next).toHaveBeenCalledTimes(1);
-    expect((await rig.assets.getAssets(undefined, 'sound')).map((sound) => sound.name).sort()).toEqual(['Rain', 'a']);
+    expect(rig.records.all().map((sound) => sound.name).sort()).toEqual(['Rain', 'a']);
   });
 
   it('stops showing when they leave the desk, not when they cross a strip', async () => {

@@ -1,14 +1,8 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { TFile } from 'obsidian';
 import { AssetService, type Asset } from '../../../src/app/services/AssetService';
 import { transferAssets } from '../../../src/app/services/assetTransfer/assetTransfer';
-import { FileReferenceService } from '../../../src/app/services/FileReferenceService';
 import { COPY_SETTLE_MS, libraryClock } from '../../../src/app/services/library/libraryState';
-import { MoodStore } from '../../../src/app/soundLibrary/MoodStore';
-import { recordIdFor, recordsForFiles } from '../../../src/app/soundLibrary/libraryRecords';
-import { externalAudioPath } from '../../../src/app/soundLibrary/soundPaths';
-import { updateSounds } from '../../../src/app/soundLibrary/soundRecords';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 import { FakeSync, seededRandom } from './fakeSync';
 
@@ -48,10 +42,7 @@ async function library(assets: AssetService): Promise<Record<string, unknown>> {
   const records = await assets.getAssets();
   const collections = await assets.getCollections();
   return {
-    assets: Object.fromEntries(records.map((asset: Asset) => [asset.id, {
-      type: asset.type, name: asset.name, tags: asset.tags, collection: asset.collection,
-      ...(asset.type === 'sound' && { audioPath: asset.audioPath, kind: asset.kind, trimDb: asset.trimDb }),
-    }])),
+    assets: Object.fromEntries(records.map((asset: Asset) => [asset.id, { type: asset.type, name: asset.name, tags: asset.tags, collection: asset.collection }])),
     collections: Object.fromEntries(collections.map((collection) => [collection.id, { uid: collection.uid, conditions: collection.settings.conditions }])),
   };
 }
@@ -101,19 +92,13 @@ class Trial {
     }
   }
 
-  private editSounds(device: Device, n: string): Promise<void> {
-    return editSoundOn({ pick: (items) => this.pick(items), roll: this.random, created: this.created, deleted: this.deleted }, device, n);
-  }
-
   private async editRecords(device: Device): Promise<void> {
     const { assets, vault } = device;
     const tokens = await assets.getAssets(COLLECTION, 'token');
     const encounters = await assets.getAssets(COLLECTION, 'encounter');
     const roll = this.random();
     const n = `${device.name}${++this.serial}`;
-    if (roll < 0.14) {
-      await this.editSounds(device, n);
-    } else if (roll < 0.25) {
+    if (roll < 0.25) {
       const imagePath = `atlas-vtt/collections/${COLLECTION}/tokens/${n}.webp`;
       await vault.app.vault.create(imagePath, `IMG ${n}`);
       this.created.add((await assets.addTokenAsset({ name: `Token ${n}`, imagePath, collection: COLLECTION, tags: [] })).id);
@@ -149,43 +134,6 @@ class Trial {
       const conditions = [...assets.getCollectionSettings(COLLECTION).conditions, { id: `c-${n}`, name: `Condition ${n}`, color: '#fff' }];
       await assets.updateCollectionSettings(COLLECTION, { conditions });
     }
-  }
-}
-
-/** What a device's library says of a file below a root outside the vault: its absolute path is in no record. */
-const EXTERNAL_LIBRARY = { audioPathOf: externalAudioPath };
-
-/** What a GM does with sounds: adds them from outside and from the vault, renames their files, edits, moves and deletes them. */
-async function editSoundOn(trial: { pick: <T>(items: readonly T[]) => T | undefined; roll: () => number; created: Set<string>; deleted: Set<string> }, device: Device, n: string): Promise<void> {
-  const { assets, vault } = device;
-  const sounds = await assets.getAssets(COLLECTION, 'sound');
-  const sound = trial.pick(sounds);
-  const roll = trial.roll();
-  if (roll < 0.15) {
-    // A file enters a mix: both devices may do so at once, each knowing nothing of the other.
-    const name = `Shared ${Math.floor(trial.roll() * 4)}.mp3`;
-    const [made] = await recordsForFiles(assets, EXTERNAL_LIBRARY, [{ kind: 'music', name, path: `Battle/${name}`, size: 5, mtime: 1 }], COLLECTION);
-    if (made) trial.created.add(made.id);
-  } else if (roll < 0.35 || !sound) {
-    const audioPath = roll < 0.2 ? `atlas-vtt/collections/${COLLECTION}/sounds/${n}.mp3` : `Library/${n}.mp3`;
-    await vault.app.vault.adapter.write(audioPath, `AUDIO ${n}`);
-    const added = await assets.addAsset({ type: 'sound', name: `Sound ${n}`, tags: [], collection: COLLECTION, audioPath, kind: 'music', licence: 'unknown', streaming: 'unknown' });
-    trial.created.add(added.id);
-  } else if (roll < 0.55) {
-    await updateSounds(assets, [sound.id], { kind: 'ambience', trimDb: Math.floor(trial.roll() * 10) - 5, name: `Sound ${n}` });
-  } else if (roll < 0.75) {
-    const file = vault.app.vault.getFileByPath(sound.audioPath);
-    if (file) {
-      const to = `${sound.audioPath.slice(0, sound.audioPath.lastIndexOf('/'))}/${n}.mp3`;
-      await vault.app.fileManager.renameFile(file, to);
-      await new FileReferenceService(vault.app).handleFileRenamed(sound.audioPath, to);
-    }
-  } else if (roll < 0.88) {
-    trial.deleted.add(sound.id);
-    await assets.deleteAsset(sound.id);
-  } else {
-    const target = trial.pick((await assets.getCollections()).filter((collection) => collection.id !== COLLECTION));
-    if (target) await transferAssets(vault.app, assets, { assetIds: [sound.id], targetCollectionId: target.id, mode: 'move' });
   }
 }
 
@@ -250,168 +198,5 @@ async function runTrial(seed: number): Promise<void> {
 describe('two devices sharing a library through a file sync', () => {
   it.each(Array.from({ length: TRIALS }, (_, index) => index + 1))('converge without losing records (seed %i)', async (seed) => {
     await runTrial(seed);
-  });
-
-  it('a record that arrives before its long track stays on the other device, waits, and finds the track', async () => {
-    const a = await startDevice('a');
-    await a.assets.createCollection(COLLECTION);
-    const b = await startDevice('b', synced(a.vault), syncedFolders(a.vault));
-    const sync = new FakeSync(a.vault, b.vault, seededRandom(1));
-    await settle(sync, [a, b]);
-
-    const audioPath = `atlas-vtt/collections/${COLLECTION}/sounds/long.mp3`;
-    await a.vault.app.vault.adapter.write(audioPath, 'AUDIO');
-    const sound = await a.assets.addAsset({ type: 'sound', name: 'Long', tags: [], collection: COLLECTION, audioPath, kind: 'music', licence: 'unknown', streaming: 'unknown' });
-
-    // The record's small file is carried first; the track is still on its way.
-    const record = `atlas-vtt/collections/${COLLECTION}/sounds/${sound.id}.json`;
-    await b.vault.app.vault.adapter.write(record, a.vault.files.get(record)!);
-    await b.assets.reconcileWithVault();
-    await b.assets.reconcileWithVault();
-    expect(await b.assets.getAssetById(sound.id)).toMatchObject({ audioPath });
-    expect(b.vault.files.has(audioPath)).toBe(false);
-    // Nothing of what waits on the second device went back over the first.
-    await settle(sync, [a, b]);
-    expect(b.vault.files.get(audioPath)).toBe('AUDIO');
-    expect(a.vault.files.has(record)).toBe(true);
-    expect(await library(b.assets)).toEqual(await library(a.assets));
-    for (const device of [a, b]) device.assets.cancelScheduledChecks();
-  });
-
-  it('a file used on both devices at once is one record, wherever each keeps the folder', async () => {
-    const a = await startDevice('a');
-    await a.assets.createCollection(COLLECTION);
-    const b = await startDevice('b', synced(a.vault), syncedFolders(a.vault));
-    const sync = new FakeSync(a.vault, b.vault, seededRandom(3));
-    await settle(sync, [a, b]);
-    const file = { kind: 'ambience' as const, name: 'Rain.ogg', path: 'Weather/Rain.ogg', size: 7, mtime: 1 };
-    const [onA] = await recordsForFiles(a.assets, EXTERNAL_LIBRARY, [file], COLLECTION, 1000);
-    const [onB] = await recordsForFiles(b.assets, EXTERNAL_LIBRARY, [file], COLLECTION, 2000);
-    expect(onB?.id).toBe(onA?.id);
-    expect(onA?.id).toBe(recordIdFor(COLLECTION, 'atlas-sound:ambience/Weather/Rain.ogg'));
-    await settle(sync, [a, b]);
-    const records = await a.assets.getAssets(COLLECTION, 'sound');
-    expect(records.map((record) => record.audioPath)).toEqual(['atlas-sound:ambience/Weather/Rain.ogg']);
-    expect(records[0]?.kind).toBe('ambience');
-    expect(await library(b.assets)).toEqual(await library(a.assets));
-    for (const device of [a, b]) device.assets.cancelScheduledChecks();
-  });
-
-  it('browsing writes nothing, and a record of a file outside the vault never takes a vault file of its name', async () => {
-    const a = await startDevice('a');
-    await a.assets.createCollection(COLLECTION);
-    const before = JSON.stringify(synced(a.vault));
-    await a.vault.app.vault.adapter.write('Library/Rain.ogg', 'UNRELATED');
-    const [made] = await recordsForFiles(a.assets, EXTERNAL_LIBRARY, [{ kind: 'ambience', name: 'Rain.ogg', path: 'Weather/Rain.ogg', size: 7, mtime: 1 }], COLLECTION);
-    expect(before).not.toContain('Rain');
-    await a.assets.reconcileWithVault();
-    await a.assets.reconcileWithVault();
-    expect(await a.assets.getAssetById(made!.id)).toMatchObject({ audioPath: 'atlas-sound:ambience/Weather/Rain.ogg' });
-    a.assets.cancelScheduledChecks();
-  });
-
-  it('a rename on one device reaches the other, and an edit made there meanwhile survives', async () => {
-    const a = await startDevice('a');
-    await a.assets.createCollection(COLLECTION);
-    const b = await startDevice('b', synced(a.vault), syncedFolders(a.vault));
-    const sync = new FakeSync(a.vault, b.vault, seededRandom(2));
-    await settle(sync, [a, b]);
-    await a.vault.app.vault.adapter.write('Library/rain.mp3', 'AUDIO');
-    const sound = await a.assets.addAsset({ type: 'sound', name: 'Rain', tags: [], collection: COLLECTION, audioPath: 'Library/rain.mp3', kind: 'music', licence: 'unknown', streaming: 'unknown' });
-    await settle(sync, [a, b]);
-
-    await a.vault.app.fileManager.renameFile(a.vault.app.vault.getFileByPath('Library/rain.mp3')!, 'Library/storm.mp3');
-    await new FileReferenceService(a.vault.app).handleFileRenamed('Library/rain.mp3', 'Library/storm.mp3');
-    await settle(sync, [a, b]);
-    expect(await b.assets.getAssetById(sound.id)).toMatchObject({ audioPath: 'Library/storm.mp3' });
-    expect(await library(b.assets)).toEqual(await library(a.assets));
-    for (const device of [a, b]) device.assets.cancelScheduledChecks();
-  });
-});
-
-describe('moods on two devices sharing a library through a file sync', () => {
-  const FOLDER = `atlas-vtt/collections/${COLLECTION}/moods`;
-
-  interface MoodDevice { vault: InMemoryApp; store: MoodStore }
-
-  function moodDevice(): MoodDevice {
-    const vault = createInMemoryApp({ folders: ['atlas-vtt/collections', FOLDER] });
-    return { vault, store: MoodStore.forApp(vault.app) };
-  }
-
-  function fileOf(vault: InMemoryApp, path: string): TFile {
-    const file = new TFile(path);
-    file.stat = { ctime: 0, mtime: 0, size: 0 };
-    return file;
-  }
-
-  /** One exchange, told to each device as the vault's events would tell it. */
-  async function deliver(sync: FakeSync, devices: readonly MoodDevice[]): Promise<void> {
-    const before = devices.map(({ vault }) => new Map(vault.files));
-    await sync.exchange();
-    devices.forEach(({ vault }, index) => {
-      for (const [path, content] of vault.files) {
-        if (!path.startsWith(`${FOLDER}/`) || before[index]!.get(path) === content) continue;
-        vault.emit(before[index]!.has(path) ? 'modify' : 'create', fileOf(vault, path));
-      }
-      for (const path of before[index]!.keys()) {
-        if (path.startsWith(`${FOLDER}/`) && !vault.files.has(path)) vault.emit('delete', fileOf(vault, path));
-      }
-    });
-  }
-
-  /** Lets the events' reads finish, and every write. */
-  async function rest(devices: readonly MoodDevice[]): Promise<void> {
-    for (const { store } of devices) await store.flush();
-    await new Promise((resolve) => { setTimeout(resolve, 0); });
-  }
-
-  const moodsOn = ({ store }: MoodDevice): unknown[] => store.moodsOf(COLLECTION).map(({ id, name, order, layers }) => ({ id, name, order, layers }));
-
-  it.each(Array.from({ length: TRIALS }, (_, index) => index + 1))('converge, whoever edits what (seed %i)', async (seed) => {
-    const random = seededRandom(seed);
-    const devices = [moodDevice(), moodDevice()] as const;
-    const sync = new FakeSync(devices[0].vault, devices[1].vault, random);
-    for (const { store } of devices) await store.whenLoaded(COLLECTION);
-    const pickFrom = <T>(items: readonly T[]): T | undefined => items[Math.floor(random() * items.length)];
-
-    for (let step = 0; step < STEPS; step++) {
-      for (const device of devices) {
-        const mood = pickFrom(device.store.moodsOf(COLLECTION));
-        const roll = random();
-        if (roll < 0.35 || !mood) device.store.createMood(COLLECTION, { name: `Mood ${step}`, fadeSeconds: 4, music: 'keep', layers: [] });
-        else if (roll < 0.75) device.store.saveMood(COLLECTION, { ...mood, name: `Edit ${step}`, layers: [{ sound: `s${step}`, levelDb: -1 }] });
-        else if (roll < 0.9) device.store.removeMood(COLLECTION, mood.id);
-      }
-      await rest(devices);
-      if (random() < 0.5) {
-        await deliver(sync, devices);
-        await rest(devices);
-      }
-    }
-    for (let round = 0; round < 3; round++) {
-      await deliver(sync, devices);
-      await rest(devices);
-    }
-
-    expect(moodsOn(devices[1]), `seed ${seed}: both devices hold the same moods`).toEqual(moodsOn(devices[0]));
-    const fresh = MoodStore.forApp(createInMemoryApp({ files: Object.fromEntries(devices[0].vault.files), folders: [FOLDER] }).app);
-    await fresh.whenLoaded(COLLECTION);
-    expect(fresh.moodsOf(COLLECTION).map(({ id, name }) => ({ id, name })), `seed ${seed}: they hold what the files say`)
-      .toEqual(devices[0].store.moodsOf(COLLECTION).map(({ id, name }) => ({ id, name })));
-    for (const { vault } of devices) MoodStore.release(vault.app);
-  });
-
-  it('two devices saving a mood of one name keep both', async () => {
-    const devices = [moodDevice(), moodDevice()] as const;
-    const sync = new FakeSync(devices[0].vault, devices[1].vault, seededRandom(3));
-    const made = devices.map(({ store }) => store.createMood(COLLECTION, { name: 'Tavern', fadeSeconds: 4, music: 'keep', layers: [] }));
-    await rest(devices);
-    await deliver(sync, devices);
-    await rest(devices);
-    for (const device of devices) {
-      expect(device.store.moodsOf(COLLECTION).map((mood) => mood.id).sort()).toEqual(made.map((mood) => mood.id).sort());
-    }
-    for (const { vault } of devices) MoodStore.release(vault.app);
   });
 });

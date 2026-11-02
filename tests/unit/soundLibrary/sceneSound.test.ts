@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { sceneAdoption } from '../../../src/app/services/assetTransfer/sceneAdoption';
-import { dropSceneSoundFromJson, readSceneSound } from '../../../src/app/soundLibrary/sceneSound';
+import { readSceneSound } from '../../../src/app/soundLibrary/sceneSound';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import { createSnapshot } from '../../../src/app/snapshots/sceneSnapshotFormat';
@@ -105,14 +105,9 @@ describe('the scene file\'s sound', () => {
 });
 
 describe('a scene joining another collection', () => {
-  it('loses its links to moods', () => {
+  it('keeps its links to moods, as moods belong to no collection', () => {
     const file = sceneFile({ sound: { mood: 'a' } });
     const adopted = sceneAdoption('Other', vanillaSystemSettings()).map(file);
-    expect((JSON.parse(adopted!) as { state: Record<string, unknown> }).state.sound).toBeUndefined();
-  });
-
-  it('drops nothing where there is nothing', () => {
-    expect(dropSceneSoundFromJson(sceneFile({}))).toBeNull();
-    expect(dropSceneSoundFromJson('[]')).toBeNull();
+    expect(adopted === null || (JSON.parse(adopted) as { state: Record<string, unknown> }).state.sound).toEqual(adopted === null ? true : { mood: 'a' });
   });
 });

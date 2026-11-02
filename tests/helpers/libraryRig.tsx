@@ -6,11 +6,12 @@ import { LibraryView } from '../../src/app/react/components/dm-screen/sound/libr
 import { AtlasUIContext, type AtlasUIContextValue } from '../../src/app/react/root/AtlasUIContext';
 import { ContextMenuProvider } from '../../src/app/react/root/ContextMenuContext';
 import { ViewStoreProvider } from '../../src/app/react/ViewStoreContext';
-import { AssetService } from '../../src/app/services/AssetService';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import type { SoundKind } from '../../src/app/sound/soundTypes';
 import { SoundDirector } from '../../src/app/soundDirector/SoundDirector';
+import { MoodStore } from '../../src/app/soundLibrary/MoodStore';
 import { SoundLibrary } from '../../src/app/soundLibrary/SoundLibrary';
+import { SoundRecordStore } from '../../src/app/soundLibrary/SoundRecordStore';
 import { SoundRoots } from '../../src/app/soundLibrary/SoundRoots';
 import type { SharedSoundRoots } from '../../src/app/soundLibrary/soundRootsStore';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
@@ -18,14 +19,12 @@ import { withSound } from '../mocks/experimentalFeatures';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { FakeSoundLocation } from './fakeSoundLocation';
 
-export const COLLECTION = 'Fen';
-
 export interface LibraryRig {
   app: App;
   library: SoundLibrary;
   director: SoundDirector;
   store: ViewAtlasStore;
-  assets: AssetService;
+  records: SoundRecordStore;
   roots: SoundRoots;
   locations: Record<SoundKind, FakeSoundLocation>;
   local: Partial<Record<SoundKind, string>>;
@@ -71,10 +70,8 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
   Object.assign(app, { appId: `library-${Math.random()}` });
   new SettingsService(app);
   withSound(app);
-  AssetService.resetInstance();
-  const assets = AssetService.getInstance(app);
-  await assets.initialize();
-  await assets.createCollection(COLLECTION);
+  const records = SoundRecordStore.forApp(app);
+  await records.whenLoaded();
 
   const { library, roots, locations, local } = fakeLibrary(app, options);
   const director = SoundDirector.forApp(app);
@@ -83,7 +80,7 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
   let root: Root | null = null;
   const value = { app, view: null, pixiApp: null, renderer: null } as AtlasUIContextValue;
   return {
-    app, library, director, store, assets, roots, locations, local,
+    app, library, director, store, records, roots, locations, local,
     mount: (host, page) => {
       root = createRoot(host);
       act(() => {
@@ -92,7 +89,7 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
             <ViewStoreProvider store={store}>
               <TooltipProvider>
                 <ContextMenuProvider>
-                  {page ?? <LibraryView collectionId={COLLECTION} />}
+                  {page ?? <LibraryView />}
                 </ContextMenuProvider>
               </TooltipProvider>
             </ViewStoreProvider>
@@ -104,7 +101,8 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
       act(() => root?.unmount());
       SoundLibrary.release(app);
       SoundDirector.release(app);
-      assets.cancelScheduledChecks();
+      MoodStore.release(app);
+      SoundRecordStore.release(app);
     },
   };
 }

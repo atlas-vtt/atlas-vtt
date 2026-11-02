@@ -35,7 +35,7 @@ const pressFolder = async (name: string): Promise<void> => {
   await settled();
 };
 
-const PAGE = createElement(SoundPane, { active: true, headerSlot: null });
+const PAGE = createElement(SoundPane, { active: true });
 const LIBRARY_SHOT = (host: HTMLElement): HTMLElement => host.closest<HTMLElement>('.lib-frame')!;
 
 /** No side of the page leaves its text hanging: all it holds is laid out inside it, or hidden. */
@@ -242,7 +242,7 @@ describe('the sound library', () => {
   it('a root linked only on another device says so, and its records wait', async () => {
     await page.viewport(1644, 960);
     rig = await mockLibrary({ local: {}, shared: { music: { type: 'external' }, ambience: { type: 'vault', path: 'Audio/Ambience' } } });
-    await rig.assets.addIdentifiedAssets([{ id: 'w1', type: 'sound', name: 'Road to Wolfhaven', tags: [], collection: 'Fen', createdAt: 1, modifiedAt: 1, audioPath: 'atlas-sound:music/Road to Wolfhaven.ogg', kind: 'music', licence: 'unknown', streaming: 'unknown' }]);
+    rig.records.add([{ id: 'w1', name: 'Road to Wolfhaven', tags: [], createdAt: 1, modifiedAt: 1, audioPath: 'atlas-sound:music/Road to Wolfhaven.ogg', kind: 'music', licence: 'unknown', streaming: 'unknown' }]);
     frame = stageFrame(ATLAS_DARK);
     rig.mount(frame.host, PAGE);
     await settled();

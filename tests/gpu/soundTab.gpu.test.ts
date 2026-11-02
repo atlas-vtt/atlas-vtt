@@ -4,7 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 import { MusicWave } from '@/app/react/components/dm-screen/sound/musicWave';
 import type { PlayersCopy } from '@/app/soundDirector/tableClock';
 import { PIN_ICON_PATHS } from '@/app/types/pinIcons';
-import { COLLECTION, DARK, LIGHT, openSoundTab, seedMoods, SOUNDS, type SoundTab } from './sound/soundTabHarness';
+import { DARK, LIGHT, openSoundTab, seedMoods, SOUNDS, type SoundTab } from './sound/soundTabHarness';
 
 // Statblocks reach Node's `events` through the token link service, which a browser test cannot import; this file is about the page beside them.
 vi.mock('../../src/app/react/components/dm-screen/DMStatblocksPane', async () => {
@@ -62,11 +62,11 @@ describe('the DM screen’s Sound page', () => {
     let sending = true;
     const copies = new Map<string, PlayersCopy>();
     const listeners = new Set<() => void>();
-    const prepared: string[] = [];
+    const prepared: unknown[] = [];
     await act(async () => {
       tab?.director.players.use({
         copyOf: (record) => copies.get(record.name) ?? { state: 'ready' },
-        prepare: (collection) => void prepared.push(collection),
+        prepare: (sounds) => void prepared.push(sounds ?? 'all moods'),
         get sending() { return sending; },
         setSending: (on) => {
           sending = on;
@@ -103,7 +103,7 @@ describe('the DM screen’s Sound page', () => {
       return [...document.querySelectorAll<HTMLElement>('[role^="menuitem"]')].find((item) => item.textContent?.includes(text))!;
     };
     await userEvent.click(await menuItem('Prepare for players'));
-    expect(prepared).toEqual([COLLECTION]);
+    expect(prepared).toEqual(['all moods']);
     await expect.poll(() => document.querySelector('[role="menu"]')).toBeNull();
     await userEvent.click(await menuItem('Send sound to players'));
     expect(sending).toBe(false);
@@ -579,7 +579,6 @@ describe('the DM screen’s Sound page', () => {
       await userEvent.click(document.querySelector<HTMLElement>('.atlas-dm-screen-pages [role="radio"]')!);
       await sleep(250);
       await page.screenshot({ path: `${SHOTS}/statblocks-${name}.png` });
-      expect(COLLECTION).toBe('Fen');
     });
   }
 

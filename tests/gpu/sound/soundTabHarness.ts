@@ -14,13 +14,14 @@ import DMScreen from '@/app/react/components/DMScreen';
 import { AtlasUIContext } from '@/app/react/root/AtlasUIContext';
 import { ContextMenuProvider } from '@/app/react/root/ContextMenuContext';
 import { ViewStoreProvider } from '@/app/react/ViewStoreContext';
-import { AssetService, type NewAsset } from '@/app/services/AssetService';
 import { SettingsService } from '@/app/services/SettingsService';
 import { TooltipProvider } from '@/app/packages/components/primitives/tooltip';
 import type { Mood, SoundRecord } from '@/app/sound/soundTypes';
 import { SoundDirector } from '@/app/soundDirector/SoundDirector';
 import { MoodStore } from '@/app/soundLibrary/MoodStore';
-import { soundRecordsOf } from '@/app/soundLibrary/soundRecords';
+import { recordIdFor } from '@/app/soundLibrary/libraryRecords';
+import { soundRecordOf } from '@/app/soundLibrary/soundRecords';
+import { SoundRecordStore } from '@/app/soundLibrary/SoundRecordStore';
 import { createViewAtlasStore, type ViewAtlasStore } from '@/app/storeFactory';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
 import { fakeLibrary, type LibraryRig } from '../../helpers/libraryRig';
@@ -53,8 +54,6 @@ export const ATLAS = `${SHARED}
     --background-modifier-hover: rgba(240, 230, 208, 0.06); --background-modifier-active-hover: rgba(240, 230, 208, 0.1); --background-modifier-form-field: #2b241c; --background-modifier-error: #b03a3a; --divider-color: #4a4030;
     --interactive-normal: #2b241c; --interactive-accent: hsl(0, 69%, 57%); --text-normal: #ded2b8; --text-muted: #a89878; --text-faint: #7d6f55; --text-accent: hsl(0, 69%, 67%); --text-warning: #e3b341; --text-on-accent: #fff;
     --h3-font: 'Atlas Fantaisie Artistique'; }`;
-
-export const COLLECTION = 'Fen';
 
 /** A sound of the tab: a fixture's URL, or written here in the shape of a real one. */
 interface TabSound {
@@ -138,7 +137,7 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
   document.body.classList.toggle('theme-dark', theme !== LIGHT);
 
   const paths = Object.fromEntries(Object.keys(sounds).map((name) => [`audio/${name}.ogg`, 'audio']));
-  const { app } = createInMemoryApp({ folders: ['atlas-vtt/collections'], files: paths });
+  const { app } = createInMemoryApp({ files: paths });
   Object.assign(app, { appId });
   const bytes = new Map<string, ArrayBuffer>();
   for (const [name, { url, synth }] of Object.entries(sounds)) bytes.set(`audio/${name}.ogg`, url ? await (await fetch(url)).arrayBuffer() : synthWav(synth?.seconds ?? 1, synth?.seed ?? 1));
@@ -150,23 +149,19 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
 
   new SettingsService(app);
   withSound(app);
-  AssetService.resetInstance();
-  const assets = AssetService.getInstance(app);
-  await assets.initialize();
-  await assets.createCollection(COLLECTION);
-  for (const [name, { kind }] of Object.entries(sounds)) {
-    const sound: NewAsset = { type: 'sound', name, tags: [], collection: COLLECTION, audioPath: `audio/${name}.ogg`, kind, licence: 'unknown', streaming: 'unknown' };
-    await assets.addAsset(sound);
-  }
+  const stored = SoundRecordStore.forApp(app);
+  await stored.whenLoaded();
+  stored.add(Object.entries(sounds).map(([name, { kind }]) => ({ id: recordIdFor(`audio/${name}.ogg`), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath: `audio/${name}.ogg`, kind, licence: 'unknown', streaming: 'unknown' })));
+  await stored.flush();
   const held = linked ? fakeLibrary(app, MOCK_LIBRARY) : null;
   if (held) await fillMockLibrary(held.locations);
   const moods = MoodStore.forApp(app);
-  await moods.whenLoaded(COLLECTION);
+  await moods.whenLoaded();
   const director = SoundDirector.forApp(app);
-  const records = new Map((await soundRecordsOf(assets, COLLECTION)).map((record) => [record.name, record]));
+  const records = new Map(stored.all().map(soundRecordOf).map((record) => [record.name, record]));
 
   const store = createViewAtlasStore(app, `sound-tab-${Math.random()}`);
-  store.setState({ persistenceEnabled: false, isDMScreenOpen: true, dmScreenPage: 'sound', mapPath: `atlas-vtt/collections/${COLLECTION}/scenes/a.atlasmap` });
+  store.setState({ persistenceEnabled: false, isDMScreenOpen: true, dmScreenPage: 'sound', mapPath: 'atlas-vtt/collections/Fen/scenes/a.atlasmap' });
   viewport.className = 'workspace-leaf mod-active';
   viewport.innerHTML = '';
   const host = viewport.createDiv({ cls: 'atlas-vtt-plugin atlas-react-ui-container' });
@@ -192,11 +187,12 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
     commits,
     moods,
     locations: held?.locations ?? null,
-    moodsOf: () => moods.moodsOf(COLLECTION),
+    moodsOf: () => moods.moods(),
     unmount: () => {
       act(() => root.unmount());
       SoundDirector.release(app);
       MoodStore.release(app);
+      SoundRecordStore.release(app);
     },
   };
 }
@@ -218,6 +214,6 @@ export function seedMoods(tab: SoundTab): void {
     ['Dawn', 'none', ['Rain']],
   ];
   for (const [name, music, layers] of moods) {
-    tab.moods.createMood(COLLECTION, { name, fadeSeconds: 2, music, layers: layers.map((layer) => ({ sound: id(layer), levelDb: -3 })) });
+    tab.moods.createMood({ name, fadeSeconds: 2, music, layers: layers.map((layer) => ({ sound: id(layer), levelDb: -3 })) });
   }
 }

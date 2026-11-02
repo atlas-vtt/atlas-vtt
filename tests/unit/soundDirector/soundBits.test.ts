@@ -69,7 +69,7 @@ describe('the facts of this device', () => {
     expect(loadOutput(store)).toEqual({ id: 'usb', label: 'USB' });
     store.saveLocalStorage('atlas-vtt:sound-output', { id: 3 });
     expect(loadOutput(store)).toBeNull();
-    const last = { mood: { collectionId: 'c', id: 'm' }, mix: { fadeSeconds: 2, music: { tracks: ['a'], shuffle: true, levelDb: -3 }, layers: [{ sound: 'r', levelDb: 0 }] } };
+    const last = { mood: { id: 'm' }, mix: { fadeSeconds: 2, music: { tracks: ['a'], shuffle: true, levelDb: -3 }, layers: [{ sound: 'r', levelDb: 0 }] } };
     saveLastMix(store, last);
     expect(loadLastMix(store)).toEqual(last);
     store.saveLocalStorage('atlas-vtt:sound-last', { mix: { music: 7 } });

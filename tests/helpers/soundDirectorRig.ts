@@ -52,7 +52,7 @@ export interface DirectorRig {
   /** Conversions under way, each to be let go by the test. */
   conversions: Array<{ source: Blob; finish: () => void; fail: (error: unknown) => void }>;
   storage: Map<string, unknown>;
-  moods: Map<string, Mood[]>;
+  moods: { current: Mood[] };
   scenes: Map<string, SceneSound>;
   notices: string[];
   settings: SoundSettings & { on: boolean };
@@ -71,7 +71,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
   const identities = new Map<string, SoundIdentity>();
   const conversions: DirectorRig['conversions'] = [];
   const storage = new Map<string, unknown>();
-  const moods = new Map<string, Mood[]>();
+  const moods: DirectorRig['moods'] = { current: [] };
   const scenes = new Map<string, SceneSound>();
   const notices: string[] = [];
   const settings: DirectorRig['settings'] = { ...DEFAULT_SOUND_SETTINGS, on };
@@ -109,7 +109,6 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
     pin: () => undefined,
     unpin: () => undefined,
   };
-  const moodOf = (collectionId: string): Mood[] => moods.get(collectionId) ?? [];
   const deps: SoundDirectorDeps = {
     storage: {
       loadLocalStorage: (key: string) => storage.get(key) ?? null,
@@ -125,16 +124,16 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       },
     },
     moods: {
-      moodsOf: moodOf,
-      mood: (collectionId, id) => moodOf(collectionId).find((one) => one.id === id) ?? null,
+      moods: () => moods.current,
+      mood: (id) => moods.current.find((one) => one.id === id) ?? null,
       whenLoaded: () => Promise.resolve(),
-      createMood: (collectionId, mix) => {
-        const made: Mood = { ...mix, id: `made-${moodOf(collectionId).length}`, order: moodOf(collectionId).length + 1 };
-        moods.set(collectionId, [...moodOf(collectionId), made]);
+      createMood: (mix) => {
+        const made: Mood = { ...mix, id: `made-${moods.current.length}`, order: moods.current.length + 1 };
+        moods.current = [...moods.current, made];
         return made;
       },
-      saveMood: (collectionId, changed) => {
-        moods.set(collectionId, moodOf(collectionId).map((one) => (one.id === changed.id ? changed : one)));
+      saveMood: (changed) => {
+        moods.current = moods.current.map((one) => (one.id === changed.id ? changed : one));
         return true;
       },
     },
@@ -177,7 +176,6 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       return () => fileListeners.delete(listener);
     },
     readSceneSound: (path) => Promise.resolve(scenes.get(path) ?? null),
-    collectionOf: () => 'c',
     notify: (message) => notices.push(message),
   };
   const director = new SoundDirector(deps);

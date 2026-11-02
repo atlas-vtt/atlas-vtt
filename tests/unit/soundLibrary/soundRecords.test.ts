@@ -1,44 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import type { SoundAsset } from '../../../src/app/services/AssetService';
-import { parseRecordFile, serializeRecord } from '../../../src/app/services/library/recordFile';
-import { isRecordFileCandidate } from '../../../src/app/services/library/libraryPaths';
-import { ownedPaths, primaryPath, recordFilePath } from '../../../src/app/services/vault-sync/assetFiles';
-import { isReservedCollectionPath } from '../../../src/app/services/vault-sync/reservedPaths';
-import { isAudioPath } from '../../../src/app/soundLibrary/soundFiles';
+import { isAudioPath, isSoundDataPath, MOODS_FOLDER, RECORDS_FOLDER } from '../../../src/app/soundLibrary/soundFiles';
 import { MAX_TRIM_DB } from '../../../src/app/sound/codec/soundInfo';
-import { defaultSoundKind, soundRecordOf } from '../../../src/app/soundLibrary/soundRecords';
+import { defaultSoundKind, soundAfterMove, soundRecordOf, withChanges, type StoredSound } from '../../../src/app/soundLibrary/soundRecords';
 
-const SOUND: SoundAsset = {
-  id: 'sound-1', type: 'sound', name: 'Rain', tags: ['weather'], collection: 'Fen', createdAt: 1, modifiedAt: 2,
+const SOUND: StoredSound = {
+  id: 'sound-1', name: 'Rain', tags: ['weather'], createdAt: 1, modifiedAt: 2,
   audioPath: 'Music/Rain.mp3', kind: 'ambience', licence: 'cc0', streaming: 'unknown', trimDb: -3, credit: 'A. Person',
 };
-
-describe('a sound\'s record file', () => {
-  it('lies in the collection\'s sounds folder, wherever the audio lies', () => {
-    expect(recordFilePath(SOUND)).toBe('atlas-vtt/collections/Fen/sounds/sound-1.json');
-    expect(isRecordFileCandidate(recordFilePath(SOUND))).toBe(true);
-    expect(primaryPath(SOUND)).toBe('Music/Rain.mp3');
-    expect(ownedPaths(SOUND)).toEqual(['Music/Rain.mp3', 'atlas-vtt/collections/Fen/sounds/sound-1.json']);
-  });
-
-  it('round-trips the whole record', () => {
-    const path = recordFilePath(SOUND);
-    expect(parseRecordFile(serializeRecord(SOUND), path)?.record).toEqual(SOUND);
-  });
-
-  it('holds a place of the audio but none of its own, and takes its collection from where it lies', () => {
-    const moved = 'atlas-vtt/collections/Hills/sounds/sound-1.json';
-    const record = parseRecordFile(serializeRecord(SOUND), moved)?.record as SoundAsset;
-    expect(record.collection).toBe('Hills');
-    expect(record.audioPath).toBe('Music/Rain.mp3');
-    expect('filePath' in record).toBe(false);
-  });
-
-  it('is no record without an audio path', () => {
-    const { audioPath: _gone, ...rest } = SOUND;
-    expect(parseRecordFile(serializeRecord(rest as SoundAsset), recordFilePath(SOUND))?.record).toBeNull();
-  });
-});
 
 describe('reading a sound as the engine does', () => {
   it('names the audio as its file', () => {
@@ -50,7 +18,7 @@ describe('reading a sound as the engine does', () => {
   it('reads what it cannot read as unset', () => {
     const hostile = {
       ...SOUND, kind: 'effect', licence: 'mine', streaming: 'sure', trimDb: 'loud', credit: 4, sourceUrl: {}, loop: { startFrame: 9, endFrame: 3 },
-    } as unknown as SoundAsset;
+    } as unknown as StoredSound;
     expect(soundRecordOf(hostile)).toEqual({ id: 'sound-1', name: 'Rain', kind: 'music', filePath: 'Music/Rain.mp3', tags: ['weather'], licence: 'unknown', streaming: 'unknown' });
     expect(soundRecordOf({ ...SOUND, trimDb: 500 }).trimDb).toBe(MAX_TRIM_DB);
     expect(soundRecordOf({ ...SOUND, trimDb: -500 }).trimDb).toBe(-MAX_TRIM_DB);
@@ -85,9 +53,31 @@ describe('the files that count', () => {
     expect(isAudioPath(path)).toBe(false);
   });
 
-  it('moods are Atlas\' own files, sounds are not', () => {
-    expect(isReservedCollectionPath('atlas-vtt/collections/Fen/moods/a.json')).toBe(true);
-    expect(isReservedCollectionPath('atlas-vtt/collections/Fen/sounds/a.mp3')).toBe(false);
-    expect(isRecordFileCandidate('atlas-vtt/collections/Fen/moods/a.json')).toBe(false);
+  it('moods and records are Atlas\' own files, the default import folders are not', () => {
+    expect(isSoundDataPath(MOODS_FOLDER)).toBe(true);
+    expect(isSoundDataPath(`${RECORDS_FOLDER}/a.json`)).toBe(true);
+    expect(isSoundDataPath('atlas-vtt/sounds/music/a.mp3')).toBe(false);
+    expect(isSoundDataPath('atlas-vtt/sounds/moods2/a.mp3')).toBe(false);
+  });
+});
+
+describe('a record changing', () => {
+  it('removes a field given as undefined and keeps what it does not know', () => {
+    const later = { ...SOUND, stems: 3 };
+    const changed = withChanges(later, { trimDb: undefined, credit: 'B' }, 9);
+    expect(changed).toMatchObject({ credit: 'B', stems: 3, modifiedAt: 9 });
+    expect('trimDb' in changed).toBe(false);
+  });
+
+  it('follows a file and a folder, its name only where that was the file\'s, and nothing else', () => {
+    expect(soundAfterMove(SOUND, 'Music/Rain.mp3', 'Music/Storm.mp3', 9)).toMatchObject({ audioPath: 'Music/Storm.mp3', name: 'Storm', modifiedAt: 9 });
+    expect(soundAfterMove({ ...SOUND, name: 'Mine' }, 'Music/Rain.mp3', 'Music/Storm.mp3', 9)).toMatchObject({ audioPath: 'Music/Storm.mp3', name: 'Mine' });
+    expect(soundAfterMove(SOUND, 'Music', 'Audio', 9)).toMatchObject({ audioPath: 'Audio/Rain.mp3', name: 'Rain' });
+    expect(soundAfterMove(SOUND, 'Mus', 'Audio', 9)).toBeNull();
+  });
+
+  it('where a rename\'s event has moved it already, takes only the kind of a move between roots', () => {
+    expect(soundAfterMove(SOUND, 'Elsewhere/Rain.mp3', 'Music/Rain.mp3', 9, 'music')).toMatchObject({ audioPath: 'Music/Rain.mp3', kind: 'music' });
+    expect(soundAfterMove(SOUND, 'Elsewhere/Rain.mp3', 'Music/Rain.mp3', 9, 'ambience')).toBeNull();
   });
 });

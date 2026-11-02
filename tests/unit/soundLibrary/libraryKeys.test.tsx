@@ -71,13 +71,13 @@ describe('the keys of the rows', () => {
   it('Enter sends music to the mix as next, with a record only then', async () => {
     const next = vi.spyOn(rig.director.desk, 'playNext').mockImplementation(() => undefined);
     vi.spyOn(rig.director, 'tap').mockImplementation(() => undefined);
-    expect(await rig.assets.getAssets(undefined, 'sound')).toEqual([]);
+    expect(rig.records.all()).toEqual([]);
     press('ArrowDown');
-    expect(await rig.assets.getAssets(undefined, 'sound')).toEqual([]);
+    expect(rig.records.all()).toEqual([]);
     press('Enter');
     await waitFor(() => expect(next).toHaveBeenCalledTimes(1));
     expect(next.mock.calls[0]?.[0]).toMatchObject({ kind: 'music', filePath: 'atlas-sound:music/Battle/a.mp3' });
-    expect(await rig.assets.getAssets(undefined, 'sound')).toHaveLength(1);
+    expect(rig.records.all()).toHaveLength(1);
   });
 
   it('Space previews to the GM alone, and writes nothing', async () => {
@@ -86,7 +86,7 @@ describe('the keys of the rows', () => {
     press(' ');
     await waitFor(() => expect(preview).toHaveBeenCalledTimes(1));
     expect(preview.mock.calls[0]?.[0]).toMatchObject({ name: 'a' });
-    expect(await rig.assets.getAssets(undefined, 'sound')).toEqual([]);
+    expect(rig.records.all()).toEqual([]);
     expect(rig.director.snapshot().mix.table.music).toBeNull();
   });
 

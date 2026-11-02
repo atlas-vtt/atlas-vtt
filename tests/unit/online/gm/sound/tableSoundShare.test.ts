@@ -50,8 +50,8 @@ class Rig {
   share: TableSoundShare;
 
   constructor(public sending = true) {
-    const moods = { moodsOf: () => this.moods, mood: (_: string, id: string) => this.moods.find((mood) => mood.id === id) ?? null };
-    this.seam = new PlayersSeam({ moods: moods as never, readSceneSound: () => Promise.resolve({ mood: 'linked' }), collectionOf: () => 'c' }, () => undefined);
+    const moods = { moods: () => this.moods, mood: (id: string) => this.moods.find((mood) => mood.id === id) ?? null };
+    this.seam = new PlayersSeam({ moods: moods as never, readSceneSound: () => Promise.resolve({ mood: 'linked' }) }, () => undefined);
     const director = {
       get isOn() { return rig().on; },
       snapshot: () => this.snapshot,
@@ -263,9 +263,13 @@ describe('a table\'s sound for players', () => {
     expect(JSON.stringify(hint)).not.toContain(SECRET_NAME);
     expect(rig.offered.some((offer) => offer.handed)).toBe(true);
     rig.offered.length = 0;
-    (rig.share as PlayersSounds).prepare('c');
+    (rig.share as PlayersSounds).prepare();
     await rig.advance(100);
     expect(rig.offered.every((offer) => !offer.handed)).toBe(true);
     expect(rig.offered.length).toBe(2);
+    rig.offered.length = 0;
+    (rig.share as PlayersSounds).prepare([record('a')]);
+    await rig.advance(100);
+    expect(rig.offered.length).toBe(1);
   });
 });

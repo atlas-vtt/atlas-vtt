@@ -2,7 +2,7 @@ import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cdp, page, userEvent } from 'vitest/browser';
 import type { Mood } from '@/app/sound/soundTypes';
-import { ATLAS, COLLECTION, LIGHT, openSoundTab, type SoundTab, type TabSound } from './soundTabHarness';
+import { ATLAS, LIGHT, openSoundTab, type SoundTab, type TabSound } from './soundTabHarness';
 
 vi.mock('../../../src/app/react/components/dm-screen/DMStatblocksPane', async () => {
   const { createElement } = await import('react');
@@ -59,7 +59,7 @@ const LEVELS = [-12, -3, -8, -9, -5, -6, -7, -10];
 function seed(tab: SoundTab): void {
   const id = (name: string): string => tab.records.get(name)?.id ?? name;
   for (const [name, icon, tone, tracks, layers] of MOODS) {
-    tab.moods.createMood(COLLECTION, {
+    tab.moods.createMood({
       name,
       fadeSeconds: 3,
       ...(icon && { icon }),

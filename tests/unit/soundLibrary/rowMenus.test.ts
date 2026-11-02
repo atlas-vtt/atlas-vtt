@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { rowMenu } from '../../../src/app/react/components/dm-screen/sound/library/rowMenus';
 import type { LibraryRow } from '../../../src/app/react/components/dm-screen/sound/library/rowModel';
 import type { LibraryActions } from '../../../src/app/react/components/dm-screen/sound/library/useLibraryActions';
-import type { SoundAsset } from '../../../src/app/services/AssetService';
+import type { StoredSound } from '../../../src/app/soundLibrary/soundRecords';
 
 const file = { kind: 'music' as const, path: 'a.ogg', name: 'a.ogg', size: 1, mtime: 1 };
 const row = { type: 'file', id: 'a', name: 'a', kind: 'music', file } as unknown as LibraryRow;
@@ -13,7 +13,7 @@ function menuFor(credit: string | undefined): { labels: string[]; edit: ReturnTy
     actions: { edit } as unknown as LibraryActions,
     rows: [row],
     entries: [],
-    sound: { name: 'a', credit } as SoundAsset,
+    sound: { name: 'a', credit } as StoredSound,
     beginRename: () => undefined,
   });
   const items = entries.flatMap((entry) => ('label' in entry && entry.type === 'item' ? [entry] : []));
