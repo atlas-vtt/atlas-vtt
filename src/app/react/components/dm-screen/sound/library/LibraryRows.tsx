@@ -15,6 +15,7 @@ import { safeName } from '../../../../../soundLibrary/soundPaths';
 import { soundRecordOf } from '../../../../../soundLibrary/soundRecords';
 import { showNotice } from '../../../../../ui/notice';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
+import { moveFocus } from '../../screenKeys';
 import { useSoundValue } from '../useSound';
 import { LibraryRow, type RowHandlers } from './LibraryRow';
 import { dropOnFolder } from './libraryDrop';
@@ -39,7 +40,7 @@ interface LibraryRowsProps {
   sounds: readonly SoundAsset[];
   held: ReadonlyMap<string, HeldInMix>;
   onOpenFolder: (row: Extract<Row, { type: 'folder' }>) => void;
-  onParent: () => void;
+  onParent: () => boolean;
   onDropFiles: (files: readonly File[]) => void;
 }
 
@@ -177,7 +178,12 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     },
   }), [actions, anchor, inHand, openMenu, primary, rows, selected]);
 
-  const keyDown = useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo: (index) => virtualizer.scrollToIndex(index), actions, primary, inHand, onParent, onOpenFolder, setRenaming, openMenu, list: scroller });
+  const onLeave = (direction: 'left' | 'right' | 'up'): void => {
+    const list = scroller.current;
+    if (list) moveFocus(list.closest('.atlas-sound-pane') ?? list, list, direction);
+  };
+
+  const keyDown = useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo: (index) => virtualizer.scrollToIndex(index), actions, primary, inHand, onParent, onLeave, onOpenFolder, setRenaming, openMenu, list: scroller });
 
   const activeId = rows[activeIndex]?.id;
 

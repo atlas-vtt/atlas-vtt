@@ -10,6 +10,7 @@ import { orderForMove } from '../../../../soundLibrary/moodOrdering';
 import { mayCarryAudio } from '../../../../soundLibrary/soundFiles';
 import { runLibraryImport } from '../../../../soundLibrary/runLibraryImport';
 import { SoundLibrary } from '../../../../soundLibrary/SoundLibrary';
+import { useScrollbarGutter } from '../../../../packages/components/primitives/useScrollbarGutter';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { useAtlasUI } from '../../../root/AtlasUIContext';
 import { useAtlasStore, useViewStoreHook } from '../../../ViewStoreContext';
@@ -37,7 +38,6 @@ interface SoundPaneProps {
 export function SoundPane({ active, headerSlot }: SoundPaneProps): React.JSX.Element {
   const { app, view } = useAtlasUI();
   const mapPath = useAtlasStore((state) => state.mapPath);
-  const soundView = useAtlasStore((state) => state.soundView);
   const store = useViewStoreHook();
   const director = SoundDirector.forApp(app);
   const collection = useSoundCollection(app, mapPath);
@@ -47,6 +47,8 @@ export function SoundPane({ active, headerSlot }: SoundPaneProps): React.JSX.Ele
   const rootRef = useRef<HTMLDivElement>(null);
   const [board] = useState(() => new MeterBoard());
   const [namingMood, setNamingMood] = useState(false);
+  const [moodsSide, setMoodsSide] = useState<HTMLElement | null>(null);
+  useScrollbarGutter(moodsSide);
   const sameCollectionAsMap = mapPath !== null && collectionId !== null && AssetService.getInstance(app).getCollectionForMap(mapPath) === collectionId;
   const sounding = useSoundValue(director, ({ mix }) => mix.table.music !== null || mix.table.layers.length > 0);
   const moodsRead = collectionId !== null && MoodStore.forApp(app).isLoaded(collectionId);
@@ -72,8 +74,8 @@ export function SoundPane({ active, headerSlot }: SoundPaneProps): React.JSX.Ele
     if (!mayCarryAudio(event.dataTransfer)) return;
     event.preventDefault();
     const files = [...event.dataTransfer.files];
-    const { soundView: shown, soundLibraryRoot, soundLibraryFolder } = store.getState();
-    runInBackground(runLibraryImport(SoundLibrary.forApp(app), files, soundLibraryRoot, shown === 'library' ? soundLibraryFolder : ''), 'Importing sounds', t('audio.couldNotAdd', { files: formatList(files.map((file) => file.name)) }));
+    const { soundLibraryRoot, soundLibraryFolder } = store.getState();
+    runInBackground(runLibraryImport(SoundLibrary.forApp(app), files, soundLibraryRoot, soundLibraryFolder), 'Importing sounds', t('audio.couldNotAdd', { files: formatList(files.map((file) => file.name)) }));
   };
 
   return (
@@ -85,10 +87,9 @@ export function SoundPane({ active, headerSlot }: SoundPaneProps): React.JSX.Ele
         onDragOver={(event) => { if (mayCarryAudio(event.dataTransfer)) event.preventDefault(); }}
         onDrop={drop}
       >
-        {soundView === 'library' ? (
+        <div className="atlas-sound-stage">
           <LibraryView collectionId={collectionId} />
-        ) : (
-          <div className="atlas-sound-stage">
+          <div className="atlas-sound-moods" ref={setMoodsSide}>
             {moods.length > 0 && collectionId !== null && <MoodGrid app={app} director={director} collectionId={collectionId} moods={moods} sameCollectionAsMap={sameCollectionAsMap} moveMood={moveMood} onNewMood={nameNewMood} />}
             {moods.length === 0 && moodsRead && (
               <div className="atlas-sound-no-moods">
@@ -97,7 +98,7 @@ export function SoundPane({ active, headerSlot }: SoundPaneProps): React.JSX.Ele
               </div>
             )}
           </div>
-        )}
+        </div>
         <SoundDesk app={app} director={director} collectionId={collectionId} moods={moods} onSaveAs={nameNewMood} />
         <InputModal
           isOpen={namingMood}

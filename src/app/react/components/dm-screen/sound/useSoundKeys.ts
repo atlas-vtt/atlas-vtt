@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from 'react';
 import type { Mood } from '../../../../sound/soundTypes';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
-import { arrowDirection, isControlTarget, moveFocus, screenTakesKey } from '../screenKeys';
+import { arrowDirection, isControlTarget, isWithin, moveFocus, screenTakesKey } from '../screenKeys';
 
 /** The mood a key of the digit row or the keypad presses: by its place, so a layout's symbols change nothing. 0 is the tenth. */
 export function moodIndexOfCode(code: string): number | null {
@@ -23,7 +23,7 @@ interface SoundKeysOptions {
 /**
  * The tab's keys, heard before everything else while no field has focus, and kept from the map: digits
  * press moods, Enter the next one, Backspace is Silence, and the arrows go round the tab. Enter on a
- * focused control is that control's.
+ * focused control is that control's, as a row of the library is, whose list has the arrows too.
  */
 export function useSoundKeys({ active, rootRef, viewId, director, collectionId, moods, moveMood }: SoundKeysOptions): void {
   useEffect(() => {
@@ -38,7 +38,7 @@ export function useSoundKeys({ active, rootRef, viewId, director, collectionId, 
       const target = event.target as HTMLElement | null;
       const direction = arrowDirection(event.key);
       if (direction) {
-        if (target?.closest?.('[aria-expanded="true"], [role="listbox"]')) return;
+        if (isWithin(target, '.atlas-sound-lib') || target?.closest?.('[aria-expanded="true"], [role="listbox"]')) return;
         const moodId = target?.dataset?.soundMood;
         if (event.altKey) {
           const from = moods.findIndex((mood) => mood.id === moodId);

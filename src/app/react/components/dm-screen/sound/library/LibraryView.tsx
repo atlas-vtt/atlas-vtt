@@ -10,6 +10,7 @@ import { isLinked } from '../../../../../soundLibrary/SoundRoots';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
 import { useAtlasStore } from '../../../../ViewStoreContext';
+import { arrowDirection, moveFocus } from '../../screenKeys';
 import { useRecordCollection, useSoundValue } from '../useSound';
 import { LibraryHead } from './LibraryHead';
 import { LibraryRail, type LibraryPlace } from './LibraryRail';
@@ -96,11 +97,22 @@ export function LibraryView({ collectionId: shownCollection }: { collectionId: s
 
   const openFolder = useCallback((row: Extract<LibraryRow, { type: 'folder' }>) => goTo({ kind: row.kind, folder: row.path }), [goTo]);
 
-  const parent = useCallback(() => showRoot(kind, parentOfRelative(folder)), [showRoot, kind, folder]);
+  const parent = useCallback((): boolean => {
+    if (folder === '') return false;
+    showRoot(kind, parentOfRelative(folder));
+    return true;
+  }, [showRoot, kind, folder]);
 
   const noRoots = library.rootOf('music').status === 'unlinked' && library.rootOf('ambience').status === 'unlinked';
   const keep = (event: React.KeyboardEvent): void => {
-    if (!PASSES_THROUGH.has(event.key)) event.stopPropagation();
+    if (PASSES_THROUGH.has(event.key)) return;
+    event.stopPropagation();
+    const direction = arrowDirection(event.key);
+    const from = event.target as Element;
+    if (direction && from.closest('.atlas-sound-lib__head button, .atlas-sound-lib__nolink button')) {
+      event.preventDefault();
+      moveFocus(from.closest('.atlas-sound-pane') ?? event.currentTarget, from, direction);
+    }
   };
 
   if (noRoots) {

@@ -83,7 +83,7 @@ function RailFolder({ library, actions, kind, path, name, depth, place, onPlace 
           {count !== null && <small>{count}</small>}
         </button>
         {folders.length > 0 && (
-          <button type="button" tabIndex={-1} className="atlas-sound-lib__twist" aria-expanded={expanded} aria-label={name} onClick={() => setOpen(!expanded)}>
+          <button type="button" tabIndex={-1} data-focus-skip className="atlas-sound-lib__twist" aria-expanded={expanded} aria-label={name} onClick={() => setOpen(!expanded)}>
             <ChevronRight aria-hidden="true" />
           </button>
         )}
@@ -152,7 +152,7 @@ export function LibraryRail(props: RailProps): React.JSX.Element {
         const from = event.target as Node;
         if (!direction || !from.instanceOf(Element)) return;
         event.preventDefault();
-        moveFocus(event.currentTarget, from, direction);
+        if (!moveFocus(event.currentTarget, from, direction)) moveFocus(event.currentTarget.closest('.atlas-sound-pane') ?? event.currentTarget, from, direction);
       }}
     >
       <RailRoot {...props} kind="music" />

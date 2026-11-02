@@ -54,9 +54,6 @@ export const audio = {
   'audio.screen.statblocks': 'Statblocks',
   'audio.screen.sound': 'Sound',
 
-  'audio.views': 'Moods or library',
-  'audio.view.moods': 'Moods',
-  'audio.view.library': 'Library',
   'audio.collection': 'Collection',
   'audio.nextTag': 'Next',
   'audio.playingTag': 'Playing',
@@ -73,7 +70,7 @@ export const audio = {
   'audio.problem.refused': '{name}: {reason}',
 
   'audio.mood.none': 'No moods yet',
-  'audio.mood.noneHint': 'Pick music and ambience below, then save the mix as a mood.',
+  'audio.mood.noneHint': 'Make a mix below, then save it as a mood.',
   'audio.mood.new': 'New mood',
   'audio.mood.noSounds': 'No sounds',
   'audio.mood.tone': 'Tone',
@@ -147,7 +144,7 @@ export const audio = {
   'audio.needsTap': 'Sound stopped. Press to start it.',
 
   'audio.library.emptyTitle': 'Where is your music?',
-  'audio.library.emptyText': 'Link a folder of music and one of ambience. Folders inside them show up here as they are. Nothing is copied.',
+  'audio.library.emptyText': 'Link a folder of music and one of ambience. Nothing is copied.',
   'audio.library.linkMusic': 'Link music folder',
   'audio.library.linkAmbience': 'Link ambience folder',
   'audio.library.importInstead': 'Import files instead',

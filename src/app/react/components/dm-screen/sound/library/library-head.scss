@@ -4,6 +4,7 @@
 // ---- Head ----
 
 .atlas-sound-lib__main {
+  container: atlas-sound-lib-main / inline-size;
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -17,7 +18,12 @@
   display: flex;
   align-items: center;
   gap: $spacing-s;
-  padding: 0 $spacing-l 0 20px;
+  padding: 0 $spacing-l;
+}
+
+.atlas-sound-lib .atlas-sound-lib__head-more {
+  display: none;
+  opacity: 1;
 }
 
 .atlas-sound-lib__crumb {
@@ -48,9 +54,8 @@
 
 .atlas-sound-lib__search {
   margin-left: auto;
-  width: 260px;
-  flex-shrink: 1;
-  min-width: 120px;
+  flex: 0 1 260px;
+  min-width: 96px;
   height: 30px;
   border-radius: 9px;
   background: var(--atlas-sound-lib-well);

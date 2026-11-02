@@ -1,8 +1,8 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import type { App } from 'obsidian';
 import { formatList, t } from '../../../../i18n';
 import { AssetService } from '../../../../services/AssetService';
-import { MAX_MOOD_LAYERS, type Mood } from '../../../../sound/soundTypes';
+import { MAX_MOOD_LAYERS, type Mood, type SoundKind } from '../../../../sound/soundTypes';
 import { dragToMix } from '../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { carriesSounds, readSoundDrag } from '../../../../soundLibrary/soundDrag';
@@ -37,7 +37,13 @@ export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: Soun
   const waitingLayers = useSoundValue(director, ({ mix }) => mix.waitingLayers.map((layer) => layer.sound).join(SEPARATOR));
   const holdsSound = useSoundValue(director, ({ mix }) => mix.table.music !== null || mix.table.layers.length > 0 || mix.waitingMusic !== null || mix.waitingLayers.length > 0);
   const showLibrary = useAtlasStore((state) => state.showSoundLibrary);
-  const chooseMusic = useCallback(() => showLibrary('music'), [showLibrary]);
+  const section = useRef<HTMLElement>(null);
+  const choose = useCallback((kind: SoundKind): void => {
+    showLibrary(kind);
+    const library = section.current?.parentElement?.querySelector('.atlas-sound-lib');
+    library?.querySelector<HTMLElement>('.atlas-sound-lib__rows, button')?.focus();
+  }, [showLibrary]);
+  const chooseMusic = useCallback(() => choose('music'), [choose]);
   const recordsGoTo = useRecordCollection(director, collectionId);
   const [dropTarget, setDropTarget] = useState(false);
   const layers = layerKeys === '' ? [] : layerKeys.split(SEPARATOR);
@@ -55,6 +61,7 @@ export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: Soun
 
   return (
     <section
+      ref={section}
       className="atlas-sound-desk"
       onDragOver={(event) => {
         if (recordsGoTo === null || !carriesSounds(event.dataTransfer)) return;
@@ -73,7 +80,7 @@ export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: Soun
           <MusicCard director={director} onChoose={chooseMusic} />
           {layers.map((key) => <LayerStrip key={key} director={director} soundKey={key} />)}
           {waiting.map((id) => <WaitingStrip key={id} director={director} soundId={id} />)}
-          {layers.length + waiting.length < MAX_MOOD_LAYERS && <AddAmbience onPress={() => showLibrary('ambience')} />}
+          {layers.length + waiting.length < MAX_MOOD_LAYERS && <AddAmbience onPress={() => choose('ambience')} />}
         </div>
         {holdsSound && <MasterStrip director={director} />}
         {holdsSound && <SilenceButton director={director} />}

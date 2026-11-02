@@ -8,7 +8,7 @@
 
 import { DEFAULT_EXPLORED_BRUSH, type ExploredBrushOptions } from '../lighting/exploredEdits';
 import type { SoundKind } from '../sound/soundTypes';
-import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, SoundView, ViewUIState } from '../types/viewUIState';
+import type { DMScreenPage, DungeonGeneratorRequest, HeldTokens, ViewUIState } from '../types/viewUIState';
 
 /** State fields added to ViewAtlasState */
 export interface UISlice extends ViewUIState {
@@ -17,7 +17,6 @@ export interface UISlice extends ViewUIState {
   setGridSettingsOpen: (open: boolean) => void;
   setDMScreenOpen: (open: boolean) => void;
   setDMScreenPage: (page: DMScreenPage) => void;
-  setSoundView: (view: SoundView) => void;
   /** Shows a root of the library, at `folder`; without one, a root already shown stays where it is. */
   showSoundLibrary: (root: SoundKind, folder?: string) => void;
   setGridAlignmentOpen: (open: boolean) => void;
@@ -53,7 +52,6 @@ export function createInitialUIState(): Pick<
   | 'isGridSettingsOpen'
   | 'isDMScreenOpen'
   | 'dmScreenPage'
-  | 'soundView'
   | 'soundLibraryRoot'
   | 'soundLibraryFolder'
   | 'isGridAlignmentOpen'
@@ -78,7 +76,6 @@ export function createInitialUIState(): Pick<
     isGridSettingsOpen: false,
     isDMScreenOpen: false,
     dmScreenPage: 'statblocks',
-    soundView: 'moods',
     soundLibraryRoot: 'music',
     soundLibraryFolder: '',
     isGridAlignmentOpen: false,
@@ -109,7 +106,6 @@ export function createUIActions(
   | 'setGridSettingsOpen'
   | 'setDMScreenOpen'
   | 'setDMScreenPage'
-  | 'setSoundView'
   | 'showSoundLibrary'
   | 'setGridAlignmentOpen'
   | 'setDiceLogOpen'
@@ -137,9 +133,7 @@ export function createUIActions(
     setGridSettingsOpen: (open) => set((draft) => { draft.isGridSettingsOpen = open; }),
     setDMScreenOpen: (open) => set((draft) => { draft.isDMScreenOpen = open; }),
     setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
-    setSoundView: (soundView) => set((draft) => { draft.soundView = soundView; }),
     showSoundLibrary: (root, folder) => set((draft) => {
-      draft.soundView = 'library';
       draft.soundLibraryFolder = folder ?? (draft.soundLibraryRoot === root ? draft.soundLibraryFolder : '');
       draft.soundLibraryRoot = root;
     }),

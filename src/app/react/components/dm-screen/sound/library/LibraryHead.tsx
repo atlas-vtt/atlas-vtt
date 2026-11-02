@@ -1,8 +1,11 @@
 import React from 'react';
+import { MoreHorizontal } from 'lucide-react';
 import { t } from '../../../../../i18n';
 import { Button } from '../../../../../packages/components/primitives/button';
+import { LabelTooltip } from '../../../../../packages/components/primitives/tooltip';
 import { isLinked } from '../../../../../soundLibrary/SoundRoots';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
+import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { SearchGlyph } from './libraryGlyphs';
 import { crumbsOf } from './rowModel';
 import type { LibraryPlace } from './LibraryRail';
@@ -24,6 +27,15 @@ export function LibraryHead({ library, actions, place, onPlace, query, onQuery, 
   const { kind, folder } = place;
   const linked = isLinked(library.rootOf(kind));
   const label = t(kind === 'music' ? 'audio.music' : 'audio.ambience');
+  const menu = useContextMenu();
+  const canImport = library.rootOf(kind).status !== 'not-linked-here';
+  const openFolded = (anchor: HTMLElement): void => {
+    const box = anchor.getBoundingClientRect();
+    menu.open([
+      { type: 'item', label: t('audio.library.newFolder'), disabled: !linked, onClick: () => actions.askNewFolder(kind, folder) },
+      { type: 'item', label: t('audio.library.import'), disabled: !canImport, onClick: () => actions.pickImport(anchor.ownerDocument, kind, folder) },
+    ], { x: box.left, y: box.bottom }, { returnFocus: anchor });
+  };
   return (
     <header className="atlas-sound-lib__head">
       <nav className="atlas-sound-lib__crumb" aria-label={label}>
@@ -51,8 +63,13 @@ export function LibraryHead({ library, actions, place, onPlace, query, onQuery, 
           }}
         />
       </label>
-      <Button type="button" className="atlas-sound-lib__btn" variant="secondary" disabled={!linked} onClick={() => actions.askNewFolder(kind, folder)}>{t('audio.library.newFolder')}</Button>
-      <Button type="button" className="atlas-sound-lib__btn" variant="secondary" disabled={library.rootOf(kind).status === 'not-linked-here'} onClick={(event) => actions.pickImport(event.currentTarget.ownerDocument, kind, folder)}>{t('audio.library.import')}</Button>
+      <Button type="button" className="atlas-sound-lib__btn atlas-sound-lib__btn--folds" variant="secondary" disabled={!linked} onClick={() => actions.askNewFolder(kind, folder)}>{t('audio.library.newFolder')}</Button>
+      <Button type="button" className="atlas-sound-lib__btn atlas-sound-lib__btn--folds" variant="secondary" disabled={!canImport} onClick={(event) => actions.pickImport(event.currentTarget.ownerDocument, kind, folder)}>{t('audio.library.import')}</Button>
+      <LabelTooltip label={t('audio.library.rootMenu', { name: label })}>
+        <button type="button" className="atlas-sound-lib__more atlas-sound-lib__head-more" aria-label={t('audio.library.rootMenu', { name: label })} onClick={(event) => openFolded(event.currentTarget)}>
+          <MoreHorizontal aria-hidden="true" />
+        </button>
+      </LabelTooltip>
       {kind === 'music' && linked && (
         <Button type="button" className="atlas-sound-lib__btn atlas-sound-lib__btn--solid" variant="secondary" onClick={() => actions.playFolder(kind, folder, shuffle)}>{t('audio.library.playFolder')}</Button>
       )}

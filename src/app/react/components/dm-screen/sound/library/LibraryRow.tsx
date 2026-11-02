@@ -110,7 +110,7 @@ export const LibraryRow = memo(function LibraryRow({ row, library, handlers, sel
     >
       <span role="gridcell">
         {row.type === 'file' && (
-          <button type="button" tabIndex={-1} className="atlas-sound-lib__play" aria-label={previewing ? t('audio.stopPreview') : t('audio.previewSound', { name: row.name })} aria-pressed={previewing} onClick={(event) => { event.stopPropagation(); handlers.onPreview(row); }}>
+          <button type="button" tabIndex={-1} data-focus-skip className="atlas-sound-lib__play" aria-label={previewing ? t('audio.stopPreview') : t('audio.previewSound', { name: row.name })} aria-pressed={previewing} onClick={(event) => { event.stopPropagation(); handlers.onPreview(row); }}>
             {previewing ? <Square aria-hidden="true" /> : <PlayGlyph />}
           </button>
         )}
@@ -127,13 +127,14 @@ export const LibraryRow = memo(function LibraryRow({ row, library, handlers, sel
       </span>
       <span role="gridcell">
         {primary !== null && (
-          <button type="button" tabIndex={-1} className="atlas-sound-lib__act" onClick={(event) => { event.stopPropagation(); handlers.onPrimary(row); }}>{primary}</button>
+          <button type="button" tabIndex={-1} data-focus-skip className="atlas-sound-lib__act" onClick={(event) => { event.stopPropagation(); handlers.onPrimary(row); }}>{primary}</button>
         )}
       </span>
       <span role="gridcell">
         <button
           type="button"
           tabIndex={-1}
+          data-focus-skip
           className="atlas-sound-lib__more"
           aria-label={t('audio.moodMenu', { name: row.name })}
           onClick={(event) => {

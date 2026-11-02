@@ -19,7 +19,6 @@ export interface DungeonGeneratorRequest {
 
 /** Which page of the DM screen shows. */
 export type DMScreenPage = 'statblocks' | 'sound';
-export type SoundView = 'moods' | 'library';
 
 export interface ViewUIState {
 
@@ -27,7 +26,6 @@ export interface ViewUIState {
   isGridSettingsOpen: boolean;
   isDMScreenOpen: boolean;
   dmScreenPage: DMScreenPage;
-  soundView: SoundView;
   /** Which of the two linked folders the library shows. */
   soundLibraryRoot: SoundKind;
   /** The folder open in that root, relative to it. */

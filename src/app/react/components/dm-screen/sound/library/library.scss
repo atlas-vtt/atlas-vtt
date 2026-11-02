@@ -7,10 +7,10 @@
   --atlas-sound-lib-hairline: color-mix(in oklch, var(--mono-100) 9%, transparent);
   --atlas-sound-lib-well: color-mix(in srgb, var(--background-primary) 72%, black);
   --atlas-sound-lib-press: cubic-bezier(0.2, 0, 0, 1);
+  container: atlas-sound-lib / inline-size;
   flex: 1;
   min-width: 0;
   min-height: 0;
-  height: 100%;
   display: flex;
   font-size: $font-ui-small;
   line-height: 1.35;
@@ -62,7 +62,7 @@
 // ---- Rail ----
 
 .atlas-sound-lib__rail {
-  width: 264px;
+  width: clamp(208px, 24cqi, 232px);
   flex-shrink: 0;
   padding: 12px $spacing-s $spacing-s;
   display: flex;
@@ -241,9 +241,9 @@
   h2 {
     margin: 0;
     font-family: var(--h3-font, var(--font-interface));
-    font-size: 28px;
+    font-size: 23px;
     font-weight: 400;
-    line-height: 1.1;
+    line-height: 1.12;
     color: var(--mono-100);
     text-wrap: balance;
   }
@@ -252,7 +252,6 @@
     margin: 0;
     max-width: 46ch;
     color: var(--text-muted);
-    font-size: 14px;
     text-wrap: pretty;
   }
 }

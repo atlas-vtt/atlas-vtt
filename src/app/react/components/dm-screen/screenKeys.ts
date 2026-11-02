@@ -1,7 +1,7 @@
 import { isTextEntryTarget } from '../../../keyboard/textEntry';
 import { isShortcutScopeActive } from '../../../utils/activeLeafGuard';
 
-function isWithin(target: EventTarget | null, selector: string): boolean {
+export function isWithin(target: EventTarget | null, selector: string): boolean {
   const node = target as Node | null;
   return !!node && typeof node.instanceOf === 'function' && node.instanceOf(Element) && node.closest(selector) !== null;
 }
@@ -10,12 +10,10 @@ function isWithin(target: EventTarget | null, selector: string): boolean {
 export function screenTakesKey(event: KeyboardEvent, screen: Element | null, viewId: string | undefined): boolean {
   if (event.defaultPrevented || event.isComposing || !isShortcutScopeActive(screen, viewId)) return false;
   if (document.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container, [role="menu"], [aria-modal="true"]')) return false;
-  // The sound library is a list with keys of its own: a digit there is no mood.
-  if (isWithin(event.target, '.atlas-sound-lib')) return false;
   return !isTextEntryTarget(event.target);
 }
 
-const CONTROLS = 'button, a[href], [role="slider"], [role="radio"]';
+const CONTROLS = 'button, a[href], [role="slider"], [role="radio"], [role="grid"]';
 
 /** Whether the key's target is a control of its own, which Enter or an arrow may mean. */
 export function isControlTarget(target: EventTarget | null): boolean {

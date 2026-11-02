@@ -1,8 +1,58 @@
 @use '../../../../../../../styles/tokens' as *;
 
-// ---- Narrow: the rail stands over the rows, and the rows keep name, length and action ----
+// ---- A narrow list: the action takes the place of the state where it is pointed at ----
 
-@container atlas-dm-screen (max-width: #{$breakpoint-m}) {
+@container atlas-sound-lib-main (max-width: 620px) {
+  .atlas-sound-lib .atlas-sound-lib__btn--folds {
+    display: none;
+  }
+
+  .atlas-sound-lib .atlas-sound-lib__head-more {
+    display: grid;
+    margin-left: 0;
+    flex-shrink: 0;
+  }
+
+  .atlas-sound-lib__row {
+    grid-template-columns: 32px minmax(0, 1fr) 88px 44px 28px;
+
+    > :nth-child(3),
+    > :nth-child(5) {
+      grid-row: 1;
+      grid-column: 3;
+    }
+
+    > :nth-child(4) {
+      grid-column: 4;
+    }
+
+    > :nth-child(6) {
+      grid-column: 5;
+    }
+  }
+
+  .atlas-sound-lib__length {
+    padding-right: $spacing-xs;
+  }
+
+  .atlas-sound-lib .atlas-sound-lib__more {
+    margin-left: 0;
+  }
+
+  .atlas-sound-lib__row:hover .atlas-sound-lib__state,
+  .atlas-sound-lib__row[aria-selected='true'] .atlas-sound-lib__state,
+  .atlas-sound-lib__rows:focus-visible .atlas-sound-lib__row[data-active] .atlas-sound-lib__state {
+    visibility: hidden;
+  }
+
+  .atlas-sound-lib__row--mix:not(:hover, [aria-selected='true']) .atlas-sound-lib__act {
+    opacity: 0;
+  }
+}
+
+// ---- Too narrow for a rail beside the rows: it stands over them ----
+
+@container atlas-sound-lib (max-width: 520px) {
   .atlas-sound-lib:has(.atlas-sound-lib__rail) {
     flex-direction: column;
   }
@@ -19,33 +69,5 @@
   .atlas-sound-lib__root-block {
     flex: 1;
     min-width: 0;
-  }
-
-  .atlas-sound-lib__head {
-    height: auto;
-    flex-wrap: wrap;
-    padding: $spacing-s 12px;
-  }
-
-  .atlas-sound-lib__crumb {
-    width: 100%;
-  }
-
-  .atlas-sound-lib__search {
-    margin-left: 0;
-    flex: 1;
-    width: auto;
-  }
-
-  .atlas-sound-lib__row {
-    grid-template-columns: 36px minmax(0, 1fr) 0 56px 88px 32px;
-  }
-
-  .atlas-sound-lib__state {
-    visibility: hidden;
-  }
-
-  .atlas-sound-lib__length {
-    padding-right: $spacing-s;
   }
 }
