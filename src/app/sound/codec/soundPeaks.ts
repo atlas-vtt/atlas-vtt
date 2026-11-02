@@ -39,7 +39,7 @@ export class PeakCollector {
 }
 
 /** Reads a copy through its pages and a real decoder. Meant for a worker: it decodes the whole sound. */
-export async function readPeaksOfCopy(copy: Blob, frames: number, onStep: () => void = () => undefined): Promise<Uint8Array<ArrayBuffer>> {
+export async function readPeaksOfCopy(copy: Blob, frames: number, onStep: () => void): Promise<Uint8Array<ArrayBuffer>> {
   const collector = new PeakCollector(frames);
   const window = new BlobWindow(copy);
   const failures: Error[] = [];

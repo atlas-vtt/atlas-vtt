@@ -1,5 +1,5 @@
 import type { Mood, MoodMusic, SoundInfo, SoundRecord } from '../sound/soundTypes';
-import { applySoonest, playNext, playNow, readyToJoin } from './libraryMix';
+import { applySoonest, readyToJoin } from './libraryMix';
 import type { DirectorMoods } from './directorDeps';
 import { addLayer, setLayerLevel, setLayerMuted, setMusicLevel, setMusicMuted, stopAll, toggleSilence } from './liveEdits';
 import { mixDiffersFrom } from './mixChange';

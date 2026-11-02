@@ -24,13 +24,13 @@ function withTracksAfter(tracks: readonly SoundInfo[], group: readonly SoundInfo
   return [...rest.slice(0, at + 1), ...group, ...rest.slice(at + 1)];
 }
 
-function startList(mix: SoundMix, tracks: SoundInfo[], levelDb: number, { now, leadMs, fadeMs }: MixTiming): SoundMix {
-  return { ...mix, table: startMusic(mix.table, tracks, false, levelDb, fnv1a32(`${now}`), now, fadeMs, leadMs) };
+function startList(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: number, { now, leadMs, fadeMs }: MixTiming): SoundMix {
+  return { ...mix, table: startMusic(mix.table, [...tracks], false, levelDb, fnv1a32(`${now}`), now, fadeMs, leadMs) };
 }
 
 /** Tracks follow the one sounding, or the one named, in their order: they join at that track's end and never cut it. On a shuffled list too, for the first of them. Without music they start. */
 export function playNext(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: number, timing: MixTiming, after?: string): SoundMix {
-  if (!mix.table.music) return tracks.length > 0 ? startList(mix, [...tracks], levelDb, timing) : mix;
+  if (!mix.table.music) return tracks.length > 0 ? startList(mix, tracks, levelDb, timing) : mix;
   const soundingKey = keyAt(mix, timing.now);
   const group = tracks.filter((track) => track.key !== soundingKey);
   const [first] = group;
@@ -45,7 +45,7 @@ export function playNext(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: n
 export function playNow(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: number, timing: MixTiming): SoundMix {
   const [first] = tracks;
   if (!first) return mix;
-  if (!mix.table.music) return startList(mix, [...tracks], levelDb, timing);
+  if (!mix.table.music) return startList(mix, tracks, levelDb, timing);
   const soundingKey = keyAt(mix, timing.now);
   if (first.key === soundingKey) return playNext(mix, tracks, levelDb, timing);
   const base = mix.listChange ?? mix.table.music;

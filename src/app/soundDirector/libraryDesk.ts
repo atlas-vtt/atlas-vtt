@@ -44,9 +44,7 @@ export async function fileToMix(deps: LibraryDeskDeps, files: readonly LibraryFi
   try {
     const records = await shelved(deps, filesWithRoom(deps, files, intent));
     for (const record of records) {
-      if (record.kind !== 'music' || intent === 'add') {
-        if (!desk.addSound(record)) deps.notify(t('audio.add.refused', { name: record.name }));
-      }
+      if ((record.kind !== 'music' || intent === 'add') && !desk.addSound(record)) deps.notify(t('audio.add.refused', { name: record.name }));
     }
     const tracks = intent === 'add' ? [] : records.filter((record) => record.kind === 'music');
     if (tracks.length === 0) return;

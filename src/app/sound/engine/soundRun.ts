@@ -144,9 +144,7 @@ export class BufferRun extends RunBase {
     const key = this.span.sound.key;
     this.retained = true;
     this.deps.sources.retain(key).then(
-      (buffer) => {
-        this.start(buffer);
-      },
+      (buffer) => this.start(buffer),
       (error: unknown) => {
         if (this.retained) this.deps.sources.release(key);
         this.retained = false;
