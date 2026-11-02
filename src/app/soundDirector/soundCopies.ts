@@ -8,7 +8,8 @@ import type { PreparedSource } from './sourcePrepare';
 export interface SoundFileAccess {
   /** Null while the file is not in the vault. */
   statOf(path: string): { size: number; mtime: number } | null;
-  read(path: string): Promise<ArrayBuffer>;
+  /** A Blob where the file lies on disk and need not pass through the main thread's memory. */
+  read(path: string): Promise<ArrayBuffer | Blob>;
 }
 
 /** The parts of `OpusCache` a device's copies need. */
@@ -59,7 +60,7 @@ export class SoundCopies implements SoundConversionState {
     private readonly files: SoundFileAccess,
     private readonly cache: CopyCache,
     private readonly maker: CopyMaker,
-    private readonly prepare: (buffer: ArrayBuffer) => Promise<PreparedSource>,
+    private readonly prepare: (source: ArrayBuffer | Blob) => Promise<PreparedSource>,
     private readonly onRefused: (record: SoundRecord, reason: SoundImportError['reason']) => void,
   ) {}
 

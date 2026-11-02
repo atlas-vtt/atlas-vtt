@@ -8,6 +8,7 @@ import { readToolbarLayout, type StoredToolbarLayout } from '../toolbar/toolbarL
 import type { InitiativeDock } from '../initiative/initiativeLayout';
 import { DEFAULT_DUNGEON_GENERATOR_SETTINGS, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
 import { DEFAULT_SOUND_SETTINGS, type SoundSettings } from './soundSettings';
+import type { SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import { DEFAULT_TABLE_TV_SETTINGS, readTableTvSettings, type TableTvSettings } from './tableTvSettings';
 
 /**
@@ -44,6 +45,8 @@ export interface AtlasSettings {
   diceVolume: number;
   /** Levels, default fade and following scenes for music and ambience. Read with `getSoundSettings`. */
   sound: SoundSettings;
+  /** The sound library's linked folders, as far as devices share them. Read with `getSoundRoots`. */
+  soundRoots?: SharedSoundRoots;
   /** Whether a new scene looks for the grid of its map. Off for tables that play without one. Read with `detectsGridOnNewScenes`. */
   detectGridOnNewScenes: boolean;
   /** Colour of the dice: card stock, dark or the accent colour. Read with `getDiceLook`. */

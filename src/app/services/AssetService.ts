@@ -161,7 +161,10 @@ export interface PlayerAsset extends BaseAsset {
  */
 export interface SoundAsset extends BaseAsset, Omit<SoundRecord, 'id' | 'name' | 'filePath' | 'tags'> {
   type: 'sound';
+  /** A vault path, or for a file in a root outside the vault that root and the path below it (`soundPaths.ts`). */
   audioPath: string;
+  /** The file's size when the record was made, by which a file gone from its path is found again. */
+  audioSize?: number;
 }
 
 export type Asset = TokenAsset | MapAsset | NoteAsset | StatblockAsset | CharacterAsset | SceneAsset | EncounterAsset | PlayerAsset | SoundAsset;
@@ -1009,6 +1012,11 @@ export class AssetService {
     const newAssets = assets.map((asset): Asset => ({ ...asset, ...this.createAssetIdentity(asset.type) }));
     await this.registerAssets(newAssets);
     return newAssets;
+  }
+
+  /** Records whose ids the caller worked out, in one save: a sound's, which two devices must name alike. */
+  async addIdentifiedAssets(assets: readonly Asset[]): Promise<void> {
+    await this.registerAssets(assets, false);
   }
 
   private async registerAssets(newAssets: readonly Asset[], userImport = true): Promise<void> {

@@ -31,6 +31,7 @@ import type { LightingQuality, LightingQualityLevel } from '../lighting/lighting
 import { knobsOf, qualityOf, type GraphicsChoice } from '../lighting/graphicsSettings';
 import { readDungeonGeneratorSettings, type DungeonGeneratorSettings } from '../dungeons/generatorSettings';
 import { readSoundSettings, type SoundSettings } from './soundSettings';
+import { readSharedSoundRoots, type SharedSoundRoots } from '../soundLibrary/soundRootsStore';
 import type { TableTvSettings } from './tableTvSettings';
 import { loadTableTvDevice, saveTableTvDevice, type TableTvDevice, type TvScreenRecord, type TvScreenSetup } from './tableTvDevice';
 
@@ -413,6 +414,16 @@ export class SettingsService {
     const next = readSoundSettings({ ...current, ...changes });
     if (JSON.stringify(next) === JSON.stringify(current)) return;
     this.settings.sound = { ...this.settings.sound, ...next };
+    this.commit();
+  }
+
+  /** The sound library's linked folders, as far as devices share them. */
+  getSoundRoots(): SharedSoundRoots {
+    return readSharedSoundRoots(this.settings.soundRoots);
+  }
+
+  setSoundRoots(roots: SharedSoundRoots): void {
+    this.settings.soundRoots = roots;
     this.commit();
   }
 

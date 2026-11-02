@@ -1,0 +1,48 @@
+import { FileSystemAdapter, Platform, type App } from 'obsidian';
+import { systemTrash } from '../services/electronRemote';
+import { SettingsService } from '../services/SettingsService';
+import type { SoundKind } from '../sound/soundTypes';
+import { ExternalLocation } from './externalLocation';
+import { nodeFilesOf } from './nodeFiles';
+import type { SoundLibraryDeps } from './SoundLibrary';
+import { SoundRoots, type SoundRootFacts } from './SoundRoots';
+import { VaultLocation } from './vaultLocation';
+
+const localKey = (kind: SoundKind): string => `atlas-vtt:sound-root:${kind}`;
+
+function rootFacts(app: App): SoundRootFacts {
+  const settings = (): SettingsService | undefined => SettingsService.forApp(app);
+  return {
+    shared: () => settings()?.getSoundRoots() ?? {},
+    setShared: (roots) => settings()?.setSoundRoots(roots),
+    onSharedChange: (listener) => settings()?.onChange(listener) ?? (() => undefined),
+    local: (kind) => {
+      const path: unknown = app.loadLocalStorage(localKey(kind));
+      return typeof path === 'string' && path !== '' ? path : null;
+    },
+    setLocal: (kind, path) => app.saveLocalStorage(localKey(kind), path),
+    vaultBase: () => (app.vault.adapter instanceof FileSystemAdapter ? app.vault.adapter.getBasePath() : null),
+    realPath: async (path) => {
+      const files = nodeFilesOf(window);
+      return files ? files.fs.promises.realpath(path).catch(() => path) : path;
+    },
+  };
+}
+
+/** A URL a media element loads a file on disk from, through the scheme Obsidian serves local files with. */
+function diskResourceUrl(absolute: string): string {
+  return `${Platform.resourcePathPrefix}${absolute.replace(/\\/g, '/').split('/').map(encodeURIComponent).join('/').replace(/^\//, '')}`;
+}
+
+/** What the library runs on in Obsidian. */
+export function realLibraryDeps(app: App): SoundLibraryDeps {
+  return {
+    roots: new SoundRoots(rootFacts(app)),
+    open: (root) => {
+      if (root.status === 'vault') return new VaultLocation(app, root.path);
+      const files = nodeFilesOf(window);
+      return files ? new ExternalLocation(root.path, { files, trashItem: systemTrash(window), resourceUrl: diskResourceUrl }) : null;
+    },
+    home: () => nodeFilesOf(window)?.home ?? null,
+  };
+}

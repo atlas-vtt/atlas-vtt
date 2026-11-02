@@ -9,6 +9,8 @@ import type { SceneSound, SoundRecord } from '../sound/soundTypes';
 import { MoodStore } from '../soundLibrary/MoodStore';
 import { readSceneSound } from '../soundLibrary/sceneSound';
 import { isAudioPath } from '../soundLibrary/soundFiles';
+import { SoundLibrary } from '../soundLibrary/SoundLibrary';
+import { isExternalAudioPath } from '../soundLibrary/soundPaths';
 import { provideSoundConversion, type SoundConversionState } from '../soundLibrary/soundConversion';
 import { soundRecordsOf } from '../soundLibrary/soundRecords';
 import { showNotice } from '../ui/notice';
@@ -36,7 +38,7 @@ export interface SoundDirectorDeps {
   files: SoundFileAccess;
   createCache(): CopyCache & { close(): Promise<void> };
   createMaker(): CopyMaker & { dispose(): void };
-  prepareSource(buffer: ArrayBuffer): Promise<PreparedSource>;
+  prepareSource(source: ArrayBuffer | Blob): Promise<PreparedSource>;
   createContext(): OutputContext;
   provideConversion(source: SoundConversionState): () => void;
   readRecords(): Promise<SoundRecord[]>;
@@ -52,9 +54,11 @@ export interface SoundDirectorDeps {
 
 function fileAccess(app: App): SoundFileAccess {
   const fileOf = (path: string): ReturnType<App['vault']['getFileByPath']> => app.vault.getFileByPath(normalizePath(path));
+  const library = (): SoundLibrary => SoundLibrary.forApp(app);
   return {
-    statOf: (path) => fileOf(path)?.stat ?? null,
+    statOf: (path) => (isExternalAudioPath(path) ? library().statOfExternal(path) : fileOf(path)?.stat ?? null),
     read: (path) => {
+      if (isExternalAudioPath(path)) return library().readExternal(path);
       const file = fileOf(path);
       return file ? app.vault.readBinary(file) : Promise.reject(new Error(`${path} is not in the vault.`));
     },
@@ -106,7 +110,11 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
         if (isAudioPath(file.path)) listener();
       };
       const refs = [app.vault.on('create', heard), app.vault.on('modify', heard), app.vault.on('rename', heard)];
-      return () => refs.forEach((ref) => app.vault.offref(ref));
+      const dropLibrary = SoundLibrary.forApp(app).onChange(listener);
+      return () => {
+        refs.forEach((ref) => app.vault.offref(ref));
+        dropLibrary();
+      };
     },
     readSceneSound: (path) => sceneSoundInFile(app, path),
     collectionOf: (scenePath) => assets().getCollectionForMap(scenePath) ?? assets().getDefaultCollectionId(),
