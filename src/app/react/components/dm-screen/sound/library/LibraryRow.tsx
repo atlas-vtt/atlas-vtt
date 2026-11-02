@@ -52,10 +52,17 @@ function FileLength({ library, file }: { library: SoundLibrary; file: LibraryFil
 function RenameField({ name, onDone }: { name: string; onDone: (name: string | null) => void }): React.JSX.Element {
   const [value, setValue] = useState(name);
   const ref = useRef<HTMLInputElement>(null);
+  const ended = useRef(false);
   useEffect(() => {
     ref.current?.focus();
     ref.current?.select();
   }, []);
+  // Whoever ends it takes focus from the field, whose blur then runs inside that same call.
+  const end = (result: string | null): void => {
+    if (ended.current) return;
+    ended.current = true;
+    onDone(result);
+  };
   return (
     <input
       ref={ref}
@@ -66,10 +73,10 @@ function RenameField({ name, onDone }: { name: string; onDone: (name: string | n
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => {
         event.stopPropagation();
-        if (event.key === 'Enter') onDone(value);
-        if (event.key === 'Escape') onDone(null);
+        if (event.key === 'Enter') end(value);
+        if (event.key === 'Escape') end(null);
       }}
-      onBlur={() => onDone(value)}
+      onBlur={() => end(value)}
     />
   );
 }

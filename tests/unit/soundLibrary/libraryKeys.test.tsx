@@ -116,6 +116,45 @@ describe('the keys of the rows', () => {
     expect(rig.locations.music.files.has('Battle/c.mp3')).toBe(true);
   });
 
+  describe('a rename ends once', () => {
+    const typed = (): HTMLInputElement => {
+      press('ArrowDown');
+      press('F2');
+      const field = host.querySelector<HTMLInputElement>('.atlas-sound-lib__rename')!;
+      expect(document.activeElement).toBe(field);
+      act(() => { fireEvent.change(field, { target: { value: 'Horns' } }); });
+      return field;
+    };
+
+    it('Escape never renames, though the field loses focus on the way out', async () => {
+      const rename = vi.spyOn(rig.locations.music, 'move');
+      const field = typed();
+      act(() => { fireEvent.keyDown(field, { key: 'Escape' }); });
+      expect(host.querySelector('.atlas-sound-lib__rename')).toBeNull();
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(rename).not.toHaveBeenCalled();
+      expect(rig.locations.music.files.has('Battle/a.mp3')).toBe(true);
+    });
+
+    it('Enter renames once, with no notice of a name already taken', async () => {
+      const rename = vi.spyOn(rig.locations.music, 'move');
+      const field = typed();
+      act(() => { fireEvent.keyDown(field, { key: 'Enter' }); });
+      await waitFor(() => expect(rig.locations.music.files.has('Battle/Horns.mp3')).toBe(true));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(rename).toHaveBeenCalledTimes(1);
+    });
+
+    it('leaving the field renames once', async () => {
+      const rename = vi.spyOn(rig.locations.music, 'move');
+      typed();
+      act(() => { list(host).focus(); });
+      await waitFor(() => expect(rig.locations.music.files.has('Battle/Horns.mp3')).toBe(true));
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(rename).toHaveBeenCalledTimes(1);
+    });
+  });
+
   it('never reach the map, whatever they are, and Tab and Escape still do', () => {
     for (const key of ['a', 'Delete', ' ', '1', 'ArrowDown', 'F2', 'Backspace', 'n']) {
       act(() => { fireEvent.keyDown(list(host), { key }); });
