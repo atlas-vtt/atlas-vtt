@@ -265,7 +265,7 @@ describe('sound records on two devices', () => {
 
     const walked = async ({ library }: { library: SoundLibrary }, now: number): Promise<void> => {
       library.rescan(now);
-      await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
+      await vi.waitFor(() => expect(library.countOf('music', '')).not.toBeNull());
       await new Promise((resolve) => { setTimeout(resolve, 0); });
     };
 

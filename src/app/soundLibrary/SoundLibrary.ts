@@ -124,10 +124,6 @@ export class SoundLibrary {
     return this.opened(kind)?.tree.countBelow(folder) ?? null;
   }
 
-  isWalked(kind: SoundKind): boolean {
-    return this.opened(kind)?.tree.isWalked ?? false;
-  }
-
   /** Files of both roots whose path holds every word, music first. */
   search(query: string): LibraryFile[] {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);

@@ -45,11 +45,6 @@ export class FolderTree {
     private readonly onChanged: () => void,
   ) {}
 
-  /** Whether every folder was read at least once, so a file not found is really not there. */
-  get isWalked(): boolean {
-    return this.walkedOnce;
-  }
-
   listing(folder: string): SoundListing | null {
     return this.listings.get(folder) ?? null;
   }

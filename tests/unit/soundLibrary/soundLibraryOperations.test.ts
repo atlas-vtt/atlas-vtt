@@ -207,7 +207,7 @@ describe('a file gone from its path', () => {
     fs.writeFileSync(path.join(external('Music'), 'b-other-size.mp3'), 'XX');
     expect(library.statOfFile('atlas-sound:music/a.mp3', 5)).toBeNull();
     library.rescan(100_000);
-    await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
+    await vi.waitFor(() => expect(library.pathNow('atlas-sound:music/a.mp3', 5)).toBe('atlas-sound:music/Moved/a.mp3'));
     expect(library.statOfFile('atlas-sound:music/a.mp3', 5)).toMatchObject({ size: 5 });
     expect(await (await library.readFile('atlas-sound:music/a.mp3', 5)).text()).toBe('12345');
     expect(library.pathNow('atlas-sound:music/a.mp3', 5)).toBe('atlas-sound:music/Moved/a.mp3');
@@ -232,7 +232,7 @@ describe('a file gone from its path', () => {
     await vault.app.vault.adapter.write('Audio/Moved/a.mp3', '12345');
     expect(library.statOfFile('Audio/a.mp3', 5)).toBeNull();
     library.rescan(100_000);
-    await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
+    await vi.waitFor(() => expect(library.pathNow('Audio/a.mp3', 5)).toBe('Audio/Moved/a.mp3'));
     expect(library.statOfFile('Audio/a.mp3', 5)).toMatchObject({ size: 5 });
     expect(library.pathNow('Audio/a.mp3', 5)).toBe('Audio/Moved/a.mp3');
     expect(await (await library.readFile('Audio/a.mp3', 5)).text()).toBe('12345');
@@ -325,8 +325,8 @@ describe('browsing', () => {
     await vi.waitFor(() => expect(library.listing('music', '')).not.toBeNull());
     expect(library.countOf('music', 'Battle')).toBeNull();
     library.rescan(100_000);
-    await vi.waitFor(() => expect(library.isWalked('music') && library.isWalked('ambience')).toBe(true));
-    expect(library.countOf('music', '')).toBe(3);
+    await vi.waitFor(() => expect(library.countOf('music', '')).toBe(3));
+    await vi.waitFor(() => expect(library.countOf('ambience', '')).toBe(1));
     expect(library.countOf('music', 'Battle')).toBe(2);
     expect(library.search('road').map((file) => file.path)).toEqual(['Travel/Road song.mp3']);
     expect(library.search('rain')).toMatchObject([{ kind: 'ambience', path: 'Rain.ogg' }]);
@@ -354,7 +354,8 @@ describe('browsing', () => {
     vi.spyOn(location, 'list').mockImplementation(async (folder) => (folder === '' ? { folders: [], files: entries } : null));
     const big = new SoundLibrary({ roots: library.roots, open: () => location, home: () => null, probeSeconds: async () => null });
     big.rescan(100_000);
-    await vi.waitFor(() => expect(big.isWalked('music')).toBe(true));
+    await vi.waitFor(() => expect(big.countOf('music', '')).toBe(20_000));
+    await vi.waitFor(() => expect(big.countOf('ambience', '')).toBe(20_000));
     big.search('warm');
     const start = performance.now();
     const hits = big.search('track 19999');
