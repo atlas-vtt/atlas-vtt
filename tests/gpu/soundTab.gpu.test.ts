@@ -1,7 +1,9 @@
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
+import { MusicWave } from '@/app/react/components/dm-screen/sound/musicWave';
 import type { PlayersCopy } from '@/app/soundDirector/tableClock';
+import { PIN_ICON_PATHS } from '@/app/types/pinIcons';
 import { COLLECTION, DARK, LIGHT, openSoundTab, seedMoods, SOUNDS, type SoundTab } from './sound/soundTabHarness';
 
 // Statblocks reach Node's `events` through the token link service, which a browser test cannot import; this file is about the page beside them.
@@ -294,6 +296,51 @@ describe('the DM screen’s Sound page', () => {
     await userEvent.click(clear);
     await expect.poll(() => tab?.director.snapshot().mix.table.layers.length).toBe(0);
     await expect.poll(() => document.querySelector('.atlas-sound-silence')).toBeNull();
+  });
+
+  it('draws a plain line for a track without peaks yet, and the bars of its peaks once they are here', () => {
+    const host = document.body.createDiv();
+    host.style.cssText = 'position: absolute; width: 300px; height: 62px; color: #fff';
+    const canvas = host.createEl('canvas');
+    canvas.style.cssText = 'position: absolute; inset: 0; width: 100%; height: 100%';
+    const played = canvas.cloneNode() as HTMLCanvasElement;
+    host.append(played);
+    const wave = new MusicWave(canvas, played);
+    const rows = (): number[] => {
+      const { data, height, width } = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height);
+      const inked: number[] = [];
+      for (let y = 0; y < height; y++) {
+        let sum = 0;
+        for (let x = 0; x < width; x++) sum += data[(y * width + x) * 4 + 3] ?? 0;
+        if (sum > 0) inked.push(y);
+      }
+      return inked;
+    };
+    wave.show(null, 0.5);
+    const scale = window.devicePixelRatio;
+    expect(rows().length).toBeLessThanOrEqual(Math.ceil(scale) + 1);
+    wave.show(new Uint8Array(400).fill(255), 0.5);
+    expect(rows().length).toBe(canvas.height);
+    expect(played.style.clipPath).toContain('calc(100% - 150px)');
+    host.remove();
+  });
+
+  it('opens the mood dialog with a crest and a tone it can save', async () => {
+    await open1644();
+    if (!tab) return;
+    const first = tab.moodsOf()[0];
+    act(() => document.querySelector<HTMLElement>('[data-sound-mood]')?.focus());
+    await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+    await expect.poll(() => document.querySelector('[role="menu"]')).not.toBeNull();
+    await userEvent.click([...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === 'Edit')!);
+    await expect.poll(() => document.querySelector('.atlas-sound-dialog')).not.toBeNull();
+    await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-look__tone')[6]!);
+    await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-look__crest')[2]!);
+    expect(document.querySelector('.atlas-sound-look__crest[aria-checked="true"]')).toBe(document.querySelectorAll('.atlas-sound-look__crest')[2]);
+    await userEvent.click([...document.querySelectorAll<HTMLElement>('.atlas-sound-dialog button')].find((button) => button.textContent === 'Save')!);
+    await expect.poll(() => tab?.moodsOf().find((mood) => mood.id === first?.id)?.tone).toBe('azure');
+    expect(tab.moodsOf().find((mood) => mood.id === first?.id)?.icon).toBe('treasure');
+    expect(document.querySelector('.atlas-sound-mood svg path')?.getAttribute('d')).toBe(PIN_ICON_PATHS.treasure);
   });
 
   it('runs a thin bar along the tile for the crossfade, and meters from real levels while the page shows', async () => {

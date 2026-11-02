@@ -7,9 +7,9 @@ export const MOOD_TONE_NAMES = Object.keys(PIN_TONES) as PinToneName[];
 
 const isTone = (value: unknown): value is PinToneName => typeof value === 'string' && Object.hasOwn(PIN_TONES, value);
 
-/** The icon a mood file names, where this version has it and the pin palette offers it. */
+/** The icon a mood file names, where this version has it. */
 export function readMoodIcon(value: unknown): PinIconId | undefined {
-  return typeof value === 'string' && Object.hasOwn(PIN_ICON_PATHS, value) && moodIconChoices().some((icon) => icon.id === value) ? (value as PinIconId) : undefined;
+  return typeof value === 'string' && Object.hasOwn(PIN_ICON_PATHS, value) ? (value as PinIconId) : undefined;
 }
 
 export const readMoodTone = (value: unknown): PinToneName | undefined => (isTone(value) ? value : undefined);

@@ -162,7 +162,7 @@ export const audio = {
   'audio.settings.fadeHint': 'For a new mood, and for sounds added or removed by hand.',
   'audio.settings.levelHint': 'What you hear of it on this table, in dB.',
 
-  'audio.players.hearing': '{hearing} of {total} hearing',
+  'audio.players.hearing': '{hearing} of {total} players hearing',
   'audio.players.uploading': { one: '{count} track still uploading', other: '{count} tracks still uploading' },
   'audio.players.ready': 'Ready for players',
   'audio.players.uploadingPercent': 'Uploading {percent}%',

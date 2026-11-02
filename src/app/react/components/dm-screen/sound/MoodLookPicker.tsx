@@ -1,9 +1,10 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { t } from '../../../../i18n';
 import type { Mood } from '../../../../sound/soundTypes';
 import { moodIcon, moodIconChoices, MOOD_TONE_NAMES, moodTone } from '../../../../soundLibrary/moodLook';
 import { PIN_ICON_PATHS, PIN_TONES } from '../../../../types/pinIcons';
 import { WIDGET_ICON_VIEW_BOX } from '../../../../types/widgetIcons';
+import { scrollWithin } from '../../../../utils/scrollWithin';
 import { LabelTooltip, TooltipProvider } from '../../../../packages/components/primitives/tooltip';
 
 type MoodLook = Pick<Mood, 'icon' | 'tone'>;
@@ -17,6 +18,12 @@ interface MoodLookPickerProps {
 export function MoodLookPicker({ look, onChange }: MoodLookPickerProps): React.JSX.Element {
   const icon = moodIcon(look);
   const tone = moodTone(look);
+  const crests = useRef<HTMLDivElement>(null);
+  // The crest it has may lie far down the list.
+  useEffect(() => {
+    const chosen = crests.current?.querySelector('[aria-checked="true"]');
+    if (crests.current && chosen) scrollWithin(crests.current, chosen, 'nearest');
+  }, []);
   return (
     <TooltipProvider delayDuration={300} skipDelayDuration={600}>
       <div className="atlas-sound-look" style={{ '--atlas-sound-tone-light': tone.light, '--atlas-sound-tone-dark': tone.dark } as React.CSSProperties}>
@@ -39,7 +46,7 @@ export function MoodLookPicker({ look, onChange }: MoodLookPickerProps): React.J
         </div>
         <div className="atlas-sound-field">
           <span>{t('audio.mood.crest')}</span>
-          <div className="atlas-sound-look__crests" role="radiogroup" aria-label={t('audio.mood.crest')}>
+          <div className="atlas-sound-look__crests" ref={crests} role="radiogroup" aria-label={t('audio.mood.crest')}>
             {moodIconChoices().map((choice) => (
               <LabelTooltip key={choice.id} label={choice.name}>
                 <button type="button" role="radio" aria-checked={choice.id === icon} className="atlas-sound-look__crest" onClick={() => onChange({ ...look, icon: choice.id })}>

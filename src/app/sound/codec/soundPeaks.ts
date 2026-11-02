@@ -41,7 +41,7 @@ export class PeakCollector {
 export async function readPeaksOfCopy(copy: Blob, frames: number): Promise<Uint8Array<ArrayBuffer>> {
   const collector = new PeakCollector(frames);
   const window = new BlobWindow(copy);
-  let failure: Error | null = null;
+  const failures: Error[] = [];
   let samples = new Float32Array(0);
   const decoder = new AudioDecoder({
     output: (data) => {
@@ -52,7 +52,7 @@ export async function readPeaksOfCopy(copy: Blob, frames: number): Promise<Uint8
       collector.add(samples, length);
     },
     error: (error) => {
-      failure = error;
+      failures.push(error);
     },
   });
   let offset = 0;
@@ -82,6 +82,6 @@ export async function readPeaksOfCopy(copy: Blob, frames: number): Promise<Uint8
   } finally {
     if (decoder.state !== 'closed') decoder.close();
   }
-  if (failure) throw failure;
+  if (failures[0]) throw failures[0];
   return collector.result();
 }

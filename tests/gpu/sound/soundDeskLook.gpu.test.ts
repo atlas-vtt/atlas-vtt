@@ -152,6 +152,27 @@ describe('how the Sound page looks', () => {
     await shoot('eight-layers');
   }, 240_000);
 
+  it('the mood dialog, the library view and a list of tracks', async () => {
+    const shown = await playing(ATLAS);
+    await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-music__list')!);
+    await act(async () => { await sleep(200); });
+    await shoot('tracks');
+    await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-views [role="radio"]')[1]!);
+    await act(async () => { await sleep(200); });
+    await shoot('library');
+    await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-views [role="radio"]')[0]!);
+    act(() => document.querySelector<HTMLElement>('[data-sound-mood]')?.focus());
+    await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+    await expect.poll(() => document.querySelector('[role="menu"]')).not.toBeNull();
+    await act(async () => { await sleep(200); });
+    await shoot('mood-menu');
+    await userEvent.click([...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === 'Edit')!);
+    await expect.poll(() => document.querySelector('.atlas-sound-dialog')).not.toBeNull();
+    await act(async () => { await sleep(300); });
+    await shoot('mood-dialog');
+    expect(shown.moodsOf()).toHaveLength(MOODS.length);
+  }, 240_000);
+
   it('light', async () => {
     await playing(LIGHT);
     await shoot('light');

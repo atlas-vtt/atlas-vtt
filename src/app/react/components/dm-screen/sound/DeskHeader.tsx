@@ -30,7 +30,7 @@ function PlayersLine({ director, collectionId }: { director: SoundDirector; coll
   const audience = useSoundValue(director, (snapshot) => snapshot.audience);
   const menu = useContextMenu();
   const { sounds } = director.players;
-  if (sounds === null) return audience === null ? null : <span className="atlas-sound-who"><i aria-hidden="true" />{audience}</span>;
+  if (sounds === null) return audience === null ? null : <span className="atlas-sound-who"><i aria-hidden="true" /><span>{audience}</span></span>;
   const open = (anchor: HTMLElement): void => {
     menu.open([
       { type: 'item', label: t('audio.players.send'), checked: sounds.sending, onClick: () => sounds.setSending(!sounds.sending) },
@@ -40,7 +40,7 @@ function PlayersLine({ director, collectionId }: { director: SoundDirector; coll
   return (
     <button type="button" className="atlas-sound-who" data-off={!sounds.sending || undefined} onClick={(event) => open(event.currentTarget)}>
       <i aria-hidden="true" />
-      {sounds.sending ? (audience ?? t('audio.players.send')) : t('audio.players.notSending')}
+      <span>{sounds.sending ? (audience ?? t('audio.players.send')) : t('audio.players.notSending')}</span>
     </button>
   );
 }
