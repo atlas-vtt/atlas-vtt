@@ -41,6 +41,7 @@ class Rig {
   noted = 0;
   snapshot: SoundSnapshot = { mix: { ...EMPTY_MIX }, lifecycle: 'off', lastMix: null, previewing: null, output: null, audience: null, waitingKeys: [], shelfRevision: 0, playersRevision: 0 };
   clock: TableClock | null = null;
+  clockSteps: number[] = [];
   audience: AudienceLine | null = null;
   readonly records = new Map<string, SoundRecord>([['a', record('a')], ['b', record('b', { licence: 'cc-by', credit: 'Kevin, CC BY 4.0' })]]);
   moods: Mood[] = [];
@@ -58,6 +59,7 @@ class Rig {
       subscribe: (listener: () => void) => (this.listeners.add(listener), () => this.listeners.delete(listener)),
       onStateChanged: (listener: (state: TableSound) => void) => (this.stateListeners.add(listener), () => this.stateListeners.delete(listener)),
       useTableClock: (clock: TableClock | null) => void (this.clock = clock),
+      tableClockStepped: (deltaMs: number) => void this.clockSteps.push(deltaMs),
       useAudience: (audience: AudienceLine | null) => void (this.audience = audience),
       players: this.seam,
       shelf: {
@@ -178,6 +180,21 @@ describe('a table\'s sound for players', () => {
     expect(sound?.key).toMatch(/^[0-9a-f]{64}$/);
     expect(sound?.key).not.toContain('s'.repeat(8));
     expect(rig.share.copyOf(record('a'))).toEqual({ state: 'nowhere' });
+  });
+
+  it('tells the director when the first answer moves the clock past what a voice corrects, and not when answers settle', async () => {
+    rig = new Rig();
+    rig.share.start();
+    await rig.advance(100);
+    const first = rig.times.at(-1) as number;
+    rig.share.heardTime(first, first - 180_000);
+    expect(rig.clockSteps).toHaveLength(1);
+    expect(rig.clockSteps[0]).toBeCloseTo(-180_000, -3);
+    await rig.advance(100);
+    const second = rig.times.at(-1) as number;
+    rig.share.heardTime(second, second - 180_100);
+    expect(rig.clockSteps).toHaveLength(1);
+    rig.share.stop();
   });
 
   it('runs the director on the table\'s clock while it binds, and hands it back', async () => {

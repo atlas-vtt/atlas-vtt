@@ -2,7 +2,8 @@ import type { TableSound } from '../sound/soundTypes';
 import { applyDueListChange, EMPTY_MIX, type MixTiming, type SoundMix } from './soundMix';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
-import { isPlaying, OFFLINE_LEAD_MS } from './tableSound';
+import { LEAVE_DRIFT_MS } from '../sound/engine/soundVoice';
+import { isPlaying, OFFLINE_LEAD_MS, onShiftedClock } from './tableSound';
 import type { TableClock } from './tableClock';
 
 const PULSE_MS = 250;
@@ -51,8 +52,18 @@ export class SoundTable {
     return this.tableClock.now();
   }
 
+  /** Another clock: what plays stays at its position, or a GM's clock minutes ahead of the table's would leave everyone minutes of silence. */
   useClock(clock: TableClock | null): void {
-    this.tableClock = clock ?? OFFLINE_CLOCK;
+    const next = clock ?? OFFLINE_CLOCK;
+    const deltaMs = next.now() - this.tableClock.now();
+    this.tableClock = next;
+    if (Math.abs(deltaMs) >= LEAVE_DRIFT_MS) this.clockStepped(deltaMs);
+  }
+
+  /** The clock itself jumped by this much: its first answer from the table, on a machine whose own clock is off. */
+  clockStepped(deltaMs: number): void {
+    const { table } = this.current;
+    if (table.silenced || table.music || table.layers.length > 0 || table.outgoing.length > 0 || table.outgoingLayers.length > 0) this.commit({ ...this.current, table: onShiftedClock(table, deltaMs) });
   }
 
   timing(): MixTiming {

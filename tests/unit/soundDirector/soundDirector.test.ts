@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { desiredSound } from '@/app/sound/engine/desiredSound';
 import type { SceneSound, TableSound } from '@/app/sound/soundTypes';
 import { heldInMix } from '@/app/soundDirector/libraryDesk';
 import { SCENE_FOLLOW_DELAY_MS } from '@/app/soundDirector/sceneFollow';
@@ -446,6 +447,82 @@ describe('the sound director', () => {
     rig.director.useTableClock({ now: () => 5_000_000, leadMs: 1000 });
     rig.director.press(mood('tavern', ['rain']));
     expect(rig.director.snapshot().mix.table.layers[0]?.startAt).toBe(5_001_000);
+  });
+
+  describe('another clock', () => {
+    const MINUTES = 5 * 60_000;
+    const positionOf = (now: number): number[] => {
+      const { table } = rig.director.snapshot().mix;
+      return desiredSound(table, now).voices.map((voice) => Math.round(voice.playFrame));
+    };
+
+    it('leaves what plays at its position, both ways, and what enters still enters', async () => {
+      rig = directorRig(ALL);
+      await ready(rig);
+      rig.director.press(mood('tavern', ['rain'], { tracks: ['song'], shuffle: false, levelDb: 0 }));
+      await vi.advanceTimersByTimeAsync(30_000);
+      const before = positionOf(rig.director.now());
+      const states: TableSound[] = [];
+      rig.director.onStateChanged((state) => states.push(state));
+
+      rig.director.useTableClock({ now: () => Date.now() - MINUTES, leadMs: 1000 });
+      expect(positionOf(rig.director.now())).toEqual(before);
+      const { table } = rig.director.snapshot().mix;
+      expect(table.layers[0]!.startAt).toBeLessThanOrEqual(rig.director.now());
+      expect(table.layers[0]!.fade.at).toBe(table.layers[0]!.startAt);
+      expect(table.music!.fade.at).toBe(table.music!.startAt);
+      expect(states).toHaveLength(1);
+
+      await vi.advanceTimersByTimeAsync(5000);
+      const onTable = positionOf(rig.director.now());
+      rig.director.useTableClock(null);
+      expect(positionOf(rig.director.now())).toEqual(onTable);
+      expect(rig.director.snapshot().mix.table.layers[0]!.startAt).toBeLessThanOrEqual(Date.now());
+    });
+
+    it('a clock that steps by itself moves it the same way', async () => {
+      rig = directorRig(ALL);
+      await ready(rig);
+      let offset = 0;
+      rig.director.useTableClock({ now: () => Date.now() + offset, leadMs: 1000 });
+      rig.director.press(mood('tavern', ['rain']));
+      await vi.advanceTimersByTimeAsync(10_000);
+      const before = positionOf(rig.director.now());
+      offset = -MINUTES;
+      rig.director.tableClockStepped(-MINUTES);
+      expect(positionOf(rig.director.now())).toEqual(before);
+    });
+
+    it('the same to within what a voice leaves alone keeps the state', async () => {
+      rig = directorRig(ALL);
+      await ready(rig);
+      rig.director.press(mood('tavern', ['rain']));
+      const { table } = rig.director.snapshot().mix;
+      rig.director.useTableClock({ now: () => Date.now() + 20, leadMs: 1000 });
+      expect(rig.director.snapshot().mix.table).toBe(table);
+    });
+
+    it('with nothing playing changes no state', async () => {
+      rig = directorRig(ALL);
+      await ready(rig);
+      const { table } = rig.director.snapshot().mix;
+      rig.director.useTableClock({ now: () => Date.now() + MINUTES, leadMs: 1000 });
+      expect(rig.director.snapshot().mix.table).toBe(table);
+    });
+
+    it('a silence stays over or under way as it was', async () => {
+      rig = directorRig(ALL);
+      await ready(rig);
+      rig.director.press(mood('tavern', ['rain']));
+      await vi.advanceTimersByTimeAsync(5000);
+      rig.director.desk.toggleSilence();
+      await vi.advanceTimersByTimeAsync(500);
+      const { silenceFade } = rig.director.snapshot().mix.table;
+      const left = silenceFade.at + silenceFade.ms - rig.director.now();
+      rig.director.useTableClock({ now: () => Date.now() - MINUTES, leadMs: 1000 });
+      const after = rig.director.snapshot().mix.table.silenceFade;
+      expect(after.at + after.ms - rig.director.now()).toBe(left);
+    });
   });
 
   it('the audience line is a seam', async () => {

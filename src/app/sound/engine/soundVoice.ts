@@ -12,9 +12,9 @@ import { musicSpanAt, type TimelineSpan } from './soundTimeline';
 /** A run for the next track of a list is started this far ahead, in frames. */
 const NEXT_RUN_LEAD_FRAMES = 20 * SOUND_RATE;
 /** Under this nobody can tell, and correcting would be the only audible thing. */
-const LEAVE_DRIFT_MS = 50;
+export const LEAVE_DRIFT_MS = 50;
 /** Up to this, the next place a restart cannot be heard is soon enough. Beyond it, at once. */
-const SOFT_DRIFT_MS = 2000;
+export const SOFT_DRIFT_MS = 2000;
 /** The context's clock moves in steps of its buffer, so one reading says little: this many in a row do. */
 const DRIFT_READINGS = 5;
 /** Time after a voice has gone for its last samples to fade. */

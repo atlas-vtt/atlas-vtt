@@ -66,5 +66,17 @@ export function changed(state: TableSound, change: Partial<TableSound>): TableSo
   return { ...state, ...change, revision: state.revision + 1 };
 }
 
+/** A state moved onto a clock `deltaMs` ahead of the one it was made on: what plays stays at its position, and a play coming in still reads as coming in. */
+export function onShiftedClock(state: TableSound, deltaMs: number): TableSound {
+  const shifted = <T extends MusicPlay | LayerPlay>(play: T): T => ({ ...play, startAt: play.startAt + deltaMs, fade: { ...play.fade, at: play.fade.at + deltaMs } });
+  return changed(state, {
+    silenceFade: { ...state.silenceFade, at: state.silenceFade.at + deltaMs },
+    music: state.music && shifted(state.music),
+    outgoing: state.outgoing.map(shifted),
+    layers: state.layers.map(shifted),
+    outgoingLayers: state.outgoingLayers.map(shifted),
+  });
+}
+
 /** A fade out when sound is switched off: the GM's choice, within reason, since something else is under way. */
 export const stopFade = (fadeMs: number): number => Math.min(fadeMs, 2000);

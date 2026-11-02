@@ -116,6 +116,11 @@ export class SoundDirector {
     this.table.useClock(clock);
   }
 
+  /** Seam for a table online: the clock it gave has jumped by this much. */
+  tableClockStepped(deltaMs: number): void {
+    this.table.clockStepped(deltaMs);
+  }
+
   /** Seam for a table online: who hears it, in one line. */
   useAudience(audience: AudienceLine | null): void {
     this.players.useAudience(audience, (line) => this.publish({ audience: line }));

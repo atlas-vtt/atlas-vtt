@@ -1,5 +1,6 @@
 import { Pacer } from '../../marks/index.ts';
 import { parsePlayerSoundState, isRecord, type GmMessage } from '../../protocol/index.ts';
+import { SOFT_DRIFT_MS } from '../../../sound/engine/soundVoice';
 import { JOIN_SAMPLES, TableClockSync } from '../../../sound/engine/tableClockSync';
 import type { Mood, SoundBytes, SoundInfo, SoundRecord, TableSound } from '../../../sound/soundTypes';
 import type { SoundSnapshot } from '../../../soundDirector/soundSnapshot';
@@ -30,6 +31,7 @@ export interface ShareDirector {
   subscribe(listener: () => void): () => void;
   onStateChanged(listener: (state: TableSound) => void): () => void;
   useTableClock(clock: TableClock | null): void;
+  tableClockStepped(deltaMs: number): void;
   useAudience(audience: AudienceLine | null): void;
   readonly players: {
     use(sounds: PlayersSounds | null): void;
@@ -146,8 +148,12 @@ export class TableSoundShare implements PlayersSounds {
     this.clock.linkLost();
   }
 
+  /** An answer can move the clock by what this device's clock is off, far past what a voice corrects by itself. What moves it less is the answers settling, which voices follow on a median. */
   heardTime(t1: number, t2: number): void {
+    const before = this.clock.now();
     this.clock.heard(t1, t2);
+    const step = this.clock.now() - before;
+    if (this.attached && Math.abs(step) > SOFT_DRIFT_MS) this.ports.director.tableClockStepped(step);
   }
 
   /** To one who came, or everyone; while nothing plays too, so a page has the clock before the first mood. */
