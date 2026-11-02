@@ -49,8 +49,9 @@ export function useSoundKeys({ active, rootRef, viewId, director, moods, moveMoo
           }
           return;
         }
-        // A fader's own keys are up and down; left and right leave it.
-        if (target?.getAttribute?.('role') === 'slider' && (direction === 'up' || direction === 'down')) return;
+        // A fader's own keys are up and down; left and right leave it. A waveform runs the other way.
+        const sliderKeys = isWithin(target, '.atlas-sound-music__wave') ? direction === 'left' || direction === 'right' : direction === 'up' || direction === 'down';
+        if (target?.getAttribute?.('role') === 'slider' && sliderKeys) return;
         const screen = root.closest('.atlas-dm-screen') ?? root;
         if (isControlTarget(target) && !target?.closest('.atlas-dm-screen-pages')) {
           taken();

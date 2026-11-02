@@ -122,6 +122,7 @@ export const audio = {
   'audio.unmute': 'Unmute {name}',
   'audio.remove': 'Remove {name}',
   'audio.skip': 'Skip to the next track',
+  'audio.seek': 'Position in the track',
   'audio.shuffle': 'Shuffle',
   'audio.tracks': 'Tracks',
   'audio.thenTrack': 'Then {name}',

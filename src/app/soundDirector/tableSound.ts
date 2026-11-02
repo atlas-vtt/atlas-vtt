@@ -8,6 +8,8 @@ export const FADER_MS = 60;
 export const SILENCE_FADE_MS = 1500;
 /** A skip is a short crossfade, not a mood's. */
 export const SKIP_FADE_MS = 1500;
+/** A drag along a track's waveform: long enough to leave no click, short enough to be a jump. */
+export const SEEK_FADE_MS = 150;
 /** Where a changed list takes over from the old one, at a track's end. */
 export const TRACK_JOIN_MS = 40;
 

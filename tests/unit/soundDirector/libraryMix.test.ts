@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { SoundInfo } from '@/app/sound/soundTypes';
 import { applySoonest, mixHolding, playNext, playNow } from '@/app/soundDirector/libraryMix';
-import { musicPosition, nextTrack, soundingMusic, withListChange } from '@/app/soundDirector/musicList';
+import { desiredSound } from '@/app/sound/engine/desiredSound';
+import { musicPosition, nextTrack, seekMusic, soundingMusic, withListChange } from '@/app/soundDirector/musicList';
 import { addTrack, EMPTY_MIX, type MixTiming, type SoundMix } from '@/app/soundDirector/soundMix';
+import { SEEK_FADE_MS } from '@/app/soundDirector/tableSound';
 
 const FRAMES_PER_SECOND = 48_000;
 const track = (key: string, seconds = 60): SoundInfo => ({ key, frames: seconds * FRAMES_PER_SECOND, gainDb: 0 });
@@ -19,6 +21,43 @@ const sounding = (mix: SoundMix, now: number): string | undefined => {
   const play = soundingMusic(mix.table, now);
   return play ? musicPosition(play, now)?.track.key : undefined;
 };
+
+describe('seekMusic', () => {
+  it('moves the track sounding, and what played leaves on a short fade', () => {
+    const mix = playing('a');
+    const now = 10_000;
+    const table = seekMusic(mix.table, 30 * FRAMES_PER_SECOND, now);
+    const play = table.music!;
+    expect(musicPosition(play, now)?.frame).toBe(30 * FRAMES_PER_SECOND);
+    expect(musicPosition(play, now + 1000)?.frame).toBe(31 * FRAMES_PER_SECOND);
+    expect(play.fade).toEqual({ at: play.startAt, ms: 0 });
+    expect(play.gainDb).toBe(mix.table.music?.gainDb);
+    expect(table.outgoing).toEqual([{ ...mix.table.music, fade: { at: now, ms: SEEK_FADE_MS } }]);
+    // Coming in, and at its level at once: a level change would keep the old voice's fade.
+    const voice = desiredSound(table, now).voices.find((one) => one.startAt === play.startAt);
+    expect(voice?.role).toBe('in');
+    expect(voice?.fadeGain).toBe(1);
+  });
+
+  it('stays in the track sounding, in a list that goes on in its order', () => {
+    const { table: start } = playing('a', 'b', 'c');
+    const inSecond = (start.music?.startAt ?? 0) + 70_000;
+    const table = seekMusic(start, 45 * FRAMES_PER_SECOND, inSecond);
+    const position = musicPosition(table.music!, inSecond);
+    expect(position?.track.key).toBe('b');
+    expect(position?.frame).toBe(45 * FRAMES_PER_SECOND);
+    expect(position?.next?.key).toBe('c');
+  });
+
+  it('keeps inside the track, and leaves a play that has not begun alone', () => {
+    const { table } = playing('a');
+    const now = 10_000;
+    expect(musicPosition(seekMusic(table, 1e12, now).music!, now)?.frame).toBe(60 * FRAMES_PER_SECOND - 1);
+    expect(musicPosition(seekMusic(table, -5, now).music!, now)?.frame).toBe(0);
+    expect(seekMusic(table, 100, (table.music?.startAt ?? 0) - 1)).toBe(table);
+    expect(seekMusic(EMPTY_MIX.table, 100, now)).toBe(EMPTY_MIX.table);
+  });
+});
 
 describe('Play next', () => {
   it('starts the music where none plays', () => {

@@ -1,7 +1,7 @@
 import { FRAMES_PER_MS } from '../sound/engine/soundMath';
 import { frameInSpan, framesToWrap, listOrder, loopRangeOf, musicSpanAt, playFrameAt } from '../sound/engine/soundTimeline';
 import type { MusicPlay, SoundInfo, TableSound } from '../sound/soundTypes';
-import { changed, leaving, OFFLINE_LEAD_MS, SKIP_FADE_MS, TRACK_JOIN_MS, withoutFinished } from './tableSound';
+import { changed, leaving, OFFLINE_LEAD_MS, SEEK_FADE_MS, SKIP_FADE_MS, TRACK_JOIN_MS, withoutFinished } from './tableSound';
 
 export interface MusicPosition {
   track: SoundInfo;
@@ -87,6 +87,23 @@ export function playTrack(state: TableSound, key: string, now: number, leadMs = 
   return changed(live, {
     music: { ...play, tracks, seed, shuffle: from.shuffle, startAt, fade: { at: startAt, ms: SKIP_FADE_MS } },
     outgoing: [...live.outgoing.filter((other) => other !== play), leaving(play, startAt, SKIP_FADE_MS)],
+  });
+}
+
+/**
+ * The track sounding now from `frame` on, at once, and the list goes on from there. The play is one that began as long ago as
+ * that takes, so a page takes it as it takes a late join: in its place wherever the state reaches it, with no lead to wait for.
+ */
+export function seekMusic(state: TableSound, frame: number, now: number): TableSound {
+  const play = state.music;
+  const span = play && play.startAt <= now ? musicSpanAt(play, playFrameAt(play.startAt, now)) : null;
+  if (!play || !span) return state;
+  const frames = span.loop ? loopRangeOf(span.sound).endFrame : span.sound.frames;
+  const startAt = now - (span.startPlayFrame + Math.max(0, Math.min(frames - 1, Math.round(frame)))) / FRAMES_PER_MS;
+  const live = withoutFinished(state, now);
+  return changed(live, {
+    music: { ...play, startAt, fade: { at: startAt, ms: 0 } },
+    outgoing: [...live.outgoing.filter((other) => other !== play), leaving(play, now, SEEK_FADE_MS)],
   });
 }
 

@@ -2,6 +2,7 @@ import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { MusicWave } from '@/app/react/components/dm-screen/sound/musicWave';
+import { musicPosition, soundingMusic } from '@/app/soundDirector/musicList';
 import type { PlayersCopy } from '@/app/soundDirector/tableClock';
 import { PIN_ICON_PATHS } from '@/app/types/pinIcons';
 import { mouse, pressAndMove } from './realMouse';
@@ -259,9 +260,9 @@ describe('the DM screen’s Sound page', () => {
     if (!tab) return;
     await allReady(tab);
     await userEvent.keyboard('1');
-    await expect.poll(() => document.querySelectorAll('.atlas-sound-strips__mix [role="slider"]').length).toBe(3);
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-strips__mix .atlas-sound-fader [role="slider"]').length).toBe(3);
     const layerKey = (): number => tab?.director.snapshot().mix.table.layers[0]?.gainDb ?? NaN;
-    const thumb = document.querySelectorAll<HTMLElement>('.atlas-sound-strips__mix [role="slider"]')[1]!;
+    const thumb = document.querySelectorAll<HTMLElement>('.atlas-sound-strips__mix .atlas-sound-fader [role="slider"]')[1]!;
     const before = layerKey();
     act(() => thumb.focus());
     await userEvent.keyboard('{ArrowUp}');
@@ -281,6 +282,38 @@ describe('the DM screen’s Sound page', () => {
     const { width, height } = track.getBoundingClientRect();
     await userEvent.dragAndDrop(page.elementLocator(thumb), page.elementLocator(track), { targetPosition: { x: width / 2, y: height * 0.75 } });
     await expect.poll(layerKey).toBeCloseTo(6 - 0.75 * 66, -1);
+  });
+
+  it('moves the track by a press or drag along its waveform, by key, and shows it while held', async () => {
+    await open1644();
+    if (!tab) return;
+    await allReady(tab);
+    await userEvent.keyboard('1');
+    await expect.poll(() => document.querySelector('.atlas-sound-music__wave')).not.toBeNull();
+    const { director } = tab;
+    const place = (): number => {
+      const now = director.now();
+      const play = soundingMusic(director.snapshot().mix.table, now);
+      const position = play && musicPosition(play, now);
+      return position ? position.frame / position.frames : NaN;
+    };
+    await expect.poll(place).toBeGreaterThan(0);
+    const wave = document.querySelector<HTMLElement>('.atlas-sound-music__wave')!;
+    const { width, height } = wave.getBoundingClientRect();
+    await userEvent.click(wave, { position: { x: width * 0.75, y: height / 2 } });
+    await expect.poll(place).toBeCloseTo(0.75, 1);
+    await userEvent.dragAndDrop(page.elementLocator(wave), page.elementLocator(wave), { sourcePosition: { x: width * 0.75, y: height / 2 }, targetPosition: { x: width * 0.25, y: height / 2 } });
+    await expect.poll(place).toBeCloseTo(0.25, 1);
+    expect(wave.getAttribute('aria-label')).toBe('Position in the track');
+
+    // Left and right are the waveform's own; a fader leaves on them.
+    act(() => wave.focus());
+    const before = place();
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(place()).toBeLessThan(before);
+    expect(document.activeElement).toBe(wave);
+    await userEvent.keyboard('{Home}');
+    expect(place()).toBeLessThan(0.05);
   });
 
   it('says changed once the mix differs, saves to the mood, and offers clearing it in a menu', async () => {

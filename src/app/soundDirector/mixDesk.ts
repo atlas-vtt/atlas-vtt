@@ -3,7 +3,7 @@ import { applySoonest, readyToJoin } from './libraryMix';
 import type { DirectorMoods } from './directorDeps';
 import { addLayer, setLayerLevel, setLayerMuted, setMusicLevel, setMusicMuted, stopAll, toggleSilence } from './liveEdits';
 import { mixDiffersFrom } from './mixChange';
-import { nextTrack, playTrack, skipTrack, soundingTrack } from './musicList';
+import { nextTrack, playTrack, seekMusic, skipTrack, soundingTrack } from './musicList';
 import { addTrack, dropLayer, dropWaitingTrack, EMPTY_MIX, joinReady, mixAsMood, pressMood, removeTrack, setShuffle, withoutSoonest, type ActiveMood, type SoundMix } from './soundMix';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
@@ -166,6 +166,11 @@ export class MixDesk {
   playTrack(key: string): void {
     const mix = this.table.mix;
     this.table.commit({ ...mix, table: playTrack(mix.table, key, this.table.now(), this.table.clock.leadMs, mix.listChange), listChange: null });
+  }
+
+  seekMusic(frame: number): void {
+    const mix = this.table.mix;
+    this.table.commit({ ...mix, table: seekMusic(mix.table, frame, this.table.now()) });
   }
 
   removeTrack(key: string): void {

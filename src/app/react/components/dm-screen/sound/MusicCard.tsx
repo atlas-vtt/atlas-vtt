@@ -10,6 +10,7 @@ import { useAtlasUI } from '../../../root/AtlasUIContext';
 import { IconAction } from './IconAction';
 import { MusicWave } from './musicWave';
 import { useSoundValue } from './useSound';
+import { useWaveSeek } from './useWaveSeek';
 import { VerticalFader } from './VerticalFader';
 
 const POSITION_MS = 250;
@@ -36,6 +37,9 @@ function MusicPosition({ director, listOpen }: { director: SoundDirector; listOp
   const totalRef = useRef<HTMLSpanElement>(null);
   const unplayedRef = useRef<HTMLCanvasElement>(null);
   const playedRef = useRef<HTMLCanvasElement>(null);
+  const waveRef = useRef<HTMLDivElement>(null);
+  const writeNow = useRef<() => void>(() => undefined);
+  const { held, handlers } = useWaveSeek(director, () => writeNow.current());
 
   useEffect(() => {
     const unplayed = unplayedRef.current;
@@ -52,10 +56,16 @@ function MusicPosition({ director, listOpen }: { director: SoundDirector; listOp
       writeText(titleRef.current, position ? (director.shelf.recordOfKey(position.track.key)?.name ?? '') : (waiting && director.shelf.recordOf(waiting)?.name) ?? '');
       const next = director.desk.nextTrack();
       writeText(nextRef.current, position ? (next ? t('audio.thenTrack', { name: director.shelf.recordOfKey(next.key)?.name ?? '' }) : '') : t('audio.waiting'));
-      writeText(timeRef.current, position ? clock(position.frame) : '');
-      writeText(totalRef.current, position ? t('audio.ofLength', { length: clock(position.frames) }) : '');
-      wave.show(position ? director.shelf.peaksOfKey(position.track.key) : null, position ? position.frame / Math.max(1, position.frames) : 0);
+      const frames = position?.frames ?? 0;
+      const frame = position ? (held.current === null ? position.frame : Math.round(held.current * frames)) : 0;
+      writeText(timeRef.current, position ? clock(frame) : '');
+      writeText(totalRef.current, position ? t('audio.ofLength', { length: clock(frames) }) : '');
+      wave.show(position ? director.shelf.peaksOfKey(position.track.key) : null, frame / Math.max(1, frames));
+      waveRef.current?.setAttribute('aria-valuemax', String(Math.floor(frames / SOUND_RATE)));
+      waveRef.current?.setAttribute('aria-valuenow', String(Math.floor(frame / SOUND_RATE)));
+      waveRef.current?.setAttribute('aria-valuetext', clock(frame));
     };
+    writeNow.current = write;
     write();
     const timer = window.setInterval(write, POSITION_MS);
     const stopObserving = observeResize([unplayed], () => {
@@ -68,13 +78,13 @@ function MusicPosition({ director, listOpen }: { director: SoundDirector; listOp
       stopObserving();
       app.workspace.offref(themeRef);
     };
-  }, [app, director]);
+  }, [app, director, held]);
 
   return (
     <>
       <div className="atlas-sound-music__track" ref={titleRef} />
       <div className="atlas-sound-music__next" ref={nextRef} />
-      <div className="atlas-sound-music__wave" hidden={listOpen}>
+      <div ref={waveRef} className="atlas-sound-music__wave" hidden={listOpen} role="slider" tabIndex={0} aria-label={t('audio.seek')} aria-valuemin={0} {...handlers}>
         <canvas className="atlas-sound-music__unplayed" ref={unplayedRef} />
         <canvas className="atlas-sound-music__played" ref={playedRef} />
       </div>
