@@ -35,7 +35,7 @@ export class SoundView extends ItemView {
   }
 
   getIcon(): string {
-    return t('audio.screen.soundIcon');
+    return 'music';
   }
 
   async onOpen(): Promise<void> {
