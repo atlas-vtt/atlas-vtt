@@ -58,6 +58,10 @@ function StripMeter({ strip }: { strip: string }): React.JSX.Element {
 export const VerticalFader = React.memo(function VerticalFader({ label, value, meter, onChange, onCommit }: VerticalFaderProps): React.JSX.Element {
   const [held, setHeld] = useState<number | null>(null);
   const shown = held ?? value;
+  const endDrag = useRef<(() => void) | null>(null);
+
+  // A page that goes mid-drag takes the release with it; what the fader was set to still counts.
+  useEffect(() => () => endDrag.current?.(), []);
 
   const press = (event: React.PointerEvent<HTMLDivElement>): void => {
     if (event.button !== 0) return;
@@ -82,15 +86,19 @@ export const VerticalFader = React.memo(function VerticalFader({ label, value, m
       onChange(db);
     };
     const end = (): void => {
+      endDrag.current = null;
       track.removeEventListener('pointermove', move);
       track.removeEventListener('pointerup', end);
       track.removeEventListener('pointercancel', end);
+      track.removeEventListener('lostpointercapture', end);
       setHeld(null);
       onCommit?.(current);
     };
     track.addEventListener('pointermove', move);
     track.addEventListener('pointerup', end);
     track.addEventListener('pointercancel', end);
+    track.addEventListener('lostpointercapture', end);
+    endDrag.current = end;
   };
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLDivElement>): void => {

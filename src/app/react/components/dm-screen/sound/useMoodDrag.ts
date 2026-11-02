@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type RefObject } from 'react';
 import type { Mood } from '../../../../sound/soundTypes';
 
 /** A press becomes a drag after this many pixels; before that it is a press of the mood. */
@@ -28,10 +28,13 @@ export interface MoodDrag {
   consumeClick: () => boolean;
 }
 
-/** Moves a mood among the others under the pointer; Escape, a lost pointer or a blur put it back. */
+/** Moves a mood among the others under the pointer; Escape, a lost pointer, a blur or the grid leaving the screen put it back. */
 export function useMoodDrag(gridRef: RefObject<HTMLElement | null>, moods: readonly Mood[], canMove: (mood: Mood) => boolean, onDrop: (mood: Mood, index: number) => void): MoodDrag {
   const [drag, setDrag] = useState<{ id: string; index: number } | null>(null);
   const draggedRef = useRef(false);
+  const endRef = useRef<(() => void) | null>(null);
+
+  useEffect(() => () => endRef.current?.(), []);
 
   const start = useCallback((mood: Mood, event: ReactPointerEvent<HTMLElement>): void => {
     const grid = gridRef.current;
@@ -42,8 +45,12 @@ export function useMoodDrag(gridRef: RefObject<HTMLElement | null>, moods: reado
     const { pointerId } = event;
     let index: number | null = null;
     draggedRef.current = false;
+    endRef.current?.();
+    // A hidden grid has no places: every card measures 0×0 and the nearest is always the first.
+    const gridGone = (): boolean => grid.getClientRects().length === 0;
 
     const end = (): void => {
+      endRef.current = null;
       doc.removeEventListener('pointermove', move, true);
       doc.removeEventListener('pointerup', up, true);
       doc.removeEventListener('pointercancel', cancel, true);
@@ -56,6 +63,10 @@ export function useMoodDrag(gridRef: RefObject<HTMLElement | null>, moods: reado
     const cancel = (): void => end();
     const move = (moved: PointerEvent): void => {
       if (moved.pointerId !== pointerId) return;
+      if (gridGone()) {
+        end();
+        return;
+      }
       if (index === null && Math.hypot(moved.clientX - from.x, moved.clientY - from.y) < DRAG_THRESHOLD) return;
       draggedRef.current = true;
       const over = indexAt(grid, moved.clientX, moved.clientY);
@@ -66,8 +77,9 @@ export function useMoodDrag(gridRef: RefObject<HTMLElement | null>, moods: reado
     };
     const up = (released: PointerEvent): void => {
       if (released.pointerId !== pointerId) return;
+      const shownStill = !gridGone();
       end();
-      if (index !== null) onDrop(mood, index);
+      if (index !== null && shownStill) onDrop(mood, index);
     };
     const key = (pressed: KeyboardEvent): void => {
       if (pressed.key !== 'Escape' || index === null) return;
@@ -75,6 +87,7 @@ export function useMoodDrag(gridRef: RefObject<HTMLElement | null>, moods: reado
       pressed.stopPropagation();
       end();
     };
+    endRef.current = end;
     doc.addEventListener('pointermove', move, true);
     doc.addEventListener('pointerup', up, true);
     doc.addEventListener('pointercancel', cancel, true);

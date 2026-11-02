@@ -522,6 +522,25 @@ describe('the DM screen’s Sound page', () => {
     expect(tab.director.snapshot().mix.mood?.id).toBe(before[1]);
   });
 
+  it('leaves the moods as they are where the screen goes during a drag', async () => {
+    await page.viewport(1280, 820);
+    tab = await openSoundTab(DARK, viewport);
+    seedMoods(tab);
+    await expect.poll(() => document.querySelectorAll('[data-sound-mood]').length).toBe(11);
+    const before = tab.moodsOf().map((mood) => mood.id);
+    const card = document.querySelector<HTMLElement>(`[data-sound-mood="${before[2]}"]`)!;
+    const { left, top, width, height } = card.getBoundingClientRect();
+    const from = { x: left + width / 2, y: top + height / 2 };
+    const to = { x: from.x + width / 2, y: from.y + height };
+    await pressAndMove(from, to, 8);
+    const page_ = card.closest<HTMLElement>('.atlas-sound-pane')!;
+    page_.style.display = 'none';
+    await mouse.up(to.x, to.y);
+    page_.style.display = '';
+    await new Promise((resolve) => requestAnimationFrame(resolve));
+    expect(tab.moodsOf().map((mood) => mood.id)).toEqual(before);
+  });
+
   it('marks a sound that cannot play on its mood before anyone presses it', async () => {
     await page.viewport(1280, 820);
     tab = await openSoundTab(DARK, viewport);
