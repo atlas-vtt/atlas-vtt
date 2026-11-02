@@ -8,7 +8,6 @@ import { editFiles, recordIdFor, recordOfFile, recordsForFiles, unrecordedSound 
 import { importIntoLibrary, makeLibraryFolder, moveEntries, renameEntry, trashEntries, usesOf, type LibraryContext } from '../../../src/app/soundLibrary/libraryOperations';
 import { MoodStore } from '../../../src/app/soundLibrary/MoodStore';
 import type { NodeFsModule } from '../../../src/app/soundLibrary/nodeFiles';
-import { relinkRecords } from '../../../src/app/soundLibrary/soundRelink';
 import { SoundLibrary, type LibraryFile } from '../../../src/app/soundLibrary/SoundLibrary';
 import { soundRecordOf, type StoredSound } from '../../../src/app/soundLibrary/soundRecords';
 import { SoundRecordStore } from '../../../src/app/soundLibrary/SoundRecordStore';
@@ -195,22 +194,26 @@ describe('moving and renaming', () => {
 });
 
 describe('a file gone from its path', () => {
-  it('is found by name and size in its root, and otherwise waits', async () => {
+  it('is found by name and size in its root, and otherwise waits; the record stays as it is', async () => {
     write('Music', 'a.mp3', '12345');
     write('Music', 'b.mp3', '12345');
     await recordsForFiles(records, library, [fileOf('music', 'a.mp3'), fileOf('music', 'b.mp3'), fileOf('music', 'c.mp3')]);
-    const [, b] = soundsNow();
+    await records.flush();
+    const before = soundsNow().map((sound) => ({ ...sound }));
     fs.mkdirSync(path.join(external('Music'), 'Moved'));
     fs.renameSync(path.join(external('Music'), 'a.mp3'), path.join(external('Music'), 'Moved/a.mp3'));
     fs.rmSync(path.join(external('Music'), 'b.mp3'));
     fs.writeFileSync(path.join(external('Music'), 'b-other-size.mp3'), 'XX');
-    expect(library.statOfExternal('atlas-sound:music/a.mp3')).toBeNull();
+    expect(library.statOfFile('atlas-sound:music/a.mp3', 5)).toBeNull();
     library.rescan(100_000);
     await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
-    expect(await relinkRecords(library, records, 'music')).toBe(true);
-    const sounds = soundsNow();
-    expect(sounds.map((sound) => sound.audioPath).sort()).toEqual(['atlas-sound:music/Moved/a.mp3', 'atlas-sound:music/b.mp3', 'atlas-sound:music/c.mp3']);
-    expect(sounds.find((sound) => sound.id === b!.id)?.audioPath).toBe(b!.audioPath);
+    expect(library.statOfFile('atlas-sound:music/a.mp3', 5)).toMatchObject({ size: 5 });
+    expect(await (await library.readFile('atlas-sound:music/a.mp3', 5)).text()).toBe('12345');
+    expect(library.pathNow('atlas-sound:music/a.mp3', 5)).toBe('atlas-sound:music/Moved/a.mp3');
+    expect(library.statOfFile('atlas-sound:music/a.mp3')).toBeNull();
+    expect(library.statOfFile('atlas-sound:music/b.mp3', 5)).toBeNull();
+    expect(library.pathNow('atlas-sound:music/b.mp3', 5)).toBe('atlas-sound:music/b.mp3');
+    expect(soundsNow()).toEqual(before);
   });
 
   it('on a device without the root waits, and nothing fails', async () => {
@@ -218,10 +221,20 @@ describe('a file gone from its path', () => {
     await open({}, { music: { type: 'external' } });
     expect(library.rootOf('music').status).toBe('not-linked-here');
     expect(library.listing('music', '')).toBeNull();
-    expect(library.statOfExternal('atlas-sound:music/a.mp3')).toBeNull();
-    await expect(library.readExternal('atlas-sound:music/a.mp3')).rejects.toThrow('not reachable');
-    await expect(relinkRecords(library, records, 'music')).resolves.toBe(false);
+    expect(library.statOfFile('atlas-sound:music/a.mp3', 5)).toBeNull();
+    await expect(library.readFile('atlas-sound:music/a.mp3', 5)).rejects.toThrow('not reachable');
     expect(soundsNow()).toHaveLength(1);
+  });
+
+  it('in a vault root is found too, once the root was read', async () => {
+    await open({}, { music: { type: 'vault', path: 'Audio' } });
+    await vault.app.vault.adapter.write('Audio/Moved/a.mp3', '12345');
+    expect(library.statOfFile('Audio/a.mp3', 5)).toBeNull();
+    library.rescan(100_000);
+    await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
+    expect(library.statOfFile('Audio/a.mp3', 5)).toMatchObject({ size: 5 });
+    expect(library.pathNow('Audio/a.mp3', 5)).toBe('Audio/Moved/a.mp3');
+    expect(await (await library.readFile('Audio/a.mp3', 5)).text()).toBe('12345');
   });
 });
 
@@ -285,10 +298,10 @@ describe('the bytes of a file on disk', () => {
   it('reach whoever converts it through what its record says', async () => {
     write('Music', 'Battle/a.mp3', 'BYTES');
     library.listing('music', 'Battle');
-    await vi.waitFor(() => expect(library.statOfExternal('atlas-sound:music/Battle/a.mp3')).toMatchObject({ size: 5 }));
-    const blob = await library.readExternal('atlas-sound:music/Battle/a.mp3');
+    await vi.waitFor(() => expect(library.statOfFile('atlas-sound:music/Battle/a.mp3')).toMatchObject({ size: 5 }));
+    const blob = await library.readFile('atlas-sound:music/Battle/a.mp3');
     expect(await blob.text()).toBe('BYTES');
-    await expect(library.readExternal('atlas-sound:music/../../secret.mp3')).rejects.toThrow('not reachable');
+    await expect(library.readFile('atlas-sound:music/../../secret.mp3')).rejects.toThrow('not reachable');
   });
 
   it('a change on disk reaches the listing by the watch', async () => {

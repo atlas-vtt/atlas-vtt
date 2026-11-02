@@ -33,6 +33,7 @@ export class FolderTree {
   private readonly missing = new Set<string>();
   private counts: Map<string, number> | null = null;
   private indexed: IndexedFile[] | null = null;
+  private byIdentity: Map<string, SoundFileEntry> | null = null;
   private walking = false;
   private walkedOnce = false;
   private wantsWalk = false;
@@ -42,7 +43,6 @@ export class FolderTree {
   constructor(
     private readonly location: SoundLocation,
     private readonly onChanged: () => void,
-    private readonly onWalked: () => void,
   ) {}
 
   /** Whether every folder was read at least once, so a file not found is really not there. */
@@ -60,6 +60,16 @@ export class FolderTree {
 
   fileAt(path: string): SoundFileEntry | null {
     return this.files.get(path) ?? null;
+  }
+
+  /**
+   * The file of a name and size, once every folder was read, so it is not the first of several that happens to have
+   * been reached yet: the first in path order, so every device holding these files finds the same one.
+   */
+  fileNamed(name: string, size: number): SoundFileEntry | null {
+    if (!this.walkedOnce) return null;
+    this.byIdentity ??= this.identities();
+    return this.byIdentity.get(`${size}|${name}`) ?? null;
   }
 
   /** Reads a folder now; a folder that is being read is not read twice. */
@@ -109,11 +119,15 @@ export class FolderTree {
     window.clearTimeout(this.reportTimer);
     this.reportTimer = 0;
     this.onChanged();
-    this.onWalked();
     if (this.wantsWalk) {
       this.wantsWalk = false;
       void this.walk();
     }
+  }
+
+  /** Reads everything unless that has been done or is under way. */
+  walkOnce(): void {
+    if (!this.walkedOnce && !this.walking) void this.walk();
   }
 
   /** Something changed at `path`, or anywhere with null: reads what can have changed. New folders are walked, gone ones forgotten. */
@@ -185,6 +199,17 @@ export class FolderTree {
   private dirty(): void {
     this.counts = null;
     this.indexed = null;
+    this.byIdentity = null;
+  }
+
+  private identities(): Map<string, SoundFileEntry> {
+    const identities = new Map<string, SoundFileEntry>();
+    for (const file of this.files.values()) {
+      const identity = `${file.size}|${file.name}`;
+      const first = identities.get(identity);
+      if (!first || file.path < first.path) identities.set(identity, file);
+    }
+    return identities;
   }
 
   private counted(): Map<string, number> {

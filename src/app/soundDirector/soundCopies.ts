@@ -5,11 +5,16 @@ import type { SoundBytes, SoundInfo, SoundRecord } from '../sound/soundTypes';
 import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConversion';
 import type { PreparedSource } from './sourcePrepare';
 
+/** What says which file a record stands for. */
+export type SoundFileRef = Pick<SoundRecord, 'filePath' | 'audioSize'>;
+
 export interface SoundFileAccess {
-  /** Null while the file is not in the vault. */
-  statOf(path: string): { size: number; mtime: number } | null;
+  /** Null while this device does not have the file. */
+  statOf(sound: SoundFileRef): { size: number; mtime: number } | null;
   /** A Blob where the file lies on disk and need not pass through the main thread's memory. */
-  read(path: string): Promise<ArrayBuffer | Blob>;
+  read(sound: SoundFileRef): Promise<ArrayBuffer | Blob>;
+  /** What the file is called on this device, which may be elsewhere than the shared record says. */
+  pathNow(sound: SoundFileRef): string;
 }
 
 /** The parts of `OpusCache` a device's copies need. */
@@ -98,7 +103,7 @@ export class SoundCopies {
   /** Asks for copies; `urgent` is what the GM pressed. A file not in the vault yet is asked for again when it comes. */
   request(records: readonly SoundRecord[], urgent = false): void {
     if (this.disposed) return;
-    const wanted = records.filter((record) => this.stateOf(record).state === 'not-converted' && this.files.statOf(record.filePath));
+    const wanted = records.filter((record) => this.stateOf(record).state === 'not-converted' && this.files.statOf(record));
     const ids = new Set(wanted.map((record) => record.id));
     if (urgent) this.queue = [...wanted, ...this.queue.filter((record) => !ids.has(record.id))];
     else this.queue.push(...wanted.filter((record) => !this.queue.some((other) => other.id === record.id)));
@@ -127,7 +132,7 @@ export class SoundCopies {
   }
 
   private entryOf(record: SoundRecord): CopyEntry | null {
-    const stat = this.files.statOf(record.filePath);
+    const stat = this.files.statOf(record);
     if (!stat) return null;
     const identity = identityOf(record.filePath, stat);
     let entry = this.entries.get(record.id);
@@ -221,8 +226,8 @@ export class SoundCopies {
     if (this.disposed || entry.conversion.state !== 'not-converted') return;
     this.set(entry, { state: 'converting', progress: null });
     try {
-      const stat = this.files.statOf(record.filePath);
-      const { hash, source } = await this.prepare(await this.files.read(record.filePath));
+      const stat = this.files.statOf(record);
+      const { hash, source } = await this.prepare(await this.files.read(record));
       if (stat) await this.cache.remember({ path: record.filePath, size: stat.size, mtime: stat.mtime, hash });
       const measure = (await this.cache.get(hash)) ?? (await this.made(record, entry, source, hash));
       if (!this.disposed) this.markReady(record, entry, hash, measure);

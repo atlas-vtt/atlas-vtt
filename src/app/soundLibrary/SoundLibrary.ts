@@ -1,11 +1,10 @@
 import type { App } from 'obsidian';
 import type { SoundKind } from '../sound/soundTypes';
 import { realLibraryDeps } from './soundLibraryDeps';
-import { followMissingFiles } from './soundRelink';
 import { FolderTree } from './FolderTree';
 import { SoundLengths } from './soundLengths';
 import type { SoundFileEntry, SoundListing, SoundLocation } from './soundLocation';
-import { externalAudioPath, joinRelative, parentOfRelative, readExternalAudioPath, relativeBelow } from './soundPaths';
+import { externalAudioPath, isExternalAudioPath, joinRelative, nameOfRelative, parentOfRelative, readExternalAudioPath, relativeBelow } from './soundPaths';
 import { isLinked, type LinkedSoundRoot, type SoundRootState, type SoundRoots } from './SoundRoots';
 
 /** A file of the library, wherever it lies. */
@@ -59,7 +58,6 @@ export class SoundLibrary {
     if (!library) {
       library = new SoundLibrary(realLibraryDeps(app));
       SoundLibrary.instances.set(app, library);
-      followMissingFiles(library, app);
     }
     return library;
   }
@@ -81,7 +79,6 @@ export class SoundLibrary {
 
   private readonly open = new Map<SoundKind, OpenRoot>();
   private readonly viewListeners = new Set<() => void>();
-  private readonly walkListeners = new Set<(kind: SoundKind) => void>();
   private revision = 0;
   private readonly dropRoots: () => void;
   private readonly lengths: SoundLengths;
@@ -127,10 +124,6 @@ export class SoundLibrary {
 
   isWalked(kind: SoundKind): boolean {
     return this.opened(kind)?.tree.isWalked ?? false;
-  }
-
-  filesOf(kind: SoundKind): readonly SoundFileEntry[] {
-    return this.opened(kind)?.tree.allFiles().map(({ entry }) => entry) ?? [];
   }
 
   /** Files of both roots whose path holds every word, music first. */
@@ -182,27 +175,46 @@ export class SoundLibrary {
     return null;
   }
 
-  /** What a file on disk measures, from the listing. Null while unknown or gone: a listing still to come is asked for, and `onChange` tells. */
-  statOfExternal(audioPath: string): { size: number; mtime: number } | null {
-    const file = readExternalAudioPath(audioPath);
-    const opened = file && this.rootOf(file.root).status === 'external' ? this.opened(file.root) : null;
-    if (!file || !opened) return null;
-    const entry = opened.tree.fileAt(file.path);
+  /**
+   * The file a record stands for on this device: where the record says, else the file of its name and size in that
+   * root. Devices keep one file in different folders, so this is worked out when read and held in memory only:
+   * written back, each device's walk would take the sound from the other.
+   */
+  private filed(opened: OpenRoot, path: string, audioSize: number | undefined): SoundFileEntry | null {
+    return opened.tree.fileAt(path) ?? (audioSize === undefined ? null : opened.tree.fileNamed(nameOfRelative(path), audioSize));
+  }
+
+  /** The record's place and open root, where this device can reach them: an external path only in a root on disk. */
+  private placeOf(audioPath: string): { kind: SoundKind; path: string; opened: OpenRoot } | null {
+    const file = this.fileOfAudioPath(audioPath);
+    if (!file || (isExternalAudioPath(audioPath) && this.rootOf(file.kind).status !== 'external')) return null;
+    const opened = this.opened(file.kind);
+    return opened && { ...file, opened };
+  }
+
+  /** What a record's file measures, from the listing. Null while unknown or gone: what is still to come is asked for, and `onChange` tells. */
+  statOfFile(audioPath: string, audioSize?: number): { size: number; mtime: number } | null {
+    const place = this.placeOf(audioPath);
+    if (!place) return null;
+    const entry = this.filed(place.opened, place.path, audioSize);
     if (entry) return entry;
-    const parent = parentOfRelative(file.path);
-    if (opened.tree.listing(parent)) {
-      if (!opened.tree.isWalked) void opened.tree.walk();
-    } else {
-      void opened.tree.load(parent);
-    }
+    const parent = parentOfRelative(place.path);
+    if (place.opened.tree.listing(parent)) place.opened.tree.walkOnce();
+    else void place.opened.tree.load(parent);
     return null;
   }
 
-  async readExternal(audioPath: string): Promise<Blob> {
-    const file = readExternalAudioPath(audioPath);
-    const location = file ? this.locationOf(file.root) : null;
-    if (!file || !location) throw new Error(`${audioPath} is not reachable on this device.`);
-    return location.read(file.path);
+  async readFile(audioPath: string, audioSize?: number): Promise<Blob> {
+    const place = this.placeOf(audioPath);
+    if (!place) throw new Error(`${audioPath} is not reachable on this device.`);
+    return place.opened.location.read(this.filed(place.opened, place.path, audioSize)?.path ?? place.path);
+  }
+
+  /** What a record's file is called on this device, as `audioPathOf` writes it: what the record says where nothing else is known. */
+  pathNow(audioPath: string, audioSize?: number): string {
+    const place = this.placeOf(audioPath);
+    const entry = place && this.filed(place.opened, place.path, audioSize);
+    return (entry && this.audioPathOf(place.kind, entry.path)) ?? audioPath;
   }
 
   /** Reads what `paths` changed, at once: an operation of the library's own does not wait for the watch. */
@@ -233,19 +245,12 @@ export class SoundLibrary {
     return () => this.viewListeners.delete(listener);
   }
 
-  /** A root's walk has ended, so a file not found is not there. */
-  onWalked(listener: (kind: SoundKind) => void): () => void {
-    this.walkListeners.add(listener);
-    return () => this.walkListeners.delete(listener);
-  }
-
   destroy(): void {
     this.dropRoots();
     this.deps.dispose?.();
     this.lengths.stop();
     for (const kind of KINDS) this.close(kind);
     this.viewListeners.clear();
-    this.walkListeners.clear();
   }
 
   private opened(kind: SoundKind): OpenRoot | null {
@@ -259,7 +264,7 @@ export class SoundLibrary {
     if (current) this.close(kind);
     const location = this.deps.open(root);
     if (!location) return null;
-    const tree = new FolderTree(location, () => this.changed(), () => this.walked(kind));
+    const tree = new FolderTree(location, () => this.changed());
     const entry: OpenRoot = { identity: identityOf(root), location, tree, stopWatching: () => undefined, changes: new Set(), changesTimer: 0, lastRescan: 0 };
     entry.stopWatching = location.watch((path) => this.heard(entry, path));
     this.open.set(kind, entry);
@@ -285,10 +290,6 @@ export class SoundLibrary {
     entry.stopWatching();
     entry.tree.release();
     this.open.delete(kind);
-  }
-
-  private walked(kind: SoundKind): void {
-    for (const listener of [...this.walkListeners]) listener(kind);
   }
 
   private changed(): void {

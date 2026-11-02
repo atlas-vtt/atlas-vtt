@@ -11,6 +11,8 @@ export interface SoundRecord {
   name: string;
   kind: SoundKind;
   filePath: string;
+  /** The file's size when the record was made, by which a file gone from its path is found again. */
+  audioSize?: number;
   /** Frames at 48 kHz. Unset plays the whole file, looping when the kind or mood asks for it. */
   loop?: { startFrame: number; endFrame: number };
   /** The GM's own correction on top of the measured loudness. */

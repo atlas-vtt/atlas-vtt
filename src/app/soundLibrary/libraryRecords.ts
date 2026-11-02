@@ -40,9 +40,12 @@ export function unrecordedSound(file: LibraryFile, audioPath: string): SoundReco
 /** The older of a file's records comes first, so every device reads the same one. */
 const byAge = (a: StoredSound, b: StoredSound): number => a.createdAt - b.createdAt || a.id.localeCompare(b.id);
 
-/** A file's record. A move on one device and first use on another can make two, which name one file and one copy. */
+/** Of records that name one file, the one that stands for it. A move on one device and first use on another can make two, which share one copy. */
+export const standingRecord = (sounds: readonly StoredSound[]): StoredSound | null => [...sounds].sort(byAge)[0] ?? null;
+
+/** A file's record, by the path it says. */
 export function recordOfFile(sounds: readonly StoredSound[], audioPath: string): StoredSound | null {
-  return sounds.filter((sound) => sound.audioPath === audioPath).sort(byAge)[0] ?? null;
+  return standingRecord(sounds.filter((sound) => sound.audioPath === audioPath));
 }
 
 /** A file as the engine reads it: through its record where it has one. Writes nothing. */

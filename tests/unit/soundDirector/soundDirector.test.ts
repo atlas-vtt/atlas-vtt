@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SceneSound, TableSound } from '@/app/sound/soundTypes';
+import { heldInMix } from '@/app/soundDirector/libraryDesk';
 import { SCENE_FOLLOW_DELAY_MS } from '@/app/soundDirector/sceneFollow';
 import type { FightState, FightStore } from '@/app/soundDirector/fightWatch';
 import { directorRig, mood, record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
@@ -97,6 +98,14 @@ describe('the sound director', () => {
     rig.director.preview(WIND);
     rig.director.destroy();
     expect(rig.contexts.every((context) => context.closed)).toBe(true);
+  });
+
+  it('what the mix holds is told by the file as this device calls it, which the shared record may not', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.filedAs.set(RAIN.filePath, 'atlas-sound:ambience/Elsewhere/rain.ogg');
+    rig.director.press(mood('tavern', ['rain']));
+    expect([...heldInMix(rig.director).keys()]).toEqual(['atlas-sound:ambience/Elsewhere/rain.ogg']);
   });
 
   it('holds the library only while the switch is on', async () => {

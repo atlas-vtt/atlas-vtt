@@ -54,7 +54,12 @@ export class SoundShelf {
   }
 
   hasFile(record: SoundRecord): boolean {
-    return this.deps.files.statOf(record.filePath) !== null;
+    return this.deps.files.statOf(record) !== null;
+  }
+
+  /** What the record's file is called on this device. */
+  pathNow(record: SoundRecord): string {
+    return this.deps.files.pathNow(record);
   }
 
   stateOf(record: SoundRecord): SoundConversion {

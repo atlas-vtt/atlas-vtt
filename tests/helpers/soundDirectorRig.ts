@@ -61,6 +61,8 @@ export interface DirectorRig {
   fireFileChange(): void;
   fireSettings(): void;
   records: SoundRecord[];
+  /** Files this device keeps under another name than their record says. */
+  filedAs: Map<string, string>;
   /** How often the library was opened (by listening to its files) and let go of. */
   library: { opened: number; released: number };
 }
@@ -83,6 +85,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
   const libraryListeners = new Set<() => void>();
   const fileListeners = new Set<() => void>();
   const library = { opened: 0, released: 0 };
+  const filedAs = new Map<string, string>();
   const hashOfPath = (path: string): string => `hash-${path}`;
   const copy = (hash: string): CachedSound => ({ hash, byteLength: 10, frames: 48000 * 10, channels: 2, lufs: -20, truePeakDb: -3, lastUsed: 0 });
   if (ready) {
@@ -148,8 +151,9 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       },
     },
     files: {
-      statOf: (path) => (files.has(path) ? { size: 1, mtime: 1 } : null),
-      read: (path) => Promise.resolve(new TextEncoder().encode(path).buffer),
+      statOf: ({ filePath }) => (files.has(filePath) ? { size: 1, mtime: 1 } : null),
+      read: ({ filePath }) => Promise.resolve(new TextEncoder().encode(filePath).buffer),
+      pathNow: ({ filePath }) => filedAs.get(filePath) ?? filePath,
     },
     createCache: () => ({ ...cache, close: () => Promise.resolve() }),
     createMaker: () => ({
@@ -197,6 +201,7 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
     settings,
     records,
     library,
+    filedAs,
     setPresented: (scene) => {
       presented = scene;
       for (const listener of presentedListeners) listener(scene);

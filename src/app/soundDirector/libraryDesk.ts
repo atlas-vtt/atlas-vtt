@@ -121,8 +121,8 @@ export function heldInMix(director: SoundDirector): ReadonlyMap<string, HeldInMi
   const held = new Map<string, HeldInMix>();
   const note = (type: HeldInMix['type'], list: ReadonlyMap<string, string | null>): void => {
     for (const [id, key] of list) {
-      const path = shelf.recordOf(id)?.filePath;
-      if (path !== undefined) held.set(path, { type, id, key });
+      const record = shelf.recordOf(id);
+      if (record) held.set(shelf.pathNow(record), { type, id, key });
     }
   };
   note('track', holding.tracks);

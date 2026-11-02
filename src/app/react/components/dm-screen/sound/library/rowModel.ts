@@ -28,15 +28,15 @@ export const searchRows = (hits: readonly LibraryFile[], rootName: (kind: SoundK
     return { type: 'file', id: rowIdOf(file.kind, file.path), file, name: stemOf(file.name), where: [rootName(file.kind), ...(folder === '' ? [] : folder.split('/'))].join(' / ') };
   });
 
-/** The records that say their file lies in this folder and that no listing holds. On a device without the root that is every record of it, shown together. */
-export function waitingIn(library: Pick<SoundLibrary, 'fileOfAudioPath'>, sounds: readonly StoredSound[], kind: SoundKind, folder: string, listing: SoundListing | null, linked: boolean): StoredSound[] {
+/** The records that say their file lies in this folder and that neither a listing here nor another place on this device holds. On a device without the root that is every record of it, shown together. */
+export function waitingIn(library: Pick<SoundLibrary, 'fileOfAudioPath' | 'pathNow'>, sounds: readonly StoredSound[], kind: SoundKind, folder: string, listing: SoundListing | null, linked: boolean): StoredSound[] {
   if (linked && !listing) return [];
   const here = new Set(listing?.files.map((file) => file.path));
   return sounds.filter((sound) => {
     const place = library.fileOfAudioPath(sound.audioPath);
     if (!place || place.kind !== kind) return false;
     if (!linked) return true;
-    return parentOfRelative(place.path) === folder && !here.has(place.path);
+    return parentOfRelative(place.path) === folder && !here.has(place.path) && library.pathNow(sound.audioPath, sound.audioSize) === sound.audioPath;
   });
 }
 

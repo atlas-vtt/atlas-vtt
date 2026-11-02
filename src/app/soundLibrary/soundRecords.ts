@@ -30,8 +30,6 @@ function readLoop(value: unknown): SoundRecord['loop'] {
 export type StoredSound = StoredRecord & Omit<SoundRecord, 'id' | 'filePath'> & {
   /** A vault path, or for a file in a root outside the vault that root and the path below it (`soundPaths.ts`). */
   audioPath: string;
-  /** The file's size when the record was made, by which a file gone from its path is found again. */
-  audioSize?: number;
   createdAt: number;
   modifiedAt: number;
 };
@@ -58,13 +56,14 @@ export const isNewerSound = (stored: StoredRecord): boolean => isFiniteNumber(st
  * cannot be read here reads as unset; the file keeps what it holds, for the version that wrote it.
  */
 export function soundRecordOf(stored: StoredSound): SoundRecord {
-  const { id, name, audioPath, tags, kind, licence, streaming, trimDb, credit, sourceUrl } = stored;
+  const { id, name, audioPath, audioSize, tags, kind, licence, streaming, trimDb, credit, sourceUrl } = stored;
   const loop = readLoop(stored.loop);
   return {
     id,
     name,
     kind: kind === 'ambience' ? 'ambience' : 'music',
     filePath: audioPath,
+    ...(isFiniteNumber(audioSize) && { audioSize }),
     tags: Array.isArray(tags) ? tags.filter((tag) => typeof tag === 'string') : [],
     licence: LICENCES.has(licence) ? licence : 'unknown',
     streaming: STREAMING.has(streaming) ? streaming : 'unknown',

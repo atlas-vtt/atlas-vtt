@@ -1,10 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { TFile } from 'obsidian';
 import { recordIdFor, recordsForFiles } from '../../../src/app/soundLibrary/libraryRecords';
+import { waitingIn } from '../../../src/app/react/components/dm-screen/sound/library/rowModel';
 import { MoodStore } from '../../../src/app/soundLibrary/MoodStore';
+import { SoundLibrary } from '../../../src/app/soundLibrary/SoundLibrary';
+import { SoundRoots } from '../../../src/app/soundLibrary/SoundRoots';
 import { MOODS_FOLDER, RECORDS_FOLDER } from '../../../src/app/soundLibrary/soundFiles';
 import { externalAudioPath } from '../../../src/app/soundLibrary/soundPaths';
 import { SoundRecordStore } from '../../../src/app/soundLibrary/SoundRecordStore';
+import { FakeSoundLocation } from '../../helpers/fakeSoundLocation';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 import { FakeSync, seededRandom } from '../library/fakeSync';
 
@@ -240,6 +244,85 @@ describe('sound records on two devices', () => {
     await settle(sync, devices);
     expect(devices[1].records.all()).toMatchObject([{ id: made!.id, audioPath: 'Library/storm.mp3', name: 'storm', credit: 'Someone' }]);
     expect(devices[1].vault.files.get('Library/storm.mp3')).toBe('AUDIO');
+  });
+
+  describe('with one file in other folders on each device', () => {
+    /** A device's music root on its own disk. */
+    function diskOf(files: readonly string[]): { location: FakeSoundLocation; library: SoundLibrary } {
+      const location = new FakeSoundLocation();
+      for (const file of files) location.addFile(file, 7);
+      const roots = new SoundRoots({
+        shared: () => ({ music: { type: 'external' } }),
+        setShared: () => undefined,
+        onSharedChange: () => () => undefined,
+        local: (kind) => (kind === 'music' ? '/music' : null),
+        setLocal: () => undefined,
+        vaultBase: () => null,
+        realPath: async (path) => path,
+      });
+      return { location, library: new SoundLibrary({ roots, open: () => location, home: () => null, probeSeconds: async () => null }) };
+    }
+
+    const walked = async ({ library }: { library: SoundLibrary }, now: number): Promise<void> => {
+      library.rescan(now);
+      await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+    };
+
+    it('both keep playing, whatever their walks find, and no walk writes a record', async () => {
+      vi.stubGlobal('window', globalThis);
+      const { devices, sync } = await start(5);
+      const onA = diskOf(['Tavern/song.mp3']);
+      const onB = diskOf(['Inns/song.mp3']);
+      const file = { kind: 'music' as const, name: 'song.mp3', path: 'Tavern/song.mp3', size: 7, mtime: 1 };
+      await recordsForFiles(devices[0].records, onA.library, [file], 1000);
+      await rest(devices);
+      await settle(sync, devices);
+      const path = `${RECORDS_FOLDER}/${recordIdFor('atlas-sound:music/Tavern/song.mp3')}.json`;
+      const written = devices[0].vault.files.get(path);
+      expect(devices[1].vault.files.get(path)).toBe(written);
+      const writes = devices.map(({ vault }) => [vault.app.vault.adapter.write, vault.app.vault.create, vault.app.vault.process].map((spy) => vi.mocked(spy).mock.calls.length));
+
+      for (let round = 0; round < 4; round++) {
+        await walked(onA, 100_000 + round * 10_000);
+        await walked(onB, 100_000 + round * 10_000);
+        await rest(devices);
+        await settle(sync, devices);
+        for (const [one, disk] of [[devices[0], onA], [devices[1], onB]] as const) {
+          const [sound] = one.records.all();
+          expect(sound?.audioPath).toBe('atlas-sound:music/Tavern/song.mp3');
+          expect(disk.library.statOfFile(sound!.audioPath, sound!.audioSize)).toMatchObject({ size: 7 });
+        }
+      }
+
+      expect(onB.library.pathNow('atlas-sound:music/Tavern/song.mp3', 7)).toBe('atlas-sound:music/Inns/song.mp3');
+      expect(onA.library.pathNow('atlas-sound:music/Tavern/song.mp3', 7)).toBe('atlas-sound:music/Tavern/song.mp3');
+      const held = devices[1].records.all();
+      expect(waitingIn(onB.library, held, 'music', 'Tavern', { folders: [], files: [] }, true), 'found elsewhere, it waits for nothing').toEqual([]);
+      expect(waitingIn(onB.library, [{ ...held[0]!, audioSize: 8 }], 'music', 'Tavern', { folders: [], files: [] }, true), 'of another size it does').toHaveLength(1);
+      await onA.library.readFile('atlas-sound:music/Tavern/song.mp3', 7);
+      await onB.library.readFile('atlas-sound:music/Tavern/song.mp3', 7);
+      expect(onA.location.reads).toEqual(['Tavern/song.mp3']);
+      expect(onB.location.reads).toEqual(['Inns/song.mp3']);
+      for (const { vault } of devices) expect(vault.files.get(path)).toBe(written);
+      expect(devices.map(({ vault }) => [vault.app.vault.adapter.write, vault.app.vault.create, vault.app.vault.process].map((spy) => vi.mocked(spy).mock.calls.length))).toEqual(writes);
+      onA.library.destroy();
+      onB.library.destroy();
+      vi.unstubAllGlobals();
+    });
+
+    it('of several that match, every device with those files finds the same', async () => {
+      vi.stubGlobal('window', globalThis);
+      const one = diskOf(['Z/song.mp3', 'B/song.mp3', 'M/song.mp3']);
+      const other = diskOf(['M/song.mp3', 'B/song.mp3', 'Z/song.mp3']);
+      await walked(one, 100_000);
+      await walked(other, 100_000);
+      expect(one.library.pathNow('atlas-sound:music/Gone/song.mp3', 7)).toBe('atlas-sound:music/B/song.mp3');
+      expect(other.library.pathNow('atlas-sound:music/Gone/song.mp3', 7)).toBe('atlas-sound:music/B/song.mp3');
+      one.library.destroy();
+      other.library.destroy();
+      vi.unstubAllGlobals();
+    });
   });
 
   it('browsing writes nothing', async () => {

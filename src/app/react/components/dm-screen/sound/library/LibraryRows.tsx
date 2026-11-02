@@ -6,7 +6,7 @@ import { useScrollbarGutter } from '../../../../../packages/components/primitive
 import type { SoundRecord } from '../../../../../sound/soundTypes';
 import type { HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
-import { unrecordedSound, recordOfFile } from '../../../../../soundLibrary/libraryRecords';
+import { standingRecord, unrecordedSound } from '../../../../../soundLibrary/libraryRecords';
 import { carriesSounds, writeSoundDrag } from '../../../../../soundLibrary/soundDrag';
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
@@ -92,15 +92,20 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
 
   const soundsByPath = useMemo(() => {
     const byPath = new Map<string, StoredSound[]>();
-    for (const sound of sounds) byPath.set(sound.audioPath, [...(byPath.get(sound.audioPath) ?? []), sound]);
+    for (const sound of sounds) {
+      const path = library.pathNow(sound.audioPath, sound.audioSize);
+      byPath.set(path, [...(byPath.get(path) ?? []), sound]);
+    }
     return byPath;
-  }, [sounds]);
+    // Where a file is on this device changes with what the library has read.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sounds, library, library.version]);
 
   const audioPathOf = useCallback((row: Row): string | null => (row.type === 'file' ? library.audioPathOf(row.file.kind, row.file.path) : null), [library]);
 
   const recordOfRow = useCallback((row: Row): StoredSound | null => {
     const path = audioPathOf(row);
-    return path === null ? null : recordOfFile(soundsByPath.get(path) ?? [], path);
+    return path === null ? null : standingRecord(soundsByPath.get(path) ?? []);
   }, [audioPathOf, soundsByPath]);
 
   const soundOfRow = useCallback((row: Row): SoundRecord | null => {

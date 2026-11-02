@@ -10,7 +10,6 @@ import { MoodStore } from '../soundLibrary/MoodStore';
 import { readSceneSound } from '../soundLibrary/sceneSound';
 import { isAudioPath } from '../soundLibrary/soundFiles';
 import { SoundLibrary } from '../soundLibrary/SoundLibrary';
-import { isExternalAudioPath } from '../soundLibrary/soundPaths';
 import { soundRecordOf } from '../soundLibrary/soundRecords';
 import { SoundRecordStore } from '../soundLibrary/SoundRecordStore';
 import { showNotice } from '../ui/notice';
@@ -58,12 +57,13 @@ function fileAccess(app: App): SoundFileAccess {
   // Never `forApp`: asked late in an unload, that would open a library nobody releases.
   const library = (): SoundLibrary | null => SoundLibrary.opened(app);
   return {
-    statOf: (path) => (isExternalAudioPath(path) ? library()?.statOfExternal(path) ?? null : fileOf(path)?.stat ?? null),
-    read: (path) => {
-      if (isExternalAudioPath(path)) return library()?.readExternal(path) ?? Promise.reject(new Error(`${path} is not reachable now.`));
-      const file = fileOf(path);
-      return file ? app.vault.readBinary(file) : Promise.reject(new Error(`${path} is not in the vault.`));
+    statOf: ({ filePath, audioSize }) => fileOf(filePath)?.stat ?? library()?.statOfFile(filePath, audioSize) ?? null,
+    read: ({ filePath, audioSize }) => {
+      const file = fileOf(filePath);
+      if (file) return app.vault.readBinary(file);
+      return library()?.readFile(filePath, audioSize) ?? Promise.reject(new Error(`${filePath} is not reachable now.`));
     },
+    pathNow: ({ filePath, audioSize }) => (fileOf(filePath) ? filePath : library()?.pathNow(filePath, audioSize) ?? filePath),
   };
 }
 
