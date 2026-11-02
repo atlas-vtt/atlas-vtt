@@ -84,7 +84,8 @@ export class ExternalLocation implements SoundLocation {
   async firstUnlisted(folder: string): Promise<string | null> {
     for (const entry of await this.fs.readdir(await this.absolute(folder), { withFileTypes: true })) {
       const path = joinRelative(folder, entry.name);
-      if (!isListableName(entry.name) || !(entry.isDirectory() || (entry.isFile() && isAudioPath(entry.name)))) return path;
+      const listed = isListableName(entry.name) && (entry.isDirectory() || (entry.isFile() && isAudioPath(entry.name)));
+      if (!listed) return path;
       const below = entry.isDirectory() ? await this.firstUnlisted(path) : null;
       if (below !== null) return below;
     }

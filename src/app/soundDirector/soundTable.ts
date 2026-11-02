@@ -1,8 +1,8 @@
+import { LEAVE_DRIFT_MS } from '../sound/engine/soundVoice';
 import type { TableSound } from '../sound/soundTypes';
 import { applyDueListChange, EMPTY_MIX, type MixTiming, type SoundMix } from './soundMix';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
-import { LEAVE_DRIFT_MS } from '../sound/engine/soundVoice';
 import { isPlaying, OFFLINE_LEAD_MS, onShiftedClock } from './tableSound';
 import type { TableClock } from './tableClock';
 

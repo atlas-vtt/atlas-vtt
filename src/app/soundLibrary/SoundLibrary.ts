@@ -175,23 +175,6 @@ export class SoundLibrary {
     return null;
   }
 
-  /**
-   * The file a record stands for on this device: where the record says, else the file of its name and size in that
-   * root. Devices keep one file in different folders, so this is worked out when read and held in memory only:
-   * written back, each device's walk would take the sound from the other.
-   */
-  private filed(opened: OpenRoot, path: string, audioSize: number | undefined): SoundFileEntry | null {
-    return opened.tree.fileAt(path) ?? (audioSize === undefined ? null : opened.tree.fileNamed(nameOfRelative(path), audioSize));
-  }
-
-  /** The record's place and open root, where this device can reach them: an external path only in a root on disk. */
-  private placeOf(audioPath: string): { kind: SoundKind; path: string; opened: OpenRoot } | null {
-    const file = this.fileOfAudioPath(audioPath);
-    if (!file || (isExternalAudioPath(audioPath) && this.rootOf(file.kind).status !== 'external')) return null;
-    const opened = this.opened(file.kind);
-    return opened && { ...file, opened };
-  }
-
   /** What a record's file measures, from the listing. Null while unknown or gone: what is still to come is asked for, and `onChange` tells. */
   statOfFile(audioPath: string, audioSize?: number): { size: number; mtime: number } | null {
     const place = this.placeOf(audioPath);
@@ -269,6 +252,23 @@ export class SoundLibrary {
     entry.stopWatching = location.watch((path) => this.heard(entry, path));
     this.open.set(kind, entry);
     return entry;
+  }
+
+  /**
+   * The file a record stands for on this device: where the record says, else the file of its name and size in that
+   * root. Devices keep one file in different folders, so this is worked out when read and held in memory only:
+   * written back, each device's walk would take the sound from the other.
+   */
+  private filed(opened: OpenRoot, path: string, audioSize: number | undefined): SoundFileEntry | null {
+    return opened.tree.fileAt(path) ?? (audioSize === undefined ? null : opened.tree.fileNamed(nameOfRelative(path), audioSize));
+  }
+
+  /** The record's place and open root, where this device can reach them: an external path only in a root on disk. */
+  private placeOf(audioPath: string): { kind: SoundKind; path: string; opened: OpenRoot } | null {
+    const file = this.fileOfAudioPath(audioPath);
+    if (!file || (isExternalAudioPath(audioPath) && this.rootOf(file.kind).status !== 'external')) return null;
+    const opened = this.opened(file.kind);
+    return opened && { ...file, opened };
   }
 
   private heard(entry: OpenRoot, path: string | null): void {
