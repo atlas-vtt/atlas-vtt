@@ -40,17 +40,21 @@ function filesWithRoom(deps: LibraryDeskDeps, files: readonly LibraryFile[], int
 /** Sends files to the mix. Their records are made here. */
 export async function fileToMix(deps: LibraryDeskDeps, files: readonly LibraryFile[], intent: MixIntent): Promise<void> {
   const { desk } = deps.director;
-  deps.director.tap();
-  const records = await shelved(deps, filesWithRoom(deps, files, intent));
-  for (const record of records) {
-    if (record.kind !== 'music' || intent === 'add') {
-      if (!desk.addSound(record)) deps.notify(t('audio.add.refused', { name: record.name }));
+  const release = deps.director.holdForPress();
+  try {
+    const records = await shelved(deps, filesWithRoom(deps, files, intent));
+    for (const record of records) {
+      if (record.kind !== 'music' || intent === 'add') {
+        if (!desk.addSound(record)) deps.notify(t('audio.add.refused', { name: record.name }));
+      }
     }
+    const tracks = intent === 'add' ? [] : records.filter((record) => record.kind === 'music');
+    if (tracks.length === 0) return;
+    if (intent === 'now') desk.playNow(tracks);
+    else desk.playNext(tracks);
+  } finally {
+    release();
   }
-  const tracks = intent === 'add' ? [] : records.filter((record) => record.kind === 'music');
-  if (tracks.length === 0) return;
-  if (intent === 'now') desk.playNow(tracks);
-  else desk.playNext(tracks);
 }
 
 /** A folder's files in order, at most `limit`: those directly in it, and where it holds none, all those below it. */
@@ -73,21 +77,30 @@ export async function filesToPlay(location: SoundLocation, kind: SoundKind, fold
 export async function folderToMix(deps: LibraryDeskDeps, kind: SoundKind, folder: string, shuffle: boolean): Promise<void> {
   const location = deps.library.locationOf(kind);
   if (!location) return;
-  deps.director.tap();
-  const files = await filesToPlay(location, kind, folder, MOOD_LIMITS.tracks + 1);
-  if (files.length > MOOD_LIMITS.tracks) deps.notify(t('audio.add.folderCut', { count: MOOD_LIMITS.tracks }));
-  const records = await shelved(deps, files.slice(0, MOOD_LIMITS.tracks));
-  deps.director.desk.playList(records, shuffle);
+  const release = deps.director.holdForPress();
+  try {
+    const files = await filesToPlay(location, kind, folder, MOOD_LIMITS.tracks + 1);
+    if (files.length > MOOD_LIMITS.tracks) deps.notify(t('audio.add.folderCut', { count: MOOD_LIMITS.tracks }));
+    const records = await shelved(deps, files.slice(0, MOOD_LIMITS.tracks));
+    deps.director.desk.playList(records, shuffle);
+  } finally {
+    release();
+  }
 }
 
 /** What a drop on the desk does: music joins as next, ambience is added, a folder of music becomes the list. */
 export async function dragToMix(deps: LibraryDeskDeps, drag: SoundDrag): Promise<void> {
-  await fileToMix(deps, drag.files, 'next');
-  for (const folder of drag.folders) {
-    const location = deps.library.locationOf(folder.kind);
-    if (!location) continue;
-    if (folder.kind === 'music') await folderToMix(deps, folder.kind, folder.path, false);
-    else await fileToMix(deps, await filesToPlay(location, folder.kind, folder.path), 'add');
+  const release = deps.director.holdForPress();
+  try {
+    await fileToMix(deps, drag.files, 'next');
+    for (const folder of drag.folders) {
+      const location = deps.library.locationOf(folder.kind);
+      if (!location) continue;
+      if (folder.kind === 'music') await folderToMix(deps, folder.kind, folder.path, false);
+      else await fileToMix(deps, await filesToPlay(location, folder.kind, folder.path), 'add');
+    }
+  } finally {
+    release();
   }
 }
 

@@ -33,6 +33,8 @@ export class SoundTable {
   private timer: number | null = null;
   private pulses = 0;
   private waitingKeys = '';
+  /** Presses still on their way to a commit: what they opened stands until then. */
+  private holds = 0;
 
   constructor(
     private readonly output: SoundOutput,
@@ -75,6 +77,8 @@ export class SoundTable {
     const tableChanged = next.table !== this.current.table;
     this.current = next;
     if (tableChanged) {
+      // A press holds what it opened; anything else that begins to sound opens it here.
+      if (!this.output.isOpen && isPlaying(next.table, this.now())) this.output.ensureRunning();
       this.output.setState(next.table);
       this.shelf.pinOnly(keysOf(next.table));
     }
@@ -86,6 +90,17 @@ export class SoundTable {
     this.timer ??= window.setInterval(() => this.pulse(), PULSE_MS);
   }
 
+  /** The context stands until the result is called; a pulse then closes it if the press came to nothing. */
+  hold(): () => void {
+    this.holds++;
+    this.keepPulsing();
+    let held = true;
+    return () => {
+      if (held) this.holds--;
+      held = false;
+    };
+  }
+
   /** At once, for an unload: nothing fades. */
   shut(): void {
     this.stopPulsing();
@@ -95,7 +110,7 @@ export class SoundTable {
 
   private isBusy(): boolean {
     const { table, waitingMusic, waitingLayers } = this.current;
-    return isPlaying(table, this.now()) || waitingMusic !== null || waitingLayers.length > 0;
+    return isPlaying(table, this.now()) || [...(waitingMusic?.tracks ?? []), ...waitingLayers.map((layer) => layer.sound)].some((id) => this.shelf.mayCome(id));
   }
 
   private stopPulsing(): void {
@@ -114,7 +129,7 @@ export class SoundTable {
       this.waitingKeys = waitingKeys.join();
       this.host.onWaitingKeys(waitingKeys);
     }
-    if (!this.isBusy() && !this.host.isPreviewing()) {
+    if (this.holds === 0 && !this.isBusy() && !this.host.isPreviewing()) {
       this.stopPulsing();
       this.output.close();
     }

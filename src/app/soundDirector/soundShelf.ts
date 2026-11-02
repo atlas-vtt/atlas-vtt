@@ -66,6 +66,12 @@ export class SoundShelf {
     return this.copies?.stateOf(record) ?? NOT_CONVERTED;
   }
 
+  /** Whether a copy of a sound can still come: not one refused, or whose file is not here. */
+  mayCome(id: string): boolean {
+    const record = this.recordOf(id);
+    return record !== null && this.hasFile(record) && this.stateOf(record).state !== 'refused';
+  }
+
   infoOf(record: SoundRecord): SoundInfo | null {
     return this.copies?.infoFor(record) ?? null;
   }

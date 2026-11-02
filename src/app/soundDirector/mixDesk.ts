@@ -54,10 +54,7 @@ export class MixDesk {
 
   /** A selection waits for its first only while that can come: one refused or gone gives way to the next. */
   private withoutGiveUps(mix: SoundMix): SoundMix {
-    return (mix.soonest?.sounds ?? []).reduce((held, id) => {
-      const record = this.shelf.recordOf(id);
-      return record && this.shelf.hasFile(record) && this.shelf.stateOf(record).state !== 'refused' ? held : withoutSoonest(held, id);
-    }, mix);
+    return (mix.soonest?.sounds ?? []).reduce((held, id) => (this.shelf.mayCome(id) ? held : withoutSoonest(held, id)), mix);
   }
 
   /** Asks again for what waits, once a file may have come. */

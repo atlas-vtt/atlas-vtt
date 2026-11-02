@@ -163,6 +163,12 @@ export class SoundDirector {
   /** The GM's press after the context would not start by itself. */
   tap(): void { this.output.unlock(); }
 
+  /** The GM's press, for what reaches the mix only after waiting for the disk: unlocks now, inside the gesture, and holds the context until the result is called. */
+  holdForPress(): () => void {
+    this.tap();
+    return this.table.hold();
+  }
+
   /** A sound to the GM alone, in no state anyone else gets. The same sound again, or null, ends it. */
   preview(record: SoundRecord | null): void {
     this.previews.toggle(record);
