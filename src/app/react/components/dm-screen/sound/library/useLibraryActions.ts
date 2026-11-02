@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import type { App } from 'obsidian';
 import { t } from '../../../../../i18n';
 import { nativeFolderPicker } from '../../../../../services/electronRemote';
-import { AssetService, type SoundAsset } from '../../../../../services/AssetService';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import { fileToMix, folderToMix, prepareFolder, takeFromMix, type HeldInMix, type LibraryDeskDeps, type MixIntent } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
@@ -15,13 +14,13 @@ import { pickFolder, type FolderChoice } from '../../../../../soundLibrary/Sound
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { SoundPathTakenError, TrashUnavailableError } from '../../../../../soundLibrary/soundLocation';
 import { safeName } from '../../../../../soundLibrary/soundPaths';
-import { defaultSoundKind, soundRecordOf, type SoundChanges } from '../../../../../soundLibrary/soundRecords';
+import type { LinkOutcome } from '../../../../../soundLibrary/SoundRoots';
+import { defaultSoundKind, soundRecordOf, type SoundChanges, type StoredSound } from '../../../../../soundLibrary/soundRecords';
+import { SoundRecordStore } from '../../../../../soundLibrary/SoundRecordStore';
 import { confirmAction } from '../../../../../ui/confirmDialog';
 import { promptForText } from '../../../../../ui/textInputDialog';
 import { showNotice } from '../../../../../ui/notice';
 import { runInBackground } from '../../../../../utils/backgroundTask';
-
-const refresh = (app: App): void => { app.workspace.trigger('atlas-vtt:refresh-assets'); };
 
 /** Tells why an operation on the library's files failed, in the GM's terms. */
 function failure(error: unknown): string {
@@ -49,7 +48,7 @@ export interface LibraryActions {
   move: (entries: readonly LibraryEntry[], kind: SoundKind, folder: string) => void;
   askMove: (entries: readonly LibraryEntry[]) => void;
   remove: (entries: readonly LibraryEntry[]) => void;
-  forget: (sound: SoundAsset) => void;
+  forget: (sound: StoredSound) => void;
   edit: (files: readonly LibraryFile[], changes: SoundChanges) => void;
   askCredit: (files: readonly LibraryFile[], current: string, name: string) => void;
 }
@@ -66,30 +65,33 @@ function pickFiles(doc: Document, then: (files: File[]) => void): void {
 }
 
 /** Every intent of the library's rows. All of it runs in the background; a press is never held up by a disk. */
-export function useLibraryActions(app: App, library: SoundLibrary, director: SoundDirector, collectionId: string | null): LibraryActions {
+export function useLibraryActions(app: App, library: SoundLibrary, director: SoundDirector): LibraryActions {
   return useMemo(() => {
-    const assets = AssetService.getInstance(app);
-    const deps: LibraryDeskDeps = { assets, library, director, notify: (message) => showNotice(message) };
-    const context = { library, assets };
-    const inUse = (): string => collectionId ?? assets.getDefaultCollectionId();
+    const records = SoundRecordStore.forApp(app);
+    const deps: LibraryDeskDeps = { records, library, director, notify: (message) => showNotice(message) };
+    const context = { library, records };
     const run = (task: Promise<unknown>, what: string): void => {
-      runInBackground(task.then(() => refresh(app)).catch((error: unknown) => { showNotice(failure(error)); }), what);
+      runInBackground(task.catch((error: unknown) => { showNotice(failure(error)); }), what);
+    };
+    const linkOutcome = (outcome: LinkOutcome): void => {
+      if (outcome === 'overlap') showNotice(t('audio.library.overlap'));
+      if (outcome === 'reserved') showNotice(t('audio.library.reserved'));
     };
 
     const actions: LibraryActions = {
-      toMix: (files, intent) => run(fileToMix(deps, files, intent, inUse()), 'Sending sounds to the mix'),
+      toMix: (files, intent) => run(fileToMix(deps, files, intent), 'Sending sounds to the mix'),
       takeOut: (held) => takeFromMix(director, held),
       preview: (file) => {
         const audioPath = library.audioPathOf(file.kind, file.path);
         if (audioPath === null) return;
-        runInBackground(assets.getAssets(undefined, 'sound').then((sounds) => {
-          const held = recordOfFile(sounds, audioPath, inUse());
-          director.preview(held ? soundRecordOf(held) : unrecordedSound(file, audioPath, inUse()));
+        runInBackground(records.whenLoaded().then(() => {
+          const held = recordOfFile(records.all(), audioPath);
+          director.preview(held ? soundRecordOf(held) : unrecordedSound(file, audioPath));
         }), 'Previewing a sound');
       },
-      playFolder: (kind, folder, shuffle) => run(folderToMix(deps, kind, folder, shuffle, inUse()), 'Playing a folder'),
+      playFolder: (kind, folder, shuffle) => run(folderToMix(deps, kind, folder, shuffle), 'Playing a folder'),
       prepare: (kind, folder) => {
-        runInBackground(prepareFolder(deps, kind, folder, inUse()).then((count) => {
+        runInBackground(prepareFolder(deps, kind, folder).then((count) => {
           showNotice(t('audio.library.preparing', { count }));
         }), 'Preparing a folder');
       },
@@ -98,14 +100,12 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
         const title = t(kind === 'music' ? 'audio.library.linkMusic' : 'audio.library.linkAmbience');
         if (dialog) {
           run(dialog(title).then(async (path) => {
-            if (path !== null && await library.roots.linkChosen(kind, path) === 'overlap') showNotice(t('audio.library.overlap'));
+            if (path !== null) linkOutcome(await library.roots.linkChosen(kind, path));
           }), 'Linking a sound folder');
           return;
         }
         const folders: FolderChoice<string>[] = app.vault.getAllFolders(true).map((folder) => ({ label: folder.path, value: folder.path === '/' ? '' : folder.path }));
-        pickFolder(app, folders, title, (path) => {
-          if (library.roots.linkVault(kind, path) === 'overlap') showNotice(t('audio.library.overlap'));
-        });
+        pickFolder(app, folders, title, (path) => linkOutcome(library.roots.linkVault(kind, path)));
       },
       unlink: (kind) => library.roots.unlink(kind),
       askNewFolder: (kind, folder) => {
@@ -157,16 +157,16 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
       },
       forget: (sound) => {
         run(confirmAction({ title: t('audio.library.forgetTitle', { name: sound.name }), message: [], confirmLabel: t('audio.mood.delete'), destructive: true }).then(async (sure) => {
-          if (sure) await assets.deleteAsset(sound.id);
+          if (sure) records.remove(sound.id);
         }), 'Forgetting a sound');
       },
-      edit: (files, changes) => run(editFiles(assets, library, files, inUse(), changes), 'Changing sounds'),
+      edit: (files, changes) => run(editFiles(records, library, files, changes), 'Changing sounds'),
       askCredit: (files, current, name) => {
         run(promptForText({ title: t('audio.creditTitle', { name }), confirmLabel: t('audio.library.save'), initialValue: current, placeholder: t('audio.creditPlaceholder') }).then(async (credit) => {
-          if (credit !== null) await editFiles(assets, library, files, inUse(), { credit });
+          if (credit !== null) await editFiles(records, library, files, { credit });
         }), 'Changing a credit');
       },
     };
     return actions;
-  }, [app, library, director, collectionId]);
+  }, [app, library, director]);
 }

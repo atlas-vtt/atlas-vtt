@@ -2,7 +2,7 @@ import type * as React from 'react';
 import { useState, useCallback } from 'react';
 import type { AnyAsset, Tag } from '../types';
 import type { AssetService } from '../../../../services/AssetService';
-import { hasAssetTag, type TabTagGroup } from '../../../../services/tagGroups';
+import { hasAssetTag, type TagGroup } from '../../../../services/tagGroups';
 import { showAtlasToast } from '../../../../react/components/AtlasToast';
 import { tagGroupOfTab, type AssetTagChange, type TagsByGroup } from '../utils/assetTags';
 import { t } from '../../../../i18n';
@@ -12,9 +12,9 @@ export interface TagsAndCollectionsState {
   isTagManagerOpen: boolean;
   setIsTagManagerOpen: (open: boolean) => void;
   // Tag CRUD within one tag group of the selected collection
-  handleCreateTag: (group: TabTagGroup, tag: string) => Promise<Tag | null>;
-  handleUpdateTag: (group: TabTagGroup, tagId: string, name: string) => Promise<void>;
-  handleDeleteTag: (group: TabTagGroup, tagId: string) => Promise<void>;
+  handleCreateTag: (group: TagGroup, tag: string) => Promise<Tag | null>;
+  handleUpdateTag: (group: TagGroup, tagId: string, name: string) => Promise<void>;
+  handleDeleteTag: (group: TagGroup, tagId: string) => Promise<void>;
   /** Replaces the tags of several assets in one save: shown at once, restored if saving fails. */
   setTagsOfAssets: (changes: AssetTagChange[]) => Promise<void>;
   /** Replaces an asset's tags, as `setTagsOfAssets` does. */
@@ -35,12 +35,12 @@ export function useTagsAndCollections(
   const [isTagManagerOpen, setIsTagManagerOpen] = useState(false);
 
   /** Rewrites the tags of the loaded assets that belong to `group`. */
-  const retagAssets = useCallback((group: TabTagGroup, retag: (tags: string[]) => string[]): void => {
+  const retagAssets = useCallback((group: TagGroup, retag: (tags: string[]) => string[]): void => {
     setAssets(prev => prev.map(asset =>
       tagGroupOfTab(asset.type) === group ? { ...asset, tags: retag(asset.tags ?? []) } : asset));
   }, [setAssets]);
 
-  const handleCreateTag = useCallback(async (group: TabTagGroup, tag: string): Promise<Tag | null> => {
+  const handleCreateTag = useCallback(async (group: TagGroup, tag: string): Promise<Tag | null> => {
     if (!assetService) return null;
     try {
       const { id, name } = await assetService.createTag(collection, group, tag);
@@ -53,7 +53,7 @@ export function useTagsAndCollections(
     }
   }, [assetService, collection, reloadGlobalTags]);
 
-  const handleUpdateTag = useCallback(async (group: TabTagGroup, tagId: string, name: string): Promise<void> => {
+  const handleUpdateTag = useCallback(async (group: TagGroup, tagId: string, name: string): Promise<void> => {
     if (!assetService) return;
     const previous = tagsByGroup[group].find(t => t.id === tagId);
     try {
@@ -67,7 +67,7 @@ export function useTagsAndCollections(
     }
   }, [assetService, collection, tagsByGroup, retagAssets, reloadGlobalTags]);
 
-  const handleDeleteTag = useCallback(async (group: TabTagGroup, tagId: string): Promise<void> => {
+  const handleDeleteTag = useCallback(async (group: TagGroup, tagId: string): Promise<void> => {
     if (!assetService) return;
     const tag = tagsByGroup[group].find(t => t.id === tagId) ?? { id: tagId, name: tagId };
     try {

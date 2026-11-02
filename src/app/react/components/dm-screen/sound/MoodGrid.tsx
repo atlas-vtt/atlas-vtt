@@ -18,10 +18,7 @@ import { useSoundValue } from './useSound';
 interface MoodGridProps {
   app: App;
   director: SoundDirector;
-  collectionId: string;
   moods: readonly Mood[];
-  /** Whether the open map belongs to this collection, so its scene may link these moods. */
-  sameCollectionAsMap: boolean;
   moveMood: (mood: Mood, index: number) => void;
   onNewMood: () => void;
 }
@@ -29,36 +26,37 @@ interface MoodGridProps {
 const NO_PROBLEMS: readonly MoodProblem[] = [];
 
 /** The moods in their fixed places, numbered as the keys that press them. */
-export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsMap, moveMood, onNewMood }: MoodGridProps): React.JSX.Element {
+export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGridProps): React.JSX.Element {
   const store = MoodStore.forApp(app);
   const gridRef = useRef<HTMLDivElement>(null);
   const menu = useContextMenu();
+  const hasScene = useAtlasStore((state) => state.mapPath !== null);
   const sceneSound = useAtlasStore((state) => state.sound);
   const setSceneSound = useAtlasStore((state) => state.setSceneSound);
   const [editing, setEditing] = useState<Mood | null>(null);
-  const activeId = useSoundValue(director, (snapshot) => (snapshot.mix.mood?.collectionId === collectionId ? snapshot.mix.mood.id : null));
+  const activeId = useSoundValue(director, (snapshot) => snapshot.mix.mood?.id ?? null);
   const shelfRevision = useSoundValue(director, (snapshot) => snapshot.shelfRevision);
   const playersRevision = useSoundValue(director, (snapshot) => snapshot.playersRevision);
   const silenced = useSoundValue(director, ({ mix }) => mix.table.silenced);
 
-  const canMove = useCallback((mood: Mood) => !store.isReadOnly(collectionId, mood.id), [collectionId, store]);
+  const canMove = useCallback((mood: Mood) => !store.isReadOnly(mood.id), [store]);
   const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canMove, moveMood);
 
   const press = useCallback((mood: Mood): void => {
-    if (!consumeClick()) director.press(collectionId, mood);
-  }, [collectionId, consumeClick, director]);
+    if (!consumeClick()) director.press(mood);
+  }, [consumeClick, director]);
 
   const openMenu = useCallback((mood: Mood, anchor: HTMLElement): void => {
     const box = anchor.getBoundingClientRect();
-    const readOnly = store.isReadOnly(collectionId, mood.id);
+    const readOnly = store.isReadOnly(mood.id);
     menu.open([
       { type: 'item', label: t('audio.mood.edit'), disabled: readOnly, ...(readOnly && { description: t('audio.mood.readOnly') }), onClick: () => setEditing(mood) },
-      { type: 'item', label: t('audio.mood.duplicate'), onClick: () => store.createMood(collectionId, { ...moodMix(mood), name: t('audio.mood.copyName', { name: mood.name }) }) },
-      { type: 'item', label: t('audio.mood.linkScene'), checked: sceneSound?.mood === mood.id, disabled: !sameCollectionAsMap, onClick: () => setSceneSound(withLink(sceneSound, 'mood', mood.id)) },
-      { type: 'item', label: t('audio.mood.linkCombat'), checked: sceneSound?.combatMood === mood.id, disabled: !sameCollectionAsMap, onClick: () => setSceneSound(withLink(sceneSound, 'combatMood', mood.id)) },
-      { type: 'item', label: t('audio.mood.delete'), destructive: true, disabled: readOnly, onClick: () => void confirmDelete(store, collectionId, mood) },
+      { type: 'item', label: t('audio.mood.duplicate'), onClick: () => store.createMood({ ...moodMix(mood), name: t('audio.mood.copyName', { name: mood.name }) }) },
+      { type: 'item', label: t('audio.mood.linkScene'), checked: sceneSound?.mood === mood.id, disabled: !hasScene, onClick: () => setSceneSound(withLink(sceneSound, 'mood', mood.id)) },
+      { type: 'item', label: t('audio.mood.linkCombat'), checked: sceneSound?.combatMood === mood.id, disabled: !hasScene, onClick: () => setSceneSound(withLink(sceneSound, 'combatMood', mood.id)) },
+      { type: 'item', label: t('audio.mood.delete'), destructive: true, disabled: readOnly, onClick: () => void confirmDelete(store, mood) },
     ], { x: box.left, y: box.bottom }, { returnFocus: anchor });
-  }, [collectionId, menu, sameCollectionAsMap, sceneSound, setSceneSound, store]);
+  }, [hasScene, menu, sceneSound, setSceneSound, store]);
 
   // Copies a mood names are made before anyone presses it.
   useEffect(() => {
@@ -94,7 +92,7 @@ export function MoodGrid({ app, director, collectionId, moods, sameCollectionAsM
         <Plus aria-hidden="true" />
         {t('audio.mood.new')}
       </button>
-      {editing && <MoodEditDialog mood={editing} onClose={() => setEditing(null)} onSave={(changed) => store.saveMood(collectionId, changed)} />}
+      {editing && <MoodEditDialog mood={editing} onClose={() => setEditing(null)} onSave={(changed) => store.saveMood(changed)} />}
     </div>
   );
 }
@@ -111,12 +109,12 @@ function withLink(sound: { mood?: string; combatMood?: string } | null, key: 'mo
   return current === id ? rest : { ...rest, [key]: id };
 }
 
-async function confirmDelete(store: MoodStore, collectionId: string, mood: Mood): Promise<void> {
+async function confirmDelete(store: MoodStore, mood: Mood): Promise<void> {
   const sure = await confirmAction({
     title: t('audio.mood.deleteTitle', { name: mood.name }),
     message: [t('audio.mood.deleteMessage')],
     confirmLabel: t('audio.mood.delete'),
     destructive: true,
   });
-  if (sure) store.removeMood(collectionId, mood.id);
+  if (sure) store.removeMood(mood.id);
 }

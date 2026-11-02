@@ -49,7 +49,6 @@ class UnownedFiles {
  * would delete the record on every device. Without a record file, art, maps
  * and scenes are their file. The index holds everything else in full, so those
  * go only after the user deleted the file, never because a file is missing at startup.
- * A sound stays whatever happened to its audio, and shows that it waits for the file.
  */
 function isGoneWithFile(asset: Asset, path: string | null, deleted: ReadonlySet<string>, recorded: ReadonlySet<string>): boolean {
   if (recorded.has(asset.id)) return false;
@@ -59,7 +58,6 @@ function isGoneWithFile(asset: Asset, path: string | null, deleted: ReadonlySet<
     case 'scene':
       return true;
     case 'note':
-    case 'sound':
       return false;
     default:
       return path !== null && deleted.has(path);
@@ -111,8 +109,7 @@ export function relinkAssets(
       }
     }
 
-    // A sound's record places it, wherever its audio lies.
-    const home = asset.type === 'sound' ? null : collectionIdOfPath(primaryPath(asset)) ?? collectionIdOfPath(sidecarAt);
+    const home = collectionIdOfPath(primaryPath(asset)) ?? collectionIdOfPath(sidecarAt);
     if (home && home !== asset.collection && metadata.collections[home]) {
       asset.collection = home;
       changed = true;

@@ -66,6 +66,7 @@ import { PlayedRules } from './src/app/campaigns/playedRules';
 import { QuestIndex } from './src/app/campaigns/quests/QuestIndex';
 import { MoodStore } from './src/app/soundLibrary/MoodStore';
 import { SoundLibrary } from './src/app/soundLibrary/SoundLibrary';
+import { SoundRecordStore } from './src/app/soundLibrary/SoundRecordStore';
 import { nameQuestCampaigns } from './src/app/campaigns/quests/nameQuestCampaigns';
 import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
@@ -279,6 +280,7 @@ export default class AtlasVTTPlugin extends Plugin {
     QuestIndex.release(this.app);
     SoundDirector.release(this.app);
     MoodStore.release(this.app);
+    SoundRecordStore.release(this.app);
     SoundLibrary.release(this.app);
     DiceSetFiles.release(this.app);
     this.widgetSyncService?.destroy();

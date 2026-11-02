@@ -8,7 +8,6 @@ import type { SoonestTrack } from './libraryMix';
 import { EMPTY_TABLE_SOUND, type MoodMix, type ReadySounds } from './tableSound';
 
 export interface ActiveMood {
-  collectionId: string;
   id: string;
 }
 

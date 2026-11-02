@@ -1,6 +1,6 @@
 import type { Mood } from '../sound/soundTypes';
 import type { SoundDirectorDeps } from './directorDeps';
-import type { AudienceLine, PlayersSounds, SceneMoods } from './tableClock';
+import type { AudienceLine, PlayersSounds } from './tableClock';
 
 /** What a table online reads of the library, and tells the Sound page while it runs. */
 export class PlayersSeam {
@@ -8,7 +8,7 @@ export class PlayersSeam {
   private drop: (() => void) | null = null;
   private dropAudience: (() => void) | null = null;
 
-  constructor(private readonly deps: Pick<SoundDirectorDeps, 'moods' | 'readSceneSound' | 'collectionOf'>, private readonly changed: () => void) {}
+  constructor(private readonly deps: Pick<SoundDirectorDeps, 'moods' | 'readSceneSound'>, private readonly changed: () => void) {}
 
   get sounds(): PlayersSounds | null {
     return this.current;
@@ -27,14 +27,14 @@ export class PlayersSeam {
     show(audience?.line() ?? null);
   }
 
-  moodsOf(collectionId: string): readonly Mood[] {
-    return this.deps.moods.moodsOf(collectionId);
+  moods(): readonly Mood[] {
+    return this.deps.moods.moods();
   }
 
-  async sceneMoods(scenePath: string): Promise<SceneMoods> {
-    const collectionId = this.deps.collectionOf(scenePath);
+  /** The moods a scene links, for those that still are. */
+  async sceneMoods(scenePath: string): Promise<Mood[]> {
     const sound = await this.deps.readSceneSound(scenePath);
     const ids = [sound?.mood, sound?.combatMood].filter((id) => id !== undefined);
-    return { collectionId, linked: ids.flatMap((id) => this.deps.moods.mood(collectionId, id) ?? []) };
+    return ids.flatMap((id) => this.deps.moods.mood(id) ?? []);
   }
 }

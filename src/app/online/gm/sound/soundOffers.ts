@@ -1,6 +1,5 @@
 import { MAX_PREPARED_SOUNDS, type AssetRef, type GmMessage } from '../../protocol/index.ts';
 import type { Mood, SoundRecord } from '../../../sound/soundTypes';
-import type { SceneMoods } from '../../../soundDirector/tableClock';
 import { moodAfter } from '../../../soundLibrary/moodOrdering';
 import { ASSET_USES, type AssetUse } from '../assets/assetUses.ts';
 import type { SoundRefs } from './soundRefs.ts';
@@ -10,20 +9,21 @@ export interface OffersPorts {
   send(body: GmMessage, to?: string): void;
   /** The scene players are shown; null while none. */
   presentedPath(): string | null;
-  sceneMoods(path: string): Promise<SceneMoods>;
-  moodsOf(collectionId: string): readonly Mood[];
+  /** The moods a scene links. */
+  sceneMoods(path: string): Promise<Mood[]>;
+  moods(): readonly Mood[];
   /** The mood the mix is, if it is one. */
-  activeMood(): { readonly collectionId: string; readonly id: string } | null;
+  activeMood(): { readonly id: string } | null;
   recordsOf(mood: Mood): SoundRecord[];
   /** The key a record's copy goes by here; null while it has none, which asks for one. */
   copyKey(record: SoundRecord): string | null;
 }
 
 /**
- * What goes into the store before anyone presses it: the moods the scene players are shown links and
- * the next mood, named to players as what to fetch ahead (`sound-prepare`), and behind those the rest
- * of the collection's moods, or of a collection the GM prepared, which players hear of only when they
- * play. A sound without a copy here yet is asked for, and offered when the shelf says it has come.
+ * What goes into the store before anyone presses it: the moods the scene players are shown links, then
+ * the next mood, named to players as what to fetch ahead (`sound-prepare`), and behind those the rest of
+ * the moods, or a folder the GM prepared, which players hear of only when they play. A sound without a
+ * copy here yet is asked for, and offered when the shelf says it has come.
  */
 export class SoundOffers {
   /** Records waiting to be offered, with how. */
@@ -37,14 +37,11 @@ export class SoundOffers {
   async refresh(): Promise<void> {
     const generation = ++this.generation;
     const path = this.ports.presentedPath();
-    const scene = path === null ? null : await this.ports.sceneMoods(path).catch(() => null);
+    const linked = path === null ? [] : await this.ports.sceneMoods(path).catch((): Mood[] => []);
     if (generation !== this.generation) return;
-    const active = this.ports.activeMood();
-    const collectionId = active?.collectionId ?? scene?.collectionId ?? null;
-    if (collectionId === null) return this.sendHint([]);
-    const moods = this.ports.moodsOf(collectionId);
-    const next = moodAfter(moods, active?.id ?? null);
-    const near = [...(scene?.linked ?? []), ...(next ? [next] : [])];
+    const moods = this.ports.moods();
+    const next = moodAfter(moods, this.ports.activeMood()?.id ?? null);
+    const near = [...linked, ...(next ? [next] : [])];
     const nearRecords = near.flatMap((mood) => this.ports.recordsOf(mood));
     this.offer(nearRecords, ASSET_USES.audio, true);
     this.offer(moods.flatMap((mood) => this.ports.recordsOf(mood)), ASSET_USES.stagedAudio, false);
@@ -55,8 +52,9 @@ export class SoundOffers {
     if (generation === this.generation) this.sendHint(refs.filter((ref) => ref !== null));
   }
 
-  prepare(collectionId: string): void {
-    this.offer(this.ports.moodsOf(collectionId).flatMap((mood) => this.ports.recordsOf(mood)), ASSET_USES.stagedAudio, false);
+  /** Offers what the moods name, or the sounds given. */
+  prepare(sounds?: readonly SoundRecord[]): void {
+    this.offer(sounds ?? this.ports.moods().flatMap((mood) => this.ports.recordsOf(mood)), ASSET_USES.stagedAudio, false);
     void this.pump();
   }
 

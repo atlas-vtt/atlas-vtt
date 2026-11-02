@@ -1,6 +1,5 @@
 import { setIcon, type Plugin } from 'obsidian';
 import { t } from '../i18n';
-import { AssetService } from '../services/AssetService';
 import { MoodStore } from '../soundLibrary/MoodStore';
 import { SoundDirector } from '../soundDirector/SoundDirector';
 import { isPlaying } from '../soundDirector/tableSound';
@@ -13,34 +12,27 @@ function moodCommandId(moodId: string): string {
   return `sound-mood-${moodId}`;
 }
 
-function collectionsOf(assets: AssetService): Promise<string[]> {
-  return assets.getCollections().then((collections) => collections.map((collection) => collection.id));
-}
-
-function registerMoodCommands(plugin: Plugin, director: SoundDirector, assets: AssetService): () => void {
+function registerMoodCommands(plugin: Plugin, director: SoundDirector): () => void {
   const moods = MoodStore.forApp(plugin.app);
   const added = new Map<string, string>();
-  let collections: string[] = [];
   const sync = (): void => {
     const wanted = new Map<string, string>();
     if (director.isOn) {
-      for (const collectionId of collections) {
-        for (const mood of moods.moodsOf(collectionId)) {
-          const name = t('audio.command.mood', { name: mood.name });
-          wanted.set(mood.id, name);
-          if (added.get(mood.id) === name) continue;
-          plugin.addCommand({
-            id: moodCommandId(mood.id),
-            name,
-            checkCallback: (checking) => {
-              const current = moods.mood(collectionId, mood.id);
-              if (!current || !director.isOn) return false;
-              if (!checking) director.press(collectionId, current);
-              return true;
-            },
-          });
-          added.set(mood.id, name);
-        }
+      for (const mood of moods.moods()) {
+        const name = t('audio.command.mood', { name: mood.name });
+        wanted.set(mood.id, name);
+        if (added.get(mood.id) === name) continue;
+        plugin.addCommand({
+          id: moodCommandId(mood.id),
+          name,
+          checkCallback: (checking) => {
+            const current = moods.mood(mood.id);
+            if (!current || !director.isOn) return false;
+            if (!checking) director.press(current);
+            return true;
+          },
+        });
+        added.set(mood.id, name);
       }
     }
     for (const id of [...added.keys()]) {
@@ -49,39 +41,29 @@ function registerMoodCommands(plugin: Plugin, director: SoundDirector, assets: A
       added.delete(id);
     }
   };
-  const readCollections = async (): Promise<void> => {
-    await assets.initialize();
-    collections = await collectionsOf(assets);
-    sync();
-  };
-  // The index is read only once sound is on, which is after the storage is ready.
+  // The moods are read only once sound is on.
   let wasOn = false;
   const followSwitch = (): void => {
     if (director.isOn === wasOn) return;
     wasOn = director.isOn;
-    if (wasOn) void readCollections();
-    else sync();
+    sync();
   };
   followSwitch();
-  const refresh = plugin.app.workspace.on('atlas-vtt:refresh-assets', () => {
-    if (wasOn) void readCollections();
-  });
   const stopMoods = moods.onChange(sync);
   const stopDirector = director.subscribe(followSwitch);
   return () => {
-    plugin.app.workspace.offref(refresh);
     stopMoods();
     stopDirector();
   };
 }
 
-function registerSoundCommands(plugin: Plugin, director: SoundDirector, assets: AssetService): void {
+function registerSoundCommands(plugin: Plugin, director: SoundDirector): void {
   plugin.addCommand({
     id: 'sound-next-mood',
     name: t('audio.command.next'),
     checkCallback: (checking) => {
       if (!director.isOn) return false;
-      if (!checking) director.pressNext(assets.getDefaultCollectionId());
+      if (!checking) director.pressNext();
       return true;
     },
   });
@@ -118,7 +100,7 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
   const render = (): void => {
     const { mix } = director.snapshot();
     const now = director.now();
-    const mood = mix.mood && moods.mood(mix.mood.collectionId, mix.mood.id);
+    const mood = mix.mood && moods.mood(mix.mood.id);
     const name = isPlaying(mix.table, now) && (mix.table.music || mix.table.layers.length > 0) ? whatPlays(mix.table, mood ?? null, director.shelf, now) : null;
     if (name === null) {
       item.hide();
@@ -146,9 +128,8 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
 export function registerSoundDirector(plugin: Plugin): SoundDirector {
   const { app } = plugin;
   const director = SoundDirector.forApp(app);
-  const assets = AssetService.getInstance(app);
-  registerSoundCommands(plugin, director, assets);
-  plugin.register(registerMoodCommands(plugin, director, assets));
+  registerSoundCommands(plugin, director);
+  plugin.register(registerMoodCommands(plugin, director));
   plugin.register(registerSoundStatusBar(plugin, director));
   return director;
 }

@@ -2,14 +2,10 @@ import type { Asset, TagMetadata } from './AssetService';
 
 /**
  * Tags are kept apart by what they describe: `tokens` covers tokens and the
- * encounters built from them, `maps` covers maps and the scenes built on them,
- * `sounds` covers sounds. `TAG_GROUPS` are the groups a tag from before groups
- * existed can belong to, which leaves sounds out.
+ * encounters built from them, `maps` covers maps and the scenes built on them.
  */
 export const TAG_GROUPS = ['tokens', 'maps'] as const;
-/** The groups the asset manager's tabs show and edit. */
-export type TabTagGroup = (typeof TAG_GROUPS)[number];
-export type TagGroup = TabTagGroup | 'sounds';
+export type TagGroup = (typeof TAG_GROUPS)[number];
 
 /** The tag group of a stored asset type; types the asset manager does not tag have none. */
 export function tagGroupOf(type: Asset['type']): TagGroup | null {
@@ -21,8 +17,6 @@ export function tagGroupOf(type: Asset['type']): TagGroup | null {
     case 'map':
     case 'scene':
       return 'maps';
-    case 'sound':
-      return 'sounds';
     default:
       return null;
   }

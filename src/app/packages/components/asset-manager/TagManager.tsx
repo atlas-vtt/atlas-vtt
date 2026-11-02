@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Search, Plus } from 'lucide-react';
 import { openContextMenuGlobal, type ContextMenuEntry } from '../../../react/root/ContextMenuContext';
-import type { TabTagGroup } from '../../../services/tagGroups';
+import type { TagGroup } from '../../../services/tagGroups';
 import { confirmAction } from '../../../ui/confirmDialog';
 import { isShortcutScopeActive } from '../../../utils/activeLeafGuard';
 import { CloseButton } from '../primitives/CloseButton';
@@ -16,15 +16,15 @@ import { t } from '../../../i18n';
 interface TagManagerProps {
   isOpen: boolean;
   onClose: () => void;
-  tags: Readonly<Record<TabTagGroup, readonly ManagedItem[]>>;
+  tags: Readonly<Record<TagGroup, readonly ManagedItem[]>>;
   /** The tab shown whenever the manager opens: the tag group of the asset tab in view. */
-  initialTab: TabTagGroup;
+  initialTab: TagGroup;
   collections: readonly ManagedItem[];
-  onCreateTag: (group: TabTagGroup, name: string) => void;
+  onCreateTag: (group: TagGroup, name: string) => void;
   onCreateCollection: (name: string) => void;
-  onUpdateTag: (group: TabTagGroup, tagId: string, name: string) => void | Promise<void>;
+  onUpdateTag: (group: TagGroup, tagId: string, name: string) => void | Promise<void>;
   onUpdateCollection: (collectionId: string, name: string) => void | Promise<void>;
-  onDeleteTag: (group: TabTagGroup, tagId: string) => Promise<void>;
+  onDeleteTag: (group: TagGroup, tagId: string) => Promise<void>;
   onDeleteCollection: (collectionId: string) => Promise<void>;
 }
 

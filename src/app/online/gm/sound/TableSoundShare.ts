@@ -4,7 +4,7 @@ import { JOIN_SAMPLES, TableClockSync } from '../../../sound/engine/tableClockSy
 import type { Mood, SoundBytes, SoundInfo, SoundRecord, TableSound } from '../../../sound/soundTypes';
 import type { SoundSnapshot } from '../../../soundDirector/soundSnapshot';
 import { stopAll } from '../../../soundDirector/liveEdits';
-import type { AudienceLine, PlayersCopy, PlayersSounds, SceneMoods, TableClock } from '../../../soundDirector/tableClock';
+import type { AudienceLine, PlayersCopy, PlayersSounds, TableClock } from '../../../soundDirector/tableClock';
 import { EMPTY_TABLE_SOUND, isPlaying } from '../../../soundDirector/tableSound';
 import { ASSET_USES } from '../assets/assetUses.ts';
 import type { CopyState } from '../assets/uploadQueue.ts';
@@ -33,8 +33,8 @@ export interface ShareDirector {
   useAudience(audience: AudienceLine | null): void;
   readonly players: {
     use(sounds: PlayersSounds | null): void;
-    moodsOf(collectionId: string): readonly Mood[];
-    sceneMoods(scenePath: string): Promise<SceneMoods>;
+    moods(): readonly Mood[];
+    sceneMoods(scenePath: string): Promise<Mood[]>;
   };
   readonly shelf: {
     bytes(key: string): Promise<SoundBytes>;
@@ -95,7 +95,7 @@ export class TableSoundShare implements PlayersSounds {
       send: (body, to) => ports.send(body, to),
       presentedPath: () => ports.presentedPath(),
       sceneMoods: (path) => director.players.sceneMoods(path),
-      moodsOf: (id) => director.players.moodsOf(id),
+      moods: () => director.players.moods(),
       activeMood: () => director.snapshot().mix.mood,
       recordsOf: (mood) => director.shelf.recordsOf(mood),
       copyKey: (record) => this.copyKey(record),
@@ -185,8 +185,8 @@ export class TableSoundShare implements PlayersSounds {
     return ref ? this.ports.copyState(ref.id) : { state: 'nowhere' };
   }
 
-  prepare(collectionId: string): void {
-    this.offers.prepare(collectionId);
+  prepare(sounds?: readonly SoundRecord[]): void {
+    this.offers.prepare(sounds);
   }
 
   setSending(on: boolean): void {

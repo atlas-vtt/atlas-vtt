@@ -11,8 +11,6 @@ export const audio = {
   'audio.experimental.label': 'Sound',
   'audio.experimental.hint': 'Music and ambience from folders you link: moods and a library on the DM screen. While off, both stay hidden.',
 
-  'audio.reviewKind': 'Sound',
-
   'audio.importing': 'Adding sounds: {done} of {total}',
   'audio.added': { one: 'Added {count} sound.', other: 'Added {count} sounds.' },
   'audio.notAudio': 'Not audio: {files}.',
@@ -54,7 +52,6 @@ export const audio = {
   'audio.screen.statblocks': 'Statblocks',
   'audio.screen.sound': 'Sound',
 
-  'audio.collection': 'Collection',
   'audio.nextTag': 'Next',
   'audio.playingTag': 'Playing',
   'audio.silenced': 'Silenced',
@@ -183,6 +180,7 @@ export const audio = {
   'audio.library.loading': 'Loading folder',
   'audio.library.folders': 'Folders',
   'audio.library.overlap': 'The music and ambience folders cannot lie inside each other.',
+  'audio.library.reserved': 'That folder holds Atlas\'s moods and records, not sounds.',
   'audio.library.noTrash': 'This Obsidian has no system trash to move it to, so nothing was deleted.',
   'audio.library.nameTaken': 'Something of that name is already there.',
   'audio.library.badName': 'A name cannot be empty, start with a dot or hold \\ / : * ? " < > | # ^ [ ].',

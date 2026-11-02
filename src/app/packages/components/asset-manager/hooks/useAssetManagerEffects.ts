@@ -1,6 +1,7 @@
 import type * as React from 'react';
 import { useEffect } from 'react';
-import { tabs, type Tab } from '../types';
+import type { Tab } from '../types';
+import { tabs } from '../types';
 import type { AssetData } from './useAssetData';
 import type { SelectionState } from './useSelectionHandlers';
 import type { AssetCrudActions } from './useAssetCrud';

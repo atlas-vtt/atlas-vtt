@@ -30,7 +30,7 @@ export function collectionOfCollectionFile(path: string): string | null {
 }
 
 /** Folders whose JSON files can hold asset records; `snapshots/`, `loot-history/` and the collection's own files never do. */
-const RECORD_FILE_PATTERN = new RegExp(`^${COLLECTIONS_DIR}/[^/]+/(maps|scenes|encounters|players|characters|statblocks|tokens|notes|sounds)/.+\\.json$`);
+const RECORD_FILE_PATTERN = new RegExp(`^${COLLECTIONS_DIR}/[^/]+/(maps|scenes|encounters|players|characters|statblocks|tokens|notes)/.+\\.json$`);
 
 /** Whether `path` may hold an asset record. */
 export const isRecordFileCandidate = (path: string): boolean => RECORD_FILE_PATTERN.test(path);

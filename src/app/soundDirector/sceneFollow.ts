@@ -9,11 +9,11 @@ export interface SceneFollowDeps<Snapshot> {
   presented(): PresentedScene | null;
   /** The scene's links, as its open view holds them or else its file; null when it has none. */
   sceneSoundOf(path: string): Promise<SceneSound | null>;
-  /** The mood a scene's link names, among the moods of the scene's own collection. */
-  linkedMood(scenePath: string, moodId: string): Promise<{ collectionId: string; mood: Mood } | null>;
+  /** The mood a link names; a mood that is gone reads as no link. */
+  linkedMood(moodId: string): Promise<Mood | null>;
   /** The mood that plays, if the mix is that mood. */
   activeMoodId(): string | null;
-  play(collectionId: string, mood: Mood): void;
+  play(mood: Mood): void;
   /** What plays now, to come back to. */
   snapshot(): Snapshot;
   restore(snapshot: Snapshot): void;
@@ -52,10 +52,10 @@ export class SceneFollow<Snapshot> {
     this.cancel();
     if (!this.deps.isFollowing() || !sound?.combatMood || !this.isTableScene(scenePath)) return;
     const generation = this.generation;
-    void this.deps.linkedMood(scenePath, sound.combatMood).then((linked) => {
+    void this.deps.linkedMood(sound.combatMood).then((linked) => {
       if (!linked || generation !== this.generation || !this.deps.isFollowing()) return;
       this.beforeFight ??= this.deps.snapshot();
-      this.deps.play(linked.collectionId, linked.mood);
+      this.deps.play(linked);
     });
   }
 
@@ -88,9 +88,9 @@ export class SceneFollow<Snapshot> {
     const scene = this.deps.presented();
     if (!scene) return;
     const sound = await this.deps.sceneSoundOf(scene.filePath);
-    const linked = sound?.mood ? await this.deps.linkedMood(scene.filePath, sound.mood) : null;
+    const linked = sound?.mood ? await this.deps.linkedMood(sound.mood) : null;
     if (!linked || generation !== this.generation || !this.deps.isFollowing()) return;
     this.beforeFight = null;
-    if (this.deps.activeMoodId() !== linked.mood.id) this.deps.play(linked.collectionId, linked.mood);
+    if (this.deps.activeMoodId() !== linked.id) this.deps.play(linked);
   }
 }

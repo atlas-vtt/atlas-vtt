@@ -1,9 +1,9 @@
 import { t } from '../../../../../i18n';
-import type { SoundAsset } from '../../../../../services/AssetService';
 import { clampTrim, MAX_TRIM_DB } from '../../../../../sound/codec/soundInfo';
 import type { SoundLicence } from '../../../../../sound/soundTypes';
 import type { LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
 import type { LibraryFile } from '../../../../../soundLibrary/SoundLibrary';
+import type { StoredSound } from '../../../../../soundLibrary/soundRecords';
 import { MENU_SEPARATOR, type ContextMenuEntry } from '../../../context-menu/AtlasContextMenu';
 import type { LibraryActions } from './useLibraryActions';
 import type { LibraryRow } from './rowModel';
@@ -23,7 +23,7 @@ export interface RowMenuContext {
   rows: readonly LibraryRow[];
   entries: readonly LibraryEntry[];
   /** The record of the row the menu opened from, whose values it shows. */
-  sound: SoundAsset | null;
+  sound: StoredSound | null;
   beginRename: (row: LibraryRow) => void;
 }
 

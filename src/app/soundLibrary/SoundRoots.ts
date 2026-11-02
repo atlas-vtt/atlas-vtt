@@ -1,5 +1,6 @@
 import type { SoundKind } from '../sound/soundTypes';
 import type { SharedSoundRoot, SharedSoundRoots } from './soundRootsStore';
+import { isSoundDataPath } from './soundFiles';
 import { isWithin, movedRelative, relativeBelow } from './soundPaths';
 
 export type SoundRootState =
@@ -32,7 +33,7 @@ export interface SoundRootFacts {
   realPath(path: string): Promise<string>;
 }
 
-export type LinkOutcome = 'linked' | 'overlap';
+export type LinkOutcome = 'linked' | 'overlap' | 'reserved';
 
 const OTHER: Readonly<Record<SoundKind, SoundKind>> = { music: 'ambience', ambience: 'music' };
 
@@ -66,6 +67,7 @@ export class SoundRoots {
   }
 
   linkVault(kind: SoundKind, path: string): LinkOutcome {
+    if (isSoundDataPath(path)) return 'reserved';
     const other = this.stateOf(OTHER[kind]);
     if (other.status === 'vault' && (isWithin(other.path, path) || isWithin(path, other.path))) return 'overlap';
     this.facts.setLocal(kind, null);

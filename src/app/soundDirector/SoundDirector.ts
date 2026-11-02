@@ -84,7 +84,7 @@ export class SoundDirector {
     this.fights = new TableFights(deps, {
       isOn: () => this.on,
       activeMoodId: () => this.table.mix.mood?.id ?? null,
-      play: (collectionId, mood) => this.desk.playMix({ collectionId, id: mood.id }, mood, false),
+      play: (mood) => this.desk.playMix({ id: mood.id }, mood, false),
       snapshot: () => this.lastMixNow(),
       restore: (last) => this.desk.playMix(last.mood, { ...last.mix, fadeSeconds: this.fadeSeconds() }, false),
     });
@@ -128,17 +128,15 @@ export class SoundDirector {
   leaveView(viewId: string): void { this.fights.leave(viewId); }
 
   /** A mood the GM pressed: it stands until the table next changes scene or fight. */
-  press(collectionId: string, mood: Mood): void {
+  press(mood: Mood): void {
     this.fights.follow.manualPress();
-    this.desk.playMix({ collectionId, id: mood.id }, mood, true);
+    this.desk.playMix({ id: mood.id }, mood, true);
   }
 
-  /** The mood after the one playing; the first of `collectionId` where none is. */
-  pressNext(collectionId: string): void {
-    const active = this.table.mix.mood;
-    const inCollection = active?.collectionId ?? collectionId;
-    const next = moodAfter(this.deps.moods.moodsOf(inCollection), active?.id ?? null);
-    if (next) this.press(inCollection, next);
+  /** The mood after the one playing; the first where none is. */
+  pressNext(): void {
+    const next = moodAfter(this.deps.moods.moods(), this.table.mix.mood?.id ?? null);
+    if (next) this.press(next);
   }
 
   /** Ends the mix, with nothing left to bring back. */

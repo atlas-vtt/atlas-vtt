@@ -1,10 +1,10 @@
-import type { AssetService } from '../services/AssetService';
 import type { SoundKind, SoundRecord } from '../sound/soundTypes';
 import { MAX_MOOD_LAYERS } from '../sound/soundTypes';
 import { t } from '../i18n';
 import { MOOD_LIMITS } from '../soundLibrary/moodFile';
 import { recordOfFile, recordsForFiles, unrecordedSound } from '../soundLibrary/libraryRecords';
 import { soundRecordOf } from '../soundLibrary/soundRecords';
+import type { SoundRecordStore } from '../soundLibrary/SoundRecordStore';
 import type { SoundDrag } from '../soundLibrary/soundDrag';
 import type { LibraryFile, SoundLibrary } from '../soundLibrary/SoundLibrary';
 import type { SoundLocation } from '../soundLibrary/soundLocation';
@@ -13,7 +13,7 @@ import { mixHolding } from './libraryMix';
 import type { SoundDirector } from './SoundDirector';
 
 export interface LibraryDeskDeps {
-  assets: AssetService;
+  records: Pick<SoundRecordStore, 'whenLoaded' | 'all' | 'add'>;
   library: SoundLibrary;
   director: SoundDirector;
   notify: (message: string) => void;
@@ -23,8 +23,8 @@ export interface LibraryDeskDeps {
 export type MixIntent = 'now' | 'next' | 'add';
 
 /** Records for files, known to the shelf by the time this settles. */
-async function shelved(deps: LibraryDeskDeps, files: readonly LibraryFile[], collectionId: string): Promise<SoundRecord[]> {
-  const records = await recordsForFiles(deps.assets, deps.library, files, collectionId);
+async function shelved(deps: LibraryDeskDeps, files: readonly LibraryFile[]): Promise<SoundRecord[]> {
+  const records = await recordsForFiles(deps.records, deps.library, files);
   await deps.director.shelf.refresh();
   return records;
 }
@@ -40,11 +40,11 @@ function filesWithRoom(deps: LibraryDeskDeps, files: readonly LibraryFile[], int
   return fitting;
 }
 
-/** Sends files to the mix. Their records are made here, in `collectionId`: the collection of the mood or mix in use. */
-export async function fileToMix(deps: LibraryDeskDeps, files: readonly LibraryFile[], intent: MixIntent, collectionId: string): Promise<void> {
+/** Sends files to the mix. Their records are made here. */
+export async function fileToMix(deps: LibraryDeskDeps, files: readonly LibraryFile[], intent: MixIntent): Promise<void> {
   const { desk } = deps.director;
   deps.director.tap();
-  for (const record of await shelved(deps, filesWithRoom(deps, files, intent), collectionId)) {
+  for (const record of await shelved(deps, filesWithRoom(deps, files, intent))) {
     if (record.kind === 'ambience' || intent === 'add') {
       if (!desk.addSound(record)) deps.notify(t('audio.add.refused', { name: record.name }));
     } else if (intent === 'now') {
@@ -72,41 +72,43 @@ export async function filesToPlay(location: SoundLocation, kind: SoundKind, fold
 }
 
 /** Plays a music folder as the list, in order or shuffled; the ambience stays. A list holds what a mood can: of a larger folder the first, as the GM is told. */
-export async function folderToMix(deps: LibraryDeskDeps, kind: SoundKind, folder: string, shuffle: boolean, collectionId: string): Promise<void> {
+export async function folderToMix(deps: LibraryDeskDeps, kind: SoundKind, folder: string, shuffle: boolean): Promise<void> {
   const location = deps.library.locationOf(kind);
   if (!location) return;
   deps.director.tap();
   const files = await filesToPlay(location, kind, folder, MOOD_LIMITS.tracks + 1);
   if (files.length > MOOD_LIMITS.tracks) deps.notify(t('audio.add.folderCut', { count: MOOD_LIMITS.tracks }));
-  const records = await shelved(deps, files.slice(0, MOOD_LIMITS.tracks), collectionId);
+  const records = await shelved(deps, files.slice(0, MOOD_LIMITS.tracks));
   deps.director.desk.playList(records, shuffle);
 }
 
 /** What a drop on the desk does: music joins as next, ambience is added, a folder of music becomes the list. */
-export async function dragToMix(deps: LibraryDeskDeps, drag: SoundDrag, collectionId: string): Promise<void> {
-  await fileToMix(deps, drag.files, 'next', collectionId);
+export async function dragToMix(deps: LibraryDeskDeps, drag: SoundDrag): Promise<void> {
+  await fileToMix(deps, drag.files, 'next');
   for (const folder of drag.folders) {
     const location = deps.library.locationOf(folder.kind);
     if (!location) continue;
-    if (folder.kind === 'music') await folderToMix(deps, folder.kind, folder.path, false, collectionId);
-    else await fileToMix(deps, await filesToPlay(location, folder.kind, folder.path), 'add', collectionId);
+    if (folder.kind === 'music') await folderToMix(deps, folder.kind, folder.path, false);
+    else await fileToMix(deps, await filesToPlay(location, folder.kind, folder.path), 'add');
   }
 }
 
-/** Makes a folder's copies ahead of use. This writes no record: browsing and preparing cost the library nothing. */
-export async function prepareFolder(deps: LibraryDeskDeps, kind: SoundKind, folder: string, collectionId: string): Promise<number> {
+/** Makes a folder's copies ahead of use, and at a table online offers them to players. This writes no record: browsing and preparing cost the library nothing. */
+export async function prepareFolder(deps: LibraryDeskDeps, kind: SoundKind, folder: string): Promise<number> {
   const location = deps.library.locationOf(kind);
   if (!location) return 0;
   const files = await filesToPlay(location, kind, folder);
-  const records = await deps.assets.getAssets(undefined, 'sound');
+  await deps.records.whenLoaded();
+  const stored = deps.records.all();
   const sounds = files.flatMap((file) => {
     const audioPath = deps.library.audioPathOf(kind, file.path);
     if (audioPath === null) return [];
-    const held = recordOfFile(records, audioPath, collectionId);
-    return [held ? soundRecordOf(held) : unrecordedSound(file, audioPath, collectionId)];
+    const held = recordOfFile(stored, audioPath);
+    return [held ? soundRecordOf(held) : unrecordedSound(file, audioPath)];
   });
   await deps.library.ensureListed(kind, files.map((file) => parentOfRelative(file.path)));
   deps.director.shelf.request(sounds);
+  deps.director.players.sounds?.prepare(sounds);
   return sounds.length;
 }
 

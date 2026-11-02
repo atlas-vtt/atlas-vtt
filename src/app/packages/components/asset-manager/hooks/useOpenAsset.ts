@@ -48,7 +48,6 @@ export function useOpenAsset(deps: OpenAssetDeps): OpenAsset {
         return;
       case 'encounters':
         await spawnAndClose(spawnCtx, deps.onClose, (ctx) => spawnEncounterTokens(ctx, asset));
-        return;
     }
   });
 }

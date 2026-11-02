@@ -19,16 +19,10 @@ export type PlayersCopy = { readonly state: 'ready' } | { readonly state: 'uploa
 /** What a table online tells the Sound page, while one runs. */
 export interface PlayersSounds {
   copyOf(record: SoundRecord): PlayersCopy;
-  /** Offers all that a collection's moods name, ahead of being pressed. */
-  prepare(collectionId: string): void;
+  /** Offers ahead of being pressed all that the moods name, or the sounds given (a folder of the library). */
+  prepare(sounds?: readonly SoundRecord[]): void;
   /** This device's switch: off, players hear nothing from it. */
   readonly sending: boolean;
   setSending(on: boolean): void;
   onChange(listener: () => void): () => void;
-}
-
-/** The moods a scene links, with the collection they and the rest of its moods lie in. */
-export interface SceneMoods {
-  collectionId: string;
-  linked: Mood[];
 }

@@ -1,8 +1,9 @@
 import type { App } from 'obsidian';
-import { AssetService, type SoundAsset } from '../services/AssetService';
 import { runInBackground } from '../utils/backgroundTask';
 import type { SoundLibrary } from './SoundLibrary';
 import type { SoundKind } from '../sound/soundTypes';
+import type { StoredSound } from './soundRecords';
+import { SoundRecordStore } from './SoundRecordStore';
 import type { SoundFileEntry } from './soundLocation';
 import { nameOfRelative } from './soundPaths';
 
@@ -12,7 +13,7 @@ import { nameOfRelative } from './soundPaths';
  * without a size is left to wait.
  */
 function relinksIn(
-  sounds: readonly SoundAsset[],
+  sounds: readonly StoredSound[],
   kind: SoundKind,
   files: readonly SoundFileEntry[],
   fileOf: (audioPath: string) => { kind: SoundKind; path: string } | null,
@@ -35,25 +36,21 @@ function relinksIn(
   return moves;
 }
 
-/** Applies what a root's walk found: every record of a missing file that is back, in one save. */
-export async function relinkRecords(library: SoundLibrary, assets: Pick<AssetService, 'getAssets' | 'rewriteAssets'>, kind: SoundKind, now = Date.now()): Promise<boolean> {
+/** Applies what a root's walk found: every record of a missing file that is back. */
+export async function relinkRecords(library: SoundLibrary, records: Pick<SoundRecordStore, 'whenLoaded' | 'all' | 'rewrite'>, kind: SoundKind, now = Date.now()): Promise<boolean> {
   if (!library.isWalked(kind)) return false;
-  const moves = relinksIn(await assets.getAssets(undefined, 'sound'), kind, library.filesOf(kind), (audioPath) => library.fileOfAudioPath(audioPath), (path) => library.audioPathOf(kind, path));
+  await records.whenLoaded();
+  const moves = relinksIn(records.all(), kind, library.filesOf(kind), (audioPath) => library.fileOfAudioPath(audioPath), (path) => library.audioPathOf(kind, path));
   if (moves.size === 0) return false;
-  return assets.rewriteAssets((asset) => {
-    const audioPath = moves.get(asset.id);
-    if (asset.type !== 'sound' || audioPath === undefined) return false;
-    asset.audioPath = audioPath;
-    asset.modifiedAt = now;
-    return true;
+  return records.rewrite((stored) => {
+    const audioPath = moves.get(stored.id);
+    return audioPath === undefined || stored.audioPath === audioPath ? null : { ...stored, audioPath, modifiedAt: now };
   });
 }
 
 /** Keeps records with their files for as long as the library lives. */
 export function followMissingFiles(library: SoundLibrary, app: App): void {
   library.onWalked((kind) => {
-    runInBackground(relinkRecords(library, AssetService.getInstance(app), kind).then((moved) => {
-      if (moved) app.workspace.trigger('atlas-vtt:refresh-assets');
-    }), 'Finding sounds that moved');
+    runInBackground(relinkRecords(library, SoundRecordStore.forApp(app), kind), 'Finding sounds that moved');
   });
 }

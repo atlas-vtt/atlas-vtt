@@ -14,7 +14,7 @@ import { collectionFolderName, collectionFolderPath, collectionIdOfFolder, colle
 import { planFolderNameFixes } from './collectionFolderNames';
 import { migrateInstallRecords } from './collectionBundle/installRecord';
 import { createCollectionRecord, derivedCollectionRecord, defaultCollectionIdOf, forgetCollection, INITIAL_COLLECTION_ID, moveCollectionRecord, numberedCollectionName, prettifyIdentifier } from './collectionRecords';
-import { assetFilePath, groupTokenRefs, hasRecordFolder } from './vault-sync/assetFiles';
+import { assetFilePath, groupTokenRefs } from './vault-sync/assetFiles';
 import { reconcileIndex, type VaultReconciliation } from './vault-sync/reconcileIndex';
 import { listVault, readVault } from './vault-sync/vaultListing';
 import type { CollectionSettings } from '../types/collectionSettingsTypes';
@@ -31,7 +31,6 @@ import { isPayloadUnread, serializeRecord } from './library/recordFile';
 import { libraryClock, parseLibraryState } from './library/libraryState';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { showNotice } from '../ui/notice';
-import type { SoundRecord } from '../sound/soundTypes';
 
 export interface BaseAsset {
   id: string;
@@ -154,19 +153,7 @@ export interface PlayerAsset extends BaseAsset {
   data?: PlayerAssetData;
 }
 
-/**
- * A music or ambience file of the vault. Its record file places it in a collection, wherever the
- * audio lies. `soundRecordOf` reads one as the engine's `SoundRecord`, whose `filePath` is `audioPath`.
- */
-export interface SoundAsset extends BaseAsset, Omit<SoundRecord, 'id' | 'name' | 'filePath' | 'tags'> {
-  type: 'sound';
-  /** A vault path, or for a file in a root outside the vault that root and the path below it (`soundPaths.ts`). */
-  audioPath: string;
-  /** The file's size when the record was made, by which a file gone from its path is found again. */
-  audioSize?: number;
-}
-
-export type Asset = TokenAsset | MapAsset | NoteAsset | StatblockAsset | CharacterAsset | SceneAsset | EncounterAsset | PlayerAsset | SoundAsset;
+export type Asset = TokenAsset | MapAsset | NoteAsset | StatblockAsset | CharacterAsset | SceneAsset | EncounterAsset | PlayerAsset;
 
 export type AssetOfType<T extends Asset['type']> = Extract<Asset, { type: T }>;
 
@@ -1013,16 +1000,11 @@ export class AssetService {
     return newAssets;
   }
 
-  /** Records whose ids the caller worked out, in one save: a sound's, which two devices must name alike. */
-  async addIdentifiedAssets(assets: readonly Asset[]): Promise<void> {
-    await this.registerAssets(assets, false);
-  }
-
   private async registerAssets(newAssets: readonly Asset[], userImport = true): Promise<void> {
     await this.ensureLoaded();
 
     for (const newAsset of newAssets) {
-      if (!hasRecordFolder(newAsset) && !newAsset.filePath) {
+      if (newAsset.type !== 'token' && newAsset.type !== 'note' && !newAsset.filePath) {
         newAsset.filePath = this.getAssetPath(newAsset);
       }
       await this.ensureCollectionRecord(newAsset.collection);

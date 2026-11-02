@@ -1,10 +1,10 @@
 import React from 'react';
 import { FolderOpen, Map as MapIcon } from 'lucide-react';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
-import type { TabTagGroup } from '../../../../services/tagGroups';
+import type { TagGroup } from '../../../../services/tagGroups';
 import { t } from '../../../../i18n';
 
-export type TagManagerTab = TabTagGroup | 'collections';
+export type TagManagerTab = TagGroup | 'collections';
 
 const TABS: readonly { id: TagManagerTab; label: string; icon: React.ReactElement }[] = [
   { id: 'maps', label: t('am.manage.mapTags'), icon: <MapIcon /> },

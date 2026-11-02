@@ -7,20 +7,13 @@ import { MoodFiles } from './MoodFiles';
 
 const NO_MOODS: readonly Mood[] = [];
 
-interface MoodFolder {
-  files: MoodFiles;
-  /** The moods of `entries`, in their order; the same array while no file changed. */
-  moods: readonly Mood[];
-  entries: readonly StoredRecord[] | null;
-}
-
 /** A new mood's id, unique across devices. */
 const newMoodId = (): string => `mood-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
 
 /**
- * The moods of every collection: read from `collections/<c>/moods/` when a collection is first
- * asked for, and kept current as files change on any device. Saved moods keep every key this
- * version does not know. One per app, released when the plugin unloads.
+ * The GM's moods, once for the whole vault: read from `atlas-vtt/sounds/moods/` when first asked for,
+ * and kept current as files change on any device. Saved moods keep every key this version does not
+ * know. One per app, released when the plugin unloads.
  */
 export class MoodStore {
   private static readonly instances = new WeakMap<App, MoodStore>();
@@ -39,78 +32,79 @@ export class MoodStore {
     MoodStore.instances.delete(app);
   }
 
-  private readonly folders = new Map<string, MoodFolder>();
+  private readonly files: MoodFiles;
   private readonly listeners = new Set<() => void>();
+  private entries: readonly StoredRecord[] | null = null;
+  private shown: readonly Mood[] = NO_MOODS;
+  private started = false;
 
-  private constructor(private readonly app: App) {}
-
-  private folderOf(collectionId: string): MoodFolder {
-    let folder = this.folders.get(collectionId);
-    if (!folder) {
-      const files = new MoodFiles(this.app, collectionId);
-      folder = { files, moods: NO_MOODS, entries: null };
-      this.folders.set(collectionId, folder);
-      files.onChange(() => this.changed());
-      runInBackground(files.load(), `Reading the moods of ${collectionId}`);
-    }
-    return folder;
+  private constructor(app: App) {
+    this.files = new MoodFiles(app);
+    this.files.onChange(() => this.changed());
   }
 
-  /** Settles once the collection's mood files have been read. */
-  whenLoaded(collectionId: string): Promise<void> {
-    return this.folderOf(collectionId).files.load();
+  private start(): void {
+    if (this.started) return;
+    this.started = true;
+    runInBackground(this.files.load(), 'Reading the moods');
   }
 
-  isLoaded(collectionId: string): boolean {
-    return this.folderOf(collectionId).files.isLoaded();
+  /** Settles once the mood files have been read. */
+  whenLoaded(): Promise<void> {
+    this.started = true;
+    return this.files.load();
   }
 
-  /** The collection's moods in their fixed order; the same array while nothing changed. Empty until they are read (`isLoaded`). */
-  moodsOf(collectionId: string): readonly Mood[] {
-    const folder = this.folderOf(collectionId);
-    const entries = folder.files.entries();
-    if (folder.entries !== entries) {
-      folder.entries = entries;
-      folder.moods = entries
+  isLoaded(): boolean {
+    this.start();
+    return this.files.isLoaded();
+  }
+
+  /** The moods in their fixed order; the same array while nothing changed. Empty until they are read (`isLoaded`). */
+  moods(): readonly Mood[] {
+    this.start();
+    const entries = this.files.entries();
+    if (this.entries !== entries) {
+      this.entries = entries;
+      this.shown = entries
         .flatMap((stored) => moodOf(stored) ?? [])
         .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id));
     }
-    return folder.moods;
+    return this.shown;
   }
 
-  mood(collectionId: string, id: string): Mood | null {
-    return this.moodsOf(collectionId).find((mood) => mood.id === id) ?? null;
+  mood(id: string): Mood | null {
+    return this.moods().find((mood) => mood.id === id) ?? null;
   }
 
   /** A mood a newer Atlas wrote: it plays and shows, and is never rewritten. */
-  isReadOnly(collectionId: string, id: string): boolean {
-    const stored = this.folderOf(collectionId).files.entries().find((entry) => entry.id === id);
+  isReadOnly(id: string): boolean {
+    const stored = this.files.entries().find((entry) => entry.id === id);
     return stored !== undefined && isNewerMood(stored);
   }
 
-  /** A new mood after the collection's last, with `mix`; written at once. */
-  createMood(collectionId: string, mix: Omit<Mood, 'id' | 'order'>): Mood {
-    const last = this.moodsOf(collectionId).at(-1)?.order ?? 0;
+  /** A new mood after the last, with `mix`; written at once. */
+  createMood(mix: Omit<Mood, 'id' | 'order'>): Mood {
+    const last = this.moods().at(-1)?.order ?? 0;
     const mood: Mood = { ...mix, id: newMoodId(), order: last + 1 };
-    this.folderOf(collectionId).files.create({ format: MOOD_FORMAT, ...mood }, mood.id);
+    this.files.create({ format: MOOD_FORMAT, ...mood }, mood.id);
     return mood;
   }
 
   /** Writes a mood over what its file holds then, keeping keys this version does not know. False where the file is a newer Atlas' or gone. */
-  saveMood(collectionId: string, mood: Mood): boolean {
-    const { files } = this.folderOf(collectionId);
-    if (files.pathOf(mood.id) === null || this.isReadOnly(collectionId, mood.id)) return false;
-    files.update(mood.id, (stored) => ({ ...stored, ...mood }));
+  saveMood(mood: Mood): boolean {
+    if (this.files.pathOf(mood.id) === null || this.isReadOnly(mood.id)) return false;
+    this.files.update(mood.id, (stored) => ({ ...stored, ...mood }));
     return true;
   }
 
-  removeMood(collectionId: string, id: string): void {
-    this.folderOf(collectionId).files.remove(id);
+  removeMood(id: string): void {
+    this.files.remove(id);
   }
 
   /** Settles once everything saved so far is on disk. */
-  async flush(): Promise<void> {
-    await Promise.all([...this.folders.values()].map((folder) => folder.files.flush()));
+  flush(): Promise<void> {
+    return this.files.flush();
   }
 
   onChange(listener: () => void): () => void {
@@ -123,8 +117,7 @@ export class MoodStore {
   }
 
   private destroy(): void {
-    for (const folder of this.folders.values()) folder.files.destroy();
-    this.folders.clear();
+    this.files.destroy();
     this.listeners.clear();
   }
 }

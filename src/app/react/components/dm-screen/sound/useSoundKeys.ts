@@ -15,7 +15,6 @@ interface SoundKeysOptions {
   rootRef: RefObject<HTMLElement | null>;
   viewId: string | undefined;
   director: SoundDirector;
-  collectionId: string | null;
   moods: readonly Mood[];
   moveMood: (mood: Mood, index: number) => void;
 }
@@ -25,7 +24,7 @@ interface SoundKeysOptions {
  * press moods, Enter the next one, Backspace is Silence, and the arrows go round the tab. Enter on a
  * focused control is that control's, as a row of the library is, whose list has the arrows too.
  */
-export function useSoundKeys({ active, rootRef, viewId, director, collectionId, moods, moveMood }: SoundKeysOptions): void {
+export function useSoundKeys({ active, rootRef, viewId, director, moods, moveMood }: SoundKeysOptions): void {
   useEffect(() => {
     if (!active) return undefined;
     const handle = (event: KeyboardEvent): void => {
@@ -77,12 +76,12 @@ export function useSoundKeys({ active, rootRef, viewId, director, collectionId, 
       if (index !== null && !event.shiftKey) {
         const mood = moods[index];
         taken();
-        if (mood && collectionId !== null) director.press(collectionId, mood);
+        if (mood) director.press(mood);
         return;
       }
       if (event.key === 'Enter' && !isControlTarget(target)) {
         taken();
-        if (collectionId !== null) director.pressNext(collectionId);
+        director.pressNext();
         return;
       }
       if (event.key === 'Backspace') {
@@ -92,5 +91,5 @@ export function useSoundKeys({ active, rootRef, viewId, director, collectionId, 
     };
     window.addEventListener('keydown', handle, true);
     return () => window.removeEventListener('keydown', handle, true);
-  }, [active, rootRef, viewId, director, collectionId, moods, moveMood]);
+  }, [active, rootRef, viewId, director, moods, moveMood]);
 }

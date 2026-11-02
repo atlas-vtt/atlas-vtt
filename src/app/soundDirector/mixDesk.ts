@@ -190,17 +190,17 @@ export class MixDesk {
   }
 
   /** Takes the mix as it is now as a new mood. */
-  saveAsMood(collectionId: string, name: string): Mood {
-    const mood = this.host.moods.createMood(collectionId, { name, ...this.mixNow(this.host.fadeSeconds()) });
-    this.table.commit({ ...this.table.mix, mood: { collectionId, id: mood.id } });
+  saveAsMood(name: string): Mood {
+    const mood = this.host.moods.createMood({ name, ...this.mixNow(this.host.fadeSeconds()) });
+    this.table.commit({ ...this.table.mix, mood: { id: mood.id } });
     return mood;
   }
 
   /** The mix as it is now into `mood`, which keeps its name, place and fade. A mood that leaves the music alone goes on doing so. */
-  saveToMood(collectionId: string, mood: Mood): boolean {
+  saveToMood(mood: Mood): boolean {
     const { music, layers } = this.mixNow(mood.fadeSeconds);
-    const saved = this.host.moods.saveMood(collectionId, { ...mood, music: mood.music === 'keep' ? 'keep' : music, layers });
-    if (saved) this.table.commit({ ...this.table.mix, mood: { collectionId, id: mood.id } });
+    const saved = this.host.moods.saveMood({ ...mood, music: mood.music === 'keep' ? 'keep' : music, layers });
+    if (saved) this.table.commit({ ...this.table.mix, mood: { id: mood.id } });
     return saved;
   }
 }

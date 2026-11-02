@@ -89,11 +89,6 @@ export class CollectionReferenceCollector {
   }
 
   private async collectAsset(asset: Asset): Promise<void> {
-    // A sound refers to its audio as a map to its image; its record is written where it goes. Sounds never reach a bundle (`EXPORTED_TYPES`).
-    if (asset.type === 'sound') {
-      this.add(asset.audioPath, 'background');
-      return;
-    }
     this.add(this.assets.getAssetFilePath(asset), asset.type === 'token' ? 'token-image' : 'asset-file');
     switch (asset.type) {
       case 'token':

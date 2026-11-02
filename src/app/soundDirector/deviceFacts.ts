@@ -83,7 +83,7 @@ export function loadLastMix(storage: DeviceStorage): LastMix | null {
     const { sound, levelDb } = layer as Record<string, unknown>;
     return isText(sound) && typeof levelDb === 'number' ? [{ sound, levelDb }] : [];
   });
-  const active = mood && isText(mood.collectionId) && isText(mood.id) ? { collectionId: mood.collectionId, id: mood.id } : null;
+  const active = mood && isText(mood.id) ? { id: mood.id } : null;
   return { mood: active, mix: { fadeSeconds: mix.fadeSeconds, music, layers } };
 }
 

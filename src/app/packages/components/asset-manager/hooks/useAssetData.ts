@@ -7,7 +7,7 @@ import { AssetService } from '../../../../services/AssetService';
 import { AssetThumbnailService, type ThumbnailAsset, type ThumbnailState } from '../../../../services/AssetThumbnailService';
 import { tagGroupOfTab, type TagsByGroup } from '../utils/assetTags';
 import { folderIdOf, tabFolderPath } from '../utils/assetFolders';
-import type { TabTagGroup } from '../../../../services/tagGroups';
+import type { TagGroup } from '../../../../services/tagGroups';
 import { assetFolderId, formatServiceAsset, partitionByTab, tokenPreviewSources, withThumbnails, type TabServiceAsset } from '../utils/assetFormatters';
 import { tabHasFolders } from '../utils/tabKinds';
 import { nearestShownFolder, withoutPartyOnlyFolders } from '../utils/partyFolders';
@@ -187,7 +187,7 @@ export function useAssetData(
     if (!assetService) return;
     const request = ++latestTagsLoad.current;
     try {
-      const load = async (group: TabTagGroup): Promise<Tag[]> =>
+      const load = async (group: TagGroup): Promise<Tag[]> =>
         (await assetService.getCollectionTags(selectedCollection, group)).map((t) => ({ id: t.id, name: t.name }));
       const loaded = { tokens: await load('tokens'), maps: await load('maps') };
       if (request !== latestTagsLoad.current) return;

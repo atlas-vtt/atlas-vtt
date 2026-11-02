@@ -1,7 +1,6 @@
 import type { Asset, TagMetadata } from '../AssetService';
 import { remapPaths } from '../collectionBundle/pathRemap';
 import { hasAssetTag, tagGroupOf, tagKey, type TagGroup } from '../tagGroups';
-import { hasRecordFolder } from '../vault-sync/assetFiles';
 import { baseName } from '../../utils/pathUtils';
 import type { TransferPlan } from './transferPlan';
 
@@ -29,7 +28,7 @@ export function transferredRecord(asset: Asset, { targetCollectionId, newIds, pl
     createdAt: newId ? now : asset.createdAt,
     modifiedAt: now,
   };
-  if (!hasRecordFolder(record)) {
+  if (record.type !== 'token' && record.type !== 'note') {
     const recordPath = plan.recordPaths.get(asset.id);
     // Without a file to carry over, the record gets a new one at the default place.
     if (recordPath) record.filePath = recordPath;

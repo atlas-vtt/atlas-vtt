@@ -1,10 +1,11 @@
-import type { AssetService, SoundAsset } from '../services/AssetService';
 import type { MoodStore } from './MoodStore';
 import type { SoundKind } from '../sound/soundTypes';
 import { isAudioPath } from './soundFiles';
 import type { SoundLibrary } from './SoundLibrary';
 import type { SoundLocation } from './soundLocation';
-import { asFileName, freeName, isWithin, joinRelative, movedRelative, nameOfRelative, parentOfRelative, stemOf } from './soundPaths';
+import { asFileName, freeName, isWithin, joinRelative, nameOfRelative, parentOfRelative } from './soundPaths';
+import { soundAfterMove, type StoredSound } from './soundRecords';
+import type { SoundRecordStore } from './SoundRecordStore';
 import { DEFAULT_SOUND_FOLDERS, isLinked } from './SoundRoots';
 import { VaultLocation } from './vaultLocation';
 
@@ -17,7 +18,7 @@ export interface LibraryEntry {
 
 export interface LibraryContext {
   library: SoundLibrary;
-  assets: AssetService;
+  records: SoundRecordStore;
 }
 
 function locationOf(library: SoundLibrary, kind: SoundKind): SoundLocation {
@@ -58,33 +59,15 @@ async function moveFiles(library: SoundLibrary, entry: LibraryEntry, targetKind:
   await source.trash(entry.path);
 }
 
-/** Records follow a file or folder: path, and kind where it changed root. A record the rename's own handler has reached already takes the kind alone. */
-function rewriteMove(asset: SoundAsset, fromAudio: string, toAudio: string, kind: SoundKind, oldStem: string | null, newStem: string | null, now: number): boolean {
-  const moved = movedRelative(asset.audioPath, fromAudio, toAudio);
-  if (moved === null && !isWithin(toAudio, asset.audioPath)) return false;
-  if (moved !== null) asset.audioPath = moved;
-  if (asset.kind !== kind) asset.kind = kind;
-  if (oldStem !== null && newStem !== null && asset.name === oldStem) asset.name = newStem;
-  asset.modifiedAt = now;
-  return true;
-}
-
 async function moveWithRecords(context: LibraryContext, entry: LibraryEntry, targetKind: SoundKind, to: string): Promise<void> {
-  const { library, assets } = context;
+  const { library, records } = context;
   const fromAudio = library.audioPathOf(entry.kind, entry.path);
   const toAudio = library.audioPathOf(targetKind, to);
   if (fromAudio === null || toAudio === null) throw new Error('A folder of the move is not linked on this device.');
-  const stems = entry.isFolder ? [null, null] : [stemOf(nameOfRelative(entry.path)), stemOf(nameOfRelative(to))];
-  await assets.runExclusive(async () => {
-    await moveFiles(library, entry, targetKind, to);
-    const now = Date.now();
-    try {
-      await assets.rewriteAssets((asset) => asset.type === 'sound' && rewriteMove(asset, fromAudio, toAudio, targetKind, stems[0] ?? null, stems[1] ?? null, now));
-    } catch (error) {
-      if (entry.kind === targetKind) await locationOf(library, entry.kind).move(to, entry.path);
-      throw error;
-    }
-  });
+  await records.whenLoaded();
+  await moveFiles(library, entry, targetKind, to);
+  const now = Date.now();
+  records.rewrite((stored) => soundAfterMove(stored, fromAudio, toAudio, now, targetKind));
   await Promise.all([library.settle(entry.kind, [entry.path]), library.settle(targetKind, [to])]);
 }
 
@@ -110,29 +93,26 @@ export async function makeLibraryFolder(context: Pick<LibraryContext, 'library'>
   await context.library.settle(kind, [joinRelative(folder, free)]);
 }
 
-/** The records of rows, and how many moods name any of them, in any collection. */
-export async function usesOf(context: LibraryContext, moods: Pick<MoodStore, 'moodsOf' | 'whenLoaded'>, entries: readonly LibraryEntry[]): Promise<{ sounds: SoundAsset[]; moods: number }> {
-  const { assets, library } = context;
+/** The records of rows, and how many moods name any of them. */
+export async function usesOf(context: LibraryContext, moods: Pick<MoodStore, 'moods' | 'whenLoaded'>, entries: readonly LibraryEntry[]): Promise<{ sounds: StoredSound[]; moods: number }> {
+  const { records, library } = context;
+  await Promise.all([records.whenLoaded(), moods.whenLoaded()]);
   const inRows = entries.flatMap((entry) => library.audioPathOf(entry.kind, entry.path) ?? []);
-  const sounds = (await assets.getAssets(undefined, 'sound')).filter((sound) => inRows.some((path) => isWithin(path, sound.audioPath)));
+  const sounds = records.all().filter((sound) => inRows.some((path) => isWithin(path, sound.audioPath)));
   const ids = new Set(sounds.map((sound) => sound.id));
-  let count = 0;
-  for (const collection of await assets.getCollections()) {
-    await moods.whenLoaded(collection.id);
-    count += moods.moodsOf(collection.id).filter((mood) => mood.layers.some((layer) => ids.has(layer.sound))
-      || (typeof mood.music !== 'string' && mood.music.tracks.some((id) => ids.has(id)))).length;
-  }
+  const count = moods.moods().filter((mood) => mood.layers.some((layer) => ids.has(layer.sound))
+    || (typeof mood.music !== 'string' && mood.music.tracks.some((id) => ids.has(id)))).length;
   return { sounds, moods: count };
 }
 
 /** Moves rows to the system's trash, and their records go with them: a mood that named one says its sound was deleted. Refused whole where there is no trash. */
-export async function trashEntries(context: LibraryContext, entries: readonly LibraryEntry[], sounds: readonly SoundAsset[]): Promise<void> {
-  const { assets, library } = context;
+export async function trashEntries(context: LibraryContext, entries: readonly LibraryEntry[], sounds: readonly StoredSound[]): Promise<void> {
+  const { records, library } = context;
   for (const entry of entries) {
     await locationOf(library, entry.kind).trash(entry.path);
     await library.settle(entry.kind, [entry.path]);
   }
-  for (const sound of sounds) await assets.deleteAsset(sound.id);
+  for (const sound of sounds) records.remove(sound.id);
 }
 
 export interface LibraryImportOutcome {

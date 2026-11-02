@@ -1,20 +1,20 @@
-import type { SoundAsset } from '../../../../../services/AssetService';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import type { LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import type { SoundListing } from '../../../../../soundLibrary/soundLocation';
 import { nameOfRelative, parentOfRelative, stemOf } from '../../../../../soundLibrary/soundPaths';
+import type { StoredSound } from '../../../../../soundLibrary/soundRecords';
 
 export type LibraryRow =
   | { type: 'folder'; id: string; kind: SoundKind; path: string; name: string }
   | { type: 'file'; id: string; file: LibraryFile; name: string; /** Where a search found it. */ where?: string }
   /** A record whose file is not where it says. */
-  | { type: 'waiting'; id: string; sound: SoundAsset; name: string };
+  | { type: 'waiting'; id: string; sound: StoredSound; name: string };
 
 const rowIdOf = (kind: SoundKind, path: string): string => `${kind}:${path}`;
 
 /** What a folder's rows are: its folders, then its files, then what waits for a file that should lie here. */
-export function folderRows(kind: SoundKind, listing: SoundListing | null, waiting: readonly SoundAsset[]): LibraryRow[] {
+export function folderRows(kind: SoundKind, listing: SoundListing | null, waiting: readonly StoredSound[]): LibraryRow[] {
   const rows: LibraryRow[] = [];
   for (const folder of listing?.folders ?? []) rows.push({ type: 'folder', id: rowIdOf(kind, folder.path), kind, path: folder.path, name: folder.name });
   for (const file of listing?.files ?? []) rows.push({ type: 'file', id: rowIdOf(kind, file.path), file: { ...file, kind }, name: stemOf(file.name) });
@@ -29,7 +29,7 @@ export const searchRows = (hits: readonly LibraryFile[], rootName: (kind: SoundK
   });
 
 /** The records that say their file lies in this folder and that no listing holds. On a device without the root that is every record of it, shown together. */
-export function waitingIn(library: Pick<SoundLibrary, 'fileOfAudioPath'>, sounds: readonly SoundAsset[], kind: SoundKind, folder: string, listing: SoundListing | null, linked: boolean): SoundAsset[] {
+export function waitingIn(library: Pick<SoundLibrary, 'fileOfAudioPath'>, sounds: readonly StoredSound[], kind: SoundKind, folder: string, listing: SoundListing | null, linked: boolean): StoredSound[] {
   if (linked && !listing) return [];
   const here = new Set(listing?.files.map((file) => file.path));
   return sounds.filter((sound) => {

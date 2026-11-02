@@ -5,7 +5,6 @@ import { showNewSceneBarsInJson } from '../../resources/sceneVisibility';
 import { collectionIdOfPath } from '../assetPaths';
 import { dropSceneLinksFromJson } from '../sceneLinks';
 import { dropWidgetsFromJson } from '../sceneWidgetFiles';
-import { dropSceneSoundFromJson } from '../../soundLibrary/sceneSound';
 
 /** New content for a file, or null when it stays as it is. */
 export type TextRewrite = (content: string) => string | null;
@@ -39,9 +38,8 @@ function inOrder(...rewrites: TextRewrite[]): TextRewrite {
  * created there: its tokens lose the conditions the collection does not define,
  * it loses the widgets of its old collection and its pins to scenes of other
  * collections (in the map and in its snapshots; the new collection's widgets
- * come from its library when the scene loads), its links to moods go, as moods
- * belong to their collection, and the map shows the bars a new scene of the
- * collection shows. Tokens show the new collection's resources
+ * come from its library when the scene loads), and the map shows the bars a new
+ * scene of the collection shows. Tokens show the new collection's resources
  * without a rewrite, since those are defined by the collection. Run it after the
  * scene's paths follow the transfer, so links to scenes that came along are kept.
  */
@@ -52,9 +50,8 @@ export function sceneAdoption(collectionId: string, settings: CollectionSettings
   const widgets = unlessUnreadable((content) => dropWidgetsFromJson(content, (id) => !library[id]));
   const links = unlessUnreadable((content) => dropSceneLinksFromJson(content, (mapPath) => collectionIdOfPath(mapPath) === collectionId));
   const bars = unlessUnreadable((content) => showNewSceneBarsInJson(content, settings.defaultWidgets, DEFAULT_TOKEN_SETTINGS));
-  const sound = unlessUnreadable(dropSceneSoundFromJson);
   return {
-    map: inOrder(conditions, widgets, links, bars, sound),
+    map: inOrder(conditions, widgets, links, bars),
     snapshot: inOrder(conditions, widgets, links),
   };
 }

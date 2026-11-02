@@ -1,12 +1,12 @@
 import React, { useCallback, useRef, useState } from 'react';
 import type { App } from 'obsidian';
 import { formatList, t } from '../../../../i18n';
-import { AssetService } from '../../../../services/AssetService';
 import { MAX_MOOD_LAYERS, type Mood, type SoundKind } from '../../../../sound/soundTypes';
 import { dragToMix } from '../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { carriesSounds, readSoundDrag } from '../../../../soundLibrary/soundDrag';
 import { SoundLibrary } from '../../../../soundLibrary/SoundLibrary';
+import { SoundRecordStore } from '../../../../soundLibrary/SoundRecordStore';
 import { showNotice } from '../../../../ui/notice';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { baseName } from '../../../../utils/pathUtils';
@@ -15,12 +15,11 @@ import { AddAmbience, LayerStrip, MasterStrip, WaitingStrip } from './DeskStrips
 import { DeskHeader } from './DeskHeader';
 import { MusicCard } from './MusicCard';
 import { SilenceButton } from './SilenceButton';
-import { useRecordCollection, useSoundValue } from './useSound';
+import { useSoundValue } from './useSound';
 
 interface SoundDeskProps {
   app: App;
   director: SoundDirector;
-  collectionId: string | null;
   moods: readonly Mood[];
   onSaveAs: () => void;
 }
@@ -31,7 +30,7 @@ const SEPARATOR = '\n';
  * The live mix, which is also the editor of moods: what plays here is what Save takes. Strips that do
  * not fit scroll sideways in their row; Master and Silence stay where they are.
  */
-export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: SoundDeskProps): React.JSX.Element {
+export function SoundDesk({ app, director, moods, onSaveAs }: SoundDeskProps): React.JSX.Element {
   // Which strips there are, not what they hold: a fader moving renders its own strip, and none of this.
   const layerKeys = useSoundValue(director, ({ mix }) => mix.table.layers.map((play) => play.sound.key).join(SEPARATOR));
   const waitingLayers = useSoundValue(director, ({ mix }) => mix.waitingLayers.map((layer) => layer.sound).join(SEPARATOR));
@@ -44,7 +43,6 @@ export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: Soun
     library?.querySelector<HTMLElement>('.atlas-sound-lib__rows, button')?.focus();
   }, [showLibrary]);
   const chooseMusic = useCallback(() => choose('music'), [choose]);
-  const recordsGoTo = useRecordCollection(director, collectionId);
   const [dropTarget, setDropTarget] = useState(false);
   const layers = layerKeys === '' ? [] : layerKeys.split(SEPARATOR);
   const waiting = waitingLayers === '' ? [] : waitingLayers.split(SEPARATOR);
@@ -55,8 +53,8 @@ export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: Soun
     event.stopPropagation();
     setDropTarget(false);
     const drag = readSoundDrag(event.dataTransfer);
-    if (!drag || recordsGoTo === null) return;
-    runInBackground(dragToMix({ assets: AssetService.getInstance(app), library: SoundLibrary.forApp(app), director, notify: showNotice }, drag, recordsGoTo), 'Adding to the mix', t('audio.couldNotAdd', { files: formatList([...drag.files.map((file) => file.name), ...drag.folders.map((folder) => baseName(folder.path))]) }));
+    if (!drag) return;
+    runInBackground(dragToMix({ records: SoundRecordStore.forApp(app), library: SoundLibrary.forApp(app), director, notify: showNotice }, drag), 'Adding to the mix', t('audio.couldNotAdd', { files: formatList([...drag.files.map((file) => file.name), ...drag.folders.map((folder) => baseName(folder.path))]) }));
   };
 
   return (
@@ -64,7 +62,7 @@ export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: Soun
       ref={section}
       className="atlas-sound-desk"
       onDragOver={(event) => {
-        if (recordsGoTo === null || !carriesSounds(event.dataTransfer)) return;
+        if (!carriesSounds(event.dataTransfer)) return;
         event.preventDefault();
         event.dataTransfer.dropEffect = 'copy';
         setDropTarget(true);
@@ -74,7 +72,7 @@ export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: Soun
       }}
       onDrop={drop}
     >
-      <DeskHeader app={app} director={director} collectionId={collectionId} moods={moods} holdsSound={holdsSound} onSaveAs={onSaveAs} />
+      <DeskHeader app={app} director={director} moods={moods} holdsSound={holdsSound} onSaveAs={onSaveAs} />
       <div className="atlas-sound-strips" data-drop-target={dropTarget || undefined}>
         <div className="atlas-sound-strips__mix">
           <MusicCard director={director} onChoose={chooseMusic} />

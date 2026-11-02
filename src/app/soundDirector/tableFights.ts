@@ -7,7 +7,7 @@ import { SceneFollow } from './sceneFollow';
 export interface TableFightsHost {
   isOn(): boolean;
   activeMoodId(): string | null;
-  play(collectionId: string, mood: Mood): void;
+  play(mood: Mood): void;
   snapshot(): LastMix;
   restore(last: LastMix): void;
 }
@@ -17,14 +17,14 @@ export class TableFights {
   readonly follow: SceneFollow<LastMix>;
   private readonly views = new Map<string, { store: FightStore; stop: () => void }>();
 
-  constructor(private readonly deps: Pick<SoundDirectorDeps, 'settings' | 'presented' | 'moods' | 'readSceneSound' | 'collectionOf'>, host: TableFightsHost) {
+  constructor(private readonly deps: Pick<SoundDirectorDeps, 'settings' | 'presented' | 'moods' | 'readSceneSound'>, host: TableFightsHost) {
     this.follow = new SceneFollow<LastMix>({
       isFollowing: () => host.isOn() && deps.settings.getSoundSettings().followScenes,
       presented: () => deps.presented.get(),
       sceneSoundOf: (path) => this.sceneSoundOf(path),
-      linkedMood: (path, id) => this.linkedMood(path, id),
+      linkedMood: (id) => this.linkedMood(id),
       activeMoodId: () => host.activeMoodId(),
-      play: (collectionId, mood) => host.play(collectionId, mood),
+      play: (mood) => host.play(mood),
       snapshot: () => host.snapshot(),
       restore: (last) => host.restore(last),
       after: (ms, run) => {
@@ -59,10 +59,8 @@ export class TableFights {
     return open ? Promise.resolve(open.sound) : this.deps.readSceneSound(path);
   }
 
-  private async linkedMood(scenePath: string, moodId: string): Promise<{ collectionId: string; mood: Mood } | null> {
-    const collectionId = this.deps.collectionOf(scenePath);
-    await this.deps.moods.whenLoaded(collectionId);
-    const mood = this.deps.moods.mood(collectionId, moodId);
-    return mood ? { collectionId, mood } : null;
+  private async linkedMood(moodId: string): Promise<Mood | null> {
+    await this.deps.moods.whenLoaded();
+    return this.deps.moods.mood(moodId);
   }
 }

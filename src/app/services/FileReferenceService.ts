@@ -105,9 +105,6 @@ export class FileReferenceService {
         case 'note':
           changed = follow(asset, 'notePath') || changed;
           break;
-        case 'sound':
-          changed = follow(asset, 'audioPath') || changed;
-          break;
       }
       return changed;
     });

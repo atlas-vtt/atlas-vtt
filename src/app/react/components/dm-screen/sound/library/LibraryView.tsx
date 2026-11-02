@@ -11,12 +11,12 @@ import type { SoundKind } from '../../../../../sound/soundTypes';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
 import { useAtlasStore } from '../../../../ViewStoreContext';
 import { arrowDirection, moveFocus } from '../../screenKeys';
-import { useRecordCollection, useSoundValue } from '../useSound';
+import { useSoundValue, useStoredSounds } from '../useSound';
 import { LibraryHead } from './LibraryHead';
 import { LibraryRail, type LibraryPlace } from './LibraryRail';
 import { folderRows, searchRows, waitingIn, type LibraryRow } from './rowModel';
 import { LibraryRows } from './LibraryRows';
-import { useAllSounds, useHeldInMix, useLibraryVersion } from './useLibrary';
+import { useHeldInMix, useLibraryVersion } from './useLibrary';
 import { useLibraryActions } from './useLibraryActions';
 
 /** Keys the library never keeps: Tab opens and closes the DM screen, and Escape closes what is open once nothing here uses it. */
@@ -37,20 +37,19 @@ function NoLink({ onLink, onImport }: { onLink: (kind: SoundKind, win: Window) =
   );
 }
 
-/** The sound library: the folders linked as music and ambience, and what lies in them. `collectionId` is the collection the page shows; records made here go there. */
-export function LibraryView({ collectionId: shownCollection }: { collectionId: string | null }): React.JSX.Element | null {
+/** The sound library: the folders linked as music and ambience, and what lies in them. */
+export function LibraryView(): React.JSX.Element | null {
   const { app } = useAtlasUI();
   const library = SoundLibrary.forApp(app);
   const director = SoundDirector.forApp(app);
   const kind = useAtlasStore((state) => state.soundLibraryRoot);
   const folder = useAtlasStore((state) => state.soundLibraryFolder);
   const place = useMemo<LibraryPlace>(() => ({ kind, folder }), [kind, folder]);
-  const collectionId = useRecordCollection(director, shownCollection);
   const version = useLibraryVersion(library);
-  const sounds = useAllSounds(app);
+  const sounds = useStoredSounds(app);
   const held = useHeldInMix(director);
   const shuffle = useSoundValue(director, ({ mix }) => mix.table.music?.shuffle ?? false);
-  const actions = useLibraryActions(app, library, director, collectionId);
+  const actions = useLibraryActions(app, library, director);
   const [query, setQuery] = useState('');
   const searching = useDeferredValue(query.trim());
   const root = useRef<HTMLDivElement>(null);
@@ -153,7 +152,6 @@ export function LibraryView({ collectionId: shownCollection }: { collectionId: s
           library={library}
           director={director}
           actions={actions}
-          collectionId={collectionId}
           sounds={sounds}
           held={held}
           onOpenFolder={openFolder}

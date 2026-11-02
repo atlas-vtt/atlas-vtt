@@ -1,5 +1,4 @@
 import { normalizePath, type App } from 'obsidian';
-import { AssetService } from '../services/AssetService';
 import { presentedSceneOf, type PresentedSceneSource } from '../services/presentedScene';
 import { SettingsService } from '../services/SettingsService';
 import { OpusCache, opusCacheBudget, opusCacheDatabaseName } from '../sound/codec/opusCache';
@@ -12,7 +11,8 @@ import { readSceneSound } from '../soundLibrary/sceneSound';
 import { isAudioPath } from '../soundLibrary/soundFiles';
 import { SoundLibrary } from '../soundLibrary/SoundLibrary';
 import { isExternalAudioPath } from '../soundLibrary/soundPaths';
-import { soundRecordsOf } from '../soundLibrary/soundRecords';
+import { soundRecordOf } from '../soundLibrary/soundRecords';
+import { SoundRecordStore } from '../soundLibrary/SoundRecordStore';
 import { showNotice } from '../ui/notice';
 import { isRecord } from '../utils/guards';
 import type { DeviceStorage } from './deviceFacts';
@@ -28,7 +28,7 @@ export type DirectorSettings = {
   onChange(listener: () => void): () => void;
 };
 
-export type DirectorMoods = Pick<MoodStore, 'moodsOf' | 'mood' | 'whenLoaded' | 'createMood' | 'saveMood'>;
+export type DirectorMoods = Pick<MoodStore, 'moods' | 'mood' | 'whenLoaded' | 'createMood' | 'saveMood'>;
 
 /** Everything the director reaches outside itself; tests hand in their own. */
 export interface SoundDirectorDeps {
@@ -48,8 +48,6 @@ export interface SoundDirectorDeps {
   /** Calls back when an audio file arrived or changed in the vault. */
   onAudioFileChange(listener: () => void): () => void;
   readSceneSound(path: string): Promise<SceneSound | null>;
-  /** A scene's collection; a map outside them all uses the default one's moods. */
-  collectionOf(scenePath: string): string;
   notify(message: string): void;
 }
 
@@ -80,7 +78,7 @@ async function sceneSoundInFile(app: App, path: string): Promise<SceneSound | nu
 
 /** What the director runs on in Obsidian. */
 export function realDirectorDeps(app: App): SoundDirectorDeps {
-  const assets = (): AssetService => AssetService.getInstance(app);
+  const records = SoundRecordStore.forApp(app);
   const settings = (): SettingsService | undefined => SettingsService.forApp(app);
   return {
     storage: app,
@@ -99,13 +97,10 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
     readPeaks: readSoundPeaks,
     createContext: () => new AudioContext({ ...SOUND_CONTEXT_OPTIONS, latencyHint: 'playback' }),
     readRecords: async () => {
-      await assets().initialize();
-      return soundRecordsOf(assets());
+      await records.whenLoaded();
+      return records.all().map(soundRecordOf);
     },
-    onLibraryChange: (listener) => {
-      const ref = app.workspace.on('atlas-vtt:refresh-assets', listener);
-      return () => app.workspace.offref(ref);
-    },
+    onLibraryChange: (listener) => records.onChange(listener),
     onAudioFileChange: (listener) => {
       const heard = (file: { path: string }): void => {
         if (isAudioPath(file.path)) listener();
@@ -118,7 +113,6 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
       };
     },
     readSceneSound: (path) => sceneSoundInFile(app, path),
-    collectionOf: (scenePath) => assets().getCollectionForMap(scenePath) ?? assets().getDefaultCollectionId(),
     notify: (message) => showNotice(message),
   };
 }

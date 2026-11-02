@@ -44,7 +44,7 @@ function fileExtension(path: string): string {
 
 /**
  * Characters by size, then those with a linked statblock first; maps by file
- * format; encounters by difficulty; sounds by kind.
+ * format; encounters by difficulty.
  */
 const compareKinds: AssetComparator = (a, b) => {
   if (a.type === 'tokens' && b.type === 'tokens') {

@@ -1,5 +1,16 @@
-/** Below a collection: the sounds' record files. */
-export const SOUNDS_FOLDER = 'sounds';
+import { ATLAS_VTT_DIR } from '../services/assetPaths';
+
+const SOUNDS_DIR = `${ATLAS_VTT_DIR}/sounds`;
+
+/** One JSON per mood: Atlas' own folder, the GM's for the whole vault, never audio and never a root. */
+export const MOODS_FOLDER = `${SOUNDS_DIR}/moods`;
+
+/** One JSON per sound in use, beside the default import folders, as the moods are. */
+export const RECORDS_FOLDER = `${SOUNDS_DIR}/records`;
+
+/** Whether a vault path lies in Atlas' own folders for moods and records. */
+export const isSoundDataPath = (path: string): boolean =>
+  [MOODS_FOLDER, RECORDS_FOLDER].some((folder) => path === folder || path.startsWith(`${folder}/`));
 
 const AUDIO_EXTENSIONS: ReadonlySet<string> = new Set(['mp3', 'wav', 'flac', 'ogg', 'opus', 'm4a', 'aac', 'webm']);
 

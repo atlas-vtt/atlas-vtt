@@ -48,7 +48,7 @@ const identityOf = (root: LinkedSoundRoot): string => `${root.status}:${root.pat
 const KINDS: readonly SoundKind[] = ['music', 'ambience'];
 
 /**
- * The GM's sound library, across collections: the two linked folders and what lies in them. Browsing
+ * The GM's sound library: the two linked folders and what lies in them. Browsing
  * writes nothing. One per app, released when the plugin unloads.
  */
 export class SoundLibrary {

@@ -3,7 +3,6 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { t } from '../../../../../i18n';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packages/components/primitives/Skeleton';
 import { useScrollbarGutter } from '../../../../../packages/components/primitives/useScrollbarGutter';
-import type { SoundAsset } from '../../../../../services/AssetService';
 import type { SoundRecord } from '../../../../../sound/soundTypes';
 import type { HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
@@ -12,7 +11,7 @@ import { carriesSounds, writeSoundDrag } from '../../../../../soundLibrary/sound
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { safeName } from '../../../../../soundLibrary/soundPaths';
-import { soundRecordOf } from '../../../../../soundLibrary/soundRecords';
+import { soundRecordOf, type StoredSound } from '../../../../../soundLibrary/soundRecords';
 import { showNotice } from '../../../../../ui/notice';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { moveFocus } from '../../screenKeys';
@@ -36,8 +35,7 @@ interface LibraryRowsProps {
   library: SoundLibrary;
   director: SoundDirector;
   actions: LibraryActions;
-  collectionId: string | null;
-  sounds: readonly SoundAsset[];
+  sounds: readonly StoredSound[];
   held: ReadonlyMap<string, HeldInMix>;
   onOpenFolder: (row: Extract<Row, { type: 'folder' }>) => void;
   onParent: () => boolean;
@@ -61,7 +59,7 @@ function RowsSkeleton(): React.JSX.Element {
 }
 
 /** The open folder's rows, or a search's: only those in view are mounted, so a folder of thousands scrolls like one of ten. */
-export function LibraryRows({ rows, loading, emptyText, library, director, actions, collectionId, sounds, held, onOpenFolder, onParent, onDropFiles }: LibraryRowsProps): React.JSX.Element {
+export function LibraryRows({ rows, loading, emptyText, library, director, actions, sounds, held, onOpenFolder, onParent, onDropFiles }: LibraryRowsProps): React.JSX.Element {
   const scroller = useRef<HTMLDivElement>(null);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   useScrollbarGutter(scrollElement);
@@ -93,24 +91,24 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
   }, [rows]);
 
   const soundsByPath = useMemo(() => {
-    const byPath = new Map<string, SoundAsset[]>();
+    const byPath = new Map<string, StoredSound[]>();
     for (const sound of sounds) byPath.set(sound.audioPath, [...(byPath.get(sound.audioPath) ?? []), sound]);
     return byPath;
   }, [sounds]);
 
   const audioPathOf = useCallback((row: Row): string | null => (row.type === 'file' ? library.audioPathOf(row.file.kind, row.file.path) : null), [library]);
 
-  const recordOfRow = useCallback((row: Row): SoundAsset | null => {
+  const recordOfRow = useCallback((row: Row): StoredSound | null => {
     const path = audioPathOf(row);
-    return path === null ? null : recordOfFile(soundsByPath.get(path) ?? [], path, collectionId);
-  }, [audioPathOf, collectionId, soundsByPath]);
+    return path === null ? null : recordOfFile(soundsByPath.get(path) ?? [], path);
+  }, [audioPathOf, soundsByPath]);
 
   const soundOfRow = useCallback((row: Row): SoundRecord | null => {
     const path = audioPathOf(row);
     if (row.type !== 'file' || path === null) return null;
     const stored = recordOfRow(row);
-    return stored ? soundRecordOf(stored) : unrecordedSound(row.file, path, collectionId ?? '');
-  }, [audioPathOf, collectionId, recordOfRow]);
+    return stored ? soundRecordOf(stored) : unrecordedSound(row.file, path);
+  }, [audioPathOf, recordOfRow]);
 
   const inHand = useCallback((row: Row): Row[] => (selected.has(row.id) ? rows.filter((one) => selected.has(one.id)) : [row]), [rows, selected]);
 
