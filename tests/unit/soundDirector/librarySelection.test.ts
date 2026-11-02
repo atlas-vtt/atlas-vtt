@@ -91,6 +91,25 @@ describe('a selection sent to the mix', () => {
     expect(keys()).toEqual(['a', 'b', 'c']);
   });
 
+  it('holds what has its copy behind a first that has none, and places both in order', async () => {
+    setUp([]);
+    await settle();
+    for (const id of ['a', 'b']) rig.files.add(`audio/${id}.ogg`);
+    await fileToMix(deps, select().slice(1, 2), 'add');
+    await finishAll();
+    rig.director.desk.stop();
+    await settle();
+    await fileToMix(deps, select().slice(0, 2), 'now');
+    const { mix } = rig.director.snapshot();
+    expect(mix.table.music).toBeNull();
+    expect(mix.waitingMusic?.tracks).toHaveLength(2);
+    expect(mix.soonest?.sounds).toHaveLength(2);
+    await finishAll();
+    expect(keys()).toEqual(['a', 'b']);
+    expect(rig.director.snapshot().mix.waitingMusic).toBeNull();
+    expect(rig.director.snapshot().mix.soonest).toBeUndefined();
+  });
+
   it('gives way to the next where its first is refused', async () => {
     setUp([]);
     await settle();

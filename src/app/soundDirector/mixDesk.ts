@@ -110,12 +110,11 @@ export class MixDesk {
   /** One state for the whole selection, however many tracks it holds. */
   private playSoon(records: readonly SoundRecord[], at: 'now' | 'next'): void {
     this.output.unlock();
-    const missing = records.filter((record) => !this.shelf.infoOf(record));
-    this.shelf.request(missing, true);
-    const ready = this.shelf.readyOf(records);
-    const timing = this.table.timing();
-    const held = withWaitingTracks(this.table.mix, missing.map((record) => record.id));
-    this.table.commit(applySoonest({ ...held, soonest: { sounds: records.map((record) => record.id), at } }, ready, timing));
+    this.shelf.request(records.filter((record) => !this.shelf.infoOf(record)), true);
+    const soonest = { sounds: records.map((record) => record.id), at };
+    const applied = applySoonest({ ...this.table.mix, soonest }, this.shelf.readyOf(records), this.table.timing());
+    // What is not placed yet is in the mix all the same: the rows and a saved mood read it there.
+    this.table.commit(withWaitingTracks(applied, applied.soonest?.sounds ?? []));
   }
 
   /** A folder as the music: the list changes on the mood's crossfade, the layers stay as they are. */
