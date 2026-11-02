@@ -1,5 +1,5 @@
 import type { SoundBytes } from '../soundTypes';
-import { packetsOfPage, readPage } from './oggPages';
+import { packetsOfPage, readPage, type CarriedPacket } from './oggPages';
 import { isOpusHead, opusPacketFrames, readOpusComment, readOpusHead } from './opusFormat';
 import { decodeSeekTable, SEEK_COMMENT, seekIndexFor, type SeekEntry } from './seekTable';
 
@@ -34,7 +34,7 @@ export async function openOggOpus(source: SoundBytes): Promise<OggOpusSound> {
   const { channels, preSkip, mappingFamily } = readOpusHead(head);
   if (mappingFamily !== 0) throw new Error('Only Opus mapping family 0 can be played.');
   let offset = headPage.end;
-  let carried: Uint8Array | null = null;
+  let carried: CarriedPacket | null = null;
   let tags: Uint8Array | undefined;
   while (!tags) {
     const page = readPage(bytes, offset);

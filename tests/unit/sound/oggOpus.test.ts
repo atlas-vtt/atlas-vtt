@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { OggOpusWriter } from '@/app/sound/codec/oggOpusWriter';
 import { openOggOpus, readPacketRange } from '@/app/sound/codec/oggOpusReader';
-import { FLAG_LAST, lacingOf, oggCrc, OggCorruptError, packetsOfPage, readPage, writePage } from '@/app/sound/codec/oggPages';
+import { FLAG_LAST, lacingOf, oggCrc, OggCorruptError, packetsOfPage, readPage, writePage, type CarriedPacket } from '@/app/sound/codec/oggPages';
 import { opusPacketFrames, readOpusComment, readOpusHead, writeOpusHead, writeOpusTags } from '@/app/sound/codec/opusFormat';
 import { decodeSeekTable, encodeSeekTable, SEEK_COMMENT, SEEK_INTERVAL_FRAMES, seekIndexFor } from '@/app/sound/codec/seekTable';
 import type { SoundBytes } from '@/app/sound/soundTypes';
@@ -221,7 +221,7 @@ describe.runIf(ffmpeg)('against ffmpeg', () => {
       const pages = pagesOf(new Uint8Array(readFileSync(original)));
       const head = packetsOfPage(pages[0]!, null).packets[0]!;
       const writer = new OggOpusWriter(head);
-      let carried: Uint8Array | null = null;
+      let carried: CarriedPacket | null = null;
       let frames = 0;
       for (const page of pages.slice(2)) {
         const parts = packetsOfPage(page, carried);

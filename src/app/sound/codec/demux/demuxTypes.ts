@@ -22,6 +22,17 @@ export class SoundImportError extends Error {
   }
 }
 
+/** What a header may say: a rate outside these is no sound, and turning it into 48 kHz takes a table or an output as far past memory as it is from the range. */
+const MIN_SOURCE_RATE = 8_000;
+const MAX_SOURCE_RATE = 192_000;
+const MAX_SOURCE_CHANNELS = 32;
+
+/** Refuses a source whose header says what no sound is, before anything is allocated for it. */
+export function checkSourceShape(sampleRate: number, channels: number): void {
+  if (!(sampleRate >= MIN_SOURCE_RATE && sampleRate <= MAX_SOURCE_RATE)) throw new SoundImportError('unreadable', `A sample rate of ${sampleRate} Hz.`);
+  if (channels > MAX_SOURCE_CHANNELS) throw new SoundImportError('unreadable', `${channels} channels.`);
+}
+
 export interface EncodedPacket {
   data: Uint8Array<ArrayBuffer>;
   /** At the source's own rate. */

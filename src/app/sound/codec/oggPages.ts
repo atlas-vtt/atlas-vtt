@@ -5,6 +5,8 @@ const PAGE_HEADER_BYTES = 27;
 export const MAX_SEGMENTS = 255;
 /** The most an Ogg page can be. */
 export const MAX_PAGE_BYTES = 65_307;
+/** Far past any packet of sound, and past a comment packet holding its cover: what goes on longer is no sound file. */
+export const MAX_PACKET_BYTES = 64 * 1024 * 1024;
 
 const FLAG_CONTINUED = 1;
 export const FLAG_FIRST = 2;
@@ -119,8 +121,14 @@ export function readPage(bytes: Uint8Array, offset: number): OggPage | null {
   };
 }
 
-/** Packets complete on one page, plus a tail that goes on on the next. */
-export function packetsOfPage(page: OggPage, carried: Uint8Array | null): { packets: Uint8Array[]; tail: Uint8Array | null } {
+/** A packet that goes on on the next page: its pieces, joined only once it ends, so a packet over many pages costs its length once. */
+export interface CarriedPacket {
+  pieces: Uint8Array[];
+  length: number;
+}
+
+/** Packets complete on one page, plus a tail that goes on on the next. A packet longer than any should be is refused. */
+export function packetsOfPage(page: OggPage, carried: CarriedPacket | null): { packets: Uint8Array[]; tail: CarriedPacket | null } {
   const packets: Uint8Array[] = [];
   let start = 0;
   let length = 0;
@@ -133,14 +141,32 @@ export function packetsOfPage(page: OggPage, carried: Uint8Array | null): { pack
     start += length;
     length = 0;
   }
-  const rest = page.body.subarray(start);
-  return { packets, tail: rest.length > 0 || head ? joined(head, rest) : null };
+  return { packets, tail: carriedOn(head, page.body.subarray(start)) };
 }
 
-function joined(head: Uint8Array | null, rest: Uint8Array): Uint8Array {
+function checkedLength(head: CarriedPacket | null, rest: Uint8Array): number {
+  const length = (head?.length ?? 0) + rest.length;
+  if (length > MAX_PACKET_BYTES) throw new OggCorruptError('An Ogg packet longer than any should be.');
+  return length;
+}
+
+/** A copy of what goes on: the page's bytes are a view of a window of the file, which must not stay in memory for it. */
+function carriedOn(head: CarriedPacket | null, rest: Uint8Array): CarriedPacket | null {
+  if (rest.length === 0) return head;
+  const length = checkedLength(head, rest);
+  if (!head) return { pieces: [rest.slice()], length };
+  head.pieces.push(rest.slice());
+  head.length = length;
+  return head;
+}
+
+function joined(head: CarriedPacket | null, rest: Uint8Array): Uint8Array {
   if (!head) return rest;
-  const bytes = new Uint8Array(head.length + rest.length);
-  bytes.set(head, 0);
-  bytes.set(rest, head.length);
+  const bytes = new Uint8Array(checkedLength(head, rest));
+  let at = 0;
+  for (const piece of [...head.pieces, rest]) {
+    bytes.set(piece, at);
+    at += piece.length;
+  }
   return bytes;
 }

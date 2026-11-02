@@ -1,6 +1,6 @@
 import { SOUND_RATE } from '../engine/soundMath';
 import { openSoundSource } from './demux/openSoundSource';
-import { SoundImportError, type EncodedSource, type PcmSource, type SoundSource } from './demux/demuxTypes';
+import { checkSourceShape, SoundImportError, type EncodedSource, type PcmSource, type SoundSource } from './demux/demuxTypes';
 import { LoopEnds, type LoopFinish, type LoopSeam } from './loopEnds';
 import type { Planes } from './loopSeam';
 import { LoudnessMeter, type LoudnessResult } from './loudness';
@@ -52,6 +52,7 @@ class PcmPath {
   add(planes: Planes, sampleRate: number): void {
     const stereo = toStereo(planes);
     if (!this.output) {
+      checkSourceShape(sampleRate, planes.length);
       const channels = stereo.length;
       this.output = new OpusOutput(channels, BITRATES[this.job.kind]);
       this.meter = new LoudnessMeter(channels);

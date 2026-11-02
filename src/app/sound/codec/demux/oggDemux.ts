@@ -1,4 +1,4 @@
-import { MAX_PAGE_BYTES, packetsOfPage, readPage, type OggPage } from '../oggPages';
+import { MAX_PAGE_BYTES, packetsOfPage, readPage, type CarriedPacket, type OggPage } from '../oggPages';
 import { isOpusHead, opusPacketFrames, readOpusHead, writeOpusHead } from '../opusFormat';
 import type { BlobWindow } from './blobWindow';
 import { SoundImportError, type EncodedPacket, type EncodedSource } from './demuxTypes';
@@ -76,7 +76,7 @@ async function opusSource(window: BlobWindow, first: OggPage, head: Uint8Array, 
   if (mappingFamily !== 0 || channels > 2) throw new SoundImportError('unsupported-codec', `Opus mapping family ${mappingFamily}`);
   // Headers end where the comment packet does.
   let offset = first.end;
-  let carried: Uint8Array | null = null;
+  let carried: CarriedPacket | null = null;
   for (;;) {
     const page = await pageAt(window, offset);
     if (!page) throw new SoundImportError('unreadable', 'An Ogg Opus file without comments.');
@@ -104,7 +104,7 @@ async function vorbisSource(window: BlobWindow, first: OggPage, ident: Uint8Arra
   const sampleRate = view.getUint32(12, true);
   const headers: Uint8Array[] = [ident];
   let offset = first.end;
-  let carried: Uint8Array | null = null;
+  let carried: CarriedPacket | null = null;
   while (headers.length < 3) {
     const page = await pageAt(window, offset);
     if (!page) throw new SoundImportError('unreadable', 'A Vorbis stream without its headers.');
@@ -133,14 +133,14 @@ function pagedPackets(window: BlobWindow, start: number, serial: number, framesO
   return {
     progress: () => offset / Math.max(1, window.size),
     async *packets() {
-      let carried: Uint8Array | null = null;
+      let carried: CarriedPacket | null = null;
       for (;;) {
         const page = await pageAt(window, offset);
         if (!page) return;
         offset += page.end;
         if (page.serial !== serial) continue;
         const parts = packetsOfPage(page, carried);
-        carried = parts.tail?.slice() ?? null;
+        carried = parts.tail;
         for (const packet of parts.packets) {
           const out: EncodedPacket = { data: packet.slice(), frames: framesOf(packet) };
           yield out;

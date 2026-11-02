@@ -4,6 +4,10 @@ import { SoundImportError, type EncodedPacket, type EncodedSource } from './demu
 
 /** More than a year of samples' table is no file anyone has. */
 const MAX_MOOV_BYTES = 256 * 1024 * 1024;
+/** Four days of AAC at 48 kHz: the most a table is allocated for, at 12 bytes a sample. */
+const MAX_SAMPLES = 1 << 24;
+/** Far past the longest frame of AAC or MP3. */
+const MAX_SAMPLE_BYTES = 1 << 20;
 const REFUSED_CODECS = new Set(['alac', 'ac-3', 'ec-3', 'mlpa', 'dtsc', 'dtsh', 'dtse']);
 
 export function isMp4(head: Uint8Array): boolean {
@@ -108,30 +112,50 @@ interface SampleTable {
   offsets: Float64Array;
 }
 
-function readSampleTable(moov: Uint8Array, stbl: Box): SampleTable {
+const badTable = (): SoundImportError => new SoundImportError('unreadable', 'An MP4 sample table that does not fit its file.');
+
+/** Each sample's size, every number checked against what a box or the file can hold before anything is allocated for it. Samples never overlap, so together they fit the file. */
+function readSampleSizes(view: DataView, stsz: Box, fileBytes: number): Uint32Array {
+  const fixedSize = view.getUint32(stsz.start + 4);
+  const count = view.getUint32(stsz.start + 8);
+  const fits = fixedSize ? fixedSize * count <= fileBytes : 12 + count * 4 <= stsz.end - stsz.start;
+  if (!fits || count > MAX_SAMPLES || fixedSize > MAX_SAMPLE_BYTES) throw badTable();
+  const sizes = new Uint32Array(count);
+  let total = 0;
+  for (let i = 0; i < count; i++) {
+    const size = fixedSize || view.getUint32(stsz.start + 12 + i * 4);
+    if (size > MAX_SAMPLE_BYTES) throw badTable();
+    sizes[i] = size;
+    total += size;
+  }
+  if (total > fileBytes) throw badTable();
+  return sizes;
+}
+
+function readSampleTable(moov: Uint8Array, stbl: Box, fileBytes: number): SampleTable {
   const view = new DataView(moov.buffer, moov.byteOffset, moov.byteLength);
   const stsz = child(moov, stbl, 'stsz');
   const stsc = child(moov, stbl, 'stsc');
   const stco = child(moov, stbl, 'stco');
   const co64 = child(moov, stbl, 'co64');
   if (!stsz || !stsc || (!stco && !co64)) throw new SoundImportError('unreadable', 'An MP4 track without its sample tables.');
-  const fixedSize = view.getUint32(stsz.start + 4);
-  const count = view.getUint32(stsz.start + 8);
-  if (count * (fixedSize ? 0 : 4) > stsz.end - stsz.start) throw new SoundImportError('unreadable', 'An MP4 sample table longer than its box.');
-  const sizes = new Uint32Array(count);
-  for (let i = 0; i < count; i++) sizes[i] = fixedSize || view.getUint32(stsz.start + 12 + i * 4);
+  const sizes = readSampleSizes(view, stsz, fileBytes);
+  const count = sizes.length;
   const chunkBox = (stco ?? co64) as Box;
   const chunkCount = view.getUint32(chunkBox.start + 4);
+  const runs = view.getUint32(stsc.start + 4);
+  if (8 + chunkCount * (stco ? 4 : 8) > chunkBox.end - chunkBox.start || 8 + runs * 12 > stsc.end - stsc.start) throw badTable();
   const chunkOffset = (chunk: number): number =>
     stco ? view.getUint32(stco.start + 8 + chunk * 4) : view.getUint32(chunkBox.start + 8 + chunk * 8) * 2 ** 32 + view.getUint32(chunkBox.start + 12 + chunk * 8);
   const offsets = new Float64Array(count);
-  const runs = view.getUint32(stsc.start + 4);
   let sample = 0;
   for (let run = 0; run < runs && sample < count; run++) {
     const entry = stsc.start + 8 + run * 12;
     const firstChunk = view.getUint32(entry) - 1;
     const perChunk = view.getUint32(entry + 4);
     const nextFirst = run + 1 < runs ? view.getUint32(entry + 12) - 1 : chunkCount;
+    // Runs only go forward and each chunk holds a sample, so this walks the chunks once however the table reads.
+    if (firstChunk < 0 || nextFirst <= firstChunk || nextFirst > chunkCount || perChunk === 0) throw badTable();
     for (let chunk = firstChunk; chunk < nextFirst && sample < count; chunk++) {
       let at = chunkOffset(chunk);
       for (let i = 0; i < perChunk && sample < count; i++) {
@@ -204,7 +228,7 @@ export async function demuxMp4(window: BlobWindow): Promise<EncodedSource> {
   const mvhd = child(moov, { name: 'moov', start: 8, end: moov.length }, 'mvhd');
   const movieScale = mvhd ? view.getUint32(mvhd.start + ((moov[mvhd.start] ?? 0) === 1 ? 20 : 12)) : 0;
   const objectType = ((decoderInfo.config[0] ?? 0) >> 3) & 0x1f;
-  const { sizes, offsets } = readSampleTable(moov, stbl);
+  const { sizes, offsets } = readSampleTable(moov, stbl, window.size);
   const frames = sampleDuration(moov, stbl);
   const edit = readEdit(moov, trak, mediaScale, movieScale);
   const hasEdit = edit.skip > 0 || edit.total !== null;
