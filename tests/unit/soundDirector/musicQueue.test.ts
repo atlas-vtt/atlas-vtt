@@ -5,6 +5,7 @@ import { desiredSound } from '@/app/sound/engine/desiredSound';
 import { fadeInGain, fadeOutGain } from '@/app/sound/engine/soundMath';
 import { musicSpanAt, playFrameAt } from '@/app/sound/engine/soundTimeline';
 import type { MusicRepeat, SoundInfo, TableSound } from '@/app/sound/soundTypes';
+import { DEFAULT_SOUND_SETTINGS, MAX_CROSSFADE_SECONDS, readSoundSettings } from '@/app/services/soundSettings';
 import { moodOf } from '@/app/soundLibrary/moodFile';
 import { loadLastMix, saveLastMix } from '@/app/soundDirector/deviceFacts';
 import { startMusic } from '@/app/soundDirector/liveEdits';
@@ -543,6 +544,15 @@ describe('crossfade between tracks', () => {
     expect(sounding(table, 56_001)).toBe('e');
     expect(keys(table.music!.tracks)).toEqual(['a', 'e', 'b', 'c', 'd']);
     expect(listView(table, null, 57_000).current).toBe('e');
+  });
+
+  it('is 4 s until set, and what is stored is read within 0 to 12', () => {
+    expect(DEFAULT_SOUND_SETTINGS.crossfadeSeconds).toBe(4);
+    expect(readSoundSettings({}).crossfadeSeconds).toBe(4);
+    expect(readSoundSettings({ crossfadeSeconds: 0 }).crossfadeSeconds).toBe(0);
+    expect(readSoundSettings({ crossfadeSeconds: 99 }).crossfadeSeconds).toBe(MAX_CROSSFADE_SECONDS);
+    expect(readSoundSettings({ crossfadeSeconds: -1 }).crossfadeSeconds).toBe(0);
+    expect(readSoundSettings({ crossfadeSeconds: 'long' }).crossfadeSeconds).toBe(4);
   });
 
   it('stays out of what is set to 0: nothing is written and the timeline joins', () => {
