@@ -5,7 +5,7 @@ import { nativeFolderPicker } from '../../../../../services/electronRemote';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import { fileToMix, folderToMix, prepareFolder, takeFromMix, type HeldInMix, type LibraryDeskDeps, type MixIntent } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
-import { editFiles, soundOfFile } from '../../../../../soundLibrary/libraryRecords';
+import { editFiles, recordsByFile, soundOfFile } from '../../../../../soundLibrary/libraryRecords';
 import { makeLibraryFolder, moveEntries, renameEntry, trashEntries, usesOf, type LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
 import { MoodStore } from '../../../../../soundLibrary/MoodStore';
 import { runLibraryImport } from '../../../../../soundLibrary/runLibraryImport';
@@ -88,7 +88,7 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
         const audioPath = library.audioPathOf(file.kind, file.path);
         if (audioPath === null) return;
         runInBackground(records.whenLoaded().then(() => {
-          director.preview(soundOfFile(records.all(), file, audioPath));
+          director.preview(soundOfFile(recordsByFile(records.all(), library), file, audioPath));
         }), 'Previewing a sound');
       },
       playFolder: (kind, folder, shuffle) => run(folderToMix(deps, kind, folder, shuffle), 'Playing a folder'),

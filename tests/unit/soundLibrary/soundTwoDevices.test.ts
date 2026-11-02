@@ -24,9 +24,10 @@ const STEPS = 30;
 const WATCHED = [MOODS_FOLDER, RECORDS_FOLDER, 'Library'];
 
 /** What a device's library says of a file below a root outside the vault: its absolute path is in no record. */
-const EXTERNAL_LIBRARY = { audioPathOf: externalAudioPath };
+const whereItSays = (audioPath: string): string => audioPath;
+const EXTERNAL_LIBRARY = { audioPathOf: externalAudioPath, pathNow: whereItSays };
 /** A root that is the vault's folder `Library`. */
-const VAULT_LIBRARY = { audioPathOf: (_kind: string, path: string): string => `Library/${path}` };
+const VAULT_LIBRARY = { audioPathOf: (_kind: string, path: string): string => `Library/${path}`, pathNow: whereItSays };
 
 interface Device {
   vault: InMemoryApp;

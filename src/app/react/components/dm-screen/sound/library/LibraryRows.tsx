@@ -6,7 +6,7 @@ import { useScrollbarGutter } from '../../../../../packages/components/primitive
 import type { SoundRecord } from '../../../../../sound/soundTypes';
 import type { HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
-import { standingRecord, unrecordedSound } from '../../../../../soundLibrary/libraryRecords';
+import { recordsByFile, standingRecord, unrecordedSound } from '../../../../../soundLibrary/libraryRecords';
 import { carriesSounds, writeSoundDrag } from '../../../../../soundLibrary/soundDrag';
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
@@ -90,15 +90,8 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     setActiveIndex((index) => Math.min(index, Math.max(0, rows.length - 1)));
   }, [rows]);
 
-  const soundsByPath = useMemo(() => {
-    const byPath = new Map<string, StoredSound[]>();
-    for (const sound of sounds) {
-      const path = library.pathNow(sound.audioPath, sound.audioSize);
-      byPath.set(path, [...(byPath.get(path) ?? []), sound]);
-    }
-    return byPath;
-    // Where a file is on this device changes with what the library has read.
-  }, [sounds, library, library.version]);
+  // Where a file is on this device changes with what the library has read.
+  const soundsByPath = useMemo(() => recordsByFile(sounds, library), [sounds, library, library.version]);
 
   const audioPathOf = useCallback((row: Row): string | null => (row.type === 'file' ? library.audioPathOf(row.file.kind, row.file.path) : null), [library]);
 

@@ -43,29 +43,38 @@ const byAge = (a: StoredSound, b: StoredSound): number => a.createdAt - b.create
 /** Of records that name one file, the one that stands for it. A move on one device and first use on another can make two, which share one copy. */
 export const standingRecord = (sounds: readonly StoredSound[]): StoredSound | null => [...sounds].sort(byAge)[0] ?? null;
 
-/** A file's record, by the path it says. */
-export function recordOfFile(sounds: readonly StoredSound[], audioPath: string): StoredSound | null {
-  return standingRecord(sounds.filter((sound) => sound.audioPath === audioPath));
+/**
+ * Records by the file each stands for on this device: where it says, else where this device finds a file of that name
+ * and size, so one file has one record whichever folder each device keeps it in.
+ */
+export function recordsByFile(sounds: readonly StoredSound[], library: Pick<SoundLibrary, 'pathNow'>): Map<string, StoredSound[]> {
+  const byFile = new Map<string, StoredSound[]>();
+  for (const sound of sounds) {
+    const path = library.pathNow(sound.audioPath, sound.audioSize);
+    byFile.set(path, [...(byFile.get(path) ?? []), sound]);
+  }
+  return byFile;
 }
 
 /** A file as the engine reads it: through its record where it has one. Writes nothing. */
-export function soundOfFile(sounds: readonly StoredSound[], file: LibraryFile, audioPath: string): SoundRecord {
-  const held = recordOfFile(sounds, audioPath);
+export function soundOfFile(byFile: ReadonlyMap<string, readonly StoredSound[]>, file: LibraryFile, audioPath: string): SoundRecord {
+  const held = standingRecord(byFile.get(audioPath) ?? []);
   return held ? soundRecordOf(held) : unrecordedSound(file, audioPath);
 }
 
 export type RecordsSeam = Pick<SoundRecordStore, 'whenLoaded' | 'all' | 'add'>;
 
 /** The records of files that enter the mix or a mood, made where missing. */
-export async function recordsForFiles(records: RecordsSeam, library: Pick<SoundLibrary, 'audioPathOf'>, files: readonly LibraryFile[], now = Date.now()): Promise<SoundRecord[]> {
+export async function recordsForFiles(records: RecordsSeam, library: Pick<SoundLibrary, 'audioPathOf' | 'pathNow'>, files: readonly LibraryFile[], now = Date.now()): Promise<SoundRecord[]> {
   await records.whenLoaded();
   const sounds = records.all();
+  const byFile = recordsByFile(sounds, library);
   const taken = new Set(sounds.map((sound) => sound.id));
   const fresh: StoredSound[] = [];
   const made = files.flatMap((file): SoundRecord[] => {
     const audioPath = library.audioPathOf(file.kind, file.path);
     if (audioPath === null) return [];
-    const held = recordOfFile([...sounds, ...fresh], audioPath);
+    const held = standingRecord(byFile.get(audioPath) ?? []);
     if (held) return [soundRecordOf(held)];
     let turn = 0;
     while (taken.has(recordIdFor(audioPath, turn))) turn++;
@@ -73,6 +82,7 @@ export async function recordsForFiles(records: RecordsSeam, library: Pick<SoundL
     taken.add(id);
     const sound = draft(file, audioPath, id, now);
     fresh.push(sound);
+    byFile.set(audioPath, [sound]);
     return [soundRecordOf(sound)];
   });
   if (fresh.length > 0) records.add(fresh);
@@ -80,8 +90,8 @@ export async function recordsForFiles(records: RecordsSeam, library: Pick<SoundL
 }
 
 /** The library's editors: trim, licence, credit and tags belong to the file, so they change every record of it, one made where it has none. */
-export async function editFiles(records: RecordsSeam & Pick<SoundRecordStore, 'update'>, library: Pick<SoundLibrary, 'audioPathOf'>, files: readonly LibraryFile[], changes: SoundChanges): Promise<void> {
+export async function editFiles(records: RecordsSeam & Pick<SoundRecordStore, 'update'>, library: Pick<SoundLibrary, 'audioPathOf' | 'pathNow'>, files: readonly LibraryFile[], changes: SoundChanges): Promise<void> {
   await recordsForFiles(records, library, files);
-  const paths = new Set(files.flatMap((file) => library.audioPathOf(file.kind, file.path) ?? []));
-  records.update(records.all().filter((sound) => paths.has(sound.audioPath)).map((sound) => sound.id), changes);
+  const byFile = recordsByFile(records.all(), library);
+  records.update(files.flatMap((file) => byFile.get(library.audioPathOf(file.kind, file.path) ?? '') ?? []).map((sound) => sound.id), changes);
 }

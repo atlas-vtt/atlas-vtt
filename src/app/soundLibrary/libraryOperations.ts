@@ -112,7 +112,7 @@ export async function usesOf(context: LibraryContext, moods: Pick<MoodStore, 'mo
   const { records, library } = context;
   await Promise.all([records.whenLoaded(), moods.whenLoaded()]);
   const inRows = entries.flatMap((entry) => library.audioPathOf(entry.kind, entry.path) ?? []);
-  const sounds = records.all().filter((sound) => inRows.some((path) => isWithin(path, sound.audioPath)));
+  const sounds = records.all().filter((sound) => inRows.some((path) => isWithin(path, library.pathNow(sound.audioPath, sound.audioSize))));
   const ids = new Set(sounds.map((sound) => sound.id));
   const count = moods.moods().filter((mood) => mood.layers.some((layer) => ids.has(layer.sound))
     || (typeof mood.music !== 'string' && mood.music.tracks.some((id) => ids.has(id)))).length;

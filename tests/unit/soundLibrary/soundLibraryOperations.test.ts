@@ -4,7 +4,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SoundKind } from '../../../src/app/sound/soundTypes';
 import { ExternalLocation } from '../../../src/app/soundLibrary/externalLocation';
-import { editFiles, recordIdFor, recordOfFile, recordsForFiles, unrecordedSound } from '../../../src/app/soundLibrary/libraryRecords';
+import { editFiles, recordIdFor, recordsByFile, recordsForFiles, soundOfFile, standingRecord, unrecordedSound } from '../../../src/app/soundLibrary/libraryRecords';
 import { importIntoLibrary, makeLibraryFolder, moveEntries, renameEntry, trashEntries, usesOf, type LibraryContext } from '../../../src/app/soundLibrary/libraryOperations';
 import { MoodStore } from '../../../src/app/soundLibrary/MoodStore';
 import type { NodeFsModule } from '../../../src/app/soundLibrary/nodeFiles';
@@ -109,7 +109,7 @@ describe('records', () => {
     records.update([first!.id], { audioPath: 'atlas-sound:music/moved.mp3' });
     const [second] = await recordsForFiles(records, library, [fileOf('music', 'a.mp3')]);
     expect(second?.id).toBe(recordIdFor('atlas-sound:music/a.mp3', 1));
-    expect(recordOfFile(soundsNow(), 'atlas-sound:music/moved.mp3')?.id).toBe(first?.id);
+    expect(standingRecord(soundsNow().filter((sound) => sound.audioPath === 'atlas-sound:music/moved.mp3'))?.id).toBe(first?.id);
   });
 
   it('an edit makes the record where there is none, and keeps what was there', async () => {
@@ -236,6 +236,43 @@ describe('a file gone from its path', () => {
     expect(library.statOfFile('Audio/a.mp3', 5)).toMatchObject({ size: 5 });
     expect(library.pathNow('Audio/a.mp3', 5)).toBe('Audio/Moved/a.mp3');
     expect(await (await library.readFile('Audio/a.mp3', 5)).text()).toBe('12345');
+  });
+});
+
+describe('a file in another folder than its record says', () => {
+  const moved = async (): Promise<ReturnType<typeof fileOf>> => {
+    write('Music', 'Tavern/a.mp3', '12345');
+    await recordsForFiles(records, library, [fileOf('music', 'Tavern/a.mp3')]);
+    fs.mkdirSync(path.join(external('Music'), 'Inns'));
+    fs.renameSync(path.join(external('Music'), 'Tavern/a.mp3'), path.join(external('Music'), 'Inns/a.mp3'));
+    library.rescan(100_000);
+    await vi.waitFor(() => expect(library.pathNow('atlas-sound:music/Tavern/a.mp3', 5)).toBe('atlas-sound:music/Inns/a.mp3'));
+    return fileOf('music', 'Inns/a.mp3');
+  };
+
+  it('has the record it has: first use makes no second', async () => {
+    const row = await moved();
+    const before = soundsNow().map((sound) => ({ ...sound }));
+    const [record] = await recordsForFiles(records, library, [row]);
+    expect(soundsNow()).toEqual(before);
+    expect(record?.id).toBe(before[0]?.id);
+    expect(soundOfFile(recordsByFile(soundsNow(), library), row, 'atlas-sound:music/Inns/a.mp3').id).toBe(before[0]?.id);
+  });
+
+  it('takes an edit on its record, the one every device reads', async () => {
+    const row = await moved();
+    await editFiles(records, library, [row], { trimDb: -3 });
+    expect(soundsNow()).toHaveLength(1);
+    expect(soundsNow()[0]).toMatchObject({ trimDb: -3, audioPath: 'atlas-sound:music/Tavern/a.mp3' });
+  });
+
+  it('takes its record along when its row is deleted', async () => {
+    const row = await moved();
+    const entries = [{ kind: 'music' as const, path: row.path, isFolder: false }];
+    const { sounds } = await usesOf(context, { moods: () => [], whenLoaded: () => Promise.resolve() }, entries);
+    expect(sounds.map((sound) => sound.id)).toEqual(soundsNow().map((sound) => sound.id));
+    await trashEntries(context, entries, sounds);
+    expect(soundsNow()).toEqual([]);
   });
 });
 
