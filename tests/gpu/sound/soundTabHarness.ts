@@ -25,7 +25,7 @@ import { SoundLibrary } from '@/app/soundLibrary/SoundLibrary';
 import { soundRecordOf } from '@/app/soundLibrary/soundRecords';
 import { SoundRecordStore } from '@/app/soundLibrary/SoundRecordStore';
 import { createViewAtlasStore, type ViewAtlasStore } from '@/app/storeFactory';
-import { createInMemoryApp } from '../../mocks/inMemoryVault';
+import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 import { fakeLibrary, type LibraryRig } from '../../helpers/libraryRig';
 import { fillMockLibrary, MOCK_LIBRARY } from './libraryScene';
 import { withSound } from '../../mocks/experimentalFeatures';
@@ -128,8 +128,19 @@ export interface SoundTab {
   unmount: () => void;
 }
 
+interface SoundApp {
+  app: InMemoryApp['app'];
+  stored: SoundRecordStore;
+  held: ReturnType<typeof fakeLibrary> | null;
+  moods: MoodStore;
+  director: SoundDirector;
+  records: Map<string, SoundRecord>;
+  release: () => void;
+  library: SoundLibrary;
+}
+
 /** The real director, real copies in IndexedDB and a real context, over an in-memory vault. The theme is the variables Obsidian sets. */
-async function soundApp(theme: string, appId: string, sounds: Record<string, TabSound>, linked: boolean) {
+async function soundApp(theme: string, appId: string, sounds: Record<string, TabSound>, linked: boolean): Promise<SoundApp> {
   const style = document.createElement('style');
   style.id = 'sound-tab-theme';
   style.textContent = theme + css;
@@ -220,9 +231,7 @@ export async function openSoundView(theme: string, viewport: HTMLElement, sounds
   const { app, director, moods, records, release } = await soundApp(theme, `sound-view-${Math.random()}`, sounds, false);
   viewport.className = 'workspace-leaf mod-active';
   viewport.innerHTML = '';
-  const leaf = { app } as never;
-  const view = new SoundView(leaf);
-  Object.assign(view, { app });
+  const view = new SoundView({ app } as never);
   view.containerEl.style.cssText = 'display: flex; flex-direction: column; width: 100%; height: 100%';
   view.contentEl.addClass('view-content');
   view.contentEl.style.cssText = 'flex: 1; min-height: 0';
@@ -242,7 +251,7 @@ export async function openSoundView(theme: string, viewport: HTMLElement, sounds
 }
 
 /** Lays out moods the way a GM's would be, with what they name. */
-export function seedMoods(tab: SoundTab): void {
+export function seedMoods(tab: Pick<SoundTab, 'records' | 'moods'>): void {
   const id = (name: string): string => tab.records.get(name)?.id ?? name;
   const moods: Array<[string, Mood['music'], string[]]> = [
     ['Tavern at night', { tracks: [id('Road to Wolfhaven'), id('The drowned chapel')], shuffle: false, levelDb: -3 }, ['Tavern crowd', 'Campfire crackle']],

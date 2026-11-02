@@ -43,7 +43,7 @@ describe('the Sound page in a tab of its own', () => {
     await size(width, height);
     const tab = await openSoundView(DARK, viewport);
     open = tab;
-    seedMoods(tab as SoundTab);
+    seedMoods(tab);
     await expect.poll(() => document.querySelectorAll('.atlas-sound-mood').length).toBe(11);
     await act(async () => { await sleep(350); });
     return tab;
@@ -113,9 +113,9 @@ describe('the Sound page in a tab of its own', () => {
   it('reads its meters only while it is in front: another tab covering it closes them', async () => {
     const tab = await view(1280, 820);
     const closed = vi.fn();
-    const open = tab.director.openMeters.bind(tab.director);
+    const realOpenMeters = tab.director.openMeters.bind(tab.director);
     const openMeters = vi.spyOn(tab.director, 'openMeters').mockImplementation(() => {
-      const close = open();
+      const close = realOpenMeters();
       return () => {
         closed();
         close();

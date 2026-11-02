@@ -43,7 +43,6 @@ export function LibraryView(): React.JSX.Element | null {
   const library = SoundLibrary.forApp(app);
   const director = SoundDirector.forApp(app);
   const place = useStoreValue(library.place, () => library.place.current);
-  const { kind, folder } = place;
   const version = useLibraryVersion(library);
   const sounds = useStoredSounds(app);
   const held = useHeldInMix(director);
@@ -95,10 +94,10 @@ export function LibraryView(): React.JSX.Element | null {
   const openFolder = useCallback((row: Extract<LibraryRow, { type: 'folder' }>) => goTo({ kind: row.kind, folder: row.path }), [goTo]);
 
   const parent = useCallback((): boolean => {
-    if (folder === '') return false;
-    library.place.show(kind, parentOfRelative(folder));
+    if (place.folder === '') return false;
+    library.place.show(place.kind, parentOfRelative(place.folder));
     return true;
-  }, [library, kind, folder]);
+  }, [library, place]);
 
   const noRoots = library.rootOf('music').status === 'unlinked' && library.rootOf('ambience').status === 'unlinked';
   const keep = (event: React.KeyboardEvent): void => {

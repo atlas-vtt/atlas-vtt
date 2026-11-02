@@ -26,9 +26,9 @@ interface SoundPaneProps {
 }
 
 /**
- * The Sound page, on the DM screen and in a tab of its own (`SoundView`). It sends intents only: what plays belongs to the app's `SoundDirector`,
- * so this page can close at any moment and the music goes on. A press changes the room; nothing here
- * ever has to be searched for during play.
+ * The Sound page, on the DM screen and in a tab of its own (`SoundView`). It sends intents only: what
+ * plays belongs to the app's `SoundDirector`, so this page can close at any moment and the music goes
+ * on. A press changes the room; nothing here ever has to be searched for during play.
  */
 export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
   const { app, view } = useAtlasUI();

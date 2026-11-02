@@ -16,7 +16,6 @@ export interface UISlice extends ViewUIState {
   setGridSettingsOpen: (open: boolean) => void;
   setDMScreenOpen: (open: boolean) => void;
   setDMScreenPage: (page: DMScreenPage) => void;
-  /** Shows a root of the library, at `folder`; without one, a root already shown stays where it is. */
   setGridAlignmentOpen: (open: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
   openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;

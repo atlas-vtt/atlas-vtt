@@ -16,11 +16,10 @@ const views: SoundView[] = [];
 const hosts: HTMLElement[] = [];
 
 /** A workspace leaf of the document, with the real view opened in it as Obsidian would. */
-async function openView(active = true): Promise<{ view: SoundView; leafEl: HTMLElement }> {
-  const leafEl = document.body.createDiv({ cls: active ? 'workspace-leaf mod-active' : 'workspace-leaf' });
+async function openView(): Promise<{ view: SoundView; leafEl: HTMLElement }> {
+  const leafEl = document.body.createDiv({ cls: 'workspace-leaf mod-active' });
   hosts.push(leafEl);
   const view = new SoundView({ app: rig.app } as never);
-  Object.assign(view, { app: rig.app });
   leafEl.append(view.containerEl);
   view.containerEl.append(view.contentEl);
   await act(async () => { await view.onOpen(); });
