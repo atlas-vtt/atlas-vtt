@@ -93,26 +93,51 @@ export function listOrder(count: number, seed: number, shuffle: boolean, pass: n
   return order;
 }
 
-function playableTracks(play: MusicPlay): SoundInfo[] {
-  return play.tracks.filter((track) => track.frames > 0);
+/** One pass through a list, in the order it really plays, and the frame of the list it begins on. */
+export interface ListPass {
+  tracks: SoundInfo[];
+  startFrame: number;
+  frames: number;
 }
 
-/** The span of a music list at `playFrame`, which may lie before the list began (its first track). */
-export function musicSpanAt(play: MusicPlay, playFrame: number): TimelineSpan | null {
-  const tracks = playableTracks(play);
-  const only = tracks[0];
-  if (!only) return null;
-  if (tracks.length === 1) return { sound: only, startPlayFrame: 0, endPlayFrame: null, loop: loopRangeOf(only) };
-  const total = tracks.reduce((sum, track) => sum + track.frames, 0);
-  const frame = Math.max(0, playFrame);
-  const pass = Math.floor(frame / total);
-  let start = pass * total;
-  for (const index of listOrder(tracks.length, play.seed, play.shuffle, pass)) {
-    const track = tracks[index] ?? only;
-    if (frame < start + track.frames) return { sound: track, startPlayFrame: start, endPlayFrame: start + track.frames, loop: null };
+/** The pass a frame of the list lies in. */
+export function passAt(play: MusicPlay, listFrame: number): ListPass | null {
+  const tracks = play.tracks.filter((track) => track.frames > 0);
+  if (tracks.length === 0) return null;
+  const frames = tracks.reduce((sum, track) => sum + track.frames, 0);
+  const pass = Math.floor(listFrame / frames);
+  const ordered = listOrder(tracks.length, play.seed, play.shuffle, pass).flatMap((index) => tracks[index] ?? []);
+  return { tracks: ordered, startFrame: pass * frames, frames };
+}
+
+/** The frame of the list `playFrame` stands at. A track held for good stays where it was taken up. */
+export function listFrameAt(play: MusicPlay, playFrame: number): number {
+  const taken = play.listFrame ?? 0;
+  return play.repeat === 'one' ? taken : taken + Math.max(0, playFrame);
+}
+
+function spanInPass(pass: ListPass, listFrame: number, taken: number): TimelineSpan | null {
+  let start = pass.startFrame;
+  for (const track of pass.tracks) {
+    if (listFrame < start + track.frames) return { sound: track, startPlayFrame: start - taken, endPlayFrame: start + track.frames - taken, loop: null };
     start += track.frames;
   }
   return null;
+}
+
+/** The span of a music list at `playFrame`, which may lie before the list began (its first track). Past the end of a list that stops there is nothing. */
+export function musicSpanAt(play: MusicPlay, playFrame: number): TimelineSpan | null {
+  const taken = play.listFrame ?? 0;
+  const firstPass = passAt(play, taken);
+  if (!firstPass) return null;
+  if (play.repeat === 'one' || (firstPass.tracks.length === 1 && play.repeat !== 'off')) {
+    const held = spanInPass(firstPass, taken, taken)?.sound ?? firstPass.tracks[0];
+    return held ? { sound: held, startPlayFrame: 0, endPlayFrame: null, loop: loopRangeOf(held) } : null;
+  }
+  const frame = listFrameAt(play, playFrame);
+  if (play.repeat === 'off') return frame < firstPass.startFrame + firstPass.frames ? spanInPass(firstPass, frame, taken) : null;
+  const pass = passAt(play, frame);
+  return pass && spanInPass(pass, frame, taken);
 }
 
 export function layerSpan(play: LayerPlay): TimelineSpan | null {

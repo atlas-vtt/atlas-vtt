@@ -15,6 +15,7 @@ function sameMusic(saved: MoodMusic, now: MoodMusic, known: (id: string) => bool
   return tracks.length === now.tracks.length
     && tracks.every((track) => now.tracks.includes(track))
     && saved.shuffle === now.shuffle
+    && saved.repeat === now.repeat
     && sameLevel(saved.levelDb, now.levelDb);
 }
 

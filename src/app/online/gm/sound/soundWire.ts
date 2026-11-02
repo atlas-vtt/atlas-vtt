@@ -37,7 +37,7 @@ export function wireState(state: TableSound, soundOf: (key: string) => WireSound
     return { key, frames: sound.frames, gainDb: wireDb(sound.gainDb), ...(sound.loop && { loop: sound.loop }), ...(asset && { asset }), ...(credit !== null && { credit }) };
   };
   const play = ({ startAt, gainDb, muted, fade }: MusicPlay | LayerPlay): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade'> & { muted?: boolean } => ({ startAt, gainDb: wireDb(gainDb), fade, ...(muted && { muted }) });
-  const music = (list: MusicPlay): SharedMusicPlay => ({ ...play(list), tracks: list.tracks.slice(0, MAX_SOUND_TRACKS).map(info), seed: list.seed, shuffle: list.shuffle });
+  const music = (list: MusicPlay): SharedMusicPlay => ({ ...play(list), tracks: list.tracks.slice(0, MAX_SOUND_TRACKS).map(info), seed: list.seed, shuffle: list.shuffle, ...(list.repeat && { repeat: list.repeat }), ...(list.listFrame && { listFrame: list.listFrame }) });
   const layer = (entry: LayerPlay): SharedLayerPlay => ({ ...play(entry), sound: info(entry.sound) });
   return {
     revision: state.revision,

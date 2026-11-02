@@ -4,8 +4,9 @@ import type { Mood, SoundInfo, TableSound } from '@/app/sound/soundTypes';
 import { moodTransition } from '@/app/soundDirector/moodTransition';
 import { addLayer, removeLayer, setLayerLevel, setLayerMuted, setMusicLevel, setMusicMuted, toggleSilence } from '@/app/soundDirector/liveEdits';
 import { musicPosition, nextTrack, playTrack, skipTrack, withListChange } from '@/app/soundDirector/musicList';
-import { applyDueListChange, EMPTY_MIX, joinReady, mixAsMood, pressMood, removeTrack, setShuffle } from '@/app/soundDirector/soundMix';
-import { EMPTY_TABLE_SOUND } from '@/app/soundDirector/tableSound';
+import { applyDueListChange } from '@/app/soundDirector/trackEnd';
+import { EMPTY_MIX, joinReady, mixAsMood, pressMood, removeTrack, setShuffle } from '@/app/soundDirector/soundMix';
+import { EMPTY_TABLE_SOUND, TRACK_JOIN_MS } from '@/app/soundDirector/tableSound';
 
 const RATE = 48000;
 
@@ -169,8 +170,9 @@ describe('live edits', () => {
     const endsAt = musicPosition(start.music!, 10000)!.endsAt;
     const due = applyDueListChange(changed, endsAt - 500, 1000);
     expect(due.listChange).toBeNull();
-    expect(due.table.music?.startAt).toBe(endsAt);
-    expect(due.table.outgoing[0]?.fade.at).toBe(endsAt);
+    // What ends is gone by its end, so it never reaches what its own timeline had next.
+    expect(due.table.music?.startAt).toBe(endsAt - TRACK_JOIN_MS);
+    expect(due.table.outgoing[0]?.fade).toEqual({ at: endsAt - TRACK_JOIN_MS, ms: TRACK_JOIN_MS });
     expect(musicPosition(due.table.music!, endsAt + 10)?.track.key).toBe('b');
     expect(due.table.music?.tracks.map((track) => track.key)).toContain('d');
   });

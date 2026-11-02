@@ -67,8 +67,8 @@ export function licenceNoteDue(storage: DeviceStorage): boolean {
 function readMusic(value: unknown): MoodMusic | null {
   if (value === 'keep' || value === 'none') return value;
   if (typeof value !== 'object' || value === null) return null;
-  const { tracks, shuffle, levelDb } = value as Record<string, unknown>;
-  return Array.isArray(tracks) && tracks.every(isText) && typeof levelDb === 'number' ? { tracks, shuffle: shuffle === true, levelDb } : null;
+  const { tracks, shuffle, levelDb, repeat } = value as Record<string, unknown>;
+  return Array.isArray(tracks) && tracks.every(isText) && typeof levelDb === 'number' ? { tracks, shuffle: shuffle === true, levelDb, ...((repeat === 'one' || repeat === 'off') && { repeat }) } : null;
 }
 
 export function loadLastMix(storage: DeviceStorage): LastMix | null {

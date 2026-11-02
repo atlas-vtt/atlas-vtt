@@ -1,7 +1,13 @@
 import { FRAMES_PER_MS } from '../sound/engine/soundMath';
-import { frameInSpan, framesToWrap, listOrder, loopRangeOf, musicSpanAt, playFrameAt } from '../sound/engine/soundTimeline';
+import { frameInSpan, framesToWrap, listFrameAt, musicSpanAt, passAt, playFrameAt, type ListPass } from '../sound/engine/soundTimeline';
 import type { MusicPlay, SoundInfo, TableSound } from '../sound/soundTypes';
+import { joinFadeMs, playAtPlace, placeAfter, placeOf, sameOrder, type ListChange, type ListPlace } from './listPlace';
 import { changed, leaving, OFFLINE_LEAD_MS, SEEK_FADE_MS, SKIP_FADE_MS, TRACK_JOIN_MS, withoutFinished } from './tableSound';
+
+export type { ListChange } from './listPlace';
+
+/** In a track's first moments Back goes to the track before; later it starts this one again. */
+export const BACK_TO_PREVIOUS_MS = 3000;
 
 export interface MusicPosition {
   track: SoundInfo;
@@ -25,7 +31,7 @@ export function musicPosition(play: MusicPlay, now: number): MusicPosition | nul
   return {
     track: span.sound,
     frame,
-    frames: span.loop ? loopRangeOf(span.sound).endFrame : span.sound.frames,
+    frames: framesToWrap(span, 0),
     next: after?.sound ?? null,
     endsAt: start + framesToWrap(span, frame) / FRAMES_PER_MS,
   };
@@ -43,49 +49,15 @@ export function soundingTrack(state: TableSound, now: number): SoundInfo | null 
   return (play && musicPosition(play, now)?.track) ?? null;
 }
 
-/** A seed whose shuffled order begins with `key`, from `seed` on. */
-function seedBeginningWith(tracks: readonly SoundInfo[], key: string, seed: number): number {
-  const limit = 64 * tracks.length;
-  for (let offset = 0; offset < limit; offset++) {
-    const order = listOrder(tracks.length, seed + offset, true, 0);
-    if (tracks[order[0] ?? 0]?.key === key) return seed + offset;
-  }
-  return seed;
-}
-
-function seedNotBeginningWith(tracks: readonly SoundInfo[], key: string, seed: number): number {
-  for (let offset = 0; offset < 64; offset++) {
-    const order = listOrder(tracks.length, seed + offset, true, 0);
-    if (tracks[order[0] ?? 0]?.key !== key) return seed + offset;
-  }
-  return seed;
-}
-
-/** The list going round from `from` on, which keeps its order and puts that track first. */
-function rotatedFrom(tracks: readonly SoundInfo[], from: number): SoundInfo[] {
-  return [...tracks.slice(from), ...tracks.slice(0, from)];
-}
-
-/** What a list becomes once its current track has ended: a change never cuts a track. */
-export interface ListChange {
-  tracks: SoundInfo[];
-  shuffle: boolean;
-  /** The track to follow the one sounding, whatever a shuffled order says. */
-  next?: string;
-}
-
 /** A track of the list now, on a crossfade; the list goes on from it, and a change waiting for the track's end is taken in. */
 export function playTrack(state: TableSound, key: string, now: number, leadMs = OFFLINE_LEAD_MS, list?: ListChange | null, fadeMs = SKIP_FADE_MS): TableSound {
   const play = soundingMusic(state, now);
-  const from = list ?? play;
-  const index = from?.tracks.findIndex((track) => track.key === key) ?? -1;
-  if (!play || !from || index < 0) return state;
+  const listPlace = play && placeOf(play, list ?? null, key, now);
+  if (!play || !listPlace) return state;
   const live = withoutFinished(state, now);
   const startAt = now + leadMs;
-  const tracks = from.shuffle ? from.tracks : rotatedFrom(from.tracks, index);
-  const seed = from.shuffle ? seedBeginningWith(from.tracks, key, play.seed + 1) : play.seed;
   return changed(live, {
-    music: { ...play, tracks, seed, shuffle: from.shuffle, startAt, fade: { at: startAt, ms: fadeMs } },
+    music: playAtPlace(play, listPlace, startAt, fadeMs),
     outgoing: [...live.outgoing.filter((other) => other !== play), leaving(play, startAt, fadeMs)],
   });
 }
@@ -98,8 +70,7 @@ export function seekMusic(state: TableSound, frame: number, now: number): TableS
   const play = state.music;
   const span = play && play.startAt <= now ? musicSpanAt(play, playFrameAt(play.startAt, now)) : null;
   if (!play || !span) return state;
-  const frames = span.loop ? loopRangeOf(span.sound).endFrame : span.sound.frames;
-  const startAt = now - (span.startPlayFrame + Math.max(0, Math.min(frames - 1, Math.round(frame)))) / FRAMES_PER_MS;
+  const startAt = now - (span.startPlayFrame + Math.max(0, Math.min(framesToWrap(span, 0) - 1, Math.round(frame)))) / FRAMES_PER_MS;
   const live = withoutFinished(state, now);
   return changed(live, {
     music: { ...play, startAt, fade: { at: startAt, ms: 0 } },
@@ -117,34 +88,89 @@ export function nextTrack(state: TableSound, now: number, list?: ListChange | nu
   return changedList && musicPosition(changedList, position.endsAt)?.track || null;
 }
 
-/** On to what the row names as next. Nothing to skip to on a single track. */
-export function skipTrack(state: TableSound, now: number, leadMs = OFFLINE_LEAD_MS, list?: ListChange | null): TableSound {
-  const next = nextTrack(state, now, list);
-  return next ? playTrack(state, next.key, now, leadMs, list) : state;
+/** What the list holds around the track sounding, in the order it plays: where a press of Skip or Back goes. */
+function neighbour(state: TableSound, now: number, list: ListChange | null | undefined, step: 1 | -1): SoundInfo | null {
+  const { tracks, current } = listView(state, list, now);
+  const at = tracks.findIndex((track) => track.key === current);
+  const stopsAtEnds = (list ?? state.music)?.repeat === 'off';
+  if (at < 0 || tracks.length < 2 || (stopsAtEnds && !tracks[at + step])) return null;
+  return tracks[(at + step + tracks.length) % tracks.length] ?? null;
 }
 
-/** When a list's change takes over. */
-export function listChangeAt(state: TableSound, now: number): number | null {
-  const play = state.music;
-  return play ? (musicPosition(play, now)?.endsAt ?? null) : null;
+/** On to what the row names as next, or under a track held for good the next on the list, which is then held. The end of a list that stops there ends the music. */
+export function skipTrack(state: TableSound, now: number, leadMs = OFFLINE_LEAD_MS, list?: ListChange | null): TableSound {
+  const { music } = state;
+  const going = list ?? music;
+  if (!music || !going) return state;
+  const next = going.repeat === 'one' ? neighbour(state, now, list, 1) : nextTrack(state, now, list);
+  if (next) return playTrack(state, next.key, now, leadMs, list);
+  if (going.repeat !== 'off') return state;
+  const live = withoutFinished(state, now);
+  return changed(live, { music: null, outgoing: [...live.outgoing, leaving(music, now, SKIP_FADE_MS)] });
+}
+
+/** Where Back goes early in a track, in the order the list plays; null where it starts this one again, as it always does later on, and on a list of one. */
+export function previousTrack(state: TableSound, now: number, list?: ListChange | null): SoundInfo | null {
+  const play = soundingMusic(state, now);
+  const position = play && musicPosition(play, now);
+  return position && position.frame < BACK_TO_PREVIOUS_MS * FRAMES_PER_MS ? neighbour(state, now, list, -1) : null;
+}
+
+/** What `listPlace` names starts at `startAt` as `play` leaves, both over `fadeMs`; with no place the music just ends there. */
+export function handOver(state: TableSound, play: MusicPlay, listPlace: ListPlace | null, startAt: number, fadeMs: number): TableSound {
+  const live = withoutFinished(state, startAt);
+  return changed(live, {
+    music: listPlace && playAtPlace(play, listPlace, startAt, fadeMs),
+    outgoing: [...live.outgoing, leaving(play, startAt, fadeMs)],
+  });
 }
 
 /**
- * Takes a changed list in at `at`, a track's end, with what the old list was sounding gone by then. An
- * ordered list goes on after the track that just ended; a shuffled one does not begin with it again.
+ * Takes a changed list in at `at`, a track's end, with what comes starting and what ends leaving `fadeMs` before it, so what
+ * ends is gone by then and never reaches what its own timeline had next. A list that has run out just ends there.
  */
-export function withListChange(state: TableSound, change: ListChange, at: number): TableSound {
+export function withListChange(state: TableSound, change: ListChange, at: number, fadeMs = TRACK_JOIN_MS): TableSound {
   const play = state.music;
-  const ending = play && musicPosition(play, at - 1)?.track;
-  if (!play || !ending || change.tracks.length === 0) return state;
-  const index = change.tracks.findIndex((track) => track.key === ending.key);
-  const tracks = change.shuffle || index < 0 ? change.tracks : rotatedFrom(change.tracks, index + 1);
-  const seed = !change.shuffle ? play.seed
-    : change.next !== undefined ? seedBeginningWith(tracks, change.next, play.seed + 1)
-      : seedNotBeginningWith(tracks, ending.key, play.seed + 1);
-  const live = withoutFinished(state, at);
-  return changed(live, {
-    music: { ...play, tracks, seed, shuffle: change.shuffle, startAt: at, fade: { at, ms: TRACK_JOIN_MS } },
-    outgoing: [...live.outgoing, leaving(play, at, TRACK_JOIN_MS)],
-  });
+  const span = play && musicSpanAt(play, playFrameAt(play.startAt, at - 1));
+  if (!play || !span || change.tracks.length === 0) return state;
+  return handOver(state, play, placeAfter(play, change, span), at - fadeMs, fadeMs);
+}
+
+/** What the card's list shows: a pass in the order it really plays, what plays in it, and what remains. */
+export interface ListView {
+  tracks: readonly SoundInfo[];
+  current: string | null;
+  /** Frames left of the list; of this pass where it goes round, of this track where it stays on one. */
+  leftFrames: number;
+}
+
+const NO_TRACKS: readonly SoundInfo[] = [];
+
+/** The pass to show: the one under way, or with a change waiting the one that change will make, so the list shows it at once. */
+function shownPass(state: TableSound, play: MusicPlay, list: ListChange | null | undefined, now: number): ListPass | null {
+  const { music } = state;
+  if (list && music && !sameOrder(music, list)) {
+    const span = musicSpanAt(music, playFrameAt(music.startAt, now));
+    const listPlace = span && placeAfter(music, list, span);
+    return passAt(playAtPlace(music, listPlace ?? { tracks: list.tracks, seed: music.seed, shuffle: list.shuffle }, 0, 0), 0);
+  }
+  return passAt(play, listFrameAt(play, playFrameAt(play.startAt, now)));
+}
+
+export function listView(state: TableSound, list: ListChange | null | undefined, now: number, crossfadeMs = 0): ListView {
+  const play = soundingMusic(state, now);
+  const position = play && musicPosition(play, now);
+  const pass = play && shownPass(state, play, list, now);
+  const going = list ?? play;
+  if (!position || !pass) return { tracks: going?.tracks ?? NO_TRACKS, current: null, leftFrames: 0 };
+  let leftFrames = position.frames - position.frame;
+  if (going?.repeat === 'one' || pass.tracks.length === 1) return { tracks: pass.tracks, current: position.track.key, leftFrames };
+  const at = pass.tracks.findIndex((track) => track.key === position.track.key);
+  for (let index = at + 1; index < pass.tracks.length; index++) {
+    const track = pass.tracks[index];
+    const before = pass.tracks[index - 1];
+    if (!track || !before) continue;
+    leftFrames += track.frames - joinFadeMs(before, track, crossfadeMs) * FRAMES_PER_MS;
+  }
+  return { tracks: pass.tracks, current: position.track.key, leftFrames: Math.max(0, leftFrames) };
 }

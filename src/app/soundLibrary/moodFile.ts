@@ -33,6 +33,7 @@ function readMusic(value: unknown): MoodMusic {
     tracks: value.tracks.filter(isSoundId).slice(0, MOOD_LIMITS.tracks),
     shuffle: value.shuffle === true,
     levelDb: readLevel(value.levelDb),
+    ...((value.repeat === 'one' || value.repeat === 'off') && { repeat: value.repeat }),
   };
 }
 

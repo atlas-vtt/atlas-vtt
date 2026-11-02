@@ -1,5 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { TableSound } from '@/app/sound/soundTypes';
+import { EMPTY_MIX } from '@/app/soundDirector/soundMix';
+import { applyDueListChange } from '@/app/soundDirector/trackEnd';
+import { withListChange } from '@/app/soundDirector/musicList';
 import { largestStep, layerOf, loadFixtures, longestSilence, memoryBytes, musicOf, render, rmsAt, secondsToFrames, sineAt, tableOf, type Fixtures } from './soundHarness';
 
 const NORMAL_STEP = 0.25 * Math.sin((2 * Math.PI * 220) / 48000);
@@ -249,3 +252,56 @@ async function renderReleasing(
     at: [[releaseAt, (): void => release()]],
   });
 }
+
+describe('a list going on from track to track', () => {
+  let fixtures: Fixtures;
+
+  beforeAll(async () => {
+    fixtures = await loadFixtures();
+  });
+
+  it('crossfades between tracks with no silence and no bulge, and what comes begins from its start', async () => {
+    const first = tableOf({ music: musicOf([fixtures.tone330, fixtures.tone220]) });
+    const second = applyDueListChange({ ...EMPTY_MIX, table: first }, 1500, 1000, { leadMs: 0, crossfadeMs: 1000 }).table;
+    expect(second.music?.startAt).toBe(2000);
+    const samples = await render(first, fixtures, { seconds: 4.5, at: [[1.5, (player): void => player.setState(second)]] });
+    const before = rmsAt(samples, secondsToFrames(1), secondsToFrames(0.5));
+    let lowest = Infinity;
+    let highest = 0;
+    for (let at = 1.5; at < 4; at += 0.05) {
+      const level = rmsAt(samples, secondsToFrames(at), 2400);
+      lowest = Math.min(lowest, level);
+      highest = Math.max(highest, level);
+    }
+    console.log(`track crossfade: level ${(20 * Math.log10(lowest / before)).toFixed(2)} to ${(20 * Math.log10(highest / before)).toFixed(2)} dB around before`);
+    expect(longestSilence(samples, secondsToFrames(0.5), samples.length)).toBeLessThanOrEqual(1);
+    expect(20 * Math.log10(lowest / before)).toBeGreaterThan(-1.5);
+    expect(20 * Math.log10(highest / before)).toBeLessThan(1.5);
+    expect(sineAt(samples, secondsToFrames(1.45), secondsToFrames(0.5), 220).amplitude).toBeLessThan(0.002);
+    expect(sineAt(samples, secondsToFrames(3.2), secondsToFrames(0.5), 330).amplitude).toBeLessThan(0.002);
+    expect(sineAt(samples, secondsToFrames(3.2), secondsToFrames(0.5), 220).amplitude).toBeGreaterThan(0.2);
+  });
+
+  it('holds one track past its end when repeat one takes over, with no silence, and never reaches the next', async () => {
+    const first = tableOf({ music: musicOf([fixtures.tone330, fixtures.tone220]) });
+    const held = withListChange(first, { tracks: first.music!.tracks, shuffle: false, repeat: 'one' }, 3000);
+    const samples = await render(first, fixtures, { seconds: 8, at: [[1.5, (player): void => player.setState(held)]] });
+    expect(longestSilence(samples, secondsToFrames(0.5), samples.length)).toBeLessThanOrEqual(1);
+    for (const at of [1, 3.2, 5, 7]) {
+      expect(sineAt(samples, secondsToFrames(at), secondsToFrames(0.5), 330).amplitude).toBeGreaterThan(0.2);
+      expect(sineAt(samples, secondsToFrames(at), secondsToFrames(0.5), 220).amplitude).toBeLessThan(0.002);
+    }
+  });
+
+  it('goes silent past the end of a list that stops there, and stays so', async () => {
+    const samples = await render(tableOf({ music: musicOf([fixtures.tone330], { repeat: 'off' }) }), fixtures, { seconds: 6 });
+    expect(sineAt(samples, secondsToFrames(2), secondsToFrames(0.5), 330).amplitude).toBeGreaterThan(0.2);
+    expect(rmsAt(samples, secondsToFrames(3.2), secondsToFrames(2))).toBeLessThan(0.001);
+  });
+
+  it('takes a list up in its middle: the frames behind it decide what plays', async () => {
+    const samples = await render(tableOf({ music: musicOf([fixtures.tone330, fixtures.tone220], { listFrame: fixtures.tone330.frames }) }), fixtures, { seconds: 2 });
+    expect(sineAt(samples, secondsToFrames(1), secondsToFrames(0.5), 220).amplitude).toBeGreaterThan(0.2);
+    expect(sineAt(samples, secondsToFrames(1), secondsToFrames(0.5), 330).amplitude).toBeLessThan(0.002);
+  });
+});

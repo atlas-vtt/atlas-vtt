@@ -73,7 +73,7 @@ describe('Play next', () => {
     expect(nextTrack(mix.table, 2000, mix.listChange)?.key).toBe('n');
     const taken = withListChange(mix.table, mix.listChange!, 60_050);
     expect(sounding({ ...mix, table: taken }, 60_100)).toBe('n');
-    expect(taken.music?.tracks.map((one) => one.key)).toEqual(['n', 'b', 'c', 'a']);
+    expect(taken.music?.tracks.map((one) => one.key)).toEqual(['a', 'n', 'b', 'c']);
   });
 
   it('moves a track already on the list', () => {

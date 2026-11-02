@@ -33,7 +33,7 @@ function nextMusic(live: TableSound, mix: MoodMix, sounds: ReadySounds, now: num
     return { music: { ...play, gainDb: wanted.levelDb, fade: rampFade(kept, now, fadeMs) }, outgoing };
   }
   const seed = fnv1a32(`${now}|${tracks.map((track) => track.key).join(',')}`);
-  return { music: enteringMusic(tracks, wanted.shuffle, wanted.levelDb, seed, startAt, fadeMs), outgoing: leaveAll() };
+  return { music: enteringMusic(tracks, wanted.shuffle, wanted.levelDb, seed, startAt, fadeMs, wanted.repeat), outgoing: leaveAll() };
 }
 
 function nextLayers(live: TableSound, mix: MoodMix, sounds: ReadySounds, now: number, startAt: number, fadeMs: number): Pick<TableSound, 'layers' | 'outgoingLayers'> {

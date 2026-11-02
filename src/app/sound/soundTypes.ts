@@ -31,8 +31,11 @@ export interface MoodLayer {
   levelDb: number;
 }
 
+/** How a list goes on past its end. Unset goes round; `one` holds a track for good; `off` stops at the end of the list. */
+export type MusicRepeat = 'one' | 'off';
+
 export type MoodMusic =
-  | { tracks: string[]; shuffle: boolean; levelDb: number }
+  | { tracks: string[]; shuffle: boolean; levelDb: number; repeat?: MusicRepeat }
   | 'keep'
   | 'none';
 
@@ -83,6 +86,12 @@ export interface MusicPlay {
   muted?: boolean;
   /** Table time at which the fade towards this gain begins, and how long it runs. */
   fade: SoundFade;
+  repeat?: MusicRepeat;
+  /**
+   * Frames of the list, from its first pass on, that lie behind `startAt`: a play that takes a list up in
+   * its middle starts there without changing its order or where its pass ends. Unset is 0.
+   */
+  listFrame?: number;
 }
 
 export interface LayerPlay {

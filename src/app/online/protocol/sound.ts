@@ -22,6 +22,9 @@ const MAX_FADE_MS = 10 * 60_000;
 /** A time on the table's clock, or a seed: a whole number a double holds exactly is more than either needs. */
 const MAX_TIME = 2 ** 52;
 
+/** How a list goes on past its end. Unset goes round. */
+export type SharedMusicRepeat = 'one' | 'off';
+
 /**
  * A sound as a page plays it. `key` is the id it is stored under and nothing else: it says neither the
  * sound's name nor the source's hash. `asset` is how it is fetched; without one the GM's Atlas could not
@@ -49,6 +52,9 @@ export interface SharedMusicPlay {
   readonly gainDb: number;
   readonly muted?: boolean;
   readonly fade: SharedSoundFade;
+  readonly repeat?: SharedMusicRepeat;
+  /** Frames of the list behind `startAt`. Unset is 0. */
+  readonly listFrame?: number;
 }
 
 export interface SharedLayerPlay {
@@ -131,7 +137,10 @@ function parseMusic(value: unknown): SharedMusicPlay | null {
   const base = parsePlayBase(value);
   const tracks = value.tracks.map(parseInfo);
   if (base === null || !tracks.every((track) => track !== null)) return null;
-  return { ...base, tracks, seed: value.seed, shuffle: value.shuffle === true };
+  // How a list ends is told, never checked: anything else in these fields reads as unset, not as a state to refuse.
+  const repeat = value.repeat === 'one' || value.repeat === 'off' ? value.repeat : undefined;
+  const listFrame = isCount(value.listFrame, MAX_TIME) && value.listFrame > 0 ? value.listFrame : undefined;
+  return { ...base, tracks, seed: value.seed, shuffle: value.shuffle === true, ...(repeat && { repeat }), ...(listFrame !== undefined && { listFrame }) };
 }
 
 function parseLayer(value: unknown): SharedLayerPlay | null {

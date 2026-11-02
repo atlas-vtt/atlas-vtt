@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { musicPosition } from '@/app/soundDirector/musicList';
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useHeldInMix } from '@/app/react/components/dm-screen/sound/library/useLibrary';
@@ -51,7 +52,7 @@ describe('the desk from the library', () => {
     await settle();
     const mix = rig.director.snapshot().mix;
     expect(mix.soonest).toBeUndefined();
-    expect(mix.table.music?.tracks[0]?.key).not.toBe('hash-audio/a.ogg');
+    expect(rig.director.shelf.recordOfKey(musicPosition(mix.table.music!, mix.table.music!.startAt + 1)!.track.key)?.filePath).toBe('audio/b.ogg');
     expect(mix.table.outgoing).toHaveLength(1);
   });
 

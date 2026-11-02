@@ -1,7 +1,7 @@
 import { t } from '../i18n';
 import { listOutputDevices, type OutputDeviceChoice } from '../sound/engine/outputDevice';
 import type { SettingsService } from '../services/SettingsService';
-import { CHANNEL_DB_RANGE, MAX_FADE_SECONDS } from '../services/soundSettings';
+import { CHANNEL_DB_RANGE, MAX_CROSSFADE_SECONDS, MAX_FADE_SECONDS } from '../services/soundSettings';
 import type { SoundDirector } from '../soundDirector/SoundDirector';
 import type { AtlasSettingRow, AtlasSettingSection } from './settingSections';
 
@@ -97,6 +97,17 @@ export function soundSettingsSection(settings: SettingsService, director: SoundD
             .setLimits(0, MAX_FADE_SECONDS, 1)
             .setValue(settings.getSoundSettings().fadeSeconds)
             .onChange((fadeSeconds) => settings.setSoundSettings({ fadeSeconds })));
+        },
+      },
+      {
+        name: t('audio.settings.crossfade'),
+        desc: t('audio.settings.crossfadeHint'),
+        aliases: ['sound', 'music', 'crossfade', 'gapless', 'track'],
+        render: (setting) => {
+          setting.addSlider((slider) => slider
+            .setLimits(0, MAX_CROSSFADE_SECONDS, 1)
+            .setValue(settings.getSoundSettings().crossfadeSeconds)
+            .onChange((crossfadeSeconds) => settings.setSoundSettings({ crossfadeSeconds })));
         },
       },
       levelRow(settings, director, t('audio.music'), 'musicDb'),
