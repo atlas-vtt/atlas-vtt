@@ -64,7 +64,7 @@
 .atlas-sound-lib__rail {
   width: clamp(208px, 24cqi, 232px);
   flex-shrink: 0;
-  padding: 12px $spacing-s $spacing-s;
+  padding: $spacing-s;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -87,7 +87,8 @@
   position: relative;
   display: flex;
   align-items: center;
-  height: 34px;
+  // Its middle on the head's, 56 px high, from one inset down.
+  height: 40px;
   padding-right: $spacing-s;
   border-radius: 9px;
   transition: background-color 120ms var(--atlas-sound-lib-press);
@@ -120,6 +121,11 @@
   background: var(--background-secondary);
 }
 
+// It lies in the panel's corner, one inset from its border.
+.atlas-sound-lib__root-block:first-child .atlas-sound-lib__root {
+  @include atlas-panel-inset-radius($spacing-s, top-left);
+}
+
 .atlas-sound-lib__root--target,
 .atlas-sound-lib__fold--target,
 .atlas-sound-lib__row--target {
@@ -129,12 +135,14 @@
 .atlas-sound-lib .atlas-sound-lib__root-name {
   display: flex;
   align-items: center;
+  // Obsidian centres what a button holds.
+  justify-content: flex-start;
   gap: $spacing-s;
   flex: 1;
   min-width: 0;
   height: 100%;
   padding: 0 $spacing-s;
-  border-radius: 9px;
+  border-radius: inherit;
   font-weight: $font-weight-semibold;
   text-align: left;
 }
@@ -167,6 +175,7 @@
 .atlas-sound-lib .atlas-sound-lib__fold {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   gap: $spacing-s;
   width: 100%;
   height: 30px;

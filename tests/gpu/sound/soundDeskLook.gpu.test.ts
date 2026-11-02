@@ -127,6 +127,22 @@ describe('how the Sound page looks', () => {
     viewport.remove();
   });
 
+  it('sets the first row of the rail concentric with the corner of the panel', async () => {
+    await open(ATLAS);
+    const rectOf = (selector: string): DOMRect => document.querySelector(selector)!.getBoundingClientRect();
+    const root = rectOf('.atlas-sound-lib__root');
+    const pane = rectOf('.atlas-sound-pane');
+    const paneStyle = getComputedStyle(document.querySelector('.atlas-sound-pane')!);
+    const border = parseFloat(paneStyle.borderLeftWidth);
+    const inset = root.left - pane.left - border;
+    expect(root.top - pane.top - border).toBeCloseTo(inset, 0);
+    const rootStyle = getComputedStyle(document.querySelector('.atlas-sound-lib__root')!);
+    // A border of 1.5 px reads as 1 here, so within a pixel.
+    expect(Math.abs(parseFloat(rootStyle.borderTopLeftRadius) - (parseFloat(paneStyle.borderTopLeftRadius) - border - inset))).toBeLessThan(1);
+    expect(rootStyle.borderBottomLeftRadius).toBe('9px');
+    expect(getComputedStyle(document.querySelector('.atlas-sound-lib__root-name')!).justifyContent).toBe('flex-start');
+  });
+
   it('playing, changed and silenced', async () => {
     const shown = await playing(ATLAS);
     await shoot('playing');

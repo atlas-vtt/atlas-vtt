@@ -1,4 +1,5 @@
 @use '../../../../../../../styles/tokens' as *;
+@use '../../../../../../../styles/mixins' as *;
 
 // ---- A narrow list: the action takes the place of the state where it is pointed at ----
 
@@ -66,6 +67,11 @@
     flex-direction: row;
     gap: $spacing-s;
     box-shadow: inset 0 -1px 0 var(--atlas-sound-lib-hairline);
+  }
+
+  // Side by side the last lies in the panel's other corner.
+  .atlas-sound-lib__root-block:last-child .atlas-sound-lib__root {
+    @include atlas-panel-inset-radius($spacing-s, top-right);
   }
 
   .atlas-sound-lib__root-block {
