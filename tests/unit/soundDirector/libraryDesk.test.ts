@@ -101,7 +101,7 @@ describe('the desk from the library', () => {
     rig.files.add('audio/ninth.ogg');
     const add = vi.spyOn(rig.director.desk, 'addSound').mockReturnValue(false);
     await fileToMix(deps, [file('ninth.ogg', 'ambience')], 'add', 'Fen');
-    expect(add).toHaveBeenCalledTimes(1);
+    expect(add).not.toHaveBeenCalled();
     expect(rig.notices.at(-1)).toContain(String(MAX_MOOD_LAYERS));
   });
 
@@ -147,6 +147,47 @@ describe('what a folder plays', () => {
     for (let index = 0; index < MOOD_LIMITS.tracks + 5; index++) location.addFile(`Huge/${index}.mp3`);
     expect(await filesToPlay(location, 'music', 'Huge')).toHaveLength(MOOD_LIMITS.tracks);
     await expect(filesToPlay(location, 'music', 'Gone')).resolves.toEqual([]);
+  });
+});
+
+describe('more than the mix can hold', () => {
+  it('a music folder plays its first tracks, told once', async () => {
+    setUp([]);
+    const list = vi.spyOn(rig.director.desk, 'playList').mockImplementation(() => undefined);
+    for (let index = 0; index < MOOD_LIMITS.tracks + 3; index++) location.addFile(`${index}.ogg`);
+    await folderToMix(deps, 'music', '', false, 'Fen');
+    expect(list.mock.calls[0]?.[0]).toHaveLength(MOOD_LIMITS.tracks);
+    expect(rig.notices).toEqual([`Playing the first ${MOOD_LIMITS.tracks} tracks of this folder.`]);
+  });
+
+  it('a music folder that fits says nothing', async () => {
+    setUp([]);
+    vi.spyOn(rig.director.desk, 'playList').mockImplementation(() => undefined);
+    for (let index = 0; index < MOOD_LIMITS.tracks; index++) location.addFile(`${index}.ogg`);
+    await folderToMix(deps, 'music', '', false, 'Fen');
+    expect(rig.notices).toEqual([]);
+  });
+
+  it('an ambience folder dropped on the desk fills the mix, told once, and leaves no record of the rest', async () => {
+    setUp([]);
+    for (let index = 0; index < MAX_MOOD_LAYERS + 4; index++) location.addFile(`Weather/${index}.ogg`);
+    await dragToMix(deps, { files: [], folders: [{ kind: 'ambience', path: 'Weather' }] }, 'Fen');
+    expect(rig.notices).toEqual([`A mix holds at most ${MAX_MOOD_LAYERS} layers.`]);
+    expect(stored).toHaveLength(MAX_MOOD_LAYERS);
+  });
+
+  it('music joining a full list is told so, and Play now still plays', async () => {
+    setUp([]);
+    vi.spyOn(rig.director, 'snapshot').mockReturnValue({ ...rig.director.snapshot(), mix: { ...rig.director.snapshot().mix, waitingMusic: { tracks: Array.from({ length: MOOD_LIMITS.tracks }, (_, index) => `t${index}`), shuffle: false, levelDb: 0 } } });
+    const next = vi.spyOn(rig.director.desk, 'playNext').mockImplementation(() => undefined);
+    const now = vi.spyOn(rig.director.desk, 'playNow').mockImplementation(() => undefined);
+    location.addFile('a.ogg');
+    const one = { kind: 'music' as const, path: 'a.ogg', name: 'a.ogg', size: 1, mtime: 1 };
+    await fileToMix(deps, [one], 'next', 'Fen');
+    expect(next).not.toHaveBeenCalled();
+    expect(rig.notices).toEqual([`A list holds at most ${MOOD_LIMITS.tracks} tracks.`]);
+    await fileToMix(deps, [one], 'now', 'Fen');
+    expect(now).toHaveBeenCalledTimes(1);
   });
 });
 

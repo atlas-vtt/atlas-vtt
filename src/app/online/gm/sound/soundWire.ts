@@ -22,7 +22,7 @@ export function creditOf(record: Pick<SoundRecord, 'licence' | 'credit'> | null)
 /**
  * Every key a state names: what goes up for players, and what must have a reference before the state
  * goes out. Longer lists than the wire carries lose their last tracks.
- * ponytail: a list past `MAX_SOUND_TRACKS` drifts from the GM's after the cut, past 512 tracks of one mood.
+ * ponytail: the library holds a list to 500 tracks and only Play now goes past that, so a cut needs a dozen of those on a full list; the list then drifts from the GM's after the cut.
  */
 export function keysOfState(state: TableSound): string[] {
   const tracks = (play: MusicPlay): SoundInfo[] => play.tracks.slice(0, MAX_SOUND_TRACKS);

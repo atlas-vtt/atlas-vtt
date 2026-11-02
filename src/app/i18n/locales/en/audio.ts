@@ -136,6 +136,8 @@ export const audio = {
   'audio.playTrack': 'Play {name}',
   'audio.add.refused': '{name} is already playing.',
   'audio.add.full': 'A mix holds at most {count} layers.',
+  'audio.add.listFull': 'A list holds at most {count} tracks.',
+  'audio.add.folderCut': 'Playing the first {count} tracks of this folder.',
   'audio.previewSound': 'Preview {name}',
   'audio.stopPreview': 'Stop preview',
   'audio.silence': 'Silence',

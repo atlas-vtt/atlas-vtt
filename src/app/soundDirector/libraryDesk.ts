@@ -29,15 +29,24 @@ async function shelved(deps: LibraryDeskDeps, files: readonly LibraryFile[], col
   return records;
 }
 
+/** The files the mix has room for, told once for each kind that has too little: no record is made for what cannot enter. Play now always enters, replacing what sounds. */
+function filesWithRoom(deps: LibraryDeskDeps, files: readonly LibraryFile[], intent: MixIntent): LibraryFile[] {
+  const { mix } = deps.director.snapshot();
+  let layerRoom = MAX_MOOD_LAYERS - mix.table.layers.length - mix.waitingLayers.length;
+  let trackRoom = intent === 'now' ? Infinity : MOOD_LIMITS.tracks - ((mix.listChange ?? mix.table.music)?.tracks.length ?? 0) - (mix.waitingMusic?.tracks.length ?? 0);
+  const fitting = files.filter((file) => (file.kind === 'ambience' ? layerRoom-- : trackRoom--) > 0);
+  if (layerRoom < 0) deps.notify(t('audio.add.full', { count: MAX_MOOD_LAYERS }));
+  if (trackRoom < 0) deps.notify(t('audio.add.listFull', { count: MOOD_LIMITS.tracks }));
+  return fitting;
+}
+
 /** Sends files to the mix. Their records are made here, in `collectionId`: the collection of the mood or mix in use. */
 export async function fileToMix(deps: LibraryDeskDeps, files: readonly LibraryFile[], intent: MixIntent, collectionId: string): Promise<void> {
   const { desk } = deps.director;
   deps.director.tap();
-  for (const record of await shelved(deps, files, collectionId)) {
+  for (const record of await shelved(deps, filesWithRoom(deps, files, intent), collectionId)) {
     if (record.kind === 'ambience' || intent === 'add') {
-      if (desk.addSound(record)) continue;
-      const full = record.kind === 'ambience' && deps.director.snapshot().mix.table.layers.length >= MAX_MOOD_LAYERS;
-      deps.notify(full ? t('audio.add.full', { count: MAX_MOOD_LAYERS }) : t('audio.add.refused', { name: record.name }));
+      if (!desk.addSound(record)) deps.notify(t('audio.add.refused', { name: record.name }));
     } else if (intent === 'now') {
       desk.playNow(record);
     } else {
@@ -46,29 +55,30 @@ export async function fileToMix(deps: LibraryDeskDeps, files: readonly LibraryFi
   }
 }
 
-/** A folder's files in order: those directly in it, and where it holds none, all those below it. A list has the length a mood can hold. */
-export async function filesToPlay(location: SoundLocation, kind: SoundKind, folder: string): Promise<LibraryFile[]> {
+/** A folder's files in order, at most `limit`: those directly in it, and where it holds none, all those below it. */
+export async function filesToPlay(location: SoundLocation, kind: SoundKind, folder: string, limit: number = MOOD_LIMITS.tracks): Promise<LibraryFile[]> {
   const found: LibraryFile[] = [];
   const direct = await location.list(folder);
   if (!direct) return [];
-  if (direct.files.length > 0) return direct.files.slice(0, MOOD_LIMITS.tracks).map((file) => ({ ...file, kind }));
+  if (direct.files.length > 0) return direct.files.slice(0, limit).map((file) => ({ ...file, kind }));
   const stack = [...direct.folders].reverse();
-  for (let next = stack.pop(); next && found.length < MOOD_LIMITS.tracks; next = stack.pop()) {
+  for (let next = stack.pop(); next && found.length < limit; next = stack.pop()) {
     const listing = await location.list(next.path);
     if (!listing) continue;
     found.push(...listing.files.map((file) => ({ ...file, kind })));
     stack.push(...[...listing.folders].reverse());
   }
-  return found.slice(0, MOOD_LIMITS.tracks);
+  return found.slice(0, limit);
 }
 
-/** Plays a music folder as the list, in order or shuffled; the ambience stays. */
+/** Plays a music folder as the list, in order or shuffled; the ambience stays. A list holds what a mood can: of a larger folder the first, as the GM is told. */
 export async function folderToMix(deps: LibraryDeskDeps, kind: SoundKind, folder: string, shuffle: boolean, collectionId: string): Promise<void> {
   const location = deps.library.locationOf(kind);
   if (!location) return;
   deps.director.tap();
-  const files = await filesToPlay(location, kind, folder);
-  const records = await shelved(deps, files, collectionId);
+  const files = await filesToPlay(location, kind, folder, MOOD_LIMITS.tracks + 1);
+  if (files.length > MOOD_LIMITS.tracks) deps.notify(t('audio.add.folderCut', { count: MOOD_LIMITS.tracks }));
+  const records = await shelved(deps, files.slice(0, MOOD_LIMITS.tracks), collectionId);
   deps.director.desk.playList(records, shuffle);
 }
 
