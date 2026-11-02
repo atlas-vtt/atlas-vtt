@@ -35,6 +35,11 @@
     outline: none;
     box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
   }
+
+  // Black would make a grey well of a white page.
+  @at-root .theme-light #{&} {
+    --atlas-sound-lib-well: var(--background-secondary);
+  }
 }
 
 .atlas-sound-lib__glyph {
@@ -52,10 +57,6 @@
   width: 15px;
   height: 15px;
   fill: currentColor;
-}
-
-.theme-light .atlas-sound-lib {
-  --atlas-sound-lib-well: var(--background-secondary);
 }
 
 // ---- Rail ----
