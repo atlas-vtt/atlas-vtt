@@ -190,6 +190,8 @@ export class SoundDirector {
   destroy(): void {
     this.lastMix.flush();
     this.turnOff(true);
+    // Switched off softly a moment ago, a fade may still sound and its timer run.
+    this.table.shut();
     window.clearTimeout(this.closeShelf);
     this.shelf.close();
     this.dropSettings();
@@ -239,11 +241,7 @@ export class SoundDirector {
     this.previews.reset();
     this.lastMix.cancel();
     this.choice.release();
-    if (atOnce) {
-      this.table.shut();
-      this.shelf.close();
-      return;
-    }
+    if (atOnce) return;
     const fadeMs = stopFade(this.fadeSeconds() * 1000);
     this.table.commit({ ...EMPTY_MIX, table: stopAll(this.table.mix.table, this.table.now(), fadeMs) });
     // What fades out still reads its copy.

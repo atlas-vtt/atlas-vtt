@@ -218,7 +218,7 @@ export class SoundCopies {
     const entry = this.entryOf(record);
     if (!entry) return;
     await entry.known;
-    if (entry.conversion.state !== 'not-converted') return;
+    if (this.disposed || entry.conversion.state !== 'not-converted') return;
     this.set(entry, { state: 'converting', progress: null });
     try {
       const stat = this.files.statOf(record.filePath);

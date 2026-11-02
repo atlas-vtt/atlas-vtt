@@ -179,4 +179,35 @@ describe('the watchdog', () => {
     await Promise.all([dog.check(), dog.check()]);
     expect(context.suspends).toBe(1);
   });
+
+  it('a stop during a recovery ends it: nothing is rebuilt, and it stays off', async () => {
+    const first = new FakeContext();
+    const contexts: FakeContext[] = [];
+    let rebuilds = 0;
+    const states: SoundLifecycle[] = [];
+    const waits: Array<() => void> = [];
+    const dog = new SoundWatchdog({
+      context: () => first,
+      rebuild: () => {
+        rebuilds++;
+        contexts.push(new FakeContext());
+      },
+      wait: () => new Promise((resolve) => { waits.push(resolve); }),
+      onChange: (state) => states.push(state),
+    });
+    dog.start();
+    first.frozen = true;
+    first.state = 'suspended';
+    const check = dog.check();
+    await Promise.resolve();
+    dog.stop();
+    for (let i = 0; i < 20; i++) {
+      waits.splice(0).forEach((resolve) => resolve());
+      await new Promise((resolve) => { setTimeout(resolve, 0); });
+    }
+    await check;
+    expect(rebuilds).toBe(0);
+    expect(dog.state).toBe('off');
+    expect(states.at(-1)).toBe('off');
+  });
 });

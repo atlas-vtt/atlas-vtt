@@ -53,11 +53,12 @@ export interface SoundDirectorDeps {
 
 function fileAccess(app: App): SoundFileAccess {
   const fileOf = (path: string): ReturnType<App['vault']['getFileByPath']> => app.vault.getFileByPath(normalizePath(path));
-  const library = (): SoundLibrary => SoundLibrary.forApp(app);
+  // Never `forApp`: asked late in an unload, that would open a library nobody releases.
+  const library = (): SoundLibrary | null => SoundLibrary.opened(app);
   return {
-    statOf: (path) => (isExternalAudioPath(path) ? library().statOfExternal(path) : fileOf(path)?.stat ?? null),
+    statOf: (path) => (isExternalAudioPath(path) ? library()?.statOfExternal(path) ?? null : fileOf(path)?.stat ?? null),
     read: (path) => {
-      if (isExternalAudioPath(path)) return library().readExternal(path);
+      if (isExternalAudioPath(path)) return library()?.readExternal(path) ?? Promise.reject(new Error(`${path} is not reachable now.`));
       const file = fileOf(path);
       return file ? app.vault.readBinary(file) : Promise.reject(new Error(`${path} is not in the vault.`));
     },

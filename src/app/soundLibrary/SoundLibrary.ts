@@ -64,6 +64,11 @@ export class SoundLibrary {
     return library;
   }
 
+  /** The library if one is open; asking makes none, with its listeners and its watch on a disk. */
+  static opened(app: App): SoundLibrary | null {
+    return SoundLibrary.instances.get(app) ?? null;
+  }
+
   /** A library on other files, for what cannot reach a disk. */
   static provide(app: App, library: SoundLibrary): void {
     SoundLibrary.instances.set(app, library);

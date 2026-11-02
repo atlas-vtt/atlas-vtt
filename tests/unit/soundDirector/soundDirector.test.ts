@@ -99,6 +99,32 @@ describe('the sound director', () => {
     expect(rig.contexts.every((context) => context.closed)).toBe(true);
   });
 
+  it('closes the context an unload finds still fading after the switch went off, and stops its timer', async () => {
+    rig = directorRig(ALL);
+    await ready(rig);
+    rig.director.press(mood('tavern', ['rain']));
+    rig.settings.on = false;
+    rig.fireSettings();
+    expect(rig.contexts[0]?.closed).toBe(false);
+    rig.director.destroy();
+    expect(rig.contexts[0]?.closed).toBe(true);
+    await vi.advanceTimersByTimeAsync(60_000);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('asks nothing of a file for a sound whose conversion comes up after the unload', async () => {
+    const onDisk = record('disk');
+    rig = directorRig([onDisk], { ready: false });
+    await settle();
+    rig.director.shelf.request([onDisk], true);
+    const statOf = vi.spyOn(rig.files, 'has');
+    rig.director.destroy();
+    const asked = statOf.mock.calls.length;
+    await settle();
+    expect(statOf.mock.calls.length).toBe(asked);
+    expect(rig.conversions).toHaveLength(0);
+  });
+
   it('lets go of the context when the last fade has ended, and comes back on the next press', async () => {
     rig = directorRig(ALL);
     await ready(rig);

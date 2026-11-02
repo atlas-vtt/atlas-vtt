@@ -37,6 +37,8 @@ export class SoundWatchdog {
   private lifecycle: SoundLifecycle = 'off';
   private lastTime: number | null = null;
   private checking = false;
+  /** Counts the stops: a recovery under way looks whether one came, since what it would build after that nobody closes. */
+  private stops = 0;
 
   constructor(private readonly deps: WatchdogDeps) {}
 
@@ -51,6 +53,7 @@ export class SoundWatchdog {
   }
 
   stop(): void {
+    this.stops++;
     this.lastTime = null;
     this.set('off');
   }
@@ -77,7 +80,10 @@ export class SoundWatchdog {
   }
 
   private async recover(): Promise<void> {
-    if ((await this.restarted()) || (await this.rebuilt())) {
+    const stops = this.stops;
+    const recovered = (await this.restarted()) || (stops === this.stops && (await this.rebuilt()));
+    if (stops !== this.stops) return;
+    if (recovered) {
       this.set('playing');
       return;
     }
