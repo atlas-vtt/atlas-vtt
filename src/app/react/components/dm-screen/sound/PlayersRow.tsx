@@ -1,12 +1,10 @@
-import React, { useCallback, useSyncExternalStore } from 'react';
+import React from 'react';
 import { Users } from 'lucide-react';
 import { t } from '../../../../i18n';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
-import type { Mood, SoundRecord } from '../../../../sound/soundTypes';
-import { openedDirector } from '../../../../soundDirector/directorRegistry';
+import type { Mood } from '../../../../sound/soundTypes';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import type { PlayersCopy } from '../../../../soundDirector/tableClock';
-import { useAtlasUI } from '../../../root/AtlasUIContext';
 
 function copyText(copy: PlayersCopy): string {
   if (copy.state === 'ready') return t('audio.players.ready');
@@ -29,11 +27,6 @@ function shortText(copy: PlayersCopy): string {
   return copy.state === 'uploading' ? t('audio.players.shortPercent', { percent: Math.round(copy.share * 100) }) : t('audio.players.shortNowhere');
 }
 
-/** How a sound stands for players, in words. */
-function PlayersLine({ copy }: { copy: PlayersCopy }): React.JSX.Element {
-  return <span className="atlas-sound-tag atlas-sound-tag--players" data-players={copy.state}>{copyText(copy)}</span>;
-}
-
 /** How a mood stands for players, small in the corner of its card; the whole sentence under the pointer. */
 export function MoodPlayersTag({ copy }: { copy: PlayersCopy }): React.JSX.Element {
   return (
@@ -44,15 +37,4 @@ export function MoodPlayersTag({ copy }: { copy: PlayersCopy }): React.JSX.Eleme
       </span>
     </LabelTooltip>
   );
-}
-
-/** On a sound's card, while a table runs. */
-export function PlayersCardLine({ record }: { record: SoundRecord }): React.JSX.Element | null {
-  const { app } = useAtlasUI();
-  const director = openedDirector(app);
-  const subscribe = useCallback((listener: () => void) => director?.subscribe(listener) ?? (() => undefined), [director]);
-  const revision = useSyncExternalStore(subscribe, () => director?.snapshot().playersRevision ?? 0);
-  const sounds = director?.players.sounds ?? null;
-  if (sounds === null || !sounds.sending || revision < 0) return null;
-  return <PlayersLine copy={sounds.copyOf(record)} />;
 }

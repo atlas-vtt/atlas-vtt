@@ -12,7 +12,6 @@ import { runSoundImport } from '../../../../soundLibrary/runSoundImport';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { useAtlasUI } from '../../../root/AtlasUIContext';
 import { useAtlasStore } from '../../../ViewStoreContext';
-import { AddSoundList } from './AddSoundList';
 import { LibraryView } from './library/LibraryView';
 import { MeterBoard } from './meterBoard';
 import { MoodGrid } from './MoodGrid';
@@ -38,8 +37,6 @@ export function SoundPane({ active, headerSlot }: SoundPaneProps): React.JSX.Ele
   const { app, view } = useAtlasUI();
   const mapPath = useAtlasStore((state) => state.mapPath);
   const soundView = useAtlasStore((state) => state.soundView);
-  const openAssetManager = useAtlasStore((state) => state.openAssetManager);
-  const setSoundView = useAtlasStore((state) => state.setSoundView);
   const director = SoundDirector.forApp(app);
   const collection = useSoundCollection(app, mapPath);
   const { collectionId } = collection;
@@ -86,10 +83,7 @@ export function SoundPane({ active, headerSlot }: SoundPaneProps): React.JSX.Ele
         onDrop={drop}
       >
         {soundView === 'library' ? (
-          <div className="atlas-sound-stage atlas-sound-stage--library">
-            <LibraryView />
-            <AddSoundList director={director} sounds={sounds} onLibrary={() => openAssetManager()} onClose={() => setSoundView('moods')} />
-          </div>
+          <LibraryView collectionId={collectionId} />
         ) : (
           <div className="atlas-sound-stage">
             {moods.length > 0 && collectionId !== null && <MoodGrid app={app} director={director} collectionId={collectionId} moods={moods} sameCollectionAsMap={sameCollectionAsMap} moveMood={moveMood} onNewMood={nameNewMood} />}
