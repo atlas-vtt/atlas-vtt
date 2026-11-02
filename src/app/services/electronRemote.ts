@@ -76,3 +76,46 @@ export function electronWindowOf(win: Window): ElectronWindowHandle | null {
     return null;
   }
 }
+
+/** The window's system dialog for picking a folder; null where this Obsidian has none, or none Atlas can reach. */
+export function nativeFolderPicker(win: Window): ((title: string) => Promise<string | null>) | null {
+  if (!Platform.isDesktopApp) return null;
+  try {
+    const load: unknown = Reflect.get(win, 'require');
+    if (typeof load !== 'function') return null;
+    const electron: unknown = Reflect.apply(load, win, ['electron']);
+    const remote: unknown = isRecord(electron) ? electron.remote : null;
+    if (!hasMethods(remote, ['getCurrentWindow'])) return null;
+    const dialog: unknown = Reflect.get(remote, 'dialog');
+    if (!hasMethods(dialog, ['showOpenDialog'])) return null;
+    const parent: unknown = Reflect.apply(Reflect.get(remote, 'getCurrentWindow') as () => unknown, remote, []);
+    return async (title) => {
+      const shown: unknown = await Reflect.apply(Reflect.get(dialog, 'showOpenDialog') as () => unknown, dialog, [parent, { title, properties: ['openDirectory', 'createDirectory'] }]);
+      const paths: unknown = isRecord(shown) && shown.canceled !== true ? shown.filePaths : null;
+      const first: unknown = Array.isArray(paths) ? paths[0] : null;
+      return typeof first === 'string' ? first : null;
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Moves a path to the system's trash, Electron's `shell.trashItem`; null where it cannot be reached. Never falls back on deleting. */
+export function systemTrash(win: Window): ((absolute: string) => Promise<void>) | null {
+  if (!Platform.isDesktopApp) return null;
+  try {
+    const load: unknown = Reflect.get(win, 'require');
+    if (typeof load !== 'function') return null;
+    const electron: unknown = Reflect.apply(load, win, ['electron']);
+    if (!isRecord(electron)) return null;
+    const remote = electron.remote;
+    const shell: unknown = hasMethods(electron.shell, ['trashItem']) ? electron.shell
+      : (isRecord(remote) || typeof remote === 'function') ? Reflect.get(remote, 'shell') : null;
+    if (!hasMethods(shell, ['trashItem'])) return null;
+    return async (absolute) => {
+      await Reflect.apply(Reflect.get(shell, 'trashItem') as () => unknown, shell, [absolute]);
+    };
+  } catch {
+    return null;
+  }
+}

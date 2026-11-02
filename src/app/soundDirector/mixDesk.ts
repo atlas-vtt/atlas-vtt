@@ -1,4 +1,5 @@
 import type { Mood, MoodMusic, SoundInfo, SoundRecord } from '../sound/soundTypes';
+import { applySoonest, playNext, playNow } from './libraryMix';
 import type { DirectorMoods } from './directorDeps';
 import { addLayer, setLayerLevel, setLayerMuted, setMusicLevel, setMusicMuted, stopAll, toggleSilence } from './liveEdits';
 import { mixDiffersFrom } from './mixChange';
@@ -39,7 +40,10 @@ export class MixDesk {
   joinWaiting(): void {
     const { waitingLayers, waitingMusic } = this.table.mix;
     const records = this.waitingIds().flatMap((id) => this.shelf.recordOf(id) ?? []);
-    if (waitingLayers.length > 0 || waitingMusic) this.table.commit(joinReady(this.table.mix, this.shelf.readyOf(records), this.table.timing()));
+    if (waitingLayers.length === 0 && !waitingMusic) return;
+    const ready = this.shelf.readyOf(records);
+    const timing = this.table.timing();
+    this.table.commit(applySoonest(joinReady(this.table.mix, ready, timing), ready, timing));
   }
 
   /** Asks again for what waits, once a file may have come. */
@@ -80,6 +84,38 @@ export class MixDesk {
     const refused = next.table === mix.table && next.listChange === mix.listChange;
     if (!refused) this.table.commit(next);
     return !refused;
+  }
+
+  /** Music plays now on a short crossfade, or as soon as its copy is here. */
+  playNow(record: SoundRecord): void {
+    this.playSoon(record, 'now');
+  }
+
+  /** Music follows the track sounding, or does so once its copy is here. */
+  playNext(record: SoundRecord): void {
+    this.playSoon(record, 'next');
+  }
+
+  private playSoon(record: SoundRecord, at: 'now' | 'next'): void {
+    const info = this.shelf.infoOf(record);
+    this.output.unlock();
+    if (!info) {
+      this.shelf.request([record], true);
+      this.addWaiting(record);
+      this.table.commit({ ...this.table.mix, soonest: { sound: record.id, at } });
+      return;
+    }
+    const mix = this.table.mix;
+    const apply = at === 'now' ? playNow : playNext;
+    this.table.commit(apply(mix, info, mix.table.music?.gainDb ?? 0, this.table.timing()));
+  }
+
+  /** A folder as the music: the list changes on the mood's crossfade, the layers stay as they are. */
+  playList(records: readonly SoundRecord[], shuffle: boolean): void {
+    if (records.length === 0) return;
+    const { layers } = this.mixNow(this.host.fadeSeconds());
+    const levelDb = this.table.mix.table.music?.gainDb ?? 0;
+    this.playMix(null, { fadeSeconds: this.host.fadeSeconds(), music: { tracks: records.map((record) => record.id), shuffle, levelDb }, layers }, true);
   }
 
   private addWaiting(record: SoundRecord): boolean {

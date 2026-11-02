@@ -1,0 +1,266 @@
+@use '../../../../../../../styles/tokens' as *;
+@use '../../../../../../../styles/mixins' as *;
+
+// The sound library, in the proportions of the approved mock: a rail of folders, a breadcrumb in the
+// theme's heading face, and rows that show their action only when they are pointed at.
+.atlas-sound-lib {
+  --atlas-sound-lib-hairline: color-mix(in oklch, var(--mono-100) 9%, transparent);
+  --atlas-sound-lib-well: color-mix(in srgb, var(--background-primary) 72%, black);
+  --atlas-sound-lib-press: cubic-bezier(0.2, 0, 0, 1);
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  display: flex;
+  font-size: $font-ui-small;
+  line-height: 1.35;
+  color: var(--text-normal);
+  background: var(--background-primary);
+  -webkit-font-smoothing: antialiased;
+
+  button {
+    width: auto;
+    height: auto;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    cursor: var(--cursor);
+    @include atlas-corner-shape;
+  }
+
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background-modifier-border-focus);
+  }
+
+  // Black would make a grey well of a white page.
+  @at-root .theme-light #{&} {
+    --atlas-sound-lib-well: var(--background-secondary);
+  }
+}
+
+.atlas-sound-lib__glyph {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.atlas-sound-lib__triangle {
+  width: 15px;
+  height: 15px;
+  fill: currentColor;
+}
+
+// ---- Rail ----
+
+.atlas-sound-lib__rail {
+  width: 264px;
+  flex-shrink: 0;
+  padding: 12px $spacing-s $spacing-s;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: auto;
+  box-shadow: inset -1px 0 0 var(--atlas-sound-lib-hairline);
+}
+
+.atlas-sound-lib__root-block {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 2px;
+
+  > * {
+    flex-shrink: 0;
+  }
+}
+
+.atlas-sound-lib__root {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 34px;
+  padding-right: $spacing-s;
+  border-radius: 9px;
+  transition: background-color 120ms var(--atlas-sound-lib-press);
+
+  small {
+    margin-left: auto;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+    transition: opacity 120ms var(--atlas-sound-lib-press);
+  }
+
+  .atlas-sound-lib__more {
+    position: absolute;
+    right: 4px;
+    opacity: 0;
+  }
+
+  &:hover .atlas-sound-lib__more,
+  .atlas-sound-lib__more:focus-visible {
+    opacity: 1;
+  }
+
+  &:hover small {
+    opacity: 0;
+  }
+}
+
+.atlas-sound-lib__root--selected {
+  background: var(--background-secondary);
+}
+
+.atlas-sound-lib__root--target,
+.atlas-sound-lib__fold--target,
+.atlas-sound-lib__row--target {
+  box-shadow: inset 0 0 0 1.5px var(--interactive-accent);
+}
+
+.atlas-sound-lib .atlas-sound-lib__root-name {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 $spacing-s;
+  border-radius: 9px;
+  font-weight: $font-weight-semibold;
+  text-align: left;
+}
+
+.atlas-sound-lib__where {
+  padding: 0 $spacing-s $spacing-s 32px;
+  color: var(--text-faint);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.atlas-sound-lib .atlas-sound-lib__link {
+  align-self: flex-start;
+  margin-left: 32px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--background-secondary);
+  box-shadow: inset 0 0 0 1px var(--atlas-sound-lib-hairline);
+  font-weight: $font-weight-medium;
+}
+
+.atlas-sound-lib__fold-line {
+  --atlas-sound-indent: calc(var(--atlas-sound-depth, 0) * 14px);
+  position: relative;
+}
+
+.atlas-sound-lib .atlas-sound-lib__fold {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+  width: 100%;
+  height: 30px;
+  padding: 0 $spacing-s 0 calc(26px + var(--atlas-sound-indent));
+  border-radius: 8px;
+  color: var(--text-muted);
+  text-align: left;
+  transition: background-color 120ms var(--atlas-sound-lib-press), color 120ms var(--atlas-sound-lib-press);
+
+  &:hover {
+    background: var(--atlas-sound-lib-hairline);
+    color: var(--text-normal);
+  }
+
+  span {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  small {
+    margin-left: auto;
+    color: var(--text-faint);
+    font-size: 11px;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.atlas-sound-lib .atlas-sound-lib__fold--selected {
+  background: var(--background-secondary);
+  color: var(--mono-100);
+}
+
+.atlas-sound-lib .atlas-sound-lib__twist {
+  position: absolute;
+  top: 7px;
+  left: calc(6px + var(--atlas-sound-indent));
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  color: var(--text-faint);
+  transition: rotate 120ms var(--atlas-sound-lib-press), color 120ms var(--atlas-sound-lib-press);
+
+  svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  &:hover {
+    color: var(--text-normal);
+  }
+
+  &[aria-expanded='true'] {
+    rotate: 90deg;
+  }
+}
+
+// ---- Nothing linked ----
+
+.atlas-sound-lib__nolink {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 10px;
+  padding: $spacing-l;
+
+  h2 {
+    margin: 0;
+    font-family: var(--h3-font, var(--font-interface));
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.1;
+    color: var(--mono-100);
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 0;
+    max-width: 46ch;
+    color: var(--text-muted);
+    font-size: 14px;
+    text-wrap: pretty;
+  }
+}
+
+.atlas-sound-lib__nolink-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: $spacing-s;
+  margin-top: 6px;
+}

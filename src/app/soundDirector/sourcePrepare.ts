@@ -7,8 +7,8 @@ export interface PreparedSource {
 
 type SourceMessage = PreparedSource | { error: string };
 
-/** A sound's source, hashed and ready for the importer, without a copy of it on the main thread: the buffer moves to a worker and is gone from here. */
-export function prepareSource(buffer: ArrayBuffer): Promise<PreparedSource> {
+/** A sound's source, hashed and ready for the importer, without a copy of it on the main thread: a buffer moves to a worker and is gone from here, a Blob is only named. */
+export function prepareSource(source: ArrayBuffer | Blob): Promise<PreparedSource> {
   return new Promise((resolve, reject) => {
     const worker = new SourceWorker({ name: 'Atlas sound source' });
     worker.onmessage = (event: MessageEvent<SourceMessage>): void => {
@@ -21,6 +21,6 @@ export function prepareSource(buffer: ArrayBuffer): Promise<PreparedSource> {
       worker.terminate();
       reject(new Error(event.message));
     };
-    worker.postMessage(buffer, [buffer]);
+    worker.postMessage(source, source instanceof ArrayBuffer ? [source] : []);
   });
 }

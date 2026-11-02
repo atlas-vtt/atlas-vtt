@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import {
   Plus, ChevronLeft, ChevronRight, FolderPlus, PanelLeft,
-  Map as MapIcon, FolderOpen, Swords, Castle, Music, Library,
+  Map as MapIcon, FolderOpen, Swords, Castle,
 } from 'lucide-react';
 import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
@@ -14,7 +14,7 @@ import type { FilterSearch } from '../hooks/useFilterSearch';
 import { useHeaderCompaction } from '../hooks/useHeaderCompaction';
 import { TabSwitcher } from './TabSwitcher';
 import { TokenIcon } from '../../../../react/components/TokenIcon';
-import { shownTabs, tabHasFolders } from '../utils/tabKinds';
+import { tabHasFolders } from '../utils/tabKinds';
 import { t } from '../../../../i18n';
 
 export interface HeaderProps {
@@ -33,8 +33,6 @@ export interface HeaderProps {
   onCreateEncounter?: () => void;
   onCreateCollection?: () => void;
   onCreateFolder: () => void;
-  /** Set while the Sounds tab is switched on: adds sounds from outside the vault and from inside it. */
-  sounds?: { onAddFiles: () => void; onAddFromVault: () => void } | null;
   sidebarToggleLabel: string;
   onToggleSidebar: () => void;
   sel: Pick<
@@ -63,7 +61,6 @@ export function Header({
   onCreateEncounter,
   onCreateCollection,
   onCreateFolder,
-  sounds = null,
   sidebarToggleLabel,
   onToggleSidebar,
   sel,
@@ -111,7 +108,7 @@ export function Header({
         </div>
 
         <div className="atlas-am-toolbar-center">
-          <TabSwitcher activeTab={activeTab} onTabChange={onTabChange} assetCounts={assetCounts} tabs={shownTabs(sounds !== null)} />
+          <TabSwitcher activeTab={activeTab} onTabChange={onTabChange} assetCounts={assetCounts} />
         </div>
 
         <div className="atlas-am-toolbar-right">
@@ -127,10 +124,6 @@ export function Header({
               { key: 'map', label: t('am.header.addMap'), icon: <MapIcon />, onSelect: onCreateMap },
               { key: 'dungeon', label: t('am.header.generateDungeon'), icon: <Castle />, onSelect: onGenerateDungeon },
               { key: 'encounter', label: t('am.header.createEncounter'), icon: <Swords />, onSelect: onCreateEncounter },
-              ...(sounds ? [
-                { key: 'sound', label: t('audio.add'), icon: <Music />, onSelect: sounds.onAddFiles },
-                { key: 'vault-sound', label: t('audio.addFromVault'), icon: <Library />, onSelect: sounds.onAddFromVault },
-              ] : []),
               { key: 'folder', label: t('am.header.newFolder'), icon: <FolderPlus />, disabled: !tabHasFolders(activeTab), onSelect: onCreateFolder },
               { key: 'collection', label: t('am.header.createCollection'), icon: <FolderOpen />, separated: true, onSelect: onCreateCollection },
             ]}

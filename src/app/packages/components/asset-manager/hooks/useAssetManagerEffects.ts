@@ -1,12 +1,11 @@
 import type * as React from 'react';
 import { useEffect } from 'react';
-import type { Tab } from '../types';
+import { tabs, type Tab } from '../types';
 import type { AssetData } from './useAssetData';
 import type { SelectionState } from './useSelectionHandlers';
 import type { AssetCrudActions } from './useAssetCrud';
 import type { TagsAndCollectionsState } from './useTagsAndCollections';
 import type { StatblockLinkState } from './useStatblockLink';
-import { shownTabs } from '../utils/tabKinds';
 import { isShortcutScopeActive } from '../../../../utils/activeLeafGuard';
 import { matchesMapHotkey } from '../../../../keyboard/mapHotkeys';
 import { isTextEntryTarget } from '../../../../keyboard/textEntry';
@@ -18,8 +17,6 @@ interface EffectDeps {
   modalRef: React.RefObject<HTMLDivElement | null>;
   containerRef: React.RefObject<HTMLDivElement | null>;
   activeTab: Tab;
-  /** The tabs offered, which the keys go through; without it, those of the Sounds tab being off. */
-  tabs?: readonly Tab[];
   changeTab: (tab: Tab) => void;
   data: AssetData;
   sel: SelectionState;
@@ -31,7 +28,7 @@ interface EffectDeps {
 export function useAssetManagerEffects({
   isOpen, onClose,
   modalRef, containerRef,
-  activeTab, tabs = shownTabs(false), changeTab,
+  activeTab, changeTab,
   data, sel, crud, tags, statblock,
 }: EffectDeps): void {
   const isAnySubModalOpen =
@@ -87,7 +84,7 @@ export function useAssetManagerEffects({
     };
     document.addEventListener('keydown', handler);
     return () => document.removeEventListener('keydown', handler);
-  }, [isOpen, onClose, sel.selectedAssetIds, isAnySubModalOpen, data.app, activeTab, tabs, changeTab]);
+  }, [isOpen, onClose, sel.selectedAssetIds, isAnySubModalOpen, data.app, activeTab, changeTab]);
 
   useEffect(() => {
     if (!isOpen) return;

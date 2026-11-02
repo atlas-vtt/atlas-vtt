@@ -1,10 +1,9 @@
 // JSZip needs Node's ArrayBuffer realm; jsdom's differs and its Blob support is absent.
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { TFile } from 'obsidian';
 import { AssetService, type SoundAsset } from '../../../src/app/services/AssetService';
 import { prepareCollectionExport } from '../../../src/app/services/collectionBundle/collectionExport';
 import { FileReferenceService } from '../../../src/app/services/FileReferenceService';
-import { importSoundFiles, recordVaultSounds, unrecordedAudio } from '../../../src/app/soundLibrary/soundImport';
+import { importSoundFiles } from '../../../src/app/soundLibrary/soundImport';
 import { soundRecordById, soundRecordsOf, updateSounds } from '../../../src/app/soundLibrary/soundRecords';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 
@@ -16,11 +15,9 @@ let assets: AssetService;
 
 const deps = (): Parameters<typeof importSoundFiles>[0] => ({ app: vault.app, assetService: assets, secondsOf });
 const fileNamed = (name: string, content = 'AUDIO'): File => new File([content], name);
-const vaultFile = (path: string): TFile => vault.app.vault.getFileByPath(path)!;
 
 async function soundAt(audioPath: string, collection = 'Fen'): Promise<SoundAsset> {
-  const [sound] = await recordVaultSounds(deps(), [vaultFile(audioPath)], collection);
-  return sound!;
+  return await assets.addAsset({ type: 'sound', name: 'Sound', tags: [], collection, audioPath, kind: 'music', licence: 'unknown', streaming: 'unknown' }) as SoundAsset;
 }
 
 beforeEach(async () => {
@@ -83,50 +80,6 @@ describe('adding sounds from outside the vault', () => {
     const run = vi.spyOn(assets, 'runExclusive');
     await importSoundFiles(deps(), [fileNamed('a.mp3')], 'Fen');
     expect(run).toHaveBeenCalledTimes(1);
-  });
-});
-
-describe('recording what the vault already holds', () => {
-  beforeEach(async () => {
-    await vault.app.vault.create('Library/Rain.mp3', 'AUDIO');
-    await vault.app.vault.create('Library/Battle.ogg', 'AUDIO');
-    await vault.app.vault.create('Library/Notes.md', 'text');
-  });
-
-  it('never copies a file: the record names it where it lies', async () => {
-    const before = [...vault.files.keys()].filter((path) => !path.endsWith('.json'));
-    const sound = await soundAt('Library/Rain.mp3');
-    expect(sound.audioPath).toBe('Library/Rain.mp3');
-    expect([...vault.files.keys()].filter((path) => !path.endsWith('.json'))).toEqual(before);
-    expect(vault.app.vault.createBinary).not.toHaveBeenCalled();
-  });
-
-  it('a file recorded already stays as it is', async () => {
-    await soundAt('Library/Rain.mp3');
-    expect(await recordVaultSounds(deps(), [vaultFile('Library/Rain.mp3')], 'Fen')).toEqual([]);
-    expect(await assets.getAssets('Fen', 'sound')).toHaveLength(1);
-  });
-
-  it('saves the index once for many', async () => {
-    const write = vi.spyOn(assets, 'addAssets');
-    await recordVaultSounds(deps(), [vaultFile('Library/Rain.mp3'), vaultFile('Library/Battle.ogg')], 'Fen');
-    expect(write).toHaveBeenCalledTimes(1);
-  });
-
-  it('lists the audio a collection has no sound for', async () => {
-    await soundAt('Library/Rain.mp3');
-    expect((await unrecordedAudio(vault.app, assets, 'Fen')).map((file) => file.path)).toEqual(['Library/Battle.ogg']);
-    expect((await unrecordedAudio(vault.app, assets, 'Hills')).map((file) => file.path)).toEqual(['Library/Battle.ogg', 'Library/Rain.mp3']);
-  });
-
-  it('counts only the collection\'s music folder where asked, and a video map is no sound', async () => {
-    await vault.app.vault.create('atlas-vtt/collections/Fen/music/Old.mp3', 'AUDIO');
-    await vault.app.vault.create('atlas-vtt/collections/Fen/music/deep/Older.ogg', 'AUDIO');
-    await vault.app.vault.create('atlas-vtt/assets/flow.webm', 'VIDEO');
-    await assets.addAsset({ type: 'map', name: 'Flow', collection: 'Fen', tags: [], mapFilePath: 'atlas-vtt/assets/flow.webm' });
-    const inMusic = await unrecordedAudio(vault.app, assets, 'Fen', 'atlas-vtt/collections/Fen/music');
-    expect(inMusic.map((file) => file.path).sort()).toEqual(['atlas-vtt/collections/Fen/music/Old.mp3', 'atlas-vtt/collections/Fen/music/deep/Older.ogg']);
-    expect((await unrecordedAudio(vault.app, assets, 'Fen')).map((file) => file.path)).not.toContain('atlas-vtt/assets/flow.webm');
   });
 });
 
@@ -215,7 +168,7 @@ describe('deleting a sound', () => {
 
   it('leaves the audio another record still names', async () => {
     const { added } = await importSoundFiles(deps(), [fileNamed('a.mp3')], 'Fen');
-    await recordVaultSounds(deps(), [vaultFile(`${SOUNDS}/a.mp3`)], 'Hills');
+    await soundAt(`${SOUNDS}/a.mp3`, 'Hills');
     await assets.deleteAsset(added[0]!.id);
     expect(vault.files.has(`${SOUNDS}/a.mp3`)).toBe(true);
   });

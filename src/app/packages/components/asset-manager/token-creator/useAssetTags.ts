@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { AssetService } from '../../../../services/AssetService';
-import type { TagGroup } from '../../../../services/tagGroups';
+import type { TabTagGroup } from '../../../../services/tagGroups';
 
 interface AssetTags {
   tags: string[];
@@ -13,7 +13,7 @@ interface AssetTags {
  * creation of new ones, for asset importers and scene creation. Tags of other collections,
  * or left on assets after their tag was deleted, are not offered.
  */
-export function useAssetTags(assetService: AssetService | null, isOpen: boolean, collection: string, group: TagGroup): AssetTags {
+export function useAssetTags(assetService: AssetService | null, isOpen: boolean, collection: string, group: TabTagGroup): AssetTags {
   const [tags, setTags] = useState<string[]>([]);
   const [isCreatingTag, setIsCreatingTag] = useState(false);
 

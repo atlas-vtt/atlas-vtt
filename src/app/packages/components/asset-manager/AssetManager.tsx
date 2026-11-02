@@ -1,9 +1,8 @@
 import { Tutorial } from '../../../onboarding/Tutorial';
 import { AssetService } from '../../../services/AssetService';
 import { useAtlasSettings } from '../../../keyboard/useMapHotkeys';
-import { useExperimentalFeature } from '../../../react/hooks/useExperimentalFeature';
 import { SettingsService } from '../../../services/SettingsService';
-import React, { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { AnyAsset, AssetManagerProps, Tab } from './types';
 
@@ -28,9 +27,6 @@ import { useLoadingReveal } from '../primitives/useLoadingReveal';
 import { useSidebarLayout } from './hooks/useSidebarLayout';
 import { useRememberedPlace } from './hooks/useRememberedPlace';
 import { useLeaveHiddenFolder } from './hooks/useLeaveHiddenFolder';
-import { useSoundImport } from './hooks/useSoundImport';
-import { MusicFolderOffer } from './components/MusicFolderOffer';
-import { shownTabs } from './utils/tabKinds';
 import { sortAssets } from './utils/assetSort';
 import { filterFolders, type AssetFilter } from './utils/assetFilter';
 import { useCreatureFilters } from './hooks/useCreatureFilters';
@@ -76,17 +72,6 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
     setActiveTab(tab);
     sel.resetForTab();
   }, [activeTab, sel.resetForTab]);
-
-  const soundOn = useExperimentalFeature('sound', SettingsService.forApp(data.app));
-  const sounds = useSoundImport({
-    app: data.app, assetService: data.assetService, collectionId: selectedCollection,
-    takesDrops: isOpen && soundOn && activeTab === 'sounds',
-    onAdding: () => changeTab('sounds'),
-  });
-  // The switch went off with the tab open, or the manager was left there before it did.
-  useEffect(() => {
-    if (!soundOn && activeTab === 'sounds') changeTab('tokens');
-  }, [soundOn, activeTab, changeTab]);
 
   const memory = useRememberedPlace({
     isOpen, initialTab, data, sel,
@@ -186,7 +171,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
   useAssetManagerEffects({
     isOpen, onClose,
     modalRef, containerRef,
-    activeTab, tabs: shownTabs(soundOn), changeTab,
+    activeTab, changeTab,
     data, sel, crud, tags, statblock,
   });
 
@@ -262,7 +247,6 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onCreateEncounter={() => crud.setIsEncounterBuilderOpen(true)}
                   onCreateCollection={crud.handleCreateCollection}
                   onCreateFolder={crud.handleCreateFolder}
-                  sounds={soundOn ? { onAddFiles: sounds.addFiles, onAddFromVault: sounds.addFromVault } : null}
                   sidebarToggleLabel={sidebar.toggleLabel}
                   onToggleSidebar={sidebar.toggle}
                   sel={sel}
@@ -273,13 +257,6 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onDrop={(e) => { if (draggedItems && sel.selectedFolderId === null) { e.preventDefault(); crud.handleDrop(null); } }}
                 >
                   <ActiveFilterBar groups={filterSearch.chips} onReset={filterSearch.reset} />
-                  {soundOn && activeTab === 'sounds' && (
-                    <MusicFolderOffer
-                      app={data.app}
-                      assetService={data.assetService}
-                      collection={data.collections.find((collection) => collection.id === selectedCollection)}
-                    />
-                  )}
                   <LocationBar
                     activeTab={shown.tab}
                     path={shown.folderPath}

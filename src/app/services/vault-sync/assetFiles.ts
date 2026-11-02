@@ -1,6 +1,7 @@
 import type { Asset, AssetMetadata, AssetOfType, AssetUpdates, GroupAsset, GroupTokenRef } from '../AssetService';
 import { collectionFolderPath } from '../assetPaths';
 import { SOUNDS_FOLDER } from '../../soundLibrary/soundFiles';
+import { isExternalAudioPath } from '../../soundLibrary/soundPaths';
 
 type RecordFolderAsset = AssetOfType<'token' | 'note' | 'sound'>;
 
@@ -69,7 +70,8 @@ export function primaryPath(asset: Asset): string | null {
     case 'map': return asset.mapFilePath || null;
     case 'scene': return asset.data?.mapPath || null;
     case 'note': return asset.notePath || null;
-    case 'sound': return asset.audioPath || null;
+    // Audio in a root outside the vault is no vault file: no vault file of the same name is ever taken for it.
+    case 'sound': return isExternalAudioPath(asset.audioPath) ? null : asset.audioPath || null;
     default: return assetJsonPath(asset);
   }
 }
