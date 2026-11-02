@@ -5,6 +5,7 @@ import type { Placement } from '../blockActions';
 import { labelTargetIn, type LabelPart } from '../labelTargets';
 import type { BlockSelection } from '../selection';
 import type { EditorSession } from '../sessionTypes';
+import { t } from '../../../../i18n';
 
 /** A new tile asking for its name, for the popover under it. */
 export interface NamePrompt {
@@ -41,7 +42,7 @@ export interface BlockNaming {
 }
 
 /** What the input says before anything is typed, the same for every kind. */
-export const NAME_PLACEHOLDER = 'Name component';
+export const NAME_PLACEHOLDER = t('templateEditor.namePlaceholder');
 
 interface Asked {
   id: string;

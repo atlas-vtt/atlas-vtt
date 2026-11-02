@@ -14,7 +14,7 @@ export const BURST = 40;
 /** Bytes the socket may hold unsent before even a live frame waits. */
 export const MAX_BUFFERED = 1024 * 1024;
 /**
- * Bytes the socket may hold unsent before other frames wait: about one asset chunk, so a live frame
+ * Bytes the socket may hold unsent before other frames wait: about one message part, so a live frame
  * never queues behind more than that on a slow uplink.
  */
 export const BULK_BUFFERED = 64 * 1024;

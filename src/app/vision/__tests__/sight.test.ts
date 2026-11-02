@@ -341,12 +341,12 @@ describe('tremorsense', () => {
 
 describe('sceneSight', () => {
   it('computes the tokens\' sight while the scene uses token vision', () => {
-    expect(sceneSight({}, [source()], [wall]).regions).toEqual(computeSight([source()], [wall]).regions);
-    expect(sceneSight({ tokenVision: true }, [source()], [wall]).all).toBe(false);
+    expect(sceneSight({}, [source()], [wall], undefined, { sceneHasVision: true }).regions).toEqual(computeSight([source()], [wall]).regions);
+    expect(sceneSight({ tokenVision: true }, [source()], [wall], undefined, { sceneHasVision: true }).all).toBe(false);
   });
 
   it('sees everything when the scene switches token vision off', () => {
-    const sight = sceneSight({ tokenVision: false }, [source()], [wall]);
+    const sight = sceneSight({ tokenVision: false }, [source()], [wall], undefined, { sceneHasVision: true });
     expect(sight).toBe(SEES_ALL);
     expect(isSeen({ x: 300, y: 100 }, sight, { ambient: 1 }, [])).toBe(true);
   });

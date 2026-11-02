@@ -3,6 +3,7 @@ import type { Message } from '../../types';
 export const align = {
   'align.analysing': 'Looking at the map…',
   'align.checking': 'Found {type}. Checking the cell size…',
+  'align.waitingForTiles': 'Waiting for the map\'s tiles · {percent}%',
   'align.cornerFirst': 'Click a corner of a cell.',
   'align.cornerNext': 'Now the next corner to the right.',
   'align.find': 'Auto detect',

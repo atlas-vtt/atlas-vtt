@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest';
 import { Application, Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
 import { MapThumbnailService, SNAPSHOT_THUMBNAIL_SIZE, type ThumbnailSize } from '../../src/app/services/MapThumbnailService';
 import * as renderScheduler from '../../src/app/pixi/RenderScheduler';
-import type { PixelRect } from '../../src/app/pixi/mapImage/pyramid';
+import type { PixelRect } from '../../src/app/pixi/mosaicCanvas/pyramid';
 import type { SceneFrame } from '../../src/app/pixi/lighting/engine/types';
 import type { SceneFrameCapture } from '../../src/app/pixi/sceneFrameCapture';
 
@@ -95,7 +95,8 @@ describe('scene thumbnail framing', () => {
     expect(frames[0]!.x).toBeCloseTo(expected.x);
     expect(frames[0]!).toMatchObject({ y: expected.y, resolution: expected.resolution });
     const rendered = generateTexture.mock.calls[0]![0];
-    expect(frames[0]).toEqual({ x: frame().x, y: frame().y, resolution: rendered.resolution });
+    // The frame names its size too, so the levels below are drawn for it.
+    expect(frames[0]).toEqual({ x: frame().x, y: frame().y, resolution: rendered.resolution, width: frame().width, height: frame().height });
   });
 
   test('asks for a canvas render even when the map view fails to capture the frame', async () => {

@@ -21,4 +21,9 @@ export const dashboard: Translation = {
   'dashboard.failed': 'Не удалось загрузить панель. Подробности в консоли.',
   'dashboard.openFailed': 'Не удалось открыть сцену',
   'dashboard.addMapFirst': 'Сначала добавьте изображение карты, затем создайте из него сцену.',
+  'dashboard.allCreatures': 'Все ({count})',
+  'dashboard.inThisFight': 'В этом бою ({count})',
+  'dashboard.statblockScope': 'Какие статблоки показывать',
+  'dashboard.begin': 'Начать',
+  'dashboard.resume': 'Продолжить',
 };

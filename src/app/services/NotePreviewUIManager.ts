@@ -7,15 +7,21 @@ import { NotePreviewWindow } from './NotePreviewWindow';
 import { StatblockPreviewWindow } from './StatblockPreviewWindow';
 import { isStatblockNote, statblockNoteKnown, unparsedFrontmatterStatblock } from '../statblocks/resolve/statblockNote';
 import { MapLinkPreview } from './MapLinkPreview';
+import { EncounterFolderPreview } from './EncounterFolderPreview';
+import { isEncounterFolderLink } from '../links/atlasLinkTargets';
+import { linkedEncounterFolder } from '../encounters/encounterFolders';
+import { encountersInFolder, placeEncounter, rollEncounterFolder } from '../encounters/encounterFolderRoll';
+import { atlasViewOfStore } from '../plugin/atlasLeaves';
+import type { AtlasView } from '../atlas-view';
 import { linkedFilePath, linkedMapPath, linkedSceneFile } from './sceneLinks';
 import { runInBackground } from '../utils/backgroundTask';
+import { t } from '../i18n';
 import { findAtlasLeafByViewId } from '../utils/atlasLeafLookup';
 import { readPinnedNotePreviews } from '../stores/pinnedNotePreviewSlice';
 import { isModHeld } from '../keyboard/modKey';
 import type { ViewAtlasStore } from '../storeFactory';
 import type { TokenRollContext } from '../types/diceRollOrigin';
 import { captureRollContext } from '../tools/diceRollOrigins';
-import { followWindow } from '../utils/followWindow';
 import { mapTokens } from '../tokens/offMap';
 import { shallow } from 'zustand/vanilla/shallow';
 
@@ -86,9 +92,7 @@ export class NotePreviewUIManager {
   private boundHandleKeyDown!: (e: KeyboardEvent) => void;
   private boundHandleKeyUp!: (e: KeyboardEvent) => void;
   private boundHandleFocus!: () => void;
-  /** Removes the key, focus and blur listeners from the window they are on. */
-  private unlistenWindow: () => void = (): void => undefined;
-  /** The map view's container, once `followView` was called. */
+  /** The map view's container, once `setViewElement` was called. */
   private viewEl: HTMLElement | null = null;
   private activeLeafChangeRef: EventRef | null = null;
   private layoutChangeRef: EventRef | null = null;
@@ -156,7 +160,11 @@ export class NotePreviewUIManager {
       this.isModifierKeyDown = false;
     };
     
-    this.unlistenWindow = this.listenOn(window);
+    document.addEventListener('keydown', this.boundHandleKeyDown);
+    document.addEventListener('keyup', this.boundHandleKeyUp);
+    window.addEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);
+    // Reset modifier key state when window gains focus to avoid stuck state
+    window.addEventListener('focus', this.boundHandleFocus);
 
     // The pin's note opens in the workspace, which replaces its preview
     this.eventBus.on('close-active-preview', (notePath: string) => {
@@ -339,6 +347,11 @@ export class NotePreviewUIManager {
     // Hide all unpinned previews before creating a new one
     this.hideAllUnpinnedPreviews();
     
+    if (isEncounterFolderLink(pin.notePath)) {
+      await this.showEncounterFolderPreview(pin, screenX, screenY, sourceLeaf);
+      return;
+    }
+
     // Scene links → lightweight tooltip with thumbnail + "Open Map" button; nothing for a scene not in this collection
     if (linkedMapPath(pin.notePath)) {
       const scene = linkedSceneFile(this.app, this.store.getState().mapPath, pin.notePath);
@@ -403,6 +416,28 @@ export class NotePreviewUIManager {
       { x: screenX, y: screenY },
       sourceLeaf ?? null,
     ));
+  }
+
+  /** The card of a pin that rolls encounters; nothing for a pin on a scene outside every collection. */
+  private async showEncounterFolderPreview(pin: PreviewAnchor, screenX: number, screenY: number, sourceLeaf?: WorkspaceLeaf | null): Promise<void> {
+    const folder = linkedEncounterFolder(this.store.getState().mapPath, pin.notePath);
+    if (!folder) return;
+    const hides = this.hideCount;
+    const encounters = await encountersInFolder(this.app, folder);
+    // A hide or another hover while the encounters were read wins
+    if (hides !== this.hideCount) return;
+    const view = (): AtlasView | null => atlasViewOfStore(this.app, this.store);
+    const preview = new EncounterFolderPreview({
+      folder,
+      encounters,
+      pin,
+      position: { x: screenX, y: screenY },
+      doc: this.previewDocument(sourceLeaf),
+      roll: () => runInBackground(rollEncounterFolder(this.app, view(), folder), `Rolling an encounter from ${folder}`, t('pin.encounters.failed')),
+      place: (encounter) => runInBackground(placeEncounter(this.app, view(), encounter), `Placing ${encounter.name}`, t('pin.encounters.failed')),
+      onClosed: (closed) => this.handlePreviewClosed(closed),
+    });
+    this.activePreviews.set(`${pin.notePath}::${pin.id}`, preview);
   }
 
   private trackNotePreview(preview: NotePreviewWindow): void {
@@ -478,43 +513,26 @@ export class NotePreviewUIManager {
     this.showStatblocksWithMap();
   }
 
-  /**
-   * Hears the modifier key, focus and blur in the window `containerEl` (the map view) is in,
-   * which follows the view into a popout and back. Until then, the main window's.
-   */
-  public followView(containerEl: HTMLElement): void {
+  /** Gives the manager the map view's element, which pinned statblock previews keep within. */
+  public setViewElement(containerEl: HTMLElement): void {
     this.viewEl = containerEl;
-    this.unlistenWindow();
-    this.unlistenWindow = followWindow(containerEl, (win) => this.listenOn(win));
   }
 
-  /** The map view's element, once the view has given it (`followView`). */
+  /** The map view's element, once the view has given it (`setViewElement`). */
   public mapViewElement(): HTMLElement | null {
     return this.viewEl;
   }
 
-  /** The document a preview opens in: that of the leaf it was hovered in, else the map view's, a popout's when it is in one. */
+  /** The document a preview opens in: that of the leaf it was hovered in (a note in a popout has its own), else the map view's. */
   private previewDocument(sourceLeaf: WorkspaceLeaf | null | undefined): Document {
     return (sourceLeaf?.view.containerEl ?? this.viewEl)?.doc ?? document;
   }
 
-  private listenOn(win: Window): () => void {
-    win.document.addEventListener('keydown', this.boundHandleKeyDown);
-    win.document.addEventListener('keyup', this.boundHandleKeyUp);
-    win.addEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);
-    // Reset modifier key state when window gains focus to avoid stuck state
-    win.addEventListener('focus', this.boundHandleFocus);
-    return (): void => {
-      win.document.removeEventListener('keydown', this.boundHandleKeyDown);
-      win.document.removeEventListener('keyup', this.boundHandleKeyUp);
-      win.removeEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);
-      win.removeEventListener('focus', this.boundHandleFocus);
-    };
-  }
-
   public destroy(): void {
-    this.unlistenWindow();
-    this.unlistenWindow = (): void => undefined;
+    document.removeEventListener('keydown', this.boundHandleKeyDown);
+    document.removeEventListener('keyup', this.boundHandleKeyUp);
+    window.removeEventListener('blur', this.boundHideAllUnpinnedPreviewsOnBlur);
+    window.removeEventListener('focus', this.boundHandleFocus);
     if (this.activeLeafChangeRef) {
       this.app.workspace.offref(this.activeLeafChangeRef);
       this.activeLeafChangeRef = null;

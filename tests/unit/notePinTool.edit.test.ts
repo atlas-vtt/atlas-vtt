@@ -22,7 +22,7 @@ function setup(icon: string): { store: ReturnType<typeof createViewAtlasStore>; 
 
 async function editPin(store: ReturnType<typeof createViewAtlasStore>, pinId: string): Promise<HTMLElement> {
   const pin = store.getState().objects.pins[pinId];
-  window.dispatchEvent(new CustomEvent('atlas-pin-action', { detail: { action: 'edit', pin } }));
+  window.dispatchEvent(new CustomEvent('atlas-pin-action', { detail: { action: 'edit', pin, store } }));
   await Promise.resolve();
   return document.getElementById('atlas-note-pin-dropdown')!;
 }

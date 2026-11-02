@@ -34,6 +34,8 @@ import { useCollectionFilterDefinitions } from './hooks/useCollectionFilterDefin
 import { useFilterSearch, useSearchKeywords } from './hooks/useFilterSearch';
 import { ActiveFilterBar } from './components/search/ActiveFilterBar';
 import { DIALOG_EXIT_DURATION, dialogBackdropVariants, useDialogWindowVariants } from '../primitives/dialogMotion';
+import { showDungeonGenerator } from '../dungeon-generator/openDungeonGenerator';
+import { runInBackground } from '../../../utils/backgroundTask';
 import { t } from '../../../i18n';
 
 const NO_ASSETS: AnyAsset[] = [];
@@ -238,6 +240,10 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   assetCounts={data.assetCounts}
                   onCreateTokens={() => crud.setIsTokenCreatorOpen(true)}
                   onCreateMap={crud.handleCreateMap}
+                  onGenerateDungeon={() => {
+                    runInBackground(showDungeonGenerator(data.app, selectedCollection), 'Opening the dungeon generator');
+                    onClose();
+                  }}
                   onCreateEncounter={() => crud.setIsEncounterBuilderOpen(true)}
                   onCreateCollection={crud.handleCreateCollection}
                   onCreateFolder={crud.handleCreateFolder}

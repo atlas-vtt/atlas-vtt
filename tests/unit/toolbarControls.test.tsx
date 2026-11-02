@@ -37,7 +37,7 @@ function context(overrides: Partial<ToolbarContext> = {}): ToolbarContext {
 const item = (id: ToolbarControlId, ctx: ToolbarContext): ToolbarItemBody => TOOLBAR_CONTROL_ITEMS[id](ctx);
 const placement = ({ pinned, active }: ToolbarItemBody): { pinned: boolean; active: boolean } => ({ pinned, active });
 
-const GROUPS: readonly ToolMenu[] = ['move', 'fog', 'draw', 'text', 'measure', 'wall'];
+const GROUPS: readonly ToolMenu[] = ['move', 'fog', 'draw', 'text', 'measure', 'wall', 'pin'];
 
 describe('toolbar control items', () => {
   it('builds an item for every control of the catalog', () => {
@@ -59,6 +59,7 @@ describe('toolbar control items', () => {
   it('pins and activates the note pin while it is in use, and the dice while their tray is open', () => {
     expect(placement(item('pin', context()))).toEqual({ pinned: false, active: false });
     expect(placement(item('pin', context({ activeTool: 'note-pin' })))).toEqual({ pinned: true, active: true });
+    expect(placement(item('pin', context({ activeTool: 'stairs' })))).toEqual({ pinned: true, active: true });
     expect(placement(item('dice', context({ dice: { open: true, toggle: vi.fn(), tool: null, buttonRef: { current: null } } }))))
       .toEqual({ pinned: true, active: true });
   });

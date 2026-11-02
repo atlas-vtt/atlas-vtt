@@ -1,0 +1,38 @@
+@use '../../../../../styles/tokens' as *;
+
+// The glass's chip over the map (GlassChip.tsx): a capsule with the toolbars' surface
+// (`.atlas-vtt-toolbar`), placed with `translate` by useGlass on the glass's top edge.
+.atlas-glass-chip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  // Over the map, under the bars and the popovers that open over it
+  z-index: 40;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+
+  &:active {
+    cursor: grabbing;
+  }
+
+  // Above the toolbar's own `display: flex`
+  &.atlas-vtt-toolbar[hidden] {
+    display: none;
+  }
+}
+
+.atlas-glass-chip__icon {
+  flex: none;
+  width: $icon-m;
+  height: $icon-m;
+  // A bare icon stands as far from the border as the icon inside the button at the other end
+  margin-inline-start: $spacing-xs;
+  color: var(--text-muted);
+}
+
+.atlas-glass-chip__label {
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+  white-space: nowrap;
+}

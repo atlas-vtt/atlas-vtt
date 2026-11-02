@@ -3,10 +3,15 @@ import { openContextMenuGlobal, type ContextMenuEntry } from '../react/root/Cont
 import { PlayerWindowService } from './PlayerWindowService';
 import { playImageEnter, playImageExit } from './imageDisplayMotion';
 import { ImageOverlayControls } from './imageOverlayControls';
+import { SettingsService } from './SettingsService';
+import { tableTvOf } from './tableTvFrame';
 import './image-display.scss';
 import { t } from '../i18n';
+import { DECODED_MAX_PIXELS, DECODER_MAX_SIDE, decodable } from '../imageProcessing/decodeLimits';
+import { imageHeader } from '../imageProcessing/imageDimensions';
 import { showNotice } from '../ui/notice';
 import { statblockImageAt } from './statblockImageTarget';
+import { playerWindowStore } from '../stores/playerWindowStore';
 
 /** An image overlay in the player window. */
 interface ImageDisplay {
@@ -287,6 +292,12 @@ export class ImageDisplayService {
       // Read the image file
       const arrayBuffer = await this.app.vault.readBinary(file);
       const blob = new Blob([arrayBuffer], { type: this.getMimeType(file.extension) });
+      // An image the browser cannot open would end the player window; it is shown nowhere but as map tiles.
+      const header = await imageHeader(blob);
+      if (header && !decodable(header)) {
+        showNotice(t('image.tooLarge', { width: header.width, height: header.height, megapixels: Math.floor(DECODED_MAX_PIXELS / 1e6), side: DECODER_MAX_SIDE }));
+        return;
+      }
       const imageUrl = URL.createObjectURL(blob);
 
       // Get the player window
@@ -313,7 +324,9 @@ export class ImageDisplayService {
     const previous = this.detachImageDisplay();
 
     this.imageContainer = doc.body.createDiv({ cls: 'atlas-image-display' });
-    this.imageStage = this.imageContainer.createDiv({ cls: 'atlas-image-display__stage' });
+    // Turns with a table TV (the body's --atlas-tv-rotation); the close button stays on the window
+    const turn = this.imageContainer.createDiv({ cls: 'atlas-image-display__turn' });
+    this.imageStage = turn.createDiv({ cls: 'atlas-image-display__stage' });
     this.currentImage = this.imageStage.createEl('img', { cls: 'atlas-image-display__image' });
     this.currentImage.src = imageUrl;
 
@@ -321,22 +334,25 @@ export class ImageDisplayService {
     closeButton.setAttribute('aria-label', t('common.close'));
     closeButton.addEventListener('click', () => this.closeImageDisplay());
 
-    this.controls = new ImageOverlayControls(this.imageContainer, this.currentImage, playerWindow, () => this.closeImageDisplay());
+    const settings = SettingsService.forApp(this.app);
+    const turnOf = (): number => (settings ? tableTvOf(playerWindow, settings.getTableTvSettings(), settings.getTableTvDevice()).rotation : 0);
+    this.controls = new ImageOverlayControls(this.imageContainer, this.currentImage, playerWindow, () => this.closeImageDisplay(), turnOf);
 
     // A replaced image leaves above the new one, so the scrim stays dark while they crossfade
     previous?.container.before(this.imageContainer);
+    playerWindowStore.setState({ imageShown: true });
     const entrance = playImageEnter(this.imageContainer, this.imageStage, this.currentImage, previous !== null);
     // The previous image stays until the new one can paint, so the crossfade never shows an empty scrim
     if (previous) void this.leave(previous, entrance);
   }
 
   /**
-   * Close the image display
+   * Close the image display. `quiet` says nothing, for a control whose own change shows it (the player window bar).
    */
-  public closeImageDisplay(): void {
+  public closeImageDisplay(options?: { quiet?: boolean }): void {
     const display = this.detachImageDisplay();
     if (!display) return;
-    showNotice(t('image.closed'));
+    if (!options?.quiet) showNotice(t('image.closed'));
     void this.leave(display);
   }
   
@@ -485,6 +501,7 @@ export class ImageDisplayService {
     this.imageContainer = null;
     this.imageStage = null;
     this.currentImage = null;
+    playerWindowStore.setState({ imageShown: false });
     return display;
   }
 

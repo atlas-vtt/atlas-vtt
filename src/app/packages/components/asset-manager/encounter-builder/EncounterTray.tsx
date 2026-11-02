@@ -4,6 +4,7 @@ import { Button } from '../../primitives/button';
 import { LabelTooltip } from '../../primitives/tooltip';
 import { formatRange } from '../../../../creatures/creatureValues';
 import { t } from '../../../../i18n';
+import type { Quantity } from '../../../../encounters/encounterQuantity';
 import type { TokenAsset } from '../types';
 import { TrayPicks } from './TrayPicks';
 import type { EncounterPick } from './encounterPicks';
@@ -13,7 +14,7 @@ interface EncounterTrayProps {
   picks: readonly EncounterPick[];
   metrics: EncounterMetrics;
   saving: boolean;
-  onCountChange: (token: TokenAsset, count: number) => void;
+  onCountChange: (token: TokenAsset, count: Quantity) => void;
   /** Shows a creature's statblock in the feed; null for one the feed cannot show. */
   revealOf: (token: TokenAsset) => (() => void) | null;
   onClear: () => void;
@@ -63,12 +64,16 @@ export function EncounterTray({ picks, metrics, saving, onCountChange, revealOf,
       />
       <TrayPicks picks={picks} onCountChange={onCountChange} revealOf={revealOf} />
       <div className="atlas-encounter-tray__summary">
-        <span className="atlas-encounter-tray__count">{t('encounter.builder.count', { count: metrics.count })}</span>
+        <span className="atlas-encounter-tray__count">
+          {metrics.count.min === metrics.count.max
+            ? t('encounter.builder.count', { count: metrics.count.max })
+            : t('encounter.builder.countRange', { count: metrics.count.max, range: formatRange(metrics.count) })}
+        </span>
         {metrics.rating && (
           <Metric label={metrics.rating.label} value={formatRange(metrics.rating)} hint={t('encounter.builder.ratingHint')} />
         )}
         {metrics.totals.map((total) => (
-          <Metric key={total.key} label={total.name} value={String(total.value)} hint={t('encounter.builder.totalHint', { name: total.name })} />
+          <Metric key={total.key} label={total.name} value={formatRange(total)} hint={t('encounter.builder.totalHint', { name: total.name })} />
         ))}
         <div className="atlas-encounter-tray__actions">
           <Button variant="ghost" disabled={saving} onClick={onClear}>{t('encounter.builder.clear')}</Button>

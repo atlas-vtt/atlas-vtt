@@ -6,8 +6,8 @@ import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 const MOST = 99;
 
 /**
- * The tab a host shows while the log is closed and something in it is unread: at the left edge,
- * where the floating panel stands, with the count. A press opens the log.
+ * The tab a host shows while the log is closed and something in it is unread, with the count. On
+ * the GM's map it stands directly below the scene tabs. A press opens the log.
  */
 export function LogUnreadTab({ count, onOpen }: { readonly count: number; readonly onOpen: () => void }): ReactElement {
   const name = useId();

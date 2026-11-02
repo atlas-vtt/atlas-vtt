@@ -12,6 +12,7 @@ import {
   type CollectionGridDefaults,
   type ConditionDefinition,
   type DiagonalRule,
+  type DifficultTerrainRule,
   type GridUnitType,
   type MeasurementMode,
   type RangeBand,
@@ -35,6 +36,7 @@ import { parseStatblockRoles } from '../statblocks/roles/roleValidation';
 const UNIT_TYPES: readonly GridUnitType[] = ['feet', 'yards', 'meters', 'units', 'custom'];
 const MEASUREMENT_MODES: readonly MeasurementMode[] = ['metric', 'abstract'];
 const DIAGONAL_RULES: readonly DiagonalRule[] = ['equidistant', 'alternating', 'euclidean'];
+const DIFFICULT_TERRAIN_RULES: readonly DifficultTerrainRule[] = ['double', 'none'];
 
 type UnknownRecord = Record<string, unknown>;
 
@@ -57,7 +59,7 @@ function parseBand(raw: unknown): RangeBand | null {
 
 function parseGridDefaults(raw: unknown): CollectionGridDefaults | null {
   if (!isRecord(raw)) return null;
-  const { unitType, unitDistance, measurementMode, diagonalRule, coneAngle, abstractRangeBands } = raw;
+  const { unitType, unitDistance, measurementMode, diagonalRule, difficultTerrain, coneAngle, abstractRangeBands } = raw;
   if (!isOneOf(UNIT_TYPES, unitType) || !isOneOf(MEASUREMENT_MODES, measurementMode)) return null;
   if (!isUnitDistance(unitDistance)) return null;
   const bands = Array.isArray(abstractRangeBands) ? abstractRangeBands.map(parseBand) : [];
@@ -67,6 +69,7 @@ function parseGridDefaults(raw: unknown): CollectionGridDefaults | null {
     unitDistance,
     measurementMode,
     diagonalRule: isOneOf(DIAGONAL_RULES, diagonalRule) ? diagonalRule : 'equidistant',
+    ...(isOneOf(DIFFICULT_TERRAIN_RULES, difficultTerrain) && { difficultTerrain }),
     ...(isValidConeAngle(coneAngle) && { coneAngle }),
     abstractRangeBands: bands as RangeBand[],
   };

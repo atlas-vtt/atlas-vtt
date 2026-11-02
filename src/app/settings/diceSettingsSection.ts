@@ -55,6 +55,21 @@ export function diceSettingsSection(settings: SettingsService): AtlasSettingSect
         return unsubscribe;
       },
     }, {
+      name: t('dice.volume'),
+      desc: t('dice.volumeHint'),
+      aliases: ['dice', 'sound', 'volume', 'mute', 'audio', 'quiet'],
+      render: (setting) => {
+        let unsubscribe: (() => void) | undefined;
+        setting.addSlider((slider) => {
+          const percent = (): number => Math.round(settings.getDiceVolume() * 100);
+          slider.setLimits(0, 100, 5)
+            .setValue(percent())
+            .onChange((value) => settings.setDiceVolume(value / 100));
+          unsubscribe = settings.onChange(() => { slider.setValue(percent()); });
+        });
+        return unsubscribe;
+      },
+    }, {
       name: t('diceSettings.colour'),
       desc: t('diceSettings.colourHint'),
       aliases: ['dice', 'colour', 'color', 'skin', 'accent', 'dark'],

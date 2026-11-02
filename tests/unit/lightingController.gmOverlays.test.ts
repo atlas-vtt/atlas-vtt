@@ -52,12 +52,12 @@ describe('a picture of the scene (a thumbnail)', () => {
     const during = captureSceneFrame({ gmViewLayers: [], markerLayers: [], lighting: controller }, FRAME, shown);
     return { before, during, after: shown() };
   }
-  const NONE = { wallEditor: false, lightZones: false, exploredMemory: false, doorBadges: false, lightMarkers: false, rangeRings: false, sightAids: false };
+  const NONE = { wallEditor: false, lightZones: false, levelSurfaces: false, exploredMemory: false, doorBadges: false, lightMarkers: false, rangeRings: false, sightAids: false };
 
   it('leaves the GM overlays out in GM view and has them back', () => {
     const { controller } = setup();
     const { before, during, after } = picture(controller);
-    expect(before).toEqual({ wallEditor: false, lightZones: false, exploredMemory: false, doorBadges: true, lightMarkers: true, rangeRings: false, sightAids: true });
+    expect(before).toEqual({ wallEditor: false, lightZones: false, levelSurfaces: false, exploredMemory: false, doorBadges: true, lightMarkers: true, rangeRings: false, sightAids: true });
     expect(during).toEqual(NONE);
     expect(after).toEqual(before);
   });
@@ -66,7 +66,7 @@ describe('a picture of the scene (a thumbnail)', () => {
     const { controller, store } = setup();
     store.getState().setActiveTool('wall');
     const { before, during, after } = picture(controller);
-    expect(before).toEqual({ wallEditor: true, lightZones: false, exploredMemory: false, doorBadges: true, lightMarkers: true, rangeRings: false, sightAids: true });
+    expect(before).toEqual({ wallEditor: true, lightZones: false, levelSurfaces: false, exploredMemory: false, doorBadges: true, lightMarkers: true, rangeRings: false, sightAids: true });
     expect(during).toEqual(NONE);
     expect(after).toEqual(before);
   });

@@ -1,3 +1,4 @@
+import { levelObjects, type LevelObjectsState } from '../levels/levelObjects';
 import type { WallSegment } from '../types/wallTypes';
 import type { Point } from '../types/visionTypes';
 import type { MapBounds } from '../vision/visibility';
@@ -6,10 +7,9 @@ import { worldTexel } from './lightingConstants';
 import { sealedWalls } from './sealWalls';
 import { blocksNothing, crosses, segOf } from './segments';
 
-interface LitScene {
-  objects: { walls: Record<string, WallSegment> };
+type LitScene = LevelObjectsState<{ walls: Record<string, WallSegment> }> & {
   lighting: { enabled: boolean };
-}
+};
 
 /** Whether the straight way from `from` to `to` crosses none of `walls` that stops anything. */
 export function wayIsClear(walls: readonly WallSegment[], from: Point, to: Point): boolean {
@@ -25,5 +25,5 @@ export function wayIsClear(walls: readonly WallSegment[], from: Point, to: Point
  */
 export function glideWayIsClear(scene: LitScene, bounds: MapBounds | null, from: Point, to: Point): boolean {
   if (!scene.lighting.enabled || bounds === null) return true;
-  return wayIsClear(sealedWalls(wallList(scene.objects.walls), worldTexel(bounds)), from, to);
+  return wayIsClear(sealedWalls(wallList(levelObjects(scene).walls), worldTexel(bounds)), from, to);
 }

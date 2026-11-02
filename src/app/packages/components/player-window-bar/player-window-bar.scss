@@ -1,0 +1,18 @@
+@use '../../../../../styles/tokens' as *;
+
+// The player window bar below the scene tabs (PlayerWindowBar.tsx). TrueScale's panel hangs from the
+// bar's left end (true-scale.scss), a menu from its own button.
+.atlas-player-window-bar {
+  position: relative;
+}
+
+.atlas-player-window-bar__menu {
+  position: relative;
+  display: flex;
+
+  // Below the bar, as far from it as TrueScale's panel, at the button's left edge
+  > .atlas-dropdown-content {
+    top: calc(100% + #{$spacing-s});
+    left: 0;
+  }
+}

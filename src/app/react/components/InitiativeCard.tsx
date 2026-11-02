@@ -75,12 +75,13 @@ export const InitiativeCard: React.FC<InitiativeCardProps> = ({
   const store = useViewStoreHook();
   const tokens = useAtlasStore((s) => s.objects?.tokens) || {};
   const badgesOn = useAtlasStore((s) => s.tokenSettings?.showInstanceBadges ?? true);
+  const levels = useAtlasStore((s) => s.levels);
   const [dropPosition, setDropPosition] = useState<'above' | 'below' | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const hover = useCardPreviewHover(cardRef, entry, isHoveredForPreview, onHover);
 
-  // The number its token's badge shows on the map, where look-alikes are told apart
-  const instanceBadge = cardInstanceNumber(tokens, entry.tokenId, badgesOn);
+  // The number its token's badge shows on the map, where look-alikes on its level are told apart
+  const instanceBadge = cardInstanceNumber(tokens, entry.tokenId, badgesOn, levels);
 
   // Read live from the token: the resources that defeat it (hit points), and whether one of them has
   const definitions = useMapResources();

@@ -66,7 +66,7 @@ export function SceneLightingSection({ lighting, onChange, onResetExplored, onRe
         </div>
       </div>
       <div className="atlas-dropdown-section">
-        {onRevealExplored && <DropdownMenuItem icon={Eye} label="Mark all areas explored" disabled={disabled} onClick={onRevealExplored} />}
+        {onRevealExplored && <DropdownMenuItem icon={Eye} label={t('sceneLight.revealAll')} disabled={disabled} onClick={onRevealExplored} />}
         <DropdownMenuItem icon={RotateCcw} label={t('sceneLight.forgetExplored')} disabled={disabled} onClick={onResetExplored} />
         <DropdownMenuItem icon={SlidersHorizontal} label={t('sceneLight.openSettings')} disabled={disabled} onClick={onOpenSettings} />
       </div>

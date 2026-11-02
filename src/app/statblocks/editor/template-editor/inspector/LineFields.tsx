@@ -10,6 +10,7 @@ import { withChosenField, type FieldChoice } from './fieldChoices';
 import { FieldPicker } from './FieldPicker';
 import type { GroupProps } from './groupProps';
 import { Setting } from './InspectorControls';
+import { t } from '../../../../i18n';
 
 /** The line under the name shows one to four values (§7.5). */
 const MAX_LINE_FIELDS = 4;
@@ -35,10 +36,10 @@ function LineFieldRow({ labelId, index, value, disabled, onPick, onRemove }: Row
   const rowLabelId = useId();
   return (
     <div className="atlas-te-setting__inline">
-      <span id={rowLabelId} hidden>{`Value ${index + 1}`}</span>
+      <span id={rowLabelId} hidden>{t('templateEditor.valueN', { n: index + 1 })}</span>
       <FieldPicker labelledBy={`${labelId} ${rowLabelId}`} value={value} accepts={LINE_TYPES} allowNew disabled={disabled}
-        placeholder={value ? undefined : 'Add a value'} onPick={onPick} />
-      {onRemove && <ToolButton icon={X} label="Remove" isActive={false} disabled={disabled} onClick={onRemove} />}
+        placeholder={value ? undefined : t('templateEditor.addAValue')} onPick={onPick} />
+      {onRemove && <ToolButton icon={X} label={t('templateEditor.remove')} isActive={false} disabled={disabled} onClick={onRemove} />}
     </div>
   );
 }
@@ -62,7 +63,7 @@ export function LineFields({ block, session, readOnly }: GroupProps & { block: L
     session.apply((template) => withLineFields(template, block.id, (fields) => fields.filter((_, at) => at !== index)));
   };
   return (
-    <Setting label="Values in this line" wide>
+    <Setting label={t('templateEditor.lineValues')} wide>
       {(labelId) => (
         <div className="atlas-te-setting__list">
           {rows.map((key, index) => (
@@ -79,7 +80,7 @@ export function LineFields({ block, session, readOnly }: GroupProps & { block: L
           {!adding && block.fields.length > 0 && block.fields.length < MAX_LINE_FIELDS && (
             <Button type="button" variant="ghost" size="sm" className="atlas-te-setting__add" disabled={readOnly} onClick={() => setAdding(true)}>
               <Plus aria-hidden="true" />
-              Add value
+              {t('templateEditor.addValue')}
             </Button>
           )}
         </div>

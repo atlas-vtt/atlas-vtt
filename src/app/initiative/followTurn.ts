@@ -25,10 +25,20 @@ export function followedToken(state: FollowState, canvasShows: (tokenId: string)
   return null;
 }
 
-/** Brings the token whose turn begins to the middle of the GM's view, at the GM's zoom (`panToToken`). */
-export function followTurn(viewport: Viewport | null | undefined, state: FollowState, canvasShows: (tokenId: string) => boolean, defeated?: ReadonlySet<string>): boolean {
+/**
+ * Brings the token whose turn begins to the middle of the GM's view, at the GM's zoom (`panToToken`),
+ * first showing its floor (`showLevel`) where it stands on another.
+ */
+export function followTurn(
+  viewport: Viewport | null | undefined,
+  state: FollowState,
+  canvasShows: (tokenId: string) => boolean,
+  defeated?: ReadonlySet<string>,
+  showLevel?: (tokenId: string) => void,
+): boolean {
   const token = followedToken(state, canvasShows, defeated);
   if (!viewport || !token) return false;
+  showLevel?.(token.id);
   panToToken(viewport, token, state.grid?.size ?? 70);
   return true;
 }

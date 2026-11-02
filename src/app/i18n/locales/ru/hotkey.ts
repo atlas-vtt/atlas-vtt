@@ -65,4 +65,6 @@ export const hotkey: Translation = {
   'hotkey.closeDialog': 'Закрыть диалог',
   'hotkey.navigateMenus': 'Навигация по меню',
   'hotkey.lightingPeek': 'Удерживайте, чтобы увидеть то, что видят игроки',
+  'hotkey.levelUp': 'Показать уровень выше',
+  'hotkey.levelDown': 'Показать уровень ниже',
 };

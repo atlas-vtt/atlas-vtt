@@ -12,6 +12,7 @@ import type { TextElement } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { MAP_LAYER_Z } from './mapLayerOrder';
+import { levelObjects } from '../levels/levelObjects';
 
 /** Gap between the top of the text and the handle. */
 const HANDLE_OFFSET = 28;
@@ -167,7 +168,7 @@ export class TextRotationUI {
     this.isDragging = true;
     this.drawHandle();
 
-    const textElement = this.store.getState().objects.texts[this.activeTextId];
+    const textElement = levelObjects(this.store.getState()).texts[this.activeTextId];
     if (!textElement) return;
 
     const worldPos = this.viewport.toWorld(e.global);
@@ -183,7 +184,7 @@ export class TextRotationUI {
   private onPointerMove = (e: FederatedPointerEvent): void => {
     if (!this.isDragging || !this.activeTextId) return;
 
-    const textElement = this.store.getState().objects.texts[this.activeTextId];
+    const textElement = levelObjects(this.store.getState()).texts[this.activeTextId];
     if (!textElement) return;
 
     const worldPos = this.viewport.toWorld(e.global);

@@ -36,6 +36,8 @@ import { lightForm, lightFromForm, visionForm, visionFromForm, type LightForm, t
 import { numberText } from '../../utils/numberInput';
 import { t } from '../../i18n';
 import { sceneTokens } from '../../tokens/offMap';
+import { everyLevelObjects } from '../../levels/levelObjects';
+import { getDomHost } from '../../host/dom';
 
 interface EditTokenValues {
   name: string;
@@ -85,6 +87,7 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, soundA
   const [dialog, setDialog] = useState<HTMLDivElement | null>(null);
   useAnchoredTop(dialog);
   const inputRef = useRef<HTMLInputElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
   const context = { ...lighting, inherited };
 
   useEffect(() => {
@@ -118,12 +121,14 @@ function EditTokenModalInner({ initial, definitions, lighting, statblock, soundA
         handleSave();
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+    // The window the dialog is in
+    const win = overlayRef.current?.ownerDocument.defaultView ?? window;
+    win.addEventListener('keydown', handleKeyDown);
+    return () => win.removeEventListener('keydown', handleKeyDown);
   });
 
   return (
-    <div className="atlas-modal-overlay" onClick={onClose}>
+    <div ref={overlayRef} className="atlas-modal-overlay" onClick={onClose}>
       <div ref={setDialog} className="atlas-modal atlas-edit-token-modal" onClick={(e) => e.stopPropagation()}>
         <div className="atlas-modal-header">
           <h3>{t('editToken.title')}</h3>
@@ -186,19 +191,21 @@ function lightingContext(state: ViewAtlasState, app: App, rules: SenseRules): To
 /**
  * Imperatively opens an Edit Token modal by mounting a React root.
  * Call from non-React code (e.g. InteractionController).
+ * @param doc The document of the map the token is on.
  */
 export function openEditTokenModal(
   token: TokenEntity,
   store: StoreApi<ViewAtlasState>,
   app: App,
   definitions: readonly ResourceDefinition[],
+  doc: Document = activeDocument,
 ): void {
   const character = token.kind === 'character' ? token : undefined;
   // The senses of the map's rules and what they measure in, as its statblocks are read with.
   const rules = mapSenseRules(app, AssetService.getInstance(app), store.getState());
   const lighting = lightingContext(store.getState(), app, rules);
   const statblock = character?.statblockPath ? { app, path: character.statblockPath, rules } : null;
-  const container = document.body.createDiv({ cls: 'atlas-vtt-plugin atlas-vtt-root' });
+  const container = getDomHost().createDiv(doc.body, 'atlas-vtt-plugin atlas-vtt-root');
   const root = createRoot(container);
 
   const cleanup = (): void => {
@@ -225,7 +232,8 @@ export function openEditTokenModal(
    * not put back what the token had when the modal opened.
    */
   const handleSave = (values: EditTokenValues, resourceDefaults: Record<string, ResourceValue>): void => {
-    const current = sceneTokens(store.getState().objects)[token.id];
+    // The token wherever it stands now: a floor it went to while the modal was open included
+    const current = sceneTokens(everyLevelObjects(store.getState()))[token.id];
     const changed = <K extends keyof EditTokenValues>(key: K): boolean => JSON.stringify(values[key]) !== JSON.stringify(initial[key]);
     const maxima = definitions.filter(({ key }) => values.maxima[key] !== initial.maxima[key]);
     const updates: TokenUpdates = {

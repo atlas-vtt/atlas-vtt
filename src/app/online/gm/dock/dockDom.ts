@@ -54,11 +54,16 @@ export function isInsideControl(root: HTMLElement, node: EventTarget | null): bo
   return (el?.closest('.atlas-ctx-menu') ?? null) !== null;
 }
 
-/** The room from the row's bottom up to the scene tabs, a gap below them: the open control's tallest height. */
+/**
+ * The room from the row's bottom up to the scene tabs, a gap below them and below what hangs from
+ * them (the table log's unread tab): the open control's tallest height.
+ */
 export function roomAbove(container: HTMLElement, row: HTMLElement, gap: number): number {
   const rowBottom = row.getBoundingClientRect().bottom;
   const tabs = container.querySelector('.atlas-top-bar-row');
-  const top = tabs === null ? container.getBoundingClientRect().top : tabs.getBoundingClientRect().bottom;
+  const below = container.querySelector('.atlas-top-bar-start__below')?.getBoundingClientRect();
+  const tabsBottom = tabs === null ? container.getBoundingClientRect().top : tabs.getBoundingClientRect().bottom;
+  const top = below === undefined || below.height === 0 ? tabsBottom : Math.max(tabsBottom, below.bottom);
   return Math.max(0, rowBottom - top - gap);
 }
 

@@ -1,29 +1,30 @@
 import type { CampaignPlayers, PlayersBlock } from '../../campaigns/players/CampaignPlayers';
 import { newLinkCode, newPlayerCode, withCharacterOwner, withLink, withPlayer, type CampaignPlayer, type StoredPlayers } from '../../campaigns/players/playersFile';
 import { withPlayerTokens, withTokenOwners, type TokenAssignments } from '../../campaigns/players/tokenAssignments';
-import { MAX_CAMPAIGN_PLAYERS, type CampaignSeat, type PlayerInfo } from '../protocol/index.ts';
+import { MAX_CAMPAIGN_PLAYERS, samePlayerName, type CampaignSeat, type PlayerInfo } from '../protocol/index.ts';
 import { showNotice } from '../../ui/notice';
 import type { CampaignSeats } from './ownership.ts';
+import { t } from '../../i18n';
 
 /** What a table needs of the campaigns' players files: `CampaignPlayers`, or memory in tests. */
 export type PlayersFiles = Pick<CampaignPlayers, 'of' | 'assignments' | 'change' | 'blocked' | 'onChange'>;
 
 /** What the GM reads where a table is started without a campaign. */
-export const NO_CAMPAIGN_TEXT = 'Choose a campaign first.';
+export const NO_CAMPAIGN_TEXT = t('online.seats.noCampaign');
 
 /** What the GM reads where something needs the played campaign, which only a running table plays. */
-export const NO_TABLE_TEXT = 'Start an online table first.';
+export const NO_TABLE_TEXT = t('online.seats.noTable');
 
 /** What the GM reads where a campaign's players file cannot be written. */
-export const NEWER_PLAYERS_TEXT = 'This campaign\'s players file is from a newer Atlas.';
+export const NEWER_PLAYERS_TEXT = t('online.seats.newer');
 
 /** What the GM reads where the campaigns or their players files are not read yet. */
-export const CAMPAIGNS_LOADING_TEXT = 'The campaigns are still loading. Try again in a moment.';
+export const CAMPAIGNS_LOADING_TEXT = t('online.seats.loading');
 
 /** What the GM reads, by why a campaign's players file cannot be changed. */
 const BLOCKED_TEXTS: Readonly<Record<PlayersBlock, string>> = {
   loading: CAMPAIGNS_LOADING_TEXT,
-  'no-folder': 'This campaign has no folder in the vault.',
+  'no-folder': t('online.seats.noFolder'),
   newer: NEWER_PLAYERS_TEXT,
 };
 
@@ -53,6 +54,11 @@ export class TableSeats implements CampaignSeats {
   /** The players as the relay is told them: id, name and own code. */
   seats(): CampaignSeat[] {
     return this.players().map(({ id, name, code }) => ({ id, name, code }));
+  }
+
+  /** Whether a player other than `except` goes by this name. */
+  nameTaken(name: string, except?: string): boolean {
+    return this.players().some((player) => player.id !== except && samePlayerName(player.name, name));
   }
 
   /** Every player's own code. */
@@ -116,19 +122,23 @@ export class TableSeats implements CampaignSeats {
 /**
  * Makes `player` (whom the relay let in) a player of the campaign, playing nothing yet, with a code
  * of their own that no other player has and that is not the table's join code `joinCode`; null
- * where the campaign has no room for them or its file cannot be written, and nothing is changed.
+ * where another player goes by their name, the campaign has no room for them or its file cannot be
+ * written, and nothing is changed.
  */
 export function admitNewcomer(seats: TableSeats, player: PlayerInfo, joinCode: string, random?: () => number): CampaignPlayer | null {
-  if (seats.players().length >= MAX_CAMPAIGN_PLAYERS || seats.refusal() !== null) return null;
+  if (seats.nameTaken(player.name) || seats.players().length >= MAX_CAMPAIGN_PLAYERS || seats.refusal() !== null) return null;
   const taken = seats.codes().add(joinCode);
   const admitted: CampaignPlayer = { id: player.id, name: player.name, code: newPlayerCode(taken, random), characters: [] };
   const now = Date.now();
   return seats.change((stored) => withPlayer(stored, admitted, now)) ? admitted : null;
 }
 
+/** What the GM reads where another player of the campaign goes by `name`. */
+export const nameTakenText = (name: string): string => t('online.seats.nameTaken', { name });
+
 /** What the GM reads when `name` could not be made a player of the campaign. */
 export function refusalText(seats: TableSeats, name: string): string {
-  return seats.refusal() ?? `The campaign has no room for ${name}.`;
+  return seats.refusal() ?? (seats.nameTaken(name) ? nameTakenText(name) : t('online.seats.full', { name }));
 }
 
 /** Gives the campaign a new link in its players file; false where the file cannot be written. */

@@ -1,11 +1,11 @@
 import { Container } from 'pixi.js';
-import { pathLengthInCells } from '../../grid/gridDistance';
+import { movementCostInCells } from '../../grid/movementCost';
 import { tokenCenterShift } from '../../grid/gridPlacement';
 import { formatDistance } from '../../grid/measurementFormat';
 import { cssColorToHexNumber, getObsidianAccentColor } from '../../pixi/utils/colorUtils';
 import { destroyTree } from '../../pixi/utils/destroyTree';
 import { MAP_LAYER_Z } from '../../pixi/mapLayerOrder';
-import { computeTokenPixelSize } from '../../pixi/token-renderer/tokenSizing';
+import { computeTokenPixelSize, tokenDiameterInCells } from '../../pixi/token-renderer/tokenSizing';
 import { drawMeasurePath, drawMeasurePoint, shortenPathEnd } from '../../pixi/utils/measureDrawing';
 import { MeasureInk, MeasureInkLayer } from '../../pixi/utils/measureInk';
 import { MeasureLabel } from '../../pixi/utils/measureLabel';
@@ -42,12 +42,13 @@ interface Drawn {
 
 /**
  * The length of a drag's path in cells, as Atlas's drag ruler measures it: a snapped token's points
- * taken back to the cell its footprint starts from (`tokenCenterShift`), then `pathLengthInCells` by
- * the collection's diagonal rule.
+ * taken back to the cell its footprint starts from (`tokenCenterShift`), then `movementCostInCells` by
+ * the collection's diagonal and difficult terrain rules.
  */
-export function dragPathCells({ grid, measurement }: MeasureRules, path: readonly Point[], cells: number, snaps: boolean): number {
+export function dragPathCells({ grid, measurement, difficult }: MeasureRules, path: readonly Point[], cells: number, snaps: boolean): number {
   const shift = snaps ? tokenCenterShift(grid.type, grid.size, cells) : { x: 0, y: 0 };
-  return pathLengthInCells(grid, path.map(({ x, y }) => ({ x: x - shift.x, y: y - shift.y })), measurement.diagonalRule);
+  const rules = { diagonalRule: measurement.diagonalRule, difficultTerrain: measurement.difficultTerrain, difficult: difficult ?? null };
+  return movementCostInCells(grid, path.map(({ x, y }) => ({ x: x - shift.x, y: y - shift.y })), rules, snaps ? tokenDiameterInCells(cells) : 1);
 }
 
 /**

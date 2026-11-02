@@ -36,7 +36,6 @@ export const ViewActionsMenu: React.FC<ViewActionsMenuProps> = ({ app, filePath 
     const entries: ContextMenuEntry[] = [
       { type: 'item', label: t('view.splitRight'), icon: 'separator-vertical', onClick: () => app.workspace.createLeafBySplit(activeLeaf, 'vertical') },
       { type: 'item', label: t('view.splitDown'), icon: 'separator-horizontal', onClick: () => app.workspace.createLeafBySplit(activeLeaf, 'horizontal') },
-      { type: 'item', label: t('view.newWindow'), icon: 'maximize', onClick: () => app.workspace.moveLeafToPopout(activeLeaf) },
     ];
 
     if (filePath) {

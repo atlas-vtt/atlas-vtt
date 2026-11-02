@@ -43,6 +43,12 @@ export const BOOK_ID_PATTERN = /^[0-9a-f]{24}$/;
 export const ITEM_TONES = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
 export type ItemTone = (typeof ITEM_TONES)[number];
 
+/**
+ * From this GM level on a player may take an item out of their character's book (`book-item-delete`):
+ * the GM keeps the book without it, where the book holds it. A GM below it leaves the message unread.
+ */
+export const ITEM_REMOVAL_GM_LEVEL = 8;
+
 /** An item the GM handed to the character, as text only. `at` is the GM's clock when it was given. */
 export interface BookItem {
   readonly id: string;
@@ -105,6 +111,7 @@ export type BookMessage =
 
 /** What a player writes into their own book. The GM keeps it and answers a refused one with the whole book. */
 export type PlayerBookMessage =
+  | { readonly t: 'book-item-delete'; readonly id: string }
   | { readonly t: 'book-note'; readonly note: BookNoteDraft }
   | { readonly t: 'book-note-delete'; readonly id: string }
   | { readonly t: 'book-pin'; readonly pin: BookPin }
@@ -130,7 +137,7 @@ export interface BookTokenMessage {
 }
 
 const GM_TYPES: readonly unknown[] = ['book', 'book-sheet', 'book-item', 'book-statblock', 'book-map', 'book-quests', 'book-rest-answer'];
-const PLAYER_TYPES: readonly unknown[] = ['book-note', 'book-note-delete', 'book-pin', 'book-pin-delete', 'book-purse', 'book-resource', 'book-field', 'book-ability', 'book-list', 'book-refill', 'book-equip', 'book-slots'];
+const PLAYER_TYPES: readonly unknown[] = ['book-item-delete', 'book-note', 'book-note-delete', 'book-pin', 'book-pin-delete', 'book-purse', 'book-resource', 'book-field', 'book-ability', 'book-list', 'book-refill', 'book-equip', 'book-slots'];
 
 export const isBookType = (t: unknown): t is BookMessage['t'] => GM_TYPES.includes(t);
 export const isPlayerBookType = (t: unknown): t is PlayerBookMessage['t'] => PLAYER_TYPES.includes(t);
@@ -258,6 +265,7 @@ export function parsePlayerBookMessage(value: Record<string, unknown>): PlayerBo
       const pin = parseBookPin(value.pin);
       return pin === null ? null : { t: 'book-pin', pin };
     }
+    case 'book-item-delete':
     case 'book-note-delete':
     case 'book-pin-delete':
       return isId(value.id) ? { t: value.t, id: value.id } : null;

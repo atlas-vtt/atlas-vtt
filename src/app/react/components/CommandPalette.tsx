@@ -25,7 +25,11 @@ import {
   Palette,
   UserCheck,
   History,
-} from 'lucide-react';
+  Layers,
+  Replace, Gauge } from 'lucide-react';
+import { runInBackground } from '../../utils/backgroundTask';
+import { viewedLevelId } from '../../levels/sceneLevels';
+import { collectionIdOfPath } from '../../services/assetPaths';
 import { CoinIcon } from './CoinIcon';
 
 import { useStore } from 'zustand';
@@ -49,7 +53,11 @@ import { WidgetSettingsPanel } from './command-palette/WidgetSettingsPanel';
 import { LocalPlayerViewSettingsPanel } from './command-palette/LocalPlayerViewSettingsPanel';
 import { DiceSettingsPanel } from './command-palette/DiceSettingsPanel';
 import { ExperimentalFeaturesPanel } from './command-palette/ExperimentalFeaturesPanel';
+import { GraphicsPanel } from './command-palette/GraphicsPanel';
 import { SceneSnapshotsPanel } from './command-palette/SceneSnapshotsPanel';
+import { SceneLevelsPanel } from './command-palette/SceneLevelsPanel';
+import { replaceMapImage } from './levels/replaceMapImage';
+import { pickMapImage } from './levels/MapImagePickerModal';
 import { placePalette, type PalettePosition } from './command-palette/palettePlacement';
 import { customizeToolbarCommand } from './command-palette/customizeToolbarCommand';
 import { isSettingsPanelId, type CommandOption, type SettingsPanelId } from './command-palette/types';
@@ -82,12 +90,14 @@ const paletteVariants = {
 
 const SETTINGS_PANEL_META: Record<SettingsPanelId, { title: string; icon: React.ReactNode }> = {
   'scene-snapshots': { title: t('palette.panel.snapshots'), icon: <History /> },
+  'scene-levels': { title: t('palette.panel.levels'), icon: <Layers /> },
   'grid-settings': { title: t('palette.panel.grid'), icon: <Grid /> },
   'token-settings': { title: t('palette.panel.tokens'), icon: <Users /> },
   'widget-settings': { title: t('palette.panel.widgets'), icon: <Palette /> },
   'local-player-view-settings': { title: t('palette.panel.localPlayerView'), icon: <MonitorUp /> },
   'dice-settings': { title: t('diceSettings.title'), icon: <Dices /> },
   'experimental-features': { title: 'Experimental Features', icon: <FlaskConical /> },
+  'graphics-settings': { title: t('graphics.title'), icon: <Gauge /> },
 };
 
 export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar }: CommandPaletteProps): React.ReactElement | null {
@@ -264,6 +274,30 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       submenu: [],
     },
     {
+      id: "scene-levels",
+      icon: <Layers />,
+      label: t('palette.sceneLevels'),
+      keywords: ["floors", "storeys", "stories", "upstairs", "basement", "elevation"],
+      section: "tools",
+      hasSubmenu: true,
+      submenu: [],
+    },
+    {
+      id: "replace-map-image",
+      icon: <Replace />,
+      label: t('palette.replaceMapImage'),
+      keywords: ["swap", "gridless", "gridded", "video", "animated", "background"],
+      section: "tools",
+      action: () => {
+        onClose();
+        const state = store.getState();
+        const levelId = viewedLevelId(state);
+        runInBackground(pickMapImage(app, collectionIdOfPath(state.mapPath), (path) => {
+          if (path) runInBackground(replaceMapImage(app, store, levelId, path), 'Replacing the map image');
+        }), 'Picking a map image');
+      },
+    },
+    {
       id: "open-dice-log",
       icon: <Dices />,
       label: t('palette.openDiceLog'),
@@ -422,6 +456,23 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
       ],
     },
     {
+      id: "graphics-settings",
+      icon: <Gauge />,
+      label: t('graphics.command'),
+      keywords: ["graphics", "quality", "performance", "lighting", "gpu", "battery", "fps", "bounce", "flicker", "saver", "balanced"],
+      section: "settings",
+      hasSubmenu: true,
+      submenu: [
+        {
+          id: "graphics-all-settings",
+          icon: null,
+          label: t('graphics.commandHint'),
+          section: "graphics",
+          hasSubmenu: false,
+        },
+      ],
+    },
+    {
       id: "experimental-features",
       icon: <FlaskConical />,
       label: "Experimental features",
@@ -496,7 +547,9 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     if (!isOpen) return;
     setSearchQuery("");
     setActiveTab("all");
-    setActiveSubmenu(null);
+    // A page asked for with the opening (a menu's "Graphics settings…" row) is opened in place of the list.
+    const page = store.getState().commandPalettePage;
+    setActiveSubmenu(isSettingsPanelId(page) ? page : null);
     setSubmenuOptions([]);
     setIsTemporarilyHidden(false);
     if (filteredOptions.length > 0) {
@@ -799,6 +852,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
     switch (panel) {
       case 'scene-snapshots':
         return <SceneSnapshotsPanel onRestore={onClose} />;
+      case 'scene-levels':
+        return <SceneLevelsPanel />;
       case 'grid-settings':
         return (
           <GridSettingsPanel
@@ -838,6 +893,8 @@ export function CommandPalette({ isOpen, onClose, toolbarRef, onCustomizeToolbar
         return <DiceSettingsPanel />;
       case 'experimental-features':
         return <ExperimentalFeaturesPanel />;
+      case 'graphics-settings':
+        return <GraphicsPanel />;
     }
   };
 

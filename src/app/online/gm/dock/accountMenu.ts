@@ -7,6 +7,7 @@ import { tableEndText, type LostTable } from '../tableEnd.ts';
 import { renderCampaignPicker, type CampaignPick, type CampaignPickerActions } from './campaignPicker.ts';
 import { statusLine, textButton } from './controls.ts';
 import { NO_CAMPAIGNS } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 /** What the menu's sign-in parts do, and the choice of the table's campaign. */
 export interface AccountActions extends CampaignPickerActions {
@@ -36,7 +37,7 @@ export function accountActions(account: AccountApi): Omit<AccountActions, 'start
   };
 }
 
-const INTRO = 'Players see this map in their browsers and move their own tokens.';
+const INTRO = t('online.intro');
 
 /** A code as the approve page shows it: two groups of four. */
 export const shownCode = (code: string): string => (code.length === 8 ? `${code.slice(0, 4)}-${code.slice(4)}` : code);
@@ -65,7 +66,7 @@ function button(layer: HTMLElement, text: string, focusKey: string, onClick: () 
 /** The menu's foot for a signed-in GM: Sign out as a ghost in the bottom-left corner, the row's main action taking the rest. */
 function signedInFoot(layer: HTMLElement, actions: AccountActions): HTMLElement {
   const row = layer.createDiv({ cls: 'atlas-online-actions' });
-  const out = textButton(row, 'Sign out', () => actions.signOut(), 'ghost');
+  const out = textButton(row, t('online.signOut'), () => actions.signOut(), 'ghost');
   out.dataset.focusKey = 'sign-out';
   out.addClass('atlas-online-corner-button');
   return row;
@@ -108,10 +109,10 @@ export function renderAccountMenu(layer: HTMLElement, account: AccountView, star
     }
     case 'waiting': {
       if (account.userCode === null) {
-        statusLine(head, { text: 'Opening your browser…', tone: 'amber' });
+        statusLine(head, { text: t('online.account.opening'), tone: 'amber' });
       } else {
         help(head, 'Approve this code in your browser. Atlas waits here.');
-        head.createDiv({ cls: 'atlas-online-code', text: shownCode(account.userCode), attr: { 'aria-label': `Code ${account.userCode.split('').join(' ')}` } });
+        head.createDiv({ cls: 'atlas-online-code', text: shownCode(account.userCode), attr: { 'aria-label': t('online.codeShown', { code: account.userCode.split('').join(' ') }) } });
       }
       const row = layer.createDiv({ cls: 'atlas-online-actions' });
       button(row, 'Open again', 'reopen', () => actions.reopenSignIn(), 'plain', true).disabled = account.userCode === null;
@@ -119,7 +120,7 @@ export function renderAccountMenu(layer: HTMLElement, account: AccountView, star
       return;
     }
     case 'checking':
-      statusLine(head, { text: 'Checking your account…', tone: 'muted' });
+      statusLine(head, { text: t('online.account.checking'), tone: 'muted' });
       return startButton(layer, starting, false, actions);
     case 'unreachable':
       statusLine(head, { text: UNREACHABLE_TEXT, tone: 'red' });

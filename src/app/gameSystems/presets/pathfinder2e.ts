@@ -22,6 +22,8 @@ export const PATHFINDER_2E: SystemPreset = {
       unitDistance: 5,
       measurementMode: 'metric',
       diagonalRule: 'alternating',
+      // Each square of difficult terrain costs 5 more feet; greater difficult terrain (10 more) is not modelled
+      difficultTerrain: 'double',
       abstractRangeBands: [],
     },
     dice: { defaultRoll: '1d20', crit: 'natural' },

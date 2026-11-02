@@ -6,10 +6,16 @@
  * drawn unlit by the composite itself (`GridMark`).
  */
 export const MAP_LAYER_Z = {
+  /** The map image, beneath everything. */
+  mapImage: -2,
+  /** Water, lava and acid moving on the map image, beneath the grid and all the lighting lights after the map. */
+  liquids: -1,
   /** The cells under tokens being placed by hand, and their ripples when put down (GM only). */
   placementCells: 91,
   /** The hover, press and Shift-preview highlight of linked hexes (GM only). */
   hexLinks: 92,
+  /** Stairs between levels: their outlines and badges, and the editor's corners (GM only). */
+  levelLinks: 93,
   /** The marker on the token whose turn it is: above the lighting, below the tokens' bars. */
   turn: 96,
   /** Note pins (GM only). */

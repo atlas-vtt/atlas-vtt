@@ -4,6 +4,9 @@ import './map-link-preview.scss';
 import { runInBackground } from '../utils/backgroundTask';
 import { t } from '../i18n';
 import { mapThumbnailPath } from '../utils/dataFileMigration';
+import { showPinnedLevel } from '../links/openAtlasLink';
+import { placeHoverCard } from './hoverCardPlacement';
+import { scrollOnCtrlWheel } from './previewWheel';
 
 /**
  * Lightweight tooltip-style preview for .atlasmap files linked via note pins.
@@ -86,6 +89,7 @@ export class MapLinkPreview {
 
     // Inner card — carries the actual visual styles
     this.cardEl = this.wrapperEl.createDiv({ cls: 'atlas-map-link-preview' });
+    scrollOnCtrlWheel(this.cardEl);
 
     // Mouse enter/leave for tooltip behaviour
     this.cardEl.addEventListener('mouseenter', () => this.clearHideTimeout());
@@ -169,26 +173,7 @@ export class MapLinkPreview {
 
   /** Position the card near the given screen coordinates, clamped to viewport. */
   private positionAt(x: number, y: number): void {
-    if (!this.cardEl) return;
-
-    const margin = 10;
-    const offset = 12;
-    const winW = this.cardEl.win.innerWidth;
-    const winH = this.cardEl.win.innerHeight;
-    const elW = this.cardEl.offsetWidth;
-    const elH = this.cardEl.offsetHeight;
-
-    let finalX = x + offset;
-    let finalY = y + offset;
-
-    if (finalX + elW > winW - margin) finalX = x - elW - offset;
-    if (finalY + elH > winH - margin) finalY = y - elH - offset;
-
-    finalX = Math.max(margin, finalX);
-    finalY = Math.max(margin, finalY);
-
-    this.cardEl.style.left = `${finalX}px`;
-    this.cardEl.style.top = `${finalY}px`;
+    if (this.cardEl) placeHoverCard(this.cardEl, x, y);
   }
 
   private async openMap(): Promise<void> {
@@ -201,6 +186,8 @@ export class MapLinkPreview {
     });
     this.app.workspace.setActiveLeaf(targetLeaf, { focus: true });
     this.hide();
+    // A token anchor names no level: the scene opens as it opens.
+    if ('sceneLevel' in this.originatingPin) await showPinnedLevel(this.app, this.file.path, this.originatingPin);
   }
 
   private clearHideTimeout(): void {

@@ -16,6 +16,8 @@ export const MAP_HOTKEYS = [
   { id: 'lightingPeek', label: t('hotkey.lightingPeek'), group: t('hotkey.group.map'), defaultKey: 'h', dmOnly: true },
   { id: 'fitMap', label: t('hotkey.fitMap'), group: t('hotkey.group.map'), defaultKey: 'Shift+1' },
   { id: 'fitToken', label: t('hotkey.fitToken'), group: t('hotkey.group.map'), defaultKey: 'Shift+2' },
+  { id: 'levelUp', label: t('hotkey.levelUp'), group: t('hotkey.group.map'), defaultKey: 'PageUp', dmOnly: true },
+  { id: 'levelDown', label: t('hotkey.levelDown'), group: t('hotkey.group.map'), defaultKey: 'PageDown', dmOnly: true },
   { id: 'move', label: t('hotkey.move'), group: t('hotkey.group.tools'), defaultKey: 'v' },
   { id: 'fog', label: t('hotkey.fog'), group: t('hotkey.group.tools'), defaultKey: 'f', dmOnly: true },
   { id: 'draw', label: t('hotkey.draw'), group: t('hotkey.group.tools'), defaultKey: 'b', dmOnly: true },
@@ -96,7 +98,7 @@ export function namesHotkey(label: string): boolean {
 export function canRunMapHotkeys(event: KeyboardEvent, viewId?: string): boolean {
   if (handledByAnotherControl(event) || event.isComposing || !isActiveAtlasLeaf(viewId)) return false;
   if (isTextEntryTarget(event.target)) return false;
-  // Modals and overlays open in the focused window, a popout's own when the map is in one
+  // Modals and overlays open in the focused window
   if (activeDocument.querySelector('.modal-container, .prompt, .suggestion-container, .menu, .atlas-asset-manager-modal, .atlas-command-palette-overlay, .atlas-onboarding-overlay, .atlas-hotkey-help, .atlas-text-dialog-backdrop, .atlas-dm-screen-wrapper, .atlas-grid-alignment-panel, [aria-modal="true"]')) return false;
   return true;
 }

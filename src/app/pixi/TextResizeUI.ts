@@ -10,6 +10,7 @@ import type { TextElement } from '../types';
 import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { MAP_LAYER_Z } from './mapLayerOrder';
+import { levelObjects } from '../levels/levelObjects';
 
 /** Resting look of a resize handle: a dark pill with a faint outlined inset. */
 function drawIdleHandleBackground(bg: Graphics): void {
@@ -174,7 +175,7 @@ export class TextResizeUI {
     this.isDragging = true;
     this.draggedHandle = side;
     
-    const textElement = this.store.getState().objects.texts[this.activeTextId];
+    const textElement = levelObjects(this.store.getState()).texts[this.activeTextId];
     if (!textElement) return;
     
     const worldPos = this.viewport.toWorld(e.global);
@@ -195,7 +196,7 @@ export class TextResizeUI {
   private onPointerMove = (e: FederatedPointerEvent): void => {
     if (!this.isDragging || !this.activeTextId || !this.draggedHandle) return;
     
-    const textElement = this.store.getState().objects.texts[this.activeTextId];
+    const textElement = levelObjects(this.store.getState()).texts[this.activeTextId];
     if (!textElement) return;
     
     const worldPos = this.viewport.toWorld(e.global);

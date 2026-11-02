@@ -1,10 +1,12 @@
 import { vi } from 'vitest';
+import type { Ticker } from 'pixi.js';
 import type { PlayerCameraState } from '../../src/app/local-player-view';
 import { RenderScheduler, requestRender, setBeforeRender } from '../../src/app/pixi/RenderScheduler';
 import { captureBeforeRender, captureWithLayerVisibility, type LayerVisibility } from '../../src/app/pixi/playerSafeFrame';
 import { PlayerFrameMirror, type PlayerFrameSource } from '../../src/app/services/PlayerFrameMirror';
 import type { AtlasSettings } from '../../src/app/services/SettingsService';
 import type { FramePiece, Screen } from '../../src/app/types/playerFrame';
+import type { TableTv, TvSetupScreen } from '../../src/app/services/tableTvFrame';
 import { fakeApp, fakeGroup } from './schedulerApp';
 
 export const SETTINGS = { showTokenNameplates: true } as AtlasSettings['localPlayerView'];
@@ -28,6 +30,8 @@ export interface Dm {
   /** The view's scene starts or finishes loading (`isMapLoading` in the source's store). */
   setLoading(loading: boolean): void;
   scheduler: RenderScheduler;
+  /** The DM canvas' ticker, stepped by hand (`tick`). */
+  ticker: Ticker;
 }
 
 export interface MirrorHarness {
@@ -38,7 +42,13 @@ export interface MirrorHarness {
   frame(time: number): void;
   dm: Dm;
   createDm(): Dm;
-  state: { source: PlayerFrameSource | null; held: HTMLCanvasElement | null; frozen: PlayerCameraState | null; window: Screen | null };
+  state: {
+    source: PlayerFrameSource | null; held: HTMLCanvasElement | null; frozen: PlayerCameraState | null; window: Screen | null;
+    /** TrueScale's set-up screen and the TV it is drawn for; none to begin with. Drawing it adds `draw:setup`. */
+    setup: TvSetupScreen | null; tv: TableTv | undefined;
+    /** Whether the curtain is down; blacking the canvas adds `draw:curtain`. */
+    curtain: boolean;
+  };
   /** The players' canvas. */
   target: HTMLCanvasElement;
   onFrame: ReturnType<typeof vi.fn>;
@@ -86,6 +96,7 @@ export function setupMirror(): MirrorHarness {
     return {
       source,
       scheduler,
+      ticker,
       tick: (time) => ticker.update(time),
       change: () => { group.structureDidChange = true; },
       setLoading: (value) => { loading = value; },
@@ -93,22 +104,29 @@ export function setupMirror(): MirrorHarness {
   }
 
   const dm = createDm();
-  const state: MirrorHarness['state'] = { source: dm.source, held: null, frozen: null, window: WINDOW };
+  const state: MirrorHarness['state'] = { source: dm.source, held: null, frozen: null, window: WINDOW, setup: null, tv: undefined, curtain: false };
   const target = document.createElement('canvas');
-  const context = {
+  const shapes = Object.fromEntries(['save', 'restore', 'beginPath', 'moveTo', 'lineTo', 'arcTo', 'closePath', 'fill', 'stroke', 'fillText'].map((name) => [name, vi.fn()]));
+  const context: Record<string, unknown> = {
+    ...shapes,
+    // The set-up screen begins by shading the frame; the curtain fills it black
+    fillRect: () => { events.push(context.fillStyle === '#000' ? 'draw:curtain' : 'draw:setup'); },
     clearRect: vi.fn(),
     drawImage: (image: HTMLCanvasElement): void => {
       if (captureFails.value) throw new Error('lost context');
       events.push(image === state.held ? 'draw:held' : `capture:${onCanvas}`);
     },
-  } as unknown as CanvasRenderingContext2D;
+  };
   const onFrame = vi.fn();
-  const mirror = new PlayerFrameMirror(target, context, {
+  const mirror = new PlayerFrameMirror(target, context as unknown as CanvasRenderingContext2D, {
     source: () => state.source,
     window: () => state.window,
     heldFrame: () => state.held,
     frozenCamera: () => state.frozen,
     settings: () => SETTINGS,
+    tableTv: () => state.tv,
+    setup: () => state.setup,
+    curtained: () => state.curtain,
     onFrame,
   }, () => now);
   return { mirror, events, dm, createDm, state, onFrame, captureFails, target, frame: (time) => { now = time; mirror.frame(); } };

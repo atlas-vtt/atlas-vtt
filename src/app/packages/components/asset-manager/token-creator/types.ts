@@ -53,6 +53,8 @@ export interface TokenPreview {
   imagePosition: ImagePosition;
   isSelected: boolean;
   isOptimizing: boolean;
+  /** Why the upload cannot be converted (too large, or a huge image in a form Atlas cannot read); the card shows it instead of the upload. */
+  refused?: string | undefined;
 }
 
 export type TokenPreviewPatch = Partial<Pick<TokenPreview, 'name' | 'imageScale' | 'imagePosition' | 'showRing' | 'size' | 'tags'>>;

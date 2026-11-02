@@ -20,6 +20,7 @@ import { labelTargetOf } from '../labelTargets';
 import { inSiblingOrder, type BlockSelection } from '../selection';
 import { shortcutText } from '../shortcutText';
 import { tilePartsOf } from '../tileParts';
+import { t } from '../../../../i18n';
 
 export interface BlockMenuContext {
   template: StatblockTemplate;
@@ -60,14 +61,14 @@ function partRows(ctx: BlockMenuContext, block: TemplateBlock): SurfaceAction[] 
     id: `${noun}-${index}`,
     label: name,
     children: [
-      item(`rename-${noun}-${index}`, 'Rename', () => run.rename(index), { icon: 'pencil', disabled: !editable }),
+      item(`rename-${noun}-${index}`, t('templateEditor.rename'), () => run.rename(index), { icon: 'pencil', disabled: !editable }),
       SEPARATOR,
-      item(`remove-${noun}-${index}`, 'Remove', () => run.remove(index), { icon: 'x', destructive: true, disabled: !editable || last === 0 }),
+      item(`remove-${noun}-${index}`, t('templateEditor.remove'), () => run.remove(index), { icon: 'x', destructive: true, disabled: !editable || last === 0 }),
     ],
   }));
   return [
-    item(`add-${noun}`, `Add ${noun}`, run.add, { icon: 'plus', disabled: !editable || !parts.canAdd }),
-    { kind: 'submenu', id: `${noun}s`, label: 'Numbers', icon: 'list', children: rows },
+    item(`add-${noun}`, t('templateEditor.addNumber'), run.add, { icon: 'plus', disabled: !editable || !parts.canAdd }),
+    { kind: 'submenu', id: `${noun}s`, label: t('templateEditor.numbers'), icon: 'list', children: rows },
   ];
 }
 
@@ -75,11 +76,11 @@ function partRows(ctx: BlockMenuContext, block: TemplateBlock): SurfaceAction[] 
 function headerPartMenu(ctx: BlockMenuContext, part: HeaderPart): SurfaceAction[] {
   const { editable } = ctx;
   return tidy([
-    ...(editable ? [item('rename', 'Rename', () => ctx.run('edit-label'), { icon: 'pencil', hint: '⏎' })] : []),
-    item('copy-key', 'Copy property name', () => ctx.copyText(part.key), { icon: 'tag' }),
+    ...(editable ? [item('rename', t('templateEditor.rename'), () => ctx.run('edit-label'), { icon: 'pencil', hint: '⏎' })] : []),
+    item('copy-key', t('templateEditor.copyKey'), () => ctx.copyText(part.key), { icon: 'tag' }),
     SEPARATOR,
     ...(part.hideable
-      ? [item('toggle-hidden', part.hidden ? 'Show on card' : 'Hide from card', () => ctx.run('toggle-hidden'), {
+      ? [item('toggle-hidden', part.hidden ? t('templateEditor.showOnCard') : t('templateEditor.hideFromCard'), () => ctx.run('toggle-hidden'), {
         icon: part.hidden ? 'eye' : 'eye-off', disabled: !editable,
       })]
       : []),
@@ -94,7 +95,7 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
   if (!found) return [];
   const { block } = found;
   const many = ctx.selection.length > 1;
-  const what = many ? `${ctx.selection.length} blocks` : blockName(block, template.fields);
+  const what = many ? t('templateEditor.blocks', { count: ctx.selection.length }) : blockName(block, template.fields);
   const last = inSiblingOrder(template.layout, ctx.selection).at(-1) ?? ctx.blockId;
   const siblings = childrenOf(template.layout, found.parentId) ?? [];
   const key = boundField(block);
@@ -102,23 +103,23 @@ export function blockMenu(ctx: BlockMenuContext): SurfaceAction[] {
   // A Table shows no name of its own once it has one: its columns are named in its header row, the table in its Options.
   const renamable = labelTargetOf(block, template.fields) !== null;
   return tidy([
-    ...(ctx.openOptions && !many ? [item('options', 'Options…', ctx.openOptions, { icon: 'settings-2', hint: shortcutText(['Shift'], '⏎') })] : []),
-    ...(editable && !many && renamable ? [item('rename', 'Rename', () => ctx.run('edit-label'), { icon: 'pencil', hint: '⏎' })] : []),
+    ...(ctx.openOptions && !many ? [item('options', t('templateEditor.optionsMenu'), ctx.openOptions, { icon: 'settings-2', hint: shortcutText(['Shift'], '⏎') })] : []),
+    ...(editable && !many && renamable ? [item('rename', t('templateEditor.rename'), () => ctx.run('edit-label'), { icon: 'pencil', hint: '⏎' })] : []),
     SEPARATOR,
     ...parts,
     SEPARATOR,
-    item('add-above', 'Add above…', () => ctx.openInsert({ at: gridInsertAbove(template.layout, block.id) }), { icon: 'plus', disabled: !editable }),
-    item('add-below', 'Add below…', () => ctx.openInsert({ after: last }), { icon: 'plus', hint: '/', disabled: !editable }),
-    item('move-up', 'Move up', () => ctx.run('move-up'), { icon: 'arrow-up', hint: shortcutText(['Alt'], '↑'), disabled: !editable || found.index === 0 }),
-    item('move-down', 'Move down', () => ctx.run('move-down'), {
+    item('add-above', t('templateEditor.addAbove'), () => ctx.openInsert({ at: gridInsertAbove(template.layout, block.id) }), { icon: 'plus', disabled: !editable }),
+    item('add-below', t('templateEditor.addBelowMenu'), () => ctx.openInsert({ after: last }), { icon: 'plus', hint: '/', disabled: !editable }),
+    item('move-up', t('templateEditor.moveUp'), () => ctx.run('move-up'), { icon: 'arrow-up', hint: shortcutText(['Alt'], '↑'), disabled: !editable || found.index === 0 }),
+    item('move-down', t('templateEditor.moveDown'), () => ctx.run('move-down'), {
       icon: 'arrow-down', hint: shortcutText(['Alt'], '↓'), disabled: !editable || found.index === siblings.length - 1,
     }),
     SEPARATOR,
-    item('duplicate', 'Duplicate', () => ctx.run('duplicate'), { icon: 'copy-plus', hint: shortcutText(['Mod'], 'D'), disabled: !editable }),
-    item('copy', 'Copy', () => ctx.run('copy'), { icon: 'copy', hint: shortcutText(['Mod'], 'C') }),
-    ...(ctx.canPaste ? [item('paste', 'Paste below', () => ctx.run('paste'), { icon: 'clipboard-paste', hint: shortcutText(['Mod'], 'V'), disabled: !editable })] : []),
-    ...(key && !many ? [item('copy-key', 'Copy property name', () => ctx.copyText(key), { icon: 'tag' })] : []),
+    item('duplicate', t('templateEditor.duplicate'), () => ctx.run('duplicate'), { icon: 'copy-plus', hint: shortcutText(['Mod'], 'D'), disabled: !editable }),
+    item('copy', t('templateEditor.copy'), () => ctx.run('copy'), { icon: 'copy', hint: shortcutText(['Mod'], 'C') }),
+    ...(ctx.canPaste ? [item('paste', t('templateEditor.pasteBelow'), () => ctx.run('paste'), { icon: 'clipboard-paste', hint: shortcutText(['Mod'], 'V'), disabled: !editable })] : []),
+    ...(key && !many ? [item('copy-key', t('templateEditor.copyKey'), () => ctx.copyText(key), { icon: 'tag' })] : []),
     SEPARATOR,
-    item('delete', many ? `Delete ${what}` : 'Delete', () => ctx.run('delete'), { icon: 'trash-2', hint: 'Del', destructive: true, disabled: !editable }),
+    item('delete', many ? t('templateEditor.deleteWhat', { what }) : t('templateEditor.delete'), () => ctx.run('delete'), { icon: 'trash-2', hint: 'Del', destructive: true, disabled: !editable }),
   ]);
 }

@@ -12,14 +12,14 @@ import type { DiceRollResult } from '../types/diceTypes';
 export class DiceToastObserver {
     private soundEffectService: Pick<SoundEffectService, 'playDiceResult'>;
 
-    constructor(soundEffectService: Pick<SoundEffectService, 'playDiceResult'>, private readonly settings: Pick<SettingsService, 'getDiceDisplay'>, private readonly eventBus: EventEmitter) {
+    constructor(soundEffectService: Pick<SoundEffectService, 'playDiceResult'>, private readonly settings: Pick<SettingsService, 'getDiceDisplay' | 'getDiceVolume'>, private readonly eventBus: EventEmitter) {
         this.soundEffectService = soundEffectService;
         this.eventBus.on('dice-rolled', this.handleDiceRolled);
     }
 
     private handleDiceRolled = (result: DiceRollResult): void => {
         if (diceSceneToShow(result, this.settings.getDiceDisplay())) return;
-        this.soundEffectService.playDiceResult(result.crit ?? null);
+        this.soundEffectService.playDiceResult(result.crit ?? null, this.settings.getDiceVolume());
     };
 
     destroy(): void {

@@ -13,6 +13,7 @@ import type { SpawnContext } from '../utils/tokenSpawnService';
 import { spawnMenuEntries } from './spawnMenuEntries';
 import type { AssetService } from '../../../../services/AssetService';
 import { renameScene } from '../../../../services/sceneRename';
+import { hasAssetTag } from '../../../../services/tagGroups';
 import { TagSearchModal } from '../TagSearchModal';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { confirmAction } from '../../../../ui/confirmDialog';
@@ -22,7 +23,7 @@ import { tokenSizeSubmenu } from '../../../../react/components/context-menu/toke
 import { playerCharacterEntry, setPlayerCharacters } from '../../../../react/components/context-menu/playerCharacterMenu';
 import type { TransferMode } from '../../../../services/assetTransfer/transferPlan';
 import type { CreateScenePrefill } from '../hooks/useAssetCrud';
-import { scenePrefillFromMap } from '../utils/sceneCreation';
+import { sceneMenuEntries } from './sceneMenuEntries';
 import { createStatblockEntry } from '../../../../statblocks/editor/create/entryPoints';
 import { copyAssetLink } from '../../../../links/atlasLinkText';
 import { t } from '../../../../i18n';
@@ -74,15 +75,8 @@ export function buildAssetContextMenuEntries(
     assetService: deps.assetService, random: diceRandom,
   };
 
-  // ── Create Scene from Map ─────────────────────────────────────
-  if (asset.type === 'maps') {
-    entries.push({
-      type: 'item',
-      label: 'Create Scene',
-      icon: 'clapperboard',
-      onClick: () => deps.openCreateScene(scenePrefillFromMap(asset)),
-    });
-  }
+  // ── Create Scene from Map(s) ──────────────────────────────────
+  entries.push(...sceneMenuEntries(asset, selectedAssets, deps));
 
   // ── Spawn: on the map, or into the initiative tracker ─────────
   entries.push(...spawnMenuEntries(asset, selectedAssets, spawnCtx, deps.onClose));
@@ -262,22 +256,14 @@ export function buildAssetContextMenuEntries(
         selectedAssets: assetsToTag,
         availableTags: deps.availableTags,
         allAssets: deps.assets,
-        onToggleTag: (tagId: string, modalSelectedAssets: AnyAsset[]) => {
-          for (const sa of modalSelectedAssets) {
-            const currentTags = sa.tags || [];
-            const newTags = currentTags.includes(tagId)
-              ? currentTags.filter((t) => t !== tagId)
-              : [...currentTags, tagId];
-            void deps.setAssetTags(sa, newTags);
-          }
-        },
+        onSetAssetTags: (taggedAsset: AnyAsset, tags: string[]) => { void deps.setAssetTags(taggedAsset, tags); },
         onCreateTag: (tagName: string, modalSelectedAssets: AnyAsset[]) => {
           const applyNewTag = async (): Promise<void> => {
             const tag = await deps.handleCreateTag(tagName);
             if (!tag) return;
             await Promise.all(modalSelectedAssets
-              .filter((sa) => !(sa.tags || []).includes(tag.id))
-              .map((sa) => deps.setAssetTags(sa, [...(sa.tags || []), tag.id])));
+              .filter((sa) => !hasAssetTag(sa.tags, tag))
+              .map((sa) => deps.setAssetTags(sa, [...(sa.tags || []), tag.name])));
           };
           runInBackground(applyNewTag(), `Creating tag ${tagName}`);
         },

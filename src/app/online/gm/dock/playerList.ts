@@ -2,6 +2,7 @@ import { setIcon } from 'obsidian';
 import { createTokenPortrait } from '../../../packages/components/shared/tokenPortraitElement';
 import { openMenuBelow, type MenuEntry } from './dockMenu.ts';
 import type { GroupPlayer, OnlinePlayer, PlayerGroup, TokenRow } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 /** What the list's rows and menus do. */
 export interface ListActions {
@@ -40,7 +41,7 @@ function avatar(parent: HTMLElement, player: GroupPlayer, face: TokenRow | null,
 
 /** A mark beside a name for a token the players do not see. */
 function hiddenMark(parent: HTMLElement): void {
-  setIcon(parent.createSpan({ cls: 'atlas-online-token__hidden', attr: { 'aria-label': 'Hidden from players' } }), 'eye-off');
+  setIcon(parent.createSpan({ cls: 'atlas-online-token__hidden', attr: { 'aria-label': t('online.hiddenFromPlayers') } }), 'eye-off');
 }
 
 /**
@@ -77,13 +78,13 @@ function playerRow(list: HTMLElement, player: GroupPlayer, face: TokenRow | null
   more.addEventListener('click', () => {
     const selected = actions.selected();
     openMenuBelow([
-      { title: 'Assign selected tokens here', icon: 'user-plus', disabled: selected.length === 0, run: () => actions.assign(selected, player.id) },
+      { title: t('online.assignHere'), icon: 'user-plus', disabled: selected.length === 0, run: () => actions.assign(selected, player.id) },
       ...releaseEntries(face, tokens, actions),
-      { title: 'Copy code', icon: 'copy', apart: true, run: () => void actions.copyPlayerCode(player.id) },
-      { title: 'New code', icon: 'refresh-cw', run: () => actions.newPlayerCode(player.id) },
-      { title: 'Rename…', icon: 'pencil', run: () => actions.askRename(player) },
-      { title: 'Remove from table', icon: 'user-x', warning: true, apart: true, run: () => actions.kick(player.id) },
-      { title: 'Remove from campaign', icon: 'user-minus', warning: true, run: () => actions.askRemoveFromCampaign(player) },
+      { title: t('online.copyCode'), icon: 'copy', apart: true, run: () => void actions.copyPlayerCode(player.id) },
+      { title: t('online.newCode'), icon: 'refresh-cw', run: () => actions.newPlayerCode(player.id) },
+      { title: t('online.renameMenu'), icon: 'pencil', run: () => actions.askRename(player) },
+      { title: t('online.kick'), icon: 'user-x', warning: true, apart: true, run: () => actions.kick(player.id) },
+      { title: t('online.removeFromCampaign'), icon: 'user-minus', warning: true, run: () => actions.askRemoveFromCampaign(player) },
     ], more);
   });
 }
@@ -103,13 +104,13 @@ function ownerPicker(row: HTMLElement, token: TokenRow, players: readonly Online
     attr: { type: 'button', 'aria-haspopup': 'menu', 'aria-label': `${token.label}: ${owner === null ? 'free, assign to a player' : `played by ${owner.name}`}`, 'data-focus-key': `chip:${token.tokenId}` },
   });
   if (owner !== null) picker.createSpan({ cls: 'atlas-online-owner__dot', attr: { 'aria-hidden': 'true' } });
-  picker.createSpan({ cls: 'atlas-online-owner__text', text: owner?.name ?? 'Assign' });
+  picker.createSpan({ cls: 'atlas-online-owner__text', text: owner?.name ?? t('online.assign') });
   setIcon(picker.createSpan({ cls: 'atlas-online-chevron' }), 'chevron-down');
   picker.addEventListener('click', () => {
     openMenuBelow([
       ...players.map((player) => ({ title: playerTitle(player), checked: owner?.id === player.id, run: () => actions.assign([token.tokenId], player.id) })),
-      { title: 'Release', icon: 'undo-2', disabled: owner === null, apart: players.length > 0, run: () => actions.release([token.tokenId]) },
-      { title: 'Not a player token', icon: 'shield', run: () => actions.unmark([token.tokenId]) },
+      { title: t('online.release'), icon: 'undo-2', disabled: owner === null, apart: players.length > 0, run: () => actions.release([token.tokenId]) },
+      { title: t('online.notPlayerToken'), icon: 'shield', run: () => actions.unmark([token.tokenId]) },
     ], picker);
   });
 }
@@ -132,7 +133,7 @@ export function renderPlayerList(parent: HTMLElement, groups: readonly PlayerGro
     if (group.player === null && group.tokens.length === 0) continue;
     const block = list.createDiv({ cls: 'atlas-online-group' });
     if (group.player !== null) playerRow(block, group.player, group.face, group.tokens, actions);
-    else block.createDiv({ cls: 'atlas-online-group-label', text: 'Not assigned' });
+    else block.createDiv({ cls: 'atlas-online-group-label', text: t('online.notAssigned') });
     for (const token of group.tokens) tokenRow(block, token, players, actions);
   }
   return list;

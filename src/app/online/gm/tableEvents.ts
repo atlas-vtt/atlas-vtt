@@ -2,6 +2,7 @@ import type { GateSettings } from './joinGate.ts';
 import type { LostReason } from './sharedTab.ts';
 import type { TableStatus } from './TableConnection.ts';
 import type { TableEnd } from './tableEnd.ts';
+import { t } from '../../i18n';
 
 /** What a table tells its owner: each change of its status, the shared map file, and its end. */
 export interface OnlineTableEvents {
@@ -20,7 +21,7 @@ export interface OnlineTableEvents {
 
 /** What the GM is told when the shared tab is lost, by why. */
 export const LOST_NOTICES: Readonly<Record<LostReason, string | null>> = {
-  closed: 'The shared map was closed. Players wait until it is open again.',
+  closed: t('online.event.closed'),
   gone: null,
-  unpresented: 'Atlas presents no map. Players online wait until you show a map on the player view.',
+  unpresented: t('online.event.unpresented'),
 };

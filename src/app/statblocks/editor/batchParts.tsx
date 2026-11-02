@@ -7,6 +7,7 @@ import React, { useId, useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { Button } from '../../packages/components/primitives/button';
 import { ProgressBar } from '../../packages/components/primitives/ProgressBar';
+import { t } from '../../i18n';
 import './batch-parts.scss';
 
 /** A heading that folds a list open and shut. */
@@ -48,7 +49,7 @@ export function LeftNoteRows({ skipped, notReached, nameOf }: {
   return (
     <>
       {skipped.map(({ path, reason }) => <NoteRow key={path} name={nameOf(path)} detail={reason} />)}
-      {notReached.map((path) => <NoteRow key={path} name={nameOf(path)} detail="Not reached before Cancel." />)}
+      {notReached.map((path) => <NoteRow key={path} name={nameOf(path)} detail={t('statblockEditor.notReached')} />)}
     </>
   );
 }

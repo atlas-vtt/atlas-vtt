@@ -4,7 +4,7 @@ import { shallow } from 'zustand/vanilla/shallow';
 import type { ViewAtlasState } from '../storeFactory';
 import type { AtlasSettings, SettingsService } from './SettingsService';
 import type { PlayerRollSources } from './playerRollSource';
-import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerInstanceBadges';
+import type { PlayerBadgeNumbers } from '../pixi/token-renderer/PlayerBadgeNumbers';
 
 export type PlayerSettings = AtlasSettings['localPlayerView'];
 

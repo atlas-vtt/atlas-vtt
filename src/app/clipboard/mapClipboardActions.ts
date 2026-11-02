@@ -4,6 +4,11 @@ import { mayLinkFromScene } from '../services/sceneLinks';
 import { readMapClipboard, writeMapClipboard } from './mapClipboard';
 import { collectMapObjects, countMapObjects, type MapObjectContent, type Point } from './mapObjectContent';
 import { pasteOffset, placeMapObjects } from './mapObjectPlacement';
+import { levelObjects } from '../levels/levelObjects';
+import { levelLinkList, MAX_LEVEL_LINKS } from '../levels/levelLinks';
+import { hasLevels } from '../levels/sceneLevels';
+import { t } from '../i18n';
+import { showNotice } from '../ui/notice';
 import { withoutOffMap } from '../tokens/offMap';
 
 type ClipboardStore = Pick<StoreApi<ViewAtlasState>, 'getState'>;
@@ -13,18 +18,30 @@ function canEditMapObjects(state: ViewAtlasState): boolean {
   return !state.isPlayerView && state.activeTool !== 'wall';
 }
 
-/** Ids that copy, cut and duplicate act on. */
-/** The selection a copy or cut takes: never a combatant beside the map, which a cut would delete unseen. */
+/**
+ * Ids that copy, cut and duplicate act on: in the stairs tool the stairs whose popover is open, which
+ * is how it selects them; never a combatant beside the map, which a cut would delete unseen.
+ */
 function editableSelection(state: ViewAtlasState): string[] {
-  return canEditMapObjects(state) ? withoutOffMap(state.objects, state.selectedIds) : [];
+  if (!canEditMapObjects(state)) return [];
+  if (state.activeTool === 'stairs') return state.levelLinkPopover ? [state.levelLinkPopover] : [];
+  return withoutOffMap(state.objects, state.selectedIds);
 }
 
 function copyableContent(state: ViewAtlasState, ids: readonly string[]): MapObjectContent | null {
-  const content = collectMapObjects(state.objects, ids);
+  const content = collectMapObjects(state.objects, ids, state);
   return countMapObjects(content) > 0 ? content : null;
 }
 
-/** Puts the tokens, drawings, texts and pins with the given ids on the clipboard. Returns whether anything was copied. */
+/** Tells the GM when copied stairs cannot all land: the scene has one level, or the map holds as many as it may. */
+function tellStairsLeftOut(state: ViewAtlasState, content: MapObjectContent): void {
+  const count = content.levelLinks.length;
+  if (count === 0) return;
+  if (!hasLevels(state.levels)) showNotice(t('levels.stairsPasteOneLevel'));
+  else if (count > MAX_LEVEL_LINKS - levelLinkList(state.objects.levelLinks).length) showNotice(t('levels.stairsFull', { count: MAX_LEVEL_LINKS }));
+}
+
+/** Puts the tokens, drawings, texts, pins and stairs with the given ids on the clipboard. Returns whether anything was copied. */
 export async function copyMapObjects(store: ClipboardStore, ids: readonly string[]): Promise<boolean> {
   const content = copyableContent(store.getState(), ids);
   if (!content) return false;
@@ -58,12 +75,16 @@ export async function pasteClipboard(store: ClipboardStore, target: Point): Prom
   if (!copied || !canEditMapObjects(state)) return [];
   const content = { ...copied, pins: copied.pins.filter((pin) => mayLinkFromScene(state.mapPath, pin.notePath)) };
   if (countMapObjects(content) === 0) return [];
-  const placed = placeMapObjects(content, pasteOffset(content, target, state.grid), state.grid, state.objects);
+  const placed = placeMapObjects(content, pasteOffset(content, target, state.grid), state.grid, levelObjects(state));
+  tellStairsLeftOut(state, placed);
   return state.insertMapObjects(placed);
 }
 
 /** Duplicates the selection one grid cell away and returns the ids of the copies. */
 export function duplicateSelection(store: ClipboardStore): string[] {
   const state = store.getState();
-  return state.duplicateMapObjects(editableSelection(state));
+  const ids = editableSelection(state);
+  const content = copyableContent(state, ids);
+  if (content) tellStairsLeftOut(state, content);
+  return state.duplicateMapObjects(ids);
 }

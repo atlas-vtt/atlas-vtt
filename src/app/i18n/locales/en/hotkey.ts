@@ -9,6 +9,8 @@ export const hotkey = {
   'hotkey.sceneSwitcher': 'Switch between open maps',
   'hotkey.fitMap': 'Fit map to view',
   'hotkey.fitToken': 'Zoom to selected token',
+  'hotkey.levelUp': 'Show the level above',
+  'hotkey.levelDown': 'Show the level below',
   'hotkey.move': 'Move / selection tools',
   'hotkey.fog': 'Fog tools',
   'hotkey.draw': 'Drawing tools',

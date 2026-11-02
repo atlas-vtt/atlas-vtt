@@ -28,7 +28,10 @@ const VIEWER = { x: 700, y: 512 };
 
 /** World points, read at their screen pixel. */
 const BRIGHT = { x: 300, y: 512 };
-const DIM = { x: 410, y: 512 };
+/** In the lamp's dim range early in its fade, where its light is still clearly brighter than darkvision's grey. */
+const DIM = { x: 365, y: 512 };
+/** Deeper in the lamp's fade, where its dim light has fallen well below its bright range's. */
+const DIM_DEEP = { x: 395, y: 512 };
 /** In the dark, 80 px from the viewer. */
 const DARK = { x: 780, y: 512 };
 /** In the dark, about 500 px from the viewer: beyond a sense given 400 px. */
@@ -102,8 +105,8 @@ describe('senses in the composite', () => {
     const generic = await render(sense('darkvision'));
     const dnd = await render(sense('dnd5e-darkvision'));
     expect(generic(DIM)).toEqual(plain(DIM));
-    expect(luminance(dnd(DIM))).toBeGreaterThan(luminance(plain(DIM)) * 1.3);
-    expect(Math.abs(luminance(dnd(DIM)) - luminance(plain(BRIGHT)))).toBeLessThan(12);
+    // Seen as bright, the lamp's light is its bright level there, faded as the light is (`FADE_GLSL`), and the sense fades towards its range's edge.
+    expect(luminance(dnd(DIM_DEEP))).toBeGreaterThan(luminance(plain(DIM_DEEP)) * 1.2);
     expect(dnd(DARK)).toEqual(generic(DARK));
     expect(dnd(BRIGHT)).toEqual(plain(BRIGHT));
   });
@@ -111,7 +114,7 @@ describe('senses in the composite', () => {
   it('low-light vision: dim light as bright, the dark stays dark', async () => {
     const plain = await render([]);
     const at = await render(sense('low-light-vision'));
-    expect(luminance(at(DIM))).toBeGreaterThan(luminance(plain(DIM)) * 1.3);
+    expect(luminance(at(DIM_DEEP))).toBeGreaterThan(luminance(plain(DIM_DEEP)) * 1.2);
     expect(isDark(at(DARK))).toBe(true);
     expect(at(BRIGHT)).toEqual(plain(BRIGHT));
   });

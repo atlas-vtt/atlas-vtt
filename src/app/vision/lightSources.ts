@@ -11,6 +11,7 @@ import { kindOf } from './sight';
 import { ambientAt } from './lightLevels';
 import type { AmbientLight } from './sight';
 import type { EngineLight } from '../pixi/lighting/engine/types';
+import type { Point } from '../types/visionTypes';
 
 /** A light that shines right now: placed on the map or carried by a token. */
 export interface ActiveLight {
@@ -21,6 +22,8 @@ export interface ActiveLight {
   emission: LightEmission;
   /** Where a light that shines one way faces: the placed light's rotation, or where the token carrying it looks (`tokenFacing`). */
   rotation?: number;
+  /** A placed light that glows from an area (`LightSource.area`): its corners; `x`, `y` are its middle. */
+  area?: readonly Point[];
 }
 
 /**
@@ -31,8 +34,9 @@ export interface ActiveLight {
 export function activeLights(lights: Record<string, LightSource>, tokens: Record<string, TokenEntity>, ambient: number | AmbientLight = 0): ActiveLight[] {
   const active: ActiveLight[] = [];
   for (const light of lightList(lights)) {
-    // The ambient light where the light stands: that of a zone around it, else the scene's.
-    if (isLightOn(light, typeof ambient === 'number' ? ambient : ambientAt(light, ambient))) active.push({ key: `light:${light.id}`, x: light.x, y: light.y, emission: light.emission, ...turned(light.rotation) });
+    // The ambient light where the light stands (an area light's middle): that of a zone around it, else the scene's.
+    if (!isLightOn(light, typeof ambient === 'number' ? ambient : ambientAt(light, ambient))) continue;
+    active.push({ key: `light:${light.id}`, x: light.x, y: light.y, emission: light.emission, ...(light.area ? { area: light.area } : turned(light.rotation)) });
   }
   for (const token of Object.values(tokens)) {
     const carried = readEmission(token.light);
@@ -48,7 +52,8 @@ function turned(rotation: number | undefined): Pick<ActiveLight, 'rotation'> {
 /**
  * A light in world pixels for the engine; its colour mixed towards white and linearised. A
  * light with an angle gets its cone (`beamOf`, facing as a token's sight does), with half a cell
- * around it lit all around: the space of whoever carries it.
+ * around it lit all around: the space of whoever carries it. An area light has its area
+ * (`surface`) instead, and neither beam nor flame of its own.
  */
 export function engineLight(light: ActiveLight, scale: UnitScale): EngineLight {
   const { emission } = light;
@@ -69,7 +74,8 @@ export function engineLight(light: ActiveLight, scale: UnitScale): EngineLight {
     // Darkness does not flicker: its edge is where the rules end it.
     animation: emission.darkness ? 'none' : emission.animation,
     ...kindOf({ ...(emission.darkness && { darkness: true }), ...(emission.priority !== undefined && { priority: emission.priority }), ...(cone && { cone }) }),
-    ...(cone && { edge: softEdge(dim, scale.cellSize) }),
+    ...(cone && { edge: softEdge(dim) }),
+    ...(light.area && !emission.darkness && { surface: light.area }),
   };
 }
 

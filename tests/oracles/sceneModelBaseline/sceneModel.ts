@@ -108,7 +108,7 @@ export class SceneModelBuilder {
     const reaches = everyReach.filter((_, i) => !out[i]);
     const sources = sourcesInDarkness(sightSources(tokens, scale, bounds, rules, GM_SIGHT_POLICY), ambient, reaches);
     this.sightCache.retain(new Set(sources.map(source => source.tokenId)));
-    const gmSight = sceneSight(state.lighting, sources, walls, this.sightCache);
+    const gmSight = sceneSight(state.lighting, sources, walls, this.sightCache, { sceneHasVision: sources.length > 0 });
     const sight = selectSight(gmSight, tokens, PLAYER_SIGHT_POLICY);
     // Half a cell: the width of a zone's soft edge past its outline.
     const zones = zoneList.map(({ polygon, ambient: level, ambientColor }) => ({ polygon, ambient: level, ...(ambientColor && { ambientColor }), soft: scale.cellSize / 2 }));

@@ -25,7 +25,7 @@ export interface TokenLinkPanelProps {
 }
 
 const SOURCES: readonly SegmentedOption<ArtSource>[] = [
-  { value: 'tokens', label: 'Tokens' },
+  { value: 'tokens', label: t('statblockEditor.token.tokens') },
   { value: 'vault', label: t('vaultImages.list') },
 ];
 
@@ -72,13 +72,13 @@ export function TokenLinkPanel({ pane, field, collectionId, onClose, searchRef }
   };
 
   const choose = (token: CardToken): void => run('Linking', async () => {
-    if (await linkToken(pane, field, token)) pane.announce(`Linked ${token.name}.`);
+    if (await linkToken(pane, field, token)) pane.announce(t('statblockEditor.token.linked', { name: token.name }));
   }, () => onClose(true));
 
   const chooseImage = (file: TFile): void => run('Setting the art', () => setArt(pane, field, file.path), () => onClose(true));
 
   const unlink = (token: CardToken): void => run('Unlinking', async () => {
-    if (await unlinkToken(app, token)) pane.announce(`Unlinked ${token.name}.`);
+    if (await unlinkToken(app, token)) pane.announce(t('statblockEditor.token.unlinked', { name: token.name }));
   });
 
   const showArtOf = (token: CardToken): void => run('Setting the art', async () => {
@@ -111,12 +111,12 @@ export function TokenLinkPanel({ pane, field, collectionId, onClose, searchRef }
   return (
     <div ref={panelRef} className="atlas-sb-token-panel" role="dialog" aria-labelledby={titleId} aria-busy={busy !== null} tabIndex={-1}>
       <div className="atlas-sb-token-panel__header">
-        <h3 id={titleId} className="atlas-sb-token-panel__title">Token art</h3>
+        <h3 id={titleId} className="atlas-sb-token-panel__title">{t('statblockEditor.token.art')}</h3>
         <CloseButton onClick={() => onClose(true)} />
       </div>
       <div className="atlas-sb-token-panel__body">
         {tokens.linked.length > 0 && (
-          <ul className="atlas-sb-token-panel__linked" aria-label="Linked tokens">
+          <ul className="atlas-sb-token-panel__linked" aria-label={t('statblockEditor.token.linkedList')}>
             {tokens.linked.map((token) => (
               <li key={token.id} className="atlas-sb-token-panel__row">
                 <TokenPortrait
@@ -128,9 +128,9 @@ export function TokenLinkPanel({ pane, field, collectionId, onClose, searchRef }
                 />
                 <span className="atlas-sb-token-panel__name">{token.name}</span>
                 {isTheArt(app, token, art)
-                  ? <span className="atlas-sb-token-panel__badge">Statblock image</span>
-                  : <Button type="button" variant="ghost" size="sm" aria-disabled={busy !== null || undefined} onClick={() => showArtOf(token)}>Use its art</Button>}
-                <LabelTooltip label={`Unlink ${token.name}`}>
+                  ? <span className="atlas-sb-token-panel__badge">{t('statblockEditor.token.statblockImage')}</span>
+                  : <Button type="button" variant="ghost" size="sm" aria-disabled={busy !== null || undefined} onClick={() => showArtOf(token)}>{t('statblockEditor.token.useArt')}</Button>}
+                <LabelTooltip label={t('statblockEditor.token.unlinkNamed', { name: token.name })}>
                   <Button type="button" variant="ghost" size="icon" className="atlas-sb-token-panel__unlink" aria-disabled={busy !== null || undefined} onClick={() => unlink(token)}>
                     <Unlink aria-hidden="true" />
                   </Button>
@@ -142,7 +142,7 @@ export function TokenLinkPanel({ pane, field, collectionId, onClose, searchRef }
         {canMake && (
           <Button type="button" variant="ghost" size="sm" className="atlas-sb-token-panel__make" aria-disabled={busy !== null || undefined} onClick={create}>
             <Sparkles aria-hidden="true" />
-            Create token from art
+            {t('statblockEditor.token.createFromArt')}
           </Button>
         )}
         <div className="atlas-sb-token-panel__controls">
@@ -150,22 +150,22 @@ export function TokenLinkPanel({ pane, field, collectionId, onClose, searchRef }
             ref={searchRef}
             type="text"
             className="atlas-sb-token-panel__search"
-            placeholder={vault ? t('vaultImages.searchPlaceholder') : 'Search tokens'}
-            aria-label={vault ? t('vaultImages.search') : 'Search tokens'}
+            placeholder={vault ? t('vaultImages.searchPlaceholder') : t('statblockEditor.token.search')}
+            aria-label={vault ? t('vaultImages.search') : t('statblockEditor.token.search')}
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={onSearchKeyDown}
           />
           {/* Kept when the art is no token's, so the row keeps its shape. */}
           <DropdownToggleRow
-            label="Ring"
+            label={t('statblockEditor.token.ring')}
             value={framed !== null && framed.showRing !== false}
             onChange={toggleRing}
             disabled={framed === null || busy !== null}
             disabledReason={framed ? undefined : shown.src ? 'This art belongs to no token' : 'Add token art first'}
           />
         </div>
-        <SegmentedControl className="atlas-sb-token-panel__sources" value={source} options={SOURCES} onChange={setSource} ariaLabel="Choose from" />
+        <SegmentedControl className="atlas-sb-token-panel__sources" value={source} options={SOURCES} onChange={setSource} ariaLabel={t('statblockEditor.token.chooseFrom')} />
         <TokenArtChoices
           app={app}
           source={source}

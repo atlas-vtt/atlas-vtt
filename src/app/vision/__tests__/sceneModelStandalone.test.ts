@@ -65,6 +65,28 @@ describe('the lighting scene model on its own', () => {
     expect(typeof document).toBe('undefined');
   });
 
+  it('builds a light that moves as moving, and builds it whole once it rests', () => {
+    let now = 0;
+    const builder = new SceneModelBuilder({ clock: () => now });
+    builder.update(state, BOUNDS, measurement);
+    expect(builder.restsAt()).toBeNull();
+    const scout = state.objects.tokens.scout!;
+    const step = (x: number): SceneState => ({ ...state, objects: { ...state.objects, tokens: { scout: { ...scout, x } } } });
+    now = 16;
+    const moved = step(110);
+    const moving = builder.update(moved, BOUNDS, measurement).model;
+    expect(moving.lights.find((light) => light.key === 'token:scout')).toMatchObject({ moving: true });
+    expect(moving.lights.find((light) => light.key === 'light:lamp')).not.toHaveProperty('moving');
+    const rest = builder.restsAt()!;
+    now = rest - 1;
+    expect(builder.update(moved, BOUNDS, measurement).rebuilt).toBe(false);
+    now = rest;
+    const rested = builder.update(moved, BOUNDS, measurement);
+    expect(rested.rebuilt).toBe(true);
+    expect(rested.model.lights.every((light) => !light.moving)).toBe(true);
+    expect(builder.restsAt()).toBeNull();
+  });
+
   it('cannot load the scene model that read colours through the renderer', async () => {
     await expect(import('../../../../tests/oracles/sceneModelBaseline/sceneModel')).rejects.toThrow();
     expect(loaded).toEqual(['pixi.js']);

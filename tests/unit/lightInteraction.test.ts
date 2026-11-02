@@ -26,7 +26,21 @@ describe('a press on a light marker', () => {
     expect(store.getState().objects.lights[torch]).toMatchObject({ x: 400, y: 300 });
   });
 
-  it('neither moves the light nor opens its popover when dragged without the lighting tool', () => {
+  it('moves the light with the select or move tool too, as one undo step, without selecting it for the lighting tool', () => {
+    const { store, torch, tool, select, press, move, up, steps, undo } = setup();
+    tool.moves = true;
+    press(400, 300);
+    move(460, 340);
+    up();
+    expect(store.getState().objects.lights[torch]).toMatchObject({ x: 460, y: 340 });
+    expect(select).not.toHaveBeenCalled();
+    expect(store.getState().lightPopover).toBeNull();
+    expect(steps()).toBe(1);
+    undo();
+    expect(store.getState().objects.lights[torch]).toMatchObject({ x: 400, y: 300 });
+  });
+
+  it('neither moves the light nor opens its popover when dragged with a tool that moves nothing', () => {
     const { store, torch, press, move, up, steps } = setup();
     press(400, 300);
     move(460, 340);

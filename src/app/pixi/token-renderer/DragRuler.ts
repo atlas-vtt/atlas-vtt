@@ -2,19 +2,24 @@
  * Token drag ruler: while a token is dragged, measures the path from where it
  * started to the cell it would land in and labels the distance at the path's middle.
  * Space adds a waypoint at the current landing cell; the distance adds up
- * across waypoints. The token still drops where the pointer is released.
+ * across waypoints, and difficult terrain on the way costs what the rules say
+ * (`movementCostInCells`). The token still drops where the pointer is released.
  */
 
 import type { StoreApi } from 'zustand';
 import type { GridSystem } from '../../grid/GridSystem';
-import { pathLengthInCells, type GridGeometry } from '../../grid/gridDistance';
+import type { GridGeometry } from '../../grid/gridDistance';
+import { movementCostInCells } from '../../grid/movementCost';
 import { tokenCenterShift } from '../../grid/gridPlacement';
 import type { Point } from '../../grid/hexGeometry';
 import { formatDistance, type MeasurementSettings } from '../../grid/measurementFormat';
 import type { ViewAtlasState } from '../../storeFactory';
 import type { LayerVisibility } from '../playerSafeFrame';
 import type { DragRulerView } from './DragRulerView';
-import { computeTokenPixelSize } from './tokenSizing';
+import { levelObjects } from '../../levels/levelObjects';
+import { computeTokenPixelSize, tokenDiameterInCells } from './tokenSizing';
+import { difficultCells } from '../../mapFeatures/featureIndex';
+import { mapFeatureList } from '../../mapFeatures/mapFeatures';
 import { mapTokens } from '../../tokens/offMap';
 
 /** What a drag ruler measures: the token and the points it runs through (its start, each waypoint, its landing). */
@@ -76,7 +81,7 @@ export class DragRuler {
 
   /** Players never see the ruler of a token hidden from them, or of one they do not see (`isSeen`, with dynamic lighting). */
   getPlayerViewLayers(isSeen: (tokenId: string) => boolean = () => true): LayerVisibility[] {
-    const token = this.tokenId ? mapTokens(this.store.getState().objects)[this.tokenId] : undefined;
+    const token = this.tokenId ? mapTokens(levelObjects(this.store.getState()))[this.tokenId] : undefined;
     const shown = !token || (!token.isHidden && isSeen(token.id));
     return shown ? [] : this.view.layers.map(layer => ({ layer, visible: false }));
   }
@@ -113,7 +118,10 @@ export class DragRuler {
     }
     const grid = this.gridSystem.getOptions();
     const settings = this.settingsProvider();
-    const cells = pathLengthInCells(grid, this.cellPath(points, grid), settings.diagonalRule);
+    const features = mapFeatureList(levelObjects(this.store.getState()).mapFeatures);
+    const rules = { diagonalRule: settings.diagonalRule, difficultTerrain: settings.difficultTerrain, difficult: difficultCells(features) };
+    const footprint = this.snapsToGrid() ? tokenDiameterInCells(this.tokenSize()) : 1;
+    const cells = movementCostInCells(grid, this.cellPath(points, grid), rules, footprint);
     const drawn = this.tip ? [...points.slice(0, -1), this.tip] : points;
     this.view.draw(drawn, formatDistance(cells, settings), computeTokenPixelSize(grid.size, this.tokenSize()) / 2, grid.size);
     this.refreshVisibility();
@@ -140,7 +148,7 @@ export class DragRuler {
   }
 
   private tokenSize(): number {
-    const size = this.tokenId ? mapTokens(this.store.getState().objects)[this.tokenId]?.size : undefined;
+    const size = this.tokenId ? mapTokens(levelObjects(this.store.getState()))[this.tokenId]?.size : undefined;
     return size || 1;
   }
 }

@@ -1,6 +1,6 @@
 {
   "name": "atlas-vtt",
-  "version": "0.9.2-beta.0",
+  "version": "0.12.1-beta.0",
   "main": "dist/main.js",
   "scripts": {
     "dev": "cross-env COPY_ON_CHANGE=true vite build --watch",
@@ -14,7 +14,11 @@
     "build:ci": "cross-env COPY_ON_CHANGE=false vite build",
     "postbuild": "node scripts/copy-plugin.js",
     "test": "vitest --project unit",
+    "test:slow": "vitest run --project slow",
     "test:gpu": "vitest run --project gpu",
+    "test:caves": "vitest run --project slow tests/unit/dungeons/cave/ tests/unit/dungeons/caveInvariants.floors1.test.ts tests/unit/dungeons/caveInvariants.floors2.test.ts tests/unit/dungeons/caveInvariants.floors3.test.ts tests/unit/dungeons/levelLinkAccess.cavern.test.ts tests/unit/dungeons/walkedStairwells.test.ts tests/unit/dungeons/otherThemesUntouched.test.ts tests/unit/dungeons/themeTagEffects.test.ts tests/unit/dungeons/createDungeonScene.test.ts tests/unit/dungeons/dungeonSceneParts.test.ts tests/unit/dungeons/sceneWalls.test.ts tests/unit/dungeons/dungeonLiquids.test.ts tests/unit/dungeons/generateInvariants.floors1.test.ts tests/unit/dungeons/generateInvariants.floors2.test.ts",
+    "test:dungeons": "vitest run --project slow tests/unit/dungeons/ tests/unit/dungeonWizard.test.tsx",
+    "test:perf": "vitest run --project perf",
     "changelog:generate": "node scripts/changelog.js",
     "changelog:check": "node scripts/changelog.js --check",
     "release:prepare": "node scripts/prepare-release-assets.js",

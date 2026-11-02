@@ -6,6 +6,7 @@ import './styles/main.scss';
 import { AtlasView, ATLAS_VIEW_TYPE } from './src/app/atlas-view';
 import { LocalPlayerView, LOCAL_PLAYER_VIEW_TYPE } from './src/app/local-player-view';
 import { DashboardView, DASHBOARD_VIEW_TYPE } from './src/app/dashboard-view';
+import { DungeonGeneratorView, DUNGEON_GENERATOR_VIEW_TYPE } from './src/app/dungeon-generator-view';
 import { initializeAtlasStorage } from './src/app/atlasStorageInit';
 import { t } from './src/app/i18n';
 import { CreatureIndex } from './src/app/creatures/CreatureIndex';
@@ -45,7 +46,7 @@ import { changelogSettingsSection } from './src/app/settings/changelogSettingsSe
 import { hotkeySettingsSection, onboardingSettingsSection } from './src/app/settings/hotkeySettingsSection';
 import { navigationSettingsSection } from './src/app/settings/navigationSettingsSection';
 import { diceSettingsSection } from './src/app/settings/diceSettingsSection';
-import { lightingSettingsSection } from './src/app/settings/lightingSettingsSection';
+import { mapsSettingsSection } from './src/app/settings/mapsSettingsSection';
 import { mapImageCacheSettingsSection } from './src/app/settings/mapImageCacheSettingsSection';
 import { registerDiceLookSync } from './src/app/plugin/diceLookSync';
 import { registerAccentColorSync } from './src/app/plugin/accentColorSync';
@@ -82,9 +83,12 @@ import { registerUpdateWatch } from './src/app/updates/registerUpdateWatch';
 import { AtlasErrorLog } from './src/app/support/errorLog';
 import { IssueReporter } from './src/app/support/IssueReporter';
 import { runInBackground } from './src/app/utils/backgroundTask';
-import { TileDecoderClient } from './src/app/pixi/mapImage/TileDecoderClient';
 import { TokenSoundPlayer } from './src/app/audio/TokenSoundPlayer';
-import { MapImageService } from './src/app/pixi/mapImage/MapImageService';
+import { TesseraDecoderClient } from './src/app/pixi/mosaicCanvas/TesseraDecoderClient';
+import { MapProcessing } from './src/app/pixi/mosaicCanvas/mapProcessing';
+import { registerMapProcessingStatus } from './src/app/plugin/mapProcessingStatus';
+import { DungeonWorkerClient } from './src/app/dungeons/worker/DungeonWorkerClient';
+import { MosaicCanvasService } from './src/app/pixi/mosaicCanvas/MosaicCanvasService';
 
 declare const __ATLAS_RELEASE_BUILD__: boolean;
 
@@ -166,6 +170,7 @@ export default class AtlasVTTPlugin extends Plugin {
     // whose folder renames reach map files only through these vault events.
     registerVaultSync(this);
     registerDiceStageRelease(this);
+    registerMapProcessingStatus(this);
     registerAccentColorSync(this);
     // Views first, so workspace restore can resolve persisted Atlas tabs
     // before the slower startup path finishes.
@@ -203,8 +208,8 @@ export default class AtlasVTTPlugin extends Plugin {
     this.addSettingTab(new AtlasSettingTab(this.app, this, () => [
       navigationSettingsSection(this.settingsService),
       diceSettingsSection(this.settingsService),
-      lightingSettingsSection(this.settingsService),
-      mapImageCacheSettingsSection(() => TileDecoderClient.forApp(this.app)),
+      mapsSettingsSection(this.settingsService),
+      mapImageCacheSettingsSection(() => TesseraDecoderClient.forApp(this.app)),
       hotkeySettingsSection(this.settingsService),
       onboardingSettingsSection(this.settingsService),
       changelogSettingsSection(this.settingsService, changelogService, this.manifest.version, updateWatch),
@@ -277,9 +282,11 @@ export default class AtlasVTTPlugin extends Plugin {
     releaseMapPictures(this.app);
     CreatureIndex.release(this.app);
     TemplateLibrary.release(this.app);
-    TileDecoderClient.release(this.app);
-    MapImageService.release(this.app);
     TokenSoundPlayer.release(this.app);
+    MapProcessing.release(this.app);
+    TesseraDecoderClient.release(this.app);
+    DungeonWorkerClient.release(this.app);
+    MosaicCanvasService.release(this.app);
     disposeImageProcessing();
     disposeSpectralEngine();
   }
@@ -302,6 +309,7 @@ export default class AtlasVTTPlugin extends Plugin {
     this.registerView(ATLAS_VIEW_TYPE, (leaf) => new AtlasView(leaf, this));
     this.registerView(LOCAL_PLAYER_VIEW_TYPE, (leaf) => new LocalPlayerView(leaf));
     this.registerView(DASHBOARD_VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
+    this.registerView(DUNGEON_GENERATOR_VIEW_TYPE, (leaf) => new DungeonGeneratorView(leaf));
     registerLootQueryView(this);
     registerBaseGiveButtons(this);
     this.registerView(TEMPLATE_EDITOR_VIEW_TYPE, (leaf) => new TemplateEditorView(leaf));

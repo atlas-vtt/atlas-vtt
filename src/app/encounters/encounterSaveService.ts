@@ -9,10 +9,19 @@ import { showNotice } from '../ui/notice';
 import { createDialogShell } from '../ui/dialogShell';
 import { trashVaultItem } from '../utils/trashVaultItem';
 import { ENCOUNTER_THUMBNAIL_DIR, encounterThumbnailFile } from './encounterThumbnailFile';
+import { refsRange } from './encounterQuantity';
+import { formatRange } from '../creatures/creatureValues';
 
 /** One token as it will be stored inside an encounter. */
 export type EncounterTokenDraft = EncounterAsset['tokens'][number];
 
+/** "Encounter with 4 tokens", or a span where some are rolled ("2 – 8"). */
+function describeTokens(tokens: readonly EncounterTokenDraft[]): string {
+  const range = refsRange(tokens);
+  return range.min === range.max
+    ? t('encounter.description', { count: range.max })
+    : t('encounter.descriptionRange', { count: range.max, range: formatRange(range) });
+}
 
 /**
  * Asks for the encounter's name in Atlas' own dialog, which stacks above the asset
@@ -122,7 +131,7 @@ export async function storeEncounter(
       difficulty: 'medium',
       tags: [],
       thumbnailUrl,
-      data: { description: t('encounter.description', { count: tokens.length }) },
+      data: { description: describeTokens(tokens) },
     });
     showNotice(t('encounter.saved', { name }));
     return encounter;
@@ -157,7 +166,7 @@ export async function updateEncounter(
       name,
       tokens,
       ...(thumbnailUrl ? { thumbnailUrl } : {}),
-      data: { ...current.data, tokens, description: t('encounter.description', { count: tokens.length }) },
+      data: { ...current.data, tokens, description: describeTokens(tokens) },
     });
     // The new thumbnail replaces the old one, which nothing else shows.
     const replaced = fresh ? encounterThumbnailFile(app, current.thumbnailUrl) : null;

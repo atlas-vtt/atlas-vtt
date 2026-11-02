@@ -1,0 +1,24 @@
+@use '../../../../styles/tokens' as *;
+
+// The GM's hover label over the map: Atlas's tooltip (`.tooltip-content`) beside the pointer.
+// Placed by left and top, since the tooltip's entrance animates its transform.
+.tooltip-content.atlas-map-feature-label {
+  position: fixed;
+  left: 0;
+  top: 0;
+
+  &[hidden] {
+    display: none;
+  }
+
+  .tooltip-inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: $spacing-s;
+  }
+}
+
+.atlas-map-feature-label__traits {
+  color: var(--text-muted);
+  white-space: nowrap;
+}

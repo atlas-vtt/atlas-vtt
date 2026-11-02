@@ -5,7 +5,7 @@ import type { App, TFile } from 'obsidian';
 import { openEditTokenModal } from '../../src/app/pixi/token-renderer/EditTokenModal';
 import { AudioFileModal } from '../../src/app/audio/AudioFileModal';
 import { TokenSoundPlayer } from '../../src/app/audio/TokenSoundPlayer';
-import { createViewAtlasStore } from '../../src/app/storeFactory';
+import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 import type { TokenEntity } from '../../src/app/types';
 import type { TokenSound } from '../../src/app/types/audioTypes';
 import { FakeAudioContext } from '../mocks/fakeAudioContext';
@@ -17,7 +17,7 @@ vi.mock('../../src/app/ui/notice', () => ({ showNotice }));
 const MB = 1024 * 1024;
 let current: App | null = null;
 
-function open(sounds?: unknown): { app: App; saved: () => TokenEntity; section: () => HTMLElement } {
+function open(sounds?: unknown): { app: App; store: ViewAtlasStore; saved: () => TokenEntity; section: () => HTMLElement } {
   const { app } = createInMemoryApp({
     files: {
       'Sounds/dragon-roar.mp3': 'audio:48000',
@@ -33,6 +33,7 @@ function open(sounds?: unknown): { app: App; saved: () => TokenEntity; section: 
   act(() => openEditTokenModal(token, store, app, []));
   return {
     app,
+    store,
     saved: () => store.getState().objects.tokens.t!,
     section: () => screen.getByRole('region', { name: 'Sounds' }),
   };
@@ -93,6 +94,22 @@ describe('the Sounds of Edit Token', () => {
     const { app } = open();
     const paths = new AudioFileModal(app, () => undefined).getItems().map((file) => file.path).sort();
     expect(paths).toEqual(['Sounds/album.mp3', 'Sounds/dragon-roar.mp3', 'Sounds/wings.ogg']);
+  });
+
+  it('saves sounds after the token moves to another level while Edit Token stays open', () => {
+    const { app, store, saved } = open();
+    store.setState({
+      levels: [
+        { id: 'ground', elevation: { bottom: 0, top: 10 }, background: null },
+        { id: 'upper', elevation: { bottom: 10, top: 20 }, background: null },
+      ],
+      viewedLevel: 'ground',
+    });
+    addSound(app, 'Sounds/wings.ogg');
+    act(() => store.getState().moveTokensToLevel(['t'], 'upper'));
+    expect(store.getState().viewedLevel).toBe('ground');
+    save();
+    expect(saved()).toMatchObject({ level: 'upper', sounds: [{ path: 'Sounds/wings.ogg', volume: 1 }] });
   });
 
   it('offers the sound picked last at the top of the picker the next time, and not a refused one', () => {

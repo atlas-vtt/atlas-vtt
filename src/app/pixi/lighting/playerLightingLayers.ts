@@ -15,6 +15,8 @@ export type GmOverlays = {
   wallEditor: HideableLayer;
   /** The light zones' outlines and handles, shown in the lighting tool's zone mode. */
   lightZones: HideableLayer;
+  /** The openings and floors of the level shown, shown in the lighting tool's openings mode. */
+  levelSurfaces: HideableLayer;
   /** What the scene remembers, tinted, and the stroke that edits it: shown in the lighting tool's explored-memory mode. */
   exploredMemory: HideableLayer;
   doorBadges: HideableLayer;
@@ -65,17 +67,23 @@ export function playerTokenSight(
 
 const NO_DOORS: ReadonlySet<string> = new Set();
 
-/** Ordinary doors in current sight with an uncovered midpoint. None while unlit or fog is invalid. */
+/**
+ * Ordinary doors in current sight with an uncovered midpoint: neither committed fog nor a drawn roof
+ * (`roofed`) covers it. None while unlit or fog is invalid.
+ */
 export function playerDoorSight(
   lighting: Pick<SceneLightingView, 'isEnabled' | 'currentSight' | 'ambientLight' | 'lightReaches'>,
   walls: Record<string, WallSegment>,
   fog?: FogCoverage | null,
+  roofed?: (point: Point) => boolean,
 ): ReadonlySet<string> {
   if (!lighting.isEnabled() || fog === null) return NO_DOORS;
   const list = wallList(walls);
   const seen = doorsInSight(list, lighting.currentSight(), lighting.ambientLight(), lighting.lightReaches());
-  if (fog) for (const wall of list) {
-    if (seen.has(wall.id) && fog.covers(doorMiddle(wall))) seen.delete(wall.id);
+  for (const wall of list) {
+    if (!seen.has(wall.id)) continue;
+    const middle = doorMiddle(wall);
+    if (fog?.covers(middle) || roofed?.(middle)) seen.delete(wall.id);
   }
   return seen;
 }

@@ -3,6 +3,7 @@ import { drawnStatblock, statblockSheet } from '../../../../../src/app/online/gm
 import { parseBookStatblock } from '../../../../../src/app/online/protocol/index.ts';
 import type { StatblockTemplate } from '../../../../../src/app/statblocks/model/templateTypes';
 import { templateOf } from '../../../statblocks/render/sheetTestKit';
+import { fakeStoring } from '../fakeStoring.ts';
 import { resolvedOf, statblockTexts } from './sheetKit';
 
 const SECRET = 'SENTINEL';
@@ -92,9 +93,9 @@ describe('what a player is never sent of their statblock', () => {
     expect(JSON.stringify(statblock)).not.toContain('424242');
   });
 
-  it('serves the whole of a long text only to the sheet that names it, never one hidden from players', async () => {
+  it('names the whole of a long text only on the sheet that holds it, never one hidden from players', async () => {
     const long = `${'A long tale of the road. '.repeat(40)}The end.`;
-    const { statblock, texts } = await drawnStatblock({ resolved: resolvedOf(TEMPLATE, { ...NOTE, notes: `${SECRET} ${long}`, intro: long }), definitions: [], resources: undefined });
+    const { statblock, texts } = await drawnStatblock({ resolved: resolvedOf(TEMPLATE, { ...NOTE, notes: `${SECRET} ${long}`, intro: long }), definitions: [], resources: undefined }, fakeStoring());
     expect(texts).toHaveLength(1);
     expect(new TextDecoder().decode(texts[0]!.bytes)).toBe(long);
     expect(JSON.stringify(statblock)).toContain(texts[0]!.ref.hash);

@@ -2,12 +2,15 @@ import type { FederatedPointerEvent } from 'pixi.js';
 import type { Viewport } from 'pixi-viewport';
 import type { NotePin } from '../../types';
 import type { ViewAtlasStore } from '../../storeFactory';
-import { openContextMenuGlobal } from '../../react/root/ContextMenuContext';
+import type { ContextMenuEntry } from '../../react/root/ContextMenuContext';
+import { openPinMenu, type PinnedSceneLevels } from '../pinSceneLevelMenu';
 import { readablePinEntry } from '../pinReadableMenu';
 import { watchClick } from '../utils/clickRelease';
 import { dispatchPinAction } from '../utils/pinActions';
+import { pinOpenLook } from '../pinOpenLook';
 import type { HexLinkRenderer } from './HexLinkRenderer';
 import { t } from '../../i18n';
+import { levelObjects } from '../../levels/levelObjects';
 
 /** What the viewport-level pointer dispatch calls for linked hexes. */
 export interface HexLinkPointerHandlers {
@@ -26,6 +29,8 @@ export interface HexLinkInteractionOptions {
   renderer: HexLinkRenderer;
   /** Hover changes, so Cmd/Ctrl-hover previews the linked note like a pin's. */
   onNoteHover: (type: 'over' | 'out', pin: NotePin, e?: FederatedPointerEvent) => void;
+  /** Reads the levels of the scene a linked hex opens, for its menu's level choice. */
+  pinnedSceneLevels?: PinnedSceneLevels;
 }
 
 /** Linked hexes light up on hover, open their note on click and offer a menu on right-click. */
@@ -36,7 +41,7 @@ export class HexLinkInteraction implements HexLinkPointerHandlers {
   constructor(private readonly options: HexLinkInteractionOptions) {}
 
   private pin(pinId: string): NotePin | undefined {
-    return this.options.store.getState().objects.pins[pinId];
+    return levelObjects(this.options.store.getState()).pins[pinId];
   }
 
   hitTest(worldX: number, worldY: number): string | null {
@@ -63,7 +68,7 @@ export class HexLinkInteraction implements HexLinkPointerHandlers {
       e,
       () => {
         const pin = this.pin(pinId);
-        if (pin) dispatchPinAction('open', pin);
+        if (pin) dispatchPinAction('open', pin, this.options.store);
       },
       () => {
         renderer.setPressed(null);
@@ -76,21 +81,19 @@ export class HexLinkInteraction implements HexLinkPointerHandlers {
     const pin = this.pin(pinId);
     if (!pin) return;
     const position = { x: e.clientX, y: e.clientY };
-    openContextMenuGlobal(
-      [
-        { type: 'item', label: t('pinMenu.open'), icon: 'file-text', onClick: () => dispatchPinAction('open', pin) },
-        { type: 'item', label: t('hex.changeNote'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin) },
-        ...[readablePinEntry(this.options.store, pin)].filter((entry) => entry !== null),
-        {
-          type: 'item',
-          label: t('hex.unlink'),
-          icon: 'unlink',
-          destructive: true,
-          onClick: () => this.options.store.getState().deleteMapObject('pin', pin.id),
-        },
-      ],
-      position,
-    );
+    const entries: ContextMenuEntry[] = [
+      { type: 'item', ...pinOpenLook(pin), onClick: () => dispatchPinAction('open', pin, this.options.store) },
+      { type: 'item', label: t('hex.changeNote'), icon: 'edit', onClick: () => dispatchPinAction('edit', pin, this.options.store) },
+      ...[readablePinEntry(this.options.store, pin)].filter((entry) => entry !== null),
+      {
+        type: 'item',
+        label: t('hex.unlink'),
+        icon: 'unlink',
+        destructive: true,
+        onClick: () => this.options.store.getState().deleteMapObject('pin', pin.id),
+      },
+    ];
+    openPinMenu(this.options.store, pin, entries, position, this.options.pinnedSceneLevels);
   }
 
   destroy(): void {

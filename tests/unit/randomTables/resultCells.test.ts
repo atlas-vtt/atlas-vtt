@@ -132,3 +132,46 @@ describe('a master table', () => {
     expect(cell.items).toEqual([]);
   });
 });
+
+describe('a row that rolls its own table again', () => {
+  const armor = '| d4 | Armor |\n| --- | --- |\n| 1 | Leather |\n| 2 | Chainmail |\n| 3 | Plate |\n| 4 | Mithral + reroll ([[Armor]]) |\n';
+
+  it('rolls the table again, never landing on the row that links it', async () => {
+    const seen = new Set<string>();
+    for (let seed = 1; seed <= 300; seed++) {
+      const cell = await resolveCell('[[Armor]]', context({ Armor: armor }, seed));
+      expect(cell.text).not.toContain('[[');
+      expect(cell.stopped).toEqual([]);
+      seen.add(cell.text);
+    }
+    expect(seen).toEqual(new Set(['Leather', 'Chainmail', 'Plate', 'Mithral + reroll (Leather)', 'Mithral + reroll (Chainmail)', 'Mithral + reroll (Plate)']));
+  });
+
+  it('rolls it once for each link: two encounters combined', async () => {
+    const encounters = '| d3 | Details |\n| --- | --- |\n| 1 | Orcs |\n| 2 | Wolves |\n| 3 | Roll two: [[Enc]] / [[Enc]] |\n';
+    for (let seed = 1; seed <= 100; seed++) {
+      const cell = await resolveCell('[[Enc]]', context({ Enc: encounters }, seed));
+      expect(cell.text).toMatch(/^(Orcs|Wolves|Roll two: (Orcs|Wolves) \/ (Orcs|Wolves))$/);
+    }
+  });
+
+  it('keeps a reroll from rerolling once more: a second row that links the table stays a link', async () => {
+    const twice = '| d3 | Result |\n| --- | --- |\n| 1 | a |\n| 2 | again [[T]] |\n| 3 | more [[T]] |\n';
+    const texts = new Set<string>();
+    for (let seed = 1; seed <= 200; seed++) {
+      const cell = await resolveCell('[[T]]', context({ T: twice }, seed));
+      texts.add(cell.text);
+      if (cell.text.includes('[[T]]')) expect(cell.stopped).toEqual(['loop']);
+    }
+    expect(texts).toContain('again more [[T]]');
+    expect(texts).toContain('more again [[T]]');
+    expect(texts).toContain('again a');
+  });
+
+  it('is still a loop when another table leads back to it', async () => {
+    const notes = { Outer: oneRow('[[Inner]]'), Inner: oneRow('back to [[Outer]]') };
+    const cell = await resolveCell('[[Outer]]', context(notes));
+    expect(cell.text).toBe('back to [[Outer]]');
+    expect(cell.stopped).toEqual(['loop']);
+  });
+});

@@ -2,6 +2,7 @@ import { showNotice } from '../../../ui/notice';
 import { shownJoinCode } from '../../protocol/index.ts';
 import { copyText } from './dockDom.ts';
 import type { OnlineApi } from './panelModel.ts';
+import { t } from '../../../i18n';
 
 /**
  * Copies a player's code as people read it (`482 193`) from the window `root` lives in, and tells the
@@ -11,7 +12,7 @@ export function playerCodeCopier(api: Pick<OnlineApi, 'playerCode'>, root: HTMLE
   return async (playerId) => {
     const code = api.playerCode(playerId);
     const copied = code !== null && (await copyText(root, shownJoinCode(code)));
-    showNotice(copied ? 'Code copied' : 'The code could not be copied.');
+    showNotice(copied ? t('online.codeCopied') : t('online.codeCopyFailed'));
     return copied;
   };
 }

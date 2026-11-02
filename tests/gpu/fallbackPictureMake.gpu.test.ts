@@ -37,14 +37,13 @@ describe('the make of the line-of-sight fallback\'s black, in its picture', { ti
     try {
       // The whole map at half size, in four views.
       const quarters = [512, 1536].flatMap((y) => [512, 1536].map((x) => pictures.judge({ scale: 0.5, centre: { x, y } }, true)));
-      expect(quarters.map((tallies) => [tallies.canvas.leaked, tallies.webgl.leaked])).toEqual(quarters.map(() => [0, 0]));
-      const open = quarters.reduce((sum, tallies) => sum + Math.min(tallies.canvas.open, tallies.webgl.open), 0);
-      const most = quarters.reduce((sum, tallies) => sum + Math.max(tallies.canvas.open, tallies.webgl.open), 0);
+      expect(quarters.map((tallies) => tallies.webgl.leaked)).toEqual(quarters.map(() => 0));
+      const open = quarters.reduce((sum, tallies) => sum + tallies.webgl.open, 0);
       if (drawn) {
         expect(open).toBeGreaterThan(500_000);
         expect(sumOf(quarters)).toEqual(CLEAN);
       } else {
-        expect(most).toBe(0);
+        expect(open).toBe(0);
       }
     } finally {
       errors.mockRestore();
@@ -60,7 +59,7 @@ describe('the make of the line-of-sight fallback\'s black, in its picture', { ti
     });
     try {
       const whole = { scale: 1, centre: { x: 150, y: 100 } };
-      const black = { canvas: 'black', webgl: 'black' }, floor = { canvas: 'floor', webgl: 'floor' };
+      const black = { webgl: 'black' }, floor = { webgl: 'floor' };
       expect([pictures.shownAt(whole, 60, 50), pictures.shownAt(whole, 240, 150)]).toEqual([floor, black]);
       for (const [x, left, right] of [[240.3, black, floor], [60.3, floor, black], [240.3, black, floor]] as const) {
         pictures.store.setState((state) => ({ objects: { ...state.objects, tokens: byId([token('scout', x, 100.7)]) } }));
@@ -78,14 +77,14 @@ describe('the make of the line-of-sight fallback\'s black, in its picture', { ti
       walls: [wall('screen', { x: 130.4, y: 40.2 }, { x: 171.8, y: 190.6 })],
     });
     try {
-      const clean = { canvas: { blended: 0, tight: 0 }, webgl: { blended: 0, tight: 0 } };
+      const clean = { webgl: { blended: 0, tight: 0 } };
       for (const view of [{ scale: 1, centre: { x: 150, y: 110 } }, { scale: MAX_ZOOM, centre: { x: 150, y: 115 } }, { scale: 2.3, centre: { x: 120.7, y: 100.3 } }]) {
         // A black written at half strength, or left as the canvas blended it, shows pixels between the floor and black.
         // A black without the texels around each one shows the floor closer than half a texel to what is hidden.
         expect(pictures.make(view)).toEqual(clean);
         const tallies = pictures.judge(view);
         expect(faults(tallies)).toEqual(CLEAN);
-        expect(Math.min(tallies.canvas.open, tallies.webgl.open)).toBeGreaterThan(1_000);
+        expect(tallies.webgl.open).toBeGreaterThan(1_000);
       }
     } finally {
       pictures.close();

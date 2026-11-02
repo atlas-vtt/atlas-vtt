@@ -290,6 +290,29 @@ describe('installing', () => {
     expect(fan.vault.files.has('atlas-vtt/collections/source/install.json')).toBe(true);
   });
 
+  it('carries the map of every floor of a scene, videos too, and points the installed scene at them', async () => {
+    const creator = await creatorVault();
+    const upper = 'Maps/Upper floor.webm';
+    await creator.vault.app.vault.create(upper, 'WEBM');
+    const map = JSON.parse(creator.vault.files.get(MAP_PATH)!) as { version: number; state: Record<string, unknown> };
+    map.version = 5;
+    map.state.levels = [
+      { id: 'ground', name: 'Ground', elevation: { bottom: 0, top: 10 }, background: BACKGROUND },
+      { id: 'upper', name: 'Upper', elevation: { bottom: 10, top: 20 }, background: upper },
+    ];
+    creator.vault.files.set(MAP_PATH, JSON.stringify(map));
+
+    const blob = await exportFrom(creator);
+    expect((await manifestOf(blob)).files).toContainEqual(expect.objectContaining({ vaultPath: upper, role: 'background' }));
+
+    const fan = await emptyVault();
+    await importInto(fan, blob);
+    const levels = (JSON.parse(fan.vault.files.get(MAP_PATH)!) as { state: { levels: Array<{ background: string }> } }).state.levels;
+    const installed = levels[1]!.background;
+    expect(installed).toBe('atlas-vtt/collections/source/files/Upper floor.webm');
+    expect(fan.vault.files.get(installed)).toBe('WEBM');
+  });
+
   it('carries scene snapshots with their thumbnails and artwork into the installed collection', async () => {
     const creator = await creatorVault();
     const ogreImage = 'atlas-vtt/assets/ogre.webp';

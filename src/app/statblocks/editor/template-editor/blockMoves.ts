@@ -14,6 +14,7 @@ import { blockName, placeName } from './blockNames';
 import { inSiblingOrder, primaryOf, type BlockSelection } from './selection';
 import { applyTree, chainTree, outcomeOf, refusalMessage, type EditOutcome } from './sessionEdit';
 import type { EditorSession } from './sessionTypes';
+import { t } from '../../../i18n';
 
 /**
  * Where a block inserted after `anchorId` goes: into it where it is an empty
@@ -41,9 +42,9 @@ export function movedMessage(layout: TemplateLayout, id: string, fields: readonl
   const parent = found.parentId === null ? null : findBlock(layout.blocks, found.parentId)?.block ?? null;
   const count = childrenOf(layout, found.parentId)?.length ?? 0;
   const name = blockName(found.block, fields);
-  if (parent === null) return `Moved ${name} to a row of its own, row ${found.index + 1} of ${count}.`;
-  if (parent.type === 'row') return `Moved ${name} into a row, place ${found.index + 1} of ${count}.`;
-  return `Moved ${name} to ${placeName(parent, fields)}, position ${found.index + 1} of ${count}.`;
+  if (parent === null) return t('templateEditor.moved.ownRow', { name, n: found.index + 1, count });
+  if (parent.type === 'row') return t('templateEditor.moved.intoRow', { name, n: found.index + 1, count });
+  return t('templateEditor.moved.into', { name, place: placeName(parent, fields), n: found.index + 1, count });
 }
 
 /** The place just before (`step` -1) or after (1) a block's parent, in the grandparent. */
@@ -88,6 +89,6 @@ export function moveSelection(session: EditorSession, selection: BlockSelection,
     moved = next !== null && next.ok;
     return moved && next ? next : { ok: true, layout, focus: primary };
   });
-  if (edit && !moved) return { announce: step === -1 ? 'Already at the top.' : 'Already at the end.' };
+  if (edit && !moved) return { announce: step === -1 ? t('templateEditor.atTop') : t('templateEditor.atEnd') };
   return moveOutcome(session, edit, primary);
 }

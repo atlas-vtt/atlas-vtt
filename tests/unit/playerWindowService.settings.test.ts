@@ -9,7 +9,7 @@ import { attachFakePlayerWindow } from '../mocks/playerPopout';
 import { frameSource, sizePlayerWindow } from '../mocks/playerFrameSource';
 
 
-const app = { vault: { adapter: { exists: async () => true, write: async () => {} } } } as any;
+const app = { vault: { adapter: { exists: async () => true, write: async () => {} } }, loadLocalStorage: () => null, saveLocalStorage: () => {} } as any;
 afterEach(() => { PlayerWindowService.getInstance()?.destroy(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); });
 
 type CounterScene = Pick<ViewAtlasState, 'widgetValues' | 'widgetSettings'>;
@@ -128,7 +128,7 @@ describe('live player settings', () => {
     Object.defineProperty(doc.body, 'win', { value: {
       document: doc, closed: false, addEventListener, removeEventListener: vi.fn(), close: vi.fn(),
     } });
-    service.attachToView({ contentEl: doc.body, updateSession: vi.fn() } as never, source, { tabId: 'scene-a', filePath: 'scene-a.atlasmap' });
+    service.attachToView({ contentEl: doc.body, updateSession: vi.fn(), getState: () => ({}) } as never, source, { tabId: 'scene-a', filePath: 'scene-a.atlasmap' });
     service.holdCurrentFrame();
     store.setState(counterScene('Browsed', 9));
     Object.defineProperty(doc, 'readyState', { value: 'complete' });

@@ -11,7 +11,7 @@ export interface PlayerTokenRow {
   readonly owner: KnownPlayer | null;
 }
 
-/** The player tokens of a scene, with who has each. */
+/** The player tokens of a scene, on every floor, with who has each. */
 export function playerTokenRows(ownership: Ownership, scene: WorkScene | null): PlayerTokenRow[] {
   if (scene === null) return [];
   const { tokens } = scene.store.getState().objects;

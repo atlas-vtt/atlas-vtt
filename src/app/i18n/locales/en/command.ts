@@ -7,6 +7,7 @@ export const command = {
   'command.displayImageOnPlayerView': 'Display image on player view',
   'command.importStatblockTokens': 'Import tokens from Fantasy Statblocks',
   'command.openDashboard': 'Open dashboard',
+  'command.generateDungeon': 'Generate dungeon',
   'command.openPlayerWindow': 'Open player window',
   'command.openSceneBrowser': 'Open scene browser',
   'command.reportIssue': 'Report an issue…',

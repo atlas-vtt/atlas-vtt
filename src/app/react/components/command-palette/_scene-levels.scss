@@ -1,0 +1,126 @@
+@use '../../../../../styles/tokens' as *;
+@use '../../../../../styles/mixins' as *;
+
+// ── Scene levels page ───────────────────────────────────────────────────────
+// One row per floor, top floor first: name, elevation, then its actions as one group.
+
+.atlas-scene-levels {
+  @include atlas-flex-col($spacing-s);
+  padding: 0 $spacing-l $spacing-l;
+}
+
+.atlas-scene-levels__add {
+  @include atlas-flex-row($spacing-s);
+  @include atlas-ghost-button;
+  justify-content: center;
+  height: var(--input-height);
+  border-radius: $radius-l;
+  box-shadow: none;
+  font-size: $font-ui-small;
+  cursor: pointer;
+
+  svg {
+    width: $icon-s;
+    height: $icon-s;
+  }
+}
+
+.atlas-scene-levels__list {
+  @include atlas-flex-col($spacing-xs);
+}
+
+.atlas-scene-levels__hint {
+  margin: 0;
+  color: var(--text-faint);
+  font-size: $font-ui-small;
+}
+
+.atlas-scene-level {
+  @include atlas-flex-row($spacing-xs);
+  padding: $spacing-xs;
+  border-radius: $radius-l;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--background-modifier-hover);
+  }
+
+  &--viewed {
+    background: var(--background-modifier-hover);
+    box-shadow: inset 2px 0 0 var(--interactive-accent);
+  }
+}
+
+.atlas-scene-level__name {
+  @include atlas-text-input;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.atlas-scene-level__elevation {
+  @include atlas-flex-row($spacing-xs);
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+.atlas-scene-level__number {
+  @include atlas-text-input;
+  width: 52px;
+  text-align: right;
+}
+
+.atlas-scene-level__actions {
+  @include atlas-flex-row(0);
+  flex-shrink: 0;
+}
+
+.atlas-scene-level__button {
+  @include atlas-icon-button('s');
+  @include atlas-ghost-button;
+  // As tall as the row's fields, as every control of a row is
+  width: var(--input-height);
+  height: var(--input-height);
+  box-shadow: none;
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+
+  &--destructive:hover:not(:disabled) {
+    background: color-mix(in oklch, var(--color-red) 12%, transparent);
+    color: var(--text-error);
+  }
+}
+
+.atlas-scene-level__button--active {
+  color: var(--interactive-accent);
+}
+
+// What a level shows of the levels below it, opened under its row.
+.atlas-scene-level-entry {
+  @include atlas-flex-col($spacing-xs);
+}
+
+.atlas-scene-level__below {
+  @include atlas-flex-col($spacing-xs);
+  padding: $spacing-xs;
+  margin-left: $spacing-l;
+  border-radius: $radius-l;
+  background: var(--background-secondary);
+}
+
+.atlas-scene-level__switch {
+  @include atlas-flex-row($spacing-s);
+  justify-content: space-between;
+  padding: $spacing-xs;
+  font-size: $font-ui-small;
+  color: var(--text-normal);
+}
+
+.atlas-scene-level__label,
+.atlas-scene-level__hint {
+  padding: $spacing-xs;
+  font-size: $font-ui-smaller;
+  color: var(--text-faint);
+}

@@ -99,8 +99,8 @@ describe('a scene file that exists but does not load', () => {
     ['holds a version that is not a number', JSON.stringify({ version: '4', state: sceneState() }), STRUCTURE],
     ['holds no state', '{}', STRUCTURE],
     ['holds a bare map without the saved state around it', JSON.stringify(sceneState()), STRUCTURE],
-    ['was saved by a newer Atlas', JSON.stringify({ version: 5, state: sceneState(5) }), NEWER],
-    ['holds a state of a newer Atlas', JSON.stringify({ version: 4, state: sceneState(5) }), NEWER],
+    ['was saved by a newer Atlas', JSON.stringify({ version: 6, state: sceneState(6) }), NEWER],
+    ['holds a state of a newer Atlas', JSON.stringify({ version: 4, state: sceneState(6) }), NEWER],
   ])('fails the load and keeps the file when it %s', async (_label, content, reason) => {
     await expectLoadRefused(setup(content), content, reason);
   });

@@ -5,21 +5,21 @@ import { Container, Ticker } from 'pixi.js';
 import { TFile } from 'obsidian';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 import { PixiRendererOrchestrator } from '../../src/app/PixiRendererOrchestrator';
-import { MapImage } from '../../src/app/pixi/mapImage/MapImage';
-import type { MapImageOpener } from '../../src/app/pixi/mapImage/mapImageTypes';
+import { MosaicCanvas } from '../../src/app/pixi/mosaicCanvas/MosaicCanvas';
+import type { MosaicCanvasOpener } from '../../src/app/pixi/mosaicCanvas/mosaicCanvasTypes';
 import { createViewAtlasStore, type ViewAtlasStore } from '../../src/app/storeFactory';
 
 interface Harness {
   renderer: PixiRendererOrchestrator;
   store: ViewAtlasStore;
-  mapImage: MapImage;
+  mapImage: MosaicCanvas;
   viewport: Container;
   events: EventEmitter;
 }
 
 const renderers: PixiRendererOrchestrator[] = [];
 
-/** A renderer without a GPU over a view whose map image is a world rect of `size` (no tiles). */
+/** A renderer without a GPU over a view whose map image is a world rect of `size` (no tesserae). */
 async function showScene(size = 1400): Promise<Harness> {
   // jsdom has no canvas; the token and text renderers built with the grid only need it for icons
   vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
@@ -34,10 +34,11 @@ async function showScene(size = 1400): Promise<Harness> {
     worldHeight: 0,
     dirty: false,
   });
+  const ticker = new Ticker();
   const manager = {
     init: vi.fn(),
     getViewport: () => viewport,
-    getApp: () => ({ renderer: { resolution: 1 } }),
+    getApp: () => ({ renderer: { resolution: 1, name: 'canvas' }, canvas: document.createElement('canvas'), ticker }),
     destroy: vi.fn(),
   };
   const events = new EventEmitter();
@@ -47,15 +48,15 @@ async function showScene(size = 1400): Promise<Harness> {
   await renderer.init(document.createElement('div'));
   renderers.push(renderer);
 
-  const opener: MapImageOpener = {
+  const opener: MosaicCanvasOpener = {
     open: vi.fn(),
-    tile: vi.fn(),
+    tessera: vi.fn(),
     overview: vi.fn(),
     close: vi.fn(),
     reportUnshown: vi.fn(),
     onRestart: vi.fn(() => () => undefined),
   };
-  const mapImage = new MapImage({ service: opener, viewport, ticker: new Ticker(), renderer: null, requestRender: vi.fn() });
+  const mapImage = new MosaicCanvas({ service: opener, viewport, ticker: new Ticker(), renderer: null, requestRender: vi.fn() });
   await mapImage.load({ kind: 'none', width: size, height: size });
   renderer.initGrid({ size: 70, color: 0xffffff, enabled: true }, mapImage);
   return { renderer, store, mapImage, viewport, events };
@@ -70,10 +71,14 @@ describe('the renderer and its map image', () => {
   it('puts the image under everything, frames the map on it and draws the grid over it', async () => {
     const { renderer, viewport, mapImage } = await showScene();
 
+    // As PIXI sorts the viewport's children before it draws them.
+    viewport.sortChildren();
     expect(viewport.getChildAt(0)).toBe(mapImage.layer);
     expect(renderer.getMapImage()).toBe(mapImage);
     expect(renderer.getMapRect()).toEqual({ x: 0, y: 0, width: 1400, height: 1400 });
-    expect(viewport.children.indexOf(renderer.getGridSystem()!.getGridSprite()!)).toBe(1);
+    // The liquids lie on the map, under the grid, so the lighting lights them as floor.
+    expect(viewport.getChildAt(1).label).toBe('liquids');
+    expect(viewport.children.indexOf(renderer.getGridSystem()!.getGridSprite()!)).toBe(2);
   });
 
   it('tells the fog the world rect of every image it shows', async () => {
@@ -190,6 +195,7 @@ describe('a background that changes outside a load', () => {
 
     store.getState().setBackground('maps/gone.png');
 
-    expect(load).toHaveBeenCalledWith({ kind: 'placeholder' });
+    // Drawn as the level it shows is placed: the scene's own stretch
+    expect(load).toHaveBeenCalledWith({ kind: 'placeholder' }, { x: 1, y: 1 });
   });
 });

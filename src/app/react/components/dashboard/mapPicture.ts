@@ -1,5 +1,5 @@
 import { TFile, type App } from 'obsidian';
-import { MapImageService } from '../../../pixi/mapImage/MapImageService';
+import { MosaicCanvasService } from '../../../pixi/mosaicCanvas/MosaicCanvasService';
 
 /** The longest side of the pictures the dashboard shows of a map: sharp across a wide pane, a small part of the map's own size. */
 export const MAP_PICTURE_SIDE = 1600;
@@ -10,7 +10,7 @@ const PICTURE_QUALITY = 0.9;
 interface PictureCache {
   /** By the file's path, size and time, the most recently asked for last. */
   readonly pictures: Map<string, Promise<string | null>>;
-  /** Pictures are made one at a time: each opens a map's tiles, which may first have to be built. */
+  /** Pictures are made one at a time: each opens a map's tesserae, which may first have to be built. */
   queue: Promise<unknown>;
 }
 
@@ -29,9 +29,9 @@ function revoke(picture: Promise<string | null>): void {
   void picture.then((url) => { if (url !== null) URL.revokeObjectURL(url); });
 }
 
-/** The whole map at `MAP_PICTURE_SIDE`, from the overview of its tiles, as a WebP blob. */
+/** The whole map at `MAP_PICTURE_SIDE`, from the overview of its tesserae, as a WebP blob. */
 async function renderPicture(app: App, file: TFile): Promise<Blob> {
-  const service = MapImageService.forApp(app);
+  const service = MosaicCanvasService.forApp(app);
   const opened = await service.open(file);
   try {
     const bitmap = await service.overview(opened.handle, MAP_PICTURE_SIDE);
@@ -51,7 +51,7 @@ async function renderPicture(app: App, file: TFile): Promise<Blob> {
 
 /**
  * A sharp picture of the map image at `path` for the dashboard, as an object URL; null when there
- * is none or it cannot be made. It is read from the map's tile pyramid (built once per device and
+ * is none or it cannot be made. It is read from the map's tessera pyramid (built once per device and
  * kept), never by decoding the whole image here, and kept for the session, so a page shown again
  * has it at once.
  */

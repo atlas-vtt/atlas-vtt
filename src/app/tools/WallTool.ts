@@ -3,7 +3,7 @@ import type { WallType } from '../types/wallTypes';
 import { simplifyStroke } from '../pixi/lighting/wallEdits';
 
 export type WallToolMode = 'point-to-point' | 'freeform';
-export type WallToolSubMode = 'draw' | 'place-light' | 'light-zone' | 'explored-memory';
+export type WallToolSubMode = 'draw' | 'place-light' | 'light-zone' | 'level-surface' | 'explored-memory';
 
 export interface WallToolSettings {
   mode: WallToolMode;

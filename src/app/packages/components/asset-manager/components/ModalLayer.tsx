@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { TokenCreator } from '../TokenCreator';
 import { EncounterBuilder } from '../encounter-builder/EncounterBuilder';
@@ -18,6 +18,8 @@ import type { AssetCrudActions } from '../hooks/useAssetCrud';
 import type { TagsAndCollectionsState } from '../hooks/useTagsAndCollections';
 import type { StatblockLinkState } from '../hooks/useStatblockLink';
 import { useUvttImport } from '../hooks/useUvttImport';
+import { useFloorsChoice } from '../hooks/useFloorsChoice';
+import { UvttFloorsDialog } from './UvttFloorsDialog';
 import { tagGroupOfTab } from '../utils/assetTags';
 import { newStatblockOption } from '../../../../statblocks/editor/create/entryPoints';
 import { openTemplateEditor } from '../../../../statblocks/editor/openTemplateEditor';
@@ -38,6 +40,12 @@ export interface ModalLayerProps {
 export function ModalLayer({
   isOpen, activeTab, selectedCollection, onClose, data, sel, crud, tags, statblock,
 }: ModalLayerProps): React.JSX.Element {
+  const floors = useFloorsChoice(isOpen);
+  const [droppedVideos, setDroppedVideos] = useState<File[]>([]);
+  const closeMapCreator = (): void => {
+    crud.setIsMapCreatorOpen(false);
+    setDroppedVideos([]);
+  };
   const importMaps = useUvttImport({
     app: data.app,
     assetService: data.assetService,
@@ -48,7 +56,9 @@ export function ModalLayer({
       || crud.inputModalState.isOpen || crud.isCreateCollectionModalOpen || crud.settingsModalCollectionId !== null
       || crud.transfer !== null || tags.isTagManagerOpen || statblock.linkingStatblockAsset !== null,
     collectionId: selectedCollection,
-    onSceneOpened: () => { crud.setIsMapCreatorOpen(false); onClose(); },
+    onVideos: (files) => { setDroppedVideos(files); crud.setIsMapCreatorOpen(true); },
+    onSceneOpened: () => { closeMapCreator(); onClose(); },
+    chooseFloors: floors.ask,
   });
 
   const closeMoveModal = (): void => {
@@ -113,9 +123,10 @@ export function ModalLayer({
             isOpen={crud.isMapCreatorOpen}
             mode="map"
             onImportMaps={importMaps}
+            initialFiles={droppedVideos}
             selectedCollection={selectedCollection}
             onClose={() => {
-              crud.setIsMapCreatorOpen(false);
+              closeMapCreator();
               if (activeTab === 'maps') void reloadAfterCreator();
             }}
           />
@@ -259,6 +270,11 @@ export function ModalLayer({
             }}
           />
         )}
+      </AnimatePresence>
+
+      {/* Map files as the floors of one scene: last, so it opens over the map creator that may hold them */}
+      <AnimatePresence>
+        {isOpen && floors.request && <UvttFloorsDialog request={floors.request} onChoose={floors.answer} />}
       </AnimatePresence>
     </>
   );

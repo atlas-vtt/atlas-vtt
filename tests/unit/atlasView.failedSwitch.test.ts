@@ -55,7 +55,19 @@ describe('switching scene tabs around a load that did not finish', () => {
 
     await AtlasView.prototype.onLoadFile.call(context as unknown as AtlasView, CAVE, camera);
 
-    expect(context.performSceneLoad).toHaveBeenCalledWith(CAVE, camera);
+    expect(context.performSceneLoad).toHaveBeenCalledWith(CAVE, camera, undefined);
+  });
+
+  it('opens a scene on the level its opening asked for, once', async () => {
+    const { context } = setup({ sceneLoads: true, mapLoaded: false });
+    const camera = { centerX: 10, centerY: 20, scale: 0.5, level: 'cellar' };
+    Object.assign(context, { openingLevel: 'tower' });
+
+    await AtlasView.prototype.onLoadFile.call(context as unknown as AtlasView, CAVE, camera);
+    await AtlasView.prototype.onLoadFile.call(context as unknown as AtlasView, CAVE, camera);
+
+    expect(context.performSceneLoad).toHaveBeenNthCalledWith(1, CAVE, camera, 'tower');
+    expect(context.performSceneLoad).toHaveBeenNthCalledWith(2, CAVE, camera, undefined);
   });
 
   it('does not apply a tab\'s history when its scene failed to load or was replaced', async () => {

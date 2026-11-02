@@ -1,3 +1,4 @@
+import { dashPattern } from './gridDash';
 import type { Point } from './hexGeometry';
 
 /** The subset of the PIXI Graphics path API the grid drawers use; any recorder with the same shape works. */
@@ -23,7 +24,7 @@ export function gridMarkerArmLength(cellSize: number): number {
 
 /**
  * Draws a segment as two centered dashes (or one when the segment is short),
- * so every cell edge shows the same dash rhythm regardless of its length.
+ * so every cell edge shows the same dash rhythm regardless of its length (`dashPattern`).
  */
 export function drawDashedSegment(graphics: GridPath, x1: number, y1: number, x2: number, y2: number): void {
   const length = Math.hypot(x2 - x1, y2 - y1);
@@ -31,25 +32,14 @@ export function drawDashedSegment(graphics: GridPath, x1: number, y1: number, x2
 
   const dx = (x2 - x1) / length;
   const dy = (y2 - y1) / length;
-  const preferredGap = 4;
-  const minDashLength = 1;
-  const shortening = 0.8;
-
-  const drawDashes = (count: number): boolean => {
-    const dashLength = ((length - (count + 1) * preferredGap) / count) * shortening;
-    if (dashLength < minDashLength) return false;
-    const gap = (length - count * dashLength) / (count + 1);
-    let cursor = gap;
-    for (let i = 0; i < count; i++) {
-      graphics
-        .moveTo(x1 + dx * cursor, y1 + dy * cursor)
-        .lineTo(x1 + dx * (cursor + dashLength), y1 + dy * (cursor + dashLength));
-      cursor += dashLength + gap;
-    }
-    return true;
-  };
-
-  if (!drawDashes(2)) drawDashes(1);
+  const { count, dash, gap } = dashPattern(length);
+  let cursor = gap;
+  for (let i = 0; i < count; i++) {
+    graphics
+      .moveTo(x1 + dx * cursor, y1 + dy * cursor)
+      .lineTo(x1 + dx * (cursor + dash), y1 + dy * (cursor + dash));
+    cursor += dash + gap;
+  }
 }
 
 /** Draws a cell edge in the solid or dashed style. Dotted grids draw vertex markers instead of edges. */

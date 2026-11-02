@@ -148,13 +148,20 @@ export class TableConnection {
     return this.lastClose;
   }
 
+  /** Hears every game message that goes out (not the live lane's), as JSON, with whom it goes to: what was handed to whom. */
+  onSent: ((text: string, to: string) => void) | null = null;
+
   /** Sends a game message to one player, or to all. */
   send(body: GmMessage, to: string = ALL_PLAYERS): void {
     if (this.isGone(to)) return;
-    for (const part of messageParts(body, partId)) {
+    const parts = messageParts(body, partId);
+    for (const part of parts) {
       const entry = JSON.stringify({ to, body: part });
       this.queue.push(sendFrame(entry), to, entry);
+      if (parts.length === 1) this.onSent?.(entry, to);
     }
+    // A message in parts carries its JSON in base64: it is heard as it was written.
+    if (parts.length > 1) this.onSent?.(JSON.stringify(body), to);
   }
 
   /** Whether the relay takes `sends` frames, as its last welcome said. */

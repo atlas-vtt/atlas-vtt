@@ -15,6 +15,7 @@ import { removedMessage } from './announcements';
 import { focusStaysIn } from './focusWithin';
 import { usePaneEdit } from './paneEditContext';
 import { caretIn, insertAtCaret, placeCaret, textOf } from './plainEditable';
+import { t } from '../../../i18n';
 
 /** The ability edited, or a new one written after `afterIndex` in the stored list (null: first). */
 export type EntryEditing =
@@ -269,7 +270,7 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
       data-item-key={editing.kind === 'edit' ? editing.itemKey : undefined}
       data-item-index={editing.kind === 'edit' ? editing.index : undefined}
       role="group"
-      aria-label={editing.kind === 'edit' ? `Edit ${startName || noun.toLowerCase()}` : `New ${noun.toLowerCase()}`}
+      aria-label={editing.kind === 'edit' ? t('statblockEditor.editNamed', { name: startName || noun.toLowerCase() }) : t('statblockEditor.newNamed', { name: noun.toLowerCase() })}
       onKeyDown={onKeyDown}
       onBlur={onBlur}
       onMouseDown={keepFocusOnBareParts}
@@ -305,7 +306,7 @@ export function EntryInlineEditor({ block, field, editing }: EntryInlineEditorPr
         role="textbox"
         aria-multiline="true"
         aria-label={`${noun} description`}
-        data-placeholder="What it does"
+        data-placeholder={t('statblockEditor.whatItDoes')}
         tabIndex={0}
         onInput={(event) => { textNow.current = textOf(event.currentTarget); }}
       />

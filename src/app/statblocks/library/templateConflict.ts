@@ -9,6 +9,7 @@ import type { App } from 'obsidian';
 import type { LibraryTemplate } from '../model/resolvedTypes';
 import type { TemplateId } from '../model/templateTypes';
 import type { TemplateLibrary } from './TemplateLibrary';
+import { t } from '../../i18n';
 
 export type SessionConflict = 'changed' | 'deleted';
 
@@ -49,5 +50,5 @@ export function observeDisk(app: App, library: TemplateLibrary, id: TemplateId, 
 
 /** What a save that failed says. */
 export function saveProblemText(problem: string): string {
-  return `Couldn't save: ${problem.replace(/[.\s]+$/, '')}.`;
+  return t('statblockEditor.saveFailedWhyDot', { problem: problem.replace(/[.\s]+$/, '') });
 }

@@ -29,7 +29,7 @@ function harness(options: { tokens?: boolean; lighting?: boolean } = {}): {
     tokenRenderer: options.tokens === false ? undefined : { getPlayerViewLayers: () => [], getGmViewLayers: () => [], playersSeeInFrame },
     measureRenderer: { getPlayerViewLayers, getGmViewLayers: (): LayerVisibility[] => [{ layer: part, visible: true }] },
     dmScreenOverlays: new Set(),
-    lighting: options.lighting ? { playerSight: () => sight, playerLayers: (): LayerVisibility[] => [] } : undefined,
+    lighting: options.lighting ? { renderer: {}, playerSight: () => sight, playerLayers: (): LayerVisibility[] => [] } : undefined,
   });
   return { renderer, part, sight, seenInFrame, playersSeeInFrame, getPlayerViewLayers };
 }

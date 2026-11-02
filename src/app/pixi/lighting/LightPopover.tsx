@@ -20,6 +20,8 @@ import { useMapLightPresets } from '../../react/hooks/useMapLightPresets';
 import { LightEmissionFields } from './LightEmissionFields';
 import { useGestureTransactions } from './useGestureTransactions';
 import { useLightPopoverPosition } from './useLightPopoverPosition';
+import { levelObjects } from '../../levels/levelObjects';
+import { t } from '../../i18n';
 
 /** Keys the popover's controls use themselves; they must not reach the map's shortcuts (Tab, Space, arrows). */
 const OWN_KEYS = new Set([' ', 'Enter', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'PageUp', 'PageDown']);
@@ -45,7 +47,7 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
   const unitType = useAtlasStore((state) => mapMeasurementSettings(rules, state).unitType);
   const unitDistance = useAtlasStore((state) => mapMeasurementSettings(rules, state).unitDistance);
   const maxRange = useAtlasStore((state) => maxLightRange(unitScaleOf({ unitDistance }, state.grid)));
-  const current = useAtlasStore((state) => readLight(state.objects.lights[lightId]));
+  const current = useAtlasStore((state) => readLight(levelObjects(state).lights[lightId]));
   // While it leaves, the popover still shows the light it had, also when that light was deleted.
   const shown = useRef(current);
   if (current) shown.current = current;
@@ -75,7 +77,7 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
       animate="visible"
       exit="exit"
       role="dialog"
-      aria-label="Light"
+      aria-label={t('light.popover')}
       tabIndex={-1}
       inert={!present}
       onKeyDown={(event) => {
@@ -95,6 +97,7 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
         unit={unitLabelFor(unitType)}
         unitDistance={unitDistance}
         maxRange={maxRange}
+        surface={!!light.area}
         more={<ShinesRow light={light} onChange={(activeBelowAmbient) => store.getState().updateLight(light.id, { activeBelowAmbient })} />}
         onBeamCommit={makeWay}
         direction={{ degrees: light.rotation ?? 0, onChange: (rotation) => store.getState().updateLight(light.id, { rotation }) }}
@@ -105,11 +108,11 @@ function LightPopover({ lightId }: { lightId: string }): React.ReactElement | nu
       <div className="atlas-light-popover__section atlas-light-popover__actions">
         <Button variant="ghost" size="sm" onClick={() => store.getState().updateLight(light.id, { hidden: !light.hidden })}>
           {light.hidden ? <Lightbulb /> : <LightbulbOff />}
-          <span>{light.hidden ? 'Turn on' : 'Turn off'}</span>
+          <span>{light.hidden ? t('light.turnOn') : t('light.turnOff')}</span>
         </Button>
         <Button variant="ghost" size="sm" className="atlas-light-popover__delete" onClick={() => store.getState().deleteLight(light.id)}>
           <Trash2 />
-          <span>Delete</span>
+          <span>{t('common.delete')}</span>
         </Button>
       </div>
     </motion.section>
@@ -124,7 +127,7 @@ function ShinesRow({ light, onChange }: { light: LightSource; onChange: (level: 
   const options = current.value === 'custom' ? [...LIGHT_SCHEDULES, current] : LIGHT_SCHEDULES;
   return (
     <div className="atlas-light-popover__flicker">
-      <span id={id}>Shines</span>
+      <span id={id}>{t('light.shines')}</span>
       <Select value={current.value} options={options} labelledBy={id}
         onChange={(value) => {
           const stop = LIGHT_SCHEDULES.find((schedule) => schedule.value === value);
