@@ -126,7 +126,7 @@ describe('player window mirroring', () => {
   it.each(['presentCanvas', 'releaseHeldFrame'] as const)('lets go of the previous canvas at once on %s', (swap) => {
     const previous = scheduledRenders();
     const next = scheduledRenders();
-    const { service } = mirror(previous);
+    const { service, nextFrame } = mirror(previous);
     previous.render();
     const source = frameSource({ withPlayerSafeFrame: vi.fn(), beforeRender: next.beforeRender });
 
@@ -138,7 +138,10 @@ describe('player window mirroring', () => {
 
     expect(previous.stopListening).toHaveBeenCalledTimes(1);
     // Another scene's frame waits for the sheet to be down
-    vi.mocked(performance.now).mockReturnValue(swapped + SCENE_DIP_MS);
+    if (swap === 'presentCanvas') {
+      vi.mocked(performance.now).mockReturnValue(swapped + SCENE_DIP_MS);
+      nextFrame();
+    }
     next.render();
     expect(next.capture).toHaveBeenCalledTimes(1);
   });

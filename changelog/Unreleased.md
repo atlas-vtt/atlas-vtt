@@ -3,6 +3,7 @@
 - TrueScale: the chips on the map are much smaller and hold only icons, so they no longer cover the map when zoomed out
 - TrueScale: the frame players see no longer tints the map inside it
 - Player window: showing a saved frame glides there, also when players were following you, and changing the scene dips through black instead of jumping
+- Player window: the curtain fades down and up instead of cutting to black
 
 ## Fixed
 - The player window can be moved by dragging it again
