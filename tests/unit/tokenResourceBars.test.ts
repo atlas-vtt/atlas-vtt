@@ -282,4 +282,24 @@ describe('what lies at a point of the screen', () => {
       expect(ui.resourceAt(belowToken(ui).toGlobal(new Point(last.left - 40, last.top)))).toBeNull();
     } finally { ui.destroy(); }
   });
+
+  it('lights the resource it is told to, on the bar itself, and takes the light away', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context());
+    const ui = tokenUI();
+    try {
+      ui.update(hero, 70);
+      ui.markResource('stress', false);
+      const mark = belowToken(ui).children.find((child) => child instanceof ResourceBarHitArea)!;
+      expect(mark.visible).toBe(true);
+      expect(mark.eventMode).toBe('none');
+
+      ui.markResource('hp', true);
+      const moved = belowToken(ui).children.filter((child) => child instanceof ResourceBarHitArea);
+      expect(moved).toHaveLength(1);
+      expect(moved[0]!.visible).toBe(true);
+
+      ui.markResource(null, false);
+      expect(moved[0]!.visible).toBe(false);
+    } finally { ui.destroy(); }
+  });
 });

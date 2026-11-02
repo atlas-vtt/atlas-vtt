@@ -1952,6 +1952,7 @@ export class TokenRenderer {
       this.lastHoveredPinId = null;
     }
     this.hexLinkHandlers?.hover(null);
+    this.uiManager.hoverSelectionBar(null);
     this.mapFeatureHandlers?.leave();
     this.lightHandlers?.leave();
     this.interactionController.handleViewportTokenHover(null);
@@ -2055,18 +2056,27 @@ export class TokenRenderer {
     this.hexLinkHandlers?.hover(hexLinkId, e);
     this.hoverMapFeatures(worldPos, tokenId !== null || hexLinkId !== null, e);
 
-    this.applyCursor(tokenId || hexLinkId || this.selectionBarAt(e) ? 'pointer' : 'default');
+    const selectionBar = this.selectionBarAt(e);
+    this.uiManager.hoverSelectionBar(selectionBar);
+    this.applyCursor(tokenId || hexLinkId || selectionBar ? 'pointer' : 'default');
   };
 
   /** The key of the resource a token of a selection of two or more draws under the pointer, or null. */
   private selectionBarAt(e: FederatedPointerEvent): string | null {
-    const { selectedIds } = this.store.getState();
-    return selectedIds.length < 2 ? null : this.uiManager.resourceAt(selectedIds, e.global);
+    const { selectedIds, activeTool } = this.store.getState();
+    if (selectedIds.length < 2 || (activeTool !== 'select' && activeTool !== 'move')) return null;
+    const key = this.uiManager.resourceAt(selectedIds, e.global);
+    return key && this.interactionController.offersSelectionResource(key) ? key : null;
   }
 
   private pressSelectionBar(e: FederatedPointerEvent): boolean {
     const key = this.selectionBarAt(e);
-    if (!key || !this.interactionController.pressSelectionResource(key, { x: e.clientX, y: e.clientY })) return false;
+    if (!key) return false;
+    const opened = this.interactionController.pressSelectionResource(
+      key, { x: e.clientX, y: e.clientY }, () => this.uiManager.setSelectionBarActive(null),
+    );
+    if (!opened) return false;
+    this.uiManager.setSelectionBarActive(key);
     e.preventDefault(); // Keeps the canvas's default focus from stealing the popover's focus
     e.stopPropagation();
     return true;

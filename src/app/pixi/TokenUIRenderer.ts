@@ -1,3 +1,5 @@
+import { ResourceBarHitArea } from './ResourceBarHitArea';
+import { colorNumber } from './token-renderer/resources/ResourceBarView';
 import type { AtlasSettings } from '../services/SettingsService';
 import { Container, Graphics, Text, TextStyle, type Ticker } from 'pixi.js';
 import type { Character, BaseToken } from '../types';
@@ -22,6 +24,9 @@ import { ValueTransition } from './utils/ValueTransition';
 import { MOTION_SLOW_MS, prefersReducedMotion } from '../utils/motion';
 import { t } from '../i18n';
 
+/** Above the bars, whose views stand at 10. */
+const RESOURCE_MARK_Z_INDEX = 11;
+
 /**
  * Every token's UI lies in one layer. A selected token's lies above the others,
  * so a neighbour never covers the bars and wheels being edited.
@@ -34,6 +39,8 @@ export class TokenUIRenderer {
   /** `update` found a bar, nameplate or condition to show. */
   private hasContent = true;
   private hiddenWithToken = false;
+  /** The light on a resource of a selection (`markResource`), made when first shown. */
+  private resourceMark: { key: string; area: ResourceBarHitArea } | null = null;
   /** Bars and nameplate, anchored at the token's bottom edge and scaled with the token. */
   private belowToken: Container;
   /** Eases the UI between its resting scale (0) and a selected token's on-screen size (1). */
@@ -472,6 +479,32 @@ export class TokenUIRenderer {
   /** Where the lowest bar ends below the token's bottom edge, in UI units; 0 without bars. */
   private barsBottom(): number {
     return Math.max(0, ...this.resources.layout().map((slot) => slot.top + slot.height));
+  }
+
+  /**
+   * Lights resource `key` as its own overlay does for a single selected token (`TokenControlsUI`):
+   * as hovered, or as `active` while its editor is open; null takes the light away. This is the
+   * GM's UI: players' pictures draw renderers of their own.
+   */
+  public markResource(key: string | null, active: boolean): void {
+    const slot = key === null ? undefined : this.getResourceSlots().find((candidate) => candidate.key === key);
+    if (!slot) {
+      this.resourceMark?.area.hide();
+      return;
+    }
+    if (this.resourceMark?.key !== slot.key) {
+      if (this.resourceMark) destroyTree(this.resourceMark.area);
+      const color = this.resourceDefsProvider().find((definition) => definition.key === slot.key)?.color;
+      const area = new ResourceBarHitArea(color ? colorNumber(color) : 0xffffff);
+      area.eventMode = 'none';
+      area.zIndex = RESOURCE_MARK_Z_INDEX;
+      this.resourceMark = { key: slot.key, area };
+    }
+    const { area } = this.resourceMark;
+    ({ bar: this.belowToken, wheel: this.besideToken, 'wheel-left': this.leftOfToken })[slot.kind].addChild(area);
+    area.layout(slot);
+    area.setHovered(!active);
+    area.setActive(active);
   }
 
   /** The key of the resource drawn at `point` on the screen, or null. */

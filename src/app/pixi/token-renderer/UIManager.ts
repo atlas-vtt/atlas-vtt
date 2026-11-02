@@ -37,6 +37,7 @@ export class UIManager implements ITokenUIManager {
   /** The canvas shows the players' view (session view, the peek): token UIs draw what players see. */
   private playersView = false;
   private tokenControlsUI?: TokenControlsUI;
+  private readonly selectionBar: { hovered: string | null; active: string | null } = { hovered: null, active: null };
   /** The token whose bars show their +/- buttons, whose wheels make room for them. */
   private barButtonsTokenId: string | null = null;
   private tokenRotationUI?: TokenRotationUI;
@@ -175,6 +176,7 @@ export class UIManager implements ITokenUIManager {
   }
 
   updateSelectionUI(selectedTokenIds: string[]): void {
+    this.markSelectionBars();
     // Update TokenControlsUI based on selection
     if (this.tokenControlsUI) {
       if (selectedTokenIds.length === 1) {
@@ -423,6 +425,28 @@ export class UIManager implements ITokenUIManager {
   }
 
   /** Viewport-driven hover state update. Pass null to clear all hover. */
+  /** The resource the pointer is on in a selection of two or more; lights it on every selected token. */
+  public hoverSelectionBar(key: string | null): void {
+    if (this.selectionBar.hovered === key) return;
+    this.selectionBar.hovered = key;
+    this.markSelectionBars();
+  }
+
+  /** The resource whose change for the selection is open; it stays lit until it closes. */
+  public setSelectionBarActive(key: string | null): void {
+    this.selectionBar.active = key;
+    this.markSelectionBars();
+  }
+
+  private markSelectionBars(): void {
+    const { selectedIds } = this.store.getState();
+    const lit = new Set(selectedIds.length > 1 ? selectedIds : []);
+    const key = this.selectionBar.active ?? this.selectionBar.hovered;
+    for (const [tokenId, ui] of Object.entries(this.tokenUIs)) {
+      ui.markResource(lit.has(tokenId) ? key : null, this.selectionBar.active !== null);
+    }
+  }
+
   /** The key of the resource one of `tokenIds` draws at `point` on the screen, or null. */
   public resourceAt(tokenIds: readonly string[], point: { x: number; y: number }): string | null {
     for (const tokenId of tokenIds) {

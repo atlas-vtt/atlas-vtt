@@ -78,6 +78,15 @@ describe('a press on a bar of a selected token', () => {
     expect(steps()).toBe(before + 1);
   });
 
+  it('says what it offers, and hands on who hears the popover close', () => {
+    const { controller } = setup(['a', 'b']);
+    expect(controller.offersSelectionResource('hp')).toBe(true);
+    expect(controller.offersSelectionResource('stress')).toBe(false);
+    const closed = vi.fn();
+    controller.pressSelectionResource('hp', { x: 0, y: 0 }, closed);
+    expect(editing.opened[0]).toMatchObject({ onClose: closed });
+  });
+
   it('leaves a single selected token to its own controls', () => {
     const { controller } = setup(['a']);
     expect(controller.pressSelectionResource('hp', { x: 0, y: 0 })).toBe(false);

@@ -41,7 +41,7 @@ import { tokenLightingEntries } from '../../react/components/context-menu/tokenL
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
 import { applySelectionResourceChange, selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
-import { selectionResources } from '../../resources/selectionResourceChange';
+import { selectionResources, type SelectionResource } from '../../resources/selectionResourceChange';
 import { SelectionResourceEditing } from '../selectionResourceEditor';
 import { placedPlayerCharacterEntry } from '../../react/components/context-menu/playerCharacterMenu';
 import { holdTokens } from '../../lighting/sightOnDrop';
@@ -846,28 +846,40 @@ export class InteractionController implements ITokenInteractionController {
     };
   }
 
-  private openSelectionEditor(at: { x: number; y: number }, resourceName: string, count: number, onCommit: (amount: number) => void): void {
-    this.selectionEditing ??= new SelectionResourceEditing(this.viewport.options.events.domElement);
-    this.selectionEditing.open({ at, resourceName, count, onCommit });
+  /** What a press on the bar of resource `key` changes: the selected tokens, two or more, and that resource. */
+  private selectionOffer(key: string): SelectionResource & { targets: string[] } | null {
+    if (this.isPlayerView) return null;
+    const state = this.store.getState();
+    const tokens = mapTokens(levelObjects(state));
+    const targets = state.selectedIds.filter((id) => tokens[id] !== undefined);
+    if (targets.length < 2) return null;
+    const offered = selectionResources(tokens, targets, this.resourceDefsProvider()).find(({ definition }) => definition.key === key);
+    return offered ? { targets, ...offered } : null;
+  }
+
+  /** Whether a press on the bar of resource `key` would change it for the selection. */
+  public offersSelectionResource(key: string): boolean {
+    return this.selectionOffer(key) !== null;
   }
 
   /**
    * A press on the bar of resource `key` of a token in a selection of two or more: the popover of
    * one change for every selected token that holds it. False where the press means nothing here.
    */
-  public pressSelectionResource(key: string, at: { x: number; y: number }): boolean {
-    const state = this.store.getState();
-    const tokens = mapTokens(levelObjects(state));
-    const targets = state.selectedIds.filter((id) => tokens[id] !== undefined);
-    const definitions = this.resourceDefsProvider();
-    const offered = targets.length < 2 || this.isPlayerView
-      ? undefined
-      : selectionResources(tokens, targets, definitions).find(({ definition }) => definition.key === key);
-    if (!offered) return false;
-    this.openSelectionEditor(at, offered.definition.name, offered.count, (amount) => (
-      applySelectionResourceChange(this.store, targets, definitions, key, amount)
-    ));
+  public pressSelectionResource(key: string, at: { x: number; y: number }, onClose?: () => void): boolean {
+    const offer = this.selectionOffer(key);
+    if (!offer) return false;
+    this.openSelectionEditor(at, offer.definition.name, offer.count, (amount) => (
+      applySelectionResourceChange(this.store, offer.targets, this.resourceDefsProvider(), key, amount)
+    ), onClose);
     return true;
+  }
+
+  private openSelectionEditor(
+    at: { x: number; y: number }, resourceName: string, count: number, onCommit: (amount: number) => void, onClose?: () => void,
+  ): void {
+    this.selectionEditing ??= new SelectionResourceEditing(this.viewport.options.events.domElement);
+    this.selectionEditing.open({ at, resourceName, count, onCommit, ...(onClose && { onClose }) });
   }
 
   /** The characters among the tokens `ids`, as the store holds them now. */
