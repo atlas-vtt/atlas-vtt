@@ -87,7 +87,8 @@ export function rowMenu(row: LibraryRow, context: RowMenuContext): ContextMenuEn
   }
   const files = rows.flatMap((one) => (one.type === 'file' ? [one.file] : []));
   return [
-    ...(row.file.kind === 'music' ? [{ type: 'item' as const, label: t('audio.library.playNow'), icon: 'play', onClick: () => actions.toMix(files, 'now') }, MENU_SEPARATOR] : []),
+    { type: 'item', label: t('audio.library.preview'), icon: 'headphones', onClick: () => actions.preview(row.file) },
+    MENU_SEPARATOR,
     ...organising(context, row),
     ...recordEntries(context, files),
     MENU_SEPARATOR,

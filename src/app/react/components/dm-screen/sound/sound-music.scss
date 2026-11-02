@@ -17,36 +17,6 @@
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
     min-width: 280px;
   }
-
-  &[data-empty] {
-    padding: 0;
-  }
-}
-
-.atlas-sound-pick {
-  @include bare-button;
-  @include hairline-tile;
-  @include focus-ring;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  box-shadow: none;
-  color: var(--text-normal);
-  font-size: 15px;
-  font-weight: $font-weight-medium;
-  transition: background-color $transition-normal $press-ease;
-
-  svg {
-    width: 20px;
-    height: 20px;
-    stroke-width: 1.6;
-  }
-
-  &:hover {
-    background: var(--background-secondary);
-  }
 }
 
 .atlas-sound-music__body {

@@ -24,13 +24,17 @@ export function fadeProgress(at: number, ms: number, tableMs: number): number {
   return clamp01((tableMs - at) / ms);
 }
 
-/** Equal power: a fade-in and a fade-out at the same progress add up to the same power. */
+/**
+ * A raised cosine, so a sound grows out of silence: a sine is at -16 dB a tenth of the way in, which is heard as a start and not as a
+ * fade, this at -32.
+ */
 export function fadeInGain(progress: number): number {
-  return Math.sin((progress * Math.PI) / 2);
+  return Math.sin((progress * Math.PI) / 2) ** 2;
 }
 
+/** What a fade-in leaves of the power: the two at one progress always add up to the same, so what leaves stays until what comes has grown. */
 export function fadeOutGain(progress: number): number {
-  return progress >= 1 ? 0 : Math.cos((progress * Math.PI) / 2);
+  return progress >= 1 ? 0 : Math.sqrt(1 - fadeInGain(progress) ** 2);
 }
 
 export function median(values: readonly number[]): number {

@@ -200,33 +200,3 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
-
-.atlas-sound-ambience-tile {
-  @include bare-button;
-  @include hairline-tile;
-  @include focus-ring;
-  flex-shrink: 0;
-  width: 104px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: $spacing-s;
-  color: var(--text-muted);
-  transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease;
-
-  svg {
-    width: 18px;
-    height: 18px;
-    stroke-width: 1.6;
-  }
-
-  &:hover {
-    background: var(--background-primary-alt);
-    color: var(--text-normal);
-  }
-
-  @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
-    width: 88px;
-  }
-}

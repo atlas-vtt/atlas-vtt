@@ -196,7 +196,6 @@ describe('the DM screen’s Sound page', () => {
       if (kind === 'ambience' && record) act(() => { director.desk.addSound(record); });
     }
     await expect.poll(() => document.querySelectorAll('.atlas-sound-strip[data-muted], .atlas-sound-strips__mix .atlas-sound-strip:not(.atlas-sound-strip--music)').length).toBe(8);
-    expect(document.querySelector('.atlas-sound-ambience-tile')).toBeNull();
     const row = document.querySelector<HTMLElement>('.atlas-sound-strips__mix')!;
     expect(row.scrollWidth).toBeLessThanOrEqual(row.clientWidth);
     const silence = box('.atlas-sound-silence');
@@ -215,7 +214,7 @@ describe('the DM screen’s Sound page', () => {
     expect(box('.atlas-sound-silence').height).toBe(silence.height);
   });
 
-  it('shows the empty page: no moods yet, Choose music, Ambience and the output, and no Master or Silence', async () => {
+  it('shows the empty page: no moods yet, the output, and no strips, Master or Silence', async () => {
     await page.viewport(1644, 960);
     viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1644px; height: 960px; contain: strict; overflow: hidden';
     tab = await openSoundTab(DARK, viewport);
@@ -224,22 +223,13 @@ describe('the DM screen’s Sound page', () => {
     expect(document.querySelectorAll('.atlas-sound-no-moods p')).toHaveLength(1);
     expect(document.querySelector('.atlas-sound-lib__nolink h2')?.textContent).toBe('Where is your music?');
     expect(box('.atlas-sound-lib__nolink h2').top).toBe(box('.atlas-sound-no-moods h2').top);
-    expect(document.querySelector('.atlas-sound-pick')?.textContent).toBe('Choose music');
-    expect(document.querySelector('.atlas-sound-ambience-tile')?.textContent).toBe('Ambience');
+    expect(document.querySelector('.atlas-sound-strips__mix')?.childElementCount).toBe(0);
     expect(document.querySelector('.atlas-sound-output')?.textContent).toBe('System output');
     expect(document.querySelector('.atlas-sound-desk__head')?.textContent).toContain('Nothing playing');
     expect(document.querySelector('.atlas-sound-strip--master')).toBeNull();
     expect(document.querySelector('.atlas-sound-silence')).toBeNull();
     expect(document.querySelector('.atlas-sound-ghost')).toBeNull();
-
-    // Both take focus to the library, at the root each belongs to.
-    await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-ambience-tile')!);
-    expect(tab.library.place.current.kind).toBe('ambience');
-    expect(document.activeElement?.closest('.atlas-sound-lib')).not.toBeNull();
-    await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-pick')!);
-    expect(tab.library.place.current.kind).toBe('music');
-    expect(document.activeElement?.closest('.atlas-sound-lib')).not.toBeNull();
-    expect(box('.atlas-sound-desk').height).toBe(336);
+    await expect.poll(() => box('.atlas-sound-desk').height).toBe(336);
   });
 
   it('holds fewer columns at 1280, and below the breakpoint stacks the library over the moods, each with its share', async () => {

@@ -124,17 +124,19 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     }), at, { returnFocus: anchorElement ?? scroller.current });
   }, [actions, inHand, menu, recordOfRow, selected]);
 
-  const primary = useCallback((row: Row): void => {
-    if (row.type === 'folder') {
-      onOpenFolder(row);
-      return;
-    }
+  /** Takes a row out of the mix where it is in it, and otherwise puts what is in hand there. */
+  const toggleInMix = useCallback((row: Row, music: 'now' | 'next'): void => {
     if (row.type !== 'file') return;
     const path = audioPathOf(row);
     const inMix = path === null ? undefined : held.get(path);
     if (inMix) actions.takeOut(inMix);
-    else actions.toMix(inHand(row).flatMap((one) => (one.type === 'file' ? [one.file] : [])), row.file.kind === 'music' ? 'next' : 'add');
-  }, [actions, audioPathOf, held, inHand, onOpenFolder]);
+    else actions.toMix(inHand(row).flatMap((one) => (one.type === 'file' ? [one.file] : [])), row.file.kind === 'music' ? music : 'add');
+  }, [actions, audioPathOf, held, inHand]);
+
+  const primary = useCallback((row: Row): void => {
+    if (row.type === 'folder') onOpenFolder(row);
+    else toggleInMix(row, 'next');
+  }, [onOpenFolder, toggleInMix]);
 
   const handlers = useMemo<RowHandlers>(() => ({
     onPress: (row, event) => {
@@ -146,6 +148,10 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     },
     onOpen: primary,
     onPrimary: primary,
+    onPlay: (row) => {
+      director.preview(null);
+      toggleInMix(row, 'now');
+    },
     onPreview: (row) => {
       if (row.type === 'file') actions.preview(row.file);
     },
@@ -171,7 +177,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
       const extension = row.type === 'file' ? row.file.name.slice(row.name.length) : '';
       actions.rename(entry, `${safe}${extension}`);
     },
-  }), [actions, anchor, inHand, openMenu, primary, rows, selected]);
+  }), [actions, anchor, director, inHand, openMenu, primary, rows, selected, toggleInMix]);
 
   const onLeave = (direction: 'left' | 'right' | 'up'): void => {
     const list = scroller.current;

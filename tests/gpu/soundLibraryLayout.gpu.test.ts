@@ -154,20 +154,21 @@ describe('the sound library', () => {
     await pressFolder('Battle');
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(10);
     await userEvent.hover(rowNamed('Steel in the reeds'));
-    await userEvent.click(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__act')!);
+    await userEvent.click(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__play')!);
     await expect.poll(() => rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__state')?.textContent, { timeout: 60_000 }).toBe('In the mix');
+    expect(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__act')).toBeNull();
     await expect.poll(() => r.director.snapshot().mix.table.music?.tracks.length, { timeout: 60_000 }).toBe(1);
     expect(r.locations.music.reads).toContain('Battle/Steel in the reeds.ogg');
-    await expect.poll(() => rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__act')?.textContent).toBe('Remove');
+    await expect.poll(() => rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__play')?.getAttribute('aria-pressed')).toBe('true');
     // A read that never ends, as of a long file on a slow disk: the row says what goes on.
-    await userEvent.hover(rowNamed('Under siege'));
-    await userEvent.click(rowNamed('Under siege').querySelector('.atlas-sound-lib__play')!);
+    await userEvent.click(rowNamed('Under siege'));
+    await userEvent.keyboard(' ');
     await expect.poll(() => rowNamed('Under siege').querySelector('.atlas-sound-lib__state')?.textContent, { timeout: 30_000 }).toBe('Converting');
     await act(async () => { (document.activeElement as HTMLElement | null)?.blur(); await userEvent.unhover(rowNamed('Steel in the reeds')); });
     await settled();
     await page.screenshot({ path: `${SHOTS}/library.png`, element: LIBRARY_SHOT(frame!.host) });
     await userEvent.hover(rowNamed('Steel in the reeds'));
-    await userEvent.click(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__act')!);
+    await userEvent.click(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__play')!);
     await expect.poll(() => rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__state')?.textContent).toBe('');
   });
 

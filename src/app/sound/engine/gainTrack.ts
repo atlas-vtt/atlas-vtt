@@ -63,7 +63,7 @@ export class GainTrack {
     return high === undefined ? low : low + (high - low) * (position - index);
   }
 
-  /** An equal-power fade from whatever the gain will be at `at`, over by `at + seconds`. */
+  /** A fade from whatever the gain will be at `at`, over by `at + seconds`. */
   fade(to: number, at: number, seconds: number): void {
     const from = this.hold(at);
     this.curve(fadeCurve(from, to, seconds), from, at, seconds);

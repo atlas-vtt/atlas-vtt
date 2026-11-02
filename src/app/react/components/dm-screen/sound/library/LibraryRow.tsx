@@ -23,6 +23,7 @@ export interface RowHandlers {
   onPress: (row: Row, event: React.MouseEvent) => void;
   onOpen: (row: Row) => void;
   onPrimary: (row: Row) => void;
+  onPlay: (row: Row) => void;
   onPreview: (row: Row) => void;
   onMenu: (row: Row, at: { x: number; y: number }, anchor: HTMLElement | null) => void;
   onDragStart: (row: Row, event: React.DragEvent) => void;
@@ -86,7 +87,8 @@ export const LibraryRow = memo(function LibraryRow({ row, library, handlers, sel
   const state = row.type === 'waiting' ? t('audio.state.missing') : held ? t('audio.library.inMix') : conversion ? stateText(conversion) : '';
   const busy = conversion?.state === 'converting' || row.type === 'waiting';
   const [droppable, setDroppable] = useState(false);
-  const primary = row.type !== 'file' ? null : held ? t('audio.library.remove') : row.file.kind === 'music' ? t('audio.library.playNext') : t('audio.library.add');
+  const showsStop = previewing || Boolean(held);
+  const playLabel = previewing ? t('audio.stopPreview') : held ? t('audio.remove', { name: row.name }) : t('audio.playTrack', { name: row.name });
 
   return (
     <div
@@ -117,8 +119,8 @@ export const LibraryRow = memo(function LibraryRow({ row, library, handlers, sel
     >
       <span role="gridcell">
         {row.type === 'file' && (
-          <button type="button" tabIndex={-1} data-focus-skip className="atlas-sound-lib__play" aria-label={previewing ? t('audio.stopPreview') : t('audio.previewSound', { name: row.name })} aria-pressed={previewing} onClick={(event) => { event.stopPropagation(); handlers.onPreview(row); }}>
-            {previewing ? <Square aria-hidden="true" /> : <PlayGlyph />}
+          <button type="button" tabIndex={-1} data-focus-skip className="atlas-sound-lib__play" aria-label={playLabel} aria-pressed={showsStop} onClick={(event) => { event.stopPropagation(); if (previewing) handlers.onPreview(row); else handlers.onPlay(row); }}>
+            {showsStop ? <Square aria-hidden="true" /> : <PlayGlyph />}
           </button>
         )}
       </span>
@@ -133,8 +135,8 @@ export const LibraryRow = memo(function LibraryRow({ row, library, handlers, sel
         {row.type === 'file' && <FileLength library={library} file={row.file} />}
       </span>
       <span role="gridcell">
-        {primary !== null && (
-          <button type="button" tabIndex={-1} data-focus-skip className="atlas-sound-lib__act" onClick={(event) => { event.stopPropagation(); handlers.onPrimary(row); }}>{primary}</button>
+        {row.type === 'file' && row.file.kind === 'music' && !held && (
+          <button type="button" tabIndex={-1} data-focus-skip className="atlas-sound-lib__act" onClick={(event) => { event.stopPropagation(); handlers.onPrimary(row); }}>{t('audio.library.playNext')}</button>
         )}
       </span>
       <span role="gridcell">

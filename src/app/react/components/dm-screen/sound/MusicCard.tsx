@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ListMusic, Music, Play, Shuffle, SkipForward, Volume1, VolumeX, X } from 'lucide-react';
+import { ListMusic, Play, Shuffle, SkipForward, Volume1, VolumeX, X } from 'lucide-react';
 import { t } from '../../../../i18n';
 import { SOUND_RATE } from '../../../../sound/engine/soundMath';
 import type { SoundInfo } from '../../../../sound/soundTypes';
@@ -122,7 +122,7 @@ function TrackList({ director }: { director: SoundDirector }): React.JSX.Element
 }
 
 /** The music: what plays, how it goes on, and its fader. A fader moving renders its own strip alone. */
-export const MusicCard = React.memo(function MusicCard({ director, onChoose }: { director: SoundDirector; onChoose: () => void }): React.JSX.Element {
+export const MusicCard = React.memo(function MusicCard({ director }: { director: SoundDirector }): React.JSX.Element | null {
   const [listOpen, setListOpen] = useState(false);
   const none = useSoundValue(director, ({ mix }) => mix.table.music === null && mix.waitingMusic === null);
   const playing = useSoundValue(director, ({ mix }) => mix.table.music !== null);
@@ -133,16 +133,7 @@ export const MusicCard = React.memo(function MusicCard({ director, onChoose }: {
   const setLevel = useCallback((db: number) => director.desk.setMusicLevel(db), [director]);
   const name = t('audio.music');
 
-  if (none) {
-    return (
-      <div className="atlas-sound-music atlas-sound-card" data-empty="true">
-        <button type="button" className="atlas-sound-pick" onClick={onChoose}>
-          <Music aria-hidden="true" />
-          {t('audio.chooseMusic')}
-        </button>
-      </div>
-    );
-  }
+  if (none) return null;
 
   return (
     <div className="atlas-sound-music atlas-sound-card">

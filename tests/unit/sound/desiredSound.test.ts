@@ -143,12 +143,13 @@ describe('a music list', () => {
 });
 
 describe('fades', () => {
-  it('brings a play in with equal power and at its level', () => {
+  it('grows a play out of silence up to its level', () => {
     const state = table({ layers: [layer(sound('rain', 10), { gainDb: -6, startAt: 1000, fade: { at: 1000, ms: 2000 } })] });
+    expect(only(state, 1200).fadeGain).toBeLessThan(dbToGain(-30));
     const halfway = only(state, 2000);
     expect(halfway.role).toBe('in');
-    expect(halfway.fadeGain).toBeCloseTo(Math.SQRT1_2, 6);
-    expect(halfway.gain).toBeCloseTo(dbToGain(-6) * Math.SQRT1_2, 6);
+    expect(halfway.fadeGain).toBeCloseTo(0.5, 6);
+    expect(halfway.gain).toBeCloseTo(dbToGain(-6) * 0.5, 6);
     expect(only(state, 3000).gain).toBeCloseTo(dbToGain(-6), 6);
   });
 
@@ -210,8 +211,8 @@ describe('silence', () => {
   it('fades everything and lands where it would have been', () => {
     const play = layer(sound('rain', 10));
     const going = table({ layers: [play], silenced: true, silenceFade: { at: 1000, ms: 1000 } });
-    expect(desiredSound(going, 1500).silence.gain).toBeCloseTo(Math.SQRT1_2, 6);
-    expect(only(going, 1500).gain).toBeCloseTo(Math.SQRT1_2, 6);
+    expect(desiredSound(going, 1500).silence.gain).toBeCloseTo(Math.sqrt(0.75), 6);
+    expect(only(going, 1500).gain).toBeCloseTo(Math.sqrt(0.75), 6);
     const silent = desiredSound(going, 5000);
     expect(silent.silence.gain).toBeCloseTo(0, 9);
     expect(only(going, 5000).frame).toBe(5 * SOUND_RATE);

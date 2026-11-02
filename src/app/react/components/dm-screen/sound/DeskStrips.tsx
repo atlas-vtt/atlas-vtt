@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Volume1, VolumeX, X } from 'lucide-react';
+import { Volume1, VolumeX, X } from 'lucide-react';
 import { t } from '../../../../i18n';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import type { LayerPlay } from '../../../../sound/soundTypes';
@@ -53,16 +53,6 @@ export function WaitingStrip({ director, soundId }: { director: SoundDirector; s
       <div className="atlas-sound-fader__value">{t('audio.waiting')}</div>
       <StripName name={name} />
     </div>
-  );
-}
-
-/** The ghost that leads to the library. */
-export function AddAmbience({ onPress }: { onPress: () => void }): React.JSX.Element {
-  return (
-    <button type="button" className="atlas-sound-ambience-tile" onClick={onPress}>
-      <Plus aria-hidden="true" />
-      {t('audio.ambience')}
-    </button>
   );
 }
 
