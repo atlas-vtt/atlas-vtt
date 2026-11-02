@@ -1,3 +1,4 @@
+import { readFogEdge, type FogEdge } from '../fog/fogEdge';
 import type { LegacyPlayerBars } from '../resources/playerVisibilityMigration';
 import type { App, Plugin } from 'obsidian';
 import { availableHotkeys, canShareHotkey, type MapHotkeyId, type MapHotkeys } from '../keyboard/mapHotkeys';
@@ -410,6 +411,15 @@ export class SettingsService {
   setDetectGridOnNewScenes(on: boolean): void {
     if (this.detectsGridOnNewScenes() === on) return;
     this.settings.detectGridOnNewScenes = on;
+    this.commit();
+  }
+
+  getFogEdge(): FogEdge {
+    return readFogEdge(this.settings.fogEdge);
+  }
+
+  setFogEdge(changes: Partial<FogEdge>): void {
+    this.settings.fogEdge = { ...this.getFogEdge(), ...changes };
     this.commit();
   }
 

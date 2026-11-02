@@ -2,6 +2,11 @@
   "version": "0.12.2-beta.0",
   "releases": [
     {
+      "version": "0.12.2-beta.0",
+      "title": "Coming in 0.12.2",
+      "markdown": "## New\n\n- **Soft and crackled fog edges**: Atlas settings, Maps, Fog edge fades the edge of the fog and of what you erase from it, or breaks it into a gritty, cracked edge that stays sharp at any zoom, over as many map pixels as you choose, for you and your players. Off by default."
+    },
+    {
       "version": "0.12.1",
       "date": "2026-11-02",
       "title": "TrueScale fixes, levels and multi-token actions",
