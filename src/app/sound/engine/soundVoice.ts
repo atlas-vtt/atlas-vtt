@@ -124,9 +124,10 @@ export class SoundVoice {
     const sounding = this.runs.filter((run) => !run.finishing && !this.isAhead(run, anchor, nowFrame));
     for (const run of this.runs.filter((other) => this.isAhead(other, anchor, nowFrame))) run.dispose();
     this.runs = this.runs.filter((run) => !this.isAhead(run, anchor, nowFrame));
-    const boundaries = sounding.map((run) => run.boundaryFrame(nowFrame));
-    const at = boundaries.reduce<number | null>((soonest, frame) => (frame === null ? soonest : soonest === null ? frame : Math.min(soonest, frame)), null);
     const crossfadeFrames = Math.round(CROSSFADE_SECONDS * map.rate);
+    // A run that ended a moment ago is still here, and its end is no place to stop what plays now.
+    const boundaries = sounding.flatMap((run) => run.boundaryFrame(nowFrame) ?? []).filter((frame) => frame >= nowFrame + crossfadeFrames);
+    const at = boundaries.length === 0 ? null : Math.min(...boundaries);
     if (action === 'seek' || at === null) {
       const end = nowFrame + crossfadeFrames;
       for (const run of sounding) run.finishAt(end, CROSSFADE_SECONDS);

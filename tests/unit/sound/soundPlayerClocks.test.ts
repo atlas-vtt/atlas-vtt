@@ -6,7 +6,7 @@ import { driftAction } from '@/app/sound/engine/soundVoice';
 import type { WindowDecode } from '@/app/sound/engine/windowDecoder';
 import type { LayerPlay, SoundBytes, TableSound } from '@/app/sound/soundTypes';
 import { fakeBuffer, FakeSoundContext } from '../../helpers/fakeSoundContext';
-import { emptyBytes, layer, playerRig as rig, RATE, sound, table, type PlayerRig as Rig } from '../../helpers/soundPlayerRig';
+import { emptyBytes, layer, music, playerRig as rig, RATE, sound, table, type PlayerRig as Rig } from '../../helpers/soundPlayerRig';
 
 describe('drift', () => {
   it('has three answers by size, none of them a change of speed', () => {
@@ -57,6 +57,24 @@ describe('drift', () => {
     expect(made.context.playing()).not.toContain(first);
     const second = made.context.sources[1];
     expect(second?.started?.offset).toBeCloseTo((second?.started?.when ?? 0) + 5, 2);
+  });
+
+  it('fades what plays when the correction comes just after a track ended', async () => {
+    const { context, player, advance, tableOffset } = rig();
+    player.setState(table({ music: music([sound('a', 30), sound('b', 30)]) }));
+    await player.settled();
+    await advance(15);
+    await advance(15.2);
+    const b = context.sources[1];
+    expect(b?.started?.when).toBe(30);
+    // Two ticks end the round of readings under way, and five read a middling error, all within the second the ended run is kept for.
+    tableOffset.ms = 300;
+    for (let tick = 0; tick < 7; tick++) await advance(0.1);
+    expect(context.currentTime).toBeLessThan(31);
+    // The next place a restart cannot be heard is the end of what plays now, not the one just passed.
+    expect(b?.stoppedAt).toBeCloseTo(60, 1);
+    expect(context.playing()).toContain(b);
+    expect(player.waitingKeys()).toEqual([]);
   });
 
   it('judges nothing while the context\'s clock stands', async () => {
