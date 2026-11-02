@@ -20,6 +20,11 @@ vi.mock('../../src/app/react/root/ContextMenuContext', () => ({
   closeContextMenuGlobal: () => {},
 }));
 
+const editing = vi.hoisted(() => ({ opened: [] as { at: { x: number; y: number }; resourceName: string; count: number; onCommit: (amount: number) => void }[] }));
+vi.mock('../../src/app/pixi/selectionResourceEditor', () => ({
+  SelectionResourceEditing: class { open(options: (typeof editing.opened)[number]): void { editing.opened.push(options); } close(): void {} },
+}));
+
 const HP: ResourceDefinition = { key: 'hp', name: 'HP', field: 'hp', direction: 'drains', color: '#e93147', defeatedWhenSpent: true, visibleToPlayers: true };
 
 const character = (id: string, current: number) => ({
@@ -35,7 +40,8 @@ function setup(selectedIds: string[]) {
     grid: { ...store.getState().grid, size: 70 },
     objects: { ...store.getState().objects, tokens },
   } as never);
-  const controller = new InteractionController({} as Viewport, store, {} as GridSystem, {} as EventEmitter, app as unknown as App);
+  const viewport = { options: { events: { domElement: document.createElement('canvas') } } } as unknown as Viewport;
+  const controller = new InteractionController(viewport, store, {} as GridSystem, {} as EventEmitter, app as unknown as App);
   controller.resourceDefsProvider = () => [HP];
   const rightClick = (id: string): void => controller.handleViewportTokenPointerDown(
     id, { button: 2, stopPropagation: () => {}, clientX: 0, clientY: 0, global: { x: 0, y: 0 } } as unknown as FederatedPointerEvent,
@@ -44,7 +50,7 @@ function setup(selectedIds: string[]) {
   const hp = (): Record<string, number | undefined> => Object.fromEntries(
     Object.values(store.getState().objects.tokens).map((token) => [token.id, (token as unknown as ReturnType<typeof character>).resources.hp.current]),
   );
-  return { store, rightClick, steps, hp };
+  return { store, controller, rightClick, steps, hp };
 }
 
 function pressInRow(name: string): void {
@@ -54,7 +60,35 @@ function pressInRow(name: string): void {
   fireEvent.click(screen.getByText(name));
 }
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  editing.opened.length = 0;
+});
+
+describe('a press on a bar of a selected token', () => {
+  it('offers one change for the whole selection, at the press, in one undo step', () => {
+    const { controller, steps, hp } = setup(['a', 'b']);
+    const before = steps();
+    expect(controller.pressSelectionResource('hp', { x: 30, y: 40 })).toBe(true);
+    const [opened] = editing.opened;
+    expect(opened).toMatchObject({ at: { x: 30, y: 40 }, resourceName: 'HP', count: 2 });
+
+    opened!.onCommit(-3);
+    expect(hp()).toEqual({ a: 5, b: 3, c: 4 });
+    expect(steps()).toBe(before + 1);
+  });
+
+  it('leaves a single selected token to its own controls', () => {
+    const { controller } = setup(['a']);
+    expect(controller.pressSelectionResource('hp', { x: 0, y: 0 })).toBe(false);
+    expect(editing.opened).toEqual([]);
+  });
+
+  it('means nothing for a resource no selected token holds', () => {
+    const { controller } = setup(['a', 'b']);
+    expect(controller.pressSelectionResource('stress', { x: 0, y: 0 })).toBe(false);
+  });
+});
 
 describe('the token menu over a selection', () => {
   it('kills every selected token in one undo step', () => {

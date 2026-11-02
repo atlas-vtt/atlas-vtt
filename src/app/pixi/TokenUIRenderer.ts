@@ -474,6 +474,16 @@ export class TokenUIRenderer {
     return Math.max(0, ...this.resources.layout().map((slot) => slot.top + slot.height));
   }
 
+  /** The key of the resource drawn at `point` on the screen, or null. */
+  public resourceAt(point: { x: number; y: number }): string | null {
+    const anchors = { bar: this.belowToken, wheel: this.besideToken, 'wheel-left': this.leftOfToken };
+    for (const slot of this.getResourceSlots()) {
+      const { x, y } = anchors[slot.kind].toLocal(point);
+      if (x >= slot.left && x <= slot.left + slot.width && y >= slot.top && y <= slot.top + slot.height) return slot.key;
+    }
+    return null;
+  }
+
   /** Where the right wheels' column hangs from, in world units from the token's centre; the left one is its mirror. */
   public getWheelAnchor(): { x: number; y: number } {
     return { x: this.besideToken.position.x, y: this.besideToken.position.y };

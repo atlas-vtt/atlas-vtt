@@ -263,3 +263,23 @@ describe('resource value popover editing', () => {
     } finally { controls.destroy(); viewport.destroy(); }
   });
 });
+
+describe('what lies at a point of the screen', () => {
+  const context = (): CanvasRenderingContext2D => ({ createLinearGradient: () => ({ addColorStop: vi.fn() }), fillRect: vi.fn(), fillStyle: '' } as unknown as CanvasRenderingContext2D);
+
+  it('names the resource of the bar under it, and none beside the bars', () => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context());
+    const ui = tokenUI();
+    try {
+      ui.update(hero, 70);
+      ui.getContainer().position.set(300, 200);
+      const slots = ui.getResourceSlots();
+      for (const slot of slots) {
+        const point = belowToken(ui).toGlobal(new Point(slot.left + slot.width / 2, slot.top + slot.height / 2));
+        expect(ui.resourceAt(point)).toBe(slot.key);
+      }
+      const last = slots.at(-1)!;
+      expect(ui.resourceAt(belowToken(ui).toGlobal(new Point(last.left - 40, last.top)))).toBeNull();
+    } finally { ui.destroy(); }
+  });
+});

@@ -40,7 +40,8 @@ import { tokenLevelSubmenu } from '../../react/components/context-menu/tokenLeve
 import { tokenLightingEntries } from '../../react/components/context-menu/tokenLightingMenu';
 import { mapLightPresets } from '../../services/mapCollectionRules';
 import { conditionsSubmenu } from '../../react/components/context-menu/conditionsMenu';
-import { selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
+import { applySelectionResourceChange, selectionResourceEntry } from '../../react/components/context-menu/selectionResourceMenu';
+import { selectionResources } from '../../resources/selectionResourceChange';
 import { SelectionResourceEditing } from '../selectionResourceEditor';
 import { placedPlayerCharacterEntry } from '../../react/components/context-menu/playerCharacterMenu';
 import { holdTokens } from '../../lighting/sightOnDrop';
@@ -746,10 +747,7 @@ export class InteractionController implements ITokenInteractionController {
     // One change of a resource for every selected token that holds it (an area's damage), DM only
     const selectionChange = this.isPlayerView ? null : selectionResourceEntry(
       this.store, this.contextMenuTargets(token.id), this.resourceDefsProvider(),
-      (definition, count, apply) => {
-        this.selectionEditing ??= new SelectionResourceEditing(this.viewport.options.events.domElement);
-        this.selectionEditing.open({ at: { x: e.clientX, y: e.clientY }, resourceName: definition.name, count, onCommit: apply });
-      },
+      (definition, count, apply) => this.openSelectionEditor({ x: e.clientX, y: e.clientY }, definition.name, count, apply),
     );
     if (selectionChange) entries.push(selectionChange);
 
@@ -846,6 +844,30 @@ export class InteractionController implements ITokenInteractionController {
       token: { imagePath: token.imagePath, name },
       onLinked: (statblockPath) => this.store.getState().updateToken(token.id, { statblockPath }),
     };
+  }
+
+  private openSelectionEditor(at: { x: number; y: number }, resourceName: string, count: number, onCommit: (amount: number) => void): void {
+    this.selectionEditing ??= new SelectionResourceEditing(this.viewport.options.events.domElement);
+    this.selectionEditing.open({ at, resourceName, count, onCommit });
+  }
+
+  /**
+   * A press on the bar of resource `key` of a token in a selection of two or more: the popover of
+   * one change for every selected token that holds it. False where the press means nothing here.
+   */
+  public pressSelectionResource(key: string, at: { x: number; y: number }): boolean {
+    const state = this.store.getState();
+    const tokens = mapTokens(levelObjects(state));
+    const targets = state.selectedIds.filter((id) => tokens[id] !== undefined);
+    const definitions = this.resourceDefsProvider();
+    const offered = targets.length < 2 || this.isPlayerView
+      ? undefined
+      : selectionResources(tokens, targets, definitions).find(({ definition }) => definition.key === key);
+    if (!offered) return false;
+    this.openSelectionEditor(at, offered.definition.name, offered.count, (amount) => (
+      applySelectionResourceChange(this.store, targets, definitions, key, amount)
+    ));
+    return true;
   }
 
   /** The characters among the tokens `ids`, as the store holds them now. */

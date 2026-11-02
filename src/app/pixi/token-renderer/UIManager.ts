@@ -423,6 +423,15 @@ export class UIManager implements ITokenUIManager {
   }
 
   /** Viewport-driven hover state update. Pass null to clear all hover. */
+  /** The key of the resource one of `tokenIds` draws at `point` on the screen, or null. */
+  public resourceAt(tokenIds: readonly string[], point: { x: number; y: number }): string | null {
+    for (const tokenId of tokenIds) {
+      const key = this.tokenUIs[tokenId]?.resourceAt(point);
+      if (key) return key;
+    }
+    return null;
+  }
+
   public setHoverState(tokenId: string | null, modifierKeyDown = false): void {
     const changed = tokenId !== this._prevHoverId;
     const modChanged = modifierKeyDown !== this._prevModifier;

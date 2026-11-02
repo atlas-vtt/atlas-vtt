@@ -5,6 +5,8 @@
 - Player window: showing a saved frame glides there, also when players were following you, and changing the scene dips through black instead of jumping
 - Player window: the curtain fades down and up instead of cutting to black
 - Token menu: Kill, Delete, Reset and Size act on every selected token
+- With several tokens selected, clicking a bar on any of them changes that resource for all of them
+- Context menus no longer scroll
 
 ## Fixed
 - Scenes with several levels open on the level they were last shown on, after a reload or closing them, and in a collection you share too. Their cards and the dashboard show that level
