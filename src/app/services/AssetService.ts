@@ -32,7 +32,6 @@ import { libraryClock, parseLibraryState } from './library/libraryState';
 import { trashSceneSnapshots } from '../snapshots/sceneSnapshotFolders';
 import { showNotice } from '../ui/notice';
 import type { SoundRecord } from '../sound/soundTypes';
-import { soundsFolderOf } from '../soundLibrary/soundFiles';
 
 export interface BaseAsset {
   id: string;
@@ -1200,21 +1199,12 @@ export class AssetService {
       await this.trashFileIfPresent(asset.thumbnailPath);
     }
     if (asset.type === 'encounter') await this.trashEncounterThumbnail(asset);
-    if (asset.type === 'sound') await this.trashOwnAudio(asset);
 
     // Remove from metadata
     delete this.metadata!.assets[id];
     await this.saveMetadata();
 
     await this.deleteEmptiedGroups(emptiedGroups);
-  }
-
-  /** A sound's audio goes with it only from its collection's `sounds/`, where Atlas puts it, and unless another record names it: anywhere else it is the GM's own file. */
-  private async trashOwnAudio(sound: SoundAsset): Promise<void> {
-    if (!sound.audioPath.startsWith(`${soundsFolderOf(sound.collection)}/`)) return;
-    const shared = Object.values(this.metadata!.assets)
-      .some((other) => other.id !== sound.id && other.type === 'sound' && other.audioPath === sound.audioPath);
-    if (!shared) await this.trashFileIfPresent(sound.audioPath);
   }
 
   /** An encounter's thumbnail goes with it, unless another encounter (a copy) still shows the same file. */

@@ -30,6 +30,8 @@ export interface ViewUIState {
   soundView: SoundView;
   /** Which of the two linked folders the library shows. */
   soundLibraryRoot: SoundKind;
+  /** The folder open in that root, relative to it. */
+  soundLibraryFolder: string;
   isGridAlignmentOpen: boolean;
   isDiceLogOpen: boolean;
   isAssetManagerOpen: boolean;

@@ -110,11 +110,29 @@ button.atlas-sound-who,
 }
 
 .atlas-sound-strips {
+  position: relative;
   flex: 1;
   min-height: 0;
   display: flex;
   gap: $spacing-s;
   padding: 0 $spacing-l $spacing-l;
+
+  // Library rows held over the desk: the row they land in.
+  &::after {
+    content: '';
+    position: absolute;
+    inset: (-$spacing-xs) ($spacing-l - $spacing-xs) ($spacing-l - $spacing-xs);
+    border-radius: $radius-xl;
+    background: color-mix(in oklch, var(--interactive-accent) 12%, transparent);
+    box-shadow: inset 0 0 0 $border-width-m var(--interactive-accent);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity $transition-fast $press-ease;
+  }
+
+  &[data-drop-target]::after {
+    opacity: 1;
+  }
 }
 
 // What does not fit scrolls here, past the cards' lower edge, so a scrollbar never takes height from a fader.

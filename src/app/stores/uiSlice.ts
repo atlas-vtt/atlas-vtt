@@ -18,7 +18,8 @@ export interface UISlice extends ViewUIState {
   setDMScreenOpen: (open: boolean) => void;
   setDMScreenPage: (page: DMScreenPage) => void;
   setSoundView: (view: SoundView) => void;
-  showSoundLibrary: (root: SoundKind) => void;
+  /** Shows a root of the library, at `folder`; without one, a root already shown stays where it is. */
+  showSoundLibrary: (root: SoundKind, folder?: string) => void;
   setGridAlignmentOpen: (open: boolean) => void;
   setDiceLogOpen: (open: boolean) => void;
   openAssetManager: (tab?: UISlice['assetManagerInitialTab']) => void;
@@ -54,6 +55,7 @@ export function createInitialUIState(): Pick<
   | 'dmScreenPage'
   | 'soundView'
   | 'soundLibraryRoot'
+  | 'soundLibraryFolder'
   | 'isGridAlignmentOpen'
   | 'isDiceLogOpen'
   | 'isAssetManagerOpen'
@@ -78,6 +80,7 @@ export function createInitialUIState(): Pick<
     dmScreenPage: 'statblocks',
     soundView: 'moods',
     soundLibraryRoot: 'music',
+    soundLibraryFolder: '',
     isGridAlignmentOpen: false,
     isDiceLogOpen: false,
     isAssetManagerOpen: false,
@@ -135,8 +138,9 @@ export function createUIActions(
     setDMScreenOpen: (open) => set((draft) => { draft.isDMScreenOpen = open; }),
     setDMScreenPage: (page) => set((draft) => { draft.dmScreenPage = page; }),
     setSoundView: (soundView) => set((draft) => { draft.soundView = soundView; }),
-    showSoundLibrary: (root) => set((draft) => {
+    showSoundLibrary: (root, folder) => set((draft) => {
       draft.soundView = 'library';
+      draft.soundLibraryFolder = folder ?? (draft.soundLibraryRoot === root ? draft.soundLibraryFolder : '');
       draft.soundLibraryRoot = root;
     }),
     setGridAlignmentOpen: (open) => set((draft) => { draft.isGridAlignmentOpen = open; }),

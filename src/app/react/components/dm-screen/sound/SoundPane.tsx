@@ -8,10 +8,11 @@ import { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { MoodStore } from '../../../../soundLibrary/MoodStore';
 import { orderForMove } from '../../../../soundLibrary/moodOrdering';
 import { mayCarryAudio } from '../../../../soundLibrary/soundFiles';
-import { runSoundImport } from '../../../../soundLibrary/runSoundImport';
+import { runLibraryImport } from '../../../../soundLibrary/runLibraryImport';
+import { SoundLibrary } from '../../../../soundLibrary/SoundLibrary';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { useAtlasUI } from '../../../root/AtlasUIContext';
-import { useAtlasStore } from '../../../ViewStoreContext';
+import { useAtlasStore, useViewStoreHook } from '../../../ViewStoreContext';
 import { LibraryView } from './library/LibraryView';
 import { MeterBoard } from './meterBoard';
 import { MoodGrid } from './MoodGrid';
@@ -37,6 +38,7 @@ export function SoundPane({ active, headerSlot }: SoundPaneProps): React.JSX.Ele
   const { app, view } = useAtlasUI();
   const mapPath = useAtlasStore((state) => state.mapPath);
   const soundView = useAtlasStore((state) => state.soundView);
+  const store = useViewStoreHook();
   const director = SoundDirector.forApp(app);
   const collection = useSoundCollection(app, mapPath);
   const { collectionId } = collection;
@@ -67,10 +69,11 @@ export function SoundPane({ active, headerSlot }: SoundPaneProps): React.JSX.Ele
   }, [active, director, sounds]);
 
   const drop = (event: React.DragEvent): void => {
-    if (!mayCarryAudio(event.dataTransfer) || collectionId === null) return;
+    if (!mayCarryAudio(event.dataTransfer)) return;
     event.preventDefault();
     const files = [...event.dataTransfer.files];
-    runInBackground(runSoundImport(app, AssetService.getInstance(app), files, collectionId), 'Adding sounds', t('audio.couldNotAdd', { files: formatList(files.map((file) => file.name)) }));
+    const { soundView: shown, soundLibraryRoot, soundLibraryFolder } = store.getState();
+    runInBackground(runLibraryImport(SoundLibrary.forApp(app), files, soundLibraryRoot, shown === 'library' ? soundLibraryFolder : ''), 'Importing sounds', t('audio.couldNotAdd', { files: formatList(files.map((file) => file.name)) }));
   };
 
   return (

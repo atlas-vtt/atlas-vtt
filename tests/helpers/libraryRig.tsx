@@ -29,7 +29,8 @@ export interface LibraryRig {
   roots: SoundRoots;
   locations: Record<SoundKind, FakeSoundLocation>;
   local: Partial<Record<SoundKind, string>>;
-  mount: (host: HTMLElement) => void;
+  /** Mounts the library, or `page` in its place. */
+  mount: (host: HTMLElement, page?: React.ReactNode) => void;
   unmount: () => void;
 }
 
@@ -77,7 +78,7 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
   const value = { app, view: null, pixiApp: null, renderer: null } as AtlasUIContextValue;
   return {
     app, library, director, store, assets, roots, locations, local,
-    mount: (host) => {
+    mount: (host, page) => {
       root = createRoot(host);
       act(() => {
         root?.render(
@@ -85,7 +86,7 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
             <ViewStoreProvider store={store}>
               <TooltipProvider>
                 <ContextMenuProvider>
-                  <LibraryView collectionId={COLLECTION} />
+                  {page ?? <LibraryView collectionId={COLLECTION} />}
                 </ContextMenuProvider>
               </TooltipProvider>
             </ViewStoreProvider>

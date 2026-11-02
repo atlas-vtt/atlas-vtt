@@ -5,11 +5,12 @@ import { useLoadingReveal } from '../../../../../packages/components/primitives/
 import { SoundDirector } from '../../../../../soundDirector/SoundDirector';
 import { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
+import { parentOfRelative } from '../../../../../soundLibrary/soundPaths';
 import { isLinked } from '../../../../../soundLibrary/SoundRoots';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
 import { useAtlasStore } from '../../../../ViewStoreContext';
-import { useSoundCollection, useSoundValue } from '../useSound';
+import { useRecordCollection, useSoundValue } from '../useSound';
 import { LibraryHead } from './LibraryHead';
 import { LibraryRail, type LibraryPlace } from './LibraryRail';
 import { folderRows, searchRows, waitingIn, type LibraryRow } from './rowModel';
@@ -36,33 +37,27 @@ function NoLink({ onLink, onImport }: { onLink: (kind: SoundKind, win: Window) =
 }
 
 /** The sound library: the folders linked as music and ambience, and what lies in them. `collectionId` is the collection the page shows; records made here go there. */
-export function LibraryView({ collectionId: shownCollection }: { collectionId?: string | null } = {}): React.JSX.Element | null {
+export function LibraryView({ collectionId: shownCollection }: { collectionId: string | null }): React.JSX.Element | null {
   const { app } = useAtlasUI();
   const library = SoundLibrary.forApp(app);
   const director = SoundDirector.forApp(app);
-  const mapPath = useAtlasStore((state) => state.mapPath);
-  const asked = useAtlasStore((state) => state.soundLibraryRoot);
-  const worked = useSoundCollection(app, mapPath).collectionId;
-  // The collection in use: the playing mood's, else the page's. Records made here go there.
-  const moodCollection = useSoundValue(director, ({ mix }) => mix.mood?.collectionId ?? null);
-  const collectionId = moodCollection ?? shownCollection ?? worked;
+  const kind = useAtlasStore((state) => state.soundLibraryRoot);
+  const folder = useAtlasStore((state) => state.soundLibraryFolder);
+  const place = useMemo<LibraryPlace>(() => ({ kind, folder }), [kind, folder]);
+  const collectionId = useRecordCollection(director, shownCollection);
   const version = useLibraryVersion(library);
   const sounds = useAllSounds(app);
   const held = useHeldInMix(director);
   const shuffle = useSoundValue(director, ({ mix }) => mix.table.music?.shuffle ?? false);
   const actions = useLibraryActions(app, library, director, collectionId);
-  const [place, setPlace] = useState<LibraryPlace>({ kind: asked, folder: '' });
   const [query, setQuery] = useState('');
   const searching = useDeferredValue(query.trim());
   const root = useRef<HTMLDivElement>(null);
 
   const showRoot = useAtlasStore((state) => state.showSoundLibrary);
-  // The store names the root the library shows, so asking for another from elsewhere finds it.
-  useEffect(() => setPlace((current) => (current.kind === asked ? current : { kind: asked, folder: '' })), [asked]);
   const goTo = useCallback((next: LibraryPlace): void => {
     setQuery('');
-    setPlace(next);
-    showRoot(next.kind);
+    showRoot(next.kind, next.folder);
   }, [showRoot]);
 
   // What changed on disk while the GM was elsewhere is read on opening the library and on returning to the window.
@@ -101,9 +96,7 @@ export function LibraryView({ collectionId: shownCollection }: { collectionId?: 
 
   const openFolder = useCallback((row: Extract<LibraryRow, { type: 'folder' }>) => goTo({ kind: row.kind, folder: row.path }), [goTo]);
 
-  const parent = useCallback(() => {
-    setPlace((current) => ({ kind: current.kind, folder: current.folder.includes('/') ? current.folder.slice(0, current.folder.lastIndexOf('/')) : '' }));
-  }, []);
+  const parent = useCallback(() => showRoot(kind, parentOfRelative(folder)), [showRoot, kind, folder]);
 
   const noRoots = library.rootOf('music').status === 'unlinked' && library.rootOf('ambience').status === 'unlinked';
   const keep = (event: React.KeyboardEvent): void => {

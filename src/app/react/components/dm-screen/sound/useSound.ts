@@ -17,6 +17,11 @@ export function useSoundValue<T>(director: SoundDirector, select: (snapshot: Sou
   );
 }
 
+/** The collection records made now go to: the playing mood's, else the page's. */
+export function useRecordCollection(director: SoundDirector, shown: string | null): string | null {
+  return useSoundValue(director, ({ mix }) => mix.mood?.collectionId ?? null) ?? shown;
+}
+
 export function useMoods(app: App, collectionId: string | null): readonly Mood[] {
   const store = MoodStore.forApp(app);
   return useSyncExternalStore(

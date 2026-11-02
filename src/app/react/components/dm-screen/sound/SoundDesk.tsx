@@ -1,13 +1,21 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import type { App } from 'obsidian';
+import { formatList, t } from '../../../../i18n';
+import { AssetService } from '../../../../services/AssetService';
 import { MAX_MOOD_LAYERS, type Mood } from '../../../../sound/soundTypes';
+import { dragToMix } from '../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
+import { carriesSounds, readSoundDrag } from '../../../../soundLibrary/soundDrag';
+import { SoundLibrary } from '../../../../soundLibrary/SoundLibrary';
+import { showNotice } from '../../../../ui/notice';
+import { runInBackground } from '../../../../utils/backgroundTask';
+import { baseName } from '../../../../utils/pathUtils';
 import { useAtlasStore } from '../../../ViewStoreContext';
 import { AddAmbience, LayerStrip, MasterStrip, WaitingStrip } from './DeskStrips';
 import { DeskHeader } from './DeskHeader';
 import { MusicCard } from './MusicCard';
 import { SilenceButton } from './SilenceButton';
-import { useSoundValue } from './useSound';
+import { useRecordCollection, useSoundValue } from './useSound';
 
 interface SoundDeskProps {
   app: App;
@@ -30,13 +38,37 @@ export function SoundDesk({ app, director, collectionId, moods, onSaveAs }: Soun
   const holdsSound = useSoundValue(director, ({ mix }) => mix.table.music !== null || mix.table.layers.length > 0 || mix.waitingMusic !== null || mix.waitingLayers.length > 0);
   const showLibrary = useAtlasStore((state) => state.showSoundLibrary);
   const chooseMusic = useCallback(() => showLibrary('music'), [showLibrary]);
+  const recordsGoTo = useRecordCollection(director, collectionId);
+  const [dropTarget, setDropTarget] = useState(false);
   const layers = layerKeys === '' ? [] : layerKeys.split(SEPARATOR);
   const waiting = waitingLayers === '' ? [] : waitingLayers.split(SEPARATOR);
 
+  const drop = (event: React.DragEvent): void => {
+    if (!carriesSounds(event.dataTransfer)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    setDropTarget(false);
+    const drag = readSoundDrag(event.dataTransfer);
+    if (!drag || recordsGoTo === null) return;
+    runInBackground(dragToMix({ assets: AssetService.getInstance(app), library: SoundLibrary.forApp(app), director, notify: showNotice }, drag, recordsGoTo), 'Adding to the mix', t('audio.couldNotAdd', { files: formatList([...drag.files.map((file) => file.name), ...drag.folders.map((folder) => baseName(folder.path))]) }));
+  };
+
   return (
-    <section className="atlas-sound-desk">
+    <section
+      className="atlas-sound-desk"
+      onDragOver={(event) => {
+        if (recordsGoTo === null || !carriesSounds(event.dataTransfer)) return;
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+        setDropTarget(true);
+      }}
+      onDragLeave={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDropTarget(false);
+      }}
+      onDrop={drop}
+    >
       <DeskHeader app={app} director={director} collectionId={collectionId} moods={moods} holdsSound={holdsSound} onSaveAs={onSaveAs} />
-      <div className="atlas-sound-strips">
+      <div className="atlas-sound-strips" data-drop-target={dropTarget || undefined}>
         <div className="atlas-sound-strips__mix">
           <MusicCard director={director} onChoose={chooseMusic} />
           {layers.map((key) => <LayerStrip key={key} director={director} soundKey={key} />)}
