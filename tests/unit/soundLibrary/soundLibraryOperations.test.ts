@@ -51,6 +51,7 @@ async function open(local: Partial<Record<SoundKind, string>>, shared: SharedSou
       files: { fs: fs as unknown as NodeFsModule, sep: path.sep, home: base },
       trashItem: canTrash ? async (absolute) => fs.rmSync(absolute, { recursive: true }) : null,
       resourceUrl: null,
+      vaultFolder: null,
     })),
     home: () => base,
     probeSeconds: async () => null,

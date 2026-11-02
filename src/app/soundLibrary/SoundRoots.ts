@@ -1,6 +1,6 @@
 import type { SoundKind } from '../sound/soundTypes';
 import type { SharedSoundRoot, SharedSoundRoots } from './soundRootsStore';
-import { isSoundDataPath } from './soundFiles';
+import { isAtlasOwn } from './soundFiles';
 import { isWithin, movedRelative, relativeBelow } from './soundPaths';
 
 export type SoundRootState =
@@ -67,7 +67,7 @@ export class SoundRoots {
   }
 
   linkVault(kind: SoundKind, path: string): LinkOutcome {
-    if (isSoundDataPath(path)) return 'reserved';
+    if (isAtlasOwn(path)) return 'reserved';
     const other = this.stateOf(OTHER[kind]);
     if (other.status === 'vault' && (isWithin(other.path, path) || isWithin(path, other.path))) return 'overlap';
     this.facts.setLocal(kind, null);

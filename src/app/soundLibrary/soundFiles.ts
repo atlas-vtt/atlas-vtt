@@ -12,6 +12,14 @@ export const RECORDS_FOLDER = `${SOUNDS_DIR}/records`;
 export const isSoundDataPath = (path: string): boolean =>
   [MOODS_FOLDER, RECORDS_FOLDER].some((folder) => path === folder || path.startsWith(`${folder}/`));
 
+/**
+ * Atlas' own folder holds video maps and record files, never the GM's library, but for what lies in its `sounds`
+ * besides moods and records: the default folders. The two folders above those hold everything else, so they are
+ * Atlas' own too, also for a root above them.
+ */
+export const isAtlasOwn = (path: string): boolean =>
+  path === ATLAS_VTT_DIR || path === SOUNDS_DIR || isSoundDataPath(path) || (path.startsWith(`${ATLAS_VTT_DIR}/`) && !path.startsWith(`${SOUNDS_DIR}/`));
+
 const AUDIO_EXTENSIONS: ReadonlySet<string> = new Set(['mp3', 'wav', 'flac', 'ogg', 'opus', 'm4a', 'aac', 'webm']);
 
 /** What a file picker offers: the extensions, since the system knows no type for some of them. */

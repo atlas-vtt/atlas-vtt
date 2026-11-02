@@ -36,6 +36,7 @@ function open(local: Partial<Record<SoundKind, string>>, shared: SharedSoundRoot
       files: { fs: fs as unknown as NodeFsModule, sep: path.sep, home: base },
       trashItem: async (absolute) => fs.rmSync(absolute, { recursive: true }),
       resourceUrl: null,
+      vaultFolder: null,
     })),
     home: () => base,
     probeSeconds: async () => null,

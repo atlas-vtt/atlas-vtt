@@ -17,6 +17,7 @@ const location = (trash = true): ExternalLocation => new ExternalLocation(root, 
     fs.rmSync(absolute, { recursive: true });
   } : null,
   resourceUrl: (absolute) => `app://local${absolute}`,
+  vaultFolder: null,
 });
 
 const write = (relative: string, content = 'AUDIO'): void => {

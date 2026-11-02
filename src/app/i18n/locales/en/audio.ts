@@ -181,6 +181,7 @@ export const audio = {
   'audio.library.folders': 'Folders',
   'audio.library.overlap': 'The music and ambience folders cannot lie inside each other.',
   'audio.library.reserved': 'That folder holds Atlas\'s moods and records, not sounds.',
+  'audio.library.holdsVault': 'That folder holds this vault, which the library never changes.',
   'audio.library.noTrash': 'This Obsidian has no system trash to move it to, so nothing was deleted.',
   'audio.library.nameTaken': 'Something of that name is already there.',
   'audio.library.moveWouldLose': '{folder} stays where it is: it holds files that are not sound, which the move would lose.',

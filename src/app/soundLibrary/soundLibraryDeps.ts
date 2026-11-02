@@ -11,6 +11,8 @@ import { VaultLocation } from './vaultLocation';
 
 const localKey = (kind: SoundKind): string => `atlas-vtt:sound-root:${kind}`;
 
+const vaultFolderOf = (app: App): string | null => (app.vault.adapter instanceof FileSystemAdapter ? app.vault.adapter.getBasePath() : null);
+
 function rootFacts(app: App): SoundRootFacts {
   const settings = (): SettingsService | undefined => SettingsService.forApp(app);
   return {
@@ -22,7 +24,7 @@ function rootFacts(app: App): SoundRootFacts {
       return typeof path === 'string' && path !== '' ? path : null;
     },
     setLocal: (kind, path) => app.saveLocalStorage(localKey(kind), path),
-    vaultBase: () => (app.vault.adapter instanceof FileSystemAdapter ? app.vault.adapter.getBasePath() : null),
+    vaultBase: () => vaultFolderOf(app),
     realPath: async (path) => {
       const files = nodeFilesOf(window);
       return files ? files.fs.promises.realpath(path).catch(() => path) : path;
@@ -46,7 +48,7 @@ export function realLibraryDeps(app: App): SoundLibraryDeps {
     open: (root) => {
       if (root.status === 'vault') return new VaultLocation(app, root.path);
       const files = nodeFilesOf(window);
-      return files ? new ExternalLocation(root.path, { files, trashItem: systemTrash(window), resourceUrl: diskResourceUrl }) : null;
+      return files ? new ExternalLocation(root.path, { files, trashItem: systemTrash(window), resourceUrl: diskResourceUrl, vaultFolder: vaultFolderOf(app) }) : null;
     },
     home: () => nodeFilesOf(window)?.home ?? null,
     probeSeconds: readAudioSecondsAt,

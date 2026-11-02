@@ -61,6 +61,14 @@ export class SoundPathReservedError extends Error {
   }
 }
 
+/** A path on disk that is the vault, lies in it or holds it, which no root outside the vault shows or changes. */
+export class SoundVaultPathError extends Error {
+  constructor(path: string) {
+    super(`${path} is this vault, or holds it.`);
+    this.name = 'SoundVaultPathError';
+  }
+}
+
 /** Something already lies where a file was to go. */
 export class SoundPathTakenError extends Error {
   constructor(path: string) {

@@ -1,7 +1,7 @@
 import { isAudioPath } from './soundFiles';
 import type { NodeFiles, NodeStat } from './nodeFiles';
 import { isListableName, isSystemDropping, joinRelative, safeRelative } from './soundPaths';
-import { SoundPathError, SoundPathTakenError, sortedListing, TrashUnavailableError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
+import { SoundPathError, SoundPathTakenError, SoundVaultPathError, sortedListing, TrashUnavailableError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 import { readAsBlob, writeFromBlob } from './externalBytes';
 
 const isMissing = (error: unknown): boolean => {
@@ -18,10 +18,14 @@ export interface ExternalLocationDeps {
   trashItem: ((absolute: string) => Promise<void>) | null;
   /** A URL a media element can load for an absolute path; null where there is none. */
   resourceUrl: ((absolute: string) => string) | null;
+  /** The vault's folder on this device, which a root above it must never show or change; null where it has none on a disk. */
+  vaultFolder: string | null;
 }
 
-/** A linked folder outside the vault. Nothing is reached but through a path checked against the root, its symbolic links resolved. */
+/** A linked folder outside the vault. Nothing is reached but through a path checked against the root and the vault, its symbolic links resolved. */
 export class ExternalLocation implements SoundLocation {
+  private realVaultFolder: Promise<string | null> | null = null;
+
   constructor(private readonly root: string, private readonly deps: ExternalLocationDeps) {}
 
   private get fs(): NodeFiles['fs']['promises'] {
@@ -38,15 +42,23 @@ export class ExternalLocation implements SoundLocation {
     return real === realRoot || real.startsWith(realRoot.endsWith(this.deps.files.sep) ? realRoot : `${realRoot}${this.deps.files.sep}`);
   }
 
-  /** The absolute path of `path`, once what exists of it is known to lie in the root: a symbolic link may lead anywhere. */
+  private realVault(): Promise<string | null> {
+    const { vaultFolder } = this.deps;
+    this.realVaultFolder ??= vaultFolder === null ? Promise.resolve(null) : this.fs.realpath(vaultFolder).catch(() => vaultFolder);
+    return this.realVaultFolder;
+  }
+
+  /** The absolute path of `path`, once what exists of it is known to lie in the root and not in the vault: a symbolic link may lead anywhere. */
   private async absolute(path: string): Promise<string> {
     const plain = this.plain(path);
     const realRoot = await this.fs.realpath(this.root);
+    const vault = await this.realVault();
     let existing = path;
     for (;;) {
       try {
         const real = await this.fs.realpath(this.plain(existing));
         if (!this.isBelowRoot(realRoot, real)) throw new SoundPathError(path);
+        if (vault !== null && this.isBelowRoot(vault, real)) throw new SoundVaultPathError(path);
         return plain;
       } catch (error) {
         if (!isMissing(error)) throw error;
@@ -57,12 +69,27 @@ export class ExternalLocation implements SoundLocation {
     }
   }
 
+  /** The absolute path of what may go or be moved away: a folder that holds the vault takes the vault along. */
+  private async removable(path: string): Promise<string> {
+    const absolute = await this.absolute(path);
+    const vault = await this.realVault();
+    if (vault !== null && this.isBelowRoot(await this.fs.realpath(absolute), vault)) throw new SoundVaultPathError(path);
+    return absolute;
+  }
+
+  private async isVaultIn(realFolder: string, name: string): Promise<boolean> {
+    return `${realFolder}${this.deps.files.sep}${name}` === (await this.realVault());
+  }
+
   async list(folder: string): Promise<SoundListing | null> {
     let entries;
+    let realFolder;
     try {
-      entries = await this.fs.readdir(await this.absolute(folder), { withFileTypes: true });
+      const absolute = await this.absolute(folder);
+      realFolder = await this.fs.realpath(absolute);
+      entries = await this.fs.readdir(absolute, { withFileTypes: true });
     } catch (error) {
-      if (isMissing(error)) return null;
+      if (isMissing(error) || error instanceof SoundVaultPathError) return null;
       throw error;
     }
     const folders: SoundFolderEntry[] = [];
@@ -71,6 +98,7 @@ export class ExternalLocation implements SoundLocation {
     for (let start = 0; start < wanted.length; start += STAT_BATCH) {
       await Promise.all(wanted.slice(start, start + STAT_BATCH).map(async (entry) => {
         const path = joinRelative(folder, entry.name);
+        if (entry.isDirectory() && (await this.isVaultIn(realFolder, entry.name))) return;
         const stat = entry.isDirectory() || entry.isFile() ? await this.statIfThere(path, entry.isFile()) : await this.linked(path);
         if (!stat) return;
         if (stat.isDirectory()) folders.push({ name: entry.name, path });
@@ -80,13 +108,15 @@ export class ExternalLocation implements SoundLocation {
     return sortedListing(folders, files);
   }
 
-  /** A link counts as unlisted wherever it leads: what a copy makes of it is no link, and one may lead back up the tree. */
+  /** A link counts as unlisted wherever it leads: what a copy makes of it is no link, and one may lead back up the tree. So does the vault. */
   async firstUnlisted(folder: string): Promise<string | null> {
-    for (const entry of await this.fs.readdir(await this.absolute(folder), { withFileTypes: true })) {
+    const absolute = await this.absolute(folder);
+    const realFolder = await this.fs.realpath(absolute);
+    for (const entry of await this.fs.readdir(absolute, { withFileTypes: true })) {
       if (entry.isFile() && isSystemDropping(entry.name)) continue;
       const path = joinRelative(folder, entry.name);
       const listed = isListableName(entry.name) && (entry.isDirectory() || (entry.isFile() && isAudioPath(entry.name)));
-      if (!listed) return path;
+      if (!listed || (entry.isDirectory() && (await this.isVaultIn(realFolder, entry.name)))) return path;
       const below = entry.isDirectory() ? await this.firstUnlisted(path) : null;
       if (below !== null) return below;
     }
@@ -110,7 +140,7 @@ export class ExternalLocation implements SoundLocation {
     try {
       return await this.fs.stat(await this.absolute(path));
     } catch (error) {
-      if (isMissing(error) || error instanceof SoundPathError) return null;
+      if (isMissing(error) || error instanceof SoundPathError || error instanceof SoundVaultPathError) return null;
       throw error;
     }
   }
@@ -120,7 +150,7 @@ export class ExternalLocation implements SoundLocation {
       const stat = await this.fs.stat(await this.absolute(path));
       return { size: stat.size, mtime: stat.mtimeMs };
     } catch (error) {
-      if (isMissing(error)) return null;
+      if (isMissing(error) || error instanceof SoundVaultPathError) return null;
       throw error;
     }
   }
@@ -144,7 +174,7 @@ export class ExternalLocation implements SoundLocation {
 
   /** `rename` would replace a file at `to`, so that is ruled out first. Another program writing there in between is the one case left open. */
   async move(from: string, to: string): Promise<void> {
-    const source = await this.absolute(from);
+    const source = await this.removable(from);
     const target = await this.absolute(to);
     if (await this.exists(to) && !(await this.isSameFile(source, target))) throw new SoundPathTakenError(to);
     await this.fs.rename(source, target);
@@ -163,7 +193,7 @@ export class ExternalLocation implements SoundLocation {
   async trash(path: string): Promise<void> {
     const { trashItem } = this.deps;
     if (!trashItem) throw new TrashUnavailableError();
-    await trashItem(await this.absolute(path));
+    await trashItem(await this.removable(path));
   }
 
   /** Linux' recursive watch costs a watch per folder on older systems, and a system without one throws: the rescan on opening the library and on returning to the window covers it. */
