@@ -84,6 +84,8 @@ class PcmPath {
       output.add(loop.runOn);
     }
     const frames = (loop ? output.keptFrames : output.frames) - skipFrames;
+    // A loop too short for its seam keeps nothing, and a page refuses a whole state that names such a sound.
+    if (frames < 1) throw new SoundImportError('empty', 'There is no audio in the file.');
     const bytes = await output.finish(skipFrames);
     const result = { ...this.meter.result(), bytes, frames, channels: output.channels };
     return loop ? { ...result, seam: loop.seam } : result;
