@@ -1,6 +1,6 @@
 import { isAudioPath } from './soundFiles';
 import type { NodeFiles, NodeStat } from './nodeFiles';
-import { joinRelative, safeRelative } from './soundPaths';
+import { isListableName, joinRelative, safeRelative } from './soundPaths';
 import { SoundPathError, SoundPathTakenError, sortedListing, TrashUnavailableError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 import { readAsBlob, writeFromBlob } from './externalBytes';
 
@@ -67,7 +67,7 @@ export class ExternalLocation implements SoundLocation {
     }
     const folders: SoundFolderEntry[] = [];
     const files: SoundFileEntry[] = [];
-    const wanted = entries.filter((entry) => !entry.name.startsWith('.') && safeRelative(entry.name) !== null);
+    const wanted = entries.filter((entry) => isListableName(entry.name));
     for (let start = 0; start < wanted.length; start += STAT_BATCH) {
       await Promise.all(wanted.slice(start, start + STAT_BATCH).map(async (entry) => {
         const path = joinRelative(folder, entry.name);
@@ -78,6 +78,17 @@ export class ExternalLocation implements SoundLocation {
       }));
     }
     return sortedListing(folders, files);
+  }
+
+  /** A link counts as unlisted wherever it leads: what a copy makes of it is no link, and one may lead back up the tree. */
+  async firstUnlisted(folder: string): Promise<string | null> {
+    for (const entry of await this.fs.readdir(await this.absolute(folder), { withFileTypes: true })) {
+      const path = joinRelative(folder, entry.name);
+      if (!isListableName(entry.name) || !(entry.isDirectory() || (entry.isFile() && isAudioPath(entry.name)))) return path;
+      const below = entry.isDirectory() ? await this.firstUnlisted(path) : null;
+      if (below !== null) return below;
+    }
+    return null;
   }
 
   /** A plain folder needs no stat: its entry said what it is. A file's size is what is asked for. */

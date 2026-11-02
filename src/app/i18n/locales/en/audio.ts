@@ -183,6 +183,7 @@ export const audio = {
   'audio.library.reserved': 'That folder holds Atlas\'s moods and records, not sounds.',
   'audio.library.noTrash': 'This Obsidian has no system trash to move it to, so nothing was deleted.',
   'audio.library.nameTaken': 'Something of that name is already there.',
+  'audio.library.moveWouldLose': '{folder} stays where it is: it holds files that are not sound, which the move would lose.',
   'audio.library.badName': 'A name cannot be empty, start with a dot or hold \\ / : * ? " < > | # ^ [ ].',
   'audio.library.failed': 'That did not work. The console has the reason.',
 

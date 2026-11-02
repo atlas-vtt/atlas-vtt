@@ -21,6 +21,9 @@ export function safeRelative(path: string): string | null {
   return path.split('/').every((part) => part !== '' && part !== '.' && part !== '..') ? path : null;
 }
 
+/** Whether a root's listing can show a name: nothing hidden, and nothing that cannot be a part of a path below it. */
+export const isListableName = (name: string): boolean => !name.startsWith('.') && safeRelative(name) !== null;
+
 /** A name for a new or renamed file or folder, trimmed; null where it cannot be one. */
 export function safeName(name: string): string | null {
   const trimmed = name.trim();

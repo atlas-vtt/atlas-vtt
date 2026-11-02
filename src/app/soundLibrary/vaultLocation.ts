@@ -2,7 +2,7 @@ import { normalizePath, TFile, TFolder, type App, type EventRef, type TAbstractF
 import { ensureFolder, isPathTaken } from '../plugin/vaultFolders';
 import { ATLAS_VTT_DIR } from '../services/assetPaths';
 import { isAudioPath, isSoundDataPath } from './soundFiles';
-import { joinRelative, relativeBelow, safeRelative } from './soundPaths';
+import { isListableName, joinRelative, nameOfRelative, relativeBelow, safeRelative } from './soundPaths';
 import { SoundPathError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 
 /** Atlas' own folder holds video maps and record files, never the GM's library, but for the default folders. */
@@ -28,12 +28,25 @@ export class VaultLocation implements SoundLocation {
     const folders: SoundFolderEntry[] = [];
     const files: SoundFileEntry[] = [];
     for (const child of here.children) {
-      if (child.name.startsWith('.') || safeRelative(child.name) === null || isAtlasOwn(child.path)) continue;
+      if (!isListableName(child.name) || isAtlasOwn(child.path)) continue;
       const path = joinRelative(folder, child.name);
       if (child instanceof TFolder) folders.push({ name: child.name, path });
       else if (child instanceof TFile && isAudioPath(child.name)) files.push({ name: child.name, path, size: child.stat.size, mtime: child.stat.mtime });
     }
     return sortedListing(folders, files);
+  }
+
+  /** Through the adapter, as the vault's own tree does not hold what is hidden. */
+  async firstUnlisted(folder: string): Promise<string | null> {
+    const { files, folders } = await this.app.vault.adapter.list(this.vaultPath(folder));
+    const isListed = (path: string): boolean => isListableName(nameOfRelative(path)) && !isAtlasOwn(path);
+    const left = files.find((path) => !isListed(path) || !isAudioPath(path)) ?? folders.find((path) => !isListed(path));
+    if (left !== undefined) return joinRelative(folder, nameOfRelative(left));
+    for (const sub of folders) {
+      const below = await this.firstUnlisted(joinRelative(folder, nameOfRelative(sub)));
+      if (below !== null) return below;
+    }
+    return null;
   }
 
   exists(path: string): Promise<boolean> {

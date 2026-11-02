@@ -2,7 +2,7 @@ import type { MoodStore } from './MoodStore';
 import type { SoundKind } from '../sound/soundTypes';
 import { isAudioPath } from './soundFiles';
 import type { SoundLibrary } from './SoundLibrary';
-import type { SoundLocation } from './soundLocation';
+import { SoundMoveRefusedError, type SoundLocation } from './soundLocation';
 import { asFileName, freeName, isWithin, joinRelative, nameOfRelative, parentOfRelative } from './soundPaths';
 import { soundAfterMove, type StoredSound } from './soundRecords';
 import type { SoundRecordStore } from './SoundRecordStore';
@@ -39,6 +39,19 @@ async function copyAcross(source: SoundLocation, from: string, target: SoundLoca
   for (const file of listing.files) await target.write(joinRelative(to, file.name), await source.read(file.path));
 }
 
+/**
+ * Refuses a move that would copy a folder holding what the copy leaves behind, before anything moves: the source
+ * goes to the trash afterwards, for good where the GM's trash setting says so. Renames take everything along.
+ */
+async function refuseWhatWouldBeLost(library: SoundLibrary, entries: readonly LibraryEntry[], targetKind: SoundKind): Promise<void> {
+  const target = locationOf(library, targetKind);
+  for (const entry of entries) {
+    const source = locationOf(library, entry.kind);
+    if (!entry.isFolder || entry.kind === targetKind || (source instanceof VaultLocation && target instanceof VaultLocation)) continue;
+    if ((await source.firstUnlisted(entry.path)) !== null) throw new SoundMoveRefusedError(entry.path);
+  }
+}
+
 async function moveFiles(library: SoundLibrary, entry: LibraryEntry, targetKind: SoundKind, to: string): Promise<void> {
   const source = locationOf(library, entry.kind);
   const target = locationOf(library, targetKind);
@@ -71,9 +84,10 @@ async function moveWithRecords(context: LibraryContext, entry: LibraryEntry, tar
   await Promise.all([library.settle(entry.kind, [entry.path]), library.settle(targetKind, [to])]);
 }
 
-/** Moves rows into a folder. A name that is taken there gets a number, and a folder is never moved into itself. */
+/** Moves rows into a folder. A name that is taken there gets a number, and a folder is never moved into itself. Refused whole where one of them would lose a file. */
 export async function moveEntries(context: LibraryContext, entries: readonly LibraryEntry[], targetKind: SoundKind, folder: string): Promise<void> {
   const target = locationOf(context.library, targetKind);
+  await refuseWhatWouldBeLost(context.library, entries, targetKind);
   for (const entry of entries) {
     if (entry.kind === targetKind && (parentOfRelative(entry.path) === folder || (entry.isFolder && isWithin(entry.path, folder)))) continue;
     const name = await freeName(nameOfRelative(entry.path), (candidate) => target.exists(joinRelative(folder, candidate)));

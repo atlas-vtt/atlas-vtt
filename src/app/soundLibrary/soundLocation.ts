@@ -25,6 +25,11 @@ export interface SoundListing {
 export interface SoundLocation {
   /** Null where the folder is not there (the root's disk unplugged, the folder gone). */
   list(folder: string): Promise<SoundListing | null>;
+  /**
+   * The first thing at any depth below a folder that `list` does not show: another kind of file, something
+   * hidden, a link. What is copied by going through `list` leaves that behind. Null where it shows everything.
+   */
+  firstUnlisted(folder: string): Promise<string | null>;
   exists(path: string): Promise<boolean>;
   read(path: string): Promise<Blob>;
   /** A URL a media element can load; null where there is none. */
@@ -53,6 +58,14 @@ export class SoundPathTakenError extends Error {
   constructor(path: string) {
     super(`${path} already exists.`);
     this.name = 'SoundPathTakenError';
+  }
+}
+
+/** A folder holds what a copy to the other root would leave behind, so it stays where it is. */
+export class SoundMoveRefusedError extends Error {
+  constructor(readonly folder: string) {
+    super(`${folder} holds what a copy would leave behind.`);
+    this.name = 'SoundMoveRefusedError';
   }
 }
 
