@@ -98,7 +98,6 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     }
     return byPath;
     // Where a file is on this device changes with what the library has read.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sounds, library, library.version]);
 
   const audioPathOf = useCallback((row: Row): string | null => (row.type === 'file' ? library.audioPathOf(row.file.kind, row.file.path) : null), [library]);
