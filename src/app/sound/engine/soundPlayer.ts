@@ -1,6 +1,6 @@
 import type { TableSound } from '../soundTypes';
 import type { SoundContext } from './audioNodes';
-import { desiredSound, layerKeyOfVoice } from './desiredSound';
+import { desiredSound, layerKeyOfVoice, voiceWithoutStart, type DesiredVoice } from './desiredSound';
 import { MixerGraph, type LocalLevels } from './mixerGraph';
 import { PlayerMeters, type MeterPoint } from './playerMeters';
 import { SoundClockMap } from './soundClockMap';
@@ -66,8 +66,9 @@ export class SoundPlayer {
       const fadeOver = map.tableMs >= desired.silence.fade.at + desired.silence.fade.ms;
       // Silent for good: nothing plays, and coming back lands where it would have been anyway.
       if (!(desired.silence.silenced && fadeOver && desired.silence.gain < SILENT_GAIN)) {
+        for (const voiceWanted of desired.voices) wanted.add(voiceWanted.id);
         for (const voiceWanted of desired.voices) {
-          wanted.add(voiceWanted.id);
+          this.carryAcrossRebase(voiceWanted, wanted, map);
           this.voice(voiceWanted.id, voiceWanted.channel).follow(voiceWanted, map);
         }
       }
@@ -153,6 +154,19 @@ export class SoundPlayer {
       if (key !== null) points.set(id, { strip: key, node: voice.output, afterSilence: false });
     }
     return points;
+  }
+
+  /** A state moved onto another clock names every voice anew, though each still starts on the same frame: that voice goes on, with no hole. */
+  private carryAcrossRebase(desired: DesiredVoice, wanted: ReadonlySet<string>, map: SoundClockMap): void {
+    if (this.voices.has(desired.id)) return;
+    const stem = voiceWithoutStart(desired.id);
+    const ctxFrame = map.ctxFrameOf(desired.startAt);
+    for (const [id, voice] of this.voices) {
+      if (wanted.has(id) || voiceWithoutStart(id) !== stem || !voice.startsAt(ctxFrame, map.rate)) continue;
+      this.voices.delete(id);
+      this.voices.set(desired.id, voice);
+      return;
+    }
   }
 
   private voice(id: string, channel: 'music' | 'ambience'): SoundVoice {

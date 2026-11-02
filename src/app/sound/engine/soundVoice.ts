@@ -60,6 +60,11 @@ export class SoundVoice {
     this.node.connect(deps.input);
   }
 
+  /** Whether it plays with its start on this context frame, as far as anyone could hear. */
+  startsAt(ctxFrame: number, rate: number): boolean {
+    return this.anchor !== null && (Math.abs(ctxFrame - this.anchor) / rate) * 1000 < LEAVE_DRIFT_MS;
+  }
+
   /** The voice past its level and fades. */
   get output(): SoundNode {
     return this.node;

@@ -92,6 +92,58 @@ describe('drift', () => {
   });
 });
 
+describe('a state moved onto another clock', () => {
+  const SHIFT_MS = 5 * 60_000;
+  const shifted = (state: TableSound, ms: number): TableSound => ({
+    ...state,
+    revision: state.revision + 1,
+    music: state.music && { ...state.music, startAt: state.music.startAt + ms, fade: { ...state.music.fade, at: state.music.fade.at + ms } },
+    layers: state.layers.map((play) => ({ ...play, startAt: play.startAt + ms, fade: { ...play.fade, at: play.fade.at + ms } })),
+  });
+
+  it('goes on sounding: no source stops or starts', async () => {
+    const { context, player, advance, tableOffset } = rig();
+    const state = table({ music: music([sound('song', 50), sound('next', 50)]), layers: [layer(sound('rain'))] });
+    player.setState(state);
+    await player.settled();
+    await advance(30);
+    const before = context.sources.length;
+    const sounding = context.playing();
+    tableOffset.ms = SHIFT_MS;
+    player.setState(shifted(state, SHIFT_MS));
+    await player.settled();
+    for (let tick = 0; tick < 12; tick++) await advance(0.25);
+    expect(context.sources).toHaveLength(before);
+    expect(context.playing()).toEqual(sounding);
+  });
+
+  it('still jumps where only the state moved, which is what a player hears of a GM\'s correction', async () => {
+    const { context, player, advance } = rig();
+    const state = table({ layers: [layer(sound('rain'))] });
+    player.setState(state);
+    await player.settled();
+    await advance(1);
+    const [first] = context.playing();
+    player.setState(shifted(state, 3000));
+    await player.settled();
+    await advance(0.5);
+    expect(context.playing()).not.toContain(first);
+    expect(context.playing()).toHaveLength(1);
+  });
+
+  it('keeps apart two plays of one sound that both sound', async () => {
+    const { context, player, advance } = rig();
+    const rain = layer(sound('rain'));
+    player.setState(table({ layers: [rain] }));
+    await player.settled();
+    await advance(1);
+    const again = { ...rain, startAt: 1000, fade: { at: 1000, ms: 500 } };
+    player.setState(table({ revision: 2, layers: [again], outgoingLayers: [{ ...rain, fade: { at: 1000, ms: 500 } }] }));
+    await player.settled();
+    expect(context.playing()).toHaveLength(2);
+  });
+});
+
 describe('three hours of a clock that runs its own way', () => {
   it('stays within the limit by small corrections, with no seek and no stop', async () => {
     const context = new FakeSoundContext();

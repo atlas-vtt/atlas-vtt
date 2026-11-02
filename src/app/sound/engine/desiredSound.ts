@@ -113,6 +113,12 @@ export function layerVoiceId(play: LayerPlay): string {
   return `layer:${play.startAt}:${play.sound.key}`;
 }
 
+/** A voice's id without where it starts on the clock: what a play is whichever clock it is written on. */
+export function voiceWithoutStart(id: string): string {
+  const after = id.indexOf(':') + 1;
+  return `${id.slice(0, after)}${id.slice(id.indexOf(':', after) + 1)}`;
+}
+
 /** The sound key of a layer's voice; null for a music deck. */
 export function layerKeyOfVoice(id: string): string | null {
   return id.startsWith('layer:') ? id.slice(id.indexOf(':', 'layer:'.length) + 1) : null;
