@@ -1,9 +1,12 @@
 import { normalizePath, TFile, TFolder, type App, type EventRef, type TAbstractFile } from 'obsidian';
 import { ensureFolder, isPathTaken } from '../plugin/vaultFolders';
-import { isReservedCollectionPath } from '../services/vault-sync/reservedPaths';
+import { ATLAS_VTT_DIR } from '../services/assetPaths';
 import { isAudioPath } from './soundFiles';
 import { joinRelative, relativeBelow, safeRelative } from './soundPaths';
 import { SoundPathError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
+
+/** Atlas' own folder holds video maps and record files, never the GM's library, but for the default folders. */
+const isAtlasOwn = (path: string): boolean => path.startsWith(`${ATLAS_VTT_DIR}/`) && path !== `${ATLAS_VTT_DIR}/sounds` && !path.startsWith(`${ATLAS_VTT_DIR}/sounds/`);
 
 /** A linked folder in the vault. Moves go through `fileManager`, so whatever names a file follows it, and deleting goes where the GM's trash setting says. */
 export class VaultLocation implements SoundLocation {
@@ -25,7 +28,7 @@ export class VaultLocation implements SoundLocation {
     const folders: SoundFolderEntry[] = [];
     const files: SoundFileEntry[] = [];
     for (const child of here.children) {
-      if (child.name.startsWith('.') || safeRelative(child.name) === null || isReservedCollectionPath(child.path)) continue;
+      if (child.name.startsWith('.') || safeRelative(child.name) === null || isAtlasOwn(child.path)) continue;
       const path = joinRelative(folder, child.name);
       if (child instanceof TFolder) folders.push({ name: child.name, path });
       else if (child instanceof TFile && isAudioPath(child.name)) files.push({ name: child.name, path, size: child.stat.size, mtime: child.stat.mtime });

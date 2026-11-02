@@ -2,6 +2,7 @@ import { FileSystemAdapter, Platform, type App } from 'obsidian';
 import { systemTrash } from '../services/electronRemote';
 import { SettingsService } from '../services/SettingsService';
 import type { SoundKind } from '../sound/soundTypes';
+import { readAudioSecondsAt } from './audioDuration';
 import { ExternalLocation } from './externalLocation';
 import { nodeFilesOf } from './nodeFiles';
 import type { SoundLibraryDeps } from './SoundLibrary';
@@ -44,5 +45,6 @@ export function realLibraryDeps(app: App): SoundLibraryDeps {
       return files ? new ExternalLocation(root.path, { files, trashItem: systemTrash(window), resourceUrl: diskResourceUrl }) : null;
     },
     home: () => nodeFilesOf(window)?.home ?? null,
+    probeSeconds: readAudioSecondsAt,
   };
 }

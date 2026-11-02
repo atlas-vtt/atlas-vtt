@@ -5,8 +5,13 @@ const METADATA_TIMEOUT_MS = 5000;
 
 /** How long an audio file plays, in seconds, from its metadata alone; null when the browser cannot tell. */
 export function readAudioSeconds(app: App, source: File | TFile): Promise<number | null> {
-  const isVaultFile = source instanceof TFile;
-  const url = isVaultFile ? app.vault.getResourcePath(source) : URL.createObjectURL(source);
+  if (source instanceof TFile) return readAudioSecondsAt(app.vault.getResourcePath(source));
+  const url = URL.createObjectURL(source);
+  return readAudioSecondsAt(url).finally(() => URL.revokeObjectURL(url));
+}
+
+/** The same for a URL a media element can load. */
+export function readAudioSecondsAt(url: string): Promise<number | null> {
   const audio = createEl('audio', { attr: { preload: 'metadata' } });
   return new Promise<number | null>((resolve) => {
     const timer = window.setTimeout(() => resolve(null), METADATA_TIMEOUT_MS);
@@ -20,6 +25,5 @@ export function readAudioSeconds(app: App, source: File | TFile): Promise<number
   }).finally(() => {
     audio.removeAttribute('src');
     audio.load();
-    if (!isVaultFile) URL.revokeObjectURL(url);
   });
 }

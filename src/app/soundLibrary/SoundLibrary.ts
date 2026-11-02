@@ -3,6 +3,7 @@ import type { SoundKind } from '../sound/soundTypes';
 import { realLibraryDeps } from './soundLibraryDeps';
 import { followMissingFiles } from './soundRelink';
 import { FolderTree } from './FolderTree';
+import { SoundLengths } from './soundLengths';
 import type { SoundFileEntry, SoundListing, SoundLocation } from './soundLocation';
 import { externalAudioPath, joinRelative, parentOfRelative, readExternalAudioPath, relativeBelow } from './soundPaths';
 import { isLinked, type LinkedSoundRoot, type SoundRootState, type SoundRoots } from './SoundRoots';
@@ -25,6 +26,8 @@ export interface SoundLibraryDeps {
   open(root: LinkedSoundRoot): SoundLocation | null;
   /** The user's home, to shorten what the rail shows. */
   home(): string | null;
+  /** How long a file at a URL plays. */
+  probeSeconds(url: string): Promise<number | null>;
 }
 
 interface OpenRoot {
@@ -74,9 +77,11 @@ export class SoundLibrary {
   private readonly walkListeners = new Set<(kind: SoundKind) => void>();
   private revision = 0;
   private readonly dropRoots: () => void;
+  private readonly lengths: SoundLengths;
 
   constructor(private readonly deps: SoundLibraryDeps) {
     this.dropRoots = deps.roots.onChange(() => this.changed());
+    this.lengths = new SoundLengths((url) => deps.probeSeconds(url));
   }
 
   get roots(): SoundRoots {
@@ -140,6 +145,16 @@ export class SoundLibrary {
     }
   }
 
+  /** How long a file plays: a row in view asks, and `onLengths` tells when the answer is in. */
+  secondsOf(file: LibraryFile): number | null | undefined {
+    const url = this.locationOf(file.kind)?.resourceUrl(file.path) ?? null;
+    return this.lengths.secondsOf(`${file.kind}|${file.path}|${file.size}|${file.mtime}`, url);
+  }
+
+  onLengths(listener: () => void): () => void {
+    return this.lengths.onChange(listener);
+  }
+
   /** What a record stores for a file of a root. */
   audioPathOf(kind: SoundKind, path: string): string | null {
     const root = this.rootOf(kind);
@@ -189,6 +204,13 @@ export class SoundLibrary {
     if (opened) await Promise.all(paths.map((path) => opened.tree.changedAt(path)));
   }
 
+  /** Settles once these folders were read, so what lies in them can be measured. */
+  async ensureListed(kind: SoundKind, folders: readonly string[]): Promise<void> {
+    const opened = this.opened(kind);
+    if (!opened) return;
+    await Promise.all([...new Set(folders)].filter((folder) => !opened.tree.listing(folder)).map((folder) => opened.tree.load(folder)));
+  }
+
   onChange(listener: () => void): () => void {
     this.viewListeners.add(listener);
     return () => this.viewListeners.delete(listener);
@@ -202,6 +224,7 @@ export class SoundLibrary {
 
   destroy(): void {
     this.dropRoots();
+    this.lengths.stop();
     for (const kind of KINDS) this.close(kind);
     this.viewListeners.clear();
     this.walkListeners.clear();

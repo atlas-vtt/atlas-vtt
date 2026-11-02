@@ -7,7 +7,9 @@ import type { Asset, TagMetadata } from './AssetService';
  * existed can belong to, which leaves sounds out.
  */
 export const TAG_GROUPS = ['tokens', 'maps'] as const;
-export type TagGroup = (typeof TAG_GROUPS)[number] | 'sounds';
+/** The groups the asset manager's tabs show and edit. */
+export type TabTagGroup = (typeof TAG_GROUPS)[number];
+export type TagGroup = TabTagGroup | 'sounds';
 
 /** The tag group of a stored asset type; types the asset manager does not tag have none. */
 export function tagGroupOf(type: Asset['type']): TagGroup | null {

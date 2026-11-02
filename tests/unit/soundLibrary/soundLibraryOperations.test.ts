@@ -54,6 +54,7 @@ async function open(local: Partial<Record<SoundKind, string>>, shared: SharedSou
       resourceUrl: null,
     })),
     home: () => base,
+    probeSeconds: async () => null,
   });
   context = { library, assets };
 }
@@ -336,7 +337,7 @@ describe('browsing', () => {
     const entries = Array.from({ length: 20_000 }, (_, index) => ({ name: `Track ${index}.mp3`, path: `Folder ${index % 200}/Track ${index}.mp3`, size: 5, mtime: 1 }));
     const location = new VaultLocation(vault.app, 'Audio');
     vi.spyOn(location, 'list').mockImplementation(async (folder) => (folder === '' ? { folders: [], files: entries } : null));
-    const big = new SoundLibrary({ roots: library.roots, open: () => location, home: () => null });
+    const big = new SoundLibrary({ roots: library.roots, open: () => location, home: () => null, probeSeconds: async () => null });
     big.rescan(100_000);
     await vi.waitFor(() => expect(big.isWalked('music')).toBe(true));
     big.search('warm');

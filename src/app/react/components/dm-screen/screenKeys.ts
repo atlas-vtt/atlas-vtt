@@ -5,6 +5,8 @@ import { isShortcutScopeActive } from '../../../utils/activeLeafGuard';
 export function screenTakesKey(event: KeyboardEvent, screen: Element | null, viewId: string | undefined): boolean {
   if (event.defaultPrevented || event.isComposing || !isShortcutScopeActive(screen, viewId)) return false;
   if (document.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container, [role="menu"], [aria-modal="true"]')) return false;
+  // The sound library is a list with keys of its own: a digit there is no mood.
+  if (event.target instanceof Element && event.target.closest('.atlas-sound-lib')) return false;
   return !isTextEntryTarget(event.target);
 }
 

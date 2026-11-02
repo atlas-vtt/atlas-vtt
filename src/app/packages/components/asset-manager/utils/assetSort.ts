@@ -57,7 +57,6 @@ const compareKinds: AssetComparator = (a, b) => {
     const rank = (asset: EncounterAsset): number => (asset.difficulty ? DIFFICULTY_RANK[asset.difficulty] : UNRANKED);
     return rank(a) - rank(b);
   }
-  if (a.type === 'sounds' && b.type === 'sounds') return nameCollator.compare(a.record.kind, b.record.kind);
   return 0;
 };
 

@@ -59,7 +59,7 @@ describe('useAssetData while it loads', () => {
 
     await waitFor(() => expect(result.current.assetsLoading).toBe(false));
     expect(result.current.assets.map((asset) => asset.name)).toEqual(['Goblin', 'Wolf']);
-    expect(result.current.assetCounts).toEqual({ scenes: 0, maps: 1, encounters: 0, tokens: 2, party: 0, sounds: 0 });
+    expect(result.current.assetCounts).toEqual({ scenes: 0, maps: 1, encounters: 0, tokens: 2, party: 0 });
     await waitFor(() => expect(result.current.tagsLoading).toBe(false));
   });
 
@@ -70,7 +70,7 @@ describe('useAssetData while it loads', () => {
 
     rerender({ tab: 'maps' });
     expect(result.current.assetsLoading).toBe(true);
-    expect(result.current.assetCounts).toEqual({ scenes: 0, maps: 1, encounters: 0, tokens: 2, party: 0, sounds: 0 });
+    expect(result.current.assetCounts).toEqual({ scenes: 0, maps: 1, encounters: 0, tokens: 2, party: 0 });
 
     await waitFor(() => expect(result.current.assetsLoading).toBe(false));
     expect(result.current.assets.map((asset) => asset.name)).toEqual(['Keep']);
