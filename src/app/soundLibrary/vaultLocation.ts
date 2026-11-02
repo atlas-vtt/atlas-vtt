@@ -2,7 +2,7 @@ import { normalizePath, TFile, TFolder, type App, type EventRef, type TAbstractF
 import { ensureFolder, isPathTaken } from '../plugin/vaultFolders';
 import { ATLAS_VTT_DIR } from '../services/assetPaths';
 import { isAudioPath, isSoundDataPath, SOUNDS_DIR } from './soundFiles';
-import { isListableName, joinRelative, nameOfRelative, relativeBelow, safeRelative } from './soundPaths';
+import { isListableName, isSystemDropping, joinRelative, nameOfRelative, relativeBelow, safeRelative } from './soundPaths';
 import { SoundPathError, SoundPathReservedError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 
 /**
@@ -52,7 +52,7 @@ export class VaultLocation implements SoundLocation {
   async firstUnlisted(folder: string): Promise<string | null> {
     const { files, folders } = await this.app.vault.adapter.list(this.vaultPath(folder));
     const isListed = (path: string): boolean => isListableName(nameOfRelative(path)) && !isAtlasOwn(path);
-    const left = files.find((path) => !isListed(path) || !isAudioPath(path)) ?? folders.find((path) => !isListed(path));
+    const left = files.filter((path) => !isSystemDropping(nameOfRelative(path))).find((path) => !isListed(path) || !isAudioPath(path)) ?? folders.find((path) => !isListed(path));
     if (left !== undefined) return joinRelative(folder, nameOfRelative(left));
     for (const sub of folders) {
       const below = await this.firstUnlisted(joinRelative(folder, nameOfRelative(sub)));

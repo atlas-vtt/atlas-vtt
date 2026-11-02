@@ -1,7 +1,7 @@
 import type { SoundFileEntry, SoundListing, SoundLocation } from '../../src/app/soundLibrary/soundLocation';
 import { SoundPathTakenError, sortedListing } from '../../src/app/soundLibrary/soundLocation';
 import { isAudioPath } from '../../src/app/soundLibrary/soundFiles';
-import { isListableName, isWithin, joinRelative, nameOfRelative, parentOfRelative } from '../../src/app/soundLibrary/soundPaths';
+import { isListableName, isSystemDropping, isWithin, joinRelative, nameOfRelative, parentOfRelative } from '../../src/app/soundLibrary/soundPaths';
 
 /** A root held in memory: a test of what is shown, where no disk can be reached. */
 export class FakeSoundLocation implements SoundLocation {
@@ -34,7 +34,7 @@ export class FakeSoundLocation implements SoundLocation {
   }
 
   async firstUnlisted(folder: string): Promise<string | null> {
-    const inFolder = [...this.files.keys()].filter((path) => path !== folder && isWithin(folder, path));
+    const inFolder = [...this.files.keys()].filter((path) => path !== folder && isWithin(folder, path) && !isSystemDropping(nameOfRelative(path)));
     return inFolder.find((path) => !isAudioPath(path) || !isListableName(nameOfRelative(path))) ?? null;
   }
 

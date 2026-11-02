@@ -1,6 +1,6 @@
 import { isAudioPath } from './soundFiles';
 import type { NodeFiles, NodeStat } from './nodeFiles';
-import { isListableName, joinRelative, safeRelative } from './soundPaths';
+import { isListableName, isSystemDropping, joinRelative, safeRelative } from './soundPaths';
 import { SoundPathError, SoundPathTakenError, sortedListing, TrashUnavailableError, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 import { readAsBlob, writeFromBlob } from './externalBytes';
 
@@ -83,6 +83,7 @@ export class ExternalLocation implements SoundLocation {
   /** A link counts as unlisted wherever it leads: what a copy makes of it is no link, and one may lead back up the tree. */
   async firstUnlisted(folder: string): Promise<string | null> {
     for (const entry of await this.fs.readdir(await this.absolute(folder), { withFileTypes: true })) {
+      if (entry.isFile() && isSystemDropping(entry.name)) continue;
       const path = joinRelative(folder, entry.name);
       const listed = isListableName(entry.name) && (entry.isDirectory() || (entry.isFile() && isAudioPath(entry.name)));
       if (!listed) return path;

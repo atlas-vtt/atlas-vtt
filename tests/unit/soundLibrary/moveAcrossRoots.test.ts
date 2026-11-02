@@ -72,7 +72,8 @@ describe('a folder on disk moved into the vault', () => {
 
   it.each([
     ['a note and a cover beside the audio', ['Tavern/a.mp3', 'Tavern/Tavern.md', 'Tavern/cover.png', 'Tavern/set.cue']],
-    ['a hidden file', ['Tavern/a.mp3', 'Tavern/.DS_Store']],
+    ['a hidden file', ['Tavern/a.mp3', 'Tavern/.env']],
+    ['something named almost like a file manager\'s own', ['Tavern/a.mp3', 'Tavern/My.DS_Store', 'Tavern/.DS_Store.bak']],
     ['audio under a hidden name', ['Tavern/a.mp3', 'Tavern/.b.mp3']],
     ['something hidden in a hidden folder', ['Tavern/a.mp3', 'Tavern/.git/config']],
     ['a note three folders down', ['Tavern/a.mp3', 'Tavern/One/Two/notes.md']],
@@ -98,6 +99,14 @@ describe('a folder on disk moved into the vault', () => {
     await expect(moveEntries(context, [{ kind: 'music', path: 'Calm', isFolder: true }, ...TAVERN], 'ambience', '')).rejects.toMatchObject({ folder: 'Tavern' });
     expect(fs.existsSync(path.join(disk, 'Calm/a.mp3'))).toBe(true);
     expect(vault.files.has('Audio/Calm/a.mp3')).toBe(false);
+  });
+
+  it('goes on where a file manager has been in it, at any depth', async () => {
+    for (const file of ['Tavern/a.mp3', 'Tavern/.DS_Store', 'Tavern/._a.mp3', 'Tavern/Deep/b.ogg', 'Tavern/Deep/Thumbs.db', 'Tavern/Deep/Desktop.ini']) onDisk(file);
+    await moveEntries(context, TAVERN, 'ambience', '');
+    expect(vault.files.has('Audio/Tavern/a.mp3')).toBe(true);
+    expect(vault.files.has('Audio/Tavern/Deep/b.ogg')).toBe(true);
+    expect(fs.existsSync(path.join(disk, 'Tavern'))).toBe(false);
   });
 
   it('goes on where it holds audio and folders alone', async () => {
@@ -133,7 +142,7 @@ describe('a folder in the vault moved onto a disk', () => {
 
   it.each([
     ['a note and a cover beside the audio', ['Audio/Tavern/a.mp3', 'Audio/Tavern/Tavern.md', 'Audio/Tavern/cover.png']],
-    ['a hidden file the vault does not index', ['Audio/Tavern/a.mp3', 'Audio/Tavern/.DS_Store']],
+    ['a hidden file the vault does not index', ['Audio/Tavern/a.mp3', 'Audio/Tavern/.notes']],
     ['something in a hidden folder', ['Audio/Tavern/a.mp3', 'Audio/Tavern/.trash/old.mp3']],
     ['a note three folders down', ['Audio/Tavern/a.mp3', 'Audio/Tavern/One/Two/notes.md']],
   ])('is refused where it holds %s, and everything stays', async (_what, files) => {
@@ -141,6 +150,13 @@ describe('a folder in the vault moved onto a disk', () => {
     await expect(moveEntries(context, TAVERN, 'ambience', '')).rejects.toBeInstanceOf(SoundMoveRefusedError);
     for (const file of files) expect(vault.files.has(file), file).toBe(true);
     expect(fs.readdirSync(disk)).toEqual([]);
+  });
+
+  it('goes on where a file manager has been in it', async () => {
+    for (const file of ['Audio/Tavern/a.mp3', 'Audio/Tavern/.DS_Store', 'Audio/Tavern/Deep/._b.ogg', 'Audio/Tavern/Deep/b.ogg']) await inVault(file);
+    await moveEntries(context, TAVERN, 'ambience', '');
+    expect(fs.existsSync(path.join(disk, 'Tavern/Deep/b.ogg'))).toBe(true);
+    expect(vault.files.has('Audio/Tavern/a.mp3')).toBe(false);
   });
 
   it('goes on where it holds audio and folders alone', async () => {
