@@ -37,10 +37,10 @@ describe('the DM screen’s Sound page', () => {
     viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1280px; height: 820px; contain: strict; overflow: hidden';
   });
 
-  /** `.atlas-dm-screen` is 96 % by 90 % of this, the mockup's 1644 by 960, with its moods laid out. */
+  /** `.atlas-dm-screen` is 96 % of this wide and all of it high, the mockup's 1644 by 960, with its moods laid out. */
   async function open1644(): Promise<void> {
-    await page.viewport(1713, 1067);
-    viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1713px; height: 1067px; contain: strict; overflow: hidden';
+    await page.viewport(1713, 960);
+    viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1713px; height: 960px; contain: strict; overflow: hidden';
     tab = await openSoundTab(DARK, viewport);
     seedMoods(tab);
     await expect.poll(() => document.querySelectorAll('.atlas-sound-mood').length).toBe(11);
@@ -123,11 +123,11 @@ describe('the DM screen’s Sound page', () => {
     expect(screen.height).toBeCloseTo(960, -1);
     expect(getComputedStyle(document.querySelector('.atlas-dm-screen')!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
 
-    // The top row, below the map's top bar row, and the surface below it.
+    // The top row at the top of the view, and the surface below it.
     const pages = box('.atlas-dm-screen-pages');
     const views = box('.atlas-sound-views');
     const surface = box('.atlas-sound-pane');
-    expect(pages.top - screen.top).toBeGreaterThanOrEqual(70);
+    expect(pages.top - screen.top).toBeLessThanOrEqual(10);
     expect(views.left).toBeGreaterThan(pages.right);
     expect(views.top).toBe(pages.top);
     expect(surface.top).toBeGreaterThanOrEqual(pages.bottom);

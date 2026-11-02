@@ -87,6 +87,12 @@
   }
 }
 
+// With pages it fills the view from top to bottom: the map's top bar lies blurred under the backdrop, nothing to clear.
+.atlas-dm-screen.atlas-dm-screen--pages {
+  height: 100%;
+  max-height: none;
+}
+
 @keyframes atlas-dm-screen-enter {
   from {
     opacity: 0;
@@ -128,11 +134,6 @@
     display: none;
   }
 
-  // The page control already keeps it below the map's top bar row.
-  .atlas-dm-screen-header ~ & {
-    padding-top: $spacing-s;
-  }
-
   // Narrow views stack the panes
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
     flex-direction: column;
@@ -140,15 +141,20 @@
   }
 }
 
+// A selector of its own: every sheet is imported inside `.atlas-vtt-plugin`, so `.x ~ &` would read `.x ~ .atlas-vtt-plugin …`.
+.atlas-dm-screen-header ~ .atlas-dm-screen-content {
+  padding-top: $spacing-s;
+}
+
 .atlas-dm-screen-header {
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: $spacing-s;
-  padding: 70px 12px 0; // keeps the page control below the map's top bar row
+  padding: $spacing-s 12px 0;
 
   @container atlas-dm-screen (min-width: 1400px) {
-    padding: 75px 16px 0;
+    padding: $spacing-s 16px 0;
   }
 
   .atlas-segmented {
