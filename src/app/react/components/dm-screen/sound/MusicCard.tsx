@@ -38,7 +38,7 @@ export const MusicCard = React.memo(function MusicCard({ director }: { director:
         <MusicPosition director={director} />
         {listOpen && <TrackList director={director} />}
         <div className="atlas-sound-music__actions">
-          <IconAction label={t('audio.tracks')} icon={ListMusic} pressed={listOpen} className="atlas-sound-music__quiet" onClick={() => setListOpen(!listOpen)} />
+          <IconAction label={t('audio.tracks')} icon={ListMusic} pressed={listOpen} className="atlas-sound-music__quiet atlas-sound-music__list" onClick={() => setListOpen(!listOpen)} />
           <IconAction label={t('audio.shuffle')} icon={Shuffle} pressed={shuffle} disabled={!playing} className="atlas-sound-music__quiet" onClick={() => director.desk.setShuffle(!shuffle)} />
           <IconAction label={t(repeating.label)} icon={repeating.icon} pressed={repeat !== undefined} disabled={!playing} className="atlas-sound-music__quiet" onClick={() => director.desk.setRepeat(repeating.next)} />
           <IconAction label={t('audio.stopAfter')} icon={CircleStop} pressed={stopAfter} disabled={!playing} className="atlas-sound-music__quiet" onClick={() => director.desk.setStopAfter(!stopAfter)} />

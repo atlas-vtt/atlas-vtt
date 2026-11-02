@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cdp, page, userEvent } from 'vitest/browser';
 import type { Mood } from '@/app/sound/soundTypes';
 import { recordIdFor } from '@/app/soundLibrary/libraryRecords';
+import { musicPosition } from '@/app/soundDirector/musicList';
 import { ATLAS, LIGHT, openSoundTab, type SoundTab, type TabSound } from './soundTabHarness';
 
 vi.mock('../../../src/app/react/components/dm-screen/DMStatblocksPane', async () => {
@@ -187,6 +188,142 @@ describe('how the Sound page looks', () => {
     await shoot('mood-dialog');
     expect(shown.moodsOf()).toHaveLength(MOODS.length);
   }, 240_000);
+
+  it('the open list stands under a shorter waveform at every desk', async () => {
+    const shown = await playing(ATLAS);
+    const list = ['Grey miles', 'The drowned chapel', 'Steel in the reeds', 'Embers', 'Hey, ho, the lute', 'Under the hill', 'The last gate', 'First light', 'Road to Wolfhaven'].flatMap((name) => shown.records.get(name) ?? []);
+    act(() => shown.director.desk.playList(list, false));
+    await act(async () => { await sleep(600); });
+    await userEvent.hover(document.querySelector<HTMLElement>('.atlas-sound-music')!);
+    await shoot('card-closed-336');
+    await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-music__list')!);
+    await act(async () => { await sleep(300); });
+    const measure = (): { desk: number; wave: number; list: number; rows: number; clock: DOMRect; body: DOMRect } => ({
+      desk: document.querySelector('.atlas-sound-desk')!.getBoundingClientRect().height,
+      wave: document.querySelector('.atlas-sound-music__wave')!.getBoundingClientRect().height,
+      list: document.querySelector('.atlas-sound-queue')!.getBoundingClientRect().height,
+      rows: document.querySelectorAll('.atlas-sound-queue .atlas-sound-track').length,
+      clock: document.querySelector('.atlas-sound-music__clock')!.getBoundingClientRect(),
+      body: document.querySelector('.atlas-sound-music__body')!.getBoundingClientRect(),
+    });
+    const shape = measure();
+    expect(shape.desk).toBe(336);
+    expect(shape.wave).toBe(28);
+    expect(shape.rows).toBe(list.length);
+    expect(shape.list).toBeGreaterThan(90);
+    await shoot('list-open-336');
+    await resize(1280, 700);
+    await act(async () => { await sleep(400); });
+    const low = measure();
+    expect(low.desk).toBe(288);
+    expect(low.wave).toBe(28);
+    expect(low.list).toBeGreaterThan(60);
+    expect(low.clock.bottom).toBeLessThanOrEqual(low.body.bottom + 0.5);
+    await shoot('list-open-288');
+    await resize(760, 800);
+    await act(async () => { await sleep(400); });
+    const narrow = measure();
+    expect(narrow.desk).toBe(264);
+    expect(narrow.wave).toBe(28);
+    expect(narrow.list).toBeGreaterThan(40);
+    expect(narrow.clock.bottom).toBeLessThanOrEqual(narrow.body.bottom + 0.5);
+    expect(document.querySelector('.atlas-sound-music__actions')!.getBoundingClientRect().left).toBeGreaterThanOrEqual(document.querySelector('.atlas-sound-music__time')!.getBoundingClientRect().right);
+    await shoot('list-open-264');
+  }, 240_000);
+
+  describe('the music card’s queue, by hand', () => {
+    const NAMES = ['Road to Wolfhaven', 'Grey miles', 'The drowned chapel', 'Steel in the reeds', 'Embers'];
+    const rows = (): string[] => [...document.querySelectorAll('.atlas-sound-queue .atlas-sound-tracks:first-of-type > .atlas-sound-track__name, .atlas-sound-queue > .atlas-sound-tracks:first-of-type .atlas-sound-track__name')].map((row) => row.textContent ?? '');
+    const row = (name: string): HTMLElement => [...document.querySelectorAll<HTMLElement>('.atlas-sound-queue .atlas-sound-track')].find((one) => one.textContent?.includes(name))!;
+    async function queue(): Promise<SoundTab> {
+      const shown = await playing(ATLAS);
+      // The first is 70 s, so it stands still while this looks at it.
+      act(() => shown.director.desk.playList(NAMES.flatMap((name) => shown.records.get(name) ?? []), false));
+      await act(async () => { await sleep(400); });
+      await userEvent.hover(document.querySelector<HTMLElement>('.atlas-sound-music')!);
+      await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-music__list')!);
+      await expect.poll(rows).toEqual(NAMES);
+      return shown;
+    }
+
+    it('shows a row’s handle on hover', async () => {
+      await queue();
+      await userEvent.hover(row('Grey miles'));
+      await expect.poll(() => getComputedStyle(row('Grey miles').querySelector('.atlas-sound-track__grip')!).opacity).toBe('1');
+      await shoot('list-hover');
+    }, 240_000);
+
+    it('shows no handles while shuffled, the real order, and what plays in the accent', async () => {
+      const shown = await queue();
+      expect(document.querySelectorAll('.atlas-sound-track__grip').length).toBe(NAMES.length);
+      const accent = getComputedStyle(document.body).getPropertyValue('--text-accent');
+      const probe = document.body.createDiv();
+      probe.style.color = accent;
+      const accentColor = getComputedStyle(probe).color;
+      probe.remove();
+      expect(getComputedStyle(row('Road to Wolfhaven')).color).toBe(accentColor);
+      expect(row('Road to Wolfhaven').querySelector('.atlas-sound-track__mark')).not.toBeNull();
+      expect(row('Grey miles').querySelector('.atlas-sound-track__mark')).toBeNull();
+
+      await userEvent.click(document.querySelector<HTMLElement>('[aria-pressed="true"].atlas-sound-music__list + button, .atlas-sound-music__list ~ button')!);
+      await expect.poll(() => document.querySelectorAll('.atlas-sound-track__grip').length).toBe(0);
+      const { mix } = shown.director.snapshot();
+      expect(mix.listChange?.shuffle).toBe(true);
+      expect(rows()[0]).toBe('Road to Wolfhaven');
+      expect([...rows()].sort()).toEqual([...NAMES].sort());
+      await shoot('list-shuffled');
+    }, 240_000);
+
+    it('clear keeps what plays, Back restarts it, stop after and repeat are toggles, and Played plays what was', async () => {
+      const shown = await queue();
+      const { director } = shown;
+      const actions = [...document.querySelectorAll<HTMLElement>('.atlas-sound-music__actions button')];
+      const [, , repeat, stopAfter, back, skip] = actions;
+      expect(actions).toHaveLength(6);
+
+      await userEvent.click(repeat!);
+      await expect.poll(() => repeat!.getAttribute('aria-pressed')).toBe('true');
+      expect(director.snapshot().mix.listChange?.repeat).toBe('one');
+      await userEvent.click(repeat!);
+      expect(director.snapshot().mix.listChange?.repeat).toBe('off');
+      await userEvent.click(repeat!);
+      await expect.poll(() => repeat!.getAttribute('aria-pressed')).toBe('false');
+      expect(director.snapshot().mix.listChange).toBeNull();
+
+      await userEvent.click(stopAfter!);
+      await expect.poll(() => stopAfter!.getAttribute('aria-pressed')).toBe('true');
+      await shoot('card-modes');
+      await userEvent.click(stopAfter!);
+      await expect.poll(() => stopAfter!.getAttribute('aria-pressed')).toBe('false');
+
+      await act(async () => { await sleep(3400); });
+      await userEvent.click(back!);
+      await act(async () => { await sleep(100); });
+      const play = director.snapshot().mix.table.music!;
+      expect(musicPosition(play, director.now())!.frame / 48_000).toBeLessThan(1);
+      expect(musicPosition(play, director.now())!.track.key).toBe(director.shelf.infoOf(shown.records.get('Road to Wolfhaven')!)!.key);
+
+      await userEvent.click(skip!);
+      await expect.poll(() => row('Grey miles').getAttribute('aria-current'), { timeout: 8000 }).toBe('true');
+      await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-queue__head button')!);
+      await expect.poll(rows).toHaveLength(1);
+      expect(row('Grey miles').getAttribute('aria-current')).toBe('true');
+
+      const toggle = await vi.waitFor(() => {
+        const found = document.querySelector<HTMLElement>('.atlas-sound-played__toggle');
+        if (!found) throw new Error('no Played yet');
+        return found;
+      }, { timeout: 8000 });
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+      expect(document.querySelector('.atlas-sound-played .atlas-sound-track')).toBeNull();
+      await userEvent.click(toggle);
+      const played = document.querySelector<HTMLElement>('.atlas-sound-played .atlas-sound-track')!;
+      expect(played.textContent).toContain('Road to Wolfhaven');
+      await shoot('list-played');
+      await userEvent.click(played.querySelector('button')!);
+      await expect.poll(() => director.desk.nextTrack() !== undefined && document.querySelector('.atlas-sound-music__track')?.textContent, { timeout: 8000 }).toBe('Road to Wolfhaven');
+    }, 240_000);
+  });
 
   it('light', async () => {
     await playing(LIGHT);

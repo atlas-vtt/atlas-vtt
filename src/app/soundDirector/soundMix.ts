@@ -120,8 +120,11 @@ export function removeTrack(mix: SoundMix, key: string, { now, leadMs, fadeMs }:
   if (tracks.length === 0) return { ...mix, table: stopMusic(mix.table, now, fadeMs), listChange: null };
   const change = changeOf(base, tracks);
   if (key !== nowPlaying) return withChange(mix, change);
-  const first = tracks[0];
-  return first ? { ...mix, table: playTrack(mix.table, first.key, now, leadMs, change), listChange: null } : mix;
+  // What followed it, which now stands in its place on the list.
+  const following = tracks[base.tracks.findIndex((track) => track.key === key)];
+  if (!following && base.repeat === 'off') return { ...mix, table: stopMusic(mix.table, now, fadeMs), listChange: null };
+  const next = following ?? tracks[0];
+  return next ? { ...mix, table: playTrack(mix.table, next.key, now, leadMs, change), listChange: null } : mix;
 }
 
 /** Shuffle takes over at the current track's end, so it never cuts one. */

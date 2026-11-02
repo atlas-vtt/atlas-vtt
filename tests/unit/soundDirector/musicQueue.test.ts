@@ -9,7 +9,7 @@ import { moodOf } from '@/app/soundLibrary/moodFile';
 import { loadLastMix, saveLastMix } from '@/app/soundDirector/deviceFacts';
 import { startMusic } from '@/app/soundDirector/liveEdits';
 import { mixDiffersFrom } from '@/app/soundDirector/mixChange';
-import { backTrack, BACK_TO_PREVIOUS_MS, listView, musicPosition, nextTrack, playTrack, skipTrack, soundingMusic, soundingTrack } from '@/app/soundDirector/musicList';
+import { BACK_TO_PREVIOUS_MS, listView, musicPosition, nextTrack, playTrack, previousTrack, seekMusic, skipTrack, soundingMusic, soundingTrack } from '@/app/soundDirector/musicList';
 import { notePlayed } from '@/app/soundDirector/playedTracks';
 import { clearComing, EMPTY_MIX, mixAsMood, moveTrack, pressMood, removeTrack, setRepeat, setShuffle, withStopStillMeant, type SoundMix } from '@/app/soundDirector/soundMix';
 import { EMPTY_TABLE_SOUND, STOP_AFTER_FADE_MS, TRACK_JOIN_MS } from '@/app/soundDirector/tableSound';
@@ -141,6 +141,21 @@ describe('moving a track', () => {
   });
 });
 
+describe('removing the track sounding', () => {
+  const timing = { now: 70_000, leadMs: 0, fadeMs: 1000 };
+
+  it('goes on to what followed it, not back to the top of the list', () => {
+    const { table } = removeTrack(playing(LIST), 'b', timing, 'b');
+    expect(sounding(table, 70_001)).toBe('c');
+    expect(keys(table.music!.tracks)).toEqual(['a', 'c', 'd', 'e']);
+  });
+
+  it('the last goes round to the first, or ends a list that stops at its end', () => {
+    expect(sounding(removeTrack(playing(LIST), 'e', { ...timing, now: 190_000 }, 'e').table, 190_001)).toBe('a');
+    expect(removeTrack(playing(LIST, false, 'off'), 'e', { ...timing, now: 190_000 }, 'e').table.music).toBeNull();
+  });
+});
+
 describe('clearing what’s coming', () => {
   it('keeps the current track and drops the rest', () => {
     const mix: SoundMix = { ...playing(LIST), waitingMusic: { tracks: ['later'], shuffle: false, levelDb: 0 }, soonest: { sounds: ['later'], at: 'next' } };
@@ -151,6 +166,7 @@ describe('clearing what’s coming', () => {
     expect(cleared.soonest).toBeUndefined();
     expect(keys(listView(cleared.table, cleared.listChange, 10_000).tracks)).toEqual(['a']);
     expect(sounding(cleared.table, 30_000)).toBe('a');
+    expect(nextTrack(cleared.table, 10_000, cleared.listChange)?.key).toBe('a');
   });
 
   it('then the track goes round on its seam, as a list of one does', () => {
@@ -536,6 +552,11 @@ describe('crossfade between tracks', () => {
 });
 
 describe('back', () => {
+  const backTrack = (table: TableSound, now: number, leadMs: number): TableSound => {
+    const previous = previousTrack(table, now);
+    return previous ? playTrack(table, previous.key, now, leadMs) : seekMusic(table, 0, now);
+  };
+
   it('in a track’s first seconds goes to the track before; later restarts this one', () => {
     const { table } = playing(LIST);
     const onB = 60_000 + BACK_TO_PREVIOUS_MS - 100;

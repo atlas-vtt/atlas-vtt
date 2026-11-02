@@ -3,7 +3,7 @@ import { applySoonest, readyToJoin } from './libraryMix';
 import type { DirectorMoods } from './directorDeps';
 import { addLayer, setLayerLevel, setLayerMuted, setMusicLevel, setMusicMuted, stopAll, toggleSilence } from './liveEdits';
 import { mixDiffersFrom } from './mixChange';
-import { backTrack, musicPosition, nextTrack, playTrack, seekMusic, skipTrack, soundingTrack } from './musicList';
+import { musicPosition, nextTrack, playTrack, previousTrack, seekMusic, skipTrack, soundingTrack } from './musicList';
 import { addTrack, clearComing, dropLayer, dropWaitingTrack, EMPTY_MIX, joinReady, mixAsMood, moveTrack, pressMood, removeTrack, setRepeat, setShuffle, withoutSoonest, type ActiveMood, type SoundMix } from './soundMix';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
@@ -168,9 +168,10 @@ export class MixDesk {
 
   /** Early in a track the one before it; otherwise this one from its start. */
   back(): void {
-    const mix = this.table.mix;
-    const table = backTrack(mix.table, this.table.now(), this.table.clock.leadMs, mix.listChange);
-    this.table.commit({ ...mix, table, listChange: table.music === mix.table.music ? mix.listChange : null });
+    const { table, listChange } = this.table.mix;
+    const previous = previousTrack(table, this.table.now(), listChange);
+    if (previous) this.playTrack(previous.key);
+    else this.seekMusic(0);
   }
 
   playTrack(key: string): void {

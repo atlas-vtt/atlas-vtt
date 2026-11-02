@@ -110,13 +110,11 @@ export function skipTrack(state: TableSound, now: number, leadMs = OFFLINE_LEAD_
   return changed(live, { music: null, outgoing: [...live.outgoing, leaving(music, now, SKIP_FADE_MS)] });
 }
 
-/** Early in a track to the one before it; otherwise, and on a list of one, this one again from its start. */
-export function backTrack(state: TableSound, now: number, leadMs = OFFLINE_LEAD_MS, list?: ListChange | null): TableSound {
+/** Where Back goes early in a track, in the order the list plays; null where it starts this one again, as it always does later on, and on a list of one. */
+export function previousTrack(state: TableSound, now: number, list?: ListChange | null): SoundInfo | null {
   const play = soundingMusic(state, now);
   const position = play && musicPosition(play, now);
-  if (!position) return state;
-  const previous = position.frame < BACK_TO_PREVIOUS_MS * FRAMES_PER_MS ? neighbour(state, now, list, -1) : null;
-  return previous ? playTrack(state, previous.key, now, leadMs, list) : seekMusic(state, 0, now);
+  return position && position.frame < BACK_TO_PREVIOUS_MS * FRAMES_PER_MS ? neighbour(state, now, list, -1) : null;
 }
 
 /**

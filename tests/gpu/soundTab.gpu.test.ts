@@ -5,7 +5,7 @@ import { MusicWave } from '@/app/react/components/dm-screen/sound/musicWave';
 import { musicPosition, soundingMusic } from '@/app/soundDirector/musicList';
 import type { PlayersCopy } from '@/app/soundDirector/tableClock';
 import { PIN_ICON_PATHS } from '@/app/types/pinIcons';
-import { mouse, pressAndMove } from './realMouse';
+import { centreOf, mouse, pressAndMove } from './realMouse';
 import { DARK, LIGHT, openSoundTab, seedMoods, SOUNDS, type SoundTab } from './sound/soundTabHarness';
 
 // Statblocks reach Node's `events` through the token link service, which a browser test cannot import; this file is about the page beside them.
@@ -312,6 +312,98 @@ describe('the DM screen’s Sound page', () => {
     await userEvent.hover(master);
     await userEvent.click(master.querySelector<HTMLElement>('.atlas-sound-fader__reset')!);
     await expect.poll(() => tab?.director.snapshot().levels.masterDb).toBe(0);
+  });
+
+  describe('a list moved by hand', () => {
+    const NAMES = ['Long road', 'Grey miles', 'Drowned chapel', 'Steel', 'Embers'];
+    const LIST_SOUNDS = Object.fromEntries(NAMES.map((name, index) => [name, { synth: { seconds: index === 0 ? 70 : 3, seed: index + 1 }, kind: 'music' as const }]));
+    const rows = (): string[] => [...document.querySelectorAll('.atlas-sound-queue > .atlas-sound-tracks:first-of-type .atlas-sound-track__name')].map((row) => row.textContent ?? '');
+    const row = (name: string): HTMLElement => [...document.querySelectorAll<HTMLElement>('.atlas-sound-queue .atlas-sound-track')].find((one) => one.textContent?.includes(name))!;
+
+    async function openList(): Promise<SoundTab> {
+      await page.viewport(1644, 960);
+      viewport.style.cssText = 'position: absolute; top: 0; left: 0; width: 1644px; height: 960px; contain: strict; overflow: hidden';
+      const opened = await openSoundTab(DARK, viewport, undefined, LIST_SOUNDS);
+      tab = opened;
+      await allReady(opened);
+      // The first is 70 s, so the list stands still while this moves it.
+      act(() => opened.director.desk.playList(NAMES.flatMap((name) => opened.records.get(name) ?? []), false));
+      await expect.poll(() => document.querySelector('.atlas-sound-music__list')).not.toBeNull();
+      await userEvent.hover(document.querySelector<HTMLElement>('.atlas-sound-music')!);
+      await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-music__list')!);
+      await expect.poll(rows).toEqual(NAMES);
+      return opened;
+    }
+
+    async function pressHandle(name: string): Promise<{ x: number; y: number }> {
+      const at = centreOf(row(name));
+      await mouse.hover(at.x, at.y);
+      await act(async () => { await sleep(150); });
+      return centreOf(row(name).querySelector('.atlas-sound-track__grip')!);
+    }
+
+    it('moves with a real drag, Escape, a lost pointer and a blur put it back, and what sounds is left alone', async () => {
+      const opened = await openList();
+      const before = opened.director.snapshot().mix.table;
+      const fromRow = (name: string): { x: number; y: number } => ({ x: centreOf(row('Long road')).x, y: centreOf(row(name)).y });
+
+      // Under the threshold it is no drag.
+      const handle = await pressHandle('Grey miles');
+      await mouse.down(handle.x, handle.y);
+      await mouse.move(handle.x, handle.y + 2);
+      await mouse.up(handle.x, handle.y + 2);
+      expect(rows()).toEqual(NAMES);
+      expect(opened.director.snapshot().mix.listChange).toBeNull();
+
+      // Escape puts it back, and the release after it does nothing.
+      await pressAndMove(await pressHandle('Grey miles'), fromRow('Steel'), 8);
+      await expect.poll(() => rows().indexOf('Grey miles')).toBeGreaterThan(1);
+      expect(document.querySelector('.atlas-sound-track[data-dragging]')?.textContent).toContain('Grey miles');
+      await userEvent.keyboard('{Escape}');
+      await expect.poll(rows).toEqual(NAMES);
+      await mouse.up(fromRow('Steel').x, fromRow('Steel').y);
+      expect(opened.director.snapshot().mix.listChange).toBeNull();
+
+      // The window losing focus puts it back too.
+      await pressAndMove(await pressHandle('Grey miles'), fromRow('Steel'), 8);
+      await expect.poll(() => rows().indexOf('Grey miles')).toBeGreaterThan(1);
+      act(() => { window.dispatchEvent(new Event('blur')); });
+      await expect.poll(rows).toEqual(NAMES);
+      await mouse.up(fromRow('Steel').x, fromRow('Steel').y);
+
+      // A drag shows at once, in the list and in Then, and the state waits for the track's end.
+      await pressAndMove(await pressHandle('Grey miles'), fromRow('Steel'), 8);
+      await mouse.up(fromRow('Steel').x, fromRow('Steel').y);
+      await expect.poll(rows).toEqual(['Long road', 'Drowned chapel', 'Steel', 'Grey miles', 'Embers']);
+      const { mix } = opened.director.snapshot();
+      expect(mix.table).toBe(before);
+      expect(mix.listChange).not.toBeNull();
+      await expect.poll(() => document.querySelector('.atlas-sound-music__next')?.textContent).toBe('Then Drowned chapel');
+      expect(row('Long road').getAttribute('aria-current')).toBe('true');
+
+      // Alt with up and down, from the row's own button; focus stays on it.
+      const play = row('Embers').querySelector<HTMLElement>('button:not(.atlas-sound-track__grip):not(.atlas-sound-track__remove)')!;
+      act(() => play.focus());
+      await userEvent.keyboard('{Alt>}{ArrowUp}{/Alt}');
+      await expect.poll(rows).toEqual(['Long road', 'Drowned chapel', 'Steel', 'Embers', 'Grey miles']);
+      expect(document.activeElement).toBe(play);
+      await userEvent.keyboard('{Alt>}{ArrowDown}{/Alt}');
+      await expect.poll(rows).toEqual(['Long road', 'Drowned chapel', 'Steel', 'Grey miles', 'Embers']);
+      expect(document.activeElement).toBe(play);
+      expect(opened.director.snapshot().mix.table).toBe(before);
+
+      // The waveform stays above the open list, and a press on it still moves the track.
+      const wave = document.querySelector<HTMLElement>('.atlas-sound-music__wave')!;
+      const { left, top, width, height } = wave.getBoundingClientRect();
+      expect(height).toBeGreaterThan(0);
+      await mouse.click(left + width / 2, top + height / 2);
+      await expect.poll(() => {
+        const now = opened.director.now();
+        const position = musicPosition(opened.director.snapshot().mix.table.music!, now)!;
+        return position.frame / position.frames;
+      }).toBeGreaterThan(0.45);
+      expect(opened.director.snapshot().mix.listChange).not.toBeNull();
+    }, 180_000);
   });
 
   it('moves the track by a press or drag along its waveform, by key, and shows it while held', async () => {
