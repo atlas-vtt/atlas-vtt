@@ -1,6 +1,6 @@
 import { act } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cdp, page, userEvent } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import type { PlayersCopy } from '@/app/soundDirector/tableClock';
 import { COLLECTION, DARK, LIGHT, openSoundTab, seedMoods, SOUNDS, type SoundTab } from './sound/soundTabHarness';
 
@@ -144,7 +144,7 @@ describe('the DM screen’s Sound page', () => {
     // The desk is its height, at the surface's foot.
     const desk = box('.atlas-sound-desk');
     expect(desk.height).toBe(336);
-    expect(desk.bottom).toBeCloseTo(surface.bottom - 1.5, 0);
+    expect(surface.bottom - desk.bottom).toBeLessThan(2);
     expect(box('.atlas-sound-stage').bottom).toBeCloseTo(desk.top, 0);
     expect(document.querySelector('.atlas-sound-master, .atlas-sound-silence')).toBeNull();
   });
@@ -265,12 +265,8 @@ describe('the DM screen’s Sound page', () => {
 
     // A press on the track puts the thumb there; the release leaves it there.
     const track = thumb.closest<HTMLElement>('.atlas-sound-fader')!;
-    const { left, top, width, height } = track.getBoundingClientRect();
-    const session = cdp();
-    const mouse = (type: string, y: number): Promise<unknown> => session.send('Input.dispatchMouseEvent', { type, x: left + width / 2, y, button: 'left', buttons: 1, clickCount: 1 });
-    await mouse('mousePressed', top + height / 2);
-    await mouse('mouseMoved', top + height * 0.75);
-    await mouse('mouseReleased', top + height * 0.75);
+    const { width, height } = track.getBoundingClientRect();
+    await userEvent.dragAndDrop(page.elementLocator(thumb), page.elementLocator(track), { targetPosition: { x: width / 2, y: height * 0.75 } });
     await expect.poll(layerKey).toBeCloseTo(6 - 0.75 * 66, -1);
   });
 

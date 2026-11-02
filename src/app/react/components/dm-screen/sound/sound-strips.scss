@@ -53,8 +53,8 @@
     width: 28px;
     height: 28px;
 
-    // 40 px to press, where the strip has room.
-    &::after {
+    // 40 px to press, where the strip has room: remove lies against its edge.
+    &:not(.atlas-sound-strip__remove)::after {
       content: '';
       position: absolute;
       inset: -6px;
