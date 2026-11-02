@@ -4,6 +4,8 @@ import { SoundImportError, type EncodedPacket, type EncodedSource } from './demu
 const AAC_RATES = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350];
 const AAC_FRAME_SAMPLES = 1024;
 const READ_AHEAD = 1 << 16;
+/** Apple's and FFmpeg's encoders. */
+export const AAC_PRIMING: readonly number[] = [2112, 1024];
 
 /** A sync word whose fixed bits say AAC in ADTS: layer 0. */
 export function looksLikeAdts(head: Uint8Array): boolean {
@@ -44,6 +46,7 @@ export async function demuxAdts(window: BlobWindow): Promise<EncodedSource> {
     description,
     skipFrames: 0,
     totalFrames: null,
+    primingHints: AAC_PRIMING,
     progress: () => position / Math.max(1, window.size),
     async *packets() {
       while (position < window.size) {

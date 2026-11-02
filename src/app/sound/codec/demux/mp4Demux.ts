@@ -1,3 +1,4 @@
+import { AAC_PRIMING } from './adtsDemux';
 import type { BlobWindow } from './blobWindow';
 import { SoundImportError, type EncodedPacket, type EncodedSource } from './demuxTypes';
 
@@ -164,6 +165,23 @@ function readEdit(moov: Uint8Array, trak: Box, mediaScale: number, movieScale: n
   return { skip: Math.max(0, mediaTime), total: movieScale > 0 && duration > 0 ? Math.round((duration * mediaScale) / movieScale) : null };
 }
 
+/**
+ * Apple's way of saying the same: the text `iTunSMPB` in the metadata, then hex numbers of which the second is the
+ * priming, the third the padding and the fourth the sound's length. Read wherever it lies, as a bad one only
+ * gets looked at by the wrap's check.
+ */
+function readItunesGapless(moov: Uint8Array): { skipFrames: number; totalFrames: number } | null {
+  const name = [...'iTunSMPB'].map((letter) => letter.charCodeAt(0));
+  const at = moov.findIndex((_, index) => name.every((code, offset) => moov[index + offset] === code));
+  if (at < 0) return null;
+  const text = String.fromCharCode(...moov.subarray(at, at + 200));
+  const fields = /data[^ ]* ([0-9A-Fa-f]{8}) ([0-9A-Fa-f]{8}) ([0-9A-Fa-f]{8}) ([0-9A-Fa-f]{16})/.exec(text);
+  if (!fields) return null;
+  const skipFrames = parseInt(fields[2] ?? '', 16);
+  const totalFrames = parseInt(fields[4] ?? '', 16);
+  return totalFrames > 0 ? { skipFrames, totalFrames } : null;
+}
+
 export async function demuxMp4(window: BlobWindow): Promise<EncodedSource> {
   const moov = await findMoov(window);
   const trak = audioTrack(moov);
@@ -191,6 +209,8 @@ export async function demuxMp4(window: BlobWindow): Promise<EncodedSource> {
   const { sizes, offsets } = readSampleTable(moov, stbl);
   const frames = sampleDuration(moov, stbl);
   const edit = readEdit(moov, trak, mediaScale, movieScale);
+  const hasEdit = edit.skip > 0 || edit.total !== null;
+  const itunes = hasEdit ? null : readItunesGapless(moov);
   let sample = 0;
   return {
     type: 'encoded',
@@ -200,6 +220,8 @@ export async function demuxMp4(window: BlobWindow): Promise<EncodedSource> {
     description: decoderInfo.config,
     skipFrames: edit.skip,
     totalFrames: edit.total,
+    ...(itunes ? { loopEnds: itunes } : {}),
+    ...(hasEdit || itunes ? {} : { primingHints: AAC_PRIMING }),
     progress: () => (sizes.length > 0 ? sample / sizes.length : 1),
     async *packets() {
       for (; sample < sizes.length; sample++) {

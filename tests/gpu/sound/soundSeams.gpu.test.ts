@@ -1,7 +1,12 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { webCodecsWindowDecode, wholeFileWindowDecode, type WindowDecode } from '@/app/sound/engine/windowDecoder';
 import type { SoundContext } from '@/app/sound/engine/audioNodes';
+import crossfadedDrone from '../../fixtures/sound/loops/converted/drone-crossfaded.ogg?url';
+import foundRain from '../../fixtures/sound/loops/converted/rain-found-ends.ogg?url';
+import { OggOpusWriter } from '@/app/sound/codec/oggOpusWriter';
+import { packetsOfPage, readPage } from '@/app/sound/codec/oggPages';
 import { FIXTURE_FRAMES, largestStep, layerOf, loadFixtures, longestSilence, render, secondsToFrames, sineAt, tableOf, type Fixtures } from './soundHarness';
+import { measurePlace, measureSpread, wrapFrameNear } from './loopMeasure';
 
 /** A 0.25 sine at 220 Hz. */
 const NORMAL_STEP = 0.25 * Math.sin((2 * Math.PI * 220) / 48000);
@@ -29,6 +34,22 @@ function largestSlip(samples: Float32Array, from: number, to: number): number {
     largest = Math.max(largest, ((gap > Math.PI ? 2 * Math.PI - gap : gap) / (2 * Math.PI * 220)) * 48000);
   }
   return largest;
+}
+
+/** The file's own packets with `skipFrames` more of them under the pre-skip, as an import that crossfaded writes. */
+function withLongerPreSkip(bytes: Uint8Array, frames: number, skipFrames: number): Uint8Array<ArrayBuffer> | Promise<Uint8Array<ArrayBuffer>> {
+  const headPage = readPage(bytes, 0);
+  const head = headPage && packetsOfPage(headPage, null).packets[0];
+  if (!headPage || !head) throw new Error('no head');
+  const writer = new OggOpusWriter(head);
+  let page = readPage(bytes, headPage.end);
+  let audio = false;
+  while (page) {
+    if (audio) for (const packet of packetsOfPage(page, null).packets) writer.addPacket(packet);
+    audio = true;
+    page = readPage(bytes, page.end);
+  }
+  return writer.finish(frames, skipFrames).arrayBuffer().then((buffer) => new Uint8Array(buffer));
 }
 
 describe('seams', () => {
@@ -87,6 +108,54 @@ describe('seams', () => {
       const sound = { ...fixtures.long, loop: { startFrame: 10 * 48000, endFrame: 22 * 48000 } };
       const samples = await render(tableOf({ layers: [layerOf(sound, { startAt: -18_000 })] }), fixtures, { seconds: 20, options: { windowDecode } });
       expectClean(samples, secondsToFrames(0.5), samples.length, `${name}, loop frames`);
+    });
+  });
+
+  describe('what an import of a marked loop writes', () => {
+    it.each([
+      ['rain whose ends were found', foundRain],
+      ['a drone crossfaded into itself', crossfadedDrone],
+    ])('%s wraps with nothing to hear, on this engine', async (name, url) => {
+      const bytes = new Uint8Array(await (await fetch(url)).arrayBuffer());
+      const decoded = (await new OfflineAudioContext(2, 48000, 48000).decodeAudioData(bytes.slice().buffer)).getChannelData(0);
+      const frames = decoded.length;
+      const samples = await render(tableOf({ layers: [layerOf({ key: 'sound', frames, gainDb: 0 })] }), { files: new Map([['sound', bytes]]) }, { seconds: (2.6 * frames) / 48000 });
+      const wrapAt = wrapFrameNear(samples, decoded, 2 * frames);
+      const wrap = measurePlace(samples, wrapAt);
+      const own = measureSpread(samples, frames, wrapAt - frames);
+      console.log(`${name}: ${frames} frames, step ${wrap.stepRatio.toFixed(2)} (own ${own.stepRatio.toFixed(2)}), dip ${wrap.dipDb.toFixed(1)} (own ${own.dipDb.toFixed(1)}), click ${wrap.clickDb.toFixed(1)} (own ${own.clickDb.toFixed(1)}), hole ${wrap.hole}`);
+      expect(wrap.hole).toBeLessThanOrEqual(2);
+      expect(wrap.stepRatio).toBeLessThanOrEqual(2);
+      expect(wrap.dipDb).toBeGreaterThan(own.dipDb - 1.5);
+    });
+
+    it('a long pre-skip and a stream that runs on past its end keep the length exact, whole', async () => {
+      const bytes = fixtures.files.get('tone220');
+      if (!bytes) throw new Error('missing');
+      const short = await withLongerPreSkip(bytes, 2 * 48_000, 48_000);
+      const files = new Map([['short', short]]);
+      const context = new OfflineAudioContext(2, 48000, 48000);
+      expect((await context.decodeAudioData(short.slice().buffer)).length).toBe(2 * 48_000);
+      const samples = await render(tableOf({ layers: [layerOf({ key: 'short', frames: 2 * 48_000, gainDb: 0 })] }), { files }, { seconds: 8 });
+      expectClean(samples, secondsToFrames(0.5), samples.length, 'a second under the pre-skip, buffer loop');
+    });
+
+    describe.each<[string, (context: SoundContext) => WindowDecode]>([
+      ['AudioDecoder', webCodecsWindowDecode],
+      ['whole-file windows', wholeFileWindowDecode],
+    ])('through %s', (name, windowDecode) => {
+      it('a long pre-skip over 60 s joins its windows and wraps', async ({ skip }) => {
+        if (name === 'AudioDecoder' && typeof AudioDecoder === 'undefined') skip();
+        const bytes = fixtures.files.get('long');
+        if (!bytes) throw new Error('missing');
+        // A second under the pre-skip, and no whole-decode limit in reach: 60 s of whole cycles, plus what runs on.
+        const frames = 60 * 48_000 + 1;
+        const long = await withLongerPreSkip(bytes, frames - 1 + 48_000 * 0, 48_000);
+        const files = new Map([['long2', long]]);
+        const sound = { key: 'long2', frames: frames - 1, gainDb: 0, loop: { startFrame: 0, endFrame: frames - 1 } };
+        const samples = await render(tableOf({ layers: [layerOf({ ...sound }, { startAt: -44_000 })] }), { files }, { seconds: 24, options: { windowDecode } });
+        expectClean(samples, secondsToFrames(0.5), samples.length, `${name}, a second under the pre-skip`);
+      });
     });
   });
 });

@@ -136,14 +136,17 @@ describe('importing a sound', () => {
     const trimmed = await importer.run({ source, kind: 'ambience', loop: true });
     console.log(`loop trim: ${kept.frames} frames kept whole, ${trimmed.frames} once trimmed`);
     expect(kept.frames).toBe(frames);
-    expect(Math.abs(trimmed.frames - (frames - 4800 - 9600))).toBeLessThanOrEqual(2);
+    // A pure tone: losing a frame to the trim shows at the wrap, and a short crossfade lines it up again.
+    expect(trimmed.frames).toBeLessThanOrEqual(frames - 4800 - 9600 + 2);
+    expect(trimmed.frames).toBeGreaterThan(frames - 4800 - 9600 - 1500);
     expect((await decoded(trimmed)).length).toBe(trimmed.frames);
   });
 
-  it('trims an MP3 without a tag, whose holes would sound on every loop', async () => {
+  it('finds the ends of an MP3 without a tag, whose holes would sound on every loop', async () => {
     const result = await importer.run({ source: await blobOf(plainMp3), kind: 'ambience', loop: true });
-    console.log(`MP3 without a tag, marked as a loop: ${result.frames} frames`);
-    expect(result.frames).toBeLessThan(FRAMES_2S + 2000);
+    console.log(`MP3 without a tag, marked as a loop: ${result.frames} frames, ${result.seam}`);
+    expect(result.frames).toBeLessThanOrEqual(FRAMES_2S + 96);
+    expect(result.seam).toBeDefined();
   });
 
   it.each([

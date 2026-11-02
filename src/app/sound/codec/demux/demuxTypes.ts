@@ -44,6 +44,13 @@ export interface EncodedSource extends SourceBase {
   skipFrames: number;
   /** The sound's length past the skip where the file says it, which trims what comes after. */
   totalFrames: number | null;
+  /** Ends known only for a sound marked as a loop: older imports kept these frames, and a plain sound still does. */
+  loopEnds?: { skipFrames: number; totalFrames: number | null };
+  /**
+   * Of a lossy file that says neither its priming nor its padding, which have to be found in its level: where the
+   * encoders that write most such files end their priming, in the decoder's frames.
+   */
+  primingHints?: readonly number[];
   packets(): AsyncIterable<EncodedPacket>;
 }
 

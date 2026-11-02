@@ -51,8 +51,10 @@ export class Resampler {
   private historyStart = 0;
   private output = 0;
   private input = 0;
+  /** A sound that wraps: its first frames, which its end's filter reads instead of nothing. */
+  private wrapHead: Float32Array<ArrayBuffer>[] | null;
 
-  constructor(inputRate: number, channels: number) {
+  constructor(inputRate: number, channels: number, wraps = false) {
     const divisor = gcd(inputRate, SOUND_RATE);
     this.up = SOUND_RATE / divisor;
     this.down = inputRate / divisor;
@@ -71,9 +73,19 @@ export class Resampler {
       }
     }
     this.history = Array.from({ length: channels }, () => new Float32Array(0));
+    this.wrapHead = wraps ? Array.from({ length: channels }, () => new Float32Array(0)) : null;
+  }
+
+  /** Frames at the start that lack what lies before them, and that `flush` gives again past the end, whole, where the sound wraps. */
+  get wrapFrames(): number {
+    return this.wrapHead ? Math.ceil((this.reach * this.up) / this.down) : 0;
   }
 
   process(planes: readonly Float32Array<ArrayBuffer>[]): Float32Array<ArrayBuffer>[] {
+    if (this.wrapHead && (this.wrapHead[0]?.length ?? 0) < 2 * this.reach) {
+      const room = 2 * this.reach - (this.wrapHead[0]?.length ?? 0);
+      this.wrapHead = this.wrapHead.map((held, channel) => joined(held, (planes[channel] ?? new Float32Array(0)).slice(0, room)));
+    }
     this.input += planes[0]?.length ?? 0;
     this.history = this.history.map((old, channel) => joined(old, planes[channel] ?? new Float32Array(0)));
     return this.drain(this.input - this.reach);
@@ -81,10 +93,15 @@ export class Resampler {
 
   /** What is left: the filter's tail, cut to the length the source has at this rate. */
   flush(): Float32Array<ArrayBuffer>[] {
+    const length = Math.round((this.input * this.up) / this.down);
+    if (this.wrapHead) {
+      const head = this.wrapHead;
+      this.history = this.history.map((old, channel) => joined(old, head[channel] ?? new Float32Array(0)));
+      return this.drain(this.input + this.reach, length + this.wrapFrames);
+    }
     const padding = new Float32Array(this.reach);
     this.history = this.history.map((old) => joined(old, padding));
-    const out = this.drain(this.input, Math.round((this.input * this.up) / this.down));
-    return out;
+    return this.drain(this.input, length);
   }
 
   /** Writes every output frame whose filter reaches no further than input frame `limit` + reach. */
@@ -120,7 +137,7 @@ export class Resampler {
   }
 }
 
-function joined(a: Float32Array<ArrayBuffer>, b: Float32Array<ArrayBuffer>): Float32Array<ArrayBuffer> {
+export function joined(a: Float32Array<ArrayBuffer>, b: Float32Array<ArrayBuffer>): Float32Array<ArrayBuffer> {
   const out = new Float32Array(a.length + b.length);
   out.set(a);
   out.set(b, a.length);
@@ -135,6 +152,8 @@ function joined(a: Float32Array<ArrayBuffer>, b: Float32Array<ArrayBuffer>): Flo
 export class SilenceTrim {
   private started = false;
   private held = 0;
+  /** What came off the start, as far as it has got. */
+  droppedFrames = 0;
 
   constructor(private readonly channels: number) {}
 
@@ -150,9 +169,11 @@ export class SilenceTrim {
     }
     if (lastLoud < 0) {
       if (this.started) this.held += frames;
+      else this.droppedFrames += frames;
       return;
     }
     const start = this.started ? 0 : firstLoud;
+    if (!this.started) this.droppedFrames += firstLoud;
     this.emitZeros(emit);
     this.started = true;
     this.held = frames - 1 - lastLoud;
