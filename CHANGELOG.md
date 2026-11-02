@@ -8,7 +8,7 @@
 
 ### Improved
 - TrueScale: better tooltips for various buttons
-- TrueScale: the chips on the map are have a cleaner look
+- TrueScale: the chips on the map have a cleaner look
 - TrueScale: the frame players see no longer tints the map inside it
 - Player window: better animation when switching between saved frames and when showing/hiding the map to players
 - Tokens: The context menu options "Kill, Delete, Reset" now work with multiple tokens selected
@@ -20,7 +20,7 @@
 - TrueScale: saved frames can be shown and removed every time
 - TrueScale: a moved Bring players here frame goes back to its place when a drag is cancelled, and no longer carries its position over to the next map
 - Editing a value in the statblock beside a note no longer jumps away from what you are editing
-- Picking or resetting a game system now now correctly updates token resource widgets
+- Picking or resetting a game system now correctly updates token resource widgets
 - The confirmation for deleting a collection no longer opens behind the asset manager
 - Tags in a selection of several assets: a tag only some of them have now goes to all of them when pressed, and from all of them when pressed again
 - Statblocks: a backslash keeps a comma in a label or word (`Fire\, cold: 3` shows as Fire, cold)
