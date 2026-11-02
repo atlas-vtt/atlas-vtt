@@ -31,7 +31,8 @@ export interface SoundLocation {
    */
   firstUnlisted(folder: string): Promise<string | null>;
   exists(path: string): Promise<boolean>;
-  read(path: string): Promise<Blob>;
+  /** `onStep` hears a read that comes in parts getting somewhere. */
+  read(path: string, onStep?: () => void): Promise<Blob>;
   /** A URL a media element can load; null where there is none. */
   resourceUrl(path: string): string | null;
   makeFolder(path: string): Promise<void>;

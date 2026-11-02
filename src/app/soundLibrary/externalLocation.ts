@@ -159,9 +159,9 @@ export class ExternalLocation implements SoundLocation {
     return (await this.stat(path)) !== null;
   }
 
-  async read(path: string): Promise<Blob> {
+  async read(path: string, onStep?: () => void): Promise<Blob> {
     const absolute = await this.absolute(path);
-    return readAsBlob(this.deps.files.fs, absolute);
+    return readAsBlob(this.deps.files.fs, absolute, onStep);
   }
 
   resourceUrl(path: string): string | null {

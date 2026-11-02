@@ -58,10 +58,10 @@ function fileAccess(app: App): SoundFileAccess {
   const library = (): SoundLibrary | null => SoundLibrary.opened(app);
   return {
     statOf: ({ filePath, audioSize }) => fileOf(filePath)?.stat ?? library()?.statOfFile(filePath, audioSize) ?? null,
-    read: ({ filePath, audioSize }) => {
+    read: ({ filePath, audioSize }, onStep) => {
       const file = fileOf(filePath);
       if (file) return app.vault.readBinary(file);
-      return library()?.readFile(filePath, audioSize) ?? Promise.reject(new Error(`${filePath} is not reachable now.`));
+      return library()?.readFile(filePath, audioSize, onStep) ?? Promise.reject(new Error(`${filePath} is not reachable now.`));
     },
     pathNow: ({ filePath, audioSize }) => (fileOf(filePath) ? filePath : library()?.pathNow(filePath, audioSize) ?? filePath),
   };

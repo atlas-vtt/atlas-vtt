@@ -9,6 +9,8 @@ const MAX_QUEUE = 32;
 const QUEUE_WAIT_MS = 10;
 /** Every eighth sample: 6 kHz says as much of how loud a moment is as 48 do. */
 const SAMPLE_STEP = 8;
+/** How many pages make a step for the one who watches that it gets anywhere: about 4 s of sound each. */
+const PAGES_PER_STEP = 64;
 
 /** How loud each part of a sound is: root mean square per bucket, the loudest part as 255. */
 export class PeakCollector {
@@ -37,7 +39,7 @@ export class PeakCollector {
 }
 
 /** Reads a copy through its pages and a real decoder. Meant for a worker: it decodes the whole sound. */
-export async function readPeaksOfCopy(copy: Blob, frames: number): Promise<Uint8Array<ArrayBuffer>> {
+export async function readPeaksOfCopy(copy: Blob, frames: number, onStep: () => void = () => undefined): Promise<Uint8Array<ArrayBuffer>> {
   const collector = new PeakCollector(frames);
   const window = new BlobWindow(copy);
   const failures: Error[] = [];
@@ -76,6 +78,7 @@ export async function readPeaksOfCopy(copy: Blob, frames: number): Promise<Uint8
         if (decoder.decodeQueueSize > MAX_QUEUE) await new Promise((resolve) => self.setTimeout(resolve, QUEUE_WAIT_MS));
       }
       pageIndex++;
+      if (pageIndex % PAGES_PER_STEP === 0) onStep();
     }
     if (decoder.state === 'configured') await decoder.flush();
   } finally {

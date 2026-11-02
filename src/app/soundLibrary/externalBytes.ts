@@ -9,7 +9,7 @@ const CHUNK_BYTES = 1024 * 1024;
  * copied into a Blob of its own, which lives in the browser process, and is dropped. `fs.openAsBlob`
  * gives a Node Blob, which no worker of the page can be handed, so it would have to be copied just the same.
  */
-export async function readAsBlob(fs: NodeFsModule, absolute: string): Promise<Blob> {
+export async function readAsBlob(fs: NodeFsModule, absolute: string, onStep?: () => void): Promise<Blob> {
   const handle = await fs.promises.open(absolute, 'r');
   try {
     const parts: Blob[] = [];
@@ -18,6 +18,7 @@ export async function readAsBlob(fs: NodeFsModule, absolute: string): Promise<Bl
       const { bytesRead } = await handle.read(chunk, 0, CHUNK_BYTES, null);
       if (bytesRead === 0) break;
       parts.push(new Blob([chunk.subarray(0, bytesRead)]));
+      onStep?.();
     }
     return new Blob(parts);
   } finally {

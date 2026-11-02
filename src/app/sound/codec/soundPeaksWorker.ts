@@ -8,7 +8,7 @@ function reply(message: PeaksMessage, transfer: Transferable[] = []): void {
 }
 
 self.addEventListener('message', (event: MessageEvent<PeaksRequest>) => {
-  readPeaksOfCopy(event.data.copy, event.data.frames).then(
+  readPeaksOfCopy(event.data.copy, event.data.frames, () => reply({ step: true })).then(
     (peaks) => reply({ peaks }, [peaks.buffer]),
     (error: unknown) => reply({ failed: error instanceof Error ? error.message : String(error) }),
   );

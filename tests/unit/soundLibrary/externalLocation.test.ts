@@ -56,6 +56,13 @@ describe('listing a folder on disk', () => {
   });
 });
 
+it('says a read gets somewhere, chunk by chunk', async () => {
+  write('long.mp3', 'x'.repeat(3 * 1024 * 1024));
+  const onStep = vi.fn();
+  expect((await location().read('long.mp3', onStep)).size).toBe(3 * 1024 * 1024);
+  expect(onStep).toHaveBeenCalledTimes(3);
+});
+
 describe('a path that would leave the root', () => {
   it.each(['..', '../secret.mp3', 'a/../../secret.mp3', '/etc/passwd', 'a\\..\\b'])('is refused for %s', async (hostile) => {
     fs.writeFileSync(path.join(base, 'secret.mp3'), 'SECRET');

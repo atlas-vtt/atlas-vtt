@@ -1,6 +1,7 @@
 import { SoundImportError, type ImportProgress, type SoundImportJob, type SoundImportResult } from '../sound/codec/soundImporter';
 import { soundInfoOf, type SoundMeasure } from '../sound/codec/soundInfo';
 import type { CachedSound, SoundIdentity } from '../sound/codec/opusCache';
+import { untilStuck } from '../sound/codec/stuckWatch';
 import type { SoundBytes, SoundInfo, SoundRecord } from '../sound/soundTypes';
 import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConversion';
 import type { PreparedSource } from './sourcePrepare';
@@ -11,8 +12,8 @@ export type SoundFileRef = Pick<SoundRecord, 'filePath' | 'audioSize'>;
 export interface SoundFileAccess {
   /** Null while this device does not have the file. */
   statOf(sound: SoundFileRef): { size: number; mtime: number } | null;
-  /** A Blob where the file lies on disk and need not pass through the main thread's memory. */
-  read(sound: SoundFileRef): Promise<ArrayBuffer | Blob>;
+  /** A Blob where the file lies on disk and need not pass through the main thread's memory. `onStep` hears a read that gets somewhere, where it comes in parts. */
+  read(sound: SoundFileRef, onStep?: () => void): Promise<ArrayBuffer | Blob>;
   /** What the file is called on this device, which may be elsewhere than the shared record says. */
   pathNow(sound: SoundFileRef): string;
 }
@@ -227,7 +228,8 @@ export class SoundCopies {
     this.set(entry, { state: 'converting', progress: null });
     try {
       const stat = this.files.statOf(record);
-      const { hash, source } = await this.prepare(await this.files.read(record));
+      const read = await untilStuck('reading a sound', (step) => this.files.read(record, step));
+      const { hash, source } = await this.prepare(read);
       if (stat) await this.cache.remember({ path: record.filePath, size: stat.size, mtime: stat.mtime, hash });
       const measure = (await this.cache.get(hash)) ?? (await this.made(record, entry, source, hash));
       if (!this.disposed) this.markReady(record, entry, hash, measure);

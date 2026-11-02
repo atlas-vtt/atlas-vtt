@@ -2,17 +2,10 @@ import { SoundImportError } from './demux/demuxTypes';
 import type { ImportProgress, SoundImportJob, SoundImportResult } from './soundConvert';
 import type { SoundImportMessage } from './soundImportProtocol';
 import SoundImportWorker from './soundImportWorker?worker&inline';
+import { STUCK_AFTER_MS } from './stuckWatch';
 
 export { SoundImportError } from './demux/demuxTypes';
 export type { ImportProgress, SoundImportJob, SoundImportResult } from './soundConvert';
-
-/**
- * How long a conversion may go without a step before it counts as stuck. A step is 1 % of the file, or 5 % of reading
- * the copy back. The longest copy there can be (256 MiB at 96 kbit/s, six hours) has 3.7 minutes of sound in 1 %,
- * which gets done in this time at 2.5 times real time; encoders run at 50 and more. The worst a stuck one costs
- * is this long before the next sound in line.
- */
-const STUCK_AFTER_MS = 90_000;
 
 /**
  * Converts vault files to Atlas' Ogg Opus, one at a time, each in a worker of its own that is stopped when it

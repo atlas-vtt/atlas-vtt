@@ -189,10 +189,10 @@ export class SoundLibrary {
     return null;
   }
 
-  async readFile(audioPath: string, audioSize?: number): Promise<Blob> {
+  async readFile(audioPath: string, audioSize?: number, onStep?: () => void): Promise<Blob> {
     const place = this.placeOf(audioPath);
     if (!place) throw new Error(`${audioPath} is not reachable on this device.`);
-    return place.opened.location.read(this.filed(place.opened, place.path, audioSize)?.path ?? place.path);
+    return place.opened.location.read(this.filed(place.opened, place.path, audioSize)?.path ?? place.path, onStep);
   }
 
   /** What a record's file is called on this device, as `audioPathOf` writes it: what the record says where nothing else is known. */
