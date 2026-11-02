@@ -5,7 +5,6 @@ export interface NodeDirent {
   name: string;
   isDirectory(): boolean;
   isFile(): boolean;
-  isSymbolicLink(): boolean;
 }
 
 export interface NodeStat {

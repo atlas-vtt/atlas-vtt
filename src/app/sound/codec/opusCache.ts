@@ -1,3 +1,4 @@
+import { committed, request } from '../../utils/indexedDbPromises';
 import type { SoundBytes } from '../soundTypes';
 
 /**
@@ -57,21 +58,6 @@ export async function opusCacheBudget(storage: Pick<StorageManager, 'estimate'>)
 
 export function opusCacheDatabaseName(appId: string): string {
   return `atlas-vtt-sound-copies-${appId}`;
-}
-
-function request<T>(req: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = (): void => resolve(req.result);
-    req.onerror = (): void => reject(req.error ?? new Error('IndexedDB request failed'));
-  });
-}
-
-function committed(tx: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = (): void => resolve();
-    tx.onerror = (): void => reject(tx.error ?? new Error('IndexedDB transaction failed'));
-    tx.onabort = (): void => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
-  });
 }
 
 function isCachedSound(value: unknown): value is CachedSound {
@@ -135,14 +121,7 @@ export class OpusCache {
 
   /** Keeps a copy's waveform with what is known of it. */
   async setPeaks(hash: string, peaks: Uint8Array<ArrayBuffer>): Promise<void> {
-    await this.write([SOUNDS], (tx) => {
-      const store = tx.objectStore(SOUNDS);
-      const read = store.get(hash);
-      read.onsuccess = (): void => {
-        const value: unknown = read.result;
-        if (isCachedSound(value)) store.put({ ...value, peaks });
-      };
-    });
+    await this.updateRecord(hash, (sound) => ({ ...sound, peaks }));
   }
 
   pin(hash: string): void {
@@ -191,12 +170,18 @@ export class OpusCache {
   }
 
   private async touch(hash: string): Promise<void> {
+    await this.updateRecord(hash, (sound) => (this.now() - sound.lastUsed >= USE_RECORD_MS ? { ...sound, lastUsed: this.now() } : null));
+  }
+
+  /** What is known of a copy, changed in one transaction; `change` answers null to leave it. */
+  private async updateRecord(hash: string, change: (sound: CachedSound) => CachedSound | null): Promise<void> {
     await this.write([SOUNDS], (tx) => {
       const store = tx.objectStore(SOUNDS);
       const read = store.get(hash);
       read.onsuccess = (): void => {
         const value: unknown = read.result;
-        if (isCachedSound(value) && this.now() - value.lastUsed >= USE_RECORD_MS) store.put({ ...value, lastUsed: this.now() });
+        const changed = isCachedSound(value) ? change(value) : null;
+        if (changed) store.put(changed);
       };
     });
   }

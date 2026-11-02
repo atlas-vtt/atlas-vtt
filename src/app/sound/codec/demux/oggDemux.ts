@@ -1,10 +1,8 @@
-import { packetsOfPage, readPage, type OggPage } from '../oggPages';
+import { MAX_PAGE_BYTES, packetsOfPage, readPage, type OggPage } from '../oggPages';
 import { isOpusHead, opusPacketFrames, readOpusHead, writeOpusHead } from '../opusFormat';
 import type { BlobWindow } from './blobWindow';
 import { SoundImportError, type EncodedPacket, type EncodedSource } from './demuxTypes';
 
-/** The most an Ogg page can be. */
-const MAX_PAGE_BYTES = 65_307;
 /** A packet's length is only for its timestamp, which nothing reads: the output is counted as it comes. */
 const VORBIS_NOMINAL_FRAMES = 1024;
 

@@ -1,13 +1,12 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
 import { sceneAdoption } from '../../../src/app/services/assetTransfer/sceneAdoption';
-import { dropSceneSoundFromJson, linkedMoods, readSceneSound } from '../../../src/app/soundLibrary/sceneSound';
+import { dropSceneSoundFromJson, readSceneSound } from '../../../src/app/soundLibrary/sceneSound';
 import { createViewAtlasStore } from '../../../src/app/storeFactory';
 import { getHistoryStore } from '../../../src/app/stores/history';
 import { createSnapshot } from '../../../src/app/snapshots/sceneSnapshotFormat';
 import { sceneToFile } from '../../../src/app/resources/resourceFileFormat';
 import { vanillaSystemSettings } from '../../../src/app/gameSystems/systemRules';
-import type { Mood } from '../../../src/app/sound/soundTypes';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 
 const SCENE = 'atlas-vtt/collections/default/Crypt.atlasmap';
@@ -31,8 +30,6 @@ function saved(store: ReturnType<typeof createViewAtlasStore>): Record<string, u
   return store.persist.getOptions().partialize!(store.getState()) as Record<string, unknown>;
 }
 
-const mood = (id: string): Mood => ({ id, name: id, order: 1, fadeSeconds: 4, music: 'keep', layers: [] });
-
 describe('reading a scene\'s sound', () => {
   it('takes ids only', () => {
     expect(readSceneSound({ mood: 'a', combatMood: 'b' })).toEqual({ mood: 'a', combatMood: 'b' });
@@ -43,11 +40,6 @@ describe('reading a scene\'s sound', () => {
 
   it('keeps a key of a later version', () => {
     expect(readSceneSound({ mood: 'a', later: 1 })).toEqual({ mood: 'a', later: 1 });
-  });
-
-  it('a link to a mood that is gone reads as no link', () => {
-    expect(linkedMoods({ mood: 'gone', combatMood: 'here' }, [mood('here')])).toEqual({ mood: null, combatMood: mood('here') });
-    expect(linkedMoods(null, [mood('here')])).toEqual({ mood: null, combatMood: null });
   });
 });
 

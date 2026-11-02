@@ -1,6 +1,7 @@
 import { MAX_PREPARED_SOUNDS, type AssetRef, type GmMessage } from '../../protocol/index.ts';
 import type { Mood, SoundRecord } from '../../../sound/soundTypes';
 import type { SceneMoods } from '../../../soundDirector/tableClock';
+import { moodAfter } from '../../../soundLibrary/moodOrdering';
 import { ASSET_USES, type AssetUse } from '../assets/assetUses.ts';
 import type { SoundRefs } from './soundRefs.ts';
 
@@ -16,11 +17,6 @@ export interface OffersPorts {
   recordsOf(mood: Mood): SoundRecord[];
   /** The key a record's copy goes by here; null while it has none, which asks for one. */
   copyKey(record: SoundRecord): string | null;
-}
-
-/** The mood after `id` in its order, wrapping as Next does; the first where none plays. */
-function moodAfter(moods: readonly Mood[], id: string | null): Mood | null {
-  return moods[(moods.findIndex((mood) => mood.id === id) + 1) % Math.max(1, moods.length)] ?? null;
 }
 
 /**

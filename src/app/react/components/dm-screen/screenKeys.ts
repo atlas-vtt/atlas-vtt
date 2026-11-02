@@ -1,9 +1,9 @@
 import { isTextEntryTarget } from '../../../keyboard/textEntry';
 import { isShortcutScopeActive } from '../../../utils/activeLeafGuard';
 
-function isInLibrary(target: EventTarget | null): boolean {
+function isWithin(target: EventTarget | null, selector: string): boolean {
   const node = target as Node | null;
-  return !!node && typeof node.instanceOf === 'function' && node.instanceOf(Element) && node.closest('.atlas-sound-lib') !== null;
+  return !!node && typeof node.instanceOf === 'function' && node.instanceOf(Element) && node.closest(selector) !== null;
 }
 
 /** What a key on the DM screen must leave alone: another dialog, another leaf, or a field it types in. */
@@ -11,7 +11,7 @@ export function screenTakesKey(event: KeyboardEvent, screen: Element | null, vie
   if (event.defaultPrevented || event.isComposing || !isShortcutScopeActive(screen, viewId)) return false;
   if (document.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container, [role="menu"], [aria-modal="true"]')) return false;
   // The sound library is a list with keys of its own: a digit there is no mood.
-  if (isInLibrary(event.target)) return false;
+  if (isWithin(event.target, '.atlas-sound-lib')) return false;
   return !isTextEntryTarget(event.target);
 }
 
@@ -19,8 +19,7 @@ const CONTROLS = 'button, a[href], [role="slider"], [role="radio"]';
 
 /** Whether the key's target is a control of its own, which Enter or an arrow may mean. */
 export function isControlTarget(target: EventTarget | null): boolean {
-  const node = target as Node | null;
-  return !!node && typeof node.instanceOf === 'function' && node.instanceOf(Element) && node.closest(CONTROLS) !== null;
+  return isWithin(target, CONTROLS);
 }
 
 type Direction = 'left' | 'right' | 'up' | 'down';

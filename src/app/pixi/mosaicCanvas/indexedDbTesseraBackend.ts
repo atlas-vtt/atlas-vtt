@@ -1,4 +1,5 @@
 import { tesseraKey, type TesseraRef } from './pyramid';
+import { committed, request } from '../../utils/indexedDbPromises';
 import type { IdentityRecord, ManifestUpdate, PyramidManifest, StoredTessera, TesseraStoreBackend } from './tesseraStore';
 
 /**
@@ -22,21 +23,6 @@ type StoreKey = [string, number, number, number];
 
 export function tesseraDatabaseName(appId: string): string {
   return `atlas-vtt-map-tiles-${appId}`;
-}
-
-function request<T>(req: IDBRequest<T>): Promise<T> {
-  return new Promise((resolve, reject) => {
-    req.onsuccess = (): void => resolve(req.result);
-    req.onerror = (): void => reject(req.error ?? new Error('IndexedDB request failed'));
-  });
-}
-
-function committed(tx: IDBTransaction): Promise<void> {
-  return new Promise((resolve, reject) => {
-    tx.oncomplete = (): void => resolve();
-    tx.onerror = (): void => reject(tx.error ?? new Error('IndexedDB transaction failed'));
-    tx.onabort = (): void => reject(tx.error ?? new Error('IndexedDB transaction aborted'));
-  });
 }
 
 function pyramidRange(hash: string): IDBKeyRange {

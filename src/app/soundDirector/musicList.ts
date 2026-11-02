@@ -37,6 +37,12 @@ export function soundingMusic(state: TableSound, now: number): MusicPlay | null 
   return state.outgoing.findLast((play) => play.fade.at > now) ?? state.music;
 }
 
+/** The track that sounds now. */
+export function soundingTrack(state: TableSound, now: number): SoundInfo | null {
+  const play = soundingMusic(state, now);
+  return (play && musicPosition(play, now)?.track) ?? null;
+}
+
 /** A seed whose shuffled order begins with `key`, from `seed` on. */
 function seedBeginningWith(tracks: readonly SoundInfo[], key: string, seed: number): number {
   const limit = 64 * tracks.length;

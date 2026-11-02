@@ -1,10 +1,12 @@
 /** Ogg pages (RFC 3533): the framing every Atlas sound is stored in. */
 
 const CAPTURE = [0x4f, 0x67, 0x67, 0x53];
-export const PAGE_HEADER_BYTES = 27;
+const PAGE_HEADER_BYTES = 27;
 export const MAX_SEGMENTS = 255;
+/** The most an Ogg page can be. */
+export const MAX_PAGE_BYTES = 65_307;
 
-export const FLAG_CONTINUED = 1;
+const FLAG_CONTINUED = 1;
 export const FLAG_FIRST = 2;
 export const FLAG_LAST = 4;
 

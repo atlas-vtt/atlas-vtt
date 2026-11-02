@@ -39,7 +39,7 @@ const SHORT_CROSSFADE_FRAMES = 480;
 const ALIGN_TOLERANCE = 0.002;
 const WORTH_ALIGNING = 0.5;
 /** 20 ms: a whole period of anything above 50 Hz, so a tone can always line up with itself. */
-export const ALIGN_FRAMES = 960;
+const ALIGN_FRAMES = 960;
 
 export const LOOP_HOLD_FRAMES = LEVEL_FRAMES + BEHIND_FRAMES + ORDINARY_FRAMES + CROSSFADE_FRAMES + ALIGN_FRAMES;
 

@@ -12,10 +12,10 @@ import { readSceneSound } from '../soundLibrary/sceneSound';
 import { isAudioPath } from '../soundLibrary/soundFiles';
 import { SoundLibrary } from '../soundLibrary/SoundLibrary';
 import { isExternalAudioPath } from '../soundLibrary/soundPaths';
-import { provideSoundConversion, type SoundConversionState } from '../soundLibrary/soundConversion';
 import { soundRecordsOf } from '../soundLibrary/soundRecords';
 import { showNotice } from '../ui/notice';
 import { isRecord } from '../utils/guards';
+import type { DeviceStorage } from './deviceFacts';
 import type { CopyCache, CopyMaker, SoundFileAccess } from './soundCopies';
 import type { OutputContext } from './soundOutput';
 import { prepareSource, type PreparedSource } from './sourcePrepare';
@@ -32,7 +32,7 @@ export type DirectorMoods = Pick<MoodStore, 'moodsOf' | 'mood' | 'whenLoaded' | 
 
 /** Everything the director reaches outside itself; tests hand in their own. */
 export interface SoundDirectorDeps {
-  storage: Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
+  storage: DeviceStorage;
   settings: DirectorSettings;
   moods: DirectorMoods;
   presented: Pick<PresentedSceneSource, 'get' | 'onChange'>;
@@ -42,7 +42,6 @@ export interface SoundDirectorDeps {
   prepareSource(source: ArrayBuffer | Blob): Promise<PreparedSource>;
   readPeaks(copy: Blob, frames: number): Promise<Uint8Array<ArrayBuffer>>;
   createContext(): OutputContext;
-  provideConversion(source: SoundConversionState): () => void;
   readRecords(): Promise<SoundRecord[]>;
   /** Calls back when sounds may have been added or changed. */
   onLibraryChange(listener: () => void): () => void;
@@ -99,7 +98,6 @@ export function realDirectorDeps(app: App): SoundDirectorDeps {
     prepareSource,
     readPeaks: readSoundPeaks,
     createContext: () => new AudioContext({ ...SOUND_CONTEXT_OPTIONS, latencyHint: 'playback' }),
-    provideConversion: (source) => provideSoundConversion(app, source),
     readRecords: async () => {
       await assets().initialize();
       return soundRecordsOf(assets());

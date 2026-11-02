@@ -25,7 +25,6 @@ export interface SoundListing {
 export interface SoundLocation {
   /** Null where the folder is not there (the root's disk unplugged, the folder gone). */
   list(folder: string): Promise<SoundListing | null>;
-  stat(path: string): Promise<{ size: number; mtime: number } | null>;
   exists(path: string): Promise<boolean>;
   read(path: string): Promise<Blob>;
   /** A URL a media element can load; null where there is none. */

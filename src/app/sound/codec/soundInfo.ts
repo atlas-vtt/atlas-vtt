@@ -1,12 +1,13 @@
 import type { SoundInfo } from '../soundTypes';
 
 /** Target of the mix, lower than a streaming service's, as several layers sound together. */
-export const TARGET_LUFS = -20;
-export const PEAK_CEILING_DB = -1;
+const TARGET_LUFS = -20;
+const PEAK_CEILING_DB = -1;
 
-const MAX_TRIM_DB = 24;
+/** How far the GM's trim goes either way, in dB. */
+export const MAX_TRIM_DB = 24;
 
-function clampTrim(trimDb: number): number {
+export function clampTrim(trimDb: number): number {
   return Math.max(-MAX_TRIM_DB, Math.min(MAX_TRIM_DB, trimDb));
 }
 

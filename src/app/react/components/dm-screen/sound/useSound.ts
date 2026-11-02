@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { App } from 'obsidian';
 import { AssetService } from '../../../../services/AssetService';
 import { presentedSceneOf } from '../../../../services/presentedScene';
 import type { Mood, SoundRecord } from '../../../../sound/soundTypes';
-import { SoundDirector, type SoundSnapshot } from '../../../../soundDirector/SoundDirector';
+import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
+import type { SoundSnapshot } from '../../../../soundDirector/soundSnapshot';
 import { MoodStore } from '../../../../soundLibrary/MoodStore';
 import { soundRecordsOf } from '../../../../soundLibrary/soundRecords';
 
@@ -30,25 +31,33 @@ export function useMoods(app: App, collectionId: string | null): readonly Mood[]
   );
 }
 
-/** The sounds of a collection, read again whenever the library says it changed. */
-export function useCollectionSounds(app: App, collectionId: string | null): readonly SoundRecord[] {
-  const [sounds, setSounds] = useState<readonly SoundRecord[]>([]);
+/** What `read` answers, read again whenever the library says it changed. Keep `read` the same function while nothing it reads changed; null reads nothing. */
+export function useLibraryRead<T>(app: App, read: (() => Promise<T>) | null, initial: T): T {
+  const [value, setValue] = useState(initial);
   useEffect(() => {
-    if (collectionId === null) return undefined;
+    if (read === null) return undefined;
     let current = true;
-    const read = (): void => {
-      void soundRecordsOf(AssetService.getInstance(app), collectionId).then((records) => {
-        if (current) setSounds(records);
+    const refresh = (): void => {
+      void read().then((answer) => {
+        if (current) setValue(answer);
       });
     };
-    read();
-    const ref = app.workspace.on('atlas-vtt:refresh-assets', read);
+    refresh();
+    const ref = app.workspace.on('atlas-vtt:refresh-assets', refresh);
     return () => {
       current = false;
       app.workspace.offref(ref);
     };
-  }, [app, collectionId]);
-  return sounds;
+  }, [app, read]);
+  return value;
+}
+
+const NO_RECORDS: readonly SoundRecord[] = [];
+
+/** The sounds of a collection. */
+export function useCollectionSounds(app: App, collectionId: string | null): readonly SoundRecord[] {
+  const read = useMemo(() => (collectionId === null ? null : () => soundRecordsOf(AssetService.getInstance(app), collectionId)), [app, collectionId]);
+  return useLibraryRead<readonly SoundRecord[]>(app, read, NO_RECORDS);
 }
 
 export interface CollectionChoice {
@@ -57,25 +66,14 @@ export interface CollectionChoice {
   setCollectionId: (id: string) => void;
 }
 
+const NO_COLLECTIONS: CollectionChoice['collections'] = [];
+
 /** Which collection's moods show: the presented scene's, else the open map's, else the default, until the GM picks another. */
 export function useSoundCollection(app: App, mapPath: string | null): CollectionChoice {
   const assets = AssetService.getInstance(app);
-  const [collections, setCollections] = useState<CollectionChoice['collections']>([]);
+  const readCollections = useCallback(async (): Promise<CollectionChoice['collections']> => (await assets.getCollections()).map(({ id, name }) => ({ id, name })), [assets]);
+  const collections = useLibraryRead(app, readCollections, NO_COLLECTIONS);
   const [picked, setPicked] = useState<string | null>(null);
-  useEffect(() => {
-    let current = true;
-    const read = (): void => {
-      void assets.getCollections().then((list) => {
-        if (current) setCollections(list.map(({ id, name }) => ({ id, name })));
-      });
-    };
-    read();
-    const ref = app.workspace.on('atlas-vtt:refresh-assets', read);
-    return () => {
-      current = false;
-      app.workspace.offref(ref);
-    };
-  }, [app, assets]);
   const presented = presentedSceneOf(app).get()?.filePath;
   const worked = collections.length === 0 ? null
     : (presented ? assets.getCollectionForMap(presented) : null) ?? (mapPath ? assets.getCollectionForMap(mapPath) : null) ?? assets.getDefaultCollectionId();

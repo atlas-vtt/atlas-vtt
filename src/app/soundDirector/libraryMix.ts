@@ -1,5 +1,5 @@
 import type { SoundInfo } from '../sound/soundTypes';
-import { musicPosition, playTrack, soundingMusic } from './musicList';
+import { playTrack, soundingMusic, soundingTrack } from './musicList';
 import { addTrack, type MixTiming, type SoundMix } from './soundMix';
 import type { ReadySounds } from './tableSound';
 
@@ -9,10 +9,7 @@ export interface SoonestTrack {
   at: 'now' | 'next';
 }
 
-const keyAt = (mix: SoundMix, now: number): string | null => {
-  const play = soundingMusic(mix.table, now);
-  return (play && musicPosition(play, now)?.track.key) ?? null;
-};
+const keyAt = (mix: SoundMix, now: number): string | null => soundingTrack(mix.table, now)?.key ?? null;
 
 /** The list with `track` right after the one sounding, moved there if it is on the list already. */
 function withTrackNext(tracks: readonly SoundInfo[], track: SoundInfo, soundingKey: string | null): SoundInfo[] {

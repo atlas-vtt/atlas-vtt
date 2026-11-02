@@ -1,7 +1,5 @@
 import type { SoundRefusal } from './demux/demuxTypes';
-import type { SoundImportJob, SoundImportResult } from './soundConvert';
-
-export type SoundImportRequest = SoundImportJob;
+import type { SoundImportResult } from './soundConvert';
 
 export type SoundImportMessage =
   | { type: 'progress'; share: number }

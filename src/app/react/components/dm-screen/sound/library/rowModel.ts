@@ -11,7 +11,7 @@ export type LibraryRow =
   /** A record whose file is not where it says. */
   | { type: 'waiting'; id: string; sound: SoundAsset; name: string };
 
-export const rowIdOf = (kind: SoundKind, path: string): string => `${kind}:${path}`;
+const rowIdOf = (kind: SoundKind, path: string): string => `${kind}:${path}`;
 
 /** What a folder's rows are: its folders, then its files, then what waits for a file that should lie here. */
 export function folderRows(kind: SoundKind, listing: SoundListing | null, waiting: readonly SoundAsset[]): LibraryRow[] {

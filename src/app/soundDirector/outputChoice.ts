@@ -1,14 +1,13 @@
-import type { App } from 'obsidian';
 import { setOutputDevice } from '../sound/engine/outputDevice';
 import { t } from '../i18n';
-import { loadOutput, saveOutput, type StoredOutput } from './deviceFacts';
+import { loadOutput, saveOutput, type DeviceStorage, type StoredOutput } from './deviceFacts';
 
 /** Which output this device plays on. A device that is gone falls back to the default and is said once. */
 export class OutputChoice {
   private told = false;
 
   constructor(
-    private readonly storage: Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>,
+    private readonly storage: DeviceStorage,
     private readonly notify: (message: string) => void,
   ) {}
 

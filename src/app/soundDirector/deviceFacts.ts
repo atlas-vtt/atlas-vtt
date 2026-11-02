@@ -3,7 +3,7 @@ import type { MoodMusic } from '../sound/soundTypes';
 import type { ActiveMood } from './soundMix';
 import type { MoodMix } from './tableSound';
 
-type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
+export type DeviceStorage = Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>;
 
 /** Facts of this device, never synced: which output it plays on, and what it played last. */
 const OUTPUT_KEY = 'atlas-vtt:sound-output';

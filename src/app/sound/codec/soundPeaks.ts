@@ -1,11 +1,10 @@
 import { BlobWindow } from './demux/blobWindow';
-import { packetsOfPage, readPage } from './oggPages';
+import { MAX_PAGE_BYTES, packetsOfPage, readPage } from './oggPages';
 import { opusPacketFrames, readOpusHead, writeOpusHead } from './opusFormat';
 
 /** More than a card's width ever draws; 400 bytes kept with the copy. */
 export const PEAK_BUCKETS = 400;
 
-const MAX_PAGE_BYTES = 65_307;
 const MAX_QUEUE = 32;
 const QUEUE_WAIT_MS = 10;
 /** Every eighth sample: 6 kHz says as much of how loud a moment is as 48 do. */

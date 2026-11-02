@@ -1,12 +1,10 @@
 import type { Mood, TableSound } from '../sound/soundTypes';
-import { musicPosition, soundingMusic } from './musicList';
+import { soundingTrack } from './musicList';
 import type { SoundShelf } from './soundShelf';
 
 /** What the status bar and the palette name: the mood, else the track, else the first layer. */
 export function whatPlays(table: TableSound, mood: Mood | null, shelf: Pick<SoundShelf, 'recordOfKey'>, now: number): string | null {
   if (mood) return mood.name;
-  const play = soundingMusic(table, now);
-  const track = play && musicPosition(play, now)?.track;
-  const sound = track ?? table.layers[0]?.sound;
+  const sound = soundingTrack(table, now) ?? table.layers[0]?.sound;
   return sound ? (shelf.recordOfKey(sound.key)?.name ?? null) : null;
 }

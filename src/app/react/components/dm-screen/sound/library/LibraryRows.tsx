@@ -4,6 +4,7 @@ import { t } from '../../../../../i18n';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packages/components/primitives/Skeleton';
 import { useScrollbarGutter } from '../../../../../packages/components/primitives/useScrollbarGutter';
 import type { SoundAsset } from '../../../../../services/AssetService';
+import type { SoundRecord } from '../../../../../sound/soundTypes';
 import type { HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
 import { unrecordedSound, recordOfFile } from '../../../../../soundLibrary/libraryRecords';
@@ -103,17 +104,11 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     return path === null ? null : recordOfFile(soundsByPath.get(path) ?? [], path, collectionId);
   }, [audioPathOf, collectionId, soundsByPath]);
 
-  const conversionOf = useCallback((row: Row) => {
+  const soundOfRow = useCallback((row: Row): SoundRecord | null => {
     const path = audioPathOf(row);
     if (row.type !== 'file' || path === null) return null;
     const stored = recordOfRow(row);
-    return director.shelf.stateOf(stored ? soundRecordOf(stored) : unrecordedSound(row.file, path, collectionId ?? ''));
-  }, [audioPathOf, collectionId, director, recordOfRow]);
-
-  const previewIdOf = useCallback((row: Row): string | null => {
-    const path = audioPathOf(row);
-    if (row.type !== 'file' || path === null) return null;
-    return recordOfRow(row)?.id ?? unrecordedSound(row.file, path, collectionId ?? '').id;
+    return stored ? soundRecordOf(stored) : unrecordedSound(row.file, path, collectionId ?? '');
   }, [audioPathOf, collectionId, recordOfRow]);
 
   const inHand = useCallback((row: Row): Row[] => (selected.has(row.id) ? rows.filter((one) => selected.has(one.id)) : [row]), [rows, selected]);
@@ -217,6 +212,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
             const row = rows[item.index];
             if (!row) return null;
             const path = audioPathOf(row);
+            const sound = soundOfRow(row);
             return (
               <LibraryRow
                 key={row.id}
@@ -228,8 +224,8 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
                 renaming={renaming === row.id}
                 count={row.type === 'folder' ? library.countOf(row.kind, row.path) : null}
                 held={path === null ? undefined : held.get(path)}
-                previewing={previewing !== null && previewing === previewIdOf(row)}
-                conversion={conversionOf(row)}
+                previewing={previewing !== null && previewing === sound?.id}
+                conversion={sound && director.shelf.stateOf(sound)}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${item.start}px)` }}
               />
             );

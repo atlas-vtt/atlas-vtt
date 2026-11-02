@@ -1,7 +1,7 @@
 /** Below a collection: the sounds' record files. */
 export const SOUNDS_FOLDER = 'sounds';
 
-export const AUDIO_EXTENSIONS: ReadonlySet<string> = new Set(['mp3', 'wav', 'flac', 'ogg', 'opus', 'm4a', 'aac', 'webm']);
+const AUDIO_EXTENSIONS: ReadonlySet<string> = new Set(['mp3', 'wav', 'flac', 'ogg', 'opus', 'm4a', 'aac', 'webm']);
 
 /** What a file picker offers: the extensions, since the system knows no type for some of them. */
 export const AUDIO_ACCEPT = [...AUDIO_EXTENSIONS].map((extension) => `.${extension}`).join(',');

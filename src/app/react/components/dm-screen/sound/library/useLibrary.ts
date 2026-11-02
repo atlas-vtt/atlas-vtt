@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import type { App } from 'obsidian';
 import { AssetService, type SoundAsset } from '../../../../../services/AssetService';
 import { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
 import { heldInMix, type HeldInMix } from '../../../../../soundDirector/libraryDesk';
-import { useSoundValue } from '../useSound';
+import { useLibraryRead, useSoundValue } from '../useSound';
 
 const NO_SOUNDS: readonly SoundAsset[] = [];
 
@@ -13,25 +13,10 @@ export function useLibraryVersion(library: SoundLibrary): number {
   return useSyncExternalStore(useCallback((listener: () => void) => library.onChange(listener), [library]), () => library.version);
 }
 
-/** Every sound record, in every collection, read again whenever the library says it changed. */
+/** Every sound record, in every collection. */
 export function useAllSounds(app: App): readonly SoundAsset[] {
-  const [sounds, setSounds] = useState<readonly SoundAsset[]>(NO_SOUNDS);
-  useEffect(() => {
-    let current = true;
-    const assets = AssetService.getInstance(app);
-    const read = (): void => {
-      void assets.getAssets(undefined, 'sound').then((records) => {
-        if (current) setSounds(records);
-      });
-    };
-    read();
-    const ref = app.workspace.on('atlas-vtt:refresh-assets', read);
-    return () => {
-      current = false;
-      app.workspace.offref(ref);
-    };
-  }, [app]);
-  return sounds;
+  const read = useCallback((): Promise<readonly SoundAsset[]> => AssetService.getInstance(app).getAssets(undefined, 'sound'), [app]);
+  return useLibraryRead(app, read, NO_SOUNDS);
 }
 
 /** What the mix holds, by file. It changes only when a commit or a copy does, so a fader's move renders no row. */

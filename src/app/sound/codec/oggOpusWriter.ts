@@ -120,7 +120,7 @@ function fittingSeekTable(entries: readonly SeekEntry[]): readonly SeekEntry[] {
 }
 
 /** The two header pages, each holding one packet. */
-export function oggOpusHeader(head: Uint8Array, comments: readonly string[], serial: number): Uint8Array[] {
+function oggOpusHeader(head: Uint8Array, comments: readonly string[], serial: number): Uint8Array[] {
   const tags = writeOpusTags(comments);
   return [
     writePage({ flags: FLAG_FIRST, granule: 0, serial, sequence: 0, segments: lacingOf(head.length), body: [head] }),

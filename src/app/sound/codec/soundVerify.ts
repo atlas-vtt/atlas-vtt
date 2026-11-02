@@ -1,9 +1,8 @@
-import { packetsOfPage, readPage, OggCorruptError } from './oggPages';
+import { MAX_PAGE_BYTES, packetsOfPage, readPage, OggCorruptError } from './oggPages';
 import { BlobWindow } from './demux/blobWindow';
 import { SoundImportError } from './demux/demuxTypes';
 import { opusPacketFrames, readOpusHead, writeOpusHead } from './opusFormat';
 
-const MAX_PAGE_BYTES = 65_307;
 const MAX_QUEUE = 32;
 const QUEUE_WAIT_MS = 10;
 const PROGRESS_STEP = 0.05;

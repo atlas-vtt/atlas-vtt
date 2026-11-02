@@ -1,5 +1,5 @@
 import { Pacer } from '../../marks/index.ts';
-import { parsePlayerSoundState, isRecord, type AssetRef, type GmMessage } from '../../protocol/index.ts';
+import { parsePlayerSoundState, isRecord, type GmMessage } from '../../protocol/index.ts';
 import { JOIN_SAMPLES, TableClockSync } from '../../../sound/engine/tableClockSync';
 import type { Mood, SoundBytes, SoundInfo, SoundRecord, TableSound } from '../../../sound/soundTypes';
 import type { SoundSnapshot } from '../../../soundDirector/soundSnapshot';
@@ -15,7 +15,7 @@ import { SoundRefs, type SoundRefsPorts } from './soundRefs.ts';
 import { creditOf, keysOfState, wireState } from './soundWire.ts';
 
 /** How far ahead a change begins online, so that the state has reached every page in time. */
-export const ONLINE_LEAD_MS = 1000;
+const ONLINE_LEAD_MS = 1000;
 /** A moving fader sends about four states a second, and always the last. */
 export const SOUND_SEND_MS = 250;
 /** The Sound page hears how uploads go at most this often. */
@@ -214,8 +214,7 @@ export class TableSoundShare implements PlayersSounds {
   }
 
   private uploading(): number {
-    const keys = this.refs.keys();
-    return keys.filter((key) => {
+    return this.refs.keys().filter((key) => {
       const ref = this.refs.known(key);
       return ref && this.ports.copyState(ref.id).state === 'uploading';
     }).length;
@@ -261,10 +260,7 @@ export class TableSoundShare implements PlayersSounds {
     this.stopState = null;
     this.clock.setPlaying(false);
     const { director } = this.ports;
-    if (tell) {
-      const now = this.clock.now();
-      this.sendWire(stopAll(this.table(), now, SEND_OFF_FADE_MS));
-    }
+    if (tell) this.sendWire(stopAll(this.table(), this.clock.now(), SEND_OFF_FADE_MS));
     director.useTableClock(null);
     director.useAudience(null);
     this.lastSent = null;
@@ -288,8 +284,7 @@ export class TableSoundShare implements PlayersSounds {
   private sendWire(table: TableSound): void {
     const { shelf } = this.ports.director;
     const state = wireState(table, (key) => {
-      const asset: AssetRef | null | undefined = this.refs.known(key);
-      return { key: this.refs.wireKey(key), asset: asset ?? undefined, credit: creditOf(shelf.recordOfKey(key)) };
+      return { key: this.refs.wireKey(key), asset: this.refs.known(key) ?? undefined, credit: creditOf(shelf.recordOfKey(key)) };
     });
     const text = JSON.stringify(state);
     if (text === this.lastKey) return;

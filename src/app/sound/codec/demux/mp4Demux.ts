@@ -153,10 +153,8 @@ function sampleDuration(moov: Uint8Array, stbl: Box): number {
 
 /** An edit list's start and length: how a file says where its audio begins past the encoder's priming. */
 function readEdit(moov: Uint8Array, trak: Box, mediaScale: number, movieScale: number): { skip: number; total: number | null } {
-  const elst = (() => {
-    const edts = child(moov, trak, 'edts');
-    return edts && child(moov, edts, 'elst');
-  })();
+  const edts = child(moov, trak, 'edts');
+  const elst = edts && child(moov, edts, 'elst');
   if (!elst) return { skip: 0, total: null };
   const view = new DataView(moov.buffer, moov.byteOffset, moov.byteLength);
   const version = moov[elst.start] ?? 0;

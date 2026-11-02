@@ -2,6 +2,7 @@ import type { App } from 'obsidian';
 import { t } from '../i18n';
 import type { LocalLevels } from '../sound/engine/mixerGraph';
 import type { Mood, SoundRecord, TableSound } from '../sound/soundTypes';
+import { moodAfter } from '../soundLibrary/moodOrdering';
 import { loadLastMix, type LastMix, type StoredOutput } from './deviceFacts';
 import { noteDirector, openedDirector } from './directorRegistry';
 import { LastMixKeeper } from './lastMixKeeper';
@@ -21,8 +22,6 @@ import { stopFade } from './tableSound';
 import { stopAll } from './liveEdits';
 import type { AudienceLine, TableClock } from './tableClock';
 
-export type { SoundSnapshot } from './soundSnapshot';
-
 const SHELF_AFTER_FADE_MS = 500;
 
 /**
@@ -41,11 +40,6 @@ export class SoundDirector {
     return director;
   }
 
-  /** The app's director if one was opened. */
-  static existing(app: App): SoundDirector | undefined {
-    return openedDirector(app);
-  }
-
   static release(app: App): void {
     openedDirector(app)?.destroy();
     noteDirector(app, null);
@@ -62,24 +56,20 @@ export class SoundDirector {
   private readonly listeners = new Set<() => void>();
   private readonly stateListeners = new Set<(state: TableSound) => void>();
   private stops: Array<() => void> = [];
-  private levels: LocalLevels;
   private on = false;
   private closeShelf = 0;
-  private meterViews = 0;
   private readonly lastMix: LastMixKeeper;
   private readonly choice: OutputChoice;
   private readonly previews: SoundPreview;
   private readonly dropSettings: () => void;
 
   constructor(private readonly deps: SoundDirectorDeps) {
-    const { musicDb, ambienceDb, masterDb } = deps.settings.getSoundSettings();
-    this.levels = { musicDb, ambienceDb, masterDb };
     this.output = new SoundOutput({
       createContext: () => deps.createContext(),
       tableNow: () => this.table.now(),
       resolve: (key) => this.shelf.bytes(key),
-      levels: () => this.levels,
-      onSoundError: (key, error) => this.soundFailed(key, error),
+      levels: () => this.current.levels,
+      onSoundError: (key, error) => this.shelf.copyFailed(key, error),
       onLifecycle: (lifecycle) => this.publish({ lifecycle }),
       wait: (ms) => new Promise((resolve) => { window.setTimeout(resolve, ms); }),
     });
@@ -147,8 +137,7 @@ export class SoundDirector {
   pressNext(collectionId: string): void {
     const active = this.table.mix.mood;
     const inCollection = active?.collectionId ?? collectionId;
-    const moods = this.deps.moods.moodsOf(inCollection);
-    const next = moods[(moods.findIndex((mood) => mood.id === active?.id) + 1) % Math.max(1, moods.length)];
+    const next = moodAfter(this.deps.moods.moodsOf(inCollection), active?.id ?? null);
     if (next) this.press(inCollection, next);
   }
 
@@ -176,21 +165,9 @@ export class SoundDirector {
     this.previews.toggle(record);
   }
 
-  channelLevels(): LocalLevels {
-    return this.levels;
-  }
-
   /** While the result has not been called, `readMeters` reads real levels. A view that shows none costs nothing. */
   openMeters(): () => void {
-    this.meterViews++;
-    if (this.meterViews === 1) this.output.showMeters(true);
-    let open = true;
-    return () => {
-      if (!open) return;
-      open = false;
-      this.meterViews--;
-      if (this.meterViews === 0) this.output.showMeters(false);
-    };
+    return this.output.openMeters();
   }
 
   /** The level of each strip now, linear: `music`, `master` and each layer's sound key. */
@@ -200,10 +177,10 @@ export class SoundDirector {
 
   /** A fader writes through at once; `save` is its release, which reaches the settings. */
   setChannelLevels(changes: Partial<LocalLevels>, save: boolean): void {
-    this.levels = { ...this.levels, ...changes };
-    this.output.setLevels(this.levels);
-    this.publish({ levels: this.levels });
-    if (save) this.deps.settings.setSoundSettings(this.levels);
+    const levels = { ...this.current.levels, ...changes };
+    this.output.setLevels(levels);
+    this.publish({ levels });
+    if (save) this.deps.settings.setSoundSettings(levels);
   }
 
   /** The output this device plays on; null is the system's default. */
@@ -244,7 +221,6 @@ export class SoundDirector {
     this.shelf.close();
     const copies = this.shelf.open();
     this.stops = [
-      deps.provideConversion(copies),
       copies.onChanged(() => this.onCopies()),
       deps.presented.onChange(() => this.fights.follow.presentedChanged()),
       deps.onLibraryChange(() => void this.refreshShelf()),
@@ -286,13 +262,6 @@ export class SoundDirector {
     this.desk.joinWaiting();
     this.previews.copiesChanged();
     this.publish({ shelfRevision: this.current.shelfRevision + 1 });
-  }
-
-  /** A copy the cache gave up under a sound is made again; the player keeps asking in the meantime. */
-  private soundFailed(key: string, error: unknown): void {
-    console.error(`[Atlas] Could not play the sound ${key}`, error);
-    const record = this.shelf.recordOfKey(key);
-    if (record) this.shelf.request([record], true);
   }
 
   private lastMixNow(): LastMix {

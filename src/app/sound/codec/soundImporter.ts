@@ -4,8 +4,7 @@ import type { SoundImportMessage } from './soundImportProtocol';
 import SoundImportWorker from './soundImportWorker?worker&inline';
 
 export { SoundImportError } from './demux/demuxTypes';
-export type { SoundRefusal } from './demux/demuxTypes';
-export type { ImportProgress, SoundImportJob, SoundImportKind, SoundImportResult } from './soundConvert';
+export type { ImportProgress, SoundImportJob, SoundImportResult } from './soundConvert';
 
 /**
  * Converts vault files to Atlas' Ogg Opus, one at a time, each in a worker of its own that is stopped when it

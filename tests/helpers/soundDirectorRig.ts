@@ -167,7 +167,6 @@ export function directorRig(records: SoundRecord[], { on = true, ready = true }:
       contexts.push(context);
       return context;
     },
-    provideConversion: () => () => undefined,
     readRecords: () => Promise.resolve(records),
     onLibraryChange: (listener) => {
       libraryListeners.add(listener);

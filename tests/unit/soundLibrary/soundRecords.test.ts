@@ -5,7 +5,8 @@ import { isRecordFileCandidate } from '../../../src/app/services/library/library
 import { ownedPaths, primaryPath, recordFilePath } from '../../../src/app/services/vault-sync/assetFiles';
 import { isReservedCollectionPath } from '../../../src/app/services/vault-sync/reservedPaths';
 import { isAudioPath } from '../../../src/app/soundLibrary/soundFiles';
-import { defaultSoundKind, MAX_TRIM_DB, soundRecordOf } from '../../../src/app/soundLibrary/soundRecords';
+import { MAX_TRIM_DB } from '../../../src/app/sound/codec/soundInfo';
+import { defaultSoundKind, soundRecordOf } from '../../../src/app/soundLibrary/soundRecords';
 
 const SOUND: SoundAsset = {
   id: 'sound-1', type: 'sound', name: 'Rain', tags: ['weather'], collection: 'Fen', createdAt: 1, modifiedAt: 2,

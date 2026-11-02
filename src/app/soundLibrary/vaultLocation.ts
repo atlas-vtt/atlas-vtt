@@ -36,11 +36,6 @@ export class VaultLocation implements SoundLocation {
     return sortedListing(folders, files);
   }
 
-  stat(path: string): Promise<{ size: number; mtime: number } | null> {
-    const file = this.entry(path);
-    return Promise.resolve(file instanceof TFile ? { size: file.stat.size, mtime: file.stat.mtime } : null);
-  }
-
   exists(path: string): Promise<boolean> {
     return Promise.resolve(isPathTaken(this.app, this.vaultPath(path)));
   }

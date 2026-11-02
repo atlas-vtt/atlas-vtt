@@ -1,9 +1,7 @@
-import type { Asset, AssetOfType, AssetService, SoundAsset } from '../services/AssetService';
+import type { AssetOfType, AssetService, SoundAsset } from '../services/AssetService';
+import { clampTrim } from '../sound/codec/soundInfo';
 import type { SoundKind, SoundLicence, SoundRecord, SoundStreaming } from '../sound/soundTypes';
 import { isFiniteNumber, isRecord } from '../utils/guards';
-
-/** How far the GM's trim goes either way, in dB. */
-export const MAX_TRIM_DB = 24;
 
 /** Under this length a file named like a loop is ambience. */
 const AMBIENCE_MAX_SECONDS = 10 * 60;
@@ -17,8 +15,6 @@ export function defaultSoundKind(fileName: string, seconds: number | null): Soun
   const short = seconds === null || seconds < AMBIENCE_MAX_SECONDS;
   return short && LOOP_LOOKING_NAME.test(fileName) ? 'ambience' : 'music';
 }
-
-export const clampTrim = (db: number): number => Math.max(-MAX_TRIM_DB, Math.min(MAX_TRIM_DB, db));
 
 function readLoop(value: unknown): SoundRecord['loop'] {
   if (!isRecord(value)) return undefined;
@@ -52,12 +48,6 @@ export function soundRecordOf(asset: SoundAsset): SoundRecord {
 export async function soundRecordsOf(assets: Pick<AssetService, 'getAssets'>, collectionId?: string): Promise<SoundRecord[]> {
   const sounds: AssetOfType<'sound'>[] = await assets.getAssets(collectionId, 'sound');
   return sounds.map(soundRecordOf);
-}
-
-/** One sound by id, in whichever collection it lies; null when none is. */
-export async function soundRecordById(assets: Pick<AssetService, 'getAssetById'>, id: string): Promise<SoundRecord | null> {
-  const asset: Asset | null = await assets.getAssetById(id);
-  return asset?.type === 'sound' ? soundRecordOf(asset) : null;
 }
 
 /** Fields to change on sounds; `undefined` removes the field. */

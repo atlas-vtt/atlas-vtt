@@ -2,7 +2,7 @@ import { SoundImportError, type ImportProgress, type SoundImportJob, type SoundI
 import { soundInfoOf, type SoundMeasure } from '../sound/codec/soundInfo';
 import type { CachedSound, SoundIdentity } from '../sound/codec/opusCache';
 import type { SoundBytes, SoundInfo, SoundRecord } from '../sound/soundTypes';
-import type { SoundConversion, SoundConversionState } from '../soundLibrary/soundConversion';
+import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConversion';
 import type { PreparedSource } from './sourcePrepare';
 
 export interface SoundFileAccess {
@@ -29,7 +29,6 @@ export interface CopyMaker {
   run(job: SoundImportJob, onProgress?: ImportProgress): Promise<SoundImportResult>;
 }
 
-const NOT_CONVERTED: SoundConversion = { state: 'not-converted' };
 const READY: SoundConversion = { state: 'ready' };
 
 interface CopyEntry {
@@ -49,7 +48,7 @@ const identityOf = (path: string, stat: { size: number; mtime: number }): string
  * bytes of each. A conversion runs in a worker of its own, so it costs the map no frame; what the GM
  * pressed goes first.
  */
-export class SoundCopies implements SoundConversionState {
+export class SoundCopies {
   private readonly entries = new Map<string, CopyEntry>();
   private readonly keys = new Map<string, string>();
   private readonly listeners = new Set<() => void>();
@@ -70,6 +69,7 @@ export class SoundCopies implements SoundConversionState {
     private readonly readPeaks: (copy: Blob, frames: number) => Promise<Uint8Array<ArrayBuffer>>,
   ) {}
 
+  /** The same object while a sound's state is the same, since cards read it on every render. */
   stateOf(sound: SoundRecord): SoundConversion {
     return this.entryOf(sound)?.conversion ?? NOT_CONVERTED;
   }

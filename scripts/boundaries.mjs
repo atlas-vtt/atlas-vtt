@@ -81,6 +81,7 @@ export const BOUNDARIES = {
       "src/app/tools/laserPointerSettings.ts",
       "src/app/utils/guards.ts",
       "src/app/utils/hashing.ts",
+      "src/app/utils/indexedDbPromises.ts",
       "src/app/stores/history.ts",
       "src/app/stores/history/**/*.ts",
       "src/app/stores/exploredEditHistory.ts",

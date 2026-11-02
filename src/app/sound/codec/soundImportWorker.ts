@@ -1,6 +1,6 @@
 import { SoundImportError } from './demux/demuxTypes';
-import { convertSound } from './soundConvert';
-import type { SoundImportMessage, SoundImportRequest } from './soundImportProtocol';
+import { convertSound, type SoundImportJob } from './soundConvert';
+import type { SoundImportMessage } from './soundImportProtocol';
 
 /** Entry of the worker `SoundImporter` runs. Bundled inline into main.js by Vite. */
 
@@ -8,7 +8,7 @@ function reply(message: SoundImportMessage): void {
   self.postMessage(message);
 }
 
-self.addEventListener('message', (event: MessageEvent<SoundImportRequest>) => {
+self.addEventListener('message', (event: MessageEvent<SoundImportJob>) => {
   convertSound(event.data, (share) => reply({ type: 'progress', share })).then(
     (result) => reply({ type: 'done', result }),
     (error: unknown) => {

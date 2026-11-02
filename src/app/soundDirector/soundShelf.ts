@@ -3,9 +3,7 @@ import { SoundCopies } from './soundCopies';
 import type { SoundDirectorDeps } from './directorDeps';
 import type { MoodMix, ReadySounds } from './tableSound';
 import type { SoundRefusal } from '../sound/codec/demux/demuxTypes';
-import type { SoundConversion } from '../soundLibrary/soundConversion';
-
-const NOT_CONVERTED: SoundConversion = { state: 'not-converted' };
+import { NOT_CONVERTED, type SoundConversion } from '../soundLibrary/soundConversion';
 
 /** The sounds there are and which of them can play: the records, and this device's copies of them, while sound is switched on. */
 export class SoundShelf {
@@ -94,6 +92,13 @@ export class SoundShelf {
 
   pinOnly(keys: ReadonlySet<string>): void {
     this.copies?.pinOnly(keys);
+  }
+
+  /** A copy the cache gave up under a sound is made again; the player keeps asking in the meantime. */
+  copyFailed(key: string, error: unknown): void {
+    console.error(`[Atlas] Could not play the sound ${key}`, error);
+    const record = this.recordOfKey(key);
+    if (record) this.request([record], true);
   }
 
   bytes(key: string): ReturnType<SoundCopies['bytes']> {

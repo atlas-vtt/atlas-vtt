@@ -11,7 +11,7 @@ import { nameOfRelative } from './soundPaths';
  * the first in path order where several match, so every device with these files finds the same. A record
  * without a size is left to wait.
  */
-export function relinksIn(
+function relinksIn(
   sounds: readonly SoundAsset[],
   kind: SoundKind,
   files: readonly SoundFileEntry[],

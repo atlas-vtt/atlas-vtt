@@ -33,16 +33,12 @@ export class SoundOutput {
   private player: SoundPlayer | null = null;
   private preview: SoundPlayer | null = null;
   private watchdog: SoundWatchdog | null = null;
-  private metersShown = false;
+  private meterViews = 0;
 
   constructor(private readonly deps: SoundOutputDeps) {}
 
   get isOpen(): boolean {
     return this.context !== null;
-  }
-
-  get lifecycle(): SoundLifecycle {
-    return this.watchdog?.state ?? 'off';
   }
 
   /** Inside the GM's gesture: what lets sound start without being refused. */
@@ -78,10 +74,17 @@ export class SoundOutput {
     this.preview?.setLocalLevels({ musicDb: 0, ambienceDb: 0, masterDb: levels.masterDb });
   }
 
-  /** Levels are read only while the Sound page shows them. The preview is the GM's own and has none. */
-  showMeters(on: boolean): void {
-    this.metersShown = on;
-    this.player?.showMeters(on);
+  /** Levels are read only while the Sound page shows them, until the result is called. The preview is the GM's own and has none. */
+  openMeters(): () => void {
+    this.meterViews++;
+    if (this.meterViews === 1) this.player?.showMeters(true);
+    let open = true;
+    return () => {
+      if (!open) return;
+      open = false;
+      this.meterViews--;
+      if (this.meterViews === 0) this.player?.showMeters(false);
+    };
   }
 
   readMeters(into: Map<string, number>): void {
@@ -105,10 +108,6 @@ export class SoundOutput {
     return () => document.removeEventListener('visibilitychange', changed);
   }
 
-  decodedBytes(): number {
-    return this.player?.decodedBytes() ?? 0;
-  }
-
   waitingKeys(): string[] {
     return this.player?.waitingKeys() ?? [];
   }
@@ -129,7 +128,7 @@ export class SoundOutput {
     followOutputDevice(context);
     this.context = context;
     this.player = this.playerOn(context, this.deps.levels());
-    this.player.showMeters(this.metersShown);
+    this.player.showMeters(this.meterViews > 0);
     this.watchdog = new SoundWatchdog({
       context: () => this.context ?? context,
       rebuild: () => this.rebuild(),

@@ -21,10 +21,6 @@ export class SoundPreview {
     private readonly onChange: (previewing: string | null) => void,
   ) {}
 
-  get isPreviewing(): boolean {
-    return this.previewing !== null;
-  }
-
   toggle(record: SoundRecord | null): void {
     if (record === null || record.id === this.previewing) {
       this.wanted = null;

@@ -8,8 +8,6 @@ import { SoundSources, type ResolveBytes } from './soundSources';
 import { SoundVoice, VOICE_END_SECONDS } from './soundVoice';
 import type { WindowDecode } from './windowDecoder';
 
-export type { LocalLevels } from './mixerGraph';
-
 export interface SoundPlayerOptions {
   context: SoundContext;
   /** The table's clock, in ms. */

@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { AssetService, type SoundAsset } from '../../../src/app/services/AssetService';
 import { prepareCollectionExport } from '../../../src/app/services/collectionBundle/collectionExport';
 import { FileReferenceService } from '../../../src/app/services/FileReferenceService';
-import { soundRecordById, soundRecordsOf, updateSounds } from '../../../src/app/soundLibrary/soundRecords';
+import type { SoundRecord } from '../../../src/app/sound/soundTypes';
+import { soundRecordOf, soundRecordsOf, updateSounds } from '../../../src/app/soundLibrary/soundRecords';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 
 const SOUNDS = 'atlas-vtt/collections/Fen/sounds';
@@ -18,6 +19,11 @@ async function soundAt(audioPath: string, collection = 'Fen'): Promise<SoundAsse
 async function soundIn(name: string): Promise<SoundAsset> {
   await vault.app.vault.create(`${SOUNDS}/${name}`, 'AUDIO');
   return soundAt(`${SOUNDS}/${name}`);
+}
+
+async function soundRecordById(service: AssetService, id: string): Promise<SoundRecord | null> {
+  const asset = await service.getAssetById(id);
+  return asset?.type === 'sound' ? soundRecordOf(asset) : null;
 }
 
 beforeEach(async () => {

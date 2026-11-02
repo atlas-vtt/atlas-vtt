@@ -2,6 +2,7 @@ import { SOUND_RATE } from '../engine/soundMath';
 import { openSoundSource } from './demux/openSoundSource';
 import { SoundImportError, type EncodedSource, type PcmSource, type SoundSource } from './demux/demuxTypes';
 import { LoopEnds, type LoopFinish, type LoopSeam } from './loopEnds';
+import type { Planes } from './loopSeam';
 import { LoudnessMeter, type LoudnessResult } from './loudness';
 import { OpusOutput, queueRoom } from './opusOutput';
 import { Resampler, SilenceTrim, toStereo } from './pcmStages';
@@ -31,8 +32,6 @@ export interface SoundImportResult extends LoudnessResult {
 }
 
 export type ImportProgress = (share: number) => void;
-
-type Planes = Float32Array<ArrayBuffer>[];
 
 /**
  * Everything between the source's samples and the encoder, one piece at a time. It is built from the first
@@ -72,7 +71,7 @@ class PcmPath {
     return this.output ? this.output.room() : null;
   }
 
-  async finish(): Promise<SoundImportResult & { channels: number }> {
+  async finish(): Promise<SoundImportResult> {
     const output = this.output;
     if (this.resampler) this.pass(this.resampler.flush());
     const loop: LoopFinish | null = this.ends ? this.ends.finish((piece) => this.write(piece)) : null;

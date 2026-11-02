@@ -1,5 +1,4 @@
-import { saveLastMix, type LastMix } from './deviceFacts';
-import type { App } from 'obsidian';
+import { saveLastMix, type DeviceStorage, type LastMix } from './deviceFacts';
 
 const SAVE_LAST_MS = 1000;
 
@@ -8,7 +7,7 @@ export class LastMixKeeper {
   private timer: number | null = null;
 
   constructor(
-    private readonly storage: Pick<App, 'loadLocalStorage' | 'saveLocalStorage'>,
+    private readonly storage: DeviceStorage,
     private readonly mixNow: () => LastMix | null,
   ) {}
 
