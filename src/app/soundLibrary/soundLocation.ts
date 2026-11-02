@@ -53,6 +53,14 @@ export class SoundPathError extends Error {
   }
 }
 
+/** A path that is Atlas' own, which no operation of the library may change. */
+export class SoundPathReservedError extends Error {
+  constructor(path: string) {
+    super(`${path} is Atlas' own folder.`);
+    this.name = 'SoundPathReservedError';
+  }
+}
+
 /** Something already lies where a file was to go. */
 export class SoundPathTakenError extends Error {
   constructor(path: string) {

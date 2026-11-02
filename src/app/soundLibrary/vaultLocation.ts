@@ -1,12 +1,17 @@
 import { normalizePath, TFile, TFolder, type App, type EventRef, type TAbstractFile } from 'obsidian';
 import { ensureFolder, isPathTaken } from '../plugin/vaultFolders';
 import { ATLAS_VTT_DIR } from '../services/assetPaths';
-import { isAudioPath, isSoundDataPath } from './soundFiles';
+import { isAudioPath, isSoundDataPath, SOUNDS_DIR } from './soundFiles';
 import { isListableName, joinRelative, nameOfRelative, relativeBelow, safeRelative } from './soundPaths';
-import { SoundPathError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
+import { SoundPathError, SoundPathReservedError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 
-/** Atlas' own folder holds video maps and record files, never the GM's library, but for the default folders. */
-const isAtlasOwn = (path: string): boolean => isSoundDataPath(path) || (path.startsWith(`${ATLAS_VTT_DIR}/`) && path !== `${ATLAS_VTT_DIR}/sounds` && !path.startsWith(`${ATLAS_VTT_DIR}/sounds/`));
+/**
+ * Atlas' own folder holds video maps and record files, never the GM's library, but for what lies in its `sounds`
+ * besides moods and records: the default folders. The two folders above those hold everything else, so they are
+ * Atlas' own too, also for a root above them.
+ */
+const isAtlasOwn = (path: string): boolean =>
+  path === ATLAS_VTT_DIR || path === SOUNDS_DIR || isSoundDataPath(path) || (path.startsWith(`${ATLAS_VTT_DIR}/`) && !path.startsWith(`${SOUNDS_DIR}/`));
 
 /** A linked folder in the vault. Moves go through `fileManager`, so whatever names a file follows it, and deleting goes where the GM's trash setting says. */
 export class VaultLocation implements SoundLocation {
@@ -16,6 +21,13 @@ export class VaultLocation implements SoundLocation {
     const safe = safeRelative(path);
     if (safe === null) throw new SoundPathError(path);
     return normalizePath(safe === '' ? this.root || '/' : joinRelative(this.root, safe));
+  }
+
+  /** Where an operation may change something. A listing that leaves Atlas' own folders out is no guard: a path can reach here from elsewhere. */
+  private changeable(path: string): string {
+    const full = this.vaultPath(path);
+    if (isAtlasOwn(full)) throw new SoundPathReservedError(path);
+    return full;
   }
 
   private entry(path: string): TAbstractFile | null {
@@ -64,14 +76,16 @@ export class VaultLocation implements SoundLocation {
     return file instanceof TFile ? this.app.vault.getResourcePath(file) : null;
   }
 
+  /** The root itself may be made, whichever folder it is: it is the GM's choice, and nothing in it changes. */
   async makeFolder(path: string): Promise<void> {
-    await ensureFolder(this.app, this.vaultPath(path));
+    await ensureFolder(this.app, path === '' ? this.vaultPath(path) : this.changeable(path));
   }
 
   async move(from: string, to: string): Promise<void> {
+    this.changeable(from);
     const file = this.entry(from);
     if (!file) throw new Error(`${from} is not in the vault.`);
-    const target = this.vaultPath(to);
+    const target = this.changeable(to);
     const sameButCase = target.toLowerCase() === file.path.toLowerCase();
     if (isPathTaken(this.app, target) && !sameButCase) throw new SoundPathTakenError(to);
     await this.app.fileManager.renameFile(file, target);
@@ -84,6 +98,8 @@ export class VaultLocation implements SoundLocation {
 
   /** Moves a file or folder of this root to any vault path, so that what names it follows, also into the other root. */
   async moveToVault(from: string, target: string): Promise<void> {
+    this.changeable(from);
+    if (isAtlasOwn(target)) throw new SoundPathReservedError(target);
     const file = this.entry(from);
     if (!file) throw new Error(`${from} is not in the vault.`);
     if (isPathTaken(this.app, target)) throw new SoundPathTakenError(target);
@@ -91,12 +107,13 @@ export class VaultLocation implements SoundLocation {
   }
 
   async write(path: string, content: Blob): Promise<void> {
-    const target = this.vaultPath(path);
+    const target = this.changeable(path);
     if (isPathTaken(this.app, target)) throw new SoundPathTakenError(path);
     await this.app.vault.createBinary(target, await content.arrayBuffer());
   }
 
   async trash(path: string): Promise<void> {
+    this.changeable(path);
     const file = this.entry(path);
     if (file) await this.app.fileManager.trashFile(file);
   }

@@ -12,7 +12,7 @@ import { runLibraryImport } from '../../../../../soundLibrary/runLibraryImport';
 import { AUDIO_ACCEPT, isAudioPath } from '../../../../../soundLibrary/soundFiles';
 import { pickFolder, type FolderChoice } from '../../../../../soundLibrary/SoundFolderPicker';
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
-import { SoundMoveRefusedError, SoundPathTakenError, TrashUnavailableError } from '../../../../../soundLibrary/soundLocation';
+import { SoundMoveRefusedError, SoundPathReservedError, SoundPathTakenError, TrashUnavailableError } from '../../../../../soundLibrary/soundLocation';
 import { nameOfRelative, safeName } from '../../../../../soundLibrary/soundPaths';
 import type { LinkOutcome } from '../../../../../soundLibrary/SoundRoots';
 import { defaultSoundKind, type SoundChanges, type StoredSound } from '../../../../../soundLibrary/soundRecords';
@@ -26,6 +26,7 @@ import { runInBackground } from '../../../../../utils/backgroundTask';
 function failure(error: unknown): string {
   if (error instanceof TrashUnavailableError) return t('audio.library.noTrash');
   if (error instanceof SoundPathTakenError) return t('audio.library.nameTaken');
+  if (error instanceof SoundPathReservedError) return t('audio.library.reserved');
   if (error instanceof SoundMoveRefusedError) return t('audio.library.moveWouldLose', { folder: nameOfRelative(error.folder) });
   console.error('[Atlas] The sound library could not do that', error);
   return t('audio.library.failed');

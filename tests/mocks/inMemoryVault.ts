@@ -171,6 +171,12 @@ export function createInMemoryApp(seed: InMemoryVaultSeed = {}): InMemoryApp {
     }),
     getFileByPath: vi.fn((path: string): TFile | null => (files.has(path) && !isHiddenPath(path) ? fileAt(path) : null)),
     getFolderByPath: vi.fn((path: string): TFolder | null => (folders.has(path) && !isHiddenPath(path) ? folderAt(path) : null)),
+    getRoot: vi.fn((): TFolder => {
+      const root = new TFolder('/');
+      const atTop = (path: string): boolean => !path.includes('/');
+      root.children = [...[...folders].filter(atTop).map(folderAt), ...[...files.keys()].filter(atTop).map(fileAt)];
+      return root;
+    }),
     getAllFolders: vi.fn((includeRoot = false): TFolder[] => [
       ...(includeRoot ? [new TFolder('/')] : []),
       ...[...folders].filter((path) => !isHiddenPath(path)).map(folderAt),

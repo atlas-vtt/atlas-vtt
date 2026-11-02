@@ -1,6 +1,6 @@
 import { ATLAS_VTT_DIR } from '../services/assetPaths';
 
-const SOUNDS_DIR = `${ATLAS_VTT_DIR}/sounds`;
+export const SOUNDS_DIR = `${ATLAS_VTT_DIR}/sounds`;
 
 /** One JSON per mood: Atlas' own folder, the GM's for the whole vault, never audio and never a root. */
 export const MOODS_FOLDER = `${SOUNDS_DIR}/moods`;
