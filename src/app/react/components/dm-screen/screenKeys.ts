@@ -9,7 +9,7 @@ export function isWithin(target: EventTarget | null, selector: string): boolean 
 /** What a key on the DM screen must leave alone: another dialog, another leaf, or a field it types in. */
 export function screenTakesKey(event: KeyboardEvent, screen: Element | null, viewId: string | undefined): boolean {
   if (event.defaultPrevented || event.isComposing || !isShortcutScopeActive(screen, viewId)) return false;
-  if (document.querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container, [role="menu"], [aria-modal="true"]')) return false;
+  if ((screen?.ownerDocument ?? document).querySelector('.atlas-onboarding-overlay, .atlas-hotkey-help, .modal-container, [role="menu"], [aria-modal="true"]')) return false;
   return !isTextEntryTarget(event.target);
 }
 

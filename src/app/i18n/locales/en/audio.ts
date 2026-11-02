@@ -189,6 +189,7 @@ export const audio = {
 
   'audio.command.mood': 'Play mood: {name}',
   'audio.command.next': 'Next mood',
+  'audio.command.openPage': 'Open Sound page',
   'audio.command.silence': 'Silence or bring back',
   'audio.command.stop': 'Stop music and ambience',
 

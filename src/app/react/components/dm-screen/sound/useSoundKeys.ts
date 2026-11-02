@@ -89,7 +89,9 @@ export function useSoundKeys({ active, rootRef, viewId, director, moods, moveMoo
         director.desk.toggleSilence();
       }
     };
-    window.addEventListener('keydown', handle, true);
-    return () => window.removeEventListener('keydown', handle, true);
+    // The tab may stand in a popout, whose keys its own window hears.
+    const win = rootRef.current?.ownerDocument.defaultView ?? window;
+    win.addEventListener('keydown', handle, true);
+    return () => win.removeEventListener('keydown', handle, true);
   }, [active, rootRef, viewId, director, moods, moveMood]);
 }

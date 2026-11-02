@@ -10,7 +10,6 @@ import { SoundRecordStore } from '../../../../soundLibrary/SoundRecordStore';
 import { showNotice } from '../../../../ui/notice';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { baseName } from '../../../../utils/pathUtils';
-import { useAtlasStore } from '../../../ViewStoreContext';
 import { AddAmbience, LayerStrip, MasterStrip, WaitingStrip } from './DeskStrips';
 import { DeskHeader } from './DeskHeader';
 import { MusicCard } from './MusicCard';
@@ -36,13 +35,12 @@ export function SoundDesk({ app, director, moods, onSaveAs }: SoundDeskProps): R
   const layerKeys = useSoundValue(director, ({ mix }) => mix.table.layers.map((play) => play.sound.key).join(SEPARATOR));
   const waitingLayers = useSoundValue(director, ({ mix }) => mix.waitingLayers.map((layer) => layer.sound).join(SEPARATOR));
   const holdsSound = useSoundValue(director, ({ mix }) => mix.table.music !== null || mix.table.layers.length > 0 || mix.waitingMusic !== null || mix.waitingLayers.length > 0);
-  const showLibrary = useAtlasStore((state) => state.showSoundLibrary);
   const section = useRef<HTMLElement>(null);
   const choose = useCallback((kind: SoundKind): void => {
-    showLibrary(kind);
+    SoundLibrary.forApp(app).place.show(kind);
     const library = section.current?.parentElement?.querySelector('.atlas-sound-lib');
     library?.querySelector<HTMLElement>('.atlas-sound-lib__rows, button')?.focus();
-  }, [showLibrary]);
+  }, [app]);
   const chooseMusic = useCallback(() => choose('music'), [choose]);
   const [dropTarget, setDropTarget] = useState(false);
   const mix = useRef<HTMLDivElement>(null);

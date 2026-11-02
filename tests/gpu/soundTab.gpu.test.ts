@@ -234,10 +234,10 @@ describe('the DM screen’s Sound page', () => {
 
     // Both take focus to the library, at the root each belongs to.
     await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-ambience-tile')!);
-    expect(tab.store.getState().soundLibraryRoot).toBe('ambience');
+    expect(tab.library.place.current.kind).toBe('ambience');
     expect(document.activeElement?.closest('.atlas-sound-lib')).not.toBeNull();
     await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-pick')!);
-    expect(tab.store.getState().soundLibraryRoot).toBe('music');
+    expect(tab.library.place.current.kind).toBe('music');
     expect(document.activeElement?.closest('.atlas-sound-lib')).not.toBeNull();
     expect(box('.atlas-sound-desk').height).toBe(336);
   });

@@ -12,7 +12,6 @@ import { SoundLibrary } from '../../../../soundLibrary/SoundLibrary';
 import { useScrollbarGutter } from '../../../../packages/components/primitives/useScrollbarGutter';
 import { runInBackground } from '../../../../utils/backgroundTask';
 import { useAtlasUI } from '../../../root/AtlasUIContext';
-import { useViewStoreHook } from '../../../ViewStoreContext';
 import { LibraryView } from './library/LibraryView';
 import { MeterBoard } from './meterBoard';
 import { MoodGrid } from './MoodGrid';
@@ -27,13 +26,12 @@ interface SoundPaneProps {
 }
 
 /**
- * The DM screen's Sound page. It sends intents only: what plays belongs to the app's `SoundDirector`,
- * so this page can close at any moment and the music goes on. A press changes the room; nothing here
- * ever has to be searched for during play.
+ * The Sound page, on the DM screen and in a tab of its own (`SoundView`). It sends intents only: what
+ * plays belongs to the app's `SoundDirector`, so this page can close at any moment and the music goes
+ * on. A press changes the room; nothing here ever has to be searched for during play.
  */
 export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
   const { app, view } = useAtlasUI();
-  const store = useViewStoreHook();
   const director = SoundDirector.forApp(app);
   const moods = useMoods(app);
   const sounds = useStoredSounds(app);
@@ -65,8 +63,9 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
     if (!mayCarryAudio(event.dataTransfer)) return;
     event.preventDefault();
     const files = [...event.dataTransfer.files];
-    const { soundLibraryRoot, soundLibraryFolder } = store.getState();
-    runInBackground(runLibraryImport(SoundLibrary.forApp(app), files, soundLibraryRoot, soundLibraryFolder), 'Importing sounds', t('audio.couldNotAdd', { files: formatList(files.map((file) => file.name)) }));
+    const library = SoundLibrary.forApp(app);
+    const { kind, folder } = library.place.current;
+    runInBackground(runLibraryImport(library, files, kind, folder), 'Importing sounds', t('audio.couldNotAdd', { files: formatList(files.map((file) => file.name)) }));
   };
 
   return (

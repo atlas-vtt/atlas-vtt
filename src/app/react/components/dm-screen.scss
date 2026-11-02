@@ -90,7 +90,7 @@
 // With pages it fills the view, and what it holds keeps one inset from all four edges: the map's top bar lies blurred
 // under the backdrop, nothing to clear. The panes' shadows need the room inside the screen, so the inset is padding of the rows.
 .atlas-dm-screen.atlas-dm-screen--pages {
-  --atlas-dm-screen-inset: clamp(#{$spacing-l}, 3cqi, 64px);
+  --atlas-dm-screen-inset: #{$dm-screen-inset};
   width: 100%;
   height: 100%;
   max-height: none;

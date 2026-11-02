@@ -1,9 +1,11 @@
 import { setIcon, type Plugin } from 'obsidian';
 import { t } from '../i18n';
+import { showSoundView } from '../sound-view';
 import { MoodStore } from '../soundLibrary/MoodStore';
 import { SoundDirector } from '../soundDirector/SoundDirector';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
+import { runInBackground } from '../utils/backgroundTask';
 
 const STATUS_REFRESH_MS = 5000;
 
@@ -59,6 +61,15 @@ function registerMoodCommands(plugin: Plugin, director: SoundDirector): () => vo
 
 function registerSoundCommands(plugin: Plugin, director: SoundDirector): void {
   const playing = (): boolean => director.isOn && isPlaying(director.snapshot().mix.table, director.now());
+  plugin.addCommand({
+    id: 'sound-open-page',
+    name: t('audio.command.openPage'),
+    checkCallback: (checking) => {
+      if (!director.isOn) return false;
+      if (!checking) runInBackground(showSoundView(plugin.app), 'Opening the Sound page', t('audio.library.failed'));
+      return true;
+    },
+  });
   plugin.addCommand({
     id: 'sound-next-mood',
     name: t('audio.command.next'),
