@@ -316,6 +316,20 @@ describe('the DM screen’s Sound page', () => {
     expect(place()).toBeLessThan(0.05);
   });
 
+  it('marks the moods linked to the open scene', async () => {
+    await open1644();
+    if (!tab) return;
+    const [first, second] = [...document.querySelectorAll<HTMLElement>('.atlas-sound-mood')];
+    expect(document.querySelector('.atlas-sound-mood__link')).toBeNull();
+    const moodOf = (tile: HTMLElement | undefined): string => tile?.querySelector<HTMLElement>('[data-sound-mood]')?.dataset.soundMood ?? '';
+    const { setSceneSound } = tab.store.getState();
+    act(() => setSceneSound({ mood: moodOf(first), combatMood: moodOf(second) }));
+    expect(first?.querySelector('.atlas-sound-mood__link')?.getAttribute('aria-label')).toBe('Linked to this scene');
+    expect(second?.querySelector('.atlas-sound-mood__link')?.getAttribute('aria-label')).toBe('Plays in fights in this scene');
+    act(() => setSceneSound(null));
+    expect(document.querySelector('.atlas-sound-mood__link')).toBeNull();
+  });
+
   it('says changed once the mix differs, saves to the mood, and offers clearing it in a menu', async () => {
     await open1644();
     if (!tab) return;

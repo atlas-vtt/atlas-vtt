@@ -4,7 +4,7 @@ import { t } from '../../../../../i18n';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packages/components/primitives/Skeleton';
 import { useScrollbarGutter } from '../../../../../packages/components/primitives/useScrollbarGutter';
 import type { SoundRecord } from '../../../../../sound/soundTypes';
-import type { HeldInMix } from '../../../../../soundDirector/libraryDesk';
+import { soundsNow, type HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
 import { recordsByFile, standingRecord, unrecordedSound } from '../../../../../soundLibrary/libraryRecords';
 import { carriesSounds, writeSoundDrag } from '../../../../../soundLibrary/soundDrag';
@@ -16,6 +16,7 @@ import { showNotice } from '../../../../../ui/notice';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { moveFocus } from '../../screenKeys';
 import { useSoundValue } from '../useSound';
+import { useSoundingKey } from './useLibrary';
 import { LibraryRow, type RowHandlers } from './LibraryRow';
 import { dropOnFolder } from './libraryDrop';
 import { entryOfRow, selectionAfter, type LibraryRow as Row } from './rowModel';
@@ -69,6 +70,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
   const [renaming, setRenaming] = useState<string | null>(null);
   const menu = useContextMenu();
   const previewing = useSoundValue(director, (snapshot) => snapshot.previewing);
+  const soundingKey = useSoundingKey(director);
   useSoundValue(director, (snapshot) => snapshot.shelfRevision);
 
   const virtualizer = useVirtualizer({
@@ -124,19 +126,25 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     }), at, { returnFocus: anchorElement ?? scroller.current });
   }, [actions, inHand, menu, recordOfRow, selected]);
 
-  /** Takes a row out of the mix where it is in it, and otherwise puts what is in hand there. */
-  const toggleInMix = useCallback((row: Row, music: 'now' | 'next'): void => {
-    if (row.type !== 'file') return;
+  const heldOf = useCallback((row: Row): HeldInMix | undefined => {
     const path = audioPathOf(row);
-    const inMix = path === null ? undefined : held.get(path);
-    if (inMix) actions.takeOut(inMix);
-    else actions.toMix(inHand(row).flatMap((one) => (one.type === 'file' ? [one.file] : [])), row.file.kind === 'music' ? music : 'add');
-  }, [actions, audioPathOf, held, inHand]);
+    return path === null ? undefined : held.get(path);
+  }, [audioPathOf, held]);
+
+  const sendToMix = useCallback((row: Row, music: 'now' | 'next'): void => {
+    if (row.type !== 'file') return;
+    actions.toMix(inHand(row).flatMap((one) => (one.type === 'file' ? [one.file] : [])), row.file.kind === 'music' ? music : 'add');
+  }, [actions, inHand]);
 
   const primary = useCallback((row: Row): void => {
-    if (row.type === 'folder') onOpenFolder(row);
-    else toggleInMix(row, 'next');
-  }, [onOpenFolder, toggleInMix]);
+    if (row.type === 'folder') {
+      onOpenFolder(row);
+      return;
+    }
+    const inMix = heldOf(row);
+    if (inMix) actions.takeOut(inMix);
+    else sendToMix(row, 'next');
+  }, [actions, heldOf, onOpenFolder, sendToMix]);
 
   const handlers = useMemo<RowHandlers>(() => ({
     onPress: (row, event) => {
@@ -150,7 +158,9 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     onPrimary: primary,
     onPlay: (row) => {
       director.preview(null);
-      toggleInMix(row, 'now');
+      const inMix = heldOf(row);
+      if (inMix && soundsNow(inMix, soundingKey)) actions.takeOut(inMix);
+      else sendToMix(row, 'now');
     },
     onPreview: (row) => {
       if (row.type === 'file') actions.preview(row.file);
@@ -177,7 +187,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
       const extension = row.type === 'file' ? row.file.name.slice(row.name.length) : '';
       actions.rename(entry, `${safe}${extension}`);
     },
-  }), [actions, anchor, director, inHand, openMenu, primary, rows, selected, toggleInMix]);
+  }), [actions, anchor, director, heldOf, inHand, openMenu, primary, rows, selected, sendToMix, soundingKey]);
 
   const onLeave = (direction: 'left' | 'right' | 'up'): void => {
     const list = scroller.current;
@@ -231,6 +241,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
                 renaming={renaming === row.id}
                 count={row.type === 'folder' ? library.countOf(row.kind, row.path) : null}
                 held={path === null ? undefined : held.get(path)}
+                sounding={path !== null && soundsNow(held.get(path), soundingKey)}
                 previewing={previewing !== null && previewing === sound?.id}
                 conversion={sound && director.shelf.stateOf(sound)}
                 style={{ position: 'absolute', top: 0, left: 0, right: 0, transform: `translateY(${item.start}px)` }}

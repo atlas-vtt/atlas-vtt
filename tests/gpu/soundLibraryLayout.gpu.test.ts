@@ -155,7 +155,7 @@ describe('the sound library', () => {
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(10);
     await userEvent.hover(rowNamed('Steel in the reeds'));
     await userEvent.click(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__play')!);
-    await expect.poll(() => rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__state')?.textContent, { timeout: 60_000 }).toBe('In the mix');
+    await expect.poll(() => rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__state')?.textContent, { timeout: 60_000 }).toBe('Playing');
     expect(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__act')).toBeNull();
     await expect.poll(() => r.director.snapshot().mix.table.music?.tracks.length, { timeout: 60_000 }).toBe(1);
     expect(r.locations.music.reads).toContain('Battle/Steel in the reeds.ogg');

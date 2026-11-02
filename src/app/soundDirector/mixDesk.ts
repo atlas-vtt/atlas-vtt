@@ -97,8 +97,10 @@ export class MixDesk {
     return !refused;
   }
 
-  /** Music plays now on a short crossfade, or as soon as its copy is here; what follows it in the selection goes on from it. */
+  /** Music plays now on the default fade, or as soon as its copy is here; what follows it in the selection goes on from it. The last press wins over one still waiting for its copy. */
   playNow(records: readonly SoundRecord[]): void {
+    const { soonest } = this.table.mix;
+    if (soonest?.at === 'now') this.table.commit(soonest.sounds.reduce((mix, id) => dropWaitingTrack(mix, id), this.table.mix));
     this.playSoon(records, 'now');
   }
 

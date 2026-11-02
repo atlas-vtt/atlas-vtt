@@ -142,6 +142,11 @@ export function heldInMix(director: SoundDirector): ReadonlyMap<string, HeldInMi
   return held;
 }
 
+/** Whether what the mix holds of a file plays now: of a list only its one track, of ambience all it holds. */
+export function soundsNow(held: HeldInMix | undefined, soundingKey: string | null): boolean {
+  return held !== undefined && (held.type === 'layer' || (held.key !== null && held.key === soundingKey));
+}
+
 export function takeFromMix(director: SoundDirector, held: HeldInMix): void {
   if (held.type === 'layer') director.desk.removeLayer(held.id, held.key);
   else if (held.key === null) director.desk.removeWaitingTrack(held.id);

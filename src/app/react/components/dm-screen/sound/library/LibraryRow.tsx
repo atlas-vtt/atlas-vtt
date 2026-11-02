@@ -41,6 +41,8 @@ interface LibraryRowProps {
   count: number | null;
   held: HeldInMix | undefined;
   previewing: boolean;
+  /** Plays now: of a list only its one track, and ambience all it holds. */
+  sounding: boolean;
   conversion: SoundConversion | null;
   style: React.CSSProperties;
 }
@@ -83,12 +85,12 @@ function RenameField({ name, onDone }: { name: string; onDone: (name: string | n
 }
 
 /** One row of the library: its controls take no focus, as the list holds it and the keys act on the row in view. */
-export const LibraryRow = memo(function LibraryRow({ row, library, handlers, selected, active, renaming, count, held, previewing, conversion, style }: LibraryRowProps): React.JSX.Element {
-  const state = row.type === 'waiting' ? t('audio.state.missing') : held ? t('audio.library.inMix') : conversion ? stateText(conversion) : '';
+export const LibraryRow = memo(function LibraryRow({ row, library, handlers, selected, active, renaming, count, held, previewing, sounding, conversion, style }: LibraryRowProps): React.JSX.Element {
+  const state = row.type === 'waiting' ? t('audio.state.missing') : sounding ? t('audio.playingTag') : held?.key ? t('audio.library.inMix') : conversion ? stateText(conversion) : held ? t('audio.library.inMix') : '';
   const busy = conversion?.state === 'converting' || row.type === 'waiting';
   const [droppable, setDroppable] = useState(false);
-  const showsStop = previewing || Boolean(held);
-  const playLabel = previewing ? t('audio.stopPreview') : held ? t('audio.remove', { name: row.name }) : t('audio.playTrack', { name: row.name });
+  const showsStop = previewing || sounding;
+  const playLabel = previewing ? t('audio.stopPreview') : sounding ? t('audio.remove', { name: row.name }) : t('audio.playTrack', { name: row.name });
 
   return (
     <div

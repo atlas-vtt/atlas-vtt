@@ -1,5 +1,5 @@
 import type { SoundInfo } from '../sound/soundTypes';
-import { playTrack, soundingMusic, soundingTrack } from './musicList';
+import { musicPosition, playTrack, soundingMusic, soundingTrack } from './musicList';
 import { fnv1a32 } from '../utils/hashing';
 import { startMusic } from './liveEdits';
 import type { MixTiming, SoundMix } from './soundMix';
@@ -41,7 +41,10 @@ export function playNext(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: n
   return { ...mix, listChange: { tracks: withTracksAfter(base.tracks, group, follows), shuffle: base.shuffle, ...(next !== undefined && { next }) } };
 }
 
-/** The first of the tracks plays now on a short crossfade, and the list goes on from it through the rest. Without music they start. */
+/**
+ * The first of the tracks plays now on the default fade, and the list goes on from it through the rest. Tracks from elsewhere take the
+ * place of the one playing, so choosing track after track leaves no trail of them on the list; one on the list is only gone to. Without music they start.
+ */
 export function playNow(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: number, timing: MixTiming): SoundMix {
   const [first] = tracks;
   if (!first) return mix;
@@ -49,8 +52,12 @@ export function playNow(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: nu
   const soundingKey = keyAt(mix, timing.now);
   if (first.key === soundingKey) return playNext(mix, tracks, levelDb, timing);
   const base = mix.listChange ?? mix.table.music;
-  const list = withTracksAfter(base.tracks, tracks, soundingKey);
-  return { ...mix, table: playTrack(mix.table, first.key, timing.now, timing.leadMs, { tracks: list, shuffle: base.shuffle }), listChange: null };
+  const onList = tracks.some((track) => base.tracks.some((other) => other.key === track.key));
+  // A play still in its lead is what this replaces, though the one before it sounds until then.
+  const current = musicPosition(mix.table.music, timing.now)?.track.key;
+  const replaced = base.tracks.findIndex((track) => track.key === current);
+  const list = onList || replaced < 0 ? withTracksAfter(base.tracks, tracks, soundingKey) : [...base.tracks.slice(0, replaced), ...tracks, ...base.tracks.slice(replaced + 1)];
+  return { ...mix, table: playTrack(mix.table, first.key, timing.now, timing.leadMs, { tracks: list, shuffle: base.shuffle }, timing.fadeMs), listChange: null };
 }
 
 /** How many of the selection, from its first on, have their copies. */
@@ -93,7 +100,7 @@ export interface MixHolding {
 export function mixHolding(mix: SoundMix, now: number, idOfKey: (key: string) => string | null): MixHolding {
   const tracks = new Map<string, string | null>();
   const layers = new Map<string, string | null>();
-  const list = mix.listChange ?? soundingMusic(mix.table, now);
+  const list = mix.listChange ?? mix.table.music ?? soundingMusic(mix.table, now);
   for (const track of list?.tracks ?? []) {
     const id = idOfKey(track.key);
     if (id) tracks.set(id, track.key);

@@ -74,8 +74,8 @@ export interface ListChange {
   next?: string;
 }
 
-/** A track of the list now, on a short crossfade; the list goes on from it, and a change waiting for the track's end is taken in. */
-export function playTrack(state: TableSound, key: string, now: number, leadMs = OFFLINE_LEAD_MS, list?: ListChange | null): TableSound {
+/** A track of the list now, on a crossfade; the list goes on from it, and a change waiting for the track's end is taken in. */
+export function playTrack(state: TableSound, key: string, now: number, leadMs = OFFLINE_LEAD_MS, list?: ListChange | null, fadeMs = SKIP_FADE_MS): TableSound {
   const play = soundingMusic(state, now);
   const from = list ?? play;
   const index = from?.tracks.findIndex((track) => track.key === key) ?? -1;
@@ -85,8 +85,8 @@ export function playTrack(state: TableSound, key: string, now: number, leadMs = 
   const tracks = from.shuffle ? from.tracks : rotatedFrom(from.tracks, index);
   const seed = from.shuffle ? seedBeginningWith(from.tracks, key, play.seed + 1) : play.seed;
   return changed(live, {
-    music: { ...play, tracks, seed, shuffle: from.shuffle, startAt, fade: { at: startAt, ms: SKIP_FADE_MS } },
-    outgoing: [...live.outgoing.filter((other) => other !== play), leaving(play, startAt, SKIP_FADE_MS)],
+    music: { ...play, tracks, seed, shuffle: from.shuffle, startAt, fade: { at: startAt, ms: fadeMs } },
+    outgoing: [...live.outgoing.filter((other) => other !== play), leaving(play, startAt, fadeMs)],
   });
 }
 

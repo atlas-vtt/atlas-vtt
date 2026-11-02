@@ -108,6 +108,17 @@
   font-size: $font-ui-smaller;
 }
 
+.atlas-sound-mood__link {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--text-muted);
+
+  svg {
+    width: 14px;
+    height: 14px;
+  }
+}
+
 .atlas-sound-mood__state--problem {
   color: var(--text-warning);
 }
@@ -150,6 +161,7 @@
   }
 
   .atlas-sound-mood__state,
+  .atlas-sound-mood__link,
   .atlas-sound-cap {
     color: var(--mono-100);
   }

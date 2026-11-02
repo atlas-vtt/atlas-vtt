@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { CornerDownLeft, MoreHorizontal } from 'lucide-react';
+import { CornerDownLeft, Link2, MoreHorizontal, Swords, type LucideIcon } from 'lucide-react';
 import { t } from '../../../../i18n';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
 import type { Mood } from '../../../../sound/soundTypes';
@@ -24,6 +24,9 @@ interface MoodCardProps {
   /** The first track of its list. */
   musicName: string | null;
   problems: readonly MoodProblem[];
+  /** Linked to the open scene: as its mood, and as its mood in a fight. */
+  linked: boolean;
+  linkedInFight: boolean;
   /** How the mood stands for players at a table online; null without one. */
   players: PlayersCopy | null;
   onPress: (mood: Mood) => void;
@@ -80,8 +83,16 @@ function ProblemLine({ moodId, problems }: { moodId: string; problems: readonly 
   );
 }
 
+function LinkMark({ icon: Icon, label }: { icon: LucideIcon; label: string }): React.JSX.Element {
+  return (
+    <LabelTooltip label={label}>
+      <span className="atlas-sound-mood__link" role="img" aria-label={label}><Icon aria-hidden="true" /></span>
+    </LabelTooltip>
+  );
+}
+
 /** A mood in its fixed place: one press changes the room. */
-export const MoodCard = React.memo(function MoodCard({ mood, number, playing, silenced, next, dragging, musicName, problems, players, onPress, onMenu, onDragStart }: MoodCardProps): React.JSX.Element {
+export const MoodCard = React.memo(function MoodCard({ mood, number, playing, silenced, next, dragging, musicName, problems, linked, linkedInFight, players, onPress, onMenu, onDragStart }: MoodCardProps): React.JSX.Element {
   const tone = moodTone(mood);
   const key = keyOf(number);
   const hasList = mood.music !== 'none' && mood.music !== 'keep' && mood.music.tracks.length > 0;
@@ -117,6 +128,8 @@ export const MoodCard = React.memo(function MoodCard({ mood, number, playing, si
           {next && !playing && <span className="atlas-sound-cap"><CornerDownLeft aria-hidden="true" /></span>}
           {next && !playing && problems.length === 0 && <span className="atlas-sound-mood__state">{t('audio.nextTag')}</span>}
           {problems.length > 0 && <ProblemLine moodId={mood.id} problems={problems} />}
+          {linked && <LinkMark icon={Link2} label={t('audio.mood.linkedScene')} />}
+          {linkedInFight && <LinkMark icon={Swords} label={t('audio.mood.linkedCombat')} />}
           {players !== null && <MoodPlayersTag copy={players} />}
         </span>
         <FadeBar playing={playing} seconds={mood.fadeSeconds} />

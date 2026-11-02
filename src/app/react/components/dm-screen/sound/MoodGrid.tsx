@@ -83,6 +83,8 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
           next={mood.id === nextId}
           dragging={mood.id === draggingId}
           problems={problems.get(mood.id) ?? NO_PROBLEMS}
+          linked={sceneSound?.mood === mood.id}
+          linkedInFight={sceneSound?.combatMood === mood.id}
           players={forPlayers.get(mood.id) ?? null}
           onPress={press}
           onMenu={openMenu}

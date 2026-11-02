@@ -101,8 +101,23 @@ describe('Play now', () => {
     const mix = playNow(playing('a', 'b', 'c'), [track('n')], 0, timing(1000));
     expect(sounding(mix, 1100)).toBe('n');
     expect(mix.table.outgoing).toHaveLength(1);
-    expect(mix.table.music?.tracks.map((one) => one.key)).toEqual(['n', 'b', 'c', 'a']);
+    expect(mix.table.music?.tracks.map((one) => one.key)).toEqual(['n', 'b', 'c']);
+    expect(mix.table.music?.fade.ms).toBe(1000);
     expect(mix.listChange).toBeNull();
+  });
+
+  it('leaves no trail of what was chosen before, also while a play is still in its lead', () => {
+    let mix = playNow(playing('a'), [track('b')], 0, timing(1000));
+    expect(mix.table.music?.tracks.map((one) => one.key)).toEqual(['b']);
+    mix = playNow(mix, [track('c')], 0, timing(1010));
+    expect(mix.table.music?.tracks.map((one) => one.key)).toEqual(['c']);
+    expect(mixHolding(mix, 1011, (key) => key).tracks.size).toBe(1);
+  });
+
+  it('goes to a track of the list, which keeps the one it leaves', () => {
+    const mix = playNow(playing('a', 'b', 'c'), [track('c')], 0, timing(1000));
+    expect(sounding(mix, 1100)).toBe('c');
+    expect(mix.table.music?.tracks.map((one) => one.key)).toEqual(expect.arrayContaining(['a', 'b', 'c']));
   });
 
   it('leaves the track sounding alone', () => {
@@ -158,7 +173,7 @@ describe('a selection', () => {
   it('starts its first with the rest after it, Play now', () => {
     const mix = playNow(playing('s', 'b'), selection, 0, timing(1000));
     expect(sounding(mix, 1100)).toBe('x');
-    expect(mix.table.music?.tracks.map((one) => one.key)).toEqual(['x', 'y', 'z', 'b', 's']);
+    expect(mix.table.music?.tracks.map((one) => one.key)).toEqual(['x', 'y', 'z', 'b']);
     expect(mix.table.outgoing).toHaveLength(1);
   });
 
@@ -192,7 +207,7 @@ describe('a selection', () => {
     mix = applySoonest(mix, ready('z'), timing(1200));
     expect(mix.soonest?.sounds).toEqual(['y-id', 'z-id']);
     mix = applySoonest(mix, ready('y', 'z'), timing(1200));
-    expect(listOf(mix)).toEqual(['x', 'y', 'z', 'b', 's']);
+    expect(listOf(mix)).toEqual(['x', 'y', 'z', 'b']);
     expect(mix.soonest).toBeUndefined();
   });
 });

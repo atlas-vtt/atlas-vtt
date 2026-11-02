@@ -1,7 +1,8 @@
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
 import { heldInMix, type HeldInMix } from '../../../../../soundDirector/libraryDesk';
+import { musicPosition } from '../../../../../soundDirector/musicList';
 import { useSoundValue, useStoreValue } from '../useSound';
 
 /** The library's version: a render reads what it needs and hears of every change. */
@@ -13,6 +14,28 @@ export function useLibraryVersion(library: SoundLibrary): number {
 export function useHeldInMix(director: SoundDirector): ReadonlyMap<string, HeldInMix> {
   const held = useSoundValue(director, () => JSON.stringify([...heldInMix(director)]));
   return useMemo(() => new Map<string, HeldInMix>(JSON.parse(held) as [string, HeldInMix][]), [held]);
+}
+
+const SOUNDING_POLL_MS = 250;
+
+/** The track the music is on: a list goes on by itself, so this reads the clock too. */
+export function useSoundingKey(director: SoundDirector): string | null {
+  const read = useCallback((): string | null => {
+    const play = director.snapshot().mix.table.music;
+    return (play && musicPosition(play, director.now())?.track.key) ?? null;
+  }, [director]);
+  const [key, setKey] = useState(read);
+  useEffect(() => {
+    const update = (): void => setKey(read());
+    update();
+    const timer = window.setInterval(update, SOUNDING_POLL_MS);
+    const stop = director.subscribe(update);
+    return () => {
+      window.clearInterval(timer);
+      stop();
+    };
+  }, [director, read]);
+  return key;
 }
 
 /** A row's length, once it is known. */

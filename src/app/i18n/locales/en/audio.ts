@@ -89,6 +89,8 @@ export const audio = {
   'audio.mood.copyName': '{name} copy',
   'audio.mood.linkScene': 'Link to this scene',
   'audio.mood.linkCombat': 'Link as combat mood',
+  'audio.mood.linkedScene': 'Linked to this scene',
+  'audio.mood.linkedCombat': 'Plays in fights in this scene',
   'audio.mood.delete': 'Delete',
   'audio.mood.deleteTitle': 'Delete {name}?',
   'audio.mood.deleteMessage': 'The mood goes to the trash. Its sounds stay.',
