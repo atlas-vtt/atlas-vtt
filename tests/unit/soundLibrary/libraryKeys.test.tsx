@@ -76,7 +76,7 @@ describe('the keys of the rows', () => {
     expect(rig.records.all()).toEqual([]);
     press('Enter');
     await waitFor(() => expect(next).toHaveBeenCalledTimes(1));
-    expect(next.mock.calls[0]?.[0]).toMatchObject({ kind: 'music', filePath: 'atlas-sound:music/Battle/a.mp3' });
+    expect(next.mock.calls[0]?.[0]).toMatchObject([{ kind: 'music', filePath: 'atlas-sound:music/Battle/a.mp3' }]);
     expect(rig.records.all()).toHaveLength(1);
   });
 

@@ -5,36 +5,19 @@ import { useHeldInMix } from '@/app/react/components/dm-screen/sound/library/use
 import { MAX_MOOD_LAYERS, type SoundRecord } from '@/app/sound/soundTypes';
 import { dragToMix, fileToMix, filesToPlay, folderToMix, heldInMix, prepareFolder, takeFromMix, type LibraryDeskDeps } from '@/app/soundDirector/libraryDesk';
 import { MOOD_LIMITS } from '@/app/soundLibrary/moodFile';
-import type { SoundLibrary } from '@/app/soundLibrary/SoundLibrary';
-import { soundRecordOf, type StoredSound } from '@/app/soundLibrary/soundRecords';
+import type { StoredSound } from '@/app/soundLibrary/soundRecords';
 import { carriesSounds, readSoundDrag, SOUND_DRAG_TYPE, writeSoundDrag } from '@/app/soundLibrary/soundDrag';
-import { directorRig, record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
-import { FakeSoundLocation } from '../../helpers/fakeSoundLocation';
+import { libraryDeskRig } from '../../helpers/libraryDeskRig';
+import { record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
+import type { FakeSoundLocation } from '../../helpers/fakeSoundLocation';
 
 let rig: DirectorRig;
 let location: FakeSoundLocation;
 let stored: StoredSound[];
 let deps: LibraryDeskDeps;
 
-/** A desk over real records: what `recordsForFiles` made is what the shelf reads next. */
 function setUp(records: SoundRecord[]): void {
-  rig = directorRig(records);
-  location = new FakeSoundLocation();
-  stored = [];
-  const library = {
-    locationOf: () => location,
-    audioPathOf: (_kind: string, path: string) => `audio/${path}`,
-    ensureListed: async () => undefined,
-  } as unknown as SoundLibrary;
-  const seam: LibraryDeskDeps['records'] = {
-    whenLoaded: () => Promise.resolve(),
-    all: () => stored,
-    add: (fresh) => {
-      stored.push(...fresh);
-      rig.records.push(...fresh.map(soundRecordOf));
-    },
-  };
-  deps = { records: seam, library, director: rig.director, notify: (message) => rig.notices.push(message) };
+  ({ rig, location, stored, deps } = libraryDeskRig(records));
 }
 
 beforeEach(() => {
@@ -58,7 +41,7 @@ describe('the desk from the library', () => {
     await settle();
     rig.director.press({ id: 'm', name: 'm', order: 1, fadeSeconds: 0, music: { tracks: ['a'], shuffle: false, levelDb: 0 }, layers: [] });
     await settle();
-    await fileToMix(deps, [file('b.ogg')], 'now', 'Fen');
+    await fileToMix(deps, [file('b.ogg')], 'now');
     const waiting = rig.director.snapshot().mix;
     expect(waiting.soonest?.at).toBe('now');
     expect(waiting.table.music?.tracks.map((one) => one.key)).toEqual(['hash-audio/a.ogg']);

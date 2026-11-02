@@ -1,14 +1,20 @@
 import type { Mood, MoodMusic, SoundInfo, SoundRecord } from '../sound/soundTypes';
-import { applySoonest, playNext, playNow } from './libraryMix';
+import { applySoonest, playNext, playNow, readyToJoin } from './libraryMix';
 import type { DirectorMoods } from './directorDeps';
 import { addLayer, setLayerLevel, setLayerMuted, setMusicLevel, setMusicMuted, stopAll, toggleSilence } from './liveEdits';
 import { mixDiffersFrom } from './mixChange';
 import { nextTrack, playTrack, skipTrack, soundingTrack } from './musicList';
-import { addTrack, dropLayer, dropWaitingTrack, EMPTY_MIX, joinReady, mixAsMood, pressMood, removeTrack, setShuffle, type ActiveMood } from './soundMix';
+import { addTrack, dropLayer, dropWaitingTrack, EMPTY_MIX, joinReady, mixAsMood, pressMood, removeTrack, setShuffle, withoutSoonest, type ActiveMood, type SoundMix } from './soundMix';
 import type { SoundOutput } from './soundOutput';
 import type { SoundShelf } from './soundShelf';
 import type { SoundTable } from './soundTable';
 import { isPlaying, type MoodMix } from './tableSound';
+
+function withWaitingTracks(mix: SoundMix, ids: readonly string[]): SoundMix {
+  const base = mix.waitingMusic ?? { tracks: [], shuffle: mix.table.music?.shuffle ?? false, levelDb: mix.table.music?.gainDb ?? 0 };
+  const tracks = [...base.tracks, ...ids.filter((id) => !base.tracks.includes(id))];
+  return tracks.length === 0 ? mix : { ...mix, waitingMusic: { ...base, tracks } };
+}
 
 export interface MixDeskHost {
   isOn(): boolean;
@@ -38,12 +44,20 @@ export class MixDesk {
 
   /** Brings in what waits for its copy, as far as copies have come. */
   joinWaiting(): void {
-    const { waitingLayers, waitingMusic } = this.table.mix;
-    const records = this.waitingIds().flatMap((id) => this.shelf.recordOf(id) ?? []);
-    if (waitingLayers.length === 0 && !waitingMusic) return;
-    const ready = this.shelf.readyOf(records);
+    const mix = this.withoutGiveUps(this.table.mix);
+    const { waitingLayers, waitingMusic, soonest } = mix;
+    if (waitingLayers.length === 0 && !waitingMusic && !soonest) return;
+    const ready = this.shelf.readyOf([...this.waitingIds(), ...(soonest?.sounds ?? [])].flatMap((id) => this.shelf.recordOf(id) ?? []));
     const timing = this.table.timing();
-    this.table.commit(applySoonest(joinReady(this.table.mix, ready, timing), ready, timing));
+    this.table.commit(applySoonest(joinReady(mix, readyToJoin(mix, ready), timing), ready, timing));
+  }
+
+  /** A selection waits for its first only while that can come: one refused or gone gives way to the next. */
+  private withoutGiveUps(mix: SoundMix): SoundMix {
+    return (mix.soonest?.sounds ?? []).reduce((held, id) => {
+      const record = this.shelf.recordOf(id);
+      return record && this.shelf.hasFile(record) && this.shelf.stateOf(record).state !== 'refused' ? held : withoutSoonest(held, id);
+    }, mix);
   }
 
   /** Asks again for what waits, once a file may have come. */
@@ -86,28 +100,25 @@ export class MixDesk {
     return !refused;
   }
 
-  /** Music plays now on a short crossfade, or as soon as its copy is here. */
-  playNow(record: SoundRecord): void {
-    this.playSoon(record, 'now');
+  /** Music plays now on a short crossfade, or as soon as its copy is here; what follows it in the selection goes on from it. */
+  playNow(records: readonly SoundRecord[]): void {
+    this.playSoon(records, 'now');
   }
 
-  /** Music follows the track sounding, or does so once its copy is here. */
-  playNext(record: SoundRecord): void {
-    this.playSoon(record, 'next');
+  /** Music follows the track sounding in the order of the selection, or does so as its copies come. */
+  playNext(records: readonly SoundRecord[]): void {
+    this.playSoon(records, 'next');
   }
 
-  private playSoon(record: SoundRecord, at: 'now' | 'next'): void {
-    const info = this.shelf.infoOf(record);
+  /** One state for the whole selection, however many tracks it holds. */
+  private playSoon(records: readonly SoundRecord[], at: 'now' | 'next'): void {
     this.output.unlock();
-    if (!info) {
-      this.shelf.request([record], true);
-      this.addWaiting(record);
-      this.table.commit({ ...this.table.mix, soonest: { sound: record.id, at } });
-      return;
-    }
-    const mix = this.table.mix;
-    const apply = at === 'now' ? playNow : playNext;
-    this.table.commit(apply(mix, info, mix.table.music?.gainDb ?? 0, this.table.timing()));
+    const missing = records.filter((record) => !this.shelf.infoOf(record));
+    this.shelf.request(missing, true);
+    const ready = this.shelf.readyOf(records);
+    const timing = this.table.timing();
+    const held = withWaitingTracks(this.table.mix, missing.map((record) => record.id));
+    this.table.commit(applySoonest({ ...held, soonest: { sounds: records.map((record) => record.id), at } }, ready, timing));
   }
 
   /** A folder as the music: the list changes on the mood's crossfade, the layers stay as they are. */
@@ -126,8 +137,7 @@ export class MixDesk {
       return true;
     }
     if (mix.waitingMusic?.tracks.includes(record.id)) return false;
-    const base = mix.waitingMusic ?? { tracks: [], shuffle: mix.table.music?.shuffle ?? false, levelDb: mix.table.music?.gainDb ?? 0 };
-    this.table.commit({ ...mix, waitingMusic: { ...base, tracks: [...base.tracks, record.id] } });
+    this.table.commit(withWaitingTracks(mix, [record.id]));
     return true;
   }
 
@@ -164,7 +174,8 @@ export class MixDesk {
 
   removeTrack(key: string): void {
     const timing = this.table.timing();
-    this.table.commit(removeTrack(this.table.mix, key, timing, soundingTrack(this.table.mix.table, timing.now)?.key ?? null));
+    const mix = withoutSoonest(this.table.mix, this.shelf.idOfKey(key));
+    this.table.commit(removeTrack(mix, key, timing, soundingTrack(mix.table, timing.now)?.key ?? null));
   }
 
   removeWaitingTrack(soundId: string): void {

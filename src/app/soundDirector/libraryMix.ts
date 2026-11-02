@@ -1,50 +1,84 @@
 import type { SoundInfo } from '../sound/soundTypes';
 import { playTrack, soundingMusic, soundingTrack } from './musicList';
-import { addTrack, type MixTiming, type SoundMix } from './soundMix';
+import { fnv1a32 } from '../utils/hashing';
+import { startMusic } from './liveEdits';
+import type { MixTiming, SoundMix } from './soundMix';
 import type { ReadySounds } from './tableSound';
 
-/** A track the GM wants sooner than the end of the list: on this press if it can play, else as soon as its copy is there. */
-export interface SoonestTrack {
-  sound: string;
+/** Tracks the GM wants sooner than the end of the list, in the order they were selected: placed as their copies come, each after the one before. */
+export interface SoonestTracks {
+  /** Record ids still to be placed. */
+  sounds: string[];
   at: 'now' | 'next';
+  /** The key of the one placed last, which the next follows. */
+  after?: string;
 }
 
 const keyAt = (mix: SoundMix, now: number): string | null => soundingTrack(mix.table, now)?.key ?? null;
 
-/** The list with `track` right after the one sounding, moved there if it is on the list already. */
-function withTrackNext(tracks: readonly SoundInfo[], track: SoundInfo, soundingKey: string | null): SoundInfo[] {
-  const rest = tracks.filter((other) => other.key !== track.key);
-  const after = rest.findIndex((other) => other.key === soundingKey);
-  return [...rest.slice(0, after + 1), track, ...rest.slice(after + 1)];
+/** The list with `group` right after `anchor`, moved there where it is on the list already. */
+function withTracksAfter(tracks: readonly SoundInfo[], group: readonly SoundInfo[], anchor: string | null): SoundInfo[] {
+  const keys = new Set(group.map((track) => track.key));
+  const rest = tracks.filter((other) => !keys.has(other.key));
+  const at = rest.findIndex((other) => other.key === anchor);
+  return [...rest.slice(0, at + 1), ...group, ...rest.slice(at + 1)];
 }
 
-/** A track follows the one sounding: it joins at that track's end and never cuts it. On a shuffled list too. Without music it starts. */
-export function playNext(mix: SoundMix, track: SoundInfo, levelDb: number, timing: MixTiming): SoundMix {
-  if (!mix.table.music) return addTrack(mix, track, levelDb, timing);
-  const base = mix.listChange ?? mix.table.music;
+function startList(mix: SoundMix, tracks: SoundInfo[], levelDb: number, { now, leadMs, fadeMs }: MixTiming): SoundMix {
+  return { ...mix, table: startMusic(mix.table, tracks, false, levelDb, fnv1a32(`${now}`), now, fadeMs, leadMs) };
+}
+
+/** Tracks follow the one sounding, or the one named, in their order: they join at that track's end and never cut it. On a shuffled list too, for the first of them. Without music they start. */
+export function playNext(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: number, timing: MixTiming, after?: string): SoundMix {
+  if (!mix.table.music) return tracks.length > 0 ? startList(mix, [...tracks], levelDb, timing) : mix;
   const soundingKey = keyAt(mix, timing.now);
-  if (track.key === soundingKey) return mix;
-  return { ...mix, listChange: { tracks: withTrackNext(base.tracks, track, soundingKey), shuffle: base.shuffle, next: track.key } };
-}
-
-/** A track plays now on a short crossfade, and the list goes on from it. Without music it starts. */
-export function playNow(mix: SoundMix, track: SoundInfo, levelDb: number, timing: MixTiming): SoundMix {
-  if (!mix.table.music) return addTrack(mix, track, levelDb, timing);
-  const soundingKey = keyAt(mix, timing.now);
-  if (track.key === soundingKey) return mix;
+  const group = tracks.filter((track) => track.key !== soundingKey);
+  const [first] = group;
+  if (!first) return mix;
   const base = mix.listChange ?? mix.table.music;
-  const tracks = withTrackNext(base.tracks, track, soundingKey);
-  return { ...mix, table: playTrack(mix.table, track.key, timing.now, timing.leadMs, { tracks, shuffle: base.shuffle }), listChange: null };
+  const follows = after !== undefined && base.tracks.some((track) => track.key === after) ? after : soundingKey;
+  const next = follows === soundingKey ? first.key : mix.listChange?.next;
+  return { ...mix, listChange: { tracks: withTracksAfter(base.tracks, group, follows), shuffle: base.shuffle, ...(next !== undefined && { next }) } };
 }
 
-/** What waited for its copy to play sooner than the rest: once the copy is here, it goes where it was asked to. */
-export function applySoonest(mix: SoundMix, sounds: ReadySounds, timing: MixTiming): SoundMix {
+/** The first of the tracks plays now on a short crossfade, and the list goes on from it through the rest. Without music they start. */
+export function playNow(mix: SoundMix, tracks: readonly SoundInfo[], levelDb: number, timing: MixTiming): SoundMix {
+  const [first] = tracks;
+  if (!first) return mix;
+  if (!mix.table.music) return startList(mix, [...tracks], levelDb, timing);
+  const soundingKey = keyAt(mix, timing.now);
+  if (first.key === soundingKey) return playNext(mix, tracks, levelDb, timing);
+  const base = mix.listChange ?? mix.table.music;
+  const list = withTracksAfter(base.tracks, tracks, soundingKey);
+  return { ...mix, table: playTrack(mix.table, first.key, timing.now, timing.leadMs, { tracks: list, shuffle: base.shuffle }), listChange: null };
+}
+
+/** How many of the selection, from its first on, have their copies. */
+function readyRun(sounds: readonly string[], ready: ReadySounds): number {
+  const at = sounds.findIndex((id) => !ready.has(id));
+  return at < 0 ? sounds.length : at;
+}
+
+/** What may join the list now: where nothing plays yet the selection's first must begin it, so what lies behind one still to come stays back. */
+export function readyToJoin(mix: SoundMix, ready: ReadySounds): ReadySounds {
   const { soonest } = mix;
-  const track = soonest && sounds.get(soonest.sound);
-  if (!soonest || !track) return mix;
+  if (!soonest || mix.table.music) return ready;
+  const behind = new Set(soonest.sounds.slice(readyRun(soonest.sounds, ready)));
+  return behind.size === 0 ? ready : new Map([...ready].filter(([id]) => !behind.has(id)));
+}
+
+/** What waited for its copy to play sooner than the rest: the copies here, from the selection's first on, go where they were asked to. */
+export function applySoonest(mix: SoundMix, ready: ReadySounds, timing: MixTiming): SoundMix {
+  const { soonest } = mix;
+  if (!soonest) return mix;
+  const placed = soonest.sounds.slice(0, readyRun(soonest.sounds, ready)).flatMap((id) => ready.get(id) ?? []);
+  const last = placed.at(-1);
+  if (!last) return mix;
   const levelDb = mix.table.music?.gainDb ?? 0;
   const { soonest: _taken, ...without } = mix;
-  return soonest.at === 'now' ? playNow(without, track, levelDb, timing) : playNext(without, track, levelDb, timing);
+  const applied = soonest.at === 'now' ? playNow(without, placed, levelDb, timing) : playNext(without, placed, levelDb, timing, soonest.after);
+  const sounds = soonest.sounds.slice(placed.length);
+  return sounds.length > 0 ? { ...applied, soonest: { sounds, at: 'next', after: last.key } } : applied;
 }
 
 /** The record ids and keys of what a mix holds: what the library's rows ask of it. */

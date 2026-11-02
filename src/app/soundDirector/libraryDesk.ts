@@ -41,15 +41,16 @@ function filesWithRoom(deps: LibraryDeskDeps, files: readonly LibraryFile[], int
 export async function fileToMix(deps: LibraryDeskDeps, files: readonly LibraryFile[], intent: MixIntent): Promise<void> {
   const { desk } = deps.director;
   deps.director.tap();
-  for (const record of await shelved(deps, filesWithRoom(deps, files, intent))) {
-    if (record.kind === 'ambience' || intent === 'add') {
+  const records = await shelved(deps, filesWithRoom(deps, files, intent));
+  for (const record of records) {
+    if (record.kind !== 'music' || intent === 'add') {
       if (!desk.addSound(record)) deps.notify(t('audio.add.refused', { name: record.name }));
-    } else if (intent === 'now') {
-      desk.playNow(record);
-    } else {
-      desk.playNext(record);
     }
   }
+  const tracks = intent === 'add' ? [] : records.filter((record) => record.kind === 'music');
+  if (tracks.length === 0) return;
+  if (intent === 'now') desk.playNow(tracks);
+  else desk.playNext(tracks);
 }
 
 /** A folder's files in order, at most `limit`: those directly in it, and where it holds none, all those below it. */

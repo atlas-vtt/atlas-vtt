@@ -4,7 +4,7 @@ import { fnv1a32 } from '../utils/hashing';
 import { addLayer, removeLayer, startMusic, stopMusic } from './liveEdits';
 import { moodTransition } from './moodTransition';
 import { listChangeAt, playTrack, soundingMusic, withListChange, type ListChange } from './musicList';
-import type { SoonestTrack } from './libraryMix';
+import type { SoonestTracks } from './libraryMix';
 import { EMPTY_TABLE_SOUND, type MoodMix, type ReadySounds } from './tableSound';
 
 export interface ActiveMood {
@@ -29,8 +29,8 @@ export interface SoundMix {
   waitingLayers: MoodLayer[];
   /** A change of the list, waiting for the current track's end. */
   listChange: ListChange | null;
-  /** A track of `waitingMusic` the GM wants sooner than the end of the list. */
-  soonest?: SoonestTrack;
+  /** Tracks, of `waitingMusic` or waiting for their turn behind it, the GM wants sooner than the end of the list. */
+  soonest?: SoonestTracks;
 }
 
 export const EMPTY_MIX: SoundMix = { table: EMPTY_TABLE_SOUND, mood: null, waitingMusic: null, waitingLayers: [], listChange: null };
@@ -132,11 +132,18 @@ export function dropLayer(mix: SoundMix, soundId: string, key: string | null, no
   return { ...mix, table, waitingLayers };
 }
 
+/** A sound the GM took out goes nowhere any more. */
+export function withoutSoonest(mix: SoundMix, soundId: string | null): SoundMix {
+  const { soonest, ...rest } = mix;
+  if (!soonest || soundId === null || !soonest.sounds.includes(soundId)) return mix;
+  const sounds = soonest.sounds.filter((id) => id !== soundId);
+  return sounds.length > 0 ? { ...rest, soonest: { ...soonest, sounds } } : rest;
+}
+
 export const dropWaitingTrack = (mix: SoundMix, soundId: string): SoundMix => {
   if (!mix.waitingMusic) return mix;
   const tracks = mix.waitingMusic.tracks.filter((id) => id !== soundId);
-  const { soonest, ...rest } = mix;
-  return { ...rest, ...(soonest && soonest.sound !== soundId && { soonest }), waitingMusic: tracks.length > 0 ? { ...mix.waitingMusic, tracks } : null };
+  return { ...withoutSoonest(mix, soundId), waitingMusic: tracks.length > 0 ? { ...mix.waitingMusic, tracks } : null };
 };
 
 /**
