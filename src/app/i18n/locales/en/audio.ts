@@ -31,6 +31,7 @@ export const audio = {
   'audio.licence.ccBy': 'CC BY',
   'audio.licence.other': 'Other',
   'audio.credit': 'Credit',
+  'audio.creditRemove': 'Remove credit',
   'audio.creditTitle': 'Credit for {name}',
   'audio.creditPlaceholder': 'Who made it',
 

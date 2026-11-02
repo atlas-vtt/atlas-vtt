@@ -54,6 +54,7 @@ function recordEntries(context: RowMenuContext, files: readonly LibraryFile[]): 
       children: LICENCES.map(({ licence, label }) => ({ type: 'item' as const, label, checked: (sound?.licence ?? 'unknown') === licence, onClick: () => actions.edit(files, { licence }) })),
     },
     { type: 'item', label: t('audio.credit'), icon: 'quote', onClick: () => actions.askCredit(files, sound?.credit ?? '', sound?.name ?? files[0]?.name ?? '') },
+    ...(sound?.credit ? [{ type: 'item' as const, label: t('audio.creditRemove'), icon: 'eraser', onClick: () => actions.edit(files, { credit: undefined }) }] : []),
   ];
 }
 
