@@ -109,6 +109,7 @@ function synthWav(seconds: number, seed: number): ArrayBuffer {
 export type { TabSound };
 
 export interface SoundTab {
+  appId: string;
   director: SoundDirector;
   store: ViewAtlasStore;
   records: Map<string, SoundRecord>;
@@ -178,6 +179,7 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
               React.createElement(DMScreen, { isOpen: true, onClose: () => undefined })))))));
   });
   return {
+    appId,
     director,
     store,
     records,
