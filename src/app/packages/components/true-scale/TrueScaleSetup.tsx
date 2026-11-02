@@ -77,7 +77,6 @@ export function TrueScaleSetup({ settings, host, screenKey, onDone }: TrueScaleS
       ) : (
         <div className="atlas-dropdown-section">
           <span className="atlas-dropdown-label">{t("tableTv.setup.fit")}</span>
-          <span className="atlas-true-scale__hint">{t("tableTv.setup.cardSize")}</span>
           <Dial value={pxPerMm} guess={guess} onChange={setPxPerMm} />
         </div>
       )}

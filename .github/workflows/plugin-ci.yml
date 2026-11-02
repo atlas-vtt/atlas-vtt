@@ -2,8 +2,8 @@ name: Plugin CI
 
 # Tests and builds every commit once. A push run on `beta` publishes its own
 # build as a pre-release when the version is new (`publish-beta`), and
-# **Prepare Plugin Release** attaches the build of the push run on `main` to
-# the draft release, so nothing that is released is ever built twice.
+# **Prepare Plugin Release** attaches the build of the push run on `release/x.y.z`
+# to the draft release, so nothing that is released is ever built twice.
 
 on:
   pull_request:
@@ -11,6 +11,7 @@ on:
     branches:
       - main
       - beta
+      - 'release/**'
 
 permissions:
   contents: read
@@ -48,7 +49,7 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      - name: Verify release channel (main = stable x.y.z, beta = x.y.z-beta.N)
+      - name: Verify release channel (main and release/* = stable x.y.z, beta = x.y.z-beta.N)
         env:
           TARGET_BRANCH: ${{ github.base_ref || github.ref_name }}
         run: node scripts/release-channel.js --branch "$TARGET_BRANCH"

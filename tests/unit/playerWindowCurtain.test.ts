@@ -7,6 +7,8 @@ import { PlayerWindowService } from '../../src/app/services/PlayerWindowService'
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { playerWindowStore } from '../../src/app/stores/playerWindowStore';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
+import { CURTAIN_DOWN_MS } from '../../src/app/services/playerCurtain';
+import { SCENE_FADE_LIMIT_MS } from '../../src/app/services/playerSceneFade';
 import { MIRRORED, mirroring } from '../mocks/mirrorHarness';
 import { frameSource, sizePlayerWindow } from '../mocks/playerFrameSource';
 
@@ -26,6 +28,23 @@ describe('the curtain in the mirror', () => {
 
     // The DM's own renders go on; no players' frame is rendered or asked for
     expect(events).toEqual(['draw:curtain', 'render:dm']);
+  });
+
+  it('keeps its picture while the sheet is falling, and draws nothing new', () => {
+    const { events, frame, dm, state, mirror } = mirroring();
+    state.curtain = true;
+    state.curtainFalling = true;
+
+    frame(20);
+    mirror.markStale();
+    dm.change();
+    dm.tick(21);
+    frame(40);
+    expect(events).toEqual(['render:dm']);
+
+    state.curtainFalling = false;
+    frame(60);
+    expect(events).toEqual(['render:dm', 'draw:curtain']);
   });
 
   it('owes players a frame once it is lifted', () => {
@@ -70,6 +89,8 @@ function openWindow(saved: Partial<LocalPlayerSession> = {}): {
     document: doc, closed: false, addEventListener: vi.fn(), removeEventListener: vi.fn(), close: vi.fn(),
     requestAnimationFrame: (callback: FrameRequestCallback): number => { frame = callback; return 1; },
     cancelAnimationFrame: vi.fn(), devicePixelRatio: 1, performance: { now: () => 0 },
+    matchMedia: () => ({ matches: false }),
+    getComputedStyle: (element: Element) => window.getComputedStyle(element),
   } });
   const session: LocalPlayerSession = { tabId: 'scene-a', filePath: '', frozen: false, ...saved };
   const view = {
@@ -83,12 +104,18 @@ function openWindow(saved: Partial<LocalPlayerSession> = {}): {
 }
 
 describe('the curtain on the player window', () => {
-  it('blacks the window at once, keeps it in the session and lifts it again', () => {
+  it('blacks the window once its sheet is down, keeps it in the session and lifts it again', () => {
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(1000);
     const { service, session, doc, fillRect, capture, nextFrame } = openWindow();
     nextFrame();
     capture.mockClear();
+    fillRect.mockClear();
 
     service.setCurtain(true);
+    nextFrame();
+    expect(fillRect).not.toHaveBeenCalled();
+    clock.mockReturnValue(1000 + CURTAIN_DOWN_MS);
+    nextFrame();
     expect(fillRect).toHaveBeenCalledTimes(1);
     expect(playerWindowStore.getState().curtain).toBe(true);
     expect(session.curtain).toBe(true);
@@ -103,6 +130,10 @@ describe('the curtain on the player window', () => {
     expect(capture).toHaveBeenCalled();
     expect(session.curtain).toBe(false);
     expect(playerWindowStore.getState().curtain).toBe(false);
+    // The sheet waits for a picture to lift off; this source never gives one
+    expect(doc.body.hasClass('atlas-player-window--curtain')).toBe(true);
+    clock.mockReturnValue(1000 + CURTAIN_DOWN_MS + SCENE_FADE_LIMIT_MS);
+    nextFrame();
     expect(doc.body.hasClass('atlas-player-window--curtain')).toBe(false);
   });
 

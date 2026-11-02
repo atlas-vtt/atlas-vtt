@@ -18,20 +18,19 @@ export interface ScreenRect {
 
 /**
  * How one outline is drawn: every alpha is multiplied by `strength`, and the dark line under the
- * accent is two px wider than `stroke`. Thinner outlines without fill or ticks (frames the GM
- * saved) take an ink of their own.
+ * accent is two px wider than `stroke`. Thinner outlines without ticks (frames the GM saved) take
+ * an ink of their own. No outline fills its frame: the map inside keeps its own colours.
  */
 interface OutlineInk {
   strength: number;
   stroke: number;
-  fill: boolean;
   ticks: boolean;
 }
 
 const INK: Record<GlassLook | 'saved', OutlineInk> = {
-  live: { strength: 1, stroke: 2, fill: true, ticks: true },
-  ghost: { strength: 0.5, stroke: 2, fill: true, ticks: true },
-  saved: { strength: 0.6, stroke: 1.5, fill: false, ticks: false },
+  live: { strength: 1, stroke: 2, ticks: true },
+  ghost: { strength: 0.5, stroke: 2, ticks: true },
+  saved: { strength: 0.6, stroke: 1.5, ticks: false },
 };
 
 /** The number on a saved frame's top-left corner, in screen px. */
@@ -40,7 +39,6 @@ const BADGE_FONT = 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-s
 
 /** Widths in screen px and alphas at full strength. */
 const LOOK = {
-  fillAlpha: 0.06,
   stroke: 2,
   underAlpha: 0.35,
   /** Length of a corner tick along each edge, and its width. */
@@ -164,7 +162,6 @@ export class GlassOutline {
 
   private drawOutline({ x, y, width, height }: ScreenRect, ink: OutlineInk, accent: number): void {
     const g = this.graphics;
-    if (ink.fill) g.rect(x, y, width, height).fill({ color: accent, alpha: LOOK.fillAlpha * ink.strength });
     // A dark line under the accent holds it on a light map
     g.rect(x, y, width, height).stroke({ width: ink.stroke + 2, color: 0x000000, alpha: LOOK.underAlpha * ink.strength });
     g.rect(x, y, width, height).stroke({ width: ink.stroke, color: accent, alpha: ink.strength });

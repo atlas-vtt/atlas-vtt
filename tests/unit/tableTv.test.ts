@@ -191,7 +191,7 @@ describe('the set-up screen on the TV', () => {
     expect(ctx.texts).toEqual([
       'TrueScale setup · the map at real size on this screen',
       'Lay a bank or credit card inside the outline',
-      'Bank card size: 85.6 × 54 mm. Not a playing card.',
+      'Atlas measures this screen with it',
     ]);
     expect(ctx.calls).toContain('stroke');
     // The corners the path turns at: the outline is the card plus half its line (3 frame px: a 1.5 px line at resolution 2) on every side

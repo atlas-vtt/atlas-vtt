@@ -35,13 +35,6 @@
   }
 }
 
-// A line under a label, on the menu's text edge
-.atlas-true-scale__hint {
-  padding-inline: var(--atlas-menu-text-inset, 0px);
-  font-size: $font-ui-smaller;
-  color: var(--text-muted);
-}
-
 // The set-up's buttons, at the panel's end
 .atlas-true-scale__actions {
   display: flex;
@@ -56,8 +49,21 @@
   gap: $spacing-s;
 }
 
-// The track and thumb of the menus' sliders (slider.css), on a native range
+// The track and thumb of the menus' sliders (slider.css), on a native range. Obsidian's rules for a
+// range's thumb outrank ours while it is hovered or pressed, so it is set through the variables
+// they read; each `-active` is its own, since Obsidian's was worked out on the body.
 .atlas-true-scale__dial.atlas-true-scale__dial {
+  --slider-thumb-width: #{$spacing-l};
+  --slider-thumb-height: #{$spacing-l};
+  --slider-thumb-width-active: #{$spacing-l};
+  --slider-thumb-height-active: #{$spacing-l};
+  --slider-thumb-y: -5px; // Half of what the thumb is taller than the 6 px track
+  --slider-thumb-y-active: -5px;
+  --slider-thumb-opacity-active: 1;
+  --slider-thumb-border-width: 0;
+  --slider-thumb-radius: #{$radius-full};
+  --slider-thumb-background: var(--interactive-accent);
+  --slider-thumb-background-hover: var(--interactive-accent);
   flex: 1;
   min-width: 0;
   height: $spacing-l;
@@ -71,16 +77,6 @@
     height: 6px;
     border-radius: $radius-full;
     background: var(--background-modifier-border);
-  }
-
-  &::-webkit-slider-thumb {
-    appearance: none;
-    width: $spacing-l;
-    height: $spacing-l;
-    margin-top: -5px;
-    border: none;
-    border-radius: $radius-full;
-    background: var(--interactive-accent);
   }
 
   &:focus-visible {

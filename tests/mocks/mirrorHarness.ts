@@ -48,6 +48,8 @@ export interface MirrorHarness {
     setup: TvSetupScreen | null; tv: TableTv | undefined;
     /** Whether the curtain is down; blacking the canvas adds `draw:curtain`. */
     curtain: boolean;
+    /** Whether its sheet is still on the way down. */
+    curtainFalling?: boolean;
     /** Whether the sheet of a scene change is on its way down. */
     withheld: boolean;
   };
@@ -130,6 +132,7 @@ export function setupMirror(): MirrorHarness {
     tableTv: () => state.tv,
     setup: () => state.setup,
     curtained: () => state.curtain,
+    curtainFalling: () => state.curtainFalling === true,
     withheld: () => state.withheld,
     onFrame,
   }, () => now);

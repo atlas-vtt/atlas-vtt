@@ -23,8 +23,6 @@ export interface OnlinePlay {
   settingsSections(): AtlasSettingSection[];
   /** The table's log for other plugins; null while online play is switched off. */
   chat(): TableChat | null;
-  /** Whether an online table runs now. */
-  tableRunning(): boolean;
 }
 
 /**
@@ -67,5 +65,5 @@ export function registerOnlinePlay(plugin: Plugin, settings: SettingsService): O
     setRestGate(null);
   });
   sync();
-  return { settingsSections: () => feature?.settingsSections() ?? [], chat: () => feature?.chat ?? null, tableRunning: () => feature?.table != null };
+  return { settingsSections: () => feature?.settingsSections() ?? [], chat: () => feature?.chat ?? null };
 }

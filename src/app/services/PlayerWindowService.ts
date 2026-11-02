@@ -22,7 +22,7 @@ import { glideCamera } from './tableTv';
 import { prefersReducedMotion } from '../utils/motion';
 import { applyTableTvLook, PLAYER_OVERLAYS_CLASS } from './playerWindowTurn';
 import { glassFrame, PlayerGlass, sameCamera, withSetupScreen } from './playerGlass';
-import { removePlayerCurtain, showPlayerCurtain } from './playerCurtain';
+import { CURTAIN_DOWN_MS, removePlayerCurtain, showPlayerCurtain } from './playerCurtain';
 import { PlayerSceneFade } from './playerSceneFade';
 import { watchPlayerWindowDisplay } from './playerWindowDisplay';
 
@@ -82,6 +82,8 @@ export class PlayerWindowService {
   private readonly glass = new PlayerGlass();
   /** Whether the curtain is down: players see black until it is lifted, whatever is presented meanwhile. */
   private curtained = false;
+  /** Until when the curtain's sheet is on its way down. */
+  private curtainFallingUntil = 0;
   /** The dip to black while the presented scene changes; the curtain above wins over it. */
   private readonly sceneFade = new PlayerSceneFade((down) => {
     const win = this.getWindow();
@@ -301,12 +303,20 @@ export class PlayerWindowService {
     const win = this.getWindow();
     if (!win || this.curtained === down) return;
     this.curtained = down;
-    if (down) this.sceneFade.cancel();
     playerWindowStore.setState({ curtain: down });
     this.playerView?.updateSession({ curtain: down });
-    showPlayerCurtain(win.document, down);
-    // Black at once, or the frame players are owed
+    if (down) {
+      this.sceneFade.cancel();
+      this.curtainFallingUntil = performance.now() + CURTAIN_DOWN_MS;
+      showPlayerCurtain(win.document, true);
+      return;
+    }
+    // The sheet stays until the canvas holds a picture again, its fade off that picture
+    this.sceneFade.awaitFrame(performance.now());
+    this.mirror?.markStale();
     this.mirror?.frame();
+    // A held frame is drawn at once and reports no frame; without a mirror none will come
+    if (this.heldFrame || !this.mirror) this.sceneFade.finish();
   }
 
   public isWindowOpen(): boolean {
@@ -681,6 +691,7 @@ export class PlayerWindowService {
       setup: () => this.glass.setupScreen(),
       pixelBudget: () => this.pixelBudget(),
       curtained: () => this.curtained,
+      curtainFalling: (time) => time < this.curtainFallingUntil,
       withheld: (time) => this.sceneFade.withholds(time),
       onFrame: (camera) => {
         this.recordPlayerCamera(camera);

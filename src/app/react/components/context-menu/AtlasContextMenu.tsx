@@ -3,6 +3,7 @@ import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { setIcon } from 'obsidian';
 import { runInBackground } from '../../../utils/backgroundTask';
 import { LabelTooltip } from '../../../packages/components/primitives/tooltip';
+import { useMenuFit } from './useMenuFit';
 import './atlas-context-menu.scss';
 import { t } from '../../../i18n';
 
@@ -153,6 +154,26 @@ function itemLabel(entry: ContextMenuItemEntry): React.ReactNode {
   return entry.detail !== undefined ? label : entry.label;
 }
 
+/** A submenu, beside its row and sliding along it to stay in its room (`useMenuFit`). */
+function FittedSubmenu({ placement, children }: { placement: ContextMenuPlacement; children: React.ReactNode }): React.ReactElement {
+  const menu = useRef<HTMLDivElement>(null);
+  const boundary = useMenuFit(menu, placement.collisionBoundary);
+  return (
+    <DropdownMenu.SubContent
+      ref={menu}
+      className="atlas-ctx-menu"
+      sideOffset={4}
+      alignOffset={-4}
+      avoidCollisions
+      sticky="always"
+      collisionBoundary={boundary}
+      collisionPadding={8}
+    >
+      {children}
+    </DropdownMenu.SubContent>
+  );
+}
+
 function ItemContent({ entry }: { entry: ContextMenuItemEntry }): React.ReactElement {
   return (
     <>
@@ -203,16 +224,9 @@ export function renderEntries(
               </span>
             </DropdownMenu.SubTrigger>
             <DropdownMenu.Portal container={placement.container}>
-              <DropdownMenu.SubContent
-                className="atlas-ctx-menu"
-                sideOffset={4}
-                alignOffset={-4}
-                avoidCollisions
-                collisionBoundary={placement.collisionBoundary ?? []}
-                collisionPadding={8}
-              >
+              <FittedSubmenu placement={placement}>
                 <SubmenuEntries entry={entry} onClose={onClose} placement={placement} />
-              </DropdownMenu.SubContent>
+              </FittedSubmenu>
             </DropdownMenu.Portal>
           </DropdownMenu.Sub>
         );

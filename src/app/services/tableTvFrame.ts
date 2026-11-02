@@ -114,7 +114,7 @@ export function drawTvSetup(
     ctx.stroke();
     const gap = Math.max(card.height / 2, unit * 0.06) + line * 4;
     caption(t('tableTv.setup.fitTitle'), h / 2 - gap - unit * 0.04, true);
-    caption(t('tableTv.setup.cardSize'), h / 2 + gap + unit * 0.04, false);
+    caption(t('tableTv.setup.fitHint'), h / 2 + gap + unit * 0.04, false);
   }
   ctx.restore();
 }

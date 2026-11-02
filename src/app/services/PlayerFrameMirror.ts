@@ -99,6 +99,8 @@ export interface MirrorInputs {
   pixelBudget?(): number;
   /** Whether the curtain is down: players see black, and nothing is rendered for them. Never down without. */
   curtained?(): boolean;
+  /** Whether the curtain's sheet is still on its way down at `time`, with the canvas held under it. Never without. */
+  curtainFalling?(time: number): boolean;
   /** Whether no new picture may reach the canvas at `time`, which keeps what it holds: the sheet is on its way down. Never without. */
   withheld?(time: number): boolean;
   /**
@@ -176,7 +178,7 @@ export class PlayerFrameMirror {
     const source = this.inputs.source();
     this.watch(source);
     if (this.inputs.curtained?.()) {
-      this.guarded(() => this.drawCurtain());
+      this.guarded(() => this.drawCurtain(now));
       return;
     }
     if (this.blacked) this.liftCurtain();
@@ -336,12 +338,13 @@ export class PlayerFrameMirror {
 
   /**
    * The curtain: the canvas is blacked once, so no stylesheet is needed to hide the map, and
-   * nothing is rendered or asked for while it is down. Its tiles are let go.
+   * nothing is rendered or asked for while it is down. Its tiles are let go. It keeps its last
+   * picture until the sheet is down, or the fade would be a cut to black.
    */
-  private drawCurtain(): void {
+  private drawCurtain(now: number): void {
     this.demand.release();
     this.requestedAt = null;
-    if (this.blacked) return;
+    if (this.blacked || this.inputs.curtainFalling?.(now)) return;
     this.context.fillStyle = '#000';
     this.context.fillRect(0, 0, this.target.width, this.target.height);
     this.blacked = true;

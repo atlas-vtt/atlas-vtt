@@ -51,6 +51,8 @@ export interface MapFile {
   /** Human-readable map name, written when the map is created (absent in older files) */
   name?: string;
   background: string | null;
+  /** The level the scene was last shown on, which it opens on again; unset is the first. */
+  viewedLevel?: string | null;
   /** The scene's levels, bottom first; absent for a scene with one level. The first level's background is `background`. */
   levels?: SceneLevel[] | undefined;
   grid: GridState | null;

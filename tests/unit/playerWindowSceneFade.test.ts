@@ -21,6 +21,24 @@ function sceneFade(): { dip: PlayerSceneFade; sheet: boolean[]; curtain: { down:
   return { dip: new PlayerSceneFade((down) => sheet.push(down), () => curtain.down), sheet, curtain };
 }
 
+describe('the GM lifting the curtain', () => {
+  it('keeps the sheet until a frame is on the canvas, and withholds no frame', () => {
+    const { dip, sheet } = sceneFade();
+    dip.awaitFrame(1000);
+    expect(dip.withholds(1000)).toBe(false);
+    expect(sheet).toEqual([]);
+    dip.finish();
+    expect(sheet).toEqual([false]);
+  });
+
+  it('shows what the canvas holds at the limit, when no frame came', () => {
+    const { dip, sheet } = sceneFade();
+    dip.awaitFrame(1000);
+    dip.expire(1000 + SCENE_FADE_LIMIT_MS);
+    expect(sheet).toEqual([false]);
+  });
+});
+
 describe('the dip to black', () => {
   it('keeps the picture until the sheet is down, and lifts at the first real frame', () => {
     const { dip, sheet } = sceneFade();

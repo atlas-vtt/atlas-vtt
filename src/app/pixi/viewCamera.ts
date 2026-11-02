@@ -3,8 +3,6 @@ export interface ViewCamera {
   centerX: number;
   centerY: number;
   scale: number;
-  /** The level of the scene the view shows; unset is the first. */
-  level?: string | undefined;
 }
 
 /** Puts the viewport's camera at `camera`. */

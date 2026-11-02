@@ -150,7 +150,7 @@ afterEach(async () => {
 
 /** Presses the chip at (100, 50), drags it through `to` and lets go, or keeps holding with `release: false`. */
 function drag(to: { x: number; y: number; altKey?: boolean }[], release = true): void {
-  const chip = screen.getByText(/Players|Bring players here/).parentElement!;
+  const chip = screen.getByRole('group', { name: /Players|Bring players here/ });
   fireEvent.pointerDown(chip, { pointerId: 1, button: 0, clientX: 100, clientY: 50 });
   for (const { x, y, altKey = false } of to) fireEvent.pointerMove(window, { pointerId: 1, clientX: x, clientY: y, altKey });
   if (release) fireEvent.pointerUp(window, { pointerId: 1, clientX: to.at(-1)!.x, clientY: to.at(-1)!.y });
@@ -160,24 +160,24 @@ describe('the glass chip', () => {
   it('is not there while the player window is closed', () => {
     playerWindowStore.setState({ isOpen: false, shownTabId: null });
     render(<GlassChip view={fakeView()} />);
-    expect(screen.queryByText(/Players/)).toBeNull();
+    expect(screen.queryByRole('group')).toBeNull();
     expect(fakes.outlines).toHaveLength(0);
   });
 
   it('names the live glass following the GM, and pins it where it is', () => {
     render(<GlassChip view={fakeView()} />);
-    expect(screen.getByText('Players · following you')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Players · following you' })).toBeTruthy();
     expect(fakes.outlines[0]!.setGlass).toHaveBeenLastCalledWith({ centerX: 100, centerY: 100, width: 200, height: 100 }, 'live');
 
     fireEvent.click(screen.getByRole('button', { name: 'Pin the players here' }));
     expect(service.freezeCamera).toHaveBeenCalledWith();
-    expect(screen.getByText('Players')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Players' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Let the players follow you' }));
     // Silently: the notice of the command palette's freeze is not the chip's
     expect(service.unfreezeCamera).toHaveBeenCalledOnce();
     expect(service.toggleCameraFreeze).not.toHaveBeenCalled();
-    expect(screen.getByText('Players · following you')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Players · following you' })).toBeTruthy();
   });
 
   it('drags the players with it, their top-left corner on the nearest grid intersection, and keeps the frame on release', () => {
@@ -190,7 +190,7 @@ describe('the glass chip', () => {
     expect(service.framePlayersOn).toHaveBeenCalledWith('tab-a', 200, 200);
     expect(outline.setOrigin).toHaveBeenNthCalledWith(1, { centerX: 100, centerY: 100, width: 200, height: 100 });
     expect(outline.setOrigin).toHaveBeenLastCalledWith(null);
-    expect(screen.getByText('Players')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Players' })).toBeTruthy();
   });
 
   it('leaves the glass where it is dragged with Alt held, and on a hex grid', () => {
@@ -204,10 +204,11 @@ describe('the glass chip', () => {
     expect(service.framePlayersOn).toHaveBeenLastCalledWith('tab-a', 163 + 63, 122 + 22);
   });
 
-  it('says on its label what a drag does and that Alt frees it', () => {
+  it('says on its icon what a drag does and that Alt frees it', () => {
     render(<GlassChip view={fakeView()} />);
     const hint = screen.getByText('Drag to move. Snaps to a square grid unless you hold Alt.');
-    expect(screen.getByText('Players · following you').getAttribute('aria-describedby')).toBe(hint.id);
+    const grip = screen.getByRole('group', { name: 'Players · following you' }).querySelector('.atlas-glass-chip__grip')!;
+    expect(grip.getAttribute('aria-describedby')).toBe(hint.id);
   });
 
   it('does not drag below the threshold, so a press stays a click', () => {
@@ -360,7 +361,7 @@ describe('saved frames', () => {
   const hover = (view: AtlasView, x: number, y: number): void => {
     fireEvent.pointerMove(view.serviceManager!.getRendererService()!.getApp()!.canvas, { clientX: x, clientY: y });
   };
-  const savedChip = (): HTMLElement | null => screen.queryByText(/^Frame \d+$/)?.parentElement ?? null;
+  const savedChip = (): HTMLElement | null => document.querySelector<HTMLElement>('.atlas-glass-chip[aria-label^="Frame"]');
 
   it('saves the frame players see, with their zoom, from the live glass only', () => {
     const view = fakeView();
@@ -383,13 +384,13 @@ describe('saved frames', () => {
       expect(savedChip()!.hidden).toBe(true);
 
       hover(view, 220, 280);
-      expect(screen.getByText('Frame 1')).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
       expect(savedChip()!.hidden).toBe(false);
       expect(screen.getByRole('button', { name: 'Show players here' })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
       hover(view, 300, 300);
       act(() => { vi.advanceTimersByTime(300); });
-      expect(screen.getByText('Frame 2')).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Frame 2' })).toBeTruthy();
 
       // Out of the frames and onto the chip: it stays
       hover(view, 900, 700);
@@ -426,7 +427,7 @@ describe('saved frames', () => {
 
       hover(view, 900, 700);
       act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS); });
-      expect(screen.getByText('Frame 2')).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Frame 2' })).toBeTruthy();
 
       hover(view, 20, 20);
       act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS); });
@@ -447,7 +448,7 @@ describe('saved frames', () => {
     expect(map(view).getState().playerFrames).toEqual([OTHER]);
 
     hover(view, 900, 700);
-    expect(screen.getByText('Frame 1')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
     expect(savedChip()!.hidden).toBe(false);
   });
 
@@ -455,9 +456,9 @@ describe('saved frames', () => {
     const view = fakeView(SQUARE, [FRAME, FRAME, FRAME]);
     renderInView(view);
     hover(view, 220, 280);
-    expect(screen.getByText('Frame 3')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Frame 3' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
-    expect(screen.getByText('Frame 2')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Frame 2' })).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(map(view).getState().playerFrames).toEqual([]);
@@ -471,12 +472,12 @@ describe('saved frames', () => {
       const view = fakeView(SQUARE, [FRAME, { ...FRAME, centerX: 200, centerY: 250 }]);
       renderInView(view);
       hover(view, 350, 330);
-      expect(screen.getByText('Frame 1')).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
 
       fireEvent.pointerEnter(savedChip()!);
       fireEvent.pointerMove(savedChip()!, { clientX: 210, clientY: 260 });
       act(() => { vi.advanceTimersByTime(1000); });
-      expect(screen.getByText('Frame 1')).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
     } finally {
       vi.useRealTimers();
     }
@@ -490,16 +491,16 @@ describe('saved frames', () => {
       hover(view, 350, 330);
       hover(view, 250, 280);
       act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS - 1); });
-      expect(screen.getByText('Frame 1')).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
       fireEvent.pointerEnter(savedChip()!);
       act(() => { vi.advanceTimersByTime(1000); });
-      expect(screen.getByText('Frame 1')).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
 
       // Stopping on the other frame instead brings up its chip
       fireEvent.pointerLeave(savedChip()!);
       hover(view, 250, 280);
       act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS); });
-      expect(screen.getByText('Frame 2')).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Frame 2' })).toBeTruthy();
     } finally {
       vi.useRealTimers();
     }
@@ -508,7 +509,7 @@ describe('saved frames', () => {
   it('comes up for the map alone, not for what lies over it', () => {
     const view = fakeView(SQUARE, [{ centerX: 100, centerY: 100, width: 200, height: 100, scale: 1 }]);
     renderInView(view);
-    fireEvent.pointerMove(screen.getByText(/Players/).parentElement!, { clientX: 100, clientY: 60 });
+    fireEvent.pointerMove(screen.getByRole('group', { name: /Players/ }), { clientX: 100, clientY: 60 });
     expect(savedChip()!.hidden).toBe(true);
   });
 
@@ -647,19 +648,19 @@ describe('where the chip stands', () => {
   describe('of a saved frame', () => {
     const chip = { width: 160, height: 48 };
 
-    it('sits inside the frame\'s top-left corner where that shows', () => {
-      expect(savedChipPlace({ x: 100, y: 200, width: 400, height: 300 }, chip, room)).toEqual({ x: 108, y: 248 });
+    it('sits on the frame\'s top edge beside its number where that shows', () => {
+      expect(savedChipPlace({ x: 100, y: 200, width: 400, height: 300 }, chip, room)).toEqual({ x: 114, y: 216 });
     });
 
     it('stays on the part of the frame that shows, clear of the bars, where the corner does not', () => {
       // A frame larger than the view, as one saved while players follow the GM
       expect(savedChipPlace({ x: -300, y: -400, width: 2000, height: 1500 }, chip, room)).toEqual({ x: 8, y: 104 });
       // Its corner shows, but too near the pane's far edges and the toolbars for the chip
-      expect(savedChipPlace({ x: 700, y: 450, width: 500, height: 500 }, chip, room)).toEqual({ x: 632, y: 480 });
+      expect(savedChipPlace({ x: 700, y: 450, width: 500, height: 500 }, chip, room)).toEqual({ x: 632, y: 466 });
     });
 
     it('does not wait on the screen for a frame that left it', () => {
-      expect(savedChipPlace({ x: -900, y: -800, width: 400, height: 300 }, chip, room)).toEqual({ x: -892, y: -752 });
+      expect(savedChipPlace({ x: -900, y: -800, width: 400, height: 300 }, chip, room)).toEqual({ x: -886, y: -784 });
     });
   });
 });
