@@ -15,6 +15,7 @@ import { AddAmbience, LayerStrip, MasterStrip, WaitingStrip } from './DeskStrips
 import { DeskHeader } from './DeskHeader';
 import { MusicCard } from './MusicCard';
 import { SilenceButton } from './SilenceButton';
+import { useMoreToScroll } from './useMoreToScroll';
 import { useSoundValue } from './useSound';
 
 interface SoundDeskProps {
@@ -44,6 +45,8 @@ export function SoundDesk({ app, director, moods, onSaveAs }: SoundDeskProps): R
   }, [showLibrary]);
   const chooseMusic = useCallback(() => choose('music'), [choose]);
   const [dropTarget, setDropTarget] = useState(false);
+  const mix = useRef<HTMLDivElement>(null);
+  useMoreToScroll(mix);
   const layers = layerKeys === '' ? [] : layerKeys.split(SEPARATOR);
   const waiting = waitingLayers === '' ? [] : waitingLayers.split(SEPARATOR);
 
@@ -74,7 +77,7 @@ export function SoundDesk({ app, director, moods, onSaveAs }: SoundDeskProps): R
     >
       <DeskHeader app={app} director={director} moods={moods} holdsSound={holdsSound} onSaveAs={onSaveAs} />
       <div className="atlas-sound-strips" data-drop-target={dropTarget || undefined}>
-        <div className="atlas-sound-strips__mix">
+        <div ref={mix} className="atlas-sound-strips__mix">
           <MusicCard director={director} onChoose={chooseMusic} />
           {layers.map((key) => <LayerStrip key={key} director={director} soundKey={key} />)}
           {waiting.map((id) => <WaitingStrip key={id} director={director} soundId={id} />)}

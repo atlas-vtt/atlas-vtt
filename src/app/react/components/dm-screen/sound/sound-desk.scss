@@ -136,15 +136,32 @@ button.atlas-sound-who,
 }
 
 // What does not fit scrolls here, past the cards' lower edge, so a scrollbar never takes height from a fader.
+// The system's scrollbar may show only while scrolling, so the side with more to come fades out (`useMoreToScroll`).
+// Only then: a mask makes a layer of the row, which holds the meters.
 .atlas-sound-strips__mix {
   @include atlas-scrollbar;
+  --atlas-strips-fade-start: 0px;
+  --atlas-strips-fade-end: 0px;
   flex: 1;
   min-width: 0;
   display: flex;
   gap: $spacing-s;
   margin-bottom: -$spacing-m;
-  padding-bottom: $spacing-m;
+  padding-bottom: max(0px, #{$spacing-m} - var(--atlas-strips-bar, 0px));
   overflow: auto hidden;
+
+  &[data-more-start] {
+    --atlas-strips-fade-start: 40px;
+  }
+
+  &[data-more-end] {
+    --atlas-strips-fade-end: 40px;
+  }
+
+  &[data-more-start],
+  &[data-more-end] {
+    mask-image: linear-gradient(to right, transparent, #000 var(--atlas-strips-fade-start), #000 calc(100% - var(--atlas-strips-fade-end)), transparent);
+  }
 }
 
 .atlas-sound-card {
