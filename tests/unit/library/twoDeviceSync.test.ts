@@ -6,6 +6,8 @@ import { transferAssets } from '../../../src/app/services/assetTransfer/assetTra
 import { FileReferenceService } from '../../../src/app/services/FileReferenceService';
 import { COPY_SETTLE_MS, libraryClock } from '../../../src/app/services/library/libraryState';
 import { MoodStore } from '../../../src/app/soundLibrary/MoodStore';
+import { recordIdFor, recordsForFiles } from '../../../src/app/soundLibrary/libraryRecords';
+import { externalAudioPath } from '../../../src/app/soundLibrary/soundPaths';
 import { updateSounds } from '../../../src/app/soundLibrary/soundRecords';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 import { FakeSync, seededRandom } from './fakeSync';
@@ -150,13 +152,21 @@ class Trial {
   }
 }
 
+/** What a device's library says of a file below a root outside the vault: its absolute path is in no record. */
+const EXTERNAL_LIBRARY = { audioPathOf: externalAudioPath };
+
 /** What a GM does with sounds: adds them from outside and from the vault, renames their files, edits, moves and deletes them. */
 async function editSoundOn(trial: { pick: <T>(items: readonly T[]) => T | undefined; roll: () => number; created: Set<string>; deleted: Set<string> }, device: Device, n: string): Promise<void> {
   const { assets, vault } = device;
   const sounds = await assets.getAssets(COLLECTION, 'sound');
   const sound = trial.pick(sounds);
   const roll = trial.roll();
-  if (roll < 0.35 || !sound) {
+  if (roll < 0.15) {
+    // A file enters a mix: both devices may do so at once, each knowing nothing of the other.
+    const name = `Shared ${Math.floor(trial.roll() * 4)}.mp3`;
+    const [made] = await recordsForFiles(assets, EXTERNAL_LIBRARY, [{ kind: 'music', name, path: `Battle/${name}`, size: 5, mtime: 1 }], COLLECTION);
+    if (made) trial.created.add(made.id);
+  } else if (roll < 0.35 || !sound) {
     const audioPath = roll < 0.2 ? `atlas-vtt/collections/${COLLECTION}/sounds/${n}.mp3` : `Library/${n}.mp3`;
     await vault.app.vault.adapter.write(audioPath, `AUDIO ${n}`);
     const added = await assets.addAsset({ type: 'sound', name: `Sound ${n}`, tags: [], collection: COLLECTION, audioPath, kind: 'music', licence: 'unknown', streaming: 'unknown' });
@@ -266,6 +276,38 @@ describe('two devices sharing a library through a file sync', () => {
     expect(a.vault.files.has(record)).toBe(true);
     expect(await library(b.assets)).toEqual(await library(a.assets));
     for (const device of [a, b]) device.assets.cancelScheduledChecks();
+  });
+
+  it('a file used on both devices at once is one record, wherever each keeps the folder', async () => {
+    const a = await startDevice('a');
+    await a.assets.createCollection(COLLECTION);
+    const b = await startDevice('b', synced(a.vault), syncedFolders(a.vault));
+    const sync = new FakeSync(a.vault, b.vault, seededRandom(3));
+    await settle(sync, [a, b]);
+    const file = { kind: 'ambience' as const, name: 'Rain.ogg', path: 'Weather/Rain.ogg', size: 7, mtime: 1 };
+    const [onA] = await recordsForFiles(a.assets, EXTERNAL_LIBRARY, [file], COLLECTION, 1000);
+    const [onB] = await recordsForFiles(b.assets, EXTERNAL_LIBRARY, [file], COLLECTION, 2000);
+    expect(onB?.id).toBe(onA?.id);
+    expect(onA?.id).toBe(recordIdFor(COLLECTION, 'atlas-sound:ambience/Weather/Rain.ogg'));
+    await settle(sync, [a, b]);
+    const records = await a.assets.getAssets(COLLECTION, 'sound');
+    expect(records.map((record) => record.audioPath)).toEqual(['atlas-sound:ambience/Weather/Rain.ogg']);
+    expect(records[0]?.kind).toBe('ambience');
+    expect(await library(b.assets)).toEqual(await library(a.assets));
+    for (const device of [a, b]) device.assets.cancelScheduledChecks();
+  });
+
+  it('browsing writes nothing, and a record of a file outside the vault never takes a vault file of its name', async () => {
+    const a = await startDevice('a');
+    await a.assets.createCollection(COLLECTION);
+    const before = JSON.stringify(synced(a.vault));
+    await a.vault.app.vault.adapter.write('Library/Rain.ogg', 'UNRELATED');
+    const [made] = await recordsForFiles(a.assets, EXTERNAL_LIBRARY, [{ kind: 'ambience', name: 'Rain.ogg', path: 'Weather/Rain.ogg', size: 7, mtime: 1 }], COLLECTION);
+    expect(before).not.toContain('Rain');
+    await a.assets.reconcileWithVault();
+    await a.assets.reconcileWithVault();
+    expect(await a.assets.getAssetById(made!.id)).toMatchObject({ audioPath: 'atlas-sound:ambience/Weather/Rain.ogg' });
+    a.assets.cancelScheduledChecks();
   });
 
   it('a rename on one device reaches the other, and an edit made there meanwhile survives', async () => {

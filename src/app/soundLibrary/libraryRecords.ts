@@ -54,7 +54,7 @@ export function recordOfFile(sounds: readonly SoundAsset[], audioPath: string, c
  * trim, licence and credit of its own: a collection travels with its records, and no record is ever taken
  * from another collection.
  */
-export async function recordsForFiles(assets: AssetService, library: SoundLibrary, files: readonly LibraryFile[], collectionId: string, now = Date.now()): Promise<SoundRecord[]> {
+export async function recordsForFiles(assets: Pick<AssetService, 'runExclusive' | 'getAssets' | 'addIdentifiedAssets'>, library: Pick<SoundLibrary, 'audioPathOf'>, files: readonly LibraryFile[], collectionId: string, now = Date.now()): Promise<SoundRecord[]> {
   return assets.runExclusive(async () => {
     const sounds = await assets.getAssets(undefined, 'sound');
     const taken = new Set(sounds.map((sound) => sound.id));
@@ -81,7 +81,7 @@ export async function recordsForFiles(assets: AssetService, library: SoundLibrar
  * The library's editors: trim, licence, credit and tags belong to the file, so they change every record of
  * it. A file without one gets its first in the collection in use.
  */
-export async function editFiles(assets: AssetService, library: SoundLibrary, files: readonly LibraryFile[], collectionId: string, changes: SoundChanges): Promise<void> {
+export async function editFiles(assets: AssetService, library: Pick<SoundLibrary, 'audioPathOf'>, files: readonly LibraryFile[], collectionId: string, changes: SoundChanges): Promise<void> {
   const sounds = await assets.getAssets(undefined, 'sound');
   const paths = new Set(files.flatMap((file) => library.audioPathOf(file.kind, file.path) ?? []));
   const unheld = files.filter((file) => !sounds.some((sound) => sound.audioPath === library.audioPathOf(file.kind, file.path)));

@@ -2,7 +2,7 @@ import { normalizePath, TFile, TFolder, type App, type EventRef, type TAbstractF
 import { ensureFolder, isPathTaken } from '../plugin/vaultFolders';
 import { isReservedCollectionPath } from '../services/vault-sync/reservedPaths';
 import { isAudioPath } from './soundFiles';
-import { isWithin, joinRelative, relativeBelow, safeRelative } from './soundPaths';
+import { joinRelative, relativeBelow, safeRelative } from './soundPaths';
 import { SoundPathError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 
 /** A linked folder in the vault. Moves go through `fileManager`, so whatever names a file follows it, and deleting goes where the GM's trash setting says. */
@@ -12,7 +12,7 @@ export class VaultLocation implements SoundLocation {
   private vaultPath(path: string): string {
     const safe = safeRelative(path);
     if (safe === null) throw new SoundPathError(path);
-    return normalizePath(joinRelative(this.root, safe));
+    return normalizePath(safe === '' ? this.root || '/' : joinRelative(this.root, safe));
   }
 
   private entry(path: string): TAbstractFile | null {
@@ -20,8 +20,7 @@ export class VaultLocation implements SoundLocation {
   }
 
   async list(folder: string): Promise<SoundListing | null> {
-    const parent = this.entry(folder === '' && this.root === '' ? '/' : folder);
-    const here = parent ?? (this.root === '' && folder === '' ? this.app.vault.getRoot() : null);
+    const here = this.root === '' && folder === '' ? this.app.vault.getRoot() : this.entry(folder);
     if (!(here instanceof TFolder)) return null;
     const folders: SoundFolderEntry[] = [];
     const files: SoundFileEntry[] = [];
@@ -96,7 +95,7 @@ export class VaultLocation implements SoundLocation {
     const heard = (file: TAbstractFile, oldPath?: string): void => {
       for (const path of [file.path, oldPath]) {
         const below = path === undefined ? null : inRoot(path);
-        if (below !== null && isWithin('', below)) onChange(below === '' ? null : below);
+        if (below !== null) onChange(below === '' ? null : below);
       }
     };
     const { vault } = this.app;

@@ -4,6 +4,7 @@ import { fnv1a32 } from '../utils/hashing';
 import { addLayer, removeLayer, startMusic, stopMusic } from './liveEdits';
 import { moodTransition } from './moodTransition';
 import { listChangeAt, playTrack, soundingMusic, withListChange, type ListChange } from './musicList';
+import type { SoonestTrack } from './libraryMix';
 import { EMPTY_TABLE_SOUND, type MoodMix, type ReadySounds } from './tableSound';
 
 export interface ActiveMood {
@@ -29,6 +30,8 @@ export interface SoundMix {
   waitingLayers: MoodLayer[];
   /** A change of the list, waiting for the current track's end. */
   listChange: ListChange | null;
+  /** A track of `waitingMusic` the GM wants sooner than the end of the list. */
+  soonest?: SoonestTrack;
 }
 
 export const EMPTY_MIX: SoundMix = { table: EMPTY_TABLE_SOUND, mood: null, waitingMusic: null, waitingLayers: [], listChange: null };
@@ -133,7 +136,8 @@ export function dropLayer(mix: SoundMix, soundId: string, key: string | null, no
 export const dropWaitingTrack = (mix: SoundMix, soundId: string): SoundMix => {
   if (!mix.waitingMusic) return mix;
   const tracks = mix.waitingMusic.tracks.filter((id) => id !== soundId);
-  return { ...mix, waitingMusic: tracks.length > 0 ? { ...mix.waitingMusic, tracks } : null };
+  const { soonest, ...rest } = mix;
+  return { ...rest, ...(soonest && soonest.sound !== soundId && { soonest }), waitingMusic: tracks.length > 0 ? { ...mix.waitingMusic, tracks } : null };
 };
 
 /**

@@ -64,6 +64,8 @@ function rotatedFrom(tracks: readonly SoundInfo[], from: number): SoundInfo[] {
 export interface ListChange {
   tracks: SoundInfo[];
   shuffle: boolean;
+  /** The track to follow the one sounding, whatever a shuffled order says. */
+  next?: string;
 }
 
 /** A track of the list now, on a short crossfade; the list goes on from it, and a change waiting for the track's end is taken in. */
@@ -114,7 +116,9 @@ export function withListChange(state: TableSound, change: ListChange, at: number
   if (!play || !ending || change.tracks.length === 0) return state;
   const index = change.tracks.findIndex((track) => track.key === ending.key);
   const tracks = change.shuffle || index < 0 ? change.tracks : rotatedFrom(change.tracks, index + 1);
-  const seed = change.shuffle ? seedNotBeginningWith(tracks, ending.key, play.seed + 1) : play.seed;
+  const seed = !change.shuffle ? play.seed
+    : change.next !== undefined ? seedBeginningWith(tracks, change.next, play.seed + 1)
+      : seedNotBeginningWith(tracks, ending.key, play.seed + 1);
   const live = withoutFinished(state, at);
   return changed(live, {
     music: { ...play, tracks, seed, shuffle: change.shuffle, startAt: at, fade: { at, ms: TRACK_JOIN_MS } },
