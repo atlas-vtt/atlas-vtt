@@ -13,6 +13,16 @@ function withLayer(state: TableSound, key: string, change: (play: LayerPlay) => 
   return changed(state, { layers: state.layers.map((layer) => (layer === play ? change(layer) : layer)) });
 }
 
+/** A Silence holds a mix; with none left there is nothing for it to hold. What it kept quiet and still fades out goes with it, or it would come up. */
+function silenceLifted(now: number): Pick<TableSound, 'silenced' | 'silenceFade' | 'outgoing' | 'outgoingLayers'> {
+  return { silenced: false, silenceFade: { at: now, ms: SILENCE_FADE_MS }, outgoing: [], outgoingLayers: [] };
+}
+
+/** What the first sound of an empty mix changes besides: it is meant to be heard. */
+function liftedByFirstSound(state: TableSound, now: number): Partial<TableSound> {
+  return state.silenced && !state.music && state.layers.length === 0 ? silenceLifted(now) : {};
+}
+
 /** A sound already in the mix, or a ninth layer, is refused. */
 export function addLayer(state: TableSound, sound: SoundInfo, gainDb: number, now: number, fadeMs: number, leadMs = OFFLINE_LEAD_MS): TableSound {
   const live = withoutFinished(state, now);
@@ -22,9 +32,10 @@ export function addLayer(state: TableSound, sound: SoundInfo, gainDb: number, no
     return changed(live, {
       layers: [...live.layers, { ...fading, gainDb, fade: rampFade(fading, now, fadeMs) }],
       outgoingLayers: live.outgoingLayers.filter((play) => play !== fading),
+      ...liftedByFirstSound(live, now),
     });
   }
-  return changed(live, { layers: [...live.layers, enteringLayer(sound, gainDb, now + leadMs, fadeMs)] });
+  return changed(live, { layers: [...live.layers, enteringLayer(sound, gainDb, now + leadMs, fadeMs)], ...liftedByFirstSound(live, now) });
 }
 
 export function removeLayer(state: TableSound, key: string, now: number, fadeMs: number): TableSound {
@@ -61,7 +72,7 @@ export function startMusic(state: TableSound, tracks: SoundInfo[], shuffle: bool
   const live = withoutFinished(state, now);
   const startAt = now + leadMs;
   const outgoing = live.music ? [...live.outgoing, leaving(live.music, startAt, fadeMs)] : live.outgoing;
-  return changed(live, { music: enteringMusic(tracks, shuffle, gainDb, seed, startAt, fadeMs), outgoing });
+  return changed(live, { music: enteringMusic(tracks, shuffle, gainDb, seed, startAt, fadeMs), outgoing, ...liftedByFirstSound(live, now) });
 }
 
 export function stopMusic(state: TableSound, now: number, fadeMs: number): TableSound {
@@ -70,9 +81,10 @@ export function stopMusic(state: TableSound, now: number, fadeMs: number): Table
   return changed(live, { music: null, outgoing: [...live.outgoing, leaving(state.music, now, fadeMs)] });
 }
 
-/** Fades everything out, and leaves nothing to come back: the end of a session, not a Silence. */
+/** Fades everything out, and leaves nothing to come back: the end of a session, not a Silence. Under one it ends that too, and what it kept quiet just goes. */
 export function stopAll(state: TableSound, now: number, fadeMs: number): TableSound {
   const live = withoutFinished(state, now);
+  if (live.silenced) return changed(live, { music: null, layers: [], ...silenceLifted(now) });
   return changed(live, {
     music: null,
     layers: [],
