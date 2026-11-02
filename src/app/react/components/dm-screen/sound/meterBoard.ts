@@ -7,7 +7,7 @@ const STILL = 0.002;
 /** The lowest the bars on a mood's tile go: flat, but there. */
 const BARS_FLOOR = 0.15;
 /** Each bar of a tile takes the level at its own height, and falls at its own pace. */
-const BARS = [{ height: 0.7, fall: 0.5 }, { height: 1, fall: 0.8 }, { height: 0.85, fall: 0.4 }, { height: 0.6, fall: 1.1 }] as const;
+const BARS = [{ height: 1.1, fall: 0.5 }, { height: 1.6, fall: 0.8 }, { height: 1.3, fall: 0.4 }, { height: 1, fall: 1.1 }] as const;
 
 /** A linear level as a share of a fader's scale, so a meter's top and a thumb read alike. */
 export function meterShare(level: number): number {
@@ -57,7 +57,7 @@ export class MeterBoard {
     read(this.levels);
     for (const fill of this.fills) {
       const level = meterShare(this.levels.get(fill.strip) ?? 0) * fill.height;
-      const next = Math.max(fill.floor, level, fill.shown - fill.fall * seconds);
+      const next = Math.min(1, Math.max(fill.floor, level, fill.shown - fill.fall * seconds));
       if (Math.abs(next - fill.shown) < STILL) continue;
       fill.shown = next;
       fill.element.style.transform = `scaleY(${next.toFixed(3)})`;

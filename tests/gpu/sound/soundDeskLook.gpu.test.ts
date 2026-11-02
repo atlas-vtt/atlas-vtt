@@ -98,7 +98,9 @@ describe('how the Sound page looks', () => {
   async function open(theme: string, width = 1713, height = 1067): Promise<SoundTab> {
     await resize(width, height);
     tab = await openSoundTab(theme, viewport, undefined, TABLE);
-    await act(async () => { await sleep(800); });
+    await act(async () => { await sleep(100); });
+    await expect.poll(() => document.querySelector('.atlas-dm-screen.is-visible')).not.toBeNull();
+    await Promise.all(document.querySelector('.atlas-dm-screen')?.getAnimations().map((animation) => animation.finished) ?? []);
     return tab;
   }
 

@@ -36,7 +36,7 @@ describe('drawing levels', () => {
     const remove = board.addBars(bars);
     board.draw(levels({}), 10);
     for (const bar of bars) expect(scale(bar)).toBeCloseTo(0.15, 3);
-    board.draw(levels({ master: 1 }), 0.016);
+    board.draw(levels({ master: 0.05 }), 0.016);
     expect(scale(bars[0] as HTMLElement)).not.toBeCloseTo(scale(bars[1] as HTMLElement), 2);
     remove();
     (bars[0] as HTMLElement).style.transform = 'gone';
