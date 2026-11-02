@@ -10,6 +10,13 @@ import type { SoundBytes } from '../soundTypes';
  * range), `identities` (key: the file's path, one record per path).
  */
 
+/**
+ * Raise this whenever conversion gives other bytes for the same file (a new loop wrap, another encoder
+ * setting). A copy of another version counts as absent, so its file is converted again, and what it holds
+ * goes at the next eviction: it can never be read again.
+ */
+export const CODEC_VERSION = 1;
+
 const DB_VERSION = 1;
 const SOUNDS = 'sounds';
 const BYTES = 'bytes';
@@ -29,6 +36,8 @@ export interface CachedSound {
   lufs: number;
   truePeakDb: number;
   lastUsed: number;
+  /** The `CODEC_VERSION` that made the copy; a copy made before versions were kept has none. */
+  codec?: number;
   /** How the sound goes over its length, once worked out (`soundPeaks`). */
   peaks?: Uint8Array<ArrayBuffer>;
 }
@@ -93,12 +102,12 @@ export class OpusCache {
 
   async get(hash: string): Promise<CachedSound | null> {
     const value = await this.read<unknown>(SOUNDS, (store) => store.get(hash));
-    return isCachedSound(value) ? value : null;
+    return isCachedSound(value) && value.codec === CODEC_VERSION ? value : null;
   }
 
   /** Stores a copy and makes room for it. A copy larger than the whole budget is still kept while it is the newest. */
   async put(hash: string, copy: { bytes: Blob; frames: number; channels: number; lufs: number; truePeakDb: number }): Promise<void> {
-    const record: CachedSound = { hash, byteLength: copy.bytes.size, frames: copy.frames, channels: copy.channels, lufs: copy.lufs, truePeakDb: copy.truePeakDb, lastUsed: this.now() };
+    const record: CachedSound = { hash, byteLength: copy.bytes.size, frames: copy.frames, channels: copy.channels, lufs: copy.lufs, truePeakDb: copy.truePeakDb, lastUsed: this.now(), codec: CODEC_VERSION };
     await this.write([SOUNDS, BYTES], (tx) => {
       tx.objectStore(SOUNDS).put(record);
       tx.objectStore(BYTES).put(copy.bytes, hash);
@@ -108,8 +117,8 @@ export class OpusCache {
 
   /** The copy to play or upload from. Null when it is not here. */
   async bytes(hash: string): Promise<SoundBytes | null> {
-    const value = await this.read<unknown>(BYTES, (store) => store.get(hash));
-    if (!(value instanceof Blob)) return null;
+    const value = await this.blob(hash);
+    if (!value) return null;
     await this.touch(hash);
     return {
       byteLength: value.size,
@@ -119,6 +128,7 @@ export class OpusCache {
 
   /** The copy whole, as a file that can go to a worker. */
   async blob(hash: string): Promise<Blob | null> {
+    if (!(await this.get(hash))) return null;
     const value = await this.read<unknown>(BYTES, (store) => store.get(hash));
     return value instanceof Blob ? value : null;
   }
@@ -191,10 +201,14 @@ export class OpusCache {
     });
   }
 
-  /** Least recently used first, whole copies, never one that plays or the one just stored. */
+  /** Copies of another version first, whatever the room, then the least recently used, whole copies, never one that plays or the one just stored. */
   private async evict(keep: string): Promise<void> {
     const budget = await this.budgetBytes();
-    const sounds = await this.list();
+    const sounds: CachedSound[] = [];
+    for (const sound of await this.list()) {
+      if (sound.codec === CODEC_VERSION || this.pinned.has(sound.hash)) sounds.push(sound);
+      else await this.delete(sound.hash);
+    }
     let used = sounds.reduce((sum, sound) => sum + sound.byteLength, 0);
     if (used <= budget) return;
     for (const sound of sounds.sort((a, b) => a.lastUsed - b.lastUsed)) {

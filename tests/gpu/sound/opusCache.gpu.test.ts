@@ -1,5 +1,7 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { OpusCache, opusCacheBudget, opusCacheDatabaseName } from '@/app/sound/codec/opusCache';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { CODEC_VERSION, OpusCache, opusCacheBudget, opusCacheDatabaseName } from '@/app/sound/codec/opusCache';
+import type { SoundRecord } from '@/app/sound/soundTypes';
+import { SoundCopies, type CopyMaker } from '@/app/soundDirector/soundCopies';
 
 const copy = (bytes: number): { bytes: Blob; frames: number; channels: number; lufs: number; truePeakDb: number } => ({ bytes: new Blob([new Uint8Array(bytes).fill(7)]), frames: 480, channels: 2, lufs: -20, truePeakDb: -3 });
 
@@ -78,6 +80,85 @@ describe('the Opus cache', () => {
     clock += 60_000;
     await store.put('more', copy(10));
     expect(await store.get('playing')).toBeNull();
+  });
+
+  describe('a copy of another codec version', () => {
+    /** Puts a copy as older code wrote it: without a version, or with another one. */
+    async function writtenBefore(databaseName: string, hash: string, codec?: number): Promise<void> {
+      const request = indexedDB.open(databaseName);
+      const db = await new Promise<IDBDatabase>((resolve, reject) => {
+        request.onsuccess = (): void => resolve(request.result);
+        request.onerror = (): void => reject(request.error ?? new Error('open failed'));
+      });
+      const tx = db.transaction(['sounds', 'bytes'], 'readwrite');
+      tx.objectStore('sounds').put({ hash, byteLength: 100, frames: 480, channels: 2, lufs: -20, truePeakDb: -3, lastUsed: clock, ...(codec !== undefined && { codec }) });
+      tx.objectStore('bytes').put(new Blob([new Uint8Array(100)]), hash);
+      await new Promise((resolve) => { tx.oncomplete = resolve; });
+      db.close();
+    }
+
+    function named(budget: number): { store: OpusCache; databaseName: string } {
+      const databaseName = opusCacheDatabaseName(`test-${Date.now()}-${names++}`);
+      const store = new OpusCache(indexedDB, databaseName, () => budget, () => clock);
+      opened.push(store);
+      return { store, databaseName };
+    }
+
+    it('is absent to whoever asks, and a new copy takes its place', async () => {
+      const { store, databaseName } = named(1 << 20);
+      await store.put('warm', copy(4));
+      await writtenBefore(databaseName, 'old');
+      await writtenBefore(databaseName, 'other', CODEC_VERSION + 1);
+      for (const hash of ['old', 'other']) {
+        expect(await store.get(hash)).toBeNull();
+        expect(await store.bytes(hash)).toBeNull();
+        expect(await store.blob(hash)).toBeNull();
+      }
+      await store.put('old', copy(7));
+      expect((await store.get('old'))?.codec).toBe(CODEC_VERSION);
+      expect((await store.bytes('old'))?.byteLength).toBe(7);
+    });
+
+    it('makes the director convert the file again', async () => {
+      const { store, databaseName } = named(1 << 20);
+      await store.remember({ path: 'a.ogg', size: 5, mtime: 1, hash: 'source' });
+      await writtenBefore(databaseName, 'source');
+      const run = vi.fn(async () => ({ ...copy(9), durationSeconds: 0.01 }));
+      const copies = new SoundCopies(
+        { statOf: () => ({ size: 5, mtime: 1 }), read: async () => new Blob(['AUDIO']) },
+        store,
+        { run: run as unknown as CopyMaker['run'] },
+        async (source) => ({ hash: 'source', source: source as Blob }),
+        () => undefined,
+        async () => new Uint8Array(1),
+      );
+      const record = { id: 's', name: 'A', kind: 'music', filePath: 'a.ogg', licence: 'unknown', streaming: 'unknown' } as SoundRecord;
+      copies.stateOf(record);
+      await vi.waitFor(async () => expect(await store.hashOf('a.ogg', 5, 1)).toBe('source'));
+      copies.request([record]);
+      await vi.waitFor(() => expect(copies.stateOf(record).state).toBe('ready'));
+      expect(run).toHaveBeenCalledTimes(1);
+      expect((await store.bytes('source'))?.byteLength).toBe(9);
+      copies.dispose();
+    });
+
+    it('holds no room past the next eviction, even with room to spare', async () => {
+      const { store, databaseName } = named(1 << 20);
+      await store.put('warm', copy(4));
+      await writtenBefore(databaseName, 'stale');
+      expect((await store.list()).map((sound) => sound.hash).sort()).toEqual(['stale', 'warm']);
+      await store.put('next', copy(4));
+      expect((await store.list()).map((sound) => sound.hash).sort()).toEqual(['next', 'warm']);
+    });
+
+    it('is left alone while it plays', async () => {
+      const { store, databaseName } = named(1 << 20);
+      await store.put('warm', copy(4));
+      await writtenBefore(databaseName, 'stale');
+      store.pin('stale');
+      await store.put('next', copy(4));
+      expect((await store.list()).map((sound) => sound.hash)).toContain('stale');
+    });
   });
 
   it('asks the browser for its budget, within a limit', async () => {
