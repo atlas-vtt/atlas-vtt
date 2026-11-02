@@ -1,9 +1,9 @@
 import { musicSpanAt, playFrameAt } from '../sound/engine/soundTimeline';
 import { stopMusic } from './liveEdits';
 import { joinFadeMs, placeAfter, playAtPlace } from './listPlace';
-import { musicPosition, withListChange } from './musicList';
+import { handOver, musicPosition, withListChange } from './musicList';
 import type { SoundMix } from './soundMix';
-import { changed, leaving, OFFLINE_LEAD_MS, STOP_AFTER_FADE_MS, TRACK_JOIN_MS, withoutFinished } from './tableSound';
+import { changed, OFFLINE_LEAD_MS, STOP_AFTER_FADE_MS, TRACK_JOIN_MS, withoutFinished } from './tableSound';
 
 export interface TrackEndOptions {
   leadMs?: number;
@@ -48,7 +48,5 @@ export function applyDueListChange(mix: SoundMix, now: number, aheadMs: number, 
   const overlapMs = Math.min(fadeMs, roomMs);
   if (listChange) return { ...mix, table: withListChange(table, listChange, at, Math.max(TRACK_JOIN_MS, overlapMs)), listChange: null };
   if (!listPlace || overlapMs < TRACK_JOIN_MS) return mix;
-  const startAt = at - overlapMs;
-  const live = withoutFinished(table, startAt);
-  return { ...mix, table: changed(live, { music: playAtPlace(play, listPlace, startAt, overlapMs), outgoing: [...live.outgoing, leaving(play, startAt, overlapMs)] }) };
+  return { ...mix, table: handOver(table, play, listPlace, at - overlapMs, overlapMs) };
 }

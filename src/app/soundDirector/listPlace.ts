@@ -15,7 +15,7 @@ export interface ListChange {
 export type ListPlace = Pick<MusicPlay, 'tracks' | 'seed' | 'shuffle' | 'repeat' | 'listFrame'>;
 
 /** A list with new tracks that keeps how it goes on. */
-export function changeOf(base: Pick<ListChange, 'shuffle' | 'repeat'>, tracks: SoundInfo[], next?: string): ListChange {
+export function changeOf(base: { shuffle: boolean; repeat?: MusicRepeat | undefined }, tracks: SoundInfo[], next?: string): ListChange {
   return { tracks, shuffle: base.shuffle, ...(base.repeat && { repeat: base.repeat }), ...(next !== undefined && { next }) };
 }
 

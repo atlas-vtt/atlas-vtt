@@ -57,7 +57,7 @@ export function pressMood(mix: SoundMix, mood: MoodMix, active: ActiveMood | nul
   const keep = mood.music === 'keep';
   const table = moodTransition(mix.table, mood, sounds, now, leadMs);
   // A list both moods share goes on as it is; how it ends changes at its track's end, as any list does.
-  const shared = typeof mood.music === 'object' && table.music && table.music.repeat !== mood.music.repeat ? changeOf({ shuffle: table.music.shuffle, ...(mood.music.repeat && { repeat: mood.music.repeat }) }, table.music.tracks) : null;
+  const shared = typeof mood.music === 'object' && table.music && table.music.repeat !== mood.music.repeat ? changeOf({ shuffle: table.music.shuffle, repeat: mood.music.repeat }, table.music.tracks) : null;
   return {
     table,
     mood: active,
@@ -130,14 +130,14 @@ export function removeTrack(mix: SoundMix, key: string, { now, leadMs, fadeMs }:
 /** Shuffle takes over at the current track's end, so it never cuts one. */
 export function setShuffle(mix: SoundMix, shuffle: boolean): SoundMix {
   const base = mix.listChange ?? mix.table.music;
-  return base && base.shuffle !== shuffle ? withChange(mix, changeOf({ shuffle, ...(base.repeat && { repeat: base.repeat }) }, base.tracks)) : mix;
+  return base && base.shuffle !== shuffle ? withChange(mix, changeOf({ shuffle, repeat: base.repeat }, base.tracks)) : mix;
 }
 
 /** How the list goes on past its end, from the current track's end on, so what plays carries on undisturbed. */
 export function setRepeat(mix: SoundMix, repeat: MusicRepeat | undefined): SoundMix {
   const base = mix.listChange ?? mix.table.music;
   if (!base || base.repeat === repeat) return mix;
-  return withChange(mix, changeOf({ shuffle: base.shuffle, ...(repeat && { repeat }) }, base.tracks));
+  return withChange(mix, changeOf({ shuffle: base.shuffle, repeat }, base.tracks));
 }
 
 /** A track to another place on the list. While shuffled the order is the seed's. */

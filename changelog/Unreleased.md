@@ -6,5 +6,6 @@
 - Moods: press one and the room crossfades to it, what both moods share keeps playing, and a mood is saved from whatever you have playing
 - Up to 8 ambience layers beside the music, each with its own fader, and every track evened out in loudness
 - Loops without a gap or a click, and Silence to fade it all and bring it back
+- A queue for the music: tracks crossfade by a length you set, drag or Alt+arrows to reorder, repeat the list, one track or stop at the end, stop after this track, back, clear what's coming, and a list of what played
 - Link a mood to a scene or a fight and it plays by itself
 - Online, your players hear it in time on their own devices, set their own levels and never see what a track is called

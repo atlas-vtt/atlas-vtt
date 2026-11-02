@@ -1,7 +1,7 @@
 import { FRAMES_PER_MS } from '../sound/engine/soundMath';
-import { frameInSpan, framesToWrap, listFrameAt, loopRangeOf, musicSpanAt, passAt, playFrameAt, type ListPass } from '../sound/engine/soundTimeline';
+import { frameInSpan, framesToWrap, listFrameAt, musicSpanAt, passAt, playFrameAt, type ListPass } from '../sound/engine/soundTimeline';
 import type { MusicPlay, SoundInfo, TableSound } from '../sound/soundTypes';
-import { joinFadeMs, playAtPlace, placeAfter, placeOf, sameOrder, type ListChange } from './listPlace';
+import { joinFadeMs, playAtPlace, placeAfter, placeOf, sameOrder, type ListChange, type ListPlace } from './listPlace';
 import { changed, leaving, OFFLINE_LEAD_MS, SEEK_FADE_MS, SKIP_FADE_MS, TRACK_JOIN_MS, withoutFinished } from './tableSound';
 
 export type { ListChange } from './listPlace';
@@ -31,7 +31,7 @@ export function musicPosition(play: MusicPlay, now: number): MusicPosition | nul
   return {
     track: span.sound,
     frame,
-    frames: span.loop ? loopRangeOf(span.sound).endFrame : span.sound.frames,
+    frames: framesToWrap(span, 0),
     next: after?.sound ?? null,
     endsAt: start + framesToWrap(span, frame) / FRAMES_PER_MS,
   };
@@ -70,8 +70,7 @@ export function seekMusic(state: TableSound, frame: number, now: number): TableS
   const play = state.music;
   const span = play && play.startAt <= now ? musicSpanAt(play, playFrameAt(play.startAt, now)) : null;
   if (!play || !span) return state;
-  const frames = span.loop ? loopRangeOf(span.sound).endFrame : span.sound.frames;
-  const startAt = now - (span.startPlayFrame + Math.max(0, Math.min(frames - 1, Math.round(frame)))) / FRAMES_PER_MS;
+  const startAt = now - (span.startPlayFrame + Math.max(0, Math.min(framesToWrap(span, 0) - 1, Math.round(frame)))) / FRAMES_PER_MS;
   const live = withoutFinished(state, now);
   return changed(live, {
     music: { ...play, startAt, fade: { at: startAt, ms: 0 } },
@@ -117,6 +116,15 @@ export function previousTrack(state: TableSound, now: number, list?: ListChange 
   return position && position.frame < BACK_TO_PREVIOUS_MS * FRAMES_PER_MS ? neighbour(state, now, list, -1) : null;
 }
 
+/** What `listPlace` names starts at `startAt` as `play` leaves, both over `fadeMs`; with no place the music just ends there. */
+export function handOver(state: TableSound, play: MusicPlay, listPlace: ListPlace | null, startAt: number, fadeMs: number): TableSound {
+  const live = withoutFinished(state, startAt);
+  return changed(live, {
+    music: listPlace && playAtPlace(play, listPlace, startAt, fadeMs),
+    outgoing: [...live.outgoing, leaving(play, startAt, fadeMs)],
+  });
+}
+
 /**
  * Takes a changed list in at `at`, a track's end, with what comes starting and what ends leaving `fadeMs` before it, so what
  * ends is gone by then and never reaches what its own timeline had next. A list that has run out just ends there.
@@ -125,13 +133,7 @@ export function withListChange(state: TableSound, change: ListChange, at: number
   const play = state.music;
   const span = play && musicSpanAt(play, playFrameAt(play.startAt, at - 1));
   if (!play || !span || change.tracks.length === 0) return state;
-  const startAt = at - fadeMs;
-  const listPlace = placeAfter(play, change, span);
-  const live = withoutFinished(state, startAt);
-  return changed(live, {
-    music: listPlace && playAtPlace(play, listPlace, startAt, fadeMs),
-    outgoing: [...live.outgoing, leaving(play, startAt, fadeMs)],
-  });
+  return handOver(state, play, placeAfter(play, change, span), at - fadeMs, fadeMs);
 }
 
 /** What the card's list shows: a pass in the order it really plays, what plays in it, and what remains. */
@@ -146,11 +148,11 @@ const NO_TRACKS: readonly SoundInfo[] = [];
 
 /** The pass to show: the one under way, or with a change waiting the one that change will make, so the list shows it at once. */
 function shownPass(state: TableSound, play: MusicPlay, list: ListChange | null | undefined, now: number): ListPass | null {
-  if (list && state.music && !sameOrder(state.music, list)) {
-    const span = musicSpanAt(state.music, playFrameAt(state.music.startAt, now));
-    const listPlace = span && placeAfter(state.music, list, span);
-    if (listPlace) return passAt(playAtPlace(state.music, listPlace, 0, 0), 0);
-    return passAt(playAtPlace(state.music, { tracks: list.tracks, seed: state.music.seed, shuffle: list.shuffle }, 0, 0), 0);
+  const { music } = state;
+  if (list && music && !sameOrder(music, list)) {
+    const span = musicSpanAt(music, playFrameAt(music.startAt, now));
+    const listPlace = span && placeAfter(music, list, span);
+    return passAt(playAtPlace(music, listPlace ?? { tracks: list.tracks, seed: music.seed, shuffle: list.shuffle }, 0, 0), 0);
   }
   return passAt(play, listFrameAt(play, playFrameAt(play.startAt, now)));
 }
@@ -159,12 +161,11 @@ export function listView(state: TableSound, list: ListChange | null | undefined,
   const play = soundingMusic(state, now);
   const position = play && musicPosition(play, now);
   const pass = play && shownPass(state, play, list, now);
-  if (!position || !pass) return { tracks: (list ?? play)?.tracks ?? NO_TRACKS, current: null, leftFrames: 0 };
-  const left = position.frames - position.frame;
   const going = list ?? play;
+  if (!position || !pass) return { tracks: going?.tracks ?? NO_TRACKS, current: null, leftFrames: 0 };
+  let leftFrames = position.frames - position.frame;
+  if (going?.repeat === 'one' || pass.tracks.length === 1) return { tracks: pass.tracks, current: position.track.key, leftFrames };
   const at = pass.tracks.findIndex((track) => track.key === position.track.key);
-  if (going?.repeat === 'one' || pass.tracks.length === 1) return { tracks: pass.tracks, current: position.track.key, leftFrames: left };
-  let leftFrames = left;
   for (let index = at + 1; index < pass.tracks.length; index++) {
     const track = pass.tracks[index];
     const before = pass.tracks[index - 1];

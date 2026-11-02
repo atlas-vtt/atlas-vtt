@@ -93,10 +93,6 @@ export function listOrder(count: number, seed: number, shuffle: boolean, pass: n
   return order;
 }
 
-function playableTracks(play: MusicPlay): SoundInfo[] {
-  return play.tracks.filter((track) => track.frames > 0);
-}
-
 /** One pass through a list, in the order it really plays, and the frame of the list it begins on. */
 export interface ListPass {
   tracks: SoundInfo[];
@@ -106,7 +102,7 @@ export interface ListPass {
 
 /** The pass a frame of the list lies in. */
 export function passAt(play: MusicPlay, listFrame: number): ListPass | null {
-  const tracks = playableTracks(play);
+  const tracks = play.tracks.filter((track) => track.frames > 0);
   if (tracks.length === 0) return null;
   const frames = tracks.reduce((sum, track) => sum + track.frames, 0);
   const pass = Math.floor(listFrame / frames);

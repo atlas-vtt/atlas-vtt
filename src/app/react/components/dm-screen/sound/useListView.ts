@@ -17,9 +17,9 @@ export function useListView(director: SoundDirector, leftRef: RefObject<HTMLElem
   const [view, setView] = useState(read);
   useEffect(() => {
     const update = (): void => {
-      const now = read();
-      writeText(leftRef.current, t('audio.timeLeft', { time: clock(now.leftFrames) }));
-      setView((shown) => (sameRows(shown, now) ? shown : now));
+      const latest = read();
+      writeText(leftRef.current, t('audio.timeLeft', { time: clock(latest.leftFrames) }));
+      setView((shown) => (sameRows(shown, latest) ? shown : latest));
     };
     update();
     const timer = window.setInterval(update, POSITION_MS);

@@ -72,14 +72,13 @@ export function useListDrag<T>(gridRef: RefObject<HTMLElement | null>, items: re
       endRef.current = null;
       doc.removeEventListener('pointermove', move, true);
       doc.removeEventListener('pointerup', up, true);
-      doc.removeEventListener('pointercancel', cancel, true);
+      doc.removeEventListener('pointercancel', end, true);
       doc.removeEventListener('keydown', key, true);
-      win.removeEventListener('blur', cancel);
+      win.removeEventListener('blur', end);
       setDrag(null);
       // The click of this press, if it has one, comes right after the release; the next press owes it nothing.
       win.setTimeout(() => { draggedRef.current = false; }, 0);
     };
-    const cancel = (): void => end();
     const move = (moved: PointerEvent): void => {
       if (moved.pointerId !== pointerId) return;
       if (gridGone()) {
@@ -110,9 +109,9 @@ export function useListDrag<T>(gridRef: RefObject<HTMLElement | null>, items: re
     endRef.current = end;
     doc.addEventListener('pointermove', move, true);
     doc.addEventListener('pointerup', up, true);
-    doc.addEventListener('pointercancel', cancel, true);
+    doc.addEventListener('pointercancel', end, true);
     doc.addEventListener('keydown', key, true);
-    win.addEventListener('blur', cancel);
+    win.addEventListener('blur', end);
   }, [gridRef, canMove, onDrop, idOf, selector, scrollerRef]);
 
   const consumeClick = useCallback((): boolean => {
