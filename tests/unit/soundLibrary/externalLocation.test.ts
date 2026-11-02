@@ -98,11 +98,11 @@ describe('a path that would leave the root', () => {
 
 describe('reading and writing', () => {
   it('reads a file larger than a chunk whole', async () => {
-    const bytes = new Uint8Array(3 * 1024 * 1024 + 17).map((_, index) => index % 251);
+    const bytes = Buffer.alloc(3 * 1024 * 1024 + 17, 'atlas');
     fs.writeFileSync(path.join(root, 'long.flac'), bytes);
     const blob = await location().read('long.flac');
     expect(blob.size).toBe(bytes.length);
-    expect(new Uint8Array(await blob.arrayBuffer())).toEqual(bytes);
+    expect(Buffer.compare(Buffer.from(await blob.arrayBuffer()), bytes)).toBe(0);
   });
 
   it('writes a new file and never over one', async () => {
