@@ -4,6 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 import { MusicWave } from '@/app/react/components/dm-screen/sound/musicWave';
 import type { PlayersCopy } from '@/app/soundDirector/tableClock';
 import { PIN_ICON_PATHS } from '@/app/types/pinIcons';
+import { mouse, pressAndMove } from './realMouse';
 import { DARK, LIGHT, openSoundTab, seedMoods, SOUNDS, type SoundTab } from './sound/soundTabHarness';
 
 // Statblocks reach Node's `events` through the token link service, which a browser test cannot import; this file is about the page beside them.
@@ -506,9 +507,14 @@ describe('the DM screen’s Sound page', () => {
     seedMoods(tab);
     await expect.poll(() => document.querySelectorAll('[data-sound-mood]').length).toBe(11);
     const before = tab.moodsOf().map((mood) => mood.id);
-    const first = page.elementLocator(document.querySelector(`[data-sound-mood="${before[0]}"]`)!);
-    const third = page.elementLocator(document.querySelector(`[data-sound-mood="${before[2]}"]`)!);
-    await userEvent.dragAndDrop(first, third);
+    // Real input to one point: the tiles move aside live, so a target that is followed moves away for ever.
+    const centre = (id: string | undefined): { x: number; y: number } => {
+      const { left, top, width, height } = document.querySelector(`[data-sound-mood="${id}"]`)!.getBoundingClientRect();
+      return { x: left + width / 2, y: top + height / 2 };
+    };
+    const to = centre(before[2]);
+    await pressAndMove(centre(before[0]), to, 8);
+    await mouse.up(to.x, to.y);
     await expect.poll(() => tab?.moodsOf().map((mood) => mood.id)).toEqual([before[1], before[2], before[0], ...before.slice(3)]);
     expect(tab.director.snapshot().mix.mood).toBeNull();
     // The press after a drag is a press again.
