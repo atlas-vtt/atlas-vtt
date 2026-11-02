@@ -282,6 +282,36 @@ describe('the DM screen’s Sound page', () => {
     const { width, height } = track.getBoundingClientRect();
     await userEvent.dragAndDrop(page.elementLocator(thumb), page.elementLocator(track), { targetPosition: { x: width / 2, y: height * 0.75 } });
     await expect.poll(layerKey).toBeCloseTo(6 - 0.75 * 66, -1);
+
+    // Reset shows on the strip's hover, takes the level back, and has nothing to do at 0 dB.
+    const strip = thumb.closest<HTMLElement>('.atlas-sound-strip')!;
+    const reset = strip.querySelector<HTMLButtonElement>('.atlas-sound-fader__reset')!;
+    act(() => (document.activeElement as HTMLElement | null)?.blur());
+    await userEvent.unhover(strip);
+    await expect.poll(() => getComputedStyle(reset).opacity).toBe('0');
+    await userEvent.hover(strip);
+    await expect.poll(() => getComputedStyle(reset).opacity).toBe('1');
+    await page.screenshot({ path: `${SHOTS}/fader-reset.png`, element: strip });
+    await userEvent.click(reset);
+    await expect.poll(layerKey).toBe(0);
+    expect(reset.disabled).toBe(true);
+    expect(thumb.getAttribute('aria-valuetext')).toBe('0 dB');
+
+    // What waits for the pointer shows when it comes: a layer's remove, the track list, a mood's menu.
+    await expect.poll(() => getComputedStyle(strip.querySelector('.atlas-sound-strip__remove')!).opacity).toBe('1');
+    const card = document.querySelector<HTMLElement>('.atlas-sound-music')!;
+    await userEvent.hover(card);
+    await expect.poll(() => getComputedStyle(card.querySelector('.atlas-sound-music__list')!).opacity).toBe('1');
+    const tile = document.querySelector<HTMLElement>('.atlas-sound-mood')!;
+    await userEvent.hover(tile);
+    await expect.poll(() => getComputedStyle(tile.querySelector('.atlas-sound-mood__menu')!).opacity).toBe('1');
+
+    // Master's goes on to the settings as its release does.
+    const master = document.querySelector<HTMLElement>('.atlas-sound-strip--master')!;
+    act(() => tab?.director.setChannelLevels({ masterDb: -9 }, false));
+    await userEvent.hover(master);
+    await userEvent.click(master.querySelector<HTMLElement>('.atlas-sound-fader__reset')!);
+    await expect.poll(() => tab?.director.snapshot().levels.masterDb).toBe(0);
   });
 
   it('moves the track by a press or drag along its waveform, by key, and shows it while held', async () => {

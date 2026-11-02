@@ -1,6 +1,9 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { RotateCcw } from 'lucide-react';
 import { t } from '../../../../i18n';
 import { CHANNEL_DB_RANGE } from '../../../../services/soundSettings';
+import { MOTION_EASE_OUT, prefersReducedMotion } from '../../../../utils/motion';
+import { IconAction } from './IconAction';
 import { MeterBoard } from './meterBoard';
 
 export const MeterBoardContext = createContext<MeterBoard>(new MeterBoard());
@@ -19,6 +22,9 @@ interface VerticalFaderProps {
 const { min: MIN_DB, max: MAX_DB } = CHANNEL_DB_RANGE;
 const STEP_DB = 1;
 const PAGE_DB = 6;
+/** Where every strip starts: what a sound's own loudness was evened out to. */
+const RESET_DB = 0;
+const RESET_TURN_MS = 450;
 
 const clampDb = (db: number): number => Math.max(MIN_DB, Math.min(MAX_DB, db));
 const shareOf = (db: number): number => (MAX_DB - clampDb(db)) / (MAX_DB - MIN_DB);
@@ -117,6 +123,13 @@ export const VerticalFader = React.memo(function VerticalFader({ label, value, m
     onCommit?.(held);
   };
 
+  const reset = (event: React.MouseEvent<HTMLButtonElement>): void => {
+    onChange(RESET_DB);
+    onCommit?.(RESET_DB);
+    const icon = event.currentTarget.querySelector('svg');
+    if (icon && !prefersReducedMotion(icon)) icon.animate([{ rotate: '0deg' }, { rotate: '-360deg' }], { duration: RESET_TURN_MS, easing: MOTION_EASE_OUT });
+  };
+
   return (
     <>
       <div className="atlas-sound-fader" onPointerDown={press}>
@@ -137,7 +150,10 @@ export const VerticalFader = React.memo(function VerticalFader({ label, value, m
           />
         </div>
       </div>
-      <div className="atlas-sound-fader__value">{formatDb(shown)}</div>
+      <div className="atlas-sound-fader__foot">
+        <div className="atlas-sound-fader__value">{formatDb(shown)}</div>
+        <IconAction label={t('audio.resetLevel')} icon={RotateCcw} className="atlas-sound-fader__reset" focusSkip disabled={shown === RESET_DB} onClick={reset} />
+      </div>
     </>
   );
 });

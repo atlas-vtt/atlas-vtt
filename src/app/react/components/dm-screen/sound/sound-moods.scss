@@ -205,12 +205,11 @@
   background: color-mix(in oklch, var(--background-primary-alt) 70%, transparent);
   opacity: 0;
   transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+}
 
-  .atlas-sound-mood:hover &,
-  .atlas-sound-mood:focus-within &,
-  &:focus-visible {
-    opacity: 1;
-  }
+.atlas-sound-mood:hover .atlas-sound-mood__menu,
+.atlas-sound-mood:focus-within .atlas-sound-mood__menu {
+  opacity: 1;
 }
 
 .atlas-sound-ghost {

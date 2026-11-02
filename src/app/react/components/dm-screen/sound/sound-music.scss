@@ -101,11 +101,14 @@
   opacity: 0;
   transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
 
-  .atlas-sound-music:hover &,
-  .atlas-sound-music:focus-within &,
   &[aria-pressed='true'] {
     opacity: 1;
   }
+}
+
+.atlas-sound-music:hover .atlas-sound-music__list,
+.atlas-sound-music:focus-within .atlas-sound-music__list {
+  opacity: 1;
 }
 
 .atlas-sound-tracks {

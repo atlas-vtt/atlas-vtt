@@ -68,12 +68,12 @@
   right: $spacing-xs;
   opacity: 0;
   transition: opacity $transition-fast $press-ease, color $transition-normal $press-ease, background-color $transition-normal $press-ease;
+}
 
-  .atlas-sound-strip:hover &,
-  .atlas-sound-strip:focus-within &,
-  &:focus-visible {
-    opacity: 1;
-  }
+// Never `.parent:hover &`: all of this compiles inside `.atlas-vtt-plugin`, which would then have to lie within the parent.
+.atlas-sound-strip:hover .atlas-sound-strip__remove,
+.atlas-sound-strip:focus-within .atlas-sound-strip__remove {
+  opacity: 1;
 }
 
 .atlas-sound-strip__name {
@@ -189,6 +189,74 @@
 
   &:focus {
     outline-offset: 1px;
+  }
+}
+
+.atlas-sound-fader__foot {
+  flex-shrink: 0;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Takes no room until the strip is hovered: then the level moves aside for it.
+.atlas-sound-fader__foot .atlas-sound-fader__reset {
+  position: relative;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-inline-start: -16px;
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+  transition: opacity $transition-fast $press-ease, transform $press-ms $press-ease, margin-inline-start $press-ms $press-ease, color $transition-normal $press-ease;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+  }
+
+  svg {
+    width: 12px;
+    height: 12px;
+    transition: transform $press-ms $press-ease;
+  }
+
+  &:hover:not(:disabled) {
+    background: none;
+
+    svg {
+      transform: rotate(-45deg);
+    }
+  }
+
+  @media (hover: none) {
+    margin-inline-start: $spacing-xs;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+.atlas-sound-strip:hover .atlas-sound-fader__foot .atlas-sound-fader__reset,
+.atlas-sound-strip:focus-within .atlas-sound-fader__foot .atlas-sound-fader__reset {
+  margin-inline-start: $spacing-xs;
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+
+  &:active:not(:disabled) {
+    transform: scale(0.85);
+  }
+
+  &:disabled {
+    opacity: 0.35;
   }
 }
 

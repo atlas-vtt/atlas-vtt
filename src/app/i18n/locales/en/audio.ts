@@ -119,6 +119,7 @@ export const audio = {
   'audio.ambience': 'Ambience',
   'audio.master': 'Master',
   'audio.level': 'Level of {name}',
+  'audio.resetLevel': 'Reset to 0 dB',
   'audio.dbValue': '{value} dB',
   'audio.mute': 'Mute {name}',
   'audio.unmute': 'Unmute {name}',
