@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { createHash } from 'node:crypto';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ALL_PLAYERS, parseGmMessage, type AssetRef, type GmMessage } from '@/app/online/protocol/index.ts';
 import { SOUND_SEND_MS, TableSoundShare, type ShareDirector, type SoundSharePorts } from '@/app/online/gm/sound/TableSoundShare.ts';
 import { creditOf } from '@/app/online/gm/sound/soundWire.ts';
@@ -8,6 +9,12 @@ import { EMPTY_MIX } from '@/app/soundDirector/soundMix';
 import type { SoundSnapshot } from '@/app/soundDirector/soundSnapshot';
 import { PlayersSeam } from '@/app/soundDirector/playersSeam';
 import type { AudienceLine, PlayersSounds, TableClock } from '@/app/soundDirector/tableClock';
+
+// `crypto.subtle` answers from another thread, in its own time, and under load later than `settle` waits: the same digest, within the task.
+vi.mock('@/app/online/gm/assetServe.ts', async (original) => ({
+  ...await original<typeof import('@/app/online/gm/assetServe.ts')>(),
+  sha256Hex: async (bytes: Uint8Array<ArrayBuffer>): Promise<string> => createHash('sha256').update(bytes).digest('hex'),
+}));
 
 /** A source's hash: what this device knows a sound by, and what must never leave it. */
 const SOURCE_KEY = 's'.repeat(64);
