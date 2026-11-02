@@ -21,14 +21,12 @@ beforeEach(async () => {
   Object.defineProperty(HTMLElement.prototype, 'clientWidth', { configurable: true, get: () => 1000 });
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
   rig = await libraryRig({ local: { music: '/m', ambience: '/a' } });
-  for (const name of ['Battle/Bosses/x.mp3', 'Battle/a.mp3', 'Battle/b.mp3', 'Battle/c.mp3']) rig.locations.music.addFile(name);
+  for (const name of ['Battle/Bosses/0.mp3', 'Battle/a.mp3', 'Battle/b.mp3', 'Calm/c.mp3']) rig.locations.music.addFile(name);
   rig.locations.ambience.addFile('Rain.ogg');
   host = document.body.createDiv();
   window.addEventListener('keydown', reachedMap);
   rig.mount(host);
-  await waitFor(() => expect(titles(host)).toContain('Battle'));
-  act(() => fireEvent.doubleClick(rowsOf(host)[0]!));
-  await waitFor(() => expect(titles(host)).toEqual(['Bosses', 'a', 'b', 'c']));
+  await waitFor(() => expect(titles(host)).toEqual(['0', 'a', 'b', 'c']));
   list(host).focus();
   reachedMap.mockClear();
 });
@@ -55,17 +53,10 @@ describe('the keys of the rows', () => {
     press('ArrowDown', { shiftKey: true });
     expect(host.querySelectorAll('[aria-selected="true"]')).toHaveLength(3);
     press('Home');
-    expect(activeTitle(host)).toBe('Bosses');
+    expect(activeTitle(host)).toBe('0');
     press('End');
     expect(activeTitle(host)).toBe('c');
     expect(host.querySelectorAll('[aria-selected="true"]')).toHaveLength(1);
-  });
-
-  it('Enter opens a folder; ArrowLeft goes back', async () => {
-    press('Enter');
-    await waitFor(() => expect(titles(host)).toEqual(['x']));
-    press('ArrowLeft');
-    await waitFor(() => expect(titles(host)).toEqual(['Bosses', 'a', 'b', 'c']));
   });
 
   it('Enter sends music to the mix as next, with a record only then', async () => {
@@ -94,7 +85,7 @@ describe('the keys of the rows', () => {
     press('ArrowDown');
     press('Delete');
     await waitFor(() => expect(rig.locations.music.files.has('Battle/a.mp3')).toBe(false));
-    await waitFor(() => expect(titles(host)).toEqual(['Bosses', 'b', 'c']));
+    await waitFor(() => expect(titles(host)).toEqual(['0', 'b', 'c']));
   });
 
   it('F2 renames in place, keeping the extension, and Escape leaves it', async () => {
@@ -113,7 +104,7 @@ describe('the keys of the rows', () => {
     const again = host.querySelector<HTMLInputElement>('.atlas-sound-lib__rename')!;
     act(() => { fireEvent.keyDown(again, { key: 'Escape' }); });
     expect(host.querySelector('.atlas-sound-lib__rename')).toBeNull();
-    expect(rig.locations.music.files.has('Battle/c.mp3')).toBe(true);
+    expect(rig.locations.music.files.has('Calm/c.mp3')).toBe(true);
   });
 
   describe('a rename ends once', () => {
@@ -174,7 +165,7 @@ describe('the keys of the rows', () => {
 });
 
 it('a press selects, Cmd adds, Shift reaches', () => {
-  const rows = ['a', 'b', 'c', 'd'].map((id): LibraryRow => ({ type: 'folder', id, kind: 'music', path: id, name: id }));
+  const rows = ['a', 'b', 'c', 'd'].map((id) => ({ id }) as LibraryRow);
   const once = selectionAfter(rows, new Set(), null, 'b', { toggle: false, range: false });
   expect([...once.selected]).toEqual(['b']);
   const added = selectionAfter(rows, once.selected, once.anchor, 'd', { toggle: true, range: false });

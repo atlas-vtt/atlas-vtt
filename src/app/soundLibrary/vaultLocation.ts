@@ -1,7 +1,7 @@
 import { normalizePath, TFile, TFolder, type App, type EventRef, type TAbstractFile } from 'obsidian';
 import { ensureFolder, isPathTaken } from '../plugin/vaultFolders';
 import { isAtlasOwn, isAudioPath } from './soundFiles';
-import { isListableName, isSystemDropping, joinRelative, nameOfRelative, relativeBelow, safeRelative } from './soundPaths';
+import { isListableName, joinRelative, relativeBelow, safeRelative } from './soundPaths';
 import { SoundPathError, SoundPathReservedError, SoundPathTakenError, sortedListing, type SoundFileEntry, type SoundFolderEntry, type SoundListing, type SoundLocation } from './soundLocation';
 
 /** A linked folder in the vault. Moves go through `fileManager`, so whatever names a file follows it, and deleting goes where the GM's trash setting says. */
@@ -37,19 +37,6 @@ export class VaultLocation implements SoundLocation {
       else if (child instanceof TFile && isAudioPath(child.name)) files.push({ name: child.name, path, size: child.stat.size, mtime: child.stat.mtime });
     }
     return sortedListing(folders, files);
-  }
-
-  /** Through the adapter, as the vault's own tree does not hold what is hidden. */
-  async firstUnlisted(folder: string): Promise<string | null> {
-    const { files, folders } = await this.app.vault.adapter.list(this.vaultPath(folder));
-    const isListed = (path: string): boolean => isListableName(nameOfRelative(path)) && !isAtlasOwn(path);
-    const left = files.find((path) => !isSystemDropping(nameOfRelative(path)) && (!isListed(path) || !isAudioPath(path))) ?? folders.find((path) => !isListed(path));
-    if (left !== undefined) return joinRelative(folder, nameOfRelative(left));
-    for (const sub of folders) {
-      const below = await this.firstUnlisted(joinRelative(folder, nameOfRelative(sub)));
-      if (below !== null) return below;
-    }
-    return null;
   }
 
   exists(path: string): Promise<boolean> {

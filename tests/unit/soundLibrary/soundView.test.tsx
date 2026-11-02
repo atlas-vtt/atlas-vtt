@@ -153,18 +153,18 @@ describe('the tab', () => {
     expect(press).toHaveBeenCalledTimes(1);
   });
 
-  it('shows the folder a DM screen beside it opens, and the other way round', async () => {
+  it('shows the tags a DM screen beside it selects, and the other way round', async () => {
     const { leafEl } = await openView();
     const mapLeaf = document.body.createDiv({ cls: 'workspace-leaf' });
     hosts.push(mapLeaf);
     await act(async () => rig.mount(mapLeaf, <SoundPane active={false} />));
     const crumb = (host: HTMLElement): string => host.querySelector('.atlas-sound-lib__crumb')?.textContent ?? '';
 
-    act(() => rig.library.place.show('music', 'Battle'));
+    act(() => rig.library.place.show('music', ['Battle']));
     await waitFor(() => expect(crumb(leafEl)).toContain('Battle'));
     expect(crumb(mapLeaf)).toContain('Battle');
 
-    act(() => rig.library.place.show('music', 'Calm'));
+    act(() => rig.library.place.show('music', ['Calm']));
     await waitFor(() => expect(crumb(mapLeaf)).toContain('Calm'));
     expect(crumb(leafEl)).toContain('Calm');
   });

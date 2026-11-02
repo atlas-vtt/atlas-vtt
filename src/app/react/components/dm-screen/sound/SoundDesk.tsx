@@ -2,14 +2,13 @@ import React, { useRef, useState } from 'react';
 import type { App } from 'obsidian';
 import { formatList, t } from '../../../../i18n';
 import type { Mood } from '../../../../sound/soundTypes';
-import { dragToMix } from '../../../../soundDirector/libraryDesk';
+import { fileToMix } from '../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { carriesSounds, readSoundDrag } from '../../../../soundLibrary/soundDrag';
 import { SoundLibrary } from '../../../../soundLibrary/SoundLibrary';
 import { SoundRecordStore } from '../../../../soundLibrary/SoundRecordStore';
 import { showNotice } from '../../../../ui/notice';
 import { runInBackground } from '../../../../utils/backgroundTask';
-import { baseName } from '../../../../utils/pathUtils';
 import { LayerStrip, MasterStrip, WaitingStrip } from './DeskStrips';
 import { DeskHeader } from './DeskHeader';
 import { MusicCard } from './MusicCard';
@@ -48,7 +47,7 @@ export function SoundDesk({ app, director, moods, onSaveAs }: SoundDeskProps): R
     setDropTarget(false);
     const drag = readSoundDrag(event.dataTransfer);
     if (!drag) return;
-    runInBackground(dragToMix({ records: SoundRecordStore.forApp(app), library: SoundLibrary.forApp(app), director, notify: showNotice }, drag), 'Adding to the mix', t('audio.couldNotAdd', { files: formatList([...drag.files.map((file) => file.name), ...drag.folders.map((folder) => baseName(folder.path))]) }));
+    runInBackground(fileToMix({ records: SoundRecordStore.forApp(app), library: SoundLibrary.forApp(app), director, notify: showNotice }, drag.files, 'next'), 'Adding to the mix', t('audio.couldNotAdd', { files: formatList(drag.files.map((file) => file.name)) }));
   };
 
   return (

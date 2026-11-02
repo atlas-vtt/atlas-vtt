@@ -24,10 +24,7 @@ export function safeRelative(path: string): string | null {
 /** Whether a root's listing can show a name: nothing hidden, and nothing that cannot be a part of a path below it. */
 export const isListableName = (name: string): boolean => !name.startsWith('.') && safeRelative(name) !== null;
 
-/** What a file manager leaves in a folder it has opened: no one's file, so no move stays for it. Nothing else counts. */
-export const isSystemDropping = (name: string): boolean => /^(\.ds_store|thumbs\.db|desktop\.ini)$/i.test(name) || name.startsWith('._');
-
-/** A name for a new or renamed file or folder, trimmed; null where it cannot be one. */
+/** A name for a renamed file, trimmed; null where it cannot be one. */
 export function safeName(name: string): string | null {
   const trimmed = name.trim();
   return trimmed === '' || trimmed.startsWith('.') || invalidInName.test(trimmed) ? null : trimmed;

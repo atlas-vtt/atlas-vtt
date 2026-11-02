@@ -3,6 +3,7 @@
 **New Feature: Sound**
 - A Sound page on the DM screen for music and ambience, from your own folders in the vault or anywhere on disk
 - Open the Sound page in a tab of its own from the command palette, with no map needed
+- Filter the library by tags: your folder names count as tags already, and a track can carry as many more as it needs
 - Moods: press one and the room crossfades to it, what both moods share keeps playing, and a mood is saved from whatever you have playing
 - Up to 8 ambience layers beside the music, each with its own fader, and every track evened out in loudness
 - Loops without a gap or a click, and Silence to fade it all and bring it back

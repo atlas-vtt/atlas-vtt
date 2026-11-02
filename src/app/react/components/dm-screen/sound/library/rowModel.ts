@@ -1,55 +1,76 @@
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import type { LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
-import type { SoundListing } from '../../../../../soundLibrary/soundLocation';
-import { nameOfRelative, parentOfRelative, stemOf } from '../../../../../soundLibrary/soundPaths';
+import { parentOfRelative, stemOf } from '../../../../../soundLibrary/soundPaths';
 import type { StoredSound } from '../../../../../soundLibrary/soundRecords';
+import { namesOfTrack, rootTags, tagKey, tagsOfTrack, type RootTag, type TrackTags } from '../../../../../soundLibrary/soundTags';
+
+interface RowOf {
+  id: string;
+  name: string;
+  /** The faint text beside the name: a row's tags, a search hit's place. */
+  where: string;
+  tagKeys: readonly string[];
+}
 
 export type LibraryRow =
-  | { type: 'folder'; id: string; kind: SoundKind; path: string; name: string }
-  | { type: 'file'; id: string; file: LibraryFile; name: string; /** Where a search found it. */ where?: string }
+  | RowOf & { type: 'file'; file: LibraryFile }
   /** A record whose file is not where it says. */
-  | { type: 'waiting'; id: string; sound: StoredSound; name: string };
+  | RowOf & { type: 'waiting'; sound: StoredSound };
+
+/** All a root holds: every track at any depth, by name, and the tags among them. */
+export interface RootShelf {
+  rows: readonly LibraryRow[];
+  tags: readonly RootTag[];
+}
 
 const rowIdOf = (kind: SoundKind, path: string): string => `${kind}:${path}`;
 
-/** What a folder's rows are: its folders, then its files, then what waits for a file that should lie here. */
-export function folderRows(kind: SoundKind, listing: SoundListing | null, waiting: readonly StoredSound[]): LibraryRow[] {
-  const rows: LibraryRow[] = [];
-  for (const folder of listing?.folders ?? []) rows.push({ type: 'folder', id: rowIdOf(kind, folder.path), kind, path: folder.path, name: folder.name });
-  for (const file of listing?.files ?? []) rows.push({ type: 'file', id: rowIdOf(kind, file.path), file: { ...file, kind }, name: stemOf(file.name) });
-  for (const sound of waiting) rows.push({ type: 'waiting', id: sound.id, sound, name: sound.name });
-  return rows;
+/** The records of a root that no file on this device answers to. On a device without the root that is every record of it. Nothing can be said before the root was read. */
+export function waitingIn(library: Pick<SoundLibrary, 'fileOfAudioPath' | 'pathNow'>, sounds: readonly StoredSound[], kind: SoundKind, reachable: boolean, here: ReadonlySet<string>): { sound: StoredSound; path: string }[] {
+  return sounds.flatMap((sound) => {
+    const place = library.fileOfAudioPath(sound.audioPath);
+    if (!place || place.kind !== kind) return [];
+    const missing = !reachable || (!here.has(place.path) && library.pathNow(sound.audioPath, sound.audioSize) === sound.audioPath);
+    return missing ? [{ sound, path: place.path }] : [];
+  });
 }
+
+/** A root's shelf. Costs a pass over its files, so it is worked out only when they or the records changed. */
+export function shelfOf(library: SoundLibrary, sounds: readonly StoredSound[], byFile: ReadonlyMap<string, readonly StoredSound[]>, kind: SoundKind): RootShelf {
+  const reachable = library.locationOf(kind) !== null;
+  const files = library.filesOf(kind).map(({ entry }) => ({ entry, tags: tagsOfTrack(entry.path, byFile.get(library.audioPathOf(kind, entry.path) ?? '') ?? []) }));
+  const waiting = reachable && !library.isWalked(kind)
+    ? []
+    : waitingIn(library, sounds, kind, reachable, new Set(files.map(({ entry }) => entry.path))).map(({ sound, path }) => ({ sound, tags: tagsOfTrack(path, [sound]) }));
+  const tags = rootTags([...files, ...waiting].map((track) => track.tags));
+  const nameOf = new Map(tags.map((tag) => [tag.key, tag.name]));
+  const shown = (track: TrackTags): Pick<RowOf, 'where' | 'tagKeys'> => {
+    const keys = namesOfTrack(track).map(tagKey);
+    return { where: keys.map((key) => nameOf.get(key)).join(' · '), tagKeys: keys };
+  };
+  return {
+    tags,
+    rows: [
+      ...files.map(({ entry, tags: track }): LibraryRow => ({ ...shown(track), type: 'file', id: rowIdOf(kind, entry.path), file: { ...entry, kind }, name: stemOf(entry.name) })),
+      ...waiting.map(({ sound, tags: track }): LibraryRow => ({ ...shown(track), type: 'waiting', id: sound.id, sound, name: sound.name })),
+    ],
+  };
+}
+
+/** The rows with all of these tags; the same list where there are none. */
+export const rowsWithTags = (rows: readonly LibraryRow[], keys: readonly string[]): readonly LibraryRow[] =>
+  (keys.length === 0 ? rows : rows.filter((row) => keys.every((key) => row.tagKeys.includes(key))));
+
+export const filesOfRows = (rows: readonly LibraryRow[]): LibraryFile[] => rows.flatMap((row) => (row.type === 'file' ? [row.file] : []));
 
 export const searchRows = (hits: readonly LibraryFile[], rootName: (kind: SoundKind) => string): LibraryRow[] =>
   hits.map((file) => {
     const folder = parentOfRelative(file.path);
-    return { type: 'file', id: rowIdOf(file.kind, file.path), file, name: stemOf(file.name), where: [rootName(file.kind), ...(folder === '' ? [] : folder.split('/'))].join(' / ') };
+    return { type: 'file', id: rowIdOf(file.kind, file.path), file, name: stemOf(file.name), tagKeys: [], where: [rootName(file.kind), ...(folder === '' ? [] : folder.split('/'))].join(' / ') };
   });
 
-/** The records that say their file lies in this folder and that neither a listing here nor another place on this device holds. On a device without the root that is every record of it, shown together. */
-export function waitingIn(library: Pick<SoundLibrary, 'fileOfAudioPath' | 'pathNow'>, sounds: readonly StoredSound[], kind: SoundKind, folder: string, listing: SoundListing | null, linked: boolean): StoredSound[] {
-  if (linked && !listing) return [];
-  const here = new Set(listing?.files.map((file) => file.path));
-  return sounds.filter((sound) => {
-    const place = library.fileOfAudioPath(sound.audioPath);
-    if (!place || place.kind !== kind) return false;
-    if (!linked) return true;
-    return parentOfRelative(place.path) === folder && !here.has(place.path) && library.pathNow(sound.audioPath, sound.audioSize) === sound.audioPath;
-  });
-}
-
-export const entryOfRow = (row: LibraryRow): LibraryEntry | null => {
-  if (row.type === 'folder') return { kind: row.kind, path: row.path, isFolder: true };
-  return row.type === 'file' ? { kind: row.file.kind, path: row.file.path, isFolder: false } : null;
-};
-
-export const crumbsOf = (folder: string): { name: string; path: string }[] => {
-  const crumbs: { name: string; path: string }[] = [];
-  for (let at = folder; at !== ''; at = parentOfRelative(at)) crumbs.unshift({ name: nameOfRelative(at), path: at });
-  return crumbs;
-};
+export const entryOfRow = (row: LibraryRow): LibraryEntry | null => (row.type === 'file' ? { kind: row.file.kind, path: row.file.path } : null);
 
 /** Minutes and seconds, as a track's length is read. */
 export function formatLength(seconds: number): string {

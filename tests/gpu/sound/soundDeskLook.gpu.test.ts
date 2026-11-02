@@ -97,7 +97,7 @@ describe('how the Sound page looks', () => {
   async function open(theme: string, width = 1644, height = 960, linked = true): Promise<SoundTab> {
     await resize(width, height);
     tab = await openSoundTab(theme, viewport, undefined, TABLE, linked);
-    if (linked) act(() => tab?.library.place.show('music', 'Battle'));
+    if (linked) act(() => tab?.library.place.show('music', ['Battle']));
     await act(async () => { await sleep(150); });
     await expect.poll(() => document.querySelector('.atlas-dm-screen.is-visible')).not.toBeNull();
     await Promise.all(document.querySelector('.atlas-dm-screen')?.getAnimations().map((animation) => animation.finished) ?? []);
@@ -160,12 +160,12 @@ describe('how the Sound page looks', () => {
     await shoot('empty');
   }, 120_000);
 
-  it('eleven moods over a folder of 5,000 files', async () => {
+  it('eleven moods over a tag of 5,000 files', async () => {
     const opened = await open(ATLAS);
     seed(opened);
     await expect.poll(() => document.querySelectorAll('[data-sound-mood]').length).toBe(MOODS.length);
     for (let index = 0; index < 5000; index++) opened.locations?.music.addFile(`Battle/Huge/Track ${index} of the long campaign with a very long name indeed.mp3`);
-    act(() => opened.library.place.show('music', 'Battle/Huge'));
+    act(() => opened.library.place.show('music', ['Huge']));
     await act(async () => { await sleep(1500); });
     await shoot('five-thousand');
   }, 120_000);

@@ -1,12 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fileToMix, folderToMix, type LibraryDeskDeps } from '@/app/soundDirector/libraryDesk';
+import { fileToMix, listToMix, type LibraryDeskDeps } from '@/app/soundDirector/libraryDesk';
 import { libraryDeskRig, type LibraryDeskRig } from '../../helpers/libraryDeskRig';
 import { record, settle, type DirectorRig } from '../../helpers/soundDirectorRig';
 
 let rig: DirectorRig;
 let deps: LibraryDeskDeps;
-let location: LibraryDeskRig['location'];
 
 const openContexts = (): number => rig.contexts.filter((context) => !context.closed).length;
 const sounding = (): number => rig.contexts.at(-1)?.playing().filter((source) => (source.buffer?.length ?? 0) > 1).length ?? 0;
@@ -15,7 +14,7 @@ const file = (name: string, kind: 'music' | 'ambience' = 'ambience'): { kind: ty
 beforeEach(async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'] });
   vi.setSystemTime(1_000_000);
-  ({ rig, deps, location } = libraryDeskRig([]));
+  ({ rig, deps } = libraryDeskRig([]));
   await settle();
 });
 
@@ -25,8 +24,8 @@ afterEach(() => {
 });
 
 describe('the context a press opens', () => {
-  it('goes again where the press came to nothing: an empty folder', async () => {
-    await folderToMix(deps, 'music', 'Empty', false);
+  it('goes again where the press came to nothing: an empty list', async () => {
+    await listToMix(deps, [], false);
     expect(rig.contexts).toHaveLength(1);
     await vi.advanceTimersByTimeAsync(2000);
     expect(openContexts()).toBe(0);
@@ -118,9 +117,8 @@ describe('the context a press opens', () => {
   });
 
   it('keeps nothing open beside what plays', async () => {
-    location.addFile('Set/a.ogg');
     rig.files.add('audio/Set/a.ogg');
-    await folderToMix(deps, 'music', 'Set', false);
+    await listToMix(deps, [file('Set/a.ogg', 'music')], false);
     await settle();
     rig.conversions.shift()?.finish();
     await vi.advanceTimersByTimeAsync(2000);

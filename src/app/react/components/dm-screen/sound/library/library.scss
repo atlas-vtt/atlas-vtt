@@ -1,7 +1,7 @@
 @use '../../../../../../../styles/tokens' as *;
 @use '../../../../../../../styles/mixins' as *;
 
-// The sound library, in the proportions of the approved mock: a rail of folders, a breadcrumb in the
+// The sound library, in the proportions of the approved mock: a rail of roots and tags, a heading in the
 // theme's heading face, and rows that show their action only when they are pointed at.
 .atlas-sound-lib {
   --atlas-sound-lib-hairline: color-mix(in oklch, var(--mono-100) 9%, transparent);
@@ -127,8 +127,7 @@
 }
 
 .atlas-sound-lib__root--target,
-.atlas-sound-lib__fold--target,
-.atlas-sound-lib__row--target {
+.atlas-sound-lib .atlas-sound-lib__tag--target {
   box-shadow: inset 0 0 0 1.5px var(--interactive-accent);
 }
 
@@ -167,19 +166,39 @@
   font-weight: $font-weight-medium;
 }
 
-.atlas-sound-lib__fold-line {
-  --atlas-sound-indent: calc(var(--atlas-sound-depth, 0) * 14px);
+.atlas-sound-lib__tag-line {
   position: relative;
+
+  small {
+    transition: opacity 120ms var(--atlas-sound-lib-press);
+  }
+
+  .atlas-sound-lib__more {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+  }
+
+  &:hover .atlas-sound-lib__more,
+  .atlas-sound-lib__more:focus-visible {
+    opacity: 1;
+  }
+
+  &:hover small {
+    opacity: 0;
+  }
 }
 
-.atlas-sound-lib .atlas-sound-lib__fold {
+.atlas-sound-lib .atlas-sound-lib__tag {
   display: flex;
   align-items: center;
+  // Obsidian centres what a button holds.
   justify-content: flex-start;
   gap: $spacing-s;
   width: 100%;
   height: 30px;
-  padding: 0 $spacing-s 0 calc(26px + var(--atlas-sound-indent));
+  // Under the root's name, as what belongs to it.
+  padding: 0 $spacing-s 0 26px;
   border-radius: 8px;
   color: var(--text-muted);
   text-align: left;
@@ -205,34 +224,9 @@
   }
 }
 
-.atlas-sound-lib .atlas-sound-lib__fold--selected {
+.atlas-sound-lib .atlas-sound-lib__tag--selected {
   background: var(--background-secondary);
   color: var(--text-accent);
-}
-
-.atlas-sound-lib .atlas-sound-lib__twist {
-  position: absolute;
-  top: 7px;
-  left: calc(6px + var(--atlas-sound-indent));
-  width: 16px;
-  height: 16px;
-  display: grid;
-  place-items: center;
-  color: var(--text-faint);
-  transition: rotate 120ms var(--atlas-sound-lib-press), color 120ms var(--atlas-sound-lib-press);
-
-  svg {
-    width: 12px;
-    height: 12px;
-  }
-
-  &:hover {
-    color: var(--text-normal);
-  }
-
-  &[aria-expanded='true'] {
-    rotate: 90deg;
-  }
 }
 
 // ---- Nothing linked ----

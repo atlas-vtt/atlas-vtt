@@ -1,8 +1,8 @@
 import React from 'react';
 
-/** The folder of the rail and the rows, drawn as the mock has it: lucide's lies lower and looks heavier at this size. */
-export function FolderGlyph(): React.JSX.Element {
-  return <svg className="atlas-sound-lib__glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>;
+/** A tag of the rail, drawn in the line of its neighbours. */
+export function TagGlyph(): React.JSX.Element {
+  return <svg className="atlas-sound-lib__glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.6 3H5a2 2 0 0 0-2 2v7.6a2 2 0 0 0 .6 1.4l6.4 6.4a2 2 0 0 0 2.8 0l7.6-7.6a2 2 0 0 0 0-2.8L14 3.6a2 2 0 0 0-1.4-.6z" /><circle cx="8" cy="8" r="1" /></svg>;
 }
 
 export function PlayGlyph(): React.JSX.Element {

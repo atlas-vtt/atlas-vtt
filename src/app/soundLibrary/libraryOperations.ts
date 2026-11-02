@@ -2,18 +2,17 @@ import type { MoodStore } from './MoodStore';
 import type { SoundKind } from '../sound/soundTypes';
 import { isAudioPath } from './soundFiles';
 import type { SoundLibrary } from './SoundLibrary';
-import { SoundMoveRefusedError, type SoundLocation } from './soundLocation';
-import { asFileName, freeName, isWithin, joinRelative, nameOfRelative, parentOfRelative } from './soundPaths';
+import type { SoundLocation } from './soundLocation';
+import { asFileName, freeName, joinRelative, nameOfRelative, parentOfRelative } from './soundPaths';
 import { soundAfterMove, type StoredSound } from './soundRecords';
 import type { SoundRecordStore } from './SoundRecordStore';
 import { DEFAULT_SOUND_FOLDERS, isLinked } from './SoundRoots';
 import { VaultLocation } from './vaultLocation';
 
-/** A row of the library. */
+/** A file of the library, as a row names it. */
 export interface LibraryEntry {
   kind: SoundKind;
   path: string;
-  isFolder: boolean;
 }
 
 export interface LibraryContext {
@@ -27,31 +26,6 @@ function locationOf(library: SoundLibrary, kind: SoundKind): SoundLocation {
   return location;
 }
 
-/** Copies between roots, which may lie on different disks, and only then lets go of the source. A failure leaves the source whole. */
-async function copyAcross(source: SoundLocation, from: string, target: SoundLocation, to: string): Promise<void> {
-  const listing = await source.list(from);
-  if (!listing) {
-    await target.write(to, await source.read(from));
-    return;
-  }
-  await target.makeFolder(to);
-  for (const folder of listing.folders) await copyAcross(source, folder.path, target, joinRelative(to, folder.name));
-  for (const file of listing.files) await target.write(joinRelative(to, file.name), await source.read(file.path));
-}
-
-/**
- * Refuses a move that would copy a folder holding what the copy leaves behind, before anything moves: the source
- * goes to the trash afterwards, for good where the GM's trash setting says so. Renames take everything along.
- */
-async function refuseWhatWouldBeLost(library: SoundLibrary, entries: readonly LibraryEntry[], targetKind: SoundKind): Promise<void> {
-  const target = locationOf(library, targetKind);
-  for (const entry of entries) {
-    const source = locationOf(library, entry.kind);
-    if (!entry.isFolder || entry.kind === targetKind || (source instanceof VaultLocation && target instanceof VaultLocation)) continue;
-    if ((await source.firstUnlisted(entry.path)) !== null) throw new SoundMoveRefusedError(entry.path);
-  }
-}
-
 async function moveFiles(library: SoundLibrary, entry: LibraryEntry, targetKind: SoundKind, to: string): Promise<void> {
   const source = locationOf(library, entry.kind);
   const target = locationOf(library, targetKind);
@@ -63,8 +37,9 @@ async function moveFiles(library: SoundLibrary, entry: LibraryEntry, targetKind:
     await source.moveToVault(entry.path, target.fullPath(to));
     return;
   }
+  // Between roots, which may lie on different disks: only then does the source go, so a failure leaves it whole.
   try {
-    await copyAcross(source, entry.path, target, to);
+    await target.write(to, await source.read(entry.path));
   } catch (error) {
     await target.trash(to).catch(() => undefined);
     throw error;
@@ -84,35 +59,27 @@ async function moveWithRecords(context: LibraryContext, entry: LibraryEntry, tar
   await Promise.all([library.settle(entry.kind, [entry.path]), library.settle(targetKind, [to])]);
 }
 
-/** Moves rows into a folder. A name that is taken there gets a number, and a folder is never moved into itself. Refused whole where one of them would lose a file. */
-export async function moveEntries(context: LibraryContext, entries: readonly LibraryEntry[], targetKind: SoundKind, folder: string): Promise<void> {
+/** Moves files to the top of the other root. A name that is taken there gets a number. */
+export async function moveEntries(context: LibraryContext, entries: readonly LibraryEntry[], targetKind: SoundKind): Promise<void> {
   const target = locationOf(context.library, targetKind);
-  await refuseWhatWouldBeLost(context.library, entries, targetKind);
   for (const entry of entries) {
-    if (entry.kind === targetKind && (parentOfRelative(entry.path) === folder || (entry.isFolder && isWithin(entry.path, folder)))) continue;
-    const name = await freeName(nameOfRelative(entry.path), (candidate) => target.exists(joinRelative(folder, candidate)));
-    await moveWithRecords(context, entry, targetKind, joinRelative(folder, name));
+    if (entry.kind === targetKind) continue;
+    const name = await freeName(nameOfRelative(entry.path), (candidate) => target.exists(candidate));
+    await moveWithRecords(context, entry, targetKind, name);
   }
 }
 
-/** Renames a row in its folder. Refused with an error where the name is taken. */
+/** Renames a file where it lies. Refused with an error where the name is taken. */
 export async function renameEntry(context: LibraryContext, entry: LibraryEntry, name: string): Promise<void> {
   await moveWithRecords(context, entry, entry.kind, joinRelative(parentOfRelative(entry.path), name));
-}
-
-export async function makeLibraryFolder(context: Pick<LibraryContext, 'library'>, kind: SoundKind, folder: string, name: string): Promise<void> {
-  const location = locationOf(context.library, kind);
-  const free = await freeName(name, (candidate) => location.exists(joinRelative(folder, candidate)));
-  await location.makeFolder(joinRelative(folder, free));
-  await context.library.settle(kind, [joinRelative(folder, free)]);
 }
 
 /** The records of rows, and how many moods name any of them. */
 export async function usesOf(context: LibraryContext, moods: Pick<MoodStore, 'moods' | 'whenLoaded'>, entries: readonly LibraryEntry[]): Promise<{ sounds: StoredSound[]; moods: number }> {
   const { records, library } = context;
   await Promise.all([records.whenLoaded(), moods.whenLoaded()]);
-  const inRows = entries.flatMap((entry) => library.audioPathOf(entry.kind, entry.path) ?? []);
-  const sounds = records.all().filter((sound) => inRows.some((path) => isWithin(path, library.pathNow(sound.audioPath, sound.audioSize))));
+  const inRows = new Set(entries.flatMap((entry) => library.audioPathOf(entry.kind, entry.path) ?? []));
+  const sounds = records.all().filter((sound) => inRows.has(library.pathNow(sound.audioPath, sound.audioSize)));
   const ids = new Set(sounds.map((sound) => sound.id));
   const count = moods.moods().filter((mood) => mood.layers.some((layer) => ids.has(layer.sound))
     || (typeof mood.music !== 'string' && mood.music.tracks.some((id) => ids.has(id)))).length;
@@ -135,19 +102,19 @@ export interface LibraryImportOutcome {
   failed: string[];
 }
 
-/** Where imported files of a kind go when no folder is open: the root, whose default folder is linked if nothing is. Null where it is linked elsewhere and not here. */
+/** Where imported files of a kind go: the root, whose default folder is linked if nothing is. Null where it is linked elsewhere and not here. */
 function importRoot(library: SoundLibrary, kind: SoundKind): SoundLocation | null {
   const root = library.rootOf(kind);
   if (root.status === 'unlinked') library.roots.linkVault(kind, DEFAULT_SOUND_FOLDERS[kind]);
   return isLinked(library.rootOf(kind)) ? library.locationOf(kind) : null;
 }
 
-/** Copies files from outside into a folder of a root, each under a free name; nothing is ever written over. Browsing makes no record, so this makes none. */
-export async function importIntoLibrary(library: SoundLibrary, files: readonly File[], kind: SoundKind, folder: string, onStep?: (done: number, total: number) => void): Promise<LibraryImportOutcome> {
+/** Copies files from outside to the top of a root, each under a free name; nothing is ever written over. Browsing makes no record, so this makes none. */
+export async function importIntoLibrary(library: SoundLibrary, files: readonly File[], kind: SoundKind, onStep?: (done: number, total: number) => void): Promise<LibraryImportOutcome> {
   const outcome: LibraryImportOutcome = { added: [], refused: [], failed: [] };
   const location = importRoot(library, kind);
   if (!location) return { ...outcome, failed: files.map((file) => file.name) };
-  await location.makeFolder(folder);
+  await location.makeFolder('');
   for (const [index, file] of files.entries()) {
     onStep?.(index, files.length);
     if (!isAudioPath(file.name)) {
@@ -155,14 +122,14 @@ export async function importIntoLibrary(library: SoundLibrary, files: readonly F
       continue;
     }
     try {
-      const name = await freeName(asFileName(file.name), (candidate) => location.exists(joinRelative(folder, candidate)));
-      await location.write(joinRelative(folder, name), file);
+      const name = await freeName(asFileName(file.name), (candidate) => location.exists(candidate));
+      await location.write(name, file);
       outcome.added.push(name);
     } catch (error) {
       console.error(`[Atlas] Could not import ${file.name}`, error);
       outcome.failed.push(file.name);
     }
   }
-  await library.reread(kind, folder);
+  await library.reread(kind);
   return outcome;
 }

@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SoundKind } from '../../../src/app/sound/soundTypes';
 import { ExternalLocation } from '../../../src/app/soundLibrary/externalLocation';
 import { editFiles, recordIdFor, recordsByFile, recordsForFiles, soundOfFile, standingRecord, unrecordedSound } from '../../../src/app/soundLibrary/libraryRecords';
-import { importIntoLibrary, makeLibraryFolder, moveEntries, renameEntry, trashEntries, usesOf, type LibraryContext } from '../../../src/app/soundLibrary/libraryOperations';
+import { importIntoLibrary, moveEntries, renameEntry, trashEntries, usesOf, type LibraryContext } from '../../../src/app/soundLibrary/libraryOperations';
 import { MoodStore } from '../../../src/app/soundLibrary/MoodStore';
 import type { NodeFsModule } from '../../../src/app/soundLibrary/nodeFiles';
 import { SoundLibrary, type LibraryFile } from '../../../src/app/soundLibrary/SoundLibrary';
@@ -121,65 +121,62 @@ describe('records', () => {
 
 describe('moving and renaming', () => {
   it('carries records with a file, the mood that names one still finds it', async () => {
-    write('Music', 'a.mp3');
-    fs.mkdirSync(path.join(external('Music'), 'Battle'));
-    const [made] = await recordsForFiles(records, library, [fileOf('music', 'a.mp3')]);
+    write('Music', 'Battle/a.mp3');
+    const [made] = await recordsForFiles(records, library, [fileOf('music', 'Battle/a.mp3')]);
     const moods = MoodStore.forApp(vault.app);
     const mood = moods.createMood({ name: 'Fight', fadeSeconds: 2, music: { tracks: [made!.id], shuffle: false, levelDb: 0 }, layers: [] });
-    await moveEntries(context, [{ kind: 'music', path: 'a.mp3', isFolder: false }], 'music', 'Battle');
-    expect(fs.existsSync(path.join(external('Music'), 'Battle/a.mp3'))).toBe(true);
-    const [sound] = soundsNow();
-    expect(sound).toMatchObject({ id: made!.id, audioPath: 'atlas-sound:music/Battle/a.mp3' });
-    const stored = moods.mood(mood.id);
-    expect(stored?.music).toMatchObject({ tracks: [made!.id] });
+    await moveEntries(context, [{ kind: 'music', path: 'Battle/a.mp3' }], 'ambience');
+    expect(fs.existsSync(path.join(external('Ambience'), 'a.mp3'))).toBe(true);
+    expect(soundsNow()).toMatchObject([{ id: made!.id, kind: 'ambience', audioPath: 'atlas-sound:ambience/a.mp3' }]);
+    expect(moods.mood(mood.id)?.music).toMatchObject({ tracks: [made!.id] });
     await moods.flush();
     MoodStore.release(vault.app);
   });
 
-  it('carries every record below a folder, and a rename the name that came from the file', async () => {
+  it('a rename carries the record, and the name that came from the file', async () => {
     write('Music', 'Old/a.mp3');
-    write('Music', 'Old/Deep/b.mp3');
-    write('Music', 'Older/c.mp3');
-    await recordsForFiles(records, library, [fileOf('music', 'Old/a.mp3'), fileOf('music', 'Old/Deep/b.mp3'), fileOf('music', 'Older/c.mp3')]);
-    await renameEntry(context, { kind: 'music', path: 'Old', isFolder: true }, 'New');
-    expect(soundsNow().map((sound) => sound.audioPath).sort()).toEqual(['atlas-sound:music/New/Deep/b.mp3', 'atlas-sound:music/New/a.mp3', 'atlas-sound:music/Older/c.mp3']);
-    await renameEntry(context, { kind: 'music', path: 'New/a.mp3', isFolder: false }, 'z.mp3');
-    expect(soundsNow().find((sound) => sound.audioPath.endsWith('z.mp3'))?.name).toBe('z');
+    await recordsForFiles(records, library, [fileOf('music', 'Old/a.mp3')]);
+    await renameEntry(context, { kind: 'music', path: 'Old/a.mp3' }, 'z.mp3');
+    expect(fs.existsSync(path.join(external('Music'), 'Old/z.mp3'))).toBe(true);
+    expect(soundsNow()).toMatchObject([{ name: 'z', audioPath: 'atlas-sound:music/Old/z.mp3' }]);
   });
 
   it('numbers a name that is taken and never replaces a file', async () => {
     write('Music', 'a.mp3', 'ONE');
-    write('Music', 'Battle/a.mp3', 'TWO');
-    await moveEntries(context, [{ kind: 'music', path: 'a.mp3', isFolder: false }], 'music', 'Battle');
-    expect(fs.readFileSync(path.join(external('Music'), 'Battle/a.mp3'), 'utf8')).toBe('TWO');
-    expect(fs.readFileSync(path.join(external('Music'), 'Battle/a 2.mp3'), 'utf8')).toBe('ONE');
-  });
-
-  it('does not move a folder into itself', async () => {
-    write('Music', 'Old/a.mp3');
-    await moveEntries(context, [{ kind: 'music', path: 'Old', isFolder: true }], 'music', 'Old/Deep');
-    expect(fs.existsSync(path.join(external('Music'), 'Old/a.mp3'))).toBe(true);
-  });
-
-  it('changes a file\'s kind when it moves to the other root', async () => {
-    write('Music', 'a.mp3');
-    await recordsForFiles(records, library, [fileOf('music', 'a.mp3')]);
-    await moveEntries(context, [{ kind: 'music', path: 'a.mp3', isFolder: false }], 'ambience', '');
-    expect(fs.existsSync(path.join(external('Ambience'), 'a.mp3'))).toBe(true);
+    write('Ambience', 'a.mp3', 'TWO');
+    await moveEntries(context, [{ kind: 'music', path: 'a.mp3' }], 'ambience');
+    expect(fs.readFileSync(path.join(external('Ambience'), 'a.mp3'), 'utf8')).toBe('TWO');
+    expect(fs.readFileSync(path.join(external('Ambience'), 'a 2.mp3'), 'utf8')).toBe('ONE');
     expect(fs.existsSync(path.join(external('Music'), 'a.mp3'))).toBe(false);
-    expect(soundsNow()).toMatchObject([{ kind: 'ambience', audioPath: 'atlas-sound:ambience/a.mp3' }]);
   });
 
-  it('moves a whole folder between a disk and the vault, and the records follow', async () => {
+  it('a file already in the other root stays where it is', async () => {
+    write('Ambience', 'Deep/a.mp3');
+    await moveEntries(context, [{ kind: 'ambience', path: 'Deep/a.mp3' }], 'ambience');
+    expect(fs.existsSync(path.join(external('Ambience'), 'Deep/a.mp3'))).toBe(true);
+  });
+
+  it('a copy that fails leaves the source whole, and nothing half written', async () => {
+    write('Music', 'a.mp3', 'AAA');
+    const target = library.locationOf('ambience')!;
+    vi.spyOn(target, 'write').mockRejectedValue(new Error('disk full'));
+    await expect(moveEntries(context, [{ kind: 'music', path: 'a.mp3' }], 'ambience')).rejects.toThrow('disk full');
+    expect(fs.readFileSync(path.join(external('Music'), 'a.mp3'), 'utf8')).toBe('AAA');
+    expect(fs.existsSync(path.join(external('Ambience'), 'a.mp3'))).toBe(false);
+  });
+
+  it('moves a file from a disk into the vault, and back, and the record follows', async () => {
     await open({ music: external('Music') }, { music: { type: 'external' }, ambience: { type: 'vault', path: 'Audio' } });
-    write('Music', 'Set/a.mp3', 'AAA');
     write('Music', 'Set/Deep/b.mp3', 'BBB');
-    await recordsForFiles(records, library, [fileOf('music', 'Set/a.mp3'), fileOf('music', 'Set/Deep/b.mp3')]);
-    await moveEntries(context, [{ kind: 'music', path: 'Set', isFolder: true }], 'ambience', '');
-    expect(vault.files.get('Audio/Set/a.mp3')).toBe('AAA');
-    expect(vault.files.get('Audio/Set/Deep/b.mp3')).toBe('BBB');
-    expect(fs.existsSync(path.join(external('Music'), 'Set'))).toBe(false);
-    expect(soundsNow().map((sound) => [sound.audioPath, sound.kind]).sort()).toEqual([['Audio/Set/Deep/b.mp3', 'ambience'], ['Audio/Set/a.mp3', 'ambience']]);
+    await recordsForFiles(records, library, [fileOf('music', 'Set/Deep/b.mp3')]);
+    await moveEntries(context, [{ kind: 'music', path: 'Set/Deep/b.mp3' }], 'ambience');
+    expect(vault.files.get('Audio/b.mp3')).toBe('BBB');
+    expect(fs.existsSync(path.join(external('Music'), 'Set/Deep/b.mp3'))).toBe(false);
+    expect(soundsNow().map((sound) => [sound.audioPath, sound.kind])).toEqual([['Audio/b.mp3', 'ambience']]);
+    await moveEntries(context, [{ kind: 'ambience', path: 'b.mp3' }], 'music');
+    expect(vault.files.has('Audio/b.mp3')).toBe(false);
+    expect(fs.readFileSync(path.join(external('Music'), 'b.mp3'), 'utf8')).toBe('BBB');
+    expect(soundsNow().map((sound) => [sound.audioPath, sound.kind])).toEqual([['atlas-sound:music/b.mp3', 'music']]);
   });
 
   it('within the vault goes through fileManager, between roots too', async () => {
@@ -187,7 +184,7 @@ describe('moving and renaming', () => {
     await vault.app.vault.createFolder('Music');
     await vault.app.vault.adapter.write('Music/a.mp3', 'A');
     await recordsForFiles(records, library, [fileOf('music', 'a.mp3')]);
-    await moveEntries(context, [{ kind: 'music', path: 'a.mp3', isFolder: false }], 'ambience', '');
+    await moveEntries(context, [{ kind: 'music', path: 'a.mp3' }], 'ambience');
     expect(vault.app.fileManager.renameFile).toHaveBeenCalledTimes(1);
     expect(vault.files.has('Audio/a.mp3')).toBe(true);
     expect(soundsNow()).toMatchObject([{ kind: 'ambience', audioPath: 'Audio/a.mp3' }]);
@@ -221,7 +218,7 @@ describe('a file gone from its path', () => {
     await recordsForFiles(records, library, [fileOf('music', 'a.mp3')]);
     await open({}, { music: { type: 'external' } });
     expect(library.rootOf('music').status).toBe('not-linked-here');
-    expect(library.listing('music', '')).toBeNull();
+    expect(library.filesOf('music')).toEqual([]);
     expect(library.statOfFile('atlas-sound:music/a.mp3', 5)).toBeNull();
     await expect(library.readFile('atlas-sound:music/a.mp3', 5)).rejects.toThrow('not reachable');
     expect(soundsNow()).toHaveLength(1);
@@ -268,7 +265,7 @@ describe('a file in another folder than its record says', () => {
 
   it('takes its record along when its row is deleted', async () => {
     const row = await moved();
-    const entries = [{ kind: 'music' as const, path: row.path, isFolder: false }];
+    const entries = [{ kind: 'music' as const, path: row.path }];
     const { sounds } = await usesOf(context, { moods: () => [], whenLoaded: () => Promise.resolve() }, entries);
     expect(sounds.map((sound) => sound.id)).toEqual(soundsNow().map((sound) => sound.id));
     await trashEntries(context, entries, sounds);
@@ -283,12 +280,12 @@ describe('deleting', () => {
     const moods = MoodStore.forApp(vault.app);
     await moods.whenLoaded();
     moods.createMood({ name: 'Fight', fadeSeconds: 2, music: 'none', layers: [{ sound: made!.id, levelDb: 0 }] });
-    const entries = [{ kind: 'music' as const, path: 'Set', isFolder: true }];
+    const entries = [{ kind: 'music' as const, path: 'Set/a.mp3' }];
     const uses = await usesOf(context, moods, entries);
     expect(uses.moods).toBe(1);
     expect(uses.sounds.map((sound) => sound.id)).toEqual([made!.id]);
     await trashEntries(context, entries, uses.sounds);
-    expect(fs.existsSync(path.join(external('Music'), 'Set'))).toBe(false);
+    expect(fs.existsSync(path.join(external('Music'), 'Set/a.mp3'))).toBe(false);
     expect(soundsNow()).toEqual([]);
     await moods.flush();
     MoodStore.release(vault.app);
@@ -299,7 +296,7 @@ describe('deleting', () => {
     await open({ music: external('Music') }, {});
     write('Music', 'a.mp3');
     await recordsForFiles(records, library, [fileOf('music', 'a.mp3')]);
-    const entries = [{ kind: 'music' as const, path: 'a.mp3', isFolder: false }];
+    const entries = [{ kind: 'music' as const, path: 'a.mp3' }];
     await expect(trashEntries(context, entries, soundsNow())).rejects.toBeInstanceOf(TrashUnavailableError);
     expect(fs.existsSync(path.join(external('Music'), 'a.mp3'))).toBe(true);
     expect(soundsNow()).toHaveLength(1);
@@ -307,18 +304,18 @@ describe('deleting', () => {
 });
 
 describe('importing', () => {
-  it('copies into the open folder under a free name, and makes no record', async () => {
-    write('Music', 'Battle/a.mp3', 'OLD');
-    const outcome = await importIntoLibrary(library, [new File(['NEW'], 'a.mp3'), new File(['X'], 'cover.png')], 'music', 'Battle');
+  it('copies to the top of the root under a free name, and makes no record', async () => {
+    write('Music', 'a.mp3', 'OLD');
+    const outcome = await importIntoLibrary(library, [new File(['NEW'], 'a.mp3'), new File(['X'], 'cover.png')], 'music');
     expect(outcome).toEqual({ added: ['a 2.mp3'], refused: ['cover.png'], failed: [] });
-    expect(fs.readFileSync(path.join(external('Music'), 'Battle/a.mp3'), 'utf8')).toBe('OLD');
-    expect(fs.readFileSync(path.join(external('Music'), 'Battle/a 2.mp3'), 'utf8')).toBe('NEW');
+    expect(fs.readFileSync(path.join(external('Music'), 'a.mp3'), 'utf8')).toBe('OLD');
+    expect(fs.readFileSync(path.join(external('Music'), 'a 2.mp3'), 'utf8')).toBe('NEW');
     expect(soundsNow()).toEqual([]);
   });
 
   it('with nothing linked goes to the default vault folder, which is then linked', async () => {
     await open({}, {});
-    const outcome = await importIntoLibrary(library, [new File(['NEW'], 'a.mp3')], 'ambience', '');
+    const outcome = await importIntoLibrary(library, [new File(['NEW'], 'a.mp3')], 'ambience');
     expect(outcome.added).toEqual(['a.mp3']);
     expect(vault.files.get('atlas-vtt/sounds/ambience/a.mp3')).toBe('NEW');
     expect(library.rootOf('ambience')).toMatchObject({ status: 'vault', path: 'atlas-vtt/sounds/ambience' });
@@ -326,7 +323,7 @@ describe('importing', () => {
 
   it('is refused for a root linked only on another device', async () => {
     await open({}, { music: { type: 'external' } });
-    const outcome = await importIntoLibrary(library, [new File(['NEW'], 'a.mp3')], 'music', '');
+    const outcome = await importIntoLibrary(library, [new File(['NEW'], 'a.mp3')], 'music');
     expect(outcome.failed).toEqual(['a.mp3']);
     expect(vault.files.has('atlas-vtt/sounds/music/a.mp3')).toBe(false);
   });
@@ -335,54 +332,60 @@ describe('importing', () => {
 describe('the bytes of a file on disk', () => {
   it('reach whoever converts it through what its record says', async () => {
     write('Music', 'Battle/a.mp3', 'BYTES');
-    library.listing('music', 'Battle');
+    library.rescan(100_000);
     await vi.waitFor(() => expect(library.statOfFile('atlas-sound:music/Battle/a.mp3')).toMatchObject({ size: 5 }));
     const blob = await library.readFile('atlas-sound:music/Battle/a.mp3');
     expect(await blob.text()).toBe('BYTES');
     await expect(library.readFile('atlas-sound:music/../../secret.mp3')).rejects.toThrow('not reachable');
   });
 
-  it('a change on disk reaches the listing by the watch', async () => {
+  it('a change on disk reaches the files by the watch', async () => {
     write('Music', 'a.mp3');
-    library.listing('music', '');
-    await vi.waitFor(() => expect(library.listing('music', '')).not.toBeNull());
+    library.rescan(100_000);
+    await vi.waitFor(() => expect(library.filesOf('music')).toHaveLength(1));
     await new Promise((resolve) => { setTimeout(resolve, 80); });
     write('Music', 'b.mp3');
-    await vi.waitFor(() => expect(library.listing('music', '')?.files.map((file) => file.name)).toEqual(['a.mp3', 'b.mp3']), { timeout: 5000 });
+    await vi.waitFor(() => expect(library.filesOf('music').map(({ entry }) => entry.name)).toEqual(['a.mp3', 'b.mp3']), { timeout: 5000 });
   });
 });
 
 describe('browsing', () => {
-  it('lists lazily, counts and searches in the background, and stays right after changes', async () => {
+  it('reads in the background, counts and searches, and stays right after changes', async () => {
     write('Music', 'Battle/a.mp3');
     write('Music', 'Battle/Bosses/b.mp3');
     write('Music', 'Travel/Road song.mp3');
     write('Ambience', 'Rain.ogg');
-    expect(library.listing('music', '')).toBeNull();
-    await vi.waitFor(() => expect(library.listing('music', '')).not.toBeNull());
-    expect(library.countOf('music', 'Battle')).toBeNull();
+    expect(library.filesOf('music')).toEqual([]);
+    expect(library.isWalked('music')).toBe(false);
     library.rescan(100_000);
-    await vi.waitFor(() => expect(library.countOf('music', '')).toBe(3));
+    await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
     await vi.waitFor(() => expect(library.countOf('ambience', '')).toBe(1));
-    expect(library.countOf('music', 'Battle')).toBe(2);
+    expect(library.countOf('music', '')).toBe(3);
     expect(library.search('road').map((file) => file.path)).toEqual(['Travel/Road song.mp3']);
     expect(library.search('rain')).toMatchObject([{ kind: 'ambience', path: 'Rain.ogg' }]);
     write('Music', 'Battle/c.mp3');
     await library.settle('music', ['Battle/c.mp3']);
-    expect(library.countOf('music', 'Battle')).toBe(3);
+    expect(library.countOf('music', '')).toBe(4);
     fs.rmSync(path.join(external('Music'), 'Battle'), { recursive: true });
     await library.settle('music', ['Battle']);
     expect(library.countOf('music', '')).toBe(1);
     expect(library.search('bosses')).toEqual([]);
   });
 
-  it('keeps a listing object while nothing changed', async () => {
+  it('lists every file below a root flat by name, whatever folder it lies in, in reading order', async () => {
+    for (const name of ['Battle/Track 10.mp3', 'Battle/Bosses/Track 2.mp3', 'Émile.mp3', 'Zed.mp3', 'Calm/alpha.mp3']) write('Music', name);
+    library.rescan(100_000);
+    await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
+    expect(library.filesOf('music').map(({ entry }) => entry.name)).toEqual(['alpha.mp3', 'Émile.mp3', 'Track 2.mp3', 'Track 10.mp3', 'Zed.mp3']);
+  });
+
+  it('keeps its list while nothing changed', async () => {
     write('Music', 'a.mp3');
-    library.listing('music', '');
-    await vi.waitFor(() => expect(library.listing('music', '')).not.toBeNull());
-    const first = library.listing('music', '');
+    library.rescan(100_000);
+    await vi.waitFor(() => expect(library.isWalked('music')).toBe(true));
+    const first = library.filesOf('music');
     await library.settle('music', ['a.mp3']);
-    expect(library.listing('music', '')).toBe(first);
+    expect(library.filesOf('music')).toBe(first);
   });
 
   it('searches 20,000 names inside a frame', async () => {
@@ -400,12 +403,6 @@ describe('browsing', () => {
     expect(hits.map((hit) => hit.kind)).toEqual(['music', 'ambience']);
     big.destroy();
   });
-});
-
-it('a folder is made under a free name', async () => {
-  write('Music', 'Battle/a.mp3');
-  await makeLibraryFolder(context, 'music', '', 'Battle');
-  expect(fs.existsSync(path.join(external('Music'), 'Battle 2'))).toBe(true);
 });
 
 it('reading the vault lists audio only, in reading order, and TFile sizes', async () => {

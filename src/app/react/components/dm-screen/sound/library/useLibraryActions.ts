@@ -3,20 +3,20 @@ import type { App } from 'obsidian';
 import { t } from '../../../../../i18n';
 import { nativeFolderPicker } from '../../../../../services/electronRemote';
 import type { SoundKind } from '../../../../../sound/soundTypes';
-import { fileToMix, folderToMix, prepareFolder, takeFromMix, type HeldInMix, type LibraryDeskDeps, type MixIntent } from '../../../../../soundDirector/libraryDesk';
+import { fileToMix, listToMix, prepareFiles, takeFromMix, type HeldInMix, type LibraryDeskDeps, type MixIntent } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
 import { editFiles, recordsByFile, soundOfFile } from '../../../../../soundLibrary/libraryRecords';
-import { makeLibraryFolder, moveEntries, renameEntry, trashEntries, usesOf, type LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
+import { moveEntries, renameEntry, trashEntries, usesOf, type LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
 import { MoodStore } from '../../../../../soundLibrary/MoodStore';
 import { runLibraryImport } from '../../../../../soundLibrary/runLibraryImport';
 import { AUDIO_ACCEPT, isAudioPath } from '../../../../../soundLibrary/soundFiles';
-import { pickFolder, type FolderChoice } from '../../../../../soundLibrary/SoundFolderPicker';
+import { pickFolder } from '../../../../../soundLibrary/SoundFolderPicker';
 import type { LibraryFile, SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
-import { SoundMoveRefusedError, SoundPathReservedError, SoundPathTakenError, SoundVaultPathError, TrashUnavailableError } from '../../../../../soundLibrary/soundLocation';
-import { nameOfRelative, safeName } from '../../../../../soundLibrary/soundPaths';
+import { SoundPathReservedError, SoundPathTakenError, SoundVaultPathError, TrashUnavailableError } from '../../../../../soundLibrary/soundLocation';
 import type { LinkOutcome } from '../../../../../soundLibrary/SoundRoots';
 import { defaultSoundKind, type SoundChanges, type StoredSound } from '../../../../../soundLibrary/soundRecords';
 import { SoundRecordStore } from '../../../../../soundLibrary/SoundRecordStore';
+import { addTag, cleanTag, removeTag, renameTag, tagsOfFiles, toggleTag, tracksHolding, type TrackTags } from '../../../../../soundLibrary/soundTags';
 import { confirmAction } from '../../../../../ui/confirmDialog';
 import { promptForText } from '../../../../../ui/textInputDialog';
 import { showNotice } from '../../../../../ui/notice';
@@ -28,7 +28,6 @@ function failure(error: unknown): string {
   if (error instanceof SoundPathTakenError) return t('audio.library.nameTaken');
   if (error instanceof SoundPathReservedError) return t('audio.library.reserved');
   if (error instanceof SoundVaultPathError) return t('audio.library.holdsVault');
-  if (error instanceof SoundMoveRefusedError) return t('audio.library.moveWouldLose', { folder: nameOfRelative(error.folder) });
   console.error('[Atlas] The sound library could not do that', error);
   return t('audio.library.failed');
 }
@@ -37,23 +36,31 @@ export interface LibraryActions {
   toMix: (files: readonly LibraryFile[], intent: MixIntent) => void;
   takeOut: (held: HeldInMix) => void;
   preview: (file: LibraryFile) => void;
-  playFolder: (kind: SoundKind, folder: string, shuffle: boolean) => void;
-  prepare: (kind: SoundKind, folder: string) => void;
+  playList: (files: readonly LibraryFile[], shuffle: boolean) => void;
+  prepare: (kind: SoundKind) => void;
   link: (kind: SoundKind, anchor: Window) => void;
   unlink: (kind: SoundKind) => void;
-  askNewFolder: (kind: SoundKind, folder: string) => void;
-  importInto: (files: readonly File[], kind: SoundKind, folder: string) => void;
-  pickImport: (doc: Document, kind: SoundKind, folder: string) => void;
+  importInto: (files: readonly File[], kind: SoundKind) => void;
+  pickImport: (doc: Document, kind: SoundKind) => void;
   /** Files whose kind no root says yet: their names decide. */
   importLoose: (files: readonly File[]) => void;
   pickLoose: (doc: Document) => void;
   rename: (entry: LibraryEntry, name: string) => void;
-  move: (entries: readonly LibraryEntry[], kind: SoundKind, folder: string) => void;
-  askMove: (entries: readonly LibraryEntry[]) => void;
+  move: (entries: readonly LibraryEntry[], kind: SoundKind) => void;
   remove: (entries: readonly LibraryEntry[]) => void;
   forget: (sound: StoredSound) => void;
   edit: (files: readonly LibraryFile[], changes: SoundChanges) => void;
   askCredit: (files: readonly LibraryFile[], current: string, name: string) => void;
+  /** Files' tags as the records stand at this moment, for a menu that stays open through its own changes. */
+  tagsOf: (files: readonly LibraryFile[]) => TrackTags[];
+  onRecords: (listener: () => void) => () => void;
+  tag: (files: readonly LibraryFile[], tag: string) => void;
+  toggleTag: (files: readonly LibraryFile[], tag: string) => void;
+  askNewTag: (files: readonly LibraryFile[]) => void;
+  /** How many tracks' records hold a tag, in both roots. */
+  tracksWithTag: (tag: string) => number;
+  askRenameTag: (tag: string) => void;
+  askRemoveTag: (tag: string) => void;
 }
 
 function pickFiles(doc: Document, then: (files: File[]) => void): void {
@@ -91,11 +98,11 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
           director.preview(soundOfFile(recordsByFile(records.all(), library), file, audioPath));
         }), 'Previewing a sound');
       },
-      playFolder: (kind, folder, shuffle) => run(folderToMix(deps, kind, folder, shuffle), 'Playing a folder'),
-      prepare: (kind, folder) => {
-        runInBackground(prepareFolder(deps, kind, folder).then((count) => {
+      playList: (files, shuffle) => run(listToMix(deps, files, shuffle), 'Playing a list'),
+      prepare: (kind) => {
+        runInBackground(prepareFiles(deps, library.filesOf(kind).map(({ entry }) => ({ ...entry, kind }))).then((count) => {
           showNotice(t('audio.library.preparing', { count }));
-        }), 'Preparing a folder');
+        }), 'Preparing a root');
       },
       link: (kind, win) => {
         const dialog = nativeFolderPicker(win);
@@ -106,45 +113,21 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
           }), 'Linking a sound folder');
           return;
         }
-        const folders: FolderChoice<string>[] = app.vault.getAllFolders(true).map((folder) => ({ label: folder.path, value: folder.path === '/' ? '' : folder.path }));
+        const folders = app.vault.getAllFolders(true).map((folder) => ({ label: folder.path, path: folder.path === '/' ? '' : folder.path }));
         pickFolder(app, folders, title, (path) => linkOutcome(library.roots.linkVault(kind, path)));
       },
       unlink: (kind) => library.roots.unlink(kind),
-      askNewFolder: (kind, folder) => {
-        run(promptForText({ title: t('audio.library.newFolder'), confirmLabel: t('audio.library.create') }).then(async (text) => {
-          if (text === null) return;
-          const name = safeName(text);
-          if (name === null) showNotice(t('audio.library.badName'));
-          else await makeLibraryFolder(context, kind, folder, name);
-        }), 'Making a folder');
-      },
-      importInto: (files, kind, folder) => run(runLibraryImport(library, files, kind, folder), 'Importing sounds'),
-      pickImport: (doc, kind, folder) => pickFiles(doc, (files) => actions.importInto(files, kind, folder)),
+      importInto: (files, kind) => run(runLibraryImport(library, files, kind), 'Importing sounds'),
+      pickImport: (doc, kind) => pickFiles(doc, (files) => actions.importInto(files, kind)),
       importLoose: (files) => {
         for (const kind of ['music', 'ambience'] as const) {
           const mine = files.filter((file) => !isAudioPath(file.name) ? kind === 'music' : defaultSoundKind(file.name, null) === kind);
-          if (mine.length > 0) actions.importInto(mine, kind, '');
+          if (mine.length > 0) actions.importInto(mine, kind);
         }
       },
       pickLoose: (doc) => pickFiles(doc, actions.importLoose),
       rename: (entry, name) => run(renameEntry(context, entry, name), 'Renaming in the library'),
-      move: (entries, kind, folder) => run(moveEntries(context, entries, kind, folder), 'Moving in the library'),
-      askMove: (entries) => {
-        const choices = (['music', 'ambience'] as const).flatMap((kind): FolderChoice<{ kind: SoundKind; folder: string }>[] => {
-          const label = t(kind === 'music' ? 'audio.music' : 'audio.ambience');
-          if (!library.locationOf(kind)) return [];
-          const folders = new Set<string>(['']);
-          const walk = (folder: string): void => {
-            for (const sub of library.listing(kind, folder)?.folders ?? []) {
-              folders.add(sub.path);
-              walk(sub.path);
-            }
-          };
-          walk('');
-          return [...folders].map((folder) => ({ label: folder === '' ? label : `${label} / ${folder.split('/').join(' / ')}`, value: { kind, folder } }));
-        });
-        pickFolder(app, choices, t('audio.library.moveTo'), ({ kind, folder }) => actions.move(entries, kind, folder));
-      },
+      move: (entries, kind) => run(moveEntries(context, entries, kind), 'Moving in the library'),
       remove: (entries) => {
         const task = usesOf(context, MoodStore.forApp(app), entries).then(async (uses) => {
           const sure = await confirmAction({
@@ -167,6 +150,31 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
         run(promptForText({ title: t('audio.creditTitle', { name }), confirmLabel: t('audio.library.save'), initialValue: current, placeholder: t('audio.creditPlaceholder') }).then(async (credit) => {
           if (credit !== null) await editFiles(records, library, files, { credit });
         }), 'Changing a credit');
+      },
+      tagsOf: (files) => tagsOfFiles(records.all(), library, files),
+      onRecords: (listener) => records.onChange(listener),
+      tag: (files, tag) => run(addTag(records, library, files, tag), 'Tagging sounds'),
+      toggleTag: (files, tag) => run(toggleTag(records, library, files, tag), 'Tagging sounds'),
+      askNewTag: (files) => {
+        run(promptForText({ title: t('audio.library.newTag'), confirmLabel: t('audio.library.create') }).then(async (text) => {
+          const tag = text === null ? null : cleanTag(text);
+          if (tag !== null) await addTag(records, library, files, tag);
+        }), 'Tagging sounds');
+      },
+      tracksWithTag: (tag) => tracksHolding(records.all(), library, tag),
+      askRenameTag: (from) => {
+        run(promptForText({ title: t('audio.library.renameTag', { name: from }), confirmLabel: t('audio.library.save'), initialValue: from }).then((text) => {
+          const to = text === null ? null : cleanTag(text);
+          if (to === null || to === from) return;
+          renameTag(records, from, to);
+          library.place.renameTag(from, to);
+        }), 'Renaming a tag');
+      },
+      askRemoveTag: (tag) => {
+        const count = tracksHolding(records.all(), library, tag);
+        run(confirmAction({ title: t('audio.library.removeTagTitle', { name: tag, count }), message: [], confirmLabel: t('audio.library.removeTag'), destructive: true }).then((sure) => {
+          if (sure) removeTag(records, tag);
+        }), 'Removing a tag');
       },
     };
     return actions;

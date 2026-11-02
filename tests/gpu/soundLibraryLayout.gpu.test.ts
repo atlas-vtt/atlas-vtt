@@ -29,10 +29,14 @@ const rowNamed = (name: string): HTMLElement => {
   return row;
 };
 
-const pressFolder = async (name: string): Promise<void> => {
-  const folder = [...document.querySelectorAll<HTMLButtonElement>('.atlas-sound-lib__fold')].find((one) => one.querySelector('span')?.textContent === name);
-  if (!folder) throw new Error(`No folder ${name}`);
-  await userEvent.click(folder);
+const tagNamed = (name: string): HTMLButtonElement => {
+  const tag = [...document.querySelectorAll<HTMLButtonElement>('.atlas-sound-lib__tag')].find((one) => one.querySelector('span')?.textContent === name);
+  if (!tag) throw new Error(`No tag ${name}`);
+  return tag;
+};
+
+const pressTag = async (name: string): Promise<void> => {
+  await userEvent.click(tagNamed(name));
   await settled();
 };
 
@@ -96,8 +100,8 @@ describe('the sound library', () => {
 
   it('stands in the mock\'s proportions, and the row shows its action on hover alone', async () => {
     await open();
-    await pressFolder('Battle');
-    await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(10);
+    await pressTag('Battle');
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(14);
     expect(box('.atlas-sound-lib__rail').width).toBeGreaterThanOrEqual(208);
     expect(box('.atlas-sound-lib__rail').width).toBeLessThanOrEqual(232);
     expect(box('.atlas-sound-lib').width / 1644).toBeCloseTo(0.58, 1);
@@ -115,7 +119,8 @@ describe('the sound library', () => {
     const length = fixed('.atlas-sound-lib__length');
     expect(length).toBeGreaterThan(0);
     expect(rowNamed('Blood on the ford').querySelector('.atlas-sound-lib__length')?.textContent).toBe('3:42');
-    expect(rowNamed('Bosses').querySelector('.atlas-sound-lib__length')?.textContent).toBe('5');
+    expect(rowNamed('Boss 1').querySelector('.atlas-sound-lib__where')?.textContent).toBe('Battle · Bosses');
+    expect(rowNamed('Boss 1').querySelector('.atlas-sound-lib__glyph')).toBeNull();
     expect(document.querySelector('.atlas-sound-views')).toBeNull();
     expectNoOverflow();
     const title = rowNamed('Riders at the treeline').querySelector<HTMLElement>('.atlas-sound-lib__title')!;
@@ -128,7 +133,7 @@ describe('the sound library', () => {
 
   it('keeps name, state and length readable at 1280, the action over the state, and what does not fit in the head in a menu', async () => {
     await open(ATLAS_DARK, 1280, 800);
-    await pressFolder('Battle');
+    await pressTag('Battle');
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBeGreaterThan(4);
     expect(box('.atlas-sound-lib__rail').width).toBe(208);
     expect(box('.atlas-sound-lib').width / 1280).toBeCloseTo(0.58, 1);
@@ -145,14 +150,14 @@ describe('the sound library', () => {
     expectTilesRead(2);
     expectNoOverflow();
     await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-lib__head-more')!);
-    await expect.poll(() => [...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(['New folder', 'Import']);
+    await expect.poll(() => [...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(['Import']);
     await userEvent.keyboard('{Escape}');
   });
 
   it('sends a real file to the mix, and shows it there and what still converts', async () => {
     const r = await open();
-    await pressFolder('Battle');
-    await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(10);
+    await pressTag('Battle');
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(14);
     await userEvent.hover(rowNamed('Steel in the reeds'));
     await userEvent.click(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__play')!);
     await expect.poll(() => rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__state')?.textContent, { timeout: 60_000 }).toBe('Playing');
@@ -170,6 +175,60 @@ describe('the sound library', () => {
     await userEvent.hover(rowNamed('Steel in the reeds'));
     await userEvent.click(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__play')!);
     await expect.poll(() => rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__state')?.textContent).toBe('');
+  });
+
+  it('its rail lists a root\'s tags under it, by name, with counts, and shows what is selected, pointed at and dropped on', async () => {
+    const r = await open();
+    await pressTag('Battle');
+    await pressTag('Bosses');
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(5);
+    const names = (section: number): (string | null | undefined)[] => [...document.querySelectorAll('.atlas-sound-lib__root-block')[section]!.querySelectorAll('.atlas-sound-lib__tag span')].map((one) => one.textContent);
+    expect(names(0)).toEqual(['Battle', 'Bosses', 'Dread', 'Taverns', 'Travel', 'Wonder']);
+    expect(names(1)).toEqual(['Dungeons', 'Towns', 'Weather', 'Wilds']);
+    expect(document.querySelector('.atlas-sound-lib__crumb')?.textContent).toBe('Music/Battle · Bosses');
+    const crumb = box('.atlas-sound-lib__crumb span');
+    expect(crumb.right).toBeLessThanOrEqual(box('.atlas-sound-lib__search').left);
+
+    const selected = tagNamed('Battle');
+    const unselected = tagNamed('Dread');
+    expect(selected.getAttribute('aria-pressed')).toBe('true');
+    await expect.poll(() => getComputedStyle(selected).color).toBe('rgb(229, 113, 113)');
+    // A flex button whose content starts at its edge says so itself: Obsidian centres what a button holds.
+    expect(getComputedStyle(selected).justifyContent).toBe('flex-start');
+    expect(selected.getBoundingClientRect().height).toBe(30);
+    expect(selected.querySelector('.atlas-sound-lib__glyph')!.getBoundingClientRect().left - selected.getBoundingClientRect().left).toBe(26);
+    expect(selected.querySelector('small')!.getBoundingClientRect().right).toBeCloseTo(selected.getBoundingClientRect().right - 8, 0);
+
+    await page.screenshot({ path: `${SHOTS}/library-tags.png`, element: LIBRARY_SHOT(frame!.host) });
+
+    const line = unselected.parentElement!;
+    const more = line.querySelector<HTMLElement>('.atlas-sound-lib__more')!;
+    expect(getComputedStyle(more).opacity).toBe('0');
+    await userEvent.hover(line);
+    await expect.poll(() => getComputedStyle(more).opacity).toBe('1');
+    await expect.poll(() => getComputedStyle(unselected.querySelector('small')!).opacity).toBe('0');
+    expect(more.getBoundingClientRect().right).toBeLessThanOrEqual(unselected.getBoundingClientRect().right);
+    await userEvent.click(more);
+    await expect.poll(() => [...document.querySelectorAll('[role="menuitem"]')].map((item) => [item.textContent, item.getAttribute('aria-disabled')])).toEqual([['Rename', 'true'], ['Remove', 'true']]);
+    await settled();
+    await page.screenshot({ path: `${SHOTS}/library-tag-menu.png`, element: LIBRARY_SHOT(frame!.host) });
+    await userEvent.keyboard('{Escape}');
+    await settled();
+
+    // A long name stops at the row's end instead of pushing the count out, however it was written.
+    r.records.add([{ id: 'long', name: 'Long', tags: ['A tag with a name as long as a tag may have it'], createdAt: 1, modifiedAt: 1, audioPath: 'atlas-sound:music/Taverns/Track 1.ogg', kind: 'music', licence: 'unknown', streaming: 'unknown' }]);
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__tag').length).toBe(11);
+    const long = tagNamed('A tag with a name as long as a tag may have it');
+    expect(long.scrollWidth).toBeLessThanOrEqual(long.clientWidth + 1);
+    expect(long.querySelector('span')!.getBoundingClientRect().right).toBeLessThanOrEqual(long.querySelector('small')!.getBoundingClientRect().left);
+
+    // The target ring, as a drag of rows holds it over a tag.
+    const transfer = new DataTransfer();
+    transfer.setData('application/x-atlas-sound-rows', '{"files":[]}');
+    unselected.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+    await expect.poll(() => getComputedStyle(unselected).boxShadow).toContain('inset');
+    unselected.dispatchEvent(new DragEvent('dragleave', { bubbles: true, dataTransfer: transfer }));
+    expectNoOverflow();
   });
 
   it('says where to begin when nothing is linked', async () => {
@@ -190,7 +249,7 @@ describe('the sound library', () => {
 
   it('holds in light mode', async () => {
     await open(OBSIDIAN_LIGHT);
-    await pressFolder('Battle');
+    await pressTag('Battle');
     await userEvent.hover(rowNamed('The last gate'));
     await settled();
     const solid = getComputedStyle(document.querySelector('.atlas-sound-lib__btn--solid')!);
@@ -201,7 +260,7 @@ describe('the sound library', () => {
 
   it('stands over the moods below the breakpoint, and its rail over the rows where it must', async () => {
     await open(ATLAS_DARK, 700, 960);
-    await pressFolder('Battle');
+    await pressTag('Battle');
     await settled();
     const stage = box('.atlas-sound-lib');
     expect(stage.width).toBe(box('.atlas-sound-moods').width);
@@ -219,13 +278,13 @@ describe('the sound library', () => {
     await page.screenshot({ path: `${SHOTS}/library-narrow.png`, element: LIBRARY_SHOT(frame!.host) });
   });
 
-  it('scrolls a folder of 5,000 files without losing a frame', async () => {
+  it('scrolls 5,000 files of a tag without losing a frame', async () => {
     const r = await open();
     for (let index = 0; index < 5000; index++) r.locations.music.addFile(`Huge/Track ${index}.mp3`);
     r.library.rescan(Date.now() + 200_000);
     await expect.poll(() => r.library.countOf('music', 'Huge'), { timeout: 30_000 }).toBe(5000);
     await settled();
-    await pressFolder('Huge');
+    await pressTag('Huge');
     await expect.poll(() => document.querySelector('.atlas-sound-lib__rows [style*="height"]')?.getBoundingClientRect().height).toBe(5000 * 38);
     const list = document.querySelector<HTMLElement>('.atlas-sound-lib__rows')!;
     expect(document.querySelectorAll('.atlas-sound-lib__row').length).toBeLessThan(60);
@@ -253,7 +312,7 @@ describe('the sound library', () => {
 
   it('shows the parts a look at the rows leaves out: a selection, its menu, a search, a root not linked here, a skeleton', async () => {
     const r = await open();
-    await pressFolder('Battle');
+    await pressTag('Battle');
     await userEvent.click(rowNamed('Shield wall'));
     await userEvent.click(rowNamed('Under siege'), { modifiers: ['ControlOrMeta'] } as never);
     await settled();
@@ -283,7 +342,7 @@ describe('the sound library', () => {
     await page.screenshot({ path: `${SHOTS}/library-not-linked.png`, element: LIBRARY_SHOT(frame.host) });
   });
 
-  it('a folder that takes long shows its skeleton in the rows\' places, then its rows without a shift', async () => {
+  it('a root that takes long shows its skeleton in the rows\' places, then its rows without a shift', async () => {
     await page.viewport(1644, 960);
     rig = await mockLibrary();
     const original = rig.locations.music.list.bind(rig.locations.music);
@@ -302,8 +361,8 @@ describe('the sound library', () => {
     expect(document.querySelector('.atlas-sound-lib__none')).toBeNull();
     await page.screenshot({ path: `${SHOTS}/library-skeleton.png`, element: LIBRARY_SHOT(frame.host) });
     release();
-    await expect.poll(() => document.querySelector('.atlas-sound-lib__rows .atlas-sound-lib__row--folder')).not.toBeNull();
-    expect(document.querySelector('.atlas-sound-lib__row--folder')!.getBoundingClientRect().top).toBe(top);
+    await expect.poll(() => document.querySelector('.atlas-sound-lib__rows [role="row"]')).not.toBeNull();
+    expect(document.querySelector('.atlas-sound-lib__rows [role="row"]')!.getBoundingClientRect().top).toBe(top);
   });
 
   it('hands a 300 MiB file over as a Blob in pieces, keeping the main thread free', async () => {

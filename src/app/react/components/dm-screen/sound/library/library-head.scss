@@ -31,28 +31,30 @@
 .atlas-sound-lib__crumb {
   display: flex;
   align-items: baseline;
-  // What does not fit goes at the far end from the folder that is open.
-  justify-content: flex-end;
   min-width: 0;
   font-family: var(--h3-font, var(--font-interface));
   font-size: 23px;
   line-height: 1;
   color: var(--mono-100);
   white-space: nowrap;
-  overflow: hidden;
 
   i {
+    flex-shrink: 0;
     font-style: normal;
     color: var(--text-faint);
     margin: 0 6px;
   }
 
-  // The open folder and the one above it are as much as this line tells; the rail has the rest.
-  > :nth-last-child(n + 4) {
-    display: none;
+  // Tags that do not fit are the rail's to name; a descender needs its line's height.
+  span {
+    min-width: 0;
+    line-height: 1.2;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   button {
+    flex-shrink: 0;
     font-family: inherit;
     font-size: inherit;
     line-height: inherit;

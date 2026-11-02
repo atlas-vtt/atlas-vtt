@@ -3,10 +3,10 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { t } from '../../../../../i18n';
 import { Skeleton, SkeletonGroup, skeletonTextWidth } from '../../../../../packages/components/primitives/Skeleton';
 import { useScrollbarGutter } from '../../../../../packages/components/primitives/useScrollbarGutter';
-import type { SoundRecord } from '../../../../../sound/soundTypes';
+import type { SoundKind, SoundRecord } from '../../../../../sound/soundTypes';
 import { soundsNow, type HeldInMix } from '../../../../../soundDirector/libraryDesk';
 import type { SoundDirector } from '../../../../../soundDirector/SoundDirector';
-import { recordsByFile, standingRecord, unrecordedSound } from '../../../../../soundLibrary/libraryRecords';
+import { standingRecord, unrecordedSound } from '../../../../../soundLibrary/libraryRecords';
 import { carriesSounds, writeSoundDrag } from '../../../../../soundLibrary/soundDrag';
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
@@ -18,8 +18,7 @@ import { moveFocus } from '../../screenKeys';
 import { useSoundValue } from '../useSound';
 import { useSoundingKey } from './useLibrary';
 import { LibraryRow, type RowHandlers } from './LibraryRow';
-import { dropOnFolder } from './libraryDrop';
-import { entryOfRow, selectionAfter, type LibraryRow as Row } from './rowModel';
+import { entryOfRow, filesOfRows, selectionAfter, type LibraryRow as Row, type RootShelf } from './rowModel';
 import { useRowKeys } from './useRowKeys';
 import { rowMenu } from './rowMenus';
 import type { LibraryActions } from './useLibraryActions';
@@ -36,10 +35,10 @@ interface LibraryRowsProps {
   library: SoundLibrary;
   director: SoundDirector;
   actions: LibraryActions;
-  sounds: readonly StoredSound[];
+  /** The records of each file, as this device finds them. */
+  soundsByPath: ReadonlyMap<string, readonly StoredSound[]>;
+  shelves: Readonly<Record<SoundKind, RootShelf>>;
   held: ReadonlyMap<string, HeldInMix>;
-  onOpenFolder: (row: Extract<Row, { type: 'folder' }>) => void;
-  onParent: () => boolean;
   onDropFiles: (files: readonly File[]) => void;
 }
 
@@ -59,8 +58,8 @@ function RowsSkeleton(): React.JSX.Element {
   );
 }
 
-/** The open folder's rows, or a search's: only those in view are mounted, so a folder of thousands scrolls like one of ten. */
-export function LibraryRows({ rows, loading, emptyText, library, director, actions, sounds, held, onOpenFolder, onParent, onDropFiles }: LibraryRowsProps): React.JSX.Element {
+/** What the library lists, or a search's hits: only those in view are mounted, so thousands scroll like ten. */
+export function LibraryRows({ rows, loading, emptyText, library, director, actions, soundsByPath, shelves, held, onDropFiles }: LibraryRowsProps): React.JSX.Element {
   const scroller = useRef<HTMLDivElement>(null);
   const [scrollElement, setScrollElement] = useState<HTMLDivElement | null>(null);
   useScrollbarGutter(scrollElement);
@@ -78,7 +77,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     getScrollElement: () => scroller.current,
     estimateSize: () => ROW_HEIGHT,
     overscan: OVERSCAN,
-    // Rows on the first frame, not after a measure: no folder opens empty.
+    // Rows on the first frame, not after a measure: no list opens empty.
     initialRect: { width: 0, height: ROW_HEIGHT * SKELETON_ROWS },
   });
 
@@ -91,9 +90,6 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     });
     setActiveIndex((index) => Math.min(index, Math.max(0, rows.length - 1)));
   }, [rows]);
-
-  // Where a file is on this device changes with what the library has read.
-  const soundsByPath = useMemo(() => recordsByFile(sounds, library), [sounds, library, library.version]);
 
   const audioPathOf = useCallback((row: Row): string | null => (row.type === 'file' ? library.audioPathOf(row.file.kind, row.file.path) : null), [library]);
 
@@ -117,14 +113,18 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
       setSelected(new Set([row.id]));
       setAnchor(row.id);
     }
+    const kind = row.type === 'file' ? row.file.kind : 'music';
+    const other: SoundKind = kind === 'music' ? 'ambience' : 'music';
     menu.open(rowMenu(row, {
       actions,
       rows: acting,
       entries: acting.flatMap((one) => entryOfRow(one) ?? []),
       sound: recordOfRow(row),
+      rootTags: shelves[kind].tags,
+      moveTo: library.locationOf(other) ? other : null,
       beginRename: (target) => setRenaming(target.id),
     }), at, { returnFocus: anchorElement ?? scroller.current });
-  }, [actions, inHand, menu, recordOfRow, selected]);
+  }, [actions, inHand, library, menu, recordOfRow, selected, shelves]);
 
   const heldOf = useCallback((row: Row): HeldInMix | undefined => {
     const path = audioPathOf(row);
@@ -133,18 +133,14 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
 
   const sendToMix = useCallback((row: Row, music: 'now' | 'next'): void => {
     if (row.type !== 'file') return;
-    actions.toMix(inHand(row).flatMap((one) => (one.type === 'file' ? [one.file] : [])), row.file.kind === 'music' ? music : 'add');
+    actions.toMix(filesOfRows(inHand(row)), row.file.kind === 'music' ? music : 'add');
   }, [actions, inHand]);
 
   const primary = useCallback((row: Row): void => {
-    if (row.type === 'folder') {
-      onOpenFolder(row);
-      return;
-    }
     const inMix = heldOf(row);
     if (inMix) actions.takeOut(inMix);
     else sendToMix(row, 'next');
-  }, [actions, heldOf, onOpenFolder, sendToMix]);
+  }, [actions, heldOf, sendToMix]);
 
   const handlers = useMemo<RowHandlers>(() => ({
     onPress: (row, event) => {
@@ -154,7 +150,6 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
       setActiveIndex(rows.indexOf(row));
       scroller.current?.focus();
     },
-    onOpen: primary,
     onPrimary: primary,
     onPlay: (row) => {
       director.preview(null);
@@ -166,26 +161,17 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
       if (row.type === 'file') actions.preview(row.file);
     },
     onMenu: openMenu,
-    onDragStart: (row, event) => {
-      const acting = inHand(row);
-      writeSoundDrag(event.dataTransfer, {
-        files: acting.flatMap((one) => (one.type === 'file' ? [one.file] : [])),
-        folders: acting.flatMap((one) => (one.type === 'folder' ? [{ kind: one.kind, path: one.path }] : [])),
-      });
-    },
-    onDropOnFolder: (row, event) => dropOnFolder(actions, event, row.kind, row.path),
+    onDragStart: (row, event) => writeSoundDrag(event.dataTransfer, { files: filesOfRows(inHand(row)) }),
     onRename: (row, name) => {
       setRenaming(null);
       scroller.current?.focus();
-      const entry = entryOfRow(row);
-      if (name === null || name === row.name || !entry) return;
+      if (name === null || name === row.name || row.type !== 'file') return;
       const safe = safeName(name);
       if (safe === null) {
         showNotice(t('audio.library.badName'));
         return;
       }
-      const extension = row.type === 'file' ? row.file.name.slice(row.name.length) : '';
-      actions.rename(entry, `${safe}${extension}`);
+      actions.rename(row.file, `${safe}${row.file.name.slice(row.name.length)}`);
     },
   }), [actions, anchor, director, heldOf, inHand, openMenu, primary, rows, selected, sendToMix, soundingKey]);
 
@@ -194,7 +180,7 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
     if (list) moveFocus(list.closest('.atlas-sound-pane') ?? list, list, direction);
   };
 
-  const keyDown = useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo: (index) => virtualizer.scrollToIndex(index), actions, primary, inHand, onParent, onLeave, onOpenFolder, setRenaming, openMenu, list: scroller });
+  const keyDown = useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo: (index) => virtualizer.scrollToIndex(index), actions, primary, inHand, onLeave, setRenaming, openMenu, list: scroller });
 
   const activeId = rows[activeIndex]?.id;
 
@@ -239,7 +225,6 @@ export function LibraryRows({ rows, loading, emptyText, library, director, actio
                 selected={selected.has(row.id)}
                 active={item.index === activeIndex}
                 renaming={renaming === row.id}
-                count={row.type === 'folder' ? library.countOf(row.kind, row.path) : null}
                 held={path === null ? undefined : held.get(path)}
                 sounding={path !== null && soundsNow(held.get(path), soundingKey)}
                 previewing={previewing !== null && previewing === sound?.id}

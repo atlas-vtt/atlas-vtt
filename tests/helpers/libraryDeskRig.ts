@@ -21,7 +21,6 @@ export function libraryDeskRig(records: SoundRecord[]): LibraryDeskRig {
     locationOf: () => location,
     audioPathOf: (_kind: string, path: string) => `audio/${path}`,
     pathNow: (audioPath: string) => audioPath,
-    ensureListed: async () => undefined,
   } as unknown as SoundLibrary;
   const seam: LibraryDeskDeps['records'] = {
     whenLoaded: () => Promise.resolve(),

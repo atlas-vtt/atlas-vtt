@@ -1,10 +1,10 @@
 import type { App } from 'obsidian';
 import type { SoundKind } from '../sound/soundTypes';
 import { realLibraryDeps } from './soundLibraryDeps';
-import { FolderTree } from './FolderTree';
+import { FolderTree, type IndexedFile } from './FolderTree';
 import { OpenPlace } from './libraryPlace';
 import { SoundLengths } from './soundLengths';
-import type { SoundFileEntry, SoundListing, SoundLocation } from './soundLocation';
+import type { SoundFileEntry, SoundLocation } from './soundLocation';
 import { externalAudioPath, isExternalAudioPath, joinRelative, nameOfRelative, parentOfRelative, readExternalAudioPath, relativeBelow } from './soundPaths';
 import { isLinked, type LinkedSoundRoot, type SoundRootState, type SoundRoots } from './SoundRoots';
 
@@ -46,6 +46,8 @@ interface OpenRoot {
 const identityOf = (root: LinkedSoundRoot): string => `${root.status}:${root.path}`;
 
 const KINDS: readonly SoundKind[] = ['music', 'ambience'];
+
+const NO_FILES: readonly IndexedFile[] = [];
 
 /**
  * The GM's sound library: the two linked folders and what lies in them. Browsing
@@ -111,13 +113,14 @@ export class SoundLibrary {
     return this.opened(kind)?.location ?? null;
   }
 
-  /** What a folder holds; null while it is being read, which asks for it. */
-  listing(kind: SoundKind, folder: string): SoundListing | null {
-    const opened = this.opened(kind);
-    if (!opened) return null;
-    const listing = opened.tree.listing(folder);
-    if (!listing) void opened.tree.load(folder);
-    return listing;
+  /** Every file of a root read so far, at any depth, by name; the same array until one changes. */
+  filesOf(kind: SoundKind): readonly IndexedFile[] {
+    return this.opened(kind)?.tree.allFiles() ?? NO_FILES;
+  }
+
+  /** Whether every folder of a root has been read once. */
+  isWalked(kind: SoundKind): boolean {
+    return this.opened(kind)?.tree.walked ?? false;
   }
 
   countOf(kind: SoundKind, folder: string): number | null {
@@ -128,7 +131,7 @@ export class SoundLibrary {
   search(query: string): LibraryFile[] {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean);
     if (words.length === 0) return [];
-    return KINDS.flatMap((kind) => (this.opened(kind)?.tree.allFiles() ?? [])
+    return KINDS.flatMap((kind) => this.filesOf(kind)
       .filter((file) => words.every((word) => file.words.includes(word)))
       .map(({ entry }) => ({ ...entry, kind })));
   }
@@ -204,21 +207,14 @@ export class SoundLibrary {
     if (opened) await Promise.all(paths.map((path) => opened.tree.changedAt(path)));
   }
 
-  /** Reads a folder again now. */
-  async reread(kind: SoundKind, folder: string): Promise<void> {
-    await this.opened(kind)?.tree.load(folder);
+  /** Reads the top of a root again now. */
+  async reread(kind: SoundKind): Promise<void> {
+    await this.opened(kind)?.tree.load('');
   }
 
-  /** Whether a folder was asked for and is not there: the root's disk unplugged, the folder gone. */
-  isMissing(kind: SoundKind, folder: string): boolean {
-    return this.opened(kind)?.tree.isMissing(folder) ?? false;
-  }
-
-  /** Settles once these folders were read, so what lies in them can be measured. */
-  async ensureListed(kind: SoundKind, folders: readonly string[]): Promise<void> {
-    const opened = this.opened(kind);
-    if (!opened) return;
-    await Promise.all([...new Set(folders)].filter((folder) => !opened.tree.listing(folder)).map((folder) => opened.tree.load(folder)));
+  /** Whether a root was asked for and is not there: its disk unplugged, its folder gone. */
+  isMissing(kind: SoundKind): boolean {
+    return this.opened(kind)?.tree.isMissing('') ?? false;
   }
 
   onChange(listener: () => void): () => void {

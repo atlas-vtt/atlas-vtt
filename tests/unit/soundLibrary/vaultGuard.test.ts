@@ -74,10 +74,6 @@ describe('a linked folder above the vault', () => {
     vaultWhole();
   });
 
-  it('counts the vault among what a move across roots would leave behind', async () => {
-    await expect(located(base).firstUnlisted('Docs')).resolves.toBe('Docs/Vault');
-  });
-
   it('leaves everything beside it to the GM', async () => {
     const root = located(path.join(base, 'Docs'));
     await root.makeFolder('Set');

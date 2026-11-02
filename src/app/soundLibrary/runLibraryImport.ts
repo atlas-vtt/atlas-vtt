@@ -6,10 +6,10 @@ import type { SoundLibrary } from './SoundLibrary';
 
 const PROBLEM_NOTICE_MS = 12_000;
 
-/** Copies files from outside into a folder of the library, with a notice while it runs and one for what came of it. */
-export async function runLibraryImport(library: SoundLibrary, files: readonly File[], kind: SoundKind, folder: string): Promise<void> {
+/** Copies files from outside to the top of a root, with a notice while it runs and one for what came of it. */
+export async function runLibraryImport(library: SoundLibrary, files: readonly File[], kind: SoundKind): Promise<void> {
   const progress = showNotice(t('audio.importing', { done: 0, total: files.length }), 0);
-  const outcome = await importIntoLibrary(library, files, kind, folder, (done, total) => {
+  const outcome = await importIntoLibrary(library, files, kind, (done, total) => {
     progress.setMessage(t('audio.importing', { done, total }));
   });
   progress.hide();

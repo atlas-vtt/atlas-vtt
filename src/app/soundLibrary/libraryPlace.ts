@@ -1,26 +1,30 @@
 import type { SoundKind } from '../sound/soundTypes';
+import { tagKey } from './soundTags';
 
-/** Where the library stands: a root, and a folder relative to it. */
+/** What the library shows: a root, narrowed to the tracks with all of these tags. */
 export interface LibraryPlace {
   kind: SoundKind;
-  folder: string;
+  tags: readonly string[];
 }
 
-/** What the library has open. It is the library's, not a page's, so every page of it shows the same folder. */
+/** It is the library's, not a page's, so every page of it shows the same. */
 export class OpenPlace {
-  private place: LibraryPlace = { kind: 'music', folder: '' };
+  private place: LibraryPlace = { kind: 'music', tags: [] };
   private readonly listeners = new Set<() => void>();
 
   get current(): LibraryPlace {
     return this.place;
   }
 
-  /** Without a folder, the root open already stays where it is and another opens at its top. */
-  show(kind: SoundKind, folder?: string): void {
-    const next = folder ?? (this.place.kind === kind ? this.place.folder : '');
-    if (kind === this.place.kind && next === this.place.folder) return;
-    this.place = { kind, folder: next };
+  show(kind: SoundKind, tags: readonly string[] = []): void {
+    if (kind === this.place.kind && tags.length === this.place.tags.length && tags.every((tag, index) => tag === this.place.tags[index])) return;
+    this.place = { kind, tags };
     for (const listener of this.listeners) listener();
+  }
+
+  /** A tag renamed stays selected under its new name. */
+  renameTag(from: string, to: string): void {
+    this.show(this.place.kind, this.place.tags.map((tag) => (tagKey(tag) === tagKey(from) ? to : tag)));
   }
 
   onChange(listener: () => void): () => void {

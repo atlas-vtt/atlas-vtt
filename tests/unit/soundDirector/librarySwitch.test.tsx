@@ -18,7 +18,7 @@ function setSwitch(app: App, on: boolean): void {
 it('with the switch off no library is open and no disk watched; it comes back with the switch', async () => {
   rig = await libraryRig({ local: { music: '/m', ambience: '/a' } });
   const { app, library, locations } = rig;
-  library.listing('music', '');
+  library.locationOf('music');
   expect(locations.music.watching).toBe(1);
 
   setSwitch(app, false);

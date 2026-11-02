@@ -16,18 +16,15 @@ interface RowKeysOptions {
   actions: LibraryActions;
   primary: (row: Row) => void;
   inHand: (row: Row) => Row[];
-  /** Up a folder; at the top of a root, false, and the arrow leaves the list. */
-  onParent: () => boolean;
   /** Takes focus out of the list, to what lies that way on the page. */
   onLeave: (direction: 'left' | 'right' | 'up') => void;
-  onOpenFolder: (row: Extract<Row, { type: 'folder' }>) => void;
   setRenaming: (id: string | null) => void;
   openMenu: (row: Row, at: { x: number; y: number }, anchor: HTMLElement | null) => void;
   list: React.RefObject<HTMLElement | null>;
 }
 
 /** The list's keys: arrows and Home and End move, Shift extends, Enter is the row's primary action, Space previews, Delete asks, F2 renames. */
-export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo, actions, primary, inHand, onParent, onLeave, onOpenFolder, setRenaming, openMenu, list }: RowKeysOptions): (event: React.KeyboardEvent) => void {
+export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo, actions, primary, inHand, onLeave, setRenaming, openMenu, list }: RowKeysOptions): (event: React.KeyboardEvent) => void {
   const moveActive = (index: number, extend: boolean): void => {
     const next = Math.max(0, Math.min(rows.length - 1, index));
     const row = rows[next];
@@ -48,8 +45,7 @@ export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSel
     const mod = event.metaKey || event.ctrlKey;
     if (event.key === 'ArrowRight') {
       event.preventDefault();
-      if (row.type === 'folder') onOpenFolder(row);
-      else onLeave('right');
+      onLeave('right');
     } else if (event.key === 'Enter') {
       event.preventDefault();
       if (mod && row.type === 'file' && row.file.kind === 'music') actions.toMix([row.file], 'now');
@@ -90,7 +86,7 @@ export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSel
       case 'PageUp': take(activeIndex - PAGE_ROWS); return;
       case 'ArrowLeft':
         event.preventDefault();
-        if (!onParent()) onLeave('left');
+        onLeave('left');
         return;
       case 'a':
         if (event.metaKey || event.ctrlKey) {

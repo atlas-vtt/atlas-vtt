@@ -64,8 +64,7 @@ export function SoundPane({ active }: SoundPaneProps): React.JSX.Element {
     event.preventDefault();
     const files = [...event.dataTransfer.files];
     const library = SoundLibrary.forApp(app);
-    const { kind, folder } = library.place.current;
-    runInBackground(runLibraryImport(library, files, kind, folder), 'Importing sounds', t('audio.couldNotAdd', { files: formatList(files.map((file) => file.name)) }));
+    runInBackground(runLibraryImport(library, files, library.place.current.kind), 'Importing sounds', t('audio.couldNotAdd', { files: formatList(files.map((file) => file.name)) }));
   };
 
   return (

@@ -9,9 +9,13 @@ export interface IndexedFile {
   entry: SoundFileEntry;
   /** The path as a search reads it. */
   words: string;
+  order: string;
 }
 
 const EMPTY_LISTING: SoundListing = { folders: [], files: [] };
+
+/** What a flat list sorts by, worked out once per file: a collator on thousands of names per report of a walk costs frames. `Track 2` before `Track 10`, `Émile` among the e. */
+const sortKey = (name: string): string => name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\d+/g, (digits) => digits.padStart(8, '0'));
 
 const sameListing = (a: SoundListing, b: SoundListing): boolean =>
   a.folders.length === b.folders.length && a.files.length === b.files.length
@@ -22,9 +26,8 @@ const sameListing = (a: SoundListing, b: SoundListing): boolean =>
   });
 
 /**
- * What one root holds, as far as it was read: the open folder at once, everything else by a walk in the
- * background that never costs a frame. An unchanged folder keeps its listing object, so rows memoised
- * on it stay put.
+ * What one root holds, as far as it was read, by a walk in the background that never costs a frame.
+ * An unchanged folder changes nothing, so rows memoised on `allFiles` stay put.
  */
 export class FolderTree {
   private readonly listings = new Map<string, SoundListing>();
@@ -85,10 +88,17 @@ export class FolderTree {
     return this.counts.get(folder) ?? 0;
   }
 
-  /** Every file read so far, ready for a search. */
+  /** Every file read so far by name, ready for a search; the same array until one changes, so rows memoised on it stay put. */
   allFiles(): readonly IndexedFile[] {
-    this.indexed ??= [...this.files.values()].map((entry) => ({ entry, words: entry.path.toLowerCase() }));
+    this.indexed ??= [...this.files.values()]
+      .map((entry) => ({ entry, words: entry.path.toLowerCase(), order: `${sortKey(entry.name)}\0${entry.path}` }))
+      .sort((a, b) => (a.order < b.order ? -1 : a.order > b.order ? 1 : 0));
     return this.indexed;
+  }
+
+  /** Whether every folder has been read once: what is not listed by then is not there. */
+  get walked(): boolean {
+    return this.walkedOnce;
   }
 
   /** Reads every folder from `from` on, a slice at a time. A walk asked for during a walk runs after it. */

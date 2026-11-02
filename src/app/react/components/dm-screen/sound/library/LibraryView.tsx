@@ -3,18 +3,18 @@ import { t } from '../../../../../i18n';
 import { Button } from '../../../../../packages/components/primitives/button';
 import { useLoadingReveal } from '../../../../../packages/components/primitives/useLoadingReveal';
 import { SoundDirector } from '../../../../../soundDirector/SoundDirector';
-import type { LibraryPlace } from '../../../../../soundLibrary/libraryPlace';
+import { recordsByFile } from '../../../../../soundLibrary/libraryRecords';
 import { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
-import { parentOfRelative } from '../../../../../soundLibrary/soundPaths';
 import { isLinked } from '../../../../../soundLibrary/SoundRoots';
+import { tagKey, toggledTag } from '../../../../../soundLibrary/soundTags';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
 import { arrowDirection, moveFocus } from '../../screenKeys';
 import { useSoundValue, useStoredSounds, useStoreValue } from '../useSound';
 import { LibraryHead } from './LibraryHead';
 import { LibraryRail } from './LibraryRail';
-import { folderRows, searchRows, waitingIn, type LibraryRow } from './rowModel';
+import { rowsWithTags, searchRows, shelfOf, type LibraryRow, type RootShelf } from './rowModel';
 import { LibraryRows } from './LibraryRows';
 import { useHeldInMix, useLibraryVersion } from './useLibrary';
 import { useLibraryActions } from './useLibraryActions';
@@ -37,7 +37,7 @@ function NoLink({ onLink, onImport }: { onLink: (kind: SoundKind, win: Window) =
   );
 }
 
-/** The sound library: the folders linked as music and ambience, and what lies in them. */
+/** The sound library: the folders linked as music and ambience, all that lies in them, narrowed by tags. */
 export function LibraryView(): React.JSX.Element | null {
   const { app } = useAtlasUI();
   const library = SoundLibrary.forApp(app);
@@ -51,11 +51,6 @@ export function LibraryView(): React.JSX.Element | null {
   const [query, setQuery] = useState('');
   const searching = useDeferredValue(query.trim());
   const root = useRef<HTMLDivElement>(null);
-
-  const goTo = useCallback((next: LibraryPlace): void => {
-    setQuery('');
-    library.place.show(next.kind, next.folder);
-  }, [library]);
 
   // What changed on disk while the GM was elsewhere is read on opening the library and on returning to the window.
   useEffect(() => {
@@ -72,32 +67,38 @@ export function LibraryView(): React.JSX.Element | null {
   const rootsKey = JSON.stringify([library.rootOf('music'), library.rootOf('ambience')]);
   useEffect(() => library.rescan(), [library, rootsKey]);
 
-  const rootState = library.rootOf(place.kind);
-  const linked = isLinked(rootState);
-  const reachable = linked && library.locationOf(place.kind) !== null;
-  const listing = reachable ? library.listing(place.kind, place.folder) : null;
-  const lastListing = useRef(listing);
-  if (listing) lastListing.current = listing;
-  const loading = reachable && listing === null && searching === '';
-  const showSkeleton = useLoadingReveal(loading);
-  // A folder that takes a moment keeps what was there until its skeleton is due.
-  const shownListing = listing ?? (loading && !showSkeleton ? lastListing.current : null);
+  const musicFiles = library.filesOf('music');
+  const ambienceFiles = library.filesOf('ambience');
+  const read = `${library.isWalked('music')}|${library.isWalked('ambience')}|${rootsKey}`;
+  // Where a file is on this device changes with what the library has read.
+  const soundsByPath = useMemo(() => recordsByFile(sounds, library), [sounds, library, musicFiles, ambienceFiles, read]);
+  // Rows keep their objects while the files and records do, so a walk that found nothing new renders none of them.
+  const shelves = useMemo<Record<SoundKind, RootShelf>>(() => ({
+    music: shelfOf(library, sounds, soundsByPath, 'music'),
+    ambience: shelfOf(library, sounds, soundsByPath, 'ambience'),
+  }), [library, sounds, soundsByPath]);
+  const shelf = shelves[place.kind];
 
-  // Rows keep their objects while their folder does, so a walk's report renders none of them.
-  const folderList = useMemo<readonly LibraryRow[]>(
-    () => folderRows(place.kind, shownListing, waitingIn(library, sounds, place.kind, place.folder, listing, reachable)),
-    [library, listing, place, reachable, shownListing, sounds],
-  );
+  // A tag selected that no track has any more selects nothing.
+  const selected = useMemo(() => shelf.tags.filter((tag) => place.tags.some((name) => tagKey(name) === tag.key)), [place.tags, shelf.tags]);
+  const selectedKeys = useMemo(() => new Set(selected.map((tag) => tag.key)), [selected]);
+  const listed = useMemo(() => rowsWithTags(shelf.rows, [...selectedKeys]), [selectedKeys, shelf.rows]);
   const found = useMemo<readonly LibraryRow[] | null>(() => (searching === '' ? null : searchRows(library.search(searching), (kind) => t(kind === 'music' ? 'audio.music' : 'audio.ambience'))), [library, searching, version]);
-  const rows = found ?? folderList;
+  const rows = found ?? listed;
 
-  const openFolder = useCallback((row: Extract<LibraryRow, { type: 'folder' }>) => goTo({ kind: row.kind, folder: row.path }), [goTo]);
+  const linked = isLinked(library.rootOf(place.kind));
+  const loading = library.locationOf(place.kind) !== null && !library.isWalked(place.kind) && listed.length === 0 && searching === '';
+  const showSkeleton = useLoadingReveal(loading);
 
-  const parent = useCallback((): boolean => {
-    if (place.folder === '') return false;
-    library.place.show(place.kind, parentOfRelative(place.folder));
-    return true;
-  }, [library, place]);
+  const showRoot = useCallback((kind: SoundKind): void => {
+    setQuery('');
+    library.place.show(kind);
+  }, [library]);
+
+  const pressTag = useCallback((kind: SoundKind, tag: string): void => {
+    setQuery('');
+    library.place.show(kind, kind === place.kind ? toggledTag(selected.map(({ name }) => name), tag) : [tag]);
+  }, [library, place.kind, selected]);
 
   const noRoots = library.rootOf('music').status === 'unlinked' && library.rootOf('ambience').status === 'unlinked';
   const keep = (event: React.KeyboardEvent): void => {
@@ -119,10 +120,11 @@ export function LibraryView(): React.JSX.Element | null {
     );
   }
 
-  const dropFiles = (files: readonly File[]): void => actions.importInto(files, place.kind, place.folder);
+  const dropFiles = (files: readonly File[]): void => actions.importInto(files, place.kind);
   const emptyText = searching !== '' ? t('audio.library.noResults')
-    : !linked ? t('audio.library.linkHere')
-      : library.isMissing(place.kind, place.folder) ? t('audio.library.unreachable') : t('audio.library.folderEmpty');
+    : selected.length > 0 ? t('audio.library.noneTagged')
+      : !linked ? t('audio.library.linkHere')
+        : library.isMissing(place.kind) ? t('audio.library.unreachable') : t('audio.library.folderEmpty');
 
   return (
     <div
@@ -139,9 +141,9 @@ export function LibraryView(): React.JSX.Element | null {
         dropFiles([...event.dataTransfer.files]);
       }}
     >
-      <LibraryRail library={library} actions={actions} place={place} onPlace={goTo} />
+      <LibraryRail library={library} actions={actions} shelves={shelves} kind={place.kind} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />
       <div className="atlas-sound-lib__main">
-        <LibraryHead library={library} actions={actions} place={place} onPlace={goTo} query={query} onQuery={setQuery} shuffle={shuffle} />
+        <LibraryHead library={library} actions={actions} kind={place.kind} tags={selected.map(({ name }) => name)} rows={listed} onClearTags={() => showRoot(place.kind)} query={query} onQuery={setQuery} shuffle={shuffle} />
         <LibraryRows
           rows={rows}
           loading={loading && showSkeleton}
@@ -149,10 +151,9 @@ export function LibraryView(): React.JSX.Element | null {
           library={library}
           director={director}
           actions={actions}
-          sounds={sounds}
+          soundsByPath={soundsByPath}
+          shelves={shelves}
           held={held}
-          onOpenFolder={openFolder}
-          onParent={parent}
           onDropFiles={dropFiles}
         />
       </div>

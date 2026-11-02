@@ -1,11 +1,8 @@
-import { MAX_MOOD_LAYERS, type SoundKind, type SoundRecord } from '../sound/soundTypes';
+import { MAX_MOOD_LAYERS, type SoundRecord } from '../sound/soundTypes';
 import { t } from '../i18n';
 import { MOOD_LIMITS } from '../soundLibrary/moodFile';
 import { recordsByFile, recordsForFiles, soundOfFile, type RecordsSeam } from '../soundLibrary/libraryRecords';
-import type { SoundDrag } from '../soundLibrary/soundDrag';
 import type { LibraryFile, SoundLibrary } from '../soundLibrary/SoundLibrary';
-import type { SoundLocation } from '../soundLibrary/soundLocation';
-import { parentOfRelative } from '../soundLibrary/soundPaths';
 import { mixHolding } from './libraryMix';
 import type { SoundDirector } from './SoundDirector';
 
@@ -55,30 +52,11 @@ export async function fileToMix(deps: LibraryDeskDeps, files: readonly LibraryFi
   }
 }
 
-/** A folder's files in order, at most `limit`: those directly in it, and where it holds none, all those below it. */
-export async function filesToPlay(location: SoundLocation, kind: SoundKind, folder: string, limit: number = MOOD_LIMITS.tracks): Promise<LibraryFile[]> {
-  const found: LibraryFile[] = [];
-  const direct = await location.list(folder);
-  if (!direct) return [];
-  if (direct.files.length > 0) return direct.files.slice(0, limit).map((file) => ({ ...file, kind }));
-  const stack = [...direct.folders].reverse();
-  for (let next = stack.pop(); next && found.length < limit; next = stack.pop()) {
-    const listing = await location.list(next.path);
-    if (!listing) continue;
-    found.push(...listing.files.map((file) => ({ ...file, kind })));
-    stack.push(...[...listing.folders].reverse());
-  }
-  return found.slice(0, limit);
-}
-
-/** Plays a music folder as the list, in order or shuffled; the ambience stays. A list holds what a mood can: of a larger folder the first, as the GM is told. */
-export async function folderToMix(deps: LibraryDeskDeps, kind: SoundKind, folder: string, shuffle: boolean): Promise<void> {
-  const location = deps.library.locationOf(kind);
-  if (!location) return;
+/** Plays music files as the list, in order or shuffled; the ambience stays. A list holds what a mood can: of more the first, as the GM is told. */
+export async function listToMix(deps: LibraryDeskDeps, files: readonly LibraryFile[], shuffle: boolean): Promise<void> {
   const release = deps.director.holdForPress();
   try {
-    const files = await filesToPlay(location, kind, folder, MOOD_LIMITS.tracks + 1);
-    if (files.length > MOOD_LIMITS.tracks) deps.notify(t('audio.add.folderCut', { count: MOOD_LIMITS.tracks }));
+    if (files.length > MOOD_LIMITS.tracks) deps.notify(t('audio.add.listCut', { count: MOOD_LIMITS.tracks }));
     const records = await shelved(deps, files.slice(0, MOOD_LIMITS.tracks));
     deps.director.desk.playList(records, shuffle);
   } finally {
@@ -86,34 +64,18 @@ export async function folderToMix(deps: LibraryDeskDeps, kind: SoundKind, folder
   }
 }
 
-/** What a drop on the desk does: music joins as next, ambience is added, a folder of music becomes the list. */
-export async function dragToMix(deps: LibraryDeskDeps, drag: SoundDrag): Promise<void> {
-  const release = deps.director.holdForPress();
-  try {
-    await fileToMix(deps, drag.files, 'next');
-    for (const folder of drag.folders) {
-      const location = deps.library.locationOf(folder.kind);
-      if (!location) continue;
-      if (folder.kind === 'music') await folderToMix(deps, folder.kind, folder.path, false);
-      else await fileToMix(deps, await filesToPlay(location, folder.kind, folder.path), 'add');
-    }
-  } finally {
-    release();
-  }
-}
-
-/** Makes a folder's copies ahead of use, and at a table online offers them to players. This writes no record: browsing and preparing cost the library nothing. */
-export async function prepareFolder(deps: LibraryDeskDeps, kind: SoundKind, folder: string): Promise<number> {
-  const location = deps.library.locationOf(kind);
-  if (!location) return 0;
-  const files = await filesToPlay(location, kind, folder);
+/**
+ * Makes files' copies ahead of use, the first a list can hold, and at a table online offers them to players. This writes
+ * no record: browsing and preparing cost the library nothing.
+ * ponytail: the cut keeps a large library from churning the copies' cache out from under itself; say which to prepare if that is wanted.
+ */
+export async function prepareFiles(deps: LibraryDeskDeps, files: readonly LibraryFile[]): Promise<number> {
   await deps.records.whenLoaded();
   const byFile = recordsByFile(deps.records.all(), deps.library);
-  const sounds = files.flatMap((file) => {
-    const audioPath = deps.library.audioPathOf(kind, file.path);
+  const sounds = files.slice(0, MOOD_LIMITS.tracks).flatMap((file) => {
+    const audioPath = deps.library.audioPathOf(file.kind, file.path);
     return audioPath === null ? [] : [soundOfFile(byFile, file, audioPath)];
   });
-  await deps.library.ensureListed(kind, files.map((file) => parentOfRelative(file.path)));
   deps.director.shelf.request(sounds);
   deps.director.players.sounds?.prepare(sounds);
   return sounds.length;

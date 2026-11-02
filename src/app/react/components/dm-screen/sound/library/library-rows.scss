@@ -82,10 +82,6 @@
   align-items: center;
   gap: $spacing-s;
   min-width: 0;
-
-  .atlas-sound-lib__glyph {
-    color: var(--text-muted);
-  }
 }
 
 .atlas-sound-lib__title {
@@ -99,10 +95,6 @@
   padding: 0;
   flex-shrink: 1000;
   min-width: 0;
-}
-
-.atlas-sound-lib__row--folder .atlas-sound-lib__title {
-  font-weight: $font-weight-medium;
 }
 
 .atlas-sound-lib__row--mix .atlas-sound-lib__title {

@@ -1,12 +1,14 @@
 import { t } from '../../../../../i18n';
 import { clampTrim, MAX_TRIM_DB } from '../../../../../sound/codec/soundInfo';
-import type { SoundLicence } from '../../../../../sound/soundTypes';
+import type { SoundKind, SoundLicence } from '../../../../../sound/soundTypes';
 import type { LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
 import type { LibraryFile } from '../../../../../soundLibrary/SoundLibrary';
 import type { StoredSound } from '../../../../../soundLibrary/soundRecords';
+import type { RootTag } from '../../../../../soundLibrary/soundTags';
 import { MENU_SEPARATOR, type ContextMenuEntry } from '../../../context-menu/AtlasContextMenu';
 import type { LibraryActions } from './useLibraryActions';
-import type { LibraryRow } from './rowModel';
+import { filesOfRows, type LibraryRow } from './rowModel';
+import { tagsSubmenu } from './tagMenus';
 
 const LICENCES: ReadonlyArray<{ licence: SoundLicence; label: string }> = [
   { licence: 'unknown', label: t('audio.licence.unknown') },
@@ -24,6 +26,10 @@ export interface RowMenuContext {
   entries: readonly LibraryEntry[];
   /** The record of the row the menu opened from, whose values it shows. */
   sound: StoredSound | null;
+  /** The tags of the row's root, as they stood when the menu opened: one that loses its last track stays there to be pressed again. */
+  rootTags: readonly RootTag[];
+  /** The other root, where it is linked. */
+  moveTo: SoundKind | null;
   beginRename: (row: LibraryRow) => void;
 }
 
@@ -58,40 +64,19 @@ function recordEntries(context: RowMenuContext, files: readonly LibraryFile[]): 
   ];
 }
 
-function organising(context: RowMenuContext, row: LibraryRow): ContextMenuEntry[] {
-  const { actions, entries } = context;
-  return [
-    { type: 'item', label: t('audio.library.rename'), icon: 'pencil', disabled: entries.length !== 1, onClick: () => context.beginRename(row) },
-    { type: 'item', label: t('audio.library.move'), icon: 'folder-input', onClick: () => actions.askMove(entries) },
-  ];
-}
-
-const deleting = ({ actions, entries }: RowMenuContext): ContextMenuEntry => ({ type: 'item', label: t('audio.mood.delete'), icon: 'trash-2', destructive: true, onClick: () => actions.remove(entries) });
-
 /** A row's menu, the same from its ⋯, a right press and Shift+F10. */
 export function rowMenu(row: LibraryRow, context: RowMenuContext): ContextMenuEntry[] {
-  const { actions, rows } = context;
+  const { actions, entries, moveTo, rows } = context;
   if (row.type === 'waiting') return [{ type: 'item', label: t('audio.mood.delete'), icon: 'trash-2', destructive: true, onClick: () => actions.forget(row.sound) }];
-  if (row.type === 'folder') {
-    return [
-      ...(row.kind === 'music' ? [
-        { type: 'item' as const, label: t('audio.library.playFolder'), icon: 'play', onClick: () => actions.playFolder(row.kind, row.path, false) },
-        { type: 'item' as const, label: t('audio.library.shuffleFolder'), icon: 'shuffle', onClick: () => actions.playFolder(row.kind, row.path, true) },
-      ] : []),
-      { type: 'item', label: t('audio.library.prepareFolder'), icon: 'hard-drive-download', onClick: () => actions.prepare(row.kind, row.path) },
-      MENU_SEPARATOR,
-      ...organising(context, row),
-      MENU_SEPARATOR,
-      deleting(context),
-    ];
-  }
-  const files = rows.flatMap((one) => (one.type === 'file' ? [one.file] : []));
+  const files = filesOfRows(rows);
   return [
     { type: 'item', label: t('audio.library.preview'), icon: 'headphones', onClick: () => actions.preview(row.file) },
     MENU_SEPARATOR,
-    ...organising(context, row),
+    { type: 'item', label: t('audio.library.rename'), icon: 'pencil', disabled: entries.length !== 1, onClick: () => context.beginRename(row) },
+    ...(moveTo === null ? [] : [{ type: 'item' as const, label: t(moveTo === 'music' ? 'audio.library.moveToMusic' : 'audio.library.moveToAmbience'), icon: 'arrow-right-left', onClick: () => actions.move(entries, moveTo) }]),
+    tagsSubmenu(actions, files, context.rootTags),
     ...recordEntries(context, files),
     MENU_SEPARATOR,
-    deleting(context),
+    { type: 'item', label: t('audio.mood.delete'), icon: 'trash-2', destructive: true, onClick: () => actions.remove(entries) },
   ];
 }

@@ -14,6 +14,8 @@ function menuFor(credit: string | undefined): { labels: string[]; edit: ReturnTy
     rows: [row],
     entries: [],
     sound: { name: 'a', credit } as StoredSound,
+    rootTags: [],
+    moveTo: null,
     beginRename: () => undefined,
   });
   const items = entries.flatMap((entry) => ('label' in entry && entry.type === 'item' ? [entry] : []));

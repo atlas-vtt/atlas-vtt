@@ -299,8 +299,8 @@ describe('sound records on two devices', () => {
       expect(onB.library.pathNow('atlas-sound:music/Tavern/song.mp3', 7)).toBe('atlas-sound:music/Inns/song.mp3');
       expect(onA.library.pathNow('atlas-sound:music/Tavern/song.mp3', 7)).toBe('atlas-sound:music/Tavern/song.mp3');
       const held = devices[1].records.all();
-      expect(waitingIn(onB.library, held, 'music', 'Tavern', { folders: [], files: [] }, true), 'found elsewhere, it waits for nothing').toEqual([]);
-      expect(waitingIn(onB.library, [{ ...held[0]!, audioSize: 8 }], 'music', 'Tavern', { folders: [], files: [] }, true), 'of another size it does').toHaveLength(1);
+      expect(waitingIn(onB.library, held, 'music', true, new Set()), 'found elsewhere, it waits for nothing').toEqual([]);
+      expect(waitingIn(onB.library, [{ ...held[0]!, audioSize: 8 }], 'music', true, new Set()), 'of another size it does').toHaveLength(1);
       await onA.library.readFile('atlas-sound:music/Tavern/song.mp3', 7);
       await onB.library.readFile('atlas-sound:music/Tavern/song.mp3', 7);
       expect(onA.location.reads).toEqual(['Tavern/song.mp3']);

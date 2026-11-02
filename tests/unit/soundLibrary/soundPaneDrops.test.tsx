@@ -58,7 +58,7 @@ describe('rows of the library dropped on the desk', () => {
     vi.spyOn(rig.director, 'tap').mockImplementation(() => undefined);
     const next = vi.spyOn(rig.director.desk, 'playNext').mockImplementation(() => undefined);
     const add = vi.spyOn(rig.director.desk, 'addSound').mockReturnValue(true);
-    const dataTransfer = rowsDrag({ files: [aFile('music', 'Battle/a.mp3'), aFile('ambience', 'Rain.ogg')], folders: [] });
+    const dataTransfer = rowsDrag({ files: [aFile('music', 'Battle/a.mp3'), aFile('ambience', 'Rain.ogg')] });
     await waitFor(() => { fireEvent.dragOver(desk(), { dataTransfer }); expect(strips().dataset.dropTarget).toBe('true'); });
 
     fireEvent.drop(desk(), { dataTransfer });
@@ -69,7 +69,7 @@ describe('rows of the library dropped on the desk', () => {
   });
 
   it('stops showing when they leave the desk, not when they cross a strip', async () => {
-    const dataTransfer = rowsDrag({ files: [], folders: [] });
+    const dataTransfer = rowsDrag({ files: [] });
     await waitFor(() => { fireEvent.dragOver(desk(), { dataTransfer }); expect(strips().dataset.dropTarget).toBe('true'); });
     const leaveFor = (relatedTarget: Element): void => {
       const leave = createEvent.dragLeave(desk(), { dataTransfer });
@@ -91,17 +91,16 @@ describe('rows of the library dropped on the desk', () => {
 describe('audio from outside dropped on the page', () => {
   const written = (kind: 'music' | 'ambience'): string[] => [...rig.locations[kind].files.keys()];
 
-  it('goes to the library\'s open folder from anywhere on the page, and only once', async () => {
-    act(() => rig.library.place.show('music', 'Battle'));
+  it('goes to the top of the open root from anywhere on the page, and only once', async () => {
     await waitFor(() => expect(host.querySelector('.atlas-sound-lib__rows')).not.toBeNull());
     const write = vi.spyOn(rig.locations.music, 'write');
     fireEvent.drop(desk(), { dataTransfer: filesDrag('over-desk.mp3') });
-    await waitFor(() => expect(written('music')).toContain('Battle/over-desk.mp3'));
+    await waitFor(() => expect(written('music')).toContain('over-desk.mp3'));
     fireEvent.drop(host.querySelector('.atlas-sound-lib__rows')!, { dataTransfer: filesDrag('over-rows.mp3') });
-    await waitFor(() => expect(written('music')).toContain('Battle/over-rows.mp3'));
+    await waitFor(() => expect(written('music')).toContain('over-rows.mp3'));
     expect(write).toHaveBeenCalledTimes(2);
     fireEvent.drop(pane(), { dataTransfer: filesDrag('over-page.mp3') });
-    await waitFor(() => expect(written('music')).toContain('Battle/over-page.mp3'));
+    await waitFor(() => expect(written('music')).toContain('over-page.mp3'));
   });
 });
 
@@ -137,8 +136,7 @@ describe('the keys of the page', () => {
     rows().focus();
     fireEvent.keyDown(rows(), { key: 'Enter', code: 'Enter' });
     expect(next).not.toHaveBeenCalled();
-    await waitFor(() => expect(rig.library.place.current.folder).toBe('Battle'));
-    expect(opened).not.toHaveBeenCalled();
+    await waitFor(() => expect(opened).toHaveBeenCalledTimes(1));
     fireEvent.keyDown(document.body, { key: 'Enter', code: 'Enter' });
     expect(next).toHaveBeenCalledTimes(1);
     expect(reachedMap).not.toHaveBeenCalled();
