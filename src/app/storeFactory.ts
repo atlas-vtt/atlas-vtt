@@ -47,7 +47,7 @@ import { movedFolderPathOf, movedPathOf, rewriteMapReferences } from './services
 import { conditionValue, removeCondition, setConditionValue } from './utils/conditionValues';
 import { HydrationTracker } from './stores/hydrationTracker';
 import { isolateListeners } from './stores/isolatedListeners';
-import { elsewhereThanViewedLevel, placedOnViewedLevel, placedOnViewedLevels } from './levels/sceneLevels';
+import { elsewhereThanViewedLevel, firstLevelId, placedOnViewedLevel, placedOnViewedLevels, viewedLevelId } from './levels/sceneLevels';
 import { createSceneLevelsActions, writeExploredMask, type SceneLevelsSlice } from './stores/sceneLevelsSlice';
 import { createLevelSurfacesActions, type LevelSurfacesSlice } from './stores/levelSurfacesSlice';
 import { createMapFeaturesActions, type MapFeaturesSlice } from './stores/mapFeaturesSlice';
@@ -1557,6 +1557,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               mapPath: state.mapPath, // Include mapPath to verify data belongs to correct map
               background: state.background,
               levels: levelsForFile(state.levels, state.background, state.levelAlignments),
+              // Left out on the first level, so files of scenes that stay there stay as they were
+              ...(viewedLevelId(state) !== firstLevelId(state.levels) && { viewedLevel: state.viewedLevel }),
               grid: state.grid,
               objects: state.objects,
               camera: state.camera,
@@ -1586,6 +1588,8 @@ export function createViewAtlasStore(app: App, viewId: string, plugin?: AtlasVTT
               ...current,
               ...saved,
               levels,
+              // The loader chose it from the file; a later read (another device's save) moves no view
+              viewedLevel: current.viewedLevel,
               levelAlignments: levelAlignmentsOf(read),
               exploredMasks: readExploredMasks(saved.exploredMasks, levels),
               lootRoller: readLootRollerState(saved.lootRoller),

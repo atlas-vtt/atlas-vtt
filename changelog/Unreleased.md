@@ -6,6 +6,7 @@
 - Player window: the curtain fades down and up instead of cutting to black
 
 ## Fixed
+- Scenes with several levels open on the level they were last shown on, after a reload or closing them, and in a collection you share too
 - The player window can be moved by dragging it again
 - TrueScale: saved frames can be shown and removed every time. Hover a frame on the map for its chip. The bookmark lights up when a frame is saved, and a second click takes the save back instead of adding a copy
 - TrueScale: a moved Bring players here frame goes back to its place when a drag is cancelled, and no longer carries its position over to the next map

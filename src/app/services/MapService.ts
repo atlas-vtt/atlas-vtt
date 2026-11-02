@@ -44,7 +44,7 @@ export class MapService {
    * @param filePath The path to the map file
    * @param camera Where the scene is shown (its tab's own camera); without one the map is fitted to the view.
    * The loading screen waits for the tesserae this camera shows.
-   * @param level The level shown first, over the camera's; unset, the camera's, else the first.
+   * @param level The level shown first; unset, the one the scene file was last shown on.
    * @returns The loaded map data, or null when loading failed or a later request replaced this one
    */
   public loadMap(rendererService: RendererService, filePath: string, camera: ViewCamera | null = null, level?: string): Promise<MapFile | null> {
@@ -139,7 +139,7 @@ export class MapService {
       );
       if (!displayed) return null;
       this.currentMapData = displayed.mapData;
-      // The level the tab was left on, else the first; the store's levels arrive with the rehydration below
+      // The level the file names, else the first; the store's levels arrive with the rehydration below
       storeState.setViewedLevel(displayed.level);
       // The tesserae in view load meanwhile; the loading screen stays until they are drawn, or for a while.
       const mapImage = renderer.getMapImage();

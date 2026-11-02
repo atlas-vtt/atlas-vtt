@@ -45,8 +45,7 @@ function isViewCamera(value: unknown): value is ViewCamera {
   return isRecord(value)
     && typeof value.centerX === 'number'
     && typeof value.centerY === 'number'
-    && typeof value.scale === 'number'
-    && (value.level === undefined || typeof value.level === 'string');
+    && typeof value.scale === 'number';
 }
 
 /**
@@ -441,12 +440,10 @@ export class AtlasView extends FileView {
   private saveViewportState(tabId: string): void {
     const viewport = this._serviceManager.getRendererService().getViewport();
     if (!viewport) return;
-    const { viewedLevel } = this.store.getState();
     this.viewportCache.set(tabId, {
       centerX: viewport.center.x,
       centerY: viewport.center.y,
       scale: viewport.scale.x,
-      ...(viewedLevel ? { level: viewedLevel } : {}),
     });
   }
 
