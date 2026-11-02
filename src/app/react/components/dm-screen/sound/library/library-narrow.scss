@@ -7,10 +7,8 @@
     display: none;
   }
 
-  .atlas-sound-lib .atlas-sound-lib__head-more {
+  .atlas-sound-lib__head .atlas-sound-lib__more.atlas-sound-lib__head-more {
     display: grid;
-    margin-left: 0;
-    flex-shrink: 0;
   }
 
   .atlas-sound-lib__row {
@@ -52,7 +50,7 @@
 
 // ---- Too narrow for a rail beside the rows: it stands over them ----
 
-@container atlas-sound-lib (max-width: 520px) {
+@container atlas-dm-screen (max-width: 560px) {
   .atlas-sound-lib:has(.atlas-sound-lib__rail) {
     flex-direction: column;
   }

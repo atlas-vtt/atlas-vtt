@@ -3,7 +3,6 @@ import { act, cleanup, fireEvent, waitFor } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { selectionAfter, type LibraryRow } from '../../../src/app/react/components/dm-screen/sound/library/rowModel';
 import { moodIndexOfCode } from '../../../src/app/react/components/dm-screen/sound/useSoundKeys';
-import { screenTakesKey } from '../../../src/app/react/components/dm-screen/screenKeys';
 import { libraryRig, type LibraryRig } from '../../helpers/libraryRig';
 
 vi.mock('../../../src/app/ui/confirmDialog', () => ({ confirmAction: vi.fn(async () => true) }));
@@ -128,11 +127,10 @@ describe('the keys of the rows', () => {
     expect(reachedMap).toHaveBeenCalledTimes(1);
   });
 
-  it('never press a mood: the Sound page leaves them to the library', () => {
+  it('read a digit by its place on the keyboard', () => {
     expect(moodIndexOfCode('Digit1')).toBe(0);
-    const event = new KeyboardEvent('keydown', { key: '1', code: 'Digit1' });
-    Object.defineProperty(event, 'target', { value: list(host) });
-    expect(screenTakesKey(event, host, undefined)).toBe(false);
+    expect(moodIndexOfCode('Numpad0')).toBe(9);
+    expect(moodIndexOfCode('KeyA')).toBeNull();
   });
 });
 

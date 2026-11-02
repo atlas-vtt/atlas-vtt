@@ -115,7 +115,7 @@ export const MoodCard = React.memo(function MoodCard({ mood, number, playing, si
           {playing && <MoodBars />}
           {playing && <span className="atlas-sound-mood__state">{silenced ? t('audio.silenced') : t('audio.playingTag')}</span>}
           {next && !playing && <span className="atlas-sound-cap"><CornerDownLeft aria-hidden="true" /></span>}
-          {next && !playing && <span className="atlas-sound-mood__state">{t('audio.nextTag')}</span>}
+          {next && !playing && problems.length === 0 && <span className="atlas-sound-mood__state">{t('audio.nextTag')}</span>}
           {problems.length > 0 && <ProblemLine moodId={mood.id} problems={problems} />}
           {players !== null && <MoodPlayersTag copy={players} />}
         </span>

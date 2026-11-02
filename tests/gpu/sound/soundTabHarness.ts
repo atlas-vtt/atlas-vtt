@@ -23,6 +23,8 @@ import { MoodStore } from '@/app/soundLibrary/MoodStore';
 import { soundRecordsOf } from '@/app/soundLibrary/soundRecords';
 import { createViewAtlasStore, type ViewAtlasStore } from '@/app/storeFactory';
 import { createInMemoryApp } from '../../mocks/inMemoryVault';
+import { fakeLibrary, type LibraryRig } from '../../helpers/libraryRig';
+import { fillMockLibrary, MOCK_LIBRARY } from './libraryScene';
 import { withSound } from '../../mocks/experimentalFeatures';
 
 const SHARED = `
@@ -117,6 +119,8 @@ export interface SoundTab {
   commits: { count: number };
   moods: MoodStore;
   moodsOf: () => readonly Mood[];
+  /** The linked folders, with the mock's files, where the tab was opened with them. */
+  locations: LibraryRig['locations'] | null;
   unmount: () => void;
 }
 
@@ -124,7 +128,7 @@ export interface SoundTab {
  * The real DM screen with the real director, real copies in IndexedDB and a real context, over an
  * in-memory vault: all that is not Obsidian is the plugin's own. The theme is the variables Obsidian sets.
  */
-export async function openSoundTab(theme: string, viewport: HTMLElement, appId = `sound-tab-${Math.random()}`, sounds: Record<string, TabSound> = SOUNDS): Promise<SoundTab> {
+export async function openSoundTab(theme: string, viewport: HTMLElement, appId = `sound-tab-${Math.random()}`, sounds: Record<string, TabSound> = SOUNDS, linked = false): Promise<SoundTab> {
   const style = document.createElement('style');
   style.id = 'sound-tab-theme';
   style.textContent = theme + css;
@@ -154,6 +158,8 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
     const sound: NewAsset = { type: 'sound', name, tags: [], collection: COLLECTION, audioPath: `audio/${name}.ogg`, kind, licence: 'unknown', streaming: 'unknown' };
     await assets.addAsset(sound);
   }
+  const held = linked ? fakeLibrary(app, MOCK_LIBRARY) : null;
+  if (held) await fillMockLibrary(held.locations);
   const moods = MoodStore.forApp(app);
   await moods.whenLoaded(COLLECTION);
   const director = SoundDirector.forApp(app);
@@ -185,6 +191,7 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
     records,
     commits,
     moods,
+    locations: held?.locations ?? null,
     moodsOf: () => moods.moodsOf(COLLECTION),
     unmount: () => {
       act(() => root.unmount());

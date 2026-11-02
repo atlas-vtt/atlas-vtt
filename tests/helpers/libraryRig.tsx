@@ -41,17 +41,8 @@ export interface LibraryRigOptions {
   seconds?: (url: string) => number | null;
 }
 
-/** The real view, director and records over roots held in memory: all that is missing is the disk. */
-export async function libraryRig(options: LibraryRigOptions = {}): Promise<LibraryRig> {
-  const { app } = createInMemoryApp({ folders: ['atlas-vtt/collections'] });
-  Object.assign(app, { appId: `library-${Math.random()}` });
-  new SettingsService(app);
-  withSound(app);
-  AssetService.resetInstance();
-  const assets = AssetService.getInstance(app);
-  await assets.initialize();
-  await assets.createCollection(COLLECTION);
-
+/** The real library over roots held in memory, provided for `app`. */
+export function fakeLibrary(app: App, options: LibraryRigOptions = {}): Pick<LibraryRig, 'library' | 'roots' | 'locations' | 'local'> {
   const locations = { music: new FakeSoundLocation(), ambience: new FakeSoundLocation() };
   const local: Partial<Record<SoundKind, string>> = { ...options.local };
   let shared: SharedSoundRoots = options.shared ?? {};
@@ -71,9 +62,24 @@ export async function libraryRig(options: LibraryRigOptions = {}): Promise<Libra
     probeSeconds: async (url) => options.seconds?.(url) ?? null,
   });
   SoundLibrary.provide(app, library);
+  return { library, roots, locations, local };
+}
+
+/** The real view, director and records over roots held in memory: all that is missing is the disk. */
+export async function libraryRig(options: LibraryRigOptions = {}): Promise<LibraryRig> {
+  const { app } = createInMemoryApp({ folders: ['atlas-vtt/collections'] });
+  Object.assign(app, { appId: `library-${Math.random()}` });
+  new SettingsService(app);
+  withSound(app);
+  AssetService.resetInstance();
+  const assets = AssetService.getInstance(app);
+  await assets.initialize();
+  await assets.createCollection(COLLECTION);
+
+  const { library, roots, locations, local } = fakeLibrary(app, options);
   const director = SoundDirector.forApp(app);
   const store = createViewAtlasStore(app, `library-${Math.random()}`);
-  store.setState({ persistenceEnabled: false, isDMScreenOpen: true, dmScreenPage: 'sound', soundView: 'library' });
+  store.setState({ persistenceEnabled: false, isDMScreenOpen: true, dmScreenPage: 'sound' });
   let root: Root | null = null;
   const value = { app, view: null, pixiApp: null, renderer: null } as AtlasUIContextValue;
   return {

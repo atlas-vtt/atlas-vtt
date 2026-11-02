@@ -24,23 +24,16 @@ export const OBSIDIAN_LIGHT = `${SHARED}
     --background-modifier-hover: rgba(0, 0, 0, 0.05); --background-modifier-form-field: #ffffff; --interactive-normal: #ffffff; --text-normal: #222222; --text-muted: #5c5c5c; --text-faint: #8a8a8a; --text-warning: #b8791a; --mono-100: #000000;
     --interactive-accent: #705dcf; --h3-font: 'Atlas Fantaisie Artistique', Georgia, serif; }`;
 
-/** The stage above the desk, in the mock's proportions: the page and the desk are another agent's. */
+/** The page's room: the DM screen's container, with no inset, so the surface is as wide as asked. */
 export function stageFrame(theme: string, width = 1644, height = 960): { host: HTMLElement; remove: () => void } {
   const style = document.createElement('style');
   style.textContent = theme + css + `
-    .lib-frame { position: absolute; inset: 0; width: ${width}px; height: ${height}px; background: #080706; padding: 70px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px; container: atlas-dm-screen / size; }
-    .lib-pages { height: 38px; flex-shrink: 0; }
-    .lib-sound { flex: 1; min-height: 0; display: flex; flex-direction: column; border-radius: 24px; background: var(--background-primary); box-shadow: 0 0 0 1.5px color-mix(in oklch, var(--mono-100) 16%, transparent); overflow: hidden; }
-    .lib-stage { flex: 1; min-height: 0; display: flex; }
-    .lib-desk { flex-shrink: 0; height: 336px; background: color-mix(in srgb, var(--background-primary) 72%, black); }`;
+    .lib-frame { position: absolute; inset: 0; width: ${width}px; height: ${height}px; background: #080706; display: flex; flex-direction: column; container: atlas-dm-screen / size; --atlas-dm-screen-inset: 0px; }`;
   document.head.append(style);
   document.body.classList.toggle('theme-light', theme === OBSIDIAN_LIGHT);
-  const frame = document.body.createDiv({ cls: 'atlas-vtt-plugin lib-frame' });
-  frame.createDiv({ cls: 'lib-pages' });
-  const sound = frame.createDiv({ cls: 'lib-sound' });
-  const host = sound.createDiv({ cls: 'lib-stage' });
-  sound.createDiv({ cls: 'lib-desk' });
-  return { host, remove: () => { frame.remove(); style.remove(); document.body.classList.remove('theme-light'); } };
+  document.body.classList.toggle('theme-dark', theme !== OBSIDIAN_LIGHT);
+  const frame = document.body.createDiv({ cls: 'atlas-vtt-plugin lib-frame workspace-leaf mod-active' });
+  return { host: frame, remove: () => { frame.remove(); style.remove(); document.body.classList.remove('theme-light'); } };
 }
 
 const BATTLE: ReadonlyArray<[string, number]> = [['Blood on the ford', 222], ['Steel in the reeds', 258], ['The last gate', 365], ['Riders at the treeline', 178], ['Shield wall', 311], ['Under siege', 444], ['No quarter', 187], ['Horns over the ridge', 289]];
@@ -49,24 +42,30 @@ const secondsByName = new Map(BATTLE.map(([name, seconds]) => [name, seconds]));
 
 /** The mock's library, with real copies: a track that plays was really converted from the fixture. */
 export async function mockLibrary(options: LibraryRigOptions = {}): Promise<LibraryRig> {
-  const rig = await libraryRig({
-    local: { music: '/Users/gm/Music/Tabletop' },
-    shared: { music: { type: 'external' }, ambience: { type: 'vault', path: 'Audio/Ambience' } },
-    home: '/Users/gm',
-    seconds: (url) => secondsByName.get(decodeURIComponent(url).replace(/^.*\//, '').replace(/\.[^.]*$/, '')) ?? 200,
-    ...options,
-  });
+  const rig = await libraryRig({ ...MOCK_LIBRARY, ...options });
+  await fillMockLibrary(rig.locations);
+  return rig;
+}
+
+export const MOCK_LIBRARY: LibraryRigOptions = {
+  local: { music: '/Users/gm/Music/Tabletop' },
+  shared: { music: { type: 'external' }, ambience: { type: 'vault', path: 'Audio/Ambience' } },
+  home: '/Users/gm',
+  seconds: (url) => secondsByName.get(decodeURIComponent(url).replace(/^.*\//, '').replace(/\.[^.]*$/, '')) ?? 200,
+};
+
+/** The mock's folders and files, whose reads give a real fixture. */
+export async function fillMockLibrary(locations: LibraryRig['locations']): Promise<void> {
   const bytes = await (await fetch(toneUrl)).blob();
   const never = new Promise<Blob>(() => undefined);
-  rig.locations.music.blobOf = (path) => (path.includes('Under siege') ? never : Promise.resolve(bytes));
-  for (const [name] of BATTLE) rig.locations.music.addFile(`Battle/${name}.ogg`, 4_000_000);
-  for (let index = 1; index <= 5; index++) rig.locations.music.addFile(`Battle/Bosses/Boss ${index}.ogg`);
-  rig.locations.music.addFile('Battle/Horns again.mp3');
+  locations.music.blobOf = (path) => (path.includes('Under siege') ? never : Promise.resolve(bytes));
+  for (const [name] of BATTLE) locations.music.addFile(`Battle/${name}.ogg`, 4_000_000);
+  for (let index = 1; index <= 5; index++) locations.music.addFile(`Battle/Bosses/Boss ${index}.ogg`);
+  locations.music.addFile('Battle/Horns again.mp3');
   const counts: ReadonlyArray<[string, number]> = [['Taverns', 9], ['Travel', 22], ['Wonder', 6], ['Dread', 7]];
-  for (const [folder, count] of counts) for (let index = 1; index <= count; index++) rig.locations.music.addFile(`${folder}/Track ${index}.ogg`);
+  for (const [folder, count] of counts) for (let index = 1; index <= count; index++) locations.music.addFile(`${folder}/Track ${index}.ogg`);
   const ambience: ReadonlyArray<[string, number]> = [['Weather', 31], ['Towns', 18], ['Wilds', 44], ['Dungeons', 28]];
-  for (const [folder, count] of ambience) for (let index = 1; index <= count; index++) rig.locations.ambience.addFile(`${folder}/Loop ${index}.ogg`);
-  return rig;
+  for (const [folder, count] of ambience) for (let index = 1; index <= count; index++) locations.ambience.addFile(`${folder}/Loop ${index}.ogg`);
 }
 
 export const settled = async (): Promise<void> => {

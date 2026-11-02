@@ -1,7 +1,9 @@
 import { act } from '@testing-library/react';
+import { createElement } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { commands, page, userEvent } from 'vitest/browser';
 import { ATLAS_DARK, mockLibrary, OBSIDIAN_LIGHT, settled, stageFrame } from './sound/libraryScene';
+import { SoundPane } from '@/app/react/components/dm-screen/sound/SoundPane';
 import type { LibraryRig } from '../helpers/libraryRig';
 
 const SHOTS = '__screenshots__/sound-library';
@@ -33,6 +35,17 @@ const pressFolder = async (name: string): Promise<void> => {
   await settled();
 };
 
+const PAGE = createElement(SoundPane, { active: true, headerSlot: null });
+const LIBRARY_SHOT = (host: HTMLElement): HTMLElement => host.closest<HTMLElement>('.lib-frame')!;
+
+/** No side of the page leaves its text hanging: all it holds is laid out inside it, or hidden. */
+function expectNoOverflow(): void {
+  for (const element of document.querySelectorAll<HTMLElement>('.atlas-sound-lib__head, .atlas-sound-lib__crumb, .atlas-sound-lib__row, .atlas-sound-lib__length, .atlas-sound-lib__state, .atlas-sound-lib__rows, .atlas-sound-moods, .atlas-sound-mood__press, .atlas-sound-mood__foot')) {
+    if (getComputedStyle(element).visibility === 'hidden') continue;
+    expect(element.scrollWidth, element.className).toBeLessThanOrEqual(element.clientWidth + 1);
+  }
+}
+
 describe('the sound library', () => {
   let rig: LibraryRig | null = null;
   let frame: ReturnType<typeof stageFrame> | null = null;
@@ -48,7 +61,7 @@ describe('the sound library', () => {
     await page.viewport(width, height);
     rig = await mockLibrary();
     frame = stageFrame(theme, width, height);
-    rig.mount(frame.host);
+    rig.mount(frame.host, PAGE);
     await settled();
     rig.library.rescan(Date.now() + 100_000);
     await expect.poll(() => rig?.library.countOf('music', '')).toBe(58);
@@ -61,7 +74,9 @@ describe('the sound library', () => {
     await open();
     await pressFolder('Battle');
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(10);
-    expect(box('.atlas-sound-lib__rail').width).toBe(264);
+    expect(box('.atlas-sound-lib__rail').width).toBeGreaterThanOrEqual(208);
+    expect(box('.atlas-sound-lib__rail').width).toBeLessThanOrEqual(232);
+    expect(box('.atlas-sound-lib').width / 1644).toBeCloseTo(0.58, 1);
     expect(box('.atlas-sound-lib__head').height).toBe(56);
     expect(box('.atlas-sound-lib__row').height).toBe(38);
     const crumb = getComputedStyle(document.querySelector('.atlas-sound-lib__crumb')!);
@@ -77,7 +92,30 @@ describe('the sound library', () => {
     expect(length).toBeGreaterThan(0);
     expect(rowNamed('Blood on the ford').querySelector('.atlas-sound-lib__length')?.textContent).toBe('3:42');
     expect(rowNamed('Bosses').querySelector('.atlas-sound-lib__length')?.textContent).toBe('5');
-    expect(box('.atlas-sound-lib__main').right).toBeLessThanOrEqual(1644 - 16);
+    expect(document.querySelector('.atlas-sound-views')).toBeNull();
+    expectNoOverflow();
+    const title = rowNamed('Riders at the treeline').querySelector<HTMLElement>('.atlas-sound-lib__title')!;
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+  });
+
+  it('keeps name, state and length readable at 1280, the action over the state, and what does not fit in the head in a menu', async () => {
+    await open(ATLAS_DARK, 1280, 800);
+    await pressFolder('Battle');
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBeGreaterThan(4);
+    expect(box('.atlas-sound-lib__rail').width).toBe(208);
+    expect(box('.atlas-sound-lib').width / 1280).toBeCloseTo(0.58, 1);
+    expectNoOverflow();
+    const row = rowNamed('Riders at the treeline');
+    const title = row.querySelector<HTMLElement>('.atlas-sound-lib__title')!;
+    expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+    await userEvent.hover(row);
+    await expect.poll(() => getComputedStyle(row.querySelector('.atlas-sound-lib__act')!).opacity).toBe('1');
+    expect(box('.atlas-sound-lib__act', row).left).toBeGreaterThan(box('.atlas-sound-lib__title', row).left);
+    expect(box('.atlas-sound-lib__act', row).right).toBeLessThanOrEqual(box('.atlas-sound-lib__length', row).left + 1);
+    expect(getComputedStyle(document.querySelector('.atlas-sound-lib__btn--folds')!).display).toBe('none');
+    await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-lib__head-more')!);
+    await expect.poll(() => [...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(['New folder', 'Import']);
+    await userEvent.keyboard('{Escape}');
   });
 
   it('sends a real file to the mix, and shows it there and what still converts', async () => {
@@ -96,7 +134,7 @@ describe('the sound library', () => {
     await expect.poll(() => rowNamed('Under siege').querySelector('.atlas-sound-lib__state')?.textContent, { timeout: 30_000 }).toBe('Converting');
     await act(async () => { (document.activeElement as HTMLElement | null)?.blur(); await userEvent.unhover(rowNamed('Steel in the reeds')); });
     await settled();
-    await page.screenshot({ path: `${SHOTS}/library.png`, element: frame!.host.closest<HTMLElement>('.lib-frame')! });
+    await page.screenshot({ path: `${SHOTS}/library.png`, element: LIBRARY_SHOT(frame!.host) });
     await userEvent.hover(rowNamed('Steel in the reeds'));
     await userEvent.click(rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__act')!);
     await expect.poll(() => rowNamed('Steel in the reeds').querySelector('.atlas-sound-lib__state')?.textContent).toBe('');
@@ -107,7 +145,7 @@ describe('the sound library', () => {
     const { libraryRig } = await import('../helpers/libraryRig');
     rig = await libraryRig();
     frame = stageFrame(ATLAS_DARK);
-    rig.mount(frame.host);
+    rig.mount(frame.host, PAGE);
     await settled();
     const title = document.querySelector('.atlas-sound-lib__nolink h2');
     expect(title?.textContent).toBe('Where is your music?');
@@ -115,7 +153,7 @@ describe('the sound library', () => {
     const stage = box('.atlas-sound-lib');
     const heading = title!.getBoundingClientRect();
     expect(Math.abs((heading.left + heading.right) / 2 - (stage.left + stage.right) / 2)).toBeLessThan(1);
-    await page.screenshot({ path: `${SHOTS}/library-empty.png`, element: frame.host.closest<HTMLElement>('.lib-frame')! });
+    await page.screenshot({ path: `${SHOTS}/library-empty.png`, element: LIBRARY_SHOT(frame.host) });
   });
 
   it('holds in light mode', async () => {
@@ -126,22 +164,27 @@ describe('the sound library', () => {
     const solid = getComputedStyle(document.querySelector('.atlas-sound-lib__btn--solid')!);
     expect(solid.backgroundColor).toBe('rgb(0, 0, 0)');
     expect(solid.color).toBe('rgb(255, 255, 255)');
-    await page.screenshot({ path: `${SHOTS}/library-light.png`, element: frame!.host.closest<HTMLElement>('.lib-frame')! });
+    await page.screenshot({ path: `${SHOTS}/library-light.png`, element: LIBRARY_SHOT(frame!.host) });
   });
 
-  it('stacks below the narrow width, and nothing leaves the stage', async () => {
+  it('stands over the moods below the breakpoint, and its rail over the rows where it must', async () => {
     await open(ATLAS_DARK, 700, 960);
     await pressFolder('Battle');
     await settled();
     const stage = box('.atlas-sound-lib');
-    const rail = box('.atlas-sound-lib__rail');
-    expect(rail.width).toBe(stage.width);
-    expect(rail.bottom).toBeLessThanOrEqual(box('.atlas-sound-lib__main').top + 1);
-    const row = rowNamed('The last gate');
+    expect(stage.width).toBe(box('.atlas-sound-moods').width);
+    expect(box('.atlas-sound-moods').top).toBeCloseTo(stage.bottom, 0);
+    expect(box('.atlas-sound-lib__rail').right).toBeLessThanOrEqual(box('.atlas-sound-lib__main').left + 1);
+    expectNoOverflow();
+    const row = document.querySelector<HTMLElement>('.atlas-sound-lib__row')!;
     expect(row.getBoundingClientRect().right).toBeLessThanOrEqual(stage.right);
-    expect(document.querySelector('.atlas-sound-lib__rows')!.scrollWidth).toBeLessThanOrEqual(document.querySelector('.atlas-sound-lib__rows')!.clientWidth);
-    expect(box('.atlas-sound-lib__length', row).right).toBeLessThan(box('.atlas-sound-lib__act', row).left + 1);
-    await page.screenshot({ path: `${SHOTS}/library-narrow.png`, element: frame!.host.closest<HTMLElement>('.lib-frame')! });
+
+    const place = document.querySelector<HTMLElement>('.lib-frame')!;
+    place.style.width = '460px';
+    await settled();
+    expect(box('.atlas-sound-lib__rail').bottom).toBeLessThanOrEqual(box('.atlas-sound-lib__main').top + 1);
+    expect(box('.atlas-sound-lib__rail').width).toBe(box('.atlas-sound-lib').width);
+    await page.screenshot({ path: `${SHOTS}/library-narrow.png`, element: LIBRARY_SHOT(frame!.host) });
   });
 
   it('scrolls a folder of 5,000 files without losing a frame', async () => {
@@ -172,7 +215,7 @@ describe('the sound library', () => {
     const sorted = [...frames].sort((a, b) => a - b);
     const line = `frames ${frames.length}, median ${sorted[Math.floor(sorted.length / 2)]?.toFixed(1)} ms, p95 ${sorted[Math.floor(sorted.length * 0.95)]?.toFixed(1)} ms, worst ${sorted.at(-1)?.toFixed(1)} ms; rows mounted ${document.querySelectorAll('.atlas-sound-lib__row').length}`;
     await writeMeasure(`[library scroll] ${line}`);
-    await page.screenshot({ path: `${SHOTS}/library-5000.png`, element: frame!.host.closest<HTMLElement>('.lib-frame')! });
+    await page.screenshot({ path: `${SHOTS}/library-5000.png`, element: LIBRARY_SHOT(frame!.host) });
     expect(sorted[Math.floor(sorted.length * 0.95)]).toBeLessThan(34);
   });
 
@@ -185,14 +228,14 @@ describe('the sound library', () => {
     expect(document.querySelectorAll('.atlas-sound-lib__row[aria-selected="true"]').length).toBeGreaterThan(0);
     rowNamed('Under siege').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, clientX: 700, clientY: 400 }));
     await settled();
-    await page.screenshot({ path: `${SHOTS}/library-menu.png`, element: frame!.host.closest<HTMLElement>('.lib-frame')! });
+    await page.screenshot({ path: `${SHOTS}/library-menu.png`, element: LIBRARY_SHOT(frame!.host) });
     await userEvent.keyboard('{Escape}');
     await settled();
     const search = document.querySelector<HTMLInputElement>('.atlas-sound-lib__search input')!;
     await userEvent.type(search, 'loop 1');
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBeGreaterThan(3);
     await settled();
-    await page.screenshot({ path: `${SHOTS}/library-search.png`, element: frame!.host.closest<HTMLElement>('.lib-frame')! });
+    await page.screenshot({ path: `${SHOTS}/library-search.png`, element: LIBRARY_SHOT(frame!.host) });
     expect(r.director.snapshot().mix.table.music).toBeNull();
   });
 
@@ -201,11 +244,11 @@ describe('the sound library', () => {
     rig = await mockLibrary({ local: {}, shared: { music: { type: 'external' }, ambience: { type: 'vault', path: 'Audio/Ambience' } } });
     await rig.assets.addIdentifiedAssets([{ id: 'w1', type: 'sound', name: 'Road to Wolfhaven', tags: [], collection: 'Fen', createdAt: 1, modifiedAt: 1, audioPath: 'atlas-sound:music/Road to Wolfhaven.ogg', kind: 'music', licence: 'unknown', streaming: 'unknown' }]);
     frame = stageFrame(ATLAS_DARK);
-    rig.mount(frame.host);
+    rig.mount(frame.host, PAGE);
     await settled();
     expect(document.querySelector('.atlas-sound-lib__where')?.textContent).toBe('Not linked on this device');
     await expect.poll(() => rowNamed('Road to Wolfhaven').querySelector('.atlas-sound-lib__state')?.textContent).toBe('Waiting for the file');
-    await page.screenshot({ path: `${SHOTS}/library-not-linked.png`, element: frame.host.closest<HTMLElement>('.lib-frame')! });
+    await page.screenshot({ path: `${SHOTS}/library-not-linked.png`, element: LIBRARY_SHOT(frame.host) });
   });
 
   it('a folder that takes long shows its skeleton in the rows\' places, then its rows without a shift', async () => {
@@ -219,13 +262,13 @@ describe('the sound library', () => {
       return original(folder);
     };
     frame = stageFrame(ATLAS_DARK);
-    rig.mount(frame.host);
+    rig.mount(frame.host, PAGE);
     await settled();
     const skeleton = document.querySelector('.atlas-sound-lib__skeleton .atlas-sound-lib__row');
     expect(skeleton?.getBoundingClientRect().height).toBe(38);
     const top = skeleton!.getBoundingClientRect().top;
     expect(document.querySelector('.atlas-sound-lib__none')).toBeNull();
-    await page.screenshot({ path: `${SHOTS}/library-skeleton.png`, element: frame.host.closest<HTMLElement>('.lib-frame')! });
+    await page.screenshot({ path: `${SHOTS}/library-skeleton.png`, element: LIBRARY_SHOT(frame.host) });
     release();
     await expect.poll(() => document.querySelector('.atlas-sound-lib__rows .atlas-sound-lib__row--folder')).not.toBeNull();
     expect(document.querySelector('.atlas-sound-lib__row--folder')!.getBoundingClientRect().top).toBe(top);

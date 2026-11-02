@@ -62,7 +62,7 @@ export const audio = {
   'audio.ambienceCount': { one: '{count} ambience', other: '{count} ambience' },
   'audio.moodMenu': 'Options of {name}',
   'audio.notReady': { one: '{count} not ready', other: '{count} not ready' },
-  'audio.stillConverting': { one: '{count} sound still converting', other: '{count} sounds still converting' },
+  'audio.stillConverting': { one: '{count} converting', other: '{count} converting' },
   'audio.problem.deleted': 'A sound of this mood was deleted',
   'audio.problem.missing': '{name}: waiting for the file',
   'audio.problem.converting': '{name}: converting',

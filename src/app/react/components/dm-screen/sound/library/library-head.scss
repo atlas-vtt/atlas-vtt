@@ -21,14 +21,18 @@
   padding: 0 $spacing-l;
 }
 
-.atlas-sound-lib .atlas-sound-lib__head-more {
+.atlas-sound-lib__head .atlas-sound-lib__more.atlas-sound-lib__head-more {
   display: none;
+  flex-shrink: 0;
+  margin-left: 0;
   opacity: 1;
 }
 
 .atlas-sound-lib__crumb {
   display: flex;
   align-items: baseline;
+  // What does not fit goes at the far end from the folder that is open.
+  justify-content: flex-end;
   min-width: 0;
   font-family: var(--h3-font, var(--font-interface));
   font-size: 23px;
@@ -54,7 +58,8 @@
 
 .atlas-sound-lib__search {
   margin-left: auto;
-  flex: 0 1 260px;
+  flex: 1 1 96px;
+  max-width: 260px;
   min-width: 96px;
   height: 30px;
   border-radius: 9px;

@@ -7,7 +7,7 @@
   --atlas-sound-lib-hairline: color-mix(in oklch, var(--mono-100) 9%, transparent);
   --atlas-sound-lib-well: color-mix(in srgb, var(--background-primary) 72%, black);
   --atlas-sound-lib-press: cubic-bezier(0.2, 0, 0, 1);
-  container: atlas-sound-lib / inline-size;
+  container-type: inline-size;
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -235,8 +235,14 @@
   align-items: center;
   justify-content: center;
   text-align: center;
-  gap: 10px;
+  gap: $spacing-s;
   padding: $spacing-l;
+
+  // Beside the moods' empty state, on one line with it.
+  @container atlas-dm-screen (min-width: #{$breakpoint-m + 1}) {
+    justify-content: flex-start;
+    padding-top: 12cqh;
+  }
 
   h2 {
     margin: 0;
@@ -252,7 +258,7 @@
     margin: 0;
     max-width: 46ch;
     color: var(--text-muted);
-    text-wrap: pretty;
+    text-wrap: balance;
   }
 }
 
@@ -261,5 +267,5 @@
   flex-wrap: wrap;
   justify-content: center;
   gap: $spacing-s;
-  margin-top: 6px;
+  margin-top: $spacing-s;
 }

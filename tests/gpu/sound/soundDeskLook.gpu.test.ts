@@ -10,7 +10,7 @@ vi.mock('../../../src/app/react/components/dm-screen/DMStatblocksPane', async ()
 });
 vi.mock('../../../src/app/react/components/dm-screen/useDMScreenStatblocks', () => ({ useDMScreenStatblocks: () => ({ statblocks: new Map(), loading: false }) }));
 
-const SHOTS = '__screenshots__/sound-desk';
+const SHOTS = '__screenshots__/sound-whole';
 const sleep = (ms: number): Promise<void> => new Promise((resolve) => { window.setTimeout(resolve, ms); });
 
 const music = (seed: number, seconds = 3): TabSound => ({ synth: { seconds, seed }, kind: 'music' });
@@ -94,11 +94,11 @@ describe('how the Sound page looks', () => {
 
   const shoot = (name: string): Promise<unknown> => page.screenshot({ path: `${SHOTS}/${name}.png`, element: viewport });
 
-  /** `.atlas-dm-screen` is 96 % by 90 % of this, so the mockup's 1644 by 960. */
-  async function open(theme: string, width = 1713, height = 1067): Promise<SoundTab> {
+  async function open(theme: string, width = 1644, height = 960, linked = true): Promise<SoundTab> {
     await resize(width, height);
-    tab = await openSoundTab(theme, viewport, undefined, TABLE);
-    await act(async () => { await sleep(100); });
+    tab = await openSoundTab(theme, viewport, undefined, TABLE, linked);
+    if (linked) act(() => tab?.store.getState().showSoundLibrary('music', 'Battle'));
+    await act(async () => { await sleep(150); });
     await expect.poll(() => document.querySelector('.atlas-dm-screen.is-visible')).not.toBeNull();
     await Promise.all(document.querySelector('.atlas-dm-screen')?.getAnimations().map((animation) => animation.finished) ?? []);
     return tab;
@@ -138,31 +138,27 @@ describe('how the Sound page looks', () => {
     await shoot('silenced');
   }, 240_000);
 
-  it('empty', async () => {
-    await open(ATLAS);
+  it('empty: nothing linked and no moods', async () => {
+    await open(ATLAS, 1644, 960, false);
     await shoot('empty');
   }, 120_000);
 
-  it('eight layers', async () => {
-    const shown = await playing(ATLAS);
-    for (const name of ['Night crickets', 'Dripping water', 'Low drone', 'Rats', 'River rush']) {
-      const record = shown.records.get(name);
-      if (record) act(() => { shown.director.desk.addSound(record); });
-    }
+  it('eleven moods over a folder of 5,000 files', async () => {
+    const opened = await open(ATLAS);
+    seed(opened);
+    await expect.poll(() => document.querySelectorAll('[data-sound-mood]').length).toBe(MOODS.length);
+    for (let index = 0; index < 5000; index++) opened.locations?.music.addFile(`Battle/Huge/Track ${index} of the long campaign with a very long name indeed.mp3`);
+    act(() => opened.store.getState().showSoundLibrary('music', 'Battle/Huge'));
     await act(async () => { await sleep(1500); });
-    expect(shown.director.snapshot().mix.table.layers).toHaveLength(8);
-    await shoot('eight-layers');
-  }, 240_000);
+    await shoot('five-thousand');
+  }, 120_000);
 
-  it('the mood dialog, the library view and a list of tracks', async () => {
+  it('the mood dialog, a mood menu and a list of tracks', async () => {
     const shown = await playing(ATLAS);
     await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-music__list')!);
     await act(async () => { await sleep(200); });
     await shoot('tracks');
-    await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-views [role="radio"]')[1]!);
-    await act(async () => { await sleep(200); });
-    await shoot('library');
-    await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-views [role="radio"]')[0]!);
+    await userEvent.keyboard('{Escape}');
     act(() => document.querySelector<HTMLElement>('[data-sound-mood]')?.focus());
     await userEvent.keyboard('{Shift>}{F10}{/Shift}');
     await expect.poll(() => document.querySelector('[role="menu"]')).not.toBeNull();
@@ -180,11 +176,14 @@ describe('how the Sound page looks', () => {
     await shoot('light');
   }, 240_000);
 
-  it('narrow panes', async () => {
-    await playing(ATLAS, 1100, 800);
-    await shoot('narrow-1100');
-    await resize(720, 700);
+  it('1280 wide, narrow and stacked', async () => {
+    await playing(ATLAS, 1280, 800);
+    await shoot('wide-1280');
+    await resize(1100, 800);
     await act(async () => { await sleep(400); });
-    await shoot('narrow-720');
+    await shoot('narrow-1100');
+    await resize(720, 800);
+    await act(async () => { await sleep(400); });
+    await shoot('stacked-720');
   }, 240_000);
 });
