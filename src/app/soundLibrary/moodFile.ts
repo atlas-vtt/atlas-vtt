@@ -2,6 +2,7 @@ import type { Mood, MoodLayer, MoodMusic } from '../sound/soundTypes';
 import { MAX_MOOD_LAYERS } from '../sound/soundTypes';
 import { readRecordText, recordText, type StoredRecord } from '../services/recordFiles/recordLayout';
 import { isFiniteNumber, isRecord } from '../utils/guards';
+import { readMoodIcon, readMoodTone } from './moodLook';
 
 /** The mood format this version writes. A file with a higher one comes from a newer Atlas: it is read and never rewritten. */
 export const MOOD_FORMAT = 1;
@@ -66,6 +67,8 @@ export const isNewerMood = (stored: StoredRecord): boolean => isFiniteNumber(sto
  */
 export function moodOf(stored: StoredRecord): Mood | null {
   const { id, name, order, fadeSeconds, music, layers } = stored;
+  const icon = readMoodIcon(stored.icon);
+  const tone = readMoodTone(stored.tone);
   if (typeof name !== 'string' || name.trim() === '' || !isFiniteNumber(order)) return null;
   return {
     id,
@@ -74,5 +77,7 @@ export function moodOf(stored: StoredRecord): Mood | null {
     fadeSeconds: isFiniteNumber(fadeSeconds) ? Math.max(0, Math.min(MOOD_LIMITS.maxFadeSeconds, fadeSeconds)) : DEFAULT_FADE_SECONDS,
     music: readMusic(music),
     layers: readLayers(layers),
+    ...(icon && { icon }),
+    ...(tone && { tone }),
   };
 }
