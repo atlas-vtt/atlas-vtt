@@ -60,14 +60,14 @@ function setup(): { outline: GlassOutline; overlay: () => Container; viewport: E
 afterEach(() => vi.mocked(requestRender).mockClear());
 
 describe('the glass on the GM map', () => {
-  it('draws the live glass in the accent over a dark line, with a faint fill, and asks for a render', () => {
+  it('draws the live glass in the accent over a dark line, leaves the map inside untinted, and asks for a render', () => {
     const { outline, overlay } = setup();
     outline.setGlass({ centerX: 10, centerY: 10, width: 40, height: 20 }, 'live');
 
     // World (-10, 0)–(30, 20): screen (80, 50)–(160, 90)
     expectAround(overlay(), [80, 50, 160, 90]);
     const ink = drawn(overlay());
-    expect(ink[0]).toEqual({ action: 'fill', color: ACCENT, alpha: 0.06 });
+    expect(ink.filter(({ action }) => action === 'fill')).toEqual([]);
     expect(ink).toContainEqual({ action: 'stroke', color: 0x000000, alpha: 0.35, width: 4 });
     expect(ink).toContainEqual({ action: 'stroke', color: ACCENT, alpha: 1, width: 2 });
     // Only the theme's accent and the dark line: no gold, no white
@@ -79,7 +79,7 @@ describe('the glass on the GM map', () => {
     const { outline, overlay } = setup();
     outline.setGlass({ centerX: 10, centerY: 10, width: 40, height: 20 }, 'ghost');
     const ink = drawn(overlay());
-    expect(ink[0]).toEqual({ action: 'fill', color: ACCENT, alpha: 0.03 });
+    expect(ink.filter(({ action }) => action === 'fill')).toEqual([]);
     expect(ink).toContainEqual({ action: 'stroke', color: ACCENT, alpha: 0.5, width: 2 });
     expect(ink.every(({ alpha }) => alpha <= 0.5)).toBe(true);
   });
@@ -87,12 +87,12 @@ describe('the glass on the GM map', () => {
   it('dots where players see now, alone and beside the glass, and takes it away', () => {
     const { outline, overlay } = setup();
     outline.setOrigin({ centerX: 10, centerY: 10, width: 40, height: 20 });
-    // Dashes only: no fill
+    // Dashes only
     expect(drawn(overlay()).map(({ action }) => action)).toEqual(['stroke', 'stroke']);
     expectAround(overlay(), [80, 50, 160, 90]);
 
     outline.setGlass({ centerX: 100, centerY: 100, width: 40, height: 20 });
-    expect(drawn(overlay()).filter(({ action }) => action === 'fill')).toHaveLength(1);
+    expect(drawn(overlay()).filter(({ action }) => action === 'stroke').length).toBeGreaterThan(2);
     outline.setOrigin(null);
     expect(bounds(overlay())[0]).toBeGreaterThan(200);
     outline.setGlass(null);
@@ -150,7 +150,6 @@ describe('the glass on the GM map', () => {
       outline.setGlass({ centerX: 100, centerY: 100, width: 40, height: 20 }, 'live');
       expect(numbers(overlay()).map(({ text, visible }) => [text, visible])).toEqual([['1', true], ['2', true]]);
       // The glass is drawn last, over the saved frames
-      expect(drawn(overlay())).toContainEqual({ action: 'fill', color: ACCENT, alpha: 0.06 });
       expect(drawn(overlay()).at(-1)).toMatchObject({ color: ACCENT, alpha: 1 });
 
       outline.setSaved([FRAMES[1]!]);
