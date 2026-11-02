@@ -101,4 +101,10 @@ describe('pairs', () => {
     expect(pairValue({ con: 2 }, 'dexterity', 'Dex')).toBeUndefined();
     expect(pairValue({ con: 2 }, undefined, '')).toBeUndefined();
   });
+
+  it('shows a line kept as typed without the backslash of its commas, and leaves stored items as they are', () => {
+    expect(normalisePairs('Fire\\, cold')).toEqual([{ key: 'Fire, cold', value: null }]);
+    expect(normalisePairs('Fire\\, cold: 3')).toEqual([{ key: 'Fire, cold', value: 3 }]);
+    expect(normalisePairs(['Fire\\, cold'])).toEqual([{ key: 'Fire\\, cold', value: null }]);
+  });
 });

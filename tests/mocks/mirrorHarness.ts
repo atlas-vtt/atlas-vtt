@@ -48,6 +48,10 @@ export interface MirrorHarness {
     setup: TvSetupScreen | null; tv: TableTv | undefined;
     /** Whether the curtain is down; blacking the canvas adds `draw:curtain`. */
     curtain: boolean;
+    /** Whether its sheet is still on the way down. */
+    curtainFalling?: boolean;
+    /** Whether the sheet of a scene change is on its way down. */
+    withheld: boolean;
   };
   /** The players' canvas. */
   target: HTMLCanvasElement;
@@ -104,7 +108,7 @@ export function setupMirror(): MirrorHarness {
   }
 
   const dm = createDm();
-  const state: MirrorHarness['state'] = { source: dm.source, held: null, frozen: null, window: WINDOW, setup: null, tv: undefined, curtain: false };
+  const state: MirrorHarness['state'] = { source: dm.source, held: null, frozen: null, window: WINDOW, setup: null, tv: undefined, curtain: false, withheld: false };
   const target = document.createElement('canvas');
   const shapes = Object.fromEntries(['save', 'restore', 'beginPath', 'moveTo', 'lineTo', 'arcTo', 'closePath', 'fill', 'stroke', 'fillText'].map((name) => [name, vi.fn()]));
   const context: Record<string, unknown> = {
@@ -112,6 +116,7 @@ export function setupMirror(): MirrorHarness {
     // The set-up screen begins by shading the frame; the curtain fills it black
     fillRect: () => { events.push(context.fillStyle === '#000' ? 'draw:curtain' : 'draw:setup'); },
     clearRect: vi.fn(),
+    measureText: () => ({ width: 0 }),
     drawImage: (image: HTMLCanvasElement): void => {
       if (captureFails.value) throw new Error('lost context');
       events.push(image === state.held ? 'draw:held' : `capture:${onCanvas}`);
@@ -127,6 +132,8 @@ export function setupMirror(): MirrorHarness {
     tableTv: () => state.tv,
     setup: () => state.setup,
     curtained: () => state.curtain,
+    curtainFalling: () => state.curtainFalling === true,
+    withheld: () => state.withheld,
     onFrame,
   }, () => now);
   return { mirror, events, dm, createDm, state, onFrame, captureFails, target, frame: (time) => { now = time; mirror.frame(); } };

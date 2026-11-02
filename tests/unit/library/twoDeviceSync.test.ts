@@ -107,7 +107,7 @@ class Trial {
       if (token) await assets.updateAsset(token.id, { name: `Renamed ${n}` });
     } else if (roll < 0.5) {
       const token = this.pick(tokens);
-      if (token) await assets.updateAssetTags(token.id, [...token.tags, `tag-${n}`]);
+      if (token) await assets.updateTagsOfAssets([{ id: token.id, tags: [...token.tags, `tag-${n}`] }]);
     } else if (roll < 0.58) {
       const token = this.pick(tokens);
       if (token) {

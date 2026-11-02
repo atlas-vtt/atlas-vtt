@@ -93,4 +93,9 @@ describe('coerce by declared type', () => {
       }
     }
   });
+
+  it('takes an escaped comma as part of a label or word', () => {
+    expect(coerce('pairs', 'Fire\\, cold: 3, Dex +2')).toEqual({ ok: true, value: [{ 'Fire, cold': 3 }, { Dex: 2 }] });
+    expect(coerce('list', 'Fire\\, cold, Ice')).toEqual({ ok: true, value: ['Fire, cold', 'Ice'] });
+  });
 });

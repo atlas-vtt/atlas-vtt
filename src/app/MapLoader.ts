@@ -66,7 +66,7 @@ export class MapLoader {
       assetValidationService.showMissingAssetsNotice(validationResult.missingAssets);
     }
 
-    const shownLevel = resolveLevel(mapData.levels, level);
+    const shownLevel = resolveLevel(mapData.levels, level ?? mapData.viewedLevel);
     return {
       mapData,
       level: shownLevel,

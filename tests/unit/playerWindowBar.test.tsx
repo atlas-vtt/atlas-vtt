@@ -110,11 +110,14 @@ describe('the player window bar', () => {
     rerender(<PlayerWindowBar view={null} />);
     const button = screen.getByRole('button', { name: 'Full screen on the TV' });
     expect(button.getAttribute('aria-disabled')).toBe('true');
+    expect(button.classList.contains('is-active')).toBe(false);
     act(() => playerWindowStore.setState({ secondDisplay: true }));
     fireEvent.click(button);
     expect(context.fullScreen.set).toHaveBeenCalledWith(true);
     act(() => playerWindowStore.setState({ fullScreen: true }));
-    fireEvent.click(screen.getByRole('button', { name: 'Leave full screen' }));
+    const leave = screen.getByRole('button', { name: 'Leave full screen' });
+    expect(leave.classList.contains('is-active')).toBe(true);
+    fireEvent.click(leave);
     expect(context.fullScreen.set).toHaveBeenLastCalledWith(false);
   });
 });

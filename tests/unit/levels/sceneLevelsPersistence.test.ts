@@ -63,10 +63,10 @@ function savedFile(harness: Harness): { version: number; state: Record<string, u
 }
 
 describe('a scene with several levels on disk', () => {
-  it('opens on the level its tab was left on, keeps its levels and memories, and is saved as version 5', async () => {
+  it('opens on the level it is asked for, keeps its levels and memories, and is saved as version 5', async () => {
     const harness = setup(JSON.stringify({ version: 5, state: sceneState({ version: 5, levels: LEVELS, exploredMask: MASK_GROUND, exploredMasks: { upper: MASK_UPPER } }) }));
 
-    expect(await harness.service.loadMap(harness.rendererService, SCENE, { centerX: 0, centerY: 0, scale: 1, level: 'upper' })).not.toBeNull();
+    expect(await harness.service.loadMap(harness.rendererService, SCENE, { centerX: 0, centerY: 0, scale: 1 }, 'upper')).not.toBeNull();
     const state = harness.store.getState();
     expect(state.viewedLevel).toBe('upper');
     expect(state.levels?.map((level) => level.id)).toEqual(['ground', 'upper']);
@@ -101,10 +101,10 @@ describe('a scene with several levels on disk', () => {
     expect((savedFile(harness).state.objects as { levelLinks: unknown }).levelLinks).toEqual(levelLinks);
   });
 
-  it('opens on the first level where the tab names a level the scene lacks', async () => {
-    const harness = setup(JSON.stringify({ version: 5, state: sceneState({ version: 5, levels: LEVELS }) }));
+  it('opens on the first level where the file names a level the scene lacks', async () => {
+    const harness = setup(JSON.stringify({ version: 5, state: sceneState({ version: 5, levels: LEVELS, viewedLevel: 'cellar' }) }));
 
-    await harness.service.loadMap(harness.rendererService, SCENE, { centerX: 0, centerY: 0, scale: 1, level: 'cellar' });
+    await harness.service.loadMap(harness.rendererService, SCENE);
 
     expect(harness.store.getState().viewedLevel).toBe('ground');
     expect(harness.images.at(-1)).toMatchObject({ kind: 'file', file: { path: 'maps/ground.png' } });
@@ -139,6 +139,61 @@ describe('a scene with several levels on disk', () => {
     state.setViewedLevel('upper');
     state.setExploredMask(null);
     expect(harness.store.getState().exploredMasks).toBeUndefined();
+  });
+});
+
+describe('the level a scene was last shown on', () => {
+  const opened = async (extra: Record<string, unknown> = {}): Promise<Harness> => {
+    const harness = setup(JSON.stringify({ version: 5, state: sceneState({ version: 5, levels: LEVELS, ...extra }) }));
+    await harness.service.loadMap(harness.rendererService, SCENE);
+    return harness;
+  };
+
+  it('opens the scene there again, in a new view with nothing to go by but the file', async () => {
+    const first = await opened();
+    expect(first.store.getState().viewedLevel).toBe('ground');
+
+    first.store.getState().setViewedLevel('upper');
+    await save(first.store);
+    expect(savedFile(first).state.viewedLevel).toBe('upper');
+
+    const reopened = setup(first.files.get(SCENE)!);
+    await reopened.service.loadMap(reopened.rendererService, SCENE);
+    expect(reopened.store.getState().viewedLevel).toBe('upper');
+    expect(reopened.images.at(-1)).toMatchObject({ kind: 'file', file: { path: 'maps/upper.png' } });
+  });
+
+  it('leaves the file as it was when the scene goes back to its first level', async () => {
+    const harness = await opened({ viewedLevel: 'upper' });
+    harness.store.getState().setViewedLevel('ground');
+    await save(harness.store);
+    expect(savedFile(harness).state).not.toHaveProperty('viewedLevel');
+
+    const reopened = setup(harness.files.get(SCENE)!);
+    await reopened.service.loadMap(reopened.rendererService, SCENE);
+    expect(reopened.store.getState().viewedLevel).toBe('ground');
+  });
+
+  it('gives way to a level asked for by name', async () => {
+    const harness = setup(JSON.stringify({ version: 5, state: sceneState({ version: 5, levels: LEVELS, viewedLevel: 'upper' }) }));
+    await harness.service.loadMap(harness.rendererService, SCENE, null, 'ground');
+    expect(harness.store.getState().viewedLevel).toBe('ground');
+  });
+
+  it('moves no view when the file is read again, as after a save of another device', async () => {
+    const harness = await opened();
+    harness.files.set(SCENE, JSON.stringify({ version: 5, state: sceneState({ version: 5, levels: LEVELS, viewedLevel: 'upper' }) }));
+    await harness.store.rehydrateFromFile();
+    expect(harness.store.getState().viewedLevel).toBe('ground');
+  });
+
+  it('is never written for a scene of one level', async () => {
+    const harness = setup(JSON.stringify({ version: 4, state: sceneState() }));
+    await harness.service.loadMap(harness.rendererService, SCENE);
+    harness.store.getState().setViewedLevel('ground');
+    harness.store.getState().setGrid({ ...harness.store.getState().grid, size: 80 });
+    await save(harness.store);
+    expect(savedFile(harness).state).not.toHaveProperty('viewedLevel');
   });
 });
 
@@ -224,7 +279,7 @@ describe('the alignment of a level', () => {
     expect(savedLevels.map((entry) => entry.alignment)).toEqual([undefined, ALIGNMENT]);
 
     const reopened = setup(harness.files.get(SCENE)!);
-    await reopened.service.loadMap(reopened.rendererService, SCENE, { centerX: 0, centerY: 0, scale: 1, level: 'upper' });
+    await reopened.service.loadMap(reopened.rendererService, SCENE, { centerX: 0, centerY: 0, scale: 1 }, 'upper');
     expect(reopened.store.getState().levelAlignments).toEqual({ upper: ALIGNMENT });
     expect(reopened.store.getState().levels?.every((entry) => entry.alignment === undefined)).toBe(true);
     expect(reopened.images.at(-1)).toMatchObject({ kind: 'file', file: { path: 'maps/upper.png' } });

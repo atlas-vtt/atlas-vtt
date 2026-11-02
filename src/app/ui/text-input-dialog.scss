@@ -1,8 +1,9 @@
 // Mounted on document.body, so the backdrop itself carries .atlas-vtt-plugin.
+// It opens from dialogs of up to $z-atlas-modal (Manage, collection settings) and must stand over them.
 &.atlas-text-dialog-backdrop {
   position: fixed;
   inset: 0;
-  z-index: $z-modal;
+  z-index: $z-atlas-modal + 1;
   display: flex;
   align-items: center;
   justify-content: center;

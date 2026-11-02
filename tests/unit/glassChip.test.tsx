@@ -22,6 +22,7 @@ const fakes = vi.hoisted(() => ({
   outlines: [] as FakeOutline[],
   service: null as unknown,
   presentTab: vi.fn(),
+  notices: [] as string[],
 }));
 
 vi.mock('../../src/app/pixi/glassOutline', () => ({
@@ -47,10 +48,12 @@ vi.mock('../../src/app/pixi/glassOutline', () => ({
   },
 }));
 vi.mock('../../src/app/services/PlayerWindowService', () => ({ PlayerWindowService: { getInstance: () => fakes.service } }));
+vi.mock('../../src/app/ui/notice', () => ({ showNotice: (message: string) => { fakes.notices.push(message); } }));
 vi.mock('../../src/app/services/PlayerWindowPresenter', () => ({ presentTab: fakes.presentTab, frameSourceOf: () => ({}) }));
 
 import { GlassChip } from '../../src/app/packages/components/true-scale/GlassChip';
-import { chipPlace } from '../../src/app/packages/components/true-scale/glassState';
+import { SAVED_CHIP_HIDE_MS } from '../../src/app/packages/components/true-scale/savedFrames';
+import { chipPlace, savedChipPlace } from '../../src/app/packages/components/true-scale/glassState';
 
 /** Stands in for the player window: players see `shownTabId` through a glass 200 × 100 around (100, 100), following unless pinned. */
 function fakeService() {
@@ -133,6 +136,7 @@ beforeEach(() => {
   fakes.service = service;
   fakes.outlines.length = 0;
   fakes.presentTab.mockClear();
+  fakes.notices.length = 0;
   playerWindowStore.setState({ isOpen: true, shownTabId: 'tab-a' });
 });
 afterEach(async () => {
@@ -146,7 +150,7 @@ afterEach(async () => {
 
 /** Presses the chip at (100, 50), drags it through `to` and lets go, or keeps holding with `release: false`. */
 function drag(to: { x: number; y: number; altKey?: boolean }[], release = true): void {
-  const chip = screen.getByText(/Players|Bring players here/).parentElement!;
+  const chip = screen.getByRole('group', { name: /Players|Bring players here/ });
   fireEvent.pointerDown(chip, { pointerId: 1, button: 0, clientX: 100, clientY: 50 });
   for (const { x, y, altKey = false } of to) fireEvent.pointerMove(window, { pointerId: 1, clientX: x, clientY: y, altKey });
   if (release) fireEvent.pointerUp(window, { pointerId: 1, clientX: to.at(-1)!.x, clientY: to.at(-1)!.y });
@@ -156,24 +160,24 @@ describe('the glass chip', () => {
   it('is not there while the player window is closed', () => {
     playerWindowStore.setState({ isOpen: false, shownTabId: null });
     render(<GlassChip view={fakeView()} />);
-    expect(screen.queryByText(/Players/)).toBeNull();
+    expect(screen.queryByRole('group')).toBeNull();
     expect(fakes.outlines).toHaveLength(0);
   });
 
   it('names the live glass following the GM, and pins it where it is', () => {
     render(<GlassChip view={fakeView()} />);
-    expect(screen.getByText('Players · following you')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Players · following you' })).toBeTruthy();
     expect(fakes.outlines[0]!.setGlass).toHaveBeenLastCalledWith({ centerX: 100, centerY: 100, width: 200, height: 100 }, 'live');
 
     fireEvent.click(screen.getByRole('button', { name: 'Pin the players here' }));
     expect(service.freezeCamera).toHaveBeenCalledWith();
-    expect(screen.getByText('Players')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Players' })).toBeTruthy();
 
     fireEvent.click(screen.getByRole('button', { name: 'Let the players follow you' }));
     // Silently: the notice of the command palette's freeze is not the chip's
     expect(service.unfreezeCamera).toHaveBeenCalledOnce();
     expect(service.toggleCameraFreeze).not.toHaveBeenCalled();
-    expect(screen.getByText('Players · following you')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Players · following you' })).toBeTruthy();
   });
 
   it('drags the players with it, their top-left corner on the nearest grid intersection, and keeps the frame on release', () => {
@@ -186,7 +190,7 @@ describe('the glass chip', () => {
     expect(service.framePlayersOn).toHaveBeenCalledWith('tab-a', 200, 200);
     expect(outline.setOrigin).toHaveBeenNthCalledWith(1, { centerX: 100, centerY: 100, width: 200, height: 100 });
     expect(outline.setOrigin).toHaveBeenLastCalledWith(null);
-    expect(screen.getByText('Players')).toBeTruthy();
+    expect(screen.getByRole('group', { name: 'Players' })).toBeTruthy();
   });
 
   it('leaves the glass where it is dragged with Alt held, and on a hex grid', () => {
@@ -198,6 +202,13 @@ describe('the glass chip', () => {
     render(<GlassChip view={fakeView({ ...SQUARE, type: 'hex-vertical' })} />);
     drag([{ x: 163, y: 72 }]);
     expect(service.framePlayersOn).toHaveBeenLastCalledWith('tab-a', 163 + 63, 122 + 22);
+  });
+
+  it('says on its icon what a drag does and that Alt frees it', () => {
+    render(<GlassChip view={fakeView()} />);
+    const hint = screen.getByText('Drag to move. Snaps to a square grid unless you hold Alt.');
+    const grip = screen.getByRole('group', { name: 'Players · following you' }).querySelector('.atlas-glass-chip__grip')!;
+    expect(grip.getAttribute('aria-describedby')).toBe(hint.id);
   });
 
   it('does not drag below the threshold, so a press stays a click', () => {
@@ -255,6 +266,84 @@ describe('the glass chip', () => {
       expect(fakes.presentTab).toHaveBeenCalledWith(expect.anything(), expect.anything(), 'tab-a', { camera: { centerX: 550, centerY: 400, scale: 1 } });
     });
 
+    /** The ghost as last drawn, at the size players get. */
+    const ghostAt = (centerX: number, centerY: number): unknown[] => [{ centerX, centerY, width: 200, height: 100 }, 'ghost'];
+    const lastGlass = (): unknown[] => fakes.outlines[0]!.setGlass.mock.lastCall!;
+    const tabs = (view: AtlasView) => view.tabMetaStore as unknown as { setState(state: { activeTabId: string }): void };
+    const expectNothingSent = (): void => {
+      expect(fakes.presentTab).not.toHaveBeenCalled();
+      expect(service.dragPlayersTo).not.toHaveBeenCalled();
+      expect(service.framePlayersOn).not.toHaveBeenCalled();
+      expect(service.playersToCamera).not.toHaveBeenCalled();
+      expect(service.freezeCamera).not.toHaveBeenCalled();
+      expect(playerWindowStore.getState().shownTabId).toBe('tab-b');
+    };
+
+    it('sends players nothing while it is dragged, dropped or cancelled', () => {
+      render(<GlassChip view={fakeView()} />);
+      drag([{ x: 163, y: 72 }], false);
+      expectNothingSent();
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 163, clientY: 72 });
+      expectNothingSent();
+      drag([{ x: 163, y: 72 }], false);
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expectNothingSent();
+    });
+
+    it('does not take a drag begun on its button for a press of that button', () => {
+      render(<GlassChip view={fakeView()} />);
+      const bring = screen.getByRole('button', { name: 'Show players this map' });
+      fireEvent.pointerDown(bring, { pointerId: 1, button: 0, clientX: 100, clientY: 50 });
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 163, clientY: 72 });
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 163, clientY: 72 });
+      fireEvent.click(bring);
+      expectNothingSent();
+    });
+
+    it('goes back to where it stood when a later drag is cancelled', () => {
+      render(<GlassChip view={fakeView()} />);
+      drag([{ x: 163, y: 72 }]);
+      expect(lastGlass()).toEqual(ghostAt(550, 400));
+      drag([{ x: 163, y: 72 }], false);
+      expect(lastGlass()).toEqual(ghostAt(600, 400));
+      fireEvent.keyDown(window, { key: 'Escape' });
+      expect(lastGlass()).toEqual(ghostAt(550, 400));
+    });
+
+    it('forgets its place when another scene tab is viewed', () => {
+      const view = fakeView();
+      render(<GlassChip view={view} />);
+      drag([{ x: 163, y: 72 }]);
+      act(() => { tabs(view).setState({ activeTabId: 'tab-c' }); });
+      expect(lastGlass()).toEqual(ghostAt(500, 400));
+    });
+
+    it('forgets its place when its tab loads another map', () => {
+      const view = fakeView();
+      render(<GlassChip view={view} />);
+      drag([{ x: 163, y: 72 }]);
+      act(() => { (view.atlasStore as unknown as { setState(state: { mapPath: string }): void }).setState({ mapPath: 'other.atlasmap' }); });
+      expect(lastGlass()).toEqual(ghostAt(500, 400));
+    });
+
+    it('forgets its place when players come here', () => {
+      render(<GlassChip view={fakeView()} />);
+      drag([{ x: 163, y: 72 }]);
+      act(() => { playerWindowStore.setState({ shownTabId: 'tab-a' }); });
+      act(() => { playerWindowStore.setState({ shownTabId: 'tab-b' }); });
+      expect(lastGlass()).toEqual(ghostAt(500, 400));
+    });
+
+    it('keeps its place while the size of the players\' frame cannot be read for a moment', () => {
+      render(<GlassChip view={fakeView()} />);
+      drag([{ x: 163, y: 72 }]);
+      service.playerViewWorldSize.mockReturnValueOnce(null);
+      act(() => { playerWindowStore.setState({}); });
+      expect(lastGlass()).toEqual([null, undefined]);
+      act(() => { playerWindowStore.setState({}); });
+      expect(lastGlass()).toEqual(ghostAt(550, 400));
+    });
+
     it('is not there while players are held on another level of this tab', () => {
       playerWindowStore.setState({ shownTabId: 'tab-a' });
       service.glassOf = () => null;
@@ -272,7 +361,7 @@ describe('saved frames', () => {
   const hover = (view: AtlasView, x: number, y: number): void => {
     fireEvent.pointerMove(view.serviceManager!.getRendererService()!.getApp()!.canvas, { clientX: x, clientY: y });
   };
-  const savedChip = (): HTMLElement | null => screen.queryByText(/^Frame \d+$/)?.parentElement ?? null;
+  const savedChip = (): HTMLElement | null => document.querySelector<HTMLElement>('.atlas-glass-chip[aria-label^="Frame"]');
 
   it('saves the frame players see, with their zoom, from the live glass only', () => {
     const view = fakeView();
@@ -295,12 +384,13 @@ describe('saved frames', () => {
       expect(savedChip()!.hidden).toBe(true);
 
       hover(view, 220, 280);
-      expect(screen.getByText('Frame 1')).toBeTruthy();
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
       expect(savedChip()!.hidden).toBe(false);
       expect(screen.getByRole('button', { name: 'Show players here' })).toBeTruthy();
       expect(screen.getByRole('button', { name: 'Remove' })).toBeTruthy();
       hover(view, 300, 300);
-      expect(screen.getByText('Frame 2')).toBeTruthy();
+      act(() => { vi.advanceTimersByTime(300); });
+      expect(screen.getByRole('group', { name: 'Frame 2' })).toBeTruthy();
 
       // Out of the frames and onto the chip: it stays
       hover(view, 900, 700);
@@ -316,6 +406,141 @@ describe('saved frames', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  /** Renders the chips where the map view holds them: inside the element the canvas lies in, so what moves over them bubbles past it. */
+  const renderInView = (view: AtlasView): void => {
+    const surface = view.serviceManager!.getRendererService()!.getApp()!.canvas.parentElement!;
+    render(<GlassChip view={view} />, { container: surface.appendChild(document.createElement('div')) });
+  };
+  const OTHER: SavedPlayerFrame = { ...FRAME, centerX: 900, centerY: 700 };
+
+  it('keeps following the pointer after a press on the chip that was no drag', () => {
+    vi.useFakeTimers();
+    try {
+      const view = fakeView(SQUARE, [FRAME, OTHER]);
+      renderInView(view);
+      hover(view, 220, 280);
+      fireEvent.pointerDown(savedChip()!, { pointerId: 1, button: 0, clientX: 210, clientY: 260 });
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 210, clientY: 260 });
+      fireEvent.click(screen.getByRole('button', { name: 'Show players here' }));
+
+      hover(view, 900, 700);
+      act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS); });
+      expect(screen.getByRole('group', { name: 'Frame 2' })).toBeTruthy();
+
+      hover(view, 20, 20);
+      act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS); });
+      expect(savedChip()!.hidden).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('shows the chips of the others after one was removed through a press on its button', () => {
+    const view = fakeView(SQUARE, [FRAME, OTHER]);
+    renderInView(view);
+    hover(view, 220, 280);
+    const remove = screen.getByRole('button', { name: 'Remove' });
+    fireEvent.pointerDown(remove, { pointerId: 1, button: 0, clientX: 210, clientY: 260 });
+    fireEvent.pointerUp(window, { pointerId: 1, clientX: 210, clientY: 260 });
+    fireEvent.click(remove);
+    expect(map(view).getState().playerFrames).toEqual([OTHER]);
+
+    hover(view, 900, 700);
+    expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
+    expect(savedChip()!.hidden).toBe(false);
+  });
+
+  it('offers the next frame under the pointer as soon as the one above it is removed', () => {
+    const view = fakeView(SQUARE, [FRAME, FRAME, FRAME]);
+    renderInView(view);
+    hover(view, 220, 280);
+    expect(screen.getByRole('group', { name: 'Frame 3' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(screen.getByRole('group', { name: 'Frame 2' })).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
+    expect(map(view).getState().playerFrames).toEqual([]);
+    expect(savedChip()!.hidden).toBe(true);
+  });
+
+  it('stays the same chip while the pointer is on it, whatever frame lies under it', () => {
+    vi.useFakeTimers();
+    try {
+      // The first frame's corner, where its chip stands, lies inside the second
+      const view = fakeView(SQUARE, [FRAME, { ...FRAME, centerX: 200, centerY: 250 }]);
+      renderInView(view);
+      hover(view, 350, 330);
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
+
+      fireEvent.pointerEnter(savedChip()!);
+      fireEvent.pointerMove(savedChip()!, { clientX: 210, clientY: 260 });
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('lets the pointer cross another frame on its way to the chip', () => {
+    vi.useFakeTimers();
+    try {
+      const view = fakeView(SQUARE, [FRAME, { ...FRAME, centerX: 200, centerY: 250 }]);
+      renderInView(view);
+      hover(view, 350, 330);
+      hover(view, 250, 280);
+      act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS - 1); });
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
+      fireEvent.pointerEnter(savedChip()!);
+      act(() => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByRole('group', { name: 'Frame 1' })).toBeTruthy();
+
+      // Stopping on the other frame instead brings up its chip
+      fireEvent.pointerLeave(savedChip()!);
+      hover(view, 250, 280);
+      act(() => { vi.advanceTimersByTime(SAVED_CHIP_HIDE_MS); });
+      expect(screen.getByRole('group', { name: 'Frame 2' })).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('comes up for the map alone, not for what lies over it', () => {
+    const view = fakeView(SQUARE, [{ centerX: 100, centerY: 100, width: 200, height: 100, scale: 1 }]);
+    renderInView(view);
+    fireEvent.pointerMove(screen.getByRole('group', { name: /Players/ }), { clientX: 100, clientY: 60 });
+    expect(savedChip()!.hidden).toBe(true);
+  });
+
+  it('brings up no chip for what the camera moves under a pointer that is panning', () => {
+    const view = fakeView();
+    renderInView(view);
+    fireEvent.pointerMove(view.serviceManager!.getRendererService()!.getApp()!.canvas, { clientX: 220, clientY: 280, buttons: 2 });
+    act(() => { map(view).getState().addPlayerFrame(FRAME); });
+    expect(savedChip()!.hidden).toBe(true);
+  });
+
+  it('takes the save back with the same button, and does not save the same frame twice', () => {
+    const view = fakeView();
+    renderInView(view);
+    fireEvent.click(screen.getByRole('button', { name: 'Save this frame' }));
+    expect(fakes.notices).toEqual(['Frame 1 saved']);
+    expect(map(view).getState().playerFrames).toHaveLength(1);
+
+    const saved = screen.getByRole('button', { name: 'Remove this saved frame' });
+    expect(saved.classList.contains('is-active')).toBe(true);
+    fireEvent.click(saved);
+    expect(map(view).getState().playerFrames).toEqual([]);
+    expect(screen.getByRole('button', { name: 'Save this frame' }).classList.contains('is-active')).toBe(false);
+  });
+
+  it('takes back the newest of frames saved over one another in an older version', () => {
+    const place = { centerX: 100, centerY: 100, width: 200, height: 100, scale: 1 };
+    const view = fakeView(SQUARE, [place, { ...place, scale: 2 }]);
+    renderInView(view);
+    fireEvent.click(screen.getByRole('button', { name: 'Remove this saved frame' }));
+    expect(map(view).getState().playerFrames).toEqual([place]);
   });
 
   it('comes up under no pan or drag on the map', () => {
@@ -367,6 +592,24 @@ describe('saved frames', () => {
     expect(service.dragPlayersTo).not.toHaveBeenCalled();
   });
 
+  it('shows players nothing while it is dragged, on the map they see or another', () => {
+    for (const shownTabId of ['tab-a', 'tab-b']) {
+      playerWindowStore.setState({ shownTabId });
+      const view = fakeView(SQUARE, [FRAME]);
+      render(<GlassChip view={view} />);
+      hover(view, 220, 280);
+      fireEvent.pointerDown(savedChip()!, { pointerId: 1, button: 0, clientX: 210, clientY: 260 });
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 262, clientY: 281 });
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 262, clientY: 281 });
+      expect(fakes.presentTab).not.toHaveBeenCalled();
+      expect(service.playersToCamera).not.toHaveBeenCalled();
+      expect(service.dragPlayersTo).not.toHaveBeenCalled();
+      expect(service.framePlayersOn).not.toHaveBeenCalled();
+      expect(playerWindowStore.getState().shownTabId).toBe(shownTabId);
+      cleanup();
+    }
+  });
+
   it('puts a dragged frame back on Escape', () => {
     const view = fakeView(SQUARE, [FRAME]);
     render(<GlassChip view={view} />);
@@ -387,7 +630,7 @@ describe('saved frames', () => {
 });
 
 describe('where the chip stands', () => {
-  const room = { canvasX: 0, canvasY: 40, width: 800, height: 600, top: 48, bottom: 64 };
+  const room = { canvasX: 0, canvasY: 40, width: 800, height: 600, top: 48, topStart: 96, bottom: 64 };
 
   it('sits centred on the glass top edge', () => {
     expect(chipPlace({ x: 100, y: 200, width: 400, height: 300 }, { width: 160, height: 48 }, room)).toEqual({ x: 220, y: 216 });
@@ -400,5 +643,24 @@ describe('where the chip stands', () => {
 
   it('stays on a pinned glass and leaves the screen with it', () => {
     expect(chipPlace({ x: -900, y: -500, width: 400, height: 300 }, { width: 160, height: 48 }, room, false)).toEqual({ x: -780, y: -484 });
+  });
+
+  describe('of a saved frame', () => {
+    const chip = { width: 160, height: 48 };
+
+    it('sits on the frame\'s top edge beside its number where that shows', () => {
+      expect(savedChipPlace({ x: 100, y: 200, width: 400, height: 300 }, chip, room)).toEqual({ x: 114, y: 216 });
+    });
+
+    it('stays on the part of the frame that shows, clear of the bars, where the corner does not', () => {
+      // A frame larger than the view, as one saved while players follow the GM
+      expect(savedChipPlace({ x: -300, y: -400, width: 2000, height: 1500 }, chip, room)).toEqual({ x: 8, y: 104 });
+      // Its corner shows, but too near the pane's far edges and the toolbars for the chip
+      expect(savedChipPlace({ x: 700, y: 450, width: 500, height: 500 }, chip, room)).toEqual({ x: 632, y: 466 });
+    });
+
+    it('does not wait on the screen for a frame that left it', () => {
+      expect(savedChipPlace({ x: -900, y: -800, width: 400, height: 300 }, chip, room)).toEqual({ x: -886, y: -784 });
+    });
   });
 });

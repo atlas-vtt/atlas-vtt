@@ -19,12 +19,22 @@ $ctx-inset: $spacing-xs;
   box-sizing: border-box;
   min-width: min(180px, var(--radix-dropdown-menu-content-available-width, 180px));
   max-width: min(280px, var(--radix-dropdown-menu-content-available-width, 280px));
-  // Collision placement chooses the side; the menu scrolls within that side's room.
-  max-height: min(70vh, var(--radix-dropdown-menu-content-available-height, 70vh));
+  // Never scrolls: `useMenuFit` gives it room, and this only keeps it on screen until then
+  max-height: var(--radix-dropdown-menu-content-available-height, none);
   overflow-y: auto;
   overscroll-behavior: contain;
   z-index: $z-atlas-dropdown;
   @include atlas-scrollbar;
+}
+
+// A menu too tall for its window (`useMenuFit`); `--atlas-ctx-rows` is how many rows fit
+.atlas-ctx-menu--columns {
+  display: grid;
+  grid-auto-flow: column;
+  grid-template-rows: repeat(var(--atlas-ctx-rows), auto);
+  align-content: start;
+  column-gap: $ctx-inset;
+  max-width: none;
 }
 
 .atlas-ctx-separator {

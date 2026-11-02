@@ -58,7 +58,7 @@ function inside(menu: HTMLElement, height: number): void {
 }
 
 it('opens fully inside the map pane before hovering and stays still during rapid hover', async () => {
-  const menu = await open(items(12), 260, 320);
+  const menu = await open(items(7), 260, 320);
   inside(menu, 260);
   const initial = shape(menu);
   const box = menu.getBoundingClientRect();
@@ -72,20 +72,41 @@ it('opens fully inside the map pane before hovering and stays still during rapid
   expect(window.scrollY).toBe(0);
 });
 
-it('scrolls long menus internally and keeps their frame still when keyboard focus reaches the last item', async () => {
-  const menu = await open(items(40), 300, 220);
+it('slides up to stay in its room instead of scrolling, wherever it opens', async () => {
+  // Opened near the pane's bottom, where the room below the point is far too small for it
+  const menu = await open(items(7), 300, 365);
   inside(menu, 300);
-  expect(menu.scrollHeight).toBeGreaterThan(menu.clientHeight);
+  expect(menu.scrollHeight).toBeLessThanOrEqual(menu.clientHeight);
+  expect(getComputedStyle(menu).display).toBe('flex');
+});
+
+it('leaves a pane too short for it for the window, in one column', async () => {
+  const menu = await open(items(14), 200, 220);
+  const box = menu.getBoundingClientRect();
+  expect(box.top).toBeGreaterThanOrEqual(7.5);
+  expect(box.bottom).toBeLessThanOrEqual(592.5);
+  expect(menu.scrollHeight).toBeLessThanOrEqual(menu.clientHeight);
+  expect(getComputedStyle(menu).display).toBe('flex');
+});
+
+it('goes into columns when it is too tall for the window, and never scrolls', async () => {
+  const menu = await open(items(40), 300, 220);
+  await frames();
+  const box = menu.getBoundingClientRect();
+  expect(menu.scrollHeight).toBeLessThanOrEqual(menu.clientHeight);
+  expect(box.top).toBeGreaterThanOrEqual(7.5);
+  expect(box.bottom).toBeLessThanOrEqual(592.5);
+  expect(box.right).toBeLessThanOrEqual(792.5);
   const initial = shape(menu);
   await userEvent.keyboard('{End}');
   await frames();
-  expect(menu.scrollTop).toBeGreaterThan(0);
+  expect(menu.scrollTop).toBe(0);
   expect(document.activeElement?.textContent).toContain('Action 40');
   expect(shape(menu)).toEqual(initial);
   expect(window.scrollY).toBe(0);
 });
 
-it('keeps a long submenu inside the same map pane without moving its parent', async () => {
+it('fits a long submenu on screen without scrolling or moving its parent', async () => {
   const menu = await open([{ type: 'submenu', label: 'Conditions', children: items(40) }, ...items(4)], 300, 350);
   const initial = shape(menu);
   const trigger = menu.querySelector<HTMLElement>('[aria-haspopup="menu"]')!;
@@ -93,8 +114,10 @@ it('keeps a long submenu inside the same map pane without moving its parent', as
   await mouse.hover(point.x, point.y);
   await expect.poll(() => menus().length).toBe(2);
   await frames();
-  inside(menus()[1]!, 300);
-  expect(menus()[1]!.scrollHeight).toBeGreaterThan(menus()[1]!.clientHeight);
+  await frames();
+  const submenu = menus()[1]!;
+  expect(submenu.scrollHeight).toBeLessThanOrEqual(submenu.clientHeight);
+  expect(submenu.getBoundingClientRect().bottom).toBeLessThanOrEqual(592.5);
   expect(shape(menu)).toEqual(initial);
 });
 
@@ -103,11 +126,11 @@ it('uses the window when there is no map pane', async () => {
   const box = menu.getBoundingClientRect();
   expect(box.top).toBeGreaterThanOrEqual(7.5);
   expect(box.bottom).toBeLessThanOrEqual(592.5);
-  expect(menu.scrollHeight).toBeGreaterThan(menu.clientHeight);
+  expect(menu.scrollHeight).toBeLessThanOrEqual(menu.clientHeight);
 });
 
 it('fits the menu width in a narrow pane', async () => {
-  const menu = await open(items(12), 300, 350, true, 140);
+  const menu = await open(items(8), 300, 350, true, 140);
   const pane = document.querySelector('.workspace-leaf')!.getBoundingClientRect();
   const box = menu.getBoundingClientRect();
   expect(box.left).toBeGreaterThanOrEqual(pane.left + 7.5);
@@ -116,13 +139,13 @@ it('fits the menu width in a narrow pane', async () => {
 });
 
 it('uses the clicked map pane even when a different pane registered the newest provider', async () => {
-  await open(items(12), 300, 350);
+  await open(items(8), 300, 350);
   act(() => closeContextMenuGlobal());
   await frames();
   // Another map became the newest global controller, but the pointer is still over the first.
   render(h('div', { className: 'workspace-leaf', style: { left: 540, top: 80, width: 220, height: 300 } }, h(ContextMenuProvider, null)));
   await act(async () => {
-    openContextMenuGlobal(items(12), { x: 100, y: 350 });
+    openContextMenuGlobal(items(8), { x: 100, y: 350 });
   });
   await frames();
   expect(menus()).toHaveLength(1);

@@ -1,3 +1,4 @@
+import { MapController } from '../MapController';
 import { App } from 'obsidian';
 import { watchLevelsToRefit } from '../react/components/levels/levelRefitNotice';
 import { followHistoryAcrossLevels } from '../react/components/levels/levelHistoryFollow';
@@ -84,6 +85,7 @@ export class ServiceManager {
     this.stopHistoryFollow = followHistoryAcrossLevels(store);
     this.sceneThumbnails = new SceneThumbnailUpdater(store, {
       render: () => this.renderMapThumbnail(),
+      levelShown: () => MapController.showsViewedLevel(this.rendererService.getRenderer()?.getMapImage() ?? null, store.getState()),
       save: (mapPath, bytes) => this.mapThumbnailService.saveThumbnail(mapPath, bytes),
       hasThumbnail: (mapPath) => this.mapThumbnailService.hasThumbnail(mapPath),
     });

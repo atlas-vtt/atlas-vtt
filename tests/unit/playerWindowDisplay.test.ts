@@ -118,6 +118,7 @@ describe('playerWindowDisplay', () => {
 
     expect(player.calls).toEqual(['setBounds', 'setSimpleFullScreen(true)']);
     expect(isPlayerWindowFullScreen()).toBe(true);
+    expect(playerWindowStore.getState().fullScreen).toBe(true);
   });
 
   it('leaving full screen restores the bounds it had on the TV', async () => {

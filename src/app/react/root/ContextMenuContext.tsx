@@ -6,6 +6,7 @@ import { useAtlasStore } from '../ViewStoreContext';
 import { LabelTooltip } from '../../packages/components/primitives/tooltip';
 import { t } from '../../i18n';
 import { observeResize } from '../../utils/observeResize';
+import { useMenuFit } from '../components/context-menu/useMenuFit';
 
 // Re-export the entry type so consumers only import from this file
 export type { ContextMenuEntry } from '../components/context-menu/AtlasContextMenu';
@@ -108,6 +109,40 @@ function returnFocusTo(element: HTMLElement | null, event: Event): void {
   if (element.isConnected && (!active || active === element.ownerDocument.body)) element.focus({ preventScroll: true });
 }
 
+interface FittedMenuProps {
+  pane: Element | null;
+  ownerId: string | undefined;
+  onCloseAutoFocus: (event: Event) => void;
+  children: React.ReactNode;
+}
+
+/**
+ * The open menu, beside the point it opened at as an operating system's menus are: to that side it
+ * slides up along the point to stay in its room, where below the point it could only scroll.
+ */
+function FittedMenu({ pane, ownerId, onCloseAutoFocus, children }: FittedMenuProps): React.ReactElement {
+  const menu = useRef<HTMLDivElement>(null);
+  const boundary = useMenuFit(menu, pane);
+  return (
+    <DropdownMenu.Content
+      ref={menu}
+      className="atlas-ctx-menu"
+      data-atlas-owner={ownerId}
+      side="right"
+      align="start"
+      sideOffset={4}
+      avoidCollisions
+      sticky="always"
+      collisionBoundary={boundary}
+      collisionPadding={8}
+      onContextMenu={(e) => e.preventDefault()}
+      onCloseAutoFocus={onCloseAutoFocus}
+    >
+      {children}
+    </DropdownMenu.Content>
+  );
+}
+
 interface ContextMenuProviderProps {
   children: React.ReactNode;
   /**
@@ -208,20 +243,13 @@ export const ContextMenuProvider: React.FC<ContextMenuProviderProps> = ({ childr
 
           {menuState && (
             <DropdownMenu.Portal container={body}>
-              <DropdownMenu.Content
-                className="atlas-ctx-menu"
-                data-atlas-owner={ownerId}
-                side="bottom"
-                align="start"
-                sideOffset={4}
-                avoidCollisions
-                collisionBoundary={menuState.collisionBoundary ?? []}
-                collisionPadding={8}
-                onContextMenu={(e) => e.preventDefault()}
+              <FittedMenu
+                pane={menuState.collisionBoundary}
+                ownerId={ownerId}
                 onCloseAutoFocus={(e) => returnFocusTo(menuState.returnFocus, e)}
               >
                 {renderEntries(menuState.entries, close, { collisionBoundary: menuState.collisionBoundary, container: body })}
-              </DropdownMenu.Content>
+              </FittedMenu>
             </DropdownMenu.Portal>
           )}
         </DropdownMenu.Root>,

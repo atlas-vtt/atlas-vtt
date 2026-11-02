@@ -19,6 +19,8 @@ export interface GlassDragDeps {
   /** The world point under a client point, on the GM's map. */
   toWorld(clientX: number, clientY: number): Point | null;
   outline: GlassOutline;
+  /** Where the GM placed the ghost; null: it stands in the middle of the view. */
+  ghostPlace(): Point | null;
   /** Puts the ghost at a centre, or back in the middle of the view (null). */
   moveGhost(centre: Point | null): void;
 }
@@ -44,7 +46,8 @@ export function glassDragSteps(deps: GlassDragDeps): GlassDragSteps {
       const { frame } = glass;
       const grab = { x: at.x - frame.centerX, y: at.y - frame.centerY };
       if (glass.look === 'ghost') {
-        session = { look: 'ghost', grab, size: frame, restore: () => deps.moveGhost(null) };
+        const placed = deps.ghostPlace();
+        session = { look: 'ghost', grab, size: frame, restore: () => deps.moveGhost(placed) };
         return true;
       }
       const pinnedOn = service.isFrozen() ? service.playerCameraAt(frame.centerX, frame.centerY) : null;
