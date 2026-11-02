@@ -300,6 +300,26 @@ describe('importing', () => {
   });
 });
 
+describe('the bytes of a file on disk', () => {
+  it('reach whoever converts it through what its record says', async () => {
+    write('Music', 'Battle/a.mp3', 'BYTES');
+    library.listing('music', 'Battle');
+    await vi.waitFor(() => expect(library.statOfExternal('atlas-sound:music/Battle/a.mp3')).toMatchObject({ size: 5 }));
+    const blob = await library.readExternal('atlas-sound:music/Battle/a.mp3');
+    expect(await blob.text()).toBe('BYTES');
+    await expect(library.readExternal('atlas-sound:music/../../secret.mp3')).rejects.toThrow('not reachable');
+  });
+
+  it('a change on disk reaches the listing by the watch', async () => {
+    write('Music', 'a.mp3');
+    library.listing('music', '');
+    await vi.waitFor(() => expect(library.listing('music', '')).not.toBeNull());
+    await new Promise((resolve) => { setTimeout(resolve, 80); });
+    write('Music', 'b.mp3');
+    await vi.waitFor(() => expect(library.listing('music', '')?.files.map((file) => file.name)).toEqual(['a.mp3', 'b.mp3']), { timeout: 5000 });
+  });
+});
+
 describe('browsing', () => {
   it('lists lazily, counts and searches in the background, and stays right after changes', async () => {
     write('Music', 'Battle/a.mp3');

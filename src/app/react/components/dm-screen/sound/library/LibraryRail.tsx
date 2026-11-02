@@ -115,7 +115,6 @@ function RailRoot({ library, actions, kind, place, onPlace }: RailProps & { kind
         {root.status !== 'unlinked' && (
           <button
             type="button"
-            tabIndex={-1}
             className="atlas-sound-lib__more"
             aria-label={t('audio.library.rootMenu', { name: label })}
             onClick={(event) => {
