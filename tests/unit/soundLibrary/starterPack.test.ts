@@ -10,8 +10,9 @@ import { isAudioPath } from '../../../src/app/soundLibrary/soundFiles';
 import { SoundRoots } from '../../../src/app/soundLibrary/SoundRoots';
 import type { SharedSoundRoots } from '../../../src/app/soundLibrary/soundRootsStore';
 import {
-  hasStarterPack, installStarterPack, mayInstallStarterPack, STARTER_BYTES, STARTER_FILES, STARTER_FOLDER, StarterPackError, type StarterFile,
+  hasStarterPack, installStarterPack, mayInstallStarterPack, STARTER_BYTES, STARTER_FILES, STARTER_FOLDER, type StarterFile,
 } from '../../../src/app/soundLibrary/starterPack';
+import { StockPackError } from '../../../src/app/services/stockPacks/verifiedFetch';
 import { VaultLocation } from '../../../src/app/soundLibrary/vaultLocation';
 import { sha256 } from '../../../src/app/utils/hashing';
 import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
@@ -105,7 +106,7 @@ describe('the starter pack', () => {
   it('writes nothing when a file is not the one it names, or cannot be fetched', async () => {
     const { files, served } = await packOf({ 'Cave.ogg': 'CAVE', 'Campfire.ogg': 'FIRE' });
     served.set('campfire.ogg', bytesOf('FIRF'));
-    await expect(installStarterPack(library, { files, fetch: serving(served) })).rejects.toBeInstanceOf(StarterPackError);
+    await expect(installStarterPack(library, { files, fetch: serving(served) })).rejects.toBeInstanceOf(StockPackError);
     served.delete('campfire.ogg');
     await expect(installStarterPack(library, { files, fetch: serving(served) })).rejects.toThrow('404');
     expect(fs.existsSync(path.join(ambience(), STARTER_FOLDER))).toBe(false);

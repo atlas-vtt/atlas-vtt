@@ -1,5 +1,4 @@
-import { requestUrl } from 'obsidian';
-import { sha256 } from '../utils/hashing';
+import { fetchBytes, fetchVerified, StockPackError, type FetchBytes, type PackedFile } from '../services/stockPacks/verifiedFetch';
 import { importRoot } from './libraryOperations';
 import type { SoundLibrary } from './SoundLibrary';
 
@@ -12,13 +11,9 @@ const STARTER_HOST = 'https://assets.atlas-vtt.dev/starter/ambience-1/';
 /** The folder of the ambience root the pack goes to; its name is the tracks' tag. */
 export const STARTER_FOLDER = 'Starter ambience';
 
-export interface StarterFile {
-  /** Its name on the host. */
-  key: string;
+export interface StarterFile extends PackedFile {
   /** Its name in the GM's folder. */
   name: string;
-  bytes: number;
-  sha256: string;
   type: string;
 }
 
@@ -39,28 +34,11 @@ const STARTER_SOUNDS = STARTER_FILES.filter((file) => file.type === AUDIO);
 export const STARTER_SOUND_COUNT = STARTER_SOUNDS.length;
 export const STARTER_BYTES = STARTER_FILES.reduce((sum, file) => sum + file.bytes, 0);
 
-/** Fetches a file's bytes; Obsidian's `requestUrl` outside tests. Nothing about the GM or the vault goes with it. */
-export type FetchBytes = (url: string) => Promise<ArrayBuffer>;
-
 export interface InstallOptions {
   /** Hears the share of the pack's bytes fetched so far. */
   onStep?: (share: number) => void;
   fetch?: FetchBytes;
   files?: readonly StarterFile[];
-}
-
-/** A pack that could not be fetched whole, or not written, so nothing of it was kept. */
-export class StarterPackError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'StarterPackError';
-  }
-}
-
-async function fetchBytes(url: string): Promise<ArrayBuffer> {
-  const response = await requestUrl({ url, throw: false });
-  if (response.status !== 200) throw new StarterPackError(`${url} answered ${response.status}.`);
-  return response.arrayBuffer;
 }
 
 function pathOf(file: StarterFile): string {
@@ -93,14 +71,13 @@ export async function installStarterPack(library: SoundLibrary, { onStep, fetch 
   let done = 0;
   onStep?.(0);
   for (const file of files) {
-    const bytes = await fetch(STARTER_HOST + file.key);
-    if (bytes.byteLength !== file.bytes || (await sha256(bytes)) !== file.sha256) throw new StarterPackError(`${file.key} is not the file the pack names.`);
+    const bytes = await fetchVerified(STARTER_HOST, file, fetch);
     fetched.push({ file, bytes });
     done += file.bytes;
     onStep?.(done / total);
   }
   const location = importRoot(library, 'ambience');
-  if (!location) throw new StarterPackError('The ambience folder is not linked on this device.');
+  if (!location) throw new StockPackError('The ambience folder is not linked on this device.');
   await location.makeFolder(STARTER_FOLDER);
   for (const { file, bytes } of fetched) {
     const filePath = pathOf(file);
