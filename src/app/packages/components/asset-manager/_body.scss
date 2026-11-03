@@ -312,6 +312,17 @@
   }
 }
 
+.atlas-bestiary-offer__choice {
+  display: flex;
+  align-items: center;
+  gap: $spacing-s;
+
+  > span {
+    color: var(--text-muted);
+    font-size: $font-ui-small;
+  }
+}
+
 .atlas-bestiary-offer--empty.btn {
   gap: $spacing-xs;
 

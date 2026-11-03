@@ -62,6 +62,13 @@ describe('the bestiary tokens offer', () => {
     expect(box.width).toBeCloseTo(manage.getBoundingClientRect().width, 0);
     expect(offer.scrollWidth).toBeLessThanOrEqual(offer.clientWidth + 1);
     expect(offer.textContent).toMatch(/^Get starter tokens\d+ MB$/);
+    // The choice of statblocks spans the sidebar above the offer, its labels whole.
+    const choice = document.querySelector<HTMLElement>('.atlas-bestiary-offer-block--sidebar .atlas-segmented')!;
+    expect(choice.getBoundingClientRect().bottom).toBeLessThanOrEqual(box.top);
+    expect(choice.getBoundingClientRect().right).toBeLessThanOrEqual(sidebar.right);
+    for (const option of choice.querySelectorAll<HTMLElement>('.atlas-segmented__option')) expect(option.scrollWidth, option.textContent ?? '').toBeLessThanOrEqual(option.clientWidth + 1);
+    const content = document.querySelector<HTMLElement>('.atlas-asset-manager-sidebar-content')!;
+    expect(content.scrollWidth).toBeLessThanOrEqual(content.clientWidth);
     await page.screenshot({ path: '__screenshots__/asset-manager/bestiary-offer.png', element: host });
   });
 
@@ -91,6 +98,12 @@ describe('the bestiary tokens offer', () => {
     expect(getComputedStyle(button).pointerEvents).toBe('auto');
     expect(document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2)?.closest('.atlas-bestiary-offer--empty')).toBe(button);
     expect(button.textContent).toBe('Get 155 free tokens');
+    // A collection of no system starts without statblocks; picking 5E says what comes.
+    const options = [...document.querySelectorAll<HTMLButtonElement>('.atlas-bestiary-offer-block .atlas-segmented__option')];
+    expect(options.map((option) => option.textContent)).toEqual(['None', '5E', 'Cairn']);
+    expect(options[0]!.getAttribute('aria-checked')).toBe('true');
+    await act(async () => options[1]!.click());
+    expect(document.querySelector('.atlas-bestiary-offer-block p')!.textContent).toMatch(/^With 108 statblocks from the 5E SRD 5\.2\.1/);
     expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth + 1);
     expect(document.querySelector('.atlas-bestiary-offer-block p')!.getBoundingClientRect().top).toBeGreaterThanOrEqual(box.bottom + 4);
     await page.screenshot({ path: '__screenshots__/asset-manager/starter-tokens-empty.png', element: host });
