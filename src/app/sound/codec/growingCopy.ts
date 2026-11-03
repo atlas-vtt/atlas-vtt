@@ -1,5 +1,6 @@
 import type { SoundBytes } from '../soundTypes';
-import type { OggOpusSound } from './oggOpusReader';
+import { readPacketRange, type OggOpusSound, type PositionedPacket } from './oggOpusReader';
+import type { StreamHead, WindowedSound } from './windowedSound';
 import { readOpusHead } from './opusFormat';
 import { SEEK_INTERVAL_FRAMES, type SeekEntry } from './seekTable';
 
@@ -32,7 +33,8 @@ interface Waiter {
  * from the first audio page), so what plays from it now plays the same from the stored copy later. Reads
  * only what is written; `reach` waits for more.
  */
-export class GrowingCopy implements SoundBytes {
+export class GrowingCopy implements SoundBytes, WindowedSound {
+  readonly windowed = true;
   readonly head: Uint8Array<ArrayBuffer>;
   readonly channels: number;
   readonly preSkip: number;
@@ -56,6 +58,16 @@ export class GrowingCopy implements SoundBytes {
     this.preSkip = head.preSkip;
     this.endGranule = head.preSkip;
     this.estimatedFrames = start.estimatedFrames;
+  }
+
+  get stream(): StreamHead {
+    return { head: this.head, channels: this.channels, preSkip: this.preSkip };
+  }
+
+  /** The packets of a range once the copy holds it: it is made far faster than it plays. */
+  async packets(fromGranule: number, toGranule: number): Promise<PositionedPacket[]> {
+    await this.reach(toGranule);
+    return readPacketRange(this.sound(), this, fromGranule, toGranule);
   }
 
   /** Frames of the sound written so far, past the pre-skip. */

@@ -1,5 +1,5 @@
-import { GrowingCopy } from '../codec/growingCopy';
-import { openOggOpus, readPacketRange, type OggOpusSound } from '../codec/oggOpusReader';
+import { openOggOpus, readPacketRange, type PositionedPacket } from '../codec/oggOpusReader';
+import { isWindowedSound, type StreamHead, type WindowedSound } from '../codec/windowedSound';
 import type { SoundBytes } from '../soundTypes';
 import type { SoundBuffer, SoundContext } from './audioNodes';
 import { chooseWindowDecode, PRE_ROLL_FRAMES, type WindowDecode } from './windowDecoder';
@@ -7,7 +7,14 @@ import { chooseWindowDecode, PRE_ROLL_FRAMES, type WindowDecode } from './window
 /** Decoded short sounds no voice uses are kept up to this much, so a mood coming back starts at once. */
 const SPARE_DECODED_BYTES = 128 * 1024 * 1024;
 
-export type ResolveBytes = (key: string) => SoundBytes | Promise<SoundBytes>;
+/** The bytes of a key's sound; a long one may come as packet ranges instead (being made, or stored in segments). */
+export type ResolveBytes = (key: string) => SoundBytes | WindowedSound | Promise<SoundBytes | WindowedSound>;
+
+interface OpenStream {
+  stream: StreamHead;
+  decode: WindowDecode;
+  packets(fromGranule: number, toGranule: number): Promise<PositionedPacket[]>;
+}
 
 interface HeldBuffer {
   buffer: Promise<SoundBuffer>;
@@ -22,9 +29,9 @@ interface HeldBuffer {
  * down; reading bytes does not wait in that line, so a slow store holds up only its own sound.
  */
 export class SoundSources {
-  private readonly bytes = new Map<string, Promise<SoundBytes>>();
+  private readonly bytes = new Map<string, Promise<SoundBytes | WindowedSound>>();
   private readonly buffers = new Map<string, HeldBuffer>();
-  private readonly streams = new Map<string, Promise<{ sound: OggOpusSound; decode: WindowDecode; source: SoundBytes }>>();
+  private readonly streams = new Map<string, Promise<OpenStream>>();
   private decoding: Promise<unknown> = Promise.resolve();
   private clock = 0;
   private readonly underWay = new Set<Promise<unknown>>();
@@ -78,12 +85,10 @@ export class SoundSources {
   }
 
   private async windowOf(key: string, frame: number, count: number): Promise<SoundBuffer> {
-    const { sound, decode, source } = await this.stream(key);
-    const fromGranule = frame + sound.preSkip;
-    // A copy still being made is read once it holds the window; it is made far faster than it plays.
-    if (source instanceof GrowingCopy) await source.reach(fromGranule + count);
-    const packets = await readPacketRange(sound, source, fromGranule - PRE_ROLL_FRAMES, fromGranule + count);
-    return this.inLine(() => decode(sound, packets, fromGranule, count));
+    const { stream, decode, packets: packetsOf } = await this.stream(key);
+    const fromGranule = frame + stream.preSkip;
+    const packets = await packetsOf(fromGranule - PRE_ROLL_FRAMES, fromGranule + count);
+    return this.inLine(() => decode(stream, packets, fromGranule, count));
   }
 
   private tracked<T>(work: Promise<T>): Promise<T> {
@@ -95,7 +100,7 @@ export class SoundSources {
     return work;
   }
 
-  private stream(key: string): Promise<{ sound: OggOpusSound; decode: WindowDecode; source: SoundBytes }> {
+  private stream(key: string): Promise<OpenStream> {
     let stream = this.streams.get(key);
     if (!stream) {
       stream = this.openStream(key);
@@ -105,14 +110,16 @@ export class SoundSources {
     return stream;
   }
 
-  private async openStream(key: string): Promise<{ sound: OggOpusSound; decode: WindowDecode; source: SoundBytes }> {
+  private async openStream(key: string): Promise<OpenStream> {
     const source = await this.source(key);
-    const sound = source instanceof GrowingCopy ? source.sound() : await openOggOpus(source);
-    const decode = this.forcedWindowDecode ? this.forcedWindowDecode(this.context) : await chooseWindowDecode(this.context, sound);
-    return { sound, decode, source };
+    const opened = isWindowedSound(source)
+      ? { stream: source.stream, packets: (from: number, to: number) => source.packets(from, to) }
+      : await openOggFile(source);
+    const decode = this.forcedWindowDecode ? this.forcedWindowDecode(this.context) : await chooseWindowDecode(this.context, opened.stream);
+    return { ...opened, decode };
   }
 
-  private source(key: string): Promise<SoundBytes> {
+  private source(key: string): Promise<SoundBytes | WindowedSound> {
     let source = this.bytes.get(key);
     if (!source) {
       source = Promise.resolve().then(() => this.resolve(key));
@@ -137,6 +144,7 @@ export class SoundSources {
 
   private async decodeWhole(key: string): Promise<SoundBuffer> {
     const source = await this.source(key);
+    if (isWindowedSound(source)) throw new Error(`${key} is read in windows, never whole.`);
     const bytes = await source.read(0, source.byteLength);
     // `decodeAudioData` takes the buffer away, and what `read` returned may be a view of something else.
     const owned = bytes.slice().buffer;
@@ -158,4 +166,10 @@ export class SoundSources {
       total -= held.bytes;
     }
   }
+}
+
+/** An Ogg Opus file read by its header's seek table. */
+async function openOggFile(source: SoundBytes): Promise<Pick<OpenStream, 'stream' | 'packets'>> {
+  const sound = await openOggOpus(source);
+  return { stream: sound, packets: (from, to) => readPacketRange(sound, source, from, to) };
 }

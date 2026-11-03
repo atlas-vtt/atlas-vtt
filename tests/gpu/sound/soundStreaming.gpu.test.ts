@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { commands } from 'vitest/browser';
 import { GrowingCopy } from '@/app/sound/codec/growingCopy';
-import { openOggOpus } from '@/app/sound/codec/oggOpusReader';
+import { openOggOpus, type PositionedPacket } from '@/app/sound/codec/oggOpusReader';
+import { encodeSegmentManifest, packetsOfSegment, readSegmentManifest, SegmentCutter, segmentIndexOf, segmentManifest, type CutSegment } from '@/app/sound/codec/soundSegments';
+import type { WindowedSound } from '@/app/sound/codec/windowedSound';
 import { SoundImporter } from '@/app/sound/codec/soundImporter';
 import type { SoundInfo } from '@/app/sound/soundTypes';
 import { STREAM_START_FRAMES } from '@/app/soundDirector/growingCopies';
@@ -75,5 +77,64 @@ describe('a copy that plays while it is made', () => {
     for (let i = 0; i < fromStored.length; i++) largest = Math.max(largest, Math.abs((fromGrowing[i] ?? 0) - (fromStored[i] ?? 0)));
     expect(largest).toBeLessThan(1e-6);
     expect(Math.max(...fromStored.subarray(48_000, 96_000).map(Math.abs))).toBeGreaterThan(0.05);
+  }, 120_000);
+
+  it('plays the same from segments cut as the copy is made, fetched by position alone', async () => {
+    const importer = new SoundImporter();
+    let cutter: SegmentCutter | null = null;
+    let manifestText = '';
+    const segments: CutSegment[] = [];
+    const result = await importer.run({ source: wave(SECONDS), kind: 'music', loop: false, stream: true }, undefined, {
+      start: (start) => {
+        manifestText = encodeSegmentManifest(segmentManifest(start.head));
+        cutter = new SegmentCutter(segmentManifest(start.head).preSkip, (segment) => segments.push(segment));
+      },
+      pages: (pages) => {
+        pages.pages.forEach((page, index) => {
+          const end = pages.pages[index + 1]?.byte ?? pages.pages[0]!.byte + pages.bytes.byteLength;
+          cutter?.add(pages.bytes.subarray(page.byte - pages.pages[0]!.byte, end - pages.pages[0]!.byte), page.granule);
+        });
+      },
+    });
+    importer.dispose();
+    (cutter as SegmentCutter | null)?.finish();
+    const manifest = readSegmentManifest(manifestText);
+    if (!manifest) throw new Error('No manifest.');
+    expect(segments.map((segment) => segment.index)).toEqual(Array.from({ length: segments.length }, (_, index) => index));
+    expect(segments.length).toBe(Math.ceil(SECONDS / 30));
+
+    // A page's view: the manifest, then only the segments a range names.
+    const fetched = new Set<number>();
+    const segmented: WindowedSound = {
+      windowed: true,
+      stream: manifest,
+      packets: (from, to) => {
+        const last = segments.length - 1;
+        const first = Math.min(last, segmentIndexOf(from, manifest.preSkip, manifest.segmentFrames));
+        const end = Math.min(last, segmentIndexOf(to, manifest.preSkip, manifest.segmentFrames));
+        const packets: PositionedPacket[] = [];
+        for (let index = first; index <= end; index++) {
+          fetched.add(index);
+          packets.push(...packetsOfSegment(segments[index]!.bytes, index));
+        }
+        return Promise.resolve(packets);
+      },
+    };
+    const stored = new Uint8Array(await result.bytes.arrayBuffer());
+    const table = (info: Omit<SoundInfo, 'key'>, startAt: number) => tableOf({ music: musicOf([{ key: 'g', ...info }], { startAt }) });
+    // From the start, and joined late across a segment's edge (2 s either side of 60 s).
+    for (const startAt of [0, -58_000]) {
+      const fromSegments = await render(table({ frames: result.frames, gainDb: 0 }, startAt), { files: new Map() }, { seconds: 4, options: { resolve: () => segmented } });
+      const fromStored = await render(table({ frames: result.frames, gainDb: 0 }, startAt), { files: new Map([['g', stored]]) }, { seconds: 4 });
+      let largest = 0;
+      for (let i = 0; i < fromStored.length; i++) largest = Math.max(largest, Math.abs((fromSegments[i] ?? 0) - (fromStored[i] ?? 0)));
+      expect(largest, `joined at ${-startAt} ms`).toBeLessThan(1e-6);
+    }
+    expect([...fetched].sort((a, b) => a - b)).toEqual([0, 1, 2]);
+    // Every packet of the copy, once, in order, from its segments alone.
+    const all = segments.flatMap((segment) => packetsOfSegment(segment.bytes, segment.index));
+    for (let i = 1; i < all.length; i++) expect(all[i]!.startGranule).toBe(all[i - 1]!.startGranule + all[i - 1]!.frames);
+    const header = await openOggOpus(memoryBytes(stored));
+    expect(all.at(-1)!.startGranule + all.at(-1)!.frames).toBeGreaterThanOrEqual(header.preSkip + result.frames);
   }, 120_000);
 });

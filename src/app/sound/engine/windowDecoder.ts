@@ -1,4 +1,5 @@
-import type { OggOpusSound, PositionedPacket } from '../codec/oggOpusReader';
+import type { PositionedPacket } from '../codec/oggOpusReader';
+import type { StreamHead } from '../codec/windowedSound';
 import { OggOpusWriter } from '../codec/oggOpusWriter';
 import { writeOpusHead } from '../codec/opusFormat';
 import type { SoundBuffer, SoundContext } from './audioNodes';
@@ -8,7 +9,7 @@ import { SOUND_RATE } from './soundMath';
 export const PRE_ROLL_FRAMES = 15_360;
 
 /** Decodes `count` frames at a position from the packets around it. */
-export type WindowDecode = (sound: OggOpusSound, packets: readonly PositionedPacket[], fromGranule: number, count: number) => Promise<SoundBuffer>;
+export type WindowDecode = (sound: StreamHead, packets: readonly PositionedPacket[], fromGranule: number, count: number) => Promise<SoundBuffer>;
 
 /** Only what the decoder needs: from the pre-roll to the packet holding the last frame wanted. */
 function neededPackets(packets: readonly PositionedPacket[], fromGranule: number, count: number): PositionedPacket[] {
@@ -96,7 +97,7 @@ export function wholeFileWindowDecode(context: SoundContext): WindowDecode {
 }
 
 /** The decoder for this runtime: `AudioDecoder` where it reads Opus, else whole-file windows. */
-export async function chooseWindowDecode(context: SoundContext, sound: OggOpusSound): Promise<WindowDecode> {
+export async function chooseWindowDecode(context: SoundContext, sound: StreamHead): Promise<WindowDecode> {
   if (typeof AudioDecoder !== 'undefined') {
     const { supported } = await AudioDecoder.isConfigSupported({ codec: 'opus', sampleRate: SOUND_RATE, numberOfChannels: sound.channels, description: sound.head }).catch(() => ({ supported: false }));
     if (supported) return webCodecsWindowDecode(context);
