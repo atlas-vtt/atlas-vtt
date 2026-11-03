@@ -103,7 +103,7 @@ describe('the bestiary tokens offer', () => {
     expect(options[0]!.getAttribute('aria-checked')).toBe('true');
     await act(async () => options[1]!.click());
     expect(document.querySelector('.atlas-starter-offer .atlas-segmented__option.atlas-active')?.textContent).toBe('5E');
-    expect(document.querySelector('.atlas-starter-offer__fine')!.textContent).toMatch(/^With 108 statblocks from the 5E SRD 5\.2\.1/);
+    expect(document.querySelector('.atlas-starter-offer__fine')!.textContent).toMatch(/^With 145 statblocks from the 5E SRD 5\.2\.1/);
     expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth + 1);
     // The offer takes the hint's place, and its choice and button share both edges.
     expect(document.querySelector('.hint')).toBeNull();

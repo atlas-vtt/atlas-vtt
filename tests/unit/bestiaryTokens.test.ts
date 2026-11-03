@@ -46,7 +46,7 @@ async function packOf(names: readonly string[] | Readonly<Record<string, string>
   return { served, manifest: await described('manifest.json', json) };
 }
 
-const STATBLOCKS_5E = 'https://assets.atlas-vtt.dev/starter/statblocks-5e-2/';
+const STATBLOCKS_5E = 'https://assets.atlas-vtt.dev/starter/statblocks-5e-3/';
 
 /** Serves the tokens' files by name, and other hosts' files by their whole address. */
 const serving = (served: Map<string, ArrayBuffer>) => vi.fn(async (url: string): Promise<ArrayBuffer> => {
