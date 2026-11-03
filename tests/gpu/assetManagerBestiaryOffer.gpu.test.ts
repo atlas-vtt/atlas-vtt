@@ -3,11 +3,12 @@ import '../../styles/main.scss';
 import React from 'react';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { BestiaryTokensOffer } from '../../src/app/packages/components/asset-manager/components/BestiaryTokensOffer';
 import { Sidebar } from '../../src/app/packages/components/asset-manager/components/Sidebar';
 import { AssetService } from '../../src/app/services/AssetService';
+import { installBestiaryTokens, type InstallOptions } from '../../src/app/services/stockPacks/bestiaryTokens';
 import { SettingsService } from '../../src/app/services/SettingsService';
 import { createInMemoryApp } from '../mocks/inMemoryVault';
 
@@ -20,6 +21,12 @@ const OBSIDIAN = `
 `;
 
 const noop = (): void => undefined;
+
+// The download itself is the unit tests'; here it only reports its steps.
+vi.mock('../../src/app/services/stockPacks/bestiaryTokens', async (original) => ({
+  ...(await original<typeof import('../../src/app/services/stockPacks/bestiaryTokens')>()),
+  installBestiaryTokens: vi.fn(),
+}));
 
 describe('the bestiary tokens offer', () => {
   let root: Root | null = null;
@@ -112,6 +119,44 @@ describe('the bestiary tokens offer', () => {
     expect(Math.abs(row.right - box.right)).toBeLessThan(1);
     expect(document.querySelector('.atlas-starter-offer__fine')!.getBoundingClientRect().top).toBeGreaterThanOrEqual(box.bottom + 8);
     await page.screenshot({ path: '__screenshots__/asset-manager/starter-tokens-empty.png', element: host });
+  });
+
+  it('keeps the button\u2019s size while it downloads, the bar under it saying how far it got', async () => {
+    await page.viewport(1100, 700);
+    style.textContent = OBSIDIAN;
+    document.head.append(style);
+    const { app } = createInMemoryApp();
+    await new SettingsService(app).initialize();
+    const assets = AssetService.getInstance(app);
+    await assets.initialize();
+    let step: (share: number) => void = noop;
+    vi.mocked(installBestiaryTokens).mockImplementation((_app, _assets, _collection, options: InstallOptions = {}) => {
+      step = options.onStep ?? step;
+      return new Promise<number>(() => undefined);
+    });
+    host = document.body.createDiv({ cls: 'atlas-vtt-plugin frame theme-dark' });
+    root = createRoot(host);
+    await act(async () => {
+      root?.render(React.createElement('div', { className: 'atlas-asset-manager-content', style: { flex: 1, display: 'flex', flexDirection: 'column' } },
+        React.createElement('div', { className: 'atlas-empty-state' },
+          React.createElement('h3', null, 'No tokens yet'),
+          React.createElement(BestiaryTokensOffer, { app, assets, collection: assets.getDefaultCollectionId(), variant: 'empty' }))));
+    });
+    await expect.poll(() => document.querySelector('.atlas-bestiary-offer--empty')).not.toBeNull();
+    const button = document.querySelector<HTMLElement>('.atlas-bestiary-offer--empty')!;
+    const before = button.getBoundingClientRect();
+    await act(async () => button.click());
+    const sizes: string[] = [];
+    for (const share of [0, 0.07, 0.42, 0.99]) {
+      await act(async () => step(share));
+      const now = button.getBoundingClientRect();
+      sizes.push(`${now.width}x${now.height}`);
+    }
+    expect(new Set(sizes)).toEqual(new Set([`${before.width}x${before.height}`]));
+    const bar = document.querySelector<HTMLElement>('.atlas-bestiary-offer__progress')!.getBoundingClientRect();
+    expect(bar.top).toBeGreaterThanOrEqual(button.getBoundingClientRect().bottom);
+    expect(Math.abs(bar.width - before.width)).toBeLessThan(1);
+    await page.screenshot({ path: '__screenshots__/asset-manager/starter-tokens-downloading.png', element: host });
   });
 });
 

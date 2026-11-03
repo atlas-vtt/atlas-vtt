@@ -339,6 +339,10 @@
   }
 }
 
+.atlas-bestiary-offer__progress {
+  width: 100%;
+}
+
 .atlas-bestiary-offer--empty.btn {
   width: 100%;
   justify-content: center;
@@ -351,5 +355,18 @@
 
   &:disabled {
     cursor: progress;
+  }
+
+  // Busy is not unavailable: the button keeps its strength while the pack comes in.
+  &[aria-busy='true'] {
+    opacity: 1;
+  }
+
+  // On the accent the spinner takes the button's text colour, or it would vanish into it.
+  .atlas-spinner {
+    --atlas-spinner-color: var(--text-on-accent);
+    --atlas-spinner-highlight: var(--text-on-accent);
+    --atlas-spinner-core: var(--text-on-accent);
+    --atlas-spinner-halo: 0%;
   }
 }

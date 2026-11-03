@@ -102,7 +102,7 @@ export const am = {
   'am.bestiary.cairn': 'Cairn',
   'am.bestiary.size': '{size} MB',
   'am.bestiary.label': { one: 'Download {count} free token, {size} MB', other: 'Download {count} free tokens, {size} MB' },
-  'am.bestiary.downloading': 'Downloading… {percent}%',
+  'am.bestiary.downloading': 'Downloading…',
   'am.bestiary.added': { one: 'Added {count} token to {collection}, sorted into tags.', other: 'Added {count} tokens to {collection}, sorted into tags.' },
   'am.bestiary.failed': 'Could not download the starter tokens. Check your connection and try again.',
   'am.header.forward': 'Forward',
