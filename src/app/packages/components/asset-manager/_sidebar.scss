@@ -146,7 +146,7 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
 
 // ── Bestiary tokens offer, above Manage ──
 
-.atlas-bestiary-offer {
+.atlas-bestiary-offer--sidebar {
   &.btn {
     // Close to Manage below it: the two are the sidebar's foot.
     margin-bottom: calc(#{$spacing-xs} - #{$spacing-l});

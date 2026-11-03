@@ -59,6 +59,8 @@ export interface ContentPaneProps {
   scrollMemory: ScrollMemory;
   /** Set while filters narrow the list; the empty state offers to clear them. */
   onClearFilters?: () => void;
+  /** What the empty state offers to add, unless filters made it empty (the starter tokens). */
+  emptyOffer?: React.ReactNode;
 }
 
 const NO_IDS: ReadonlySet<string> = new Set();
@@ -144,7 +146,10 @@ export function ContentPane(props: ContentPaneProps): React.JSX.Element {
             {props.onClearFilters ? (
               <Button variant="outline" className="atlas-empty-action" onClick={props.onClearFilters}>{t('am.empty.clearFilters')}</Button>
             ) : (
-              <p>{t(activeTab === 'party' ? 'am.empty.partyHint' : 'am.empty.hint')}</p>
+              <>
+                <p>{t(activeTab === 'party' ? 'am.empty.partyHint' : 'am.empty.hint')}</p>
+                {props.emptyOffer}
+              </>
             )}
           </motion.div>
         ) : (

@@ -298,3 +298,29 @@
     line-height: var(--line-height-normal);
   }
 }
+
+// The starter tokens, offered where the Tokens tab is empty.
+.atlas-empty-state .atlas-bestiary-offer-block {
+  @include atlas-flex-col($gap: $spacing-m);
+  align-items: center;
+  margin-top: $spacing-m;
+  pointer-events: auto;
+
+  p {
+    color: var(--text-faint);
+    font-size: $font-ui-smaller;
+  }
+}
+
+.atlas-bestiary-offer--empty.btn {
+  gap: $spacing-xs;
+
+  svg {
+    width: $icon-xs;
+    height: $icon-xs;
+  }
+
+  &:disabled {
+    cursor: progress;
+  }
+}
