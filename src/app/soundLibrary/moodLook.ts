@@ -1,10 +1,7 @@
 import { t } from '../i18n';
-import type { Mood } from '../sound/soundTypes';
+import type { Mood, MoodIconId } from '../sound/soundTypes';
 import { MOOD_CREST_PATHS, type MoodCrestId } from '../types/moodCrestPaths';
 import { getPinIconDefinition, PIN_ICON_PATHS, PIN_TONES, type PinIconId, type PinTone, type PinToneName } from '../types/pinIcons';
-
-/** A mood's crest: a pin icon, or one of the crests only moods have. */
-export type MoodIconId = PinIconId | MoodCrestId;
 
 export interface MoodCrest {
   id: MoodIconId;

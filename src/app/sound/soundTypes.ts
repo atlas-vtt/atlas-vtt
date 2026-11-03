@@ -1,4 +1,8 @@
-import type { MoodIconId } from '../soundLibrary/moodLook';
+import type { MoodCrestId } from '../types/moodCrestPaths';
+import type { PinIconId } from '../types/pinIconPaths';
+
+/** A mood's crest: a pin icon, or one of the crests only moods have (`soundLibrary/moodLook.ts`). */
+export type MoodIconId = PinIconId | MoodCrestId;
 
 /** A music or ambience file in the vault. Stored in a record file like other assets. */
 export type SoundKind = 'music' | 'ambience';
