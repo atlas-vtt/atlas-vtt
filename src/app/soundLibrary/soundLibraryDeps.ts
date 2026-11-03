@@ -50,7 +50,6 @@ export function realLibraryDeps(app: App): SoundLibraryDeps {
       const files = nodeFilesOf(window);
       return files ? new ExternalLocation(root.path, { files, trashItem: systemTrash(window), resourceUrl: diskResourceUrl, vaultFolder: vaultFolderOf(app) }) : null;
     },
-    home: () => nodeFilesOf(window)?.home ?? null,
     probeSeconds: readAudioSecondsAt,
     dispose: () => {
       app.vault.offref(renamed);

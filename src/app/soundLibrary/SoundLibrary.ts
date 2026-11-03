@@ -24,8 +24,6 @@ export interface SoundLibraryDeps {
   roots: SoundRoots;
   /** The root's files; null where this device cannot reach them. */
   open(root: LinkedSoundRoot): SoundLocation | null;
-  /** The user's home, to shorten what the rail shows. */
-  home(): string | null;
   /** How long a file at a URL plays. */
   probeSeconds(url: string): Promise<number | null>;
   /** Lets go of what the deps listen to. */
@@ -94,10 +92,6 @@ export class SoundLibrary {
 
   get roots(): SoundRoots {
     return this.deps.roots;
-  }
-
-  get home(): string | null {
-    return this.deps.home();
   }
 
   /** Changes whenever anything shown may have: what `useSyncExternalStore` compares. */

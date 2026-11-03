@@ -55,7 +55,8 @@ export function useSoundKeys({ active, rootRef, viewId, director, moods, moveMoo
         const screen = root.closest('.atlas-dm-screen') ?? root;
         if (isControlTarget(target) && !target?.closest('.atlas-dm-screen-pages')) {
           taken();
-          moveFocus(screen, target as Element, direction);
+          // Sideways stays on the page: the page control stands centred above it, and a mood under its edge took it for the control to its left.
+          moveFocus(direction === 'up' ? screen : root, target as Element, direction);
           return;
         }
         if (direction === 'down') {

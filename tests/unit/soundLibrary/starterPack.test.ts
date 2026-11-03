@@ -42,7 +42,6 @@ function open(local: Partial<Record<SoundKind, string>>, shared: SharedSoundRoot
       resourceUrl: null,
       vaultFolder: null,
     })),
-    home: () => base,
     probeSeconds: async () => null,
   });
 }

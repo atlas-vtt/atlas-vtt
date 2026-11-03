@@ -104,7 +104,11 @@ describe('the sound library', () => {
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__row').length).toBe(14);
     expect(box('.atlas-sound-lib__rail').width).toBeGreaterThanOrEqual(208);
     expect(box('.atlas-sound-lib__rail').width).toBeLessThanOrEqual(232);
-    expect(box('.atlas-sound-lib').width / 1644).toBeCloseTo(0.58, 1);
+    // 58 % up to 860 px: past it the moods take the room.
+    expect(box('.atlas-sound-lib').width).toBeCloseTo(860, 0);
+    // The rows keep more than the 620 px under which the library goes narrow.
+    expect(box('.atlas-sound-lib__main').width).toBeGreaterThanOrEqual(620);
+    expect(getComputedStyle(document.querySelector('.atlas-sound-lib__btn--folds')!).display).not.toBe('none');
     expect(box('.atlas-sound-lib__head').height).toBe(56);
     expect(box('.atlas-sound-lib__row').height).toBe(38);
     const crumb = getComputedStyle(document.querySelector('.atlas-sound-lib__crumb')!);
@@ -128,7 +132,17 @@ describe('the sound library', () => {
     await withMoods(rig!);
     expectTilesRead(3);
     expectNoOverflow();
-    expect(box('.atlas-sound-moods').width / 1644).toBeCloseTo(0.42, 1);
+    expect(box('.atlas-sound-moods').left).toBeCloseTo(box('.atlas-sound-lib').right, 0);
+  });
+
+  it('gives a wide screen\'s room to the moods: four across on a stage of 1800 (a 1920 screen less its insets), the library as at 1644', async () => {
+    await open(ATLAS_DARK, 1800, 1080);
+    expect(box('.atlas-sound-lib').width).toBeCloseTo(860, 0);
+    expect(box('.atlas-sound-lib__main').width).toBeGreaterThanOrEqual(620);
+    await withMoods(rig!);
+    expectTilesRead(4);
+    expectNoOverflow();
+    await page.screenshot({ path: `${SHOTS}/library-1800.png`, element: LIBRARY_SHOT(frame!.host) });
   });
 
   it('keeps name, state and length readable at 1280, the action over the state, and what does not fit in the head in a menu', async () => {

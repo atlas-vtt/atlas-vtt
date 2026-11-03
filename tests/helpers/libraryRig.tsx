@@ -36,7 +36,6 @@ export interface LibraryRig {
 export interface LibraryRigOptions {
   local?: Partial<Record<SoundKind, string>>;
   shared?: SharedSoundRoots;
-  home?: string;
   seconds?: (url: string) => number | null;
 }
 
@@ -57,7 +56,6 @@ export function fakeLibrary(app: App, options: LibraryRigOptions = {}): Pick<Lib
   const library = new SoundLibrary({
     roots,
     open: (root) => locations[root.kind],
-    home: () => options.home ?? null,
     probeSeconds: async (url) => options.seconds?.(url) ?? null,
   });
   SoundLibrary.provide(app, library);

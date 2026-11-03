@@ -50,7 +50,6 @@ export async function mockLibrary(options: LibraryRigOptions = {}): Promise<Libr
 export const MOCK_LIBRARY: LibraryRigOptions = {
   local: { music: '/Users/gm/Music/Tabletop' },
   shared: { music: { type: 'external' }, ambience: { type: 'vault', path: 'Audio/Ambience' } },
-  home: '/Users/gm',
   seconds: (url) => secondsByName.get(decodeURIComponent(url).replace(/^.*\//, '').replace(/\.[^.]*$/, '')) ?? 200,
 };
 

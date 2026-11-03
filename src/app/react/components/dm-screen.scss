@@ -149,17 +149,19 @@
   padding: $spacing-l var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset);
 }
 
+// The page control stands centred near the top, closer to it than the panes are to the sides (owner, 2026-11-03).
 .atlas-dm-screen-header {
   flex-shrink: 0;
   display: flex;
+  justify-content: center;
   align-items: center;
   gap: $spacing-s;
-  padding: var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset) 0;
+  padding: $spacing-l var(--atlas-dm-screen-inset) 0;
 
   .atlas-segmented {
     flex-shrink: 0;
     gap: 2px;
-    padding: 3px;
+    padding: 4px;
     border-radius: $radius-xl;
     background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
     box-shadow: inset 0 0 0 $border-width-s color-mix(in oklch, var(--mono-100) 9%, transparent);
@@ -167,9 +169,11 @@
 
   .atlas-segmented__option {
     flex: 0 0 auto;
-    height: 32px;
-    padding: 0 $spacing-l;
-    border-radius: calc(#{$radius-m} + 1px);
+    min-width: 128px;
+    height: 36px;
+    padding: 0 $spacing-xl;
+    border-radius: calc(#{$radius-xl} - 4px);
+    font-size: $font-ui-medium;
     box-shadow: none;
     color: var(--text-muted);
     transition: color $transition-normal, background-color $transition-normal;

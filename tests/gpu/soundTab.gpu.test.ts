@@ -125,10 +125,11 @@ describe('the DM screen’s Sound page', () => {
     expect(screen.height).toBeCloseTo(960, -1);
     expect(getComputedStyle(document.querySelector('.atlas-dm-screen')!).backgroundColor).toBe('rgba(0, 0, 0, 0)');
 
-    // The top row one inset from the view's edges, and the surface below it.
+    // The page control centred near the top, and the surface below it.
     const pages = box('.atlas-dm-screen-pages');
     const surface = box('.atlas-sound-pane');
-    expect(pages.top - screen.top).toBeCloseTo(pages.left - screen.left, 0);
+    expect(pages.top - screen.top).toBeCloseTo(16, 0);
+    expect((pages.left + pages.right) / 2).toBeCloseTo((screen.left + screen.right) / 2, 0);
     expect(surface.top).toBeGreaterThanOrEqual(pages.bottom);
     expect(document.querySelectorAll('.atlas-sound-views, .atlas-sound-pane [role="radiogroup"]')).toHaveLength(0);
     expect(parseFloat(getComputedStyle(document.querySelector('.atlas-sound-pane')!).borderRadius)).toBe(24);

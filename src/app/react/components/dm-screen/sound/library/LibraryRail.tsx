@@ -28,17 +28,11 @@ interface RailProps {
 }
 
 /** What the rail says of where a root lies. */
-function whereOf(root: SoundRootState, library: SoundLibrary): string {
-  switch (root.status) {
-    case 'unlinked': return t('audio.library.notLinked');
-    case 'not-linked-here': return t('audio.library.notLinkedHere');
-    case 'vault': return root.path === '' ? t('audio.library.vaultRoot') : t('audio.library.inVault', { path: root.path });
-    case 'external': {
-      const { home } = library;
-      if (library.locationOf(root.kind) === null) return t('audio.library.unreachable');
-      return home !== null && root.path.startsWith(home) ? `~${root.path.slice(home.length)}` : root.path;
-    }
-  }
+/** What stands in the way of a root on this device; where it lies is the root menu's Change folder alone (owner, 2026-11-03). */
+function problemOf(root: SoundRootState, library: SoundLibrary): string | null {
+  if (root.status === 'not-linked-here') return t('audio.library.notLinkedHere');
+  if (root.status === 'external' && library.locationOf(root.kind) === null) return t('audio.library.unreachable');
+  return null;
 }
 
 function useDropTarget(takes: (transfer: DataTransfer) => boolean, take: (transfer: DataTransfer) => void): { isTarget: boolean; props: Pick<React.HTMLAttributes<HTMLElement>, 'onDragOver' | 'onDragLeave' | 'onDrop'> } {
@@ -134,6 +128,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
     if (transfer.files.length > 0) actions.importInto([...transfer.files], kind);
   });
   const whole = shown && selected.size === 0;
+  const problem = problemOf(root, library);
 
   return (
     <section className="atlas-sound-lib__root-block" aria-label={label}>
@@ -162,7 +157,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
           </button>
         )}
       </div>
-      <div className="atlas-sound-lib__where">{whereOf(root, library)}</div>
+      {problem !== null && <div className="atlas-sound-lib__where">{problem}</div>}
       {!linked && (
         <button type="button" className="atlas-sound-lib__link" onClick={(event) => actions.link(kind, event.currentTarget.ownerDocument.defaultView ?? window)}>{t('audio.library.linkFolder')}</button>
       )}

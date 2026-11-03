@@ -261,7 +261,7 @@ describe('sound records on two devices', () => {
         vaultBase: () => null,
         realPath: async (path) => path,
       });
-      return { location, library: new SoundLibrary({ roots, open: () => location, home: () => null, probeSeconds: async () => null }) };
+      return { location, library: new SoundLibrary({ roots, open: () => location, probeSeconds: async () => null }) };
     }
 
     const walked = async ({ library }: { library: SoundLibrary }, now: number): Promise<void> => {

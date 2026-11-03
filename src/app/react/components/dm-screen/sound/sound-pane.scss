@@ -36,12 +36,19 @@
   min-height: 0;
   display: flex;
 
+  // Past this width a list gains nothing and the moods take the room in more columns (owner, 2026-11-03).
+  // It still leaves the rows more than the 620 px under which the library takes its narrow layout.
   .atlas-sound-lib {
     flex: 58 1 0;
+    max-width: 860px;
   }
 
   @container atlas-dm-screen (max-width: #{$breakpoint-m}) {
     flex-direction: column;
+
+    .atlas-sound-lib {
+      max-width: none;
+    }
   }
 }
 

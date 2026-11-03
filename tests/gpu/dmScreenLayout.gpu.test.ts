@@ -53,7 +53,7 @@ describe('the DM screen beside open sidebars', () => {
     style.remove();
   });
 
-  it('with pages, keeps page control and panes one inset from all four edges', async () => {
+  it('with pages, keeps the panes one inset from three edges, under the page control centred near the top', async () => {
     await openIn({ width: 2400, height: 1800 }, { left: 0, width: 2400 });
     const screen = document.querySelector<HTMLElement>('.atlas-dm-screen')!;
     screen.classList.add('atlas-dm-screen--pages');
@@ -68,11 +68,11 @@ describe('the DM screen beside open sidebars', () => {
     const statblocks = boxOf('.atlas-dm-statblocks-section');
 
     const notes = boxOf('.atlas-dm-notes-section');
-    const inset = control.left - view.left;
+    const inset = statblocks.left - view.left;
 
     expect(inset).toBeGreaterThan(30);
-    expect(control.top - view.top).toBeCloseTo(inset, 0);
-    expect(statblocks.left - view.left).toBeCloseTo(inset, 0);
+    expect(control.top - view.top).toBeCloseTo(16, 0);
+    expect((control.left + control.right) / 2).toBeCloseTo((view.left + view.right) / 2, 0);
     expect(view.right - notes.right).toBeCloseTo(inset, 0);
     expect(view.bottom - statblocks.bottom).toBeCloseTo(inset, 0);
     expect(statblocks.top - control.bottom).toBeCloseTo(16, 0);
