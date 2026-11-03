@@ -41,6 +41,11 @@ const PEAK_PHASES: readonly Float64Array[] = [1, 2, 3].map((phase) => {
 });
 /** What a sinc interpolation can make of samples no louder than one: quieter pieces are not worth computing. */
 const PEAK_FILTER_BOUND = 2;
+/**
+ * The most any phase can make of a window whose samples are no louder than one, with room for rounding: a
+ * window whose loudest sample times this cannot pass the peak so far is skipped, and the peak found is the same.
+ */
+const PEAK_WINDOW_GAIN = Math.max(...PEAK_PHASES.map((phase) => phase.reduce((sum, tap) => sum + Math.abs(tap), 0))) * (1 + 1e-9);
 
 function loudnessOf(energy: number): number {
   return LUFS_OFFSET + 10 * Math.log10(energy);
@@ -95,11 +100,20 @@ class TruePeak {
     const joined = new Float32Array(PEAK_TAPS + samples.length);
     joined.set(this.history);
     joined.set(samples, PEAK_TAPS);
+    // The loudest sample of each run of PEAK_TAPS: a window spans two runs at most, so their larger one bounds it.
+    const runs = new Float32Array(Math.ceil(joined.length / PEAK_TAPS));
+    for (let i = 0; i < joined.length; i++) {
+      const run = (i / PEAK_TAPS) | 0;
+      const value = Math.abs(joined[i]!);
+      if (value > runs[run]!) runs[run] = value;
+    }
     let peak = this.peak;
     for (let i = PEAK_TAPS; i < joined.length; i++) {
+      const bound = Math.max(runs[((i - PEAK_TAPS + 1) / PEAK_TAPS) | 0]!, runs[(i / PEAK_TAPS) | 0]!) * PEAK_WINDOW_GAIN;
+      if (bound <= peak) continue;
       for (const phase of PEAK_PHASES) {
         let sum = 0;
-        for (let tap = 0; tap < PEAK_TAPS; tap++) sum += (phase[tap] ?? 0) * (joined[i - tap] ?? 0);
+        for (let tap = 0; tap < PEAK_TAPS; tap++) sum += phase[tap]! * joined[i - tap]!;
         const value = Math.abs(sum);
         if (value > peak) peak = value;
       }

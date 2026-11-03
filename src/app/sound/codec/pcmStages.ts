@@ -72,7 +72,9 @@ export class Resampler {
         this.phases[phase * this.taps + tap] = cutoff * sinc * window;
       }
     }
-    this.history = Array.from({ length: channels }, () => new Float32Array(0));
+    // The silence before the first frame, held as zeros so the filter never reads past the start.
+    this.history = Array.from({ length: channels }, () => new Float32Array(this.reach));
+    this.historyStart = -this.reach;
     this.wrapHead = wraps ? Array.from({ length: channels }, () => new Float32Array(0)) : null;
   }
 
@@ -104,26 +106,29 @@ export class Resampler {
     return this.drain(this.input, length);
   }
 
-  /** Writes every output frame whose filter reaches no further than input frame `limit` + reach. */
+  /**
+   * Writes every output frame whose filter reaches no further than input frame `limit` + reach. The hot loop
+   * of a conversion: one channel at a time over plain locals, in the order the sum was always taken, so the
+   * output is the same to the last bit.
+   */
   private drain(limit: number, lastOutput = Infinity): Float32Array<ArrayBuffer>[] {
     const end = Math.min(lastOutput, Math.ceil((limit * this.up) / this.down));
     const count = Math.max(0, end - this.output);
-    const out = this.history.map(() => new Float32Array(count));
-    for (let i = 0; i < count; i++) {
-      const position = this.output * this.down;
-      const whole = Math.floor(position / this.up);
-      const phase = position - whole * this.up;
-      const offset = phase * this.taps;
-      const first = whole - this.reach + 1 - this.historyStart;
-      out.forEach((plane, channel) => {
-        const history = this.history[channel];
-        if (!history) return;
+    const { phases, taps, up, down, reach, historyStart } = this;
+    const out = this.history.map((history) => {
+      const plane = new Float32Array(count);
+      let position = this.output * down;
+      for (let i = 0; i < count; i++, position += down) {
+        const whole = Math.floor(position / up);
+        const offset = (position - whole * up) * taps;
+        const first = whole - reach + 1 - historyStart;
         let sum = 0;
-        for (let tap = 0; tap < this.taps; tap++) sum += (this.phases[offset + tap] ?? 0) * (history[first + tap] ?? 0);
+        for (let tap = 0; tap < taps; tap++) sum += phases[offset + tap]! * history[first + tap]!;
         plane[i] = sum;
-      });
-      this.output++;
-    }
+      }
+      return plane;
+    });
+    this.output += count;
     this.forget();
     return out;
   }

@@ -4,7 +4,7 @@ import type { CachedSound } from '@/app/sound/codec/opusCache';
 import { readSoundPeaks } from '@/app/sound/codec/soundPeaksClient';
 import { STUCK_AFTER_MS } from '@/app/sound/codec/stuckWatch';
 import type { SoundRecord } from '@/app/sound/soundTypes';
-import { SoundCopies, type CopyCache, type SoundFileAccess } from '@/app/soundDirector/soundCopies';
+import { backgroundCopies, SoundCopies, type CopyCache, type SoundFileAccess } from '@/app/soundDirector/soundCopies';
 import { prepareSource, type PreparedSource } from '@/app/soundDirector/sourcePrepare';
 import { record } from '../../helpers/soundDirectorRig';
 
@@ -24,7 +24,7 @@ vi.mock('@/app/soundDirector/sourceWorker?worker&inline', () => ({ default: clas
 
 const copy = (hash: string): CachedSound => ({ hash, byteLength: 1, frames: 48000, channels: 2, lufs: -20, truePeakDb: -3, lastUsed: 0 });
 
-function copies(read: SoundFileAccess['read'], prepare: (source: ArrayBuffer | Blob) => Promise<PreparedSource> = () => Promise.resolve({ hash: 'h', source: new Blob([]) })): { made: SoundCopies; refused: string[]; done: () => string[] } {
+function copies(read: SoundFileAccess['read'], prepare: (source: ArrayBuffer | Blob) => Promise<PreparedSource> = () => Promise.resolve({ hash: 'h', source: new Blob([]) }), parallel?: number): { made: SoundCopies; refused: string[]; done: () => string[] } {
   const refused: string[] = [];
   const ran: string[] = [];
   const cache = {
@@ -48,6 +48,7 @@ function copies(read: SoundFileAccess['read'], prepare: (source: ArrayBuffer | B
     prepare,
     (sound) => refused.push(sound.id),
     () => Promise.resolve(new Uint8Array(0)),
+    parallel,
   );
   return { made, refused, done: () => ran };
 }
@@ -68,12 +69,12 @@ afterEach(() => {
 });
 
 describe('a read that never answers', () => {
-  it('fails its sound and the next goes on', async () => {
+  it('fails its sound, and holds up no other meanwhile', async () => {
     const { made, refused, done } = copies(({ filePath }) => (filePath === A.filePath ? NEVER : Promise.resolve(new ArrayBuffer(1))));
     made.request([A, B], true);
     await vi.advanceTimersByTimeAsync(STUCK_AFTER_MS - 1000);
     expect(refused).toEqual([]);
-    expect(done()).toEqual([]);
+    expect(done()).toEqual(['ambience']);
     await vi.advanceTimersByTimeAsync(2000);
     expect(refused).toEqual(['a']);
     expect(made.stateOf(A)).toEqual({ state: 'refused', reason: 'unreadable' });
@@ -100,12 +101,34 @@ describe('a read that never answers', () => {
   });
 
   it('holds nothing up in preparing either: the queue goes on past it', async () => {
-    const { made, refused, done } = copies(() => Promise.resolve(new ArrayBuffer(1)), (source) => (source.byteLength === 1 && made.stateOf(A).state === 'converting' ? prepareSource(source) : Promise.resolve({ hash: 'h', source: new Blob([]) })));
+    const { made, refused, done } = copies(({ filePath }) => Promise.resolve(new ArrayBuffer(filePath === A.filePath ? 1 : 2)), (source) => (source.byteLength === 1 ? prepareSource(source) : Promise.resolve({ hash: 'h', source: new Blob([]) })));
     made.request([A, B], true);
     await vi.advanceTimersByTimeAsync(STUCK_AFTER_MS + 1000);
     expect(FakeWorker.made[0]?.terminated).toBe(true);
     expect(refused).toEqual(['a']);
     expect(done()).toEqual(['ambience']);
+  });
+});
+
+describe('copies made at once', () => {
+  it('are a few, never one per core', () => {
+    expect([2, 4, 8, 14, 64].map((cores) => backgroundCopies(cores))).toEqual([1, 1, 2, 3, 3]);
+  });
+
+  it('fill the background slots, and a press starts beside them at once', async () => {
+    const reads: string[] = [];
+    const sounds = ['a', 'b', 'c', 'd'].map((id) => record(id));
+    const { made } = copies(({ filePath }) => {
+      reads.push(filePath);
+      return filePath === sounds[3]!.filePath ? Promise.resolve(new ArrayBuffer(1)) : NEVER;
+    }, undefined, 2);
+    made.request(sounds.slice(0, 3));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(reads).toEqual([sounds[0]!.filePath, sounds[1]!.filePath]);
+    made.request([sounds[3]!], true);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(made.stateOf(sounds[3]!).state).toBe('ready');
+    expect(made.stateOf(sounds[2]!).state).toBe('not-converted');
   });
 });
 

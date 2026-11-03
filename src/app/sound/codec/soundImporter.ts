@@ -8,24 +8,22 @@ export { SoundImportError } from './demux/demuxTypes';
 export type { ImportProgress, SoundImportJob, SoundImportResult } from './soundConvert';
 
 /**
- * Converts vault files to Atlas' Ogg Opus, one at a time, each in a worker of its own that is stopped when it
- * is done, which gives everything it held back. A bulk import just queues up. A worker that stops getting
- * anywhere is stopped too and its sound refused, so the next one gets its turn. The owner disposes it on unload.
+ * Converts vault files to Atlas' Ogg Opus, each in a worker of its own that is stopped when it is done, which
+ * gives everything it held back. Every call runs at once: how many run together is the caller's to say
+ * (`SoundCopies`). A worker that stops getting anywhere is stopped too and its sound refused. The owner
+ * disposes it on unload, which stops every worker still running.
  */
 export class SoundImporter {
-  private line: Promise<unknown> = Promise.resolve();
-  private stopRunning: (() => void) | null = null;
+  private readonly running = new Set<() => void>();
   private disposed = false;
 
   run(job: SoundImportJob, onProgress?: ImportProgress, signal?: AbortSignal): Promise<SoundImportResult> {
-    const result = this.line.then(() => this.convert(job, onProgress, signal));
-    this.line = result.catch(() => undefined);
-    return result;
+    return this.convert(job, onProgress, signal);
   }
 
   dispose(): void {
     this.disposed = true;
-    this.stopRunning?.();
+    for (const stop of [...this.running]) stop();
   }
 
   private convert(job: SoundImportJob, onProgress?: ImportProgress, signal?: AbortSignal): Promise<SoundImportResult> {
@@ -37,7 +35,7 @@ export class SoundImporter {
       const finish = (): void => {
         worker.terminate();
         self.clearTimeout(stuck);
-        this.stopRunning = null;
+        this.running.delete(stop);
         signal?.removeEventListener('abort', aborted);
       };
       const refuse = (detail: string): void => {
@@ -52,7 +50,8 @@ export class SoundImporter {
         self.clearTimeout(stuck);
         stuck = self.setTimeout(() => refuse(`No step of the conversion in ${STUCK_AFTER_MS} ms.`), STUCK_AFTER_MS);
       };
-      this.stopRunning = () => refuse('Sound import has stopped.');
+      const stop = (): void => refuse('Sound import has stopped.');
+      this.running.add(stop);
       signal?.addEventListener('abort', aborted);
       worker.onmessage = (event: MessageEvent<SoundImportMessage>): void => {
         const message = event.data;

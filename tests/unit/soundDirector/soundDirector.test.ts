@@ -184,15 +184,14 @@ describe('the sound director', () => {
     await settle();
     expect(layersOf(rig)).toEqual([]);
     expect(rig.director.snapshot().mix.waitingLayers.map((layer) => layer.sound)).toEqual(['wind', 'rain']);
-    // One queue: fire was under way already, then what was pressed.
-    expect(rig.conversions).toHaveLength(1);
-    rig.conversions[0]?.finish();
-    await settle();
-    expect(rig.conversions).toHaveLength(2);
+    // Fire was under way already; what was pressed starts beside it at once, never behind it.
+    expect(rig.conversions.length).toBeGreaterThanOrEqual(2);
     rig.conversions[1]?.finish();
     await settle();
     const names = (): (string | undefined)[] => rig.director.snapshot().mix.table.layers.map((play) => rig.director.shelf.recordOfKey(play.sound.key)?.id);
     expect(names()).toEqual(['wind']);
+    rig.conversions[0]?.finish();
+    await settle();
     rig.conversions[2]?.finish();
     await settle();
     expect(names()).toEqual(['wind', 'rain']);

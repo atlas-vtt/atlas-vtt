@@ -2,9 +2,8 @@ import { MAX_PAGE_BYTES, packetsOfPage, readPage, OggCorruptError } from './oggP
 import { BlobWindow } from './demux/blobWindow';
 import { SoundImportError } from './demux/demuxTypes';
 import { opusPacketFrames, readOpusHead, writeOpusHead } from './opusFormat';
+import { queueRoom } from './opusOutput';
 
-const MAX_QUEUE = 32;
-const QUEUE_WAIT_MS = 10;
 const PROGRESS_STEP = 0.05;
 
 /**
@@ -55,7 +54,8 @@ export async function verifyOggOpus(file: Blob, frames: number, channels: number
           shown = share;
           onProgress(share);
         }
-        if (decoder.decodeQueueSize > MAX_QUEUE) await new Promise((resolve) => self.setTimeout(resolve, QUEUE_WAIT_MS));
+        // Woken by the decoder as soon as it has room: a fixed sleep here once took half of a conversion.
+        await queueRoom(() => decoder.decodeQueueSize, decoder);
       }
       pageIndex++;
     }

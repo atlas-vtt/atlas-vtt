@@ -3,7 +3,8 @@ import { openSoundSource } from './demux/openSoundSource';
 import { checkSourceShape, SoundImportError, type EncodedSource, type PcmSource, type SoundSource } from './demux/demuxTypes';
 import { LoopEnds, type LoopFinish, type LoopSeam } from './loopEnds';
 import type { Planes } from './loopSeam';
-import { LoudnessMeter, type LoudnessResult } from './loudness';
+import type { LoudnessResult } from './loudness';
+import { MeterThread } from './meterThread';
 import { OpusOutput, queueRoom } from './opusOutput';
 import { Resampler, SilenceTrim, toStereo } from './pcmStages';
 import { verifyOggOpus } from './soundVerify';
@@ -41,7 +42,7 @@ class PcmPath {
   private resampler: Resampler | null = null;
   private trim: SilenceTrim | null = null;
   private ends: LoopEnds | null = null;
-  private meter: LoudnessMeter | null = null;
+  private meter: MeterThread | null = null;
   private output: OpusOutput | null = null;
 
   constructor(
@@ -55,7 +56,7 @@ class PcmPath {
       checkSourceShape(sampleRate, planes.length);
       const channels = stereo.length;
       this.output = new OpusOutput(channels, BITRATES[this.job.kind]);
-      this.meter = new LoudnessMeter(channels);
+      this.meter = new MeterThread(channels);
       // Where its ends are known a loop is resampled as the wrap it is. Elsewhere its ends are found only after this.
       this.resampler = sampleRate === SOUND_RATE ? null : new Resampler(sampleRate, channels, this.job.loop && !this.primingHints);
       if (this.job.loop) {
@@ -69,7 +70,8 @@ class PcmPath {
   }
 
   room(): Promise<void> | null {
-    return this.output ? this.output.room() : null;
+    const waits = [this.output?.room(), this.meter?.room()].filter((wait): wait is Promise<void> => wait !== null && wait !== undefined);
+    return waits.length === 0 ? null : Promise.all(waits).then(() => undefined);
   }
 
   async finish(): Promise<SoundImportResult> {
@@ -86,13 +88,14 @@ class PcmPath {
     const frames = (loop ? output.keptFrames : output.frames) - skipFrames;
     // A loop too short for its seam keeps nothing, and a page refuses a whole state that names such a sound.
     if (frames < 1) throw new SoundImportError('empty', 'There is no audio in the file.');
-    const bytes = await output.finish(skipFrames);
-    const result = { ...this.meter.result(), bytes, frames, channels: output.channels };
+    const [bytes, measured] = await Promise.all([output.finish(skipFrames), this.meter.result()]);
+    const result = { ...measured, bytes, frames, channels: output.channels };
     return loop ? { ...result, seam: loop.seam } : result;
   }
 
   close(): void {
     this.output?.close();
+    this.meter?.close();
   }
 
   private pass(planes: Planes): void {

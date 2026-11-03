@@ -37,6 +37,14 @@ export interface CopyMaker {
 
 const READY: SoundConversion = { state: 'ready' };
 
+/**
+ * Copies made at once in the background: each takes a worker and an encoder's thread, and holds its source
+ * and its copy in memory, so a few, never one per core. What the GM pressed may always take one more.
+ */
+export function backgroundCopies(cores: number = typeof navigator === 'undefined' ? 2 : navigator.hardwareConcurrency || 2): number {
+  return Math.max(1, Math.min(3, Math.floor(cores / 4)));
+}
+
 interface CopyEntry {
   identity: string;
   conversion: SoundConversion;
@@ -51,15 +59,17 @@ const identityOf = (path: string, stat: { size: number; mtime: number }): string
 
 /**
  * The copies of a vault's sounds on this device: which exist, one queue that makes the rest, and the
- * bytes of each. A conversion runs in a worker of its own, so it costs the map no frame; what the GM
- * pressed goes first.
+ * bytes of each. A conversion runs in a worker of its own, so it costs the map no frame. A few run at
+ * once (`backgroundCopies`); what the GM pressed goes first, and starts at once beside them.
  */
 export class SoundCopies {
   private readonly entries = new Map<string, CopyEntry>();
   private readonly keys = new Map<string, string>();
   private readonly listeners = new Set<() => void>();
   private queue: SoundRecord[] = [];
-  private running = false;
+  /** Conversions under way, and the ids of those asked for by a press, which may run past the limit. */
+  private active = 0;
+  private readonly urgent = new Set<string>();
   private disposed = false;
   private pinned = new Set<string>();
   private readonly toldRefused = new Set<string>();
@@ -73,6 +83,7 @@ export class SoundCopies {
     private readonly prepare: (source: ArrayBuffer | Blob) => Promise<PreparedSource>,
     private readonly onRefused: (record: SoundRecord, reason: SoundImportError['reason']) => void,
     private readonly readPeaks: (copy: Blob, frames: number) => Promise<Uint8Array<ArrayBuffer>>,
+    private readonly parallel = backgroundCopies(),
   ) {}
 
   /** The same object while a sound's state is the same, since cards read it on every render. */
@@ -106,9 +117,13 @@ export class SoundCopies {
     if (this.disposed) return;
     const wanted = records.filter((record) => this.stateOf(record).state === 'not-converted' && this.files.statOf(record));
     const ids = new Set(wanted.map((record) => record.id));
-    if (urgent) this.queue = [...wanted, ...this.queue.filter((record) => !ids.has(record.id))];
-    else this.queue.push(...wanted.filter((record) => !this.queue.some((other) => other.id === record.id)));
-    void this.drain();
+    if (urgent) {
+      this.queue = [...wanted, ...this.queue.filter((record) => !ids.has(record.id))];
+      for (const id of ids) this.urgent.add(id);
+    } else {
+      this.queue.push(...wanted.filter((record) => !this.queue.some((other) => other.id === record.id)));
+    }
+    this.pump();
   }
 
   async bytes(key: string): Promise<SoundBytes> {
@@ -128,6 +143,7 @@ export class SoundCopies {
   dispose(): void {
     this.disposed = true;
     this.queue = [];
+    this.urgent.clear();
     this.peaksQueue = [];
     this.listeners.clear();
   }
@@ -185,13 +201,18 @@ export class SoundCopies {
     this.changed();
   }
 
-  private async drain(): Promise<void> {
-    if (this.running) return;
-    this.running = true;
-    try {
-      for (let record = this.queue.shift(); record && !this.disposed; record = this.queue.shift()) await this.convert(record);
-    } finally {
-      this.running = false;
+  /** Starts what the queue's front may: up to `parallel`, and one more for a press, so a press never waits behind a long file. */
+  private pump(): void {
+    for (let next = this.queue[0]; next && !this.disposed; next = this.queue[0]) {
+      const pressed = this.urgent.has(next.id);
+      if (this.active >= this.parallel + (pressed ? 1 : 0)) return;
+      this.queue.shift();
+      this.active++;
+      void this.convert(next).finally(() => {
+        this.active--;
+        this.urgent.delete(next.id);
+        this.pump();
+      });
     }
   }
 

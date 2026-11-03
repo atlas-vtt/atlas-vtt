@@ -28,20 +28,20 @@ describe('a conversion', () => {
   });
   afterEach(() => vi.useRealTimers());
 
-  it('that gets nowhere is stopped and refused, and the next sound gets its turn', async () => {
+  it('that gets nowhere is stopped and refused, and holds up no other sound', async () => {
     const importer = new SoundImporter();
     const stuck = importer.run(JOB);
     const failure = expect(stuck).rejects.toMatchObject({ reason: 'unreadable' });
     const next = importer.run(JOB);
     await vi.advanceTimersByTimeAsync(0);
-    expect(FakeWorker.made).toHaveLength(1);
-    await vi.advanceTimersByTimeAsync(2 * MINUTE);
-    await failure;
-    expect(FakeWorker.made[0]?.terminated).toBe(true);
+    // Each runs in its own worker at once: how many at a time is the queue's to say.
     expect(FakeWorker.made).toHaveLength(2);
     const result = { bytes: new Blob(), frames: 1, channels: 1, lufs: 0, truePeakDb: 0 };
     FakeWorker.made[1]?.say({ type: 'done', result });
     await expect(next).resolves.toBe(result);
+    await vi.advanceTimersByTimeAsync(2 * MINUTE);
+    await failure;
+    expect(FakeWorker.made[0]?.terminated).toBe(true);
     importer.dispose();
   });
 
