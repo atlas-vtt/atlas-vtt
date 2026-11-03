@@ -121,14 +121,11 @@ describe('the bestiary tokens offer', () => {
     const options = [...popover.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
     expect(options.map((option) => option.querySelector('span > span')?.textContent)).toEqual(['Tokens only', '5E', 'Cairn']);
     expect(options[0]!.getAttribute('aria-checked')).toBe('true');
-    expect(document.activeElement).toBe(options[0]);
+    // No heading: the button said what the choice is for.
+    expect(popover.querySelector('.atlas-dropdown-label')).toBeNull();
     await act(async () => options[1]!.click());
     expect(options[1]!.getAttribute('aria-checked')).toBe('true');
     for (const option of options) expect(option.scrollWidth, option.textContent ?? '').toBeLessThanOrEqual(option.clientWidth + 1);
-    // The heading and the options' text start on one edge.
-    const heading = popover.querySelector<HTMLElement>('.atlas-dropdown-label')!;
-    const text = options[0]!.querySelector<HTMLElement>('.atlas-starter-choice__text')!;
-    expect(Math.abs(text.getBoundingClientRect().left - (heading.getBoundingClientRect().left + parseFloat(getComputedStyle(heading).paddingLeft)))).toBeLessThan(1);
     await page.screenshot({ path: '__screenshots__/asset-manager/starter-tokens-choice.png', element: host });
 
     // Escape closes it, and only it.
@@ -136,6 +133,14 @@ describe('the bestiary tokens offer', () => {
     await act(async () => { document.activeElement?.dispatchEvent(escape); });
     expect(document.querySelector('.atlas-starter-choice')).toBeNull();
     expect(escape.defaultPrevented).toBe(true);
+
+    // Opened from the keyboard, focus goes to the chosen option; opened by a press, it stays put, so no ring shows.
+    await act(async () => button.click());
+    expect(document.activeElement?.closest('.atlas-starter-choice [role="radio"]')?.getAttribute('aria-checked')).toBe('true');
+    await act(async () => { document.activeElement?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })); });
+    await act(async () => { button.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, detail: 1 })); });
+    expect(document.querySelector('.atlas-starter-choice')).not.toBeNull();
+    expect(document.activeElement?.closest('.atlas-starter-choice')).toBeNull();
   });
 
   it('keeps the button\u2019s size while it downloads, the bar under it saying how far it got', async () => {

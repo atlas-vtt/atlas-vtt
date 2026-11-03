@@ -129,6 +129,7 @@ export function BestiaryTokensOffer({ app, assets, collection, variant, fallback
   const present = usePackPresent(app, assets, collection, download);
   const [choice, setChoice] = useState<StarterChoice>(() => suggestedChoice(assets, collection));
   const [choosing, setChoosing] = useState(false);
+  const [fromKeys, setFromKeys] = useState(false);
   const anchor = useRef<HTMLDivElement>(null);
   const close = useCallback((): void => setChoosing(false), []);
   useCloseOutside(anchor, choosing, close);
@@ -163,6 +164,8 @@ export function BestiaryTokensOffer({ app, assets, collection, variant, fallback
         aria-label={downloading ? undefined : t('am.bestiary.label', { count: BESTIARY_TOKEN_COUNT, size })}
         onClick={(event) => {
           event.stopPropagation();
+          // A click the keyboard made has no pointer behind it.
+          setFromKeys(event.detail === 0);
           setChoosing((open) => !open);
         }}
       >
@@ -171,7 +174,7 @@ export function BestiaryTokensOffer({ app, assets, collection, variant, fallback
         {variant === 'sidebar' && !downloading && <small>{t('am.bestiary.size', { size })}</small>}
       </Button>
       {choosing && !busy && (
-        <StarterTokensChoice choice={choice} onChoose={setChoice} onDownload={start} onClose={close} placement={variant === 'empty' ? 'bottom' : 'top'} size={size} />
+        <StarterTokensChoice choice={choice} onChoose={setChoice} onDownload={start} onClose={close} placement={variant === 'empty' ? 'bottom' : 'top'} size={size} focusChoice={fromKeys} />
       )}
     </div>
   );
