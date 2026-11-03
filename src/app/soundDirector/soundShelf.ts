@@ -1,5 +1,6 @@
 import type { SoundInfo, SoundRecord } from '../sound/soundTypes';
 import { SoundCopies } from './soundCopies';
+import type { GrowingCopy } from '../sound/codec/growingCopy';
 import type { SoundDirectorDeps } from './directorDeps';
 import type { MoodMix, ReadySounds } from './tableSound';
 import type { SoundRefusal } from '../sound/codec/demux/demuxTypes';
@@ -117,6 +118,11 @@ export class SoundShelf {
   /** What the engine reads a sound by: its stored copy, or the copy being made. */
   bytes(key: string): ReturnType<SoundCopies['bytes']> {
     return this.copies ? this.copies.bytes(key) : Promise.reject(new Error('Sound is switched off.'));
+  }
+
+  /** A copy while it is made: players get it in segments as it grows. */
+  growingOf(key: string): GrowingCopy | null {
+    return this.copies?.growingOf(key) ?? null;
   }
 
   /** Only a stored, whole copy: what goes to players. */

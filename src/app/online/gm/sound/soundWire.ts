@@ -24,15 +24,14 @@ export interface WireSound {
 export function keysOfState(state: TableSound): string[] {
   const tracks = (play: MusicPlay): SoundInfo[] => play.tracks.slice(0, MAX_SOUND_TRACKS);
   const sounds = [...(state.music ? tracks(state.music) : []), ...state.outgoing.flatMap(tracks), ...state.layers.map((play) => play.sound), ...state.outgoingLayers.map((play) => play.sound)];
-  // A copy still being made goes up once it is stored: until then players hear it named by a stand-in, and wait.
-  return [...new Set(sounds.filter((sound) => sound.growing !== true).map((sound) => sound.key))];
+  return [...new Set(sounds.map((sound) => sound.key))];
 }
 
 /** A state as players are sent it: every key the store's id or a stand-in, every level one JSON can carry, and no field but those a page reads. */
 export function wireState(state: TableSound, soundOf: (key: string) => WireSound): SharedTableSound {
   const info = (sound: SoundInfo): SharedSoundInfo => {
     const { key, asset } = soundOf(sound.key);
-    return { key, frames: sound.frames, gainDb: wireDb(sound.gainDb), ...(sound.loop && { loop: sound.loop }), ...(asset && { asset }) };
+    return { key, frames: sound.frames, gainDb: wireDb(sound.gainDb), ...(sound.loop && { loop: sound.loop }), ...(asset && { asset }), ...(sound.growing && { growing: true as const }) };
   };
   const play = ({ startAt, gainDb, muted, reverb, fade }: MusicPlay | LayerPlay): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade' | 'reverb'> & { muted?: boolean } => ({ startAt, gainDb: wireDb(gainDb), fade, ...(muted && { muted }), ...(reverb && { reverb }) });
   const music = (list: MusicPlay): SharedMusicPlay => ({ ...play(list), tracks: list.tracks.slice(0, MAX_SOUND_TRACKS).map(info), seed: list.seed, shuffle: list.shuffle, ...(list.repeat && { repeat: list.repeat }), ...(list.listFrame && { listFrame: list.listFrame }) });

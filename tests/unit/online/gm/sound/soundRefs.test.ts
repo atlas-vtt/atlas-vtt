@@ -11,7 +11,9 @@ const bytesOf = (...values: number[]): SoundBytes => {
 /** A store that names a copy by its hash, as the publisher does. */
 const refsOver = (bytes: () => Promise<SoundBytes>): SoundRefs => new SoundRefs({
   bytes,
+  growing: () => null,
   copyRef: async (copy) => ({ ...copy, id: `id-${copy.hash}` }),
+  segmentsRef: () => Promise.resolve(null),
 });
 
 describe('the reference of a sound', () => {
@@ -31,5 +33,34 @@ describe('the reference of a sound', () => {
     expect(await refs.ensure('source-hash', ASSET_USES.audio, true)).toBeNull();
     held = bytesOf(9);
     expect((await refs.ensure('source-hash', ASSET_USES.audio, true))?.size).toBe(1);
+  });
+});
+
+describe('how a sound goes up', () => {
+  it('whole where its stored copy is small, in segments where it is long or still being made', async () => {
+    const { OggOpusWriter } = await import('@/app/sound/codec/oggOpusWriter');
+    const { writeOpusHead } = await import('@/app/sound/codec/opusFormat');
+    const { GrowingCopy } = await import('@/app/sound/codec/growingCopy');
+    const writer = new OggOpusWriter(writeOpusHead(2, 312));
+    // About 4.5 MiB of 20 ms packets: over what goes whole.
+    const packet = new Uint8Array(1200).fill(7);
+    packet[0] = 31 << 3;
+    for (let index = 0; index < 4000; index++) writer.addPacket(packet);
+    const long = new Uint8Array(await writer.finish(3990 * 960).arrayBuffer());
+    const segmented: { key: string; kind: string; handed: boolean }[] = [];
+    const refs = (bytes: Uint8Array, growing: InstanceType<typeof GrowingCopy> | null): SoundRefs => new SoundRefs({
+      bytes: () => Promise.resolve({ byteLength: bytes.length, read: (start, end) => Promise.resolve(bytes.subarray(start, end)) }),
+      growing: () => growing,
+      copyRef: async (copy) => ({ ...copy, id: `whole-${copy.hash}` }),
+      segmentsRef: async (key, _version, segments, use, handed) => {
+        segmented.push({ key, kind: use.kind, handed });
+        return { hash: key, size: segments.boundBytes, mime: 'audio/ogg', id: `segments-${key}`, segments: true };
+      },
+    });
+    expect((await refs(new Uint8Array([1, 2, 3]), null).ensure('small', ASSET_USES.audio, true))?.id).toMatch(/^whole-/);
+    expect((await refs(long, null).ensure('long', ASSET_USES.audio, true))?.segments).toBe(true);
+    const growing = new GrowingCopy({ head: writeOpusHead(2, 312), estimatedFrames: 600 * 48_000 });
+    expect((await refs(new Uint8Array(0), growing).ensure('growing', ASSET_USES.audio, false))?.id).toBe('segments-growing');
+    expect(segmented).toEqual([{ key: 'long', kind: 'segments', handed: true }, { key: 'growing', kind: 'segments', handed: false }]);
   });
 });

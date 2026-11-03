@@ -1,14 +1,26 @@
 import { AUDIO_MIME_TYPE, type AssetRef } from '../../protocol/index.ts';
+import type { GrowingCopy } from '../../../sound/codec/growingCopy';
+import { CODEC_VERSION } from '../../../sound/codec/opusCache';
+import { LiveSegments } from './liveSegments.ts';
 import { randomHex } from '../../../utils/randomHex';
 import type { SoundBytes } from '../../../sound/soundTypes';
 import type { AssetUse } from '../assets/assetUses.ts';
 import { sha256Hex } from '../assetServe.ts';
 
 export interface SoundRefsPorts {
-  /** The copy of a key, as the cache keeps it. */
+  /** The stored copy of a key, as the cache keeps it. */
   bytes(key: string): Promise<SoundBytes>;
+  /** The copy of a key while it is made, if it is. */
+  growing(key: string): GrowingCopy | null;
   copyRef(copy: Pick<AssetRef, 'hash' | 'size' | 'mime'>, read: () => Promise<Uint8Array<ArrayBuffer> | null>, use: AssetUse, handed: boolean): Promise<AssetRef | null>;
+  segmentsRef(key: string, codecVersion: number, segments: LiveSegments, use: AssetUse, handed: boolean): Promise<AssetRef | null>;
 }
+
+/**
+ * A copy up to this size goes up whole, as a page fetches it whole; a longer one, or one still being made,
+ * goes in segments, which a page can play from as soon as the first is stored.
+ */
+export const WHOLE_COPY_BYTES = 4 * 1024 * 1024;
 
 const whole = async (bytes: SoundBytes): Promise<Uint8Array<ArrayBuffer>> => (await bytes.read(0, bytes.byteLength)) as Uint8Array<ArrayBuffer>;
 
@@ -23,6 +35,8 @@ export class SoundRefs {
   private readonly hashes = new Map<string, Promise<{ readonly hash: string; readonly size: number }>>();
   private readonly refs = new Map<string, AssetRef | null>();
   private readonly standIns = new Map<string, string>();
+  /** The segments of each long sound, made once while the table runs: from its copy as it is made, else from the stored copy. */
+  private readonly segments = new Map<string, Promise<LiveSegments>>();
   private queue: Promise<unknown> = Promise.resolve();
 
   constructor(private readonly ports: SoundRefsPorts) {}
@@ -47,9 +61,15 @@ export class SoundRefs {
     return standIn;
   }
 
-  /** Offers a copy; resolves with what the store says of it. */
+  /** Offers a copy; resolves with what the store says of it. A long one, or one still being made, goes in segments. */
   async ensure(key: string, use: AssetUse, handed: boolean): Promise<AssetRef | null> {
     try {
+      const segments = await this.segmentsOf(key);
+      if (segments !== null) {
+        const ref = await this.ports.segmentsRef(key, CODEC_VERSION, segments, { ...use, kind: 'segments' }, handed);
+        if (handed || ref === null || !this.refs.get(key)) this.refs.set(key, ref);
+        return ref;
+      }
       const { hash, size } = await this.hashOf(key);
       const ref = await this.ports.copyRef({ hash, size, mime: AUDIO_MIME_TYPE }, () => this.ports.bytes(key).then(whole), use, handed);
       if (handed || ref === null || !this.refs.get(key)) this.refs.set(key, ref);
@@ -60,6 +80,21 @@ export class SoundRefs {
       this.refs.set(key, null);
       return null;
     }
+  }
+
+  /** The segments a key goes up in, or null where its stored copy is small enough to go whole. */
+  private segmentsOf(key: string): Promise<LiveSegments | null> {
+    const made = this.segments.get(key);
+    if (made) return made;
+    const growing = this.ports.growing(key);
+    if (growing) return this.keep(key, LiveSegments.ofGrowing(growing));
+    return this.ports.bytes(key).then((bytes) => (bytes.byteLength > WHOLE_COPY_BYTES ? this.keep(key, LiveSegments.ofStored(bytes)) : null));
+  }
+
+  private keep(key: string, made: Promise<LiveSegments>): Promise<LiveSegments> {
+    this.segments.set(key, made);
+    made.catch(() => this.segments.delete(key));
+    return made;
   }
 
   /** What the store said may have changed: what is not kept is asked for anew. */

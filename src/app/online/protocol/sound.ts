@@ -41,6 +41,8 @@ export interface SharedSoundInfo {
   readonly loop?: { readonly startFrame: number; readonly endFrame: number };
   readonly asset?: AssetRef;
   readonly credit?: string;
+  /** Its copy is still being made: `frames` and `gainDb` are what can be told so far, and the GM sends the real ones. */
+  readonly growing?: true;
 }
 
 export interface SharedSoundFade {
@@ -136,7 +138,7 @@ function parseInfo(value: unknown): SharedSoundInfo | null {
   if (asset === null || (asset !== undefined && asset.id !== value.key)) return null;
   const loop = parseLoop(value.loop, value.frames);
   const credit = typeof value.credit === 'string' && value.credit !== '' ? value.credit.slice(0, MAX_SOUND_CREDIT) : undefined;
-  return { key: value.key, frames: value.frames, gainDb, ...(loop && { loop }), ...(asset && { asset }), ...(credit !== undefined && { credit }) };
+  return { key: value.key, frames: value.frames, gainDb, ...(loop && { loop }), ...(asset && { asset }), ...(credit !== undefined && { credit }), ...(value.growing === true && { growing: true as const }) };
 }
 
 /** What a list and a layer have in common. */

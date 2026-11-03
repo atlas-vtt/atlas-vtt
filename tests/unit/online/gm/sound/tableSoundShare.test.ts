@@ -62,6 +62,7 @@ class Rig {
       useAudience: (audience: AudienceLine | null) => void (this.audience = audience),
       players: this.seam,
       shelf: {
+        growingOf: () => null,
         storedBytes: (key: string) => Promise.resolve({ byteLength: 8, read: () => Promise.resolve(new TextEncoder().encode(key.slice(-8))) }),
         infoOf: (given: SoundRecord) => infoOf(given.id),
         recordOfKey: (key: string) => this.records.get(key.slice(-1)) ?? null,
@@ -80,6 +81,7 @@ class Rig {
         this.offered.push({ hash: copy.hash, handed });
         return Promise.resolve(this.refusing ? null : ({ ...copy, id: copy.hash.replace(/./, 'f') } satisfies AssetRef));
       },
+      segmentsRef: () => Promise.resolve(null),
       copyState: (id) => this.copies.get(id) ?? { state: 'ready' },
       presentedPath: () => 'Scene.atlasmap',
       onPresentedChange: () => () => undefined,

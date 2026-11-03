@@ -22,6 +22,12 @@ export interface GrowingPages {
   truePeakDb: number;
 }
 
+/** Whoever follows a copy as it is made (segments going up while it plays): each batch of pages, then its end. */
+export interface GrowingFollower {
+  pages(bytes: Uint8Array<ArrayBuffer>): void;
+  ended(failure: Error | null): void;
+}
+
 interface Waiter {
   granule: number;
   resolve: () => void;
@@ -50,6 +56,7 @@ export class GrowingCopy implements SoundBytes, WindowedSound {
   private whole: Blob | null = null;
   private ended = false;
   private failure: Error | null = null;
+  private readonly followers = new Set<GrowingFollower>();
 
   constructor(start: GrowingStart) {
     this.head = start.head;
@@ -100,19 +107,51 @@ export class GrowingCopy implements SoundBytes, WindowedSound {
     this.lufs = pages.lufs;
     this.truePeakDb = pages.truePeakDb;
     this.wake();
+    for (const follower of this.followers) follower.pages(pages.bytes);
+  }
+
+  /**
+   * Follows the copy from now on: what is written already comes first (whole pages, as written), then each
+   * batch as it is written, then its end. Stops with the returned function.
+   */
+  async follow(follower: GrowingFollower): Promise<() => void> {
+    // What comes while the written part is read waits, end included, so the follower hears everything in order.
+    const queued: Uint8Array<ArrayBuffer>[] = [];
+    let caughtUp = false;
+    let endedEarly: { failure: Error | null } | null = null;
+    const relay: GrowingFollower = {
+      pages: (bytes) => (caughtUp ? follower.pages(bytes) : void queued.push(bytes)),
+      ended: (failure) => (caughtUp ? follower.ended(failure) : void (endedEarly = { failure })),
+    };
+    const known = this.written;
+    const wasEnded = this.ended;
+    if (!wasEnded) this.followers.add(relay);
+    if (known > 0) follower.pages(new Uint8Array(await this.read(0, known)));
+    for (const bytes of queued) follower.pages(bytes);
+    caughtUp = true;
+    const early = endedEarly as { failure: Error | null } | null;
+    if (wasEnded) follower.ended(this.failure);
+    else if (early) follower.ended(early.failure);
+    return () => this.followers.delete(relay);
   }
 
   /** Nothing more comes: everything waiting reads what there is. */
   end(): void {
+    if (this.ended) return;
     this.ended = true;
     this.wake();
+    for (const follower of this.followers) follower.ended(null);
+    this.followers.clear();
   }
 
   /** The conversion failed: everything waiting is told. */
   fail(error: Error): void {
+    if (this.ended) return;
     this.failure = error;
     this.ended = true;
     this.wake();
+    for (const follower of this.followers) follower.ended(error);
+    this.followers.clear();
   }
 
   /** Settles once the copy holds the sound up to `granule` (pre-skip included), or nothing more will come; rejects if it failed. */

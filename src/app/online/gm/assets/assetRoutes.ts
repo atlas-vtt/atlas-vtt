@@ -12,6 +12,7 @@ export const ASSET_ROUTES = {
   part: (id: string, part: number): string => `/api/assets/${id}/parts/${part}`,
   complete: (id: string): string => `/api/assets/${id}/complete`,
   tiles: (id: string): string => `/api/assets/${id}/tiles`,
+  segments: (id: string): string => `/api/assets/${id}/segments`,
 } as const;
 
 /** An asset as an offer names it. */
@@ -21,10 +22,13 @@ export interface OfferedAsset {
   readonly size: number;
   /** A tile pyramid's levels and tile count (its pieces are those tiles and the manifest). */
   readonly tiles?: { readonly levels: number; readonly count: number };
+  /** A long sound's pieces (its manifest and segments): a bound while its copy is made, its true count once whole. */
+  readonly segments?: { readonly pieces: number };
 }
 
-/** How an asset goes up: one body, parts, or batches of tiles. */
-export type UploadWay = 'single' | 'multipart' | 'tiles';
+/** How an asset goes up: one body, parts, batches of tiles, or batches of a sound's segments. */
+export type UploadWay = 'single' | 'multipart' | 'tiles' | 'segments';
+const UPLOAD_WAYS: readonly UploadWay[] = ['single', 'multipart', 'tiles', 'segments'];
 
 /**
  * Why the store will not take an asset: no room for it now (`retry`: the store makes room on its own,
@@ -44,9 +48,10 @@ export type OfferAnswer =
 function answerOf(value: unknown): OfferAnswer | null {
   if (!isRecord(value)) return null;
   if (value.answer === 'have') return { answer: 'have' };
-  if (value.answer === 'need' && (value.upload === 'single' || value.upload === 'multipart' || value.upload === 'tiles')) {
+  const upload = UPLOAD_WAYS.find((way) => way === value.upload);
+  if (value.answer === 'need' && upload !== undefined) {
     const partBytes = typeof value.partBytes === 'number' && Number.isSafeInteger(value.partBytes) && value.partBytes > 0 ? value.partBytes : PART_BYTES;
-    return { answer: 'need', upload: value.upload, partBytes };
+    return { answer: 'need', upload, partBytes };
   }
   if (value.answer === 'refused') {
     const reason = REFUSALS.find((known) => known === value.reason);
@@ -93,7 +98,7 @@ export function partsSessionOf(json: unknown): PartsSession | null {
   return { uploadId: json.uploadId, arrived: new Set(arrived) };
 }
 
-/** Where a pyramid stands after a batch: stored whole, and how many of its pieces (tiles and manifest) the store holds. */
+/** Where a pyramid or a sound in segments stands after a batch: stored whole, and how many of its pieces (manifest included) the store holds. */
 export interface TilesProgress {
   readonly stored: boolean;
   readonly pieces: number;

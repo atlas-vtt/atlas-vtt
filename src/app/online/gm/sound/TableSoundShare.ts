@@ -2,6 +2,7 @@ import { Pacer } from '../../marks/index.ts';
 import { parsePlayerSoundState, isRecord, type GmMessage } from '../../protocol/index.ts';
 import { SOFT_DRIFT_MS } from '../../../sound/engine/soundVoice';
 import { JOIN_SAMPLES, TableClockSync } from '../../../sound/engine/tableClockSync';
+import type { GrowingCopy } from '../../../sound/codec/growingCopy';
 import type { Mood, SoundBytes, SoundInfo, SoundRecord, TableSound } from '../../../sound/soundTypes';
 import type { SoundSnapshot } from '../../../soundDirector/soundSnapshot';
 import { stopAll } from '../../../soundDirector/liveEdits';
@@ -39,8 +40,10 @@ export interface ShareDirector {
     sceneMoods(scenePath: string): Promise<Mood[]>;
   };
   readonly shelf: {
-    /** Only a stored, whole copy: a copy still being made is never offered. */
+    /** Only a stored, whole copy. */
     storedBytes(key: string): Promise<SoundBytes>;
+    /** A copy while it is made: it goes up in segments as it grows. */
+    growingOf(key: string): GrowingCopy | null;
     infoOf(record: SoundRecord): SoundInfo | null;
     recordOfKey(key: string): SoundRecord | null;
     recordsOf(mix: Pick<Mood, 'music' | 'layers'>): SoundRecord[];
@@ -48,7 +51,7 @@ export interface ShareDirector {
   };
 }
 
-export interface SoundSharePorts extends Pick<SoundRefsPorts, 'copyRef'> {
+export interface SoundSharePorts extends Pick<SoundRefsPorts, 'copyRef' | 'segmentsRef'> {
   readonly director: ShareDirector;
   readonly timers: Timers;
   send(body: GmMessage, to?: string): void;
@@ -92,7 +95,12 @@ export class TableSoundShare implements PlayersSounds {
     this.on = ports.loadSending();
     const { director, timers } = ports;
     this.clock = new TableClockSync({ local: () => Date.now(), send: (t1) => ports.sendTime(t1), setTimer: (run, ms) => timers.setTimer(run, ms), clearTimer: (timer) => timers.clearTimer(timer) });
-    this.refs = new SoundRefs({ bytes: (key) => director.shelf.storedBytes(key), copyRef: (copy, read, use, handed) => ports.copyRef(copy, read, use, handed) });
+    this.refs = new SoundRefs({
+      bytes: (key) => director.shelf.storedBytes(key),
+      growing: (key) => director.shelf.growingOf(key),
+      copyRef: (copy, read, use, handed) => ports.copyRef(copy, read, use, handed),
+      segmentsRef: (key, codecVersion, segments, use, handed) => ports.segmentsRef(key, codecVersion, segments, use, handed),
+    });
     this.offers = new SoundOffers({
       refs: this.refs,
       send: (body, to) => ports.send(body, to),

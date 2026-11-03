@@ -10,7 +10,7 @@ import { answerOffer } from './offerRound.ts';
 import { roomRetryMs } from './uploadPace.ts';
 import type { AssetPublisherPorts } from './publisherPorts.ts';
 import { PyramidPublishing } from './pyramidPublishing.ts';
-import { copyStateOf, entryPyramid, UploadQueue, type CopyState, type QueueEntry } from './uploadQueue.ts';
+import { copyStateOf, entryPyramid, entrySegments, UploadQueue, type CopyState, type QueueEntry } from './uploadQueue.ts';
 import { UploadRunner } from './uploadRunner.ts';
 
 /** How long new assets gather before they are offered, so a scene's go in one request. */
@@ -26,10 +26,17 @@ type Halt = 'restricted' | 'forbidden' | 'signed-out';
 
 const REFUSAL_TEXTS: Partial<Record<OfferRefusal | 'failed', MessageKey>> = { restricted: 'online.assetsRestricted', 'too-large': 'online.assetsMapTooLarge', failed: 'online.assetsFailed' };
 
-/** An asset as an offer names it: a pyramid with its levels and tile count. */
+/** An asset as an offer names it: a pyramid with its levels and tile count, a sound in segments with its pieces (a bound until its copy is whole). */
 function offeredAsset(entry: QueueEntry): OfferedAsset {
   const pyramid = entryPyramid(entry);
-  return { id: entry.id, kind: entry.kind, size: entry.size, ...(pyramid !== null && { tiles: { levels: pyramid.levels, count: pyramid.count } }) };
+  const segments = entrySegments(entry);
+  return {
+    id: entry.id,
+    kind: entry.kind,
+    size: entry.size,
+    ...(pyramid !== null && { tiles: { levels: pyramid.levels, count: pyramid.count } }),
+    ...(segments !== null && { segments: { pieces: segments.done ? segments.pieces : segments.boundPieces } }),
+  };
 }
 
 /**
@@ -89,6 +96,8 @@ export class AssetPublisher {
       connection: () => ports.connection(),
       mayUpload: () => this.halted === null,
       progress: (entry, share) => this.progress.set(entry.id, Math.min(share, 0.99)),
+      parts: (entry, count) => this.progress.setParts(entry.id, count),
+      settle: (entry) => this.settleSegments(entry),
       ended: (entry, end) => this.ended(entry, end),
       tick: () => (this.queue.toOffer(ports.timers.now()).length > 0 ? void this.offer() : this.runner.pump()),
       settled: () => ports.settled?.(),
@@ -101,6 +110,7 @@ export class AssetPublisher {
       register: (asset) => this.register(asset),
       release: (ref) => this.release(ref),
       tilesRefused: () => this.noTiles,
+      segmentsReady: () => this.runner.pump(),
       floorMaps: (maps) => this.pyramids?.floorMaps(maps),
     });
   }
@@ -149,6 +159,18 @@ export class AssetPublisher {
     this.offerTimer = undefined;
     for (const timer of this.retryTimers) this.ports.timers.clearTimer(timer);
     this.retryTimers.clear();
+  }
+
+  /**
+   * A sound in segments whose copy is whole: the store is asked to keep its true size and pieces, never its
+   * bound, before the batch that ends it. A store that will not lower them leaves the upload to retry.
+   */
+  private async settleSegments(entry: QueueEntry): Promise<void> {
+    const segments = entrySegments(entry);
+    if (segments === null || !segments.done) return;
+    entry.size = segments.bytes;
+    const answer = await this.ports.client.offer([offeredAsset(entry)]);
+    if (!answer.ok) throw new Error(`The store did not take the sound's true size: ${answer.trouble}`);
   }
 
   /** Notes an asset and gives its id, or undefined where the store will not keep it: players are then not shown it. */

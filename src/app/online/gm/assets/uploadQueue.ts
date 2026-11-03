@@ -1,6 +1,7 @@
 import type { AssetKind } from '../../protocol/index.ts';
 import type { OfferAnswer, OfferRefusal, UploadWay } from './assetRoutes.ts';
 import type { LivePyramid } from './livePyramid.ts';
+import type { LiveSegments } from '../sound/liveSegments.ts';
 import { retryMs } from './uploadPace.ts';
 
 /**
@@ -8,10 +9,20 @@ import { retryMs } from './uploadPace.ts';
  * read again then, a copy this device keeps elsewhere (a sound's in its Opus cache), or a map's tile
  * pyramid in this device's cache, uploaded level by level as it is cut.
  */
-export type AssetSource = { readonly bytes: Uint8Array<ArrayBuffer> } | { readonly path: string } | { readonly read: () => Promise<Uint8Array<ArrayBuffer> | null> } | { readonly pyramid: LivePyramid };
+export type AssetSource = { readonly bytes: Uint8Array<ArrayBuffer> } | { readonly path: string } | { readonly read: () => Promise<Uint8Array<ArrayBuffer> | null> } | { readonly pyramid: LivePyramid } | { readonly segments: LiveSegments };
 
 /** Whether the store refused an entry for room it said it would make: it is offered again after a while. */
 const roomAgain = (entry: QueueEntry): boolean => entry.state === 'refused' && entry.refusal === 'quota' && entry.quotaRetries > 0;
+
+/** The segments a long sound's entry uploads, if it is one. */
+export const entrySegments = (entry: Pick<QueueEntry, 'source'>): LiveSegments | null => (entry.source !== null && 'segments' in entry.source ? entry.source.segments : null);
+
+/** An entry whose next piece is not cut yet: it waits, and is not taken up. */
+const waitsForPiece = (entry: QueueEntry): boolean => {
+  if (entryPyramid(entry)?.readyAt(entry.next) === false) return true;
+  const segments = entrySegments(entry);
+  return segments !== null && !segments.readyAt(entry.next) && !segments.done;
+};
 
 /** The pyramid an entry uploads, if it is one. */
 export const entryPyramid = (entry: Pick<QueueEntry, 'source'>): LivePyramid | null => (entry.source !== null && 'pyramid' in entry.source ? entry.source.pyramid : null);
@@ -118,7 +129,7 @@ export class UploadQueue {
   next(now: number, allow: (entry: QueueEntry) => boolean = () => true): QueueEntry | undefined {
     let best: QueueEntry | undefined;
     for (const entry of this.entries.values()) {
-      if (entry.state !== 'queued' || entry.retryAt > now || !allow(entry) || entryPyramid(entry)?.readyAt(entry.next) === false) continue;
+      if (entry.state !== 'queued' || entry.retryAt > now || !allow(entry) || waitsForPiece(entry)) continue;
       if (best === undefined || entry.rank < best.rank || (entry.rank === best.rank && entry.stamp > best.stamp)) best = entry;
     }
     return best;

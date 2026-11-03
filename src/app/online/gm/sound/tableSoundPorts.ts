@@ -32,6 +32,7 @@ export function tableSoundShare({ app, publisher, timers, send, sendTime, connec
     sendTime,
     connected,
     copyRef: (copy, read, use, handed) => publisher.storing.copyRef(copy, read, use, handed),
+    segmentsRef: (key, codecVersion, segments, use, handed) => publisher.storing.segmentsRef(key, codecVersion, segments, use, handed),
     copyState: (id) => publisher.copyState(id),
     presentedPath: () => presented.get()?.filePath ?? null,
     onPresentedChange: (listener) => presented.onChange(listener),

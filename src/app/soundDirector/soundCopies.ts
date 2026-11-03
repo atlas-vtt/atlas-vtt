@@ -175,7 +175,8 @@ export class SoundCopies {
     throw new Error(`The copy of ${key} is not stored yet.`);
   }
 
-  private growingOf(key: string): GrowingCopy | null {
+  /** The copy of a key while it is made. */
+  growingOf(key: string): GrowingCopy | null {
     const id = this.keys.get(key);
     const entry = id ? this.entries.get(id) : undefined;
     return entry && !entry.measure ? entry.growing : null;
