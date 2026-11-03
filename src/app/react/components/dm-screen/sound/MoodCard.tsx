@@ -5,8 +5,7 @@ import { LabelTooltip } from '../../../../packages/components/primitives/tooltip
 import type { Mood } from '../../../../sound/soundTypes';
 import type { MoodProblem } from '../../../../soundDirector/moodReadiness';
 import type { PlayersCopy } from '../../../../soundDirector/tableClock';
-import { moodIcon, moodTone } from '../../../../soundLibrary/moodLook';
-import { PIN_ICON_PATHS } from '../../../../types/pinIcons';
+import { moodCrestPath, moodIcon, moodTone } from '../../../../soundLibrary/moodLook';
 import { WIDGET_ICON_VIEW_BOX } from '../../../../types/widgetIcons';
 import { prefersReducedMotion } from '../../../../utils/motion';
 import { IconAction } from './IconAction';
@@ -125,7 +124,7 @@ export const MoodCard = React.memo(function MoodCard({ mood, number, playing, si
         onPointerDown={(event) => onDragStart(mood, event)}
       >
         {sceneImage !== null && <SceneBackdrop src={sceneImage} />}
-        <svg className="atlas-sound-mood__crest" viewBox={WIDGET_ICON_VIEW_BOX} aria-hidden="true"><path d={PIN_ICON_PATHS[moodIcon(mood)]} /></svg>
+        <svg className="atlas-sound-mood__crest" viewBox={WIDGET_ICON_VIEW_BOX} aria-hidden="true"><path d={moodCrestPath(moodIcon(mood))} /></svg>
         <span className="atlas-sound-mood__name">{mood.name}</span>
         <span className="atlas-sound-mood__what">
           <span>{musicLine(mood, musicName)}</span>

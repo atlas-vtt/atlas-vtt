@@ -183,7 +183,7 @@ describe('how the Sound page looks', () => {
     await act(async () => { await sleep(200); });
     await shoot('mood-menu');
     await userEvent.click([...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === 'Edit')!);
-    await expect.poll(() => document.querySelector('.atlas-sound-dialog')).not.toBeNull();
+    await expect.poll(() => document.querySelector('.atlas-sound-popover')).not.toBeNull();
     await act(async () => { await sleep(300); });
     await shoot('mood-dialog');
     expect(shown.moodsOf()).toHaveLength(MOODS.length);

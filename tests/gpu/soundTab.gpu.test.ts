@@ -4,7 +4,7 @@ import { page, userEvent } from 'vitest/browser';
 import { MusicWave } from '@/app/react/components/dm-screen/sound/musicWave';
 import { musicPosition, soundingMusic } from '@/app/soundDirector/musicList';
 import type { PlayersCopy } from '@/app/soundDirector/tableClock';
-import { PIN_ICON_PATHS } from '@/app/types/pinIcons';
+import { MOOD_CREST_PATHS } from '@/app/types/moodCrestPaths';
 import sceneThumb from '../fixtures/images/baseline-444.jpg?url';
 import { centreOf, mouse, pressAndMove } from './realMouse';
 import { DARK, LIGHT, openSoundTab, seedMoods, SOUNDS, type SoundTab } from './sound/soundTabHarness';
@@ -543,22 +543,48 @@ describe('the DM screen’s Sound page', () => {
     host.remove();
   });
 
-  it('opens the mood dialog with a crest and a tone it can save', async () => {
+  it('edits a mood in a popover under its tile, with round tones and crests by theme', async () => {
     await open1644();
     if (!tab) return;
     const first = tab.moodsOf()[0];
-    act(() => document.querySelector<HTMLElement>('[data-sound-mood]')?.focus());
-    await userEvent.keyboard('{Shift>}{F10}{/Shift}');
-    await expect.poll(() => document.querySelector('[role="menu"]')).not.toBeNull();
-    await userEvent.click([...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === 'Edit')!);
-    await expect.poll(() => document.querySelector('.atlas-sound-dialog')).not.toBeNull();
-    await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-look__tone')[6]!);
-    await userEvent.click(document.querySelectorAll<HTMLElement>('.atlas-sound-look__crest')[2]!);
-    expect(document.querySelector('.atlas-sound-look__crest[aria-checked="true"]')).toBe(document.querySelectorAll('.atlas-sound-look__crest')[2]);
-    await userEvent.click([...document.querySelectorAll<HTMLElement>('.atlas-sound-dialog button')].find((button) => button.textContent === 'Save')!);
+    const openEditor = async (): Promise<HTMLElement> => {
+      act(() => document.querySelector<HTMLElement>('[data-sound-mood]')?.focus());
+      await userEvent.keyboard('{Shift>}{F10}{/Shift}');
+      await expect.poll(() => document.querySelector('[role="menu"]')).not.toBeNull();
+      await userEvent.click([...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].find((item) => item.textContent === 'Edit')!);
+      await expect.poll(() => document.querySelector('.atlas-sound-popover')).not.toBeNull();
+      return document.querySelector<HTMLElement>('.atlas-sound-popover')!;
+    };
+    let popover = await openEditor();
+    await act(async () => { await Promise.all(popover.getAnimations().map((animation) => animation.finished)); });
+    const tile = document.querySelector<HTMLElement>('.atlas-sound-mood')!.getBoundingClientRect();
+    await expect.poll(() => popover.getBoundingClientRect().top).toBeGreaterThan(tile.bottom);
+    const box = popover.getBoundingClientRect();
+    const caret = popover.querySelector('.atlas-sound-popover__caret')!.getBoundingClientRect();
+    expect(Math.abs(caret.left + caret.width / 2 - (tile.left + tile.width / 2))).toBeLessThan(2);
+    expect(box.left).toBeGreaterThanOrEqual(0);
+    expect(popover.querySelector('input[type="range"]')).toBeNull();
+    for (const swatch of popover.querySelectorAll<HTMLElement>('.atlas-sound-look__tone')) {
+      const { width, height } = swatch.getBoundingClientRect();
+      expect([width, height]).toEqual([22, 22]);
+    }
+    expect([...popover.querySelectorAll('.atlas-sound-look__group-label')].map((label) => label.textContent)).toContain('Dread');
+
+    await userEvent.keyboard('{Escape}');
+    await expect.poll(() => document.querySelector('.atlas-sound-popover')).toBeNull();
+    popover = await openEditor();
+    act(() => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); });
+    await expect.poll(() => document.querySelector('.atlas-sound-popover')).toBeNull();
+
+    popover = await openEditor();
+    await userEvent.click(popover.querySelectorAll<HTMLElement>('.atlas-sound-look__tone')[6]!);
+    const ghost = popover.querySelector<HTMLElement>('.atlas-sound-look__crest[aria-label="Ghost"]')!;
+    await userEvent.click(ghost);
+    expect(popover.querySelector('.atlas-sound-look__crest[aria-checked="true"]')).toBe(ghost);
+    await userEvent.click(popover.querySelector<HTMLElement>('.atlas-sound-popover__save')!);
     await expect.poll(() => tab?.moodsOf().find((mood) => mood.id === first?.id)?.tone).toBe('azure');
-    expect(tab.moodsOf().find((mood) => mood.id === first?.id)?.icon).toBe('treasure');
-    expect(document.querySelector('.atlas-sound-mood svg path')?.getAttribute('d')).toBe(PIN_ICON_PATHS.treasure);
+    expect(tab.moodsOf().find((mood) => mood.id === first?.id)?.icon).toBe('ghost');
+    expect(document.querySelector('.atlas-sound-mood svg.atlas-sound-mood__crest path')?.getAttribute('d')).toBe(MOOD_CREST_PATHS.ghost);
   });
 
   it('runs a thin bar along the tile for the crossfade, and meters from real levels while the page shows', async () => {

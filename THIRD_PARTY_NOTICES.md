@@ -2,7 +2,7 @@
 
 ## Assets
 
-- Widget icons, map pin icons, the dashboard's icons, the token icon, the end-combat icon and the loot coin icon come from [game-icons.net](https://game-icons.net) by Lorc, Delapouite, Skoll, sbed, Carl Olsen and Caro Asercion, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
+- Widget icons, map pin icons, the sound moods' crests, the dashboard's icons, the token icon, the end-combat icon and the loot coin icon come from [game-icons.net](https://game-icons.net) by Lorc, Delapouite, Skoll, sbed, Carl Olsen and Caro Asercion, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
 - The light markers' glyphs are the game-icons.net icons candle-light, lantern-flame, fairy-wand and light-bulb by Lorc and lava by sbed, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
 - The door badges' glyphs are the game-icons.net icons closed-doors and open-gate by Delapouite, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/). The black background was removed and the glyphs recoloured.
 - The dice tray's dice are the game-icons.net icons d4, d10 and d12 by Skoll and dice-six-faces-six, dice-eight-faces-eight and dice-twenty-faces-twenty by Delapouite, licensed under [CC BY 3.0](https://creativecommons.org/licenses/by/3.0/), redrawn as pencil sketches.

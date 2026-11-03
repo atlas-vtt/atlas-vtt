@@ -10,7 +10,7 @@ import { confirmAction } from '../../../../ui/confirmDialog';
 import { useContextMenu } from '../../../root/ContextMenuContext';
 import { useOptionalAtlasStore } from '../../../ViewStoreContext';
 import { MoodCard } from './MoodCard';
-import { MoodEditDialog } from './MoodEditDialog';
+import { MoodEditPopover } from './MoodEditPopover';
 import { moodForPlayers } from './PlayersRow';
 import { useMoodDrag } from './useMoodDrag';
 import { useMoodScenes } from './useMoodScenes';
@@ -37,12 +37,13 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
   const scenePath = useOptionalAtlasStore((state) => state.mapPath, null);
   const sceneImages = useMoodScenes(app, { path: scenePath, sound: sceneSound });
   const setSceneSound = useOptionalAtlasStore((state) => state.setSceneSound, null);
-  const [editing, setEditing] = useState<Mood | null>(null);
+  const [editing, setEditing] = useState<{ mood: Mood; tile: HTMLElement } | null>(null);
   const activeId = useSoundValue(director, (snapshot) => snapshot.mix.mood?.id ?? null);
   const shelfRevision = useSoundValue(director, (snapshot) => snapshot.shelfRevision);
   const playersRevision = useSoundValue(director, (snapshot) => snapshot.playersRevision);
   const silenced = useSoundValue(director, ({ mix }) => mix.table.silenced);
 
+  const closeEditor = useCallback((): void => setEditing(null), []);
   const canMove = useCallback((mood: Mood) => !store.isReadOnly(mood.id), [store]);
   const { shown, draggingId, start, consumeClick } = useMoodDrag(gridRef, moods, canMove, moveMood);
 
@@ -54,7 +55,7 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
     const box = anchor.getBoundingClientRect();
     const readOnly = store.isReadOnly(mood.id);
     menu.open([
-      { type: 'item', label: t('audio.mood.edit'), disabled: readOnly, ...(readOnly && { description: t('audio.mood.readOnly') }), onClick: () => setEditing(mood) },
+      { type: 'item', label: t('audio.mood.edit'), disabled: readOnly, ...(readOnly && { description: t('audio.mood.readOnly') }), onClick: () => setEditing({ mood, tile: anchor.closest<HTMLElement>('.atlas-sound-mood') ?? anchor }) },
       { type: 'item', label: t('audio.mood.duplicate'), onClick: () => store.createMood({ ...moodMix(mood), name: t('audio.mood.copyName', { name: mood.name }) }) },
       { type: 'item', label: t('audio.mood.linkScene'), checked: sceneSound?.mood === mood.id, disabled: !hasScene, onClick: () => setSceneSound?.(withLink(sceneSound, 'mood', mood.id)) },
       { type: 'item', label: t('audio.mood.linkCombat'), checked: sceneSound?.combatMood === mood.id, disabled: !hasScene, onClick: () => setSceneSound?.(withLink(sceneSound, 'combatMood', mood.id)) },
@@ -99,7 +100,7 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
         <Plus aria-hidden="true" />
         {t('audio.mood.new')}
       </button>
-      {editing && <MoodEditDialog mood={editing} onClose={() => setEditing(null)} onSave={(changed) => store.saveMood(changed)} />}
+      {editing && <MoodEditPopover mood={editing.mood} anchor={editing.tile} onClose={closeEditor} onSave={(changed) => store.saveMood(changed)} />}
     </div>
   );
 }

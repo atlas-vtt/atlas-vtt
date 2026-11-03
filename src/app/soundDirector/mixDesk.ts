@@ -33,10 +33,12 @@ export class MixDesk {
   ) {}
 
   /** One press, whoever makes it; only a gesture may start a silent context by itself. */
-  playMix(active: ActiveMood | null, mood: MoodMix, gesture: boolean): void {
+  playMix(active: ActiveMood | null, saved: MoodMix, gesture: boolean): void {
     if (!this.host.isOn()) return;
     if (gesture) this.output.unlock();
     else this.output.ensureRunning();
+    // Every mood fades by the one Fade setting; a mood file's own fadeSeconds stays for older versions and is not read.
+    const mood: MoodMix = { ...saved, fadeSeconds: this.host.fadeSeconds() };
     const records = this.shelf.recordsOf(mood);
     this.shelf.request(records.filter((record) => !this.shelf.infoOf(record)), true);
     const { now, leadMs } = this.table.timing();

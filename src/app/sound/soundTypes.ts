@@ -1,4 +1,4 @@
-import type { PinIconId } from '../types/pinIconPaths';
+import type { MoodIconId } from '../soundLibrary/moodLook';
 
 /** A music or ambience file in the vault. Stored in a record file like other assets. */
 export type SoundKind = 'music' | 'ambience';
@@ -40,8 +40,8 @@ export interface Mood {
   fadeSeconds: number;
   music: MoodMusic;
   layers: MoodLayer[];
-  /** The crest on its tile, from the pin icons. Unset is the default (`moodLook`). */
-  icon?: PinIconId;
+  /** The crest on its tile (`moodLook`). Unset is the default. */
+  icon?: MoodIconId;
   /** A name of the pin tones. Unset is the tone of its icon. */
   tone?: string;
 }

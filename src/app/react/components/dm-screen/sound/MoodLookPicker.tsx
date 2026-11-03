@@ -1,8 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import { t } from '../../../../i18n';
 import type { Mood } from '../../../../sound/soundTypes';
-import { MOOD_ICON_CHOICES, MOOD_TONE_NAMES, moodIcon, moodTone } from '../../../../soundLibrary/moodLook';
-import { PIN_ICON_PATHS, PIN_TONES } from '../../../../types/pinIcons';
+import { MOOD_CREST_GROUPS, MOOD_TONE_NAMES, moodCrestPath, moodIcon, moodTone } from '../../../../soundLibrary/moodLook';
+import { PIN_TONES } from '../../../../types/pinIcons';
 import { WIDGET_ICON_VIEW_BOX } from '../../../../types/widgetIcons';
 import { scrollWithin } from '../../../../utils/scrollWithin';
 import { LabelTooltip, TooltipProvider } from '../../../../packages/components/primitives/tooltip';
@@ -14,7 +14,7 @@ interface MoodLookPickerProps {
   onChange: (look: MoodLook) => void;
 }
 
-/** A mood's tone and crest, from what pins have. Both are radio groups; a tone is named by its label, a crest by its tooltip. */
+/** A mood's tone and crest. Both are radio groups; a tone is named by its label, a crest by its tooltip. Crests stand in groups by theme. */
 export function MoodLookPicker({ look, onChange }: MoodLookPickerProps): React.JSX.Element {
   const icon = moodIcon(look);
   const tone = moodTone(look);
@@ -47,12 +47,19 @@ export function MoodLookPicker({ look, onChange }: MoodLookPickerProps): React.J
         <div className="atlas-sound-field">
           <span>{t('audio.mood.crest')}</span>
           <div className="atlas-sound-look__crests" ref={crests} role="radiogroup" aria-label={t('audio.mood.crest')}>
-            {MOOD_ICON_CHOICES.map((choice) => (
-              <LabelTooltip key={choice.id} label={choice.name}>
-                <button type="button" role="radio" aria-checked={choice.id === icon} className="atlas-sound-look__crest" onClick={() => onChange({ ...look, icon: choice.id })}>
-                  <svg viewBox={WIDGET_ICON_VIEW_BOX} aria-hidden="true"><path d={PIN_ICON_PATHS[choice.id]} /></svg>
-                </button>
-              </LabelTooltip>
+            {MOOD_CREST_GROUPS.map((group) => (
+              <div key={group.name} className="atlas-sound-look__group" role="group" aria-label={group.name}>
+                <span className="atlas-sound-look__group-label" aria-hidden="true">{group.name}</span>
+                <div className="atlas-sound-look__group-crests">
+                  {group.crests.map((choice) => (
+                    <LabelTooltip key={choice.id} label={choice.name}>
+                      <button type="button" role="radio" aria-checked={choice.id === icon} aria-label={choice.name} className="atlas-sound-look__crest" onClick={() => onChange({ ...look, icon: choice.id })}>
+                        <svg viewBox={WIDGET_ICON_VIEW_BOX} aria-hidden="true"><path d={moodCrestPath(choice.id)} /></svg>
+                      </button>
+                    </LabelTooltip>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </div>

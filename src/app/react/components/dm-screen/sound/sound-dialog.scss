@@ -2,31 +2,71 @@
 @use '../../../../../../styles/mixins' as *;
 @use './sound-look' as *;
 
-// The mood dialog, its tone and crest, and the list of sounds in the library view.
-.atlas-sound-dialog-layer {
-  position: absolute;
+// The mood popover under its tile, its tone and crest, and the list of sounds in the library view.
+$tone-size: 22px;
+
+.atlas-sound-popover-layer {
+  position: fixed;
   inset: 0;
-  z-index: 10;
-  display: grid;
-  place-items: center;
-  background: rgba(0, 0, 0, 0.3);
+  z-index: $z-atlas-dropdown;
+  pointer-events: none;
 }
 
-.atlas-sound-dialog {
-  @include atlas-modal-window;
-  width: min(392px, 90%);
-  max-height: 90%;
-}
-
-.atlas-sound-dialog__header {
-  @include atlas-modal-header;
-}
-
-.atlas-sound-dialog__body {
+.atlas-sound-popover {
+  @include atlas-elevated-surface;
+  @include atlas-panel-radius($radius-2xl);
   @include atlas-flex-col($spacing-m);
+  position: absolute;
   align-items: stretch;
+  box-sizing: border-box;
+  width: 344px;
+  max-width: calc(100vw - #{$spacing-l});
   padding: $spacing-m;
-  overflow-y: auto;
+  pointer-events: auto;
+  transform-origin: var(--atlas-sound-caret) 0;
+  animation: atlas-sound-popover-in $transition-normal $press-ease;
+
+  &[data-side='above'] {
+    transform-origin: var(--atlas-sound-caret) 100%;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+// A square turned on its corner, half of it showing past the edge, in the surface's colour and border.
+.atlas-sound-popover__caret {
+  position: absolute;
+  top: 0;
+  left: var(--atlas-sound-caret);
+  width: 12px;
+  height: 12px;
+  background: inherit;
+  border: inherit;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 2px 0 0;
+  translate: -50% calc(-50% - #{$border-width-m} / 2);
+  rotate: 45deg;
+
+  [data-side='above'] > & {
+    top: 100%;
+    rotate: 225deg;
+    translate: -50% calc(-50% + #{$border-width-m} / 2);
+  }
+}
+
+.atlas-sound-popover__name {
+  @include atlas-panel-inset-radius($spacing-m);
+  width: 100%;
+  font-size: $font-ui-medium;
+  font-weight: var(--font-semibold);
+}
+
+.atlas-sound-popover__save {
+  @include atlas-panel-inset-radius($spacing-m);
+  width: 100%;
 }
 
 .atlas-sound-field {
@@ -34,26 +74,13 @@
   align-items: stretch;
   color: var(--text-muted);
   font-size: $font-ui-smaller;
+}
 
-  input {
-    width: 100%;
+@keyframes atlas-sound-popover-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
   }
-}
-
-.atlas-sound-level {
-  @include atlas-flex-row($spacing-s);
-}
-
-.atlas-sound-level__value {
-  flex-shrink: 0;
-  min-width: 32px;
-  text-align: end;
-  font-variant-numeric: tabular-nums;
-}
-
-.atlas-sound-dialog__actions {
-  display: flex;
-  justify-content: flex-end;
 }
 
 .atlas-sound-look {
@@ -62,17 +89,21 @@
 }
 
 .atlas-sound-look__tones {
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
   gap: $spacing-xs;
+  padding: $border-width-l * 2;
 }
 
 .atlas-sound-look__tone {
   @include bare-button;
   @include focus-ring;
   --atlas-sound-tone: var(--atlas-sound-tone-light);
-  aspect-ratio: 1;
-  min-width: 0;
+  flex: none;
+  width: $tone-size;
+  height: $tone-size;
+  min-height: 0;
   border-radius: $radius-full;
   background: var(--atlas-sound-tone);
   transition: box-shadow $transition-normal $press-ease;
@@ -88,22 +119,38 @@
 
 .atlas-sound-look__crests {
   @include atlas-scrollbar;
+  @include atlas-flex-col($spacing-s);
   --atlas-sound-tone: var(--atlas-sound-tone-light);
-  display: grid;
-  grid-template-columns: repeat(8, minmax(0, 1fr));
-  gap: $spacing-xs;
-  max-height: 136px;
+  align-items: stretch;
+  max-height: 232px;
   overflow-y: auto;
+  overscroll-behavior: contain;
 
   .theme-dark & {
     --atlas-sound-tone: var(--atlas-sound-tone-dark);
   }
 }
 
+.atlas-sound-look__group {
+  @include atlas-flex-col($spacing-xs);
+  align-items: stretch;
+}
+
+.atlas-sound-look__group-label {
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
+}
+
+.atlas-sound-look__group-crests {
+  display: grid;
+  grid-template-columns: repeat(8, minmax(0, 1fr));
+  gap: $spacing-xs;
+}
+
 .atlas-sound-look__crest {
   @include bare-button;
   @include focus-ring;
-  aspect-ratio: 1;
+  height: 36px;
   min-width: 0;
   display: grid;
   place-items: center;
@@ -112,8 +159,8 @@
   transition: color $transition-normal $press-ease, background-color $transition-normal $press-ease;
 
   svg {
-    width: 70%;
-    height: 70%;
+    width: 24px;
+    height: 24px;
     fill: currentColor;
   }
 
