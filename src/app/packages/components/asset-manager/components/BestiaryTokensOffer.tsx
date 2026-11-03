@@ -183,7 +183,7 @@ export function BestiaryTokensOffer({ app, assets, collection, variant, fallback
   }
   return (
     <div className="atlas-starter-offer">
-      <p>{t('am.bestiary.lead', { count: BESTIARY_TOKEN_COUNT })}</p>
+      <p>{t('am.bestiary.lead')}</p>
       <div className="atlas-starter-offer__panel">
         {button}
         {progress}
