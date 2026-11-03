@@ -143,3 +143,26 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
     height: $icon-xs;
   }
 }
+
+// ── Bestiary tokens offer, above Manage ──
+
+.atlas-bestiary-offer {
+  &.btn {
+    // Close to Manage below it: the two are the sidebar's foot.
+    margin-bottom: calc(#{$spacing-xs} - #{$spacing-l});
+    border-radius: $radius-m;
+    color: var(--text-normal);
+  }
+
+  small {
+    color: var(--text-faint);
+    font-weight: $font-weight-normal;
+    white-space: nowrap;
+  }
+
+  &.btn:disabled {
+    cursor: progress;
+    opacity: 1;
+    color: var(--text-muted);
+  }
+}

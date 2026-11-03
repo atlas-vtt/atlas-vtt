@@ -8,6 +8,7 @@ import type { AnyAsset, AssetManagerProps, Tab } from './types';
 
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
+import { BestiaryTokensOffer } from './components/BestiaryTokensOffer';
 import { Content } from './components/Content';
 import { LocationBar } from './components/LocationBar';
 import { ModalLayer } from './components/ModalLayer';
@@ -228,6 +229,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onEditCollectionSettings={crud.setSettingsModalCollectionId}
                   onExportCollection={() => { void crud.handleExportCollection(); }}
                   onImportCollection={crud.handleImportCollection}
+                  footer={activeTab === 'tokens' && data.assetService ? <BestiaryTokensOffer app={data.app} assets={data.assetService} /> : null}
                   layout={sidebar}
                 />
                 <Header
