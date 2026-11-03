@@ -299,22 +299,38 @@
   }
 }
 
-// The starter tokens, offered where the Tokens tab is empty.
-.atlas-empty-state .atlas-bestiary-offer-block {
-  @include atlas-flex-col($gap: $spacing-m);
+// The starter tokens, offered where the Tokens tab is empty: one column whose choice and button
+// share both edges, the small print under it.
+.atlas-empty-state .atlas-starter-offer {
+  @include atlas-flex-col($gap: $spacing-l);
   align-items: center;
-  margin-top: $spacing-m;
   pointer-events: auto;
+}
 
-  p {
-    color: var(--text-faint);
-    font-size: $font-ui-smaller;
+.atlas-starter-offer__panel {
+  @include atlas-flex-col($gap: $spacing-s);
+  width: 280px;
+
+  // The choice fills its row beside the label, its options alike.
+  .atlas-segmented {
+    flex: 1 1 auto;
   }
+
+  .atlas-segmented__option {
+    flex: 1 1 0;
+  }
+}
+
+.atlas-empty-state .atlas-starter-offer__fine {
+  @include atlas-flex-col($gap: 2px);
+  color: var(--text-faint);
+  font-size: $font-ui-smaller;
 }
 
 .atlas-bestiary-offer__choice {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: $spacing-s;
 
   > span {
@@ -324,6 +340,8 @@
 }
 
 .atlas-bestiary-offer--empty.btn {
+  width: 100%;
+  justify-content: center;
   gap: $spacing-xs;
 
   svg {
