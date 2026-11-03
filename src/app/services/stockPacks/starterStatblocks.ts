@@ -9,7 +9,8 @@ import { fetchVerified, StockPackError, type FetchBytes, type PackedFile } from 
 
 /**
  * Statblocks the starter tokens may come with, one set per game system whose licence lets Atlas
- * hand its monsters out: the 5E SRD 5.2.1 (CC BY 4.0) on the built-in 5E template, and the Cairn
+ * hand its monsters out: the 5E SRD 5.2.1 (CC BY 4.0) on the built-in 5E template, where a creature
+ * the SRD lacks takes the statistics of one that fits its art under its own name, and the Cairn
  * bestiary (CC BY-SA 4.0) on the built-in Cairn template. Each note credits its source in its text.
  * Sets are never changed in place: a new one is a new folder and a new manifest hash.
  */
@@ -17,8 +18,8 @@ export type StatblockSet = '5e' | 'cairn';
 
 export const STATBLOCK_SETS: Readonly<Record<StatblockSet, { host: string; manifest: PackedFile }>> = {
   '5e': {
-    host: 'https://assets.atlas-vtt.dev/starter/statblocks-5e-2/',
-    manifest: { key: 'manifest.json', bytes: 19_849, sha256: 'b8d3bff529aada9c367b91efcb9cf37d08d041ecd020ff093e5c771bd83deb25' },
+    host: 'https://assets.atlas-vtt.dev/starter/statblocks-5e-3/',
+    manifest: { key: 'manifest.json', bytes: 26_615, sha256: 'c7e8a94328f76cde6657719e387899358ca278d3fab485c98b5922688dc2b39a' },
   },
   cairn: {
     host: 'https://assets.atlas-vtt.dev/starter/statblocks-cairn-1/',
@@ -27,7 +28,7 @@ export const STATBLOCK_SETS: Readonly<Record<StatblockSet, { host: string; manif
 };
 
 /** How many of the tokens each set gives a statblock, for the choice to say. */
-export const STATBLOCK_COUNTS: Readonly<Record<StatblockSet, number>> = { '5e': 108, cairn: 145 };
+export const STATBLOCK_COUNTS: Readonly<Record<StatblockSet, number>> = { '5e': 145, cairn: 145 };
 
 /** The line every note holds where the token's art goes; the install writes the art's path into it. */
 const IMAGE_LINE = 'image: ""';
