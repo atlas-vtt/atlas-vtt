@@ -229,7 +229,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                   onEditCollectionSettings={crud.setSettingsModalCollectionId}
                   onExportCollection={() => { void crud.handleExportCollection(); }}
                   onImportCollection={crud.handleImportCollection}
-                  footer={activeTab === 'tokens' && data.assetService ? <BestiaryTokensOffer app={data.app} assets={data.assetService} /> : null}
+                  footer={activeTab === 'tokens' && data.assetService ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} /> : null}
                   layout={sidebar}
                 />
                 <Header

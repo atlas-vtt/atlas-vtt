@@ -17,7 +17,7 @@ export const BESTIARY_TOKEN_COUNT = 145;
 /** What the download comes to, for the offer to say. */
 export const BESTIARY_BYTES = 18_420_734;
 const CREDITS_NOTE = 'Bestiary token credits.md';
-/** The same id on every device, so two devices downloading the pack before they sync hold one set. */
+/** With the collection's uid, the same id on every device, so two devices downloading into one collection before they sync hold one set. */
 const ID_PREFIX = 'token-bestiary-';
 /** Requests at a time. */
 const PARALLEL = 6;
@@ -53,11 +53,11 @@ function readManifest(bytes: ArrayBuffer): Manifest {
   return { credits: packedFile(data.credits, 'md'), tokens };
 }
 
-const tokenIdOf = (token: BestiaryToken): string => `${ID_PREFIX}${token.key.replace(/\.webp$/, '')}`;
+const tokenIdOf = (collectionUid: string, token: BestiaryToken): string => `${ID_PREFIX}${collectionUid}-${token.key.replace(/\.webp$/, '')}`;
 
-/** Whether the library holds any of the pack's tokens. A user who deleted some kept the rest on purpose. */
-export async function hasBestiaryTokens(assets: AssetService): Promise<boolean> {
-  return (await assets.getTokenAssets()).some((token) => token.id.startsWith(ID_PREFIX));
+/** Whether a collection holds any of the pack's tokens. A user who deleted some kept the rest on purpose. */
+export async function hasBestiaryTokens(assets: AssetService, collection: string): Promise<boolean> {
+  return (await assets.getAssets(collection, 'token')).some((token) => token.id.startsWith(ID_PREFIX));
 }
 
 /** Fetches every file, at most `PARALLEL` at a time, in the order given. */
@@ -86,10 +86,10 @@ export interface InstallOptions {
 
 /**
  * Fetches the whole pack and checks every file before anything is written, then adds the tokens
- * to the default collection under the tag `BESTIARY_TAG`, with a note that credits the art. Tokens
- * already in the library are left alone. Returns how many tokens were added.
+ * to `collection` under the tag `BESTIARY_TAG`, with a note that credits the art. Tokens already
+ * in it are left alone. Returns how many tokens were added.
  */
-export async function installBestiaryTokens(app: App, assets: AssetService, { onStep, fetch = fetchBytes, manifest: pinned = MANIFEST }: InstallOptions = {}): Promise<number> {
+export async function installBestiaryTokens(app: App, assets: AssetService, collection: string, { onStep, fetch = fetchBytes, manifest: pinned = MANIFEST }: InstallOptions = {}): Promise<number> {
   onStep?.(0);
   const manifest = readManifest(await fetchVerified(HOST, pinned, fetch));
   const files: PackedFile[] = [manifest.credits, ...manifest.tokens];
@@ -101,21 +101,23 @@ export async function installBestiaryTokens(app: App, assets: AssetService, { on
   });
 
   const added = await assets.runExclusive(async () => {
-    const collection = assets.getDefaultCollectionId();
+    const target = await assets.getCollection(collection);
+    if (!target) throw new StockPackError(`There is no collection ${collection}.`);
     const present = new Set((await assets.getTokenAssets()).map((token) => token.id));
     const fresh = manifest.tokens.flatMap((token, index) => {
       const bytes = images[index];
-      return present.has(tokenIdOf(token)) || !bytes ? [] : [{ token, bytes }];
+      const id = tokenIdOf(target.uid, token);
+      return present.has(id) || !bytes ? [] : [{ token, bytes, id }];
     });
     if (fresh.length === 0) return 0;
     const tag = await assets.createTag(collection, 'tokens', BESTIARY_TAG);
     const written: string[] = [];
     try {
       const records = [];
-      for (const { token, bytes } of fresh) {
+      for (const { token, bytes, id } of fresh) {
         const imagePath = await writeAssetImage(app, token.name, bytes);
         written.push(imagePath);
-        records.push({ id: tokenIdOf(token), name: token.name, imagePath, collection, tags: [tag.name], showRing: true });
+        records.push({ id, name: token.name, imagePath, collection, tags: [tag.name], showRing: true });
       }
       await assets.addTokenAssets(records);
     } catch (error) {

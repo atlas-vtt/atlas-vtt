@@ -47,7 +47,7 @@ describe('the bestiary tokens offer', () => {
       root?.render(React.createElement(Sidebar, {
         selectedTagIds: [], onSelectTag: noop, onClearTags: noop, tags: [{ id: 'class', name: 'Class' }], assets: [],
         collections: [{ id: 'Default', uid: 'u', name: 'Default', isDefault: true }], selectedCollection: 'Default', onSelectCollection: noop, onManageTags: noop,
-        footer: React.createElement(BestiaryTokensOffer, { app, assets }),
+        footer: React.createElement(BestiaryTokensOffer, { app, assets, collection: assets.getDefaultCollectionId() }),
       }));
     });
     await expect.poll(() => document.querySelector('.atlas-bestiary-offer')).not.toBeNull();

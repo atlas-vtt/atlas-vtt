@@ -9,14 +9,14 @@ import { showNotice } from '../../../../ui/notice';
 
 const FAILED_NOTICE_MS = 12_000;
 
-type DownloadPhase = { phase: 'idle' } | { phase: 'downloading'; share: number };
+type DownloadPhase = { phase: 'idle' } | { phase: 'downloading'; collection: string; share: number };
 
 interface DownloadState {
   current: DownloadPhase;
   listeners: Set<() => void>;
 }
 
-// One download per library, whichever asset manager started it: the map view's and the global one show the same.
+// One download per library at a time, whichever asset manager started it: the map view's and the global one show the same.
 const downloads = new WeakMap<AssetService, DownloadState>();
 
 function stateOf(assets: AssetService): DownloadState {
@@ -33,14 +33,14 @@ function announce(state: DownloadState, next: DownloadPhase): void {
   for (const listener of state.listeners) listener();
 }
 
-function startDownload(app: App, assets: AssetService): void {
+function startDownload(app: App, assets: AssetService, collection: string): void {
   const state = stateOf(assets);
   if (state.current.phase === 'downloading') return;
-  announce(state, { phase: 'downloading', share: 0 });
-  installBestiaryTokens(app, assets, { onStep: (share) => announce(state, { phase: 'downloading', share }) }).then(
+  announce(state, { phase: 'downloading', collection, share: 0 });
+  installBestiaryTokens(app, assets, collection, { onStep: (share) => announce(state, { phase: 'downloading', collection, share }) }).then(
     (count) => {
       announce(state, { phase: 'idle' });
-      showNotice(t('am.bestiary.added', { count, tag: BESTIARY_TAG }));
+      showNotice(t('am.bestiary.added', { count, collection, tag: BESTIARY_TAG }));
     },
     (error: unknown) => {
       console.error('[Atlas] Could not download the bestiary tokens', error);
@@ -58,13 +58,13 @@ function useDownload(assets: AssetService): DownloadPhase {
   }, () => state.current);
 }
 
-/** Whether the library holds the pack; null until known. Read again whenever the library changes. */
-function usePackPresent(app: App, assets: AssetService, download: DownloadPhase): boolean | null {
+/** Whether the collection holds the pack; null until known. Read again whenever the library changes. */
+function usePackPresent(app: App, assets: AssetService, collection: string, download: DownloadPhase): boolean | null {
   const [present, setPresent] = useState<boolean | null>(null);
   useEffect(() => {
     let current = true;
     const read = (): void => {
-      hasBestiaryTokens(assets).then((found) => {
+      hasBestiaryTokens(assets, collection).then((found) => {
         if (current) setPresent(found);
       }, () => {
         if (current) setPresent(null);
@@ -76,27 +76,29 @@ function usePackPresent(app: App, assets: AssetService, download: DownloadPhase)
       current = false;
       app.workspace.offref(ref);
     };
-  }, [app, assets, download.phase]);
+  }, [app, assets, collection, download.phase]);
   return present;
 }
 
-/** Offers the bestiary tokens until the library holds them; while they download, says how far it got. */
-export function BestiaryTokensOffer({ app, assets }: { app: App; assets: AssetService }): React.JSX.Element | null {
+/** Offers the bestiary tokens until the open collection holds them; while they download into it, says how far it got. */
+export function BestiaryTokensOffer({ app, assets, collection }: { app: App; assets: AssetService; collection: string }): React.JSX.Element | null {
   const download = useDownload(assets);
-  const present = usePackPresent(app, assets, download);
-  const downloading = download.phase === 'downloading';
+  const present = usePackPresent(app, assets, collection, download);
+  // Downloading into this collection; one into another holds the button until it is done.
+  const downloading = download.phase === 'downloading' && download.collection === collection;
+  const busy = download.phase === 'downloading';
   if (!downloading && present !== false) return null;
   const size = Math.round(BESTIARY_BYTES / 1_000_000);
   return (
     <Button
       variant="ghost"
       className="atlas-asset-manager-manage-btn atlas-bestiary-offer"
-      disabled={downloading}
+      disabled={busy}
       aria-busy={downloading}
       aria-label={downloading ? undefined : t('am.bestiary.label', { count: BESTIARY_TOKEN_COUNT, size })}
       onClick={(event) => {
         event.stopPropagation();
-        startDownload(app, assets);
+        startDownload(app, assets, collection);
       }}
     >
       <Download />
