@@ -16,15 +16,13 @@ interface RowKeysOptions {
   actions: LibraryActions;
   primary: (row: Row) => void;
   inHand: (row: Row) => Row[];
-  /** Takes focus out of the list, to what lies that way on the page. */
-  onLeave: (direction: 'left' | 'right' | 'up') => void;
   setRenaming: (id: string | null) => void;
   openMenu: (row: Row, at: { x: number; y: number }, anchor: HTMLElement | null) => void;
   list: React.RefObject<HTMLElement | null>;
 }
 
 /** The list's keys: arrows and Home and End move, Shift extends, Enter is the row's primary action, Space previews, Delete asks, F2 renames. */
-export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo, actions, primary, inHand, onLeave, setRenaming, openMenu, list }: RowKeysOptions): (event: React.KeyboardEvent) => void {
+export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSelected, anchor, setAnchor, scrollTo, actions, primary, inHand, setRenaming, openMenu, list }: RowKeysOptions): (event: React.KeyboardEvent) => void {
   const moveActive = (index: number, extend: boolean): void => {
     const next = Math.max(0, Math.min(rows.length - 1, index));
     const row = rows[next];
@@ -43,10 +41,7 @@ export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSel
 
   const onRow = (row: Row, event: React.KeyboardEvent): void => {
     const mod = event.metaKey || event.ctrlKey;
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      onLeave('right');
-    } else if (event.key === 'Enter') {
+    if (event.key === 'Enter') {
       event.preventDefault();
       if (mod && row.type === 'file' && row.file.kind === 'music') actions.toMix([row.file], 'now');
       else primary(row);
@@ -74,20 +69,11 @@ export function useRowKeys({ rows, activeIndex, setActiveIndex, selected, setSel
     };
     switch (event.key) {
       case 'ArrowDown': take(activeIndex + 1); return;
-      case 'ArrowUp':
-        if (activeIndex === 0) {
-          event.preventDefault();
-          onLeave('up');
-        } else take(activeIndex - 1);
-        return;
+      case 'ArrowUp': take(activeIndex - 1); return;
       case 'Home': take(0); return;
       case 'End': take(rows.length - 1); return;
       case 'PageDown': take(activeIndex + PAGE_ROWS); return;
       case 'PageUp': take(activeIndex - PAGE_ROWS); return;
-      case 'ArrowLeft':
-        event.preventDefault();
-        onLeave('left');
-        return;
       case 'a':
         if (event.metaKey || event.ctrlKey) {
           event.preventDefault();

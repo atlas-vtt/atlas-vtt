@@ -203,3 +203,10 @@
     height: $icon-xs;
   }
 }
+
+// The page plays like a game, by pointer, digits and the page keys: no control shows a focus ring
+// (owner, 2026-11-03). The arrows move no focus here either (`useSoundKeys`).
+.atlas-sound-pane :focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}

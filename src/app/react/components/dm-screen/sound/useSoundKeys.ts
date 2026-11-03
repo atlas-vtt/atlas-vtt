@@ -1,7 +1,7 @@
 import { useEffect, type RefObject } from 'react';
 import type { Mood } from '../../../../sound/soundTypes';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
-import { arrowDirection, isControlTarget, isWithin, moveFocus, screenTakesKey } from '../screenKeys';
+import { arrowDirection, isControlTarget, isWithin, screenTakesKey } from '../screenKeys';
 
 /** The mood a key of the digit row or the keypad presses: by its place, so a layout's symbols change nothing. 0 is the tenth. */
 export function moodIndexOfCode(code: string): number | null {
@@ -49,23 +49,8 @@ export function useSoundKeys({ active, rootRef, viewId, director, moods, moveMoo
           }
           return;
         }
-        // A fader's own keys are up and down; left and right leave it. A waveform runs the other way.
-        const sliderKeys = isWithin(target, '.atlas-sound-music__wave') ? direction === 'left' || direction === 'right' : direction === 'up' || direction === 'down';
-        if (target?.getAttribute?.('role') === 'slider' && sliderKeys) return;
-        const screen = root.closest('.atlas-dm-screen') ?? root;
-        if (isControlTarget(target) && !target?.closest('.atlas-dm-screen-pages')) {
-          taken();
-          // Sideways stays on the page: the page control stands centred above it, and a mood under its edge took it for the control to its left.
-          moveFocus(direction === 'up' ? screen : root, target as Element, direction);
-          return;
-        }
-        if (direction === 'down') {
-          taken();
-          root.querySelector<HTMLElement>('[data-sound-mood]')?.focus();
-        } else if (direction === 'up') {
-          taken();
-          screen.querySelector<HTMLElement>('.atlas-dm-screen-pages .atlas-active')?.focus();
-        }
+        // Arrows move no focus on this page (owner, 2026-11-03: it plays like a game): left and right
+        // change the DM screen's page, up and down are a fader's or the library's own.
         return;
       }
       if (event.altKey || event.repeat) return;

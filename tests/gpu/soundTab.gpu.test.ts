@@ -256,7 +256,7 @@ describe('the DM screen’s Sound page', () => {
     expect(box('.atlas-sound-desk').height).toBeLessThan(336);
   });
 
-  it('moves a fader by key and by drag, announces it, and leaves it with left and right', async () => {
+  it('moves a fader by key and by drag, announces it, and takes left and right for the pages', async () => {
     await open1644();
     if (!tab) return;
     await allReady(tab);
@@ -274,9 +274,11 @@ describe('the DM screen’s Sound page', () => {
     expect(thumb.getAttribute('aria-orientation')).toBe('vertical');
     expect(thumb.getAttribute('title')).toBeNull();
     expect(tab.store.getState().dmScreenPage).toBe('sound');
+    // Left and right change the DM screen's page, wherever focus is on this page.
     await userEvent.keyboard('{ArrowRight}');
-    expect(document.activeElement).not.toBe(thumb);
-    await expect.poll(() => document.activeElement?.closest('.atlas-sound-desk')).not.toBeNull();
+    expect(tab.store.getState().dmScreenPage).toBe('statblocks');
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(tab.store.getState().dmScreenPage).toBe('sound');
 
     // A press on the track puts the thumb there; the release leaves it there.
     const track = thumb.closest<HTMLElement>('.atlas-sound-fader')!;
@@ -407,7 +409,7 @@ describe('the DM screen’s Sound page', () => {
     }, 180_000);
   });
 
-  it('moves the track by a press or drag along its waveform, by key, and shows it while held', async () => {
+  it('moves the track by a press or drag along its waveform, and shows it while held', async () => {
     await open1644();
     if (!tab) return;
     await allReady(tab);
@@ -437,12 +439,13 @@ describe('the DM screen’s Sound page', () => {
     await expect.poll(place).toBeCloseTo(0.25, 1);
     expect(wave.getAttribute('aria-label')).toBe('Position in the track');
 
-    // Left and right are the waveform's own; a fader leaves on them.
+    // Left and right change the page even from the waveform; Home still takes it to the start.
     act(() => wave.focus());
-    const before = place();
     await userEvent.keyboard('{ArrowLeft}');
-    expect(place()).toBeLessThan(before);
-    expect(document.activeElement).toBe(wave);
+    expect(tab.store.getState().dmScreenPage).toBe('statblocks');
+    await userEvent.keyboard('{ArrowRight}');
+    expect(tab.store.getState().dmScreenPage).toBe('sound');
+    act(() => wave.focus());
     await userEvent.keyboard('{Home}');
     expect(place()).toBeLessThan(0.05);
   });
@@ -594,7 +597,7 @@ describe('the DM screen’s Sound page', () => {
     act(() => root.unmount());
   });
 
-  it('reaches every mood by keyboard alone, with Tab left to open and close the screen', async () => {
+  it('plays by keys like a game: arrows change pages and move no focus, no ring shows, digits and Enter press moods', async () => {
     await page.viewport(1280, 820);
     tab = await openSoundTab(DARK, viewport);
     seedMoods(tab);
@@ -602,27 +605,33 @@ describe('the DM screen’s Sound page', () => {
     await allReady(tab);
     const ids = tab.moodsOf().map((mood) => mood.id);
 
-    // From nothing focused: down enters the grid, and the arrows go round all of it.
-    await userEvent.keyboard('{ArrowDown}');
-    const reached = new Set<string>();
-    const note = (): void => {
-      const id = (document.activeElement as HTMLElement | null)?.closest('.atlas-sound-mood')?.querySelector<HTMLElement>('[data-sound-mood]')?.dataset.soundMood;
-      if (id) reached.add(id);
-    };
-    note();
-    for (let row = 0; row < 6; row++) {
-      await userEvent.keyboard('{ArrowRight}');
-      note();
-      await userEvent.keyboard('{ArrowLeft}');
-      await userEvent.keyboard('{ArrowDown}');
-      note();
-    }
-    expect([...reached].sort()).toEqual([...ids].sort());
+    // Keycaps for the page keys flank the page control, as tall as it.
+    const keys = [...document.querySelectorAll<HTMLElement>('.atlas-dm-screen-key')];
+    const control = document.querySelector<HTMLElement>('.atlas-dm-screen-pages')!.getBoundingClientRect();
+    expect(keys.map((key) => key.textContent)).toEqual(['\u2190', '\u2192']);
+    expect(keys[0]!.getBoundingClientRect().right).toBeLessThanOrEqual(control.left);
+    expect(keys[1]!.getBoundingClientRect().left).toBeGreaterThanOrEqual(control.right);
+    await page.screenshot({ path: `${SHOTS}/page-keys.png`, element: document.querySelector<HTMLElement>('.atlas-dm-screen-header')! });
 
-    // Left of the moods lies the library, and its keys lead back.
-    act(() => document.querySelector<HTMLElement>(`[data-sound-mood="${ids[0]}"]`)?.focus());
+    // From a focused mood, the arrows change the page and leave focus where it was; no ring shows.
+    const mood = document.querySelector<HTMLElement>(`[data-sound-mood="${ids[0]}"]`)!;
+    // The shadow's shape: a colour mid-transition may be written in another notation.
+    const shape = (shadow: string): string => shadow.replace(/\w+\([^)]*\)/g, 'colour');
+    const resting = { outline: getComputedStyle(mood).outlineStyle, shadow: shape(getComputedStyle(mood).boxShadow) };
+    // A key first, so the focus that follows counts as the keyboard's and would show a ring.
+    await userEvent.keyboard('{Shift}');
+    act(() => mood.focus());
+    // Focused from the keyboard's side, it looks as it rests.
+    expect(mood.matches(':focus-visible')).toBe(true);
+    expect({ outline: getComputedStyle(mood).outlineStyle, shadow: shape(getComputedStyle(mood).boxShadow) }).toEqual(resting);
+    for (const key of ['{ArrowDown}', '{ArrowUp}']) {
+      await userEvent.keyboard(key);
+      expect(document.activeElement).toBe(mood);
+    }
+    await userEvent.keyboard('{ArrowRight}');
+    expect(tab.store.getState().dmScreenPage).toBe('statblocks');
     await userEvent.keyboard('{ArrowLeft}');
-    expect(document.activeElement?.closest('.atlas-sound-lib')).not.toBeNull();
+    expect(tab.store.getState().dmScreenPage).toBe('sound');
 
     // The menu of a mood opens from its keys, and moves it with Alt.
     const first = document.querySelector<HTMLElement>(`[data-sound-mood="${ids[0]}"]`)!;

@@ -185,6 +185,28 @@
   }
 }
 
+// The keys that change pages, beside the control as a game shows its shoulder buttons: a keycap
+// with depth, as tall as the control's options.
+.atlas-dm-screen-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 $spacing-s;
+  border: $border-width-s solid color-mix(in oklch, var(--mono-100) 14%, transparent);
+  border-bottom-width: 3px;
+  border-radius: $radius-l;
+  background: color-mix(in srgb, var(--background-secondary) 88%, transparent);
+  color: var(--text-muted);
+  font-family: var(--font-interface);
+  font-size: $font-ui-medium;
+  font-weight: $font-weight-semibold;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
+}
+
 .atlas-dm-sound-page {
   flex: 1;
   min-height: 0;

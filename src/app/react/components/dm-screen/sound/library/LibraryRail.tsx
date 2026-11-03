@@ -9,7 +9,6 @@ import { isLinked, type SoundRootState } from '../../../../../soundLibrary/Sound
 import { cn } from '../../../../../../utils/cn';
 import { StarterPackButton } from './StarterPack';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
-import { arrowDirection, moveFocus } from '../../screenKeys';
 import { AmbienceGlyph, MusicGlyph, TagGlyph } from './libraryGlyphs';
 import type { RootShelf } from './rowModel';
 import { tagRowMenu } from './tagMenus';
@@ -172,17 +171,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
 /** Each root with its count and where it lies, and the tags of its tracks. */
 export function LibraryRail({ kind, ...props }: RailProps): React.JSX.Element {
   return (
-    <nav
-      className="atlas-sound-lib__rail"
-      aria-label={t('audio.library.rail')}
-      onKeyDown={(event) => {
-        const direction = arrowDirection(event.key);
-        const from = event.target as Node;
-        if (!direction || !from.instanceOf(Element)) return;
-        event.preventDefault();
-        if (!moveFocus(event.currentTarget, from, direction)) moveFocus(event.currentTarget.closest('.atlas-sound-pane') ?? event.currentTarget, from, direction);
-      }}
-    >
+    <nav className="atlas-sound-lib__rail" aria-label={t('audio.library.rail')}>
       <RailRoot {...props} kind="music" shown={kind === 'music'} />
       <RailRoot {...props} kind="ambience" shown={kind === 'ambience'} />
     </nav>

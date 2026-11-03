@@ -88,7 +88,9 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, handleClose, isNoteFocused, app, view]);
 
-  // The arrow keys change pages while no control is in focus, or the page control itself is.
+  // Left and right change pages, as a game's shoulder buttons do; the keycaps beside the page control say so.
+  // On the Sound page they always do, since nothing there takes the arrows for focus (owner, 2026-11-03);
+  // on the statblocks page a control in focus keeps them (tab strips, selects), and a note's editor always.
   useEffect(() => {
     if (!isOpen || !soundOn) return undefined;
     const handleArrow = (e: KeyboardEvent): void => {
@@ -97,8 +99,8 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
       if (isNoteFocused || !screenTakesKey(e, screenRef.current, view?.viewId)) return;
       const target = e.target as Element | null;
       const onPages = target?.closest?.('.atlas-dm-screen-pages') != null;
-      if (isControlTarget(target) && !onPages) return;
-      if (target?.closest?.('.atlas-dm-notes-section')) return;
+      if (page === 'statblocks' && isControlTarget(target) && !onPages) return;
+      if (target?.closest?.('.atlas-dm-notes-section, [aria-expanded="true"], [role="listbox"]')) return;
       e.preventDefault();
       e.stopPropagation();
       const next: DMScreenPage = page === 'statblocks' ? 'sound' : 'statblocks';
@@ -118,7 +120,9 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
       <div className={`atlas-dm-screen ${soundOn ? 'atlas-dm-screen--pages' : ''} ${closing ? 'is-closing' : contentReady ? 'is-visible' : ''}`}>
         {soundOn && (
           <div className="atlas-dm-screen-header">
+            <kbd className="atlas-dm-screen-key" aria-hidden="true">←</kbd>
             <SegmentedControl className="atlas-dm-screen-pages" value={page} options={PAGES} onChange={setPage} ariaLabel={t('audio.screen.pages')} roving />
+            <kbd className="atlas-dm-screen-key" aria-hidden="true">→</kbd>
           </div>
         )}
         {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}

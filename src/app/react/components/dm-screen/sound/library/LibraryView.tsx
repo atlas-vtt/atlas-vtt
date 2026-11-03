@@ -10,7 +10,6 @@ import { isLinked } from '../../../../../soundLibrary/SoundRoots';
 import { tagKey, toggledTag } from '../../../../../soundLibrary/soundTags';
 import type { SoundKind } from '../../../../../sound/soundTypes';
 import { useAtlasUI } from '../../../../root/AtlasUIContext';
-import { arrowDirection, moveFocus } from '../../screenKeys';
 import { useSoundValue, useStoredSounds, useStoreValue } from '../useSound';
 import { LibraryHead } from './LibraryHead';
 import { LibraryRail } from './LibraryRail';
@@ -107,12 +106,6 @@ export function LibraryView(): React.JSX.Element | null {
   const keep = (event: React.KeyboardEvent): void => {
     if (PASSES_THROUGH.has(event.key)) return;
     event.stopPropagation();
-    const direction = arrowDirection(event.key);
-    const from = event.target as Element;
-    if (direction && from.closest('.atlas-sound-lib__head button, .atlas-sound-lib__nolink button')) {
-      event.preventDefault();
-      moveFocus(from.closest('.atlas-sound-pane') ?? event.currentTarget, from, direction);
-    }
   };
 
   if (noRoots) {
