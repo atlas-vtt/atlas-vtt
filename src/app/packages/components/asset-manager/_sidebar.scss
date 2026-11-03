@@ -165,25 +165,16 @@ $float-edge-inset: calc(#{$border-width-m} + #{$sidebar-float-inset});
   }
 }
 
-// The choice of statblocks over the offer, close to Manage below it: the two are the sidebar's foot.
+// The offer and its progress, close to Manage below it: the two are the sidebar's foot.
 .atlas-bestiary-offer-block--sidebar {
   @include atlas-flex-col($gap: $spacing-xs);
   margin-bottom: calc(#{$spacing-xs} - #{$spacing-l});
 
-  // Narrow: the label over the choice, the options sharing the sidebar's width.
-  .atlas-bestiary-offer__choice {
-    flex-direction: column;
-    align-items: stretch;
-    gap: $spacing-xs;
-  }
-
-  .atlas-segmented {
+  // The sidebar is narrower than the popover elsewhere: here it takes the button's width.
+  .atlas-starter-choice {
+    left: 0;
     width: 100%;
-  }
-
-  .atlas-segmented__option {
-    flex: 1 1 0;
     min-width: 0;
-    padding: 0 $spacing-xs;
+    transform: none;
   }
 }

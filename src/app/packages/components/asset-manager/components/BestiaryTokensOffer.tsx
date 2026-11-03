@@ -1,16 +1,16 @@
-import React, { useEffect, useState, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Download } from 'lucide-react';
 import type { App } from 'obsidian';
 import { Button } from '../../primitives/button';
 import { LoadingSpinner } from '../../primitives/LoadingSpinner';
 import { ProgressBar } from '../../primitives/ProgressBar';
-import { SegmentedControl, type SegmentedOption } from '../../primitives/SegmentedControl';
 import { t } from '../../../../i18n';
 import type { AssetService } from '../../../../services/AssetService';
 import { BESTIARY_BYTES, BESTIARY_TOKEN_COUNT, hasBestiaryTokens, installBestiaryTokens } from '../../../../services/stockPacks/bestiaryTokens';
-import { STATBLOCK_COUNTS, type StatblockSet } from '../../../../services/stockPacks/starterStatblocks';
+import type { StatblockSet } from '../../../../services/stockPacks/starterStatblocks';
 import { builtInPresetId } from '../../../../gameSystems/presets/presetHelpers';
 import { showNotice } from '../../../../ui/notice';
+import { StarterTokensChoice, type StarterChoice } from './StarterTokensChoice';
 
 const FAILED_NOTICE_MS = 12_000;
 
@@ -85,32 +85,37 @@ function usePackPresent(app: App, assets: AssetService, collection: string, down
   return present;
 }
 
-type Choice = StatblockSet | 'none';
-
-const CHOICES: readonly SegmentedOption<Choice>[] = [
-  { value: 'none', label: t('am.bestiary.none') },
-  { value: '5e', label: t('am.bestiary.fiveE') },
-  { value: 'cairn', label: t('am.bestiary.cairn') },
-];
-
 /** What a collection's game system suggests: its own statblocks where the pack has them. */
-function suggestedChoice(assets: AssetService, collection: string): Choice {
+function suggestedChoice(assets: AssetService, collection: string): StarterChoice {
   const preset = assets.getCollectionSettings(collection).systemPresetId;
   if (preset === builtInPresetId('dnd5e')) return '5e';
   if (preset === builtInPresetId('cairn')) return 'cairn';
   return 'none';
 }
 
-/** What the chosen statblocks are, for the small print; none without. */
-function statblocksLine(choice: Choice): string | null {
-  if (choice === 'none') return null;
-  return t(choice === '5e' ? 'am.bestiary.withFiveE' : 'am.bestiary.withCairn', { count: STATBLOCK_COUNTS[choice] });
+/** Closes the choice on a press outside the button and its popover, in the document they are in. */
+function useCloseOutside(ref: React.RefObject<HTMLElement | null>, open: boolean, close: () => void): void {
+  useEffect(() => {
+    const doc = ref.current?.ownerDocument;
+    if (!open || !doc) return undefined;
+    const press = (event: MouseEvent | TouchEvent): void => {
+      if (event.target instanceof Node && ref.current?.contains(event.target)) return;
+      close();
+    };
+    doc.addEventListener('mousedown', press);
+    doc.addEventListener('touchstart', press);
+    return () => {
+      doc.removeEventListener('mousedown', press);
+      doc.removeEventListener('touchstart', press);
+    };
+  }, [ref, open, close]);
 }
 
 /**
- * Offers the starter tokens until the open collection holds them, with the statblocks the user
- * picks; while they download into it, says how far it got. `empty` is the empty Tokens tab's call
- * to action, `sidebar` the quiet one at the sidebar's foot for a collection that holds other tokens.
+ * Offers the starter tokens until the open collection holds them. The button opens a popover
+ * that asks which statblocks they come with, and its Download starts; while they download into
+ * this collection, a spinner and a bar say so. `empty` is the empty Tokens tab's call to action,
+ * `sidebar` the quiet one at the sidebar's foot for a collection that holds other tokens.
  */
 export function BestiaryTokensOffer({ app, assets, collection, variant, fallback = null }: {
   app: App;
@@ -122,8 +127,15 @@ export function BestiaryTokensOffer({ app, assets, collection, variant, fallback
 }): React.JSX.Element | null {
   const download = useDownload(assets);
   const present = usePackPresent(app, assets, collection, download);
-  const [choice, setChoice] = useState<Choice>(() => suggestedChoice(assets, collection));
-  useEffect(() => setChoice(suggestedChoice(assets, collection)), [assets, collection]);
+  const [choice, setChoice] = useState<StarterChoice>(() => suggestedChoice(assets, collection));
+  const [choosing, setChoosing] = useState(false);
+  const anchor = useRef<HTMLDivElement>(null);
+  const close = useCallback((): void => setChoosing(false), []);
+  useCloseOutside(anchor, choosing, close);
+  useEffect(() => {
+    setChoice(suggestedChoice(assets, collection));
+    setChoosing(false);
+  }, [assets, collection]);
   // Downloading into this collection; one into another holds the button until it is done.
   const downloading = download.phase === 'downloading' && download.collection === collection;
   const busy = download.phase === 'downloading';
@@ -135,45 +147,45 @@ export function BestiaryTokensOffer({ app, assets, collection, variant, fallback
   const progress = downloading && (
     <ProgressBar className="atlas-bestiary-offer__progress" value={percent} max={100} label={t('am.bestiary.downloading')} valueText={`${percent}%`} />
   );
-  const choiceRow = (
-    <div className="atlas-bestiary-offer__choice">
-      <span aria-hidden="true">{t('am.bestiary.statblocks')}</span>
-      <SegmentedControl value={choice} options={CHOICES} onChange={setChoice} ariaLabel={t('am.bestiary.statblocks')} disabled={busy} />
+  const start = (): void => {
+    setChoosing(false);
+    startDownload(app, assets, collection, choice === 'none' ? undefined : choice);
+  };
+  const button = (
+    <div ref={anchor} className="atlas-dropdown-menu atlas-starter-anchor">
+      <Button
+        variant={variant === 'empty' ? 'default' : 'ghost'}
+        className={variant === 'empty' ? 'atlas-bestiary-offer atlas-bestiary-offer--empty' : 'atlas-asset-manager-manage-btn atlas-bestiary-offer atlas-bestiary-offer--sidebar'}
+        disabled={busy}
+        aria-busy={downloading}
+        aria-haspopup="dialog"
+        aria-expanded={choosing}
+        aria-label={downloading ? undefined : t('am.bestiary.label', { count: BESTIARY_TOKEN_COUNT, size })}
+        onClick={(event) => {
+          event.stopPropagation();
+          setChoosing((open) => !open);
+        }}
+      >
+        {downloading ? <LoadingSpinner size={14} /> : <Download />}
+        <span>{label}</span>
+        {variant === 'sidebar' && !downloading && <small>{t('am.bestiary.size', { size })}</small>}
+      </Button>
+      {choosing && !busy && (
+        <StarterTokensChoice choice={choice} onChoose={setChoice} onDownload={start} onClose={close} placement={variant === 'empty' ? 'bottom' : 'top'} size={size} />
+      )}
     </div>
   );
-  const button = (
-    <Button
-      variant={variant === 'empty' ? 'default' : 'ghost'}
-      className={variant === 'empty' ? 'atlas-bestiary-offer atlas-bestiary-offer--empty' : 'atlas-asset-manager-manage-btn atlas-bestiary-offer atlas-bestiary-offer--sidebar'}
-      disabled={busy}
-      aria-busy={downloading}
-      aria-label={downloading ? undefined : t('am.bestiary.label', { count: BESTIARY_TOKEN_COUNT, size })}
-      onClick={(event) => {
-        event.stopPropagation();
-        startDownload(app, assets, collection, choice === 'none' ? undefined : choice);
-      }}
-    >
-      {downloading ? <LoadingSpinner size={14} /> : <Download />}
-      <span>{label}</span>
-      {variant === 'sidebar' && !downloading && <small>{t('am.bestiary.size', { size })}</small>}
-    </Button>
-  );
   if (variant === 'sidebar') {
-    return <div className="atlas-bestiary-offer-block atlas-bestiary-offer-block--sidebar">{choiceRow}{button}{progress}</div>;
+    return <div className="atlas-bestiary-offer-block atlas-bestiary-offer-block--sidebar">{button}{progress}</div>;
   }
-  const withStatblocks = statblocksLine(choice);
   return (
     <div className="atlas-starter-offer">
       <p>{t('am.bestiary.lead', { count: BESTIARY_TOKEN_COUNT })}</p>
       <div className="atlas-starter-offer__panel">
-        {choiceRow}
         {button}
         {progress}
       </div>
-      <p className="atlas-starter-offer__fine">
-        {withStatblocks && <span>{withStatblocks}</span>}
-        <span>{t('am.bestiary.fine', { size })}</span>
-      </p>
+      <p className="atlas-starter-offer__fine">{t('am.bestiary.fine', { size })}</p>
     </div>
   );
 }
