@@ -139,7 +139,7 @@ export function LibraryView(): React.JSX.Element | null {
     >
       <LibraryRail library={library} actions={actions} shelves={shelves} kind={place.kind} selected={selectedKeys} onRoot={showRoot} onTag={pressTag} />
       <div className="atlas-sound-lib__main">
-        <LibraryHead library={library} actions={actions} kind={place.kind} tags={selected.map(({ name }) => name)} rows={listed} onClearTags={() => showRoot(place.kind)} query={query} onQuery={setQuery} shuffle={shuffle} />
+        <LibraryHead library={library} actions={actions} kind={place.kind} tagged={selected.length > 0} rows={listed} query={query} onQuery={setQuery} shuffle={shuffle} />
         <LibraryRows
           rows={rows}
           loading={loading && showSkeleton}

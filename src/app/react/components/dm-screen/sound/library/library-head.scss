@@ -28,45 +28,10 @@
   opacity: 1;
 }
 
-.atlas-sound-lib__crumb {
-  display: flex;
-  align-items: baseline;
-  min-width: 0;
-  font-family: var(--h3-font, var(--font-interface));
-  font-size: 23px;
-  line-height: 1;
-  color: var(--mono-100);
-  white-space: nowrap;
-
-  i {
-    flex-shrink: 0;
-    font-style: normal;
-    color: var(--text-faint);
-    margin: 0 6px;
-  }
-
-  // Tags that do not fit are the rail's to name; a descender needs its line's height.
-  span {
-    min-width: 0;
-    line-height: 1.2;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  button {
-    flex-shrink: 0;
-    font-family: inherit;
-    font-size: inherit;
-    line-height: inherit;
-    border-radius: 4px;
-    white-space: nowrap;
-  }
-}
-
 .atlas-sound-lib__search {
-  margin-left: auto;
+  margin-right: auto;
   flex: 1 1 96px;
-  max-width: 260px;
+  max-width: 320px;
   min-width: 96px;
   height: 30px;
   border-radius: 9px;

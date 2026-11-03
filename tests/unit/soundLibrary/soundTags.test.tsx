@@ -260,20 +260,18 @@ describe('editing tags', () => {
       expect(rig.records.all()).toEqual([]);
     });
 
-    it('a press narrows, a second tag narrows further, a press on the root shows all again, and the head says so', () => {
+    it('a press narrows, a second tag narrows further, and a press on the root shows all again', () => {
       fireEvent.click(tagRow('Battle'));
       expect(titles()).toEqual(['a', 'b', 'd']);
       expect(tagRow('Battle').getAttribute('aria-pressed')).toBe('true');
       fireEvent.click(tagRow('Bosses'));
       expect(titles()).toEqual(['d']);
-      expect(host.querySelector('.atlas-sound-lib__crumb')?.textContent).toBe('Music/Battle · Bosses');
+      expect(host.querySelector('.atlas-sound-lib__crumb')).toBeNull();
       expect(rig.library.place.current).toEqual({ kind: 'music', tags: ['Battle', 'Bosses'] });
       fireEvent.click(tagRow('Battle'));
       expect(titles()).toEqual(['d']);
-      fireEvent.click(host.querySelector<HTMLElement>('.atlas-sound-lib__crumb button')!);
-      expect(titles()).toEqual(['a', 'b', 'c', 'd']);
-      fireEvent.click(tagRow('Bosses'));
       fireEvent.click(host.querySelector<HTMLElement>('.atlas-sound-lib__root-name')!);
+      expect(titles()).toEqual(['a', 'b', 'c', 'd']);
       expect(rig.library.place.current.tags).toEqual([]);
     });
 

@@ -45,7 +45,7 @@ const LIBRARY_SHOT = (host: HTMLElement): HTMLElement => host.closest<HTMLElemen
 
 /** No side of the page leaves its text hanging: all it holds is laid out inside it, or hidden. */
 function expectNoOverflow(): void {
-  for (const element of document.querySelectorAll<HTMLElement>('.atlas-sound-lib__head, .atlas-sound-lib__crumb, .atlas-sound-lib__row, .atlas-sound-lib__length, .atlas-sound-lib__state, .atlas-sound-lib__rows, .atlas-sound-moods, .atlas-sound-mood__foot')) {
+  for (const element of document.querySelectorAll<HTMLElement>('.atlas-sound-lib__head, .atlas-sound-lib__row, .atlas-sound-lib__length, .atlas-sound-lib__state, .atlas-sound-lib__rows, .atlas-sound-moods, .atlas-sound-mood__foot')) {
     if (getComputedStyle(element).visibility === 'hidden') continue;
     expect(element.scrollWidth, element.className).toBeLessThanOrEqual(element.clientWidth + 1);
   }
@@ -116,9 +116,9 @@ describe('the sound library', () => {
     expect(getComputedStyle(document.querySelector('.atlas-sound-lib__btn--folds')!).display).not.toBe('none');
     expect(box('.atlas-sound-lib__head').height).toBe(56);
     expect(box('.atlas-sound-lib__row').height).toBe(38);
-    const crumb = getComputedStyle(document.querySelector('.atlas-sound-lib__crumb')!);
-    expect(crumb.fontSize).toBe('23px');
-    expect(crumb.fontFamily).toContain('Fantaisie');
+    // The rail names what is shown, so the head has no heading: the search starts at its left.
+    expect(document.querySelector('.atlas-sound-lib__crumb')).toBeNull();
+    expect(box('.atlas-sound-lib__search').left - box('.atlas-sound-lib__main').left).toBe(16);
     const row = rowNamed('The last gate');
     const action = row.querySelector<HTMLElement>('.atlas-sound-lib__act')!;
     expect(getComputedStyle(action).opacity).toBe('0');
@@ -204,9 +204,6 @@ describe('the sound library', () => {
     const names = (section: number): (string | null | undefined)[] => [...document.querySelectorAll('.atlas-sound-lib__root-block')[section]!.querySelectorAll('.atlas-sound-lib__tag span')].map((one) => one.textContent);
     expect(names(0)).toEqual(['Battle', 'Bosses', 'Dread', 'Taverns', 'Travel', 'Wonder']);
     expect(names(1)).toEqual(['Dungeons', 'Towns', 'Weather', 'Wilds']);
-    expect(document.querySelector('.atlas-sound-lib__crumb')?.textContent).toBe('Music/Battle · Bosses');
-    const crumb = box('.atlas-sound-lib__crumb span');
-    expect(crumb.right).toBeLessThanOrEqual(box('.atlas-sound-lib__search').left);
 
     const selected = tagNamed('Battle');
     const unselected = tagNamed('Dread');

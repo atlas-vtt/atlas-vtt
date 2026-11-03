@@ -158,14 +158,14 @@ describe('the tab', () => {
     const mapLeaf = document.body.createDiv({ cls: 'workspace-leaf' });
     hosts.push(mapLeaf);
     await act(async () => rig.mount(mapLeaf, <SoundPane active={false} />));
-    const crumb = (host: HTMLElement): string => host.querySelector('.atlas-sound-lib__crumb')?.textContent ?? '';
+    const pressed = (host: HTMLElement): string => [...host.querySelectorAll('.atlas-sound-lib__tag[aria-pressed="true"]')].map((tag) => tag.textContent).join(' ');
 
     act(() => rig.library.place.show('music', ['Battle']));
-    await waitFor(() => expect(crumb(leafEl)).toContain('Battle'));
-    expect(crumb(mapLeaf)).toContain('Battle');
+    await waitFor(() => expect(pressed(leafEl)).toContain('Battle'));
+    expect(pressed(mapLeaf)).toContain('Battle');
 
     act(() => rig.library.place.show('music', ['Calm']));
-    await waitFor(() => expect(crumb(mapLeaf)).toContain('Calm'));
-    expect(crumb(leafEl)).toContain('Calm');
+    await waitFor(() => expect(pressed(mapLeaf)).toContain('Calm'));
+    expect(pressed(leafEl)).toContain('Calm');
   });
 });

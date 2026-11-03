@@ -15,19 +15,18 @@ interface LibraryHeadProps {
   library: SoundLibrary;
   actions: LibraryActions;
   kind: SoundKind;
-  /** The tags selected, as shown. */
-  tags: readonly string[];
+  /** Whether tags narrow the root: Play then takes what they leave. */
+  tagged: boolean;
   /** What the tags leave of the root: what Play takes. */
   rows: readonly LibraryRow[];
-  onClearTags: () => void;
   query: string;
   onQuery: (query: string) => void;
   /** The shuffle the music is on: a list played here goes on as it was. */
   shuffle: boolean;
 }
 
-/** Which root and tags are shown, the search, and what can be done to them. */
-export function LibraryHead({ library, actions, kind, tags, rows, onClearTags, query, onQuery, shuffle }: LibraryHeadProps): React.JSX.Element {
+/** The search, and what can be done to the root and tags shown. The rail beside it already names them, so the head does not. */
+export function LibraryHead({ library, actions, kind, tagged, rows, query, onQuery, shuffle }: LibraryHeadProps): React.JSX.Element {
   const linked = isLinked(library.rootOf(kind));
   const label = t(kind === 'music' ? 'audio.music' : 'audio.ambience');
   const menu = useContextMenu();
@@ -40,15 +39,6 @@ export function LibraryHead({ library, actions, kind, tags, rows, onClearTags, q
   };
   return (
     <header className="atlas-sound-lib__head">
-      <nav className="atlas-sound-lib__crumb" aria-label={label}>
-        <button type="button" aria-current={tags.length === 0 ? 'true' : undefined} onClick={onClearTags}>{label}</button>
-        {tags.length > 0 && (
-          <>
-            <i aria-hidden="true">/</i>
-            <span aria-current="true">{tags.join(' · ')}</span>
-          </>
-        )}
-      </nav>
       <label className="atlas-sound-lib__search">
         <SearchGlyph />
         <input
@@ -72,7 +62,7 @@ export function LibraryHead({ library, actions, kind, tags, rows, onClearTags, q
         </button>
       </LabelTooltip>
       {kind === 'music' && linked && (
-        <Button type="button" className="atlas-sound-lib__btn atlas-sound-lib__btn--solid" variant="secondary" onClick={() => actions.playList(filesOfRows(rows), shuffle)}>{t(tags.length > 0 ? 'audio.library.playThese' : 'audio.library.playAll')}</Button>
+        <Button type="button" className="atlas-sound-lib__btn atlas-sound-lib__btn--solid" variant="secondary" onClick={() => actions.playList(filesOfRows(rows), shuffle)}>{t(tagged ? 'audio.library.playThese' : 'audio.library.playAll')}</Button>
       )}
     </header>
   );
