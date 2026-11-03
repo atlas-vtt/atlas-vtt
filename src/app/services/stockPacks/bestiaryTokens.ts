@@ -1,8 +1,10 @@
 import type { App } from 'obsidian';
 import { ensureFolder } from '../../plugin/vaultFolders';
+import { isRecord } from '../../utils/guards';
 import { discardAssetFiles, writeAssetImage } from '../assetImageFiles';
 import { collectionFolderPath } from '../assetPaths';
 import type { AssetService } from '../AssetService';
+import { fetchStatblock, fetchStatblockManifest, writeStatblock, type StatblockSet } from './starterStatblocks';
 import { fetchBytes, fetchVerified, StockPackError, type FetchBytes, type PackedFile } from './verifiedFetch';
 
 /**
@@ -35,8 +37,6 @@ interface Manifest {
   tokens: BestiaryToken[];
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null && !Array.isArray(value);
-
 function packedFile(value: unknown, extension: string): PackedFile {
   if (!isRecord(value)) throw new StockPackError('The manifest names a file it does not describe.');
   const { key, bytes, sha256 } = value;
@@ -63,27 +63,28 @@ function readManifest(bytes: ArrayBuffer): Manifest {
   return { credits: packedFile(data.credits, 'md'), tokens };
 }
 
-const tokenIdOf = (collectionUid: string, token: BestiaryToken): string => `${ID_PREFIX}${collectionUid}-${token.key.replace(/\.webp$/, '')}`;
+/** A token's key without its extension, as the statblocks' manifest names it. */
+const tokenKeyOf = (token: BestiaryToken): string => token.key.replace(/\.webp$/, '');
+
+const tokenIdOf = (collectionUid: string, token: BestiaryToken): string => `${ID_PREFIX}${collectionUid}-${tokenKeyOf(token)}`;
 
 /** Whether a collection holds any of the pack's tokens. A user who deleted some kept the rest on purpose. */
 export async function hasBestiaryTokens(assets: AssetService, collection: string): Promise<boolean> {
   return (await assets.getAssets(collection, 'token')).some((token) => token.id.startsWith(ID_PREFIX));
 }
 
-/** Fetches every file, at most `PARALLEL` at a time, in the order given. */
-async function fetchAll(files: readonly PackedFile[], fetch: FetchBytes, onFetched: (file: PackedFile) => void): Promise<ArrayBuffer[]> {
-  const fetched: ArrayBuffer[] = new Array<ArrayBuffer>(files.length);
+/** Runs `task` for every item, at most `PARALLEL` at a time, and returns the results in the items' order. */
+async function inPool<T, R>(items: readonly T[], task: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array<R>(items.length);
   let next = 0;
   const worker = async (): Promise<void> => {
-    for (let index = next++; index < files.length; index = next++) {
-      const file = files[index];
-      if (!file) continue;
-      fetched[index] = await fetchVerified(HOST, file, fetch);
-      onFetched(file);
+    for (let index = next++; index < items.length; index = next++) {
+      const item = items[index];
+      if (item !== undefined) results[index] = await task(item);
     }
   };
   await Promise.all(Array.from({ length: PARALLEL }, worker));
-  return fetched;
+  return results;
 }
 
 export interface InstallOptions {
@@ -92,23 +93,34 @@ export interface InstallOptions {
   fetch?: FetchBytes;
   /** The manifest the pack must have; the pinned one outside tests. */
   manifest?: PackedFile;
+  /** The statblocks the tokens come with, linked to them; none without. */
+  statblocks?: StatblockSet;
+  /** The statblocks' manifest; the set's pinned one outside tests. */
+  statblockManifest?: PackedFile;
 }
 
 /**
  * Fetches the whole pack and checks every file before anything is written, then adds the tokens
- * to `collection` with the tags the manifest gives them, and a note that credits the art. Tokens
- * already in it are left alone. Returns how many tokens were added.
+ * to `collection` with the tags the manifest gives them, each with its statblock from the chosen
+ * set where the set has one, and a note that credits the art. Tokens already in it are left alone.
+ * Returns how many tokens were added.
  */
-export async function installBestiaryTokens(app: App, assets: AssetService, collection: string, { onStep, fetch = fetchBytes, manifest: pinned = MANIFEST }: InstallOptions = {}): Promise<number> {
+export async function installBestiaryTokens(app: App, assets: AssetService, collection: string, options: InstallOptions = {}): Promise<number> {
+  const { onStep, fetch = fetchBytes, manifest: pinned = MANIFEST, statblocks: set } = options;
   onStep?.(0);
   const manifest = readManifest(await fetchVerified(HOST, pinned, fetch));
+  const entries = set ? await fetchStatblockManifest(set, fetch, options.statblockManifest) : [];
   const files: PackedFile[] = [manifest.credits, ...manifest.tokens];
-  const total = files.reduce((sum, file) => sum + file.bytes, 0);
+  const total = [...files, ...entries].reduce((sum, file) => sum + file.bytes, 0);
   let done = 0;
-  const [credits, ...images] = await fetchAll(files, fetch, (file) => {
+  const counted = <R>(file: PackedFile, result: R): R => {
     done += file.bytes;
     onStep?.(done / total);
-  });
+    return result;
+  };
+  const [credits, ...images] = await inPool(files, async (file) => counted(file, await fetchVerified(HOST, file, fetch)));
+  const fetchedStatblocks = set ? await inPool(entries, async (entry) => counted(entry, await fetchStatblock(set, entry, fetch))) : [];
+  const statblockOf = new Map(entries.map((entry, index) => [entry.token, fetchedStatblocks[index]]));
 
   const added = await assets.runExclusive(async () => {
     const target = await assets.getCollection(collection);
@@ -129,7 +141,13 @@ export async function installBestiaryTokens(app: App, assets: AssetService, coll
       for (const { token, bytes, id } of fresh) {
         const imagePath = await writeAssetImage(app, token.name, bytes);
         written.push(imagePath);
-        records.push({ id, name: token.name, imagePath, collection, tags: token.tags.map((tag) => tagNames.get(tag) ?? tag), showRing: true });
+        const statblock = statblockOf.get(tokenKeyOf(token));
+        const note = statblock ? await writeStatblock(app, collection, statblock, imagePath) : null;
+        if (note) written.push(note.path);
+        records.push({
+          id, name: token.name, imagePath, collection, tags: token.tags.map((tag) => tagNames.get(tag) ?? tag), showRing: true,
+          ...(note && { statblockPath: note.path }), ...(note?.size !== undefined && { size: note.size }),
+        });
       }
       await assets.addTokenAssets(records);
     } catch (error) {

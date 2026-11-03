@@ -46,11 +46,32 @@ async function packOf(names: readonly string[] | Readonly<Record<string, string>
   return { served, manifest: await described('manifest.json', json) };
 }
 
+const STATBLOCKS_5E = 'https://assets.atlas-vtt.dev/starter/statblocks-5e-2/';
+
+/** Serves the tokens' files by name, and other hosts' files by their whole address. */
 const serving = (served: Map<string, ArrayBuffer>) => vi.fn(async (url: string): Promise<ArrayBuffer> => {
-  const bytes = url.startsWith(HOST) ? served.get(url.slice(HOST.length)) : undefined;
+  const bytes = url.startsWith(HOST) ? served.get(url.slice(HOST.length)) : served.get(url);
   if (!bytes) throw new Error(`404 ${url}`);
   return bytes;
 });
+
+const noteText = (name: string, size: string): string => `---\nstatblock: true\natlas-template: "builtin:5e-2024-monster"\nname: "${name}"\nsize: "${size}"\nimage: ""\n---\n\nCredit.\n`;
+
+/** A 5E set of its own for `served`, giving the named tokens a note each. */
+async function statblocksFor(served: Map<string, ArrayBuffer>, notes: Readonly<Record<string, { name: string; size: string }>>, edit: (data: Record<string, unknown>) => void = () => undefined): Promise<PackedFile> {
+  const entries = [];
+  for (const [token, { name, size }] of Object.entries(notes)) {
+    const key = `${token}.md`;
+    const text = bytesOf(noteText(name, size));
+    served.set(STATBLOCKS_5E + key, text);
+    entries.push({ ...(await described(key, text)), token, name });
+  }
+  const data: Record<string, unknown> = { format: 1, notes: entries };
+  edit(data);
+  const json = bytesOf(JSON.stringify(data));
+  served.set(`${STATBLOCKS_5E}manifest.json`, json);
+  return described('manifest.json', json);
+}
 
 describe('the bestiary tokens', () => {
   it('join the collection with the tags the pack gives them, and a note that credits the art', async () => {
@@ -138,5 +159,52 @@ describe('the bestiary tokens', () => {
 
     expect(await installBestiaryTokens(vault.app, assets, assets.getDefaultCollectionId(), { fetch: serving(served), manifest })).toBe(1);
     expect(await hasBestiaryTokens(assets, assets.getDefaultCollectionId())).toBe(true);
+  });
+
+  it('come with the chosen statblocks, each linked to its token by its art, the token sized by the creature', async () => {
+    const { vault, assets } = await setup();
+    const collection = assets.getDefaultCollectionId();
+    const { served, manifest } = await packOf({ 'Black Dragon': 'Dragons', Wolf: 'Beasts' });
+    const statblockManifest = await statblocksFor(served, { 'black-dragon': { name: 'Adult Black Dragon', size: 'Huge' } });
+
+    await installBestiaryTokens(vault.app, assets, collection, { fetch: serving(served), manifest, statblocks: '5e', statblockManifest });
+
+    const tokens = await assets.getAssets(collection, 'token');
+    const dragon = tokens.find((token) => token.name === 'Black Dragon')!;
+    expect(dragon.statblockPath).toBe(`atlas-vtt/collections/${collection}/statblocks/Adult Black Dragon.md`);
+    // Huge spans three cells: multiplier 2 (2n - 1 cells).
+    expect(dragon.size).toBe(2);
+    const text = vault.files.get(dragon.statblockPath!)!;
+    expect(text).toContain(`image: ${JSON.stringify(dragon.imagePath)}`);
+    expect(text).not.toContain('image: ""');
+    const wolf = tokens.find((token) => token.name === 'Wolf')!;
+    expect(wolf.statblockPath).toBeUndefined();
+    expect(wolf.size).toBeUndefined();
+  });
+
+  it('writes nothing when a statblock is not the one its manifest names, or names a file it cannot be', async () => {
+    const { vault, assets } = await setup();
+    const collection = assets.getDefaultCollectionId();
+    const { served, manifest } = await packOf(['Wolf']);
+    const statblockManifest = await statblocksFor(served, { wolf: { name: 'Wolf', size: 'Medium' } });
+    served.set(`${STATBLOCKS_5E}wolf.md`, bytesOf(noteText('Wolg', 'Medium')));
+    const files = vault.files.size;
+    await expect(installBestiaryTokens(vault.app, assets, collection, { fetch: serving(served), manifest, statblocks: '5e', statblockManifest })).rejects.toBeInstanceOf(StockPackError);
+
+    const escaping = await statblocksFor(served, { wolf: { name: '../Wolf', size: 'Medium' } });
+    await expect(installBestiaryTokens(vault.app, assets, collection, { fetch: serving(served), manifest, statblocks: '5e', statblockManifest: escaping })).rejects.toThrow('does not describe');
+    expect(vault.files.size).toBe(files);
+    expect(await hasBestiaryTokens(assets, collection)).toBe(false);
+  });
+
+  it('give a statblock a free name where one of that name lies in the collection already', async () => {
+    const { vault, assets } = await setup();
+    const collection = assets.getDefaultCollectionId();
+    await vault.app.vault.create(`atlas-vtt/collections/${collection}/statblocks/Wolf.md`, 'mine');
+    const { served, manifest } = await packOf(['Wolf']);
+    const statblockManifest = await statblocksFor(served, { wolf: { name: 'Wolf', size: 'Medium' } });
+    await installBestiaryTokens(vault.app, assets, collection, { fetch: serving(served), manifest, statblocks: '5e', statblockManifest });
+    expect(vault.files.get(`atlas-vtt/collections/${collection}/statblocks/Wolf.md`)).toBe('mine');
+    expect((await assets.getAssets(collection, 'token'))[0]?.statblockPath).toBe(`atlas-vtt/collections/${collection}/statblocks/Wolf-2.md`);
   });
 });
