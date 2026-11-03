@@ -41,7 +41,7 @@ export const audio = {
 
   'audio.screen.pages': 'DM screen page',
   'audio.screen.statblocks': 'Statblocks',
-  'audio.screen.sound': 'Sound',
+  'audio.screen.sound': 'Sound Weaver',
 
   'audio.nextTag': 'Next',
   'audio.playingTag': 'Playing',

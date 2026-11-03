@@ -15,6 +15,7 @@ import { SoundPane } from './dm-screen/sound/SoundPane';
 import { useDMScreenStatblocks } from './dm-screen/useDMScreenStatblocks';
 import { useFightStatblocks } from './dm-screen/useFightStatblocks';
 import { useNoteFocus } from './dm-screen/useNoteFocus';
+import { sideOf, usePageTurn } from './dm-screen/usePageTurn';
 
 interface DMScreenProps {
   isOpen: boolean;
@@ -46,6 +47,14 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
   const [soundOpened, setSoundOpened] = useState(false);
   if (page === 'sound' && isOpen && !soundOpened) setSoundOpened(true);
   if (!isOpen && soundOpened) setSoundOpened(false);
+  const leaving = usePageTurn(page, isOpen);
+  /** A page at rest is shown or hidden; while pages turn, the one left slides out to its side and the one chosen in from its own. */
+  const pageProps = (of: DMScreenPage): React.ComponentProps<'div'> & { 'data-page': string; 'data-from': string | undefined } => ({
+    hidden: of !== page && of !== leaving,
+    inert: of !== page,
+    'data-page': of === page ? 'current' : sideOf(of, page),
+    'data-from': of === page && leaving !== null ? sideOf(of, leaving) : undefined,
+  });
 
   // Animated close: play exit animation, then call the real onClose
   const handleClose = useCallback((): void => {
@@ -125,16 +134,18 @@ export default function DMScreen({ isOpen, onClose }: DMScreenProps): React.JSX.
             <kbd className="atlas-dm-screen-key" aria-hidden="true">→</kbd>
           </div>
         )}
-        {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}
-        <div className="atlas-dm-screen-content" hidden={page !== 'statblocks'}>
-          <DMStatblocksPane app={app} shown={shown} scopeSwitch={scopeSwitch} loading={loading} onClose={handleClose} />
-          <DMNotePane app={app} onNoteFocus={() => setIsNoteFocused(true)} />
-        </div>
-        {soundOn && soundOpened && (
-          <div className="atlas-dm-sound-page" hidden={page !== 'sound'}>
-            <SoundPane active={page === 'sound'} />
+        <div className="atlas-dm-screen-stage" data-turning={leaving !== null || undefined}>
+          {/* Stays mounted while hidden: the note's editor needs its own cleanup, and statblocks are not loaded twice. */}
+          <div className="atlas-dm-screen-content atlas-dm-page" {...pageProps('statblocks')}>
+            <DMStatblocksPane app={app} shown={shown} scopeSwitch={scopeSwitch} loading={loading} onClose={handleClose} />
+            <DMNotePane app={app} onNoteFocus={() => setIsNoteFocused(true)} />
           </div>
-        )}
+          {soundOn && soundOpened && (
+            <div className="atlas-dm-sound-page atlas-dm-page" {...pageProps('sound')}>
+              <SoundPane active={page === 'sound'} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

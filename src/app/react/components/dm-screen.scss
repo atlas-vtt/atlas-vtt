@@ -1,4 +1,12 @@
 @use '../../../../styles/tokens' as *;
+@use '../../../../styles/mixins' as *;
+
+// Turning pages: how long, how fast the page left fades, when the one chosen starts to show, and how far each
+// slides (`usePageTurn.ts` keeps `PAGE_TURN_MS` in step).
+$page-turn: 340ms;
+$page-leave: 120ms;
+$page-arrive: 80ms;
+$page-shift: clamp(24px, 3cqi, 56px);
 
 // DM screen styles
 //
@@ -145,7 +153,7 @@
 }
 
 // A selector of its own: every sheet is imported inside `.atlas-vtt-plugin`, so `.x ~ &` would read `.x ~ .atlas-vtt-plugin …`.
-.atlas-dm-screen-header ~ .atlas-dm-screen-content {
+.atlas-dm-screen-header ~ .atlas-dm-screen-stage > .atlas-dm-screen-content {
   padding: $spacing-l var(--atlas-dm-screen-inset) var(--atlas-dm-screen-inset);
 }
 
@@ -178,9 +186,43 @@
     color: var(--text-muted);
     transition: color $transition-normal, background-color $transition-normal;
 
+    position: relative;
+    z-index: 1;
+
     &.atlas-active {
       color: var(--text-normal);
+      background: transparent !important;
+      box-shadow: none;
+    }
+  }
+
+  // One thumb under the chosen page, gliding with the turn: the options share one width, so it moves by its own.
+  .atlas-dm-screen-pages {
+    position: relative;
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 4px auto 4px 4px;
+      width: calc((100% - 10px) / 2);
+      border-radius: calc(#{$radius-xl} - 4px);
+      background: var(--background-primary);
       box-shadow: 0 1px 2px color-mix(in oklch, black 40%, transparent);
+      transition: transform $page-turn $transition-ease-out;
+      @include atlas-corner-shape;
+    }
+
+    &:has(.atlas-segmented__option:nth-of-type(2).atlas-active)::before {
+      transform: translateX(calc(100% + 2px));
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &::before {
+        transition: none;
+      }
     }
   }
 }
@@ -208,12 +250,86 @@
 }
 
 .atlas-dm-sound-page {
-  flex: 1;
   min-height: 0;
   display: flex;
 
   &[hidden] {
     display: none;
+  }
+}
+
+// ---- Turning pages ----
+// The pages lie in one cell and move along one axis together: the one left slides out to its side and is gone
+// within `$page-leave`, the one chosen slides in from its own and shows from `$page-arrive`, settling with a slight
+// growth, so the two never read as one picture.
+// Transitions, not keyframes: a second ← → mid-turn takes both from where they are. `usePageTurn` keeps
+// the page left drawn for `$page-turn`, then hides it.
+
+.atlas-dm-screen-stage {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+
+  // Only while turning: at rest nothing of a page is clipped, its shadows and popovers least of all.
+  &[data-turning] {
+    overflow: clip;
+  }
+}
+
+.atlas-dm-page {
+  grid-area: 1 / 1;
+  min-width: 0;
+  transition:
+    transform $page-turn $transition-ease-out,
+    opacity ($page-turn - $page-arrive) $transition-ease-out $page-arrive;
+
+  &[data-page='before'],
+  &[data-page='after'] {
+    opacity: 0;
+    pointer-events: none;
+    transition:
+      transform $page-turn $transition-ease-out,
+      opacity $page-leave $transition-ease-out;
+  }
+
+  &[data-page='before'] {
+    transform: translateX(calc(-1 * #{$page-shift})) scale(0.985);
+  }
+
+  &[data-page='after'] {
+    transform: translateX($page-shift) scale(0.985);
+  }
+
+  // A page that was hidden has no style to start from: it starts where its side says.
+  &[data-page='current'][data-from='before'] {
+    @starting-style {
+      opacity: 0;
+      transform: translateX(calc(-1 * #{$page-shift})) scale(0.985);
+    }
+  }
+
+  &[data-page='current'][data-from='after'] {
+    @starting-style {
+      opacity: 0;
+      transform: translateX($page-shift) scale(0.985);
+    }
+  }
+
+  // Fewer and gentler: the pages cross-fade where they are.
+  @media (prefers-reduced-motion: reduce) {
+    &[data-page],
+    &[data-page='before'],
+    &[data-page='after'] {
+      transform: none;
+      transition: opacity $transition-normal $transition-ease;
+    }
+
+    &[data-page='current'][data-from] {
+      @starting-style {
+        transform: none;
+      }
+    }
   }
 }
 

@@ -9,9 +9,11 @@ const DM_SCREEN = `
       <div class="atlas-dm-screen-wrapper">
         <div class="atlas-dm-screen-backdrop"></div>
         <div class="atlas-dm-screen">
-          <div class="atlas-dm-screen-content">
-            <div class="atlas-dm-statblocks-section"><div class="atlas-dm-statblocks-grid"></div></div>
-            <div class="atlas-dm-notes-section"><div class="atlas-dm-notes-content"></div></div>
+          <div class="atlas-dm-screen-stage">
+            <div class="atlas-dm-screen-content atlas-dm-page" data-page="current">
+              <div class="atlas-dm-statblocks-section"><div class="atlas-dm-statblocks-grid"></div></div>
+              <div class="atlas-dm-notes-section"><div class="atlas-dm-notes-content"></div></div>
+            </div>
           </div>
         </div>
       </div>

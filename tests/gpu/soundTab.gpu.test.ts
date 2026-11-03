@@ -617,9 +617,46 @@ describe('the DM screen’s Sound page', () => {
     await userEvent.click(document.querySelector<HTMLElement>('.atlas-dm-screen-pages [role="radio"]')!);
     expect(tab.store.getState().dmScreenPage).toBe('statblocks');
     expect(getComputedStyle(content).display).toBe('flex');
-    expect(getComputedStyle(document.querySelector('.atlas-dm-sound-page')!).display).toBe('none');
+    await expect.poll(() => getComputedStyle(document.querySelector('.atlas-dm-sound-page')!).display).toBe('none');
     const notes = box('.atlas-dm-notes-section');
     expect(notes.width).toBeGreaterThan(300);
+  });
+
+  it('turns pages: the one chosen slides in from its side as the one left slides out to its own, and the thumb follows', async () => {
+    await page.viewport(1280, 820);
+    tab = await openSoundTab(DARK, viewport);
+    const statblocks = document.querySelector<HTMLElement>('.atlas-dm-screen-content')!;
+    const sound = document.querySelector<HTMLElement>('.atlas-dm-sound-page')!;
+    const thumbX = (): number => new DOMMatrix(getComputedStyle(document.querySelector('.atlas-dm-screen-pages')!, '::before').transform).e;
+    const shiftOf = (element: HTMLElement): number => new DOMMatrix(getComputedStyle(element).transform).e;
+    const options = document.querySelectorAll<HTMLElement>('.atlas-dm-screen-pages [role="radio"]');
+    expect(options[0]!.getBoundingClientRect().width).toBeCloseTo(options[1]!.getBoundingClientRect().width, 0);
+    expect(options[1]!.textContent).toBe('Sound Weaver');
+    await expect.poll(thumbX).toBeGreaterThan(100);
+
+    act(() => document.querySelector<HTMLElement>('.atlas-sound-pane')?.focus());
+    await userEvent.keyboard('{ArrowLeft}');
+    expect(tab.store.getState().dmScreenPage).toBe('statblocks');
+    // Mid-turn both are drawn: the statblocks come in from the left, the Sound page leaves to the right, inert.
+    expect(statblocks.dataset.from).toBe('before');
+    expect(sound.dataset.page).toBe('after');
+    expect(sound.hidden).toBe(false);
+    expect(sound.inert).toBe(true);
+    await expect.poll(() => shiftOf(sound)).toBeGreaterThan(4);
+    expect(shiftOf(statblocks)).toBeLessThan(0);
+    await expect.poll(() => sound.hidden, { timeout: 2000 }).toBe(true);
+    expect(shiftOf(statblocks)).toBeCloseTo(0, 1);
+    expect(statblocks.dataset.from).toBeUndefined();
+    expect(thumbX()).toBeCloseTo(0, 0);
+
+    // Back before the turn ends: the Sound page returns from where it is, and stays.
+    act(() => tab?.store.getState().setDMScreenPage('sound'));
+    act(() => tab?.store.getState().setDMScreenPage('statblocks'));
+    act(() => tab?.store.getState().setDMScreenPage('sound'));
+    await expect.poll(() => statblocks.hidden, { timeout: 2000 }).toBe(true);
+    expect(sound.hidden).toBe(false);
+    expect(sound.inert).toBe(false);
+    await expect.poll(() => getComputedStyle(sound).opacity).toBe('1');
   });
 
   it('leaves statblock feeds where they are while their page is hidden', async () => {
