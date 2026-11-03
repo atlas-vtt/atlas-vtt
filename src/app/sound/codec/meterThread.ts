@@ -1,8 +1,8 @@
 import { LoudnessMeter, type LoudnessResult } from './loudness';
 import LoudnessWorker from './loudnessWorker?worker&inline';
 
-export type MeterMessage = { type: 'add'; planes: Float32Array<ArrayBuffer>[] } | { type: 'finish' };
-export type MeterReply = { type: 'ack' } | { type: 'result'; result: LoudnessResult };
+export type MeterMessage = { type: 'add'; planes: Float32Array<ArrayBuffer>[] } | { type: 'peek' } | { type: 'finish' };
+export type MeterReply = { type: 'ack' } | { type: 'peek'; result: LoudnessResult } | { type: 'result'; result: LoudnessResult };
 
 /** Pieces sent and not yet measured, at most: about two seconds of sound, so memory stays flat if the meter falls behind. */
 const MAX_IN_FLIGHT = 24;
@@ -19,6 +19,7 @@ export class MeterThread {
   private inFlight = 0;
   private wake: (() => void) | null = null;
   private finished: ((result: LoudnessResult) => void) | null = null;
+  private peeked: ((result: LoudnessResult) => void) | null = null;
   private failure: Error | null = null;
 
   constructor(channels: number) {
@@ -36,6 +37,9 @@ export class MeterThread {
       if (message.type === 'ack') {
         this.inFlight--;
         this.wake?.();
+      } else if (message.type === 'peek') {
+        this.peeked?.(message.result);
+        this.peeked = null;
       } else {
         this.finished?.(message.result);
       }
@@ -67,6 +71,16 @@ export class MeterThread {
         this.wake = null;
         resolve();
       };
+    });
+  }
+
+  /** Loudness of what was measured so far, for a copy played while it is made. One question at a time; null while one is open. */
+  peek(): Promise<LoudnessResult> | null {
+    if (this.local) return Promise.resolve(this.local.result());
+    if (this.peeked || this.failure) return null;
+    return new Promise((resolve) => {
+      this.peeked = resolve;
+      this.worker?.postMessage({ type: 'peek' } satisfies MeterMessage);
     });
   }
 

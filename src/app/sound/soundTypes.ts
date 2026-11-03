@@ -80,6 +80,11 @@ export interface SoundInfo {
   /** Linear-free, in dB: `min(target - lufs, ceiling - truePeak) + trim`. */
   gainDb: number;
   loop?: { startFrame: number; endFrame: number };
+  /**
+   * Its copy is still being made: `frames` and `gainDb` are what can be told so far, and the sound plays from the
+   * pages written yet, waiting where it runs ahead of them. Never on the wire.
+   */
+  growing?: true;
 }
 
 /** Music being played: enough to go on through the list with nobody telling it to. */

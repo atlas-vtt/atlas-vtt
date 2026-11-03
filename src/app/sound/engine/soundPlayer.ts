@@ -120,6 +120,11 @@ export class SoundPlayer {
     return [...new Set([...this.voices.values()].flatMap((voice) => voice.waitingKeys))];
   }
 
+  /** Reads a sound's bytes anew from now on: its copy, made while it played, is stored. */
+  forgetSource(key: string): void {
+    this.sources.forget(key);
+  }
+
   /** What whole decoded sounds hold now; a long sound's windows are about 8 MB per voice besides. */
   decodedBytes(): number {
     return this.sources.decodedBytes();

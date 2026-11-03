@@ -1,7 +1,7 @@
 import { DEFAULT_ROOM, type Mood, type MusicRepeat, type RoomId, type SoundInfo, type SoundRecord } from '../sound/soundTypes';
 import { applySoonest, readyToJoin } from './libraryMix';
 import type { DirectorMoods } from './directorDeps';
-import { addLayer, setLayerLevel, setLayerMuted, setLayerReverb, setMusicLevel, setMusicMuted, setMusicReverb, setRoom, stopAll, toggleSilence } from './liveEdits';
+import { addLayer, withCurrentInfos, setLayerLevel, setLayerMuted, setLayerReverb, setMusicLevel, setMusicMuted, setMusicReverb, setRoom, stopAll, toggleSilence } from './liveEdits';
 import { mixDiffersFrom } from './mixChange';
 import { musicPosition, nextTrack, playTrack, previousTrack, seekMusic, skipTrack, soundingTrack } from './musicList';
 import { addTrack, clearComing, dropLayer, dropWaitingTrack, EMPTY_MIX, joinReady, mixAsMood, moveTrack, pressMood, removeTrack, setRepeat, setShuffle, withoutSoonest, type ActiveMood, type SoundMix } from './soundMix';
@@ -46,6 +46,16 @@ export class MixDesk {
   }
 
   /** Brings in what waits for its copy, as far as copies have come. */
+  /** The table's sounds as their copies say now: a copy made while it played grows, and ends whole. */
+  followCopies(): void {
+    const { table } = this.table.mix;
+    const next = withCurrentInfos(table, (key) => {
+      const record = this.shelf.recordOfKey(key);
+      return record && this.shelf.infoOf(record);
+    });
+    if (next !== table) this.table.commit({ ...this.table.mix, table: next });
+  }
+
   joinWaiting(): void {
     const mix = this.withoutGiveUps(this.table.mix);
     const { waitingLayers, waitingMusic, soonest } = mix;

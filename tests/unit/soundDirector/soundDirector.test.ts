@@ -186,13 +186,22 @@ describe('the sound director', () => {
     expect(rig.director.snapshot().mix.waitingLayers.map((layer) => layer.sound)).toEqual(['wind', 'rain']);
     // Fire was under way already; what was pressed starts beside it at once, never behind it.
     expect(rig.conversions.length).toBeGreaterThanOrEqual(2);
-    rig.conversions[1]?.finish();
+    const conversionOf = async (id: string): Promise<DirectorRig['conversions'][number]> => {
+      const textOf = (blob: Blob): Promise<string> => new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(String(reader.result));
+        reader.readAsText(blob);
+      });
+      for (const conversion of rig!.conversions) if ((await textOf(conversion.source)).includes(id)) return conversion;
+      throw new Error(`No conversion of ${id}`);
+    };
+    (await conversionOf('wind')).finish();
     await settle();
     const names = (): (string | undefined)[] => rig.director.snapshot().mix.table.layers.map((play) => rig.director.shelf.recordOfKey(play.sound.key)?.id);
     expect(names()).toEqual(['wind']);
-    rig.conversions[0]?.finish();
+    (await conversionOf('fire')).finish();
     await settle();
-    rig.conversions[2]?.finish();
+    (await conversionOf('rain')).finish();
     await settle();
     expect(names()).toEqual(['wind', 'rain']);
     expect(rig.director.snapshot().mix.waitingLayers).toEqual([]);

@@ -1,3 +1,4 @@
+import { GrowingCopy } from '../codec/growingCopy';
 import { openOggOpus, readPacketRange, type OggOpusSound } from '../codec/oggOpusReader';
 import type { SoundBytes } from '../soundTypes';
 import type { SoundBuffer, SoundContext } from './audioNodes';
@@ -79,6 +80,8 @@ export class SoundSources {
   private async windowOf(key: string, frame: number, count: number): Promise<SoundBuffer> {
     const { sound, decode, source } = await this.stream(key);
     const fromGranule = frame + sound.preSkip;
+    // A copy still being made is read once it holds the window; it is made far faster than it plays.
+    if (source instanceof GrowingCopy) await source.reach(fromGranule + count);
     const packets = await readPacketRange(sound, source, fromGranule - PRE_ROLL_FRAMES, fromGranule + count);
     return this.inLine(() => decode(sound, packets, fromGranule, count));
   }
@@ -104,7 +107,7 @@ export class SoundSources {
 
   private async openStream(key: string): Promise<{ sound: OggOpusSound; decode: WindowDecode; source: SoundBytes }> {
     const source = await this.source(key);
-    const sound = await openOggOpus(source);
+    const sound = source instanceof GrowingCopy ? source.sound() : await openOggOpus(source);
     const decode = this.forcedWindowDecode ? this.forcedWindowDecode(this.context) : await chooseWindowDecode(this.context, sound);
     return { sound, decode, source };
   }

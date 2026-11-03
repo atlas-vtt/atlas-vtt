@@ -15,6 +15,8 @@ self.addEventListener('message', (event: MessageEvent<MeterMessage>) => {
     meter ??= new LoudnessMeter(message.planes.length);
     meter.add(message.planes);
     reply({ type: 'ack' });
+  } else if (message.type === 'peek') {
+    reply({ type: 'peek', result: meter ? meter.result() : { lufs: -Infinity, truePeakDb: -Infinity } });
   } else {
     reply({ type: 'result', result: meter ? meter.result() : { lufs: -Infinity, truePeakDb: -Infinity } });
   }

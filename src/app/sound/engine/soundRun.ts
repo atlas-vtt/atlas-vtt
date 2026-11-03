@@ -35,15 +35,20 @@ export interface SoundRun {
   boundaryFrame(nowFrame: number): number | null;
   /** Ends at a context frame, crossfading out over the time before it. */
   finishAt(ctxFrame: number, seconds: number): void;
+  /** The same sound with another length or loudness, as a copy made while it played turned out. */
+  follow(span: TimelineSpan, soundGain: number): void;
   dispose(): void;
 }
+
+/** How long a sound's gain takes to move to what its copy turned out to need. */
+export const SOUND_GAIN_GLIDE_SECONDS = 2;
 
 /** The span and its place on the context's clock, which both kinds of run share. */
 abstract class RunBase implements SoundRun {
   protected readonly node: SoundGainNode;
   protected readonly gain: GainTrack;
   protected readonly ratio: number;
-  protected readonly soundGain: number;
+  protected soundGain: number;
   protected finishFrame: number | null = null;
   protected disposed = false;
   /** Takes over from a run that fades out, so it fades up even where it starts on its exact place. */
@@ -52,7 +57,7 @@ abstract class RunBase implements SoundRun {
 
   constructor(
     protected readonly deps: RunDeps,
-    readonly span: TimelineSpan,
+    public span: TimelineSpan,
     /** Context frame of the play's frame 0. */
     protected readonly anchor: number,
     /** Nothing sounds before this context frame; a replacement crossfades in from here. */
@@ -73,6 +78,17 @@ abstract class RunBase implements SoundRun {
 
   get finishing(): boolean {
     return this.finishFrame !== null;
+  }
+
+  /**
+   * The same sound told anew: a copy that played while it was made has its real length and loudness now.
+   * Later windows read the new span, and the level glides to the new gain, slowly enough to go unheard.
+   */
+  follow(span: TimelineSpan, soundGain: number): void {
+    this.span = span;
+    if (soundGain === this.soundGain || this.finishing) return;
+    this.soundGain = soundGain;
+    this.gain.move(soundGain, this.deps.context.currentTime, SOUND_GAIN_GLIDE_SECONDS);
   }
 
   finishAt(ctxFrame: number, seconds: number): void {

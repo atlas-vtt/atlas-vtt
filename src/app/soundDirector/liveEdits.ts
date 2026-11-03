@@ -1,4 +1,4 @@
-import type { LayerPlay, MusicRepeat, RoomId, SoundInfo, TableSound } from '../sound/soundTypes';
+import type { LayerPlay, MusicPlay, MusicRepeat, RoomId, SoundInfo, TableSound } from '../sound/soundTypes';
 import { DEFAULT_ROOM } from '../sound/soundTypes';
 import { MAX_MOOD_LAYERS } from '../sound/soundTypes';
 import { changed, enteringLayer, enteringMusic, FADER_MS, leaving, OFFLINE_LEAD_MS, rampFade, ROOM_FADE_MS, SILENCE_FADE_MS, withoutFinished, withReverb } from './tableSound';
@@ -118,3 +118,38 @@ export function toggleSilence(state: TableSound, now: number): TableSound {
 }
 
 
+
+/** Whether two infos of one key would sound different. */
+function sameInfo(a: SoundInfo, b: SoundInfo): boolean {
+  return a.frames === b.frames && a.gainDb === b.gainDb && a.growing === b.growing && a.loop?.startFrame === b.loop?.startFrame && a.loop?.endFrame === b.loop?.endFrame;
+}
+
+/**
+ * The table's sounds as their copies say now: a copy made while it played has its real length and loudness
+ * once whole, and its loudness so far while it grows. Anything else of a play stays; nothing changes where
+ * no info did.
+ */
+export function withCurrentInfos(state: TableSound, infoOfKey: (key: string) => SoundInfo | null): TableSound {
+  let changes = 0;
+  const current = (sound: SoundInfo): SoundInfo => {
+    const info = infoOfKey(sound.key);
+    if (!info || sameInfo(info, sound)) return sound;
+    changes++;
+    return info;
+  };
+  const music = <T extends MusicPlay>(play: T): T => {
+    const tracks = play.tracks.map(current);
+    return tracks.every((track, index) => track === play.tracks[index]) ? play : { ...play, tracks };
+  };
+  const layer = (play: LayerPlay): LayerPlay => {
+    const sound = current(play.sound);
+    return sound === play.sound ? play : { ...play, sound };
+  };
+  const next = {
+    music: state.music && music(state.music),
+    outgoing: state.outgoing.map(music),
+    layers: state.layers.map(layer),
+    outgoingLayers: state.outgoingLayers.map(layer),
+  };
+  return changes === 0 ? state : changed(state, next);
+}

@@ -166,7 +166,7 @@ describe('importing a sound', () => {
 
   it('can be cancelled, and goes on with the next', async () => {
     const controller = new AbortController();
-    const cancelled = importer.run({ source: waveBlob(48000, 60, 440), kind: 'music', loop: false }, undefined, controller.signal);
+    const cancelled = importer.run({ source: waveBlob(48000, 60, 440), kind: 'music', loop: false }, undefined, undefined, controller.signal);
     controller.abort();
     await expect(cancelled).rejects.toMatchObject({ name: 'AbortError' });
     const next = await importer.run({ source: waveBlob(48000, 1, 440), kind: 'music', loop: false });

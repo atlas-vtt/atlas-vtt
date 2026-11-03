@@ -62,7 +62,7 @@ class Rig {
       useAudience: (audience: AudienceLine | null) => void (this.audience = audience),
       players: this.seam,
       shelf: {
-        bytes: (key: string) => Promise.resolve({ byteLength: 8, read: () => Promise.resolve(new TextEncoder().encode(key.slice(-8))) }),
+        storedBytes: (key: string) => Promise.resolve({ byteLength: 8, read: () => Promise.resolve(new TextEncoder().encode(key.slice(-8))) }),
         infoOf: (given: SoundRecord) => infoOf(given.id),
         recordOfKey: (key: string) => this.records.get(key.slice(-1)) ?? null,
         recordsOf: (mood: Mood) => mood.layers.flatMap((layer) => this.records.get(layer.sound) ?? []),

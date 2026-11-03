@@ -8,6 +8,8 @@ import { MeterThread } from './meterThread';
 import { OpusOutput, queueRoom } from './opusOutput';
 import { Resampler, SilenceTrim, toStereo } from './pcmStages';
 import { verifyOggOpus } from './soundVerify';
+import type { GrowingPages, GrowingStart } from './growingCopy';
+import type { WrittenPage } from './oggOpusWriter';
 
 export type SoundImportKind = 'music' | 'ambience';
 
@@ -22,6 +24,71 @@ export interface SoundImportJob {
   kind: SoundImportKind;
   /** Marked as a loop: nothing but sound at either end, and a wrap that goes on as the sound does. */
   loop: boolean;
+  /** Hand the copy's pages on as they are written, so it can play while it is made. Never for a loop, whose ends come last. */
+  stream?: boolean;
+}
+
+/** Where the pages of a copy made to play while it is made go. */
+export interface StreamSink {
+  start(start: GrowingStart): void;
+  pages(pages: GrowingPages): void;
+}
+
+/** Pages go on in batches this large or this old, so the first seconds go at once and a long copy costs few messages. */
+const STREAM_BATCH_BYTES = 256 * 1024;
+const STREAM_BATCH_MS = 250;
+
+/**
+ * The pages of a copy on their way out while it is made: batched, each batch with how long the sound will be
+ * as far as can be told and how loud it is so far.
+ */
+class PageStream {
+  private pending: WrittenPage[] = [];
+  private bytes = 0;
+  private sentAt = 0;
+  private started = false;
+  private loudness = { lufs: Number.NEGATIVE_INFINITY, truePeakDb: Number.NEGATIVE_INFINITY };
+
+  constructor(
+    private readonly sink: StreamSink,
+    private readonly estimate: () => number,
+    private readonly peek: () => Promise<LoudnessResult> | null,
+  ) {}
+
+  add(page: WrittenPage, head: Uint8Array<ArrayBuffer>): void {
+    if (!this.started) {
+      this.started = true;
+      this.sentAt = performance.now();
+      this.sink.start({ head, estimatedFrames: this.estimate() });
+    }
+    this.pending.push(page);
+    this.bytes += page.bytes.byteLength;
+    if (this.bytes >= STREAM_BATCH_BYTES || performance.now() - this.sentAt >= STREAM_BATCH_MS) this.flush();
+  }
+
+  flush(): void {
+    const last = this.pending.at(-1);
+    if (!last) return;
+    const bytes = new Uint8Array(this.bytes);
+    let offset = 0;
+    for (const page of this.pending) {
+      bytes.set(page.bytes, offset);
+      offset += page.bytes.byteLength;
+    }
+    this.sink.pages({
+      bytes,
+      pages: this.pending.map((page) => ({ byte: page.byte, granule: page.startGranule })),
+      endGranule: last.granule,
+      estimatedFrames: this.estimate(),
+      ...this.loudness,
+    });
+    this.pending = [];
+    this.bytes = 0;
+    this.sentAt = performance.now();
+    void this.peek()?.then((result) => {
+      this.loudness = result;
+    });
+  }
 }
 
 export interface SoundImportResult extends LoudnessResult {
@@ -45,18 +112,31 @@ class PcmPath {
   private meter: MeterThread | null = null;
   private output: OpusOutput | null = null;
 
+  stream: PageStream | null = null;
+
   constructor(
     private readonly job: SoundImportJob,
     private readonly primingHints: readonly number[] | null,
+    private readonly sink: StreamSink | null,
+    private readonly estimate: (written: number) => number,
   ) {}
+
+  /** Frames handed to the encoder so far. */
+  get written(): number {
+    return this.output?.frames ?? 0;
+  }
 
   add(planes: Planes, sampleRate: number): void {
     const stereo = toStereo(planes);
     if (!this.output) {
       checkSourceShape(sampleRate, planes.length);
       const channels = stereo.length;
-      this.output = new OpusOutput(channels, BITRATES[this.job.kind]);
       this.meter = new MeterThread(channels);
+      const meter = this.meter;
+      const sink = this.job.stream && !this.job.loop ? this.sink : null;
+      this.stream = sink && new PageStream(sink, () => this.estimate(this.written), () => meter.peek());
+      const stream = this.stream;
+      this.output = new OpusOutput(channels, BITRATES[this.job.kind], stream ? (page, head) => stream.add(page, head) : undefined);
       // Where its ends are known a loop is resampled as the wrap it is. Elsewhere its ends are found only after this.
       this.resampler = sampleRate === SOUND_RATE ? null : new Resampler(sampleRate, channels, this.job.loop && !this.primingHints);
       if (this.job.loop) {
@@ -89,6 +169,7 @@ class PcmPath {
     // A loop too short for its seam keeps nothing, and a page refuses a whole state that names such a sound.
     if (frames < 1) throw new SoundImportError('empty', 'There is no audio in the file.');
     const [bytes, measured] = await Promise.all([output.finish(skipFrames), this.meter.result()]);
+    this.stream?.flush();
     const result = { ...measured, bytes, frames, channels: output.channels };
     return loop ? { ...result, seam: loop.seam } : result;
   }
@@ -174,10 +255,13 @@ async function checkEncoder(bitrate: number): Promise<void> {
  * Decodes in pieces, measures, encodes and writes, then decodes what was written to check it. Holds a piece
  * and a queue's worth at a time, never the file: three hours of it decoded would be gigabytes.
  */
-export async function convertSound(job: SoundImportJob, onProgress: ImportProgress = () => undefined): Promise<SoundImportResult> {
+export async function convertSound(job: SoundImportJob, onProgress: ImportProgress = () => undefined, sink: StreamSink | null = null): Promise<SoundImportResult> {
   await checkEncoder(BITRATES[job.kind]);
   const source: SoundSource = await openSoundSource(job.source);
-  const path = new PcmPath(job, source.type === 'encoded' ? (source.primingHints ?? null) : null);
+  // How long the copy will be: what the file says where it says it, else what has been written so far over how far through the file reading is.
+  const known = source.type === 'encoded' && source.totalFrames !== null ? Math.round((source.totalFrames * SOUND_RATE) / source.sampleRate) : null;
+  const estimate = (written: number): number => known ?? Math.max(written, Math.round(written / Math.max(source.progress(), 0.001)));
+  const path = new PcmPath(job, source.type === 'encoded' ? (source.primingHints ?? null) : null, sink, estimate);
   let shown = 0;
   const progress = (): void => {
     const share = source.progress() * FILE_SHARE;

@@ -39,7 +39,8 @@ export interface ShareDirector {
     sceneMoods(scenePath: string): Promise<Mood[]>;
   };
   readonly shelf: {
-    bytes(key: string): Promise<SoundBytes>;
+    /** Only a stored, whole copy: a copy still being made is never offered. */
+    storedBytes(key: string): Promise<SoundBytes>;
     infoOf(record: SoundRecord): SoundInfo | null;
     recordOfKey(key: string): SoundRecord | null;
     recordsOf(mix: Pick<Mood, 'music' | 'layers'>): SoundRecord[];
@@ -91,7 +92,7 @@ export class TableSoundShare implements PlayersSounds {
     this.on = ports.loadSending();
     const { director, timers } = ports;
     this.clock = new TableClockSync({ local: () => Date.now(), send: (t1) => ports.sendTime(t1), setTimer: (run, ms) => timers.setTimer(run, ms), clearTimer: (timer) => timers.clearTimer(timer) });
-    this.refs = new SoundRefs({ bytes: (key) => director.shelf.bytes(key), copyRef: (copy, read, use, handed) => ports.copyRef(copy, read, use, handed) });
+    this.refs = new SoundRefs({ bytes: (key) => director.shelf.storedBytes(key), copyRef: (copy, read, use, handed) => ports.copyRef(copy, read, use, handed) });
     this.offers = new SoundOffers({
       refs: this.refs,
       send: (body, to) => ports.send(body, to),

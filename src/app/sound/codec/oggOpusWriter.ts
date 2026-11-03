@@ -18,6 +18,14 @@ interface PendingPage {
   startGranule: number;
 }
 
+/** A page as it is written: its bytes, where it starts (from the first audio page), and the granules it covers. */
+export interface WrittenPage {
+  bytes: Uint8Array;
+  byte: number;
+  startGranule: number;
+  granule: number;
+}
+
 function newPage(granule: number): PendingPage {
   return { packets: [], segments: [], granule, startGranule: granule };
 }
@@ -40,7 +48,8 @@ export class OggOpusWriter {
   private readonly seek: SeekEntry[] = [];
   private nextSeekGranule = 0;
 
-  constructor(head: Uint8Array) {
+  /** `onPage` hears each audio page as it is written, for a copy played while it is made. */
+  constructor(head: Uint8Array, private readonly onPage?: (page: WrittenPage) => void) {
     this.head = head;
     this.preSkip = readOpusHead(head).preSkip;
   }
@@ -95,6 +104,7 @@ export class OggOpusWriter {
       this.nextSeekGranule = startGranule + SEEK_INTERVAL_FRAMES;
     }
     const bytes = writePage({ flags, granule, serial: STREAM_SERIAL, sequence: this.sequence++, segments, body: packets });
+    this.onPage?.({ bytes, byte: this.written, startGranule, granule });
     this.written += bytes.length;
     this.pending.push(bytes);
     this.pendingBytes += bytes.length;

@@ -1,4 +1,6 @@
-import { SoundImportError, type ImportProgress, type SoundImportJob, type SoundImportResult } from '../sound/codec/soundImporter';
+import { SoundImportError, type ImportProgress, type SoundImportJob, type SoundImportResult, type StreamSink } from '../sound/codec/soundImporter';
+import { GrowingCopy } from '../sound/codec/growingCopy';
+import { growingInfo, grownGain } from './growingCopies';
 import { soundInfoOf, type SoundMeasure } from '../sound/codec/soundInfo';
 import type { CachedSound, SoundIdentity } from '../sound/codec/opusCache';
 import { untilStuck } from '../sound/codec/stuckWatch';
@@ -32,8 +34,10 @@ export interface CopyCache {
 }
 
 export interface CopyMaker {
-  run(job: SoundImportJob, onProgress?: ImportProgress): Promise<SoundImportResult>;
+  run(job: SoundImportJob, onProgress?: ImportProgress, sink?: StreamSink): Promise<SoundImportResult>;
 }
+
+
 
 const READY: SoundConversion = { state: 'ready' };
 
@@ -53,9 +57,15 @@ interface CopyEntry {
   peaks: Uint8Array<ArrayBuffer> | null;
   /** Settles once what the cache knows of the file has been read. */
   known: Promise<void>;
+  /** The copy while it is made, for a sound that may play before it is whole. */
+  growing: GrowingCopy | null;
+  /** The gain the table was last told of a growing copy, so a small move is no change. */
+  toldGainDb: number | null;
 }
 
 const identityOf = (path: string, stat: { size: number; mtime: number }): string => `${path}|${stat.size}|${stat.mtime}`;
+
+
 
 /**
  * The copies of a vault's sounds on this device: which exist, one queue that makes the rest, and the
@@ -84,6 +94,8 @@ export class SoundCopies {
     private readonly onRefused: (record: SoundRecord, reason: SoundImportError['reason']) => void,
     private readonly readPeaks: (copy: Blob, frames: number) => Promise<Uint8Array<ArrayBuffer>>,
     private readonly parallel = backgroundCopies(),
+    /** A copy that played while it was made is stored now: whatever still reads its growing pages may read the stored copy. */
+    private readonly onStored: (key: string) => void = () => undefined,
   ) {}
 
   /** The same object while a sound's state is the same, since cards read it on every render. */
@@ -96,10 +108,16 @@ export class SoundCopies {
     return () => this.listeners.delete(listener);
   }
 
-  /** What the engine plays a sound by, once its copy is here. */
+  /**
+   * What the engine plays a sound by, once its copy is here, or once a copy being made holds enough to begin
+   * (`growing`: its length and loudness are what can be told so far, and follow as the copy grows).
+   */
   infoFor(record: SoundRecord): SoundInfo | null {
     const entry = this.entryOf(record);
-    return entry?.key && entry.measure ? soundInfoOf(entry.key, entry.measure, { ...(record.trimDb !== undefined && { trimDb: record.trimDb }), ...(record.loop && { loop: record.loop }) }) : null;
+    if (!entry?.key) return null;
+    const trim = { ...(record.trimDb !== undefined && { trimDb: record.trimDb }), ...(record.loop && { loop: record.loop }) };
+    if (entry.measure) return soundInfoOf(entry.key, entry.measure, trim);
+    return entry.growing ? growingInfo(entry.key, entry.growing, entry.toldGainDb, trim) : null;
   }
 
   /** How a sound goes over its length; null until worked out, which only music is. */
@@ -127,6 +145,8 @@ export class SoundCopies {
   }
 
   async bytes(key: string): Promise<SoundBytes> {
+    const growing = this.growingOf(key);
+    if (growing) return growing;
     const bytes = await this.cache.bytes(key);
     if (bytes) return bytes;
     this.forgetKey(key);
@@ -148,13 +168,26 @@ export class SoundCopies {
     this.listeners.clear();
   }
 
+  /** Only what is stored, whole: what goes to players. */
+  async storedBytes(key: string): Promise<SoundBytes> {
+    const bytes = await this.cache.bytes(key);
+    if (bytes) return bytes;
+    throw new Error(`The copy of ${key} is not stored yet.`);
+  }
+
+  private growingOf(key: string): GrowingCopy | null {
+    const id = this.keys.get(key);
+    const entry = id ? this.entries.get(id) : undefined;
+    return entry && !entry.measure ? entry.growing : null;
+  }
+
   private entryOf(record: SoundRecord): CopyEntry | null {
     const stat = this.files.statOf(record);
     if (!stat) return null;
     const identity = identityOf(record.filePath, stat);
     let entry = this.entries.get(record.id);
     if (entry?.identity !== identity) {
-      const fresh: CopyEntry = { identity, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, known: Promise.resolve() };
+      const fresh: CopyEntry = { identity, conversion: NOT_CONVERTED, key: null, measure: null, peaks: null, known: Promise.resolve(), growing: null, toldGainDb: null };
       fresh.known = this.lookUp(record, stat, fresh);
       this.entries.set(record.id, fresh);
       entry = fresh;
@@ -182,6 +215,12 @@ export class SoundCopies {
     }
     entry.conversion = READY;
     this.keys.set(key, record.id);
+    if (entry.growing) {
+      entry.growing.end();
+      entry.growing = null;
+      entry.toldGainDb = null;
+      this.onStored(key);
+    }
     this.changed();
   }
 
@@ -267,12 +306,37 @@ export class SoundCopies {
   }
 
   private async made(record: SoundRecord, entry: CopyEntry, source: Blob, hash: string): Promise<SoundMeasure> {
-    const result = await this.maker.run({ source, kind: record.kind, loop: record.kind === 'ambience' || record.loop !== undefined }, (share) => {
-      if (entry.conversion.state === 'converting') this.set(entry, { state: 'converting', progress: share });
-    });
-    const copy = { bytes: result.bytes, frames: result.frames, channels: result.channels, lufs: result.lufs, truePeakDb: result.truePeakDb };
-    await this.cache.put(hash, copy);
-    return copy;
+    const loop = record.kind === 'ambience' || record.loop !== undefined;
+    try {
+      const result = await this.maker.run({ source, kind: record.kind, loop, stream: !loop }, (share) => {
+        if (entry.conversion.state === 'converting') this.set(entry, { state: 'converting', progress: share });
+      }, this.streamInto(record, entry, hash));
+      const copy = { bytes: result.bytes, frames: result.frames, channels: result.channels, lufs: result.lufs, truePeakDb: result.truePeakDb };
+      await this.cache.put(hash, copy);
+      return copy;
+    } catch (error) {
+      entry.growing?.fail(error instanceof Error ? error : new Error(String(error)));
+      entry.growing = null;
+      throw error;
+    }
+  }
+
+  /** Where a copy's pages go while it is made: the table hears when it can begin, and when its loudness has moved. */
+  private streamInto(record: SoundRecord, entry: CopyEntry, hash: string): StreamSink {
+    return {
+      start: (start) => {
+        entry.growing = new GrowingCopy(start);
+        entry.key = hash;
+        this.keys.set(hash, record.id);
+      },
+      pages: (pages) => {
+        if (!entry.growing || entry.measure) return;
+        const told = grownGain(entry.growing, pages, entry.toldGainDb, record.trimDb);
+        if (told === entry.toldGainDb) return;
+        entry.toldGainDb = told;
+        this.changed();
+      },
+    };
   }
 
   private changed(): void {

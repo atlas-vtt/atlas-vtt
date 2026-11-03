@@ -73,7 +73,7 @@ export class SoundDirector {
       onLifecycle: (lifecycle) => this.publish({ lifecycle }),
       wait: (ms) => new Promise((resolve) => { window.setTimeout(resolve, ms); }),
     });
-    this.shelf = new SoundShelf(deps, (record, reason) => deps.notify(t('audio.refusedNotice', { name: record.name, reason: t(`audio.refused.${reason}`) })));
+    this.shelf = new SoundShelf(deps, (record, reason) => deps.notify(t('audio.refusedNotice', { name: record.name, reason: t(`audio.refused.${reason}`) })), (key) => this.output.forgetSource(key));
     this.table = new SoundTable(this.output, this.shelf, {
       fadeMs: () => this.fadeSeconds() * 1000,
       crossfadeMs: () => this.crossfadeMs(),
@@ -273,6 +273,7 @@ export class SoundDirector {
   }
 
   private onCopies(): void {
+    this.desk.followCopies();
     this.desk.joinWaiting();
     this.previews.copiesChanged();
     this.publish({ shelfRevision: this.current.shelfRevision + 1 });

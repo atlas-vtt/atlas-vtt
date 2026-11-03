@@ -24,7 +24,8 @@ export interface WireSound {
 export function keysOfState(state: TableSound): string[] {
   const tracks = (play: MusicPlay): SoundInfo[] => play.tracks.slice(0, MAX_SOUND_TRACKS);
   const sounds = [...(state.music ? tracks(state.music) : []), ...state.outgoing.flatMap(tracks), ...state.layers.map((play) => play.sound), ...state.outgoingLayers.map((play) => play.sound)];
-  return [...new Set(sounds.map((sound) => sound.key))];
+  // A copy still being made goes up once it is stored: until then players hear it named by a stand-in, and wait.
+  return [...new Set(sounds.filter((sound) => sound.growing !== true).map((sound) => sound.key))];
 }
 
 /** A state as players are sent it: every key the store's id or a stand-in, every level one JSON can carry, and no field but those a page reads. */

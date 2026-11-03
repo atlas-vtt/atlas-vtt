@@ -58,6 +58,12 @@ export class SoundOutput {
     this.player?.setState(state);
   }
 
+  /** A copy made while it played is stored: its windows are read from the stored copy from now on. */
+  forgetSource(key: string): void {
+    this.player?.forgetSource(key);
+    this.preview?.forgetSource(key);
+  }
+
   setPreview(state: TableSound | null): void {
     if (state === null) {
       this.preview?.dispose();

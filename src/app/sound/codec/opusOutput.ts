@@ -1,6 +1,6 @@
 import { SOUND_RATE } from '../engine/soundMath';
 import { SoundImportError } from './demux/demuxTypes';
-import { OggOpusWriter } from './oggOpusWriter';
+import { OggOpusWriter, type WrittenPage } from './oggOpusWriter';
 import { opusPacketFrames, readOpusHead, writeOpusHead } from './opusFormat';
 
 const MAX_QUEUE = 32;
@@ -46,9 +46,14 @@ export class OpusOutput {
   private packetFrames = 0;
   frames = 0;
 
+  /** The stream's head, once the encoder has said it. */
+  head: Uint8Array<ArrayBuffer> | null = null;
+
   constructor(
     readonly channels: number,
     bitrate: number,
+    /** Hears each audio page as it is written, with the stream's head. */
+    private readonly onPage?: (page: WrittenPage, head: Uint8Array<ArrayBuffer>) => void,
   ) {
     this.encoder = new AudioEncoder({
       output: (chunk, metadata) => this.packet(chunk, metadata),
@@ -99,7 +104,10 @@ export class OpusOutput {
       if (!description) throw new SoundImportError('no-encoder', 'The encoder gives no Opus header.');
       const head = readOpusHead(description instanceof ArrayBuffer ? new Uint8Array(description) : new Uint8Array(description.buffer, description.byteOffset, description.byteLength));
       this.preSkip = head.preSkip;
-      this.writer = new OggOpusWriter(writeOpusHead(this.channels, head.preSkip));
+      const written = writeOpusHead(this.channels, head.preSkip);
+      this.head = written;
+      const onPage = this.onPage;
+      this.writer = new OggOpusWriter(written, onPage && ((page) => onPage(page, written)));
     }
     // Nothing the stream will not hold: a page once written cannot be taken back.
     if (this.keepFrames !== null && this.packetFrames >= this.preSkip + this.keepFrames) return;

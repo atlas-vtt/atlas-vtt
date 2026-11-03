@@ -16,6 +16,8 @@ export class SoundShelf {
   constructor(
     private readonly deps: Pick<SoundDirectorDeps, 'files' | 'createCache' | 'createMaker' | 'prepareSource' | 'readRecords' | 'readPeaks'>,
     private readonly onRefused: (record: SoundRecord, reason: SoundRefusal) => void,
+    /** A copy that played while it was made is stored. */
+    private readonly onStored: (key: string) => void = () => undefined,
   ) {}
 
   open(): SoundCopies {
@@ -23,7 +25,7 @@ export class SoundShelf {
     const cache = this.deps.createCache();
     this.maker = maker;
     this.cache = cache;
-    this.copies = new SoundCopies(this.deps.files, cache, maker, (buffer) => this.deps.prepareSource(buffer), this.onRefused, (copy, frames) => this.deps.readPeaks(copy, frames));
+    this.copies = new SoundCopies(this.deps.files, cache, maker, (buffer) => this.deps.prepareSource(buffer), this.onRefused, (copy, frames) => this.deps.readPeaks(copy, frames), undefined, this.onStored);
     return this.copies;
   }
 
@@ -112,8 +114,14 @@ export class SoundShelf {
     if (record) this.request([record], true);
   }
 
+  /** What the engine reads a sound by: its stored copy, or the copy being made. */
   bytes(key: string): ReturnType<SoundCopies['bytes']> {
     return this.copies ? this.copies.bytes(key) : Promise.reject(new Error('Sound is switched off.'));
+  }
+
+  /** Only a stored, whole copy: what goes to players. */
+  storedBytes(key: string): ReturnType<SoundCopies['storedBytes']> {
+    return this.copies ? this.copies.storedBytes(key) : Promise.reject(new Error('Sound is switched off.'));
   }
 
   /** Reads the records again. Sounds that are new since the last read are made ready for use; at a start, what exists only says how far it is. */

@@ -28,8 +28,9 @@ export function driftAction(errorMs: number): DriftAction {
   return size <= SOFT_DRIFT_MS ? 'restart' : 'seek';
 }
 
+/** Read in windows: a long sound, and one whose copy is still being made, which cannot be decoded whole. */
 function isLong(span: TimelineSpan): boolean {
-  return span.sound.frames > WHOLE_DECODE_FRAMES;
+  return span.sound.frames > WHOLE_DECODE_FRAMES || span.sound.growing === true;
 }
 
 export interface VoiceDeps {
@@ -195,9 +196,13 @@ export class SoundVoice {
   private ensureRun(span: TimelineSpan, map: SoundClockMap): void {
     const anchor = this.anchor;
     if (anchor === null) return;
-    if (this.runs.some((run) => !run.finishing && run.span.startPlayFrame === span.startPlayFrame && run.span.sound.key === span.sound.key)) return;
-    const deps = { context: this.deps.context, sources: this.deps.sources, output: this.node, onError: this.deps.onError };
     const gain = dbToGain(span.sound.gainDb);
+    const same = this.runs.find((run) => !run.finishing && run.span.startPlayFrame === span.startPlayFrame && run.span.sound.key === span.sound.key);
+    if (same) {
+      if (same.span !== span) same.follow(span, gain);
+      return;
+    }
+    const deps = { context: this.deps.context, sources: this.deps.sources, output: this.node, onError: this.deps.onError };
     const notBefore = Math.max(this.notBefore, map.nowFrame);
     this.runs.push(isLong(span) ? new WindowRun(deps, span, anchor, notBefore, gain) : new BufferRun(deps, span, anchor, notBefore, gain));
   }
