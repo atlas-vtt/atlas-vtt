@@ -64,3 +64,26 @@ describe('how a sound goes up', () => {
     expect(segmented).toEqual([{ key: 'long', kind: 'segments', handed: true }, { key: 'growing', kind: 'segments', handed: false }]);
   });
 });
+
+describe('a store before segments', () => {
+  it('takes a long sound whole, and one still being made once its copy is stored', async () => {
+    const { writeOpusHead } = await import('@/app/sound/codec/opusFormat');
+    const { GrowingCopy } = await import('@/app/sound/codec/growingCopy');
+    const growing = new GrowingCopy({ head: writeOpusHead(2, 312), estimatedFrames: 600 * 48_000 });
+    let made: typeof growing | null = growing;
+    const refs = new SoundRefs({
+      bytes: () => Promise.resolve({ byteLength: 8 * 1024 * 1024, read: (start, end) => Promise.resolve(new Uint8Array(end - start)) }),
+      growing: () => made,
+      copyRef: async (copy) => ({ ...copy, id: `whole-${copy.hash}` }),
+      segmentsRef: () => { throw new Error('No segments on this store.'); },
+      segmentsTaken: () => false,
+    });
+    expect(await refs.ensure('k', ASSET_USES.audio, true)).toBeNull();
+    expect(refs.known('k')).toBeNull();
+    made = null;
+    growing.end();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(refs.known('k')).toBeUndefined();
+    expect((await refs.ensure('k', ASSET_USES.audio, true))?.id).toMatch(/^whole-/);
+  });
+});

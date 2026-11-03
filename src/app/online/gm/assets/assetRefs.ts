@@ -33,6 +33,8 @@ export interface AssetRefsDeps {
   tilesRefused(): boolean;
   /** A sound in segments has another segment cut, or its copy is whole: its upload may go on. */
   segmentsReady?(): void;
+  /** Whether the store takes no sounds in segments (a relay before them): long sounds then go whole. */
+  segmentsRefused?(): boolean;
   /** Who looks at which floor's map now. */
   floorMaps?(maps: FloorMaps): void;
 }
@@ -81,6 +83,11 @@ export class AssetRefs implements AssetStoring {
    * the copy's key (the source's hash) and the codec version, so it exists before the copy is whole, and its
    * size is a bound until it is. `hash` stays the copy's key, as a pyramid keeps its image's hash.
    */
+  /** Whether a long sound may go in segments: not where the store refused them (a relay before them). */
+  segmentsTaken(): boolean {
+    return this.deps.segmentsRefused?.() !== true;
+  }
+
   async segmentsRef(key: string, codecVersion: number, segments: LiveSegments, use: AssetUse, handed: boolean): Promise<AssetRef | null> {
     const size = segments.done ? segments.bytes : segments.boundBytes;
     const id = await this.deps.register({ key: segmentsKey(key, codecVersion), hash: key, size, mime: AUDIO_MIME_TYPE, use, source: { segments }, handed });

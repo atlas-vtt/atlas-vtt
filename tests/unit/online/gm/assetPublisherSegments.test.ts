@@ -58,4 +58,19 @@ describe('a sound in segments, from the publisher', () => {
     expect(parts.at(-1)).toBe(7);
     expect(harness.publisher.copyState(ref.id)).toEqual({ state: 'ready' });
   });
+
+  it('stops offering segments where the store does not take them, so long sounds go whole', async () => {
+    const harness = publisherHarness();
+    harness.client.answer = (asset) => (asset.kind === 'segments' ? { answer: 'refused', reason: 'kind' } : { answer: 'need', upload: 'single', partBytes: 95 * 1024 * 1024 });
+    const made = pages(90);
+    const growing = new GrowingCopy({ head: made.head, estimatedFrames: 90 * SECOND });
+    const live = await LiveSegments.ofGrowing(growing);
+    const ref = await harness.publisher.storing.segmentsRef('k'.repeat(64), 1, live, { ...ASSET_USES.audio, kind: 'segments' }, true);
+    if (!ref) throw new Error('No reference.');
+    harness.hand(ref);
+    expect(harness.publisher.storing.segmentsTaken()).toBe(true);
+    await harness.advance(1000);
+    expect(harness.publisher.storing.segmentsTaken()).toBe(false);
+    expect(harness.withdrawn).toBe(1);
+  });
 });

@@ -51,7 +51,7 @@ export interface ShareDirector {
   };
 }
 
-export interface SoundSharePorts extends Pick<SoundRefsPorts, 'copyRef' | 'segmentsRef'> {
+export interface SoundSharePorts extends Pick<SoundRefsPorts, 'copyRef' | 'segmentsRef' | 'segmentsTaken'> {
   readonly director: ShareDirector;
   readonly timers: Timers;
   send(body: GmMessage, to?: string): void;
@@ -100,6 +100,7 @@ export class TableSoundShare implements PlayersSounds {
       growing: (key) => director.shelf.growingOf(key),
       copyRef: (copy, read, use, handed) => ports.copyRef(copy, read, use, handed),
       segmentsRef: (key, codecVersion, segments, use, handed) => ports.segmentsRef(key, codecVersion, segments, use, handed),
+      segmentsTaken: () => ports.segmentsTaken?.() ?? true,
     });
     this.offers = new SoundOffers({
       refs: this.refs,

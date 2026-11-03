@@ -14,6 +14,8 @@ export interface SoundRefsPorts {
   growing(key: string): GrowingCopy | null;
   copyRef(copy: Pick<AssetRef, 'hash' | 'size' | 'mime'>, read: () => Promise<Uint8Array<ArrayBuffer> | null>, use: AssetUse, handed: boolean): Promise<AssetRef | null>;
   segmentsRef(key: string, codecVersion: number, segments: LiveSegments, use: AssetUse, handed: boolean): Promise<AssetRef | null>;
+  /** Whether the store takes sounds in segments; where it does not, a long sound goes whole once its copy is stored. */
+  segmentsTaken?(): boolean;
 }
 
 /**
@@ -63,6 +65,14 @@ export class SoundRefs {
 
   /** Offers a copy; resolves with what the store says of it. A long one, or one still being made, goes in segments. */
   async ensure(key: string, use: AssetUse, handed: boolean): Promise<AssetRef | null> {
+    // A store before segments takes a long sound only whole, which a copy still being made is not yet: players
+    // wait for it (as for a sound with no reference), and it is offered again once its copy is stored.
+    const growing = this.ports.growing(key);
+    if (growing && this.ports.segmentsTaken?.() === false) {
+      this.refs.set(key, null);
+      void growing.reach(Number.POSITIVE_INFINITY).catch(() => undefined).then(() => this.refs.delete(key));
+      return null;
+    }
     try {
       const segments = await this.segmentsOf(key);
       if (segments !== null) {
@@ -84,6 +94,7 @@ export class SoundRefs {
 
   /** The segments a key goes up in, or null where its stored copy is small enough to go whole. */
   private segmentsOf(key: string): Promise<LiveSegments | null> {
+    if (this.ports.segmentsTaken?.() === false) return Promise.resolve(null);
     const made = this.segments.get(key);
     if (made) return made;
     const growing = this.ports.growing(key);

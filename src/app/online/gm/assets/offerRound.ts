@@ -18,6 +18,8 @@ export interface OfferRoundPorts {
   mapTooLarge(): void;
   /** The store takes no pyramids: maps go as images from now on. */
   noTiles(): void;
+  /** The store takes no sounds in segments (a relay before them): long sounds go whole from now on. */
+  noSegments?(): void;
   /** Offers a pyramid again at the true size it was lowered to, so the store keeps no more for it. */
   settle(entry: QueueEntry): void;
   /** Takes an asset the store reserved room for out of it again (its pyramid was given up meanwhile). */
@@ -75,6 +77,7 @@ export function answerOffer(offered: readonly Offered[], answers: ReadonlyMap<st
     else if (outcome === 'quota' && answer?.answer === 'refused' && answer.retry === true) ports.retryLater(entry);
     else if (outcome === 'too-large' && entry.handed && isMap(entry)) ports.mapTooLarge();
     else if (outcome === 'kind' && entry.kind === 'tiles') ports.noTiles();
+    else if (outcome === 'kind' && entry.kind === 'segments') ports.noSegments?.();
     pyramid?.stop();
     if (entry.handed) refused.push(entry);
   }

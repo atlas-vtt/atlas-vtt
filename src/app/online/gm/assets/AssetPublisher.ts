@@ -63,6 +63,8 @@ export class AssetPublisher {
   private stopped = false;
   /** Whether the store refused a pyramid for its kind (a relay without them): maps go as images from then on. */
   private noTiles = false;
+  /** Whether the store refused a sound in segments for its kind: long sounds go whole from then on. */
+  private noSegments = false;
   private readonly pyramids: PyramidPublishing | undefined;
   /** How players are handed references, and how the scenes open beside the presented one are offered. */
   readonly storing: AssetRefs;
@@ -111,6 +113,7 @@ export class AssetPublisher {
       release: (ref) => this.release(ref),
       tilesRefused: () => this.noTiles,
       segmentsReady: () => this.runner.pump(),
+      segmentsRefused: () => this.noSegments,
       floorMaps: (maps) => this.pyramids?.floorMaps(maps),
     });
   }
@@ -240,6 +243,7 @@ export class AssetPublisher {
       restricted: () => this.halt('restricted'),
       mapTooLarge: () => this.tell('too-large'),
       noTiles: () => (this.noTiles = true),
+      noSegments: () => (this.noSegments = true),
       settle: (entry) => void this.ports.client.offer([offeredAsset(entry)]),
       remove: (id) => void this.ports.client.remove?.(id),
       retryLater: (entry) => this.retryLater(entry, now),
