@@ -266,6 +266,9 @@ export class AssetPublisher {
 
   private stored(entry: QueueEntry): void {
     this.queue.stored(entry);
+    // A sound in segments the store holds whole (also from an earlier table): pages are told every segment is there.
+    const segments = entrySegments(entry);
+    if (segments?.done) this.progress.setParts(entry.id, segments.pieces - 1);
     if (entry.handed) this.progress.set(entry.id, 1);
     else this.ports.shareChanged?.();
   }

@@ -73,4 +73,26 @@ describe('a sound in segments, from the publisher', () => {
     expect(harness.publisher.storing.segmentsTaken()).toBe(false);
     expect(harness.withdrawn).toBe(1);
   });
+
+  it('tells pages every segment of a sound the store holds already', async () => {
+    const harness = publisherHarness();
+    harness.client.answer = () => ({ answer: 'have' });
+    const made = pages(90);
+    // A copy stored in an earlier session: its segments are cut whole at once.
+    const growing = new GrowingCopy({ head: made.head, estimatedFrames: 90 * SECOND });
+    const bytes = new Uint8Array(made.pages.reduce((sum, page) => sum + page.bytes.byteLength, 0));
+    let offset = 0;
+    for (const page of made.pages) { bytes.set(page.bytes, offset); offset += page.bytes.byteLength; }
+    growing.add({ bytes, pages: made.pages.map((page) => ({ byte: page.byte, granule: page.startGranule })), endGranule: made.pages.at(-1)!.granule, estimatedFrames: 90 * SECOND, lufs: -20, truePeakDb: -3 });
+    growing.end();
+    const live = await LiveSegments.ofGrowing(growing);
+    expect(live.pieces).toBe(1 + 3);
+    const ref = await harness.publisher.storing.segmentsRef('k'.repeat(64), 1, live, { ...ASSET_USES.audio, kind: 'segments' }, true);
+    if (!ref) throw new Error('No reference.');
+    harness.hand(ref);
+    await harness.advance(1000);
+    expect(harness.client.batches).toEqual([]);
+    const parts = harness.sent.flatMap((sent) => (sent.body.t === 'asset-progress' && sent.body.parts?.[ref.id] !== undefined ? [sent.body.parts[ref.id]] : []));
+    expect(parts.at(-1)).toBe(live.pieces - 1);
+  });
 });
