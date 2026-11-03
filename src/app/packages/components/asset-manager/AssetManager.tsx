@@ -178,6 +178,12 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
 
   const anyModalOpen = crud.isTokenCreatorOpen || crud.isEncounterBuilderOpen || crud.isMapCreatorOpen;
 
+  // The empty Tokens tab offers the starter tokens in place of its hint.
+  const offerService = data.assetService;
+  const emptyOffer = shown.tab === 'tokens' && offerService
+    ? (hint: React.ReactNode): React.ReactNode => <BestiaryTokensOffer app={data.app} assets={offerService} collection={selectedCollection} variant="empty" fallback={hint} />
+    : null;
+
   return (
     <>
       {/* Stays mounted while closed so the window can animate out. */}
@@ -298,7 +304,7 @@ export default function AssetManager({ isOpen, onClose, initialTab, onExitComple
                         onDrop={crud.handleDrop}
                         view={data.view}
                         app={data.app}
-                        emptyOffer={shown.tab === 'tokens' && data.assetService ? <BestiaryTokensOffer app={data.app} assets={data.assetService} collection={selectedCollection} variant="empty" /> : null}
+                        {...(emptyOffer && { emptyOffer })}
                         assetService={data.assetService}
                         spawnCounts={sel.spawnCounts}
                         onSpawnCountChange={sel.handleSpawnCountChange}

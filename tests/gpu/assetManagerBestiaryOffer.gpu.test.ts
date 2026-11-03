@@ -15,7 +15,7 @@ import { createInMemoryApp } from '../mocks/inMemoryVault';
 const OBSIDIAN = `
   body { margin: 0; --input-height: 30px; --font-ui-small: 13px; --font-ui-smaller: 12px; --font-medium: 500; --font-normal: 400;
     --radius-s: 4px; --radius-m: 8px; --radius-l: 12px; --font-interface: sans-serif; background: #1e1e1e; color: #dadada;
-    --background-secondary: #262626; --interactive-accent: #8a5cf5; --interactive-accent-hover: #9d75f7; --text-on-accent: #fff; --font-ui-medium: 15px; --text-normal: #dadada; --text-muted: #a3a3a3; --text-faint: #666; --divider-color: #363636; }
+    --background-secondary: #262626; --interactive-accent: #8a5cf5; --background-primary: #1e1e1e; --background-modifier-border: #363636; --background-modifier-hover: #2a2a2a; --interactive-normal: #2a2a2a; --interactive-accent-hover: #9d75f7; --text-on-accent: #fff; --font-ui-medium: 15px; --text-normal: #dadada; --text-muted: #a3a3a3; --text-faint: #666; --divider-color: #363636; }
   .frame { position: absolute; inset: 0; width: 900px; height: 640px; display: flex; }
 `;
 
@@ -87,8 +87,7 @@ describe('the bestiary tokens offer', () => {
       root?.render(React.createElement('div', { className: 'atlas-asset-manager-content', style: { flex: 1, display: 'flex', flexDirection: 'column' } },
         React.createElement('div', { className: 'atlas-empty-state' },
           React.createElement('h3', null, 'No tokens yet'),
-          React.createElement('p', null, 'Use the + button to add some, or adjust your search and tag filters.'),
-          React.createElement(BestiaryTokensOffer, { app, assets, collection: assets.getDefaultCollectionId(), variant: 'empty' }))));
+          React.createElement(BestiaryTokensOffer, { app, assets, collection: assets.getDefaultCollectionId(), variant: 'empty', fallback: React.createElement('p', { className: 'hint' }, 'Use the + button to add some.') }))));
     });
     await expect.poll(() => document.querySelector('.atlas-bestiary-offer--empty')).not.toBeNull();
     const button = document.querySelector<HTMLElement>('.atlas-bestiary-offer--empty')!;
@@ -99,13 +98,19 @@ describe('the bestiary tokens offer', () => {
     expect(document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2)?.closest('.atlas-bestiary-offer--empty')).toBe(button);
     expect(button.textContent).toBe('Get 155 free tokens');
     // A collection of no system starts without statblocks; picking 5E says what comes.
-    const options = [...document.querySelectorAll<HTMLButtonElement>('.atlas-bestiary-offer-block .atlas-segmented__option')];
+    const options = [...document.querySelectorAll<HTMLButtonElement>('.atlas-starter-offer .atlas-segmented__option')];
     expect(options.map((option) => option.textContent)).toEqual(['None', '5E', 'Cairn']);
     expect(options[0]!.getAttribute('aria-checked')).toBe('true');
     await act(async () => options[1]!.click());
-    expect(document.querySelector('.atlas-bestiary-offer-block p')!.textContent).toMatch(/^With 108 statblocks from the 5E SRD 5\.2\.1/);
+    expect(document.querySelector('.atlas-starter-offer .atlas-segmented__option.atlas-active')?.textContent).toBe('5E');
+    expect(document.querySelector('.atlas-starter-offer__fine')!.textContent).toMatch(/^With 108 statblocks from the 5E SRD 5\.2\.1/);
     expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth + 1);
-    expect(document.querySelector('.atlas-bestiary-offer-block p')!.getBoundingClientRect().top).toBeGreaterThanOrEqual(box.bottom + 4);
+    // The offer takes the hint's place, and its choice and button share both edges.
+    expect(document.querySelector('.hint')).toBeNull();
+    const row = document.querySelector<HTMLElement>('.atlas-starter-offer .atlas-bestiary-offer__choice')!.getBoundingClientRect();
+    expect(Math.abs(row.left - box.left)).toBeLessThan(1);
+    expect(Math.abs(row.right - box.right)).toBeLessThan(1);
+    expect(document.querySelector('.atlas-starter-offer__fine')!.getBoundingClientRect().top).toBeGreaterThanOrEqual(box.bottom + 8);
     await page.screenshot({ path: '__screenshots__/asset-manager/starter-tokens-empty.png', element: host });
   });
 });

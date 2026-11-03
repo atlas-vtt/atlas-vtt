@@ -99,9 +99,10 @@ function suggestedChoice(assets: AssetService, collection: string): Choice {
   return 'none';
 }
 
-function noteOf(choice: Choice, size: number): string {
-  if (choice === 'none') return t('am.bestiary.note', { size });
-  return t(choice === '5e' ? 'am.bestiary.noteFiveE' : 'am.bestiary.noteCairn', { count: STATBLOCK_COUNTS[choice], size });
+/** What the chosen statblocks are, for the small print; none without. */
+function statblocksLine(choice: Choice): string | null {
+  if (choice === 'none') return null;
+  return t(choice === '5e' ? 'am.bestiary.withFiveE' : 'am.bestiary.withCairn', { count: STATBLOCK_COUNTS[choice] });
 }
 
 /**
@@ -109,7 +110,14 @@ function noteOf(choice: Choice, size: number): string {
  * picks; while they download into it, says how far it got. `empty` is the empty Tokens tab's call
  * to action, `sidebar` the quiet one at the sidebar's foot for a collection that holds other tokens.
  */
-export function BestiaryTokensOffer({ app, assets, collection, variant }: { app: App; assets: AssetService; collection: string; variant: 'empty' | 'sidebar' }): React.JSX.Element | null {
+export function BestiaryTokensOffer({ app, assets, collection, variant, fallback = null }: {
+  app: App;
+  assets: AssetService;
+  collection: string;
+  variant: 'empty' | 'sidebar';
+  /** Shown in the offer's place once the collection holds the pack (the empty state's own hint). */
+  fallback?: React.ReactNode;
+}): React.JSX.Element | null {
   const download = useDownload(assets);
   const present = usePackPresent(app, assets, collection, download);
   const [choice, setChoice] = useState<Choice>(() => suggestedChoice(assets, collection));
@@ -117,33 +125,49 @@ export function BestiaryTokensOffer({ app, assets, collection, variant }: { app:
   // Downloading into this collection; one into another holds the button until it is done.
   const downloading = download.phase === 'downloading' && download.collection === collection;
   const busy = download.phase === 'downloading';
-  if (!downloading && present !== false) return null;
+  if (!downloading && present !== false) return <>{fallback}</>;
   const size = Math.round(BESTIARY_BYTES / 1_000_000);
   const label = downloading
     ? t('am.bestiary.downloading', { percent: Math.floor(download.share * 100) })
     : t(variant === 'empty' ? 'am.bestiary.offer' : 'am.bestiary.get', { count: BESTIARY_TOKEN_COUNT });
+  const choiceRow = (
+    <div className="atlas-bestiary-offer__choice">
+      <span aria-hidden="true">{t('am.bestiary.statblocks')}</span>
+      <SegmentedControl value={choice} options={CHOICES} onChange={setChoice} ariaLabel={t('am.bestiary.statblocks')} disabled={busy} />
+    </div>
+  );
+  const button = (
+    <Button
+      variant={variant === 'empty' ? 'default' : 'ghost'}
+      className={variant === 'empty' ? 'atlas-bestiary-offer atlas-bestiary-offer--empty' : 'atlas-asset-manager-manage-btn atlas-bestiary-offer atlas-bestiary-offer--sidebar'}
+      disabled={busy}
+      aria-busy={downloading}
+      aria-label={downloading ? undefined : t('am.bestiary.label', { count: BESTIARY_TOKEN_COUNT, size })}
+      onClick={(event) => {
+        event.stopPropagation();
+        startDownload(app, assets, collection, choice === 'none' ? undefined : choice);
+      }}
+    >
+      <Download />
+      <span>{label}</span>
+      {variant === 'sidebar' && !downloading && <small>{t('am.bestiary.size', { size })}</small>}
+    </Button>
+  );
+  if (variant === 'sidebar') {
+    return <div className="atlas-bestiary-offer-block atlas-bestiary-offer-block--sidebar">{choiceRow}{button}</div>;
+  }
+  const withStatblocks = statblocksLine(choice);
   return (
-    <div className={variant === 'empty' ? 'atlas-bestiary-offer-block' : 'atlas-bestiary-offer-block atlas-bestiary-offer-block--sidebar'}>
-      <div className="atlas-bestiary-offer__choice">
-        <span aria-hidden="true">{t('am.bestiary.statblocks')}</span>
-        <SegmentedControl value={choice} options={CHOICES} onChange={setChoice} ariaLabel={t('am.bestiary.statblocks')} disabled={busy} />
+    <div className="atlas-starter-offer">
+      <p>{t('am.bestiary.lead', { count: BESTIARY_TOKEN_COUNT })}</p>
+      <div className="atlas-starter-offer__panel">
+        {choiceRow}
+        {button}
       </div>
-      <Button
-        variant={variant === 'empty' ? 'default' : 'ghost'}
-        className={variant === 'empty' ? 'atlas-bestiary-offer atlas-bestiary-offer--empty' : 'atlas-asset-manager-manage-btn atlas-bestiary-offer atlas-bestiary-offer--sidebar'}
-        disabled={busy}
-        aria-busy={downloading}
-        aria-label={downloading ? undefined : t('am.bestiary.label', { count: BESTIARY_TOKEN_COUNT, size })}
-        onClick={(event) => {
-          event.stopPropagation();
-          startDownload(app, assets, collection, choice === 'none' ? undefined : choice);
-        }}
-      >
-        <Download />
-        <span>{label}</span>
-        {variant === 'sidebar' && !downloading && <small>{t('am.bestiary.size', { size })}</small>}
-      </Button>
-      {variant === 'empty' && <p>{noteOf(choice, size)}</p>}
+      <p className="atlas-starter-offer__fine">
+        {withStatblocks && <span>{withStatblocks}</span>}
+        <span>{t('am.bestiary.fine', { size })}</span>
+      </p>
     </div>
   );
 }
