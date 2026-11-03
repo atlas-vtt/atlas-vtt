@@ -92,7 +92,7 @@ export const am = {
   'am.sidebar.manage': 'Manage',
   'am.bestiary.get': 'Get starter tokens',
   'am.bestiary.offer': { one: 'Get {count} free token', other: 'Get {count} free tokens' },
-  'am.bestiary.lead': { one: 'Start with {count} free token, sorted into tags, or add your own with the + button.', other: 'Start with {count} free tokens, sorted into tags, or add your own with the + button.' },
+  'am.bestiary.lead': 'Start with free tokens or add your own.',
   'am.bestiary.fine': 'Art by Oozejar and Sketch Studio · {size} MB',
   'am.bestiary.statblocks': 'Statblocks',
   'am.bestiary.optionNone': 'Tokens only',
