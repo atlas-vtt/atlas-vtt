@@ -58,11 +58,12 @@ describe('the bestiary tokens', () => {
     const { served, manifest } = await packOf(['Black Dragon', 'Wolf']);
     const steps: number[] = [];
 
-    expect(await installBestiaryTokens(vault.app, assets, { fetch: serving(served), manifest, onStep: (share) => steps.push(share) })).toBe(2);
+    expect(await installBestiaryTokens(vault.app, assets, assets.getDefaultCollectionId(), { fetch: serving(served), manifest, onStep: (share) => steps.push(share) })).toBe(2);
 
     const tokens = await assets.getAssets(collection, 'token');
     const bestiary = tokens.filter((token) => token.tags.includes(BESTIARY_TAG));
-    expect(bestiary.map((token) => [token.id, token.name]).sort()).toEqual([['token-bestiary-black-dragon', 'Black Dragon'], ['token-bestiary-wolf', 'Wolf']]);
+    const { uid } = (await assets.getCollection(collection))!;
+    expect(bestiary.map((token) => [token.id, token.name]).sort()).toEqual([[`token-bestiary-${uid}-black-dragon`, 'Black Dragon'], [`token-bestiary-${uid}-wolf`, 'Wolf']]);
     for (const token of bestiary) {
       expect(token.showRing).toBe(true);
       expect(vault.files.has(token.imagePath)).toBe(true);
@@ -72,7 +73,7 @@ describe('the bestiary tokens', () => {
     expect(vault.files.get(`atlas-vtt/collections/${collection}/notes/Bestiary token credits.md`)).toContain('Oozejar');
     expect(steps[0]).toBe(0);
     expect(steps.at(-1)).toBe(1);
-    expect(await hasBestiaryTokens(assets)).toBe(true);
+    expect(await hasBestiaryTokens(assets, collection)).toBe(true);
     expect(settings.getSetting('onboarding').tokenImported).toBe(false);
     expect(vault.app.workspace.trigger).toHaveBeenCalledWith('atlas-vtt:refresh-assets');
   });
@@ -83,11 +84,11 @@ describe('the bestiary tokens', () => {
     const files = vault.files.size;
 
     served.set('wolf.webp', bytesOf('RIFF____WEBPVP8 Wolg'));
-    await expect(installBestiaryTokens(vault.app, assets, { fetch: serving(served), manifest })).rejects.toBeInstanceOf(StockPackError);
-    await expect(installBestiaryTokens(vault.app, assets, { fetch: serving(served), manifest: { ...manifest, sha256: '0'.repeat(64) } })).rejects.toBeInstanceOf(StockPackError);
+    await expect(installBestiaryTokens(vault.app, assets, assets.getDefaultCollectionId(), { fetch: serving(served), manifest })).rejects.toBeInstanceOf(StockPackError);
+    await expect(installBestiaryTokens(vault.app, assets, assets.getDefaultCollectionId(), { fetch: serving(served), manifest: { ...manifest, sha256: '0'.repeat(64) } })).rejects.toBeInstanceOf(StockPackError);
 
     expect(vault.files.size).toBe(files);
-    expect(await hasBestiaryTokens(assets)).toBe(false);
+    expect(await hasBestiaryTokens(assets, assets.getDefaultCollectionId())).toBe(false);
   });
 
   it('takes no file name that could leave its folder', async () => {
@@ -95,19 +96,35 @@ describe('the bestiary tokens', () => {
     const { served, manifest } = await packOf(['Wolf'], (data) => {
       (data.tokens as { key: string }[])[0]!.key = '../wolf.webp';
     });
-    await expect(installBestiaryTokens(vault.app, assets, { fetch: serving(served), manifest })).rejects.toThrow('does not describe');
+    await expect(installBestiaryTokens(vault.app, assets, assets.getDefaultCollectionId(), { fetch: serving(served), manifest })).rejects.toThrow('does not describe');
   });
 
   it('adds only what the library lacks, so a second download duplicates nothing', async () => {
     const { vault, assets } = await setup();
     const { served, manifest } = await packOf(['Wolf', 'Bear']);
-    await installBestiaryTokens(vault.app, assets, { fetch: serving(served), manifest });
-    await assets.deleteAsset('token-bestiary-wolf');
+    const collection = assets.getDefaultCollectionId();
+    await installBestiaryTokens(vault.app, assets, collection, { fetch: serving(served), manifest });
+    await assets.deleteAsset(`token-bestiary-${(await assets.getCollection(collection))!.uid}-wolf`);
 
-    expect(await installBestiaryTokens(vault.app, assets, { fetch: serving(served), manifest })).toBe(1);
-    expect(await installBestiaryTokens(vault.app, assets, { fetch: serving(served), manifest })).toBe(0);
+    expect(await installBestiaryTokens(vault.app, assets, assets.getDefaultCollectionId(), { fetch: serving(served), manifest })).toBe(1);
+    expect(await installBestiaryTokens(vault.app, assets, assets.getDefaultCollectionId(), { fetch: serving(served), manifest })).toBe(0);
     const names = (await assets.getTokenAssets()).filter((token) => token.id.startsWith('token-bestiary-')).map((token) => token.name);
     expect(names.sort()).toEqual(['Bear', 'Wolf']);
     expect((await assets.getAssets(assets.getDefaultCollectionId(), 'note'))).toHaveLength(1);
+  });
+
+  it('go into the collection asked for, and each collection can hold its own set', async () => {
+    const { vault, assets } = await setup();
+    await assets.createCollection('Monsters');
+    const { served, manifest } = await packOf(['Wolf']);
+
+    expect(await installBestiaryTokens(vault.app, assets, 'Monsters', { fetch: serving(served), manifest })).toBe(1);
+    expect((await assets.getAssets('Monsters', 'token')).map((token) => token.name)).toEqual(['Wolf']);
+    expect(vault.files.has('atlas-vtt/collections/Monsters/notes/Bestiary token credits.md')).toBe(true);
+    expect(await hasBestiaryTokens(assets, 'Monsters')).toBe(true);
+    expect(await hasBestiaryTokens(assets, assets.getDefaultCollectionId())).toBe(false);
+
+    expect(await installBestiaryTokens(vault.app, assets, assets.getDefaultCollectionId(), { fetch: serving(served), manifest })).toBe(1);
+    expect(await hasBestiaryTokens(assets, assets.getDefaultCollectionId())).toBe(true);
   });
 });

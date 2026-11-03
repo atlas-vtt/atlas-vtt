@@ -94,7 +94,7 @@ export const am = {
   'am.bestiary.size': '{size} MB',
   'am.bestiary.label': { one: 'Download {count} creature token by Oozejar, {size} MB', other: 'Download {count} creature tokens by Oozejar, {size} MB' },
   'am.bestiary.downloading': 'Downloading… {percent}%',
-  'am.bestiary.added': { one: 'Added {count} creature token, tagged {tag}.', other: 'Added {count} creature tokens, tagged {tag}.' },
+  'am.bestiary.added': { one: 'Added {count} creature token to {collection}, tagged {tag}.', other: 'Added {count} creature tokens to {collection}, tagged {tag}.' },
   'am.bestiary.failed': 'Could not download the bestiary tokens. Check your connection and try again.',
   'am.header.forward': 'Forward',
   'am.header.selected': 'selected',
