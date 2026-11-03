@@ -54,6 +54,12 @@ export interface SoundCompressorNode extends SoundNode {
   readonly release: { value: number };
 }
 
+/** Rings a sound through a room's impulse response. */
+export interface SoundConvolverNode extends SoundNode {
+  buffer: SoundBuffer | null;
+  normalize: boolean;
+}
+
 export interface SoundContext {
   readonly currentTime: number;
   readonly sampleRate: number;
@@ -63,6 +69,8 @@ export interface SoundContext {
   createDynamicsCompressor(): SoundCompressorNode;
   /** Only what shows meters asks for it. */
   createAnalyser?(): SoundAnalyser;
+  /** Without it the mix plays dry. */
+  createConvolver?(): SoundConvolverNode;
   createBuffer(channels: number, length: number, sampleRate: number): SoundBuffer;
   decodeAudioData(bytes: ArrayBuffer): Promise<SoundBuffer>;
 }

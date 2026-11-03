@@ -1,5 +1,5 @@
-import type { Mood, MoodLayer, MoodMusic } from '../sound/soundTypes';
-import { MAX_MOOD_LAYERS } from '../sound/soundTypes';
+import type { Mood, MoodLayer, MoodMusic, RoomId } from '../sound/soundTypes';
+import { MAX_MOOD_LAYERS, ROOM_IDS } from '../sound/soundTypes';
 import { readRecordText, recordText, type StoredRecord } from '../services/recordFiles/recordLayout';
 import { isFiniteNumber, isRecord } from '../utils/guards';
 import { readMoodIcon, readMoodTone } from './moodLook';
@@ -23,6 +23,12 @@ export const MOOD_LIMITS = {
 const readLevel = (value: unknown): number =>
   (isFiniteNumber(value) ? Math.max(MOOD_LIMITS.minLevelDb, Math.min(MOOD_LIMITS.maxLevelDb, value)) : 0);
 
+/** A reverb amount, 0 to 1; dry where there is none. */
+const readReverb = (value: unknown): { reverb?: number } => (isFiniteNumber(value) && value > 0 ? { reverb: Math.min(1, value) } : {});
+
+/** A room this version knows; another (a newer Atlas') reads as the default. */
+const readRoom = (value: unknown): RoomId | undefined => ROOM_IDS.find((id) => id === value);
+
 const isSoundId = (value: unknown): value is string => typeof value === 'string' && value !== '' && value.length <= MOOD_LIMITS.idChars;
 
 /** Anything else is left out: a list that could not be read leaves the music as it is. */
@@ -34,6 +40,7 @@ function readMusic(value: unknown): MoodMusic {
     shuffle: value.shuffle === true,
     levelDb: readLevel(value.levelDb),
     ...((value.repeat === 'one' || value.repeat === 'off') && { repeat: value.repeat }),
+    ...readReverb(value.reverb),
   };
 }
 
@@ -46,7 +53,7 @@ function readLayers(value: unknown): MoodLayer[] {
     if (layers.length === MAX_MOOD_LAYERS) break;
     if (!isRecord(entry) || !isSoundId(entry.sound) || seen.has(entry.sound)) continue;
     seen.add(entry.sound);
-    layers.push({ sound: entry.sound, levelDb: readLevel(entry.levelDb) });
+    layers.push({ sound: entry.sound, levelDb: readLevel(entry.levelDb), ...readReverb(entry.reverb) });
   }
   return layers;
 }
@@ -70,6 +77,7 @@ export function moodOf(stored: StoredRecord): Mood | null {
   const { id, name, order, fadeSeconds, music, layers } = stored;
   const icon = readMoodIcon(stored.icon);
   const tone = readMoodTone(stored.tone);
+  const room = readRoom(stored.room);
   if (typeof name !== 'string' || name.trim() === '' || !isFiniteNumber(order)) return null;
   return {
     id,
@@ -80,5 +88,6 @@ export function moodOf(stored: StoredRecord): Mood | null {
     layers: readLayers(layers),
     ...(icon && { icon }),
     ...(tone && { tone }),
+    ...(room && { room }),
   };
 }

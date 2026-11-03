@@ -6,6 +6,8 @@ import type { LayerPlay } from '../../../../sound/soundTypes';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import type { SoundSnapshot } from '../../../../soundDirector/soundSnapshot';
 import { IconAction } from './IconAction';
+import { ReverbKnob } from './ReverbKnob';
+import { useRoomName } from './useRoomName';
 import { useSoundValue } from './useSound';
 import { VerticalFader } from './VerticalFader';
 
@@ -24,6 +26,8 @@ export const LayerStrip = React.memo(function LayerStrip({ director, soundKey: k
   const layer = ({ mix }: SoundSnapshot): LayerPlay | undefined => mix.table.layers.find((play) => play.sound.key === key);
   const gainDb = useSoundValue(director, (snapshot) => layer(snapshot)?.gainDb ?? 0);
   const muted = useSoundValue(director, (snapshot) => layer(snapshot)?.muted === true);
+  const reverb = useSoundValue(director, (snapshot) => layer(snapshot)?.reverb ?? 0);
+  const room = useRoomName(director);
   return (
     <div className="atlas-sound-strip atlas-sound-card" data-muted={muted || undefined}>
       <div className="atlas-sound-strip__top">
@@ -34,6 +38,9 @@ export const LayerStrip = React.memo(function LayerStrip({ director, soundKey: k
           onClick={() => director.desk.setLayerMuted(key, !muted)}
         />
         <IconAction label={t('audio.remove', { name })} icon={X} className="atlas-sound-strip__remove" onClick={() => director.desk.removeLayer(record?.id ?? key, key)} />
+      </div>
+      <div className="atlas-sound-strip__send">
+        <ReverbKnob name={name} room={room} value={reverb} onChange={(amount) => director.desk.setLayerReverb(key, amount)} />
       </div>
       <VerticalFader label={t('audio.level', { name })} value={gainDb} meter={key} onChange={(db) => director.desk.setLayerLevel(key, db)} />
       <StripName name={name} />
@@ -49,6 +56,7 @@ export function WaitingStrip({ director, soundId }: { director: SoundDirector; s
       <div className="atlas-sound-strip__top">
         <IconAction label={t('audio.remove', { name })} icon={X} className="atlas-sound-strip__remove" onClick={() => director.desk.removeLayer(soundId, null)} />
       </div>
+      <div className="atlas-sound-strip__send" />
       <div className="atlas-sound-fader"><div className="atlas-sound-meter" /></div>
       <div className="atlas-sound-fader__value">{t('audio.waiting')}</div>
       <StripName name={name} />
@@ -63,6 +71,7 @@ export const MasterStrip = React.memo(function MasterStrip({ director }: { direc
   return (
     <div className="atlas-sound-strip atlas-sound-strip--master atlas-sound-card">
       <div className="atlas-sound-strip__top" />
+      <div className="atlas-sound-strip__send" />
       <VerticalFader
         label={t('audio.level', { name })}
         value={masterDb}

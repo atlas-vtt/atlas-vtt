@@ -36,6 +36,8 @@ export interface VoiceDeps {
   context: SoundContext;
   sources: SoundSources;
   input: SoundGainNode;
+  /** Where it sends what its room should carry. */
+  send: SoundGainNode;
   onError: (key: string, error: unknown) => void;
 }
 
@@ -46,6 +48,10 @@ export interface VoiceDeps {
 export class SoundVoice {
   private readonly node: SoundGainNode;
   private readonly gain: GainTrack;
+  /** After its own gain, so fades, mutes and Silence reach the tail too. */
+  private readonly sendNode: SoundGainNode;
+  private readonly sendGain: GainTrack;
+  private sendKey: string | null = null;
   private runs: SoundRun[] = [];
   private anchor: number | null = null;
   /** Nothing new sounds before this context frame while a soft restart is pending. */
@@ -58,6 +64,10 @@ export class SoundVoice {
     this.node = deps.context.createGain();
     this.gain = new GainTrack(this.node.gain, 0);
     this.node.connect(deps.input);
+    this.sendNode = deps.context.createGain();
+    this.sendGain = new GainTrack(this.sendNode.gain, 0);
+    this.node.connect(this.sendNode);
+    this.sendNode.connect(deps.send);
   }
 
   /** Whether it plays with its start on this context frame, as far as anyone could hear. */
@@ -77,6 +87,7 @@ export class SoundVoice {
 
   follow(desired: DesiredVoice, map: SoundClockMap): void {
     this.followGain(desired, map);
+    this.followSend(desired, map);
     const expected = map.ctxFrameOf(desired.startAt);
     this.anchor ??= expected;
     this.correctDrift(expected, map);
@@ -94,6 +105,18 @@ export class SoundVoice {
     for (const run of this.runs) run.dispose();
     this.runs = [];
     this.node.disconnect();
+    this.sendNode.disconnect();
+  }
+
+  /** Coming in or leaving, the voice's own gain carries the fade, so the send is set at once; else it moves as the level does. */
+  private followSend(desired: DesiredVoice, map: SoundClockMap): void {
+    const key = `${desired.role}|${desired.fade.at}|${desired.fade.ms}|${desired.send}`;
+    if (key === this.sendKey) return;
+    const first = this.sendKey === null;
+    this.sendKey = key;
+    if (this.sendGain.target === desired.send) return;
+    if (first || desired.role !== 'level') this.sendGain.move(desired.send, map.ctxSeconds, 0);
+    else this.sendGain.move(desired.send, Math.max(map.ctxSeconds, map.ctxSecondsOf(desired.fade.at)), desired.fade.ms / 1000);
   }
 
   private followGain(desired: DesiredVoice, map: SoundClockMap): void {

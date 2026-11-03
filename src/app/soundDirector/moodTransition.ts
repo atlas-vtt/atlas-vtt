@@ -1,7 +1,7 @@
-import type { LayerPlay, MusicPlay, SoundInfo, TableSound } from '../sound/soundTypes';
+import { DEFAULT_ROOM, type LayerPlay, type MusicPlay, type SoundInfo, type TableSound } from '../sound/soundTypes';
 import { MAX_MOOD_LAYERS } from '../sound/soundTypes';
 import { fnv1a32 } from '../utils/hashing';
-import { changed, enteringLayer, enteringMusic, leaving, OFFLINE_LEAD_MS, rampFade, SILENCE_FADE_MS, withoutFinished, type MoodMix, type ReadySounds } from './tableSound';
+import { changed, enteringLayer, enteringMusic, leaving, OFFLINE_LEAD_MS, rampFade, SILENCE_FADE_MS, withoutFinished, withReverb, type MoodMix, type ReadySounds } from './tableSound';
 
 function isSameList(play: MusicPlay, tracks: readonly SoundInfo[], shuffle: boolean): boolean {
   if (play.shuffle !== shuffle || play.tracks.length !== tracks.length) return false;
@@ -30,25 +30,25 @@ function nextMusic(live: TableSound, mix: MoodMix, sounds: ReadySounds, now: num
   if (kept) {
     const { muted: _muted, ...play } = kept;
     const outgoing = kept === live.music ? live.outgoing : [...live.outgoing.filter((other) => other !== kept), ...(live.music ? [leaving(live.music, startAt, fadeMs)] : [])];
-    return { music: { ...play, gainDb: wanted.levelDb, fade: rampFade(kept, now, fadeMs) }, outgoing };
+    return { music: withReverb({ ...play, gainDb: wanted.levelDb, fade: rampFade(kept, now, fadeMs) }, wanted.reverb), outgoing };
   }
   const seed = fnv1a32(`${now}|${tracks.map((track) => track.key).join(',')}`);
-  return { music: enteringMusic(tracks, wanted.shuffle, wanted.levelDb, seed, startAt, fadeMs, wanted.repeat), outgoing: leaveAll() };
+  return { music: enteringMusic(tracks, wanted.shuffle, wanted.levelDb, seed, startAt, fadeMs, wanted.repeat, wanted.reverb), outgoing: leaveAll() };
 }
 
 function nextLayers(live: TableSound, mix: MoodMix, sounds: ReadySounds, now: number, startAt: number, fadeMs: number): Pick<TableSound, 'layers' | 'outgoingLayers'> {
   const seen = new Set<string>();
   const layers: LayerPlay[] = [];
-  for (const { sound, levelDb } of mix.layers) {
+  for (const { sound, levelDb, reverb } of mix.layers) {
     const info = sounds.get(sound);
     if (!info || seen.has(info.key) || layers.length === MAX_MOOD_LAYERS) continue;
     seen.add(info.key);
     const kept = live.layers.find((play) => play.sound.key === info.key) ?? live.outgoingLayers.find((play) => play.sound.key === info.key);
     if (kept) {
       const { muted: _muted, ...play } = kept;
-      layers.push({ ...play, gainDb: levelDb, fade: rampFade(kept, now, fadeMs) });
+      layers.push(withReverb({ ...play, gainDb: levelDb, fade: rampFade(kept, now, fadeMs) }, reverb));
     } else {
-      layers.push(enteringLayer(info, levelDb, startAt, fadeMs));
+      layers.push(enteringLayer(info, levelDb, startAt, fadeMs, reverb));
     }
   }
   const stillFading = live.outgoingLayers.filter((play) => !seen.has(play.sound.key));
@@ -66,9 +66,12 @@ export function moodTransition(state: TableSound, mood: MoodMix, sounds: ReadySo
   const live = withoutFinished(state, now);
   const startAt = now + leadMs;
   const fadeMs = Math.max(0, mood.fadeSeconds * 1000);
+  const room = mood.room ?? DEFAULT_ROOM;
   return changed(live, {
     ...nextMusic(live, mood, sounds, now, startAt, fadeMs),
     ...nextLayers(live, mood, sounds, now, startAt, fadeMs),
+    // The room changes on the mood's fade, so the old room's tail rings out under the new.
+    ...(room !== (live.room?.id ?? DEFAULT_ROOM) && { room: { id: room, fade: { at: startAt, ms: fadeMs } } }),
     ...(live.silenced && { silenced: false, silenceFade: { at: now, ms: SILENCE_FADE_MS } }),
   });
 }

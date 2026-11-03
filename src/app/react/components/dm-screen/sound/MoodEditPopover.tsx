@@ -4,7 +4,8 @@ import { t } from '../../../../i18n';
 import { Button } from '../../../../packages/components/primitives/button';
 import { SegmentedControl } from '../../../../packages/components/primitives/SegmentedControl';
 import { useDialogEscape } from '../../../../packages/components/primitives/useDialogEscape';
-import type { Mood } from '../../../../sound/soundTypes';
+import { DEFAULT_ROOM, ROOM_IDS, type Mood, type RoomId } from '../../../../sound/soundTypes';
+import { roomName } from './useRoomName';
 import { MoodLookPicker } from './MoodLookPicker';
 import { placeUnderTile, type PopoverPlace } from './moodPopoverPlacement';
 
@@ -17,6 +18,8 @@ interface MoodEditPopoverProps {
   onClose: () => void;
   onSave: (mood: Mood) => void;
 }
+
+const ROOM_OPTIONS = ROOM_IDS.map((id) => ({ value: id, label: roomName(id) }));
 
 const MUSIC_OPTIONS = [
   { value: 'list', label: t('audio.mood.musicList') },
@@ -63,6 +66,7 @@ export function MoodEditPopover({ mood, anchor, onClose, onSave }: MoodEditPopov
   const [name, setName] = useState(mood.name);
   const hasList = typeof mood.music === 'object';
   const [music, setMusic] = useState<MusicChoice>(typeof mood.music === 'object' ? 'list' : mood.music);
+  const [room, setRoom] = useState<RoomId>(mood.room ?? DEFAULT_ROOM);
   const [look, setLook] = useState<Pick<Mood, 'icon' | 'tone'>>({ ...(mood.icon && { icon: mood.icon }), ...(mood.tone && { tone: mood.tone }) });
   useDialogEscape(ref, onClose);
   const place = usePlaceAtTile(ref, anchor, onClose);
@@ -71,7 +75,7 @@ export function MoodEditPopover({ mood, anchor, onClose, onSave }: MoodEditPopov
     const trimmed = name.trim();
     if (trimmed === '') return;
     const listened = music === 'list' && typeof mood.music === 'object' ? mood.music : music === 'keep' ? 'keep' : 'none';
-    onSave({ ...mood, ...look, name: trimmed, music: listened });
+    onSave({ ...mood, ...look, name: trimmed, music: listened, room });
     onClose();
   };
 
@@ -96,6 +100,10 @@ export function MoodEditPopover({ mood, anchor, onClose, onSave }: MoodEditPopov
           onKeyDown={(event) => { if (event.key === 'Enter') save(); }}
         />
         <MoodLookPicker look={look} onChange={setLook} />
+        <div className="atlas-sound-field">
+          <span>{t('audio.room.label')}</span>
+          <SegmentedControl value={room} options={ROOM_OPTIONS} onChange={setRoom} ariaLabel={t('audio.room.label')} />
+        </div>
         <div className="atlas-sound-field">
           <span>{t('audio.mood.music')}</span>
           <SegmentedControl value={music} options={hasList ? MUSIC_OPTIONS : MUSIC_OPTIONS.slice(1)} onChange={setMusic} ariaLabel={t('audio.mood.music')} />

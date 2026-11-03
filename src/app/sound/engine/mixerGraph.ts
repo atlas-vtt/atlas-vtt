@@ -1,6 +1,8 @@
+import type { SoundRoom } from '../soundTypes';
 import type { SoundContext, SoundGainNode, SoundNode } from './audioNodes';
 import type { DesiredSilence, VoiceChannel } from './desiredSound';
 import { GainTrack } from './gainTrack';
+import { RoomReverb } from './roomReverb';
 import type { SoundClockMap } from './soundClockMap';
 import { dbToGain, fadeProgress } from './soundMath';
 
@@ -26,7 +28,9 @@ function stage(context: SoundContext, initial: number): Stage {
 /**
  * `voices → musicGm → musicLocal → master → compressor → output`, and likewise for ambience. `*Gm` follows
  * the shared state, which is the Silence fade; `*Local` and master are the listener's. The compressor is
- * only a safety: mixes stay below its threshold.
+ * only a safety: mixes stay below its threshold. What voices send to the reverb takes the same two stages
+ * per channel (`*SendGm`, `*SendLocal`) before the room, so Silence and the listener's levels reach the
+ * tail as they reach the sound; the room returns into master.
  */
 export class MixerGraph {
   private readonly stages: Stage[] = [];
@@ -34,8 +38,13 @@ export class MixerGraph {
   private readonly ambienceGm: Stage;
   private readonly musicLocal: Stage;
   private readonly ambienceLocal: Stage;
+  private readonly musicSendGm: Stage;
+  private readonly ambienceSendGm: Stage;
+  private readonly musicSendLocal: Stage;
+  private readonly ambienceSendLocal: Stage;
   private readonly master: Stage;
   private readonly compressor: SoundNode;
+  private readonly reverb: RoomReverb;
   private silenceKey: string | null = null;
 
   constructor(private readonly context: SoundContext, levels: LocalLevels = FULL_LEVELS) {
@@ -43,6 +52,10 @@ export class MixerGraph {
     this.ambienceGm = this.addStage(1);
     this.musicLocal = this.addStage(dbToGain(levels.musicDb));
     this.ambienceLocal = this.addStage(dbToGain(levels.ambienceDb));
+    this.musicSendGm = this.addStage(1);
+    this.ambienceSendGm = this.addStage(1);
+    this.musicSendLocal = this.addStage(dbToGain(levels.musicDb));
+    this.ambienceSendLocal = this.addStage(dbToGain(levels.ambienceDb));
     this.master = this.addStage(dbToGain(levels.masterDb));
     const compressor = context.createDynamicsCompressor();
     compressor.threshold.value = -1;
@@ -57,10 +70,25 @@ export class MixerGraph {
     this.ambienceLocal.node.connect(this.master.node);
     this.master.node.connect(compressor);
     compressor.connect(context.destination);
+    this.reverb = new RoomReverb(context, this.master.node);
+    this.musicSendGm.node.connect(this.musicSendLocal.node);
+    this.ambienceSendGm.node.connect(this.ambienceSendLocal.node);
+    this.musicSendLocal.node.connect(this.reverb.input);
+    this.ambienceSendLocal.node.connect(this.reverb.input);
   }
 
   input(channel: VoiceChannel): SoundGainNode {
     return channel === 'music' ? this.musicGm.node : this.ambienceGm.node;
+  }
+
+  /** Where a voice of the channel sends what its room should carry. */
+  sendInput(channel: VoiceChannel): SoundGainNode {
+    return channel === 'music' ? this.musicSendGm.node : this.ambienceSendGm.node;
+  }
+
+  /** The rooms built now. */
+  get rooms(): readonly string[] {
+    return this.reverb.rooms;
   }
 
   /** The mix past every fader, before the compressor. */
@@ -77,6 +105,8 @@ export class MixerGraph {
     const now = this.context.currentTime;
     this.musicLocal.track.move(dbToGain(levels.musicDb), now, 0);
     this.ambienceLocal.track.move(dbToGain(levels.ambienceDb), now, 0);
+    this.musicSendLocal.track.move(dbToGain(levels.musicDb), now, 0);
+    this.ambienceSendLocal.track.move(dbToGain(levels.ambienceDb), now, 0);
     this.master.track.move(dbToGain(levels.masterDb), now, 0);
   }
 
@@ -86,11 +116,17 @@ export class MixerGraph {
     const first = this.silenceKey === null;
     this.silenceKey = key;
     const to = silence.silenced ? 0 : 1;
-    for (const { track } of [this.musicGm, this.ambienceGm]) followFade(track, first, to, silence.silenced ? 1 : 0, silence.fade, map);
+    for (const { track } of [this.musicGm, this.ambienceGm, this.musicSendGm, this.ambienceSendGm]) followFade(track, first, to, silence.silenced ? 1 : 0, silence.fade, map);
+  }
+
+  /** Rings what is sent through the table's room; `sending`: whether any voice sends now. */
+  followRoom(room: SoundRoom, sending: boolean, map: SoundClockMap): void {
+    this.reverb.follow(room, sending, map);
   }
 
   disconnect(): void {
     for (const { node } of this.stages) node.disconnect();
+    this.reverb.disconnect();
     this.compressor.disconnect();
   }
 

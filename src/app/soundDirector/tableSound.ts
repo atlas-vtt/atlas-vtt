@@ -1,4 +1,4 @@
-import type { LayerPlay, MoodMusic, MusicPlay, MusicRepeat, SoundFade, SoundInfo, TableSound } from '../sound/soundTypes';
+import type { LayerPlay, MoodMusic, MusicPlay, MusicRepeat, RoomId, SoundFade, SoundInfo, TableSound } from '../sound/soundTypes';
 import { fadeProgress } from '../sound/engine/soundMath';
 
 /** How far ahead of now a change begins on one machine; a table online asks for more. */
@@ -15,8 +15,18 @@ export const TRACK_JOIN_MS = 40;
 /** Stop after this track: how long before its end it starts to leave. */
 export const STOP_AFTER_FADE_MS = 1500;
 
+/** A room change made at the desk: as long as a skip, so the old room rings out under the new. */
+export const ROOM_FADE_MS = 1500;
+
 /** What a mood press needs of a mood, which a mix being restored has too. */
-export type MoodMix = { fadeSeconds: number; music: MoodMusic; layers: { sound: string; levelDb: number }[] };
+export type MoodMix = { fadeSeconds: number; music: MoodMusic; layers: { sound: string; levelDb: number; reverb?: number }[]; room?: RoomId };
+
+/** A reverb amount as a play keeps it: 0 to 1, and dry is no field. */
+export function withReverb<T extends object>(play: T, amount: number | undefined): T {
+  const { reverb: _old, ...rest } = play as T & { reverb?: number };
+  const kept = amount === undefined || !Number.isFinite(amount) ? 0 : Math.max(0, Math.min(1, amount));
+  return (kept > 0 ? { ...rest, reverb: kept } : rest) as T;
+}
 
 /** The sounds that can play now, by record id. A sound without a copy yet is not in it. */
 export type ReadySounds = ReadonlyMap<string, SoundInfo>;
@@ -53,12 +63,12 @@ export function rampFade(play: { startAt: number }, now: number, ms: number): So
   return { at: Math.max(now, play.startAt + 1), ms };
 }
 
-export function enteringMusic(tracks: SoundInfo[], shuffle: boolean, gainDb: number, seed: number, startAt: number, fadeMs: number, repeat?: MusicRepeat): MusicPlay {
-  return { tracks, seed, shuffle, startAt, gainDb, fade: { at: startAt, ms: fadeMs }, ...(repeat && { repeat }) };
+export function enteringMusic(tracks: SoundInfo[], shuffle: boolean, gainDb: number, seed: number, startAt: number, fadeMs: number, repeat?: MusicRepeat, reverb?: number): MusicPlay {
+  return withReverb({ tracks, seed, shuffle, startAt, gainDb, fade: { at: startAt, ms: fadeMs }, ...(repeat && { repeat }) }, reverb);
 }
 
-export function enteringLayer(sound: SoundInfo, gainDb: number, startAt: number, fadeMs: number): LayerPlay {
-  return { sound, startAt, gainDb, fade: { at: startAt, ms: fadeMs } };
+export function enteringLayer(sound: SoundInfo, gainDb: number, startAt: number, fadeMs: number, reverb?: number): LayerPlay {
+  return withReverb({ sound, startAt, gainDb, fade: { at: startAt, ms: fadeMs } }, reverb);
 }
 
 export function leaving<T extends MusicPlay | LayerPlay>(play: T, at: number, ms: number): T {
@@ -75,6 +85,7 @@ export function onShiftedClock(state: TableSound, deltaMs: number): TableSound {
   const shifted = <T extends MusicPlay | LayerPlay>(play: T): T => ({ ...play, startAt: play.startAt + deltaMs, fade: { ...play.fade, at: play.fade.at + deltaMs } });
   return changed(state, {
     silenceFade: { ...state.silenceFade, at: state.silenceFade.at + deltaMs },
+    ...(state.room && { room: { ...state.room, fade: { ...state.room.fade, at: state.room.fade.at + deltaMs } } }),
     music: state.music && shifted(state.music),
     outgoing: state.outgoing.map(shifted),
     layers: state.layers.map(shifted),

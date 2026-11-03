@@ -1,7 +1,7 @@
-import type { Mood, MoodMusic, MusicRepeat, SoundInfo, SoundRecord } from '../sound/soundTypes';
+import { DEFAULT_ROOM, type Mood, type MusicRepeat, type RoomId, type SoundInfo, type SoundRecord } from '../sound/soundTypes';
 import { applySoonest, readyToJoin } from './libraryMix';
 import type { DirectorMoods } from './directorDeps';
-import { addLayer, setLayerLevel, setLayerMuted, setMusicLevel, setMusicMuted, stopAll, toggleSilence } from './liveEdits';
+import { addLayer, setLayerLevel, setLayerMuted, setLayerReverb, setMusicLevel, setMusicMuted, setMusicReverb, setRoom, stopAll, toggleSilence } from './liveEdits';
 import { mixDiffersFrom } from './mixChange';
 import { musicPosition, nextTrack, playTrack, previousTrack, seekMusic, skipTrack, soundingTrack } from './musicList';
 import { addTrack, clearComing, dropLayer, dropWaitingTrack, EMPTY_MIX, joinReady, mixAsMood, moveTrack, pressMood, removeTrack, setRepeat, setShuffle, withoutSoonest, type ActiveMood, type SoundMix } from './soundMix';
@@ -163,6 +163,20 @@ export class MixDesk {
     this.table.commit({ ...this.table.mix, table: setMusicMuted(this.table.mix.table, muted, this.table.now()) });
   }
 
+  /** How much of the room a layer, or the music, carries: 0 to 1. */
+  setLayerReverb(key: string, amount: number): void {
+    this.table.commit({ ...this.table.mix, table: setLayerReverb(this.table.mix.table, key, amount, this.table.now()) });
+  }
+
+  setMusicReverb(amount: number): void {
+    this.table.commit({ ...this.table.mix, table: setMusicReverb(this.table.mix.table, amount, this.table.now()) });
+  }
+
+  /** The room the mix rings in, crossfaded from the one it was. */
+  setRoom(id: RoomId): void {
+    this.table.commit({ ...this.table.mix, table: setRoom(this.table.mix.table, id, this.table.now() + this.table.clock.leadMs) });
+  }
+
   skip(): void {
     const mix = this.table.mix;
     this.table.commit({ ...mix, table: skipTrack(mix.table, this.table.now(), this.table.clock.leadMs, mix.listChange), listChange: null });
@@ -231,7 +245,7 @@ export class MixDesk {
   }
 
   /** What the mix would save as. */
-  mixNow(fadeSeconds: number, at = this.table.now()): { fadeSeconds: number; music: MoodMusic; layers: { sound: string; levelDb: number }[] } {
+  mixNow(fadeSeconds: number, at = this.table.now()): MoodMix {
     return mixAsMood(this.table.mix, (key) => this.shelf.idOfKey(key), fadeSeconds, at);
   }
 
@@ -249,8 +263,9 @@ export class MixDesk {
 
   /** The mix as it is now into `mood`, which keeps its name, place and fade. A mood that leaves the music alone goes on doing so. */
   saveToMood(mood: Mood): boolean {
-    const { music, layers } = this.mixNow(mood.fadeSeconds);
-    const saved = this.host.moods.saveMood({ ...mood, music: mood.music === 'keep' ? 'keep' : music, layers });
+    const { music, layers, room } = this.mixNow(mood.fadeSeconds);
+    // The room is written even where it is the default, or the one the file held would stay.
+    const saved = this.host.moods.saveMood({ ...mood, music: mood.music === 'keep' ? 'keep' : music, layers, room: room ?? DEFAULT_ROOM });
     if (saved) this.table.commit({ ...this.table.mix, mood: { id: mood.id } });
     return saved;
   }

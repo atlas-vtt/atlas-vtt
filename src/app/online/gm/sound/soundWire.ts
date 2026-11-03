@@ -33,7 +33,7 @@ export function wireState(state: TableSound, soundOf: (key: string) => WireSound
     const { key, asset } = soundOf(sound.key);
     return { key, frames: sound.frames, gainDb: wireDb(sound.gainDb), ...(sound.loop && { loop: sound.loop }), ...(asset && { asset }) };
   };
-  const play = ({ startAt, gainDb, muted, fade }: MusicPlay | LayerPlay): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade'> & { muted?: boolean } => ({ startAt, gainDb: wireDb(gainDb), fade, ...(muted && { muted }) });
+  const play = ({ startAt, gainDb, muted, reverb, fade }: MusicPlay | LayerPlay): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade' | 'reverb'> & { muted?: boolean } => ({ startAt, gainDb: wireDb(gainDb), fade, ...(muted && { muted }), ...(reverb && { reverb }) });
   const music = (list: MusicPlay): SharedMusicPlay => ({ ...play(list), tracks: list.tracks.slice(0, MAX_SOUND_TRACKS).map(info), seed: list.seed, shuffle: list.shuffle, ...(list.repeat && { repeat: list.repeat }), ...(list.listFrame && { listFrame: list.listFrame }) });
   const layer = (entry: LayerPlay): SharedLayerPlay => ({ ...play(entry), sound: info(entry.sound) });
   return {
@@ -44,5 +44,6 @@ export function wireState(state: TableSound, soundOf: (key: string) => WireSound
     outgoing: state.outgoing.slice(-MAX_SOUND_OUTGOING).map(music),
     layers: state.layers.slice(0, MAX_SOUND_LAYERS).map(layer),
     outgoingLayers: state.outgoingLayers.slice(-MAX_SOUND_OUTGOING).map(layer),
+    ...(state.room && { room: state.room }),
   };
 }

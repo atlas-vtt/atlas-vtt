@@ -7,6 +7,8 @@ import { IconAction } from './IconAction';
 import { MusicPosition } from './MusicPosition';
 import { TrackList } from './TrackList';
 import { useSoundValue } from './useSound';
+import { ReverbKnob } from './ReverbKnob';
+import { useRoomName } from './useRoomName';
 import { VerticalFader } from './VerticalFader';
 
 const REPEATS = {
@@ -27,6 +29,8 @@ export const MusicCard = React.memo(function MusicCard({ director }: { director:
   const stopAfter = useSoundValue(director, ({ mix }) => mix.stopAfter !== null);
   const trackCount = useSoundValue(director, ({ mix }) => (mix.listChange ?? mix.table.music)?.tracks.length ?? 0);
   const setLevel = useCallback((db: number) => director.desk.setMusicLevel(db), [director]);
+  const reverb = useSoundValue(director, ({ mix }) => mix.table.music?.reverb ?? 0);
+  const room = useRoomName(director);
   const name = t('audio.music');
   const repeating = REPEATS[repeat ?? 'all'];
 
@@ -55,6 +59,9 @@ export const MusicCard = React.memo(function MusicCard({ director }: { director:
             disabled={!playing}
             onClick={() => director.desk.setMusicMuted(!muted)}
           />
+        </div>
+        <div className="atlas-sound-strip__send">
+          <ReverbKnob name={name} room={room} value={reverb} disabled={!playing} onChange={(amount) => director.desk.setMusicReverb(amount)} />
         </div>
         <VerticalFader label={t('audio.level', { name })} value={gainDb} meter="music" onChange={setLevel} />
         <div className="atlas-sound-strip__name"><span>{name}</span></div>

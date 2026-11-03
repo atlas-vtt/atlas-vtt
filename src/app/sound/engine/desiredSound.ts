@@ -1,4 +1,4 @@
-import type { LayerPlay, MusicPlay, SoundFade, TableSound } from '../soundTypes';
+import { DEFAULT_ROOM, type LayerPlay, type MusicPlay, type SoundFade, type SoundRoom, type TableSound } from '../soundTypes';
 import { dbToGain, fadeInGain, fadeOutGain, fadeProgress } from './soundMath';
 import { frameInSpan, layerSpan, musicSpanAt, playFrameAt, type TimelineSpan } from './soundTimeline';
 
@@ -36,6 +36,8 @@ export interface DesiredVoice {
   fadeGain: number;
   /** What should reach the channel: level, sound gain, fade and silence together. */
   gain: number;
+  /** What it sends to the room, linear, of what passes its own gain. */
+  send: number;
 }
 
 export interface DesiredSilence {
@@ -48,6 +50,20 @@ export interface DesiredSilence {
 export interface DesiredSound {
   silence: DesiredSilence;
   voices: DesiredVoice[];
+  room: SoundRoom;
+  /** Whether any voice sends to the room: only then is one built. */
+  sending: boolean;
+}
+
+const NO_ROOM_FADE: SoundFade = { at: 0, ms: 0 };
+
+/**
+ * A play's reverb amount as what it sends: squared, so the knob's lower half, where reverb is mostly
+ * wanted, has the finer steps, as a fader's dB do. Anything from the wire that is no amount is dry.
+ */
+export function reverbSend(amount: number | undefined): number {
+  if (amount === undefined || !Number.isFinite(amount) || amount <= 0) return 0;
+  return Math.min(1, amount) ** 2;
 }
 
 function silenceGain(state: TableSound, tableMs: number): number {
@@ -102,6 +118,7 @@ function voiceOf(
     soundGain,
     fadeGain,
     gain: level * soundGain * fadeGain * silence,
+    send: reverbSend(play.reverb),
   };
 }
 
@@ -148,5 +165,10 @@ export function desiredSound(state: TableSound, tableMs: number): DesiredSound {
   for (const play of state.layers) add(layerVoice(play, false, silence, tableMs));
   for (const play of state.outgoing) if (!isOver(play.fade, tableMs)) add(musicVoice(play, true, silence, tableMs));
   for (const play of state.outgoingLayers) if (!isOver(play.fade, tableMs)) add(layerVoice(play, true, silence, tableMs));
-  return { silence: { silenced: state.silenced, fade: state.silenceFade, gain: silence }, voices };
+  return {
+    silence: { silenced: state.silenced, fade: state.silenceFade, gain: silence },
+    voices,
+    room: state.room ?? { id: DEFAULT_ROOM, fade: NO_ROOM_FADE },
+    sending: voices.some((voice) => voice.send > 0 && voice.level > 0),
+  };
 }

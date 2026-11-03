@@ -1,4 +1,4 @@
-import type { TableSound } from '../soundTypes';
+import { DEFAULT_ROOM, type SoundRoom, type TableSound } from '../soundTypes';
 import type { SoundContext } from './audioNodes';
 import { desiredSound, layerKeyOfVoice, voiceWithoutStart, type DesiredVoice } from './desiredSound';
 import { MixerGraph, type LocalLevels } from './mixerGraph';
@@ -41,6 +41,8 @@ export class SoundPlayer {
   /** Voices fading out, with the context time to let go of them at. */
   private ending: Array<{ voice: SoundVoice; at: number }> = [];
   private levels: LocalLevels | undefined;
+  /** The room last followed, which a state taken away leaves ringing out. */
+  private room: SoundRoom = { id: DEFAULT_ROOM, fade: { at: 0, ms: 0 } };
   /** Null but while someone looks at meters, so a player nobody looks at costs nothing for them. */
   private meters: PlayerMeters | null = null;
 
@@ -65,7 +67,10 @@ export class SoundPlayer {
       this.graph.followSilence(desired.silence, map);
       const fadeOver = map.tableMs >= desired.silence.fade.at + desired.silence.fade.ms;
       // Silent for good: nothing plays, and coming back lands where it would have been anyway.
-      if (!(desired.silence.silenced && fadeOver && desired.silence.gain < SILENT_GAIN)) {
+      const silent = desired.silence.silenced && fadeOver && desired.silence.gain < SILENT_GAIN;
+      this.room = desired.room;
+      this.graph.followRoom(desired.room, desired.sending && !silent, map);
+      if (!silent) {
         for (const voiceWanted of desired.voices) wanted.add(voiceWanted.id);
         for (const voiceWanted of desired.voices) {
           this.carryAcrossRebase(voiceWanted, wanted, map);
@@ -73,6 +78,8 @@ export class SoundPlayer {
         }
       }
     }
+    // No state: what rang still rings out, and the room goes after.
+    if (!this.state) this.graph.followRoom(this.room, false, map);
     for (const [id, voice] of this.voices) {
       if (wanted.has(id)) continue;
       voice.end(map);
@@ -176,6 +183,7 @@ export class SoundPlayer {
         context: this.context,
         sources: this.sources,
         input: this.graph.input(channel),
+        send: this.graph.sendInput(channel),
         onError: (key, error) => this.options.onSoundError?.(key, error),
       });
       this.voices.set(id, voice);

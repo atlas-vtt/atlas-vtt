@@ -56,6 +56,45 @@ describe('the DM screen’s Sound page', () => {
     viewport.remove();
   });
 
+  it('turns a strip\'s reverb with its knob, and changes the space from the desk and the mood', async () => {
+    await open1644();
+    if (!tab) return;
+    await allReady(tab);
+    await userEvent.keyboard('1');
+    await expect.poll(() => document.querySelectorAll('.atlas-sound-strips .atlas-sound-knob').length).toBeGreaterThan(0);
+    const key = tab.director.snapshot().mix.table.layers[0]!.sound.key;
+    const reverbOf = (): number | undefined => tab?.director.snapshot().mix.table.layers.find((layer) => layer.sound.key === key)?.reverb;
+    const name = tab.director.shelf.recordOfKey(key)?.name ?? '';
+    const knob = document.querySelector<HTMLElement>(`.atlas-sound-knob[aria-label="Reverb of ${name}"]`)!;
+    expect(knob.getAttribute('aria-valuetext')).toBe('0 %');
+    const { width, height } = knob.getBoundingClientRect();
+    expect([width, height]).toEqual([32, 32]);
+    // Every strip's fader starts at the same height, with a knob or without.
+    const tops = new Set([...document.querySelectorAll('.atlas-sound-strip .atlas-sound-fader')].map((fader) => Math.round(fader.getBoundingClientRect().top)));
+    expect(tops.size).toBe(1);
+
+    const from = centreOf(knob);
+    await pressAndMove(from, { x: from.x, y: from.y - 80 });
+    await mouse.up(from.x, from.y - 80);
+    await expect.poll(reverbOf).toBeCloseTo(0.5, 1);
+    expect(knob.dataset.wet).toBe('true');
+    expect(knob.querySelector('.atlas-sound-knob__value')?.textContent).toBe(`${Math.round((reverbOf() ?? 0) * 100)}`);
+    act(() => knob.focus());
+    await userEvent.keyboard('{ArrowUp}');
+    await expect.poll(reverbOf).toBeCloseTo(0.55, 2);
+    await userEvent.unhover(knob);
+    await page.screenshot({ path: `${SHOTS}/reverb-knobs.png`, element: document.querySelector<HTMLElement>('.atlas-sound-desk')! });
+    await userEvent.dblClick(knob);
+    await expect.poll(reverbOf).toBeUndefined();
+
+    await userEvent.click(document.querySelector<HTMLElement>('.atlas-sound-room')!);
+    const cave = (): HTMLElement | undefined => [...document.querySelectorAll<HTMLElement>('[role^="menuitem"]')].find((item) => item.textContent?.includes('Cave'));
+    await expect.poll(cave).toBeDefined();
+    await userEvent.click(cave()!);
+    await expect.poll(() => tab?.director.snapshot().mix.table.room?.id).toBe('cave');
+    expect(document.querySelector('.atlas-sound-room')?.textContent).toBe('Cave');
+  });
+
   it('says for a table online how each mood stands for players, and who hears', async () => {
     await page.viewport(1280, 820);
     tab = await openSoundTab(DARK, viewport);

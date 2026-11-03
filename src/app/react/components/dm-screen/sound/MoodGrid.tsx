@@ -100,7 +100,11 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
         <Plus aria-hidden="true" />
         {t('audio.mood.new')}
       </button>
-      {editing && <MoodEditPopover mood={editing.mood} anchor={editing.tile} onClose={closeEditor} onSave={(changed) => store.saveMood(changed)} />}
+      {editing && <MoodEditPopover mood={editing.mood} anchor={editing.tile} onClose={closeEditor} onSave={(changed) => {
+        store.saveMood(changed);
+        // The mood that plays takes its new space at once, as pressing it again would.
+        if (changed.id === activeId && changed.room) director.desk.setRoom(changed.room);
+      }} />}
     </div>
   );
 }

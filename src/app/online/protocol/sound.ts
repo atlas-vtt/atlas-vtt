@@ -25,6 +25,10 @@ const MAX_TIME = 2 ** 52;
 /** How a list goes on past its end. Unset goes round. */
 export type SharedMusicRepeat = 'one' | 'off';
 
+/** The spaces a table's reverb can ring in. */
+export const SHARED_ROOMS = ['room', 'hall', 'cave', 'cathedral'] as const;
+export type SharedRoomId = (typeof SHARED_ROOMS)[number];
+
 /**
  * A sound as a page plays it. `key` is the id it is stored under and nothing else: it says neither the
  * sound's name nor the source's hash. `asset` is how it is fetched; without one the GM's Atlas could not
@@ -51,6 +55,8 @@ export interface SharedMusicPlay {
   readonly startAt: number;
   readonly gainDb: number;
   readonly muted?: boolean;
+  /** How much of it the room carries, 0 to 1. Unset is dry. */
+  readonly reverb?: number;
   readonly fade: SharedSoundFade;
   readonly repeat?: SharedMusicRepeat;
   /** Frames of the list behind `startAt`. Unset is 0. */
@@ -62,6 +68,13 @@ export interface SharedLayerPlay {
   readonly startAt: number;
   readonly gainDb: number;
   readonly muted?: boolean;
+  readonly reverb?: number;
+  readonly fade: SharedSoundFade;
+}
+
+/** The room the reverb rings in, and the crossfade that brought it. */
+export interface SharedSoundRoom {
+  readonly id: SharedRoomId;
   readonly fade: SharedSoundFade;
 }
 
@@ -74,6 +87,8 @@ export interface SharedTableSound {
   readonly outgoing: SharedMusicPlay[];
   readonly layers: SharedLayerPlay[];
   readonly outgoingLayers: SharedLayerPlay[];
+  /** Unset: the first of `SHARED_ROOMS`. */
+  readonly room?: SharedSoundRoom;
 }
 
 /** The table's sound, whole, sent on each change and to whoever comes. */
@@ -125,11 +140,21 @@ function parseInfo(value: unknown): SharedSoundInfo | null {
 }
 
 /** What a list and a layer have in common. */
-function parsePlayBase(value: Record<string, unknown>): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade'> & { readonly muted?: true } | null {
+function parsePlayBase(value: Record<string, unknown>): Pick<SharedMusicPlay, 'startAt' | 'gainDb' | 'fade' | 'reverb'> & { readonly muted?: true } | null {
   const gainDb = gainOf(value.gainDb);
   const fade = parseFade(value.fade);
   if (!isTime(value.startAt) || gainDb === null || fade === null) return null;
-  return { startAt: value.startAt, gainDb, fade, ...(value.muted === true && { muted: true as const }) };
+  // Reverb only colours what plays: anything that is no amount reads as dry, not as a state to refuse.
+  const reverb = typeof value.reverb === 'number' && Number.isFinite(value.reverb) && value.reverb > 0 ? Math.min(1, value.reverb) : undefined;
+  return { startAt: value.startAt, gainDb, fade, ...(value.muted === true && { muted: true as const }), ...(reverb !== undefined && { reverb }) };
+}
+
+/** A room this page knows, or none: a newer GM's room plays in the first. */
+function parseRoom(value: unknown): SharedSoundRoom | undefined {
+  if (!isRecord(value)) return undefined;
+  const id = SHARED_ROOMS.find((room) => room === value.id);
+  const fade = parseFade(value.fade);
+  return id && fade ? { id, fade } : undefined;
 }
 
 function parseMusic(value: unknown): SharedMusicPlay | null {
@@ -165,7 +190,8 @@ export function parseSoundState(value: unknown): SharedTableSound | null {
   const layers = parseList(value.layers, MAX_SOUND_LAYERS, parseLayer);
   const outgoingLayers = parseList(value.outgoingLayers, MAX_SOUND_OUTGOING, parseLayer);
   if (silenceFade === null || (music === null && value.music !== null) || outgoing === null || layers === null || outgoingLayers === null) return null;
-  return { revision: value.revision, silenced: value.silenced === true, silenceFade, music, outgoing, layers, outgoingLayers };
+  const room = parseRoom(value.room);
+  return { revision: value.revision, silenced: value.silenced === true, silenceFade, music, outgoing, layers, outgoingLayers, ...(room && { room }) };
 }
 
 export function parseSoundMessage(value: Record<string, unknown>): SoundMessage | null {

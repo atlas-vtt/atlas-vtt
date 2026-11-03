@@ -3,13 +3,14 @@ import { MoreHorizontal, RotateCcw, Speaker } from 'lucide-react';
 import type { App } from 'obsidian';
 import { t } from '../../../../i18n';
 import { listOutputDevices } from '../../../../sound/engine/outputDevice';
-import type { Mood } from '../../../../sound/soundTypes';
+import { ROOM_IDS, type Mood } from '../../../../sound/soundTypes';
 import type { SoundDirector } from '../../../../soundDirector/SoundDirector';
 import { MoodStore } from '../../../../soundLibrary/MoodStore';
 import { showNotice } from '../../../../ui/notice';
 import { useContextMenu, type ContextMenuEntry } from '../../../root/ContextMenuContext';
 import { IconAction } from './IconAction';
 import { useSoundValue } from './useSound';
+import { ROOM_ICONS, roomName, useRoom } from './useRoomName';
 
 interface DeskHeaderProps {
   app: App;
@@ -67,6 +68,22 @@ function OutputButton({ director }: { director: SoundDirector }): React.JSX.Elem
   );
 }
 
+/** The space the mix's reverb rings in, changed right here: the old room rings out under the new. */
+function RoomButton({ director }: { director: SoundDirector }): React.JSX.Element {
+  const room = useRoom(director);
+  const menu = useContextMenu();
+  const Icon = ROOM_ICONS[room];
+  const open = (anchor: HTMLElement): void => {
+    menu.open(ROOM_IDS.map((id) => ({ type: 'item' as const, label: roomName(id), checked: id === room, onClick: () => director.desk.setRoom(id) })), belowAnchor(anchor), { returnFocus: anchor });
+  };
+  return (
+    <button type="button" className="atlas-sound-output atlas-sound-room" aria-label={t('audio.room.choose', { room: roomName(room) })} onClick={(event) => open(event.currentTarget)}>
+      <Icon aria-hidden="true" />
+      <span>{roomName(room)}</span>
+    </button>
+  );
+}
+
 /** The mix's name and how it stands to its mood, what can be done with it, and who hears it. */
 export function DeskHeader({ app, director, moods, holdsSound, onSaveAs }: DeskHeaderProps): React.JSX.Element {
   const active = useSoundValue(director, ({ mix }) => mix.mood);
@@ -98,6 +115,7 @@ export function DeskHeader({ app, director, moods, holdsSound, onSaveAs }: DeskH
       {canSaveToMood && <button type="button" className="atlas-sound-button" onClick={() => saveInto(mood)}>{t('audio.saveTo')}</button>}
       {holdsSound && <button type="button" className="atlas-sound-button atlas-sound-button--quiet" onClick={onSaveAs}>{t('audio.saveAsNew')}</button>}
       {holdsSound && <IconAction label={t('audio.mixMenu')} icon={MoreHorizontal} onClick={(event) => openMenu(event.currentTarget)} />}
+      {holdsSound && <RoomButton director={director} />}
       {needsTap && <button type="button" className="atlas-sound-button" onClick={() => director.tap()}>{t('audio.needsTap')}</button>}
       {!holdsSound && lastMix && <button type="button" className="atlas-sound-button atlas-sound-button--quiet" onClick={() => director.resume()}><RotateCcw aria-hidden="true" />{t('audio.resume')}</button>}
       <div className="atlas-sound-desk__end">

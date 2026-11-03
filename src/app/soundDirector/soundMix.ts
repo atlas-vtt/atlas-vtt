@@ -6,7 +6,7 @@ import { moodTransition } from './moodTransition';
 import { changeOf, sameOrder } from './listPlace';
 import { musicPosition, playTrack, soundingMusic, type ListChange } from './musicList';
 import type { SoonestTracks } from './libraryMix';
-import { EMPTY_TABLE_SOUND, type MoodMix, type ReadySounds } from './tableSound';
+import { EMPTY_TABLE_SOUND, withReverb, type MoodMix, type ReadySounds } from './tableSound';
 
 export interface ActiveMood {
   id: string;
@@ -18,6 +18,7 @@ export interface WaitingMusic {
   shuffle: boolean;
   levelDb: number;
   repeat?: MusicRepeat;
+  reverb?: number;
 }
 
 /**
@@ -49,7 +50,7 @@ export interface MixTiming {
 function waitingOf(music: MoodMusic, sounds: ReadySounds, known: (id: string) => boolean): WaitingMusic | null {
   if (typeof music === 'string') return null;
   const tracks = music.tracks.filter((id) => !sounds.has(id) && known(id));
-  return tracks.length > 0 ? { tracks, shuffle: music.shuffle, levelDb: music.levelDb, ...(music.repeat && { repeat: music.repeat }) } : null;
+  return tracks.length > 0 ? withReverb({ tracks, shuffle: music.shuffle, levelDb: music.levelDb, ...(music.repeat && { repeat: music.repeat }) }, music.reverb) : null;
 }
 
 /** One press of a mood. `known` tells a sound still to come from one that was deleted, which is skipped. */
@@ -74,12 +75,12 @@ export function joinReady(mix: SoundMix, sounds: ReadySounds, { now, leadMs, fad
   const stillWaiting: MoodLayer[] = [];
   for (const layer of waitingLayers) {
     const info = sounds.get(layer.sound);
-    if (info) table = addLayer(table, info, layer.levelDb, now, fadeMs, leadMs);
+    if (info) table = addLayer(table, info, layer.levelDb, now, fadeMs, leadMs, layer.reverb);
     else stillWaiting.push(layer);
   }
   waitingLayers = stillWaiting.length === mix.waitingLayers.length ? mix.waitingLayers : stillWaiting;
   if (waitingMusic) {
-    const { shuffle, levelDb, repeat } = waitingMusic;
+    const { shuffle, levelDb, repeat, reverb } = waitingMusic;
     const arrived = waitingMusic.tracks.flatMap((id) => sounds.get(id) ?? []);
     if (arrived.length > 0) {
       const tracks = waitingMusic.tracks.filter((id) => !sounds.has(id));
@@ -89,7 +90,7 @@ export function joinReady(mix: SoundMix, sounds: ReadySounds, { now, leadMs, fad
         const known = new Set(base.tracks.map((track) => track.key));
         listChange = changeOf(base, [...base.tracks, ...arrived.filter((track) => !known.has(track.key))]);
       } else {
-        table = startMusic(table, arrived, shuffle, levelDb, fnv1a32(`${now}`), now, fadeMs, leadMs, repeat);
+        table = startMusic(table, arrived, shuffle, levelDb, fnv1a32(`${now}`), now, fadeMs, leadMs, repeat, reverb);
       }
     }
   }
@@ -197,13 +198,13 @@ export function mixAsMood(mix: SoundMix, idOf: (key: string) => string | null, f
   const repeat = list ? list.repeat : mix.waitingMusic?.repeat;
   const music: MoodMusic = play?.muted === true || tracks.length === 0
     ? 'none'
-    : { tracks, shuffle: list?.shuffle ?? mix.waitingMusic?.shuffle ?? false, levelDb: play?.gainDb ?? mix.waitingMusic?.levelDb ?? 0, ...(repeat && { repeat }) };
+    : withReverb({ tracks, shuffle: list?.shuffle ?? mix.waitingMusic?.shuffle ?? false, levelDb: play?.gainDb ?? mix.waitingMusic?.levelDb ?? 0, ...(repeat && { repeat }) }, play?.reverb ?? mix.waitingMusic?.reverb);
   const layers = [
     ...mix.table.layers.flatMap((layer) => {
       const sound = layer.muted === true ? null : idOf(layer.sound.key);
-      return sound ? [{ sound, levelDb: layer.gainDb }] : [];
+      return sound ? [withReverb({ sound, levelDb: layer.gainDb }, layer.reverb)] : [];
     }),
     ...mix.waitingLayers,
   ];
-  return { fadeSeconds, music, layers };
+  return { fadeSeconds, music, layers, ...(mix.table.room && { room: mix.table.room.id }) };
 }

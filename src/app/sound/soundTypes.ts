@@ -19,16 +19,24 @@ export interface SoundRecord {
 
 export const MAX_MOOD_LAYERS = 8;
 
+/** The spaces a mood's reverb can sound like. */
+export const ROOM_IDS = ['room', 'hall', 'cave', 'cathedral'] as const;
+export type RoomId = (typeof ROOM_IDS)[number];
+/** The room of a mood that names none, and of a table before any mood. */
+export const DEFAULT_ROOM: RoomId = 'room';
+
 export interface MoodLayer {
   sound: string;
   levelDb: number;
+  /** How much of it the mood's room carries, 0 to 1. Unset is dry. */
+  reverb?: number;
 }
 
 /** How a list goes on past its end. Unset goes round; `one` holds a track for good; `off` stops at the end of the list. */
 export type MusicRepeat = 'one' | 'off';
 
 export type MoodMusic =
-  | { tracks: string[]; shuffle: boolean; levelDb: number; repeat?: MusicRepeat }
+  | { tracks: string[]; shuffle: boolean; levelDb: number; repeat?: MusicRepeat; reverb?: number }
   | 'keep'
   | 'none';
 
@@ -44,6 +52,8 @@ export interface Mood {
   icon?: MoodIconId;
   /** A name of the pin tones. Unset is the tone of its icon. */
   tone?: string;
+  /** The space its reverb sounds like. Unset is `DEFAULT_ROOM`. */
+  room?: RoomId;
 }
 
 /** Optional field of a scene file, outside `objects`. */
@@ -77,6 +87,8 @@ export interface MusicPlay {
   startAt: number;
   gainDb: number;
   muted?: boolean;
+  /** How much of it the room carries, 0 to 1; moves on the play's fade like its gain. Unset is dry. */
+  reverb?: number;
   /** Table time at which the fade towards this gain begins, and how long it runs. */
   fade: SoundFade;
   repeat?: MusicRepeat;
@@ -92,6 +104,14 @@ export interface LayerPlay {
   startAt: number;
   gainDb: number;
   muted?: boolean;
+  /** As on `MusicPlay`. */
+  reverb?: number;
+  fade: SoundFade;
+}
+
+/** The room the table's reverb sounds like, and the crossfade that brought it. */
+export interface SoundRoom {
+  id: RoomId;
   fade: SoundFade;
 }
 
@@ -114,4 +134,6 @@ export interface TableSound {
   outgoing: MusicPlay[];
   layers: LayerPlay[];
   outgoingLayers: LayerPlay[];
+  /** Unset: `DEFAULT_ROOM`, as it always was. */
+  room?: SoundRoom;
 }
