@@ -7,13 +7,12 @@ import { readSoundPeaks } from '../sound/codec/soundPeaksClient';
 import { SOUND_CONTEXT_OPTIONS } from '../sound/engine/soundMath';
 import type { SceneSound, SoundRecord } from '../sound/soundTypes';
 import { MoodStore } from '../soundLibrary/MoodStore';
-import { readSceneSound } from '../soundLibrary/sceneSound';
+import { sceneSoundOfText } from '../soundLibrary/sceneSound';
 import { isAudioPath } from '../soundLibrary/soundFiles';
 import { SoundLibrary } from '../soundLibrary/SoundLibrary';
 import { soundRecordOf } from '../soundLibrary/soundRecords';
 import { SoundRecordStore } from '../soundLibrary/SoundRecordStore';
 import { showNotice } from '../ui/notice';
-import { isRecord } from '../utils/guards';
 import type { DeviceStorage } from './deviceFacts';
 import type { CopyCache, CopyMaker, SoundFileAccess } from './soundCopies';
 import type { OutputContext } from './soundOutput';
@@ -69,14 +68,7 @@ function fileAccess(app: App): SoundFileAccess {
 
 async function sceneSoundInFile(app: App, path: string): Promise<SceneSound | null> {
   const file = app.vault.getFileByPath(normalizePath(path));
-  if (!file) return null;
-  try {
-    const data: unknown = JSON.parse(await app.vault.cachedRead(file));
-    return isRecord(data) && isRecord(data.state) ? readSceneSound(data.state.sound) : null;
-  } catch (error) {
-    console.error(`[Atlas] Could not read the sound of ${path}`, error);
-    return null;
-  }
+  return file ? sceneSoundOfText(await app.vault.cachedRead(file)) : null;
 }
 
 /** What the director runs on in Obsidian. */

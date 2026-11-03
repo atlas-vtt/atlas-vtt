@@ -5,6 +5,7 @@ import { MusicWave } from '@/app/react/components/dm-screen/sound/musicWave';
 import { musicPosition, soundingMusic } from '@/app/soundDirector/musicList';
 import type { PlayersCopy } from '@/app/soundDirector/tableClock';
 import { PIN_ICON_PATHS } from '@/app/types/pinIcons';
+import sceneThumb from '../fixtures/images/baseline-444.jpg?url';
 import { centreOf, mouse, pressAndMove } from './realMouse';
 import { DARK, LIGHT, openSoundTab, seedMoods, SOUNDS, type SoundTab } from './sound/soundTabHarness';
 
@@ -462,6 +463,31 @@ describe('the DM screen’s Sound page', () => {
     expect(second?.querySelector('.atlas-sound-mood__link')?.getAttribute('aria-label')).toBe('Plays in fights in this scene');
     act(() => setSceneSound(null));
     expect(document.querySelector('.atlas-sound-mood__link')).toBeNull();
+  });
+
+  it('shows the thumbnail of the scene that links a mood behind it, faded in from the right', async () => {
+    await open1644();
+    if (!tab) return;
+    const first = document.querySelector<HTMLElement>('.atlas-sound-mood')!;
+    const moodId = first.querySelector<HTMLElement>('[data-sound-mood]')!.dataset.soundMood!;
+    expect(first.querySelector('.atlas-sound-mood__scene')).toBeNull();
+    await tab.app.vault.create('Scenes/Keep.thumb.jpg', 'jpg');
+    vi.spyOn(tab.app.vault, 'getResourcePath').mockReturnValue(sceneThumb);
+    act(() => tab?.store.setState({ mapPath: 'Scenes/Keep.atlasmap' }));
+    act(() => tab?.store.getState().setSceneSound({ mood: moodId }));
+    const image = await expect.poll(() => first.querySelector<HTMLImageElement>('.atlas-sound-mood__scene')).not.toBeNull().then(() => first.querySelector<HTMLImageElement>('.atlas-sound-mood__scene')!);
+    await expect.poll(() => image.hasAttribute('data-shown')).toBe(true);
+    await expect.poll(() => getComputedStyle(image).opacity).toBe('0.5');
+    // Under the crest and the text, covering the tile, and no target for the pointer.
+    const press = first.querySelector<HTMLElement>('.atlas-sound-mood__press')!.getBoundingClientRect();
+    // It settles from a slight zoom as it fades in.
+    await expect.poll(() => Math.abs(image.getBoundingClientRect().width - press.width)).toBeLessThan(0.5);
+    expect(Math.abs(image.getBoundingClientRect().height - press.height)).toBeLessThan(0.5);
+    expect(getComputedStyle(image).pointerEvents).toBe('none');
+    expect(image.compareDocumentPosition(first.querySelector('.atlas-sound-mood__name')!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    await page.screenshot({ path: `${SHOTS}/mood-scene.png`, element: first });
+    act(() => tab?.store.getState().setSceneSound(null));
+    await expect.poll(() => first.querySelector('.atlas-sound-mood__scene')).toBeNull();
   });
 
   it('says changed once the mix differs, saves to the mood, and offers clearing it in a menu', async () => {

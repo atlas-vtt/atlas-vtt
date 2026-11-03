@@ -65,10 +65,15 @@ function expectTilesRead(columns: number): void {
   expect(tiles.filter((tile) => tile.top === tiles[0]?.top)).toHaveLength(columns);
   expect(new Set(tiles.map((tile) => Math.round(tile.height)))).toEqual(new Set([116]));
   for (const tile of document.querySelectorAll<HTMLElement>('.atlas-sound-mood')) {
-    const crest = box('.atlas-sound-mood__crest', tile);
+    // The crest is a watermark: the lines run over it, to the tile's padding.
+    const press = box('.atlas-sound-mood__press', tile);
+    const padding = parseFloat(getComputedStyle(tile.querySelector('.atlas-sound-mood__press')!).paddingRight);
     for (const text of tile.querySelectorAll<HTMLElement>('.atlas-sound-mood__what span, .atlas-sound-mood__foot > *')) {
-      expect(text.getBoundingClientRect().right, text.textContent ?? '').toBeLessThanOrEqual(crest.left + 1);
+      expect(text.getBoundingClientRect().right, text.textContent ?? '').toBeLessThanOrEqual(press.right - padding + 1);
       expect(text.scrollWidth, text.textContent ?? '').toBeLessThanOrEqual(text.clientWidth + 1);
+    }
+    for (const line of tile.querySelectorAll<HTMLElement>('.atlas-sound-mood__what span')) {
+      expect(line.getBoundingClientRect().width, line.textContent ?? '').toBeGreaterThan(press.width - 2 * padding - 1);
     }
     expect(box('.atlas-sound-mood__name', tile).right).toBeLessThanOrEqual(tile.getBoundingClientRect().right);
   }

@@ -1,3 +1,4 @@
+import type { App } from 'obsidian';
 import '../../setup/obsidianDom';
 import { act } from '@testing-library/react';
 import React, { Profiler } from 'react';
@@ -113,6 +114,8 @@ export type { TabSound };
 
 export interface SoundTab {
   appId: string;
+  /** The in-memory app the page runs on. */
+  app: App;
   director: SoundDirector;
   library: SoundLibrary;
   store: ViewAtlasStore;
@@ -204,6 +207,7 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
   });
   return {
     appId,
+    app,
     director,
     library,
     store,

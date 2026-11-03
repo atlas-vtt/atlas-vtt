@@ -13,6 +13,7 @@ import { MoodCard } from './MoodCard';
 import { MoodEditDialog } from './MoodEditDialog';
 import { moodForPlayers } from './PlayersRow';
 import { useMoodDrag } from './useMoodDrag';
+import { useMoodScenes } from './useMoodScenes';
 import { useSoundValue } from './useSound';
 
 interface MoodGridProps {
@@ -33,6 +34,8 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
   // A scene's links are the map's: in the page's own tab there is none to link to.
   const hasScene = useOptionalAtlasStore((state) => state.mapPath !== null, false);
   const sceneSound = useOptionalAtlasStore((state) => state.sound, null);
+  const scenePath = useOptionalAtlasStore((state) => state.mapPath, null);
+  const sceneImages = useMoodScenes(app, { path: scenePath, sound: sceneSound });
   const setSceneSound = useOptionalAtlasStore((state) => state.setSceneSound, null);
   const [editing, setEditing] = useState<Mood | null>(null);
   const activeId = useSoundValue(director, (snapshot) => snapshot.mix.mood?.id ?? null);
@@ -85,6 +88,7 @@ export function MoodGrid({ app, director, moods, moveMood, onNewMood }: MoodGrid
           problems={problems.get(mood.id) ?? NO_PROBLEMS}
           linked={sceneSound?.mood === mood.id}
           linkedInFight={sceneSound?.combatMood === mood.id}
+          sceneImage={sceneImages.get(mood.id) ?? null}
           players={forPlayers.get(mood.id) ?? null}
           onPress={press}
           onMenu={openMenu}

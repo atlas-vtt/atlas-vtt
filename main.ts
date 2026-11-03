@@ -73,6 +73,7 @@ import { recordCampaignPlay } from './src/app/campaigns/recordCampaignPlay';
 import { registerPartySync } from './src/app/plugin/partySync';
 import { registerSoundDirector } from './src/app/plugin/soundDirector';
 import { SoundDirector } from './src/app/soundDirector/SoundDirector';
+import { SceneMoodLinks } from './src/app/soundLibrary/SceneMoodLinks';
 import { soundSettingsSection } from './src/app/settings/soundSettingsSection';
 import { registerOnlinePlay, type OnlinePlay } from './src/app/plugin/onlinePlay';
 import type { TableChat } from './src/app/online/gm/tableChat';
@@ -281,6 +282,7 @@ export default class AtlasVTTPlugin extends Plugin {
     QuestIndex.release(this.app);
     SoundDirector.release(this.app);
     MoodStore.release(this.app);
+    SceneMoodLinks.release(this.app);
     SoundRecordStore.release(this.app);
     SoundLibrary.release(this.app);
     DiceSetFiles.release(this.app);

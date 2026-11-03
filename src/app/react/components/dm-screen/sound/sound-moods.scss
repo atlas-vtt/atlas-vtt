@@ -64,6 +64,39 @@
   opacity: 0.2;
 }
 
+// A linked scene's thumbnail: it rises from the tile's right edge, so the name and its lines keep the
+// tile's own colour behind them, and fades in once painted. Below the crest, which stays a watermark.
+.atlas-sound-mood__scene {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  opacity: 0;
+  filter: saturate(0.85);
+  mask-image: linear-gradient(to right, transparent 8%, rgba(0, 0, 0, 0.35) 48%, #000 100%);
+  transform: scale(1.02);
+  transition: opacity 600ms $press-ease, transform 900ms $press-ease;
+
+  &[data-shown] {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+}
+
+.atlas-sound-mood__press:hover .atlas-sound-mood__scene[data-shown] {
+  opacity: 0.65;
+  transform: scale(1.03);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atlas-sound-mood__scene,
+  .atlas-sound-mood__press:hover .atlas-sound-mood__scene[data-shown] {
+    transform: none;
+  }
+}
+
 .atlas-sound-mood__name {
   @include atlas-truncate;
   position: relative;
@@ -76,8 +109,6 @@
 .atlas-sound-mood__what {
   position: relative;
   display: block;
-  // Clear of the crest.
-  max-width: calc(100% - 68px);
   margin-top: $spacing-xs;
   color: var(--text-muted);
   line-height: 1.3;

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { CornerDownLeft, Link2, MoreHorizontal, Swords, type LucideIcon } from 'lucide-react';
 import { t } from '../../../../i18n';
 import { LabelTooltip } from '../../../../packages/components/primitives/tooltip';
@@ -27,6 +27,8 @@ interface MoodCardProps {
   /** Linked to the open scene: as its mood, and as its mood in a fight. */
   linked: boolean;
   linkedInFight: boolean;
+  /** The thumbnail of a scene that links it, shown behind it; null where none does. */
+  sceneImage: string | null;
   /** How the mood stands for players at a table online; null without one. */
   players: PlayersCopy | null;
   onPress: (mood: Mood) => void;
@@ -92,7 +94,14 @@ function LinkMark({ icon: Icon, label }: { icon: LucideIcon; label: string }): R
 }
 
 /** A mood in its fixed place: one press changes the room. */
-export const MoodCard = React.memo(function MoodCard({ mood, number, playing, silenced, next, dragging, musicName, problems, linked, linkedInFight, players, onPress, onMenu, onDragStart }: MoodCardProps): React.JSX.Element {
+/** A linked scene's thumbnail behind the tile, shown once it can be painted, so it fades in rather than popping. */
+function SceneBackdrop({ src }: { src: string }): React.JSX.Element {
+  const [shown, setShown] = useState(false);
+  useEffect(() => setShown(false), [src]);
+  return <img className="atlas-sound-mood__scene" src={src} alt="" aria-hidden="true" draggable={false} data-shown={shown || undefined} onLoad={() => setShown(true)} />;
+}
+
+export const MoodCard = React.memo(function MoodCard({ mood, number, playing, silenced, next, dragging, musicName, problems, linked, linkedInFight, sceneImage, players, onPress, onMenu, onDragStart }: MoodCardProps): React.JSX.Element {
   const tone = moodTone(mood);
   const key = keyOf(number);
   const hasList = mood.music !== 'none' && mood.music !== 'keep' && mood.music.tracks.length > 0;
@@ -115,6 +124,7 @@ export const MoodCard = React.memo(function MoodCard({ mood, number, playing, si
         onClick={() => onPress(mood)}
         onPointerDown={(event) => onDragStart(mood, event)}
       >
+        {sceneImage !== null && <SceneBackdrop src={sceneImage} />}
         <svg className="atlas-sound-mood__crest" viewBox={WIDGET_ICON_VIEW_BOX} aria-hidden="true"><path d={PIN_ICON_PATHS[moodIcon(mood)]} /></svg>
         <span className="atlas-sound-mood__name">{mood.name}</span>
         <span className="atlas-sound-mood__what">

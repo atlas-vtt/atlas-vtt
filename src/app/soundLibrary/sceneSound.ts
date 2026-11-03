@@ -10,3 +10,17 @@ export function readSceneSound(value: unknown): SceneSound | null {
   const sound: SceneSound = { ...later, ...(isMoodId(mood) && { mood }), ...(isMoodId(combatMood) && { combatMood }) };
   return Object.keys(sound).length > 0 ? sound : null;
 }
+
+/** The key a scene's links stand under; a file without it links no mood, and is not parsed. */
+const SOUND_KEY = '"sound"';
+
+/** The links a scene file's text holds (its state's `sound`), or null; a file that is no scene's reads as none. */
+export function sceneSoundOfText(text: string): SceneSound | null {
+  if (!text.includes(SOUND_KEY)) return null;
+  try {
+    const data: unknown = JSON.parse(text);
+    return isRecord(data) && isRecord(data.state) ? readSceneSound(data.state.sound) : null;
+  } catch {
+    return null;
+  }
+}
