@@ -169,7 +169,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
       {shelves[kind].tags.map((tag) => (
         <RailTag key={tag.key} actions={actions} kind={kind} name={tag.name} count={tag.count} selected={shown && selected.has(tag.key)} onTag={onTag} />
       ))}
-      {kind === 'ambience' && <StarterPackButton library={library} className="atlas-sound-lib__link" />}
+      {kind === 'ambience' && <StarterPackButton library={library} actions={actions} className="atlas-sound-lib__link" />}
     </section>
   );
 }

@@ -106,5 +106,7 @@ export async function installStarterPack(library: SoundLibrary, { onStep, fetch 
     const filePath = pathOf(file);
     if (!(await location.exists(filePath))) await location.write(filePath, new Blob([bytes], { type: file.type }));
   }
+  // The top alone would not list the new folder's files, which the caller prepares at once.
   await library.reread('ambience');
+  await library.settle('ambience', fetched.map(({ file }) => pathOf(file)));
 }

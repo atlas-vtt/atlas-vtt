@@ -37,7 +37,8 @@ export interface LibraryActions {
   takeOut: (held: HeldInMix) => void;
   preview: (file: LibraryFile) => void;
   playList: (files: readonly LibraryFile[], shuffle: boolean) => void;
-  prepare: (kind: SoundKind) => void;
+  /** Makes copies of a root's files, or of those below `folder` without a notice. */
+  prepare: (kind: SoundKind, folder?: string) => void;
   link: (kind: SoundKind, anchor: Window) => void;
   unlink: (kind: SoundKind) => void;
   importInto: (files: readonly File[], kind: SoundKind) => void;
@@ -99,9 +100,10 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
         }), 'Previewing a sound');
       },
       playList: (files, shuffle) => run(listToMix(deps, files, shuffle), 'Playing a list'),
-      prepare: (kind) => {
-        runInBackground(prepareFiles(deps, library.filesOf(kind).map(({ entry }) => ({ ...entry, kind }))).then((count) => {
-          showNotice(t('audio.library.preparing', { count }));
+      prepare: (kind, folder) => {
+        const files = library.filesOf(kind).filter(({ entry }) => folder === undefined || entry.path.startsWith(`${folder}/`));
+        runInBackground(prepareFiles(deps, files.map(({ entry }) => ({ ...entry, kind }))).then((count) => {
+          if (folder === undefined) showNotice(t('audio.library.preparing', { count }));
         }), 'Preparing a root');
       },
       link: (kind, win) => {

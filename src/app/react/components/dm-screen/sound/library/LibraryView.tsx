@@ -18,12 +18,13 @@ import { rowsWithTags, searchRows, shelfOf, type LibraryRow, type RootShelf } fr
 import { LibraryRows } from './LibraryRows';
 import { StarterPackButton } from './StarterPack';
 import { useHeldInMix, useLibraryVersion } from './useLibrary';
-import { useLibraryActions } from './useLibraryActions';
+import { useLibraryActions, type LibraryActions } from './useLibraryActions';
 
 /** Keys the library never keeps: Tab opens and closes the DM screen, and Escape closes what is open once nothing here uses it. */
 const PASSES_THROUGH: ReadonlySet<string> = new Set(['Tab', 'Escape']);
 
-function NoLink({ library, onLink, onImport }: { library: SoundLibrary; onLink: (kind: SoundKind, win: Window) => void; onImport: (doc: Document) => void }): React.JSX.Element {
+function NoLink({ library, actions }: { library: SoundLibrary; actions: LibraryActions }): React.JSX.Element {
+  const { link: onLink, pickLoose: onImport } = actions;
   const winOf = (event: React.MouseEvent<HTMLElement>): Window => event.currentTarget.ownerDocument.defaultView ?? window;
   return (
     <div className="atlas-sound-lib__nolink">
@@ -33,7 +34,7 @@ function NoLink({ library, onLink, onImport }: { library: SoundLibrary; onLink: 
         <Button type="button" className="atlas-sound-lib__btn atlas-sound-lib__btn--solid" variant="secondary" onClick={(event) => onLink('music', winOf(event))}>{t('audio.library.linkMusic')}</Button>
         <Button type="button" className="atlas-sound-lib__btn" variant="secondary" onClick={(event) => onLink('ambience', winOf(event))}>{t('audio.library.linkAmbience')}</Button>
         <Button type="button" className="atlas-sound-lib__btn atlas-sound-lib__btn--quiet" variant="ghost" onClick={(event) => onImport(event.currentTarget.ownerDocument)}>{t('audio.library.importInstead')}</Button>
-        <StarterPackButton library={library} className="atlas-sound-lib__btn" />
+        <StarterPackButton library={library} actions={actions} className="atlas-sound-lib__btn" />
       </div>
     </div>
   );
@@ -117,7 +118,7 @@ export function LibraryView(): React.JSX.Element | null {
   if (noRoots) {
     return (
       <div className="atlas-sound-lib" ref={root} onKeyDown={keep}>
-        <NoLink library={library} onLink={actions.link} onImport={actions.pickLoose} />
+        <NoLink library={library} actions={actions} />
       </div>
     );
   }

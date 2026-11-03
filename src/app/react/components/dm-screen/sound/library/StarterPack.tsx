@@ -5,6 +5,7 @@ import { hasStarterPack, installStarterPack, mayInstallStarterPack, STARTER_BYTE
 import { showNotice } from '../../../../../ui/notice';
 import { cn } from '../../../../../../utils/cn';
 import { useLibraryVersion } from './useLibrary';
+import type { LibraryActions } from './useLibraryActions';
 
 const FAILED_NOTICE_MS = 12_000;
 
@@ -32,13 +33,15 @@ function announce(state: DownloadState, next: Download): void {
   for (const listener of state.listeners) listener();
 }
 
-function startDownload(library: SoundLibrary): void {
+function startDownload(library: SoundLibrary, actions: LibraryActions): void {
   const state = stateOf(library);
   if (state.current.phase === 'downloading') return;
   announce(state, { phase: 'downloading', share: 0 });
   installStarterPack(library, { onStep: (share) => announce(state, { phase: 'downloading', share }) }).then(
     () => {
       announce(state, { phase: 'idle' });
+      // Copies are made at first play otherwise, which keeps a press waiting for seconds.
+      actions.prepare('ambience', STARTER_FOLDER);
       library.place.show('ambience', [STARTER_FOLDER]);
       showNotice(t('audio.library.starterAdded', { count: STARTER_SOUND_COUNT }));
     },
@@ -77,7 +80,7 @@ function usePackPresent(library: SoundLibrary, download: Download): boolean | nu
 }
 
 /** Offers the starter ambience until it lies in the ambience folder; while it downloads, says how far it got. */
-export function StarterPackButton({ library, className }: { library: SoundLibrary; className: string }): React.JSX.Element | null {
+export function StarterPackButton({ library, actions, className }: { library: SoundLibrary; actions: LibraryActions; className: string }): React.JSX.Element | null {
   const download = useDownload(library);
   const present = usePackPresent(library, download);
   const downloading = download.phase === 'downloading';
@@ -90,7 +93,7 @@ export function StarterPackButton({ library, className }: { library: SoundLibrar
       disabled={downloading}
       aria-busy={downloading}
       aria-label={downloading ? undefined : t('audio.library.starterLabel', { count: STARTER_SOUND_COUNT, size })}
-      onClick={() => startDownload(library)}
+      onClick={() => startDownload(library, actions)}
     >
       {downloading
         ? t('audio.library.starterDownloading', { percent: Math.floor(download.share * 100) })

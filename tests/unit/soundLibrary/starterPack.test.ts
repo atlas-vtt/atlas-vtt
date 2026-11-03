@@ -97,6 +97,8 @@ describe('the starter pack', () => {
     expect(fetch.mock.calls.map(([url]) => url)).toEqual(['https://assets.atlas-vtt.dev/starter/ambience-1/cave.ogg', 'https://assets.atlas-vtt.dev/starter/ambience-1/credits.md']);
     expect(fs.readFileSync(inPack('Cave.ogg'), 'utf8')).toBe('CAVE');
     expect(fs.readFileSync(inPack('Credits.md'), 'utf8')).toBe('CREDITS');
+    // Listed at once, so its copies can be made before the first press.
+    expect(library.filesOf('ambience').map(({ entry }) => entry.path)).toContain(`${STARTER_FOLDER}/Cave.ogg`);
     expect(steps[0]).toBe(0);
     expect(steps.at(-1)).toBe(1);
   });
