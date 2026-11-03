@@ -7,6 +7,7 @@ import { mayCarryAudio } from '../../../../../soundLibrary/soundFiles';
 import type { SoundLibrary } from '../../../../../soundLibrary/SoundLibrary';
 import { isLinked, type SoundRootState } from '../../../../../soundLibrary/SoundRoots';
 import { cn } from '../../../../../../utils/cn';
+import { StarterPackButton } from './StarterPack';
 import { useContextMenu } from '../../../../root/ContextMenuContext';
 import { arrowDirection, moveFocus } from '../../screenKeys';
 import { AmbienceGlyph, MusicGlyph, TagGlyph } from './libraryGlyphs';
@@ -168,6 +169,7 @@ function RailRoot({ library, actions, shelves, kind, selected, shown, onRoot, on
       {shelves[kind].tags.map((tag) => (
         <RailTag key={tag.key} actions={actions} kind={kind} name={tag.name} count={tag.count} selected={shown && selected.has(tag.key)} onTag={onTag} />
       ))}
+      {kind === 'ambience' && <StarterPackButton library={library} className="atlas-sound-lib__link" />}
     </section>
   );
 }

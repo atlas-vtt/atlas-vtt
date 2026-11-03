@@ -1,6 +1,6 @@
 import { act } from '@testing-library/react';
 import { createElement } from 'react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { commands, page, userEvent } from 'vitest/browser';
 import { ATLAS_DARK, mockLibrary, OBSIDIAN_LIGHT, settled, stageFrame } from './sound/libraryScene';
 import { SoundPane } from '@/app/react/components/dm-screen/sound/SoundPane';
@@ -240,11 +240,29 @@ describe('the sound library', () => {
     await settled();
     const title = document.querySelector('.atlas-sound-lib__nolink h2');
     expect(title?.textContent).toBe('Where is your music?');
-    expect(document.querySelectorAll('.atlas-sound-lib__nolink button')).toHaveLength(3);
+    // Link music, link ambience, import, and the starter ambience, which comes once the folder was looked at.
+    await vi.waitFor(() => expect(document.querySelector('.atlas-sound-lib__nolink .atlas-sound-lib__starter')).not.toBeNull());
+    expect(document.querySelectorAll('.atlas-sound-lib__nolink button')).toHaveLength(4);
     const stage = box('.atlas-sound-lib');
     const heading = title!.getBoundingClientRect();
     expect(Math.abs((heading.left + heading.right) / 2 - (stage.left + stage.right) / 2)).toBeLessThan(1);
     await page.screenshot({ path: `${SHOTS}/library-empty.png`, element: LIBRARY_SHOT(frame.host) });
+  });
+
+  it('offers the starter ambience under the ambience root, inside the rail', async () => {
+    await open();
+    await expect.poll(() => document.querySelector('.atlas-sound-lib__rail .atlas-sound-lib__starter')).not.toBeNull();
+    const offer = document.querySelector<HTMLElement>('.atlas-sound-lib__rail .atlas-sound-lib__starter')!;
+    offer.scrollIntoView({ block: 'center' });
+    await settled();
+    const starter = offer.getBoundingClientRect();
+    const rail = box('.atlas-sound-lib__rail');
+    expect(offer.closest('[aria-label="Ambience"]')).not.toBeNull();
+    expect(starter.left).toBeGreaterThanOrEqual(rail.left);
+    expect(starter.right).toBeLessThanOrEqual(rail.right);
+    expect(offer.scrollWidth).toBeLessThanOrEqual(offer.clientWidth + 1);
+    await writeMeasure(`starter offer ${starter.width.toFixed(1)} × ${starter.height.toFixed(1)} in a rail of ${rail.width.toFixed(1)}`);
+    await page.screenshot({ path: `${SHOTS}/library-starter.png`, element: LIBRARY_SHOT(frame!.host) });
   });
 
   it('holds in light mode', async () => {

@@ -166,6 +166,32 @@
   font-weight: $font-weight-medium;
 }
 
+// The starter ambience: under the ambience root, and among the first screen's links.
+.atlas-sound-lib .atlas-sound-lib__starter {
+  white-space: nowrap;
+
+  small {
+    margin-left: $spacing-s;
+    color: var(--text-muted);
+    font-weight: $font-weight-normal;
+  }
+
+  &:disabled {
+    cursor: progress;
+    opacity: 1;
+    color: var(--text-muted);
+  }
+}
+
+// The rail has no room for the size; the button's name still says it.
+.atlas-sound-lib__rail .atlas-sound-lib__starter {
+  margin-top: $spacing-s;
+
+  small {
+    display: none;
+  }
+}
+
 .atlas-sound-lib__tag-line {
   position: relative;
 
