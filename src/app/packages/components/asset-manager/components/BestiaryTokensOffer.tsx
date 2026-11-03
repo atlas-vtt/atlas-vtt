@@ -2,6 +2,8 @@ import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { Download } from 'lucide-react';
 import type { App } from 'obsidian';
 import { Button } from '../../primitives/button';
+import { LoadingSpinner } from '../../primitives/LoadingSpinner';
+import { ProgressBar } from '../../primitives/ProgressBar';
 import { SegmentedControl, type SegmentedOption } from '../../primitives/SegmentedControl';
 import { t } from '../../../../i18n';
 import type { AssetService } from '../../../../services/AssetService';
@@ -127,9 +129,12 @@ export function BestiaryTokensOffer({ app, assets, collection, variant, fallback
   const busy = download.phase === 'downloading';
   if (!downloading && present !== false) return <>{fallback}</>;
   const size = Math.round(BESTIARY_BYTES / 1_000_000);
-  const label = downloading
-    ? t('am.bestiary.downloading', { percent: Math.floor(download.share * 100) })
-    : t(variant === 'empty' ? 'am.bestiary.offer' : 'am.bestiary.get', { count: BESTIARY_TOKEN_COUNT });
+  // The button keeps one label while it downloads, so it never changes size; the bar below says how far it got.
+  const label = downloading ? t('am.bestiary.downloading') : t(variant === 'empty' ? 'am.bestiary.offer' : 'am.bestiary.get', { count: BESTIARY_TOKEN_COUNT });
+  const percent = download.phase === 'downloading' ? Math.floor(download.share * 100) : 0;
+  const progress = downloading && (
+    <ProgressBar className="atlas-bestiary-offer__progress" value={percent} max={100} label={t('am.bestiary.downloading')} valueText={`${percent}%`} />
+  );
   const choiceRow = (
     <div className="atlas-bestiary-offer__choice">
       <span aria-hidden="true">{t('am.bestiary.statblocks')}</span>
@@ -148,13 +153,13 @@ export function BestiaryTokensOffer({ app, assets, collection, variant, fallback
         startDownload(app, assets, collection, choice === 'none' ? undefined : choice);
       }}
     >
-      <Download />
+      {downloading ? <LoadingSpinner size={14} /> : <Download />}
       <span>{label}</span>
       {variant === 'sidebar' && !downloading && <small>{t('am.bestiary.size', { size })}</small>}
     </Button>
   );
   if (variant === 'sidebar') {
-    return <div className="atlas-bestiary-offer-block atlas-bestiary-offer-block--sidebar">{choiceRow}{button}</div>;
+    return <div className="atlas-bestiary-offer-block atlas-bestiary-offer-block--sidebar">{choiceRow}{button}{progress}</div>;
   }
   const withStatblocks = statblocksLine(choice);
   return (
@@ -163,6 +168,7 @@ export function BestiaryTokensOffer({ app, assets, collection, variant, fallback
       <div className="atlas-starter-offer__panel">
         {choiceRow}
         {button}
+        {progress}
       </div>
       <p className="atlas-starter-offer__fine">
         {withStatblocks && <span>{withStatblocks}</span>}
