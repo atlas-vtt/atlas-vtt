@@ -85,10 +85,10 @@ export class SoundSources {
   }
 
   private async windowOf(key: string, frame: number, count: number): Promise<SoundBuffer> {
-    const { stream, decode, packets: packetsOf } = await this.stream(key);
-    const fromGranule = frame + stream.preSkip;
-    const packets = await packetsOf(fromGranule - PRE_ROLL_FRAMES, fromGranule + count);
-    return this.inLine(() => decode(stream, packets, fromGranule, count));
+    const opened = await this.stream(key);
+    const fromGranule = frame + opened.stream.preSkip;
+    const packets = await opened.packets(fromGranule - PRE_ROLL_FRAMES, fromGranule + count);
+    return this.inLine(() => opened.decode(opened.stream, packets, fromGranule, count));
   }
 
   private tracked<T>(work: Promise<T>): Promise<T> {
