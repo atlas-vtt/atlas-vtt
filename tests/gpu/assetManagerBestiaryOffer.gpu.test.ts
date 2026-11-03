@@ -69,11 +69,12 @@ describe('the bestiary tokens offer', () => {
     expect(box.width).toBeCloseTo(manage.getBoundingClientRect().width, 0);
     expect(offer.scrollWidth).toBeLessThanOrEqual(offer.clientWidth + 1);
     expect(offer.textContent).toMatch(/^Get starter tokens\d+ MB$/);
-    // The choice of statblocks spans the sidebar above the offer, its labels whole.
-    const choice = document.querySelector<HTMLElement>('.atlas-bestiary-offer-block--sidebar .atlas-segmented')!;
-    expect(choice.getBoundingClientRect().bottom).toBeLessThanOrEqual(box.top);
-    expect(choice.getBoundingClientRect().right).toBeLessThanOrEqual(sidebar.right);
-    for (const option of choice.querySelectorAll<HTMLElement>('.atlas-segmented__option')) expect(option.scrollWidth, option.textContent ?? '').toBeLessThanOrEqual(option.clientWidth + 1);
+    // The choice opens above the button there, inside the window.
+    await act(async () => offer.click());
+    const popover = document.querySelector<HTMLElement>('.atlas-starter-choice')!.getBoundingClientRect();
+    expect(popover.bottom).toBeLessThanOrEqual(box.top);
+    expect(popover.left).toBeGreaterThanOrEqual(0);
+    expect(popover.top).toBeGreaterThanOrEqual(0);
     const content = document.querySelector<HTMLElement>('.atlas-asset-manager-sidebar-content')!;
     expect(content.scrollWidth).toBeLessThanOrEqual(content.clientWidth);
     await page.screenshot({ path: '__screenshots__/asset-manager/bestiary-offer.png', element: host });
@@ -104,21 +105,37 @@ describe('the bestiary tokens offer', () => {
     expect(getComputedStyle(button).pointerEvents).toBe('auto');
     expect(document.elementFromPoint((box.left + box.right) / 2, (box.top + box.bottom) / 2)?.closest('.atlas-bestiary-offer--empty')).toBe(button);
     expect(button.textContent).toBe('Get 155 free tokens');
-    // A collection of no system starts without statblocks; picking 5E says what comes.
-    const options = [...document.querySelectorAll<HTMLButtonElement>('.atlas-starter-offer .atlas-segmented__option')];
-    expect(options.map((option) => option.textContent)).toEqual(['None', '5E', 'Cairn']);
-    expect(options[0]!.getAttribute('aria-checked')).toBe('true');
-    await act(async () => options[1]!.click());
-    expect(document.querySelector('.atlas-starter-offer .atlas-segmented__option.atlas-active')?.textContent).toBe('5E');
-    expect(document.querySelector('.atlas-starter-offer__fine')!.textContent).toMatch(/^With 145 statblocks from the 5E SRD 5\.2\.1/);
     expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth + 1);
-    // The offer takes the hint's place, and its choice and button share both edges.
+    // The offer takes the hint's place; no choice stands beside the button until it is pressed.
     expect(document.querySelector('.hint')).toBeNull();
-    const row = document.querySelector<HTMLElement>('.atlas-starter-offer .atlas-bestiary-offer__choice')!.getBoundingClientRect();
-    expect(Math.abs(row.left - box.left)).toBeLessThan(1);
-    expect(Math.abs(row.right - box.right)).toBeLessThan(1);
+    expect(document.querySelector('.atlas-starter-choice')).toBeNull();
     expect(document.querySelector('.atlas-starter-offer__fine')!.getBoundingClientRect().top).toBeGreaterThanOrEqual(box.bottom + 8);
     await page.screenshot({ path: '__screenshots__/asset-manager/starter-tokens-empty.png', element: host });
+
+    // The press opens the choice under the button, centred on it, the collection's suggestion chosen and focused.
+    await act(async () => button.click());
+    const popover = document.querySelector<HTMLElement>('.atlas-starter-choice')!;
+    const placed = popover.getBoundingClientRect();
+    expect(placed.top).toBeGreaterThanOrEqual(box.bottom);
+    expect(Math.abs((placed.left + placed.right) / 2 - (box.left + box.right) / 2)).toBeLessThan(1);
+    const options = [...popover.querySelectorAll<HTMLButtonElement>('[role="radio"]')];
+    expect(options.map((option) => option.querySelector('span > span')?.textContent)).toEqual(['Tokens only', '5E', 'Cairn']);
+    expect(options[0]!.getAttribute('aria-checked')).toBe('true');
+    expect(document.activeElement).toBe(options[0]);
+    await act(async () => options[1]!.click());
+    expect(options[1]!.getAttribute('aria-checked')).toBe('true');
+    for (const option of options) expect(option.scrollWidth, option.textContent ?? '').toBeLessThanOrEqual(option.clientWidth + 1);
+    // The heading and the options' text start on one edge.
+    const heading = popover.querySelector<HTMLElement>('.atlas-dropdown-label')!;
+    const text = options[0]!.querySelector<HTMLElement>('.atlas-starter-choice__text')!;
+    expect(Math.abs(text.getBoundingClientRect().left - (heading.getBoundingClientRect().left + parseFloat(getComputedStyle(heading).paddingLeft)))).toBeLessThan(1);
+    await page.screenshot({ path: '__screenshots__/asset-manager/starter-tokens-choice.png', element: host });
+
+    // Escape closes it, and only it.
+    const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+    await act(async () => { document.activeElement?.dispatchEvent(escape); });
+    expect(document.querySelector('.atlas-starter-choice')).toBeNull();
+    expect(escape.defaultPrevented).toBe(true);
   });
 
   it('keeps the button\u2019s size while it downloads, the bar under it saying how far it got', async () => {
@@ -146,6 +163,8 @@ describe('the bestiary tokens offer', () => {
     const button = document.querySelector<HTMLElement>('.atlas-bestiary-offer--empty')!;
     const before = button.getBoundingClientRect();
     await act(async () => button.click());
+    await act(async () => document.querySelector<HTMLElement>('.atlas-starter-choice__download')!.click());
+    expect(document.querySelector('.atlas-starter-choice')).toBeNull();
     const sizes: string[] = [];
     for (const share of [0, 0.07, 0.42, 0.99]) {
       await act(async () => step(share));
