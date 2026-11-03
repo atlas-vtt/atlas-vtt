@@ -11,3 +11,6 @@
 - A queue for the music: tracks crossfade by a length you set, drag or Alt+arrows to reorder, repeat the list, one track or stop at the end, stop after this track, back, clear what's coming, and a list of what played
 - Link a mood to a scene or a fight and it plays by itself
 - Online, your players hear it in time on their own devices, set their own levels and never see what a track is called
+
+**Asset manager**
+- Get bestiary tokens downloads 145 free creature tokens drawn by Oozejar (CC BY-SA 4.0) into your library, tagged Bestiary

@@ -1440,6 +1440,14 @@ export class AssetService {
     return this.registerAsset<TokenAsset>({ ...asset, type: 'token', ...identity, id: id ?? identity.id }, userImport);
   }
 
+  /** Tokens Atlas adds under ids of their own (a pack every device names alike), with one save of the index. */
+  async addTokenAssets(tokens: readonly (Omit<TokenAsset, 'createdAt' | 'modifiedAt' | 'type'>)[]): Promise<TokenAsset[]> {
+    const now = Date.now();
+    const assets = tokens.map((token): TokenAsset => ({ ...token, type: 'token', createdAt: now, modifiedAt: now }));
+    await this.registerAssets(assets, false);
+    return assets;
+  }
+
   async getTokenAssets(): Promise<TokenAsset[]> {
     return this.getAssets(undefined, 'token');
   }

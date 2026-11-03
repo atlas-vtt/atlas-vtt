@@ -1,6 +1,11 @@
 {
-  "version": "0.12.1",
+  "version": "0.12.2-beta.0",
   "releases": [
+    {
+      "version": "0.12.2-beta.0",
+      "title": "Coming in 0.12.2",
+      "markdown": "## New\n\n**New Feature: Sound**\n- A Sound page on the DM screen for music and ambience, from your own folders in the vault or anywhere on disk\n- Open the Sound page in a tab of its own from the command palette, with no map needed\n- Get starter ambience: six free ambient loops (forest, campfire, thunderstorm, beach, night marsh, cave) to play before you add your own\n- Filter the library by tags: your folder names count as tags already, and a track can carry as many more as it needs\n- Moods: press one and the room crossfades to it, what both moods share keeps playing, and a mood is saved from whatever you have playing\n- Up to 8 ambience layers beside the music, each with its own fader, and every track evened out in loudness\n- Loops without a gap or a click, and Silence to fade it all and bring it back\n- A queue for the music: tracks crossfade by a length you set, drag or Alt+arrows to reorder, repeat the list, one track or stop at the end, stop after this track, back, clear what's coming, and a list of what played\n- Link a mood to a scene or a fight and it plays by itself\n- Online, your players hear it in time on their own devices, set their own levels and never see what a track is called\n\n**Asset manager**\n- Get bestiary tokens downloads 145 free creature tokens drawn by Oozejar (CC BY-SA 4.0) into your library, tagged Bestiary"
+    },
     {
       "version": "0.12.1",
       "date": "2026-11-02",
