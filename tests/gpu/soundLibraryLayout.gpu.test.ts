@@ -344,6 +344,65 @@ describe('the sound library', () => {
     expect(sorted[Math.floor(sorted.length * 0.95)]).toBeLessThan(34);
   });
 
+  it('opens 2,000 tracks at once and scrolls them as smoothly while every one of them is being prepared', async () => {
+    await page.viewport(1644, 960);
+    rig = await mockLibrary();
+    for (let index = 0; index < 2000; index++) rig.locations.music.addFile(`Big ${index % 40}/Track ${index}.mp3`);
+    const longTasks: number[] = [];
+    const observer = new PerformanceObserver((list) => { for (const entry of list.getEntries()) longTasks.push(entry.duration); });
+    observer.observe({ type: 'longtask', buffered: false });
+    frame = stageFrame(ATLAS_DARK);
+    const opened = performance.now();
+    rig.mount(frame.host, PAGE);
+    await expect.poll(() => document.querySelector('.atlas-sound-lib__rows [role="row"]'), { timeout: 30_000 }).not.toBeNull();
+    const firstRows = performance.now() - opened;
+    await expect.poll(() => rig!.library.isWalked('music'), { timeout: 30_000 }).toBe(true);
+    const walked = performance.now() - opened;
+    const openLong = [...longTasks];
+    longTasks.length = 0;
+    const scroll = async (): Promise<number[]> => {
+      const list = document.querySelector<HTMLElement>('.atlas-sound-lib__rows')!;
+      list.scrollTop = 0;
+      const frames: number[] = [];
+      await new Promise<void>((resolve) => {
+        let last = performance.now();
+        let travelled = 0;
+        const step = (now: number): void => {
+          frames.push(now - last);
+          last = now;
+          travelled += 120;
+          list.scrollTop = travelled;
+          if (travelled < 2000 * 38 / 3) window.requestAnimationFrame(step);
+          else resolve();
+        };
+        window.requestAnimationFrame(step);
+      });
+      frames.shift();
+      return frames.sort((a, b) => a - b);
+    };
+    const quiet = await scroll();
+    const quietLong = [...longTasks];
+    longTasks.length = 0;
+    // Every file asked for at once, as a linked folder now is.
+    const { requestCopies } = await import('@/app/soundDirector/libraryDesk');
+    await requestCopies({ records: rig.records, library: rig.library, director: rig.director }, rig.library.filesOf('music').map(({ entry }) => ({ ...entry, kind: 'music' as const })));
+    await act(async () => { await new Promise((resolve) => setTimeout(resolve, 1500)); });
+    const states = (): string => `on ${rig!.director.isOn} shelf changes ${rig!.director.snapshot().shelfRevision}`;
+    const before = states();
+    const busy = await scroll();
+    const busyLong = [...longTasks];
+    const after = states();
+    const p = (sorted: number[], q: number): string => (sorted[Math.floor(sorted.length * q)] ?? 0).toFixed(1);
+    const sum = (list: number[]): string => `${list.length} long tasks, worst ${Math.max(0, ...list).toFixed(0)} ms, total ${list.reduce((a, b) => a + b, 0).toFixed(0)} ms`;
+    const line = `first rows ${firstRows.toFixed(0)} ms, walked ${walked.toFixed(0)} ms; open: ${sum(openLong)} | quiet scroll median ${p(quiet, 0.5)} p95 ${p(quiet, 0.95)} worst ${p(quiet, 0.999)}; ${sum(quietLong)} | busy scroll median ${p(busy, 0.5)} p95 ${p(busy, 0.95)} worst ${p(busy, 0.999)}; ${sum(busyLong)} | ${before} -> ${after}`;
+    observer.disconnect();
+    await writeMeasure(`[2,000 tracks] ${line}`);
+    expect(firstRows).toBeLessThan(500);
+    expect(Number(p(quiet, 0.95))).toBeLessThan(20);
+    expect(Number(p(busy, 0.95))).toBeLessThan(20);
+    expect(busyLong.filter((ms) => ms > 100)).toEqual([]);
+  });
+
   it('shows the parts a look at the rows leaves out: a selection, its menu, a search, a root not linked here, a skeleton', async () => {
     const r = await open();
     await pressTag('Battle');
