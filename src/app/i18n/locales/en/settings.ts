@@ -17,7 +17,7 @@ export const settings = {
   'settings.maps.animateHint': 'Video maps play. Off, they show their first frame.',
   'settings.maps.fogEdge': 'Fog edge',
   'settings.maps.fogEdgeCrackled': 'Crackled',
-  'settings.maps.fogEdgeHint': 'Soft fades the edge of the fog out; crackled breaks it into a gritty, cracked edge. The slider sets how far it reaches, in pixels of the map, for you and your players. It reaches both ways, so the map shows a little way inside the fog. 0 keeps it hard.',
+  'settings.maps.fogEdgeHint': 'Soft fades the edge of the fog out; crackled breaks it into a gritty, cracked edge. The slider sets how far it reaches to either side of the fog\'s outline, in pixels of the map, for you and your players, so the map shows that far inside the fog. 0 keeps it hard.',
   'settings.maps.fogEdgeSoft': 'Soft',
   'settings.maps.heading': 'Maps',
   'settings.navigation.heading': 'Navigation',

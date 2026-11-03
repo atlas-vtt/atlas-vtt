@@ -3,6 +3,7 @@ import { Application, Container, RenderTexture, Sprite, Texture } from 'pixi.js'
 import { afterEach, describe, expect, it } from 'vitest';
 import { page } from 'vitest/browser';
 import { FogEdgeMesh } from '../../src/app/pixi/fog/fogEdgeMesh';
+import { fogEdgeBlur } from '../../src/app/fog/fogEdge';
 import type { FogRectangleFill } from '../../src/app/types/fogTypes';
 import { fogScenes } from '../helpers/fogCoverageScene';
 
@@ -36,7 +37,7 @@ describe('the fog edge\'s mesh', () => {
     canvas.width = side;
     canvas.height = side;
     const ctx = canvas.getContext('2d', { willReadFrequently: true })!;
-    ctx.filter = `blur(${EDGE * SCALE}px)`;
+    ctx.filter = `blur(${fogEdgeBlur(EDGE) * SCALE}px)`;
     ctx.drawImage(source, 0, 0);
     ctx.filter = 'none';
     return canvas;

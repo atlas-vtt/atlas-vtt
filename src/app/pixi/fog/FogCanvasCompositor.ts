@@ -6,13 +6,14 @@ import { validateFogOperation } from '../../fog/fogOperationShape';
 import { coverCanvas } from '../utils/coverCanvas';
 import { drawFogCoverage } from './drawFogCoverage';
 import { drawWithSpreadEdges, FOG_COLOR, renderOperation } from './fogRenderUtils';
+import { fogEdgeBlur } from '../../fog/fogEdge';
 
 export class FogCanvasCompositor {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private bounds: FogBounds;
   private scale: number;
-  /** How far the edge fades, in world pixels; 0 keeps it hard. */
+  /** How far the edge fades to either side, in world pixels; 0 keeps it hard. */
   private edgeWidth = 0;
   /** Where the map lies in the world, whose own edge is no edge of the fog; null spreads from the canvas' edges. */
   private mapArea: () => FogBounds | null = () => null;
@@ -76,7 +77,7 @@ export class FogCanvasCompositor {
    * the fog therefore repeats its edge, whatever was painted there.
    */
   private fadeEdges(): void {
-    const blur = this.edgeWidth * this.scale;
+    const blur = fogEdgeBlur(this.edgeWidth) * this.scale;
     if (blur <= 0) return;
     // A blur's reach ends within three of its radii
     const pad = Math.ceil(blur * 3);

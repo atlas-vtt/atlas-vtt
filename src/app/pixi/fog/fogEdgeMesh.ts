@@ -1,7 +1,7 @@
 import { GlProgram, Mesh, MeshGeometry, Shader, Texture, UniformGroup, type Container, type Sprite } from 'pixi.js';
 import { destroyTree } from '../utils/destroyTree';
 import { GLSL_VERSION } from '../lighting/engine/glsl';
-import type { FogEdge } from '../../fog/fogEdge';
+import { fogEdgeBlur, type FogEdge } from '../../fog/fogEdge';
 
 /** How far the noise pushes the edge in or out, at most, in alpha. */
 const CRACKLE_AMOUNT = 0.9;
@@ -13,16 +13,16 @@ const CRACKLE_AMOUNT = 0.9;
 const CRACKLE_TAPER = 0.1;
 /** The weights of the noise's three octaves: broad cracks, then grit. */
 const CRACKLE_WEIGHTS = [0.5, 0.3, 0.2] as const;
-/** Each octave's cell size against the edge's width, and the least it has, in world pixels. */
+/** Each octave's cell size against the edge's blur, and the least it has, in world pixels. */
 const CELLS_PER_EDGE = [1.1, 0.36, 0.12] as const;
 const MIN_CELLS = [16, 5, 2] as const;
 
 /**
- * The noise's cell sizes in world pixels for an edge `worldPx` wide: the cracks grow with the edge,
- * so a wide one breaks into cracks of its size, not into grit.
+ * The noise's cell sizes in world pixels for an edge blurred by `blurPx` (`fogEdgeBlur`): the cracks
+ * grow with the edge, so a wide one breaks into cracks of its size, not into grit.
  */
-export function crackleCells(worldPx: number): [number, number, number] {
-  return [0, 1, 2].map((i) => Math.max(MIN_CELLS[i]!, CELLS_PER_EDGE[i]! * worldPx)) as [number, number, number];
+export function crackleCells(blurPx: number): [number, number, number] {
+  return [0, 1, 2].map((i) => Math.max(MIN_CELLS[i]!, CELLS_PER_EDGE[i]! * blurPx)) as [number, number, number];
 }
 
 /**
@@ -133,7 +133,7 @@ export class FogEdgeMesh {
 
   /** The edge's look, and its width in world pixels, which the cracks' sizes follow. */
   setEdge({ style, width }: FogEdge): void {
-    (this.group.uniforms.uCells as Float32Array).set(crackleCells(width));
+    (this.group.uniforms.uCells as Float32Array).set(crackleCells(fogEdgeBlur(width)));
     this.group.uniforms.uCrackle = style === 'crackle' ? 1 : 0;
     this.group.update();
   }
@@ -155,7 +155,10 @@ export class FogEdgeMesh {
 
   destroy(): void {
     if (!this.sprite.destroyed) this.sprite.renderable = true;
+    // A mesh lets go of its geometry without destroying it, which would keep its buffers on the GPU
+    const { geometry } = this.mesh;
     destroyTree(this.mesh);
+    geometry.destroy();
     this.shader.destroy();
   }
 }

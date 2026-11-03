@@ -5,6 +5,7 @@ import type { FogRectangleFill } from '../../src/app/types/fogTypes';
 import { fogScenes } from '../helpers/fogCoverageScene';
 
 const SIDE = 256;
+/** The blur's deviation in these tests; edges are set three times as wide (`fogEdgeBlur`). */
 const EDGE = 40;
 const owned: FogCanvasCompositor[] = [];
 
@@ -14,7 +15,7 @@ function rect(id: string, timestamp: number, x: number, y: number, width: number
 
 function compositor(edge = EDGE): FogCanvasCompositor {
   const made = new FogCanvasCompositor({ x: 0, y: 0, width: SIDE, height: SIDE }, 1);
-  made.setEdgeWidth(edge);
+  made.setEdgeWidth(edge * 3);
   owned.push(made);
   return made;
 }
@@ -61,7 +62,7 @@ describe('a soft fog edge', () => {
     const side = 128 + offset;
     const c = new FogCanvasCompositor({ x: -margin, y: -margin, width: side + 2 * margin, height: side + 2 * margin }, scale);
     owned.push(c);
-    c.setEdgeWidth(EDGE, () => ({ x: offset, y: offset, width: 128, height: 128 }));
+    c.setEdgeWidth(EDGE * 3, () => ({ x: offset, y: offset, width: 128, height: 128 }));
     c.composite({ paint: rect('paint', 1, offset, offset, 128, 128) });
     const canvas = c.getCanvas();
     const image = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data;
