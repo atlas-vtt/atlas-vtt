@@ -2,6 +2,9 @@ import { setIcon, type Plugin } from 'obsidian';
 import { t } from '../i18n';
 import { showSoundView } from '../sound-view';
 import { MoodStore } from '../soundLibrary/MoodStore';
+import { SoundLibrary } from '../soundLibrary/SoundLibrary';
+import { SoundRecordStore } from '../soundLibrary/SoundRecordStore';
+import { LinkedFolderWatch } from '../soundDirector/linkedFolderWatch';
 import { SoundDirector } from '../soundDirector/SoundDirector';
 import { isPlaying } from '../soundDirector/tableSound';
 import { whatPlays } from '../soundDirector/whatPlays';
@@ -139,6 +142,11 @@ function registerSoundStatusBar(plugin: Plugin, director: SoundDirector): () => 
  */
 export function registerSoundDirector(plugin: Plugin): SoundDirector {
   const director = SoundDirector.forApp(plugin.app);
+  // Linked folders are prepared as they come, once the workspace is up, so a start is not held by a folder's walk.
+  plugin.app.workspace.onLayoutReady(() => {
+    const watch = new LinkedFolderWatch({ records: SoundRecordStore.forApp(plugin.app), library: SoundLibrary.forApp(plugin.app), director });
+    plugin.register(() => watch.dispose());
+  });
   registerSoundCommands(plugin, director);
   plugin.register(registerMoodCommands(plugin, director));
   plugin.register(registerSoundStatusBar(plugin, director));

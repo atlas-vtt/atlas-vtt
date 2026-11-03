@@ -64,18 +64,30 @@ export async function listToMix(deps: LibraryDeskDeps, files: readonly LibraryFi
   }
 }
 
+/** The records files stand for, without writing any: an unrecorded file is a sound made for it alone. */
+async function soundsOfFiles(deps: Pick<LibraryDeskDeps, 'records' | 'library'>, files: readonly LibraryFile[]): Promise<SoundRecord[]> {
+  await deps.records.whenLoaded();
+  const byFile = recordsByFile(deps.records.all(), deps.library);
+  return files.flatMap((file) => {
+    const audioPath = deps.library.audioPathOf(file.kind, file.path);
+    return audioPath === null ? [] : [soundOfFile(byFile, file, audioPath)];
+  });
+}
+
+/** Asks for files' copies in the background, writing no record. What has a copy already is skipped. */
+export async function requestCopies(deps: Pick<LibraryDeskDeps, 'records' | 'library' | 'director'>, files: readonly LibraryFile[]): Promise<number> {
+  const sounds = await soundsOfFiles(deps, files);
+  deps.director.shelf.request(sounds);
+  return sounds.length;
+}
+
 /**
  * Makes files' copies ahead of use, the first a list can hold, and at a table online offers them to players. This writes
  * no record: browsing and preparing cost the library nothing.
  * ponytail: the cut keeps a large library from churning the copies' cache out from under itself; say which to prepare if that is wanted.
  */
 export async function prepareFiles(deps: LibraryDeskDeps, files: readonly LibraryFile[]): Promise<number> {
-  await deps.records.whenLoaded();
-  const byFile = recordsByFile(deps.records.all(), deps.library);
-  const sounds = files.slice(0, MOOD_LIMITS.tracks).flatMap((file) => {
-    const audioPath = deps.library.audioPathOf(file.kind, file.path);
-    return audioPath === null ? [] : [soundOfFile(byFile, file, audioPath)];
-  });
+  const sounds = await soundsOfFiles(deps, files.slice(0, MOOD_LIMITS.tracks));
   deps.director.shelf.request(sounds);
   deps.director.players.sounds?.prepare(sounds);
   return sounds.length;
