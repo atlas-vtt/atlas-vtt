@@ -230,7 +230,7 @@ describe('the sound library', () => {
     await settled();
 
     // A long name stops at the row's end instead of pushing the count out, however it was written.
-    r.records.add([{ id: 'long', name: 'Long', tags: ['A tag with a name as long as a tag may have it'], createdAt: 1, modifiedAt: 1, audioPath: 'atlas-sound:music/Taverns/Track 1.ogg', kind: 'music', licence: 'unknown', streaming: 'unknown' }]);
+    r.records.add([{ id: 'long', name: 'Long', tags: ['A tag with a name as long as a tag may have it'], createdAt: 1, modifiedAt: 1, audioPath: 'atlas-sound:music/Taverns/Track 1.ogg', kind: 'music' }]);
     await expect.poll(() => document.querySelectorAll('.atlas-sound-lib__tag').length).toBe(11);
     const long = tagNamed('A tag with a name as long as a tag may have it');
     expect(long.scrollWidth).toBeLessThanOrEqual(long.clientWidth + 1);
@@ -365,7 +365,7 @@ describe('the sound library', () => {
   it('a root linked only on another device says so, and its records wait', async () => {
     await page.viewport(1644, 960);
     rig = await mockLibrary({ local: {}, shared: { music: { type: 'external' }, ambience: { type: 'vault', path: 'Audio/Ambience' } } });
-    rig.records.add([{ id: 'w1', name: 'Road to Wolfhaven', tags: [], createdAt: 1, modifiedAt: 1, audioPath: 'atlas-sound:music/Road to Wolfhaven.ogg', kind: 'music', licence: 'unknown', streaming: 'unknown' }]);
+    rig.records.add([{ id: 'w1', name: 'Road to Wolfhaven', tags: [], createdAt: 1, modifiedAt: 1, audioPath: 'atlas-sound:music/Road to Wolfhaven.ogg', kind: 'music' }]);
     frame = stageFrame(ATLAS_DARK);
     rig.mount(frame.host, PAGE);
     await settled();

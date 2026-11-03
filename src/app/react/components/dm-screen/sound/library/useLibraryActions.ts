@@ -51,7 +51,6 @@ export interface LibraryActions {
   remove: (entries: readonly LibraryEntry[]) => void;
   forget: (sound: StoredSound) => void;
   edit: (files: readonly LibraryFile[], changes: SoundChanges) => void;
-  askCredit: (files: readonly LibraryFile[], current: string, name: string) => void;
   /** Files' tags as the records stand at this moment, for a menu that stays open through its own changes. */
   tagsOf: (files: readonly LibraryFile[]) => TrackTags[];
   onRecords: (listener: () => void) => () => void;
@@ -148,11 +147,6 @@ export function useLibraryActions(app: App, library: SoundLibrary, director: Sou
         }), 'Forgetting a sound');
       },
       edit: (files, changes) => run(editFiles(records, library, files, changes), 'Changing sounds'),
-      askCredit: (files, current, name) => {
-        run(promptForText({ title: t('audio.creditTitle', { name }), confirmLabel: t('audio.library.save'), initialValue: current, placeholder: t('audio.creditPlaceholder') }).then(async (credit) => {
-          if (credit !== null) await editFiles(records, library, files, { credit });
-        }), 'Changing a credit');
-      },
       tagsOf: (files) => tagsOfFiles(records.all(), library, files),
       onRecords: (listener) => records.onChange(listener),
       tag: (files, tag) => run(addTag(records, library, files, tag), 'Tagging sounds'),

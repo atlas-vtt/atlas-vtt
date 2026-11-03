@@ -24,8 +24,6 @@ function draft(file: LibraryFile, audioPath: string, id: string, now: number): S
     audioPath,
     audioSize: file.size,
     kind: file.kind,
-    licence: 'unknown',
-    streaming: 'unknown',
   };
 }
 
@@ -89,7 +87,7 @@ export async function recordsForFiles(records: RecordsSeam, library: Pick<SoundL
   return made;
 }
 
-/** The library's editors: trim, licence, credit and tags belong to the file, so they change every record of it, one made where it has none. */
+/** The library's editors: trim and tags belong to the file, so they change every record of it, one made where it has none. */
 export async function editFiles(records: RecordsSeam & Pick<SoundRecordStore, 'update'>, library: Pick<SoundLibrary, 'audioPathOf' | 'pathNow'>, files: readonly LibraryFile[], changes: SoundChanges): Promise<void> {
   await recordsForFiles(records, library, files);
   const byFile = recordsByFile(records.all(), library);

@@ -3,9 +3,6 @@ import type { PinIconId } from '../types/pinIconPaths';
 /** A music or ambience file in the vault. Stored in a record file like other assets. */
 export type SoundKind = 'music' | 'ambience';
 
-export type SoundLicence = 'unknown' | 'cc0' | 'cc-by' | 'other';
-export type SoundStreaming = 'unknown' | 'licensed' | 'not-for-streaming';
-
 export interface SoundRecord {
   id: string;
   name: string;
@@ -18,10 +15,6 @@ export interface SoundRecord {
   /** The GM's own correction on top of the measured loudness. */
   trimDb?: number;
   tags?: string[];
-  licence: SoundLicence;
-  credit?: string;
-  sourceUrl?: string;
-  streaming: SoundStreaming;
 }
 
 export const MAX_MOOD_LAYERS = 8;

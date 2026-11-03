@@ -9,7 +9,7 @@ import { createInMemoryApp, type InMemoryApp } from '../../mocks/inMemoryVault';
 const pathOf = (id: string): string => `${RECORDS_FOLDER}/${id}.json`;
 
 const record = (id: string, audioPath: string, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
-  id, name: 'Rain', tags: [], createdAt: 1, modifiedAt: 1, audioPath, kind: 'ambience', licence: 'unknown', streaming: 'unknown', ...extra,
+  id, name: 'Rain', tags: [], createdAt: 1, modifiedAt: 1, audioPath, kind: 'ambience', ...extra,
 });
 
 const file = (id: string, audioPath = 'Audio/Rain.mp3', extra: Record<string, unknown> = {}): string => JSON.stringify({ format: 1, ...record(id, audioPath, extra) });

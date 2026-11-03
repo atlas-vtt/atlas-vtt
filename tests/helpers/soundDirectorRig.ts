@@ -36,7 +36,7 @@ export class FakeOutputContext extends FakeSoundContext implements OutputContext
 }
 
 export function record(id: string, kind: SoundRecord['kind'] = 'ambience'): SoundRecord {
-  return { id, name: id.toUpperCase(), kind, filePath: `audio/${id}.ogg`, licence: 'unknown', streaming: 'unknown' };
+  return { id, name: id.toUpperCase(), kind, filePath: `audio/${id}.ogg` };
 }
 
 export function mood(id: string, layers: string[], music: Mood['music'] = 'keep', fadeSeconds = 4): Mood {

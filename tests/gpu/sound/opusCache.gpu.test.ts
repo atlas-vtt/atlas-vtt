@@ -132,7 +132,7 @@ describe('the Opus cache', () => {
         () => undefined,
         async () => new Uint8Array(1),
       );
-      const record = { id: 's', name: 'A', kind: 'music', filePath: 'a.ogg', licence: 'unknown', streaming: 'unknown' } as SoundRecord;
+      const record = { id: 's', name: 'A', kind: 'music', filePath: 'a.ogg' } as SoundRecord;
       copies.stateOf(record);
       await vi.waitFor(async () => expect(await store.hashOf('a.ogg', 5, 1)).toBe('source'));
       copies.request([record]);

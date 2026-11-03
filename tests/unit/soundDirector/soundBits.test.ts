@@ -41,7 +41,7 @@ describe('moving a mood', () => {
 });
 
 describe('what keeps a mood from sounding whole', () => {
-  const rain: SoundRecord = { id: 'rain', name: 'Rain', kind: 'ambience', filePath: 'r.ogg', licence: 'unknown', streaming: 'unknown' };
+  const rain: SoundRecord = { id: 'rain', name: 'Rain', kind: 'ambience', filePath: 'r.ogg' };
 
   it('names each sound by what it waits for, and a deleted one without a name', () => {
     const states = { hasFile: true, state: { state: 'ready' } as const };

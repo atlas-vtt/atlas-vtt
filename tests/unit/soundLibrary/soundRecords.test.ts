@@ -3,15 +3,16 @@ import { isAudioPath, isSoundDataPath, MOODS_FOLDER, RECORDS_FOLDER } from '../.
 import { MAX_TRIM_DB } from '../../../src/app/sound/codec/soundInfo';
 import { defaultSoundKind, soundAfterMove, soundRecordOf, withChanges, type StoredSound } from '../../../src/app/soundLibrary/soundRecords';
 
-const SOUND: StoredSound = {
+// A record an earlier build wrote, with the licence and credit Atlas no longer reads.
+const SOUND = {
   id: 'sound-1', name: 'Rain', tags: ['weather'], createdAt: 1, modifiedAt: 2,
-  audioPath: 'Music/Rain.mp3', kind: 'ambience', licence: 'cc0', streaming: 'unknown', trimDb: -3, credit: 'A. Person',
-};
+  audioPath: 'Music/Rain.mp3', kind: 'ambience', licence: 'cc0', trimDb: -3, credit: 'A. Person',
+} as StoredSound;
 
 describe('reading a sound as the engine does', () => {
   it('names the audio as its file', () => {
     expect(soundRecordOf(SOUND)).toEqual({
-      id: 'sound-1', name: 'Rain', kind: 'ambience', filePath: 'Music/Rain.mp3', tags: ['weather'], licence: 'cc0', streaming: 'unknown', trimDb: -3, credit: 'A. Person',
+      id: 'sound-1', name: 'Rain', kind: 'ambience', filePath: 'Music/Rain.mp3', tags: ['weather'], trimDb: -3,
     });
   });
 
@@ -19,7 +20,7 @@ describe('reading a sound as the engine does', () => {
     const hostile = {
       ...SOUND, kind: 'effect', licence: 'mine', streaming: 'sure', trimDb: 'loud', credit: 4, sourceUrl: {}, loop: { startFrame: 9, endFrame: 3 },
     } as unknown as StoredSound;
-    expect(soundRecordOf(hostile)).toEqual({ id: 'sound-1', name: 'Rain', kind: 'music', filePath: 'Music/Rain.mp3', tags: ['weather'], licence: 'unknown', streaming: 'unknown' });
+    expect(soundRecordOf(hostile)).toEqual({ id: 'sound-1', name: 'Rain', kind: 'music', filePath: 'Music/Rain.mp3', tags: ['weather'] });
     expect(soundRecordOf({ ...SOUND, trimDb: 500 }).trimDb).toBe(MAX_TRIM_DB);
     expect(soundRecordOf({ ...SOUND, trimDb: -500 }).trimDb).toBe(-MAX_TRIM_DB);
   });

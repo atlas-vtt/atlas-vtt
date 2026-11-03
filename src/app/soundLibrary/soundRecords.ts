@@ -1,6 +1,6 @@
 import { readRecordText, recordText, type StoredRecord } from '../services/recordFiles/recordLayout';
 import { clampTrim } from '../sound/codec/soundInfo';
-import type { SoundKind, SoundLicence, SoundRecord, SoundStreaming } from '../sound/soundTypes';
+import type { SoundKind, SoundRecord } from '../sound/soundTypes';
 import { isFiniteNumber, isRecord } from '../utils/guards';
 import { isWithin, movedRelative, nameOfRelative, stemOf } from './soundPaths';
 
@@ -8,8 +8,6 @@ import { isWithin, movedRelative, nameOfRelative, stemOf } from './soundPaths';
 const AMBIENCE_MAX_SECONDS = 10 * 60;
 const LOOP_LOOKING_NAME = /\b(loops?|looped|looping|ambien[ct]e?|ambient|atmos|atmosphere|soundscape|drone|room ?tone)\b|[_-]loop/i;
 
-const LICENCES: ReadonlySet<string> = new Set<SoundLicence>(['unknown', 'cc0', 'cc-by', 'other']);
-const STREAMING: ReadonlySet<string> = new Set<SoundStreaming>(['unknown', 'licensed', 'not-for-streaming']);
 
 /** A sound's kind when nobody chose one: ambience for a short file named like a loop, music otherwise. An unknown length leaves the name to decide. */
 export function defaultSoundKind(fileName: string, seconds: number | null): SoundKind {
@@ -56,7 +54,7 @@ export const isNewerSound = (stored: StoredRecord): boolean => isFiniteNumber(st
  * cannot be read here reads as unset; the file keeps what it holds, for the version that wrote it.
  */
 export function soundRecordOf(stored: StoredSound): SoundRecord {
-  const { id, name, audioPath, audioSize, tags, kind, licence, streaming, trimDb, credit, sourceUrl } = stored;
+  const { id, name, audioPath, audioSize, tags, kind, trimDb } = stored;
   const loop = readLoop(stored.loop);
   return {
     id,
@@ -65,12 +63,8 @@ export function soundRecordOf(stored: StoredSound): SoundRecord {
     filePath: audioPath,
     ...(isFiniteNumber(audioSize) && { audioSize }),
     tags: Array.isArray(tags) ? tags.filter((tag) => typeof tag === 'string') : [],
-    licence: LICENCES.has(licence) ? licence : 'unknown',
-    streaming: STREAMING.has(streaming) ? streaming : 'unknown',
     ...(loop && { loop }),
     ...(isFiniteNumber(trimDb) && { trimDb: clampTrim(trimDb) }),
-    ...(typeof credit === 'string' && credit !== '' && { credit }),
-    ...(typeof sourceUrl === 'string' && sourceUrl !== '' && { sourceUrl }),
   };
 }
 

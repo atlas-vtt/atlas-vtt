@@ -19,7 +19,7 @@ import { libraryRig, type LibraryRig } from '../../helpers/libraryRig';
 vi.mock('../../../src/app/ui/confirmDialog', () => ({ confirmAction: vi.fn(async () => true) }));
 vi.mock('../../../src/app/ui/textInputDialog', () => ({ promptForText: vi.fn(async () => null) }));
 
-const stored = (tags: unknown, audioPath = 'a.mp3'): StoredSound => ({ id: audioPath, name: 'a', tags, createdAt: 1, modifiedAt: 1, audioPath, kind: 'music', licence: 'unknown', streaming: 'unknown' }) as StoredSound;
+const stored = (tags: unknown, audioPath = 'a.mp3'): StoredSound => ({ id: audioPath, name: 'a', tags, createdAt: 1, modifiedAt: 1, audioPath, kind: 'music' }) as StoredSound;
 const fileOf = (kind: SoundKind, path: string): LibraryFile => ({ kind, path, name: path.split('/').pop()!, size: 5_000_000, mtime: 1 });
 
 describe('a track\'s tags', () => {

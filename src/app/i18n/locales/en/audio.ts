@@ -23,15 +23,6 @@ export const audio = {
 
   'audio.trim': 'Trim',
   'audio.trimValue': '{value} dB',
-  'audio.licence': 'Licence',
-  'audio.licence.unknown': 'Unknown',
-  'audio.licence.cc0': 'CC0',
-  'audio.licence.ccBy': 'CC BY',
-  'audio.licence.other': 'Other',
-  'audio.credit': 'Credit',
-  'audio.creditRemove': 'Remove credit',
-  'audio.creditTitle': 'Credit for {name}',
-  'audio.creditPlaceholder': 'Who made it',
 
   'audio.refused.unknown-format': 'Not an audio format Atlas reads',
   'audio.refused.unsupported-codec': 'Atlas cannot decode this codec',

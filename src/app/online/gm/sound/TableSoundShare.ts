@@ -13,7 +13,7 @@ import type { Timers } from '../companionTimers.ts';
 import { SoundAudience } from './soundAudience.ts';
 import { SoundOffers } from './soundOffers.ts';
 import { SoundRefs, type SoundRefsPorts } from './soundRefs.ts';
-import { creditOf, keysOfState, wireState } from './soundWire.ts';
+import { keysOfState, wireState } from './soundWire.ts';
 
 /** How far ahead a change begins online, so that the state has reached every page in time. */
 const ONLINE_LEAD_MS = 1000;
@@ -159,7 +159,7 @@ export class TableSoundShare implements PlayersSounds {
   /** To one who came, or everyone; while nothing plays too, so a page has the clock before the first mood. */
   resend(to?: string): void {
     if (!this.attached) return;
-    this.ports.send(this.lastSent ?? { t: 'sound', state: wireState(EMPTY_TABLE_SOUND, () => ({ key: '', credit: null })) }, to);
+    this.ports.send(this.lastSent ?? { t: 'sound', state: wireState(EMPTY_TABLE_SOUND, () => ({ key: '' })) }, to);
     this.offers.resend(to);
   }
 
@@ -288,10 +288,7 @@ export class TableSoundShare implements PlayersSounds {
   }
 
   private sendWire(table: TableSound): void {
-    const { shelf } = this.ports.director;
-    const state = wireState(table, (key) => {
-      return { key: this.refs.wireKey(key), asset: this.refs.known(key) ?? undefined, credit: creditOf(shelf.recordOfKey(key)) };
-    });
+    const state = wireState(table, (key) => ({ key: this.refs.wireKey(key), asset: this.refs.known(key) ?? undefined }));
     const text = JSON.stringify(state);
     if (text === this.lastKey) return;
     this.lastKey = text;

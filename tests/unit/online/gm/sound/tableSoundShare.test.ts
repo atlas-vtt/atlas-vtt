@@ -2,7 +2,6 @@ import { createHash } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ALL_PLAYERS, parseGmMessage, type AssetRef, type GmMessage } from '@/app/online/protocol/index.ts';
 import { SOUND_SEND_MS, TableSoundShare, type ShareDirector, type SoundSharePorts } from '@/app/online/gm/sound/TableSoundShare.ts';
-import { creditOf } from '@/app/online/gm/sound/soundWire.ts';
 import type { CopyState } from '@/app/online/gm/assets/uploadQueue.ts';
 import type { Mood, SoundInfo, SoundRecord, TableSound } from '@/app/sound/soundTypes';
 import { EMPTY_MIX } from '@/app/soundDirector/soundMix';
@@ -20,7 +19,7 @@ vi.mock('@/app/online/gm/assetServe.ts', async (original) => ({
 const SOURCE_KEY = 's'.repeat(64);
 const SECRET_NAME = 'The Dragon Wakes';
 
-const record = (id: string, extra: Partial<SoundRecord> = {}): SoundRecord => ({ id, name: `${SECRET_NAME} ${id}`, kind: 'ambience', filePath: `Secret/${id}.mp3`, licence: 'unknown', streaming: 'unknown', ...extra });
+const record = (id: string, extra: Partial<SoundRecord> = {}): SoundRecord => ({ id, name: `${SECRET_NAME} ${id}`, kind: 'ambience', filePath: `Secret/${id}.mp3`, ...extra });
 const infoOf = (id: string): SoundInfo => ({ key: `${SOURCE_KEY}${id}`, frames: 48_000 * 30, gainDb: -2 });
 
 function tableWith(ids: readonly string[], revision = 1): TableSound {
@@ -43,7 +42,7 @@ class Rig {
   clock: TableClock | null = null;
   clockSteps: number[] = [];
   audience: AudienceLine | null = null;
-  readonly records = new Map<string, SoundRecord>([['a', record('a')], ['b', record('b', { licence: 'cc-by', credit: 'Kevin, CC BY 4.0' })]]);
+  readonly records = new Map<string, SoundRecord>([['a', record('a')], ['b', { ...record('b'), licence: 'cc-by', credit: 'Kevin, CC BY 4.0' } as SoundRecord]]);
   moods: Mood[] = [];
   private readonly stateListeners = new Set<(state: TableSound) => void>();
   private readonly listeners = new Set<() => void>();
@@ -141,15 +140,14 @@ describe('a table\'s sound for players', () => {
     expect(message?.t === 'sound' && message.state.layers.map((layer) => layer.sound.asset?.id === layer.sound.key)).toEqual([true, true]);
   });
 
-  it('carries a credit line only where a licence asks for one', async () => {
+  it('carries no credit line, even for a record an earlier build gave one', async () => {
     rig = new Rig();
     rig.share.start();
     rig.play(tableWith(['a', 'b']));
     await rig.advance(1000);
     const message = rig.sounds().at(-1);
-    expect(message?.t === 'sound' && message.state.layers.map((layer) => layer.sound.credit ?? null)).toEqual([null, 'Kevin, CC BY 4.0']);
-    expect(creditOf({ licence: 'cc0', credit: 'Someone' })).toBeNull();
-    expect(creditOf({ licence: 'cc-by', credit: '  ' })).toBeNull();
+    expect(message?.t === 'sound' && message.state.layers.map((layer) => layer.sound.credit ?? null)).toEqual([null, null]);
+    expect(JSON.stringify(message)).not.toContain('Kevin');
   });
 
   it('sends a moving fader about four times a second, and always its last place', async () => {

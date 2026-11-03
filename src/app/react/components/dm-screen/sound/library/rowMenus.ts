@@ -1,6 +1,6 @@
 import { t } from '../../../../../i18n';
 import { clampTrim, MAX_TRIM_DB } from '../../../../../sound/codec/soundInfo';
-import type { SoundKind, SoundLicence } from '../../../../../sound/soundTypes';
+import type { SoundKind } from '../../../../../sound/soundTypes';
 import type { LibraryEntry } from '../../../../../soundLibrary/libraryOperations';
 import type { LibraryFile } from '../../../../../soundLibrary/SoundLibrary';
 import type { StoredSound } from '../../../../../soundLibrary/soundRecords';
@@ -9,13 +9,6 @@ import { MENU_SEPARATOR, type ContextMenuEntry } from '../../../context-menu/Atl
 import type { LibraryActions } from './useLibraryActions';
 import { filesOfRows, type LibraryRow } from './rowModel';
 import { tagsSubmenu } from './tagMenus';
-
-const LICENCES: ReadonlyArray<{ licence: SoundLicence; label: string }> = [
-  { licence: 'unknown', label: t('audio.licence.unknown') },
-  { licence: 'cc0', label: t('audio.licence.cc0') },
-  { licence: 'cc-by', label: t('audio.licence.ccBy') },
-  { licence: 'other', label: t('audio.licence.other') },
-];
 
 const signed = (db: number): string => (db > 0 ? `+${db}` : String(db));
 
@@ -33,7 +26,7 @@ export interface RowMenuContext {
   beginRename: (row: LibraryRow) => void;
 }
 
-/** What a sound's record holds: trim, licence and credit, for every file the menu acts on. */
+/** What a sound's record holds: its trim, for every file the menu acts on. Rights to a file are the GM's to know (owner, 2026-11-03). */
 function recordEntries(context: RowMenuContext, files: readonly LibraryFile[]): ContextMenuEntry[] {
   const { actions, sound } = context;
   const trim = sound?.trimDb ?? 0;
@@ -53,14 +46,6 @@ function recordEntries(context: RowMenuContext, files: readonly LibraryFile[]): 
         canDecrement: trim > -MAX_TRIM_DB,
       },
     },
-    {
-      type: 'submenu',
-      label: t('audio.licence'),
-      icon: 'scale',
-      children: LICENCES.map(({ licence, label }) => ({ type: 'item' as const, label, checked: (sound?.licence ?? 'unknown') === licence, onClick: () => actions.edit(files, { licence }) })),
-    },
-    { type: 'item', label: t('audio.credit'), icon: 'quote', onClick: () => actions.askCredit(files, sound?.credit ?? '', sound?.name ?? files[0]?.name ?? '') },
-    ...(sound?.credit ? [{ type: 'item' as const, label: t('audio.creditRemove'), icon: 'eraser', onClick: () => actions.edit(files, { credit: undefined }) }] : []),
   ];
 }
 

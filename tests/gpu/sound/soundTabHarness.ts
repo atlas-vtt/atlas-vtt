@@ -164,7 +164,7 @@ async function soundApp(theme: string, appId: string, sounds: Record<string, Tab
   withSound(app);
   const stored = SoundRecordStore.forApp(app);
   await stored.whenLoaded();
-  stored.add(Object.entries(sounds).map(([name, { kind }]) => ({ id: recordIdFor(`audio/${name}.ogg`), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath: `audio/${name}.ogg`, kind, licence: 'unknown', streaming: 'unknown' })));
+  stored.add(Object.entries(sounds).map(([name, { kind }]) => ({ id: recordIdFor(`audio/${name}.ogg`), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath: `audio/${name}.ogg`, kind })));
   await stored.flush();
   const held = linked ? fakeLibrary(app, MOCK_LIBRARY) : null;
   if (held) await fillMockLibrary(held.locations);
@@ -214,7 +214,7 @@ export async function openSoundTab(theme: string, viewport: HTMLElement, appId =
     addUnfinished: async (name, kind) => {
       const audioPath = `audio/${name}.ogg`;
       await app.vault.adapter.write(audioPath, '');
-      stored.add([{ id: recordIdFor(audioPath), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath, kind, licence: 'unknown', streaming: 'unknown' }]);
+      stored.add([{ id: recordIdFor(audioPath), name, tags: [], createdAt: 1, modifiedAt: 1, audioPath, kind }]);
     },
     moodsOf: () => moods.moods(),
     unmount: () => {

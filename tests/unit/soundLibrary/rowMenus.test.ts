@@ -7,29 +7,24 @@ import type { StoredSound } from '../../../src/app/soundLibrary/soundRecords';
 const file = { kind: 'music' as const, path: 'a.ogg', name: 'a.ogg', size: 1, mtime: 1 };
 const row = { type: 'file', id: 'a', name: 'a', kind: 'music', file } as unknown as LibraryRow;
 
-function menuFor(credit: string | undefined): { labels: string[]; edit: ReturnType<typeof vi.fn>; press: (label: string) => void } {
-  const edit = vi.fn();
+function labelsOf(sound: StoredSound): string[] {
   const entries = rowMenu(row, {
-    actions: { edit } as unknown as LibraryActions,
+    actions: { edit: vi.fn() } as unknown as LibraryActions,
     rows: [row],
     entries: [],
-    sound: { name: 'a', credit } as StoredSound,
+    sound,
     rootTags: [],
     moveTo: null,
     beginRename: () => undefined,
   });
-  const items = entries.flatMap((entry) => ('label' in entry && entry.type === 'item' ? [entry] : []));
-  return { labels: items.map((item) => item.label), edit, press: (label) => items.find((item) => item.label === label)?.onClick() };
+  return entries.flatMap((entry) => ('label' in entry ? [entry.label] : []));
 }
 
-describe('the credit in a sound\'s menu', () => {
-  it('can be taken away once there is one', () => {
-    const { edit, press } = menuFor('Someone');
-    press('Remove credit');
-    expect(edit).toHaveBeenCalledWith([file], { credit: undefined });
-  });
-
-  it('offers nothing to take away where there is none', () => {
-    expect(menuFor(undefined).labels).not.toContain('Remove credit');
+describe('a sound\'s menu', () => {
+  it('asks nothing about rights to the file: those are the GM\'s to know', () => {
+    // A record an earlier build wrote may still hold a credit; the menu offers none of it.
+    const labels = labelsOf({ name: 'a', credit: 'Someone', licence: 'cc-by' } as unknown as StoredSound);
+    expect(labels).toContain('Trim');
+    expect(labels.filter((label) => /licen|credit/i.test(label))).toEqual([]);
   });
 });
