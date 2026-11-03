@@ -13,4 +13,4 @@
 - Online, your players hear it in time on their own devices, set their own levels and never see what a track is called
 
 **Asset manager**
-- Get bestiary tokens downloads 145 free creature tokens drawn by Oozejar (CC BY-SA 4.0) into the open collection, tagged Bestiary
+- An empty Tokens tab offers 155 free tokens, Oozejar's creatures (CC BY-SA 4.0) and class tokens in chalk, sorted into tags for you

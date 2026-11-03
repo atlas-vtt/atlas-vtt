@@ -1,6 +1,6 @@
 # Privacy and network use
 
-Atlas VTT works offline. Maps, tokens, notes, audio and settings stay in your vault. Atlas connects to the internet only to look for a newer version of itself (which you can switch off) and when you choose to: to host online play, to submit an issue report, to download the starter ambience or the bestiary tokens, or to load an image from a web address.
+Atlas VTT works offline. Maps, tokens, notes, audio and settings stay in your vault. Atlas connects to the internet only to look for a newer version of itself (which you can switch off) and when you choose to: to host online play, to submit an issue report, to download the starter ambience or the starter tokens, or to load an image from a web address.
 
 - No telemetry, no analytics, no ads.
 - You need no account to use Atlas. Only hosting online play needs an Atlas account.
@@ -14,7 +14,7 @@ If you set a token or map background to an `http://` or `https://` image URL, or
 
 **Starter ambience.** The Sound page offers a starter pack of six ambient sounds while it is not in your ambience folder. Only when you press **Get starter ambience** does Atlas download them, about 14 MB of audio and a credits file, from `https://assets.atlas-vtt.dev/starter/`, checks each file against a fingerprint built into the plugin, and saves them in the folder `Starter ambience` of your ambience folder (`atlas-vtt/sounds/ambience` if you have linked none). The requests carry nothing about you or your vault; Cloudflare, which serves the files, sees your IP address, as with any web request. The sounds are released under CC0 1.0 by the people who recorded them, and are audio only: no code is downloaded. Delete the folder to remove them.
 
-**Bestiary tokens.** The asset manager's Tokens tab offers 145 creature tokens while the open collection holds none of them. Only when you press **Get bestiary tokens** does Atlas download them, about 18 MB of images, a list of the files and a credits note, from `https://assets.atlas-vtt.dev/starter/`, checks each file against a fingerprint the plugin carries, and adds the tokens to that collection with the tag Bestiary, and the credits as a note beside them. The requests carry nothing about you or your vault; Cloudflare, which serves the files, sees your IP address, as with any web request. The tokens are made from Oozejar's *Illustrated Bestiary* and, like it, are licensed under CC BY-SA 4.0; only images and text are downloaded, never code.
+**Starter tokens.** The asset manager's Tokens tab offers 155 tokens while the open collection holds none of them. Only when you press **Get 155 free tokens** (or **Get starter tokens** at the foot of the sidebar) does Atlas download them, about 19 MB of images, a list of the files and a credits note, from `https://assets.atlas-vtt.dev/starter/`, checks each file against a fingerprint the plugin carries, and adds the tokens to that collection, sorted into tags, with the credits as a note beside them. The requests carry nothing about you or your vault; Cloudflare, which serves the files, sees your IP address, as with any web request. The 145 creatures are made from Oozejar's *Illustrated Bestiary* and are licensed under CC BY-SA 4.0 like it; the ten class tokens are drawn from Sketch Studio's icons (CC BY 4.0). Only images and text are downloaded, never code.
 
 ## Online play (closed beta)
 

@@ -6,17 +6,20 @@ import type { AssetService } from '../AssetService';
 import { fetchBytes, fetchVerified, StockPackError, type FetchBytes, type PackedFile } from './verifiedFetch';
 
 /**
- * Creature tokens cut from Oozejar's Illustrated Bestiary (CC BY-SA 4.0), as `credits.md` on the
- * host says. A pack is never changed in place: a new one is a new folder and a new manifest hash.
+ * Creature tokens cut from Oozejar's Illustrated Bestiary (CC BY-SA 4.0) and class tokens drawn from
+ * Sketch Studio's icons (CC BY 4.0), each with its tags, as `credits.md` on the host says. A pack is
+ * never changed in place: a new one is a new folder and a new manifest hash.
  */
-const HOST = 'https://assets.atlas-vtt.dev/starter/bestiary-1/';
-const MANIFEST: PackedFile = { key: 'manifest.json', bytes: 23_442, sha256: '872c85d7e0653fbf233e6316d280590e1ea0200e64d1f54202040501e9aba382' };
+const HOST = 'https://assets.atlas-vtt.dev/starter/bestiary-2/';
+const MANIFEST: PackedFile = { key: 'manifest.json', bytes: 30_131, sha256: 'd0ad97a1ad37057780aa85f1597a12ad0cfa3048032cf14d8209ae0083c97666' };
 
-export const BESTIARY_TAG = 'Bestiary';
-export const BESTIARY_TOKEN_COUNT = 145;
+export const BESTIARY_TOKEN_COUNT = 155;
 /** What the download comes to, for the offer to say. */
-export const BESTIARY_BYTES = 18_420_734;
-const CREDITS_NOTE = 'Bestiary token credits.md';
+export const BESTIARY_BYTES = 18_594_106;
+const CREDITS_NOTE = 'Starter token credits.md';
+/** What a manifest's tag may be: the asset manager's tags are short names. */
+const MAX_TAG_LENGTH = 48;
+const MAX_TAGS = 4;
 /** With the collection's uid, the same id on every device, so two devices downloading into one collection before they sync hold one set. */
 const ID_PREFIX = 'token-bestiary-';
 /** Requests at a time. */
@@ -24,6 +27,7 @@ const PARALLEL = 6;
 
 interface BestiaryToken extends PackedFile {
   name: string;
+  tags: string[];
 }
 
 interface Manifest {
@@ -42,13 +46,19 @@ function packedFile(value: unknown, extension: string): PackedFile {
   return { key, bytes, sha256 };
 }
 
+function tagsOf(value: unknown): string[] {
+  const valid = Array.isArray(value) && value.length <= MAX_TAGS && value.every((tag) => typeof tag === 'string' && tag.trim() !== '' && tag.length <= MAX_TAG_LENGTH);
+  if (!valid) throw new StockPackError('The manifest gives a token tags it cannot have.');
+  return value.map((tag: string) => tag.trim());
+}
+
 /** The manifest's hash is pinned above, so this only turns its JSON into types. */
 function readManifest(bytes: ArrayBuffer): Manifest {
   const data: unknown = JSON.parse(new TextDecoder().decode(bytes));
-  if (!isRecord(data) || data.format !== 1 || !Array.isArray(data.tokens)) throw new StockPackError('The manifest is of another format.');
+  if (!isRecord(data) || data.format !== 2 || !Array.isArray(data.tokens)) throw new StockPackError('The manifest is of another format.');
   const tokens = data.tokens.map((entry: unknown): BestiaryToken => {
     if (!isRecord(entry) || typeof entry.name !== 'string' || entry.name.trim() === '') throw new StockPackError('The manifest names a token without a name.');
-    return { ...packedFile(entry, 'webp'), name: entry.name };
+    return { ...packedFile(entry, 'webp'), name: entry.name, tags: tagsOf(entry.tags) };
   });
   return { credits: packedFile(data.credits, 'md'), tokens };
 }
@@ -86,8 +96,8 @@ export interface InstallOptions {
 
 /**
  * Fetches the whole pack and checks every file before anything is written, then adds the tokens
- * to `collection` under the tag `BESTIARY_TAG`, with a note that credits the art. Tokens already
- * in it are left alone. Returns how many tokens were added.
+ * to `collection` with the tags the manifest gives them, and a note that credits the art. Tokens
+ * already in it are left alone. Returns how many tokens were added.
  */
 export async function installBestiaryTokens(app: App, assets: AssetService, collection: string, { onStep, fetch = fetchBytes, manifest: pinned = MANIFEST }: InstallOptions = {}): Promise<number> {
   onStep?.(0);
@@ -110,14 +120,16 @@ export async function installBestiaryTokens(app: App, assets: AssetService, coll
       return present.has(id) || !bytes ? [] : [{ token, bytes, id }];
     });
     if (fresh.length === 0) return 0;
-    const tag = await assets.createTag(collection, 'tokens', BESTIARY_TAG);
+    // The collection's own spelling of a tag it has already, else the pack's.
+    const tagNames = new Map<string, string>();
+    for (const name of new Set(fresh.flatMap(({ token }) => token.tags))) tagNames.set(name, (await assets.createTag(collection, 'tokens', name)).name);
     const written: string[] = [];
     try {
       const records = [];
       for (const { token, bytes, id } of fresh) {
         const imagePath = await writeAssetImage(app, token.name, bytes);
         written.push(imagePath);
-        records.push({ id, name: token.name, imagePath, collection, tags: [tag.name], showRing: true });
+        records.push({ id, name: token.name, imagePath, collection, tags: token.tags.map((tag) => tagNames.get(tag) ?? tag), showRing: true });
       }
       await assets.addTokenAssets(records);
     } catch (error) {

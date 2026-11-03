@@ -4,7 +4,7 @@ import type { App } from 'obsidian';
 import { Button } from '../../primitives/button';
 import { t } from '../../../../i18n';
 import type { AssetService } from '../../../../services/AssetService';
-import { BESTIARY_BYTES, BESTIARY_TAG, BESTIARY_TOKEN_COUNT, hasBestiaryTokens, installBestiaryTokens } from '../../../../services/stockPacks/bestiaryTokens';
+import { BESTIARY_BYTES, BESTIARY_TOKEN_COUNT, hasBestiaryTokens, installBestiaryTokens } from '../../../../services/stockPacks/bestiaryTokens';
 import { showNotice } from '../../../../ui/notice';
 
 const FAILED_NOTICE_MS = 12_000;
@@ -40,10 +40,10 @@ function startDownload(app: App, assets: AssetService, collection: string): void
   installBestiaryTokens(app, assets, collection, { onStep: (share) => announce(state, { phase: 'downloading', collection, share }) }).then(
     (count) => {
       announce(state, { phase: 'idle' });
-      showNotice(t('am.bestiary.added', { count, collection, tag: BESTIARY_TAG }));
+      showNotice(t('am.bestiary.added', { count, collection }));
     },
     (error: unknown) => {
-      console.error('[Atlas] Could not download the bestiary tokens', error);
+      console.error('[Atlas] Could not download the starter tokens', error);
       announce(state, { phase: 'idle' });
       showNotice(t('am.bestiary.failed'), FAILED_NOTICE_MS);
     },
@@ -80,8 +80,12 @@ function usePackPresent(app: App, assets: AssetService, collection: string, down
   return present;
 }
 
-/** Offers the bestiary tokens until the open collection holds them; while they download into it, says how far it got. */
-export function BestiaryTokensOffer({ app, assets, collection }: { app: App; assets: AssetService; collection: string }): React.JSX.Element | null {
+/**
+ * Offers the starter tokens until the open collection holds them; while they download into it, says
+ * how far it got. `empty` is the empty Tokens tab's call to action, `sidebar` the quiet one at the
+ * sidebar's foot for a collection that holds other tokens.
+ */
+export function BestiaryTokensOffer({ app, assets, collection, variant }: { app: App; assets: AssetService; collection: string; variant: 'empty' | 'sidebar' }): React.JSX.Element | null {
   const download = useDownload(assets);
   const present = usePackPresent(app, assets, collection, download);
   // Downloading into this collection; one into another holds the button until it is done.
@@ -89,10 +93,13 @@ export function BestiaryTokensOffer({ app, assets, collection }: { app: App; ass
   const busy = download.phase === 'downloading';
   if (!downloading && present !== false) return null;
   const size = Math.round(BESTIARY_BYTES / 1_000_000);
-  return (
+  const label = downloading
+    ? t('am.bestiary.downloading', { percent: Math.floor(download.share * 100) })
+    : t(variant === 'empty' ? 'am.bestiary.offer' : 'am.bestiary.get', { count: BESTIARY_TOKEN_COUNT });
+  const button = (
     <Button
-      variant="ghost"
-      className="atlas-asset-manager-manage-btn atlas-bestiary-offer"
+      variant={variant === 'empty' ? 'default' : 'ghost'}
+      className={variant === 'empty' ? 'atlas-bestiary-offer atlas-bestiary-offer--empty' : 'atlas-asset-manager-manage-btn atlas-bestiary-offer atlas-bestiary-offer--sidebar'}
       disabled={busy}
       aria-busy={downloading}
       aria-label={downloading ? undefined : t('am.bestiary.label', { count: BESTIARY_TOKEN_COUNT, size })}
@@ -102,9 +109,15 @@ export function BestiaryTokensOffer({ app, assets, collection }: { app: App; ass
       }}
     >
       <Download />
-      {downloading
-        ? <span>{t('am.bestiary.downloading', { percent: Math.floor(download.share * 100) })}</span>
-        : <><span>{t('am.bestiary.get')}</span><small>{t('am.bestiary.size', { size })}</small></>}
+      <span>{label}</span>
+      {variant === 'sidebar' && !downloading && <small>{t('am.bestiary.size', { size })}</small>}
     </Button>
+  );
+  if (variant === 'sidebar') return button;
+  return (
+    <div className="atlas-bestiary-offer-block">
+      {button}
+      <p>{t('am.bestiary.note', { size })}</p>
+    </div>
   );
 }
