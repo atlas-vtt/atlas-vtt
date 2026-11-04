@@ -1,3 +1,7 @@
 ## New
 
 - **Soft and crackled fog edges**: Atlas settings, Maps, Fog edge fades the edge of the fog and of what you erase from it, or breaks it into a gritty, cracked edge that stays sharp at any zoom, over as many map pixels as you choose, for you and your players. Off by default. Contributed by ThatMattLatt
+
+## Fixed
+
+- Hit points a statblock template keeps under another name (such as `pv`) are no longer counted twice, as the hit points and as a tracked number of their own, so the DM screen, rests and the player sheet keep one value with its maximum
