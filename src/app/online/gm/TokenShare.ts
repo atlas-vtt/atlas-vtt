@@ -253,6 +253,7 @@ export class TokenShare {
       shown,
       gridSize,
       showNames: this.ports.showNames(),
+      mapShowsNameplates: state.tokenSettings?.showNameplates ?? false,
       claimOf: (id, token) => seats?.claimOf(mapPath, id, token) ?? null,
       rules,
       badge: (id) => numbers.get(id) ?? null,

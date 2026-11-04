@@ -59,16 +59,23 @@ describe('the turn banner', () => {
   });
 
   it('gives players the entry\'s name only where their list shows names, and nothing for a hidden turn holder', () => {
-    expect(turnBannerOf(null, order, tokens, { kind: 'players', showNames: true })?.title).toBe('ogre card');
-    expect(turnBannerOf(null, order, tokens, { kind: 'players', showNames: false })).toMatchObject({ title: null, portrait: { imagePath: 'art/ogre.webp' } });
+    expect(turnBannerOf(null, order, tokens, { kind: 'players', showNames: true, mapShowsNameplates: true })?.title).toBe('ogre card');
+    expect(turnBannerOf(null, order, tokens, { kind: 'players', showNames: false, mapShowsNameplates: true })).toMatchObject({ title: null, portrait: { imagePath: 'art/ogre.webp' } });
     const hidden = fight([entry('ghost', 0, { isActive: true })]);
-    expect(turnBannerOf(null, hidden, tokens, { kind: 'players', showNames: true })).toBeNull();
+    expect(turnBannerOf(null, hidden, tokens, { kind: 'players', showNames: true, mapShowsNameplates: true })).toBeNull();
     expect(turnBannerOf(null, hidden, tokens, { kind: 'gm' })?.title).toBe('Ghost');
+  });
+
+  it('gives players a placeholder for a combatant whose nameplate the GM\'s map does not show', () => {
+    const players = { kind: 'players', showNames: true, mapShowsNameplates: false } as const;
+    expect(turnBannerOf(null, order, tokens, players)).toMatchObject({ title: 'Unknown Creature', portrait: { imagePath: 'art/ogre.webp' } });
+    const own = { ...tokens, ogre: { ...tokens.ogre!, showNameplate: true } };
+    expect(turnBannerOf(null, order, own, players)?.title).toBe('ogre card');
   });
 
   it('names the side by sides, and tied sides together, without a portrait', () => {
     const sides = fight([], { sides: { first: 'players', active: 'opponents' } });
-    expect(turnBannerOf(null, sides, tokens, { kind: 'players', showNames: false })).toMatchObject({ title: 'Opponents', portrait: null });
+    expect(turnBannerOf(null, sides, tokens, { kind: 'players', showNames: false, mapShowsNameplates: true })).toMatchObject({ title: 'Opponents', portrait: null });
     const tied = fight([], { sides: { first: 'players', active: 'players', roll: '1d6', rolls: { 1: { players: 3, opponents: 3 } } } });
     expect(turnBannerOf(null, tied, tokens, { kind: 'gm' })?.title).toBe('Players and Opponents');
   });

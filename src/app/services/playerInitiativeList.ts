@@ -26,6 +26,8 @@ export interface EntryToken {
   defeated: boolean;
   /** The condition badges the map shows players on the token (`combatantConditions`). */
   conditions?: ActiveCondition[];
+  /** The token's own Show nameplate, which names it where the map shows no nameplates (`nameplateShownToPlayers`). */
+  showNameplate?: boolean;
 }
 
 /** What the players' list shows of an initiative entry. */
@@ -64,6 +66,8 @@ export interface PlayerInitiativeList {
 /** How the list draws names and portraits, and how the GM laid the lists out. */
 export interface PlayerInitiativeLook {
   showNames: boolean;
+  /** The scene's Show nameplates: with `showNames`, a combatant is named where the GM's map shows its nameplate. */
+  mapShowsNameplates: boolean;
   /** The address of an entry's portrait, or null to draw none. */
   portraitSrc(imagePath: string): string | null;
   /** The number a combatant's badge shows the players on the map, which tells look-alikes apart; null for none. */
@@ -102,6 +106,7 @@ export function entryTokenOf(
     side: sideOf(token, sides),
     defeated: combatantDefeated(token, definitions),
     conditions: combatantConditions(token, conditionDefinitions),
+    ...(token?.showNameplate === true ? { showNameplate: true } : {}),
   };
 }
 

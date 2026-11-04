@@ -12,6 +12,7 @@ export interface RollSceneState {
   mapLoaded: boolean;
   isMapLoading: boolean;
   objects: { tokens: Record<string, TokenEntity> };
+  tokenSettings?: { showNameplates?: boolean };
 }
 
 const NONE: ReadonlyMap<string, ShownRollToken> = new Map();
@@ -38,6 +39,8 @@ export function shownRollTokens(
     if (!token || !sprites[id] || !seen(id)) continue;
     shown.set(id, Object.freeze({
       name: tokenDisplayName(token),
+      ...(token.showNameplate === true ? { showNameplate: true } : {}),
+      mapShowsNameplates: scene.tokenSettings?.showNameplates ?? false,
       imagePath: token.imagePath || undefined,
       showRing: token.showRing !== false,
       ringColor: token.ringColor,
