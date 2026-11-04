@@ -4,6 +4,7 @@
 
 ## Fixed
 
+- The DM screen's text is sharp on screens without high resolution
 - The choices of a "One of a list" value in a statblock, and of an ability's parts, now open in front of the card: in its last block they were cut off by its edge.
 - A note previewed by hovering a link in a statblock preview (a spell, a condition) now opens in front of the statblock instead of behind it.
 - Statblocks: emptying a linked statblock's hit points (or any other resource field), or setting them to 0, now removes the bar from tokens already on the map
