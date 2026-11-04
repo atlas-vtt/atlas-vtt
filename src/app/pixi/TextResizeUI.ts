@@ -11,6 +11,7 @@ import type { ViewAtlasState } from '../storeFactory';
 import type { StoreApi } from 'zustand';
 import { MAP_LAYER_Z } from './mapLayerOrder';
 import { levelObjects } from '../levels/levelObjects';
+import { textHandleBounds } from './textHandleBounds';
 
 /** Resting look of a resize handle: a dark pill with a faint outlined inset. */
 function drawIdleHandleBackground(bg: Graphics): void {
@@ -36,7 +37,12 @@ export class TextResizeUI {
   private textStartScale: number = 1;
   private initialDistance: number = 0;
 
-  constructor(viewport: Viewport, store: StoreApi<ViewAtlasState>) {
+  /** `onPreview` hears the scale a drag shows before it reaches the store. */
+  constructor(
+    viewport: Viewport,
+    store: StoreApi<ViewAtlasState>,
+    private readonly onPreview: (text: TextElement) => void = () => {},
+  ) {
     this.viewport = viewport;
     this.store = store;
     
@@ -131,6 +137,12 @@ export class TextResizeUI {
   show(textElement: TextElement): void {
     this.activeTextId = textElement.id;
     this.container.visible = true;
+    this.refresh(textElement);
+  }
+
+  /** Follows a change of the shown text (an edit, an undo, a rotation being dragged). */
+  refresh(textElement: TextElement): void {
+    if (textElement.id !== this.activeTextId || this.isDragging) return;
     this.temporaryScale = textElement.scale || 1;
     this.updateHandlePositions(textElement);
   }
@@ -146,24 +158,13 @@ export class TextResizeUI {
   }
 
   private updateHandlePositions(textElement: TextElement): void {
-    const textContainer = this.viewport.children.find(
-      child => child.label === 'textContainer'
-    )?.children.find(
-      child => child.label === textElement.id
-    );
-    
-    if (!textContainer) return;
-    
-    // Get text bounds
-    const bounds = textContainer.getLocalBounds();
-    const scale = textElement.scale || 1;
-    const halfWidth = (bounds.width * scale) / 2;
+    const bounds = textHandleBounds(this.viewport, textElement);
+    if (!bounds) return;
+
     const padding = 30; // Distance from text
-    
-    // Position handles on left and right
-    this.leftHandle.position.set(-(halfWidth + padding), 0);
-    this.rightHandle.position.set(halfWidth + padding, 0);
-    
+    this.leftHandle.position.set(bounds.left - padding, 0);
+    this.rightHandle.position.set(bounds.right + padding, 0);
+
     // Apply text rotation to handles container
     this.container.rotation = textElement.rotation ? (textElement.rotation * Math.PI) / 180 : 0;
   }
@@ -234,6 +235,7 @@ export class TextResizeUI {
     // Update handle positions
     const updatedElement = { ...textElement, scale: newScale };
     this.updateHandlePositions(updatedElement);
+    this.onPreview(updatedElement);
   };
 
   private onPointerUp = (): void => {
