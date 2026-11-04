@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { templateQuantityLook } from '../../../../src/app/resources/quantityLooks';
 import { tokenQuantities } from '../../../../src/app/resources/statblockQuantities';
-import { trackedResources } from '../../../../src/app/resources/trackedResources';
+import { resourceOfField, trackedResources } from '../../../../src/app/resources/trackedResources';
 import { parseTemplate } from '../../../../src/app/statblocks/format/parseTemplate';
 import { serializeTemplate } from '../../../../src/app/statblocks/format/templateFormat';
 import { renameFieldKey } from '../../../../src/app/statblocks/model/fieldOps';
@@ -70,6 +70,27 @@ describe('tracked numbers', () => {
       { key: 'hitdice', label: 'Hit Dice', value: { current: 4, max: 4 }, fills: false, boxes: false },
       { key: 'stress', label: 'Stress', value: { current: 0, max: 6 }, fills: true, boxes: true },
     ]);
+  });
+});
+
+describe('hit points under another key, which the template means as its hit points', () => {
+  const PV_TEMPLATE = templateOf([
+    { key: 'name', label: 'Name', type: 'text' },
+    { key: 'pv', label: 'PV', type: 'number', meaning: 'hit-points' },
+  ], [{ id: 'track001', type: 'track', field: 'pv', look: 'boxes', counts: 'down' }]);
+
+  it('are the collection\'s hit points, never a tracked number of their own', () => {
+    expect(trackedResources(PV_TEMPLATE, [HP])).toEqual([]);
+    expect(resourceOfField(PV_TEMPLATE, [HP])('pv')).toBe(HP);
+  });
+
+  it('are listed once in the DM screen, as the collection\'s resource', () => {
+    const token = { resources: { hp: { current: 4, max: 6 } } };
+    expect(tokenQuantities({ pv: 6 }, templateQuantityLook(PV_TEMPLATE), token, [HP]).map((q) => q.key)).toEqual(['hp']);
+  });
+
+  it('stay a tracked number where the collection has no hit points', () => {
+    expect(trackedResources(PV_TEMPLATE, []).map((each) => each.definition.key)).toEqual(['pv']);
   });
 });
 
