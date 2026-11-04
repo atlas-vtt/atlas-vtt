@@ -5,3 +5,4 @@
 ## Fixed
 
 - Renamed statblock notes no longer show up a second time under their old name when you link a statblock to a token
+- Settings opened from the command palette stay open instead of closing again right after a quick click
