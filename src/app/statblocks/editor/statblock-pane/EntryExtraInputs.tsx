@@ -88,7 +88,7 @@ function PartChoiceInput({ extra, labelId, text, onChange }: PartInputProps): Re
   const options = [NONE, ...(extra.options ?? []).map((option) => ({ value: option, label: option }))];
   const { list, inputRef, inputProps, boxProps } = usePartList(extra.label, options, onChange);
   return (
-    <span className="atlas-sb-pane-field atlas-sb-pane-choice atlas-sb-pane-entry__control" {...boxProps}>
+    <span ref={list.anchorRef} className="atlas-sb-pane-field atlas-sb-pane-choice atlas-sb-pane-entry__control" {...boxProps}>
       <input
         {...CONTROL}
         ref={inputRef}
@@ -134,7 +134,7 @@ function PartPicksInput({ extra, labelId, text, onChange }: PartInputProps): Rea
       {read.unread.map((part, index) => (
         <UnreadChip key={`unread-${part}-${index}`} part={part} onRemove={() => removeUnread(index)} />
       ))}
-      <span className="atlas-sb-pane-pick__add">
+      <span ref={list.anchorRef} className="atlas-sb-pane-pick__add">
         <input
           {...CONTROL}
           ref={inputRef}

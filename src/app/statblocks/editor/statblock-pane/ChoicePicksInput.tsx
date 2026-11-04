@@ -154,7 +154,7 @@ export function ChoicePicksInput({ field, autoFocus, placeholder }: ValueInputPr
       {read.unread.map((part, index) => (
         <UnreadChip key={`unread-${part}-${index}`} part={part} onRemove={() => removeUnread(index)} />
       ))}
-      <span className="atlas-sb-pane-pick__add">
+      <span ref={list.anchorRef} className="atlas-sb-pane-pick__add">
         <input
           ref={inputRef}
           type="text"
