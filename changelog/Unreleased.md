@@ -5,3 +5,4 @@
 ## Fixed
 
 - Hit points a statblock template keeps under another name (such as `pv`) are no longer counted twice, as the hit points and as a tracked number of their own, so the DM screen, rests and the player sheet keep one value with its maximum
+- Settings opened from the command palette stay open instead of closing again right after a quick click
