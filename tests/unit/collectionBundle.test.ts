@@ -1499,7 +1499,6 @@ describe('random tables and encounter folders', () => {
     await importInto(fan, await exportFrom(creator), { name: 'source (2)' });
     const installed = JSON.parse(fan.vault.files.get('atlas-vtt/collections/source (2)/scenes/Cave.atlasmap')!) as { state: { objects: { pins: Record<string, { notePath: string }> } } };
     expect(installed.state.objects.pins.p1!.notePath).toBe('atlas-vtt/collections/source (2)/encounters');
-    });
   });
 });
 
