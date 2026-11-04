@@ -40,6 +40,8 @@ export const am: Translation = {
   'am.menu.renameSceneFailed': 'Не удалось переименовать сцену',
   'am.menu.renameTitle': 'Переименовать «{name}»',
   'am.menu.saveAsEncounter': { one: 'Сохранить {count} токен как стычку', few: 'Сохранить {count} токена как стычку', many: 'Сохранить {count} токенов как стычку', other: 'Сохранить {count} токена как стычку' },
+  'am.menu.openScene': 'Открыть сцену',
+  'am.menu.openSceneFailed': 'Не удалось открыть сцену',
   'am.menu.createScene': 'Создать сцену',
   'am.menu.createScenes': { one: 'Создать {count} сцену', few: 'Создать {count} сцены', many: 'Создать {count} сцен', other: 'Создать {count} сцены' },
   'am.menu.sortBy': 'Сортировка',
