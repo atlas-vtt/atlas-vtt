@@ -5,3 +5,4 @@
 ## Fixed
 
 - Statblocks: a Counter row renamed in a template no longer shows twice on notes that already used it
+- Settings opened from the command palette stay open instead of closing again right after a quick click
