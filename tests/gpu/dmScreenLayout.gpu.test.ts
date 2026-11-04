@@ -84,4 +84,20 @@ describe('the DM screen beside open sidebars', () => {
 
     expect(scale('.atlas-dm-screen')).toBe(scale('.atlas-ui'));
   });
+
+  it('rests without a transform, so its text is not composited on half pixels', async () => {
+    // A view whose centre lies on a half pixel: a `translate(-50%, -50%)` left the DM screen's layer
+    // there after opening, which blurs its text on screens of device pixel ratio 1 (#573).
+    await openIn({ width: 1600, height: 1000 }, { left: 300, width: 1051 });
+    const screen = document.querySelector<HTMLElement>('.atlas-dm-screen')!;
+    screen.classList.add('is-visible');
+    await Promise.all(screen.getAnimations().map((animation) => animation.finished));
+
+    expect(getComputedStyle(screen).transform).toBe('none');
+    expect(getComputedStyle(screen).opacity).toBe('1');
+    const view = leaf.getBoundingClientRect();
+    const box = screen.getBoundingClientRect();
+    expect(box.left - view.left).toBeCloseTo(view.right - box.right, 1);
+    expect(box.top - view.top).toBeCloseTo(view.bottom - box.bottom, 1);
+  });
 });
