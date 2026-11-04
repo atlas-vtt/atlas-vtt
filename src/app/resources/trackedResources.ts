@@ -6,7 +6,8 @@
 
 import type { FieldKey, StatblockTemplate } from '../statblocks/model/templateTypes';
 import { trackedNumbers, type TrackedNumber } from '../statblocks/values/trackedNumbers';
-import { normalizedKey } from './resourceFields';
+import { meaningsOf, NO_MEANINGS, type FieldMeanings } from '../statblocks/resolve/fieldMeanings';
+import { matchingKey, normalizedKey } from './resourceFields';
 import type { ResourceDefinition } from './resourceTypes';
 
 export interface TrackedResource {
@@ -19,23 +20,26 @@ const TRACKED_COLOR = '#8a8a8a';
 
 /**
  * Whether a resource's field (a dotted path: `hp`, `stats.0`) is read from the template field
- * `key`, as a statblock key is resolved: without case, spaces, underscores or hyphens.
+ * `key`, as a statblock key is resolved (`matchingKey`): without case, spaces, underscores or
+ * hyphens, and for hit points the field the template's `meanings` name so (`pv`).
  */
-export function readsTemplateField(resource: ResourceDefinition, key: FieldKey): boolean {
-  const wanted = normalizedKey(key);
+export function readsTemplateField(resource: ResourceDefinition, key: FieldKey, meanings: FieldMeanings = NO_MEANINGS): boolean {
   const path = resource.field.trim();
-  return normalizedKey(path) === wanted || normalizedKey(path.split('.')[0] ?? '') === wanted;
+  return normalizedKey(path) === normalizedKey(key) || matchingKey({ [key]: true }, path.split('.')[0] ?? '', meanings) !== undefined;
 }
 
 /** Whether one of `resources` is the tracked number of `key` read from `field`. */
-export function isCollectionResource(resources: readonly ResourceDefinition[], key: string, field: FieldKey): boolean {
-  return resources.some((resource) => resource.key === key || readsTemplateField(resource, field));
+export function isCollectionResource(
+  resources: readonly ResourceDefinition[], key: string, field: FieldKey, meanings: FieldMeanings = NO_MEANINGS,
+): boolean {
+  return resources.some((resource) => resource.key === key || readsTemplateField(resource, field, meanings));
 }
 
 /** The template's tracked numbers no resource of `resources` reads or shares a key with, each as a resource. */
 export function trackedResources(template: StatblockTemplate, resources: readonly ResourceDefinition[]): TrackedResource[] {
+  const meanings = meaningsOf(template.fields);
   return trackedNumbers(template)
-    .filter((tracked) => !isCollectionResource(resources, tracked.key, tracked.field.key))
+    .filter((tracked) => !isCollectionResource(resources, tracked.key, tracked.field.key, meanings))
     .map((tracked) => ({
       tracked,
       definition: {
@@ -66,8 +70,9 @@ export function resourceOfField(
 ): (key: FieldKey) => ResourceDefinition | undefined {
   const tracked = new Map(trackedResources(template, resources).map((each) => [each.tracked.field.key, each.definition]));
   const counting = recoverableResources(resources);
+  const meanings = meaningsOf(template.fields);
   const keysOf = (key: FieldKey): FieldKey[] => [key, ...(template.fields.find((field) => field.key === key)?.formerKeys ?? [])];
   const readerIn = (list: readonly ResourceDefinition[], key: FieldKey): ResourceDefinition | undefined =>
-    list.find((resource) => keysOf(key).some((each) => readsTemplateField(resource, each)));
+    list.find((resource) => keysOf(key).some((each) => readsTemplateField(resource, each, meanings)));
   return (key) => tracked.get(key) ?? readerIn(counting, key) ?? (staticToo ? readerIn(resources, key) : undefined);
 }
