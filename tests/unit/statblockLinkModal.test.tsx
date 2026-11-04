@@ -2,6 +2,7 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { TFile } from 'obsidian';
 
 vi.mock('../../src/app/statblocks/render/LinkedStatblock', () => ({
   LinkedStatblock: ({ path, tokens }: { path: string; tokens: Array<{ imagePath?: string }> }) => (
@@ -29,6 +30,11 @@ const CREATURES = [
   { name: 'Inline Only' },
 ];
 
+/** The notes `CREATURES` were parsed from. */
+function noteOfCreatures(path: string): TFile | null {
+  return CREATURES.some((creature) => creature.path === path) ? new TFile(path) : null;
+}
+
 function fakeApp(): { app: never; trigger: (event: string) => void } {
   const handlers = new Map<string, Handler[]>();
   const app = {
@@ -39,7 +45,7 @@ function fakeApp(): { app: never; trigger: (event: string) => void } {
       },
       offref: () => undefined,
     },
-    vault: { getMarkdownFiles: () => [] },
+    vault: { getMarkdownFiles: () => [], getAbstractFileByPath: noteOfCreatures },
   } as never;
   return { app, trigger: (event) => handlers.get(event)?.forEach((handler) => handler()) };
 }
@@ -160,6 +166,13 @@ describe('StatblockLinkModal', () => {
     expect(screen.getByTestId('statblock').dataset.portrait).toBe('tokens/red-dragon.webp');
   });
 
+  it('leaves out what Fantasy Statblocks still holds of a renamed note', () => {
+    installBestiary([...CREATURES, { name: 'Aboleth Elder', path: 'Bestiary/Aboleth Elder.md' }]);
+    open();
+
+    expect(optionNames()).toEqual(['Aboleth', 'Acid Burrower', 'Adult Red Dragon', 'Dragon Turtle']);
+  });
+
   it('unlinks the current statblock', () => {
     installBestiary(CREATURES);
     const { onLink } = open('Bestiary/Aboleth.md');
@@ -189,7 +202,6 @@ describe('StatblockLinkModal', () => {
 
 describe('StatblockLinkModal with statblock notes outside the bestiary', () => {
   it('lists notes that define their statblock in a fence or unparsed frontmatter', async () => {
-    const { TFile } = await import('obsidian');
     const notes: Record<string, string> = {
       'Notes/Vecna.md': ['```statblock', 'name: Vecna', 'size: Large', 'type: Undead', 'cr: 5', '```'].join('\n'),
       'Notes/Octopus.md': ['# Octopus', '', '```statblock', 'monster: Octopus', '```'].join('\n'),
@@ -242,7 +254,7 @@ describe('StatblockLinkModal while the bestiary parses', () => {
         },
         offref: () => undefined,
       },
-      vault: { getMarkdownFiles },
+      vault: { getMarkdownFiles, getAbstractFileByPath: noteOfCreatures },
     } as never;
     render(<StatblockLinkModal isOpen onClose={vi.fn()} asset={{ name: 'Token' }} onLink={vi.fn()} app={app} />);
     expect(getMarkdownFiles).toHaveBeenCalledTimes(1);
@@ -258,7 +270,6 @@ describe('StatblockLinkModal while the bestiary parses', () => {
   });
 
   it('stops a superseded read at the next note', async () => {
-    const { TFile } = await import('obsidian');
     installBestiary([]);
     const controller = new AbortController();
     const cachedRead = vi.fn((): Promise<string> => {
