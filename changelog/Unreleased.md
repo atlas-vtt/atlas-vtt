@@ -5,3 +5,4 @@
 ## Fixed
 
 - Deleting a map now also removes its image and thumbnail, unless another map or a scene still uses them.
+- Settings opened from the command palette stay open instead of closing again right after a quick click
