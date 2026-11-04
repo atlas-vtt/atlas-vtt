@@ -6,3 +6,4 @@
 
 - An enlarged text box can be rotated again: its rotate handle stays above the text, and both its handles follow it while you resize, rotate or undo.
 - Settings opened from the command palette stay open instead of closing again right after a quick click
+- Holding Shift places a note pin in the centre of a square, as it already did on hex grids

@@ -1,5 +1,7 @@
+import type { GridState } from '../types/gridTypes';
 import { EDGE_MARGIN, EPSILON } from './cellNumbering';
 import type { CellLattice, CellLines, MapRect, PlacedCell } from './cellNumbering';
+import { isHexGridType, type Point } from './hexGeometry';
 
 function cellKey(col: number, row: number): string {
   return `${col},${row}`;
@@ -27,10 +29,24 @@ export function squareLattice(size: number, offsetX: number, offsetY: number): C
   };
 }
 
-interface SquareGrid {
+export interface SquareGrid {
   size: number;
   offsetX: number;
   offsetY: number;
+}
+
+/** A map's square grid, or null where the map has no grid, a hex grid or no cell size. */
+export function squareGridOf(grid: Pick<GridState, 'enabled' | 'type' | 'size' | 'offsetX' | 'offsetY'> | null | undefined): SquareGrid | null {
+  if (!grid?.enabled || isHexGridType(grid.type) || !(grid.size > 0)) return null;
+  return { size: grid.size, offsetX: grid.offsetX ?? 0, offsetY: grid.offsetY ?? 0 };
+}
+
+/** The centre of the square containing `point`. */
+export function squareCellCentre({ size, offsetX, offsetY }: SquareGrid, point: Point): Point {
+  return {
+    x: Math.floor((point.x - offsetX) / size) * size + offsetX + size / 2,
+    y: Math.floor((point.y - offsetY) / size) * size + offsetY + size / 2,
+  };
 }
 
 /** A block of squares by their lattice columns and rows, inclusive. */
