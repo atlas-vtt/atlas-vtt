@@ -93,3 +93,20 @@ describe('notes naming statblock templates', () => {
     expect(rewriteContent({ vaultPath: 'Lore/Bog.md', role: 'linked-note' }, other, new Map(), ids)).toBe(other);
   });
 });
+
+describe('folders in JSON files', () => {
+  const map: BundleFile = { vaultPath: 'atlas-vtt/collections/a/scenes/Cave.atlasmap', role: 'scene-map' };
+
+  it('follows a folder of encounters that moved with its files, and leaves other folders and plain words alone', () => {
+    const raw = JSON.stringify({ pins: [{ notePath: 'atlas-vtt/collections/a/encounters/Wilds/Forest' }, { notePath: 'Lore/Forest' }], label: 'Lore' });
+    const rewrites = new Map([
+      ['atlas-vtt/collections/a/encounters/Wilds/Forest/wolves.json', 'atlas-vtt/collections/b/encounters/Wilds/Forest/wolves.json'],
+      ['Lore/Forest/Inn.md', 'atlas-vtt/collections/b/notes/Lore/Inn.md'],
+      // A note copied under its own folder names: "Lore" stays a word, never a path.
+      ['Lore/Cave.md', 'atlas-vtt/collections/b/notes/Lore/Cave.md'],
+    ]);
+    expect(JSON.parse(decode(rewriteContent(map, encode(raw), rewrites)))).toEqual({
+      pins: [{ notePath: 'atlas-vtt/collections/b/encounters/Wilds/Forest' }, { notePath: 'Lore/Forest' }], label: 'Lore',
+    });
+  });
+});
