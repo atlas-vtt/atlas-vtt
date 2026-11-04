@@ -19,3 +19,5 @@
 - An enlarged text box can be rotated again: its rotate handle stays above the text, and both its handles follow it while you resize, rotate or undo.
 - Settings opened from the command palette stay open instead of closing again right after a quick click
 - With Show nameplates on in the player view, players see only the names your map shows: on the map, in their initiative list, turn banner and rolls
+- Exported collections carry their random tables, with the notes they are read from
+- Pins that roll a folder of encounters keep working after an import under another collection name
