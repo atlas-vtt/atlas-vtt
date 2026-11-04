@@ -24,7 +24,7 @@ const TEMPLATE: StatblockTemplate = {
   id: 'counters-k7m2qa',
   fields: [
     { key: 'name', label: 'Name', type: 'text' },
-    { key: 'slots', label: 'Spell slots', type: 'counters', counterRows: [{ name: '1st level', max: 2 }] },
+    { key: 'slots', label: 'Spell slots', type: 'counters', counterRows: [{ name: '1st level', max: 2 }, { name: '2nd level', max: 1 }] },
     { key: 'charges', label: 'Charges', type: 'counters' },
   ],
   layout: {
@@ -70,21 +70,26 @@ describe('Counters in the statblock pane', () => {
     const harness = await pane({});
     await press(within(block(harness)).getByRole('button', { name: '1st level 2 of 2' }));
     expect(harness.writer.patches()).toEqual([{
-      op: 'set', path: ['slots'], base: undefined, next: [{ name: '1st level', max: 2, used: 1 }],
+      op: 'set', path: ['slots'], base: undefined, next: [{ name: '1st level', max: 2, used: 1 }, { name: '2nd level', max: 1, used: 0 }],
     }]);
   });
 
   it('makes a row the template gained after the note stored its own pressable, and writes it with the first press', async () => {
-    const harness = await pane({ slots: [{ name: 'Ki', max: 2, used: 2 }] });
-    await press(within(block(harness)).getByRole('button', { name: '1st level 2 of 2' }));
+    const harness = await pane({ slots: [{ name: '1st level', max: 2, used: 2 }] });
+    await press(within(block(harness)).getByRole('button', { name: '2nd level 1 of 1' }));
     expect(harness.writer.patches()).toEqual([{
-      op: 'set', path: ['slots'], base: [{ name: 'Ki', max: 2, used: 2 }], next: [{ name: 'Ki', max: 2, used: 2 }, { name: '1st level', max: 2, used: 1 }],
+      op: 'set', path: ['slots'], base: [{ name: '1st level', max: 2, used: 2 }], next: [{ name: '1st level', max: 2, used: 2 }, { name: '2nd level', max: 1, used: 1 }],
     }]);
+  });
+
+  it('shows a row the template renamed once, under the name the note gave it', async () => {
+    const harness = await pane({ slots: [{ name: 'Level 1', max: 2, used: 1 }] });
+    expect(within(block(harness)).getAllByRole('group').map((group) => group.getAttribute('aria-label'))).toEqual(['Level 1', '2nd level']);
   });
 
   it('steps a row of many uses with − and +', async () => {
     const harness = await pane({ slots: [{ name: 'Sorcery points', max: 10, used: 3 }] });
     await press(within(block(harness)).getByRole('button', { name: 'Decrease Sorcery points' }));
-    expect(harness.writer.patches().at(-1)).toMatchObject({ next: [{ name: 'Sorcery points', max: 10, used: 4 }, { name: '1st level', max: 2, used: 0 }] });
+    expect(harness.writer.patches().at(-1)).toMatchObject({ next: [{ name: 'Sorcery points', max: 10, used: 4 }, { name: '2nd level', max: 1, used: 0 }] });
   });
 });

@@ -25,6 +25,16 @@ describe('a Counters value', () => {
     expect(withCounterUsed(insight, stored, 1, 1)).toEqual([{ name: 'xp ', max: 6, used: 6 }, { name: 'Device', max: 4, used: 1 }]);
   });
 
+  it('shows a row the template renamed once, as the note names it, and writes no copy of it', () => {
+    const renamed: TemplateField = { key: 'slots', label: 'Spell slots', type: 'counters', counterRows: [{ name: 'Level 1', max: 2 }, { name: 'Level 2', max: 2 }] };
+    const stored = [{ name: '1st', max: 2, used: 1 }];
+    expect(shownCounterRows(renamed, stored)?.map((row) => row.name)).toEqual(['1st', 'Level 2']);
+    expect(withCounterUsed(renamed, stored, 0, 2)).toEqual([{ name: '1st', max: 2, used: 2 }, { name: 'Level 2', max: 2, used: 0 }]);
+    // A row the note holds by name is not taken for the renamed one at its place
+    const both = [{ name: 'Level 2', max: 2, used: 0 }];
+    expect(shownCounterRows(renamed, both)?.map((row) => row.name)).toEqual(['Level 2', 'Level 1']);
+  });
+
   it('keeps a row the template no longer defines, and adds nothing to a value that is no list of counters', () => {
     expect(shownCounterRows(CHARGES, [{ name: 'Wand', max: 7 }])?.map((row) => row.name)).toEqual(['Wand']);
     expect(shownCounterRows(FIELD, [{ name: 'Ki', max: 2, used: 5 }])).toBeNull();

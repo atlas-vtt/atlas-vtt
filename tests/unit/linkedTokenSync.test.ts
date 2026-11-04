@@ -39,6 +39,15 @@ describe('linked tokens following their statblock', () => {
     expect(steps()).toBe(0);
   });
 
+  it('lose a resource whose field the statblock empties, untracked', () => {
+    const { store, steps } = mapWith({ t1: warden });
+
+    syncLinkedTokens(store, WARDEN, { fields: { name: 'Marsh Warden', hp: null } }, [HP_RESOURCE], null);
+
+    expect((store.getState().objects.tokens.t1 as Character).resources).toEqual({});
+    expect(steps()).toBe(0);
+  });
+
   it('leave tokens already in step alone', () => {
     const { store, steps } = mapWith({ t1: { ...warden, difficulty: 'CR 2' } });
     const before = store.getState().objects;

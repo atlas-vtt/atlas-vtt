@@ -28,6 +28,8 @@ export interface MissingReference {
 interface CollectedFiles {
   files: BundleFile[];
   missing: MissingReference[];
+  /** Scenes whose map file is gone or cannot be read, so what they show is not known. */
+  unreadScenes: SceneAsset[];
 }
 
 /** What names a loot base in a report of missing files: the collection's settings refer to it, no asset does. */
@@ -54,6 +56,7 @@ export class CollectionReferenceCollector {
   private readonly files = new Map<string, BundleFile>();
   private readonly statblockNotes = new Set<string>();
   private readonly missing = new Map<string, MissingReference>();
+  private readonly unreadScenes: SceneAsset[] = [];
   private owner: Asset | null = null;
 
   constructor(private readonly app: App, private readonly assets: AssetService) {}
@@ -68,7 +71,7 @@ export class CollectionReferenceCollector {
     }
     this.owner = null;
     for (const notePath of this.statblockNotes) this.collectStatblockImage(notePath);
-    return { files: [...this.files.values()], missing: [...this.missing.values()] };
+    return { files: [...this.files.values()], missing: [...this.missing.values()], unreadScenes: this.unreadScenes };
   }
 
   /**
@@ -156,9 +159,11 @@ export class CollectionReferenceCollector {
   }
 
   private async collectScene(scene: SceneAsset, mapPath: string | undefined): Promise<void> {
-    if (!mapPath) return;
-    const mapFile = this.app.vault.getAbstractFileByPath(mapPath);
-    if (!(mapFile instanceof TFile)) return;
+    const mapFile = mapPath ? this.app.vault.getAbstractFileByPath(mapPath) : null;
+    if (!mapPath || !(mapFile instanceof TFile)) {
+      this.unreadScenes.push(scene);
+      return;
+    }
     this.add(mapPath, 'scene-map');
     this.add(sceneThumbnailPath(mapPath), 'scene-thumbnail');
 
@@ -169,6 +174,7 @@ export class CollectionReferenceCollector {
       envelope = null;
     }
     if (isPersistedMapEnvelope(envelope)) this.collectMapState(envelope);
+    else this.unreadScenes.push(scene);
 
     for (const { snapshot, path, thumbnailPath } of await new SceneSnapshotService(this.app).list(snapshotFolderOf(scene))) {
       this.add(path, 'scene-snapshot');
