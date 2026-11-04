@@ -4,7 +4,7 @@
     {
       "version": "0.12.2-beta.0",
       "title": "Coming in 0.12.2",
-      "markdown": "## New\n\n- **Soft and crackled fog edges**: Atlas settings, Maps, Fog edge fades the edge of the fog and of what you erase from it, or breaks it into a gritty, cracked edge that stays sharp at any zoom, over as many map pixels as you choose, for you and your players. Off by default. Contributed by ThatMattLatt"
+      "markdown": "## New\n\n- **Soft and crackled fog edges**: Atlas settings, Maps, Fog edge fades the edge of the fog and of what you erase from it, or breaks it into a gritty, cracked edge that stays sharp at any zoom, over as many map pixels as you choose, for you and your players. Off by default. Contributed by ThatMattLatt\n\n## Fixed\n\n- Renamed statblock notes no longer show up a second time under their old name when you link a statblock to a token"
     },
     {
       "version": "0.12.1",
