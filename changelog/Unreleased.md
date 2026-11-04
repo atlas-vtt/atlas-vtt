@@ -8,6 +8,7 @@
 
 ## Fixed
 
+- Renamed statblock notes no longer show up a second time under their old name when you link a statblock to a token
 - Hit points a statblock template keeps under another name (such as `pv`) are no longer counted twice, as the hit points and as a tracked number of their own, so the DM screen, rests and the player sheet keep one value with its maximum
 - Statblocks: a Counter row renamed in a template no longer shows twice on notes that already used it
 - An enlarged text box can be rotated again: its rotate handle stays above the text, and both its handles follow it while you resize, rotate or undo.
